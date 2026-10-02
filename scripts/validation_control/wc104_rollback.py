@@ -22,7 +22,7 @@ from typing import Any
 
 import yaml
 
-from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT, BLOCKED_DEFERRED_GATES
+from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT, BLOCKED_DEFERRED_GATES, repair_transition
 from validation_control.execution_contract import orchestration_preflight, resource_capacity_preflight
 from validation_control.qualification import build_wc104_rollback_manifest, render_manifest
 from validation_control.local_catalog_gate import execute_gate, required_service_identities, resolve_runner
@@ -178,6 +178,7 @@ def execute_rollback(
     qualification_context: QualificationContext | None = None,
     checkpoint_path: Path | None = None,
     resume_checkpoint: dict[str, Any] | None = None,
+    repair_context: dict[str, Any] | None = None,
     context_resolver: Callable[[Path, str, str], QualificationContext] = resolve_qualification_context,
     execution_preflight: Callable[[Path], None] = orchestration_preflight,
     resource_preflight: Callable[[Path, list[dict[str, Any]], str], dict[str, Any]] = resource_capacity_preflight,
@@ -288,6 +289,21 @@ def execute_rollback(
         )
     except Exception as exception:
         return block_preflight("preflight:plan", str(manifest["required_gates"][0]), exception)
+    if resume_checkpoint is not None and resume_checkpoint.get("run_state") == "FAILED":
+        prior_first_cause = resume_checkpoint.get("first_cause_gate")
+        try:
+            if repair_context is None:
+                raise ValueError("failed qualification resume requires focused repair context")
+            transition = repair_transition(**repair_context)
+            if (
+                transition["result"] != "PASS"
+                or not transition["restitch_eligible"]
+                or prior_first_cause not in transition["invalidated_gates"]
+            ):
+                raise ValueError("failed qualification repair is not eligible for restitch")
+            manifest["repair_transition"] = transition
+        except Exception as exception:
+            return block_preflight("preflight:repair", str(prior_first_cause), exception)
     try:
         execution_preflight(repository)
     except Exception as exception:
@@ -486,6 +502,7 @@ def main() -> int:
     parser.add_argument("--git-common-dir", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--repair-context", type=Path)
     arguments = parser.parse_args()
     repository = arguments.repository.resolve()
     catalog = yaml.safe_load((repository / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
@@ -498,6 +515,11 @@ def main() -> int:
         resume_checkpoint = json.loads(arguments.output.read_text(encoding="utf-8"))
         if not isinstance(resume_checkpoint, dict):
             raise ValueError("rollback checkpoint root must be a mapping")
+    repair_context = None
+    if arguments.repair_context is not None:
+        repair_context = json.loads(arguments.repair_context.read_text(encoding="utf-8"))
+        if not isinstance(repair_context, dict):
+            raise ValueError("repair context root must be a mapping")
     manifest = execute_rollback(
         repository,
         catalog,
@@ -506,6 +528,7 @@ def main() -> int:
         git_common_dir=arguments.git_common_dir.resolve(),
         checkpoint_path=arguments.output,
         resume_checkpoint=resume_checkpoint,
+        repair_context=repair_context,
     )
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
     temporary_output = arguments.output.with_suffix(arguments.output.suffix + ".tmp")

@@ -10,6 +10,7 @@ from validation_control.evidence_controller import (
     catalog_invocation_signature,
     failure_fingerprint,
     publish_envelope,
+    repair_transition,
     retry_allowed,
     route_failure,
     validate_envelope,
@@ -45,9 +46,7 @@ def envelope(disposition: str = "executed") -> dict[str, object]:
             "execution_fresh": False,
         },
         "BLOCKED-DEFERRED": {
-            "founder_scope_amendment": (
-                "2026-10-01_AS001_AS003_AS005_BLOCKED_DEFERRED_AND_SINGLE_IMPLEMENTATION_PR_PILOT"
-            ),
+            "founder_scope_amendment": ("2026-10-01_AS001_AS003_AS005_BLOCKED_DEFERRED_AND_SINGLE_IMPLEMENTATION_PR_PILOT"),
             "release_blocking": True,
         },
     }
@@ -109,9 +108,7 @@ def test_all_three_evidence_dispositions_are_explicit_and_accepted(disposition: 
 
 
 def test_founder_approved_blocked_deferred_evidence_is_accepted() -> None:
-    assert validate_envelope(
-        blocked_deferred_envelope(), CONTROL_KEY, required_trust_source="local-diagnostic"
-    ) == []
+    assert validate_envelope(blocked_deferred_envelope(), CONTROL_KEY, required_trust_source="local-diagnostic") == []
 
 
 @pytest.mark.parametrize(
@@ -125,9 +122,7 @@ def test_founder_approved_blocked_deferred_evidence_is_accepted() -> None:
 def test_blocked_deferred_evidence_fails_closed_outside_exact_amendment(mutation: dict[str, object]) -> None:
     record = {**blocked_deferred_envelope(), **mutation}
 
-    assert "BLOCKED_DEFERRED_PROOF_INVALID" in validate_envelope(
-        record, CONTROL_KEY, required_trust_source="local-diagnostic"
-    )
+    assert "BLOCKED_DEFERRED_PROOF_INVALID" in validate_envelope(record, CONTROL_KEY, required_trust_source="local-diagnostic")
 
 
 @pytest.mark.parametrize(
@@ -268,3 +263,94 @@ def test_retry_is_bounded_to_changed_transient_infrastructure_fingerprint() -> N
         fingerprint=failure_fingerprint("PRODUCT", "test-web", "assertion", DIGESTS[0]),
         previous_fingerprint=None,
     )
+
+
+def test_repair_transition_blocks_unchanged_failure_fingerprint() -> None:
+    failure = {
+        "routing_class": "PRODUCT",
+        "gate_id": "test-web",
+        "first_cause": "assertion",
+        "binding_digest": DIGESTS[0],
+    }
+
+    outcome = repair_transition(
+        failure,
+        current_binding_digest=DIGESTS[0],
+        affected_gates=["e2e:accessibility"],
+        focused_evidence=[],
+    )
+
+    assert outcome["result"] == "BLOCKED"
+    assert outcome["blockers"] == [f"unchanged-failure:{outcome['failure_fingerprint']}"]
+    assert outcome["restitch_eligible"] is False
+
+
+@pytest.mark.parametrize(
+    "evidence",
+    (
+        {"gate_id": "test-web", "result": "FAIL", "mode": "focused", "binding_digest": DIGESTS[1]},
+        {"gate_id": "test-web", "result": "PASS", "mode": "qualification", "binding_digest": DIGESTS[1]},
+        {"gate_id": "test-web", "result": "PASS", "mode": "focused", "binding_digest": DIGESTS[2]},
+    ),
+)
+def test_repair_transition_rejects_incompatible_focused_evidence(evidence: dict[str, str]) -> None:
+    outcome = repair_transition(
+        {
+            "routing_class": "PRODUCT",
+            "gate_id": "test-web",
+            "first_cause": "assertion",
+            "binding_digest": DIGESTS[0],
+        },
+        current_binding_digest=DIGESTS[1],
+        affected_gates=[],
+        focused_evidence=[evidence],
+    )
+
+    assert outcome["blockers"] == ["incompatible-focused-pass:test-web"]
+    assert outcome["restitch_eligible"] is False
+
+
+def test_repair_transition_requires_every_invalidated_gate_before_restitch() -> None:
+    failure = {
+        "routing_class": "PRODUCT",
+        "gate_id": "test-web",
+        "first_cause": "assertion",
+        "binding_digest": DIGESTS[0],
+    }
+    repaired_gate = {
+        "gate_id": "test-web",
+        "result": "PASS",
+        "mode": "focused",
+        "binding_digest": DIGESTS[1],
+        "trust_source": "catalog-controlled",
+        "evidence_identity": DIGESTS[3],
+    }
+
+    incomplete = repair_transition(
+        failure,
+        current_binding_digest=DIGESTS[1],
+        affected_gates=["e2e:accessibility", "e2e:accessibility"],
+        focused_evidence=[repaired_gate],
+    )
+    complete = repair_transition(
+        failure,
+        current_binding_digest=DIGESTS[1],
+        affected_gates=["e2e:accessibility"],
+        focused_evidence=[
+            repaired_gate,
+            {
+                "gate_id": "e2e:accessibility",
+                "result": "PASS",
+                "mode": "focused",
+                "binding_digest": DIGESTS[1],
+                "trust_source": "catalog-controlled",
+                "evidence_identity": DIGESTS[4],
+            },
+        ],
+    )
+
+    assert incomplete["invalidated_gates"] == ["test-web", "e2e:accessibility"]
+    assert incomplete["blockers"] == ["missing-focused-pass:e2e:accessibility"]
+    assert complete["result"] == "PASS"
+    assert complete["blockers"] == []
+    assert complete["restitch_eligible"] is True

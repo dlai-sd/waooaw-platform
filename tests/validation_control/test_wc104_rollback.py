@@ -119,6 +119,31 @@ def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory(tmp
     }
 
 
+def completed_repair_context(gate_id: str) -> dict[str, object]:
+    original_digest = "sha256:" + "1" * 64
+    current_digest = "sha256:" + "2" * 64
+    return {
+        "failure": {
+            "routing_class": "PRODUCT",
+            "gate_id": gate_id,
+            "first_cause": "modeled deterministic failure",
+            "binding_digest": original_digest,
+        },
+        "current_binding_digest": current_digest,
+        "affected_gates": [],
+        "focused_evidence": [
+            {
+                "gate_id": gate_id,
+                "result": "PASS",
+                "mode": "focused",
+                "binding_digest": current_digest,
+                "trust_source": "catalog-controlled",
+                "evidence_identity": "sha256:" + "3" * 64,
+            }
+        ],
+    }
+
+
 def test_rollback_failure_suppresses_remaining_executable_inventory(tmp_path: Path) -> None:
     catalog = load_catalog()
     executed: list[str] = []
@@ -457,6 +482,25 @@ def test_rollback_resume_reuses_only_same_identity_pass_results(tmp_path: Path) 
     )
     resumed_calls: list[str] = []
 
+    blocked = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        resume_checkpoint=failed,
+        execution_preflight=lambda repository: pytest.fail("execution preflight must not run"),
+        resource_preflight=lambda repository, nodes, namespace: pytest.fail("resource preflight must not run"),
+        runner_resolver=lambda repository, runner: pytest.fail("runner must not resolve"),
+        service_resolver=lambda repository, node: pytest.fail("service must not resolve"),
+        gate_executor=lambda repository, gate, head, base, common, **context: pytest.fail("gate must not execute"),
+    )
+
+    assert blocked["run_state"] == "BLOCKED"
+    assert blocked["first_cause_gate"] == "preflight:repair"
+    assert blocked["execution_summary"]["executed_gate_count"] == 0
+
     resumed = execute_rollback(
         tmp_path,
         catalog,
@@ -466,6 +510,7 @@ def test_rollback_resume_reuses_only_same_identity_pass_results(tmp_path: Path) 
         qualification_context=qualification_context(),
         checkpoint_path=checkpoint,
         resume_checkpoint=failed,
+        repair_context=completed_repair_context("secrets"),
         execution_preflight=execution_ready,
         resource_preflight=resources_ready,
         runner_resolver=lambda repository, runner: {
@@ -480,6 +525,7 @@ def test_rollback_resume_reuses_only_same_identity_pass_results(tmp_path: Path) 
     assert "build" not in resumed_calls
     assert resumed_calls[0] == "secrets"
     assert resumed["passed"] is True
+    assert resumed["repair_transition"]["restitch_eligible"] is True
     assert resumed["execution_summary"]["resumed_gate_count"] == sum(
         result["result"] == "PASS" for result in failed["gate_results"]
     )

@@ -120,6 +120,52 @@ def retry_allowed(
     )
 
 
+def repair_transition(
+    failure: dict[str, str],
+    *,
+    current_binding_digest: str,
+    affected_gates: list[str],
+    focused_evidence: list[dict[str, str]],
+) -> dict[str, Any]:
+    required = {"routing_class", "gate_id", "first_cause", "binding_digest"}
+    if set(failure) != required or not SHA256.fullmatch(current_binding_digest):
+        raise ValueError("repair transition inputs are invalid")
+    original_fingerprint = failure_fingerprint(
+        failure["routing_class"],
+        failure["gate_id"],
+        failure["first_cause"],
+        failure["binding_digest"],
+    )
+    invalidated_gates = list(dict.fromkeys([failure["gate_id"], *affected_gates]))
+    blockers: list[str] = []
+    if current_binding_digest == failure["binding_digest"]:
+        blockers.append(f"unchanged-failure:{original_fingerprint}")
+    by_gate = {item.get("gate_id"): item for item in focused_evidence if isinstance(item, dict)}
+    if not blockers:
+        for gate_id in invalidated_gates:
+            evidence = by_gate.get(gate_id)
+            if evidence is None:
+                blockers.append(f"missing-focused-pass:{gate_id}")
+            elif (
+                evidence.get("result") != "PASS"
+                or evidence.get("mode") != "focused"
+                or evidence.get("binding_digest") != current_binding_digest
+                or evidence.get("trust_source") != "catalog-controlled"
+                or not SHA256.fullmatch(str(evidence.get("evidence_identity", "")))
+            ):
+                blockers.append(f"incompatible-focused-pass:{gate_id}")
+    return {
+        "schema": "waooaw.repair-transition/v1",
+        "result": "PASS" if not blockers else "BLOCKED",
+        "failure_fingerprint": original_fingerprint,
+        "original_binding_digest": failure["binding_digest"],
+        "current_binding_digest": current_binding_digest,
+        "invalidated_gates": invalidated_gates,
+        "blockers": blockers,
+        "restitch_eligible": not blockers,
+    }
+
+
 def _prohibited_path(value: object, path: str = "$") -> str | None:
     if isinstance(value, dict):
         for key, child in value.items():

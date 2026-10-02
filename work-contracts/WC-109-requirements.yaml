@@ -539,7 +539,11 @@ requirements:
     completion_rule: Identical failure replay is BLOCKED; changed governing input invalidates the affected lane and restitching waits for its focused PASS.
     evidence_refs:
       - scripts/validation_control/evidence_controller.py
-      - tests/validation_control/test_wc109_execution_outcomes.py
+      - scripts/validation_control/wc104_rollback.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+      - tests/validation_control/test_wc104_rollback.py
+      - tests/validation_control/test_unified_execution_contract.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R044
