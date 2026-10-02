@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 226
+**State Revision:** 227
 **Last Updated:** 2026-10-02 (WC-109 OUTCOME REMEDIATION AUTHORIZED)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -80,6 +80,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **WC-109 execution-readiness milestone:** Commit `345522a2` runs the existing writable-HOME, Docker-socket and atomic host-visible-output probe before rollback service or runner supply. The canonical Docker launcher now mounts the socket and maps its actual GID; a negative fixture proves readiness failure emits a complete `PREFLIGHT_BLOCKED` inventory with zero service, runner or gate activity. The production probe and 81 focused tests pass. R041 and R045 remain PLANNED pending command/resource modeling and bounded low-disk cleanup evidence.
 - **WC-109 resource-capacity milestone:** Commit `f361c485` compares workspace capacity with the five-percent floor and maximum declared gate disk demand before service or runner supply, publishes atomic run-scoped evidence, performs one bounded cleanup/recheck only below the floor, and blocks all costly work when capacity remains unsafe. Cleanup targets only stopped `wc109-*` Compose projects, build cache older than 24 hours and dangling images; running and foreign projects are excluded, while repository evidence is never a cleanup target. Compose, Ruff, format and 86 focused tests pass. R045 remains PLANNED until explicit cost classes and per-phase enforcement are complete.
 - **WC-109 PLAN/DAG milestone:** Commits `86813abf` and `13289ea3` add schema-required cost classes and deterministic plan nodes containing owner, ordered phase, exact inputs, acceptance command, evidence destination, invalidation paths, direct prerequisites and downstream dependents. Rollback now suppresses transitive dependents and every higher-cost lane after ordinary failure while retaining independent same/lower-cost PASS evidence; operator cancellation still halts all lanes. Exact artifact `test-results/wc109/execution-plan-13289ea3.json` binds 43 nodes and 96 direct edges to commit `13289ea3`; 108 focused tests pass. R039, R040 and R042 remain PLANNED pending complete omission-to-BLOCKED fixtures, current-compatible phase transition enforcement and already-running lane evidence.
+- **WC-109 ordered-execution milestone:** Commit `be6483bd` adds deterministic topological scheduling by declared cost and direct prerequisites; rollback now follows PLAN order rather than legacy catalog order. Full-plan tests prove monotonic A-through-E phases and `release-qualification` last, while fail-fast and resume behavior remain intact across 108 focused tests. R040 remains PLANNED pending explicit prerequisite terminal-evidence checks at each transition.
 
 ## Authorization Boundary
 
