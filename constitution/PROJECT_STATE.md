@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 220
-**Last Updated:** 2026-10-02 (WC-109 TYPESCRIPT DEPENDENCY REPAIR QUALIFIED)
+**State Revision:** 221
+**Last Updated:** 2026-10-02 (WC-109 ROLLBACK CHUNKS QUALIFIED)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -71,7 +71,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **WC-109 deferred qualification:** preventive repair `ead28e2a` makes the Founder-approved disposition fail-closed: only AS-001, AS-003 and AS-005 may publish terminal `BLOCKED` with exact `BLOCKED-DEFERRED`, amendment and release-blocking proof, while candidate assembly rejects false PASS or any other gate; 42 focused Docker tests pass. The repair invalidates prior exact-head evidence; fresh qualification, hosted pilot evidence, review, approval, merge and DONE remain open.
 - **WC-109 hosted resubmission:** CI run `36869467735` passed 49 checks and failed C-065 because its bounded metadata refresh began before the post-push PR body update and retained reviewed head `85f43122` while expecting `1afb1cb5`; Test Champion was only the downstream aggregate blocker. The live body is now exact, but the integration token cannot rerun Actions. A new synchronize event must use the documented pre-push body update order; no product or validation defect is inferred from this run.
 - **WC-109 focused requalification:** REST contract repairs through `877b7f51` align identity errors, notification cursors, alert versions and conversation text/skill constraints with runtime behavior; all Business Platform and Professional Runtime Schemathesis partitions pass with 23,155 generated cases. Head `0cebde26` adds a four-case deterministic OpenAPI regression corpus and passes exact-head .NET/Python integration, seeded-prompt, accessibility and Emergency Stop gates. Fresh candidate binding, full 40 PASS plus three `BLOCKED-DEFERRED` rollback qualification, hosted pilot comparison, author review, approval, merge and DONE remain open.
-- **WC-109 TypeScript dependency repair:** Head `c3604bc2` pins `basic-ftp` 6.2.1 for the vulnerable transitive range. Catalog-controlled `dep-scan:typescript` passes with return code 0 using clean runner digest `sha256:539f842515cc411cf3debf689c26734359dc086f0f12d6c8ee507d5251069f6b`; eight moderate advisories remain and no high or critical finding is present. Fresh candidate binding, rollback qualification, hosted pilot evidence, author review, approval, merge and DONE remain open.
+- **WC-109 rollback repair:** Head `602cea40` completed the full 43-gate rehearsal with 38 PASS and five correctly exposed control-plane failures: PostgreSQL service identity was inspected before supply, and AS-001/003/005 were executed instead of preserving the Founder-approved deferred disposition. Repair `9d3b1122` pulls the pinned service image before immutable identity capture and emits the three acceptance gates as terminal `BLOCKED` with exact `BLOCKED-DEFERRED` amendment and release-blocking proof. Five focused Docker tests pass; isolated catalog-controlled `integration:multi-tenant` and `integration:postgres-migrations` both pass against PostgreSQL digest `sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b`. A final stitched exact-head rollback qualification, fresh hosted pilot evidence, author review, approval, merge and DONE remain open.
 
 ## Authorization Boundary
 
