@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 222
+**State Revision:** 223
 **Last Updated:** 2026-10-02 (WC-109 OUTCOME REMEDIATION AUTHORIZED)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -76,6 +76,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **WC-109 execution-value milestone 1:** Commit `cd3fa032` retains and independently recomputes the failed `602cea40` baseline, making R038 PASS with 43 attempted gates, 38 PASS, five FAIL and 2,833.434 observed gate-seconds. Rollback PLAN now resolves required service identities before any runner build, first failure or cancellation suppresses every later executable qualification gate, all gates retain explicit dispositions, and an atomic checkpoint is published after each terminal gate. The mandatory catalog regression slice passes 54 tests; focused Ruff and the 48-row ledger validator pass. R041, R042 and R044 remain PLANNED pending complete prerequisite coverage, DAG-wide suppression and identity-verified resume. Product branch `wc/110-product-validation-qualification-repair` preserves the stacked WC-110 work at `cccc2ad8`; physical candidate partitioning remains open.
 - **WC-109 runner cache root-cause repair:** Commit `0f1969b2` corrects the full runner's missing Ruff cache authority after focused format validation attempted to write `.ruff_cache` through the read-only source mount. Both Python-capable runners now bind `RUFF_CACHE_DIR=/tmp/ruff_cache` inside bounded tmpfs, and the mandatory execution-contract suite semantically enforces membership plus writable location. Ruff runs without an environment override; Compose rendering and 22 focused tests pass. This is a runner invariant for later Work Contracts, not a session command workaround.
 - **WC-109 rollback resume milestone:** Commit `63799b05` adds explicit `--resume` support for rollback checkpoints. Only PASS evidence whose schema, candidate, base, catalog digest and ordered gate inventory exactly match may be reused; failed, blocked, suppressed and missing gates execute again, while identity mismatch stops before service, runner or gate work. The 78-test control-plane regression slice plus Ruff and format pass. R044 remains PLANNED because generalized timeout, publication-collision and chunk invalidation evidence is still absent.
+- **WC-109 authority-preflight milestone:** Commit `48b1e5ba` moves PR authority resolution inside the atomic rollback checkpoint boundary and adds a canonical Docker-only launcher with host-identical worktree/Git mounts, declared runner UID and explicit GitHub credential forwarding. Exact replay against local candidate `823bfb27` and published PR head `cccc2ad8` emits one bounded `preflight:qualification-context` cause, zero runner/service/gate execution, 40 `PREFLIGHT_BLOCKED` and three exact `BLOCKED-DEFERRED` dispositions across all 43 gates. All runners now use the existing `/tmp` tmpfs mount as HOME. Compose, Ruff, format and 80 focused tests pass. R041 remains PLANNED pending the remaining command, mount, resource, disk and evidence-destination prerequisite classes.
 
 ## Authorization Boundary
 
