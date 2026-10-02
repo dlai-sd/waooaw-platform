@@ -33,6 +33,7 @@ from validation_control.orchestrator import (
     plan_execution_order,
     prerequisite_evidence_blockers,
 )
+from validate_requirement_ledger import validate_changed_ledgers
 
 
 @dataclass(frozen=True)
@@ -93,7 +94,28 @@ def git_head(repository: Path) -> str:
     return completed.stdout.strip()
 
 
+def validate_contract_authority(repository: Path) -> None:
+    changed_files = [
+        "work-contracts/WC-109-agentic-validation-implementation.md",
+        "work-contracts/WC-109-requirements.yaml",
+    ]
+    violations = validate_changed_ledgers(repository, changed_files)
+    if violations:
+        raise ValueError(f"WC-109 contract authority is invalid: {violations[0]}")
+    ledger_path = repository / "work-contracts/WC-109-requirements.yaml"
+    ledger = yaml.safe_load(ledger_path.read_text(encoding="utf-8"))
+    requirements = ledger.get("requirements", []) if isinstance(ledger, dict) else []
+    blockers = [
+        str(requirement.get("requirement_id"))
+        for requirement in requirements
+        if isinstance(requirement, dict) and requirement.get("result") == "BLOCKED"
+    ]
+    if blockers:
+        raise ValueError(f"WC-109 qualification has declared blockers: {','.join(blockers)}")
+
+
 def resolve_qualification_context(repository: Path, base_sha: str, candidate_sha: str) -> QualificationContext:
+    validate_contract_authority(repository)
     git = shutil.which("git")
     gh = shutil.which("gh")
     if git is None or gh is None:

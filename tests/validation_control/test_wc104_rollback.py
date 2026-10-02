@@ -11,7 +11,12 @@ import yaml
 
 from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT, BLOCKED_DEFERRED_GATES
 from validation_control.orchestrator import build_execution_plan, plan_execution_order, suppression_reason
-from validation_control.wc104_rollback import QualificationContext, execute_rollback
+from validation_control.wc104_rollback import (
+    QualificationContext,
+    execute_rollback,
+    resolve_qualification_context,
+    validate_contract_authority,
+)
 
 
 HEAD_SHA = "c" * 40
@@ -151,6 +156,14 @@ def completed_repair_context(gate_id: str) -> dict[str, object]:
             }
         ],
     }
+
+
+def copy_contract_authority(repository: Path) -> None:
+    source = Path.cwd() / "work-contracts"
+    target = repository / "work-contracts"
+    target.mkdir(parents=True)
+    for name in ("WC-109-agentic-validation-implementation.md", "WC-109-requirements.yaml"):
+        (target / name).write_bytes((source / name).read_bytes())
 
 
 def test_rollback_failure_suppresses_remaining_executable_inventory(tmp_path: Path) -> None:
@@ -450,6 +463,53 @@ def test_rollback_authority_failure_publishes_complete_preflight_block(tmp_path:
     )
     assert sum("error" in item for item in result["gate_results"]) == 1
     assert json.loads(checkpoint.read_text(encoding="utf-8")) == result
+
+
+def test_contract_authority_rejects_stale_ledger_before_external_context(tmp_path: Path) -> None:
+    copy_contract_authority(tmp_path)
+    validate_contract_authority(tmp_path)
+    contract = tmp_path / "work-contracts/WC-109-agentic-validation-implementation.md"
+    contract.write_text(contract.read_text(encoding="utf-8") + "\nmaterial amendment\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="CONTRACT_STALE"):
+        validate_contract_authority(tmp_path)
+
+    result = execute_rollback(
+        tmp_path,
+        load_catalog(),
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        context_resolver=lambda repository, base, head: validate_contract_authority(repository),
+        runner_resolver=lambda repository, runner: pytest.fail("runner must not resolve"),
+        service_resolver=lambda repository, node: pytest.fail("service must not resolve"),
+        gate_executor=lambda repository, gate, head, base, common, **context: pytest.fail("gate must not execute"),
+    )
+
+    assert result["first_cause_gate"] == "preflight:qualification-context"
+    assert result["execution_summary"]["executed_gate_count"] == 0
+    assert len(result["gate_results"]) == len(load_catalog()["full_gates"])
+
+
+def test_contract_authority_rejects_declared_requirement_blocker(tmp_path: Path) -> None:
+    copy_contract_authority(tmp_path)
+    ledger_path = tmp_path / "work-contracts/WC-109-requirements.yaml"
+    ledger = yaml.safe_load(ledger_path.read_text(encoding="utf-8"))
+    ledger["requirements"][0]["result"] = "BLOCKED"
+    ledger_path.write_text(yaml.safe_dump(ledger, sort_keys=False), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="declared blockers: WC109-R001"):
+        validate_contract_authority(tmp_path)
+
+
+def test_qualification_context_requires_commands_after_contract_authority(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    copy_contract_authority(tmp_path)
+    monkeypatch.setattr("validation_control.wc104_rollback.shutil.which", lambda command: None)
+
+    with pytest.raises(ValueError, match="git and gh are required"):
+        resolve_qualification_context(tmp_path, BASE_SHA, HEAD_SHA)
 
 
 def test_rollback_plan_failure_publishes_complete_preflight_block(tmp_path: Path) -> None:
