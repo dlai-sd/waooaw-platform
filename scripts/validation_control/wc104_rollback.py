@@ -650,8 +650,9 @@ def execute_rollback(
                     continue
                 error: str | None = None
                 disposition: str | None = None
+                evidence_ref = node["expected_evidence"]["directory"]
                 try:
-                    returncode = gate_executor(
+                    execution = gate_executor(
                         repository,
                         gate_id,
                         candidate_sha,
@@ -662,7 +663,17 @@ def execute_rollback(
                         base_branch=qualification_context.base_branch,
                         pr_number=qualification_context.pr_number,
                         repository_name=qualification_context.repository_name,
+                        return_evidence_ref=True,
                     )
+                    if isinstance(execution, tuple):
+                        returncode, evidence_ref = execution
+                        if not isinstance(returncode, int) or not isinstance(evidence_ref, str):
+                            raise ValueError("gate executor returned invalid evidence identity")
+                        evidence_path = repository / evidence_ref
+                        if not evidence_path.is_dir():
+                            raise ValueError(f"gate executor evidence directory is missing: {evidence_ref}")
+                    else:
+                        returncode = execution
                 except KeyboardInterrupt:
                     returncode = 1
                     error = "KeyboardInterrupt: operator cancellation"
@@ -679,7 +690,7 @@ def execute_rollback(
                     "returncode": returncode,
                     "result": "PASS" if returncode == 0 else "FAIL",
                     "evidence_disposition": "executed",
-                    "evidence_ref": node["expected_evidence"]["directory"],
+                    "evidence_ref": evidence_ref,
                     "duration_seconds": round(time.monotonic() - started, 3),
                 }
                 if error is not None:

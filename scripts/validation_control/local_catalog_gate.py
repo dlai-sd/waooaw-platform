@@ -377,7 +377,8 @@ def execute_gate(
     base_branch: str | None = None,
     pr_number: str | None = None,
     repository_name: str | None = None,
-) -> int:
+    return_evidence_ref: bool = False,
+) -> int | tuple[int, str]:
     if mode not in {"focused", "qualification"}:
         raise ValueError(f"unsupported local execution mode: {mode}")
     orchestration_preflight(repository)
@@ -550,6 +551,8 @@ def execute_gate(
         required_trust_source="local-diagnostic",
         artifact_root=repository,
     )
+    if return_evidence_ref:
+        return completed.returncode, node["output_directory"]
     return completed.returncode
 
 

@@ -1058,6 +1058,40 @@ def test_rollback_resume_runs_only_invalidated_dependency_closure(tmp_path: Path
     )
 
 
+def test_qualification_records_actual_phased_gate_evidence_directory(tmp_path: Path) -> None:
+    evidence_root = tmp_path / "test-results/wc109/runs/actual"
+
+    def execute_with_evidence(repository: Path, gate: str, *_args: object, **_context: object) -> tuple[int, str]:
+        evidence = evidence_root / gate.replace(":", "-")
+        evidence.mkdir(parents=True, exist_ok=True)
+        return 0, str(evidence.relative_to(repository))
+
+    result = execute_rollback(
+        tmp_path,
+        load_catalog(),
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
+        runner_resolver=lambda repository, runner: {
+            "build_count": 0,
+            "trust_source": "test",
+            "runner_id": runner,
+        },
+        service_resolver=resolve_services,
+        gate_executor=execute_with_evidence,
+        execution_profile="qualification",
+    )
+
+    assert result["passed"] is True
+    assert all(
+        item.get("evidence_disposition") != "executed" or item["evidence_ref"].startswith("test-results/wc109/runs/actual/")
+        for item in result["gate_results"]
+    )
+
+
 def test_rollback_unknown_invalidation_blocks_before_costly_work(tmp_path: Path) -> None:
     result = execute_rollback(
         tmp_path,
