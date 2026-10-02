@@ -1,0 +1,3302 @@
+{
+  "authoritative": false,
+  "catalog_version": "wc109-candidate-identity-v1",
+  "execution_namespace": "wc109-775eec9d47d13bd3",
+  "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+  "machine_checkable": true,
+  "mode": "qualification",
+  "nodes": [
+    {
+      "acceptance_check": "PYTHONPYCACHEPREFIX=/tmp/pycache/professional-runtime python -m compileall -q src/professional-runtime",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "PYTHONPYCACHEPREFIX=/tmp/pycache/professional-runtime python -m compileall -q src/professional-runtime",
+      "command_id": "build-professional-runtime",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/build"
+      },
+      "gate_id": "build",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "build-professional-runtime",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/build",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "python scripts/validation_control/docker_policy.py --repository /workspace",
+      "artifacts": {
+        "common": "test-results/validation/security.json",
+        "native": [
+          "test-results/**/*.json"
+        ]
+      },
+      "command": "python scripts/validation_control/docker_policy.py --repository /workspace",
+      "command_id": "secrets",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/security.json",
+          "native": [
+            "test-results/**/*.json"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/secrets"
+      },
+      "gate_id": "secrets",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "secrets",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/secrets",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_dotnet_test_gate.sh constitutional-engine tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj",
+      "artifacts": {
+        "common": "test-results/validation/test-dotnet.json",
+        "native": [
+          "test-results/**/*.trx",
+          "test-results/coverage/**/*.xml"
+        ]
+      },
+      "command": "sh scripts/validation_control/run_dotnet_test_gate.sh constitutional-engine tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj",
+      "command_id": "test-constitutional-engine",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-dotnet",
+      "cost_class": "FOCUSED",
+      "direct_prerequisites": [
+        "build",
+        "secrets",
+        "spec-lint",
+        "sast",
+        "dep-scan:python",
+        "dep-scan:dotnet",
+        "license-check",
+        "constitutional-commit-gate",
+        "requirement-ledger",
+        "author-review-gate",
+        "authorization-tier-check",
+        "quality:scripts",
+        "quality:commitlint",
+        "quality:dotnet:constitutional-engine",
+        "quality:dotnet:business-platform",
+        "quality:python:professional-runtime",
+        "quality:python:ai-runtime",
+        "quality:typescript",
+        "quality:sql",
+        "quality:proto",
+        "quality:observability",
+        "quality:traceability",
+        "quality:constitutional-naming",
+        "contract:seed-prompts"
+      ],
+      "downstream_dependents": [
+        "integration:multi-tenant",
+        "integration:postgres-migrations",
+        "integration:dotnet",
+        "integration:python",
+        "contract:rest",
+        "security:prompt-injection",
+        "acceptance:as-001",
+        "acceptance:as-003",
+        "acceptance:as-005",
+        "acceptance:pse-failover",
+        "e2e:emergency-stop"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/test-dotnet.json",
+          "native": [
+            "test-results/**/*.trx",
+            "test-results/coverage/**/*.xml"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/test-dotnet"
+      },
+      "gate_id": "test-dotnet",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "test-constitutional-engine",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "dotnet"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/test-dotnet",
+      "owner": "validation-control",
+      "phase": "B_COMPONENT",
+      "product_image_builds": [],
+      "profile": "test-dotnet",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "dotnet",
+        "cpus": 2,
+        "disk_mb": 2048,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 900
+      },
+      "retry_policy": "none",
+      "runner_id": "dotnet",
+      "runner_manifest": "test-results/wc104/runner-manifests/dotnet.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_python_test_gate.sh professional-runtime src/professional-runtime /workspace/src/professional-runtime tests/professional-runtime",
+      "artifacts": {
+        "common": "test-results/validation/test-python.json",
+        "native": [
+          "test-results/**/*.xml",
+          "test-results/coverage/**/*.xml"
+        ]
+      },
+      "command": "sh scripts/validation_control/run_python_test_gate.sh professional-runtime src/professional-runtime /workspace/src/professional-runtime tests/professional-runtime",
+      "command_id": "test-professional-runtime",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "FOCUSED",
+      "direct_prerequisites": [
+        "build",
+        "secrets",
+        "spec-lint",
+        "sast",
+        "dep-scan:python",
+        "dep-scan:dotnet",
+        "license-check",
+        "constitutional-commit-gate",
+        "requirement-ledger",
+        "author-review-gate",
+        "authorization-tier-check",
+        "quality:scripts",
+        "quality:commitlint",
+        "quality:dotnet:constitutional-engine",
+        "quality:dotnet:business-platform",
+        "quality:python:professional-runtime",
+        "quality:python:ai-runtime",
+        "quality:typescript",
+        "quality:sql",
+        "quality:proto",
+        "quality:observability",
+        "quality:traceability",
+        "quality:constitutional-naming",
+        "contract:seed-prompts"
+      ],
+      "downstream_dependents": [
+        "integration:multi-tenant",
+        "integration:postgres-migrations",
+        "integration:dotnet",
+        "integration:python",
+        "contract:rest",
+        "security:prompt-injection",
+        "acceptance:as-001",
+        "acceptance:as-003",
+        "acceptance:as-005",
+        "acceptance:pse-failover",
+        "e2e:emergency-stop"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/test-python.json",
+          "native": [
+            "test-results/**/*.xml",
+            "test-results/coverage/**/*.xml"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/test-python"
+      },
+      "gate_id": "test-python",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "test-professional-runtime",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/test-python",
+      "owner": "validation-control",
+      "phase": "B_COMPONENT",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "mkdir -p /workspace/test-results/coverage/web && cp -a web /tmp/web && ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules && cd /tmp/web && tsc --noEmit --incremental false && eslint . --max-warnings 0 && jest --runInBand --coverage --coverageDirectory=/workspace/test-results/coverage/web --coverageThreshold='{\"global\":{\"lines\":90,\"branches\":80,\"functions\":90,\"statements\":90}}'",
+      "artifacts": {
+        "common": "test-results/validation/test-web.json",
+        "native": [
+          "test-results/**/*.xml",
+          "test-results/coverage/**"
+        ]
+      },
+      "command": "mkdir -p /workspace/test-results/coverage/web && cp -a web /tmp/web && ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules && cd /tmp/web && tsc --noEmit --incremental false && eslint . --max-warnings 0 && jest --runInBand --coverage --coverageDirectory=/workspace/test-results/coverage/web --coverageThreshold='{\"global\":{\"lines\":90,\"branches\":80,\"functions\":90,\"statements\":90}}'",
+      "command_id": "test-web",
+      "components": [
+        "web"
+      ],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-ts",
+      "cost_class": "FOCUSED",
+      "direct_prerequisites": [
+        "dep-scan:typescript"
+      ],
+      "downstream_dependents": [],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/test-web.json",
+          "native": [
+            "test-results/**/*.xml",
+            "test-results/coverage/**"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/test-web"
+      },
+      "gate_id": "test-web",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "test-web",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "typescript"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml",
+          "web/**"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/test-web",
+      "owner": "web",
+      "phase": "B_COMPONENT",
+      "product_image_builds": [],
+      "profile": "test-ts",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "typescript",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "typescript",
+      "runner_manifest": "test-results/wc104/runner-manifests/typescript.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_spec_lint_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "sh scripts/validation_control/run_spec_lint_gate.sh",
+      "command_id": "spec-lint",
+      "components": [
+        "business-platform",
+        "constitutional-engine",
+        "professional-runtime"
+      ],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/spec-lint"
+      },
+      "gate_id": "spec-lint",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "spec-lint",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "full"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/spec-lint",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "full",
+        "cpus": 2,
+        "disk_mb": 2048,
+        "docker_socket": true,
+        "memory_mb": 6144,
+        "socket_classification": "nested-docker",
+        "timeout_seconds": 900
+      },
+      "retry_policy": "none",
+      "runner_id": "full",
+      "runner_manifest": "test-results/wc104/runner-manifests/full.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "bandit -r src -c pyproject.toml -lll -f json -o test-results/bandit.json",
+      "artifacts": {
+        "common": "test-results/validation/security.json",
+        "native": [
+          "test-results/**/*.json"
+        ]
+      },
+      "command": "bandit -r src -c pyproject.toml -lll -f json -o test-results/bandit.json",
+      "command_id": "sast-python",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/security.json",
+          "native": [
+            "test-results/**/*.json"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/sast"
+      },
+      "gate_id": "sast",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "sast-python",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/sast",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_dependency_scan_gate.sh python",
+      "artifacts": {
+        "common": "test-results/validation/security.json",
+        "native": [
+          "test-results/**/*.json"
+        ]
+      },
+      "command": "sh scripts/validation_control/run_dependency_scan_gate.sh python",
+      "command_id": "dependency-scan-python",
+      "components": [
+        "agent-runtime-adapter-digital-marketing",
+        "ai-runtime",
+        "billing-engine",
+        "professional-runtime"
+      ],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/security.json",
+          "native": [
+            "test-results/**/*.json"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/dep-scan-python"
+      },
+      "gate_id": "dep-scan:python",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "dependency-scan-python",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/dep-scan-python",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_dependency_scan_gate.sh dotnet",
+      "artifacts": {
+        "common": "test-results/validation/security.json",
+        "native": [
+          "test-results/**/*.json"
+        ]
+      },
+      "command": "sh scripts/validation_control/run_dependency_scan_gate.sh dotnet",
+      "command_id": "dependency-scan-dotnet",
+      "components": [
+        "business-platform",
+        "constitutional-engine"
+      ],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-dotnet",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/security.json",
+          "native": [
+            "test-results/**/*.json"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/dep-scan-dotnet"
+      },
+      "gate_id": "dep-scan:dotnet",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "dependency-scan-dotnet",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "dotnet"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/dep-scan-dotnet",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-dotnet",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "dotnet",
+        "cpus": 2,
+        "disk_mb": 2048,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 900
+      },
+      "retry_policy": "none",
+      "runner_id": "dotnet",
+      "runner_manifest": "test-results/wc104/runner-manifests/dotnet.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_dependency_scan_gate.sh typescript",
+      "artifacts": {
+        "common": "test-results/validation/security.json",
+        "native": [
+          "test-results/**/*.json"
+        ]
+      },
+      "command": "sh scripts/validation_control/run_dependency_scan_gate.sh typescript",
+      "command_id": "dependency-scan-typescript",
+      "components": [
+        "web"
+      ],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-ts",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-web"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/security.json",
+          "native": [
+            "test-results/**/*.json"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/dep-scan-typescript"
+      },
+      "gate_id": "dep-scan:typescript",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "dependency-scan-typescript",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "typescript"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml",
+          "web/**"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/dep-scan-typescript",
+      "owner": "web",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-ts",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "typescript",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "typescript",
+      "runner_manifest": "test-results/wc104/runner-manifests/typescript.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_license_check_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/security.json",
+        "native": [
+          "test-results/**/*.json"
+        ]
+      },
+      "command": "sh scripts/validation_control/run_license_check_gate.sh",
+      "command_id": "license-check",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/security.json",
+          "native": [
+            "test-results/**/*.json"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/license-check"
+      },
+      "gate_id": "license-check",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "license-check",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/license-check",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/run_release_qualification.sh",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "sh scripts/run_release_qualification.sh",
+      "command_id": "release-qualification",
+      "components": [
+        "billing-engine",
+        "business-platform"
+      ],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner",
+      "cost_class": "QUALIFICATION",
+      "direct_prerequisites": [
+        "e2e:accessibility"
+      ],
+      "downstream_dependents": [],
+      "environment": [],
+      "execution": "host",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/release-qualification"
+      },
+      "gate_id": "release-qualification",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "release-qualification",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "full"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/release-qualification",
+      "owner": "validation-control",
+      "phase": "E_QUALIFICATION_HANDOFF",
+      "product_image_builds": [],
+      "profile": "test",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "qualification",
+        "cpus": 2,
+        "disk_mb": 2048,
+        "docker_socket": true,
+        "memory_mb": 6144,
+        "socket_classification": "host-orchestration",
+        "timeout_seconds": 3600
+      },
+      "retry_policy": "none",
+      "runner_id": "full",
+      "runner_manifest": "test-results/wc104/runner-manifests/full.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_c059_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "sh scripts/validation_control/run_c059_gate.sh",
+      "command_id": "constitutional-commit-gate",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/constitutional-commit-gate"
+      },
+      "gate_id": "constitutional-commit-gate",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "constitutional-commit-gate",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/constitutional-commit-gate",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "python scripts/validate_requirement_ledger.py --repository-root /workspace --changed-file-list test-results/wc102/changed-files.txt",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "python scripts/validate_requirement_ledger.py --repository-root /workspace --changed-file-list test-results/wc102/changed-files.txt",
+      "command_id": "requirement-ledger",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/requirement-ledger"
+      },
+      "gate_id": "requirement-ledger",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "requirement-ledger",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/requirement-ledger",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_c065_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "sh scripts/validation_control/run_c065_gate.sh",
+      "command_id": "author-review-gate",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/author-review-gate"
+      },
+      "gate_id": "author-review-gate",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "author-review-gate",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/author-review-gate",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_c066_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "sh scripts/validation_control/run_c066_gate.sh",
+      "command_id": "authorization-tier-check",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/authorization-tier-check"
+      },
+      "gate_id": "authorization-tier-check",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "authorization-tier-check",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/authorization-tier-check",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "ruff check scripts/ --config pyproject.toml && ruff format --check scripts/ && pytest tests/validation_control/test_unified_execution_contract.py tests/validation_control/test_wc104_rollback.py -q && pytest tests/validation_control/test_pilot.py tests/validation_control/test_wc109_value_pilot.py -q && python scripts/seed-prompts.py --dry-run",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "ruff check scripts/ --config pyproject.toml && ruff format --check scripts/ && pytest tests/validation_control/test_unified_execution_contract.py tests/validation_control/test_wc104_rollback.py -q && pytest tests/validation_control/test_pilot.py tests/validation_control/test_wc109_value_pilot.py -q && python scripts/seed-prompts.py --dry-run",
+      "command_id": "quality-scripts",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-scripts"
+      },
+      "gate_id": "quality:scripts",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "quality-scripts",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-scripts",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_commitlint_quality_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "sh scripts/validation_control/run_commitlint_quality_gate.sh",
+      "command_id": "quality-commitlint",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-ts",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-commitlint"
+      },
+      "gate_id": "quality:commitlint",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "quality-commitlint",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "typescript"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-commitlint",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-ts",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "typescript",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "typescript",
+      "runner_manifest": "test-results/wc104/runner-manifests/typescript.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_dotnet_quality_gate.sh src/constitutional-engine constitutional-engine",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "sh scripts/validation_control/run_dotnet_quality_gate.sh src/constitutional-engine constitutional-engine",
+      "command_id": "quality-dotnet-constitutional-engine",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-dotnet",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-dotnet-constitutional-engine"
+      },
+      "gate_id": "quality:dotnet:constitutional-engine",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "quality-dotnet-constitutional-engine",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "dotnet"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-dotnet-constitutional-engine",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-dotnet",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "dotnet",
+        "cpus": 2,
+        "disk_mb": 2048,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 900
+      },
+      "retry_policy": "none",
+      "runner_id": "dotnet",
+      "runner_manifest": "test-results/wc104/runner-manifests/dotnet.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_dotnet_quality_gate.sh src/business-platform business-platform",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "sh scripts/validation_control/run_dotnet_quality_gate.sh src/business-platform business-platform",
+      "command_id": "quality-dotnet-business-platform",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-dotnet",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-dotnet-business-platform"
+      },
+      "gate_id": "quality:dotnet:business-platform",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "quality-dotnet-business-platform",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "dotnet"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-dotnet-business-platform",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-dotnet",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "dotnet",
+        "cpus": 2,
+        "disk_mb": 2048,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 900
+      },
+      "retry_policy": "none",
+      "runner_id": "dotnet",
+      "runner_manifest": "test-results/wc104/runner-manifests/dotnet.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_python_quality_gate.sh src/professional-runtime /workspace/src/professional-runtime",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "sh scripts/validation_control/run_python_quality_gate.sh src/professional-runtime /workspace/src/professional-runtime",
+      "command_id": "quality-python-professional-runtime",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-python-professional-runtime"
+      },
+      "gate_id": "quality:python:professional-runtime",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "quality-python-professional-runtime",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-python-professional-runtime",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_python_quality_gate.sh src/ai-runtime /workspace/src/ai-runtime:/workspace/src/trust-layer",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "sh scripts/validation_control/run_python_quality_gate.sh src/ai-runtime /workspace/src/ai-runtime:/workspace/src/trust-layer",
+      "command_id": "quality-python-ai-runtime",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-python-ai-runtime"
+      },
+      "gate_id": "quality:python:ai-runtime",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "quality-python-ai-runtime",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-python-ai-runtime",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_typescript_quality_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "sh scripts/validation_control/run_typescript_quality_gate.sh",
+      "command_id": "quality-typescript",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-ts",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-typescript"
+      },
+      "gate_id": "quality:typescript",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "quality-typescript",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "typescript"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-typescript",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-ts",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "typescript",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "typescript",
+      "runner_manifest": "test-results/wc104/runner-manifests/typescript.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sqlfluff lint infrastructure/postgres/init/ --config .sqlfluff --format github-annotation --annotation-level warning || true",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "sqlfluff lint infrastructure/postgres/init/ --config .sqlfluff --format github-annotation --annotation-level warning || true",
+      "command_id": "quality-sql",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-sql"
+      },
+      "gate_id": "quality:sql",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "quality-sql",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-sql",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_proto_quality_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "sh scripts/validation_control/run_proto_quality_gate.sh",
+      "command_id": "quality-proto",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-proto"
+      },
+      "gate_id": "quality:proto",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "quality-proto",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-proto",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_observability_quality_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "sh scripts/validation_control/run_observability_quality_gate.sh",
+      "command_id": "quality-observability",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-observability"
+      },
+      "gate_id": "quality:observability",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "quality-observability",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-observability",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_traceability_quality_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "sh scripts/validation_control/run_traceability_quality_gate.sh",
+      "command_id": "quality-traceability",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-traceability"
+      },
+      "gate_id": "quality:traceability",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "quality-traceability",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-traceability",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_constitutional_naming_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "sh scripts/validation_control/run_constitutional_naming_gate.sh",
+      "command_id": "quality-constitutional-naming",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-constitutional-naming"
+      },
+      "gate_id": "quality:constitutional-naming",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "quality-constitutional-naming",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/quality-constitutional-naming",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_dotnet_mutation_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "sh scripts/validation_control/run_dotnet_mutation_gate.sh",
+      "command_id": "mutation-dotnet",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-dotnet",
+      "cost_class": "MUTATION",
+      "direct_prerequisites": [
+        "integration:multi-tenant",
+        "integration:postgres-migrations",
+        "integration:dotnet",
+        "integration:python",
+        "contract:rest",
+        "security:prompt-injection",
+        "acceptance:as-001",
+        "acceptance:as-003",
+        "acceptance:as-005",
+        "acceptance:pse-failover",
+        "e2e:emergency-stop"
+      ],
+      "downstream_dependents": [
+        "e2e:accessibility"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/mutation-dotnet"
+      },
+      "gate_id": "mutation:dotnet",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "mutation-dotnet",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "dotnet"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/mutation-dotnet",
+      "owner": "validation-control",
+      "phase": "D_SYSTEM_STITCHING",
+      "product_image_builds": [],
+      "profile": "test-dotnet",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "dotnet",
+        "cpus": 2,
+        "disk_mb": 2048,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 3600
+      },
+      "retry_policy": "none",
+      "runner_id": "dotnet",
+      "runner_manifest": "test-results/wc104/runner-manifests/dotnet.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_python_mutation_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "sh scripts/validation_control/run_python_mutation_gate.sh",
+      "command_id": "mutation-python",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "MUTATION",
+      "direct_prerequisites": [
+        "integration:multi-tenant",
+        "integration:postgres-migrations",
+        "integration:dotnet",
+        "integration:python",
+        "contract:rest",
+        "security:prompt-injection",
+        "acceptance:as-001",
+        "acceptance:as-003",
+        "acceptance:as-005",
+        "acceptance:pse-failover",
+        "e2e:emergency-stop"
+      ],
+      "downstream_dependents": [
+        "e2e:accessibility"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/mutation-python"
+      },
+      "gate_id": "mutation:python",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "mutation-python",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/mutation-python",
+      "owner": "validation-control",
+      "phase": "D_SYSTEM_STITCHING",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 3600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_multi_tenant_integration_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/test-dotnet.json",
+        "native": [
+          "test-results/**/*.trx",
+          "test-results/coverage/**/*.xml"
+        ]
+      },
+      "command": "sh scripts/validation_control/run_multi_tenant_integration_gate.sh",
+      "command_id": "integration-multi-tenant",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-dotnet",
+      "cost_class": "INTEGRATION",
+      "direct_prerequisites": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "downstream_dependents": [
+        "mutation:dotnet",
+        "mutation:python"
+      ],
+      "environment": [
+        "DATABASE_URL",
+        "TESTCONTAINERS_HOST_OVERRIDE"
+      ],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/test-dotnet.json",
+          "native": [
+            "test-results/**/*.trx",
+            "test-results/coverage/**/*.xml"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/integration-multi-tenant"
+      },
+      "gate_id": "integration:multi-tenant",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "integration-multi-tenant",
+        "environment": [
+          "DATABASE_URL",
+          "TESTCONTAINERS_HOST_OVERRIDE"
+        ],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [
+          "postgres"
+        ],
+        "runner_id": "dotnet"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/integration-multi-tenant",
+      "owner": "validation-control",
+      "phase": "C_DEPENDENCY_INTEGRATION",
+      "product_image_builds": [],
+      "profile": "test-dotnet",
+      "required_services": [
+        "postgres"
+      ],
+      "resources": {
+        "concurrency_class": "integration",
+        "cpus": 2,
+        "disk_mb": 2048,
+        "docker_socket": true,
+        "memory_mb": 4096,
+        "socket_classification": "testcontainers",
+        "timeout_seconds": 1800
+      },
+      "retry_policy": "none",
+      "runner_id": "dotnet",
+      "runner_manifest": "test-results/wc104/runner-manifests/dotnet.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_postgres_migrations.sh",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "sh scripts/validation_control/run_postgres_migrations.sh",
+      "command_id": "integration-postgres-migrations",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "INTEGRATION",
+      "direct_prerequisites": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "downstream_dependents": [
+        "mutation:dotnet",
+        "mutation:python"
+      ],
+      "environment": [
+        "DATABASE_URL"
+      ],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/integration-postgres-migrations"
+      },
+      "gate_id": "integration:postgres-migrations",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "integration-postgres-migrations",
+        "environment": [
+          "DATABASE_URL"
+        ],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [
+          "postgres"
+        ],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/integration-postgres-migrations",
+      "owner": "validation-control",
+      "phase": "C_DEPENDENCY_INTEGRATION",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [
+        "postgres"
+      ],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_dotnet_integration_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/test-dotnet.json",
+        "native": [
+          "test-results/**/*.trx",
+          "test-results/coverage/**/*.xml"
+        ]
+      },
+      "command": "sh scripts/validation_control/run_dotnet_integration_gate.sh",
+      "command_id": "integration-dotnet",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-dotnet",
+      "cost_class": "INTEGRATION",
+      "direct_prerequisites": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "downstream_dependents": [
+        "mutation:dotnet",
+        "mutation:python"
+      ],
+      "environment": [
+        "TESTCONTAINERS_HOST_OVERRIDE"
+      ],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/test-dotnet.json",
+          "native": [
+            "test-results/**/*.trx",
+            "test-results/coverage/**/*.xml"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/integration-dotnet"
+      },
+      "gate_id": "integration:dotnet",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "integration-dotnet",
+        "environment": [
+          "TESTCONTAINERS_HOST_OVERRIDE"
+        ],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "dotnet"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/integration-dotnet",
+      "owner": "validation-control",
+      "phase": "C_DEPENDENCY_INTEGRATION",
+      "product_image_builds": [],
+      "profile": "test-dotnet",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "integration",
+        "cpus": 2,
+        "disk_mb": 2048,
+        "docker_socket": true,
+        "memory_mb": 4096,
+        "socket_classification": "testcontainers",
+        "timeout_seconds": 1800
+      },
+      "retry_policy": "none",
+      "runner_id": "dotnet",
+      "runner_manifest": "test-results/wc104/runner-manifests/dotnet.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_python_integration_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/test-python.json",
+        "native": [
+          "test-results/**/*.xml",
+          "test-results/coverage/**/*.xml"
+        ]
+      },
+      "command": "sh scripts/validation_control/run_python_integration_gate.sh",
+      "command_id": "integration-python",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "INTEGRATION",
+      "direct_prerequisites": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "downstream_dependents": [
+        "mutation:dotnet",
+        "mutation:python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/test-python.json",
+          "native": [
+            "test-results/**/*.xml",
+            "test-results/coverage/**/*.xml"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/integration-python"
+      },
+      "gate_id": "integration:python",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "integration-python",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/integration-python",
+      "owner": "validation-control",
+      "phase": "C_DEPENDENCY_INTEGRATION",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_rest_contract_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/test-python.json",
+        "native": [
+          "test-results/**/*.xml",
+          "test-results/coverage/**/*.xml"
+        ]
+      },
+      "command": "sh scripts/validation_control/run_rest_contract_gate.sh",
+      "command_id": "contract-rest",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "INTEGRATION",
+      "direct_prerequisites": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "downstream_dependents": [
+        "mutation:dotnet",
+        "mutation:python"
+      ],
+      "environment": [],
+      "execution": "host",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/test-python.json",
+          "native": [
+            "test-results/**/*.xml",
+            "test-results/coverage/**/*.xml"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/contract-rest"
+      },
+      "gate_id": "contract:rest",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "contract-rest",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/contract-rest",
+      "owner": "validation-control",
+      "phase": "C_DEPENDENCY_INTEGRATION",
+      "product_image_builds": [
+        "business-platform",
+        "professional-runtime"
+      ],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "integration",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": true,
+        "memory_mb": 4096,
+        "socket_classification": "host-orchestration",
+        "timeout_seconds": 1800
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_seed_prompts_contract_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/build.json",
+        "native": []
+      },
+      "command": "sh scripts/validation_control/run_seed_prompts_contract_gate.sh",
+      "command_id": "contract-seed-prompts",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/build.json",
+          "native": []
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/contract-seed-prompts"
+      },
+      "gate_id": "contract:seed-prompts",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "contract-seed-prompts",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/contract-seed-prompts",
+      "owner": "validation-control",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_prompt_injection_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/test-python.json",
+        "native": [
+          "test-results/**/*.xml",
+          "test-results/coverage/**/*.xml"
+        ]
+      },
+      "command": "sh scripts/validation_control/run_prompt_injection_gate.sh",
+      "command_id": "security-prompt-injection",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "INTEGRATION",
+      "direct_prerequisites": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "downstream_dependents": [
+        "mutation:dotnet",
+        "mutation:python"
+      ],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/test-python.json",
+          "native": [
+            "test-results/**/*.xml",
+            "test-results/coverage/**/*.xml"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/security-prompt-injection"
+      },
+      "gate_id": "security:prompt-injection",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "security-prompt-injection",
+        "environment": [],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/security-prompt-injection",
+      "owner": "validation-control",
+      "phase": "C_DEPENDENCY_INTEGRATION",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_accessibility_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/e2e-accessibility.json",
+        "native": [
+          "test-results/accessibility.xml",
+          "test-results/playwright-report/**"
+        ]
+      },
+      "command": "sh scripts/validation_control/run_accessibility_gate.sh",
+      "command_id": "e2e-accessibility",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner",
+      "cost_class": "BROWSER",
+      "direct_prerequisites": [
+        "mutation:dotnet",
+        "mutation:python"
+      ],
+      "downstream_dependents": [
+        "release-qualification"
+      ],
+      "environment": [
+        "BASE_URL",
+        "PLAYWRIGHT_HTML_OUTPUT_DIR"
+      ],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/e2e-accessibility.json",
+          "native": [
+            "test-results/accessibility.xml",
+            "test-results/playwright-report/**"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/e2e-accessibility"
+      },
+      "gate_id": "e2e:accessibility",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "e2e-accessibility",
+        "environment": [
+          "BASE_URL",
+          "PLAYWRIGHT_HTML_OUTPUT_DIR"
+        ],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "full"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/e2e-accessibility",
+      "owner": "validation-control",
+      "phase": "D_SYSTEM_STITCHING",
+      "product_image_builds": [],
+      "profile": "test",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "browser",
+        "cpus": 2,
+        "disk_mb": 2048,
+        "docker_socket": false,
+        "memory_mb": 6144,
+        "timeout_seconds": 1800
+      },
+      "retry_policy": "none",
+      "runner_id": "full",
+      "runner_manifest": "test-results/wc104/runner-manifests/full.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_acceptance_gate.sh tests/acceptance/test_as001_dma_dr_mehta.py as-001 -m acceptance",
+      "artifacts": {
+        "common": "test-results/validation/test-python.json",
+        "native": [
+          "test-results/**/*.xml",
+          "test-results/coverage/**/*.xml"
+        ]
+      },
+      "command": "sh scripts/validation_control/run_acceptance_gate.sh tests/acceptance/test_as001_dma_dr_mehta.py as-001 -m acceptance",
+      "command_id": "acceptance-as-001",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "INTEGRATION",
+      "direct_prerequisites": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "downstream_dependents": [
+        "mutation:dotnet",
+        "mutation:python"
+      ],
+      "environment": [
+        "WAOOAW_API_URL",
+        "WAOOAW_TEST_TOKEN",
+        "LLM_TEST_MODE"
+      ],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/test-python.json",
+          "native": [
+            "test-results/**/*.xml",
+            "test-results/coverage/**/*.xml"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/acceptance-as-001"
+      },
+      "gate_id": "acceptance:as-001",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "acceptance-as-001",
+        "environment": [
+          "WAOOAW_API_URL",
+          "WAOOAW_TEST_TOKEN",
+          "LLM_TEST_MODE"
+        ],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/acceptance-as-001",
+      "owner": "validation-control",
+      "phase": "C_DEPENDENCY_INTEGRATION",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_acceptance_gate.sh tests/acceptance/test_as003_trading_rahul.py as-003 -m acceptance",
+      "artifacts": {
+        "common": "test-results/validation/test-python.json",
+        "native": [
+          "test-results/**/*.xml",
+          "test-results/coverage/**/*.xml"
+        ]
+      },
+      "command": "sh scripts/validation_control/run_acceptance_gate.sh tests/acceptance/test_as003_trading_rahul.py as-003 -m acceptance",
+      "command_id": "acceptance-as-003",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "INTEGRATION",
+      "direct_prerequisites": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "downstream_dependents": [
+        "mutation:dotnet",
+        "mutation:python"
+      ],
+      "environment": [
+        "WAOOAW_API_URL",
+        "WAOOAW_TEST_TOKEN"
+      ],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/test-python.json",
+          "native": [
+            "test-results/**/*.xml",
+            "test-results/coverage/**/*.xml"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/acceptance-as-003"
+      },
+      "gate_id": "acceptance:as-003",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "acceptance-as-003",
+        "environment": [
+          "WAOOAW_API_URL",
+          "WAOOAW_TEST_TOKEN"
+        ],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/acceptance-as-003",
+      "owner": "validation-control",
+      "phase": "C_DEPENDENCY_INTEGRATION",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_acceptance_gate.sh tests/acceptance/test_as005_agri_suresh.py as-005 -m acceptance",
+      "artifacts": {
+        "common": "test-results/validation/test-python.json",
+        "native": [
+          "test-results/**/*.xml",
+          "test-results/coverage/**/*.xml"
+        ]
+      },
+      "command": "sh scripts/validation_control/run_acceptance_gate.sh tests/acceptance/test_as005_agri_suresh.py as-005 -m acceptance",
+      "command_id": "acceptance-as-005",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "INTEGRATION",
+      "direct_prerequisites": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "downstream_dependents": [
+        "mutation:dotnet",
+        "mutation:python"
+      ],
+      "environment": [
+        "WAOOAW_API_URL",
+        "WAOOAW_TEST_TOKEN",
+        "TEST_LANGUAGE"
+      ],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/test-python.json",
+          "native": [
+            "test-results/**/*.xml",
+            "test-results/coverage/**/*.xml"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/acceptance-as-005"
+      },
+      "gate_id": "acceptance:as-005",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "acceptance-as-005",
+        "environment": [
+          "WAOOAW_API_URL",
+          "WAOOAW_TEST_TOKEN",
+          "TEST_LANGUAGE"
+        ],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/acceptance-as-005",
+      "owner": "validation-control",
+      "phase": "C_DEPENDENCY_INTEGRATION",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_acceptance_gate.sh tests/acceptance/test_as_pse_failover.py as-pse",
+      "artifacts": {
+        "common": "test-results/validation/test-python.json",
+        "native": [
+          "test-results/**/*.xml",
+          "test-results/coverage/**/*.xml"
+        ]
+      },
+      "command": "sh scripts/validation_control/run_acceptance_gate.sh tests/acceptance/test_as_pse_failover.py as-pse",
+      "command_id": "acceptance-pse-failover",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner-python",
+      "cost_class": "INTEGRATION",
+      "direct_prerequisites": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "downstream_dependents": [
+        "mutation:dotnet",
+        "mutation:python"
+      ],
+      "environment": [
+        "WAOOAW_API_URL",
+        "WAOOAW_TEST_TOKEN",
+        "PSE_TEST_INJECT_RATE_LIMIT"
+      ],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/test-python.json",
+          "native": [
+            "test-results/**/*.xml",
+            "test-results/coverage/**/*.xml"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/acceptance-pse-failover"
+      },
+      "gate_id": "acceptance:pse-failover",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "acceptance-pse-failover",
+        "environment": [
+          "WAOOAW_API_URL",
+          "WAOOAW_TEST_TOKEN",
+          "PSE_TEST_INJECT_RATE_LIMIT"
+        ],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "python"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/acceptance-pse-failover",
+      "owner": "validation-control",
+      "phase": "C_DEPENDENCY_INTEGRATION",
+      "product_image_builds": [],
+      "profile": "test-python",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "python",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "runner_id": "python",
+      "runner_manifest": "test-results/wc104/runner-manifests/python.json",
+      "runner_required": true,
+      "tool_digest": null
+    },
+    {
+      "acceptance_check": "sh scripts/validation_control/run_emergency_stop_gate.sh",
+      "artifacts": {
+        "common": "test-results/validation/e2e-emergency-stop.json",
+        "native": [
+          "test-results/emergency-stop/*.xml",
+          "test-results/emergency-stop/*.trx"
+        ]
+      },
+      "command": "sh scripts/validation_control/run_emergency_stop_gate.sh",
+      "command_id": "e2e-emergency-stop",
+      "components": [],
+      "compose_project": "wc109-775eec9d47d13bd3",
+      "compose_service": "test-runner",
+      "cost_class": "INTEGRATION",
+      "direct_prerequisites": [
+        "test-dotnet",
+        "test-python"
+      ],
+      "downstream_dependents": [
+        "mutation:dotnet",
+        "mutation:python"
+      ],
+      "environment": [
+        "WAOOAW_WS_URL",
+        "WAOOAW_TEST_TOKEN"
+      ],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/e2e-emergency-stop.json",
+          "native": [
+            "test-results/emergency-stop/*.xml",
+            "test-results/emergency-stop/*.trx"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/e2e-emergency-stop"
+      },
+      "gate_id": "e2e:emergency-stop",
+      "inputs": {
+        "catalog_version": "wc109-candidate-identity-v1",
+        "command_id": "e2e-emergency-stop",
+        "environment": [
+          "WAOOAW_WS_URL",
+          "WAOOAW_TEST_TOKEN"
+        ],
+        "head_sha": "13289ea39b3c849af3750e034baebd9ade2e130a",
+        "required_services": [],
+        "runner_id": "full"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "scripts/validation_control/orchestrator.py",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-775eec9d47d13bd3/e2e-emergency-stop",
+      "owner": "validation-control",
+      "phase": "C_DEPENDENCY_INTEGRATION",
+      "product_image_builds": [],
+      "profile": "test",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "full",
+        "cpus": 2,
+        "disk_mb": 2048,
+        "docker_socket": false,
+        "memory_mb": 6144,
+        "timeout_seconds": 900
+      },
+      "retry_policy": "none",
+      "runner_id": "full",
+      "runner_manifest": "test-results/wc104/runner-manifests/full.json",
+      "runner_required": true,
+      "tool_digest": null
+    }
+  ],
+  "requires_clean_commit": true,
+  "schema": "waooaw.validation-execution-plan/v1"
+}
