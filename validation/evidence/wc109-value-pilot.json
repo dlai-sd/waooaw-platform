@@ -13,8 +13,8 @@
       ],
       "passed": true,
       "pull_request_number": 481,
-      "repair_loop_count": 13,
-      "retrospective_fix_count": 13,
+      "repair_loop_count": 14,
+      "retrospective_fix_count": 14,
       "selected_gate_count": 26,
       "tier_elapsed_distributions": {
         "tier1": {
