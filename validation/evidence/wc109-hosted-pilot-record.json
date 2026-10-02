@@ -48,7 +48,7 @@
     "modeled_defect_recurrence": []
   },
   "repair_loops": {
-    "count": 12,
+    "count": 13,
     "first_causes": [
       {"classification":"hosted-import-boundary","deterministic_control_plane_defect":true,"regression_fixture":"tests/pipeline/test_wc109_shadow_policy.py"},
       {"classification":"isolated-artifact-preservation","deterministic_control_plane_defect":true,"regression_fixture":"tests/pipeline/test_workflow_execution.py"},
@@ -61,7 +61,8 @@
       {"classification":"volatile-dependency-advisory","deterministic_control_plane_defect":true,"regression_fixture":"tests/pipeline/test_precheck_orchestrator.py"},
       {"classification":"contract-ledger-cheap-binding","deterministic_control_plane_defect":true,"regression_fixture":"tests/pipeline/test_requirement_ledger.py"},
       {"classification":"scope-partition-gate-target","deterministic_control_plane_defect":true,"regression_fixture":"tests/validation_control/test_catalog_contract.py"},
-      {"classification":"web-failure-evidence-retention","deterministic_control_plane_defect":true,"regression_fixture":"tests/validation_control/test_catalog_contract.py::test_web_gate_retains_bounded_failure_evidence"}
+      {"classification":"web-failure-evidence-retention","deterministic_control_plane_defect":true,"regression_fixture":"tests/validation_control/test_catalog_contract.py::test_web_gate_retains_bounded_failure_evidence"},
+      {"classification":"typescript-native-tmpfs-execution","deterministic_control_plane_defect":true,"regression_fixture":"tests/validation_control/test_runner_contracts.py::test_typescript_native_dependencies_use_bounded_executable_tmpfs"}
     ]
   },
   "gate_inventories": {
@@ -91,7 +92,8 @@
     {"first_cause":"High-severity TypeScript advisories were present and advisory PASS was reusable.","fix_commit":"af608849c15641482449b8bb1e7cafabd2de3b02","regression_fixture":"tests/pipeline/test_precheck_orchestrator.py"},
     {"first_cause":"WC-109 contract binding was not tested in the cheap ledger suite.","fix_commit":"d1451891a367b117dc532d45e83bfc20045e4602","regression_fixture":"tests/pipeline/test_requirement_ledger.py"},
     {"first_cause":"WC-110 scope partition removed the seed contract test while the canonical gate retained its deleted path.","fix_commit":"97365af69d8b4df4fc5a556b8d2a201958f29f12","regression_fixture":"tests/validation_control/test_catalog_contract.py"},
-    {"first_cause":"The Web gate discarded Jest output and published no structured test result, preventing first-cause classification for a nonzero exit.","fix_commit":"40420211773a545275604dc7bf3b2abdf94462e0","regression_fixture":"tests/validation_control/test_catalog_contract.py::test_web_gate_retains_bounded_failure_evidence"}
+    {"first_cause":"The Web gate discarded Jest output and published no structured test result, preventing first-cause classification for a nonzero exit.","fix_commit":"40420211773a545275604dc7bf3b2abdf94462e0","regression_fixture":"tests/validation_control/test_catalog_contract.py::test_web_gate_retains_bounded_failure_evidence"},
+    {"first_cause":"The TypeScript runner mounted its disposable /tmp workspace noexec, preventing native SWC loading and corrupting fallback module resolution.","fix_commit":"ef6db5f32477c40603d467b42e081c7603b744b9","regression_fixture":"tests/validation_control/test_runner_contracts.py::test_typescript_native_dependencies_use_bounded_executable_tmpfs"}
   ],
   "unresolved_pilot_defects": [],
   "limitations": [
