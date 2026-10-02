@@ -147,6 +147,13 @@ def runner_environment(image_id: str, docker_socket: Path = Path("/var/run/docke
     return environment
 
 
+def required_service_environment(node: dict[str, Any], environment: dict[str, str]) -> dict[str, str]:
+    service_environment = environment.copy()
+    if "postgres" in node.get("required_services", []):
+        service_environment["POSTGRES_HOST_PORT"] = "0"
+    return service_environment
+
+
 def stage_input_directory(repository: Path, input_directory: Path, artifact_root: Path) -> Path:
     repository = repository.resolve()
     test_results = (repository / "test-results").resolve()
@@ -270,6 +277,7 @@ def main() -> int:
     environment["WAOOAW_VALIDATION_OUTPUT_DIRECTORY"] = str(artifact_root.resolve())
     required_services = node.get("required_services", [])
     if required_services:
+        environment = required_service_environment(node, environment)
         service_start = subprocess.run(  # noqa: S603
             service_start_command(node, docker),
             check=False,

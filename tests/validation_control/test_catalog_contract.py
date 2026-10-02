@@ -12,6 +12,7 @@ from validation_control.catalog_execution import (
     cleanup_command,
     compose_command,
     execution_command,
+    required_service_environment,
     runner_environment,
     select_plan_node,
     service_start_command,
@@ -586,6 +587,7 @@ def test_catalog_gate_forwards_only_declared_environment() -> None:
         "--wait",
         "postgres",
     ]
+    assert required_service_environment(node, {"POSTGRES_HOST_PORT": "5432"})["POSTGRES_HOST_PORT"] == "0"
 
 
 def test_only_database_integration_gates_start_postgres() -> None:
@@ -614,6 +616,7 @@ def test_python_runner_database_url_matches_postgres_defaults() -> None:
     assert services["postgres"]["image"] == (
         "pgvector/pgvector@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b"
     )
+    assert services["postgres"]["ports"] == ["${POSTGRES_HOST_PORT:-5432}:5432"]
     assert services["postgres"]["healthcheck"]["test"] == [
         "CMD-SHELL",
         'test "$(head -n 1 /var/lib/postgresql/data/postmaster.pid)" = 1 && pg_isready -U waooaw -d waooaw',
