@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import os
+import shutil
 import statistics
 import subprocess
 from datetime import datetime
@@ -196,9 +197,12 @@ def validate_value_baseline_source(record: dict[str, Any], repository: Path) -> 
     if not source_path.is_relative_to(repository):
         raise ValueError("source manifest must be a repository file")
     relative_source = source_path.relative_to(repository).as_posix()
+    git = shutil.which("git")
+    if git is None:
+        raise ValueError("Git is required to validate tracked baseline evidence")
     try:
-        source_bytes = subprocess.run(
-            ["git", "show", f"HEAD:{relative_source}"],
+        source_bytes = subprocess.run(  # noqa: S603
+            [git, "show", f"HEAD:{relative_source}"],
             cwd=repository,
             check=True,
             capture_output=True,

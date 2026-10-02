@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 240
+**State Revision:** 241
 **Last Updated:** 2026-10-02 (WC-109 OUTCOME REMEDIATION AUTHORIZED)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -86,6 +86,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **WC-109 execution-control, handoff and scope completion:** Commits through `60c27185`, partition `07a091c9` and evidence `4d156ed7` complete R039-R046 and R048. Deterministic PLAN/readiness, fail-fast, repair, recovery, phase capacity and qualification handoff fail closed; canonical qualification requires current Group 1-4 evidence. WC-110 product authority remains preserved at `cccc2ad8`; 72 product-owned files were removed from WC-109, whose 86-path candidate has zero scope violations and retains only exact immutable candidate Dockerfile pins under product directories. Ruff, format, 193 control-plane/ledger tests, the 48-row validator and eight ledger regressions pass. No actual Group 1-4 handoff artifact is asserted; Group 5, qualification and R047 real PR #481 pilot proof remain open.
 - **WC-109 publication repair:** Pre-push candidate `dd72acd0` reached applicable-diff checks and failed first at `quality:scripts` because its isolated writable `test-results` overlay hid the tracked R038 rollback source. Baseline validation now reads the immutable `HEAD:test-results/wc109/rollback-602cea40.json` Git blob after repository-bound path validation; a regression proves no mutable working-tree evidence is read. PR #481 remained unchanged, and publication, hosted R047 evidence, qualification, approval, merge and DONE remain open.
 - **WC-109 precheck fail-fast repair:** The same failed preparation started `test-dotnet:business-platform` 55 seconds after `quality:scripts` had already failed, consuming about six avoidable gate-minutes. The applicable-diff scheduler now sets first-cause state inside the failing worker; serial lanes and parallel heavy workers waiting for capacity emit zero-attempt `SUPPRESSED_FAILURE`, while work already executing may finish as reusable evidence. PR #481 remains unchanged; exact-head pre-push evidence and the real hosted R047 comparison remain open.
+- **WC-109 real fail-fast proof:** Candidate `3e610416` stopped with `quality:scripts` as the first cause, allowed only already-running quality lanes to finish, and recorded `test-dotnet:business-platform` as zero-attempt `SUPPRESSED_FAILURE`; the prior six-minute post-failure launch did not recur. The remaining static finding required baseline provenance to resolve Git to a trusted absolute executable with a narrowly reviewed subprocess call; focused Ruff, format and 17 provenance tests pass. PR #481 remains unchanged pending exact-head preparation.
 
 ## Authorization Boundary
 
