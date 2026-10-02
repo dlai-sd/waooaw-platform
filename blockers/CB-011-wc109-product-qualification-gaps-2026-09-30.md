@@ -8,7 +8,7 @@
 | `produced_at` | `2026-09-30` |
 | Status | **OPEN** |
 | Raised by | INST-012 - Platform IT Expert |
-| Affected work | WC-109 Stage 4 candidate qualification |
+| Affected work | AS-001, AS-003 and AS-005 product release qualification; WC-109 exact deferred-disposition evidence |
 | Constitutional basis | C-059, C-065, C-071, C-076; WC-109 Sections 3.2, 6, 10 and 11 |
 | Resolution authority | Founder for a separately bounded product-validation Work Contract |
 
@@ -38,8 +38,12 @@ confirms each affected lane fails without executing its promised acceptance beha
 
 ## Gate Effect
 
-- WC-109 Stage 4 and WC109-R005, WC109-R011, WC109-R012 and WC109-R029 remain not PASS.
-- No frozen candidate or assembled 43-gate qualification may be claimed.
+- WC-109 Stage 4 and WC109-R005, WC109-R011, WC109-R012 and WC109-R029 remain not PASS until their
+	control-plane implementation and evidence requirements are independently satisfied.
+- WC-109 may freeze and assemble its control-plane candidate only under the Founder-approved Section 2.1
+	disposition: 40 executable PASS results plus terminal `BLOCKED` evidence with exact
+	`BLOCKED-DEFERRED` disposition for AS-001, AS-003 and AS-005.
+- No 43/43, product-readiness or corresponding product-release qualification may be claimed.
 - Existing valid component results remain evidence of their own lanes only.
 - The REST mismatches may not be suppressed, baselined, or converted to PASS.
 - Missing suites may not be replaced by static checks, empty collections, skips, or smaller substitutes.
@@ -55,10 +59,10 @@ and architecture owners. It must:
 4. implement default-state desktop/mobile accessibility evidence; and
 5. implement end-to-end Emergency Stop latency evidence proving the constitutional floor of 250 ms.
 
-After those product-owned changes merge, WC-109 may refreeze a new exact candidate, rerun only affected
-or identity-changed lanes, and assemble all 43 results against that one immutable candidate. WC-109's
-current authority does not permit the required product behavior changes, gate removal, threshold
-reduction, selective enforcement, deployment or customer traffic.
+After those product-owned changes merge, their corresponding products may replace deferred evidence with
+direct PASS evidence against a new exact candidate. WC-109's current authority does not permit the
+required product behavior changes, gate removal, threshold reduction, selective enforcement, deployment
+or customer traffic.
 
 ## Founder Direction - 2026-09-30
 
@@ -66,6 +70,9 @@ The Founder directed that AS-001 remain parked and that its missing DMA lifecycl
 under WC-110. A careful adjacent review found the same product-boundary condition for AS-003 and AS-005:
 their ratified Grade-A paths require capabilities absent from the current Trading and Agricultural
 runtimes. All three customer-scenario gates remain mandatory and blocked for later agent product Work
-Contracts. Independent WC-110 REST, accessibility, PSE and Emergency Stop work may continue, but this
-blocker cannot close and WC-109 Stage 4 cannot qualify until the parked scenarios execute without
-substitution.
+Contracts. Independent WC-110 REST, accessibility, PSE and Emergency Stop work may continue.
+
+The later Founder-approved WC-109 Section 2.1 amendment permits the control-plane PR to retain these
+three gates as terminal `BLOCKED` with exact `BLOCKED-DEFERRED` and release-blocking proof. This blocker
+therefore remains OPEN for the affected products but does not require WC-109 to fabricate product
+capabilities or claim 43/43 before its control-plane candidate can qualify.

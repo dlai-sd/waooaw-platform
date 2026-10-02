@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 221
-**Last Updated:** 2026-10-02 (WC-109 ROLLBACK CHUNKS QUALIFIED)
+**State Revision:** 222
+**Last Updated:** 2026-10-02 (WC-109 OUTCOME REMEDIATION AUTHORIZED)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -72,6 +72,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **WC-109 hosted resubmission:** CI run `36869467735` passed 49 checks and failed C-065 because its bounded metadata refresh began before the post-push PR body update and retained reviewed head `85f43122` while expecting `1afb1cb5`; Test Champion was only the downstream aggregate blocker. The live body is now exact, but the integration token cannot rerun Actions. A new synchronize event must use the documented pre-push body update order; no product or validation defect is inferred from this run.
 - **WC-109 focused requalification:** REST contract repairs through `877b7f51` align identity errors, notification cursors, alert versions and conversation text/skill constraints with runtime behavior; all Business Platform and Professional Runtime Schemathesis partitions pass with 23,155 generated cases. Head `0cebde26` adds a four-case deterministic OpenAPI regression corpus and passes exact-head .NET/Python integration, seeded-prompt, accessibility and Emergency Stop gates. Fresh candidate binding, full 40 PASS plus three `BLOCKED-DEFERRED` rollback qualification, hosted pilot comparison, author review, approval, merge and DONE remain open.
 - **WC-109 rollback repair:** Head `602cea40` completed the full 43-gate rehearsal with 38 PASS and five correctly exposed control-plane failures: PostgreSQL service identity was inspected before supply, and AS-001/003/005 were executed instead of preserving the Founder-approved deferred disposition. Repair `9d3b1122` pulls the pinned service image before immutable identity capture and emits the three acceptance gates as terminal `BLOCKED` with exact `BLOCKED-DEFERRED` amendment and release-blocking proof. Five focused Docker tests pass; isolated catalog-controlled `integration:multi-tenant` and `integration:postgres-migrations` both pass against PostgreSQL digest `sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b`. A final stitched exact-head rollback qualification, fresh hosted pilot evidence, author review, approval, merge and DONE remain open.
+- **WC-109 outcome remediation:** The Founder authorized execution-outcome remediation, WC-110 product-scope separation and PR #481 as the current-session value pilot. Governance commit `6c060697` expands the ledger to 48 requirements, reopens R007/R010/R021/R024 after the real rollback falsified their run-level claims, and requires machine-checkable planning, ordered phase transitions, supply/resource preflight, fail-fast dependency suppression, deterministic-failure repair, per-chunk checkpoint/resume, bounded disk recovery and before/after delivery-value evidence. Safety branch `safety/wc109-pre-outcome-amendment-cccc2ad8` preserves the prior authorized head. WC-110 extraction, implementation evidence, exact-candidate qualification, hosted pilot, author review, approval, merge and DONE remain open.
 
 ## Authorization Boundary
 
@@ -88,9 +89,10 @@ P3-EX11 offline readiness remains blocked until INST-009 accepts the Production 
 recovery, cost and shared-state ownership inputs. Provider-backed planning also requires protected
 Production GitHub environments and exact current-session Founder authority.
 C-001 emergency-halt integration blocks Production apply and activation, which remain prohibited.
-CB-011 blocks WC-109 Stage 4: REST, accessibility, PSE failover and Emergency Stop are repaired, while
-AS-001, AS-003 and AS-005 remain mandatory Founder-parked product scenarios with absent capabilities.
-The blocker remains open until later agent product Work Contracts provide direct passing evidence.
+CB-011 remains OPEN and blocks release of the products governed by AS-001, AS-003 and AS-005 until
+later agent product Work Contracts provide direct passing evidence. For the WC-109 control-plane PR
+only, the Founder-approved Section 2.1 disposition permits Stage 4 to retain each as terminal `BLOCKED`
+with exact `BLOCKED-DEFERRED` evidence; it does not close CB-011 or authorize product readiness.
 WC-084 Goal verification and Operations reassessment now pass local D-GOAL engineering gates; immutable
 deployed-candidate and Founder acceptance remain. D-BILLING and D-IDENTITY were accepted by the
 Founder on 2026-09-10 and remain queued as separate bounded implementation deliveries.
