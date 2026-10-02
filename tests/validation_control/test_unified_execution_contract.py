@@ -348,10 +348,45 @@ def test_normal_qualification_launcher_cannot_enter_rollback_mode() -> None:
     launcher = launcher_path.read_text(encoding="utf-8")
 
     assert launcher_path.stat().st_mode & 0o111
-    assert launcher.count("--execution-profile qualification") == 2
+    assert launcher.count("--execution-profile qualification") == 3
     assert "--execution-profile rollback" not in launcher
     assert '"$repository:$repository:ro"' in launcher
     assert '"$docker_socket:$docker_socket"' in launcher
+    assert "--repair-context and --repair-gate must be used together with --resume" in launcher
+    assert "--repair-context must be repository-relative below test-results" in launcher
+    assert '--repair-context "$6" --invalidate-gate "$7"' in launcher
+
+
+@pytest.mark.parametrize(
+    "repair_arguments",
+    [
+        ("--resume", "--repair-context", "test-results/repair.json"),
+        ("--resume", "--repair-gate", "contract:rest"),
+        ("--repair-context", "test-results/repair.json", "--repair-gate", "contract:rest"),
+    ],
+)
+def test_qualification_launcher_rejects_incomplete_repair_before_docker(repair_arguments: tuple[str, ...]) -> None:
+    root = Path(__file__).resolve().parents[2]
+    completed = subprocess.run(
+        [
+            "sh",
+            "scripts/validation_control/run_wc104_qualification.sh",
+            "--base",
+            "b" * 40,
+            "--output",
+            "test-results/qualification.json",
+            "--handoff-evidence",
+            "test-results/handoff.json",
+            *repair_arguments,
+        ],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    assert "--repair-context and --repair-gate must be used together with --resume" in completed.stderr
 
 
 def test_resource_capacity_preflight_passes_without_cleanup_when_capacity_is_safe(tmp_path: Path) -> None:
