@@ -122,6 +122,12 @@ def test_python_audit_builds_use_bounded_executable_tmpfs() -> None:
     assert runner["tmpfs"] == ["/tmp:size=1g,mode=1777,exec"]
 
 
+def test_typescript_native_dependencies_use_bounded_executable_tmpfs() -> None:
+    runner = COMPOSE["services"]["test-runner-ts"]
+
+    assert runner["tmpfs"] == ["/tmp:size=1g,mode=1777,exec"]
+
+
 def test_full_runner_fixtures_use_bounded_executable_tmpfs() -> None:
     runner = COMPOSE["services"]["test-runner"]
 
