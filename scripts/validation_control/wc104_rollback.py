@@ -278,13 +278,16 @@ def execute_rollback(
         except Exception as exception:
             return block_preflight("preflight:qualification-context", str(manifest["required_gates"][0]), exception)
 
-    plan = build_execution_plan(
-        catalog,
-        manifest["required_gates"],
-        mode="qualification",
-        head_sha=candidate_sha,
-        run_id=f"rollback-preflight-{candidate_sha}",
-    )
+    try:
+        plan = build_execution_plan(
+            catalog,
+            manifest["required_gates"],
+            mode="qualification",
+            head_sha=candidate_sha,
+            run_id=f"rollback-preflight-{candidate_sha}",
+        )
+    except Exception as exception:
+        return block_preflight("preflight:plan", str(manifest["required_gates"][0]), exception)
     try:
         execution_preflight(repository)
     except Exception as exception:

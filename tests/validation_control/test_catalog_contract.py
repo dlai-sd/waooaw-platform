@@ -1,5 +1,6 @@
 """WC102 validation catalog and dual-mode orchestration contracts."""
 
+from copy import deepcopy
 import json
 from pathlib import Path
 
@@ -22,6 +23,7 @@ from validation_control.orchestrator import (
     build_execution_plan,
     phase_transition_record,
     plan_execution_order,
+    plan_preflight_outcome,
     prerequisite_evidence_blockers,
     suppression_reason,
 )
@@ -257,6 +259,64 @@ def test_phase_transition_rejects_missing_failed_stale_and_broad_bypass_evidence
             ],
         )
         == []
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("owner", ""),
+        ("inputs", {}),
+        ("direct_prerequisites", ["unknown-gate"]),
+        ("downstream_dependents", ["unknown-gate"]),
+        ("cost_class", "UNKNOWN"),
+        ("acceptance_check", ""),
+        ("expected_evidence", {}),
+        ("invalidation_rule", {}),
+    ),
+)
+def test_plan_preflight_blocks_every_required_contract_omission(field: str, value: object) -> None:
+    plan = build_execution_plan(
+        load_catalog(),
+        ["build:web", "test-web"],
+        mode="focused",
+        head_sha="a" * 40,
+        run_id="plan-omission",
+    )
+    malformed = deepcopy(plan)
+    malformed["nodes"][0][field] = value
+
+    outcome = plan_preflight_outcome(malformed)
+
+    assert outcome["result"] == "BLOCKED"
+    assert outcome["first_cause"]
+    assert outcome["build_events"] == 0
+    assert outcome["execution_events"] == 0
+
+
+def test_complete_plan_preflight_passes_without_costly_events() -> None:
+    plan = build_execution_plan(
+        load_catalog(),
+        ["build:web", "test-web"],
+        mode="focused",
+        head_sha="a" * 40,
+        run_id="plan-complete",
+    )
+
+    assert plan["preflight"] == {
+        "schema": "waooaw.plan-preflight-result/v1",
+        "result": "PASS",
+        "first_cause": None,
+        "violations": [],
+        "build_events": 0,
+        "execution_events": 0,
+    }
+    assert plan == build_execution_plan(
+        load_catalog(),
+        ["build:web", "test-web"],
+        mode="focused",
+        head_sha="a" * 40,
+        run_id="plan-complete",
     )
 
 

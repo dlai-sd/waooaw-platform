@@ -39,6 +39,16 @@ PHASE_BY_COST = {
     "HOSTED": "D_SYSTEM_STITCHING",
     "QUALIFICATION": "E_QUALIFICATION_HANDOFF",
 }
+PLAN_NODE_REQUIRED_FIELDS = {
+    "owner",
+    "inputs",
+    "direct_prerequisites",
+    "downstream_dependents",
+    "cost_class",
+    "acceptance_check",
+    "expected_evidence",
+    "invalidation_rule",
+}
 
 
 def safe_path_segment(value: str) -> str:
@@ -148,6 +158,67 @@ def phase_transition_record(
         "blockers": blockers,
         "head_sha": plan.get("head_sha"),
         "catalog_digest": catalog_digest,
+    }
+
+
+def plan_preflight_outcome(plan: dict[str, Any]) -> dict[str, Any]:
+    violations: list[str] = []
+    nodes = plan.get("nodes")
+    if plan.get("schema") != "waooaw.validation-execution-plan/v1" or not isinstance(nodes, list) or not nodes:
+        violations.append("plan:schema-or-nodes")
+        nodes = []
+    gate_ids = [node.get("gate_id") for node in nodes if isinstance(node, dict)]
+    if len(gate_ids) != len(nodes) or len(gate_ids) != len(set(gate_ids)) or not all(isinstance(gate, str) for gate in gate_ids):
+        violations.append("plan:gate-identity")
+    known_gates = set(gate_ids)
+    for node in nodes:
+        if not isinstance(node, dict):
+            violations.append("node:not-a-mapping")
+            continue
+        gate_id = str(node.get("gate_id", "unknown"))
+        missing = sorted(field for field in PLAN_NODE_REQUIRED_FIELDS if field not in node)
+        violations.extend(f"node:{gate_id}:missing:{field}" for field in missing)
+        if not isinstance(node.get("owner"), str) or not node.get("owner"):
+            violations.append(f"node:{gate_id}:owner")
+        if not isinstance(node.get("inputs"), dict) or not node.get("inputs"):
+            violations.append(f"node:{gate_id}:inputs")
+        if node.get("cost_class") not in COST_ORDER or node.get("phase") not in PHASE_ORDER:
+            violations.append(f"node:{gate_id}:cost-or-phase")
+        if not isinstance(node.get("acceptance_check"), str) or not node.get("acceptance_check"):
+            violations.append(f"node:{gate_id}:acceptance-check")
+        evidence = node.get("expected_evidence")
+        if not isinstance(evidence, dict) or not evidence.get("directory") or not isinstance(evidence.get("artifacts"), dict):
+            violations.append(f"node:{gate_id}:evidence")
+        invalidation = node.get("invalidation_rule")
+        if (
+            not isinstance(invalidation, dict)
+            or not isinstance(invalidation.get("changed_paths"), list)
+            or not invalidation.get("changed_paths")
+            or not isinstance(invalidation.get("identity_fields"), list)
+            or not invalidation.get("identity_fields")
+        ):
+            violations.append(f"node:{gate_id}:invalidation")
+        for field in ("direct_prerequisites", "downstream_dependents"):
+            references = node.get(field)
+            if not isinstance(references, list) or any(reference not in known_gates for reference in references):
+                violations.append(f"node:{gate_id}:{field}")
+    if not violations:
+        by_gate = {node["gate_id"]: node for node in nodes}
+        for node in nodes:
+            for prerequisite in node["direct_prerequisites"]:
+                if node["gate_id"] not in by_gate[prerequisite]["downstream_dependents"]:
+                    violations.append(f"node:{node['gate_id']}:dependent-reverse-edge")
+        try:
+            plan_execution_order(plan)
+        except ValueError as error:
+            violations.append(f"plan:{error}")
+    return {
+        "schema": "waooaw.plan-preflight-result/v1",
+        "result": "PASS" if not violations else "BLOCKED",
+        "first_cause": violations[0] if violations else None,
+        "violations": violations,
+        "build_events": 0,
+        "execution_events": 0,
     }
 
 
@@ -300,7 +371,10 @@ def build_execution_plan(
         "execution_namespace": execution_namespace,
         "nodes": nodes,
     }
-    plan_execution_order(plan)
+    outcome = plan_preflight_outcome(plan)
+    if outcome["result"] != "PASS":
+        raise ValueError(f"execution plan blocked: {outcome['first_cause']}")
+    plan["preflight"] = outcome
     return plan
 
 

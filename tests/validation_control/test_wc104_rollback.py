@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 import json
 import os
 from pathlib import Path
@@ -351,6 +352,35 @@ def test_rollback_authority_failure_publishes_complete_preflight_block(tmp_path:
         "ValueError: rollback PR head does not match candidate HEAD"
     )
     assert sum("error" in item for item in result["gate_results"]) == 1
+    assert json.loads(checkpoint.read_text(encoding="utf-8")) == result
+
+
+def test_rollback_plan_failure_publishes_complete_preflight_block(tmp_path: Path) -> None:
+    catalog = deepcopy(load_catalog())
+    checkpoint = tmp_path / "rollback.json"
+    del catalog["gates"]["build"]["cost_class"]
+
+    result = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        checkpoint_path=checkpoint,
+        execution_preflight=lambda repository: pytest.fail("execution preflight must not run"),
+        resource_preflight=lambda repository, nodes, namespace: pytest.fail("resource preflight must not run"),
+        runner_resolver=lambda repository, runner: pytest.fail("runner must not resolve"),
+        service_resolver=lambda repository, node: pytest.fail("service must not resolve"),
+        gate_executor=lambda repository, gate, head, base, common, **context: pytest.fail("gate must not execute"),
+    )
+
+    assert result["run_state"] == "BLOCKED"
+    assert result["first_cause_gate"] == "preflight:plan"
+    assert result["execution_summary"]["executed_gate_count"] == 0
+    assert result["runner_results"] == {}
+    assert result["service_results"] == {}
+    assert len(result["gate_results"]) == len(catalog["full_gates"])
     assert json.loads(checkpoint.read_text(encoding="utf-8")) == result
 
 
