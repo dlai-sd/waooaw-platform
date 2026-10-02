@@ -4,13 +4,20 @@ set -eu
 validation_output_directory=${WAOOAW_VALIDATION_OUTPUT_DIRECTORY:-$PWD/test-results}
 mkdir -p "$validation_output_directory"
 
+export POSTGRES_HOST_PORT=0
+export KEYCLOAK_HOST_PORT=0
+export TEMPORAL_HOST_PORT=0
+export CONSTITUTIONAL_ENGINE_HOST_PORT=0
+export BUSINESS_PLATFORM_HOST_PORT=0
+export PROFESSIONAL_RUNTIME_HOST_PORT=0
+
 cleanup() {
     docker compose down --volumes --remove-orphans
 }
 trap cleanup EXIT
 
-docker compose build business-platform professional-runtime
-docker compose up --detach --wait --wait-timeout 180 business-platform professional-runtime
+docker compose build constitutional-engine business-platform professional-runtime
+docker compose up --detach --no-build --wait --wait-timeout 180 business-platform professional-runtime
 docker compose --profile test-python run --rm --pull never \
     --volume "$validation_output_directory:/workspace/test-results" test-runner-python \
     sh -c 'set -u

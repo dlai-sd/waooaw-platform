@@ -867,8 +867,11 @@ def test_rest_contract_declares_product_builds_and_isolated_host_orchestration()
     )["nodes"][0]
 
     assert node["execution"] == "host"
-    assert node["product_image_builds"] == ["business-platform", "professional-runtime"]
+    assert node["product_image_builds"] == ["constitutional-engine", "business-platform", "professional-runtime"]
     assert node["compose_project"].startswith("wc109-")
+    launcher = (ROOT / "scripts/validation_control/run_rest_contract_gate.sh").read_text(encoding="utf-8")
+    assert "docker compose up --detach --no-build" in launcher
+    assert "POSTGRES_HOST_PORT=0" in launcher
 
 
 def test_catalog_gate_selection_rejects_missing_or_duplicate_nodes() -> None:
