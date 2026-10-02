@@ -1,18 +1,13 @@
 # PROJECT_STATE.md
-
 **State Schema:** 2.0.0
-**State Revision:** 242
+**State Revision:** 243
 **Last Updated:** 2026-10-02 (WC-109 OUTCOME REMEDIATION AUTHORIZED)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
-
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
 checkpoint in place; record durable detail in the owning Work Contract, Goal record, review,
 or evidence artifact. Completed history remains in git and the archive index below.
-
 ---
-
 ## Institutional Snapshot
-
 | Field | Current Value |
 |---|---|
 | Epoch | Epoch 1 — Foundation |
@@ -88,6 +83,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **WC-109 precheck fail-fast repair:** The same failed preparation started `test-dotnet:business-platform` 55 seconds after `quality:scripts` had already failed, consuming about six avoidable gate-minutes. The applicable-diff scheduler now sets first-cause state inside the failing worker; serial lanes and parallel heavy workers waiting for capacity emit zero-attempt `SUPPRESSED_FAILURE`, while work already executing may finish as reusable evidence. PR #481 remains unchanged; exact-head pre-push evidence and the real hosted R047 comparison remain open.
 - **WC-109 real fail-fast proof:** Candidate `3e610416` stopped with `quality:scripts` as the first cause, allowed only already-running quality lanes to finish, and recorded `test-dotnet:business-platform` as zero-attempt `SUPPRESSED_FAILURE`; the prior six-minute post-failure launch did not recur. The remaining static finding required baseline provenance to resolve Git to a trusted absolute executable with a narrowly reviewed subprocess call; focused Ruff, format and 17 provenance tests pass. PR #481 remains unchanged pending exact-head preparation.
 - **WC-109 post-push verifier repair:** Pre-push candidate `89f82081` passed all applicable checks and lifecycle evidence, updated PR #481, and was lease-protected published. Post-push reuse then rejected the same evidence because pre-push graph commands used resolved base SHA while reconstruction used symbolic `origin/main`. Graph construction now canonicalizes every base revision internally; symbolic/resolved regression, Ruff and format pass. A corrected exact-head preparation and publication remain open; no qualification or DONE claim is made.
+- **WC-109 hosted precheck prevention:** Hosted PR #481 exposed two primary causes before qualification: `quality:scripts` could not read Git-object evidence inside the supplied runner, and live TypeScript advisories produced 14 high findings. Durable digest-bound evidence now lives under `validation/evidence`; bounded pnpm overrides reduce high findings to zero. The pre-PR graph selects `dep-scan:typescript` for every candidate and prohibits PASS reuse for this externally volatile gate, while a repository-level contract/ledger test catches stale or unatomized WC-109 authority before scripts quality. Exact local catalog execution passes `quality:scripts` and `dep-scan:typescript`; 101 process regressions, 31 authority tests, TypeScript compile and 521 Web tests pass. Fresh hosted pilot evidence, R047, qualification, approval, merge and DONE remain open.
 
 ## Authorization Boundary
 

@@ -635,3 +635,4 @@ requirements:
       - tests/pipeline/test_prepare_pr_body.py
       - tests/pipeline/test_validation_policy.py
       - tests/validation_control/test_wc109_value_pilot.py
+    result: PASS
