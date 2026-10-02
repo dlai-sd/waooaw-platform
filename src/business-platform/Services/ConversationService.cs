@@ -6,12 +6,26 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using Waooaw.BusinessPlatform.Infrastructure;
 
 namespace Waooaw.BusinessPlatform.Services;
+
+internal static class ConversationInputContract
+{
+    private static readonly Regex LanguageTagPattern = new(
+        "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*\\z",
+        RegexOptions.CultureInvariant
+    );
+
+    public static bool IsLanguageTag(string? value) =>
+        value is { Length: >= 2 and <= 35 } && LanguageTagPattern.IsMatch(value);
+
+    public static bool IsPersistableText(string value) => !value.Contains('\0');
+}
 
 public sealed record ConversationTextBlockV1(
     string SchemaVersion,
@@ -461,13 +475,6 @@ public sealed class ConversationService
     )
     {
         using var activity = StartActivity("bp.conversation.timeline", relationshipId);
-        if (cursor is not null && afterCursor is not null)
-        {
-            throw new ConversationRequestException(
-                "cursor and afterCursor are mutually exclusive."
-            );
-        }
-
         if (limit is < 1 or > 100)
         {
             throw new ConversationRequestException("limit must be between 1 and 100.");
@@ -1409,7 +1416,10 @@ public sealed class ConversationService
             || request.Content[0].BlockType != "TEXT"
             || string.IsNullOrWhiteSpace(request.Content[0].Text)
             || request.Content[0].Text.Length > 32000
-            || request.Locale.Length is < 2 or > 35
+            || !ConversationInputContract.IsPersistableText(request.Content[0].Text)
+            || !ConversationInputContract.IsLanguageTag(request.Locale)
+            || request.Content[0].Language is { } language
+                && !ConversationInputContract.IsLanguageTag(language)
         )
         {
             throw new ConversationRequestException(

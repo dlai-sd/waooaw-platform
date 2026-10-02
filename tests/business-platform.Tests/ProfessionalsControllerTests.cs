@@ -55,6 +55,17 @@ public sealed class ProfessionalsControllerTests
     }
 
     [Fact]
+    public void Discover_RejectsEveryInvalidOutcomeLength()
+    {
+        foreach (var outcome in new[] { "", "  ", "ab", new string('x', 501) })
+        {
+            var result = _controller.Discover(outcome);
+
+            result.Result.Should().BeOfType<BadRequestObjectResult>();
+        }
+    }
+
+    [Fact]
     public void Disclosure_ReturnsExactlyReleaseOneSkillsAndTrialBoundaries()
     {
         var result = _controller.GetDisclosure("DIGITAL_MARKETING_LOCAL_SERVICE");
@@ -145,7 +156,57 @@ public sealed class ProfessionalsControllerTests
         var invalid = controller.BrowseMarketplace(cursor, 1, query: "different")
             .Should().BeOfType<ObjectResult>().Subject;
 
-        invalid.StatusCode.Should().Be(400);
+        invalid.StatusCode.Should().Be(404);
+    }
+
+    [Fact]
+    public void Marketplace_RejectsEveryInvalidQueryBoundary()
+    {
+        var cases = new[]
+        {
+            (Query: "?limit=0", Cursor: (string?)null, Limit: 0, Type: (string?)null, Search: (string?)null),
+            (Query: "?limit=101", Cursor: (string?)null, Limit: 101, Type: (string?)null, Search: (string?)null),
+            (Query: "?unknown=value", Cursor: (string?)null, Limit: 20, Type: (string?)null, Search: (string?)null),
+            (Query: "?cursor=", Cursor: "", Limit: 20, Type: (string?)null, Search: (string?)null),
+            (Query: "?cursor=short", Cursor: "short", Limit: 20, Type: (string?)null, Search: (string?)null),
+            (Query: "?cursor=" + new string('x', 2049), Cursor: new string('x', 2049), Limit: 20, Type: (string?)null, Search: (string?)null),
+            (Query: "?professionalType=", Cursor: (string?)null, Limit: 20, Type: "", Search: (string?)null),
+            (Query: "?professionalType=" + new string('x', 101), Cursor: (string?)null, Limit: 20, Type: new string('x', 101), Search: (string?)null),
+            (Query: "?q=", Cursor: (string?)null, Limit: 20, Type: (string?)null, Search: ""),
+            (Query: "?q=" + new string('x', 121), Cursor: (string?)null, Limit: 20, Type: (string?)null, Search: new string('x', 121)),
+        };
+
+        foreach (var testCase in cases)
+        {
+            var controller = Controller(_catalog);
+            controller.Request.QueryString = new QueryString(testCase.Query);
+
+            var result = controller.BrowseMarketplace(
+                testCase.Cursor,
+                testCase.Limit,
+                testCase.Type,
+                testCase.Search
+            );
+
+            result.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(400);
+        }
+    }
+
+    [Fact]
+    public void Marketplace_AcceptsMatchingCursorAndRejectsMalformedCursor()
+    {
+        var catalog = new Mock<IProfessionalCatalog>();
+        catalog.Setup(value => value.Browse(null, null)).Returns(
+            [Disclosure("A"), Disclosure("B")]
+        );
+        var controller = Controller(catalog.Object);
+        var first = controller.BrowseMarketplace(null, 1).Should().BeOfType<OkObjectResult>().Subject;
+        var cursor = System.Text.Json.JsonSerializer.SerializeToElement(first.Value)
+            .GetProperty("nextCursor").GetString();
+
+        controller.BrowseMarketplace(cursor, 1).Should().BeOfType<OkObjectResult>();
+        controller.BrowseMarketplace(new string('!', 16), 1)
+            .Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(404);
     }
 
     [Fact]

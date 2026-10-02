@@ -101,7 +101,7 @@ async def test_session_start_rejects_malformed_contract_id_before_authorization(
         with pytest.raises(HTTPException) as failure:
             await require_session_workload_context(MagicMock(), body)
 
-    assert failure.value.status_code == 422
+    assert failure.value.status_code == 400
     assert failure.value.detail == "INVALID_CONTRACT_ID"
     authorize.assert_not_awaited()
 
@@ -152,13 +152,13 @@ async def test_router_starts_and_describes_temporal_workflow() -> None:
     handle.describe = AsyncMock(return_value=description)
     temporal.get_workflow_handle.return_value = handle
 
-    status = await get_session_status(started.session_id, temporal)
+    status = await get_session_status(started.session_id, temporal, MagicMock())
     assert status.status == "COMPLETED"
     assert status.started_at == "2026-08-15T00:00:00+00:00"
     assert status.closed_at == "2026-08-15T00:01:00+00:00"
 
     handle.describe.return_value = None
-    unknown = await get_session_status(started.session_id, temporal)
+    unknown = await get_session_status(started.session_id, temporal, MagicMock())
     assert unknown.status == "UNKNOWN"
     assert unknown.started_at is None
     assert unknown.closed_at is None
@@ -173,7 +173,8 @@ async def test_router_dispatches_typed_lifecycle_signals() -> None:
     terminated = await terminate_session(
         "session-a",
         SessionTerminateRequest(stopped_by="operator-a", reason="stop"),
-        temporal,
+        context=MagicMock(),
+        temporal=temporal,
     )
     paused = await pause_session("session-a", SessionPauseRequest(paused_by="operator-a"), temporal)
     resumed = await resume_session("session-a", SessionResumeRequest(resumed_by="operator-a"), temporal)

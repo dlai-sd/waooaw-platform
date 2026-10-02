@@ -925,7 +925,7 @@ public sealed class IdentityRegistrationTests
     }
 
     [Fact]
-    public async Task F2_CompleteRegistration_WithoutEmail_Returns422VerificationRequired()
+    public async Task F2_CompleteRegistration_WithoutEmail_Returns409VerificationRequired()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         // emailVerified = false
@@ -940,9 +940,11 @@ public sealed class IdentityRegistrationTests
         var result = await ctrl.CompleteRegistrationAsync(regId, CancellationToken.None);
 
         var obj = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(422, obj.StatusCode);
-        var json = JsonSerializer.SerializeToElement(obj.Value);
-        Assert.Equal("IDENTITY_VERIFICATION_REQUIRED", json.GetProperty("code").GetString());
+        Assert.Equal(409, obj.StatusCode);
+        Assert.Equal(
+            "IDENTITY_VERIFICATION_REQUIRED",
+            Assert.IsType<IdentityProblemResponse>(obj.Value).Code
+        );
     }
 
     [Fact]
@@ -967,6 +969,59 @@ public sealed class IdentityRegistrationTests
         var json = JsonSerializer.SerializeToElement(ok.Value);
         Assert.Equal("ACCOUNT_CREATED", json.GetProperty("Outcome").GetString());
         Assert.Equal("AAL2_ACCOUNT", json.GetProperty("AssuranceLevel").GetString());
+    }
+
+    [Fact]
+    public async Task F2_CompleteRegistration_OneMatchingIdentityKey_RequiresDuplicateResolution()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var existingAccountId = Guid.NewGuid();
+        var pending = new IdentityRegistrationRecord
+        {
+            ActorSubject = "duplicate-mobile-sub",
+            State = IdentityRegistrationState.ReadyToComplete,
+            EmailVerified = true,
+            MobileVerified = true,
+            EmailHmacDomain = "email",
+            EmailHmacVersion = "v1",
+            EmailHmacKey = "new-email-key",
+            MobileHmacDomain = "mobile",
+            MobileHmacVersion = "v1",
+            MobileHmacKey = "shared-mobile-key",
+            DisplayName = "Test User",
+            BusinessName = "Test Business",
+            BusinessDomain = "Consulting",
+        };
+        await using (var seed = factory.CreateDbContext())
+        {
+            seed.Registrations.AddRange(
+                new IdentityRegistrationRecord
+                {
+                    ActorSubject = "existing-account-sub",
+                    State = IdentityRegistrationState.Completed,
+                    AccountId = existingAccountId,
+                    MobileHmacDomain = "mobile",
+                    MobileHmacVersion = "v1",
+                    MobileHmacKey = "shared-mobile-key",
+                },
+                pending
+            );
+            await seed.SaveChangesAsync();
+        }
+
+        var service = IdentityTestHelpers.CreateService(factory);
+        await Assert.ThrowsAsync<IdentityDuplicateResolutionRequiredException>(() =>
+            service.CompleteRegistrationAsync(
+            pending.RegistrationId,
+            pending.ActorSubject,
+            Guid.NewGuid(),
+            "duplicate-mobile-request",
+            CancellationToken.None));
+        await using var persisted = factory.CreateDbContext();
+        Assert.Equal(
+            IdentityRegistrationState.DuplicateResolutionRequired,
+            (await persisted.Registrations.FindAsync(pending.RegistrationId))!.State
+        );
     }
 
     [Fact]
@@ -1099,6 +1154,35 @@ public sealed class IdentityEmailVerificationTests
         Assert.Contains("ChallengeId", json.ToString());
         // Must never return raw email or match keys
         Assert.DoesNotContain("test@example.com", json.ToString());
+    }
+
+    [Fact]
+    public async Task F2_StartEmailVerification_MalformedUnicodeEmail_Returns400()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "invalid-email-sub");
+        var created = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
+        var registrationId = JsonSerializer.SerializeToElement(created.Value)
+            .GetProperty("RegistrationId").GetGuid();
+
+        IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
+        var result = Assert.IsType<ObjectResult>(await ctrl.StartEmailVerificationAsync(
+            registrationId,
+            new StartEmailVerificationRequest("\ud800@example.com"),
+            CancellationToken.None));
+
+        Assert.Equal(400, result.StatusCode);
+
+        IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
+        var oversized = Assert.IsType<ObjectResult>(
+            await ctrl.StartEmailVerificationAsync(
+                registrationId,
+                new StartEmailVerificationRequest($"{new string('a', 245)}@example.com"),
+                CancellationToken.None
+            )
+        );
+        Assert.Equal(400, oversized.StatusCode);
     }
 
     [Fact]
@@ -2601,7 +2685,7 @@ public sealed class IdentityCompleteRegistrationErrorTests
     }
 
     [Fact]
-    public async Task F2_CompleteRegistration_WithEmailButMissingProfile_Returns422()
+    public async Task F2_CompleteRegistration_WithEmailButMissingProfile_Returns409()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         // Email is verified by claim but profile fields (DisplayName etc.) not set
@@ -2617,9 +2701,11 @@ public sealed class IdentityCompleteRegistrationErrorTests
         var result = await ctrl.CompleteRegistrationAsync(regId, CancellationToken.None);
 
         var obj = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(422, obj.StatusCode);
-        Assert.Equal("IDENTITY_VERIFICATION_REQUIRED",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(409, obj.StatusCode);
+        Assert.Equal(
+            "IDENTITY_VERIFICATION_REQUIRED",
+            Assert.IsType<IdentityProblemResponse>(obj.Value).Code
+        );
     }
 }
 

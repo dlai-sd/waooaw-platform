@@ -914,11 +914,13 @@ async def test_missing_service_secret_is_unauthorized(client: Any) -> None:
     assert response.status_code == 401
 
 
-async def test_non_conversation_validation_remains_generic() -> None:
+async def test_non_conversation_validation_uses_problem_contract() -> None:
     request = MagicMock()
     request.url.path = "/other"
+    request.headers = {}
     response = await validation_error(request, RequestValidationError([]))
-    assert response.status_code == 422
+    assert response.status_code == 400
+    assert response.media_type == "application/problem+json"
 
 
 async def test_lifespan_registers_conversation_worker(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1246,6 +1248,93 @@ def test_emergency_stop_websocket_refuses_missing_and_invalid_auth() -> None:
         ):
             pass
     assert invalid.value.status_code == 401
+
+
+def test_emergency_stop_rest_confirms_only_from_ce_evidence() -> None:
+    contract_id = "11111111-1111-1111-1111-111111111111"
+    session_id = "22222222-2222-2222-2222-222222222222"
+    validator = MagicMock(validate=AsyncMock(return_value=EmergencyStopAuthority("tenant-a", "customer-a", contract_id)))
+    gateway = FakeEmergencyStopGateway()
+    app.state.emergency_stop_jwt_validator = validator
+    app.state.conversation_constitutional_gateway = gateway
+
+    response = TestClient(app).post(
+        "/api/v1/emergency-stop",
+        headers={"Authorization": "Bearer valid"},
+        json={"contractId": contract_id, "activeSessionIds": [session_id]},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "emergencyStopRecordId": "11111111-1111-1111-1111-111111111111",
+        "affectedSessions": [session_id],
+        "confirmedAt": "2026-08-10T01:02:03.456000Z",
+    }
+    validator.validate.assert_awaited_once_with("valid")
+    assert gateway.stop_requests == [
+        {
+            "contract_id": contract_id,
+            "tenant_id": "tenant-a",
+            "stopped_by": "customer-a",
+            "active_session_ids": [session_id],
+        }
+    ]
+
+
+@pytest.mark.parametrize(
+    ("validator", "authorization"),
+    [
+        (None, "Bearer valid"),
+        (FakeEmergencyStopJWTValidator(), None),
+        (FakeEmergencyStopJWTValidator(), "Basic invalid"),
+        (FakeEmergencyStopJWTValidator(valid=False), "Bearer invalid"),
+    ],
+)
+def test_emergency_stop_rest_rejects_missing_or_invalid_auth(
+    validator: FakeEmergencyStopJWTValidator | None,
+    authorization: str | None,
+) -> None:
+    app.state.emergency_stop_jwt_validator = validator
+    headers = {"Authorization": authorization} if authorization is not None else {}
+
+    response = TestClient(app).post(
+        "/api/v1/emergency-stop",
+        headers=headers,
+        json={"contractId": "11111111-1111-1111-1111-111111111111"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_emergency_stop_rest_hides_unauthorized_contract() -> None:
+    app.state.conversation_constitutional_gateway = FakeEmergencyStopGateway()
+
+    response = TestClient(app).post(
+        "/api/v1/emergency-stop",
+        headers={"Authorization": "Bearer valid"},
+        json={"contractId": "11111111-1111-1111-1111-111111111111"},
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize("gateway", [None, FakeEmergencyStopGateway(failure=True)])
+def test_emergency_stop_rest_fails_closed_without_ce_confirmation(
+    gateway: FakeEmergencyStopGateway | None,
+) -> None:
+    contract_id = "11111111-1111-1111-1111-111111111111"
+    app.state.emergency_stop_jwt_validator = MagicMock(
+        validate=AsyncMock(return_value=EmergencyStopAuthority("tenant-a", "customer-a", contract_id))
+    )
+    app.state.conversation_constitutional_gateway = gateway
+
+    response = TestClient(app).post(
+        "/api/v1/emergency-stop",
+        headers={"Authorization": "Bearer valid"},
+        json={"contractId": contract_id},
+    )
+
+    assert response.status_code == 503
 
 
 async def test_keycloak_validator_enforces_rs256_authority_claims() -> None:

@@ -2,6 +2,8 @@
 // constitutional_basis: C-005, C-023, C-049, C-059, C-076
 using System.Net;
 using System.Security.Claims;
+using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -45,33 +47,41 @@ public sealed class InfrastructureWorkflowCoverageTests
     public async Task TenantMiddleware_UnauthenticatedRequest_Returns401()
     {
         var middleware = MiddlewareThatMustNotContinue();
-        var context = Context("/api/v1/providers");
+        var context = MatchedContext("/api/v1/providers");
 
         await middleware.InvokeAsync(context);
 
         Assert.Equal(401, context.Response.StatusCode);
+        Assert.Equal("application/problem+json", context.Response.ContentType);
+        context.Response.Body.Position = 0;
+        using var problem = await JsonDocument.ParseAsync(context.Response.Body);
+        Assert.Equal("IDENTITY_SESSION_REQUIRED", problem.RootElement.GetProperty("code").GetString());
+        Assert.True(Guid.TryParse(problem.RootElement.GetProperty("correlationId").GetString(), out _));
+        Assert.False(problem.RootElement.TryGetProperty("traceId", out _));
     }
 
     [Fact]
     public async Task TenantMiddleware_AuthenticatedWithoutTenant_Returns403()
     {
         var middleware = MiddlewareThatMustNotContinue();
-        var context = Context("/api/v1/providers", new Claim("sub", "customer"));
+        var context = MatchedContext("/api/v1/providers", new Claim("sub", "customer"));
 
         await middleware.InvokeAsync(context);
 
         Assert.Equal(403, context.Response.StatusCode);
+        Assert.Equal("application/problem+json", context.Response.ContentType);
     }
 
     [Fact]
     public async Task TenantMiddleware_InvalidTenant_Returns403()
     {
         var middleware = MiddlewareThatMustNotContinue();
-        var context = Context("/api/v1/providers", new Claim("tenant_id", "not-a-uuid"));
+        var context = MatchedContext("/api/v1/providers", new Claim("tenant_id", "not-a-uuid"));
 
         await middleware.InvokeAsync(context);
 
         Assert.Equal(403, context.Response.StatusCode);
+        Assert.Equal("application/problem+json", context.Response.ContentType);
     }
 
     [Fact]
@@ -86,12 +96,214 @@ public sealed class InfrastructureWorkflowCoverageTests
             },
             NullLogger<TenantIsolationMiddleware>.Instance);
         var tenantId = Guid.NewGuid();
-        var context = Context("/api/v1/providers", new Claim("tenant_id", tenantId.ToString("B")));
+        var context = MatchedContext(
+            "/api/v1/providers",
+            new Claim("tenant_id", tenantId.ToString("B"))
+        );
 
         await middleware.InvokeAsync(context);
 
         Assert.True(called);
         Assert.Equal(tenantId.ToString("D"), context.Items[TenantIsolationMiddleware.TenantIdItemKey]);
+    }
+
+    [Fact]
+    public async Task TenantMiddleware_AnonymousMethodMismatchFailsClosed()
+    {
+        var middleware = MiddlewareThatMustNotContinue();
+        var context = Context("/api/v1/providers");
+        context.SetEndpoint(
+            new Endpoint(
+                _ => Task.CompletedTask,
+                new EndpointMetadataCollection(),
+                "405 HTTP Method Not Supported"
+            )
+        );
+
+        await middleware.InvokeAsync(context);
+
+        Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
+    }
+
+    [Fact]
+    public async Task TenantMiddleware_AuthenticatedMethodMismatchInvokesNext()
+    {
+        var called = false;
+        var middleware = new TenantIsolationMiddleware(
+            _ =>
+            {
+                called = true;
+                return Task.CompletedTask;
+            },
+            NullLogger<TenantIsolationMiddleware>.Instance
+        );
+        var context = Context(
+            "/api/v1/providers",
+            new Claim("tenant_id", Guid.NewGuid().ToString("D"))
+        );
+        context.SetEndpoint(
+            new Endpoint(
+                _ => Task.CompletedTask,
+                new EndpointMetadataCollection(),
+                "405 HTTP Method Not Supported"
+            )
+        );
+
+        await middleware.InvokeAsync(context);
+
+        Assert.True(called);
+    }
+
+    [Fact]
+    public async Task TenantMiddleware_AuthenticatedUnmatchedPath_InvokesNext()
+    {
+        var called = false;
+        var middleware = new TenantIsolationMiddleware(
+            _ =>
+            {
+                called = true;
+                return Task.CompletedTask;
+            },
+            NullLogger<TenantIsolationMiddleware>.Instance
+        );
+        var context = Context(
+            "/api/v1/employment/relationships/not-a-guid",
+            new Claim("tenant_id", Guid.NewGuid().ToString("D"))
+        );
+
+        await middleware.InvokeAsync(context);
+
+        Assert.True(called);
+    }
+
+    [Fact]
+    public async Task CustomerMembershipMiddleware_InternalServiceRoute_BypassesCustomerJourney()
+    {
+        var called = false;
+        var middleware = new CustomerMembershipMiddleware(_ =>
+        {
+            called = true;
+            return Task.CompletedTask;
+        });
+        var context = Context(
+            "/api/v1/employment/relationships/00000000-0000-0000-0000-000000000001/transitions",
+            new Claim("client_type", "service")
+        );
+        context.SetEndpoint(
+            new Endpoint(
+                _ => Task.CompletedTask,
+                new EndpointMetadataCollection(
+                    new CustomerIdentityRouteAttribute(requiresMembership: true),
+                    new AuthorizeAttribute("InternalService")
+                ),
+                "internal relationship transition"
+            )
+        );
+
+        await middleware.InvokeAsync(context);
+
+        Assert.True(called);
+    }
+
+    [Fact]
+    public async Task CustomerMembershipMiddleware_AnonymousEndpointInvokesNext()
+    {
+        var called = false;
+        var middleware = new CustomerMembershipMiddleware(_ =>
+        {
+            called = true;
+            return Task.CompletedTask;
+        });
+        var context = Context("/api/v1/public");
+        context.SetEndpoint(
+            new Endpoint(
+                _ => Task.CompletedTask,
+                new EndpointMetadataCollection(new AllowAnonymousAttribute()),
+                "public endpoint"
+            )
+        );
+
+        await middleware.InvokeAsync(context);
+
+        Assert.True(called);
+    }
+
+    [Fact]
+    public async Task CustomerMembershipMiddleware_UnmatchedCustomerPath_InvokesNext()
+    {
+        var called = false;
+        var middleware = new CustomerMembershipMiddleware(_ =>
+        {
+            called = true;
+            return Task.CompletedTask;
+        });
+        var context = Context(
+            "/api/v1/employment/relationships/not-a-guid",
+            new Claim("azp", "waooaw-web-preview")
+        );
+
+        await middleware.InvokeAsync(context);
+
+        Assert.True(called);
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("client_type", "service")]
+    [InlineData("azp", "waooaw-web")]
+    [InlineData("azp", "waooaw-mobile")]
+    [InlineData("idp", "google")]
+    [InlineData(ClaimTypes.Role, "customer")]
+    [InlineData("realm_access", "{\"roles\":[\"customer\"]}")]
+    [InlineData("realm_access", "not-json")]
+    public async Task CustomerMembershipMiddleware_UnmatchedAuthorityClassificationInvokesNext(
+        string? claimType,
+        string? claimValue
+    )
+    {
+        var called = false;
+        var middleware = new CustomerMembershipMiddleware(_ =>
+        {
+            called = true;
+            return Task.CompletedTask;
+        });
+        var context = claimType is null
+            ? Context("/api/v1/unmatched")
+            : Context("/api/v1/unmatched", new Claim(claimType, claimValue!));
+
+        await middleware.InvokeAsync(context);
+
+        Assert.True(called);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CustomerMembershipMiddleware_ForgedAuthorityOnUnadaptedRouteFailsClosed(
+        bool methodMismatch
+    )
+    {
+        var middleware = new CustomerMembershipMiddleware(_ =>
+            throw new InvalidOperationException("request must not continue")
+        );
+        var context = Context(
+            "/api/v1/unadapted",
+            new Claim("azp", "waooaw-web"),
+            new Claim("tenant_id", Guid.NewGuid().ToString("D")),
+            new Claim("waooaw_roles", "OWNER")
+        );
+        if (methodMismatch)
+            context.SetEndpoint(
+                new Endpoint(
+                    _ => Task.CompletedTask,
+                    new EndpointMetadataCollection(),
+                    "405 HTTP Method Not Supported"
+                )
+            );
+
+        await middleware.InvokeAsync(context);
+
+        Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
     }
 
     [Fact]
@@ -177,6 +389,13 @@ public sealed class InfrastructureWorkflowCoverageTests
             context.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
         }
         context.Response.Body = new MemoryStream();
+        return context;
+    }
+
+    private static DefaultHttpContext MatchedContext(string path, params Claim[] claims)
+    {
+        var context = Context(path, claims);
+        context.SetEndpoint(new Endpoint(_ => Task.CompletedTask, new EndpointMetadataCollection(), path));
         return context;
     }
 
