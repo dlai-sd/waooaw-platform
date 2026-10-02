@@ -75,10 +75,34 @@ docker compose --profile test-python run --rm --pull never \
         fi'
 docker compose --profile test-python run --rm --pull never \
     --volume "$validation_output_directory:/workspace/test-results" test-runner-python \
-    sh -c "cd /tmp && schemathesis --config-file /workspace/validation/schemathesis.toml run /workspace/architecture/reference/api-specs/professional-runtime.openapi.yaml \
+    sh -c 'set -u
+        service_status=0
+        health_status=0
+        rm -f /workspace/test-results/schemathesis-pr.xml
+        cd /tmp && schemathesis --config-file /workspace/validation/schemathesis.toml run /workspace/architecture/reference/api-specs/professional-runtime.openapi.yaml \
         --url http://professional-runtime:5003 \
+        --exclude-path-regex "^/health$" \
         --checks all \
         --max-examples 100 \
         --suppress-health-check=filter_too_much \
         --report junit \
-        --report-junit-path /workspace/test-results/schemathesis-pr.xml"
+        --report-junit-path /workspace/test-results/schemathesis-pr-service.xml || service_status=$?
+        cd /tmp && schemathesis --config-file /workspace/validation/schemathesis.toml run /workspace/architecture/reference/api-specs/professional-runtime.openapi.yaml \
+        --url http://professional-runtime:5003 \
+        --include-path-regex "^/health$" \
+        --checks all \
+        --exclude-checks not_a_server_error \
+        --max-examples 100 \
+        --suppress-health-check=filter_too_much \
+        --report junit \
+        --report-junit-path /workspace/test-results/schemathesis-pr-health.xml || health_status=$?
+        if test "$service_status" -eq 0 && test "$health_status" -eq 0; then
+            python /workspace/scripts/validation_control/merge_junit_reports.py \
+                --output /workspace/test-results/schemathesis-pr.xml \
+                /workspace/test-results/schemathesis-pr-service.xml \
+                /workspace/test-results/schemathesis-pr-health.xml
+        else
+            printf "Professional Runtime contract lanes failed: service=%s health=%s\n" \
+                "$service_status" "$health_status" >&2
+            false
+        fi'
