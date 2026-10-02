@@ -429,6 +429,7 @@ quality conditions blocks completion.
 | WC109-R046 | Qualification cannot start until executable negative fixtures prove planning, phase, failure, recovery, resource and stitching controls fail closed. |
 | WC109-R047 | PR #481 publishes a before-and-after value record for feedback time, avoided compute, builds, repair loops, replay, selection accuracy and preserved quality. |
 | WC109-R048 | WC-110 product work is preserved under separate authority and enters the WC-109 candidate only through an explicit merged-base or stacked-consumer dependency. |
+| WC109-R049 | Pre-PR control executes volatile dependency advisories fresh and affected deterministic gates through supplied runners before PR evidence preparation. |
 
 ## 10. Definition Of Done
 

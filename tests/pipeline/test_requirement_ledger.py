@@ -14,6 +14,8 @@ from validate_requirement_ledger import (
 ROOT = Path(__file__).resolve().parents[2]
 CONTRACT = ROOT / "work-contracts/WC-100-engineering-validation-efficiency.md"
 LEDGER = ROOT / "work-contracts/WC-100-requirements.yaml"
+WC109_CONTRACT = ROOT / "work-contracts/WC-109-agentic-validation-implementation.md"
+WC109_LEDGER = ROOT / "work-contracts/WC-109-requirements.yaml"
 
 
 def load_ledger() -> dict[str, object]:
@@ -25,6 +27,13 @@ def test_wc100_ledger_is_complete() -> None:
 
     assert requirement_ids == [f"WC100-R{number:03d}" for number in range(1, 34)]
     assert validate_ledger(load_ledger(), requirement_ids) == []
+
+
+def test_wc109_ledger_is_bound_to_current_contract() -> None:
+    contract = WC109_CONTRACT.read_text(encoding="utf-8")
+    ledger = yaml.safe_load(WC109_LEDGER.read_text(encoding="utf-8"))
+
+    assert validate_ledger(ledger, contract_requirement_ids(contract), file_digest(contract)) == []
 
 
 def test_preimplementation_gate_rejects_incomplete_ledger() -> None:
