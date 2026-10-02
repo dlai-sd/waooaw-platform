@@ -170,6 +170,8 @@ def test_platform_it_policy_requires_static_first_focused_validation() -> None:
         "catalog changed-path selection and focused component gates only",
         "Reuse exact or verified carry-forward evidence when valid",
         "Do not run full Docker qualification",
+        "run_wc104_qualification.sh",
+        "Never use `run_wc104_rollback.sh` as routine qualification",
         "Run full hosted qualification once on the final pushed head",
     ):
         assert requirement in normalized
