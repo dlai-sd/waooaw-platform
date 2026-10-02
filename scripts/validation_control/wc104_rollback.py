@@ -39,6 +39,7 @@ from validation_control.orchestrator import (
     prerequisite_evidence_blockers,
     qualification_handoff_outcome,
 )
+from validate_author_review import validate_author_review
 from validate_requirement_ledger import validate_changed_ledgers
 
 
@@ -374,6 +375,14 @@ def execute_rollback(
             qualification_context = context_resolver(repository, base_sha, candidate_sha)
         except Exception as exception:
             return block_preflight("preflight:qualification-context", str(manifest["required_gates"][0]), exception)
+    if execution_profile == "qualification":
+        author_review_violations = validate_author_review(qualification_context.pr_body, candidate_sha)
+        if author_review_violations:
+            return block_preflight(
+                "preflight:author-review",
+                "author-review-gate",
+                ValueError("; ".join(author_review_violations)),
+            )
 
     try:
         plan = build_execution_plan(

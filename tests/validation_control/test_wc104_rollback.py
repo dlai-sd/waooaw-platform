@@ -35,11 +35,49 @@ BASE_SHA = "b" * 40
 def qualification_context() -> QualificationContext:
     return QualificationContext(
         changed_files=("scripts/example.py",),
-        pr_body="## Required Traceability\n",
+        pr_body=f"""## Author Review
+- [x] Reviewed the complete diff against the authorized scope
+- [x] Reviewed test and quality-gate results
+- [x] Reviewed security, constitutional, and rollback impact
+- [x] Resolved every finding or recorded no findings
+
+Reviewed Commit: {HEAD_SHA}
+Author Review Result: PASS
+""",
         base_branch="main",
         pr_number="481",
         repository_name="dlai-sd/waooaw-platform",
     )
+
+
+def test_qualification_stale_author_review_blocks_before_execution(tmp_path: Path) -> None:
+    stale_context = qualification_context()
+    stale_context = QualificationContext(
+        changed_files=stale_context.changed_files,
+        pr_body=stale_context.pr_body.replace(HEAD_SHA, "d" * 40),
+        base_branch=stale_context.base_branch,
+        pr_number=stale_context.pr_number,
+        repository_name=stale_context.repository_name,
+    )
+
+    result = execute_rollback(
+        tmp_path,
+        load_catalog(),
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=stale_context,
+        execution_profile="qualification",
+        execution_preflight=lambda repository: pytest.fail("execution preflight must not run"),
+        resource_preflight=lambda repository, nodes, namespace: pytest.fail("resource preflight must not run"),
+        runner_resolver=lambda repository, runner: pytest.fail("runner must not resolve"),
+        service_resolver=lambda repository, node: pytest.fail("service must not resolve"),
+        gate_executor=lambda repository, gate, head, base, common, **context: pytest.fail("gate must not execute"),
+    )
+
+    assert result["run_state"] == "BLOCKED"
+    assert result["first_cause_gate"] == "preflight:author-review"
+    assert result["execution_summary"]["executed_gate_count"] == 0
 
 
 def load_catalog() -> dict[str, object]:
