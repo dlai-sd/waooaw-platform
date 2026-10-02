@@ -337,6 +337,8 @@ def test_rollback_launcher_preserves_docker_authority_and_identity_boundaries() 
     assert "GITHUB_TOKEN is required" in launcher
     assert 'export PYTHONPATH="$PWD/scripts"' in launcher
     assert "--output must be repository-relative below test-results" in launcher
+    assert launcher.count('--handoff-evidence "$5"') == 2
+    assert "--handoff-evidence requires a path" in launcher
 
 
 def test_resource_capacity_preflight_passes_without_cleanup_when_capacity_is_safe(tmp_path: Path) -> None:

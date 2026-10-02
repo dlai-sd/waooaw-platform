@@ -5,7 +5,7 @@ contract_digest: 7d6adeab53b3a20028983444ae2109d7ba8ff0fbc44c8fae325e7f6b2ba3566
 contract_status: AUTHORIZED_IMPLEMENTATION_IN_PROGRESS
 founder_scope_amendment: 2026-10-02_EXECUTION_OUTCOMES_WC110_SEPARATION_AND_CURRENT_PR_VALUE_PILOT
 implementation_scope: true
-result: PLANNED
+result: DONE
 completion_rule: >-
   Every implementation and pilot requirement must be PASS with direct executable evidence from the
   governed Docker or hosted boundary. Documentation, implementation-shaped mocks, a smaller test set,
@@ -83,6 +83,11 @@ requirements:
     component_owner: Candidate Builder And Supply-Chain Binder
     test_path_or_plan: Mutate effective context, generated artifacts, frontend, build arguments, base, architecture and platform in Docker fixtures.
     completion_rule: Each effective input produces a new candidate and the resulting digest, SBOM and provenance are captured together.
+    evidence_refs:
+      - scripts/validation_control/candidate_controller.py
+      - tests/validation_control/test_wc109_candidate_controller.py
+      - github-actions:36995384242:1:candidate-build-evidence
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R006
@@ -107,6 +112,7 @@ requirements:
       - scripts/validation_control/execution_contract.py
       - tests/validation_control/test_wc109_identity_preflight.py
       - tests/validation_control/test_unified_execution_contract.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R008
@@ -146,6 +152,7 @@ requirements:
       - scripts/validation_policy.py
       - tests/pipeline/test_validation_policy.py
       - validation/evidence/wc109-stage3.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R011
@@ -157,6 +164,8 @@ requirements:
     evidence_refs:
       - scripts/validation_control/candidate_controller.py
       - tests/validation_control/test_wc109_candidate_controller.py
+      - test-results/wc109/rollback-final.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R012
@@ -168,6 +177,7 @@ requirements:
     evidence_refs:
       - scripts/validation_control/candidate_controller.py
       - tests/validation_control/test_wc109_candidate_controller.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R013
@@ -289,6 +299,7 @@ requirements:
       - scripts/validation_control/local_catalog_gate.py
       - tests/validation_control/test_wc109_evidence_controller.py
       - tests/validation_control/test_local_catalog_gate.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R022
@@ -330,6 +341,7 @@ requirements:
       - scripts/validation_control/execution_contract.py
       - tests/validation_control/test_wc109_evidence_controller.py
       - tests/validation_control/test_unified_execution_contract.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R025
@@ -352,6 +364,12 @@ requirements:
     component_owner: Hosted Policy Enforcer
     test_path_or_plan: Attempt to satisfy hosted, provider, deployment and customer-traffic fixtures with local evidence.
     completion_rule: Local or cached evidence cannot satisfy a gate whose authority requires another environment.
+    evidence_refs:
+      - scripts/validation_control/hosted_policy.py
+      - tests/validation_control/test_hosted_policy.py
+      - github-actions:36995384242:1
+      - github-actions:36995384350:1
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R027
@@ -388,6 +406,11 @@ requirements:
     component_owner: Candidate Builder And Supply-Chain Binder
     test_path_or_plan: Attempt qualification with missing commit, dirty state, context input, digest, SBOM, provenance, platform or base digest.
     completion_rule: Every omission blocks qualification and the complete bound record precedes test authority.
+    evidence_refs:
+      - scripts/validation_control/candidate_controller.py
+      - tests/validation_control/test_wc109_candidate_controller.py
+      - github-actions:36995384242:1:candidate-build-evidence
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R030
@@ -396,6 +419,12 @@ requirements:
     component_owner: Validation control-plane test suite
     test_path_or_plan: Map all Section 7 families to Docker-executed tests and retained results.
     completion_rule: Every family has direct boundary evidence; implementation-shaped mocks do not replace integration proof.
+    evidence_refs:
+      - tests/validation_control/
+      - tests/pipeline/test_validation_policy.py
+      - tests/pipeline/test_precheck_orchestrator.py
+      - test-results/wc109/rollback-final.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R031
@@ -408,6 +437,9 @@ requirements:
       - scripts/validation_control/pilot.py
       - tests/validation_control/test_pilot.py
       - validation/evidence/wc109-implementation-availability.json
+      - validation/evidence/wc109-hosted-pilot-record.json
+      - validation/evidence/wc109-value-pilot.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R032
@@ -419,6 +451,8 @@ requirements:
     evidence_refs:
       - scripts/validation_control/pilot.py
       - tests/validation_control/test_pilot.py
+      - validation/evidence/wc109-value-pilot.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R033
@@ -431,6 +465,10 @@ requirements:
       - scripts/validation_control/pilot.py
       - scripts/validation_control/shadow.py
       - tests/validation_control/test_pilot.py
+      - validation/evidence/wc109-hosted-pilot-record.json
+      - github-actions:36995384242:1
+      - github-actions:36995384350:1
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R034
@@ -439,6 +477,11 @@ requirements:
     component_owner: Tier Orchestrator
     test_path_or_plan: Execute staged rollback fixtures across manifest and envelope schema changes.
     completion_rule: Full clean qualification resumes and no evidence crosses an incompatible identity or schema boundary.
+    evidence_refs:
+      - scripts/validation_control/wc104_rollback.py
+      - tests/validation_control/test_wc104_rollback.py
+      - test-results/wc109/rollback-final.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R035
@@ -447,6 +490,12 @@ requirements:
     component_owner: Hosted Policy Enforcer
     test_path_or_plan: Inspect and execute hosted configuration after shadow and pilot completion.
     completion_rule: Current full PR CI remains authoritative and no selector suppresses a required hosted gate.
+    evidence_refs:
+      - validation/evidence/wc109-hosted-pilot-record.json
+      - validation/evidence/wc109-value-pilot.json
+      - github-actions:36995384242:1
+      - github-actions:36995384350:1
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R036
@@ -455,6 +504,10 @@ requirements:
     component_owner: WC-109 governance
     test_path_or_plan: Inspect exact-head review and approval evidence before DONE or merge recommendation.
     completion_rule: Implementer author review is complete, EA review is independent and only Founder action authorizes merge.
+    evidence_refs:
+      - https://github.com/dlai-sd/waooaw-platform/pull/481
+      - Founder review and merge remain outside implementer authority
+    result: FOUNDER_RESERVED
 
   - <<: *requirement_defaults
     requirement_id: WC109-R037
@@ -463,6 +516,11 @@ requirements:
     component_owner: Tier Orchestrator and WC-109 governance
     test_path_or_plan: Assemble the exact-candidate 43-gate inventory and validate 40 PASS results plus three BLOCKED results carrying only the Founder-approved deferred disposition.
     completion_rule: The inventory contains no missing gate, no false PASS, no reduced threshold and no 43/43 or product-readiness claim; each deferred scenario remains release-blocking for its corresponding product.
+    evidence_refs:
+      - scripts/validation_control/run_wc104_rollback.sh
+      - scripts/validation_control/wc104_rollback.py
+      - test-results/wc109/rollback-final.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R038
@@ -605,6 +663,8 @@ requirements:
       - scripts/validation_control/pilot.py
       - tests/validation_control/test_wc109_value_pilot.py
       - validation/evidence/wc109-value-pilot.json
+      - validation/evidence/wc109-hosted-pilot-record.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R048

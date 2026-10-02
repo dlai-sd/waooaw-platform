@@ -1,0 +1,100 @@
+{
+  "schema": "waooaw.wc109-pilot-record/v2",
+  "pull_request": {
+    "number": 481,
+    "repository": "dlai-sd/waooaw-platform",
+    "url": "https://github.com/dlai-sd/waooaw-platform/pull/481",
+    "base_sha": "b55e1323ea1a83997ad13e604a77999536bebb43",
+    "head_sha": "81a45a3934a1b00893690ed442558fdd79385241",
+    "created_at": "2026-10-01T08:50:51Z"
+  },
+  "implementation_available_at": "2026-10-01T08:06:47Z",
+  "eligibility": {
+    "implementation_pr": true,
+    "founder_approved_single_pilot": true,
+    "began_after_implementation": true,
+    "already_advanced": false
+  },
+  "applicable_stacks": ["python", "dotnet", "typescript", "full"],
+  "change_class": "validation-control-plane-and-hosted-dependency-security",
+  "cache_runs": [
+    {"state":"cold","cache_identity":"sha256:fe52a02a4569c0cd19310157eb51667751fbd6013c7131ec75589b1b3194c356","runner_build_count":3,"candidate_build_count":7,"source_ref":"github-actions:36995384242:1"},
+    {"state":"warm","cache_identity":"sha256:fe52a02a4569c0cd19310157eb51667751fbd6013c7131ec75589b1b3194c356","runner_build_count":0,"candidate_build_count":0,"source_ref":"github-actions:36995384350:1"}
+  ],
+  "tier_elapsed_seconds": {
+    "tier1": [79.303],
+    "tier2": [260.377],
+    "tier3": [255.423],
+    "tier4": [202.780]
+  },
+  "builds": [
+    {"kind": "runner", "identity": "sha256:e94da25328358df61bdac7cfdfdc1e932811f0d7b67ffeb413453b81c6a4d487", "count": 1, "cache_outcome": "built-then-candidate-identity-hit", "source_ref": "github-actions:36995384242:1:dotnet"},
+    {"kind": "runner", "identity": "sha256:fe52a02a4569c0cd19310157eb51667751fbd6013c7131ec75589b1b3194c356", "count": 1, "cache_outcome": "built-then-candidate-identity-hit", "source_ref": "github-actions:36995384242:1:full"},
+    {"kind": "runner", "identity": "sha256:b8a7b0d0e04522a79cdce69e6299888ce69ad3941d29b715bf0251c9fe80aa8e", "count": 0, "cache_outcome": "trusted-identity-hit", "source_ref": "github-actions:36995384242:1:python"},
+    {"kind": "runner", "identity": "sha256:7cc041ac633e1829115ff7bfd9a28b355413658ef455cbe3f85b9d8ac573699d", "count": 1, "cache_outcome": "built-then-candidate-identity-hit", "source_ref": "github-actions:36995384242:1:typescript"},
+    {"kind": "candidate", "identity": "sha256:d1e545372ed6495972c2474669667f580ecc5d0d0b7ca92bf530b3a5d930c93d", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:36995384242:1:agent-runtime-adapter-digital-marketing"},
+    {"kind": "candidate", "identity": "sha256:d87c212919f82aac6cedb739c948b2cf903fd9eca9dd15d0dda2c40333a65ed0", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:36995384242:1:ai-runtime"},
+    {"kind": "candidate", "identity": "sha256:e8848204a507b2b3d7da812e7cbbeb24bde70ca5d2329a8e11288cfb1b0ebc0a", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:36995384242:1:billing-engine"},
+    {"kind": "candidate", "identity": "sha256:782a0e85bedf492210ca5ba7162cc3ed6d555c05643f2a9e2fdd8941fb31d252", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:36995384242:1:business-platform"},
+    {"kind": "candidate", "identity": "sha256:87648352447881761f21d5c5283b7661906f69d552515b622a0c176ea35657fd", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:36995384242:1:constitutional-engine"},
+    {"kind": "candidate", "identity": "sha256:101b80d53d9e324a284e2d1b2a8873f8b6bb7e244813009300ecbd81eb120db4", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:36995384242:1:professional-runtime"},
+    {"kind": "candidate", "identity": "sha256:142ba6596a945a5824c69e90af26ff78ddc5ee641f78115a2b6a878b6d9a78d5", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:36995384242:1:web"}
+  ],
+  "precheck": {
+    "first_cause_time_seconds": 2644,
+    "completed_at": "2026-10-02T10:40:00Z",
+    "first_pass": "FAIL",
+    "final_result": "PASS",
+    "modeled_defect_recurrence": []
+  },
+  "repair_loops": {
+    "count": 10,
+    "first_causes": [
+      {"classification":"hosted-import-boundary","deterministic_control_plane_defect":true,"regression_fixture":"tests/pipeline/test_wc109_shadow_policy.py"},
+      {"classification":"isolated-artifact-preservation","deterministic_control_plane_defect":true,"regression_fixture":"tests/pipeline/test_workflow_execution.py"},
+      {"classification":"generated-contract-and-host-isolation","deterministic_control_plane_defect":true,"regression_fixture":"tests/business-platform/test_customer_journey_fuzz.py"},
+      {"classification":"post-failure-cascade-suppression","deterministic_control_plane_defect":true,"regression_fixture":"tests/pipeline/test_precheck_orchestrator.py"},
+      {"classification":"durable-baseline-provenance","deterministic_control_plane_defect":true,"regression_fixture":"tests/validation_control/test_wc109_value_pilot.py"},
+      {"classification":"symbolic-base-canonicalization","deterministic_control_plane_defect":true,"regression_fixture":"tests/pipeline/test_prepare_pr_body.py"},
+      {"classification":"post-push-exact-head-ordering","deterministic_control_plane_defect":true,"regression_fixture":"tests/pipeline/test_prepare_pr_body.py"},
+      {"classification":"hosted-sandbox-baseline-access","deterministic_control_plane_defect":true,"regression_fixture":"tests/validation_control/test_wc109_value_pilot.py"},
+      {"classification":"volatile-dependency-advisory","deterministic_control_plane_defect":true,"regression_fixture":"tests/pipeline/test_precheck_orchestrator.py"},
+      {"classification":"contract-ledger-cheap-binding","deterministic_control_plane_defect":true,"regression_fixture":"tests/pipeline/test_requirement_ledger.py"}
+    ]
+  },
+  "gate_inventories": {
+    "selected": ["author-review-gate", "authorization-tier-check", "constitutional-commit-gate", "dep-scan:dotnet", "dep-scan:python", "dep-scan:typescript", "license-check", "quality:commitlint", "quality:constitutional-naming", "quality:dotnet:business-platform", "quality:dotnet:constitutional-engine", "quality:observability", "quality:proto", "quality:python:ai-runtime", "quality:python:professional-runtime", "quality:scripts", "quality:sql", "quality:traceability", "quality:typescript", "release-qualification", "spec-lint", "test-dotnet:business-platform", "test-dotnet:constitutional-engine", "test-python:ai-runtime", "test-python:professional-runtime", "test-web"],
+    "complete_applicable": ["author-review-gate", "authorization-tier-check", "constitutional-commit-gate", "dep-scan:dotnet", "dep-scan:python", "dep-scan:typescript", "license-check", "quality:commitlint", "quality:constitutional-naming", "quality:dotnet:business-platform", "quality:dotnet:constitutional-engine", "quality:observability", "quality:proto", "quality:python:ai-runtime", "quality:python:professional-runtime", "quality:scripts", "quality:sql", "quality:traceability", "quality:typescript", "release-qualification", "spec-lint", "test-dotnet:business-platform", "test-dotnet:constitutional-engine", "test-python:ai-runtime", "test-python:professional-runtime", "test-web"],
+    "full_ci_outcomes": {"author-review-gate":"PASS","authorization-tier-check":"PASS","constitutional-commit-gate":"PASS","dep-scan:dotnet":"PASS","dep-scan:python":"PASS","dep-scan:typescript":"PASS","license-check":"PASS","quality:commitlint":"PASS","quality:constitutional-naming":"PASS","quality:dotnet:business-platform":"PASS","quality:dotnet:constitutional-engine":"PASS","quality:observability":"PASS","quality:proto":"PASS","quality:python:ai-runtime":"PASS","quality:python:professional-runtime":"PASS","quality:scripts":"PASS","quality:sql":"PASS","quality:traceability":"PASS","quality:typescript":"PASS","release-qualification":"PASS","spec-lint":"PASS","test-dotnet:business-platform":"PASS","test-dotnet:constitutional-engine":"PASS","test-python:ai-runtime":"PASS","test-python:professional-runtime":"PASS","test-web":"PASS"}
+  },
+  "shadow_comparison": {
+    "exact_head": "81a45a3934a1b00893690ed442558fdd79385241",
+    "false_negatives": [],
+    "missing_gate_results": [],
+    "workflow_run_id": 36995384242,
+    "artifact_name": "wc109-shadow-comparison",
+    "full_ci_authoritative": true,
+    "selective_enforcement_enabled": false
+  },
+  "threshold_outcomes": {"quality":"PRESERVED","coverage":"PRESERVED","security":"PRESERVED","cct":"PRESERVED"},
+  "retrospective_fixes": [
+    {"first_cause":"Direct-file Shadow policy import failed.","fix_commit":"93e0d4a87e3ada22602bb4d872ca21a5c8c4343c","regression_fixture":"tests/pipeline/test_wc109_shadow_policy.py"},
+    {"first_cause":"Isolated metadata and coverage were not durable.","fix_commit":"eecf9bed32d2b00a26a93641eedc2a6f840a3f71","regression_fixture":"tests/pipeline/test_workflow_execution.py"},
+    {"first_cause":"Fuzz REST contract and nested host evidence drifted.","fix_commit":"e207531ba4fb193d7aa50fd961a87151cf32c605","regression_fixture":"tests/business-platform/test_customer_journey_fuzz.py"},
+    {"first_cause":"Post-failure higher-cost work was not suppressed.","fix_commit":"3e6104160a3eed0c96659ff89c29ae05e8c3f97d","regression_fixture":"tests/pipeline/test_precheck_orchestrator.py"},
+    {"first_cause":"Value baseline provenance was transient.","fix_commit":"141dd04f5715d5433507a05475c2e02711f3cebc","regression_fixture":"tests/validation_control/test_wc109_value_pilot.py"},
+    {"first_cause":"Symbolic and resolved base identities diverged.","fix_commit":"b786e7dbb981b12cfc6f09d4a15c78bb3f74b7db","regression_fixture":"tests/pipeline/test_prepare_pr_body.py"},
+    {"first_cause":"Post-push evidence could become stale.","fix_commit":"b786e7dbb981b12cfc6f09d4a15c78bb3f74b7db","regression_fixture":"tests/pipeline/test_prepare_pr_body.py"},
+    {"first_cause":"Hosted sandbox lacked Git and hid generated baseline source.","fix_commit":"3d5d3d12124deeba49e9a1b73508274deef5d8a1","regression_fixture":"tests/validation_control/test_wc109_value_pilot.py"},
+    {"first_cause":"High-severity TypeScript advisories were present and advisory PASS was reusable.","fix_commit":"af608849c15641482449b8bb1e7cafabd2de3b02","regression_fixture":"tests/pipeline/test_precheck_orchestrator.py"},
+    {"first_cause":"WC-109 contract binding was not tested in the cheap ledger suite.","fix_commit":"d1451891a367b117dc532d45e83bfc20045e4602","regression_fixture":"tests/pipeline/test_requirement_ledger.py"}
+  ],
+  "unresolved_pilot_defects": [],
+  "limitations": [
+    "One pull request is not a performance trend.",
+    "Summed gate-seconds are not workflow wall-clock time because hosted jobs overlap.",
+    "Engineering validation efficiency is not direct customer value.",
+    "Neutral or skipped workflow jobs are not PASS outcomes.",
+    "Selective hosted enforcement remains disabled; full CI is authoritative."
+  ]
+}

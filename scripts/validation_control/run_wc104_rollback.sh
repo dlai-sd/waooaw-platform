@@ -3,6 +3,7 @@ set -eu
 
 base_sha=""
 output=""
+handoff_evidence=""
 resume=0
 
 while [ "$#" -gt 0 ]; do
@@ -13,6 +14,10 @@ while [ "$#" -gt 0 ]; do
             ;;
         --output)
             output=${2:?--output requires a path}
+            shift 2
+            ;;
+        --handoff-evidence)
+            handoff_evidence=${2:?--handoff-evidence requires a path}
             shift 2
             ;;
         --resume)
@@ -26,8 +31,8 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 
-if [ -z "$base_sha" ] || [ -z "$output" ]; then
-    printf 'usage: %s --base COMMIT --output test-results/PATH [--resume]\n' "$0" >&2
+if [ -z "$base_sha" ] || [ -z "$output" ] || [ -z "$handoff_evidence" ]; then
+    printf 'usage: %s --base COMMIT --output test-results/PATH --handoff-evidence PATH [--resume]\n' "$0" >&2
     exit 2
 fi
 case "/$output/" in
@@ -71,8 +76,10 @@ DOCKER_GID=$docker_gid docker compose --project-directory "$repository" --profil
         export PYTHONPATH="$PWD/scripts"
         if [ "$4" = 1 ]; then
             exec python scripts/validation_control/wc104_rollback.py \
-                --repository "$PWD" --base "$1" --git-common-dir "$2" --output "$3" --resume
+                --repository "$PWD" --base "$1" --git-common-dir "$2" --output "$3" \
+                --handoff-evidence "$5" --resume
         fi
         exec python scripts/validation_control/wc104_rollback.py \
-            --repository "$PWD" --base "$1" --git-common-dir "$2" --output "$3"
-    ' rollback "$base_sha" "$git_common_dir" "$output" "$resume"
+            --repository "$PWD" --base "$1" --git-common-dir "$2" --output "$3" \
+            --handoff-evidence "$5"
+    ' rollback "$base_sha" "$git_common_dir" "$output" "$resume" "$handoff_evidence"
