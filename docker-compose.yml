@@ -151,6 +151,7 @@ services:
       PYTHONPATH: /workspace
       PYTEST_ADDOPTS: -o cache_dir=/tmp/pytest_cache
       HYPOTHESIS_STORAGE_DIRECTORY: /tmp/hypothesis
+      RUFF_CACHE_DIR: /tmp/ruff_cache
     profiles:
       - test                            # only starts when --profile test is specified
 

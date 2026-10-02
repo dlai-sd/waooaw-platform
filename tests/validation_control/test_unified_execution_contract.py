@@ -234,9 +234,11 @@ def test_hosted_action_projects_declared_inputs_into_isolated_gate_root() -> Non
 def test_scripts_quality_gate_enforces_execution_contract_self_test() -> None:
     root = Path(__file__).resolve().parents[2]
     catalog = yaml.safe_load((root / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
+    command_segments = [segment.strip() for segment in catalog["commands"]["quality-scripts"]["shell"].split("&&")]
 
-    assert (
-        "pytest tests/validation_control/test_unified_execution_contract.py -q" in catalog["commands"]["quality-scripts"]["shell"]
+    assert any(
+        segment.startswith("pytest ") and "tests/validation_control/test_unified_execution_contract.py" in segment
+        for segment in command_segments
     )
 
 
@@ -305,3 +307,13 @@ def test_all_catalog_runners_use_writable_tmpfs_home() -> None:
 
     for service in ("test-runner-python", "test-runner-dotnet", "test-runner-ts", "test-runner"):
         assert compose["services"][service]["environment"]["HOME"] == "/tmp/wc106-home"
+
+
+def test_python_capable_runners_use_bounded_writable_tool_caches() -> None:
+    root = Path(__file__).resolve().parents[2]
+    compose = yaml.safe_load((root / "docker-compose.yml").read_text(encoding="utf-8"))
+
+    for service in ("test-runner-python", "test-runner"):
+        runner = compose["services"][service]
+        assert runner["environment"]["RUFF_CACHE_DIR"] == "/tmp/ruff_cache"
+        assert any(mount.startswith("/tmp:") for mount in runner["tmpfs"])
