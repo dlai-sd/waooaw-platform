@@ -7,7 +7,7 @@
 | Authoring office | Solution Architect (INST-005) |
 | Assigned by | Founder instruction in the 2026-09-29 continuous working session |
 | Implementation authorization | Explicit Founder confirmation in the 2026-09-29 continuous working session |
-| Scope amendments | Founder-approved 2026-10-01 dispositions for AS-001/AS-003/AS-005 and the single implementation-PR hosted pilot |
+| Scope amendments | Founder-approved 2026-10-01 dispositions for AS-001/AS-003/AS-005 and the single implementation-PR hosted pilot; Founder-approved 2026-10-02 execution-outcome remediation, WC-110 separation and current-session implementation |
 | Status | AUTHORIZED - IMPLEMENTATION IN PROGRESS - HOSTED SELF-PILOT PENDING |
 | Required predecessor | WC-108 merged with ADR-050 and Docker validation strategy amendments intact |
 | Governing decision | ADR-050 as amended by WC-108 |
@@ -26,6 +26,12 @@ complete applicable qualification inventory.
 
 The delivery must operationalize four independent identities and four ordered tiers without changing
 ADR-050, weakening a gate, moving test execution onto a host, or enabling selective hosted validation.
+
+The implementation PR must also demonstrate institutional business value during its own execution:
+earlier first-cause discovery, avoided invalid compute, zero ordinary-story image builds, fewer replayed
+lanes, bounded repair loops and unchanged final quality authority. These are delivery outcomes that reduce
+the time and cost of producing customer value; they are not a claim that WC-109 itself adds a customer
+feature or proves product readiness.
 
 ## 2. Authority And Preconditions
 
@@ -407,12 +413,23 @@ quality conditions blocks completion.
 | WC109-R035 | Selective hosted validation remains disabled pending separate Founder approval. |
 | WC109-R036 | Author review, independent Enterprise Architecture review and Founder merge authority remain separate. |
 | WC109-R037 | WC-109 qualification records 40/40 executable gates as PASS and AS-001, AS-003 and AS-005 as exact BLOCKED-DEFERRED evidence without a 43/43 or product-readiness claim. |
+| WC109-R038 | The retained failed WC-109 run establishes a bounded before-improvement value baseline and current work is preserved before scope separation. |
+| WC109-R039 | Every selected obligation has a machine-checkable owner, dependency graph, cost class, acceptance check, evidence destination and invalidation rule before compute. |
+| WC109-R040 | Phases A through E advance only on current compatible evidence and cannot be bypassed by a broader or later run. |
+| WC109-R041 | Readiness preflight validates authority, supply, execution, resource and evidence prerequisites before any affected costly lane starts. |
+| WC109-R042 | The first failed or blocked prerequisite suppresses dependent and higher-cost work while retaining independently reusable results. |
+| WC109-R043 | An unchanged deterministic failure cannot rerun; repair requires a changed governing input and focused evidence before restitching. |
+| WC109-R044 | Every chunk publishes terminal evidence and an atomic run-index checkpoint that supports identity-verified resume without replaying unaffected work. |
+| WC109-R045 | Costly execution declares resource bounds and performs bounded evidence-preserving disk recovery before starting or remains BLOCKED. |
+| WC109-R046 | Qualification cannot start until executable negative fixtures prove planning, phase, failure, recovery, resource and stitching controls fail closed. |
+| WC109-R047 | PR #481 publishes a before-and-after value record for feedback time, avoided compute, builds, repair loops, replay, selection accuracy and preserved quality. |
+| WC109-R048 | WC-110 product work is preserved under separate authority and enters the WC-109 candidate only through an explicit merged-base or stacked-consumer dependency. |
 
 ## 10. Definition Of Done
 
 WC-109 is DONE only when:
 
-- all 37 ledger requirements are PASS with direct source and executable evidence;
+- all ledger requirements are PASS with direct source and executable evidence;
 - all four identities and tiers operate through the catalog-controlled route;
 - the complete Docker validation suite and current full qualification satisfy the Section 2.1 disposition
   against the frozen candidate;
@@ -461,3 +478,162 @@ state until the corresponding executable evidence exists.
 
 Solution Architecture author review confirms decomposition only. It is not implementation evidence,
 independent architectural approval, Founder approval of the resulting code or merge authority.
+
+## 14. Agent Execution Engineering Practice
+
+This section governs **agent execution** as an engineering control, not as conversational guidance. Its
+purpose is a world-class first-attempt outcome: every defect that is knowable from repository contracts,
+schemas, dependency declarations, prior deterministic failures and available local evidence is prevented
+before costly execution begins. It does not redefine an unknown external failure as preventable or
+guarantee that an unavailable dependency will succeed. Unknowns must fail closed, retain evidence and
+become a modeled precondition before the next attempt.
+
+### 14.1 Plan Before Compute
+
+Before running a build or test, the agent must produce a machine-checkable execution plan for the
+selected requirements. Every obligation maps to:
+
+- one smallest independently testable chunk with an owning component;
+- its exact inputs, direct prerequisites and downstream dependents;
+- a cost class of `STATIC`, `FOCUSED`, `INTEGRATION`, `MUTATION`, `BROWSER`, `FUZZ`, `HOSTED` or
+  `QUALIFICATION`;
+- one executable acceptance check and expected evidence location; and
+- an invalidation rule stating which changed inputs require that chunk to run again.
+
+An obligation that lacks an owner, check, dependency or evidence contract is `BLOCKED`. The agent may
+not discover those missing controls by launching a broader or more expensive chain.
+
+The implementation lifecycle has five phases and may advance only in order:
+
+| Phase | Required outcome before advancing |
+|---|---|
+| A - Design | Owning code path, contract, dependency graph, failure modes and acceptance check are explicit. |
+| B - Component implementation | The smallest production change and its focused tests pass independently. |
+| C - Dependency integration | Direct consumers and reverse dependencies pass without broad qualification. |
+| D - System stitching | All compatible component chunks are assembled and cross-component behavior passes. |
+| E - Qualification handoff | One clean stitched run confirms the already-qualified system and publishes complete evidence. |
+
+PR preparation is downstream administrative handoff. It is not an implementation phase and must never
+be used to discover, repair or compensate for an incomplete phase A through E.
+
+### 14.2 Readiness Funnel
+
+Execution proceeds through a mandatory cheapest-first funnel:
+
+1. validate contract and ledger digests, exact base/head, clean-state policy, catalog schema, requirement
+   selection, commit trace, command availability, immutable runner and service supply, mounts, output
+   permissions, resource budgets, disk capacity and evidence destinations;
+2. execute static and focused checks for each independent chunk;
+3. execute only the integration checks whose prerequisites and constituent chunks PASS;
+4. freeze compatible exact inputs and prove that every required chunk has current independent evidence;
+5. stitch the independently passing components and validate cross-component behavior; and
+6. execute one qualification run as confirmation of the completed implementation, not as defect discovery.
+
+No later step may compensate for an earlier failed or missing result. A broader run cannot manufacture
+authority for a prerequisite that did not pass.
+
+### 14.3 Fail Fast And Repair Locally
+
+The first `FAIL` or `BLOCKED` result stops every not-yet-started dependent lane and every not-yet-started
+lane in a more expensive cost class. Already running independent lanes may finish only when their result
+is reusable and stopping them would destroy useful evidence; no new costly lane is scheduled after the
+failure. The controller reports one bounded first cause and marks downstream effects as suppressed.
+
+An unchanged deterministic failure fingerprint cannot run again. A repair attempt requires a changed
+governing input, execution of the failed or identity-affected chunk, and focused PASS evidence. Other
+valid independent evidence remains intact. The complete chain may be stitched again only after every
+failed or invalidated chunk passes independently.
+
+### 14.4 Durable Checkpoints And Recovery
+
+Each chunk publishes its terminal envelope and native artifacts atomically when that chunk ends. The run
+index is updated atomically after every publication. `FAIL`, `BLOCKED`, process interruption, timeout and
+operator cancellation are first-class terminal evidence; an end-of-chain manifest is an assembly view,
+not the sole record of work performed.
+
+A resumed agent reconstructs state from these envelopes, verifies their identities and freshness, and
+runs only missing, failed or invalidated chunks. Conversation memory, terminal scrollback and an agent's
+claim that a check passed are never evidence.
+
+### 14.5 Resource And Disk Discipline
+
+Every non-static cost class declares timeout, CPU, memory, disk and concurrency bounds. Before each
+costly phase, the controller verifies workspace capacity. When free workspace capacity is below 5
+percent, it must safely remove only disposable validation containers, networks, volumes, build cache and
+unreferenced images, preserve protected evidence and immutable required runners, then recheck capacity.
+If the guard remains unsatisfied, execution is `BLOCKED`; the controller must not begin the phase.
+
+Cleanup is controlled behavior with bounded evidence. Agents may not use destructive repository or
+Docker cleanup as an unrecorded recovery technique.
+
+### 14.6 Mechanical Enforcement
+
+The catalog schema, orchestrator state machine, evidence controller and rollback controller
+must enforce this section. Required negative tests prove at least:
+
+- a modeled preflight defect starts no costly lane;
+- the first deterministic failure schedules no dependent or higher-cost work;
+- interruption leaves valid per-chunk terminal evidence and a resumable run index;
+- unchanged deterministic failure cannot retry;
+- independently repaired chunks can be restitched without replaying unaffected evidence;
+- incompatible or stale chunk evidence blocks stitching;
+- low disk invokes bounded safe cleanup before costly work and blocks when capacity remains unsafe; and
+- qualification cannot start until phases A through D have current compatible PASS evidence.
+
+An agent instruction, checklist, session memory, prompt or manual convention does not satisfy this
+section. WC-109 cannot be DONE until these controls fail closed under executable Docker and workflow
+fixtures and the final stitched run demonstrates that no known defect was deferred to qualification.
+
+### 14.7 Strategic Outcome Groups
+
+Remediation is delivered as ordered value groups. Each group must publish its outcome before the next
+group may use it as authority:
+
+| Group | Required institutional outcome | PR #481 proof |
+|---|---|---|
+| 1 - Value and scope integrity | One attributable control-plane investment and one preserved before-improvement baseline | Preserve the authorized head and failed-run facts; separate product authority before candidate freeze |
+| 2 - Prevent wasted execution | Invalid work consumes no affected costly lane and first cause appears at the cheapest capable boundary | Replay the known authority, service-supply and deferred-disposition defects through PLAN and preflight fixtures |
+| 3 - Fast implementation flow | Ordinary source remediation receives bounded mounted-source feedback without runner or product-image builds | Execute each remaining coherent WC-109 story through Tier 2 and record elapsed and build events |
+| 4 - Recoverable delivery | Failure or interruption preserves unaffected work and resumes only missing, failed or invalidated chunks | Inject a controlled same-candidate failure and interruption, then resume from terminal chunk evidence |
+| 5 - Trusted qualification | One exact control-plane candidate is confirmed without using qualification as defect discovery | Assemble independently emitted results only after Groups 1 through 4 have compatible PASS evidence |
+| 6 - Business-value pilot | The current implementation PR reports observed delivery economics and unchanged quality | Compare the retained baseline with PR #481 execution and unchanged authoritative full CI |
+
+Elapsed results are observations, not fixed-duration guarantees. Avoided compute is reported only for
+lanes that the dependency and cost model proves would otherwise have been eligible to run. A technical
+PASS without the ordered outcome evidence does not complete the corresponding group.
+
+### 14.8 WC-110 Integration Boundary
+
+The authorized head `cccc2ad8306a512bf0f80c149c89b599a74160a2` is preserved before separation. Existing
+WC-110 product work is not discarded or silently rewritten. Product behavior, product acceptance and
+product-owned tests move under WC-110 authority; validation catalog, orchestration, identity, evidence
+and qualification controls remain under WC-109 authority.
+
+Independently executable WC-110 product corrections may merge through unchanged full CI before WC-109
+freezes its candidate. A WC-110 consumer that genuinely requires unmerged WC-109 infrastructure must be
+represented as an explicit stacked dependency with a product-only diff. After the applicable WC-110
+base merges, PR #481 rebases on that authority and retains only the WC-109 control-plane implementation,
+outcome remediation and pilot evidence in its candidate diff.
+
+Historical component results remain diagnostic records. Rebase, scope separation or candidate-input
+change invalidates every result whose complete identity no longer matches; no result is promoted merely
+because the underlying test previously passed.
+
+### 14.9 Current-PR Value Record
+
+The PR #481 pilot reports, for the preserved baseline and remediated execution where comparable:
+
+- time to first causal result and total elapsed distribution by cost class;
+- affected lane-seconds suppressed after `FAIL` or `BLOCKED`;
+- runner and product-image build counts by exact identity;
+- focused, milestone and qualification invocation counts;
+- failed, invalidated, resumed and replayed lane counts;
+- deterministic first-cause recurrence and repair-loop count;
+- Shadow selection false negatives against unchanged full CI; and
+- final gate coverage and threshold preservation.
+
+The retained rollback manifest records 43 attempted gates, 38 PASS results, five FAIL results,
+2,833.434 observed gate-seconds, first failure after 1,901.640 gate-seconds and 931.601 gate-seconds
+executed after that first failure. The pilot must preserve the source manifest and calculation method,
+state concurrency and wall-clock limitations, and must not present summed gate-seconds as wall-clock
+duration or customer-value realization.
