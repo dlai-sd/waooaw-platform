@@ -21,6 +21,7 @@ from validation_control.candidate_controller import catalog_candidate_inputs
 from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT
 from validation_control.orchestrator import (
     build_execution_plan,
+    failure_lane_disposition,
     phase_transition_record,
     plan_execution_order,
     plan_preflight_outcome,
@@ -317,6 +318,50 @@ def test_complete_plan_preflight_passes_without_costly_events() -> None:
         mode="focused",
         head_sha="a" * 40,
         run_id="plan-complete",
+    )
+
+
+def test_failure_lane_dispositions_retain_only_reusable_work() -> None:
+    plan = {
+        "nodes": [
+            {"gate_id": "failed", "cost_class": "FOCUSED", "direct_prerequisites": []},
+            {"gate_id": "independent", "cost_class": "FOCUSED", "direct_prerequisites": []},
+            {"gate_id": "dependent", "cost_class": "INTEGRATION", "direct_prerequisites": ["failed"]},
+            {"gate_id": "expensive", "cost_class": "BROWSER", "direct_prerequisites": []},
+        ]
+    }
+
+    assert failure_lane_disposition(plan, "independent", "failed", execution_state="PENDING") == ("NEW_WORK_AFTER_FIRST_CAUSE")
+    assert (
+        failure_lane_disposition(
+            plan,
+            "independent",
+            "failed",
+            execution_state="RUNNING",
+            result_reusable=True,
+            stop_destroys_evidence=True,
+        )
+        == "ALLOW_FINISH_REUSABLE_INDEPENDENT"
+    )
+    assert (
+        failure_lane_disposition(plan, "independent", "failed", execution_state="RUNNING", result_reusable=True)
+        == "STOP_RUNNING_AFTER_FIRST_CAUSE"
+    )
+    assert (
+        failure_lane_disposition(
+            plan,
+            "dependent",
+            "failed",
+            execution_state="RUNNING",
+            result_reusable=True,
+            stop_destroys_evidence=True,
+        )
+        == "DEPENDENT_ON_FIRST_CAUSE"
+    )
+    assert failure_lane_disposition(plan, "expensive", "failed", execution_state="PENDING") == ("HIGHER_COST_THAN_FIRST_CAUSE")
+    assert (
+        failure_lane_disposition(plan, "independent", "failed", execution_state="TERMINAL", result_reusable=True)
+        == "RETAIN_REUSABLE_RESULT"
     )
 
 

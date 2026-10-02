@@ -28,10 +28,10 @@ from validation_control.qualification import build_wc104_rollback_manifest, rend
 from validation_control.local_catalog_gate import execute_gate, required_service_identities, resolve_runner
 from validation_control.orchestrator import (
     build_execution_plan,
+    failure_lane_disposition,
     phase_transition_record,
     plan_execution_order,
     prerequisite_evidence_blockers,
-    suppression_reason,
 )
 
 
@@ -365,7 +365,12 @@ def execute_rollback(
                 suppression = (
                     "OPERATOR_CANCELLED"
                     if gate_id not in resumed_results and first_cause_gate is not None and stop_all_after_first_cause
-                    else suppression_reason(plan, gate_id, first_cause_gate)
+                    else failure_lane_disposition(
+                        plan,
+                        gate_id,
+                        first_cause_gate,
+                        execution_state="PENDING",
+                    )
                     if gate_id not in resumed_results and first_cause_gate is not None
                     else None
                 )

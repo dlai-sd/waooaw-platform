@@ -85,6 +85,27 @@ def suppression_reason(plan: dict[str, Any], gate_id: str, first_cause_gate: str
     return None
 
 
+def failure_lane_disposition(
+    plan: dict[str, Any],
+    gate_id: str,
+    first_cause_gate: str,
+    *,
+    execution_state: Literal["PENDING", "RUNNING", "TERMINAL"],
+    result_reusable: bool = False,
+    stop_destroys_evidence: bool = False,
+) -> str:
+    suppression = suppression_reason(plan, gate_id, first_cause_gate)
+    if execution_state == "PENDING":
+        return suppression or "NEW_WORK_AFTER_FIRST_CAUSE"
+    if execution_state == "RUNNING":
+        if suppression is None and result_reusable and stop_destroys_evidence:
+            return "ALLOW_FINISH_REUSABLE_INDEPENDENT"
+        return suppression or "STOP_RUNNING_AFTER_FIRST_CAUSE"
+    if execution_state == "TERMINAL":
+        return "RETAIN_REUSABLE_RESULT" if result_reusable else "RETAIN_TERMINAL_RESULT"
+    raise ValueError(f"unknown lane execution state: {execution_state}")
+
+
 def plan_execution_order(plan: dict[str, Any]) -> list[str]:
     nodes = plan.get("nodes")
     if not isinstance(nodes, list) or not all(isinstance(node, dict) for node in nodes):

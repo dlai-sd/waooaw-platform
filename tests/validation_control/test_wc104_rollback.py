@@ -150,25 +150,20 @@ def test_rollback_failure_suppresses_remaining_executable_inventory(tmp_path: Pa
     assert result["passed"] is False
     assert len(result["gate_results"]) == len(catalog["full_gates"])
     assert result["gate_results"][1]["result"] == "FAIL"
-    expected_executed = [
-        gate
-        for gate in ordered_gates
-        if gate not in BLOCKED_DEFERRED_GATES
-        and (gate in ordered_gates[:2] or suppression_reason(plan, gate, catalog["full_gates"][1]) is None)
-    ]
+    expected_executed = ordered_gates[:2]
     assert executed == expected_executed
     assert result["first_cause_gate"] == catalog["full_gates"][1]
     assert [transition["phase"] for transition in result["phase_transitions"]] == ["A_DESIGN"]
     assert result["execution_summary"]["executed_gate_count"] == len(expected_executed)
     assert result["execution_summary"]["resumed_gate_count"] == 0
     assert result["execution_summary"]["suppressed_gate_count"] == sum(
-        gate not in BLOCKED_DEFERRED_GATES and suppression_reason(plan, gate, catalog["full_gates"][1]) is not None
-        for gate in ordered_gates[2:]
+        gate not in BLOCKED_DEFERRED_GATES for gate in ordered_gates[2:]
     )
     assert all(
         item["result"] == "BLOCKED"
         and item["first_cause_gate"] == catalog["full_gates"][1]
-        and item["suppression_reason"] in {"DEPENDENT_ON_FIRST_CAUSE", "HIGHER_COST_THAN_FIRST_CAUSE"}
+        and item["suppression_reason"]
+        in {"DEPENDENT_ON_FIRST_CAUSE", "HIGHER_COST_THAN_FIRST_CAUSE", "NEW_WORK_AFTER_FIRST_CAUSE"}
         for item in result["gate_results"][2:]
         if item.get("disposition") == "SUPPRESSED_AFTER_FAILURE"
     )
@@ -204,12 +199,7 @@ def test_rollback_records_gate_exception_and_suppresses_remaining_inventory(tmp_
         gate_executor=execute,
     )
 
-    assert executed == [
-        gate
-        for gate in ordered_gates
-        if gate not in BLOCKED_DEFERRED_GATES
-        and (gate in ordered_gates[:2] or suppression_reason(plan, gate, catalog["full_gates"][1]) is None)
-    ]
+    assert executed == ordered_gates[:2]
     assert result["passed"] is False
     assert result["gate_results"][1]["error"] == "ValueError: modeled execution defect"
     assert result["first_cause_gate"] == catalog["full_gates"][1]
@@ -495,6 +485,71 @@ def test_rollback_resume_reuses_only_same_identity_pass_results(tmp_path: Path) 
     )
     assert next(item for item in resumed["gate_results"] if item["gate_id"] == "build")["evidence_disposition"] == (
         "same-run-checkpoint"
+    )
+
+
+def test_rollback_failure_retains_independent_reusable_results_only(tmp_path: Path) -> None:
+    catalog = load_catalog()
+    plan = build_execution_plan(catalog, catalog["full_gates"], mode="qualification", head_sha=HEAD_SHA, run_id="retained")
+    ordered_gates = plan_execution_order(plan)
+    nodes_by_gate = {node["gate_id"]: node for node in plan["nodes"]}
+    failed_gate = next(
+        gate_id
+        for gate_id in ordered_gates
+        if nodes_by_gate[gate_id]["downstream_dependents"] and gate_id not in BLOCKED_DEFERRED_GATES
+    )
+    dependent_gate = nodes_by_gate[failed_gate]["downstream_dependents"][0]
+    independent_gate = next(
+        gate_id
+        for gate_id in ordered_gates[ordered_gates.index(failed_gate) + 1 :]
+        if gate_id not in BLOCKED_DEFERRED_GATES and suppression_reason(plan, gate_id, failed_gate) is None
+    )
+    completed = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
+        runner_resolver=lambda repository, runner: {
+            "build_count": 1,
+            "trust_source": "local-identity-build",
+            "runner_id": runner,
+        },
+        service_resolver=resolve_services,
+        gate_executor=lambda repository, gate, head, base, common, **context: 0,
+    )
+    next(item for item in completed["gate_results"] if item["gate_id"] == failed_gate)["result"] = "FAIL"
+    executed: list[str] = []
+
+    resumed = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        resume_checkpoint=completed,
+        execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
+        runner_resolver=lambda repository, runner: {
+            "build_count": 1,
+            "trust_source": "local-identity-build",
+            "runner_id": runner,
+        },
+        service_resolver=resolve_services,
+        gate_executor=lambda repository, gate, head, base, common, **context: executed.append(gate) or 9,
+    )
+
+    assert executed == [failed_gate]
+    assert (
+        next(item for item in resumed["gate_results"] if item["gate_id"] == independent_gate)["evidence_disposition"]
+        == "same-run-checkpoint"
+    )
+    assert next(item for item in resumed["gate_results"] if item["gate_id"] == dependent_gate)["disposition"] == (
+        "PREREQUISITE_EVIDENCE_BLOCKED"
     )
 
 
