@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 224
+**State Revision:** 225
 **Last Updated:** 2026-10-02 (WC-109 OUTCOME REMEDIATION AUTHORIZED)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -78,6 +78,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **WC-109 rollback resume milestone:** Commit `63799b05` adds explicit `--resume` support for rollback checkpoints. Only PASS evidence whose schema, candidate, base, catalog digest and ordered gate inventory exactly match may be reused; failed, blocked, suppressed and missing gates execute again, while identity mismatch stops before service, runner or gate work. The 78-test control-plane regression slice plus Ruff and format pass. R044 remains PLANNED because generalized timeout, publication-collision and chunk invalidation evidence is still absent.
 - **WC-109 authority-preflight milestone:** Commit `48b1e5ba` moves PR authority resolution inside the atomic rollback checkpoint boundary and adds a canonical Docker-only launcher with host-identical worktree/Git mounts, declared runner UID and explicit GitHub credential forwarding. Exact replay against local candidate `823bfb27` and published PR head `cccc2ad8` emits one bounded `preflight:qualification-context` cause, zero runner/service/gate execution, 40 `PREFLIGHT_BLOCKED` and three exact `BLOCKED-DEFERRED` dispositions across all 43 gates. All runners now use the existing `/tmp` tmpfs mount as HOME. Compose, Ruff, format and 80 focused tests pass. R041 remains PLANNED pending the remaining command, mount, resource, disk and evidence-destination prerequisite classes.
 - **WC-109 execution-readiness milestone:** Commit `345522a2` runs the existing writable-HOME, Docker-socket and atomic host-visible-output probe before rollback service or runner supply. The canonical Docker launcher now mounts the socket and maps its actual GID; a negative fixture proves readiness failure emits a complete `PREFLIGHT_BLOCKED` inventory with zero service, runner or gate activity. The production probe and 81 focused tests pass. R041 and R045 remain PLANNED pending command/resource modeling and bounded low-disk cleanup evidence.
+- **WC-109 resource-capacity milestone:** Commit `f361c485` compares workspace capacity with the five-percent floor and maximum declared gate disk demand before service or runner supply, publishes atomic run-scoped evidence, performs one bounded cleanup/recheck only below the floor, and blocks all costly work when capacity remains unsafe. Cleanup targets only stopped `wc109-*` Compose projects, build cache older than 24 hours and dangling images; running and foreign projects are excluded, while repository evidence is never a cleanup target. Compose, Ruff, format and 86 focused tests pass. R045 remains PLANNED until explicit cost classes and per-phase enforcement are complete.
 
 ## Authorization Boundary
 
