@@ -7,9 +7,16 @@ import hashlib
 import json
 import re
 from pathlib import Path
+import sys
 from typing import Any, Literal
 
 import yaml
+
+SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
+if str(SCRIPTS_ROOT) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_ROOT))
+
+from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT, BLOCKED_DEFERRED_GATES  # noqa: E402
 
 
 Mode = Literal["focused", "qualification"]
@@ -79,6 +86,28 @@ def plan_execution_order(plan: dict[str, Any]) -> list[str]:
         ordered.extend(ready)
         resolved.update(ready)
     return ordered
+
+
+def prerequisite_evidence_blockers(node: dict[str, Any], gate_results: list[dict[str, Any]]) -> list[str]:
+    by_gate = {result.get("gate_id"): result for result in gate_results if isinstance(result, dict)}
+    blockers: list[str] = []
+    for prerequisite in node.get("direct_prerequisites", []):
+        result = by_gate.get(prerequisite)
+        if result is None:
+            blockers.append(f"missing:{prerequisite}")
+        elif result.get("result") == "PASS":
+            continue
+        elif (
+            prerequisite in BLOCKED_DEFERRED_GATES
+            and result.get("result") == "BLOCKED"
+            and result.get("disposition") == "BLOCKED-DEFERRED"
+            and result.get("disposition_proof")
+            == {"founder_scope_amendment": BLOCKED_DEFERRED_AMENDMENT, "release_blocking": True}
+        ):
+            continue
+        else:
+            blockers.append(f"incompatible:{prerequisite}:{result.get('result')}")
+    return blockers
 
 
 def build_execution_plan(

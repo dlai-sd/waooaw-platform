@@ -17,7 +17,13 @@ from validation_control.catalog_execution import (
     stage_input_directory,
 )
 from validation_control.candidate_controller import catalog_candidate_inputs
-from validation_control.orchestrator import build_execution_plan, plan_execution_order, suppression_reason
+from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT
+from validation_control.orchestrator import (
+    build_execution_plan,
+    plan_execution_order,
+    prerequisite_evidence_blockers,
+    suppression_reason,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -164,6 +170,54 @@ def test_plan_classifies_dependent_higher_cost_and_independent_suppression() -> 
     assert suppression_reason(plan, "test-web", "build:web") == "DEPENDENT_ON_FIRST_CAUSE"
     assert suppression_reason(plan, "e2e:accessibility", "build:web") == "HIGHER_COST_THAN_FIRST_CAUSE"
     assert suppression_reason(plan, "build:constitutional-engine", "build:web") is None
+
+
+def test_prerequisite_evidence_blocks_missing_failed_and_forged_results() -> None:
+    node = {"direct_prerequisites": ["acceptance:as-001"]}
+
+    assert prerequisite_evidence_blockers(node, []) == ["missing:acceptance:as-001"]
+    assert prerequisite_evidence_blockers(
+        node,
+        [{"gate_id": "acceptance:as-001", "result": "FAIL"}],
+    ) == ["incompatible:acceptance:as-001:FAIL"]
+    assert prerequisite_evidence_blockers(
+        node,
+        [
+            {
+                "gate_id": "acceptance:as-001",
+                "result": "BLOCKED",
+                "disposition": "BLOCKED-DEFERRED",
+                "disposition_proof": {"founder_scope_amendment": "forged", "release_blocking": True},
+            }
+        ],
+    ) == ["incompatible:acceptance:as-001:BLOCKED"]
+
+
+def test_prerequisite_evidence_accepts_pass_and_exact_founder_deferral() -> None:
+    assert (
+        prerequisite_evidence_blockers(
+            {"direct_prerequisites": ["build:web"]},
+            [{"gate_id": "build:web", "result": "PASS"}],
+        )
+        == []
+    )
+    assert (
+        prerequisite_evidence_blockers(
+            {"direct_prerequisites": ["acceptance:as-001"]},
+            [
+                {
+                    "gate_id": "acceptance:as-001",
+                    "result": "BLOCKED",
+                    "disposition": "BLOCKED-DEFERRED",
+                    "disposition_proof": {
+                        "founder_scope_amendment": BLOCKED_DEFERRED_AMENDMENT,
+                        "release_blocking": True,
+                    },
+                }
+            ],
+        )
+        == []
+    )
 
 
 def test_typescript_plan_uses_immutable_dependencies_outside_read_only_source() -> None:

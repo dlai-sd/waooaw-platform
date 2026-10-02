@@ -26,7 +26,12 @@ from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT, B
 from validation_control.execution_contract import orchestration_preflight, resource_capacity_preflight
 from validation_control.qualification import build_wc104_rollback_manifest, render_manifest
 from validation_control.local_catalog_gate import execute_gate, required_service_identities, resolve_runner
-from validation_control.orchestrator import build_execution_plan, plan_execution_order, suppression_reason
+from validation_control.orchestrator import (
+    build_execution_plan,
+    plan_execution_order,
+    prerequisite_evidence_blockers,
+    suppression_reason,
+)
 
 
 @dataclass(frozen=True)
@@ -301,17 +306,9 @@ def execute_rollback(
         with tempfile.TemporaryDirectory(prefix="wc104-rollback-") as temporary_directory:
             pr_body_file = Path(temporary_directory) / "pr-body.md"
             pr_body_file.write_text(qualification_context.pr_body, encoding="utf-8")
+            nodes_by_gate = {node["gate_id"]: node for node in plan["nodes"]}
             for gate_id in plan_execution_order(plan):
                 started = time.monotonic()
-                if gate_id in resumed_results:
-                    gate_results.append(
-                        {
-                            **resumed_results[gate_id],
-                            "evidence_disposition": "same-run-checkpoint",
-                        }
-                    )
-                    checkpoint()
-                    continue
                 if gate_id in BLOCKED_DEFERRED_GATES:
                     gate_results.append(
                         {
@@ -329,9 +326,9 @@ def execute_rollback(
                     continue
                 suppression = (
                     "OPERATOR_CANCELLED"
-                    if first_cause_gate is not None and stop_all_after_first_cause
+                    if gate_id not in resumed_results and first_cause_gate is not None and stop_all_after_first_cause
                     else suppression_reason(plan, gate_id, first_cause_gate)
-                    if first_cause_gate is not None
+                    if gate_id not in resumed_results and first_cause_gate is not None
                     else None
                 )
                 if suppression is not None:
@@ -343,6 +340,31 @@ def execute_rollback(
                             "first_cause_gate": first_cause_gate,
                             "suppression_reason": suppression,
                             "duration_seconds": 0.0,
+                        }
+                    )
+                    checkpoint()
+                    continue
+                prerequisite_blockers = prerequisite_evidence_blockers(nodes_by_gate[gate_id], gate_results)
+                if prerequisite_blockers:
+                    if first_cause_gate is None:
+                        first_cause_gate = gate_id
+                    gate_results.append(
+                        {
+                            "gate_id": gate_id,
+                            "result": "BLOCKED",
+                            "disposition": "PREREQUISITE_EVIDENCE_BLOCKED",
+                            "first_cause_gate": first_cause_gate,
+                            "prerequisite_blockers": prerequisite_blockers,
+                            "duration_seconds": 0.0,
+                        }
+                    )
+                    checkpoint()
+                    continue
+                if gate_id in resumed_results:
+                    gate_results.append(
+                        {
+                            **resumed_results[gate_id],
+                            "evidence_disposition": "same-run-checkpoint",
                         }
                     )
                     checkpoint()
