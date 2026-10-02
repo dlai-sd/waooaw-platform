@@ -84,15 +84,21 @@ def test_repository_value_baseline_matches_retained_source() -> None:
     assert result["seconds_after_first_failure"] == 931.601
 
 
-def test_repository_value_baseline_uses_tracked_blob_when_worktree_evidence_is_hidden(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_repository_value_baseline_uses_durable_non_output_evidence() -> None:
     record = json.loads((REPOSITORY / "validation/evidence/wc109-value-baseline.json").read_text(encoding="utf-8"))
-    monkeypatch.setattr(Path, "read_bytes", lambda unused: pytest.fail("read mutable working-tree evidence"))
 
     result = validate_value_baseline_source(record, REPOSITORY)
 
+    assert record["source_manifest"]["path"].startswith("validation/evidence/")
     assert result["passed"] is True
+
+
+def test_value_baseline_rejects_source_outside_durable_evidence() -> None:
+    record = json.loads((REPOSITORY / "validation/evidence/wc109-value-baseline.json").read_text(encoding="utf-8"))
+    record["source_manifest"]["path"] = "test-results/wc109/rollback-602cea40.json"
+
+    with pytest.raises(ValueError, match="durable validation evidence"):
+        validate_value_baseline_source(record, REPOSITORY)
 
 
 @pytest.mark.parametrize(
@@ -123,6 +129,8 @@ def test_wc109_scope_accepts_control_plane_and_exact_candidate_dockerfiles() -> 
                 "validation/engineering-validation.yaml",
                 "src/business-platform/Dockerfile",
                 "web/Dockerfile",
+                "web/package.json",
+                "web/pnpm-lock.yaml",
                 "work-contracts/WC-109-requirements.yaml",
             ]
         )

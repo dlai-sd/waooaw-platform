@@ -2,8 +2,8 @@
   "schema": "waooaw.wc109-value-baseline/v1",
   "preserved_head": "cccc2ad8306a512bf0f80c149c89b599a74160a2",
   "source_manifest": {
-    "path": "test-results/wc109/rollback-602cea40.json",
-    "digest": "sha256:c269f8a24a76af76146f61344fc37f23db381310a9c57cc63da8e545092c3363",
+    "path": "validation/evidence/wc109-value-baseline-source.json",
+    "digest": "sha256:cf3fa3927ee8e61c9d61bef36b4740277ad5c10e4a0071cb132ac5e33babb10c",
     "candidate_sha": "602cea4000ffdf271348711fd4fd20538c5b5e7e"
   },
   "measurements": {

@@ -353,6 +353,16 @@ prechecks:
       - requirements*.txt
       - validation/**
     gate: "quality:scripts"
+  typescript_dependency_scan:
+    always: true
+    reusable: false
+    inputs:
+      - web/package.json
+      - web/pnpm-lock.yaml
+      - architecture/reference/dockerfiles/Dockerfile.test-runner-ts
+      - validation/**
+      - scripts/validation_control/**
+    gate: "dep-scan:typescript"
   dotnet_quality_business_platform:
     components: [business-platform]
     inputs:

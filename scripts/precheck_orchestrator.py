@@ -56,6 +56,7 @@ class PrecheckNode:
     service_digest: str = ""
     input_digest: str = ""
     input_patterns: tuple[str, ...] = ()
+    reusable: bool = True
 
 
 def utc_now() -> str:
@@ -150,6 +151,7 @@ def _node_identity(node: PrecheckNode, identity_inputs: dict[str, str]) -> str:
         "environment_digest": node.environment_digest,
         "service_digest": node.service_digest,
         "input_digest": node.input_digest,
+        "reusable": node.reusable,
     }
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
@@ -219,7 +221,7 @@ def _load_reusable_results(
         assert isinstance(prior_nodes, list)
         prior_by_name = {item.get("name"): item for item in prior_nodes if isinstance(item, dict)}
         for node in nodes:
-            if node.name in reusable:
+            if node.name in reusable or not node.reusable:
                 continue
             prior = prior_by_name.get(node.name)
             if not isinstance(prior, dict) or prior.get("status") != "PASS":

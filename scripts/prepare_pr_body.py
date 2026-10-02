@@ -42,16 +42,19 @@ RUNTIME_EVIDENCE_SECTION = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 VALIDATION_POLICY_PATH = Path(__file__).resolve().parents[1] / "validation/engineering-validation.yaml"
-PRECHECK_GRAPH_VERSION = "wc103-prechecks-v6"
+PRECHECK_GRAPH_VERSION = "wc109-prechecks-v7"
 PRECHECK_ORDER = (
     "gitleaks",
     "scripts_quality",
+    "typescript_dependency_scan",
     "dotnet_quality_business_platform",
     "typescript_quality",
     "business_platform",
     "release_qualification",
 )
-STATIC_PRECHECKS = frozenset({"gitleaks", "scripts_quality", "dotnet_quality_business_platform", "typescript_quality"})
+STATIC_PRECHECKS = frozenset(
+    {"gitleaks", "scripts_quality", "typescript_dependency_scan", "dotnet_quality_business_platform", "typescript_quality"}
+)
 PRECHECK_CONFIGURATION_PATHS = (
     Path(__file__),
     Path(__file__).with_name("precheck_orchestrator.py"),
@@ -436,6 +439,7 @@ def precheck_nodes(
                 dependencies=dependencies,
                 input_digest=gate_input_digest(head, input_patterns),
                 input_patterns=input_patterns,
+                reusable=config.get("reusable") is not False,
                 **identity,
             )
         )

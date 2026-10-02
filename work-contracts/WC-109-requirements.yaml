@@ -618,3 +618,20 @@ requirements:
       - validation/evidence/wc109-wc110-integration.json
       - tests/validation_control/test_wc109_value_pilot.py
     result: PASS
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R049
+    source: Sections 3.1 and 14.9
+    observable_outcome: Pre-PR control executes externally volatile dependency advisories fresh and affected deterministic gates through supplied runners before PR evidence preparation.
+    component_owner: Tier Orchestrator and Hosted Policy Enforcer
+    test_path_or_plan: Repeat an unchanged-candidate advisory node, classify control-only and product changes, and execute quality:scripts plus dep-scan:typescript through the local catalog entry point.
+    completion_rule: dep-scan:typescript is selected for every candidate and never reuses PASS evidence; quality:scripts consumes runner-readable durable evidence; only web dependency metadata enters the WC-109 security repair.
+    evidence_refs:
+      - scripts/precheck_orchestrator.py
+      - scripts/prepare_pr_body.py
+      - validation/engineering-validation.yaml
+      - scripts/validation_control/pilot.py
+      - tests/pipeline/test_precheck_orchestrator.py
+      - tests/pipeline/test_prepare_pr_body.py
+      - tests/pipeline/test_validation_policy.py
+      - tests/validation_control/test_wc109_value_pilot.py

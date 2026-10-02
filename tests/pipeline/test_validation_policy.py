@@ -188,15 +188,16 @@ def test_local_prechecks_are_scoped_independently_from_full_hosted_inventory() -
     hosted = classify_paths(policy, ["README.md"], event="push")
 
     assert evidence_only["full"] is True
-    assert evidence_only["selected_prechecks"] == ["gitleaks"]
+    assert evidence_only["selected_prechecks"] == ["gitleaks", "typescript_dependency_scan"]
     assert business["selected_prechecks"] == [
         "business_platform",
         "dotnet_quality_business_platform",
         "gitleaks",
         "release_qualification",
+        "typescript_dependency_scan",
         "typescript_quality",
     ]
-    assert release["selected_prechecks"] == ["gitleaks", "release_qualification"]
+    assert release["selected_prechecks"] == ["gitleaks", "release_qualification", "typescript_dependency_scan"]
     assert hosted["selected_gates"] == policy["full_gates"]
 
 

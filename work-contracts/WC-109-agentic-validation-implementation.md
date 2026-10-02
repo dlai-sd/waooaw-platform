@@ -94,11 +94,16 @@ Before the first implementation edit, the implementing office must record:
 - hosted workflow integration in shadow or full-safe mode while current full CI remains authoritative;
 - Docker-executed unit, component, integration, policy and regression tests for this control plane;
 - operator and agent-facing command documentation required to execute the four tiers; and
-- bounded pilot instrumentation and evidence for the Founder-approved WC-109 implementation PR.
+- bounded pilot instrumentation and evidence for the Founder-approved WC-109 implementation PR;
+- `web/package.json` and `web/pnpm-lock.yaml` changes limited to remediating dependency-security
+  findings raised by that hosted pilot; and
+- pre-PR execution of externally volatile advisory gates without PASS reuse, plus supplied-runner
+  execution of affected deterministic gates before PR evidence preparation.
 
 ### 3.2 Out of scope
 
-- product behavior changes in `src/` or `web/` except separately authorized pilot PR work;
+- product behavior changes in `src/` or `web/`; the dependency-metadata exception in Section 3.1
+  authorizes no product source, API, configuration or acceptance change;
 - alteration of ADR-050, WC-108 or any ratified constitutional claim;
 - replacement of the existing language-specific runner model with one generic persistent executor;
 - persistent test processes, databases, browsers, generated outputs or verdicts as correctness state;

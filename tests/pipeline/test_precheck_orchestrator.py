@@ -111,6 +111,25 @@ def test_identical_second_run_automatically_reuses_exact_node_evidence(tmp_path:
     assert marker.read_text() == "x"
 
 
+def test_volatile_node_executes_again_for_identical_candidate(tmp_path: Path) -> None:
+    marker = tmp_path / "executions"
+    node = replace(
+        python_node(
+            "dependency_scan",
+            f"from pathlib import Path; p=Path({str(marker)!r}); p.write_text(p.read_text() + 'x' if p.exists() else 'x')",
+        ),
+        reusable=False,
+    )
+
+    first = run([node], tmp_path / "artifacts", preflight=lambda: (True, []))
+    second = run([node], tmp_path / "artifacts", preflight=lambda: (True, []))
+
+    assert first["executed_count"] == 1
+    assert second["executed_count"] == 1
+    assert second["reused_count"] == 0
+    assert marker.read_text() == "xx"
+
+
 def test_changed_node_or_corrupt_artifact_invalidates_only_affected_evidence(tmp_path: Path) -> None:
     artifact_dir = tmp_path / "artifacts"
     first = python_node("first", "print('first')")
