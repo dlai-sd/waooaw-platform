@@ -380,6 +380,7 @@ def precheck_nodes(
     head: str,
     changed_files: list[str],
 ) -> list[PrecheckNode]:
+    base_sha = git("rev-parse", base)
     applicable_prechecks = selected_prechecks(changed_files)
     loaded = yaml.safe_load(VALIDATION_POLICY_PATH.read_text(encoding="utf-8"))
     precheck_config = loaded.get("prechecks") if isinstance(loaded, dict) else None
@@ -425,7 +426,7 @@ def precheck_nodes(
                     "--gate",
                     gate_id,
                     "--base",
-                    base,
+                    base_sha,
                     "--head",
                     head,
                     "--git-common-dir",

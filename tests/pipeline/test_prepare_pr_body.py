@@ -18,6 +18,7 @@ from prepare_pr_body import (  # noqa: E402
     execution_preflight,
     load_runtime_evidence,
     main,
+    precheck_nodes,
     preparation_head,
     prepare_body,
     release_qualification_gate_required,
@@ -376,6 +377,33 @@ def test_precheck_evidence_rejects_configuration_or_runner_mismatch() -> None:
             assert expected in str(error)
         else:
             raise AssertionError(f"stale {expected} identity was accepted")
+
+
+def test_precheck_graph_canonicalizes_symbolic_base_before_digesting(monkeypatch, tmp_path: Path) -> None:
+    base_sha = "b" * 40
+    monkeypatch.setattr("prepare_pr_body.git", lambda *arguments: base_sha)
+    monkeypatch.setattr("prepare_pr_body.selected_prechecks", lambda changed: {"scripts_quality"})
+    monkeypatch.setattr("prepare_pr_body.shutil.which", lambda executable: f"/usr/bin/{executable}")
+    monkeypatch.setattr("prepare_pr_body.gate_input_digest", lambda head, patterns: "p" * 64)
+    monkeypatch.setattr(
+        "prepare_pr_body.gate_execution_identity",
+        lambda repository, gate, head: {
+            "catalog_version": "test",
+            "gate_id": gate,
+            "command_id": gate,
+            "gate_implementation_digest": "i" * 64,
+            "runner_digest": "r" * 64,
+            "environment_digest": "e" * 64,
+            "service_digest": "s" * 64,
+        },
+    )
+
+    symbolic = precheck_nodes(tmp_path, tmp_path / ".git", "origin/main", HEAD, ["scripts/example.py"])
+    resolved = precheck_nodes(tmp_path, tmp_path / ".git", base_sha, HEAD, ["scripts/example.py"])
+
+    assert symbolic[0].command == resolved[0].command
+    assert symbolic[0].command[symbolic[0].command.index("--base") + 1] == base_sha
+    assert runner_digest(symbolic) == runner_digest(resolved)
 
 
 def test_prepare_pr_body_uses_requirement_ledger_validator() -> None:

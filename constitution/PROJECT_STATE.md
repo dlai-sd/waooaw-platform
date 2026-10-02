@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 241
+**State Revision:** 242
 **Last Updated:** 2026-10-02 (WC-109 OUTCOME REMEDIATION AUTHORIZED)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -87,6 +87,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **WC-109 publication repair:** Pre-push candidate `dd72acd0` reached applicable-diff checks and failed first at `quality:scripts` because its isolated writable `test-results` overlay hid the tracked R038 rollback source. Baseline validation now reads the immutable `HEAD:test-results/wc109/rollback-602cea40.json` Git blob after repository-bound path validation; a regression proves no mutable working-tree evidence is read. PR #481 remained unchanged, and publication, hosted R047 evidence, qualification, approval, merge and DONE remain open.
 - **WC-109 precheck fail-fast repair:** The same failed preparation started `test-dotnet:business-platform` 55 seconds after `quality:scripts` had already failed, consuming about six avoidable gate-minutes. The applicable-diff scheduler now sets first-cause state inside the failing worker; serial lanes and parallel heavy workers waiting for capacity emit zero-attempt `SUPPRESSED_FAILURE`, while work already executing may finish as reusable evidence. PR #481 remains unchanged; exact-head pre-push evidence and the real hosted R047 comparison remain open.
 - **WC-109 real fail-fast proof:** Candidate `3e610416` stopped with `quality:scripts` as the first cause, allowed only already-running quality lanes to finish, and recorded `test-dotnet:business-platform` as zero-attempt `SUPPRESSED_FAILURE`; the prior six-minute post-failure launch did not recur. The remaining static finding required baseline provenance to resolve Git to a trusted absolute executable with a narrowly reviewed subprocess call; focused Ruff, format and 17 provenance tests pass. PR #481 remains unchanged pending exact-head preparation.
+- **WC-109 post-push verifier repair:** Pre-push candidate `89f82081` passed all applicable checks and lifecycle evidence, updated PR #481, and was lease-protected published. Post-push reuse then rejected the same evidence because pre-push graph commands used resolved base SHA while reconstruction used symbolic `origin/main`. Graph construction now canonicalizes every base revision internally; symbolic/resolved regression, Ruff and format pass. A corrected exact-head preparation and publication remain open; no qualification or DONE claim is made.
 
 ## Authorization Boundary
 
