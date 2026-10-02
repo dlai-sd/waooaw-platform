@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 233
+**State Revision:** 234
 **Last Updated:** 2026-10-02 (WC-109 OUTCOME REMEDIATION AUTHORIZED)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -83,7 +83,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **WC-109 ordered-execution milestone:** Commit `be6483bd` adds deterministic topological scheduling by declared cost and direct prerequisites; rollback now follows PLAN order rather than legacy catalog order. Full-plan tests prove monotonic A-through-E phases and `release-qualification` last, while fail-fast and resume behavior remain intact across 108 focused tests. R040 remains PLANNED pending explicit prerequisite terminal-evidence checks at each transition.
 - **WC-109 prerequisite-evidence milestone:** Commit `5af05970` requires every non-deferred node, including exact PASS reuse, to find accepted terminal evidence for each direct PLAN prerequisite before execution. Missing, failed and forged deferred evidence block; only PASS or exact Founder-approved AS-001/003/005 `BLOCKED-DEFERRED` proof is accepted. Direct CLI execution and 110 focused tests pass. R040 remains PLANNED pending explicit transition records and stale-evidence phase fixtures.
 - **WC-109 ordered-phase completion:** Commit `3f56d85c` publishes atomic identity-bound A-through-E transition records and binds each terminal gate to candidate and catalog identity. Missing, failed, stale-head, catalog-mismatched and broad-phase bypass fixtures block; a complete run records five PASS transitions with qualification last. Ruff, format, 111 focused tests, the 48-row ledger validator and eight ledger regressions pass; R040 is PASS. R039 and R042 remain PLANNED for complete omission-to-BLOCKED and already-running-lane evidence.
-- **WC-109 PLAN, fail-fast, repair and recovery completion:** Commits `1143e8e7`, `6a3c2e69`, `59984a6e` and `691d6461` validate PLAN before supply, stop pending work after first cause, require focused identity-bound deterministic repair, and atomically retain every terminal chunk plus final assembly. Timeout, cancellation and abrupt interruption are recoverable; publication collisions preserve prior evidence; resume rejects identity mismatch and reruns only missing, failed or dependency-invalidated chunks. Ruff, format, 157 control-plane tests, the 48-row ledger validator and eight ledger regressions pass; R039 and R042-R044 are PASS. R041 remains PLANNED for remaining command, mount, permission and evidence-destination readiness classes.
+- **WC-109 PLAN, fail-fast, repair, recovery and capacity completion:** Commits `1143e8e7`, `6a3c2e69`, `59984a6e`, `691d6461` and `532a67db` validate PLAN before supply, stop pending work after first cause, require focused identity-bound repair, atomically retain chunks/final assembly and recheck resource bounds before supply and each A-E phase. Timeout, cancellation and interruption are recoverable; collisions preserve prior evidence; resume reruns only missing, failed or dependency-invalidated chunks; bounded cleanup cannot target repository evidence. Ruff, format, 158 control-plane tests, the 48-row ledger validator and eight ledger regressions pass; R039 and R042-R045 are PASS. R041 remains PLANNED for ledger/blocker and command-availability prerequisite classes.
 
 ## Authorization Boundary
 
