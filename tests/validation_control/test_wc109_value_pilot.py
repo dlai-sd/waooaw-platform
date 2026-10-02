@@ -147,7 +147,7 @@ def test_repository_wc109_wc110_integration_record_is_valid() -> None:
 
     result = validate_wc109_wc110_integration(record)
 
-    assert result["partition_commit"] == "323bb1ea185ab376fe6d41d3e5b89a1f1f8b98e3"
+    assert result["partition_commit"] == "07a091c920ac49fc75be0b3e6a9d279739aac6f0"
     assert result["passed"] is True
 
 

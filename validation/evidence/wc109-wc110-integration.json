@@ -1,7 +1,7 @@
 {
   "schema": "waooaw.wc109-wc110-integration/v1",
   "base_sha": "b55e1323ea1a83997ad13e604a77999536bebb43",
-  "partition_commit": "323bb1ea185ab376fe6d41d3e5b89a1f1f8b98e3",
+  "partition_commit": "07a091c920ac49fc75be0b3e6a9d279739aac6f0",
   "preserved_head": "cccc2ad8306a512bf0f80c149c89b599a74160a2",
   "preservation_branch": "wc/110-product-validation-qualification-repair",
   "preserved_authority_files": [
