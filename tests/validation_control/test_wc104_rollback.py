@@ -109,6 +109,14 @@ def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory(tmp
         "E_QUALIFICATION_HANDOFF",
     ]
     assert all(transition["result"] == "PASS" for transition in result["phase_transitions"])
+    assert [item["scope"] for item in result["resource_preflights"]] == [
+        "SUPPLY",
+        "A_DESIGN",
+        "B_COMPONENT",
+        "C_DEPENDENCY_INTEGRATION",
+        "D_SYSTEM_STITCHING",
+        "E_QUALIFICATION_HANDOFF",
+    ]
     assert all(
         item["head_sha"] == HEAD_SHA and item["catalog_digest"] == result["catalog_digest"] for item in result["gate_results"]
     )
@@ -530,6 +538,47 @@ def test_rollback_resource_failure_blocks_before_supply(tmp_path: Path) -> None:
     assert result["service_results"] == {}
     assert result["execution_summary"]["executed_gate_count"] == 0
     assert json.loads(checkpoint.read_text(encoding="utf-8")) == result
+
+
+def test_rollback_resource_failure_blocks_phase_before_first_gate(tmp_path: Path) -> None:
+    catalog = load_catalog()
+    executed: list[str] = []
+
+    def phase_capacity(repository: Path, nodes: list[dict[str, object]], namespace: str) -> dict[str, object]:
+        phases = {node["phase"] for node in nodes}
+        if phases == {"B_COMPONENT"}:
+            raise ValueError("resource preflight: B_COMPONENT capacity is unavailable")
+        return {"result": "PASS", "namespace": namespace}
+
+    result = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        execution_preflight=execution_ready,
+        resource_preflight=phase_capacity,
+        runner_resolver=lambda repository, runner: {
+            "build_count": 1,
+            "trust_source": "local-identity-build",
+            "runner_id": runner,
+        },
+        service_resolver=resolve_services,
+        gate_executor=lambda repository, gate, head, base, common, **context: executed.append(gate) or 0,
+    )
+
+    plan = build_execution_plan(catalog, catalog["full_gates"], mode="qualification", head_sha=HEAD_SHA, run_id="capacity")
+    expected = [node["gate_id"] for node in plan["nodes"] if node["phase"] == "A_DESIGN"]
+    blocked = next(item for item in result["gate_results"] if item.get("disposition") == "RESOURCE_PREFLIGHT_BLOCKED")
+    assert executed == expected
+    assert blocked["gate_id"] == next(
+        gate
+        for gate in plan_execution_order(plan)
+        if next(node for node in plan["nodes"] if node["gate_id"] == gate)["phase"] == "B_COMPONENT"
+    )
+    assert result["first_cause_gate"] == blocked["gate_id"]
+    assert [item["scope"] for item in result["resource_preflights"]] == ["SUPPLY", "A_DESIGN"]
 
 
 def test_rollback_resume_reuses_only_same_identity_pass_results(tmp_path: Path) -> None:

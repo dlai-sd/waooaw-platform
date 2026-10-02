@@ -567,8 +567,11 @@ requirements:
     test_path_or_plan: Exercise sufficient disk, below-five-percent disk, removable disposable state, protected evidence and unsatisfied recovery fixtures.
     completion_rule: Cleanup removes only declared disposable resources, preserves protected evidence and blocks costly work when the capacity guard remains unsatisfied.
     evidence_refs:
-      - scripts/validation_control/orchestrator.py
-      - tests/validation_control/test_wc109_execution_outcomes.py
+      - scripts/validation_control/execution_contract.py
+      - scripts/validation_control/wc104_rollback.py
+      - tests/validation_control/test_unified_execution_contract.py
+      - tests/validation_control/test_wc104_rollback.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R046

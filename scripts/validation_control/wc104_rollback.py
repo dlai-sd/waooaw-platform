@@ -331,6 +331,7 @@ def execute_rollback(
         return block_preflight("preflight:execution-contract", str(manifest["required_gates"][0]), exception)
     try:
         manifest["resource_preflight"] = resource_preflight(repository, plan["nodes"], plan["execution_namespace"])
+        manifest["resource_preflights"] = [{"scope": "SUPPLY", **manifest["resource_preflight"]}]
     except Exception as exception:
         return block_preflight("preflight:resources", str(manifest["required_gates"][0]), exception)
     for node in plan["nodes"]:
@@ -360,6 +361,28 @@ def execute_rollback(
                 started = time.monotonic()
                 node = nodes_by_gate[gate_id]
                 if first_cause_gate is None and node["phase"] != current_phase:
+                    phase_nodes = [planned for planned in plan["nodes"] if planned["phase"] == node["phase"]]
+                    try:
+                        phase_capacity = resource_preflight(
+                            repository,
+                            phase_nodes,
+                            f"{plan['execution_namespace']}-{node['phase'].lower()}",
+                        )
+                        manifest["resource_preflights"].append({"scope": node["phase"], **phase_capacity})
+                    except Exception as exception:
+                        first_cause_gate = gate_id
+                        gate_results.append(
+                            {
+                                "gate_id": gate_id,
+                                "result": "BLOCKED",
+                                "disposition": "RESOURCE_PREFLIGHT_BLOCKED",
+                                "first_cause_gate": first_cause_gate,
+                                "error": f"{type(exception).__name__}: {exception}",
+                                "duration_seconds": 0.0,
+                            }
+                        )
+                        checkpoint()
+                        continue
                     transition = phase_transition_record(
                         plan,
                         node["phase"],
