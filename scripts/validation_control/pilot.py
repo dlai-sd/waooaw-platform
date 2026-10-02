@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import statistics
+import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -192,9 +193,18 @@ def validate_value_baseline_source(record: dict[str, Any], repository: Path) -> 
     source_manifest = record["source_manifest"]
     source_path = (repository / source_manifest["path"]).resolve()
     repository = repository.resolve()
-    if not source_path.is_relative_to(repository) or not source_path.is_file():
+    if not source_path.is_relative_to(repository):
         raise ValueError("source manifest must be a repository file")
-    source_bytes = source_path.read_bytes()
+    relative_source = source_path.relative_to(repository).as_posix()
+    try:
+        source_bytes = subprocess.run(
+            ["git", "show", f"HEAD:{relative_source}"],
+            cwd=repository,
+            check=True,
+            capture_output=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise ValueError("source manifest must be a tracked repository file at HEAD") from error
     source_digest = "sha256:" + hashlib.sha256(source_bytes).hexdigest()
     if source_digest != source_manifest["digest"]:
         raise ValueError("source manifest digest does not match retained evidence")

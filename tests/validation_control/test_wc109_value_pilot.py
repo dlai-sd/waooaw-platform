@@ -84,6 +84,17 @@ def test_repository_value_baseline_matches_retained_source() -> None:
     assert result["seconds_after_first_failure"] == 931.601
 
 
+def test_repository_value_baseline_uses_tracked_blob_when_worktree_evidence_is_hidden(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    record = json.loads((REPOSITORY / "validation/evidence/wc109-value-baseline.json").read_text(encoding="utf-8"))
+    monkeypatch.setattr(Path, "read_bytes", lambda unused: pytest.fail("read mutable working-tree evidence"))
+
+    result = validate_value_baseline_source(record, REPOSITORY)
+
+    assert result["passed"] is True
+
+
 @pytest.mark.parametrize(
     ("mutation", "message"),
     [

@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 238
+**State Revision:** 239
 **Last Updated:** 2026-10-02 (WC-109 OUTCOME REMEDIATION AUTHORIZED)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -84,6 +84,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **WC-109 prerequisite-evidence milestone:** Commit `06ea20f6` requires every non-deferred node, including exact PASS reuse, to find accepted terminal evidence for each direct PLAN prerequisite before execution. Missing, failed and forged deferred evidence block; only PASS or exact Founder-approved AS-001/003/005 `BLOCKED-DEFERRED` proof is accepted. Direct CLI execution and 110 focused tests pass. R040 remains PLANNED pending explicit transition records and stale-evidence phase fixtures.
 - **WC-109 ordered-phase completion:** Commit `7ef206a6` publishes atomic identity-bound A-through-E transition records and binds each terminal gate to candidate and catalog identity. Missing, failed, stale-head, catalog-mismatched and broad-phase bypass fixtures block; a complete run records five PASS transitions with qualification last. Ruff, format, 111 focused tests, the 48-row ledger validator and eight ledger regressions pass; R040 is PASS. R039 and R042 remain PLANNED for complete omission-to-BLOCKED and already-running-lane evidence.
 - **WC-109 execution-control, handoff and scope completion:** Commits through `60c27185`, partition `07a091c9` and evidence `4d156ed7` complete R039-R046 and R048. Deterministic PLAN/readiness, fail-fast, repair, recovery, phase capacity and qualification handoff fail closed; canonical qualification requires current Group 1-4 evidence. WC-110 product authority remains preserved at `cccc2ad8`; 72 product-owned files were removed from WC-109, whose 86-path candidate has zero scope violations and retains only exact immutable candidate Dockerfile pins under product directories. Ruff, format, 193 control-plane/ledger tests, the 48-row validator and eight ledger regressions pass. No actual Group 1-4 handoff artifact is asserted; Group 5, qualification and R047 real PR #481 pilot proof remain open.
+- **WC-109 publication repair:** Pre-push candidate `dd72acd0` reached applicable-diff checks and failed first at `quality:scripts` because its isolated writable `test-results` overlay hid the tracked R038 rollback source. Baseline validation now reads the immutable `HEAD:test-results/wc109/rollback-602cea40.json` Git blob after repository-bound path validation; a regression proves no mutable working-tree evidence is read. PR #481 remained unchanged, and publication, hosted R047 evidence, qualification, approval, merge and DONE remain open.
 
 ## Authorization Boundary
 
