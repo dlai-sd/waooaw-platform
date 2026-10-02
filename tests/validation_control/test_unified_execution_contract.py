@@ -306,7 +306,9 @@ def test_all_catalog_runners_use_writable_tmpfs_home() -> None:
     compose = yaml.safe_load((root / "docker-compose.yml").read_text(encoding="utf-8"))
 
     for service in ("test-runner-python", "test-runner-dotnet", "test-runner-ts", "test-runner"):
-        assert compose["services"][service]["environment"]["HOME"] == "/tmp/wc106-home"
+        runner = compose["services"][service]
+        assert runner["environment"]["HOME"] == "/tmp"
+        assert any(mount.startswith("/tmp:") for mount in runner["tmpfs"])
 
 
 def test_python_capable_runners_use_bounded_writable_tool_caches() -> None:
@@ -317,3 +319,17 @@ def test_python_capable_runners_use_bounded_writable_tool_caches() -> None:
         runner = compose["services"][service]
         assert runner["environment"]["RUFF_CACHE_DIR"] == "/tmp/ruff_cache"
         assert any(mount.startswith("/tmp:") for mount in runner["tmpfs"])
+
+
+def test_rollback_launcher_preserves_docker_authority_and_identity_boundaries() -> None:
+    root = Path(__file__).resolve().parents[2]
+    launcher = (root / "scripts/validation_control/run_wc104_rollback.sh").read_text(encoding="utf-8")
+
+    assert "docker compose" in launcher
+    assert "-e GITHUB_TOKEN" in launcher
+    assert '"$repository:$repository:ro"' in launcher
+    assert '"$git_common_dir:$git_common_dir:ro"' in launcher
+    assert "--user root" not in launcher
+    assert "GITHUB_TOKEN is required" in launcher
+    assert 'export PYTHONPATH="$PWD/scripts"' in launcher
+    assert "--output must be repository-relative below test-results" in launcher

@@ -101,10 +101,13 @@ def resolve_qualification_context(repository: Path, base_sha: str, candidate_sha
     pull_request = subprocess.run(  # noqa: S603
         [gh, "pr", "view", "--json", "baseRefName,body,headRefOid,number"],
         cwd=repository,
-        check=True,
+        check=False,
         capture_output=True,
         text=True,
     )
+    if pull_request.returncode != 0:
+        first_line = next((line.strip() for line in pull_request.stderr.splitlines() if line.strip()), "no diagnostic")
+        raise ValueError(f"GitHub PR context unavailable (exit {pull_request.returncode}): {first_line[:300]}")
     pr = json.loads(pull_request.stdout)
     if pr.get("headRefOid") != candidate_sha:
         raise ValueError("rollback PR head does not match candidate HEAD")
@@ -166,6 +169,7 @@ def execute_rollback(
     qualification_context: QualificationContext | None = None,
     checkpoint_path: Path | None = None,
     resume_checkpoint: dict[str, Any] | None = None,
+    context_resolver: Callable[[Path, str, str], QualificationContext] = resolve_qualification_context,
     runner_resolver: Callable[[Path, str], dict[str, Any]] = resolve_runner,
     service_resolver: Callable[[Path, dict[str, Any]], dict[str, str]] = required_service_identities,
     gate_executor: Callable[..., int] = execute_gate,
@@ -177,8 +181,6 @@ def execute_rollback(
     service_results: dict[str, Any] = {}
     gate_results: list[dict[str, Any]] = []
     first_cause_gate: str | None = None
-    if qualification_context is None:
-        qualification_context = resolve_qualification_context(repository, base_sha, candidate_sha)
     resumed_results = (
         resume_pass_results(
             resume_checkpoint,
@@ -202,6 +204,62 @@ def execute_rollback(
                 first_cause_gate=first_cause_gate,
             )
 
+    def block_preflight(cause: str, affected_gate: str | None, exception: Exception) -> dict[str, Any]:
+        nonlocal first_cause_gate
+        first_cause_gate = cause
+        error = f"{type(exception).__name__}: {exception}"
+        for gate_id in manifest["required_gates"]:
+            if gate_id in BLOCKED_DEFERRED_GATES:
+                gate_results.append(
+                    {
+                        "gate_id": gate_id,
+                        "result": "BLOCKED",
+                        "disposition": "BLOCKED-DEFERRED",
+                        "disposition_proof": {
+                            "founder_scope_amendment": BLOCKED_DEFERRED_AMENDMENT,
+                            "release_blocking": True,
+                        },
+                        "duration_seconds": 0.0,
+                    }
+                )
+                continue
+            result = {
+                "gate_id": gate_id,
+                "result": "BLOCKED",
+                "disposition": "PREFLIGHT_BLOCKED",
+                "first_cause_gate": first_cause_gate,
+                "duration_seconds": 0.0,
+            }
+            if affected_gate is None or gate_id == affected_gate:
+                result["error"] = error
+            gate_results.append(result)
+        manifest.update(
+            {
+                "base_sha": base_sha,
+                "runner_results": runner_results,
+                "service_results": service_results,
+                "gate_results": gate_results,
+                "first_cause_gate": first_cause_gate,
+                "preflight_error": error,
+                "execution_summary": {
+                    "executed_gate_count": 0,
+                    "resumed_gate_count": 0,
+                    "suppressed_gate_count": len(manifest["required_gates"]) - len(BLOCKED_DEFERRED_GATES),
+                    "deferred_gate_count": len(BLOCKED_DEFERRED_GATES),
+                },
+                "passed": False,
+                "run_state": "BLOCKED",
+            }
+        )
+        checkpoint()
+        return manifest
+
+    if qualification_context is None:
+        try:
+            qualification_context = context_resolver(repository, base_sha, candidate_sha)
+        except Exception as exception:
+            return block_preflight("preflight:qualification-context", str(manifest["required_gates"][0]), exception)
+
     plan = build_execution_plan(
         catalog,
         manifest["required_gates"],
@@ -215,52 +273,7 @@ def execute_rollback(
         try:
             service_results[node["gate_id"]] = service_resolver(repository, node)
         except Exception as exception:
-            first_cause_gate = f"preflight:{node['gate_id']}"
-            error = f"{type(exception).__name__}: {exception}"
-            for gate_id in manifest["required_gates"]:
-                if gate_id in BLOCKED_DEFERRED_GATES:
-                    gate_results.append(
-                        {
-                            "gate_id": gate_id,
-                            "result": "BLOCKED",
-                            "disposition": "BLOCKED-DEFERRED",
-                            "disposition_proof": {
-                                "founder_scope_amendment": BLOCKED_DEFERRED_AMENDMENT,
-                                "release_blocking": True,
-                            },
-                            "duration_seconds": 0.0,
-                        }
-                    )
-                else:
-                    result = {
-                        "gate_id": gate_id,
-                        "result": "BLOCKED",
-                        "disposition": "PREFLIGHT_BLOCKED",
-                        "first_cause_gate": first_cause_gate,
-                        "duration_seconds": 0.0,
-                    }
-                    if gate_id == node["gate_id"]:
-                        result["error"] = error
-                    gate_results.append(result)
-            manifest.update(
-                {
-                    "base_sha": base_sha,
-                    "runner_results": runner_results,
-                    "service_results": service_results,
-                    "gate_results": gate_results,
-                    "first_cause_gate": first_cause_gate,
-                    "execution_summary": {
-                        "executed_gate_count": 0,
-                        "resumed_gate_count": 0,
-                        "suppressed_gate_count": len(manifest["required_gates"]) - len(BLOCKED_DEFERRED_GATES),
-                        "deferred_gate_count": len(BLOCKED_DEFERRED_GATES),
-                    },
-                    "passed": False,
-                    "run_state": "BLOCKED",
-                }
-            )
-            checkpoint()
-            return manifest
+            return block_preflight(f"preflight:{node['gate_id']}", str(node["gate_id"]), exception)
 
     try:
         os.environ.update(manifest["environment"])

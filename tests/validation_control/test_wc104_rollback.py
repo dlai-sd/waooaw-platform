@@ -260,6 +260,40 @@ def test_rollback_service_supply_failure_blocks_before_runner_build(tmp_path: Pa
     assert json.loads(checkpoint.read_text(encoding="utf-8"))["run_state"] == "BLOCKED"
 
 
+def test_rollback_authority_failure_publishes_complete_preflight_block(tmp_path: Path) -> None:
+    catalog = load_catalog()
+    checkpoint = tmp_path / "rollback.json"
+
+    result = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        checkpoint_path=checkpoint,
+        context_resolver=lambda repository, base, head: (_ for _ in ()).throw(
+            ValueError("rollback PR head does not match candidate HEAD")
+        ),
+        runner_resolver=lambda repository, runner: pytest.fail("runner must not resolve"),
+        service_resolver=lambda repository, node: pytest.fail("service must not resolve"),
+        gate_executor=lambda repository, gate, head, base, common, **context: pytest.fail("gate must not execute"),
+    )
+
+    assert result["run_state"] == "BLOCKED"
+    assert result["first_cause_gate"] == "preflight:qualification-context"
+    assert len(result["gate_results"]) == len(catalog["full_gates"])
+    assert result["runner_results"] == {}
+    assert result["service_results"] == {}
+    assert result["preflight_error"] == "ValueError: rollback PR head does not match candidate HEAD"
+    assert result["execution_summary"]["executed_gate_count"] == 0
+    assert all(item["disposition"] in {"PREFLIGHT_BLOCKED", "BLOCKED-DEFERRED"} for item in result["gate_results"])
+    assert next(item for item in result["gate_results"] if item["gate_id"] == "build")["error"] == (
+        "ValueError: rollback PR head does not match candidate HEAD"
+    )
+    assert sum("error" in item for item in result["gate_results"]) == 1
+    assert json.loads(checkpoint.read_text(encoding="utf-8")) == result
+
+
 def test_rollback_resume_reuses_only_same_identity_pass_results(tmp_path: Path) -> None:
     catalog = load_catalog()
     checkpoint = tmp_path / "rollback.json"
