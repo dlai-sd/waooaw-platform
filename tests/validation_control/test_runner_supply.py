@@ -22,6 +22,10 @@ from validation_control.runner_supply import (
 def fixture_repository(tmp_path: Path) -> tuple[Path, dict[str, object]]:
     (tmp_path / "Dockerfile").write_text("FROM example@sha256:" + "a" * 64, encoding="utf-8")
     (tmp_path / "lock.txt").write_text("locked", encoding="utf-8")
+    (tmp_path / "patches").mkdir()
+    (tmp_path / "patches" / "dependency.patch").write_text("patched", encoding="utf-8")
+    (tmp_path / "patches" / "nested").mkdir()
+    (tmp_path / "patches" / "nested" / "transitive.patch").write_text("nested patch", encoding="utf-8")
     config = {
         "schema": "waooaw.runner-supply/v1",
         "runners": {
@@ -31,7 +35,7 @@ def fixture_repository(tmp_path: Path) -> tuple[Path, dict[str, object]]:
                 "system_packages": ["git"],
                 "build_arguments": {},
                 "platform": "linux/amd64",
-                "context_inputs": ["Dockerfile", "lock.txt"],
+                "context_inputs": ["Dockerfile", "lock.txt", "patches/**"],
             }
         },
     }
@@ -67,7 +71,25 @@ def test_context_and_identity_change_only_for_declared_inputs(tmp_path: Path) ->
     assert sorted(str(path.relative_to(context)) for path in context.rglob("*") if path.is_file()) == [
         "Dockerfile",
         "lock.txt",
+        "patches/dependency.patch",
+        "patches/nested/transitive.patch",
     ]
+
+
+def test_globbed_runner_input_changes_identity_and_rejects_empty_patterns(tmp_path: Path) -> None:
+    repository, config = fixture_repository(tmp_path)
+    original = runner_specification(config, repository, "python")
+
+    (repository / "patches" / "dependency.patch").write_text("repatched", encoding="utf-8")
+    assert runner_specification(config, repository, "python")["identity"] != original["identity"]
+
+    (repository / "patches" / "dependency.patch").write_text("patched", encoding="utf-8")
+    (repository / "patches" / "nested" / "transitive.patch").write_text("nested repatch", encoding="utf-8")
+    assert runner_specification(config, repository, "python")["identity"] != original["identity"]
+
+    config["runners"]["python"]["context_inputs"] = ["Dockerfile", "missing/**"]
+    with pytest.raises(ValueError, match="pattern has no files"):
+        runner_specification(config, repository, "python")
 
 
 def test_missing_context_input_fails_closed(tmp_path: Path) -> None:

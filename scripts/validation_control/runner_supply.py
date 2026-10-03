@@ -26,6 +26,23 @@ def file_digest(path: Path) -> str:
     return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def expand_context_inputs(repository: Path, context_inputs: list[str]) -> list[str]:
+    expanded: set[str] = set()
+    for declared_input in context_inputs:
+        candidate = Path(declared_input)
+        if candidate.is_absolute() or ".." in candidate.parts:
+            raise ValueError(f"runner context input escapes repository: {declared_input}")
+        if any(character in declared_input for character in "*?["):
+            glob_pattern = declared_input + "/*" if declared_input.endswith("/**") else declared_input
+            matches = sorted(path for path in repository.glob(glob_pattern) if path.is_file())
+            if not matches:
+                raise ValueError(f"runner context pattern has no files: {declared_input}")
+            expanded.update(path.relative_to(repository).as_posix() for path in matches)
+        else:
+            expanded.add(candidate.as_posix())
+    return sorted(expanded)
+
+
 def runner_specification(config: dict[str, Any], repository: Path, runner_id: str) -> dict[str, Any]:
     runner = config["runners"].get(runner_id)
     if not isinstance(runner, dict):
@@ -34,7 +51,7 @@ def runner_specification(config: dict[str, Any], repository: Path, runner_id: st
     if not isinstance(context_inputs, list) or not context_inputs:
         raise ValueError(f"runner {runner_id} has no context inputs")
     context_manifest: dict[str, str] = {}
-    for relative in context_inputs:
+    for relative in expand_context_inputs(repository, context_inputs):
         path = repository / relative
         if not path.is_file():
             raise ValueError(f"runner {runner_id} required input is missing: {relative}")

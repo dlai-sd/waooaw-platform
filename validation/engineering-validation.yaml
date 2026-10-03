@@ -359,6 +359,10 @@ prechecks:
     inputs:
       - web/package.json
       - web/pnpm-lock.yaml
+      - web/patches/**
+      - web/security-patches.json
+      - web/scripts/verify-*-guard.js
+      - web/scripts/verify-security-patches.js
       - architecture/reference/dockerfiles/Dockerfile.test-runner-ts
       - validation/**
       - scripts/validation_control/**

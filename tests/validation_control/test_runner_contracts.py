@@ -75,6 +75,17 @@ def test_runner_images_exclude_application_source() -> None:
         assert "USER root" not in source
 
 
+def test_web_dependency_patches_are_bound_to_every_installing_runner() -> None:
+    for dockerfile_name in ("Dockerfile.test-runner-ts", "Dockerfile.test-runner"):
+        source = (ROOT / "architecture/reference/dockerfiles" / dockerfile_name).read_text(encoding="utf-8")
+        assert "web/patches/" in source
+
+    runners = VALIDATION_CATALOG["prechecks"]["typescript_dependency_scan"]["inputs"]
+    assert "web/patches/**" in runners
+    gate = (ROOT / "scripts/validation_control/run_dependency_scan_gate.sh").read_text(encoding="utf-8")
+    assert gate.index("verify-security-patches.js") < gate.index("pnpm audit --audit-level high")
+
+
 def test_primary_service_build_contexts_match_root_relative_dockerfiles() -> None:
     for service in (
         "constitutional-engine",

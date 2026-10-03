@@ -48,6 +48,7 @@ ENV PATH=$PATH:/usr/local/dotnet
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN npm install --global pnpm@9.15.9
 COPY --chown=waooaw:waooaw web/package.json web/pnpm-lock.yaml /opt/waooaw-web/
+COPY --chown=waooaw:waooaw web/patches/ /opt/waooaw-web/patches/
 RUN --mount=type=cache,id=wc104-full-pnpm,target=/root/.local/share/pnpm/store,sharing=locked \
     cd /opt/waooaw-web && pnpm install --frozen-lockfile
 ENV NODE_PATH=/opt/waooaw-web/node_modules \
