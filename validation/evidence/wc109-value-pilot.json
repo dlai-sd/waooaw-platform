@@ -2,8 +2,8 @@
   "observations": [
     {
       "change_class": "validation-control-plane-and-hosted-dependency-security",
-      "complete_applicable_gate_count": 26,
-      "head_sha": "81a45a3934a1b00893690ed442558fdd79385241",
+      "complete_applicable_gate_count": 30,
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
       "limitations": [
         "One pull request is not a performance trend.",
         "Summed gate-seconds are not workflow wall-clock time because hosted jobs overlap.",
@@ -15,7 +15,7 @@
       "pull_request_number": 481,
       "repair_loop_count": 14,
       "retrospective_fix_count": 14,
-      "selected_gate_count": 26,
+      "selected_gate_count": 30,
       "tier_elapsed_distributions": {
         "tier1": {
           "maximum_seconds": 79.303,

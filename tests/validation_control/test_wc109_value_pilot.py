@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from validation_control.pilot import (
+    validate_current_pr_value_record,
     validate_value_baseline,
     validate_value_baseline_source,
     validate_wc109_wc110_integration,
@@ -57,6 +58,107 @@ def integration_record() -> dict[str, object]:
         },
         "validation": {"result": "PASS", "test_count": 186, "execution_boundary": "repository-docker-runner"},
     }
+
+
+def current_pr_value_record() -> dict[str, object]:
+    return {
+        "schema": "waooaw.wc109-current-pr-value/v1",
+        "pull_request": {"number": 481, "head_sha": "a" * 40, "base_sha": "b" * 40},
+        "source_evidence": {
+            name: {"ref": name, "digest": "sha256:" + character * 64}
+            for name, character in zip(
+                ("baseline", "pre_pr", "qualification", "hosted_ci", "hosted_quality"), "12345", strict=True
+            )
+        },
+        "pre_pr": {
+            "executed_nodes": 4,
+            "reused_nodes": 0,
+            "failed_nodes": 0,
+            "volatile_advisory_executed_fresh": True,
+            "supplied_runner_execution": True,
+        },
+        "qualification": {
+            "candidate_sha": "a" * 40,
+            "run_state": "PASSED",
+            "first_cause_gate": None,
+            "gate_counts": {"pass": 40, "blocked_deferred": 3, "fail": 0, "missing": 0},
+            "deferred_gate_ids": ["acceptance:as-001", "acceptance:as-003", "acceptance:as-005"],
+            "lane_counts": {"executed": 40, "resumed": 0, "carry_forward": 0, "suppressed": 0},
+            "total_gate_seconds": 2580.172,
+        },
+        "hosted_final_head": {
+            "head_sha": "a" * 40,
+            "workflow_runs": [
+                {"id": 37070737169, "conclusion": "success"},
+                {"id": 37070737215, "conclusion": "success"},
+            ],
+            "shadow": {
+                "applicable_gate_count": 30,
+                "artifact_backed_catalog_gate_count": 26,
+                "false_negatives": 0,
+                "missing_gate_results": 0,
+                "selective_enforcement": False,
+            },
+            "runner_builds": [
+                {"runner_id": runner_id, "identity": "sha256:" + str(index) * 64, "count": 0}
+                for index, runner_id in enumerate(("python", "dotnet", "typescript", "full"), start=1)
+            ],
+            "candidate_builds": [
+                {
+                    "service": f"service-{index}",
+                    "identity": "sha256:" + str(index) * 64,
+                    "registry_digest": "sha256:" + str(index + 1) * 64,
+                    "count": 1,
+                }
+                for index in range(1, 8)
+            ],
+        },
+        "threshold_outcomes": {outcome: "PRESERVED" for outcome in ("quality", "coverage", "security", "cct")},
+        "limitations": ["one sample", "gate-seconds are not wall-clock", "engineering value is not customer value"],
+        "customer_value_claimed": False,
+    }
+
+
+def test_current_pr_value_record_accepts_exact_final_evidence() -> None:
+    result = validate_current_pr_value_record(current_pr_value_record())
+
+    assert result == {
+        "head_sha": "a" * 40,
+        "qualification_pass_count": 40,
+        "deferred_gate_count": 3,
+        "hosted_gate_count": 30,
+        "runner_build_count": 0,
+        "candidate_build_count": 7,
+        "passed": True,
+    }
+
+
+def test_repository_current_pr_value_record_is_valid() -> None:
+    record = json.loads((REPOSITORY / "validation/evidence/wc109-current-pr-value.json").read_text(encoding="utf-8"))
+
+    result = validate_current_pr_value_record(record)
+
+    assert result["head_sha"] == "2f96645871a3a2a4f1093634d51ab4ca4e81ef34"
+    assert result["qualification_pass_count"] == 40
+    assert result["deferred_gate_count"] == 3
+    assert result["hosted_gate_count"] == 30
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    (
+        (lambda record: record["qualification"]["gate_counts"].update({"pass": 39}), "40 PASS"),
+        (lambda record: record["hosted_final_head"]["shadow"].update({"false_negatives": 1}), "Shadow"),
+        (lambda record: record["hosted_final_head"]["runner_builds"][0].update({"count": 1}), "runner build"),
+        (lambda record: record.update({"customer_value_claimed": True}), "cannot claim customer value"),
+    ),
+)
+def test_current_pr_value_record_rejects_unsupported_claims(mutation: object, message: str) -> None:
+    record = current_pr_value_record()
+    mutation(record)
+
+    with pytest.raises(ValueError, match=message):
+        validate_current_pr_value_record(record)
 
 
 def test_value_baseline_accepts_digest_bound_failed_run() -> None:

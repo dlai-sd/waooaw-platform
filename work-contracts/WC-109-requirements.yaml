@@ -5,7 +5,7 @@ contract_digest: 7d6adeab53b3a20028983444ae2109d7ba8ff0fbc44c8fae325e7f6b2ba3566
 contract_status: AUTHORIZED_IMPLEMENTATION_IN_PROGRESS
 founder_scope_amendment: 2026-10-02_EXECUTION_OUTCOMES_WC110_SEPARATION_AND_CURRENT_PR_VALUE_PILOT
 implementation_scope: true
-result: PLANNED
+result: QUALIFIED
 completion_rule: >-
   Every implementation and pilot requirement must be PASS with direct executable evidence from the
   governed Docker or hosted boundary. Documentation, implementation-shaped mocks, a smaller test set,
@@ -15,7 +15,7 @@ requirement_defaults: &requirement_defaults
   evidence_class: Docker control-plane implementation and executable evidence
   initial_state: expected-fail
   dependencies: Merged WC-108, ADR-050, Docker validation strategy and existing validation catalog
-  residual_risk: Post-WC-110 exact-candidate qualification, hosted pilot rebinding and final author review remain open.
+  residual_risk: Independent Enterprise Architecture review and Founder review and merge remain open.
   evidence_refs:
     - work-contracts/WC-109-agentic-validation-implementation.md
   result: PLANNED
@@ -439,7 +439,8 @@ requirements:
       - validation/evidence/wc109-implementation-availability.json
       - validation/evidence/wc109-hosted-pilot-record.json
       - validation/evidence/wc109-value-pilot.json
-    result: PLANNED
+      - validation/evidence/wc109-current-pr-value.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R032
@@ -452,7 +453,8 @@ requirements:
       - scripts/validation_control/pilot.py
       - tests/validation_control/test_pilot.py
       - validation/evidence/wc109-value-pilot.json
-    result: PLANNED
+      - validation/evidence/wc109-current-pr-value.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R033
@@ -468,7 +470,10 @@ requirements:
       - validation/evidence/wc109-hosted-pilot-record.json
       - github-actions:36995384242:1
       - github-actions:36995384350:1
-    result: PLANNED
+      - github-actions:37070737169:1
+      - github-actions:37070737215:1
+      - validation/evidence/wc109-current-pr-value.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R034
@@ -481,7 +486,8 @@ requirements:
       - scripts/validation_control/wc104_rollback.py
       - tests/validation_control/test_wc104_rollback.py
       - test-results/wc109/rollback-final.json
-    result: PLANNED
+      - test-results/wc109/qualification-final-2f966458.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R035
@@ -520,7 +526,9 @@ requirements:
       - scripts/validation_control/run_wc104_rollback.sh
       - scripts/validation_control/wc104_rollback.py
       - test-results/wc109/rollback-final.json
-    result: PLANNED
+      - test-results/wc109/qualification-final-2f966458.json
+      - validation/evidence/wc109-current-pr-value.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R038
@@ -664,7 +672,8 @@ requirements:
       - tests/validation_control/test_wc109_value_pilot.py
       - validation/evidence/wc109-value-pilot.json
       - validation/evidence/wc109-hosted-pilot-record.json
-    result: PLANNED
+      - validation/evidence/wc109-current-pr-value.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R048
@@ -695,4 +704,5 @@ requirements:
       - tests/pipeline/test_prepare_pr_body.py
       - tests/pipeline/test_validation_policy.py
       - tests/validation_control/test_wc109_value_pilot.py
-    result: PLANNED
+      - validation/evidence/wc109-current-pr-value.json
+    result: PASS
