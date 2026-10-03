@@ -76,7 +76,23 @@ def main() -> int:
         artifact_dir=artifact_dir,
         reuse_evidence_paths=sorted(artifact_dir.parent.glob(f"*/{EVIDENCE_FILE_NAME}")),
     )
-    print(json.dumps(evidence, indent=2, sort_keys=True))
+    print(
+        json.dumps(
+            {
+                "schema": evidence["schema"],
+                "commit_sha": evidence["commit_sha"],
+                "passed": evidence["passed"],
+                "executed_count": evidence["executed_count"],
+                "reused_count": evidence["reused_count"],
+                "expected_reuse_count": evidence["expected_reuse_count"],
+                "reuse_candidate_count": evidence["reuse_candidate_count"],
+                "first_causal_failure": evidence["first_causal_failure"],
+                "manifest_path": str(artifact_dir / EVIDENCE_FILE_NAME),
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
     return 0 if evidence.get("passed") is True else 1
 
 
