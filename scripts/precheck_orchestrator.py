@@ -286,6 +286,24 @@ def _load_reusable_results(
     return reusable
 
 
+def _prior_pass_names(evidence_paths: list[Path]) -> set[str]:
+    names: set[str] = set()
+    for evidence_path in evidence_paths:
+        try:
+            evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        nodes = evidence.get("nodes") if isinstance(evidence, dict) else None
+        if not isinstance(nodes, list):
+            continue
+        names.update(
+            str(node["name"])
+            for node in nodes
+            if isinstance(node, dict) and isinstance(node.get("name"), str) and node.get("status") == "PASS"
+        )
+    return names
+
+
 def git_carry_forward_verifier(
     source_head: str,
     current_head: str,
@@ -535,6 +553,7 @@ def run_prechecks(
     }
     evidence_path = artifact_dir / EVIDENCE_FILE_NAME
     evidence_paths = [evidence_path, *(reuse_evidence_paths or [])]
+    prior_pass_names = _prior_pass_names(evidence_paths)
     results = (
         _load_reusable_results(
             evidence_paths,
@@ -629,6 +648,29 @@ def run_prechecks(
     ordered_results = [results[name] for name in names]
     failures = [result for result in ordered_results if result["status"] != "PASS"]
     causal_failures = [result for result in ordered_results if result["status"] == "FAIL"]
+    reuse_assessments = []
+    for node, result in zip(nodes, ordered_results, strict=True):
+        reused = result.get("reuse", {}).get("reused") is True
+        reason = None
+        if not reused:
+            if not reuse_enabled:
+                reason = "reuse-disabled"
+            elif not node.reusable:
+                reason = "gate-not-reusable"
+            elif node.name in prior_pass_names:
+                reason = "identity-input-or-artifact-invalidated"
+            else:
+                reason = "no-prior-pass"
+            result.setdefault("reuse", {})["invalidation_reason"] = reason
+        reuse_assessments.append(
+            {
+                "name": node.name,
+                "prior_pass_candidate": node.name in prior_pass_names,
+                "expected_reuse": reused,
+                "reused": reused,
+                "reason": reason,
+            }
+        )
     manifest = {
         "schema": EVIDENCE_SCHEMA,
         "passed": not failures,
@@ -643,6 +685,9 @@ def run_prechecks(
         "reuse_enabled": reuse_enabled,
         "executed_count": sum(result.get("reuse", {}).get("reused") is not True for result in ordered_results),
         "reused_count": sum(result.get("reuse", {}).get("reused") is True for result in ordered_results),
+        "reuse_candidate_count": sum(item["prior_pass_candidate"] for item in reuse_assessments),
+        "expected_reuse_count": sum(item["expected_reuse"] for item in reuse_assessments),
+        "reuse_assessments": reuse_assessments,
         "fallback_reasons": fallback_reasons,
         "first_causal_failure": causal_failures[0]["name"] if causal_failures else None,
         "nodes": ordered_results,

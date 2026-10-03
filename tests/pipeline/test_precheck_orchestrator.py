@@ -77,6 +77,17 @@ def test_manifest_binds_inputs_and_node_results(tmp_path: Path) -> None:
     assert manifest["passed"] is True
     assert manifest["executed_count"] == 1
     assert manifest["reused_count"] == 0
+    assert manifest["reuse_candidate_count"] == 0
+    assert manifest["expected_reuse_count"] == 0
+    assert manifest["reuse_assessments"] == [
+        {
+            "name": "gate",
+            "prior_pass_candidate": False,
+            "expected_reuse": False,
+            "reused": False,
+            "reason": "no-prior-pass",
+        }
+    ]
     assert manifest["nodes"][0]["stdout_artifact"].endswith("gate.stdout.log")
     assert manifest["nodes"][0]["authority"] == {
         "catalog_version": "catalog-v1",
@@ -106,6 +117,9 @@ def test_identical_second_run_automatically_reuses_exact_node_evidence(tmp_path:
     assert first["executed_count"] == 1
     assert second["executed_count"] == 0
     assert second["reused_count"] == 1
+    assert second["reuse_candidate_count"] == 1
+    assert second["expected_reuse_count"] == 1
+    assert second["reuse_assessments"][0]["reason"] is None
     assert second["nodes"][0]["reuse"]["provenance"] == "exact-candidate"
     assert second["nodes"][0]["reuse"]["trust_source"] == "local-exact-candidate"
     assert marker.read_text() == "x"
@@ -127,6 +141,9 @@ def test_volatile_node_executes_again_for_identical_candidate(tmp_path: Path) ->
     assert first["executed_count"] == 1
     assert second["executed_count"] == 1
     assert second["reused_count"] == 0
+    assert second["reuse_candidate_count"] == 1
+    assert second["expected_reuse_count"] == 0
+    assert second["reuse_assessments"][0]["reason"] == "gate-not-reusable"
     assert marker.read_text() == "xx"
 
 

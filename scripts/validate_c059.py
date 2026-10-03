@@ -48,6 +48,13 @@ def validate_commit(subject: str, body: str) -> list[str]:
     return []
 
 
+def read_commit_message(path: Path) -> tuple[str, str]:
+    lines = [line for line in path.read_text(encoding="utf-8").splitlines() if not line.startswith("#")]
+    subject = lines[0].strip() if lines else ""
+    body = "\n".join(lines[1:]).strip()
+    return subject, body
+
+
 def read_commits(base: str, head: str) -> list[tuple[str, str]]:
     result = subprocess.run(  # noqa: S603
         [  # noqa: S607
@@ -76,10 +83,25 @@ def read_commits(base: str, head: str) -> list[tuple[str, str]]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--pr-body-file", required=True, type=Path)
-    parser.add_argument("--base", required=True)
-    parser.add_argument("--head", required=True)
+    parser.add_argument("--pr-body-file", type=Path)
+    parser.add_argument("--base")
+    parser.add_argument("--head")
+    parser.add_argument("--commit-message-file", type=Path)
     arguments = parser.parse_args()
+    if arguments.commit_message_file is not None:
+        if arguments.pr_body_file is not None or arguments.base is not None or arguments.head is not None:
+            parser.error("--commit-message-file cannot be combined with PR range arguments")
+        subject, body = read_commit_message(arguments.commit_message_file)
+        violations = validate_commit(subject, body)
+        if violations:
+            print("C-059 commit validation failed:", file=sys.stderr)
+            for violation in violations:
+                print(f"- {violation}", file=sys.stderr)
+            return 1
+        print("C-059 commit validation passed")
+        return 0
+    if arguments.pr_body_file is None or arguments.base is None or arguments.head is None:
+        parser.error("--pr-body-file, --base, and --head are required for PR validation")
     violations = validate_pr_body(arguments.pr_body_file.read_text(encoding="utf-8"))
     try:
         for subject, body in read_commits(arguments.base, arguments.head):

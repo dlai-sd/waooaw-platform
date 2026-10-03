@@ -23,6 +23,7 @@ from validation_control.wc104_rollback import (
     QualificationContext,
     execute_rollback,
     qualification_carry_forward_results,
+    qualification_reuse_analysis,
     parse_prepush_qualification_authority,
     resolve_qualification_context,
     rollback_catalog_digest,
@@ -430,6 +431,43 @@ def test_qualification_carries_only_unaffected_nonvolatile_pass_evidence(tmp_pat
         changed_paths=("docker-compose.yml",),
     )
     assert invalidated == {}
+
+    analysis = qualification_reuse_analysis(
+        checkpoint,
+        plan,
+        repository=tmp_path,
+        changed_paths=("docker-compose.yml",),
+        reused_results=invalidated,
+        invalidated_gates=set(),
+    )
+    by_gate = {item["gate_id"]: item for item in analysis["assessments"]}
+    assert analysis["expected_reuse_gate_count"] == 0
+    assert analysis["actual_reuse_gate_count"] == 0
+    assert by_gate["build"]["reason"] == "inputs-changed"
+    assert by_gate["test-web"]["reason"] == "inputs-changed"
+    assert by_gate["dep-scan:typescript"]["reason"] == "gate-not-reusable"
+
+
+def test_qualification_reuse_analysis_reports_missing_checkpoint(tmp_path: Path) -> None:
+    catalog = load_catalog()
+    plan = build_execution_plan(catalog, catalog["full_gates"], mode="qualification", head_sha=HEAD_SHA, run_id="fresh")
+
+    analysis = qualification_reuse_analysis(
+        None,
+        plan,
+        repository=tmp_path,
+        changed_paths=(),
+        reused_results={},
+        invalidated_gates=set(),
+    )
+
+    assert analysis["checkpoint_supplied"] is False
+    assert analysis["expected_reuse_gate_count"] == 0
+    assert analysis["actual_reuse_gate_count"] == 0
+    assert {item["reason"] for item in analysis["assessments"]} == {
+        "blocked-deferred",
+        "no-checkpoint-supplied",
+    }
 
 
 def completed_repair_context(gate_id: str) -> dict[str, object]:

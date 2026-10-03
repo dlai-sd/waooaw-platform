@@ -47,6 +47,29 @@ def test_socket_is_absent_from_every_runner_by_default() -> None:
         assert all("docker.sock" not in volume for volume in runner["volumes"])
 
 
+def test_qualification_uses_canonical_docker_socket_authority() -> None:
+    launcher = (ROOT / "scripts/validation_control/run_with_docker_socket.sh").read_text(encoding="utf-8")
+    qualification = (ROOT / "scripts/validation_control/run_wc104_qualification.sh").read_text(encoding="utf-8")
+
+    assert "stat -c '%g'" in launcher
+    assert "export DOCKER_GID DOCKER_SOCKET" in launcher
+    assert "run_with_docker_socket.sh" in qualification
+    assert "stat -c '%g'" not in qualification
+
+
+def test_precommit_runs_catalog_selected_checks_for_exact_staged_tree() -> None:
+    hook = (ROOT / ".githooks/pre-commit").read_text(encoding="utf-8")
+    runner = (ROOT / "scripts/validation_control/run_staged_prechecks.py").read_text(encoding="utf-8")
+
+    assert "run_with_docker_socket.sh" in hook
+    assert "run_staged_prechecks.py" in hook
+    assert "git_common_dir:$git_common_dir" in hook
+    assert 'git("write-tree")' in runner
+    assert 'git("commit-tree"' in runner
+    assert "precheck_nodes(" in runner
+    assert 'node.name != "release_qualification"' in runner
+
+
 def test_business_platform_test_gate_requests_testcontainers_socket() -> None:
     resources = VALIDATION_CATALOG["gates"]["test-dotnet:business-platform"]["resources"]
 

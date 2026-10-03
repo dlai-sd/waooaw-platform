@@ -144,6 +144,10 @@ def execution_preflight(
             failures.append("tracked worktree changes must be committed before PR preparation")
     except subprocess.CalledProcessError:
         failures.append("git cannot read the worktree; configure its exact path as a safe.directory")
+    configured_hooks = git("config", "--get", "core.hooksPath")
+    expected_hooks = repository_root / ".githooks"
+    if not configured_hooks or Path(configured_hooks).resolve() != expected_hooks.resolve():
+        failures.append("repository Git hooks are not active; run scripts/install_git_hooks.sh")
 
     if require_docker:
         required_tools = ("bash", "docker", "jq")
@@ -545,10 +549,7 @@ def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str
     )
 
 
-def update_pull_request(pr_number: int, body_file: Path, branch: str) -> None:
-    gh = shutil.which("gh")
-    if gh is None:
-        raise ValueError("GitHub CLI is required to update the pull request")
+def github_repository(gh: str) -> str:
     repository = subprocess.run(  # noqa: S603
         [gh, "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
         check=True,
@@ -557,17 +558,34 @@ def update_pull_request(pr_number: int, body_file: Path, branch: str) -> None:
     ).stdout.strip()
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
         raise ValueError("GitHub repository identity is invalid")
-    requests = (
-        ("PATCH", f"repos/{repository}/pulls/{pr_number}", {"body": body_file.read_text(encoding="utf-8")}),
-        ("POST", f"repos/{repository}/issues/{pr_number}/labels", {"labels": expected_pr_labels(branch)}),
+    return repository
+
+
+def pull_request_body(pr_number: int) -> str:
+    gh = shutil.which("gh")
+    if gh is None:
+        raise ValueError("GitHub CLI is required to read the pull request")
+    repository = github_repository(gh)
+    return subprocess.run(  # noqa: S603
+        [gh, "api", f"repos/{repository}/issues/{pr_number}", "--jq", ".body"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+
+
+def update_pull_request(pr_number: int, body: str | Path, branch: str) -> None:
+    gh = shutil.which("gh")
+    if gh is None:
+        raise ValueError("GitHub CLI is required to update the pull request")
+    repository = github_repository(gh)
+    body_text = body.read_text(encoding="utf-8") if isinstance(body, Path) else body
+    subprocess.run(  # noqa: S603
+        [gh, "api", "--method", "PATCH", f"repos/{repository}/issues/{pr_number}", "--input", "-"],
+        input=json.dumps({"body": body_text, "labels": expected_pr_labels(branch)}),
+        text=True,
+        check=True,
     )
-    for method, endpoint, payload in requests:
-        subprocess.run(  # noqa: S603
-            [gh, "api", "--method", method, endpoint, "--input", "-"],
-            input=json.dumps(payload),
-            text=True,
-            check=True,
-        )
 
 
 def validate_prepared_body(body: str, base: str, head: str) -> list[str]:
@@ -631,7 +649,11 @@ def main() -> int:
             return 0
         remote_head = authoritative_remote_head(arguments.remote)
         head = preparation_head(local_head, remote_head, arguments.allow_unpushed_head)
-        body = arguments.body_file.read_text(encoding="utf-8")
+        body = (
+            pull_request_body(arguments.update_pr)
+            if arguments.update_pr is not None
+            else arguments.body_file.read_text(encoding="utf-8")
+        )
         changed_files = git("diff", "--name-only", f"{arguments.base}..{head}").splitlines()
         changed_file_digest = changed_files_digest(changed_files)
         base_sha = git("rev-parse", arguments.base)
@@ -720,7 +742,7 @@ def main() -> int:
 
     arguments.body_file.write_text(body, encoding="utf-8")
     if arguments.update_pr is not None:
-        update_pull_request(arguments.update_pr, arguments.body_file, git("branch", "--show-current"))
+        update_pull_request(arguments.update_pr, body, git("branch", "--show-current"))
     source = "local pre-push" if arguments.allow_unpushed_head else "pushed"
     print(f"PR body prepared for {source} commit {head}")
     return 0

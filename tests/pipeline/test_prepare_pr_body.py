@@ -24,6 +24,7 @@ from prepare_pr_body import (  # noqa: E402
     precheck_nodes,
     preparation_head,
     prepare_body,
+    pull_request_body,
     release_qualification_gate_required,
     run_ci_prechecks,
     runner_digest,
@@ -154,6 +155,69 @@ def test_main_accepts_post_push_pr_update(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr("prepare_pr_body.execution_preflight", lambda *args, **kwargs: None)
 
     assert main() == 0
+
+
+def test_execution_preflight_rejects_inactive_repository_hooks(monkeypatch, tmp_path: Path) -> None:
+    body_file = tmp_path / "pr-body.md"
+    body_file.write_text("body", encoding="utf-8")
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    def fake_git(*arguments: str) -> str:
+        if arguments == ("status", "--porcelain", "--untracked-files=no"):
+            return ""
+        if arguments == ("config", "--get", "core.hooksPath"):
+            return ""
+        raise AssertionError(f"unexpected git arguments: {arguments}")
+
+    monkeypatch.setattr("prepare_pr_body.git", fake_git)
+
+    with pytest.raises(ValueError, match="install_git_hooks"):
+        execution_preflight(tmp_path, body_file, tmp_path, HEAD, HEAD, require_docker=False)
+
+
+def test_pull_request_body_reads_live_issue_body(monkeypatch) -> None:
+    calls: list[list[str]] = []
+    monkeypatch.setattr("prepare_pr_body.shutil.which", lambda command: "/usr/bin/gh")
+    monkeypatch.setattr("prepare_pr_body.github_repository", lambda gh: "waooaw/waooaw")
+
+    def fake_run(command, **kwargs):
+        calls.append(command)
+        return SimpleNamespace(stdout="live body\n")
+
+    monkeypatch.setattr("prepare_pr_body.subprocess.run", fake_run)
+
+    assert pull_request_body(481) == "live body\n"
+    assert calls == [["/usr/bin/gh", "api", "repos/waooaw/waooaw/issues/481", "--jq", ".body"]]
+
+
+def test_update_pull_request_publishes_body_and_labels_atomically(monkeypatch) -> None:
+    calls: list[tuple[list[str], dict[str, object]]] = []
+    monkeypatch.setattr("prepare_pr_body.shutil.which", lambda command: "/usr/bin/gh")
+    monkeypatch.setattr("prepare_pr_body.github_repository", lambda gh: "waooaw/waooaw")
+
+    def fake_run(command, **kwargs):
+        calls.append((command, kwargs))
+        return SimpleNamespace(stdout="")
+
+    monkeypatch.setattr("prepare_pr_body.subprocess.run", fake_run)
+
+    update_pull_request(481, "prepared body", "wc/109-process")
+
+    assert len(calls) == 1
+    command, kwargs = calls[0]
+    assert command == [
+        "/usr/bin/gh",
+        "api",
+        "--method",
+        "PATCH",
+        "repos/waooaw/waooaw/issues/481",
+        "--input",
+        "-",
+    ]
+    assert json.loads(str(kwargs["input"])) == {
+        "body": "prepared body",
+        "labels": ["tier:2-feature", "status:pr-open", "awaiting:review"],
+    }
 
 
 def test_static_repository_validation_reports_catalog_and_compose_failures(monkeypatch, tmp_path: Path) -> None:
@@ -328,21 +392,15 @@ def test_update_pull_request_uses_bounded_rest_calls(monkeypatch, tmp_path: Path
         "api",
         "--method",
         "PATCH",
-        "repos/dlai-sd/waooaw-platform/pulls/476",
+        "repos/dlai-sd/waooaw-platform/issues/476",
         "--input",
         "-",
     ]
-    assert json.loads(calls[1][1]["input"]) == {"body": "prepared body\n"}
-    assert calls[2][0] == [
-        "/usr/bin/gh",
-        "api",
-        "--method",
-        "POST",
-        "repos/dlai-sd/waooaw-platform/issues/476/labels",
-        "--input",
-        "-",
-    ]
-    assert json.loads(calls[2][1]["input"])["labels"] == ["tier:2-feature", "status:pr-open", "awaiting:review"]
+    assert json.loads(calls[1][1]["input"]) == {
+        "body": "prepared body\n",
+        "labels": ["tier:2-feature", "status:pr-open", "awaiting:review"],
+    }
+    assert len(calls) == 2
 
 
 def test_precheck_evidence_must_match_base_and_head() -> None:
@@ -601,7 +659,10 @@ def test_execution_preflight_rejects_wrong_worktree_before_docker(monkeypatch, t
 
 def test_execution_preflight_checks_tools_only_when_gates_will_run(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setattr("prepare_pr_body.git", lambda *arguments: "")
+    monkeypatch.setattr(
+        "prepare_pr_body.git",
+        lambda *arguments: str(tmp_path / ".githooks") if arguments == ("config", "--get", "core.hooksPath") else "",
+    )
     monkeypatch.setattr("prepare_pr_body.shutil.which", lambda executable: None)
 
     execution_preflight(tmp_path, tmp_path / "pr-body.md", tmp_path, HEAD, HEAD, require_docker=False)
@@ -651,7 +712,10 @@ def test_execution_preflight_probes_body_and_evidence_atomic_replacement(monkeyp
     body_file.write_text("body", encoding="utf-8")
     probed: list[Path] = []
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setattr("prepare_pr_body.git", lambda *arguments: "")
+    monkeypatch.setattr(
+        "prepare_pr_body.git",
+        lambda *arguments: str(tmp_path / ".githooks") if arguments == ("config", "--get", "core.hooksPath") else "",
+    )
     monkeypatch.setattr("prepare_pr_body.probe_atomic_output", lambda path: probed.append(path))
 
     execution_preflight(tmp_path, body_file, tmp_path, HEAD, HEAD, require_docker=False)

@@ -107,14 +107,10 @@ repository=$(git rev-parse --show-toplevel)
 repository=$(realpath "$repository")
 git_common_dir=$(realpath "$(git -C "$repository" rev-parse --git-common-dir)")
 docker_socket=/var/run/docker.sock
-if [ ! -S "$docker_socket" ] || [ ! -r "$docker_socket" ] || [ ! -w "$docker_socket" ]; then
-    printf '%s\n' 'Docker socket is required for qualification runner supply' >&2
-    exit 2
-fi
-docker_gid=$(stat -c '%g' "$docker_socket")
 mkdir -p "$repository/$(dirname "$output")"
 
-DOCKER_GID=$docker_gid docker compose --project-directory "$repository" --profile test run --rm \
+scripts/validation_control/run_with_docker_socket.sh \
+    docker compose --project-directory "$repository" --profile test run --rm \
     -e GITHUB_TOKEN \
     -v "$repository:$repository:ro" \
     -v "$repository/test-results:$repository/test-results" \
