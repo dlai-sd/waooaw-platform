@@ -133,6 +133,15 @@ def test_web_configuration_is_runtime_external() -> None:
     assert "'libcrypto3>=3.5.8-r0' 'libssl3>=3.5.8-r0'" in content
 
 
+def test_web_dependency_stage_copies_pnpm_patches_before_install() -> None:
+    content = (REPO_ROOT / "web/Dockerfile").read_text(encoding="utf-8")
+    patch_copy = "COPY web/patches ./patches"
+    frozen_install = "RUN pnpm install --frozen-lockfile"
+
+    assert patch_copy in content
+    assert content.index(patch_copy) < content.index(frozen_install)
+
+
 def test_baseline_excludes_oauth_vault_and_mcps() -> None:
     services = _compose()["services"]
     excluded = [name for name in services if name == "oauth-vault" or name.endswith("-mcp")]
