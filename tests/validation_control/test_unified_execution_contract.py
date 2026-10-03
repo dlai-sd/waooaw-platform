@@ -354,6 +354,9 @@ def test_normal_qualification_launcher_cannot_enter_rollback_mode() -> None:
     assert '"$docker_socket:$docker_socket"' in launcher
     assert "--repair-context and --repair-gate must be used together with --resume" in launcher
     assert "--repair-context must be repository-relative below test-results" in launcher
+    assert "--precheck-evidence must be repository-relative below test-results" in launcher
+    assert "--precheck-evidence must not traverse outside test-results" in launcher
+    assert launcher.count('--precheck-evidence "$8"') == 3
     assert '--repair-context "$6" --invalidate-gate "$7"' in launcher
 
 
@@ -377,6 +380,8 @@ def test_qualification_launcher_rejects_incomplete_repair_before_docker(repair_a
             "test-results/qualification.json",
             "--handoff-evidence",
             "test-results/handoff.json",
+            "--precheck-evidence",
+            "test-results/precheck.json",
             *repair_arguments,
         ],
         cwd=root,

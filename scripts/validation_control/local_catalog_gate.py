@@ -378,6 +378,7 @@ def execute_gate(
     pr_number: str | None = None,
     repository_name: str | None = None,
     return_evidence_ref: bool = False,
+    stream_output: bool = True,
 ) -> int | tuple[int, str]:
     if mode not in {"focused", "qualification"}:
         raise ValueError(f"unsupported local execution mode: {mode}")
@@ -425,12 +426,33 @@ def execute_gate(
         command.extend(("--image-id", resolution["image_id"]))
     started_at = datetime.now(timezone.utc).isoformat()
     started_monotonic = time.monotonic()
-    completed = subprocess.run(  # noqa: S603
-        command,
-        cwd=repository,
-        env=environment,
-        check=False,
-    )
+    if stream_output:
+        completed = subprocess.run(  # noqa: S603
+            command,
+            cwd=repository,
+            env=environment,
+            check=False,
+        )
+    else:
+        stdout_path = artifact_root / "gate.stdout.log"
+        stderr_path = artifact_root / "gate.stderr.log"
+        with stdout_path.open("w", encoding="utf-8") as stdout, stderr_path.open("w", encoding="utf-8") as stderr:
+            process = subprocess.Popen(  # noqa: S603
+                command,
+                cwd=repository,
+                env=environment,
+                stdout=stdout,
+                stderr=stderr,
+                text=True,
+            )
+            while True:
+                try:
+                    return_code = process.wait(timeout=30)
+                    break
+                except subprocess.TimeoutExpired:
+                    elapsed = round(time.monotonic() - started_monotonic)
+                    print(f"[qualification] gate={gate_id} running elapsed_seconds={elapsed}", flush=True)
+        completed = subprocess.CompletedProcess(command, return_code)
     duration_ms = round((time.monotonic() - started_monotonic) * 1000)
     record_path = repository / node["output_directory"] / "wc109-execution.json"
     record_path.parent.mkdir(parents=True, exist_ok=True)
@@ -449,6 +471,8 @@ def execute_gate(
         "product_image_build_events": len(node.get("product_image_builds", [])),
         "result": "PASS" if completed.returncode == 0 else "FAIL",
         "return_code": completed.returncode,
+        "stdout_artifact": str((artifact_root / "gate.stdout.log").relative_to(repository)) if not stream_output else None,
+        "stderr_artifact": str((artifact_root / "gate.stderr.log").relative_to(repository)) if not stream_output else None,
         "runner_build_events": resolution["build_count"] if resolution is not None else 0,
         "runner_digest": resolution["runner_digest"] if resolution is not None else node.get("tool_digest"),
         "service_identities": service_identities,

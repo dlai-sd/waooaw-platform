@@ -47,6 +47,29 @@ def test_socket_is_absent_from_every_runner_by_default() -> None:
         assert all("docker.sock" not in volume for volume in runner["volumes"])
 
 
+def test_qualification_uses_canonical_docker_socket_authority() -> None:
+    launcher = (ROOT / "scripts/validation_control/run_with_docker_socket.sh").read_text(encoding="utf-8")
+    qualification = (ROOT / "scripts/validation_control/run_wc104_qualification.sh").read_text(encoding="utf-8")
+
+    assert "stat -c '%g'" in launcher
+    assert "export DOCKER_GID DOCKER_SOCKET" in launcher
+    assert "run_with_docker_socket.sh" in qualification
+    assert "stat -c '%g'" not in qualification
+
+
+def test_precommit_runs_catalog_selected_checks_for_exact_staged_tree() -> None:
+    hook = (ROOT / ".githooks/pre-commit").read_text(encoding="utf-8")
+    runner = (ROOT / "scripts/validation_control/run_staged_prechecks.py").read_text(encoding="utf-8")
+
+    assert "run_with_docker_socket.sh" in hook
+    assert "run_staged_prechecks.py" in hook
+    assert "git_common_dir:$git_common_dir" in hook
+    assert 'git("write-tree")' in runner
+    assert 'git("commit-tree"' in runner
+    assert "precheck_nodes(" in runner
+    assert 'node.name != "release_qualification"' in runner
+
+
 def test_business_platform_test_gate_requests_testcontainers_socket() -> None:
     resources = VALIDATION_CATALOG["gates"]["test-dotnet:business-platform"]["resources"]
 
@@ -73,6 +96,17 @@ def test_runner_images_exclude_application_source() -> None:
         assert "COPY . /workspace" not in source
         assert "COPY --chown=waooaw:waooaw . /workspace" not in source
         assert "USER root" not in source
+
+
+def test_web_dependency_patches_are_bound_to_every_installing_runner() -> None:
+    for dockerfile_name in ("Dockerfile.test-runner-ts", "Dockerfile.test-runner"):
+        source = (ROOT / "architecture/reference/dockerfiles" / dockerfile_name).read_text(encoding="utf-8")
+        assert "web/patches/" in source
+
+    runners = VALIDATION_CATALOG["prechecks"]["typescript_dependency_scan"]["inputs"]
+    assert "web/patches/**" in runners
+    gate = (ROOT / "scripts/validation_control/run_dependency_scan_gate.sh").read_text(encoding="utf-8")
+    assert gate.index("verify-security-patches.js") < gate.index("pnpm audit --audit-level high")
 
 
 def test_primary_service_build_contexts_match_root_relative_dockerfiles() -> None:
@@ -226,7 +260,7 @@ def test_customer_contract_rejects_unpersistable_fuzz_inputs_and_documents_step_
     ):
         assert paths[path]["post"]["responses"]["403"] == {"$ref": "#/components/responses/IdentityStepUpRequired"}
     assert schemas["ConversationLanguageTag"]["pattern"] == "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"
-    assert schemas["ConversationTextBlockV1"]["properties"]["text"]["pattern"] == r"^[^\u0000]+$"
+    assert schemas["ConversationTextBlockV1"]["properties"]["text"]["pattern"] == r"^(?=.*\S)[^\u0000]+$"
     for request_schema in ("SendPortalInteractionMessageRequestV1", "SendConversationMessageRequestV1"):
         assert schemas[request_schema]["properties"]["locale"] == {"$ref": "#/components/schemas/ConversationLanguageTag"}
 

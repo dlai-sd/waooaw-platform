@@ -1,0 +1,183 @@
+{
+  "schema": "waooaw.wc109-current-pr-value/v1",
+  "pull_request": {
+    "number": 481,
+    "base_sha": "1fedf83e744b2099de1c3707f1fec770159124e8",
+    "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34"
+  },
+  "source_evidence": {
+    "baseline": {
+      "ref": "validation/evidence/wc109-value-baseline.json",
+      "digest": "sha256:69531f57fefc1514c493066bcf71e4755d4151db8505eee0ca1e121beda31dc3"
+    },
+    "pre_pr": {
+      "ref": "test-results/wc109/pr-body-resume.precheck-evidence.json",
+      "digest": "sha256:7abea3a258b0adaa09579f54a304966baa598b96970cda2e3aaf36a6bb297bec"
+    },
+    "qualification": {
+      "ref": "test-results/wc109/qualification-final-2f966458.json",
+      "digest": "sha256:ad0d273b3566bce53ee4af52e0e626d71dc3f896ce6177bbe8999bf7f44a8577"
+    },
+    "hosted_ci": {
+      "ref": "github-actions:37070737169:1:wc109-shadow-ci-37070737169",
+      "digest": "sha256:b122178d6d463f475805c03317314653c2d936e7662d3ca19d01496db404000b"
+    },
+    "hosted_quality": {
+      "ref": "github-actions:37070737215:1:wc109-shadow-code-quality-37070737215",
+      "digest": "sha256:81cc4a2d917dec6b249d4514b54a255972f1f003e8422cb1332186c512566ce5"
+    }
+  },
+  "pre_pr": {
+    "executed_nodes": 4,
+    "reused_nodes": 0,
+    "failed_nodes": 0,
+    "volatile_advisory_executed_fresh": true,
+    "supplied_runner_execution": true
+  },
+  "qualification": {
+    "candidate_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+    "run_state": "PASSED",
+    "first_cause_gate": null,
+    "gate_counts": {
+      "pass": 40,
+      "blocked_deferred": 3,
+      "fail": 0,
+      "missing": 0
+    },
+    "deferred_gate_ids": [
+      "acceptance:as-001",
+      "acceptance:as-003",
+      "acceptance:as-005"
+    ],
+    "lane_counts": {
+      "executed": 40,
+      "resumed": 0,
+      "carry_forward": 0,
+      "suppressed": 0
+    },
+    "runner_build_count": 2,
+    "product_image_build_count": 0,
+    "total_gate_seconds": 2580.172
+  },
+  "hosted_final_head": {
+    "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+    "workflow_runs": [
+      {
+        "id": 37070737169,
+        "attempt": 1,
+        "name": "CI - Build & Test",
+        "conclusion": "success"
+      },
+      {
+        "id": 37070737215,
+        "attempt": 1,
+        "name": "Code Quality",
+        "conclusion": "success"
+      }
+    ],
+    "shadow": {
+      "applicable_gate_count": 30,
+      "artifact_backed_catalog_gate_count": 26,
+      "false_negatives": 0,
+      "missing_gate_results": 0,
+      "selective_enforcement": false
+    },
+    "hosted_catalog_gate_seconds": 888.357,
+    "runner_builds": [
+      {
+        "runner_id": "dotnet",
+        "identity": "sha256:e94da25328358df61bdac7cfdfdc1e932811f0d7b67ffeb413453b81c6a4d487",
+        "count": 0
+      },
+      {
+        "runner_id": "full",
+        "identity": "sha256:fe52a02a4569c0cd19310157eb51667751fbd6013c7131ec75589b1b3194c356",
+        "count": 0
+      },
+      {
+        "runner_id": "python",
+        "identity": "sha256:b8a7b0d0e04522a79cdce69e6299888ce69ad3941d29b715bf0251c9fe80aa8e",
+        "count": 0
+      },
+      {
+        "runner_id": "typescript",
+        "identity": "sha256:7cc041ac633e1829115ff7bfd9a28b355413658ef455cbe3f85b9d8ac573699d",
+        "count": 0
+      }
+    ],
+    "candidate_builds": [
+      {
+        "service": "agent-runtime-adapter-digital-marketing",
+        "identity": "sha256:442f25173210737cce19cddd3e1a1816acfb324e9eaa4157454ea3396448b4a3",
+        "registry_digest": "sha256:1d97863c600388ba2ddbb05847d0d2dc431e7290ff5a5ad22617729c4ff3babe",
+        "count": 1
+      },
+      {
+        "service": "ai-runtime",
+        "identity": "sha256:c2459412151132e69baa5167e2918af729901c3493f5541eb19a6345871e6d2f",
+        "registry_digest": "sha256:59e714b603673a5a597743978f10e4640cfbbae610212a75cfbf56cc75d6aae7",
+        "count": 1
+      },
+      {
+        "service": "billing-engine",
+        "identity": "sha256:0ccd6a9542dd45dcc7fe7670651cfd5270982976f3c60f48317deea36b6394ad",
+        "registry_digest": "sha256:f5d2647f8c3a9d397b1958d91f3c507e3a222f0fbed736f9f4538f49bdd0855b",
+        "count": 1
+      },
+      {
+        "service": "business-platform",
+        "identity": "sha256:b5103c81ed47ead81d630028e8c4721c9b666b12f7e74c3b853cbb427a45363c",
+        "registry_digest": "sha256:6c02c185f033f81442c41c71325865814c8b302c3ee5bb96f7b0d1d3c38cc8a9",
+        "count": 1
+      },
+      {
+        "service": "constitutional-engine",
+        "identity": "sha256:13bd7f026c16742acfa0d358802d17b574144508cc05cf7b1c12137d875921f6",
+        "registry_digest": "sha256:fd2e64daff2177a3c306f29c579cb0450fdf7d00cd23e3f1f49e656e450831d8",
+        "count": 1
+      },
+      {
+        "service": "professional-runtime",
+        "identity": "sha256:563b83850f8942e82676796b0a9fec05ffb66cd19b4fedb61b632ad5f135444a",
+        "registry_digest": "sha256:fd8be4e1378134a848b3e14ca4790229431f6735976b39341b0192d8a8e13390",
+        "count": 1
+      },
+      {
+        "service": "web",
+        "identity": "sha256:eaf221d739260722ea815a80531bb5c1192ae8665a4fbec80c444f8f661b9829",
+        "registry_digest": "sha256:50347f18b17e521d1472b52b904c64aec4b34cd629a0f11919c5c0fb9027b0a6",
+        "count": 1
+      }
+    ]
+  },
+  "observed_invocations": {
+    "focused_docker_samples": [143, 107, 18],
+    "pre_pr_nodes": 4,
+    "qualification_runs": 1,
+    "hosted_workflows": 2
+  },
+  "comparison": {
+    "baseline_gate_seconds": 2833.434,
+    "final_qualification_gate_seconds": 2580.172,
+    "baseline_first_failure_after_gate_seconds": 1901.640,
+    "baseline_gate_seconds_after_first_failure": 931.601,
+    "final_first_cause": null,
+    "repair_loop_count_before_final_head": 14,
+    "comparable_speed_improvement_claimed": false
+  },
+  "threshold_outcomes": {
+    "quality": "PRESERVED",
+    "coverage": "PRESERVED",
+    "security": "PRESERVED",
+    "cct": "PRESERVED"
+  },
+  "limitations": [
+    "One implementation pull request is not a performance trend.",
+    "Summed gate-seconds are not workflow wall-clock time because hosted and local lanes may overlap.",
+    "The retained baseline and final qualification have different candidate identities and execution conditions, so no speed-improvement percentage is claimed.",
+    "No final-head lane failed, so affected lane-seconds suppressed after failure are not observable in this sample.",
+    "Engineering delivery observations are not direct customer-value realization.",
+    "Selective hosted validation remains disabled; unchanged full CI is authoritative."
+  ],
+  "customer_value_claimed": false
+}

@@ -16,7 +16,9 @@ TIERS = ("tier1", "tier2", "tier3", "tier4")
 OUTCOMES = ("quality", "coverage", "security", "cct")
 VALUE_BASELINE_SCHEMA = "waooaw.wc109-value-baseline/v1"
 WC109_WC110_INTEGRATION_SCHEMA = "waooaw.wc109-wc110-integration/v1"
+CURRENT_PR_VALUE_SCHEMA = "waooaw.wc109-current-pr-value/v1"
 WC109_PRESERVED_HEAD = "cccc2ad8306a512bf0f80c149c89b599a74160a2"
+WC109_DEFERRED_GATES = {"acceptance:as-001", "acceptance:as-003", "acceptance:as-005"}
 WC109_ALLOWED_PREFIXES = (
     ".github/",
     "architecture/reference/dockerfiles/",
@@ -96,6 +98,115 @@ def validate_wc109_wc110_integration(record: dict[str, Any]) -> dict[str, Any]:
         "preserved_head": WC109_PRESERVED_HEAD,
         "candidate_path_count": candidate["path_count"],
         "product_owned_files_removed": candidate["product_owned_files_removed"],
+        "passed": True,
+    }
+
+
+def validate_current_pr_value_record(record: dict[str, Any]) -> dict[str, Any]:
+    if record.get("schema") != CURRENT_PR_VALUE_SCHEMA:
+        raise ValueError("unsupported current-PR value schema")
+    pull_request = record.get("pull_request")
+    if not isinstance(pull_request, dict) or pull_request.get("number") != 481:
+        raise ValueError("current-PR value evidence must identify PR 481")
+    head_sha = _full_commit(pull_request.get("head_sha"), "pull_request.head_sha")
+    _full_commit(pull_request.get("base_sha"), "pull_request.base_sha")
+
+    sources = record.get("source_evidence")
+    required_sources = {"baseline", "pre_pr", "qualification", "hosted_ci", "hosted_quality"}
+    if not isinstance(sources, dict) or set(sources) != required_sources:
+        raise ValueError("current-PR value evidence requires every source class")
+    for name, source in sources.items():
+        if not isinstance(source, dict) or not isinstance(source.get("ref"), str) or not source["ref"]:
+            raise ValueError(f"{name} source requires a reference")
+        _digest(source.get("digest"), f"{name}.digest")
+
+    pre_pr = record.get("pre_pr")
+    if not isinstance(pre_pr, dict) or pre_pr != {
+        "executed_nodes": 4,
+        "reused_nodes": 0,
+        "failed_nodes": 0,
+        "volatile_advisory_executed_fresh": True,
+        "supplied_runner_execution": True,
+    }:
+        raise ValueError("pre-PR evidence must preserve fresh advisory and supplied-runner outcomes")
+
+    qualification = record.get("qualification")
+    if not isinstance(qualification, dict) or qualification.get("candidate_sha") != head_sha:
+        raise ValueError("qualification must bind the exact PR head")
+    if qualification.get("run_state") != "PASSED" or qualification.get("first_cause_gate") is not None:
+        raise ValueError("qualification must be a terminal PASS without a first-cause failure")
+    if qualification.get("gate_counts") != {"pass": 40, "blocked_deferred": 3, "fail": 0, "missing": 0}:
+        raise ValueError("qualification requires 40 PASS and three exact deferred gates")
+    if set(qualification.get("deferred_gate_ids", [])) != WC109_DEFERRED_GATES:
+        raise ValueError("qualification deferred-gate inventory is invalid")
+    if qualification.get("lane_counts") != {
+        "executed": 40,
+        "resumed": 0,
+        "carry_forward": 0,
+        "suppressed": 0,
+    }:
+        raise ValueError("qualification lane counts are incomplete")
+    total_gate_seconds = qualification.get("total_gate_seconds")
+    if not isinstance(total_gate_seconds, (int, float)) or isinstance(total_gate_seconds, bool) or total_gate_seconds < 0:
+        raise ValueError("qualification total gate-seconds must be nonnegative")
+
+    hosted = record.get("hosted_final_head")
+    if not isinstance(hosted, dict) or hosted.get("head_sha") != head_sha:
+        raise ValueError("hosted evidence must bind the exact PR head")
+    runs = hosted.get("workflow_runs")
+    if (
+        not isinstance(runs, list)
+        or {run.get("id") for run in runs if isinstance(run, dict)} != {37070737169, 37070737215}
+        or any(run.get("conclusion") != "success" for run in runs if isinstance(run, dict))
+    ):
+        raise ValueError("hosted workflow runs are incomplete")
+    if hosted.get("shadow") != {
+        "applicable_gate_count": 30,
+        "artifact_backed_catalog_gate_count": 26,
+        "false_negatives": 0,
+        "missing_gate_results": 0,
+        "selective_enforcement": False,
+    }:
+        raise ValueError("hosted Shadow comparison is incomplete")
+    runner_builds = hosted.get("runner_builds")
+    candidate_builds = hosted.get("candidate_builds")
+    if not isinstance(runner_builds, list) or {item.get("runner_id") for item in runner_builds} != {
+        "python",
+        "dotnet",
+        "typescript",
+        "full",
+    }:
+        raise ValueError("hosted runner build identities are incomplete")
+    if any(_digest(item.get("identity"), "runner identity") is None or item.get("count") != 0 for item in runner_builds):
+        raise ValueError("final-head runner build counts must be exact")
+    if not isinstance(candidate_builds, list) or len(candidate_builds) != 7:
+        raise ValueError("hosted candidate build identities are incomplete")
+    if len({item.get("service") for item in candidate_builds}) != 7:
+        raise ValueError("hosted candidate services must be unique")
+    for item in candidate_builds:
+        _digest(item.get("identity"), "candidate identity")
+        _digest(item.get("registry_digest"), "candidate registry digest")
+        if item.get("count") != 1:
+            raise ValueError("final-head candidate build counts must be exact")
+
+    if record.get("threshold_outcomes") != {outcome: "PRESERVED" for outcome in OUTCOMES}:
+        raise ValueError("current-PR quality thresholds must be preserved")
+    limitations = record.get("limitations")
+    if (
+        not isinstance(limitations, list)
+        or len(limitations) < 3
+        or not all(isinstance(limitation, str) and limitation for limitation in limitations)
+    ):
+        raise ValueError("current-PR value limitations are incomplete")
+    if record.get("customer_value_claimed") is not False:
+        raise ValueError("engineering observations cannot claim customer value")
+    return {
+        "head_sha": head_sha,
+        "qualification_pass_count": 40,
+        "deferred_gate_count": 3,
+        "hosted_gate_count": 30,
+        "runner_build_count": 0,
+        "candidate_build_count": 7,
         "passed": True,
     }
 

@@ -1,0 +1,12 @@
+{
+  "schema": "waooaw.web-security-patches/v1",
+  "advisories": [
+    {
+      "ghsa": "GHSA-vfj7-8cjw-p6xm",
+      "package": "braces",
+      "version": "3.0.3",
+      "patch": "patches/braces@3.0.3.patch",
+      "verifier": "scripts/verify-braces-depth-guard.js"
+    }
+  ]
+}

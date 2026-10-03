@@ -1,0 +1,20 @@
+#!/bin/sh
+set -eu
+
+if git diff --cached --quiet; then
+    exit 0
+fi
+
+repository=$(realpath "$(git rev-parse --show-toplevel)")
+git_common_dir=$(realpath "$(git rev-parse --git-common-dir)")
+docker_socket=/var/run/docker.sock
+cd "$repository"
+
+scripts/validation_control/run_with_docker_socket.sh \
+    docker compose --project-directory "$repository" --profile test run --rm --no-deps \
+    -v "$repository:$repository:ro" \
+    -v "$repository/test-results:$repository/test-results" \
+    -v "$git_common_dir:$git_common_dir" \
+    -v "$docker_socket:$docker_socket" \
+    -w "$repository" \
+    test-runner python scripts/validation_control/run_staged_prechecks.py

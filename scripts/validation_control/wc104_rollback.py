@@ -52,6 +52,58 @@ class QualificationContext:
     repository_name: str
 
 
+PREPUSH_AUTHORITY_HEADING = "## Pre-Push Qualification Authority"
+
+
+def parse_prepush_qualification_authority(body: str) -> dict[str, Any]:
+    pattern = re.compile(
+        rf"{re.escape(PREPUSH_AUTHORITY_HEADING)}\s+.*?```json\s*(\{{.*?\}})\s*```",
+        re.DOTALL,
+    )
+    matches = pattern.findall(body)
+    if len(matches) != 1:
+        raise ValueError("live PR body must contain exactly one pre-push qualification authority record")
+    authority = json.loads(matches[0])
+    if not isinstance(authority, dict):
+        raise ValueError("pre-push qualification authority root must be a mapping")
+    return authority
+
+
+def validate_prepush_qualification_authority(
+    authority: dict[str, Any],
+    precheck_evidence: dict[str, Any],
+    *,
+    precheck_digest: str,
+    candidate_sha: str,
+    base_sha: str,
+    published_head_sha: str,
+    pr_number: int,
+    branch: str,
+    changed_files: tuple[str, ...],
+) -> None:
+    changed_digest = hashlib.sha256("\n".join(sorted(changed_files)).encode()).hexdigest()
+    expected = {
+        "schema": "waooaw.prepush-qualification-authority/v1",
+        "candidate_sha": candidate_sha,
+        "base_sha": base_sha,
+        "published_head_sha": published_head_sha,
+        "pr_number": pr_number,
+        "branch": branch,
+        "changed_files_digest": changed_digest,
+        "precheck_evidence_digest": precheck_digest,
+    }
+    mismatches = sorted(field for field, value in expected.items() if authority.get(field) != value)
+    if mismatches:
+        raise ValueError("pre-push qualification authority mismatch: " + ",".join(mismatches))
+    if (
+        precheck_evidence.get("passed") is not True
+        or precheck_evidence.get("commit_sha") != candidate_sha
+        or precheck_evidence.get("base_sha") != base_sha
+        or precheck_evidence.get("changed_file_digest") != changed_digest
+    ):
+        raise ValueError("pre-push qualification evidence is failed or identity-mismatched")
+
+
 def rollback_catalog_digest(catalog: dict[str, Any]) -> str:
     canonical = json.dumps(catalog, sort_keys=True, separators=(",", ":")).encode()
     return "sha256:" + hashlib.sha256(canonical).hexdigest()
@@ -139,6 +191,72 @@ def qualification_carry_forward_results(
     return carried
 
 
+def qualification_reuse_analysis(
+    checkpoint: dict[str, Any] | None,
+    plan: dict[str, Any],
+    *,
+    repository: Path,
+    changed_paths: tuple[str, ...],
+    reused_results: dict[str, dict[str, Any]],
+    invalidated_gates: set[str],
+) -> dict[str, Any]:
+    prior_by_gate = {
+        str(result.get("gate_id")): result for result in (checkpoint or {}).get("gate_results", []) if isinstance(result, dict)
+    }
+    assessments: list[dict[str, Any]] = []
+    for node in plan["nodes"]:
+        gate_id = str(node["gate_id"])
+        if gate_id in BLOCKED_DEFERRED_GATES:
+            assessments.append({"gate_id": gate_id, "expected_reuse": False, "reused": False, "reason": "blocked-deferred"})
+            continue
+        if gate_id in reused_results:
+            assessments.append(
+                {
+                    "gate_id": gate_id,
+                    "expected_reuse": True,
+                    "reused": True,
+                    "reason": None,
+                    "disposition": reused_results[gate_id].get("evidence_disposition", "same-run-checkpoint"),
+                }
+            )
+            continue
+        reason = "no-checkpoint-supplied"
+        invalidating_paths: list[str] = []
+        if checkpoint is not None:
+            prior = prior_by_gate.get(gate_id)
+            if gate_id in invalidated_gates:
+                reason = "explicitly-invalidated"
+            elif not isinstance(prior, dict) or prior.get("result") != "PASS":
+                reason = "no-prior-pass"
+            elif node.get("reusable") is not True:
+                reason = "gate-not-reusable"
+            else:
+                evidence_ref = prior.get("evidence_ref")
+                if not isinstance(evidence_ref, str) or not (repository / evidence_ref).is_dir():
+                    reason = "evidence-artifact-missing"
+                else:
+                    patterns = node["invalidation_rule"]["changed_paths"]
+                    invalidating_paths = sorted(
+                        path for path in changed_paths if any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns)
+                    )
+                    reason = "inputs-changed" if invalidating_paths else "eligible-but-not-reused"
+        assessments.append(
+            {
+                "gate_id": gate_id,
+                "expected_reuse": reason == "eligible-but-not-reused",
+                "reused": False,
+                "reason": reason,
+                **({"invalidating_paths": invalidating_paths} if invalidating_paths else {}),
+            }
+        )
+    return {
+        "checkpoint_supplied": checkpoint is not None,
+        "expected_reuse_gate_count": sum(item["expected_reuse"] for item in assessments),
+        "actual_reuse_gate_count": sum(item["reused"] for item in assessments),
+        "assessments": assessments,
+    }
+
+
 def git_head(repository: Path) -> str:
     git = shutil.which("git")
     if git is None:
@@ -173,7 +291,12 @@ def validate_contract_authority(repository: Path) -> None:
         raise ValueError(f"WC-109 qualification has declared blockers: {','.join(blockers)}")
 
 
-def resolve_qualification_context(repository: Path, base_sha: str, candidate_sha: str) -> QualificationContext:
+def resolve_qualification_context(
+    repository: Path,
+    base_sha: str,
+    candidate_sha: str,
+    precheck_bundle: dict[str, Any] | None = None,
+) -> QualificationContext:
     validate_contract_authority(repository)
     git = shutil.which("git")
     gh = shutil.which("gh")
@@ -187,7 +310,7 @@ def resolve_qualification_context(repository: Path, base_sha: str, candidate_sha
         text=True,
     )
     pull_request = subprocess.run(  # noqa: S603
-        [gh, "pr", "view", "--json", "baseRefName,body,headRefOid,number"],
+        [gh, "pr", "view", "--json", "baseRefName,body,headRefName,headRefOid,number"],
         cwd=repository,
         check=False,
         capture_output=True,
@@ -198,7 +321,42 @@ def resolve_qualification_context(repository: Path, base_sha: str, candidate_sha
         raise ValueError(f"GitHub PR context unavailable (exit {pull_request.returncode}): {first_line[:300]}")
     pr = json.loads(pull_request.stdout)
     if pr.get("headRefOid") != candidate_sha:
-        raise ValueError("rollback PR head does not match candidate HEAD")
+        if precheck_bundle is None:
+            raise ValueError("qualification PR head does not match candidate HEAD and no pre-push authority was supplied")
+        evidence = precheck_bundle.get("evidence")
+        digest = precheck_bundle.get("digest")
+        if not isinstance(evidence, dict) or not isinstance(digest, str):
+            raise ValueError("pre-push qualification evidence bundle is invalid")
+        branch = subprocess.run(  # noqa: S603
+            [git, "branch", "--show-current"],
+            cwd=repository,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        changed_files = tuple(path for path in changed.stdout.splitlines() if path)
+        validate_prepush_qualification_authority(
+            parse_prepush_qualification_authority(str(pr["body"])),
+            evidence,
+            precheck_digest=digest,
+            candidate_sha=candidate_sha,
+            base_sha=base_sha,
+            published_head_sha=str(pr["headRefOid"]),
+            pr_number=int(pr["number"]),
+            branch=branch,
+            changed_files=changed_files,
+        )
+        if pr.get("headRefName") != branch:
+            raise ValueError("pre-push qualification branch does not match the live PR branch")
+        ancestry = subprocess.run(  # noqa: S603
+            [git, "merge-base", "--is-ancestor", str(pr["headRefOid"]), candidate_sha],
+            cwd=repository,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if ancestry.returncode != 0:
+            raise ValueError("pre-push qualification candidate does not descend from the published PR head")
     remote = subprocess.run(  # noqa: S603
         [git, "remote", "get-url", "origin"],
         cwd=repository,
@@ -262,6 +420,7 @@ def execute_rollback(
     repair_context: dict[str, Any] | None = None,
     invalidated_gates: tuple[str, ...] = (),
     qualification_handoff: dict[str, Any] | None = None,
+    qualification_authority_evidence: dict[str, Any] | None = None,
     enforce_qualification_handoff: bool = False,
     execution_profile: str = "rollback",
     context_resolver: Callable[[Path, str, str], QualificationContext] = resolve_qualification_context,
@@ -372,7 +531,11 @@ def execute_rollback(
 
     if qualification_context is None:
         try:
-            qualification_context = context_resolver(repository, base_sha, candidate_sha)
+            qualification_context = (
+                context_resolver(repository, base_sha, candidate_sha, qualification_authority_evidence)
+                if qualification_authority_evidence is not None
+                else context_resolver(repository, base_sha, candidate_sha)
+            )
         except Exception as exception:
             return block_preflight("preflight:qualification-context", str(manifest["required_gates"][0]), exception)
     if execution_profile == "qualification":
@@ -395,6 +558,7 @@ def execute_rollback(
     except Exception as exception:
         return block_preflight("preflight:plan", str(manifest["required_gates"][0]), exception)
     nodes_by_gate = {node["gate_id"]: node for node in plan["nodes"]}
+    carry_forward_changed_paths: tuple[str, ...] = ()
     if cross_head_checkpoint is not None:
         source_head = str(cross_head_checkpoint["candidate_sha"])
         git = shutil.which("git")
@@ -407,6 +571,7 @@ def execute_rollback(
             capture_output=True,
             text=True,
         )
+        carry_forward_changed_paths = tuple(path for path in changed.stdout.splitlines() if path)
         try:
             resumed_results = qualification_carry_forward_results(
                 cross_head_checkpoint,
@@ -415,7 +580,7 @@ def execute_rollback(
                 repository=repository,
                 base_sha=base_sha,
                 catalog_digest=manifest["catalog_digest"],
-                changed_paths=tuple(path for path in changed.stdout.splitlines() if path),
+                changed_paths=carry_forward_changed_paths,
             )
         except Exception as exception:
             return block_preflight("preflight:carry-forward", str(manifest["required_gates"][0]), exception)
@@ -439,6 +604,14 @@ def execute_rollback(
         manifest["invalidated_gates"] = [gate_id for gate_id in plan_execution_order(plan) if gate_id in invalidated]
         for gate_id in invalidated:
             resumed_results.pop(gate_id, None)
+    manifest["reuse_analysis"] = qualification_reuse_analysis(
+        resume_checkpoint,
+        plan,
+        repository=repository,
+        changed_paths=carry_forward_changed_paths,
+        reused_results=resumed_results,
+        invalidated_gates=invalidated,
+    )
     if enforce_qualification_handoff:
         handoff = qualification_handoff_outcome(
             qualification_handoff,
@@ -536,6 +709,11 @@ def execute_rollback(
                         catalog_digest=manifest["catalog_digest"],
                     )
                     phase_transitions.append(transition)
+                    print(
+                        f"[qualification] phase={node['phase']} result={transition['result']} "
+                        f"blockers={len(transition['blockers'])}",
+                        flush=True,
+                    )
                     if transition["result"] != "PASS":
                         first_cause_gate = gate_id
                         gate_results.append(
@@ -661,18 +839,23 @@ def execute_rollback(
                 disposition: str | None = None
                 evidence_ref = node["expected_evidence"]["directory"]
                 try:
+                    gate_arguments: dict[str, Any] = {
+                        "changed_files": list(qualification_context.changed_files),
+                        "pr_body_file": pr_body_file,
+                        "base_branch": qualification_context.base_branch,
+                        "pr_number": qualification_context.pr_number,
+                        "repository_name": qualification_context.repository_name,
+                        "return_evidence_ref": True,
+                    }
+                    if gate_executor is execute_gate:
+                        gate_arguments["stream_output"] = False
                     execution = gate_executor(
                         repository,
                         gate_id,
                         candidate_sha,
                         base_sha,
                         git_common_dir,
-                        changed_files=list(qualification_context.changed_files),
-                        pr_body_file=pr_body_file,
-                        base_branch=qualification_context.base_branch,
-                        pr_number=qualification_context.pr_number,
-                        repository_name=qualification_context.repository_name,
-                        return_evidence_ref=True,
+                        **gate_arguments,
                     )
                     if isinstance(execution, tuple):
                         returncode, evidence_ref = execution
@@ -708,6 +891,11 @@ def execute_rollback(
                     result["result"] = "BLOCKED"
                     result["disposition"] = disposition
                 gate_results.append(result)
+                print(
+                    f"[qualification] gate={gate_id} result={result['result']} "
+                    f"duration_seconds={result['duration_seconds']} evidence={evidence_ref}",
+                    flush=True,
+                )
                 if result["result"] in {"FAIL", "BLOCKED"}:
                     if first_cause_gate is None:
                         first_cause_gate = gate_id
@@ -756,6 +944,7 @@ def main() -> int:
     parser.add_argument("--repair-context", type=Path)
     parser.add_argument("--invalidate-gate", action="append", default=[])
     parser.add_argument("--handoff-evidence", type=Path)
+    parser.add_argument("--precheck-evidence", type=Path)
     parser.add_argument("--execution-profile", choices=("qualification", "rollback"), default="qualification")
     arguments = parser.parse_args()
     repository = arguments.repository.resolve()
@@ -779,6 +968,16 @@ def main() -> int:
         qualification_handoff = json.loads(arguments.handoff_evidence.read_text(encoding="utf-8"))
         if not isinstance(qualification_handoff, dict):
             raise ValueError("qualification handoff root must be a mapping")
+    qualification_authority_evidence = None
+    if arguments.precheck_evidence is not None:
+        precheck_bytes = arguments.precheck_evidence.read_bytes()
+        precheck_evidence = json.loads(precheck_bytes)
+        if not isinstance(precheck_evidence, dict):
+            raise ValueError("precheck evidence root must be a mapping")
+        qualification_authority_evidence = {
+            "evidence": precheck_evidence,
+            "digest": "sha256:" + hashlib.sha256(precheck_bytes).hexdigest(),
+        }
     manifest = execute_rollback(
         repository,
         catalog,
@@ -790,6 +989,7 @@ def main() -> int:
         repair_context=repair_context,
         invalidated_gates=tuple(arguments.invalidate_gate),
         qualification_handoff=qualification_handoff,
+        qualification_authority_evidence=qualification_authority_evidence,
         enforce_qualification_handoff=True,
         execution_profile=arguments.execution_profile,
     )
@@ -797,7 +997,25 @@ def main() -> int:
     temporary_output = arguments.output.with_suffix(arguments.output.suffix + ".tmp")
     temporary_output.write_text(render_manifest(manifest), encoding="utf-8")
     temporary_output.replace(arguments.output)
-    print(render_manifest(manifest), end="")
+    print(
+        json.dumps(
+            {
+                "schema": manifest["schema"],
+                "candidate_sha": manifest["candidate_sha"],
+                "catalog_digest": manifest["catalog_digest"],
+                "run_state": manifest["run_state"],
+                "passed": manifest["passed"],
+                "execution_summary": manifest["execution_summary"],
+                "reuse_analysis": {
+                    key: manifest["reuse_analysis"][key]
+                    for key in ("checkpoint_supplied", "expected_reuse_gate_count", "actual_reuse_gate_count")
+                },
+                "manifest_path": str(arguments.output),
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
     return 0 if manifest["passed"] else 1
 
 

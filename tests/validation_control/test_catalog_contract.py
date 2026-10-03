@@ -494,6 +494,12 @@ def test_local_precheck_commands_are_catalog_owned_and_tool_pinned() -> None:
     assert catalog["prechecks"]["business_platform"]["components"] == ["business-platform"]
     assert catalog["prechecks"]["release_qualification"]["gates"] == ["release-qualification"]
     assert "infrastructure/terraform/**" in catalog["prechecks"]["release_qualification"]["paths"]
+    assert {
+        "web/patches/**",
+        "web/security-patches.json",
+        "web/scripts/verify-*-guard.js",
+        "web/scripts/verify-security-patches.js",
+    }.issubset(catalog["prechecks"]["typescript_dependency_scan"]["inputs"])
     gitleaks = (root / "scripts/validation_control/run_gitleaks_gate.sh").read_text(encoding="utf-8")
     assert "zricethezav/gitleaks@sha256:" in gitleaks
     assert "zricethezav/gitleaks:v" not in gitleaks
