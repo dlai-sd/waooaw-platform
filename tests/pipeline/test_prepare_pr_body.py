@@ -208,6 +208,7 @@ def test_update_pull_request_publishes_body_and_labels_atomically(monkeypatch) -
     assert command == [
         "/usr/bin/gh",
         "api",
+        "--silent",
         "--method",
         "PATCH",
         "repos/waooaw/waooaw/issues/481",
@@ -390,6 +391,7 @@ def test_update_pull_request_uses_bounded_rest_calls(monkeypatch, tmp_path: Path
     assert calls[1][0] == [
         "/usr/bin/gh",
         "api",
+        "--silent",
         "--method",
         "PATCH",
         "repos/dlai-sd/waooaw-platform/issues/476",

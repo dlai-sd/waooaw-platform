@@ -581,7 +581,7 @@ def update_pull_request(pr_number: int, body: str | Path, branch: str) -> None:
     repository = github_repository(gh)
     body_text = body.read_text(encoding="utf-8") if isinstance(body, Path) else body
     subprocess.run(  # noqa: S603
-        [gh, "api", "--method", "PATCH", f"repos/{repository}/issues/{pr_number}", "--input", "-"],
+        [gh, "api", "--silent", "--method", "PATCH", f"repos/{repository}/issues/{pr_number}", "--input", "-"],
         input=json.dumps({"body": body_text, "labels": expected_pr_labels(branch)}),
         text=True,
         check=True,
