@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -22,9 +23,11 @@ from validation_control.wc104_rollback import (
     QualificationContext,
     execute_rollback,
     qualification_carry_forward_results,
+    parse_prepush_qualification_authority,
     resolve_qualification_context,
     rollback_catalog_digest,
     validate_contract_authority,
+    validate_prepush_qualification_authority,
 )
 
 
@@ -48,6 +51,131 @@ Author Review Result: PASS
         pr_number="481",
         repository_name="dlai-sd/waooaw-platform",
     )
+
+
+def prepush_authority_fixture() -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
+    changed_files = ("scripts/example.py", "validation/catalog.yaml")
+    changed_digest = hashlib.sha256("\n".join(sorted(changed_files)).encode()).hexdigest()
+    digest = "sha256:" + "d" * 64
+    authority = {
+        "schema": "waooaw.prepush-qualification-authority/v1",
+        "candidate_sha": HEAD_SHA,
+        "base_sha": BASE_SHA,
+        "published_head_sha": "a" * 40,
+        "pr_number": 481,
+        "branch": "wc/109-agentic-validation-implementation",
+        "changed_files_digest": changed_digest,
+        "precheck_evidence_digest": digest,
+    }
+    evidence = {
+        "passed": True,
+        "commit_sha": HEAD_SHA,
+        "base_sha": BASE_SHA,
+        "changed_file_digest": changed_digest,
+    }
+    arguments = {
+        "precheck_digest": digest,
+        "candidate_sha": HEAD_SHA,
+        "base_sha": BASE_SHA,
+        "published_head_sha": "a" * 40,
+        "pr_number": 481,
+        "branch": "wc/109-agentic-validation-implementation",
+        "changed_files": changed_files,
+    }
+    return authority, evidence, arguments
+
+
+def test_prepush_qualification_authority_accepts_only_exact_bound_evidence() -> None:
+    authority, evidence, arguments = prepush_authority_fixture()
+
+    validate_prepush_qualification_authority(authority, evidence, **arguments)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "schema",
+        "candidate_sha",
+        "base_sha",
+        "published_head_sha",
+        "pr_number",
+        "branch",
+        "changed_files_digest",
+        "precheck_evidence_digest",
+    ],
+)
+def test_prepush_qualification_authority_rejects_every_identity_mismatch(field: str) -> None:
+    authority, evidence, arguments = prepush_authority_fixture()
+    authority[field] = "mismatch"
+
+    with pytest.raises(ValueError, match=field):
+        validate_prepush_qualification_authority(authority, evidence, **arguments)
+
+
+@pytest.mark.parametrize("field", ["passed", "commit_sha", "base_sha", "changed_file_digest"])
+def test_prepush_qualification_authority_rejects_failed_or_stale_prechecks(field: str) -> None:
+    authority, evidence, arguments = prepush_authority_fixture()
+    evidence[field] = False if field == "passed" else "mismatch"
+
+    with pytest.raises(ValueError, match="failed or identity-mismatched"):
+        validate_prepush_qualification_authority(authority, evidence, **arguments)
+
+
+def test_prepush_qualification_authority_parser_rejects_missing_or_duplicate_records() -> None:
+    authority, _, _ = prepush_authority_fixture()
+    section = f"## Pre-Push Qualification Authority\n\n```json\n{json.dumps(authority)}\n```\n"
+
+    assert parse_prepush_qualification_authority(section) == authority
+    with pytest.raises(ValueError, match="exactly one"):
+        parse_prepush_qualification_authority("## Summary\n")
+    with pytest.raises(ValueError, match="exactly one"):
+        parse_prepush_qualification_authority(section + section)
+
+
+@pytest.mark.parametrize(("ancestry_status", "expected_error"), [(0, None), (1, "does not descend")])
+def test_qualification_context_resolves_only_authorized_unpublished_descendants(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    ancestry_status: int,
+    expected_error: str | None,
+) -> None:
+    authority, evidence, arguments = prepush_authority_fixture()
+    section = f"## Pre-Push Qualification Authority\n\n```json\n{json.dumps(authority)}\n```\n"
+    published_head = str(arguments["published_head_sha"])
+    branch = str(arguments["branch"])
+    monkeypatch.setattr("validation_control.wc104_rollback.validate_contract_authority", lambda repository: None)
+    monkeypatch.setattr("validation_control.wc104_rollback.shutil.which", lambda executable: f"/usr/bin/{executable}")
+
+    def run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        if command[1:3] == ["diff", "--name-only"]:
+            return subprocess.CompletedProcess(command, 0, "scripts/example.py\nvalidation/catalog.yaml\n", "")
+        if command[:3] == ["/usr/bin/gh", "pr", "view"]:
+            payload = {
+                "baseRefName": "main",
+                "body": section,
+                "headRefName": branch,
+                "headRefOid": published_head,
+                "number": 481,
+            }
+            return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
+        if command[1:] == ["branch", "--show-current"]:
+            return subprocess.CompletedProcess(command, 0, branch + "\n", "")
+        if command[1:3] == ["merge-base", "--is-ancestor"]:
+            return subprocess.CompletedProcess(command, ancestry_status, "", "")
+        if command[1:] == ["remote", "get-url", "origin"]:
+            return subprocess.CompletedProcess(command, 0, "git@github.com:dlai-sd/waooaw-platform.git\n", "")
+        raise AssertionError(f"unexpected command: {command}")
+
+    monkeypatch.setattr("validation_control.wc104_rollback.subprocess.run", run)
+    bundle = {"evidence": evidence, "digest": arguments["precheck_digest"]}
+
+    if expected_error is not None:
+        with pytest.raises(ValueError, match=expected_error):
+            resolve_qualification_context(tmp_path, BASE_SHA, HEAD_SHA, bundle)
+    else:
+        context = resolve_qualification_context(tmp_path, BASE_SHA, HEAD_SHA, bundle)
+        assert context.pr_number == "481"
+        assert context.changed_files == ("scripts/example.py", "validation/catalog.yaml")
 
 
 def test_qualification_stale_author_review_blocks_before_execution(tmp_path: Path) -> None:

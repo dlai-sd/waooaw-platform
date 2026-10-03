@@ -52,6 +52,58 @@ class QualificationContext:
     repository_name: str
 
 
+PREPUSH_AUTHORITY_HEADING = "## Pre-Push Qualification Authority"
+
+
+def parse_prepush_qualification_authority(body: str) -> dict[str, Any]:
+    pattern = re.compile(
+        rf"{re.escape(PREPUSH_AUTHORITY_HEADING)}\s+.*?```json\s*(\{{.*?\}})\s*```",
+        re.DOTALL,
+    )
+    matches = pattern.findall(body)
+    if len(matches) != 1:
+        raise ValueError("live PR body must contain exactly one pre-push qualification authority record")
+    authority = json.loads(matches[0])
+    if not isinstance(authority, dict):
+        raise ValueError("pre-push qualification authority root must be a mapping")
+    return authority
+
+
+def validate_prepush_qualification_authority(
+    authority: dict[str, Any],
+    precheck_evidence: dict[str, Any],
+    *,
+    precheck_digest: str,
+    candidate_sha: str,
+    base_sha: str,
+    published_head_sha: str,
+    pr_number: int,
+    branch: str,
+    changed_files: tuple[str, ...],
+) -> None:
+    changed_digest = hashlib.sha256("\n".join(sorted(changed_files)).encode()).hexdigest()
+    expected = {
+        "schema": "waooaw.prepush-qualification-authority/v1",
+        "candidate_sha": candidate_sha,
+        "base_sha": base_sha,
+        "published_head_sha": published_head_sha,
+        "pr_number": pr_number,
+        "branch": branch,
+        "changed_files_digest": changed_digest,
+        "precheck_evidence_digest": precheck_digest,
+    }
+    mismatches = sorted(field for field, value in expected.items() if authority.get(field) != value)
+    if mismatches:
+        raise ValueError("pre-push qualification authority mismatch: " + ",".join(mismatches))
+    if (
+        precheck_evidence.get("passed") is not True
+        or precheck_evidence.get("commit_sha") != candidate_sha
+        or precheck_evidence.get("base_sha") != base_sha
+        or precheck_evidence.get("changed_file_digest") != changed_digest
+    ):
+        raise ValueError("pre-push qualification evidence is failed or identity-mismatched")
+
+
 def rollback_catalog_digest(catalog: dict[str, Any]) -> str:
     canonical = json.dumps(catalog, sort_keys=True, separators=(",", ":")).encode()
     return "sha256:" + hashlib.sha256(canonical).hexdigest()
@@ -173,7 +225,12 @@ def validate_contract_authority(repository: Path) -> None:
         raise ValueError(f"WC-109 qualification has declared blockers: {','.join(blockers)}")
 
 
-def resolve_qualification_context(repository: Path, base_sha: str, candidate_sha: str) -> QualificationContext:
+def resolve_qualification_context(
+    repository: Path,
+    base_sha: str,
+    candidate_sha: str,
+    precheck_bundle: dict[str, Any] | None = None,
+) -> QualificationContext:
     validate_contract_authority(repository)
     git = shutil.which("git")
     gh = shutil.which("gh")
@@ -187,7 +244,7 @@ def resolve_qualification_context(repository: Path, base_sha: str, candidate_sha
         text=True,
     )
     pull_request = subprocess.run(  # noqa: S603
-        [gh, "pr", "view", "--json", "baseRefName,body,headRefOid,number"],
+        [gh, "pr", "view", "--json", "baseRefName,body,headRefName,headRefOid,number"],
         cwd=repository,
         check=False,
         capture_output=True,
@@ -198,7 +255,42 @@ def resolve_qualification_context(repository: Path, base_sha: str, candidate_sha
         raise ValueError(f"GitHub PR context unavailable (exit {pull_request.returncode}): {first_line[:300]}")
     pr = json.loads(pull_request.stdout)
     if pr.get("headRefOid") != candidate_sha:
-        raise ValueError("rollback PR head does not match candidate HEAD")
+        if precheck_bundle is None:
+            raise ValueError("qualification PR head does not match candidate HEAD and no pre-push authority was supplied")
+        evidence = precheck_bundle.get("evidence")
+        digest = precheck_bundle.get("digest")
+        if not isinstance(evidence, dict) or not isinstance(digest, str):
+            raise ValueError("pre-push qualification evidence bundle is invalid")
+        branch = subprocess.run(  # noqa: S603
+            [git, "branch", "--show-current"],
+            cwd=repository,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        changed_files = tuple(path for path in changed.stdout.splitlines() if path)
+        validate_prepush_qualification_authority(
+            parse_prepush_qualification_authority(str(pr["body"])),
+            evidence,
+            precheck_digest=digest,
+            candidate_sha=candidate_sha,
+            base_sha=base_sha,
+            published_head_sha=str(pr["headRefOid"]),
+            pr_number=int(pr["number"]),
+            branch=branch,
+            changed_files=changed_files,
+        )
+        if pr.get("headRefName") != branch:
+            raise ValueError("pre-push qualification branch does not match the live PR branch")
+        ancestry = subprocess.run(  # noqa: S603
+            [git, "merge-base", "--is-ancestor", str(pr["headRefOid"]), candidate_sha],
+            cwd=repository,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if ancestry.returncode != 0:
+            raise ValueError("pre-push qualification candidate does not descend from the published PR head")
     remote = subprocess.run(  # noqa: S603
         [git, "remote", "get-url", "origin"],
         cwd=repository,
@@ -262,6 +354,7 @@ def execute_rollback(
     repair_context: dict[str, Any] | None = None,
     invalidated_gates: tuple[str, ...] = (),
     qualification_handoff: dict[str, Any] | None = None,
+    qualification_authority_evidence: dict[str, Any] | None = None,
     enforce_qualification_handoff: bool = False,
     execution_profile: str = "rollback",
     context_resolver: Callable[[Path, str, str], QualificationContext] = resolve_qualification_context,
@@ -372,7 +465,11 @@ def execute_rollback(
 
     if qualification_context is None:
         try:
-            qualification_context = context_resolver(repository, base_sha, candidate_sha)
+            qualification_context = (
+                context_resolver(repository, base_sha, candidate_sha, qualification_authority_evidence)
+                if qualification_authority_evidence is not None
+                else context_resolver(repository, base_sha, candidate_sha)
+            )
         except Exception as exception:
             return block_preflight("preflight:qualification-context", str(manifest["required_gates"][0]), exception)
     if execution_profile == "qualification":
@@ -756,6 +853,7 @@ def main() -> int:
     parser.add_argument("--repair-context", type=Path)
     parser.add_argument("--invalidate-gate", action="append", default=[])
     parser.add_argument("--handoff-evidence", type=Path)
+    parser.add_argument("--precheck-evidence", type=Path)
     parser.add_argument("--execution-profile", choices=("qualification", "rollback"), default="qualification")
     arguments = parser.parse_args()
     repository = arguments.repository.resolve()
@@ -779,6 +877,16 @@ def main() -> int:
         qualification_handoff = json.loads(arguments.handoff_evidence.read_text(encoding="utf-8"))
         if not isinstance(qualification_handoff, dict):
             raise ValueError("qualification handoff root must be a mapping")
+    qualification_authority_evidence = None
+    if arguments.precheck_evidence is not None:
+        precheck_bytes = arguments.precheck_evidence.read_bytes()
+        precheck_evidence = json.loads(precheck_bytes)
+        if not isinstance(precheck_evidence, dict):
+            raise ValueError("precheck evidence root must be a mapping")
+        qualification_authority_evidence = {
+            "evidence": precheck_evidence,
+            "digest": "sha256:" + hashlib.sha256(precheck_bytes).hexdigest(),
+        }
     manifest = execute_rollback(
         repository,
         catalog,
@@ -790,6 +898,7 @@ def main() -> int:
         repair_context=repair_context,
         invalidated_gates=tuple(arguments.invalidate_gate),
         qualification_handoff=qualification_handoff,
+        qualification_authority_evidence=qualification_authority_evidence,
         enforce_qualification_handoff=True,
         execution_profile=arguments.execution_profile,
     )

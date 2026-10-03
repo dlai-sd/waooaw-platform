@@ -11,7 +11,9 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from prepare_pr_body import (  # noqa: E402
+    add_candidate_evidence_status,
     add_runtime_evidence,
+    add_prepush_qualification_authority,
     business_platform_gate_required,
     changed_files_digest,
     configuration_digest,
@@ -29,6 +31,7 @@ from prepare_pr_body import (  # noqa: E402
     update_pull_request,
     validate_static_repository,
     validate_precheck_evidence,
+    qualification_status,
 )
 from validate_author_review import validate_author_review  # noqa: E402
 
@@ -209,6 +212,43 @@ def test_runtime_evidence_is_inserted_before_author_review() -> None:
     assert prepared.index("## Pre-PR Runtime Evidence") < prepared.index("## Author Review")
     assert '"initial_http_status": 503' in prepared
     assert '"recovered_http_status": 200' in prepared
+
+
+def test_prepush_authority_is_generated_once_and_replaces_stale_identity() -> None:
+    source = "## Summary\n\nReady.\n\n## Author Review\n\nPending.\n"
+    stale = add_prepush_qualification_authority(source, {"candidate_sha": "b" * 40})
+    prepared = add_prepush_qualification_authority(stale, {"candidate_sha": HEAD})
+
+    assert prepared.count("## Pre-Push Qualification Authority") == 1
+    assert f'"candidate_sha": "{HEAD}"' in prepared
+    assert '"candidate_sha": "' + ("b" * 40) + '"' not in prepared
+    assert prepared.index("## Pre-Push Qualification Authority") < prepared.index("## Author Review")
+
+
+def test_candidate_evidence_status_replaces_stale_candidate_state() -> None:
+    source = "## Summary\n\nReady.\n\n## Author Review\n\nPending.\n"
+    stale = add_candidate_evidence_status(source, {"candidate_sha": "b" * 40, "qualification": "PASS"})
+    prepared = add_candidate_evidence_status(body=stale, status={"candidate_sha": HEAD, "qualification": "PENDING"})
+
+    assert prepared.count("## Candidate Evidence Status") == 1
+    assert f'"candidate_sha": "{HEAD}"' in prepared
+    assert '"qualification": "PENDING"' in prepared
+    assert '"qualification": "PASS"' not in prepared
+
+
+def test_qualification_status_requires_exact_candidate_and_complete_inventory(tmp_path: Path) -> None:
+    evidence_file = tmp_path / "qualification.json"
+    results = [{"result": "PASS"} for _ in range(40)] + [
+        {"result": "BLOCKED", "disposition": "BLOCKED-DEFERRED"} for _ in range(3)
+    ]
+    evidence = {"candidate_sha": HEAD, "passed": True, "run_state": "PASSED", "gate_results": results}
+    evidence_file.write_text(json.dumps(evidence), encoding="utf-8")
+
+    assert qualification_status(evidence_file, HEAD) == "PASS"
+    evidence["candidate_sha"] = "b" * 40
+    evidence_file.write_text(json.dumps(evidence), encoding="utf-8")
+    with pytest.raises(ValueError, match="exact-candidate"):
+        qualification_status(evidence_file, HEAD)
 
 
 def test_runtime_evidence_rejects_failed_gate() -> None:
