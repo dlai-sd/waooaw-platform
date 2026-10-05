@@ -467,6 +467,9 @@ def execute_rollback(
     service_results: dict[str, Any] = {}
     gate_results: list[dict[str, Any]] = []
     phase_transitions: list[dict[str, Any]] = []
+    scheduler_events: list[dict[str, Any]] = []
+    manifest["scheduler_events"] = scheduler_events
+    qualification_started = time.monotonic()
     first_cause_gate: str | None = None
     stop_all_after_first_cause = False
     cross_head_checkpoint = (
@@ -900,6 +903,23 @@ def execute_rollback(
                                 running_cpus += required_cpus
                                 running_memory += required_memory
                                 pending.pop(planned["gate_id"])
+                                event = {
+                                    "event": "ADMITTED",
+                                    "gate_id": planned["gate_id"],
+                                    "phase": planned["phase"],
+                                    "elapsed_seconds": round(time.monotonic() - qualification_started, 3),
+                                    "active_gates": len(running),
+                                    "active_cpus": running_cpus,
+                                    "active_memory_mb": running_memory,
+                                }
+                                scheduler_events.append(event)
+                                print(
+                                    f"[qualification] scheduler=ADMITTED gate={planned['gate_id']} "
+                                    f"phase={planned['phase']} active_gates={len(running)}/{maximum_workers} "
+                                    f"active_cpus={running_cpus}/{cpu_capacity} "
+                                    f"active_memory_mb={running_memory}/{memory_capacity}",
+                                    flush=True,
+                                )
                                 progress = True
                         if running:
                             completed_futures, _ = wait(running, return_when=FIRST_COMPLETED)
@@ -910,6 +930,27 @@ def execute_rollback(
                                 result = future.result()
                                 parallel_phase_results[planned["gate_id"]] = result
                                 outcomes[planned["gate_id"]] = result
+                                event = {
+                                    "event": "COMPLETED",
+                                    "gate_id": planned["gate_id"],
+                                    "phase": planned["phase"],
+                                    "result": result["result"],
+                                    "duration_seconds": result["duration_seconds"],
+                                    "elapsed_seconds": round(time.monotonic() - qualification_started, 3),
+                                    "active_gates": len(running),
+                                    "active_cpus": running_cpus,
+                                    "active_memory_mb": running_memory,
+                                }
+                                scheduler_events.append(event)
+                                print(
+                                    f"[qualification] scheduler=COMPLETED gate={planned['gate_id']} "
+                                    f"phase={planned['phase']} result={result['result']} "
+                                    f"duration_seconds={result['duration_seconds']} "
+                                    f"active_gates={len(running)}/{maximum_workers} "
+                                    f"active_cpus={running_cpus}/{cpu_capacity} "
+                                    f"active_memory_mb={running_memory}/{memory_capacity}",
+                                    flush=True,
+                                )
                                 if result["result"] in {"FAIL", "BLOCKED"} and first_cause_gate is None:
                                     first_cause_gate = planned["gate_id"]
                                 if result.get("disposition") == "OPERATOR_CANCELLED":

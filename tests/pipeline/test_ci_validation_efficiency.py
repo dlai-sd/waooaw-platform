@@ -12,8 +12,10 @@ CATALOG_ACTION_PATH = ROOT / ".github/actions/run-validation-gate/action.yml"
 RUNNER_ACTION_PATH = ROOT / ".github/actions/use-validation-runner/action.yml"
 CATALOG_EXECUTION_PATH = ROOT / "scripts/validation_control/catalog_execution.py"
 DOTNET_GATE_PATH = ROOT / "scripts/validation_control/run_dotnet_test_gate.sh"
+DOTNET_QUALITY_GATE_PATH = ROOT / "scripts/validation_control/run_dotnet_quality_gate.sh"
 PYTHON_GATE_PATH = ROOT / "scripts/validation_control/run_python_test_gate.sh"
 DEPENDENCY_GATE_PATH = ROOT / "scripts/validation_control/run_dependency_scan_gate.sh"
+DOTNET_RUNNER_PATH = ROOT / "architecture/reference/dockerfiles/Dockerfile.test-runner-dotnet"
 STATIC_PREFLIGHT_PATH = ROOT / "scripts/run_static_validation_preflight.sh"
 IDENTITY_TEST_PATH = ROOT / "tests/business-platform.Tests/Identity"
 
@@ -35,6 +37,34 @@ def test_high_volume_identity_postgres_tests_reuse_servers_with_isolated_databas
         source = path.read_text(encoding="utf-8")
         assert "IClassFixture<IdentityPostgresServerFixture>" in source
         assert "new PostgreSqlBuilder" not in source
+
+
+def test_dotnet_vulnerability_audit_has_one_owning_gate() -> None:
+    quality_gate = DOTNET_QUALITY_GATE_PATH.read_text(encoding="utf-8")
+    dependency_gate = DEPENDENCY_GATE_PATH.read_text(encoding="utf-8")
+
+    assert "package --vulnerable --include-transitive" not in quality_gate
+    assert 'dotnet list "$1" package --vulnerable --include-transitive' in dependency_gate
+
+
+def test_dotnet_runner_does_not_install_python_test_dependencies() -> None:
+    dockerfile = DOTNET_RUNNER_PATH.read_text(encoding="utf-8")
+
+    assert "python3" in dockerfile
+    assert "python3-pip" not in dockerfile
+    assert "requirements-test.txt" not in dockerfile
+    assert "pip install" not in dockerfile
+
+
+def test_release_qualification_reports_each_parallel_lane_duration() -> None:
+    release_runner = RELEASE_QUALIFICATION_PATH.read_text(encoding="utf-8")
+
+    assert "run_release_lane()" in release_runner
+    for lane in ("tests", "postgres", "demo-data", "simulator", "azure"):
+        assert f"run_release_lane {lane}" in release_runner
+    assert "event=STARTED" in release_runner
+    assert "event=COMPLETED" in release_runner
+    assert "duration_seconds=" in release_runner
 
 
 def test_static_preflight_blocks_runner_supply_and_compiles_docker_graphs() -> None:

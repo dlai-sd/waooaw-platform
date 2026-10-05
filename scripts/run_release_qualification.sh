@@ -36,8 +36,22 @@ demo_data_pid=
 simulator_pid=
 azure_pid=
 
+run_release_lane() {
+  lane=$1
+  shift
+  started=$(date +%s)
+  echo "[release-qualification] lane=$lane event=STARTED"
+  if "$@"; then
+    lane_status=0
+  else
+    lane_status=$?
+  fi
+  echo "[release-qualification] lane=$lane event=COMPLETED status=$lane_status duration_seconds=$(($(date +%s) - started))"
+  return "$lane_status"
+}
+
 if test "$RELEASE_RUN_TESTS" = true; then
-  docker compose run --rm test-runner pytest -q \
+  run_release_lane tests docker compose run --rm test-runner pytest -q \
     tests/test_wc012_dry_run.py \
     tests/pipeline/test_goal006_data_recovery.py \
     tests/pipeline/test_goal006_qualification.py \
@@ -50,15 +64,15 @@ if test "$RELEASE_RUN_TESTS" = true; then
   tests_pid=$!
 fi
 if test "$RELEASE_RUN_POSTGRES" = true; then
-  scripts/test-wc059-postgres.sh &
+  run_release_lane postgres scripts/test-wc059-postgres.sh &
   postgres_pid=$!
 fi
 if test "$RELEASE_RUN_DEMO_DATA" = true; then
-  bash scripts/run_wc091_demo_data_verification.sh &
+  run_release_lane demo-data bash scripts/run_wc091_demo_data_verification.sh &
   demo_data_pid=$!
 fi
 if test "$RELEASE_RUN_SIMULATOR" = true; then
-  docker compose run --rm test-runner python \
+  run_release_lane simulator docker compose run --rm test-runner python \
     scripts/goal006_release_simulator.py \
     release/goal006/promotion-policy.json \
     release/goal006/release-manifest.json \
@@ -67,7 +81,7 @@ if test "$RELEASE_RUN_SIMULATOR" = true; then
 fi
 if test "$RELEASE_RUN_AZURE" = true; then
   GOAL006_EVIDENCE_DIR=${GOAL006_EVIDENCE_DIR:-goal006-local-azure-runtime} \
-    bash scripts/run_goal006_local_azure_verification.sh &
+    run_release_lane azure bash scripts/run_goal006_local_azure_verification.sh &
   azure_pid=$!
 fi
 

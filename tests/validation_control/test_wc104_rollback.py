@@ -410,7 +410,9 @@ def test_qualification_supplies_runners_before_parallel_gate_execution(tmp_path:
     assert result["passed"] is True
 
 
-def test_qualification_executes_independent_integration_gates_concurrently(tmp_path: Path) -> None:
+def test_qualification_executes_independent_integration_gates_concurrently(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     catalog = load_catalog()
     overlap = threading.Barrier(2)
     active = 0
@@ -452,6 +454,12 @@ def test_qualification_executes_independent_integration_gates_concurrently(tmp_p
 
     assert result["passed"] is True
     assert maximum_active == 2
+    synchronized_events = [event for event in result["scheduler_events"] if event["gate_id"] in synchronized_gates]
+    assert [event["event"] for event in synchronized_events[:2]] == ["ADMITTED", "ADMITTED"]
+    assert synchronized_events[1]["active_gates"] >= 2
+    output = capsys.readouterr().out
+    assert "scheduler=ADMITTED gate=integration:multi-tenant" in output
+    assert "scheduler=COMPLETED gate=integration:multi-tenant" in output
 
 
 def test_qualification_executes_independent_design_gates_concurrently(tmp_path: Path) -> None:
