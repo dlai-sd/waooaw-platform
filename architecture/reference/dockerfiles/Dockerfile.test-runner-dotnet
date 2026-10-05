@@ -6,13 +6,25 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0-noble@sha256:d07d5770b2b74717bfe882250e981
 RUN --mount=type=cache,id=wc104-dotnet-apt-lists,target=/var/lib/apt/lists,sharing=locked \
     --mount=type=cache,id=wc104-dotnet-apt-packages,target=/var/cache/apt,sharing=locked \
     apt-get update \
-    && apt-get install -y --no-install-recommends python3 \
+    && apt-get install -y --no-install-recommends python3 python3-pip \
     && (getent group 1000 >/dev/null || groupadd --gid 1000 waooaw) \
     && (getent passwd 1000 >/dev/null || useradd --uid 1000 --gid 1000 --create-home waooaw)
 
 WORKDIR /workspace
 ENV DOTNET_CLI_HOME=/tmp/dotnet \
     NUGET_PACKAGES=/opt/nuget/packages
+
+RUN --mount=type=cache,id=wc109-dotnet-pip,target=/root/.cache/pip,sharing=locked \
+    pip install --break-system-packages \
+        "aiosqlite>=0.20" \
+        "asyncpg==0.30.0" \
+        "cryptography==50.0.0" \
+        "fastapi==0.135.1" \
+        "httpx==0.27.2" \
+        "pyyaml>=6.0" \
+        "redis==5.2.0" \
+        "sqlalchemy[asyncio]==2.0.36" \
+        "uvicorn==0.30.6"
 
 COPY src/constitutional-engine/constitutional-engine.csproj src/constitutional-engine/
 COPY src/business-platform/business-platform.csproj src/business-platform/

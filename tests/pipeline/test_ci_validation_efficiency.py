@@ -47,13 +47,23 @@ def test_dotnet_vulnerability_audit_has_one_owning_gate() -> None:
     assert 'dotnet list "$1" package --vulnerable --include-transitive' in dependency_gate
 
 
-def test_dotnet_runner_does_not_install_python_test_dependencies() -> None:
+def test_dotnet_runner_installs_only_required_python_bootstrap_dependencies() -> None:
     dockerfile = DOTNET_RUNNER_PATH.read_text(encoding="utf-8")
 
     assert "python3" in dockerfile
-    assert "python3-pip" not in dockerfile
+    for dependency in (
+        "aiosqlite>=0.20",
+        "asyncpg==0.30.0",
+        "cryptography==50.0.0",
+        "fastapi==0.135.1",
+        "httpx==0.27.2",
+        "pyyaml>=6.0",
+        "redis==5.2.0",
+        "sqlalchemy[asyncio]==2.0.36",
+        "uvicorn==0.30.6",
+    ):
+        assert dependency in dockerfile
     assert "requirements-test.txt" not in dockerfile
-    assert "pip install" not in dockerfile
 
 
 def test_release_qualification_reports_each_parallel_lane_duration() -> None:
