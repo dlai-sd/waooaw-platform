@@ -630,7 +630,29 @@ def execute_rollback(
         try:
             if repair_context is None:
                 raise ValueError("failed qualification resume requires focused repair context")
-            transition = repair_transition(**repair_context)
+            prior_result = next(
+                (result for result in resume_checkpoint.get("gate_results", []) if result.get("gate_id") == prior_first_cause),
+                None,
+            )
+            if isinstance(prior_result, dict) and prior_result.get("disposition") == "RESOURCE_PREFLIGHT_BLOCKED":
+                if (
+                    repair_context != resume_checkpoint
+                    or repair_context.get("candidate_sha") != candidate_sha
+                    or repair_context.get("catalog_digest") != manifest["catalog_digest"]
+                    or repair_context.get("first_cause_gate") != prior_first_cause
+                    or prior_first_cause not in invalidated
+                ):
+                    raise ValueError("resource remediation context does not match the failed checkpoint")
+                transition = {
+                    "schema": "waooaw.resource-repair-transition/v1",
+                    "result": "PASS",
+                    "invalidated_gates": [prior_first_cause],
+                    "blockers": [],
+                    "restitch_eligible": True,
+                    "resource_revalidation_required": True,
+                }
+            else:
+                transition = repair_transition(**repair_context)
             if (
                 transition["result"] != "PASS"
                 or not transition["restitch_eligible"]

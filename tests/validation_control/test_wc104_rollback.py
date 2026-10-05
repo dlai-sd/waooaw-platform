@@ -1057,6 +1057,116 @@ def test_rollback_resource_failure_blocks_phase_before_first_gate(tmp_path: Path
     assert [item["scope"] for item in result["resource_preflights"]] == ["SUPPLY", "A_DESIGN"]
 
 
+def test_rollback_resource_failure_resumes_from_matching_checkpoint(tmp_path: Path) -> None:
+    catalog = load_catalog()
+
+    def blocked_capacity(repository: Path, nodes: list[dict[str, object]], namespace: str) -> dict[str, object]:
+        if {node["phase"] for node in nodes} == {"B_COMPONENT"}:
+            raise ValueError("resource preflight: B_COMPONENT capacity is unavailable")
+        return {"result": "PASS", "namespace": namespace}
+
+    failed = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        execution_preflight=execution_ready,
+        resource_preflight=blocked_capacity,
+        runner_resolver=lambda repository, runner: {
+            "build_count": 1,
+            "trust_source": "local-identity-build",
+            "runner_id": runner,
+        },
+        service_resolver=resolve_services,
+        gate_executor=lambda repository, gate, head, base, common, **context: 0,
+    )
+    blocked_gate = str(failed["first_cause_gate"])
+    executed: list[str] = []
+
+    resumed = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        resume_checkpoint=failed,
+        repair_context=failed,
+        invalidated_gates=(blocked_gate,),
+        execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
+        runner_resolver=lambda repository, runner: {
+            "build_count": 1,
+            "trust_source": "local-identity-build",
+            "runner_id": runner,
+        },
+        service_resolver=resolve_services,
+        gate_executor=lambda repository, gate, head, base, common, **context: executed.append(gate) or 0,
+    )
+
+    assert resumed["passed"] is True
+    assert resumed["repair_transition"] == {
+        "schema": "waooaw.resource-repair-transition/v1",
+        "result": "PASS",
+        "invalidated_gates": [blocked_gate],
+        "blockers": [],
+        "restitch_eligible": True,
+        "resource_revalidation_required": True,
+    }
+    assert executed[0] == blocked_gate
+    assert resumed["reuse_analysis"]["actual_reuse_gate_count"] > 0
+
+
+def test_rollback_resource_resume_rejects_nonmatching_checkpoint(tmp_path: Path) -> None:
+    catalog = load_catalog()
+
+    def blocked_capacity(repository: Path, nodes: list[dict[str, object]], namespace: str) -> dict[str, object]:
+        if {node["phase"] for node in nodes} == {"B_COMPONENT"}:
+            raise ValueError("resource preflight: B_COMPONENT capacity is unavailable")
+        return {"result": "PASS", "namespace": namespace}
+
+    failed = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        execution_preflight=execution_ready,
+        resource_preflight=blocked_capacity,
+        runner_resolver=lambda repository, runner: {
+            "build_count": 1,
+            "trust_source": "local-identity-build",
+            "runner_id": runner,
+        },
+        service_resolver=resolve_services,
+        gate_executor=lambda repository, gate, head, base, common, **context: 0,
+    )
+    forged = {**failed, "candidate_sha": BASE_SHA}
+
+    resumed = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        resume_checkpoint=failed,
+        repair_context=forged,
+        invalidated_gates=(str(failed["first_cause_gate"]),),
+        execution_preflight=lambda repository: pytest.fail("execution preflight must not run"),
+        resource_preflight=lambda repository, nodes, namespace: pytest.fail("resource preflight must not run"),
+        runner_resolver=lambda repository, runner: pytest.fail("runner must not resolve"),
+        service_resolver=lambda repository, node: pytest.fail("service must not resolve"),
+        gate_executor=lambda repository, gate, head, base, common, **context: pytest.fail("gate must not execute"),
+    )
+
+    assert resumed["run_state"] == "BLOCKED"
+    assert resumed["first_cause_gate"] == "preflight:repair"
+
+
 def test_rollback_resume_reuses_only_same_identity_pass_results(tmp_path: Path) -> None:
     catalog = load_catalog()
     checkpoint = tmp_path / "rollback.json"
