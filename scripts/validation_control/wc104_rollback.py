@@ -258,18 +258,42 @@ def qualification_reuse_analysis(
     }
 
 
-def git_head(repository: Path) -> str:
+def git_revision(repository: Path, revision: str) -> str:
     git = shutil.which("git")
     if git is None:
         raise ValueError("git executable is required for rollback evidence")
     completed = subprocess.run(  # noqa: S603
-        [git, "rev-parse", "HEAD"],
+        [git, "rev-parse", revision],
         cwd=repository,
         check=True,
         capture_output=True,
         text=True,
     )
     return completed.stdout.strip()
+
+
+def git_head(repository: Path) -> str:
+    return git_revision(repository, "HEAD")
+
+
+def qualification_summary(manifest: dict[str, Any], output: Path) -> dict[str, Any]:
+    reuse_analysis = manifest.get("reuse_analysis")
+    if not isinstance(reuse_analysis, dict):
+        reuse_analysis = {}
+    return {
+        "schema": manifest["schema"],
+        "candidate_sha": manifest["candidate_sha"],
+        "catalog_digest": manifest["catalog_digest"],
+        "run_state": manifest["run_state"],
+        "passed": manifest["passed"],
+        "execution_summary": manifest["execution_summary"],
+        "reuse_analysis": {
+            "checkpoint_supplied": reuse_analysis.get("checkpoint_supplied", False),
+            "expected_reuse_gate_count": reuse_analysis.get("expected_reuse_gate_count", 0),
+            "actual_reuse_gate_count": reuse_analysis.get("actual_reuse_gate_count", 0),
+        },
+        "manifest_path": str(output),
+    }
 
 
 def validate_contract_authority(repository: Path) -> None:
@@ -1239,11 +1263,12 @@ def main() -> int:
             "evidence": precheck_evidence,
             "digest": "sha256:" + hashlib.sha256(precheck_bytes).hexdigest(),
         }
+    base_sha = git_revision(repository, arguments.base)
     manifest = execute_rollback(
         repository,
         catalog,
         candidate_sha=git_head(repository),
-        base_sha=arguments.base,
+        base_sha=base_sha,
         git_common_dir=arguments.git_common_dir.resolve(),
         checkpoint_path=arguments.output,
         resume_checkpoint=resume_checkpoint,
@@ -1258,25 +1283,7 @@ def main() -> int:
     temporary_output = arguments.output.with_suffix(arguments.output.suffix + ".tmp")
     temporary_output.write_text(render_manifest(manifest), encoding="utf-8")
     temporary_output.replace(arguments.output)
-    print(
-        json.dumps(
-            {
-                "schema": manifest["schema"],
-                "candidate_sha": manifest["candidate_sha"],
-                "catalog_digest": manifest["catalog_digest"],
-                "run_state": manifest["run_state"],
-                "passed": manifest["passed"],
-                "execution_summary": manifest["execution_summary"],
-                "reuse_analysis": {
-                    key: manifest["reuse_analysis"][key]
-                    for key in ("checkpoint_supplied", "expected_reuse_gate_count", "actual_reuse_gate_count")
-                },
-                "manifest_path": str(arguments.output),
-            },
-            indent=2,
-            sort_keys=True,
-        )
-    )
+    print(json.dumps(qualification_summary(manifest, arguments.output), indent=2, sort_keys=True))
     return 0 if manifest["passed"] else 1
 
 

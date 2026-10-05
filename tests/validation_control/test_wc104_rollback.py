@@ -23,8 +23,10 @@ from validation_control.orchestrator import (
 from validation_control.wc104_rollback import (
     QualificationContext,
     execute_rollback,
+    git_revision,
     qualification_carry_forward_results,
     qualification_reuse_analysis,
+    qualification_summary,
     parse_prepush_qualification_authority,
     resolve_qualification_context,
     rollback_catalog_digest,
@@ -35,6 +37,38 @@ from validation_control.wc104_rollback import (
 
 HEAD_SHA = "c" * 40
 BASE_SHA = "b" * 40
+
+
+def test_git_revision_canonicalizes_symbolic_base(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr("validation_control.wc104_rollback.shutil.which", lambda executable: "/usr/bin/git")
+
+    def run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        assert command == ["/usr/bin/git", "rev-parse", "origin/main"]
+        assert kwargs["cwd"] == tmp_path
+        return subprocess.CompletedProcess(command, 0, BASE_SHA + "\n", "")
+
+    monkeypatch.setattr("validation_control.wc104_rollback.subprocess.run", run)
+
+    assert git_revision(tmp_path, "origin/main") == BASE_SHA
+
+
+def test_qualification_summary_handles_preflight_block_without_reuse_analysis(tmp_path: Path) -> None:
+    manifest = {
+        "schema": "waooaw.wc104-qualification/v1",
+        "candidate_sha": HEAD_SHA,
+        "catalog_digest": "sha256:catalog",
+        "run_state": "BLOCKED",
+        "passed": False,
+        "execution_summary": {"executed_gate_count": 0},
+    }
+
+    summary = qualification_summary(manifest, tmp_path / "qualification.json")
+
+    assert summary["reuse_analysis"] == {
+        "checkpoint_supplied": False,
+        "expected_reuse_gate_count": 0,
+        "actual_reuse_gate_count": 0,
+    }
 
 
 def qualification_context() -> QualificationContext:
