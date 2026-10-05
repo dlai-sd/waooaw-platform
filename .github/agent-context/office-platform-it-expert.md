@@ -46,7 +46,7 @@ own PR, access or mutate a provider without exact authority, or invoke another i
    `WORKFLOW`, `PRODUCT`, `EXTERNAL` or `EVIDENCE` and repair a bound owning input first.
 6. Implement first, validate immediately, then update only mandatory evidence.
 7. After the final push, prepare the exact PR body with
-   `python scripts/prepare_pr_body.py --body-file /tmp/pr-body.md --base origin/main --expected-worktree "$PWD" --expected-head "$(git rev-parse HEAD)"`;
+   `scripts/prepare_pr_body.sh --body-file /tmp/pr-body.md --base origin/main --expected-worktree "$PWD" --expected-head "$(git rev-parse HEAD)"`;
    create the PR
    from that file without rewriting it. Applicable runtime/deployment changes automatically run the
    real-container lifecycle gate and embed its evidence before C-059 and C-065 validation.
