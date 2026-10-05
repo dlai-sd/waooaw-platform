@@ -19,7 +19,9 @@ RUN apk add --no-cache git \
     && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /grpc_health_probe .
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0@sha256:2680706c9656fafe34876446d694fd25077fd0b5da478f38d56073ac6c21d37e
-RUN apt-get update \
+ARG SECURITY_REFRESH=local
+RUN test -n "$SECURITY_REFRESH" \
+    && apt-get update \
     && apt-get upgrade --yes \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system waooaw \
