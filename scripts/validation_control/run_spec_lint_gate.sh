@@ -4,6 +4,9 @@ set -eu
 parent_container=${HOSTNAME:?HOSTNAME must identify the validation runner container}
 repository_url=https://github.com/dlai-sd/waooaw-platform.git
 
+python scripts/validation_control/customer_forbidden_responses.py \
+    --spec architecture/reference/api-specs/business-platform.openapi.yaml
+
 docker run --rm --user 1000:1000 \
     --volumes-from "$parent_container":ro \
     -w /workspace \

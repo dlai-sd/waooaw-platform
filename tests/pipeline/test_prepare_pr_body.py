@@ -11,7 +11,9 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from prepare_pr_body import (  # noqa: E402
+    add_candidate_evidence_status,
     add_runtime_evidence,
+    add_prepush_qualification_authority,
     business_platform_gate_required,
     changed_files_digest,
     configuration_digest,
@@ -22,6 +24,7 @@ from prepare_pr_body import (  # noqa: E402
     precheck_nodes,
     preparation_head,
     prepare_body,
+    pull_request_body,
     release_qualification_gate_required,
     run_ci_prechecks,
     runner_digest,
@@ -29,6 +32,7 @@ from prepare_pr_body import (  # noqa: E402
     update_pull_request,
     validate_static_repository,
     validate_precheck_evidence,
+    qualification_status,
 )
 from validate_author_review import validate_author_review  # noqa: E402
 
@@ -153,6 +157,70 @@ def test_main_accepts_post_push_pr_update(monkeypatch, tmp_path: Path) -> None:
     assert main() == 0
 
 
+def test_execution_preflight_rejects_inactive_repository_hooks(monkeypatch, tmp_path: Path) -> None:
+    body_file = tmp_path / "pr-body.md"
+    body_file.write_text("body", encoding="utf-8")
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    def fake_git(*arguments: str) -> str:
+        if arguments == ("status", "--porcelain", "--untracked-files=no"):
+            return ""
+        if arguments == ("config", "--get", "core.hooksPath"):
+            return ""
+        raise AssertionError(f"unexpected git arguments: {arguments}")
+
+    monkeypatch.setattr("prepare_pr_body.git", fake_git)
+
+    with pytest.raises(ValueError, match="install_git_hooks"):
+        execution_preflight(tmp_path, body_file, tmp_path, HEAD, HEAD, require_docker=False)
+
+
+def test_pull_request_body_reads_live_issue_body(monkeypatch) -> None:
+    calls: list[list[str]] = []
+    monkeypatch.setattr("prepare_pr_body.shutil.which", lambda command: "/usr/bin/gh")
+    monkeypatch.setattr("prepare_pr_body.github_repository", lambda gh: "waooaw/waooaw")
+
+    def fake_run(command, **kwargs):
+        calls.append(command)
+        return SimpleNamespace(stdout="live body\n")
+
+    monkeypatch.setattr("prepare_pr_body.subprocess.run", fake_run)
+
+    assert pull_request_body(481) == "live body\n"
+    assert calls == [["/usr/bin/gh", "api", "repos/waooaw/waooaw/issues/481", "--jq", ".body"]]
+
+
+def test_update_pull_request_publishes_body_and_labels_atomically(monkeypatch) -> None:
+    calls: list[tuple[list[str], dict[str, object]]] = []
+    monkeypatch.setattr("prepare_pr_body.shutil.which", lambda command: "/usr/bin/gh")
+    monkeypatch.setattr("prepare_pr_body.github_repository", lambda gh: "waooaw/waooaw")
+
+    def fake_run(command, **kwargs):
+        calls.append((command, kwargs))
+        return SimpleNamespace(stdout="")
+
+    monkeypatch.setattr("prepare_pr_body.subprocess.run", fake_run)
+
+    update_pull_request(481, "prepared body", "wc/109-process")
+
+    assert len(calls) == 1
+    command, kwargs = calls[0]
+    assert command == [
+        "/usr/bin/gh",
+        "api",
+        "--silent",
+        "--method",
+        "PATCH",
+        "repos/waooaw/waooaw/issues/481",
+        "--input",
+        "-",
+    ]
+    assert json.loads(str(kwargs["input"])) == {
+        "body": "prepared body",
+        "labels": ["tier:2-feature", "status:pr-open", "awaiting:review"],
+    }
+
+
 def test_static_repository_validation_reports_catalog_and_compose_failures(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(
         "prepare_pr_body.yaml.safe_load",
@@ -209,6 +277,43 @@ def test_runtime_evidence_is_inserted_before_author_review() -> None:
     assert prepared.index("## Pre-PR Runtime Evidence") < prepared.index("## Author Review")
     assert '"initial_http_status": 503' in prepared
     assert '"recovered_http_status": 200' in prepared
+
+
+def test_prepush_authority_is_generated_once_and_replaces_stale_identity() -> None:
+    source = "## Summary\n\nReady.\n\n## Author Review\n\nPending.\n"
+    stale = add_prepush_qualification_authority(source, {"candidate_sha": "b" * 40})
+    prepared = add_prepush_qualification_authority(stale, {"candidate_sha": HEAD})
+
+    assert prepared.count("## Pre-Push Qualification Authority") == 1
+    assert f'"candidate_sha": "{HEAD}"' in prepared
+    assert '"candidate_sha": "' + ("b" * 40) + '"' not in prepared
+    assert prepared.index("## Pre-Push Qualification Authority") < prepared.index("## Author Review")
+
+
+def test_candidate_evidence_status_replaces_stale_candidate_state() -> None:
+    source = "## Summary\n\nReady.\n\n## Author Review\n\nPending.\n"
+    stale = add_candidate_evidence_status(source, {"candidate_sha": "b" * 40, "qualification": "PASS"})
+    prepared = add_candidate_evidence_status(body=stale, status={"candidate_sha": HEAD, "qualification": "PENDING"})
+
+    assert prepared.count("## Candidate Evidence Status") == 1
+    assert f'"candidate_sha": "{HEAD}"' in prepared
+    assert '"qualification": "PENDING"' in prepared
+    assert '"qualification": "PASS"' not in prepared
+
+
+def test_qualification_status_requires_exact_candidate_and_complete_inventory(tmp_path: Path) -> None:
+    evidence_file = tmp_path / "qualification.json"
+    results = [{"result": "PASS"} for _ in range(40)] + [
+        {"result": "BLOCKED", "disposition": "BLOCKED-DEFERRED"} for _ in range(3)
+    ]
+    evidence = {"candidate_sha": HEAD, "passed": True, "run_state": "PASSED", "gate_results": results}
+    evidence_file.write_text(json.dumps(evidence), encoding="utf-8")
+
+    assert qualification_status(evidence_file, HEAD) == "PASS"
+    evidence["candidate_sha"] = "b" * 40
+    evidence_file.write_text(json.dumps(evidence), encoding="utf-8")
+    with pytest.raises(ValueError, match="exact-candidate"):
+        qualification_status(evidence_file, HEAD)
 
 
 def test_runtime_evidence_rejects_failed_gate() -> None:
@@ -286,23 +391,18 @@ def test_update_pull_request_uses_bounded_rest_calls(monkeypatch, tmp_path: Path
     assert calls[1][0] == [
         "/usr/bin/gh",
         "api",
+        "--silent",
         "--method",
         "PATCH",
-        "repos/dlai-sd/waooaw-platform/pulls/476",
+        "repos/dlai-sd/waooaw-platform/issues/476",
         "--input",
         "-",
     ]
-    assert json.loads(calls[1][1]["input"]) == {"body": "prepared body\n"}
-    assert calls[2][0] == [
-        "/usr/bin/gh",
-        "api",
-        "--method",
-        "POST",
-        "repos/dlai-sd/waooaw-platform/issues/476/labels",
-        "--input",
-        "-",
-    ]
-    assert json.loads(calls[2][1]["input"])["labels"] == ["tier:2-feature", "status:pr-open", "awaiting:review"]
+    assert json.loads(calls[1][1]["input"]) == {
+        "body": "prepared body\n",
+        "labels": ["tier:2-feature", "status:pr-open", "awaiting:review"],
+    }
+    assert len(calls) == 2
 
 
 def test_precheck_evidence_must_match_base_and_head() -> None:
@@ -313,7 +413,7 @@ def test_precheck_evidence_must_match_base_and_head() -> None:
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": digest,
-        "graph_version": "wc109-prechecks-v8",
+        "graph_version": "wc109-prechecks-v9",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -364,7 +464,7 @@ def test_precheck_evidence_rejects_configuration_or_runner_mismatch() -> None:
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": "d" * 64,
-        "graph_version": "wc109-prechecks-v8",
+        "graph_version": "wc109-prechecks-v9",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -473,7 +573,6 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
         "typescript_quality",
         "test_web",
         "business_platform",
-        "release_qualification",
     ]
     assert [node.command[node.command.index("--gate") + 1] for node in nodes] == [
         "precheck:gitleaks",
@@ -483,7 +582,6 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
         "quality:typescript",
         "test-web",
         "test-dotnet:business-platform",
-        "release-qualification",
     ]
     assert nodes[1].heavy is False
     assert nodes[2].heavy is False
@@ -491,18 +589,11 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
     assert nodes[3].heavy is False
     assert nodes[4].heavy is False
     assert nodes[5].dependencies == ("typescript_quality",)
-    assert nodes[6].dependencies == ("dotnet_quality_business_platform",)
-    assert nodes[7].dependencies == (
-        "gitleaks",
-        "scripts_quality",
-        "typescript_dependency_scan",
-        "dotnet_quality_business_platform",
-        "typescript_quality",
-    )
+    assert nodes[6].dependencies == ()
     assert all("docker compose" not in " ".join(node.command) for node in nodes)
     assert all("run_release_qualification.sh" not in " ".join(node.command) for node in nodes)
     assert all(node.command[node.command.index("--base") + 1] == "b" * 40 for node in nodes)
-    assert captured["graph_version"] == "wc109-prechecks-v8"
+    assert captured["graph_version"] == "wc109-prechecks-v9"
     assert captured["configuration_digest"] == configuration_digest()
     assert captured["runner_digest"] == runner_digest(nodes)
     assert nodes[0].runner_digest == "r" * 64
@@ -561,7 +652,10 @@ def test_execution_preflight_rejects_wrong_worktree_before_docker(monkeypatch, t
 
 def test_execution_preflight_checks_tools_only_when_gates_will_run(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setattr("prepare_pr_body.git", lambda *arguments: "")
+    monkeypatch.setattr(
+        "prepare_pr_body.git",
+        lambda *arguments: str(tmp_path / ".githooks") if arguments == ("config", "--get", "core.hooksPath") else "",
+    )
     monkeypatch.setattr("prepare_pr_body.shutil.which", lambda executable: None)
 
     execution_preflight(tmp_path, tmp_path / "pr-body.md", tmp_path, HEAD, HEAD, require_docker=False)
@@ -611,7 +705,10 @@ def test_execution_preflight_probes_body_and_evidence_atomic_replacement(monkeyp
     body_file.write_text("body", encoding="utf-8")
     probed: list[Path] = []
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setattr("prepare_pr_body.git", lambda *arguments: "")
+    monkeypatch.setattr(
+        "prepare_pr_body.git",
+        lambda *arguments: str(tmp_path / ".githooks") if arguments == ("config", "--get", "core.hooksPath") else "",
+    )
     monkeypatch.setattr("prepare_pr_body.probe_atomic_output", lambda path: probed.append(path))
 
     execution_preflight(tmp_path, body_file, tmp_path, HEAD, HEAD, require_docker=False)

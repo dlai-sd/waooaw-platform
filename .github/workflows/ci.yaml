@@ -87,6 +87,8 @@ jobs:
           provenance: false
           cache-from: type=gha,scope=release-${{ matrix.service.name }}
           cache-to: type=gha,mode=max,scope=release-${{ matrix.service.name }}
+          build-args: |
+            SECURITY_REFRESH=${{ github.run_id }}
       - name: Record immutable candidate build evidence
         run: |
           scripts/record_build_evidence.sh \
@@ -191,6 +193,8 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
           cache-from: type=gha,scope=release-${{ matrix.service.name }}
           cache-to: type=gha,mode=max,scope=release-${{ matrix.service.name }}
+          build-args: |
+            SECURITY_REFRESH=${{ github.run_id }}
 
       - name: Record immutable registry digest
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

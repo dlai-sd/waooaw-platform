@@ -17,6 +17,7 @@ import subprocess
 import tempfile
 import time
 from collections.abc import Callable
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -50,6 +51,58 @@ class QualificationContext:
     base_branch: str
     pr_number: str
     repository_name: str
+
+
+PREPUSH_AUTHORITY_HEADING = "## Pre-Push Qualification Authority"
+
+
+def parse_prepush_qualification_authority(body: str) -> dict[str, Any]:
+    pattern = re.compile(
+        rf"{re.escape(PREPUSH_AUTHORITY_HEADING)}\s+.*?```json\s*(\{{.*?\}})\s*```",
+        re.DOTALL,
+    )
+    matches = pattern.findall(body)
+    if len(matches) != 1:
+        raise ValueError("live PR body must contain exactly one pre-push qualification authority record")
+    authority = json.loads(matches[0])
+    if not isinstance(authority, dict):
+        raise ValueError("pre-push qualification authority root must be a mapping")
+    return authority
+
+
+def validate_prepush_qualification_authority(
+    authority: dict[str, Any],
+    precheck_evidence: dict[str, Any],
+    *,
+    precheck_digest: str,
+    candidate_sha: str,
+    base_sha: str,
+    published_head_sha: str,
+    pr_number: int,
+    branch: str,
+    changed_files: tuple[str, ...],
+) -> None:
+    changed_digest = hashlib.sha256("\n".join(sorted(changed_files)).encode()).hexdigest()
+    expected = {
+        "schema": "waooaw.prepush-qualification-authority/v1",
+        "candidate_sha": candidate_sha,
+        "base_sha": base_sha,
+        "published_head_sha": published_head_sha,
+        "pr_number": pr_number,
+        "branch": branch,
+        "changed_files_digest": changed_digest,
+        "precheck_evidence_digest": precheck_digest,
+    }
+    mismatches = sorted(field for field, value in expected.items() if authority.get(field) != value)
+    if mismatches:
+        raise ValueError("pre-push qualification authority mismatch: " + ",".join(mismatches))
+    if (
+        precheck_evidence.get("passed") is not True
+        or precheck_evidence.get("commit_sha") != candidate_sha
+        or precheck_evidence.get("base_sha") != base_sha
+        or precheck_evidence.get("changed_file_digest") != changed_digest
+    ):
+        raise ValueError("pre-push qualification evidence is failed or identity-mismatched")
 
 
 def rollback_catalog_digest(catalog: dict[str, Any]) -> str:
@@ -139,18 +192,108 @@ def qualification_carry_forward_results(
     return carried
 
 
-def git_head(repository: Path) -> str:
+def qualification_reuse_analysis(
+    checkpoint: dict[str, Any] | None,
+    plan: dict[str, Any],
+    *,
+    repository: Path,
+    changed_paths: tuple[str, ...],
+    reused_results: dict[str, dict[str, Any]],
+    invalidated_gates: set[str],
+) -> dict[str, Any]:
+    prior_by_gate = {
+        str(result.get("gate_id")): result for result in (checkpoint or {}).get("gate_results", []) if isinstance(result, dict)
+    }
+    assessments: list[dict[str, Any]] = []
+    for node in plan["nodes"]:
+        gate_id = str(node["gate_id"])
+        if gate_id in BLOCKED_DEFERRED_GATES:
+            assessments.append({"gate_id": gate_id, "expected_reuse": False, "reused": False, "reason": "blocked-deferred"})
+            continue
+        if gate_id in reused_results:
+            assessments.append(
+                {
+                    "gate_id": gate_id,
+                    "expected_reuse": True,
+                    "reused": True,
+                    "reason": None,
+                    "disposition": reused_results[gate_id].get("evidence_disposition", "same-run-checkpoint"),
+                }
+            )
+            continue
+        reason = "no-checkpoint-supplied"
+        invalidating_paths: list[str] = []
+        if checkpoint is not None:
+            prior = prior_by_gate.get(gate_id)
+            if gate_id in invalidated_gates:
+                reason = "explicitly-invalidated"
+            elif not isinstance(prior, dict) or prior.get("result") != "PASS":
+                reason = "no-prior-pass"
+            elif node.get("reusable") is not True:
+                reason = "gate-not-reusable"
+            else:
+                evidence_ref = prior.get("evidence_ref")
+                if not isinstance(evidence_ref, str) or not (repository / evidence_ref).is_dir():
+                    reason = "evidence-artifact-missing"
+                else:
+                    patterns = node["invalidation_rule"]["changed_paths"]
+                    invalidating_paths = sorted(
+                        path for path in changed_paths if any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns)
+                    )
+                    reason = "inputs-changed" if invalidating_paths else "eligible-but-not-reused"
+        assessments.append(
+            {
+                "gate_id": gate_id,
+                "expected_reuse": reason == "eligible-but-not-reused",
+                "reused": False,
+                "reason": reason,
+                **({"invalidating_paths": invalidating_paths} if invalidating_paths else {}),
+            }
+        )
+    return {
+        "checkpoint_supplied": checkpoint is not None,
+        "expected_reuse_gate_count": sum(item["expected_reuse"] for item in assessments),
+        "actual_reuse_gate_count": sum(item["reused"] for item in assessments),
+        "assessments": assessments,
+    }
+
+
+def git_revision(repository: Path, revision: str) -> str:
     git = shutil.which("git")
     if git is None:
         raise ValueError("git executable is required for rollback evidence")
     completed = subprocess.run(  # noqa: S603
-        [git, "rev-parse", "HEAD"],
+        [git, "rev-parse", revision],
         cwd=repository,
         check=True,
         capture_output=True,
         text=True,
     )
     return completed.stdout.strip()
+
+
+def git_head(repository: Path) -> str:
+    return git_revision(repository, "HEAD")
+
+
+def qualification_summary(manifest: dict[str, Any], output: Path) -> dict[str, Any]:
+    reuse_analysis = manifest.get("reuse_analysis")
+    if not isinstance(reuse_analysis, dict):
+        reuse_analysis = {}
+    return {
+        "schema": manifest["schema"],
+        "candidate_sha": manifest["candidate_sha"],
+        "catalog_digest": manifest["catalog_digest"],
+        "run_state": manifest["run_state"],
+        "passed": manifest["passed"],
+        "execution_summary": manifest["execution_summary"],
+        "reuse_analysis": {
+            "checkpoint_supplied": reuse_analysis.get("checkpoint_supplied", False),
+            "expected_reuse_gate_count": reuse_analysis.get("expected_reuse_gate_count", 0),
+            "actual_reuse_gate_count": reuse_analysis.get("actual_reuse_gate_count", 0),
+        },
+        "manifest_path": str(output),
+    }
 
 
 def validate_contract_authority(repository: Path) -> None:
@@ -173,7 +316,12 @@ def validate_contract_authority(repository: Path) -> None:
         raise ValueError(f"WC-109 qualification has declared blockers: {','.join(blockers)}")
 
 
-def resolve_qualification_context(repository: Path, base_sha: str, candidate_sha: str) -> QualificationContext:
+def resolve_qualification_context(
+    repository: Path,
+    base_sha: str,
+    candidate_sha: str,
+    precheck_bundle: dict[str, Any] | None = None,
+) -> QualificationContext:
     validate_contract_authority(repository)
     git = shutil.which("git")
     gh = shutil.which("gh")
@@ -187,7 +335,7 @@ def resolve_qualification_context(repository: Path, base_sha: str, candidate_sha
         text=True,
     )
     pull_request = subprocess.run(  # noqa: S603
-        [gh, "pr", "view", "--json", "baseRefName,body,headRefOid,number"],
+        [gh, "pr", "view", "--json", "baseRefName,body,headRefName,headRefOid,number"],
         cwd=repository,
         check=False,
         capture_output=True,
@@ -198,7 +346,42 @@ def resolve_qualification_context(repository: Path, base_sha: str, candidate_sha
         raise ValueError(f"GitHub PR context unavailable (exit {pull_request.returncode}): {first_line[:300]}")
     pr = json.loads(pull_request.stdout)
     if pr.get("headRefOid") != candidate_sha:
-        raise ValueError("rollback PR head does not match candidate HEAD")
+        if precheck_bundle is None:
+            raise ValueError("qualification PR head does not match candidate HEAD and no pre-push authority was supplied")
+        evidence = precheck_bundle.get("evidence")
+        digest = precheck_bundle.get("digest")
+        if not isinstance(evidence, dict) or not isinstance(digest, str):
+            raise ValueError("pre-push qualification evidence bundle is invalid")
+        branch = subprocess.run(  # noqa: S603
+            [git, "branch", "--show-current"],
+            cwd=repository,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        changed_files = tuple(path for path in changed.stdout.splitlines() if path)
+        validate_prepush_qualification_authority(
+            parse_prepush_qualification_authority(str(pr["body"])),
+            evidence,
+            precheck_digest=digest,
+            candidate_sha=candidate_sha,
+            base_sha=base_sha,
+            published_head_sha=str(pr["headRefOid"]),
+            pr_number=int(pr["number"]),
+            branch=branch,
+            changed_files=changed_files,
+        )
+        if pr.get("headRefName") != branch:
+            raise ValueError("pre-push qualification branch does not match the live PR branch")
+        ancestry = subprocess.run(  # noqa: S603
+            [git, "merge-base", "--is-ancestor", str(pr["headRefOid"]), candidate_sha],
+            cwd=repository,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if ancestry.returncode != 0:
+            raise ValueError("pre-push qualification candidate does not descend from the published PR head")
     remote = subprocess.run(  # noqa: S603
         [git, "remote", "get-url", "origin"],
         cwd=repository,
@@ -262,6 +445,7 @@ def execute_rollback(
     repair_context: dict[str, Any] | None = None,
     invalidated_gates: tuple[str, ...] = (),
     qualification_handoff: dict[str, Any] | None = None,
+    qualification_authority_evidence: dict[str, Any] | None = None,
     enforce_qualification_handoff: bool = False,
     execution_profile: str = "rollback",
     context_resolver: Callable[[Path, str, str], QualificationContext] = resolve_qualification_context,
@@ -283,6 +467,9 @@ def execute_rollback(
     service_results: dict[str, Any] = {}
     gate_results: list[dict[str, Any]] = []
     phase_transitions: list[dict[str, Any]] = []
+    scheduler_events: list[dict[str, Any]] = []
+    manifest["scheduler_events"] = scheduler_events
+    qualification_started = time.monotonic()
     first_cause_gate: str | None = None
     stop_all_after_first_cause = False
     cross_head_checkpoint = (
@@ -372,7 +559,11 @@ def execute_rollback(
 
     if qualification_context is None:
         try:
-            qualification_context = context_resolver(repository, base_sha, candidate_sha)
+            qualification_context = (
+                context_resolver(repository, base_sha, candidate_sha, qualification_authority_evidence)
+                if qualification_authority_evidence is not None
+                else context_resolver(repository, base_sha, candidate_sha)
+            )
         except Exception as exception:
             return block_preflight("preflight:qualification-context", str(manifest["required_gates"][0]), exception)
     if execution_profile == "qualification":
@@ -395,6 +586,7 @@ def execute_rollback(
     except Exception as exception:
         return block_preflight("preflight:plan", str(manifest["required_gates"][0]), exception)
     nodes_by_gate = {node["gate_id"]: node for node in plan["nodes"]}
+    carry_forward_changed_paths: tuple[str, ...] = ()
     if cross_head_checkpoint is not None:
         source_head = str(cross_head_checkpoint["candidate_sha"])
         git = shutil.which("git")
@@ -407,6 +599,7 @@ def execute_rollback(
             capture_output=True,
             text=True,
         )
+        carry_forward_changed_paths = tuple(path for path in changed.stdout.splitlines() if path)
         try:
             resumed_results = qualification_carry_forward_results(
                 cross_head_checkpoint,
@@ -415,7 +608,7 @@ def execute_rollback(
                 repository=repository,
                 base_sha=base_sha,
                 catalog_digest=manifest["catalog_digest"],
-                changed_paths=tuple(path for path in changed.stdout.splitlines() if path),
+                changed_paths=carry_forward_changed_paths,
             )
         except Exception as exception:
             return block_preflight("preflight:carry-forward", str(manifest["required_gates"][0]), exception)
@@ -439,6 +632,14 @@ def execute_rollback(
         manifest["invalidated_gates"] = [gate_id for gate_id in plan_execution_order(plan) if gate_id in invalidated]
         for gate_id in invalidated:
             resumed_results.pop(gate_id, None)
+    manifest["reuse_analysis"] = qualification_reuse_analysis(
+        resume_checkpoint,
+        plan,
+        repository=repository,
+        changed_paths=carry_forward_changed_paths,
+        reused_results=resumed_results,
+        invalidated_gates=invalidated,
+    )
     if enforce_qualification_handoff:
         handoff = qualification_handoff_outcome(
             qualification_handoff,
@@ -457,7 +658,29 @@ def execute_rollback(
         try:
             if repair_context is None:
                 raise ValueError("failed qualification resume requires focused repair context")
-            transition = repair_transition(**repair_context)
+            prior_result = next(
+                (result for result in resume_checkpoint.get("gate_results", []) if result.get("gate_id") == prior_first_cause),
+                None,
+            )
+            if isinstance(prior_result, dict) and prior_result.get("disposition") == "RESOURCE_PREFLIGHT_BLOCKED":
+                if (
+                    repair_context != resume_checkpoint
+                    or repair_context.get("candidate_sha") != candidate_sha
+                    or repair_context.get("catalog_digest") != manifest["catalog_digest"]
+                    or repair_context.get("first_cause_gate") != prior_first_cause
+                    or prior_first_cause not in invalidated
+                ):
+                    raise ValueError("resource remediation context does not match the failed checkpoint")
+                transition = {
+                    "schema": "waooaw.resource-repair-transition/v1",
+                    "result": "PASS",
+                    "invalidated_gates": [prior_first_cause],
+                    "blockers": [],
+                    "restitch_eligible": True,
+                    "resource_revalidation_required": True,
+                }
+            else:
+                transition = repair_transition(**repair_context)
             if (
                 transition["result"] != "PASS"
                 or not transition["restitch_eligible"]
@@ -503,6 +726,260 @@ def execute_rollback(
             pr_body_file = Path(temporary_directory) / "pr-body.md"
             pr_body_file.write_text(qualification_context.pr_body, encoding="utf-8")
             current_phase: str | None = None
+            parallel_phase_results: dict[str, dict[str, Any]] = {}
+            executed_parallel_phases: set[str] = set()
+
+            def execute_prepared_gate(gate_id: str, node: dict[str, Any]) -> dict[str, Any]:
+                started = time.monotonic()
+                evidence_ref = node["expected_evidence"]["directory"]
+                error: str | None = None
+                disposition: str | None = None
+                try:
+                    gate_arguments: dict[str, Any] = {
+                        "changed_files": list(qualification_context.changed_files),
+                        "pr_body_file": pr_body_file,
+                        "base_branch": qualification_context.base_branch,
+                        "pr_number": qualification_context.pr_number,
+                        "repository_name": qualification_context.repository_name,
+                        "return_evidence_ref": True,
+                    }
+                    if gate_executor is execute_gate:
+                        gate_arguments["stream_output"] = False
+                        gate_arguments["runner_resolution"] = (
+                            runner_results[node["runner_id"]] if node.get("runner_required", True) else None
+                        )
+                        gate_arguments["service_identity_override"] = service_results.get(gate_id, {})
+                    execution = gate_executor(
+                        repository,
+                        gate_id,
+                        candidate_sha,
+                        base_sha,
+                        git_common_dir,
+                        **gate_arguments,
+                    )
+                    if isinstance(execution, tuple):
+                        returncode, evidence_ref = execution
+                        if not isinstance(returncode, int) or not isinstance(evidence_ref, str):
+                            raise ValueError("gate executor returned invalid evidence identity")
+                        if not (repository / evidence_ref).is_dir():
+                            raise ValueError(f"gate executor evidence directory is missing: {evidence_ref}")
+                    else:
+                        returncode = execution
+                except KeyboardInterrupt:
+                    returncode = 1
+                    error = "KeyboardInterrupt: operator cancellation"
+                    disposition = "OPERATOR_CANCELLED"
+                except subprocess.TimeoutExpired as exception:
+                    returncode = 124
+                    error = f"TimeoutExpired: {exception}"
+                    disposition = "TIMEOUT"
+                except Exception as exception:
+                    returncode = 1
+                    error = f"{type(exception).__name__}: {exception}"
+                result: dict[str, Any] = {
+                    "gate_id": gate_id,
+                    "returncode": returncode,
+                    "result": "PASS" if returncode == 0 else "FAIL",
+                    "evidence_disposition": "executed",
+                    "evidence_ref": evidence_ref,
+                    "duration_seconds": round(time.monotonic() - started, 3),
+                }
+                if error is not None:
+                    result["error"] = error
+                if disposition is not None:
+                    result["result"] = "BLOCKED"
+                    result["disposition"] = disposition
+                return result
+
+            def execute_parallel_graph() -> None:
+                nonlocal first_cause_gate, stop_all_after_first_cause
+                planned_nodes = [
+                    planned
+                    for planned in plan["nodes"]
+                    if planned["phase"] in manifest["parallel_phases"]
+                    and planned["gate_id"] not in resumed_results
+                    and planned["gate_id"] not in BLOCKED_DEFERRED_GATES
+                ]
+                pending = {planned["gate_id"]: planned for planned in planned_nodes}
+                outcomes = dict(resumed_results)
+                outcomes.update({gate_id: {"gate_id": gate_id, "result": "PASS"} for gate_id in BLOCKED_DEFERRED_GATES})
+                for planned in planned_nodes:
+                    planned_gate = planned["gate_id"]
+                    supply_started = time.monotonic()
+                    try:
+                        if planned.get("runner_required", True):
+                            runner_id = planned["runner_id"]
+                            if runner_id not in runner_results:
+                                resolution = runner_resolver(repository, runner_id)
+                                resolution["supply_duration_seconds"] = round(time.monotonic() - supply_started, 3)
+                                if resolution.get("build_count") not in {0, 1}:
+                                    raise ValueError(f"qualification returned invalid build count for runner: {runner_id}")
+                                runner_results[runner_id] = resolution
+                            image = runner_results[runner_id].get("image")
+                            if isinstance(image, str) and image:
+                                os.environ[f"WAOOAW_RUNNER_{runner_id.upper()}_IMAGE"] = image
+                        if planned["required_services"] and planned_gate not in service_results:
+                            services = service_resolver(repository, planned)
+                            service_results[planned_gate] = {
+                                **services,
+                                "supply_duration_seconds": round(time.monotonic() - supply_started, 3),
+                            }
+                    except Exception as exception:
+                        result = {
+                            "gate_id": planned_gate,
+                            "result": "BLOCKED",
+                            "disposition": "SUPPLY_FAILED",
+                            "error": f"{type(exception).__name__}: {exception}",
+                            "duration_seconds": round(time.monotonic() - supply_started, 3),
+                        }
+                        parallel_phase_results[planned_gate] = result
+                        outcomes[planned_gate] = result
+                        pending.pop(planned_gate)
+                        if first_cause_gate is None:
+                            first_cause_gate = planned_gate
+
+                running: dict[Future[dict[str, Any]], tuple[dict[str, Any], int, int]] = {}
+                running_cpus = 0
+                running_memory = 0
+                maximum_workers = manifest["max_parallel_gates"]
+                cpu_capacity = manifest["parallel_cpu_capacity"]
+                memory_capacity = manifest["parallel_memory_mb_capacity"]
+
+                def passed(gate_id: str) -> bool:
+                    result = outcomes.get(gate_id)
+                    return isinstance(result, dict) and (
+                        result.get("result") == "PASS"
+                        or (gate_id in BLOCKED_DEFERRED_GATES and result.get("result") == "BLOCKED")
+                    )
+
+                with ThreadPoolExecutor(
+                    max_workers=maximum_workers,
+                    thread_name_prefix="wc104-qualification",
+                ) as executor:
+                    while pending or running:
+                        progress = False
+                        for gate_id, planned in list(pending.items()):
+                            prerequisites = planned["direct_prerequisites"]
+                            incompatible = [
+                                required for required in prerequisites if required in outcomes and not passed(required)
+                            ]
+                            if incompatible:
+                                result = {
+                                    "gate_id": gate_id,
+                                    "result": "BLOCKED",
+                                    "disposition": "PREREQUISITE_EVIDENCE_BLOCKED",
+                                    "first_cause_gate": first_cause_gate or incompatible[0],
+                                    "prerequisite_blockers": [f"incompatible:{required}" for required in incompatible],
+                                    "duration_seconds": 0.0,
+                                }
+                                parallel_phase_results[gate_id] = result
+                                outcomes[gate_id] = result
+                                pending.pop(gate_id)
+                                progress = True
+                        if first_cause_gate is None:
+                            ready = [
+                                planned
+                                for planned in pending.values()
+                                if all(passed(required) for required in planned["direct_prerequisites"])
+                            ]
+                            ready.sort(
+                                key=lambda planned: (
+                                    -manifest["parallel_phases"].index(planned["phase"]),
+                                    plan_execution_order(plan).index(planned["gate_id"]),
+                                )
+                            )
+                            for planned in ready:
+                                resources = planned["resources"]
+                                required_cpus = int(resources["cpus"])
+                                required_memory = int(resources["memory_mb"])
+                                if (
+                                    len(running) >= maximum_workers
+                                    or running_cpus + required_cpus > cpu_capacity
+                                    or running_memory + required_memory > memory_capacity
+                                ):
+                                    continue
+                                future = executor.submit(execute_prepared_gate, planned["gate_id"], planned)
+                                running[future] = (planned, required_cpus, required_memory)
+                                running_cpus += required_cpus
+                                running_memory += required_memory
+                                pending.pop(planned["gate_id"])
+                                event = {
+                                    "event": "ADMITTED",
+                                    "gate_id": planned["gate_id"],
+                                    "phase": planned["phase"],
+                                    "elapsed_seconds": round(time.monotonic() - qualification_started, 3),
+                                    "active_gates": len(running),
+                                    "active_cpus": running_cpus,
+                                    "active_memory_mb": running_memory,
+                                }
+                                scheduler_events.append(event)
+                                print(
+                                    f"[qualification] scheduler=ADMITTED gate={planned['gate_id']} "
+                                    f"phase={planned['phase']} active_gates={len(running)}/{maximum_workers} "
+                                    f"active_cpus={running_cpus}/{cpu_capacity} "
+                                    f"active_memory_mb={running_memory}/{memory_capacity}",
+                                    flush=True,
+                                )
+                                progress = True
+                        if running:
+                            completed_futures, _ = wait(running, return_when=FIRST_COMPLETED)
+                            for future in completed_futures:
+                                planned, required_cpus, required_memory = running.pop(future)
+                                running_cpus -= required_cpus
+                                running_memory -= required_memory
+                                result = future.result()
+                                parallel_phase_results[planned["gate_id"]] = result
+                                outcomes[planned["gate_id"]] = result
+                                event = {
+                                    "event": "COMPLETED",
+                                    "gate_id": planned["gate_id"],
+                                    "phase": planned["phase"],
+                                    "result": result["result"],
+                                    "duration_seconds": result["duration_seconds"],
+                                    "elapsed_seconds": round(time.monotonic() - qualification_started, 3),
+                                    "active_gates": len(running),
+                                    "active_cpus": running_cpus,
+                                    "active_memory_mb": running_memory,
+                                }
+                                scheduler_events.append(event)
+                                print(
+                                    f"[qualification] scheduler=COMPLETED gate={planned['gate_id']} "
+                                    f"phase={planned['phase']} result={result['result']} "
+                                    f"duration_seconds={result['duration_seconds']} "
+                                    f"active_gates={len(running)}/{maximum_workers} "
+                                    f"active_cpus={running_cpus}/{cpu_capacity} "
+                                    f"active_memory_mb={running_memory}/{memory_capacity}",
+                                    flush=True,
+                                )
+                                if result["result"] in {"FAIL", "BLOCKED"} and first_cause_gate is None:
+                                    first_cause_gate = planned["gate_id"]
+                                if result.get("disposition") == "OPERATOR_CANCELLED":
+                                    stop_all_after_first_cause = True
+                                progress = True
+                        elif pending and first_cause_gate is not None:
+                            for gate_id in list(pending):
+                                result = {
+                                    "gate_id": gate_id,
+                                    "result": "BLOCKED",
+                                    "disposition": "SUPPRESSED_AFTER_FAILURE",
+                                    "first_cause_gate": first_cause_gate,
+                                    "suppression_reason": failure_lane_disposition(
+                                        plan,
+                                        gate_id,
+                                        first_cause_gate,
+                                        execution_state="PENDING",
+                                    ),
+                                    "duration_seconds": 0.0,
+                                }
+                                parallel_phase_results[gate_id] = result
+                                outcomes[gate_id] = result
+                                pending.pop(gate_id)
+                            progress = True
+                        if not progress and pending:
+                            raise ValueError("qualification ready queue has no executable gate")
+
+                executed_parallel_phases.update(manifest["parallel_phases"])
+
             for gate_id in plan_execution_order(plan):
                 started = time.monotonic()
                 node = nodes_by_gate[gate_id]
@@ -536,20 +1013,26 @@ def execute_rollback(
                         catalog_digest=manifest["catalog_digest"],
                     )
                     phase_transitions.append(transition)
+                    print(
+                        f"[qualification] phase={node['phase']} result={transition['result']} "
+                        f"blockers={len(transition['blockers'])}",
+                        flush=True,
+                    )
                     if transition["result"] != "PASS":
-                        first_cause_gate = gate_id
-                        gate_results.append(
-                            {
-                                "gate_id": gate_id,
-                                "result": "BLOCKED",
-                                "disposition": "PHASE_TRANSITION_BLOCKED",
-                                "first_cause_gate": first_cause_gate,
-                                "phase_blockers": transition["blockers"],
-                                "duration_seconds": 0.0,
-                            }
-                        )
-                        checkpoint()
-                        continue
+                        if execution_profile != "qualification" or node["phase"] not in manifest["parallel_phases"]:
+                            first_cause_gate = gate_id
+                            gate_results.append(
+                                {
+                                    "gate_id": gate_id,
+                                    "result": "BLOCKED",
+                                    "disposition": "PHASE_TRANSITION_BLOCKED",
+                                    "first_cause_gate": first_cause_gate,
+                                    "phase_blockers": transition["blockers"],
+                                    "duration_seconds": 0.0,
+                                }
+                            )
+                            checkpoint()
+                            continue
                     current_phase = node["phase"]
                     checkpoint()
                 if gate_id in BLOCKED_DEFERRED_GATES:
@@ -569,14 +1052,17 @@ def execute_rollback(
                     continue
                 suppression = (
                     "OPERATOR_CANCELLED"
-                    if gate_id not in resumed_results and first_cause_gate is not None and stop_all_after_first_cause
+                    if gate_id not in resumed_results
+                    and gate_id not in parallel_phase_results
+                    and first_cause_gate is not None
+                    and stop_all_after_first_cause
                     else failure_lane_disposition(
                         plan,
                         gate_id,
                         first_cause_gate,
                         execution_state="PENDING",
                     )
-                    if gate_id not in resumed_results and first_cause_gate is not None
+                    if gate_id not in resumed_results and gate_id not in parallel_phase_results and first_cause_gate is not None
                     else None
                 )
                 if suppression is not None:
@@ -622,6 +1108,20 @@ def execute_rollback(
                     )
                     checkpoint()
                     continue
+                if execution_profile == "qualification" and node["phase"] in manifest["parallel_phases"]:
+                    if not executed_parallel_phases:
+                        execute_parallel_graph()
+                    result = parallel_phase_results[gate_id]
+                    gate_results.append(result)
+                    print(
+                        f"[qualification] gate={gate_id} result={result['result']} "
+                        f"duration_seconds={result['duration_seconds']} evidence={result.get('evidence_ref')}",
+                        flush=True,
+                    )
+                    if result["result"] in {"FAIL", "BLOCKED"} and first_cause_gate is None:
+                        first_cause_gate = gate_id
+                    checkpoint()
+                    continue
                 try:
                     if node.get("runner_required", True):
                         runner_id = node["runner_id"]
@@ -661,18 +1161,27 @@ def execute_rollback(
                 disposition: str | None = None
                 evidence_ref = node["expected_evidence"]["directory"]
                 try:
+                    gate_arguments: dict[str, Any] = {
+                        "changed_files": list(qualification_context.changed_files),
+                        "pr_body_file": pr_body_file,
+                        "base_branch": qualification_context.base_branch,
+                        "pr_number": qualification_context.pr_number,
+                        "repository_name": qualification_context.repository_name,
+                        "return_evidence_ref": True,
+                    }
+                    if gate_executor is execute_gate:
+                        gate_arguments["stream_output"] = False
+                        gate_arguments["runner_resolution"] = (
+                            runner_results[node["runner_id"]] if node.get("runner_required", True) else None
+                        )
+                        gate_arguments["service_identity_override"] = service_results.get(gate_id, {})
                     execution = gate_executor(
                         repository,
                         gate_id,
                         candidate_sha,
                         base_sha,
                         git_common_dir,
-                        changed_files=list(qualification_context.changed_files),
-                        pr_body_file=pr_body_file,
-                        base_branch=qualification_context.base_branch,
-                        pr_number=qualification_context.pr_number,
-                        repository_name=qualification_context.repository_name,
-                        return_evidence_ref=True,
+                        **gate_arguments,
                     )
                     if isinstance(execution, tuple):
                         returncode, evidence_ref = execution
@@ -708,6 +1217,11 @@ def execute_rollback(
                     result["result"] = "BLOCKED"
                     result["disposition"] = disposition
                 gate_results.append(result)
+                print(
+                    f"[qualification] gate={gate_id} result={result['result']} "
+                    f"duration_seconds={result['duration_seconds']} evidence={evidence_ref}",
+                    flush=True,
+                )
                 if result["result"] in {"FAIL", "BLOCKED"}:
                     if first_cause_gate is None:
                         first_cause_gate = gate_id
@@ -756,6 +1270,7 @@ def main() -> int:
     parser.add_argument("--repair-context", type=Path)
     parser.add_argument("--invalidate-gate", action="append", default=[])
     parser.add_argument("--handoff-evidence", type=Path)
+    parser.add_argument("--precheck-evidence", type=Path)
     parser.add_argument("--execution-profile", choices=("qualification", "rollback"), default="qualification")
     arguments = parser.parse_args()
     repository = arguments.repository.resolve()
@@ -779,17 +1294,29 @@ def main() -> int:
         qualification_handoff = json.loads(arguments.handoff_evidence.read_text(encoding="utf-8"))
         if not isinstance(qualification_handoff, dict):
             raise ValueError("qualification handoff root must be a mapping")
+    qualification_authority_evidence = None
+    if arguments.precheck_evidence is not None:
+        precheck_bytes = arguments.precheck_evidence.read_bytes()
+        precheck_evidence = json.loads(precheck_bytes)
+        if not isinstance(precheck_evidence, dict):
+            raise ValueError("precheck evidence root must be a mapping")
+        qualification_authority_evidence = {
+            "evidence": precheck_evidence,
+            "digest": "sha256:" + hashlib.sha256(precheck_bytes).hexdigest(),
+        }
+    base_sha = git_revision(repository, arguments.base)
     manifest = execute_rollback(
         repository,
         catalog,
         candidate_sha=git_head(repository),
-        base_sha=arguments.base,
+        base_sha=base_sha,
         git_common_dir=arguments.git_common_dir.resolve(),
         checkpoint_path=arguments.output,
         resume_checkpoint=resume_checkpoint,
         repair_context=repair_context,
         invalidated_gates=tuple(arguments.invalidate_gate),
         qualification_handoff=qualification_handoff,
+        qualification_authority_evidence=qualification_authority_evidence,
         enforce_qualification_handoff=True,
         execution_profile=arguments.execution_profile,
     )
@@ -797,7 +1324,7 @@ def main() -> int:
     temporary_output = arguments.output.with_suffix(arguments.output.suffix + ".tmp")
     temporary_output.write_text(render_manifest(manifest), encoding="utf-8")
     temporary_output.replace(arguments.output)
-    print(render_manifest(manifest), end="")
+    print(json.dumps(qualification_summary(manifest, arguments.output), indent=2, sort_keys=True))
     return 0 if manifest["passed"] else 1
 
 

@@ -5,33 +5,25 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using System.Reflection;
 using System.Text.Json;
-using Testcontainers.PostgreSql;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
 using Xunit;
 
 namespace Waooaw.BusinessPlatform.Tests.Identity;
 
-public sealed class CustomerWorkspaceProvisioningPostgresTests : IAsyncLifetime
+public sealed class CustomerWorkspaceProvisioningPostgresTests(IdentityPostgresServerFixture fixture)
+    : IClassFixture<IdentityPostgresServerFixture>, IAsyncLifetime
 {
     private const string Issuer = "https://synthetic.invalid/realms/customer";
     private const string Provider = "https://synthetic-google.invalid";
     private const string Digest = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     private const string Hash = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("pgvector/pgvector:pg16")
-        .WithDatabase("customer_workspace")
-        .WithUsername("test_owner")
-        .WithPassword("synthetic-workspace-test-password")
-        .Build();
+    private string _ownerConnectionString = string.Empty;
 
     public async Task InitializeAsync()
     {
-        await _postgres.StartAsync();
+        _ownerConnectionString = await fixture.CreateDatabaseAsync("customer_workspace");
         await ExecuteOwnerAsync("""
-            CREATE ROLE business_app LOGIN PASSWORD 'synthetic-app-password' NOSUPERUSER NOBYPASSRLS;
-            CREATE ROLE constitutional_app LOGIN PASSWORD 'synthetic-app-password' NOSUPERUSER NOBYPASSRLS;
-            CREATE ROLE runtime_app LOGIN PASSWORD 'synthetic-app-password' NOSUPERUSER NOBYPASSRLS;
-            CREATE ROLE wbe_app LOGIN PASSWORD 'synthetic-app-password' NOSUPERUSER NOBYPASSRLS;
             CREATE SCHEMA business AUTHORIZATION business_app;
             """);
         var canonical = await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/03-enums-and-tables.sql"));
@@ -55,7 +47,7 @@ public sealed class CustomerWorkspaceProvisioningPostgresTests : IAsyncLifetime
         await ExecuteOwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/29-customer-workspace-provisioning.sql")));
     }
 
-    public async Task DisposeAsync() => await _postgres.DisposeAsync();
+    public async Task DisposeAsync() => await fixture.DropDatabaseAsync(_ownerConnectionString);
 
     [Fact]
     public async Task Migration_RestrictedBusinessRole_EmptyContextResolvesNothing()
@@ -331,7 +323,7 @@ public sealed class CustomerWorkspaceProvisioningPostgresTests : IAsyncLifetime
                     ('accounts','login_methods','actor_bindings','memberships','registrations','registration_events','idempotency_ledger')
                 OR namespace.nspname = 'business' AND relation.relname = 'organisations')
             """));
-        await using var owner = new NpgsqlConnection(_postgres.GetConnectionString());
+        await using var owner = new NpgsqlConnection(_ownerConnectionString);
         await owner.OpenAsync();
         await using var command = new NpgsqlCommand("SET ROLE identity_resolver_owner", owner);
         await command.ExecuteNonQueryAsync();
@@ -556,7 +548,7 @@ public sealed class CustomerWorkspaceProvisioningPostgresTests : IAsyncLifetime
 
     private async Task<T> OwnerScalarAsync<T>(string sql)
     {
-        await using var connection = new NpgsqlConnection(_postgres.GetConnectionString());
+        await using var connection = new NpgsqlConnection(_ownerConnectionString);
         await connection.OpenAsync();
         await using var command = new NpgsqlCommand(sql, connection);
         return (T)(await command.ExecuteScalarAsync())!;
@@ -656,7 +648,7 @@ public sealed class CustomerWorkspaceProvisioningPostgresTests : IAsyncLifetime
         return registration.RegistrationId;
     }
 
-    private string AppConnectionString(string role = "business_app") => new NpgsqlConnectionStringBuilder(_postgres.GetConnectionString())
+    private string AppConnectionString(string role = "business_app") => new NpgsqlConnectionStringBuilder(_ownerConnectionString)
     {
         Username = role,
         Password = "synthetic-app-password",
@@ -665,7 +657,7 @@ public sealed class CustomerWorkspaceProvisioningPostgresTests : IAsyncLifetime
 
     private async Task ExecuteOwnerAsync(string sql)
     {
-        await using var connection = new NpgsqlConnection(_postgres.GetConnectionString());
+        await using var connection = new NpgsqlConnection(_ownerConnectionString);
         await connection.OpenAsync();
         await using var command = new NpgsqlCommand(sql, connection);
         await command.ExecuteNonQueryAsync();

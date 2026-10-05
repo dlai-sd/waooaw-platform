@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+repository=$(git rev-parse --show-toplevel)
+message_file=$(realpath "$1")
+cd "$repository"
+
+scripts/validation_control/run_with_docker_socket.sh \
+    docker compose --profile test-python run --rm --no-deps \
+    -v "$message_file:/tmp/commit-message:ro" \
+    test-runner-python python scripts/validate_c059.py \
+    --commit-message-file /tmp/commit-message

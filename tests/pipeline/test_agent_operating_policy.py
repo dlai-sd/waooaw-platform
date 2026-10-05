@@ -130,15 +130,29 @@ def test_author_review_is_required_and_machine_enforced() -> None:
     template = PR_TEMPLATE.read_text(encoding="utf-8")
     workflow = CI_WORKFLOW.read_text(encoding="utf-8")
     instructions = COPILOT_INSTRUCTIONS.read_text(encoding="utf-8")
+    launcher = (ROOT / "scripts/prepare_pr_body.sh").read_text(encoding="utf-8")
 
     assert "## Author Review" in template
     assert "**Reviewed Commit:** FULL_40_CHARACTER_HEAD_SHA" in template
     assert "**Author Review Result:** PENDING" in template
     assert "Any new commit makes this review stale" in template
-    assert "python scripts/prepare_pr_body.py" in template
+    assert "scripts/prepare_pr_body.sh" in template
+    assert "python scripts/prepare_pr_body.py" not in template
     assert "real-container lifecycle gate" in template
     assert "@copilot review this PR as" not in template
     assert "Do not open the PR before this C-059/C-065 precheck passes" in instructions
+    assert "scripts/prepare_pr_body.sh" in instructions
+
+    for required_process_control in (
+        'git rev-parse --path-format=absolute --git-common-dir',
+        'gh auth token',
+        'stat -c \'%g\' "$docker_socket"',
+        '-e GIT_CONFIG_KEY_0=safe.directory',
+        '-v "$repository_root:$repository_root"',
+        '-v "$git_common_dir:$git_common_dir"',
+        'test-runner python scripts/prepare_pr_body.py "$@"',
+    ):
+        assert required_process_control in launcher
 
     assert "author-review-gate:" in workflow
     assert "name: C-065 Author Review Gate" in workflow

@@ -21,6 +21,13 @@ RELEASE_MEMBERS = {
     ),
 }
 CI_WORKFLOW = REPO_ROOT / ".github/workflows/ci.yaml"
+DEBIAN_RUNTIME_DOCKERFILES = (
+    "src/constitutional-engine/Dockerfile",
+    "src/business-platform/Dockerfile",
+    "src/professional-runtime/Dockerfile",
+    "src/ai-runtime/Dockerfile",
+    "src/billing-engine/Dockerfile",
+)
 
 
 def _compose() -> dict:
@@ -107,6 +114,19 @@ def test_ci_has_deterministic_spec_and_fixable_vulnerability_gates() -> None:
     assert workflow.count("exit-code: 1") >= 2
 
 
+def test_hosted_builds_refresh_debian_runtime_security_layers() -> None:
+    workflow = CI_WORKFLOW.read_text(encoding="utf-8")
+    assert workflow.count("SECURITY_REFRESH=${{ github.run_id }}") == 2
+
+    for dockerfile in DEBIAN_RUNTIME_DOCKERFILES:
+        content = (REPO_ROOT / dockerfile).read_text(encoding="utf-8")
+        assert "ARG SECURITY_REFRESH=local" in content
+        assert 'RUN test -n "$SECURITY_REFRESH"' in content
+        assert content.index('RUN test -n "$SECURITY_REFRESH"') < content.index(
+            "apt-get update"
+        )
+
+
 def test_release_images_are_non_root_and_expose_accepted_ports() -> None:
     for _, (port, context, dockerfile) in RELEASE_MEMBERS.items():
         content = (REPO_ROOT / context / dockerfile).read_text(encoding="utf-8")
@@ -131,6 +151,15 @@ def test_web_configuration_is_runtime_external() -> None:
     content = (REPO_ROOT / "web/Dockerfile").read_text(encoding="utf-8")
     assert "ARG NEXT_PUBLIC_" not in content
     assert "'libcrypto3>=3.5.8-r0' 'libssl3>=3.5.8-r0'" in content
+
+
+def test_web_dependency_stage_copies_pnpm_patches_before_install() -> None:
+    content = (REPO_ROOT / "web/Dockerfile").read_text(encoding="utf-8")
+    patch_copy = "COPY web/patches ./patches"
+    frozen_install = "RUN pnpm install --frozen-lockfile"
+
+    assert patch_copy in content
+    assert content.index(patch_copy) < content.index(frozen_install)
 
 
 def test_baseline_excludes_oauth_vault_and_mcps() -> None:

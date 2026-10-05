@@ -75,6 +75,9 @@ def compose_command(node: dict[str, Any], git_common_dir: str | None = None) -> 
         raise ValueError("validation plan node resources must be a mapping")
     if resources.get("docker_socket") is True:
         command.extend(("--volume", "/var/run/docker.sock:/var/run/docker.sock"))
+    if resources.get("socket_classification") == "host-orchestration":
+        repository = str(Path.cwd())
+        command.extend(("--volume", f"{repository}:{repository}:ro", "--workdir", repository))
     if git_common_dir:
         command.extend(("--volume", f"{git_common_dir}:{git_common_dir}:ro"))
     command.extend(
@@ -274,7 +277,8 @@ def main() -> int:
         return verification.returncode
     environment = runner_environment(arguments.image_id)
     environment["COMPOSE_PROJECT_NAME"] = node["compose_project"]
-    environment["WAOOAW_VALIDATION_OUTPUT_DIRECTORY"] = str(artifact_root.resolve())
+    environment["WAOOAW_VALIDATION_OUTPUT_DIRECTORY"] = "/workspace/test-results"
+    environment["WAOOAW_HOST_VALIDATION_OUTPUT_DIRECTORY"] = str(artifact_root.resolve())
     required_services = node.get("required_services", [])
     if required_services:
         environment = required_service_environment(node, environment)

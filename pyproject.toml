@@ -31,8 +31,6 @@ select = [
     "DTZ",  # flake8-datetimez — ban naive datetime (utcnow, utcfromtimestamp)
 ]
 ignore = [
-    "ANN101",  # 'self' type annotation not required
-    "ANN102",  # 'cls' type annotation not required
     "S101",    # 'assert' in tests is fine (not in production code)
     "N999",    # Invalid module name — hyphenated service dirs (professional-runtime, ai-runtime)
                # are intentional kebab-case names, not Python module names. The Python

@@ -68,11 +68,11 @@ Coverage:         NN% (threshold: NN%)
 
 <!--
 Before creating a PR, push the branch and run:
-python scripts/prepare_pr_body.py --body-file /tmp/pr-body.md --base origin/main
+scripts/prepare_pr_body.sh --body-file /tmp/pr-body.md --base origin/main
 Applicable runtime/deployment diffs automatically run the real-container lifecycle gate and add its
 evidence to this body. Submit that exact prepared file. Any new commit makes this review stale.
 For an already-open PR, prevent a push/check race with:
-python scripts/prepare_pr_body.py --body-file /tmp/pr-body.md --base origin/main \
+scripts/prepare_pr_body.sh --body-file /tmp/pr-body.md --base origin/main \
 	--allow-unpushed-head --update-pr PR_NUMBER
 Push only after that command succeeds. Immediately after push, rerun without the two final options
 and add `--precheck-evidence-file /tmp/pr-body.precheck-evidence.json`; update the PR body again to

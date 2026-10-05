@@ -1,0 +1,895 @@
+{
+  "base_sha": "1fedf83e744b2099de1c3707f1fec770159124e8",
+  "candidate_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+  "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+  "environment": {
+    "DOCKER_CONFIG": "/tmp/wc104-docker-2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+    "WC100_DISABLE_REUSE": "0",
+    "WC100_PRECHECK_MODE": "serial",
+    "WC104_DISABLE_REGISTRY_REUSE": "0",
+    "WC104_FORCE_LOCAL_BUILD": "0"
+  },
+  "execution_summary": {
+    "carry_forward_gate_count": 0,
+    "deferred_gate_count": 3,
+    "executed_gate_count": 40,
+    "resumed_gate_count": 0,
+    "runner_build_count": 2,
+    "runner_supply_seconds": 2.43,
+    "suppressed_gate_count": 0
+  },
+  "first_cause_gate": null,
+  "gate_results": [
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 1.835,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-4386bc902d06577c/build",
+      "gate_id": "build",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 1.951,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-b4fbbc349d3d9fb8/secrets",
+      "gate_id": "secrets",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 9.852,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-43e59fc7b6659b37/spec-lint",
+      "gate_id": "spec-lint",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 3.191,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-ce36c7d5a0cff22a/sast",
+      "gate_id": "sast",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 64.377,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-5ebe762961af0e00/dep-scan-python",
+      "gate_id": "dep-scan:python",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 21.038,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-f67db7c3a6bb4f66/dep-scan-dotnet",
+      "gate_id": "dep-scan:dotnet",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 3.635,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-68fd5b309dd79d52/dep-scan-typescript",
+      "gate_id": "dep-scan:typescript",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 273.932,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-5d5a984258418f8b/license-check",
+      "gate_id": "license-check",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 1.651,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-6b4ac4b423b53de6/constitutional-commit-gate",
+      "gate_id": "constitutional-commit-gate",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 1.69,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-acc9929f3333b239/requirement-ledger",
+      "gate_id": "requirement-ledger",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 1.682,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-7accf15bb810b4a7/author-review-gate",
+      "gate_id": "author-review-gate",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 1.644,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-bf7014f2332afd2d/authorization-tier-check",
+      "gate_id": "authorization-tier-check",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 16.219,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-e4360092d2dbd4d7/quality-scripts",
+      "gate_id": "quality:scripts",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 1.994,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-2d88fb7b33a7cfe5/quality-commitlint",
+      "gate_id": "quality:commitlint",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 11.05,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-8d583ff841818843/quality-dotnet-constitutional-engine",
+      "gate_id": "quality:dotnet:constitutional-engine",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 22.894,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-27b813bbe7380c63/quality-dotnet-business-platform",
+      "gate_id": "quality:dotnet:business-platform",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 12.596,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-f5735402858ea15a/quality-python-professional-runtime",
+      "gate_id": "quality:python:professional-runtime",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 35.337,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-bd02d71aea27c8e7/quality-python-ai-runtime",
+      "gate_id": "quality:python:ai-runtime",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 79.812,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-80277e71e4eb0e68/quality-typescript",
+      "gate_id": "quality:typescript",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 22.825,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-c6439747a69e76b2/quality-sql",
+      "gate_id": "quality:sql",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 1.782,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-a0e7e36b9b6d3741/quality-proto",
+      "gate_id": "quality:proto",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 1.872,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-20a36bbf40400df9/quality-observability",
+      "gate_id": "quality:observability",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 1.941,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-8dd410413f65a2c5/quality-traceability",
+      "gate_id": "quality:traceability",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 1.627,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-d4d1f32f7fca7ad0/quality-constitutional-naming",
+      "gate_id": "quality:constitutional-naming",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 7.146,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-c8489310e891444d/contract-seed-prompts",
+      "gate_id": "contract:seed-prompts",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 18.516,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-ace23fd1502ae7f4/test-dotnet",
+      "gate_id": "test-dotnet",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 24.812,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-8462b265a85f617d/test-python",
+      "gate_id": "test-python",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 43.775,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-c5445a4889f3c431/test-web",
+      "gate_id": "test-web",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 62.085,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-3ea30c163f2eda50/integration-multi-tenant",
+      "gate_id": "integration:multi-tenant",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 13.368,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-03314b39595c1114/integration-postgres-migrations",
+      "gate_id": "integration:postgres-migrations",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 265.705,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-032e1b637fcdca41/integration-dotnet",
+      "gate_id": "integration:dotnet",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 18.147,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-1579eb969ef9f198/integration-python",
+      "gate_id": "integration:python",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 381.073,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-b60f58ca8ca9c40b/contract-rest",
+      "gate_id": "contract:rest",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 7.822,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-8b746eb12a5a75fd/security-prompt-injection",
+      "gate_id": "security:prompt-injection",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "disposition": "BLOCKED-DEFERRED",
+      "disposition_proof": {
+        "founder_scope_amendment": "2026-10-01_AS001_AS003_AS005_BLOCKED_DEFERRED_AND_SINGLE_IMPLEMENTATION_PR_PILOT",
+        "release_blocking": true
+      },
+      "duration_seconds": 0.0,
+      "gate_id": "acceptance:as-001",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "BLOCKED"
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "disposition": "BLOCKED-DEFERRED",
+      "disposition_proof": {
+        "founder_scope_amendment": "2026-10-01_AS001_AS003_AS005_BLOCKED_DEFERRED_AND_SINGLE_IMPLEMENTATION_PR_PILOT",
+        "release_blocking": true
+      },
+      "duration_seconds": 0.0,
+      "gate_id": "acceptance:as-003",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "BLOCKED"
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "disposition": "BLOCKED-DEFERRED",
+      "disposition_proof": {
+        "founder_scope_amendment": "2026-10-01_AS001_AS003_AS005_BLOCKED_DEFERRED_AND_SINGLE_IMPLEMENTATION_PR_PILOT",
+        "release_blocking": true
+      },
+      "duration_seconds": 0.0,
+      "gate_id": "acceptance:as-005",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "BLOCKED"
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 7.771,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-5edbcbec475e505d/acceptance-pse-failover",
+      "gate_id": "acceptance:pse-failover",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 37.746,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-7ed4e02a8b96d40c/e2e-emergency-stop",
+      "gate_id": "e2e:emergency-stop",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 370.602,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-a72ce64f24c01356/mutation-dotnet",
+      "gate_id": "mutation:dotnet",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 375.632,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-bb4b60dcc1653c08/mutation-python",
+      "gate_id": "mutation:python",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 117.035,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-9eff8e981928268a/e2e-accessibility",
+      "gate_id": "e2e:accessibility",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "duration_seconds": 232.51,
+      "evidence_disposition": "executed",
+      "evidence_ref": "test-results/wc109/runs/wc109-b3c946616bdfe823/release-qualification",
+      "gate_id": "release-qualification",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "result": "PASS",
+      "returncode": 0
+    }
+  ],
+  "local_image_reuse": true,
+  "mode": "staged-qualification",
+  "passed": true,
+  "phase_transitions": [
+    {
+      "blockers": [],
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "phase": "A_DESIGN",
+      "required_evidence_gates": [],
+      "result": "PASS"
+    },
+    {
+      "blockers": [],
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "phase": "B_COMPONENT",
+      "required_evidence_gates": [
+        "build",
+        "secrets",
+        "spec-lint",
+        "sast",
+        "dep-scan:python",
+        "dep-scan:dotnet",
+        "dep-scan:typescript",
+        "license-check",
+        "constitutional-commit-gate",
+        "requirement-ledger",
+        "author-review-gate",
+        "authorization-tier-check",
+        "quality:scripts",
+        "quality:commitlint",
+        "quality:dotnet:constitutional-engine",
+        "quality:dotnet:business-platform",
+        "quality:python:professional-runtime",
+        "quality:python:ai-runtime",
+        "quality:typescript",
+        "quality:sql",
+        "quality:proto",
+        "quality:observability",
+        "quality:traceability",
+        "quality:constitutional-naming",
+        "contract:seed-prompts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "blockers": [],
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "phase": "C_DEPENDENCY_INTEGRATION",
+      "required_evidence_gates": [
+        "build",
+        "secrets",
+        "test-dotnet",
+        "test-python",
+        "test-web",
+        "spec-lint",
+        "sast",
+        "dep-scan:python",
+        "dep-scan:dotnet",
+        "dep-scan:typescript",
+        "license-check",
+        "constitutional-commit-gate",
+        "requirement-ledger",
+        "author-review-gate",
+        "authorization-tier-check",
+        "quality:scripts",
+        "quality:commitlint",
+        "quality:dotnet:constitutional-engine",
+        "quality:dotnet:business-platform",
+        "quality:python:professional-runtime",
+        "quality:python:ai-runtime",
+        "quality:typescript",
+        "quality:sql",
+        "quality:proto",
+        "quality:observability",
+        "quality:traceability",
+        "quality:constitutional-naming",
+        "contract:seed-prompts"
+      ],
+      "result": "PASS"
+    },
+    {
+      "blockers": [],
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "phase": "D_SYSTEM_STITCHING",
+      "required_evidence_gates": [
+        "build",
+        "secrets",
+        "test-dotnet",
+        "test-python",
+        "test-web",
+        "spec-lint",
+        "sast",
+        "dep-scan:python",
+        "dep-scan:dotnet",
+        "dep-scan:typescript",
+        "license-check",
+        "constitutional-commit-gate",
+        "requirement-ledger",
+        "author-review-gate",
+        "authorization-tier-check",
+        "quality:scripts",
+        "quality:commitlint",
+        "quality:dotnet:constitutional-engine",
+        "quality:dotnet:business-platform",
+        "quality:python:professional-runtime",
+        "quality:python:ai-runtime",
+        "quality:typescript",
+        "quality:sql",
+        "quality:proto",
+        "quality:observability",
+        "quality:traceability",
+        "quality:constitutional-naming",
+        "integration:multi-tenant",
+        "integration:postgres-migrations",
+        "integration:dotnet",
+        "integration:python",
+        "contract:rest",
+        "contract:seed-prompts",
+        "security:prompt-injection",
+        "acceptance:as-001",
+        "acceptance:as-003",
+        "acceptance:as-005",
+        "acceptance:pse-failover",
+        "e2e:emergency-stop"
+      ],
+      "result": "PASS"
+    },
+    {
+      "blockers": [],
+      "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+      "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+      "phase": "E_QUALIFICATION_HANDOFF",
+      "required_evidence_gates": [
+        "build",
+        "secrets",
+        "test-dotnet",
+        "test-python",
+        "test-web",
+        "spec-lint",
+        "sast",
+        "dep-scan:python",
+        "dep-scan:dotnet",
+        "dep-scan:typescript",
+        "license-check",
+        "constitutional-commit-gate",
+        "requirement-ledger",
+        "author-review-gate",
+        "authorization-tier-check",
+        "quality:scripts",
+        "quality:commitlint",
+        "quality:dotnet:constitutional-engine",
+        "quality:dotnet:business-platform",
+        "quality:python:professional-runtime",
+        "quality:python:ai-runtime",
+        "quality:typescript",
+        "quality:sql",
+        "quality:proto",
+        "quality:observability",
+        "quality:traceability",
+        "quality:constitutional-naming",
+        "mutation:dotnet",
+        "mutation:python",
+        "integration:multi-tenant",
+        "integration:postgres-migrations",
+        "integration:dotnet",
+        "integration:python",
+        "contract:rest",
+        "contract:seed-prompts",
+        "security:prompt-injection",
+        "e2e:accessibility",
+        "acceptance:as-001",
+        "acceptance:as-003",
+        "acceptance:as-005",
+        "acceptance:pse-failover",
+        "e2e:emergency-stop"
+      ],
+      "result": "PASS"
+    }
+  ],
+  "qualification_handoff": {
+    "blockers": [],
+    "build_events": 0,
+    "catalog_digest": "sha256:d3af67bb400119c1936636e569c57f11f2d365661d0965b0c91afe0edd8027c2",
+    "execution_events": 0,
+    "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
+    "result": "PASS",
+    "schema": "waooaw.qualification-handoff-result/v1"
+  },
+  "registry_reuse": true,
+  "required_gates": [
+    "build",
+    "secrets",
+    "test-dotnet",
+    "test-python",
+    "test-web",
+    "spec-lint",
+    "sast",
+    "dep-scan:python",
+    "dep-scan:dotnet",
+    "dep-scan:typescript",
+    "license-check",
+    "release-qualification",
+    "constitutional-commit-gate",
+    "requirement-ledger",
+    "author-review-gate",
+    "authorization-tier-check",
+    "quality:scripts",
+    "quality:commitlint",
+    "quality:dotnet:constitutional-engine",
+    "quality:dotnet:business-platform",
+    "quality:python:professional-runtime",
+    "quality:python:ai-runtime",
+    "quality:typescript",
+    "quality:sql",
+    "quality:proto",
+    "quality:observability",
+    "quality:traceability",
+    "quality:constitutional-naming",
+    "mutation:dotnet",
+    "mutation:python",
+    "integration:multi-tenant",
+    "integration:postgres-migrations",
+    "integration:dotnet",
+    "integration:python",
+    "contract:rest",
+    "contract:seed-prompts",
+    "security:prompt-injection",
+    "e2e:accessibility",
+    "acceptance:as-001",
+    "acceptance:as-003",
+    "acceptance:as-005",
+    "acceptance:pse-failover",
+    "e2e:emergency-stop"
+  ],
+  "required_runners": [
+    "python",
+    "dotnet",
+    "typescript",
+    "full"
+  ],
+  "resource_preflight": {
+    "after": {
+      "free_bytes": 24597893120,
+      "free_ratio": 0.18209101735517272,
+      "total_bytes": 135085703168
+    },
+    "before": {
+      "free_bytes": 24597893120,
+      "free_ratio": 0.18209101735517272,
+      "total_bytes": 135085703168
+    },
+    "cleanup_actions": [],
+    "execution_namespace": "wc109-065cf9771f06b81f",
+    "minimum_free_ratio": 0.05,
+    "required_disk_bytes": 2147483648,
+    "result": "PASS",
+    "schema": "waooaw.resource-capacity-preflight/v1"
+  },
+  "resource_preflights": [
+    {
+      "after": {
+        "free_bytes": 24597893120,
+        "free_ratio": 0.18209101735517272,
+        "total_bytes": 135085703168
+      },
+      "before": {
+        "free_bytes": 24597893120,
+        "free_ratio": 0.18209101735517272,
+        "total_bytes": 135085703168
+      },
+      "cleanup_actions": [],
+      "execution_namespace": "wc109-065cf9771f06b81f",
+      "minimum_free_ratio": 0.05,
+      "required_disk_bytes": 2147483648,
+      "result": "PASS",
+      "schema": "waooaw.resource-capacity-preflight/v1",
+      "scope": "SUPPLY"
+    },
+    {
+      "after": {
+        "free_bytes": 24597884928,
+        "free_ratio": 0.18209095671218975,
+        "total_bytes": 135085703168
+      },
+      "before": {
+        "free_bytes": 24597884928,
+        "free_ratio": 0.18209095671218975,
+        "total_bytes": 135085703168
+      },
+      "cleanup_actions": [],
+      "execution_namespace": "wc109-065cf9771f06b81f-a_design",
+      "minimum_free_ratio": 0.05,
+      "required_disk_bytes": 2147483648,
+      "result": "PASS",
+      "schema": "waooaw.resource-capacity-preflight/v1",
+      "scope": "A_DESIGN"
+    },
+    {
+      "after": {
+        "free_bytes": 24593252352,
+        "free_ratio": 0.1820566631053064,
+        "total_bytes": 135085703168
+      },
+      "before": {
+        "free_bytes": 24593252352,
+        "free_ratio": 0.1820566631053064,
+        "total_bytes": 135085703168
+      },
+      "cleanup_actions": [],
+      "execution_namespace": "wc109-065cf9771f06b81f-b_component",
+      "minimum_free_ratio": 0.05,
+      "required_disk_bytes": 2147483648,
+      "result": "PASS",
+      "schema": "waooaw.resource-capacity-preflight/v1",
+      "scope": "B_COMPONENT"
+    },
+    {
+      "after": {
+        "free_bytes": 24589324288,
+        "free_ratio": 0.18202758479496062,
+        "total_bytes": 135085703168
+      },
+      "before": {
+        "free_bytes": 24589324288,
+        "free_ratio": 0.18202758479496062,
+        "total_bytes": 135085703168
+      },
+      "cleanup_actions": [],
+      "execution_namespace": "wc109-065cf9771f06b81f-c_dependency_integration",
+      "minimum_free_ratio": 0.05,
+      "required_disk_bytes": 2147483648,
+      "result": "PASS",
+      "schema": "waooaw.resource-capacity-preflight/v1",
+      "scope": "C_DEPENDENCY_INTEGRATION"
+    },
+    {
+      "after": {
+        "free_bytes": 24580644864,
+        "free_ratio": 0.18196333355447808,
+        "total_bytes": 135085703168
+      },
+      "before": {
+        "free_bytes": 24580644864,
+        "free_ratio": 0.18196333355447808,
+        "total_bytes": 135085703168
+      },
+      "cleanup_actions": [],
+      "execution_namespace": "wc109-065cf9771f06b81f-d_system_stitching",
+      "minimum_free_ratio": 0.05,
+      "required_disk_bytes": 2147483648,
+      "result": "PASS",
+      "schema": "waooaw.resource-capacity-preflight/v1",
+      "scope": "D_SYSTEM_STITCHING"
+    },
+    {
+      "after": {
+        "free_bytes": 24562548736,
+        "free_ratio": 0.1818293732050435,
+        "total_bytes": 135085703168
+      },
+      "before": {
+        "free_bytes": 24562548736,
+        "free_ratio": 0.1818293732050435,
+        "total_bytes": 135085703168
+      },
+      "cleanup_actions": [],
+      "execution_namespace": "wc109-065cf9771f06b81f-e_qualification_handoff",
+      "minimum_free_ratio": 0.05,
+      "required_disk_bytes": 2147483648,
+      "result": "PASS",
+      "schema": "waooaw.resource-capacity-preflight/v1",
+      "scope": "E_QUALIFICATION_HANDOFF"
+    }
+  ],
+  "reuse_prior_results": true,
+  "run_state": "PASSED",
+  "runner_results": {
+    "dotnet": {
+      "build_count": 1,
+      "image": "waooaw-validation-runner-dotnet:local-e94da25328358df61bdac7cfdfdc1e932811f0d7b67ffeb413453b81c6a4d487",
+      "image_id": "sha256:0db0679726e4d182f5a0f567b3f2042560a5aeb20064d97d55226441b019605c",
+      "runner_digest": "sha256:0db0679726e4d182f5a0f567b3f2042560a5aeb20064d97d55226441b019605c",
+      "runner_id": "dotnet",
+      "runner_identity": "sha256:e94da25328358df61bdac7cfdfdc1e932811f0d7b67ffeb413453b81c6a4d487",
+      "supply_duration_seconds": 1.28,
+      "trust_source": "local-identity-build"
+    },
+    "full": {
+      "build_count": 1,
+      "image": "waooaw-validation-runner-full:local-fe52a02a4569c0cd19310157eb51667751fbd6013c7131ec75589b1b3194c356",
+      "image_id": "sha256:613d5067072cf546b6481ee8bee900e49127bdc5ca91f81f3743234da3bd511f",
+      "runner_digest": "sha256:613d5067072cf546b6481ee8bee900e49127bdc5ca91f81f3743234da3bd511f",
+      "runner_id": "full",
+      "runner_identity": "sha256:fe52a02a4569c0cd19310157eb51667751fbd6013c7131ec75589b1b3194c356",
+      "supply_duration_seconds": 1.074,
+      "trust_source": "local-identity-build"
+    },
+    "python": {
+      "build_count": 0,
+      "image": "waooaw-validation-runner-python:local-b8a7b0d0e04522a79cdce69e6299888ce69ad3941d29b715bf0251c9fe80aa8e",
+      "image_id": "sha256:997364618270987aaa22fc1014ab6e4eebd0860d818f5ea9457c2c79f126d851",
+      "runner_digest": "sha256:997364618270987aaa22fc1014ab6e4eebd0860d818f5ea9457c2c79f126d851",
+      "runner_id": "python",
+      "runner_identity": "sha256:b8a7b0d0e04522a79cdce69e6299888ce69ad3941d29b715bf0251c9fe80aa8e",
+      "supply_duration_seconds": 0.036,
+      "trust_source": "local-identity-build"
+    },
+    "typescript": {
+      "build_count": 0,
+      "image": "waooaw-validation-runner-typescript:local-7cc041ac633e1829115ff7bfd9a28b355413658ef455cbe3f85b9d8ac573699d",
+      "image_id": "sha256:717d8ddb9c43693a78ac12dedf69bc01e090583c41eef06f2afafdd0e9f1d4dc",
+      "runner_digest": "sha256:717d8ddb9c43693a78ac12dedf69bc01e090583c41eef06f2afafdd0e9f1d4dc",
+      "runner_id": "typescript",
+      "runner_identity": "sha256:7cc041ac633e1829115ff7bfd9a28b355413658ef455cbe3f85b9d8ac573699d",
+      "supply_duration_seconds": 0.04,
+      "trust_source": "local-identity-build"
+    }
+  },
+  "schema": "waooaw.wc104-qualification/v1",
+  "selective_enforcement": false,
+  "serial_orchestration": true,
+  "service_results": {
+    "integration:multi-tenant": {
+      "postgres": "sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b",
+      "supply_duration_seconds": 0.171
+    },
+    "integration:postgres-migrations": {
+      "postgres": "sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b",
+      "supply_duration_seconds": 0.163
+    }
+  }
+}

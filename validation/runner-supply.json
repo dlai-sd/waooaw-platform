@@ -36,7 +36,8 @@
       "context_inputs": [
         "architecture/reference/dockerfiles/Dockerfile.test-runner-ts",
         "web/package.json",
-        "web/pnpm-lock.yaml"
+        "web/pnpm-lock.yaml",
+        "web/patches/**"
       ]
     },
     "full": {
@@ -49,7 +50,8 @@
         "architecture/reference/dockerfiles/Dockerfile.test-runner",
         "requirements-test.txt",
         "web/package.json",
-        "web/pnpm-lock.yaml"
+        "web/pnpm-lock.yaml",
+        "web/patches/**"
       ]
     }
   }

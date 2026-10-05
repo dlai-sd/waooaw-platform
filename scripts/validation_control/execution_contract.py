@@ -17,6 +17,7 @@ from validation_control.identity import MANIFEST_SCHEMAS, digest_identity
 
 SAFE_SEGMENT = re.compile(r"[^A-Za-z0-9_.-]+")
 MINIMUM_FREE_RATIO = 0.05
+DISPOSABLE_IMAGE_PREFIXES = ("wc109-", "goal006-", "waooaw-scan-")
 
 
 class UnchangedExecutionFailureError(ValueError):
@@ -93,6 +94,106 @@ def disposable_cleanup_commands(projects: list[dict[str, Any]], docker: str) -> 
     return commands
 
 
+def disposable_image_references(references: list[str]) -> list[str]:
+    return sorted(
+        {
+            reference
+            for reference in references
+            if reference != "<none>:<none>" and reference.startswith(DISPOSABLE_IMAGE_PREFIXES)
+        }
+    )
+
+
+def disposable_network_names(networks: list[dict[str, Any]]) -> list[str]:
+    return sorted(
+        network["Name"]
+        for network in networks
+        if isinstance(network.get("Name"), str)
+        and network["Name"].startswith("wc109-")
+        and isinstance(network.get("Containers"), dict)
+        and not network["Containers"]
+    )
+
+
+def cleanup_stale_validation_networks(repository: Path) -> list[str]:
+    docker = shutil.which("docker")
+    if docker is None:
+        raise ValueError("resource preflight: Docker executable is unavailable for network cleanup")
+    listed = subprocess.run(  # noqa: S603
+        [docker, "network", "ls", "--filter", "name=^wc109-", "--format", "{{.ID}}"],
+        cwd=repository,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if listed.returncode != 0:
+        raise ValueError("resource preflight: validation network inventory is unavailable")
+    network_ids = listed.stdout.split()
+    if not network_ids:
+        return []
+    inspected = subprocess.run(  # noqa: S603
+        [docker, "network", "inspect", *network_ids],
+        cwd=repository,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if inspected.returncode != 0:
+        raise ValueError("resource preflight: validation network inspection failed")
+    try:
+        networks = json.loads(inspected.stdout)
+    except json.JSONDecodeError as error:
+        raise ValueError("resource preflight: validation network inventory is malformed") from error
+    if not isinstance(networks, list) or not all(isinstance(network, dict) for network in networks):
+        raise ValueError("resource preflight: validation network inventory must be a list")
+    disposable = disposable_network_names(networks)
+    if not disposable:
+        return []
+    removed = subprocess.run(  # noqa: S603
+        [docker, "network", "rm", *disposable],
+        cwd=repository,
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    action = f"network rm {' '.join(disposable)}:{removed.returncode}"
+    if removed.returncode != 0:
+        raise ValueError("resource preflight: stale validation network cleanup failed")
+    return [action]
+
+
+def cleanup_before_docker_build(repository: Path) -> list[str]:
+    docker = shutil.which("docker")
+    if docker is None:
+        raise ValueError("pre-build cleanup: Docker executable is unavailable")
+    listed = subprocess.run(  # noqa: S603
+        [docker, "image", "ls", "--format", "{{.Repository}}:{{.Tag}}"],
+        cwd=repository,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if listed.returncode != 0:
+        raise ValueError("pre-build cleanup: Docker image inventory is unavailable")
+    disposable = disposable_image_references(listed.stdout.splitlines())
+    commands = [
+        *([[docker, "image", "rm", *disposable]] if disposable else []),
+        [docker, "image", "prune", "--force"],
+        [docker, "builder", "prune", "--force", "--filter", "until=24h"],
+    ]
+    actions: list[str] = []
+    for command in commands:
+        completed = subprocess.run(  # noqa: S603
+            command,
+            cwd=repository,
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        actions.append(f"{' '.join(command[1:])}:{completed.returncode}")
+    return actions
+
+
 def cleanup_disposable_validation_state(repository: Path) -> list[str]:
     docker = shutil.which("docker")
     if docker is None:
@@ -133,6 +234,7 @@ def resource_capacity_preflight(
     *,
     disk_usage: Any = shutil.disk_usage,
     cleanup: Any = cleanup_disposable_validation_state,
+    network_cleanup: Any = cleanup_stale_validation_networks,
 ) -> dict[str, Any]:
     disk_requirements = [
         node.get("resources", {}).get("disk_mb")
@@ -144,6 +246,7 @@ def resource_capacity_preflight(
     ):
         raise ValueError("resource preflight: every plan node must declare a positive disk_mb bound")
     required_bytes = max(disk_requirements, default=0) * 1024 * 1024
+    network_cleanup_actions = network_cleanup(repository)
     before = disk_usage(repository)
     before_ratio = before.free / before.total if before.total else 0.0
     cleanup_actions: list[str] = []
@@ -157,6 +260,7 @@ def resource_capacity_preflight(
         "execution_namespace": execution_namespace,
         "minimum_free_ratio": MINIMUM_FREE_RATIO,
         "required_disk_bytes": required_bytes,
+        "network_cleanup_actions": network_cleanup_actions,
         "before": {"free_bytes": before.free, "total_bytes": before.total, "free_ratio": before_ratio},
         "cleanup_actions": cleanup_actions,
         "after": {"free_bytes": after.free, "total_bytes": after.total, "free_ratio": after_ratio},

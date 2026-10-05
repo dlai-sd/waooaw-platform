@@ -4,8 +4,8 @@
     "number": 481,
     "repository": "dlai-sd/waooaw-platform",
     "url": "https://github.com/dlai-sd/waooaw-platform/pull/481",
-    "base_sha": "b55e1323ea1a83997ad13e604a77999536bebb43",
-    "head_sha": "81a45a3934a1b00893690ed442558fdd79385241",
+    "base_sha": "1fedf83e744b2099de1c3707f1fec770159124e8",
+    "head_sha": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
     "created_at": "2026-10-01T08:50:51Z"
   },
   "implementation_available_at": "2026-10-01T08:06:47Z",
@@ -28,17 +28,17 @@
     "tier4": [202.780]
   },
   "builds": [
-    {"kind": "runner", "identity": "sha256:e94da25328358df61bdac7cfdfdc1e932811f0d7b67ffeb413453b81c6a4d487", "count": 1, "cache_outcome": "built-then-candidate-identity-hit", "source_ref": "github-actions:36995384242:1:dotnet"},
-    {"kind": "runner", "identity": "sha256:fe52a02a4569c0cd19310157eb51667751fbd6013c7131ec75589b1b3194c356", "count": 1, "cache_outcome": "built-then-candidate-identity-hit", "source_ref": "github-actions:36995384242:1:full"},
-    {"kind": "runner", "identity": "sha256:b8a7b0d0e04522a79cdce69e6299888ce69ad3941d29b715bf0251c9fe80aa8e", "count": 0, "cache_outcome": "trusted-identity-hit", "source_ref": "github-actions:36995384242:1:python"},
-    {"kind": "runner", "identity": "sha256:7cc041ac633e1829115ff7bfd9a28b355413658ef455cbe3f85b9d8ac573699d", "count": 1, "cache_outcome": "built-then-candidate-identity-hit", "source_ref": "github-actions:36995384242:1:typescript"},
-    {"kind": "candidate", "identity": "sha256:d1e545372ed6495972c2474669667f580ecc5d0d0b7ca92bf530b3a5d930c93d", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:36995384242:1:agent-runtime-adapter-digital-marketing"},
-    {"kind": "candidate", "identity": "sha256:d87c212919f82aac6cedb739c948b2cf903fd9eca9dd15d0dda2c40333a65ed0", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:36995384242:1:ai-runtime"},
-    {"kind": "candidate", "identity": "sha256:e8848204a507b2b3d7da812e7cbbeb24bde70ca5d2329a8e11288cfb1b0ebc0a", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:36995384242:1:billing-engine"},
-    {"kind": "candidate", "identity": "sha256:782a0e85bedf492210ca5ba7162cc3ed6d555c05643f2a9e2fdd8941fb31d252", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:36995384242:1:business-platform"},
-    {"kind": "candidate", "identity": "sha256:87648352447881761f21d5c5283b7661906f69d552515b622a0c176ea35657fd", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:36995384242:1:constitutional-engine"},
-    {"kind": "candidate", "identity": "sha256:101b80d53d9e324a284e2d1b2a8873f8b6bb7e244813009300ecbd81eb120db4", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:36995384242:1:professional-runtime"},
-    {"kind": "candidate", "identity": "sha256:142ba6596a945a5824c69e90af26ff78ddc5ee641f78115a2b6a878b6d9a78d5", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:36995384242:1:web"}
+    {"kind": "runner", "identity": "sha256:e94da25328358df61bdac7cfdfdc1e932811f0d7b67ffeb413453b81c6a4d487", "count": 0, "cache_outcome": "trusted-identity-hit", "source_ref": "github-actions:37070737169:1:dotnet"},
+    {"kind": "runner", "identity": "sha256:fe52a02a4569c0cd19310157eb51667751fbd6013c7131ec75589b1b3194c356", "count": 0, "cache_outcome": "trusted-identity-hit", "source_ref": "github-actions:37070737169:1:full"},
+    {"kind": "runner", "identity": "sha256:b8a7b0d0e04522a79cdce69e6299888ce69ad3941d29b715bf0251c9fe80aa8e", "count": 0, "cache_outcome": "trusted-identity-hit", "source_ref": "github-actions:37070737169:1:python"},
+    {"kind": "runner", "identity": "sha256:7cc041ac633e1829115ff7bfd9a28b355413658ef455cbe3f85b9d8ac573699d", "count": 0, "cache_outcome": "trusted-identity-hit", "source_ref": "github-actions:37070737169:1:typescript"},
+    {"kind": "candidate", "identity": "sha256:442f25173210737cce19cddd3e1a1816acfb324e9eaa4157454ea3396448b4a3", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:37070737169:1:agent-runtime-adapter-digital-marketing"},
+    {"kind": "candidate", "identity": "sha256:c2459412151132e69baa5167e2918af729901c3493f5541eb19a6345871e6d2f", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:37070737169:1:ai-runtime"},
+    {"kind": "candidate", "identity": "sha256:0ccd6a9542dd45dcc7fe7670651cfd5270982976f3c60f48317deea36b6394ad", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:37070737169:1:billing-engine"},
+    {"kind": "candidate", "identity": "sha256:b5103c81ed47ead81d630028e8c4721c9b666b12f7e74c3b853cbb427a45363c", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:37070737169:1:business-platform"},
+    {"kind": "candidate", "identity": "sha256:13bd7f026c16742acfa0d358802d17b574144508cc05cf7b1c12137d875921f6", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:37070737169:1:constitutional-engine"},
+    {"kind": "candidate", "identity": "sha256:563b83850f8942e82676796b0a9fec05ffb66cd19b4fedb61b632ad5f135444a", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:37070737169:1:professional-runtime"},
+    {"kind": "candidate", "identity": "sha256:eaf221d739260722ea815a80531bb5c1192ae8665a4fbec80c444f8f661b9829", "count": 1, "cache_outcome": "workflow-build", "source_ref": "github-actions:37070737169:1:web"}
   ],
   "precheck": {
     "first_cause_time_seconds": 2644,
@@ -67,16 +67,18 @@
     ]
   },
   "gate_inventories": {
-    "selected": ["author-review-gate", "authorization-tier-check", "constitutional-commit-gate", "dep-scan:dotnet", "dep-scan:python", "dep-scan:typescript", "license-check", "quality:commitlint", "quality:constitutional-naming", "quality:dotnet:business-platform", "quality:dotnet:constitutional-engine", "quality:observability", "quality:proto", "quality:python:ai-runtime", "quality:python:professional-runtime", "quality:scripts", "quality:sql", "quality:traceability", "quality:typescript", "release-qualification", "spec-lint", "test-dotnet:business-platform", "test-dotnet:constitutional-engine", "test-python:ai-runtime", "test-python:professional-runtime", "test-web"],
-    "complete_applicable": ["author-review-gate", "authorization-tier-check", "constitutional-commit-gate", "dep-scan:dotnet", "dep-scan:python", "dep-scan:typescript", "license-check", "quality:commitlint", "quality:constitutional-naming", "quality:dotnet:business-platform", "quality:dotnet:constitutional-engine", "quality:observability", "quality:proto", "quality:python:ai-runtime", "quality:python:professional-runtime", "quality:scripts", "quality:sql", "quality:traceability", "quality:typescript", "release-qualification", "spec-lint", "test-dotnet:business-platform", "test-dotnet:constitutional-engine", "test-python:ai-runtime", "test-python:professional-runtime", "test-web"],
-    "full_ci_outcomes": {"author-review-gate":"PASS","authorization-tier-check":"PASS","constitutional-commit-gate":"PASS","dep-scan:dotnet":"PASS","dep-scan:python":"PASS","dep-scan:typescript":"PASS","license-check":"PASS","quality:commitlint":"PASS","quality:constitutional-naming":"PASS","quality:dotnet:business-platform":"PASS","quality:dotnet:constitutional-engine":"PASS","quality:observability":"PASS","quality:proto":"PASS","quality:python:ai-runtime":"PASS","quality:python:professional-runtime":"PASS","quality:scripts":"PASS","quality:sql":"PASS","quality:traceability":"PASS","quality:typescript":"PASS","release-qualification":"PASS","spec-lint":"PASS","test-dotnet:business-platform":"PASS","test-dotnet:constitutional-engine":"PASS","test-python:ai-runtime":"PASS","test-python:professional-runtime":"PASS","test-web":"PASS"}
+    "selected": ["build", "secrets", "test-dotnet:constitutional-engine", "test-dotnet:business-platform", "test-python:professional-runtime", "test-python:ai-runtime", "test-web", "spec-lint", "sast", "dep-scan:python", "dep-scan:dotnet", "dep-scan:typescript", "license-check", "release-qualification", "constitutional-commit-gate", "requirement-ledger", "author-review-gate", "authorization-tier-check", "quality:scripts", "quality:commitlint", "quality:dotnet:constitutional-engine", "quality:dotnet:business-platform", "quality:python:professional-runtime", "quality:python:ai-runtime", "quality:typescript", "quality:sql", "quality:proto", "quality:observability", "quality:traceability", "quality:constitutional-naming"],
+    "complete_applicable": ["build", "secrets", "test-dotnet:constitutional-engine", "test-dotnet:business-platform", "test-python:professional-runtime", "test-python:ai-runtime", "test-web", "spec-lint", "sast", "dep-scan:python", "dep-scan:dotnet", "dep-scan:typescript", "license-check", "release-qualification", "constitutional-commit-gate", "requirement-ledger", "author-review-gate", "authorization-tier-check", "quality:scripts", "quality:commitlint", "quality:dotnet:constitutional-engine", "quality:dotnet:business-platform", "quality:python:professional-runtime", "quality:python:ai-runtime", "quality:typescript", "quality:sql", "quality:proto", "quality:observability", "quality:traceability", "quality:constitutional-naming"],
+    "full_ci_outcomes": {"build":"PASS","secrets":"PASS","test-dotnet:constitutional-engine":"PASS","test-dotnet:business-platform":"PASS","test-python:professional-runtime":"PASS","test-python:ai-runtime":"PASS","test-web":"PASS","spec-lint":"PASS","sast":"PASS","dep-scan:python":"PASS","dep-scan:dotnet":"PASS","dep-scan:typescript":"PASS","license-check":"PASS","release-qualification":"PASS","constitutional-commit-gate":"PASS","requirement-ledger":"PASS","author-review-gate":"PASS","authorization-tier-check":"PASS","quality:scripts":"PASS","quality:commitlint":"PASS","quality:dotnet:constitutional-engine":"PASS","quality:dotnet:business-platform":"PASS","quality:python:professional-runtime":"PASS","quality:python:ai-runtime":"PASS","quality:typescript":"PASS","quality:sql":"PASS","quality:proto":"PASS","quality:observability":"PASS","quality:traceability":"PASS","quality:constitutional-naming":"PASS"}
   },
   "shadow_comparison": {
-    "exact_head": "81a45a3934a1b00893690ed442558fdd79385241",
+    "exact_head": "2f96645871a3a2a4f1093634d51ab4ca4e81ef34",
     "false_negatives": [],
     "missing_gate_results": [],
-    "workflow_run_id": 36995384242,
-    "artifact_name": "wc109-shadow-comparison",
+    "workflow_run_id": 37070737169,
+    "artifact_name": "wc109-shadow-ci-37070737169",
+    "quality_workflow_run_id": 37070737215,
+    "quality_artifact_name": "wc109-shadow-code-quality-37070737215",
     "full_ci_authoritative": true,
     "selective_enforcement_enabled": false
   },

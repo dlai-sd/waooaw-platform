@@ -270,7 +270,7 @@ pytest tests/ -v --cov=src --cov-report=xml
 **Mandatory PR structure (per `.github/pull_request_template.md`):**
 
 After final author review and the final push, populate the template, then run
-`python scripts/prepare_pr_body.py --body-file /tmp/pr-body.md --base origin/main --expected-worktree "$PWD" --expected-head "$(git rev-parse HEAD)"`. The preparer
+`scripts/prepare_pr_body.sh --body-file /tmp/pr-body.md --base origin/main --expected-worktree "$PWD" --expected-head "$(git rev-parse HEAD)"`. The preparer
 refuses an unpushed or stale branch, binds Author Review to the authoritative remote SHA, and runs
 C-059 and C-065 before PR creation. Applicable runtime/deployment changes also run the exact-image
 Professional Runtime delayed-Temporal lifecycle gate and embed its JSON evidence. Submit that exact

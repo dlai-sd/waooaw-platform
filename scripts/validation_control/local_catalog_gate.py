@@ -27,7 +27,7 @@ if str(SCRIPTS_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_ROOT))
 
 from validation_control.orchestrator import build_execution_plan  # noqa: E402
-from validation_control.execution_contract import orchestration_preflight  # noqa: E402
+from validation_control.execution_contract import cleanup_before_docker_build, orchestration_preflight  # noqa: E402
 from validation_control.evidence_controller import (  # noqa: E402
     catalog_invocation_signature,
     publish_envelope,
@@ -173,6 +173,7 @@ def local_fallback_runner(
         create_context(repository, context, specification)
         dockerfile = context / specification["dockerfile"]
         metadata_path = context / "build-metadata.json"
+        cleanup_before_docker_build(repository)
         subprocess.run(  # noqa: S603
             [
                 docker_executable(),
@@ -365,6 +366,17 @@ def write_requirement_scope(repository: Path, changed_files: list[str], artifact
     output.write_text("".join(f"{path}\n" for path in sorted(normalized)), encoding="utf-8")
 
 
+def product_image_build_events(node: dict[str, Any], artifact_root: Path) -> int:
+    declared = node.get("product_image_builds", [])
+    manifest = artifact_root / "product-image-builds.txt"
+    if not manifest.is_file():
+        return len(declared)
+    recorded = [line for line in manifest.read_text(encoding="utf-8").splitlines() if line]
+    if len(recorded) != len(set(recorded)) or any(image not in declared for image in recorded):
+        raise ValueError("product image build manifest is outside the catalog declaration")
+    return len(recorded)
+
+
 def execute_gate(
     repository: Path,
     gate_id: str,
@@ -378,6 +390,9 @@ def execute_gate(
     pr_number: str | None = None,
     repository_name: str | None = None,
     return_evidence_ref: bool = False,
+    stream_output: bool = True,
+    runner_resolution: dict[str, Any] | None = None,
+    service_identity_override: dict[str, str] | None = None,
 ) -> int | tuple[int, str]:
     if mode not in {"focused", "qualification"}:
         raise ValueError(f"unsupported local execution mode: {mode}")
@@ -389,7 +404,12 @@ def execute_gate(
     plan = build_execution_plan(catalog, [gate_id], mode=mode, head_sha=head_sha, run_id=run_id)
     node = plan["nodes"][0]
     artifact_root = repository / node["output_directory"]
-    service_identities = required_service_identities(repository, node)
+    changed_files_path = artifact_root / "changed-files.txt"
+    changed_files_path.parent.mkdir(parents=True, exist_ok=True)
+    changed_files_path.write_text("".join(f"{path}\n" for path in sorted(changed_files or [])), encoding="utf-8")
+    service_identities = (
+        service_identity_override if service_identity_override is not None else required_service_identities(repository, node)
+    )
     write_commit_metadata(repository, base_sha, head_sha, artifact_root)
     write_pr_body(pr_body_file, gate_id, artifact_root)
     write_authorization_context(gate_id, artifact_root, base_branch, pr_number, repository_name)
@@ -407,6 +427,8 @@ def execute_gate(
             "HEAD_SHA": head_sha,
             "GIT_COMMON_DIR": str(git_common_dir),
             "REPOSITORY_ROOT": str(repository),
+            "WAOOAW_CHANGED_FILES_FILE": "/workspace/test-results/changed-files.txt",
+            "WAOOAW_HOST_CHANGED_FILES_FILE": str(changed_files_path),
         }
     )
     command = [
@@ -420,17 +442,40 @@ def execute_gate(
     resolution: dict[str, Any] | None = None
     if node.get("runner_required", True):
         runner_id = node["runner_id"]
-        resolution = resolve_runner(repository, runner_id)
+        resolution = runner_resolution if runner_resolution is not None else resolve_runner(repository, runner_id)
+        if resolution.get("runner_id") != runner_id:
+            raise ValueError(f"runner resolution does not match gate runner: {runner_id}")
         environment[f"WAOOAW_RUNNER_{runner_id.upper()}_IMAGE"] = resolution["image"]
         command.extend(("--image-id", resolution["image_id"]))
     started_at = datetime.now(timezone.utc).isoformat()
     started_monotonic = time.monotonic()
-    completed = subprocess.run(  # noqa: S603
-        command,
-        cwd=repository,
-        env=environment,
-        check=False,
-    )
+    if stream_output:
+        completed = subprocess.run(  # noqa: S603
+            command,
+            cwd=repository,
+            env=environment,
+            check=False,
+        )
+    else:
+        stdout_path = artifact_root / "gate.stdout.log"
+        stderr_path = artifact_root / "gate.stderr.log"
+        with stdout_path.open("w", encoding="utf-8") as stdout, stderr_path.open("w", encoding="utf-8") as stderr:
+            process = subprocess.Popen(  # noqa: S603
+                command,
+                cwd=repository,
+                env=environment,
+                stdout=stdout,
+                stderr=stderr,
+                text=True,
+            )
+            while True:
+                try:
+                    return_code = process.wait(timeout=30)
+                    break
+                except subprocess.TimeoutExpired:
+                    elapsed = round(time.monotonic() - started_monotonic)
+                    print(f"[qualification] gate={gate_id} running elapsed_seconds={elapsed}", flush=True)
+        completed = subprocess.CompletedProcess(command, return_code)
     duration_ms = round((time.monotonic() - started_monotonic) * 1000)
     record_path = repository / node["output_directory"] / "wc109-execution.json"
     record_path.parent.mkdir(parents=True, exist_ok=True)
@@ -446,9 +491,11 @@ def execute_gate(
         "invocation_source": "catalog",
         "mode": mode,
         "output_directory": node["output_directory"],
-        "product_image_build_events": len(node.get("product_image_builds", [])),
+        "product_image_build_events": product_image_build_events(node, artifact_root),
         "result": "PASS" if completed.returncode == 0 else "FAIL",
         "return_code": completed.returncode,
+        "stdout_artifact": str((artifact_root / "gate.stdout.log").relative_to(repository)) if not stream_output else None,
+        "stderr_artifact": str((artifact_root / "gate.stderr.log").relative_to(repository)) if not stream_output else None,
         "runner_build_events": resolution["build_count"] if resolution is not None else 0,
         "runner_digest": resolution["runner_digest"] if resolution is not None else node.get("tool_digest"),
         "service_identities": service_identities,

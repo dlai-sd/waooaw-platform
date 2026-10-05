@@ -6,7 +6,9 @@ COPY src/billing-engine/requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install/packages -r requirements.txt
 
 FROM python:3.12-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e
-RUN apt-get update \
+ARG SECURITY_REFRESH=local
+RUN test -n "$SECURITY_REFRESH" \
+	&& apt-get update \
 	&& apt-get upgrade --yes \
 	&& rm -rf /var/lib/apt/lists/* \
 	&& groupadd --system waooaw \

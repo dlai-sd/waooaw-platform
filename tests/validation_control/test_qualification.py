@@ -8,6 +8,7 @@ import yaml
 from validation_control.qualification import (
     build_qualification_manifest,
     build_rollback_manifest,
+    build_wc104_qualification_manifest,
     build_wc104_rollback_manifest,
 )
 
@@ -72,3 +73,18 @@ def test_wc104_rollback_forces_clean_local_supply_and_serial_no_reuse_qualificat
     assert rollback["reuse_prior_results"] is False
     assert rollback["serial_orchestration"] is True
     assert rollback["selective_enforcement"] is False
+
+
+def test_wc104_qualification_uses_bounded_phase_parallelism() -> None:
+    qualification = build_wc104_qualification_manifest(load_catalog(), candidate_sha=HEAD_SHA)
+
+    assert qualification["serial_orchestration"] is False
+    assert qualification["parallel_phases"] == [
+        "A_DESIGN",
+        "B_COMPONENT",
+        "C_DEPENDENCY_INTEGRATION",
+        "D_SYSTEM_STITCHING",
+    ]
+    assert qualification["max_parallel_gates"] == 7
+    assert qualification["parallel_cpu_capacity"] == 14
+    assert qualification["parallel_memory_mb_capacity"] == 57344

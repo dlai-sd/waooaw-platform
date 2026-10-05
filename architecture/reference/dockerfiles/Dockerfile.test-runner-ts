@@ -13,6 +13,7 @@ RUN mkdir -p "$COREPACK_HOME" \
 	&& chmod -R a+rX "$COREPACK_HOME"
 
 COPY --chown=node:node web/package.json web/pnpm-lock.yaml /opt/waooaw-web/
+COPY --chown=node:node web/patches/ /opt/waooaw-web/patches/
 RUN --mount=type=cache,id=wc104-typescript-pnpm,target=/home/node/.local/share/pnpm/store,uid=1000,gid=1000,sharing=locked \
 	cd /opt/waooaw-web \
 	&& pnpm install --frozen-lockfile \

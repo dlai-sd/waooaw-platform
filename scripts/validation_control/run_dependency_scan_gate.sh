@@ -62,6 +62,7 @@ case "${1:-}" in
         audit_dotnet_project src/business-platform
         ;;
     typescript)
+        node web/scripts/verify-security-patches.js
         cd /opt/waooaw-web
         pnpm audit --audit-level high
         ;;

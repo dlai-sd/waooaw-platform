@@ -19,7 +19,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
-using Testcontainers.PostgreSql;
 using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
@@ -27,30 +26,25 @@ using Xunit;
 
 namespace Waooaw.BusinessPlatform.Tests.Identity;
 
-public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
+public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresServerFixture fixture)
+    : IClassFixture<IdentityPostgresServerFixture>, IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("pgvector/pgvector:pg16")
-        .WithDatabase("synthetic_http_journey").WithUsername("test_owner")
-        .WithPassword("synthetic-owner-password").Build();
     private readonly RSA _signer = RSA.Create(2048);
     private readonly GoogleWorkspaceProofAdapterTests.SyntheticKeycloakHandler _broker = new();
     private readonly IdentityBrokerReadOptions _configuration = GoogleWorkspaceProofAdapterTests.Configuration();
     private WebApplication _app = null!;
     private HttpClient _client = null!;
     private HttpClient _brokerClient = null!;
-    private string AppConnection => new NpgsqlConnectionStringBuilder(_postgres.GetConnectionString())
+    private string _ownerConnectionString = string.Empty;
+    private string AppConnection => new NpgsqlConnectionStringBuilder(_ownerConnectionString)
     {
         Username = "business_app", Password = "synthetic-app-password", MaxPoolSize = 1,
     }.ConnectionString;
 
     public async Task InitializeAsync()
     {
-        await _postgres.StartAsync();
+        _ownerConnectionString = await fixture.CreateDatabaseAsync("synthetic_http_journey");
         await OwnerAsync("""
-            CREATE ROLE business_app LOGIN PASSWORD 'synthetic-app-password' NOSUPERUSER NOBYPASSRLS;
-            CREATE ROLE constitutional_app LOGIN PASSWORD 'synthetic-app-password' NOSUPERUSER NOBYPASSRLS;
-            CREATE ROLE runtime_app LOGIN PASSWORD 'synthetic-app-password' NOSUPERUSER NOBYPASSRLS;
-            CREATE ROLE wbe_app LOGIN PASSWORD 'synthetic-app-password' NOSUPERUSER NOBYPASSRLS;
             CREATE SCHEMA business AUTHORIZATION business_app;
             """);
         var canonical = await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/03-enums-and-tables.sql"));
@@ -125,7 +119,7 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
         if (_app is not null) await _app.DisposeAsync();
         _brokerClient?.Dispose();
         _signer.Dispose();
-        await _postgres.DisposeAsync();
+        await fixture.DropDatabaseAsync(_ownerConnectionString);
     }
 
     [Fact]
@@ -510,7 +504,7 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
 
     private async Task OwnerAsync(string sql)
     {
-        await using var connection = new NpgsqlConnection(_postgres.GetConnectionString());
+        await using var connection = new NpgsqlConnection(_ownerConnectionString);
         await connection.OpenAsync();
         await using var command = new NpgsqlCommand(sql, connection);
         await command.ExecuteNonQueryAsync();
@@ -518,7 +512,7 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
 
     private async Task<long> OwnerScalarAsync(string sql)
     {
-        await using var connection = new NpgsqlConnection(_postgres.GetConnectionString());
+        await using var connection = new NpgsqlConnection(_ownerConnectionString);
         await connection.OpenAsync();
         await using var command = new NpgsqlCommand(sql, connection);
         return (long)(await command.ExecuteScalarAsync())!;

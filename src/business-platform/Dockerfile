@@ -9,7 +9,9 @@ RUN dotnet publish --configuration Release --runtime linux-musl-x64 \
     --self-contained false --no-restore --output /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0@sha256:2680706c9656fafe34876446d694fd25077fd0b5da478f38d56073ac6c21d37e
-RUN apt-get update \
+ARG SECURITY_REFRESH=local
+RUN test -n "$SECURITY_REFRESH" \
+    && apt-get update \
     && apt-get upgrade --yes \
     && apt-get install --yes --no-install-recommends curl postgresql-client \
     && rm -rf /var/lib/apt/lists/* \
