@@ -30,7 +30,8 @@ trap cleanup EXIT
 
 mkdir -p "$(dirname "$EVIDENCE_JSON")"
 docker network create "$NETWORK" >/dev/null
-docker build --quiet -t "$RUNTIME_IMAGE" -f "$REPO_ROOT/src/professional-runtime/Dockerfile" "$REPO_ROOT" >/dev/null
+"$REPO_ROOT/scripts/validation_control/run_docker_build.sh" \
+  docker build --quiet -t "$RUNTIME_IMAGE" -f "$REPO_ROOT/src/professional-runtime/Dockerfile" "$REPO_ROOT" >/dev/null
 docker run -d --rm \
   --name "$CE_HEALTH" \
   --network "$NETWORK" \

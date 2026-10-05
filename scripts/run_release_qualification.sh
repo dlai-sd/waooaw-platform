@@ -7,7 +7,7 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT"
 
 if [ -z "${WAOOAW_TEST_RUNNER_IMAGE_ID:-}" ]; then
-  docker compose build test-runner
+  scripts/validation_control/run_docker_build.sh docker compose build test-runner
   WAOOAW_TEST_RUNNER_IMAGE_ID=$(scripts/runner_image_id.sh test test-runner)
 fi
 scripts/verify_runner_image.sh test test-runner "$WAOOAW_TEST_RUNNER_IMAGE_ID"

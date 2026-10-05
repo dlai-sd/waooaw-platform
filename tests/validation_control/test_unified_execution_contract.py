@@ -17,6 +17,7 @@ from validation_control.execution_contract import (
     assert_retry_allowed,
     binding_digest,
     disposable_cleanup_commands,
+    disposable_image_references,
     evidence_is_current,
     evidence_path,
     execution_binding,
@@ -29,6 +30,39 @@ from validation_control.execution_contract import (
 
 
 IMAGE_ID = "sha256:" + "b" * 64
+
+
+def test_prebuild_cleanup_selects_only_disposable_images_and_protects_runners() -> None:
+    assert disposable_image_references(
+        [
+            "wc109-old-business-platform:latest",
+            "goal006-professional-runtime-lifecycle:old",
+            "waooaw-scan-ai-runtime:fixed",
+            "waooaw-validation-runner-python:local-current",
+            "waooaw-platform-test-runner-full:local",
+            "waooaw-business-platform:phase2",
+            "<none>:<none>",
+        ]
+    ) == [
+        "goal006-professional-runtime-lifecycle:old",
+        "waooaw-scan-ai-runtime:fixed",
+        "wc109-old-business-platform:latest",
+    ]
+
+
+def test_runner_supply_cleans_stale_images_before_building() -> None:
+    root = Path(__file__).parents[2]
+    source = (root / "scripts/validation_control/local_catalog_gate.py").read_text(encoding="utf-8")
+    assert source.index("cleanup_before_docker_build(repository)") < source.index(
+        '"buildx",\n                "build",'
+    )
+    wrapper = "scripts/validation_control/run_docker_build.sh"
+    for relative in (
+        "scripts/run_release_qualification.sh",
+        "scripts/build_goal006_release_images.sh",
+        "scripts/run_goal006_runtime_lifecycle_gate.sh",
+    ):
+        assert wrapper in (root / relative).read_text(encoding="utf-8")
 
 
 def plan_and_node() -> tuple[dict[str, object], dict[str, object]]:

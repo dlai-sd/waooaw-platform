@@ -74,7 +74,7 @@ for member in "${members[@]}"; do
     DMA_ARTIFACT_DIGEST="${DMA_ARTIFACT_DIGEST:-sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}" \
     DMA_ADMISSION_CONTENT_DIGEST="${DMA_ADMISSION_CONTENT_DIGEST:-sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb}" \
     PR_SERVICE_JWT_SECRET="${PR_SERVICE_JWT_SECRET:-goal006-offline-build}" \
-    docker compose -f "$compose_file" build "$member"
+    scripts/validation_control/run_docker_build.sh docker compose -f "$compose_file" build "$member"
   source_image="$(basename "$PWD")-${member}:latest"
   docker image tag "$source_image" "waooaw-${member}:phase2"
   docker image rm "$source_image" >/dev/null

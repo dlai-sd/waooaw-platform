@@ -27,7 +27,7 @@ if str(SCRIPTS_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_ROOT))
 
 from validation_control.orchestrator import build_execution_plan  # noqa: E402
-from validation_control.execution_contract import orchestration_preflight  # noqa: E402
+from validation_control.execution_contract import cleanup_before_docker_build, orchestration_preflight  # noqa: E402
 from validation_control.evidence_controller import (  # noqa: E402
     catalog_invocation_signature,
     publish_envelope,
@@ -173,6 +173,7 @@ def local_fallback_runner(
         create_context(repository, context, specification)
         dockerfile = context / specification["dockerfile"]
         metadata_path = context / "build-metadata.json"
+        cleanup_before_docker_build(repository)
         subprocess.run(  # noqa: S603
             [
                 docker_executable(),

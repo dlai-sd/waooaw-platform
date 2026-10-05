@@ -17,6 +17,7 @@ from validation_control.identity import MANIFEST_SCHEMAS, digest_identity
 
 SAFE_SEGMENT = re.compile(r"[^A-Za-z0-9_.-]+")
 MINIMUM_FREE_RATIO = 0.05
+DISPOSABLE_IMAGE_PREFIXES = ("wc109-", "goal006-", "waooaw-scan-")
 
 
 class UnchangedExecutionFailureError(ValueError):
@@ -91,6 +92,48 @@ def disposable_cleanup_commands(projects: list[dict[str, Any]], docker: str) -> 
         )
     )
     return commands
+
+
+def disposable_image_references(references: list[str]) -> list[str]:
+    return sorted(
+        {
+            reference
+            for reference in references
+            if reference != "<none>:<none>" and reference.startswith(DISPOSABLE_IMAGE_PREFIXES)
+        }
+    )
+
+
+def cleanup_before_docker_build(repository: Path) -> list[str]:
+    docker = shutil.which("docker")
+    if docker is None:
+        raise ValueError("pre-build cleanup: Docker executable is unavailable")
+    listed = subprocess.run(  # noqa: S603
+        [docker, "image", "ls", "--format", "{{.Repository}}:{{.Tag}}"],
+        cwd=repository,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if listed.returncode != 0:
+        raise ValueError("pre-build cleanup: Docker image inventory is unavailable")
+    disposable = disposable_image_references(listed.stdout.splitlines())
+    commands = [
+        *([[docker, "image", "rm", *disposable]] if disposable else []),
+        [docker, "image", "prune", "--force"],
+        [docker, "builder", "prune", "--force", "--filter", "until=24h"],
+    ]
+    actions: list[str] = []
+    for command in commands:
+        completed = subprocess.run(  # noqa: S603
+            command,
+            cwd=repository,
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        actions.append(f"{' '.join(command[1:])}:{completed.returncode}")
+    return actions
 
 
 def cleanup_disposable_validation_state(repository: Path) -> list[str]:
