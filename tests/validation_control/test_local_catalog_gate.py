@@ -30,6 +30,7 @@ def test_local_fallback_builds_once_then_reuses_identity_image(monkeypatch, tmp_
     monkeypatch.setattr(local_catalog_gate, "image_id", lambda image, repository: next(inspected))
     monkeypatch.setattr(local_catalog_gate, "docker_executable", lambda: "/usr/bin/docker")
     monkeypatch.setattr(local_catalog_gate, "create_context", lambda repository, context, spec: context.mkdir(parents=True))
+    monkeypatch.setattr(local_catalog_gate, "cleanup_before_docker_build", lambda repository: None)
 
     def build(command: list[str], **unused: object) -> SimpleNamespace:
         builds.append(command)
@@ -135,6 +136,7 @@ def test_rollback_bypasses_trusted_manifest_and_existing_local_image(monkeypatch
     monkeypatch.setattr(local_catalog_gate, "image_id", lambda image, repository: next(inspected))
     monkeypatch.setattr(local_catalog_gate, "docker_executable", lambda: "/usr/bin/docker")
     monkeypatch.setattr(local_catalog_gate, "create_context", lambda repository, context, spec: context.mkdir(parents=True))
+    monkeypatch.setattr(local_catalog_gate, "cleanup_before_docker_build", lambda repository: None)
 
     def build(command: list[str], **unused: object) -> SimpleNamespace:
         builds.append(command)
@@ -206,6 +208,8 @@ def test_host_gate_executes_plan_without_resolving_runner(monkeypatch, tmp_path:
     assert "--image-id" not in captured[0]
     assert captured_environment["DOCKER_GID"] == "321"
     assert captured_environment["GOAL006_EVIDENCE_DIR"] == str(tmp_path / "test-results/wc104/goal006-local-azure-runtime")
+    assert captured_environment["WAOOAW_HOST_CHANGED_FILES_FILE"].endswith("/changed-files.txt")
+    assert Path(captured_environment["WAOOAW_HOST_CHANGED_FILES_FILE"]).read_text(encoding="utf-8") == ""
     plan = json.loads((tmp_path / "test-results/wc104/local-plans/host.json").read_text(encoding="utf-8"))
     assert plan["nodes"][0]["command"] == "true"
     records = list((tmp_path / "test-results/wc109/runs").glob("**/wc109-execution.json"))
@@ -255,6 +259,20 @@ def test_requirement_scope_is_explicit_deduplicated_and_repository_relative(tmp_
     isolated = tmp_path / "test-results/wc109/runs/namespace/gate"
     local_catalog_gate.write_requirement_scope(tmp_path, ["constitution/PROJECT_STATE.md"], isolated)
     assert (isolated / "wc102/changed-files.txt").read_text(encoding="utf-8") == "constitution/PROJECT_STATE.md\n"
+
+
+def test_product_image_build_events_use_validated_runtime_manifest(tmp_path: Path) -> None:
+    node = {"product_image_builds": ["constitutional-engine", "business-platform", "professional-runtime"]}
+
+    assert local_catalog_gate.product_image_build_events(node, tmp_path) == 3
+    manifest = tmp_path / "product-image-builds.txt"
+    manifest.write_text("constitutional-engine\nbusiness-platform\n", encoding="utf-8")
+    assert local_catalog_gate.product_image_build_events(node, tmp_path) == 2
+    manifest.write_text("", encoding="utf-8")
+    assert local_catalog_gate.product_image_build_events(node, tmp_path) == 0
+    manifest.write_text("undeclared-service\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="outside the catalog declaration"):
+        local_catalog_gate.product_image_build_events(node, tmp_path)
 
 
 def test_constitutional_inputs_are_staged_inside_isolated_artifact_root(tmp_path: Path) -> None:

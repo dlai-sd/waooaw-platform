@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import threading
 
 import pytest
 import yaml
@@ -331,7 +332,7 @@ def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory(tmp
     }
 
 
-def test_qualification_supplies_runners_on_first_gate_demand(tmp_path: Path) -> None:
+def test_qualification_supplies_runners_before_parallel_gate_execution(tmp_path: Path) -> None:
     catalog = load_catalog()
     events: list[tuple[str, str]] = []
 
@@ -365,20 +366,137 @@ def test_qualification_supplies_runners_on_first_gate_demand(tmp_path: Path) -> 
     )
 
     plan = build_execution_plan(catalog, catalog["full_gates"], mode="qualification", head_sha=HEAD_SHA, run_id="staged")
-    first_gate = plan_execution_order(plan)[0]
-    first_node = next(node for node in plan["nodes"] if node["gate_id"] == first_gate)
-    assert events[:2] == [("runner", first_node["runner_id"]), ("gate", first_gate)]
-    assert [event for event in events if event[0] == "runner"] == [
+    runner_events = [event for event in events if event[0] == "runner"]
+    assert runner_events == [
         ("runner", runner_id)
-        for runner_id in dict.fromkeys(
-            node["runner_id"]
-            for gate_id in plan_execution_order(plan)
-            for node in plan["nodes"]
-            if node["gate_id"] == gate_id and node.get("runner_required", True)
-        )
+        for runner_id in dict.fromkeys(node["runner_id"] for node in plan["nodes"] if node.get("runner_required", True))
     ]
+    assert events.index(next(event for event in events if event[0] == "gate")) > events.index(runner_events[-1])
     assert result["mode"] == "staged-qualification"
     assert result["passed"] is True
+
+
+def test_qualification_executes_independent_integration_gates_concurrently(tmp_path: Path) -> None:
+    catalog = load_catalog()
+    overlap = threading.Barrier(2)
+    active = 0
+    maximum_active = 0
+    lock = threading.Lock()
+    synchronized_gates = {"integration:multi-tenant", "integration:postgres-migrations"}
+
+    def execute(repository: Path, gate_id: str, head_sha: str, base_sha: str, git_common_dir: Path, **context: object) -> int:
+        nonlocal active, maximum_active
+        if gate_id not in synchronized_gates:
+            return 0
+        with lock:
+            active += 1
+            maximum_active = max(maximum_active, active)
+        overlap.wait(timeout=2)
+        with lock:
+            active -= 1
+        return 0
+
+    result = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        execution_profile="qualification",
+        execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
+        runner_resolver=lambda repository, runner: {
+            "build_count": 0,
+            "trust_source": "trusted-attested-digest",
+            "runner_id": runner,
+            "image": f"runner:{runner}",
+        },
+        service_resolver=resolve_services,
+        gate_executor=execute,
+    )
+
+    assert result["passed"] is True
+    assert maximum_active == 2
+
+
+def test_qualification_executes_independent_design_gates_concurrently(tmp_path: Path) -> None:
+    catalog = load_catalog()
+    overlap = threading.Barrier(2)
+    active = 0
+    maximum_active = 0
+    lock = threading.Lock()
+    synchronized_gates = {"secrets", "license-check"}
+
+    def execute(repository: Path, gate_id: str, head_sha: str, base_sha: str, git_common_dir: Path, **context: object) -> int:
+        nonlocal active, maximum_active
+        if gate_id not in synchronized_gates:
+            return 0
+        with lock:
+            active += 1
+            maximum_active = max(maximum_active, active)
+        overlap.wait(timeout=2)
+        with lock:
+            active -= 1
+        return 0
+
+    result = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        execution_profile="qualification",
+        execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
+        runner_resolver=lambda repository, runner: {
+            "build_count": 0,
+            "trust_source": "trusted-attested-digest",
+            "runner_id": runner,
+            "image": f"runner:{runner}",
+        },
+        service_resolver=resolve_services,
+        gate_executor=execute,
+    )
+
+    assert result["passed"] is True
+    assert maximum_active == 2
+
+
+def test_qualification_starts_ready_component_gate_before_unrelated_design_finishes(tmp_path: Path) -> None:
+    catalog = load_catalog()
+    component_started = threading.Event()
+
+    def execute(repository: Path, gate_id: str, head_sha: str, base_sha: str, git_common_dir: Path, **context: object) -> int:
+        if gate_id == "license-check":
+            assert component_started.wait(timeout=2), "component gate remained behind a global phase barrier"
+        elif gate_id == "test-web":
+            component_started.set()
+        return 0
+
+    result = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        execution_profile="qualification",
+        execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
+        runner_resolver=lambda repository, runner: {
+            "build_count": 0,
+            "trust_source": "trusted-attested-digest",
+            "runner_id": runner,
+            "image": f"runner:{runner}",
+        },
+        service_resolver=resolve_services,
+        gate_executor=execute,
+    )
+
+    assert result["passed"] is True
+    assert component_started.is_set()
 
 
 def test_qualification_carries_only_unaffected_nonvolatile_pass_evidence(tmp_path: Path) -> None:

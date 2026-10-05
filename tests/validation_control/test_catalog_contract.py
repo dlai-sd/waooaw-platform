@@ -462,12 +462,13 @@ def test_typescript_plan_uses_immutable_dependencies_outside_read_only_source() 
     assert 'ln -s /opt/waooaw-web/node_modules "$run_directory/node_modules"' in wrapper
 
 
-def test_full_runner_is_limited_to_cross_stack_release_gates() -> None:
+def test_full_runner_is_limited_to_cross_stack_orchestration_gates() -> None:
     catalog = load_catalog()
 
     full_runner_gates = {gate_id for gate_id, gate in catalog["gates"].items() if gate["runner_id"] == "full"}
 
     assert full_runner_gates == {
+        "contract:rest",
         "release-qualification",
         "spec-lint",
         "e2e:accessibility",
@@ -674,7 +675,7 @@ def test_dotnet_integration_gate_runs_real_postgres_classes() -> None:
     assert "dotnet build" in command and "--no-restore" in command
     assert "dotnet test" in command and "--no-build" in command
     assert "trx;LogFileName=dotnet-integration.trx" in command
-    assert gate["environment"] == ["TESTCONTAINERS_HOST_OVERRIDE"]
+    assert gate["environment"] == ["TESTCONTAINERS_HOST_OVERRIDE", "WAOOAW_CHANGED_FILES_FILE"]
     assert "required_services" not in gate
     assert gate["resources"]["socket_classification"] == "testcontainers"
 
@@ -738,6 +739,17 @@ def test_catalog_gate_mounts_linked_worktree_git_directory_read_only() -> None:
     command = compose_command(plan["nodes"][0], "/workspaces/repository/.git")
 
     assert "/workspaces/repository/.git:/workspaces/repository/.git:ro" in command
+
+
+def test_host_orchestration_preserves_repository_path_for_nested_compose() -> None:
+    catalog = load_catalog()
+    plan = build_execution_plan(catalog, ["contract:rest"], mode="focused", head_sha="a" * 40, run_id="rest")
+
+    command = compose_command(plan["nodes"][0])
+    repository = str(Path.cwd())
+
+    assert f"{repository}:{repository}:ro" in command
+    assert command[command.index("--workdir") + 1] == repository
 
 
 def test_disposable_project_cleanup_removes_namespaced_volumes() -> None:
@@ -839,6 +851,23 @@ def test_dotnet_mutation_thresholds_match_pinned_stryker_cli() -> None:
     assert "tests/constitutional-engine.Tests" in source
     assert 'cd "$worktree/tests/constitutional-engine.Tests"' in source
     assert "--project constitutional-engine.csproj" in source
+
+
+def test_expensive_gates_select_change_scope_before_setup() -> None:
+    root = Path(__file__).resolve().parents[2]
+    scripts = {
+        "mutation:dotnet": root / "scripts/validation_control/run_dotnet_mutation_gate.sh",
+        "mutation:python": root / "scripts/validation_control/run_python_mutation_gate.sh",
+        "integration:dotnet": root / "scripts/validation_control/run_dotnet_integration_gate.sh",
+    }
+
+    for gate_id, path in scripts.items():
+        source = path.read_text(encoding="utf-8")
+        assert f"--gate {gate_id}" in source
+        assert "WAOOAW_CHANGED_FILES_FILE" in source
+        assert source.index("qualification_change_scope.py") < source.index(
+            "cp -a" if "mutation" in gate_id else "dotnet restore"
+        )
 
 
 def test_host_orchestration_declares_whether_it_consumes_a_runner() -> None:

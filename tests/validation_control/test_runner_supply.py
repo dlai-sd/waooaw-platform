@@ -284,7 +284,7 @@ def test_integration_jobs_execute_catalog_gates() -> None:
         "integration:postgres-migrations": "python",
         "integration:dotnet": "dotnet",
         "integration:python": "python",
-        "contract:rest": "python",
+        "contract:rest": "full",
         "contract:seed-prompts": "python",
         "security:prompt-injection": "python",
     }
@@ -316,11 +316,15 @@ def test_integration_jobs_execute_catalog_gates() -> None:
         "DATABASE_URL",
         "TESTCONTAINERS_HOST_OVERRIDE",
     ]
-    assert catalog["gates"]["integration:dotnet"]["environment"] == ["TESTCONTAINERS_HOST_OVERRIDE"]
+    assert catalog["gates"]["integration:dotnet"]["environment"] == [
+        "TESTCONTAINERS_HOST_OVERRIDE",
+        "WAOOAW_CHANGED_FILES_FILE",
+    ]
     assert catalog["gates"]["integration:python"].get("environment", []) == []
-    assert "--pull never test-runner-python" in (root / "scripts/validation_control/run_rest_contract_gate.sh").read_text(
-        encoding="utf-8"
-    )
+    rest_runner = (root / "scripts/validation_control/run_rest_contract_gate.sh").read_text(encoding="utf-8")
+    assert "--pull never" in rest_runner
+    assert "test-runner-python" in rest_runner
+    assert rest_runner.index("--pull never") < rest_runner.index("test-runner-python")
 
 
 def test_e2e_jobs_execute_catalog_gates() -> None:

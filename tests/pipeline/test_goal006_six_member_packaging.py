@@ -144,7 +144,7 @@ def test_release_images_pin_fixed_security_dependencies() -> None:
     )
 
     assert "GRPC_GO_VERSION=v1.83.2" in constitutional_engine
-    assert "transformers==5.10.0" in ai_requirements
+    assert "transformers==5.5.0" in ai_requirements
 
 
 def test_web_configuration_is_runtime_external() -> None:

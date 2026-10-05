@@ -101,6 +101,16 @@ def build_wc104_qualification_manifest(catalog: dict[str, Any], *, candidate_sha
             "registry_reuse": True,
             "local_image_reuse": True,
             "reuse_prior_results": True,
+            "serial_orchestration": False,
+            "parallel_phases": [
+                "A_DESIGN",
+                "B_COMPONENT",
+                "C_DEPENDENCY_INTEGRATION",
+                "D_SYSTEM_STITCHING",
+            ],
+            "max_parallel_gates": 7,
+            "parallel_cpu_capacity": 14,
+            "parallel_memory_mb_capacity": 57344,
         }
     )
     return manifest

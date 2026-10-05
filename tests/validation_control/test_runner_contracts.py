@@ -5,8 +5,13 @@
 
 from pathlib import Path
 import tomllib
+import uuid
 
+from hypothesis import given, strategies as st
+from schemathesis.generation.value import GeneratedValue
 import yaml
+
+from validation_control.schemathesis_hooks import add_idempotency_key, before_generate_headers
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -172,25 +177,101 @@ def test_full_runner_fixtures_use_bounded_executable_tmpfs() -> None:
     ]
 
 
+def test_license_gate_isolates_and_parallelizes_product_environments() -> None:
+    license_gate = (ROOT / "scripts/validation_control/run_license_check_gate.sh").read_text(encoding="utf-8")
+
+    assert "work_dir/professional-runtime" in license_gate
+    assert "work_dir/ai-runtime" in license_gate
+    assert license_gate.count("python -m pip install --ignore-installed --no-warn-conflicts --target") == 2
+    assert license_gate.count("--fail-on='GPL;AGPL;LGPL'") == 2
+    assert "professional_runtime_install=$!" in license_gate
+    assert "ai_runtime_install=$!" in license_gate
+    assert "PIP_DISABLE_PIP_VERSION_CHECK=1" in license_gate
+    assert license_gate.count('pip-licenses --python "$work_dir/') == 2
+    assert 'exec %s -S "$@"' in license_gate
+    assert "WAOOAW_CHANGED_FILES_FILE" in license_gate
+    assert "License check not applicable" in license_gate
+    assert "license_scope professional-runtime=%s ai-runtime=%s" in license_gate
+
+
+@given(data=st.data())
+def test_schemathesis_header_hook_preserves_generation_metadata(data) -> None:
+    generated = GeneratedValue(value={"Existing": "header"}, meta=None)
+
+    result = data.draw(before_generate_headers(None, st.just(generated)))
+
+    assert result.meta is generated.meta
+    assert result.value["Existing"] == "header"
+    assert uuid.UUID(result.value["Idempotency-Key"])
+
+
+def test_schemathesis_header_hook_supports_plain_fuzzing_headers() -> None:
+    key = uuid.uuid4()
+
+    result = add_idempotency_key({"Existing": "header"}, key)
+
+    assert result == {"Existing": "header", "Idempotency-Key": str(key)}
+
+
+def test_schemathesis_header_hook_supports_missing_fuzzing_headers() -> None:
+    key = uuid.uuid4()
+
+    result = add_idempotency_key(None, key)
+
+    assert result == {"Idempotency-Key": str(key)}
+
+
 def test_contract_workflow_starts_services_and_blocks_on_failure() -> None:
     workflow = (ROOT / ".github/workflows/integration-tests.yaml").read_text(encoding="utf-8")
     contract_job = workflow.split("  contract-rest:", maxsplit=1)[1].split("\n  seed-prompts-contract:", maxsplit=1)[0]
     contract_gate = (ROOT / "scripts/validation_control/run_rest_contract_gate.sh").read_text(encoding="utf-8")
+    lane_runner = (ROOT / "scripts/validation_control/run_schemathesis_lane.sh").read_text(encoding="utf-8")
+    business_platform_scope = (ROOT / "scripts/validation_control/run_business_platform_contract_scope.sh").read_text(
+        encoding="utf-8"
+    )
+    professional_runtime_scope = (ROOT / "scripts/validation_control/run_professional_runtime_contract_scope.sh").read_text(
+        encoding="utf-8"
+    )
 
     assert "docker compose up --detach --no-build --wait" in contract_gate
-    assert "business-platform professional-runtime" in contract_gate
+    assert "scripts/validation_control/run_docker_build.sh" in contract_gate
     assert "COMPOSE_PROJECT_NAME" not in contract_gate
-    assert (
-        contract_gate.count("cd /tmp && schemathesis --config-file /workspace/validation/schemathesis.toml run /workspace/") == 5
-    )
-    assert '--include-path-regex "$customer_product_path_regex"' in contract_gate
-    assert '--include-path-regex "$customer_identity_path_regex"' in contract_gate
-    assert "--identity-token-file /tmp/business-platform-identity-token" in contract_gate
-    assert contract_gate.count('-H "Authorization:Bearer $identity_token"') == 2
-    assert '--exclude-path-regex "$customer_path_regex"' in contract_gate
-    assert contract_gate.count("--suppress-health-check=filter_too_much") == 5
+    assert "rest_contract_scope.py" in contract_gate
+    assert "WAOOAW_CHANGED_FILES_FILE" in contract_gate
+    assert contract_gate.index("rest_contract_scope.py") < contract_gate.index("run_docker_build.sh")
+    assert contract_gate.index("REST contract gate not applicable") < contract_gate.index("run_docker_build.sh")
+    assert 'if test "$REST_RUN_BP" = true' in contract_gate
+    assert 'if test "$REST_RUN_PR" = true' in contract_gate
+    assert "REST_START_BP=$REST_RUN_BP" in contract_gate
+    assert 'if test "$REST_RUN_PR" = true; then\n    REST_START_BP=true' in contract_gate
+    assert "product-image-builds.txt" in contract_gate
+    assert 'scripts/validation_control/run_docker_build.sh docker compose build "$@"' in contract_gate
+    assert VALIDATION_CATALOG["gates"]["contract:rest"]["runner_id"] == "full"
+    assert VALIDATION_CATALOG["gates"]["contract:rest"]["resources"]["docker_socket"] is True
+    assert VALIDATION_CATALOG["gates"]["contract:rest"]["environment"] == [
+        "WAOOAW_CHANGED_FILES_FILE",
+        "WAOOAW_HOST_CHANGED_FILES_FILE",
+        "WAOOAW_VALIDATION_OUTPUT_DIRECTORY",
+        "WAOOAW_HOST_VALIDATION_OUTPUT_DIRECTORY",
+    ]
+    assert "--phases coverage --max-examples 1" in lane_runner
+    assert "--max-examples 100" in lane_runner
+    assert '--include-path-regex "$path_regex"' in lane_runner
+    assert '-H "Authorization:Bearer $authorization_token"' in lane_runner
+    assert "--identity-token-file /tmp/business-platform-identity-token" in business_platform_scope
+    assert "export SCHEMATHESIS_HOOKS=/workspace/scripts/validation_control/schemathesis_hooks.py" in business_platform_scope
+    hooks = (ROOT / "scripts/validation_control/schemathesis_hooks.py").read_text(encoding="utf-8")
+    assert "def before_generate_headers(" in hooks
+    assert 'value = {**headers, "Idempotency-Key": str(key)}' in hooks
+    assert "st.tuples(strategy, st.uuids())" in hooks
+    assert "add_idempotency_key(*generated)" in hooks
+    assert business_platform_scope.count("_pid=$!") == 6
+    assert business_platform_scope.count('wait "$') == 6
+    assert professional_runtime_scope.count("_pid=$!") == 2
+    assert professional_runtime_scope.count('wait "$') == 2
+    assert "--suppress-health-check=filter_too_much" in lane_runner
     assert "WAOOAW_VALIDATION_OUTPUT_DIRECTORY" in contract_gate
-    assert contract_gate.count('--volume "$validation_output_directory:/workspace/test-results"') == 2
+    assert contract_gate.count('--volume "$host_validation_output_directory:/workspace/test-results"') == 2
     assert SCHEMATHESIS["checks"]["positive_data_acceptance"]["expected-statuses"] == [
         "2xx",
         "401",
@@ -201,16 +282,15 @@ def test_contract_workflow_starts_services_and_blocks_on_failure() -> None:
         "429",
         "5xx",
     ]
-    assert contract_gate.index('test "$customer_product_status" -eq 0') < contract_gate.index("merge_junit_reports.py")
-    assert "rm -f /workspace/test-results/schemathesis-bp.xml" in contract_gate
-    assert "merge_junit_reports.py" in contract_gate
-    assert "--output /workspace/test-results/schemathesis-bp.xml" in contract_gate
-    assert '--exclude-path-regex "^/health$"' in contract_gate
-    assert '--include-path-regex "^/health$"' in contract_gate
-    assert contract_gate.count("--exclude-checks not_a_server_error") == 1
-    assert "--output /workspace/test-results/schemathesis-pr.xml" in contract_gate
-    assert "schemathesis-pr-service.xml" in contract_gate
-    assert "schemathesis-pr-health.xml" in contract_gate
+    assert business_platform_scope.index('wait "$identity_smoke_pid"') < business_platform_scope.index("merge_junit_reports.py")
+    assert "rm -f /workspace/test-results/schemathesis-bp*.xml" in business_platform_scope
+    assert "--output /workspace/test-results/schemathesis-bp.xml" in business_platform_scope
+    assert "schemathesis-bp-customer-product-smoke.xml" in business_platform_scope
+    assert "schemathesis-bp-customer-product-focused.xml" in business_platform_scope
+    assert "--exclude-checks not_a_server_error" in lane_runner
+    assert "--output /workspace/test-results/schemathesis-pr.xml" in professional_runtime_scope
+    assert "schemathesis-pr-service-smoke.xml" in professional_runtime_scope
+    assert "schemathesis-pr-service-focused.xml" in professional_runtime_scope
     assert "gate-id: contract:rest" in contract_job
     assert "continue-on-error: true" not in contract_job
     assert COMPOSE["services"]["keycloak"]["environment"]["DEV_TEST_PASSWORD"] == (

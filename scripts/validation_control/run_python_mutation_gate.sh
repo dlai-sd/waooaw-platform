@@ -1,6 +1,17 @@
 #!/bin/sh
 set -eu
 
+scope_environment=/tmp/python-mutation-scope.env
+python_command=$(command -v python3 || command -v python)
+"$python_command" scripts/validation_control/qualification_change_scope.py \
+    --gate mutation:python \
+    --changed-files "${WAOOAW_CHANGED_FILES_FILE:-}" > "$scope_environment"
+. "$scope_environment"
+if test "$QUALIFICATION_GATE_APPLICABLE" = false; then
+    echo 'Python mutation not applicable: AI Runtime and trust-layer inputs did not change.'
+    exit 0
+fi
+
 worktree=/tmp/ai-runtime-mutation
 rm -rf "$worktree"
 mkdir -p "$worktree/tests"

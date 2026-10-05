@@ -814,6 +814,7 @@ paths:
           required: false
           schema: { type: string, minLength: 1, maxLength: 120, pattern: '.*\S.*' }
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Portal marketplace page
           content:
@@ -1030,6 +1031,7 @@ paths:
           required: false
           schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Authorized relationship summaries
           content:
@@ -1089,6 +1091,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/RelationshipId"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Tenant-scoped employment relationship
           content:
@@ -1118,6 +1121,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/CreateMyAgentsSelectionRequest" }
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Opaque selection handle created
@@ -1145,6 +1149,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/ConsumeMyAgentsSelectionRequest" }
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Authorized selection consumed
@@ -1164,6 +1169,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/RelationshipId"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Ordered relationship state history
           content:
@@ -1317,6 +1323,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/StopEmploymentRelationshipRequest" }
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "200":
@@ -3086,6 +3093,7 @@ paths:
         - $ref: "#/components/parameters/ConversationCursor"
         - $ref: "#/components/parameters/ConversationPageLimit"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Authoritative portal interaction timeline
           content:
@@ -3112,6 +3120,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/SendPortalInteractionMessageRequestV1" }
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "202":
           description: Portal contribution and Guide response accepted
@@ -3145,6 +3154,7 @@ paths:
         - $ref: "#/components/parameters/ConversationAfterCursor"
         - $ref: "#/components/parameters/ConversationPageLimit"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Authoritative timeline page
           content:
@@ -3176,6 +3186,7 @@ paths:
             schema:
               $ref: "#/components/schemas/SendConversationMessageRequestV1"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "202":
           description: Message accepted and professional execution queued
@@ -3211,6 +3222,7 @@ paths:
         - $ref: "#/components/parameters/ConversationMessageId"
         - $ref: "#/components/parameters/IdempotencyKey"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "400": { $ref: "#/components/responses/ConversationInvalidRequest" }
         "202":
           description: Existing logical message accepted for retry
@@ -3249,6 +3261,7 @@ paths:
             schema:
               $ref: "#/components/schemas/UpdateConversationReadPositionRequestV1"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Read position advanced or identical outcome replayed
@@ -3274,6 +3287,7 @@ paths:
         - $ref: "#/components/parameters/RelationshipId"
         - $ref: "#/components/parameters/ConversationLastEventId"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Canonical versioned conversation event stream
           headers:
@@ -3304,6 +3318,7 @@ paths:
         - $ref: "#/components/parameters/ConversationExecutionId"
         - $ref: "#/components/parameters/IdempotencyKey"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "400": { $ref: "#/components/responses/ConversationInvalidRequest" }
         "202":
           description: Cancellation accepted
@@ -3336,6 +3351,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/RelationshipId"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Workspace projection snapshot
           content:
@@ -3359,6 +3375,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/RelationshipId"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Relationship configuration state
           content:
@@ -3389,6 +3406,7 @@ paths:
             schema:
               $ref: "#/components/schemas/RelationshipOnboardRequestV1"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Onboard preferences updated or replayed
@@ -3415,6 +3433,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/RelationshipId"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Relationship goals and history
           content:
@@ -3438,6 +3457,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/RelationshipId"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Relationship business outcomes
           content:
@@ -3462,6 +3482,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/RelationshipId"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Relationship performance review projection
           content:
@@ -3483,6 +3504,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/RelationshipId"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Relationship Operations state
           content:
@@ -3505,6 +3527,7 @@ paths:
         - $ref: "#/components/parameters/RelationshipWorkspaceAfterCursor"
         - $ref: "#/components/parameters/RelationshipWorkspacePageLimit"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Workspace change page
           content:
@@ -3525,6 +3548,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/RelationshipId"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Relationship plan section
           content:
@@ -3545,6 +3569,7 @@ paths:
         - $ref: "#/components/parameters/RelationshipId"
         - $ref: "#/components/parameters/RelationshipWorkspacePageLimit"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Attention items in exact authoritative order
           content:
@@ -3564,6 +3589,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/RelationshipId"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Relationship work section
           content:
@@ -3583,6 +3609,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/RelationshipId"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Relationship results section
           content:
@@ -3602,6 +3629,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/RelationshipId"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Relationship usage and budget section
           content:
@@ -3621,6 +3649,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/RelationshipId"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Relationship rights and controls section
           content:
@@ -3640,6 +3669,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/RelationshipId"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Relationship-local evaluation projection
           content:
@@ -3666,6 +3696,7 @@ paths:
             schema:
               $ref: "#/components/schemas/SubmitRelationshipCommandRequestV1"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "202":
           description: Command accepted with durable reconciliation responsibility
@@ -3695,6 +3726,7 @@ paths:
         - $ref: "#/components/parameters/RelationshipId"
         - $ref: "#/components/parameters/RelationshipWorkspaceCommandId"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Command outcome
           content:
@@ -3724,6 +3756,7 @@ paths:
         - $ref: "#/components/parameters/RelationshipId"
         - $ref: "#/components/parameters/RelationshipWorkspacePageLimit"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Evidence summary page
           content:
@@ -3749,6 +3782,7 @@ paths:
         - $ref: "#/components/parameters/RelationshipId"
         - $ref: "#/components/parameters/RelationshipWorkspaceEvidenceId"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Evidence detail
           content:
@@ -3779,6 +3813,7 @@ paths:
             schema:
               $ref: "#/components/schemas/RequestRelationshipEvidenceExportV1"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "202":
           description: Export request accepted
@@ -3812,6 +3847,7 @@ paths:
         - $ref: "#/components/parameters/RelationshipId"
         - $ref: "#/components/parameters/RelationshipWorkspaceExportId"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200":
           description: Export outcome
           content:
@@ -3837,6 +3873,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/CreateVoiceContributionSessionRequestV1" }
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "201": { description: Session created, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceContributionSessionV1" } } } }
         "200": { description: Prior identical session replayed, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceContributionSessionV1" } } } }
@@ -3856,6 +3893,7 @@ paths:
         - $ref: "#/components/parameters/RelationshipId"
         - $ref: "#/components/parameters/VoiceSessionId"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200": { description: Current authoritative session, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceContributionSessionV1" } } } }
         "401": { $ref: "#/components/responses/VoiceContributionUnauthorized" }
         "404": { $ref: "#/components/responses/VoiceContributionNotAccessible" }
@@ -3881,6 +3919,7 @@ paths:
               properties:
                 audio: { type: string, format: binary }
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "202": { description: Audio accepted for fail-closed validation, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceUploadReceiptV1" } } } }
         "400": { $ref: "#/components/responses/VoiceContributionInvalidRequest" }
         "401": { $ref: "#/components/responses/VoiceContributionUnauthorized" }
@@ -3900,6 +3939,7 @@ paths:
         - $ref: "#/components/parameters/RelationshipId"
         - $ref: "#/components/parameters/VoiceSessionId"
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "200": { description: Transcript state, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceTranscriptV1" } } } }
         "401": { $ref: "#/components/responses/VoiceContributionUnauthorized" }
         "404": { $ref: "#/components/responses/VoiceContributionNotAccessible" }
@@ -3920,6 +3960,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/VoiceCorrectionRequestV1" }
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200": { description: Correction version recorded, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceCorrectionReceiptV1" } } } }
         "400": { $ref: "#/components/responses/VoiceContributionInvalidRequest" }
@@ -3943,6 +3984,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/SendVoiceContributionRequestV1" }
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200": { description: Authoritative Evidence First outcome, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceContributionOutcomeV1" } } } }
         "400": { $ref: "#/components/responses/VoiceContributionInvalidRequest" }
@@ -3967,6 +4009,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/CancelVoiceContributionRequestV1" }
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "400": { $ref: "#/components/responses/VoiceContributionInvalidRequest" }
         "200": { description: Cancellation or prior terminal outcome, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceContributionOutcomeV1" } } } }
@@ -3990,6 +4033,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/VoicePayloadErasureRequestV1" }
       responses:
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "400": { $ref: "#/components/responses/VoiceContributionInvalidRequest" }
         "202": { description: Erasure accepted, content: { application/json: { schema: { $ref: "#/components/schemas/VoicePayloadErasureReceiptV1" } } } }

@@ -2,7 +2,38 @@
 set -eu
 
 validation_output_directory=${WAOOAW_VALIDATION_OUTPUT_DIRECTORY:-$PWD/test-results}
+host_validation_output_directory=${WAOOAW_HOST_VALIDATION_OUTPUT_DIRECTORY:-$validation_output_directory}
 mkdir -p "$validation_output_directory"
+build_manifest=$validation_output_directory/product-image-builds.txt
+: > "$build_manifest"
+
+scope_environment=/tmp/rest-contract-scope.env
+python scripts/validation_control/rest_contract_scope.py \
+    --changed-files "${WAOOAW_HOST_CHANGED_FILES_FILE:-${WAOOAW_CHANGED_FILES_FILE:-}}" \
+    --output "$scope_environment"
+. "$scope_environment"
+export REST_BP_IDENTITY_REGEX REST_BP_PRODUCT_REGEX REST_BP_SERVICE_REGEX REST_PR_SERVICE_REGEX
+
+if test "$REST_RUN_BP" = false && test "$REST_RUN_PR" = false; then
+    printf 'REST contract gate not applicable: no REST runtime or contract inputs changed.\n'
+    exit 0
+fi
+
+REST_START_BP=$REST_RUN_BP
+if test "$REST_RUN_PR" = true; then
+    REST_START_BP=true
+fi
+
+set -- constitutional-engine
+printf '%s\n' constitutional-engine >> "$build_manifest"
+if test "$REST_START_BP" = true; then
+    set -- "$@" business-platform
+    printf '%s\n' business-platform >> "$build_manifest"
+fi
+if test "$REST_RUN_PR" = true; then
+    set -- "$@" professional-runtime
+    printf '%s\n' professional-runtime >> "$build_manifest"
+fi
 
 export POSTGRES_HOST_PORT=0
 export KEYCLOAK_HOST_PORT=0
@@ -16,93 +47,20 @@ cleanup() {
 }
 trap cleanup EXIT
 
-docker compose build constitutional-engine business-platform professional-runtime
-docker compose up --detach --no-build --wait --wait-timeout 180 business-platform professional-runtime
-docker compose --profile test-python run --rm --pull never \
-    --volume "$validation_output_directory:/workspace/test-results" test-runner-python \
-    sh -c 'set -u
-        customer_identity_path_regex="^/api/v1/identity(?:/|$)"
-        customer_product_path_regex="^/api/v1/(acquisition/continuations(?:/|$)|customer-portal/interactions/portal/messages(?:/|$)|professionals/marketplace(?:/|$)|employment/relationships(?:$|/(?![^/]+/(?:transitions|offerability)(?:/|$))))"
-        customer_path_regex="^/api/v1/(identity(?:/|$)|acquisition/continuations(?:/|$)|customer-portal/interactions/portal/messages(?:/|$)|professionals/marketplace(?:/|$)|employment/relationships(?:$|/(?![^/]+/(?:transitions|offerability)(?:/|$))))"
-        python /workspace/scripts/validation_control/bootstrap_rest_identity.py \
-        --identity-token-file /tmp/business-platform-identity-token \
-        --service-token-file /tmp/business-platform-service-token
-        identity_token=$(cat /tmp/business-platform-identity-token)
-        service_token=$(cat /tmp/business-platform-service-token)
-        customer_product_status=0
-        customer_identity_status=0
-        service_status=0
-        rm -f /workspace/test-results/schemathesis-bp.xml
-        cd /tmp && schemathesis --config-file /workspace/validation/schemathesis.toml run /workspace/architecture/reference/api-specs/business-platform.openapi.yaml \
-        --url http://business-platform:5001 \
-        --include-path-regex "$customer_product_path_regex" \
-        -H "Authorization:Bearer $identity_token" \
-        --checks all \
-        --max-examples 100 \
-        --suppress-health-check=filter_too_much \
-        --report junit \
-        --report-junit-path /workspace/test-results/schemathesis-bp-customer-product.xml || customer_product_status=$?
-        cd /tmp && schemathesis --config-file /workspace/validation/schemathesis.toml run /workspace/architecture/reference/api-specs/business-platform.openapi.yaml \
-        --url http://business-platform:5001 \
-        --include-path-regex "$customer_identity_path_regex" \
-        -H "Authorization:Bearer $identity_token" \
-        --checks all \
-        --max-examples 100 \
-        --suppress-health-check=filter_too_much \
-        --report junit \
-        --report-junit-path /workspace/test-results/schemathesis-bp-customer-identity.xml || customer_identity_status=$?
-        cd /tmp && schemathesis --config-file /workspace/validation/schemathesis.toml run /workspace/architecture/reference/api-specs/business-platform.openapi.yaml \
-        --url http://business-platform:5001 \
-        --exclude-path-regex "$customer_path_regex" \
-        -H "Authorization:Bearer $service_token" \
-        --checks all \
-        --max-examples 100 \
-        --suppress-health-check=filter_too_much \
-        --report junit \
-        --report-junit-path /workspace/test-results/schemathesis-bp-service.xml || service_status=$?
-        if test "$customer_product_status" -eq 0 && \
-           test "$customer_identity_status" -eq 0 && \
-           test "$service_status" -eq 0; then
-            python /workspace/scripts/validation_control/merge_junit_reports.py \
-                --output /workspace/test-results/schemathesis-bp.xml \
-                /workspace/test-results/schemathesis-bp-customer-product.xml \
-                /workspace/test-results/schemathesis-bp-customer-identity.xml \
-                /workspace/test-results/schemathesis-bp-service.xml
-        else
-            printf "Business Platform contract lanes failed: product=%s identity=%s service=%s\n" \
-                "$customer_product_status" "$customer_identity_status" "$service_status" >&2
-            false
-        fi'
-docker compose --profile test-python run --rm --pull never \
-    --volume "$validation_output_directory:/workspace/test-results" test-runner-python \
-    sh -c 'set -u
-        service_status=0
-        health_status=0
-        rm -f /workspace/test-results/schemathesis-pr.xml
-        cd /tmp && schemathesis --config-file /workspace/validation/schemathesis.toml run /workspace/architecture/reference/api-specs/professional-runtime.openapi.yaml \
-        --url http://professional-runtime:5003 \
-        --exclude-path-regex "^/health$" \
-        --checks all \
-        --max-examples 100 \
-        --suppress-health-check=filter_too_much \
-        --report junit \
-        --report-junit-path /workspace/test-results/schemathesis-pr-service.xml || service_status=$?
-        cd /tmp && schemathesis --config-file /workspace/validation/schemathesis.toml run /workspace/architecture/reference/api-specs/professional-runtime.openapi.yaml \
-        --url http://professional-runtime:5003 \
-        --include-path-regex "^/health$" \
-        --checks all \
-        --exclude-checks not_a_server_error \
-        --max-examples 100 \
-        --suppress-health-check=filter_too_much \
-        --report junit \
-        --report-junit-path /workspace/test-results/schemathesis-pr-health.xml || health_status=$?
-        if test "$service_status" -eq 0 && test "$health_status" -eq 0; then
-            python /workspace/scripts/validation_control/merge_junit_reports.py \
-                --output /workspace/test-results/schemathesis-pr.xml \
-                /workspace/test-results/schemathesis-pr-service.xml \
-                /workspace/test-results/schemathesis-pr-health.xml
-        else
-            printf "Professional Runtime contract lanes failed: service=%s health=%s\n" \
-                "$service_status" "$health_status" >&2
-            false
-        fi'
+scripts/validation_control/run_docker_build.sh docker compose build "$@"
+docker compose up --detach --no-build --wait --wait-timeout 180 \
+    $(if test "$REST_RUN_BP" = true; then printf '%s ' business-platform; fi) \
+    $(if test "$REST_RUN_PR" = true; then printf '%s ' professional-runtime; fi)
+
+if test "$REST_RUN_BP" = true; then
+    docker compose --profile test-python run --rm --pull never \
+        -e REST_BP_IDENTITY_REGEX -e REST_BP_PRODUCT_REGEX -e REST_BP_SERVICE_REGEX \
+        --volume "$host_validation_output_directory:/workspace/test-results" test-runner-python \
+        sh /workspace/scripts/validation_control/run_business_platform_contract_scope.sh
+fi
+if test "$REST_RUN_PR" = true; then
+    docker compose --profile test-python run --rm --pull never \
+        -e REST_PR_SERVICE_REGEX \
+        --volume "$host_validation_output_directory:/workspace/test-results" test-runner-python \
+        sh /workspace/scripts/validation_control/run_professional_runtime_contract_scope.sh
+fi

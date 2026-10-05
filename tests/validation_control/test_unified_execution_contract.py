@@ -264,7 +264,8 @@ def test_hosted_action_projects_declared_inputs_into_isolated_gate_root() -> Non
     assert action["outputs"]["output_directory"]["value"] == "${{ steps.gate.outputs.output_directory }}"
     assert 'input_arguments=(--input-directory "$METADATA_DIRECTORY")' in execution
     assert '"${input_arguments[@]}"' in execution
-    assert 'environment["WAOOAW_VALIDATION_OUTPUT_DIRECTORY"] = str(artifact_root.resolve())' in catalog_executor
+    assert 'environment["WAOOAW_VALIDATION_OUTPUT_DIRECTORY"] = "/workspace/test-results"' in catalog_executor
+    assert 'environment["WAOOAW_HOST_VALIDATION_OUTPUT_DIRECTORY"] = str(artifact_root.resolve())' in catalog_executor
 
 
 def test_scripts_quality_gate_enforces_execution_contract_self_test() -> None:

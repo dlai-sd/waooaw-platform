@@ -17,6 +17,7 @@ import subprocess
 import tempfile
 import time
 from collections.abc import Callable
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -698,6 +699,222 @@ def execute_rollback(
             pr_body_file = Path(temporary_directory) / "pr-body.md"
             pr_body_file.write_text(qualification_context.pr_body, encoding="utf-8")
             current_phase: str | None = None
+            parallel_phase_results: dict[str, dict[str, Any]] = {}
+            executed_parallel_phases: set[str] = set()
+
+            def execute_prepared_gate(gate_id: str, node: dict[str, Any]) -> dict[str, Any]:
+                started = time.monotonic()
+                evidence_ref = node["expected_evidence"]["directory"]
+                error: str | None = None
+                disposition: str | None = None
+                try:
+                    gate_arguments: dict[str, Any] = {
+                        "changed_files": list(qualification_context.changed_files),
+                        "pr_body_file": pr_body_file,
+                        "base_branch": qualification_context.base_branch,
+                        "pr_number": qualification_context.pr_number,
+                        "repository_name": qualification_context.repository_name,
+                        "return_evidence_ref": True,
+                    }
+                    if gate_executor is execute_gate:
+                        gate_arguments["stream_output"] = False
+                        gate_arguments["runner_resolution"] = (
+                            runner_results[node["runner_id"]] if node.get("runner_required", True) else None
+                        )
+                        gate_arguments["service_identity_override"] = service_results.get(gate_id, {})
+                    execution = gate_executor(
+                        repository,
+                        gate_id,
+                        candidate_sha,
+                        base_sha,
+                        git_common_dir,
+                        **gate_arguments,
+                    )
+                    if isinstance(execution, tuple):
+                        returncode, evidence_ref = execution
+                        if not isinstance(returncode, int) or not isinstance(evidence_ref, str):
+                            raise ValueError("gate executor returned invalid evidence identity")
+                        if not (repository / evidence_ref).is_dir():
+                            raise ValueError(f"gate executor evidence directory is missing: {evidence_ref}")
+                    else:
+                        returncode = execution
+                except KeyboardInterrupt:
+                    returncode = 1
+                    error = "KeyboardInterrupt: operator cancellation"
+                    disposition = "OPERATOR_CANCELLED"
+                except subprocess.TimeoutExpired as exception:
+                    returncode = 124
+                    error = f"TimeoutExpired: {exception}"
+                    disposition = "TIMEOUT"
+                except Exception as exception:
+                    returncode = 1
+                    error = f"{type(exception).__name__}: {exception}"
+                result: dict[str, Any] = {
+                    "gate_id": gate_id,
+                    "returncode": returncode,
+                    "result": "PASS" if returncode == 0 else "FAIL",
+                    "evidence_disposition": "executed",
+                    "evidence_ref": evidence_ref,
+                    "duration_seconds": round(time.monotonic() - started, 3),
+                }
+                if error is not None:
+                    result["error"] = error
+                if disposition is not None:
+                    result["result"] = "BLOCKED"
+                    result["disposition"] = disposition
+                return result
+
+            def execute_parallel_graph() -> None:
+                nonlocal first_cause_gate, stop_all_after_first_cause
+                planned_nodes = [
+                    planned
+                    for planned in plan["nodes"]
+                    if planned["phase"] in manifest["parallel_phases"]
+                    and planned["gate_id"] not in resumed_results
+                    and planned["gate_id"] not in BLOCKED_DEFERRED_GATES
+                ]
+                pending = {planned["gate_id"]: planned for planned in planned_nodes}
+                outcomes = dict(resumed_results)
+                outcomes.update({gate_id: {"gate_id": gate_id, "result": "PASS"} for gate_id in BLOCKED_DEFERRED_GATES})
+                for planned in planned_nodes:
+                    planned_gate = planned["gate_id"]
+                    supply_started = time.monotonic()
+                    try:
+                        if planned.get("runner_required", True):
+                            runner_id = planned["runner_id"]
+                            if runner_id not in runner_results:
+                                resolution = runner_resolver(repository, runner_id)
+                                resolution["supply_duration_seconds"] = round(time.monotonic() - supply_started, 3)
+                                if resolution.get("build_count") not in {0, 1}:
+                                    raise ValueError(f"qualification returned invalid build count for runner: {runner_id}")
+                                runner_results[runner_id] = resolution
+                            image = runner_results[runner_id].get("image")
+                            if isinstance(image, str) and image:
+                                os.environ[f"WAOOAW_RUNNER_{runner_id.upper()}_IMAGE"] = image
+                        if planned["required_services"] and planned_gate not in service_results:
+                            services = service_resolver(repository, planned)
+                            service_results[planned_gate] = {
+                                **services,
+                                "supply_duration_seconds": round(time.monotonic() - supply_started, 3),
+                            }
+                    except Exception as exception:
+                        result = {
+                            "gate_id": planned_gate,
+                            "result": "BLOCKED",
+                            "disposition": "SUPPLY_FAILED",
+                            "error": f"{type(exception).__name__}: {exception}",
+                            "duration_seconds": round(time.monotonic() - supply_started, 3),
+                        }
+                        parallel_phase_results[planned_gate] = result
+                        outcomes[planned_gate] = result
+                        pending.pop(planned_gate)
+                        if first_cause_gate is None:
+                            first_cause_gate = planned_gate
+
+                running: dict[Future[dict[str, Any]], tuple[dict[str, Any], int, int]] = {}
+                running_cpus = 0
+                running_memory = 0
+                maximum_workers = manifest["max_parallel_gates"]
+                cpu_capacity = manifest["parallel_cpu_capacity"]
+                memory_capacity = manifest["parallel_memory_mb_capacity"]
+
+                def passed(gate_id: str) -> bool:
+                    result = outcomes.get(gate_id)
+                    return isinstance(result, dict) and (
+                        result.get("result") == "PASS"
+                        or (gate_id in BLOCKED_DEFERRED_GATES and result.get("result") == "BLOCKED")
+                    )
+
+                with ThreadPoolExecutor(
+                    max_workers=maximum_workers,
+                    thread_name_prefix="wc104-qualification",
+                ) as executor:
+                    while pending or running:
+                        progress = False
+                        for gate_id, planned in list(pending.items()):
+                            prerequisites = planned["direct_prerequisites"]
+                            incompatible = [
+                                required for required in prerequisites if required in outcomes and not passed(required)
+                            ]
+                            if incompatible:
+                                result = {
+                                    "gate_id": gate_id,
+                                    "result": "BLOCKED",
+                                    "disposition": "PREREQUISITE_EVIDENCE_BLOCKED",
+                                    "first_cause_gate": first_cause_gate or incompatible[0],
+                                    "prerequisite_blockers": [f"incompatible:{required}" for required in incompatible],
+                                    "duration_seconds": 0.0,
+                                }
+                                parallel_phase_results[gate_id] = result
+                                outcomes[gate_id] = result
+                                pending.pop(gate_id)
+                                progress = True
+                        if first_cause_gate is None:
+                            ready = [
+                                planned
+                                for planned in pending.values()
+                                if all(passed(required) for required in planned["direct_prerequisites"])
+                            ]
+                            ready.sort(
+                                key=lambda planned: (
+                                    -manifest["parallel_phases"].index(planned["phase"]),
+                                    plan_execution_order(plan).index(planned["gate_id"]),
+                                )
+                            )
+                            for planned in ready:
+                                resources = planned["resources"]
+                                required_cpus = int(resources["cpus"])
+                                required_memory = int(resources["memory_mb"])
+                                if (
+                                    len(running) >= maximum_workers
+                                    or running_cpus + required_cpus > cpu_capacity
+                                    or running_memory + required_memory > memory_capacity
+                                ):
+                                    continue
+                                future = executor.submit(execute_prepared_gate, planned["gate_id"], planned)
+                                running[future] = (planned, required_cpus, required_memory)
+                                running_cpus += required_cpus
+                                running_memory += required_memory
+                                pending.pop(planned["gate_id"])
+                                progress = True
+                        if running:
+                            completed_futures, _ = wait(running, return_when=FIRST_COMPLETED)
+                            for future in completed_futures:
+                                planned, required_cpus, required_memory = running.pop(future)
+                                running_cpus -= required_cpus
+                                running_memory -= required_memory
+                                result = future.result()
+                                parallel_phase_results[planned["gate_id"]] = result
+                                outcomes[planned["gate_id"]] = result
+                                if result["result"] in {"FAIL", "BLOCKED"} and first_cause_gate is None:
+                                    first_cause_gate = planned["gate_id"]
+                                if result.get("disposition") == "OPERATOR_CANCELLED":
+                                    stop_all_after_first_cause = True
+                                progress = True
+                        elif pending and first_cause_gate is not None:
+                            for gate_id in list(pending):
+                                result = {
+                                    "gate_id": gate_id,
+                                    "result": "BLOCKED",
+                                    "disposition": "SUPPRESSED_AFTER_FAILURE",
+                                    "first_cause_gate": first_cause_gate,
+                                    "suppression_reason": failure_lane_disposition(
+                                        plan,
+                                        gate_id,
+                                        first_cause_gate,
+                                        execution_state="PENDING",
+                                    ),
+                                    "duration_seconds": 0.0,
+                                }
+                                parallel_phase_results[gate_id] = result
+                                outcomes[gate_id] = result
+                                pending.pop(gate_id)
+                            progress = True
+                        if not progress and pending:
+                            raise ValueError("qualification ready queue has no executable gate")
+
+                executed_parallel_phases.update(manifest["parallel_phases"])
+
             for gate_id in plan_execution_order(plan):
                 started = time.monotonic()
                 node = nodes_by_gate[gate_id]
@@ -737,19 +954,20 @@ def execute_rollback(
                         flush=True,
                     )
                     if transition["result"] != "PASS":
-                        first_cause_gate = gate_id
-                        gate_results.append(
-                            {
-                                "gate_id": gate_id,
-                                "result": "BLOCKED",
-                                "disposition": "PHASE_TRANSITION_BLOCKED",
-                                "first_cause_gate": first_cause_gate,
-                                "phase_blockers": transition["blockers"],
-                                "duration_seconds": 0.0,
-                            }
-                        )
-                        checkpoint()
-                        continue
+                        if execution_profile != "qualification" or node["phase"] not in manifest["parallel_phases"]:
+                            first_cause_gate = gate_id
+                            gate_results.append(
+                                {
+                                    "gate_id": gate_id,
+                                    "result": "BLOCKED",
+                                    "disposition": "PHASE_TRANSITION_BLOCKED",
+                                    "first_cause_gate": first_cause_gate,
+                                    "phase_blockers": transition["blockers"],
+                                    "duration_seconds": 0.0,
+                                }
+                            )
+                            checkpoint()
+                            continue
                     current_phase = node["phase"]
                     checkpoint()
                 if gate_id in BLOCKED_DEFERRED_GATES:
@@ -769,14 +987,17 @@ def execute_rollback(
                     continue
                 suppression = (
                     "OPERATOR_CANCELLED"
-                    if gate_id not in resumed_results and first_cause_gate is not None and stop_all_after_first_cause
+                    if gate_id not in resumed_results
+                    and gate_id not in parallel_phase_results
+                    and first_cause_gate is not None
+                    and stop_all_after_first_cause
                     else failure_lane_disposition(
                         plan,
                         gate_id,
                         first_cause_gate,
                         execution_state="PENDING",
                     )
-                    if gate_id not in resumed_results and first_cause_gate is not None
+                    if gate_id not in resumed_results and gate_id not in parallel_phase_results and first_cause_gate is not None
                     else None
                 )
                 if suppression is not None:
@@ -820,6 +1041,20 @@ def execute_rollback(
                             ),
                         }
                     )
+                    checkpoint()
+                    continue
+                if execution_profile == "qualification" and node["phase"] in manifest["parallel_phases"]:
+                    if not executed_parallel_phases:
+                        execute_parallel_graph()
+                    result = parallel_phase_results[gate_id]
+                    gate_results.append(result)
+                    print(
+                        f"[qualification] gate={gate_id} result={result['result']} "
+                        f"duration_seconds={result['duration_seconds']} evidence={result.get('evidence_ref')}",
+                        flush=True,
+                    )
+                    if result["result"] in {"FAIL", "BLOCKED"} and first_cause_gate is None:
+                        first_cause_gate = gate_id
                     checkpoint()
                     continue
                 try:
@@ -871,6 +1106,10 @@ def execute_rollback(
                     }
                     if gate_executor is execute_gate:
                         gate_arguments["stream_output"] = False
+                        gate_arguments["runner_resolution"] = (
+                            runner_results[node["runner_id"]] if node.get("runner_required", True) else None
+                        )
+                        gate_arguments["service_identity_override"] = service_results.get(gate_id, {})
                     execution = gate_executor(
                         repository,
                         gate_id,

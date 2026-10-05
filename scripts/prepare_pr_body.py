@@ -51,7 +51,7 @@ CANDIDATE_EVIDENCE_STATUS_SECTION = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 VALIDATION_POLICY_PATH = Path(__file__).resolve().parents[1] / "validation/engineering-validation.yaml"
-PRECHECK_GRAPH_VERSION = "wc109-prechecks-v8"
+PRECHECK_GRAPH_VERSION = "wc109-prechecks-v9"
 PRECHECK_ORDER = (
     "gitleaks",
     "scripts_quality",
@@ -60,7 +60,6 @@ PRECHECK_ORDER = (
     "typescript_quality",
     "test_web",
     "business_platform",
-    "release_qualification",
 )
 STATIC_PRECHECKS = frozenset(
     {"gitleaks", "scripts_quality", "typescript_dependency_scan", "dotnet_quality_business_platform", "typescript_quality"}
@@ -465,7 +464,7 @@ def precheck_nodes(
     changed_files: list[str],
 ) -> list[PrecheckNode]:
     base_sha = git("rev-parse", base)
-    applicable_prechecks = selected_prechecks(changed_files)
+    applicable_prechecks = selected_prechecks(changed_files) - {"release_qualification"}
     loaded = yaml.safe_load(VALIDATION_POLICY_PATH.read_text(encoding="utf-8"))
     precheck_config = loaded.get("prechecks") if isinstance(loaded, dict) else None
     if not isinstance(precheck_config, dict):
@@ -493,16 +492,8 @@ def precheck_nodes(
         input_patterns = tuple(input_patterns_value)
         identity = gate_execution_identity(repository_root, gate_id, head)
         dependencies: tuple[str, ...] = ()
-        if name == "business_platform" and "dotnet_quality_business_platform" in applicable_prechecks:
-            dependencies = ("dotnet_quality_business_platform",)
-        elif name == "test_web" and "typescript_quality" in applicable_prechecks:
+        if name == "test_web" and "typescript_quality" in applicable_prechecks:
             dependencies = ("typescript_quality",)
-        elif name == "release_qualification":
-            dependencies = tuple(
-                static_name
-                for static_name in PRECHECK_ORDER
-                if static_name in STATIC_PRECHECKS and static_name in applicable_prechecks
-            )
         nodes.append(
             PrecheckNode(
                 name=name,

@@ -15,10 +15,26 @@ DOTNET_GATE_PATH = ROOT / "scripts/validation_control/run_dotnet_test_gate.sh"
 PYTHON_GATE_PATH = ROOT / "scripts/validation_control/run_python_test_gate.sh"
 DEPENDENCY_GATE_PATH = ROOT / "scripts/validation_control/run_dependency_scan_gate.sh"
 STATIC_PREFLIGHT_PATH = ROOT / "scripts/run_static_validation_preflight.sh"
+IDENTITY_TEST_PATH = ROOT / "tests/business-platform.Tests/Identity"
 
 
 def load_ci() -> dict[str, object]:
     return yaml.safe_load(CI_PATH.read_text(encoding="utf-8"))
+
+
+def test_high_volume_identity_postgres_tests_reuse_servers_with_isolated_databases() -> None:
+    fixture = (IDENTITY_TEST_PATH / "IdentityPostgresServerFixture.cs").read_text(encoding="utf-8")
+    test_files = [
+        IDENTITY_TEST_PATH / "CustomerWorkspaceProvisioningPostgresTests.cs",
+        IDENTITY_TEST_PATH / "CustomerIdentityJourneyHttpPostgresTests.cs",
+    ]
+
+    assert "CREATE DATABASE" in fixture
+    assert "DROP DATABASE" in fixture and "WITH (FORCE)" in fixture
+    for path in test_files:
+        source = path.read_text(encoding="utf-8")
+        assert "IClassFixture<IdentityPostgresServerFixture>" in source
+        assert "new PostgreSqlBuilder" not in source
 
 
 def test_static_preflight_blocks_runner_supply_and_compiles_docker_graphs() -> None:
@@ -96,14 +112,27 @@ def test_release_qualification_accepts_exact_runner_without_hidden_rebuild() -> 
     assert 'scripts/verify_runner_image.sh test test-runner "$WAOOAW_TEST_RUNNER_IMAGE_ID"' in source
 
 
+def test_release_qualification_scopes_and_parallelizes_independent_lanes() -> None:
+    source = RELEASE_QUALIFICATION_PATH.read_text(encoding="utf-8")
+
+    assert "qualification_change_scope.py" in source
+    assert "WAOOAW_HOST_CHANGED_FILES_FILE" in source
+    assert source.index("qualification_change_scope.py") < source.index("run_docker_build.sh")
+    assert 'RELEASE_RUN_TESTS" = true || test "$RELEASE_RUN_POSTGRES" = true || test "$RELEASE_RUN_SIMULATOR" = true' in source
+    for lane in ("TESTS", "POSTGRES", "DEMO_DATA", "SIMULATOR", "AZURE"):
+        assert f'RELEASE_RUN_{lane}" = true' in source
+    assert source.count("_pid=$!") == 5
+    assert source.index("azure_pid=$!") < source.index('for lane_pid in "$tests_pid"')
+
+
 def test_coverage_thresholds_are_unchanged() -> None:
     dotnet_gate = DOTNET_GATE_PATH.read_text(encoding="utf-8")
     python_gate = PYTHON_GATE_PATH.read_text(encoding="utf-8")
-    catalog = yaml.safe_load(CATALOG_PATH.read_text(encoding="utf-8"))
+    web_gate = (ROOT / "scripts/validation_control/run_web_test_gate.sh").read_text(encoding="utf-8")
 
     assert "lines >= 0.90 && branches >= 0.80" in dotnet_gate
     assert "lines >= 90 and branches >= 80" in python_gate
-    assert '"lines":90,"branches":80,"functions":90,"statements":90' in catalog["commands"]["test-web"]["shell"]
+    assert '"lines":90,"branches":80,"functions":90,"statements":90' in web_gate
 
 
 def test_required_gate_aggregation_is_preserved() -> None:
@@ -132,7 +161,7 @@ def test_costly_ci_jobs_are_guarded_by_the_validation_plan() -> None:
     assert ci["jobs"]["test-python"]["if"] == "needs.validation-plan.outputs.python_test_matrix != '[]'"
     for job_id in ("test-web", "spec-lint", "sast", "dep-scan", "license-check"):
         condition = ci["jobs"][job_id].get("if", "")
-        assert "needs.validation-plan.outputs.selected_gates" in condition, job_id
+        assert "needs.validation-plan.outputs.execution_gates" in condition, job_id
         assert "validation-plan" in (
             [ci["jobs"][job_id]["needs"]] if isinstance(ci["jobs"][job_id]["needs"], str) else ci["jobs"][job_id]["needs"]
         ), job_id
