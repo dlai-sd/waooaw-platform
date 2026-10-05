@@ -18,6 +18,7 @@ from validation_control.execution_contract import (
     binding_digest,
     disposable_cleanup_commands,
     disposable_image_references,
+    disposable_network_names,
     evidence_is_current,
     evidence_path,
     execution_binding,
@@ -53,9 +54,7 @@ def test_prebuild_cleanup_selects_only_disposable_images_and_protects_runners() 
 def test_runner_supply_cleans_stale_images_before_building() -> None:
     root = Path(__file__).parents[2]
     source = (root / "scripts/validation_control/local_catalog_gate.py").read_text(encoding="utf-8")
-    assert source.index("cleanup_before_docker_build(repository)") < source.index(
-        '"buildx",\n                "build",'
-    )
+    assert source.index("cleanup_before_docker_build(repository)") < source.index('"buildx",\n                "build",')
     wrapper = "scripts/validation_control/run_docker_build.sh"
     for relative in (
         "scripts/run_release_qualification.sh",
@@ -432,6 +431,7 @@ def test_qualification_launcher_rejects_incomplete_repair_before_docker(repair_a
 def test_resource_capacity_preflight_passes_without_cleanup_when_capacity_is_safe(tmp_path: Path) -> None:
     usage = SimpleNamespace(total=10_000_000_000, used=8_000_000_000, free=2_000_000_000)
     cleanup_calls: list[Path] = []
+    network_cleanup_calls: list[Path] = []
 
     record = resource_capacity_preflight(
         tmp_path,
@@ -439,11 +439,14 @@ def test_resource_capacity_preflight_passes_without_cleanup_when_capacity_is_saf
         "wc109-capacity-safe",
         disk_usage=lambda path: usage,
         cleanup=lambda path: cleanup_calls.append(path) or [],
+        network_cleanup=lambda path: network_cleanup_calls.append(path) or ["network rm wc109-stale:0"],
     )
 
     assert record["result"] == "PASS"
     assert record["cleanup_actions"] == []
+    assert record["network_cleanup_actions"] == ["network rm wc109-stale:0"]
     assert cleanup_calls == []
+    assert network_cleanup_calls == [tmp_path]
 
 
 def test_resource_capacity_preflight_cleans_once_then_rechecks(tmp_path: Path) -> None:
@@ -460,6 +463,7 @@ def test_resource_capacity_preflight_cleans_once_then_rechecks(tmp_path: Path) -
         "wc109-capacity-recovered",
         disk_usage=lambda path: next(usages),
         cleanup=lambda path: ["builder prune:0", "image prune:0"],
+        network_cleanup=lambda path: [],
     )
 
     assert record["result"] == "PASS"
@@ -483,6 +487,7 @@ def test_resource_capacity_preflight_publishes_block_when_cleanup_is_insufficien
             "wc109-capacity-blocked",
             disk_usage=lambda path: next(usages),
             cleanup=lambda path: ["builder prune:0"],
+            network_cleanup=lambda path: [],
         )
 
     evidence = tmp_path / "test-results/wc109/runs/wc109-capacity-blocked/resource-preflight.json"
@@ -506,3 +511,14 @@ def test_disposable_cleanup_never_targets_running_or_foreign_projects() -> None:
         "/usr/bin/docker builder prune --force --filter until=24h",
         "/usr/bin/docker image prune --force",
     ]
+
+
+def test_disposable_network_cleanup_never_targets_active_or_foreign_networks() -> None:
+    assert disposable_network_names(
+        [
+            {"Name": "wc109-stale", "Containers": {}},
+            {"Name": "wc109-active", "Containers": {"container": {}}},
+            {"Name": "customer-stack", "Containers": {}},
+            {"Name": "wc109-unknown"},
+        ]
+    ) == ["wc109-stale"]
