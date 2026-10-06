@@ -442,18 +442,18 @@ complete but Docker evidence has not yet run. `PASS` requires recorded Docker ev
 
 | Story | Customer outcome | Requirements | Status | Implementation/evidence reference | Exact next action |
 |---|---|---|---|---|---|
-| WC112-US-A01 | Login creates authenticated-unregistered or authenticated-registered server truth without implicit registration. | R004, R008, R042, R044-R045 | `IMPLEMENTED` | `web/app/(application)/layout.tsx`; layout test authored; Docker not started | Retain for post-implementation Docker validation. |
-| WC112-US-A02 | Standalone and Trial/Hire-triggered Registration share one resumable, idempotent flow. | R006, R043-R045 | `IMPLEMENTED` | Server-owned identity-bound Acquisition Intent persistence plus exact safe Registration return and automatic marketplace continuation tests authored; Docker not started | Retain for post-implementation Docker validation. |
+| WC112-US-A01 | Login creates authenticated-unregistered or authenticated-registered server truth without implicit registration. | R004, R008, R042, R044-R045 | `PASS` | Commit `cd134985`; authenticated-unregistered layout regression and full Web gate pass | Preserve through PR review. |
+| WC112-US-A02 | Standalone and Trial/Hire-triggered Registration share one resumable, idempotent flow. | R006, R043-R045 | `PASS` | Commit `cd134985`; identity-bound intent, safe Registration return and continuation tests pass | Preserve through PR review. |
 | WC112-US-A03 | Logout, relogin and browser-history behavior terminate and restore the correct identity safely. | R007-R008, R041, R044, R046 | `BLOCKED` | Premature `LOGOUT_COMPLETION` removed and route regression test authored; authoritative completion remains blocked by WC112-RG08 | Founder must select authoritative provider-return completion evidence and partial-failure behavior. |
-| WC112-US-A04 | Switch Account cannot transfer protected state and forces explicit provider account selection. | R005, R047 | `IMPLEMENTED` | `SignOutCommand.tsx`; component tests authored; explicit provider selection replaces Google hard-code | Retain for post-implementation Docker validation. |
-| WC112-US-T01 | Trial and Hire share Registration, mode-bound Employment Contract acceptance and one checkout shell. | R009-R010, R019, R034-R035, R049-R050 | `IMPLEMENTED` | Exact Agent + Version contract projection URL, content hash, durable intent acceptance, immutable relationship transfer and common checkout tests authored; Docker not started | Retain for contract/API/component/accessibility Docker validation. |
-| WC112-US-T02 | One free 14-day default Trial per customer + Agent + Version uses read-only coupon/payment presentation and no provider mutation. | R032, R051-R053 | `IMPLEMENTED` | Read-only checkout UI, exact-version WBE policy, Founder-authorized duration override, owner-first completion and no-relationship-on-owner-failure tests authored; Docker not started | Retain for focused concurrency and BP/WBE/PR Docker validation. |
-| WC112-US-T03 | Confirmed Trial and expiry project truthfully into My Agents without automatic Hire. | R017-R018, R040, R053-R054 | `IMPLEMENTED` | Trial completion creates the bounded My Agents selection; My Agents renders acquisition mode and authoritative Trial status; elapsed ACTIVE entitlement projects/persists `EXPIRED`; no conversion path is invoked; Docker not started | Retain for expiry and browser handoff validation. |
-| WC112-US-H01 | Founder-governed coupon produces one authoritative, concurrency-safe Hire quote. | R010-R011, R056 | `IMPLEMENTED` | Exact Agent + Version validation, bounded reservation/expiry/cancellation release and bind-time single-consumption source/tests authored; Docker not started | Retain for focused PostgreSQL concurrency validation. |
-| WC112-US-H02 | Positive-payable Hire uses one server-created Razorpay order and independently verified outcome. | R012-R016, R057 | `IMPLEMENTED` | Durable pre-Hire order, provider signature plus fetched amount/currency/capture verification, webhook/replay paths, stable correlation and browser-loss retry tests authored; Docker not started | Retain for provider-emulator, reordered-event and browser validation. |
-| WC112-US-H03 | Zero-payable Hire retains the checkout experience without provider mutation or fabricated payment. | R015, R035-R036, R058 | `IMPLEMENTED` | Common disabled Razorpay presentation, distinct `FULLY_DISCOUNTED` persistence, no-order branch, coupon single consumption and My Agents handoff tests authored; Docker not started | Retain for negative-provider-call and browser validation. |
+| WC112-US-A04 | Switch Account cannot transfer protected state and forces explicit provider account selection. | R005, R047 | `PASS` | Commit `cd134985`; Switch Account component and session-clearing tests pass | Preserve through PR review. |
+| WC112-US-T01 | Trial and Hire share Registration, mode-bound Employment Contract acceptance and one checkout shell. | R009-R010, R019, R034-R035, R049-R050 | `PASS` | Commit `cd134985`; exact contract, intent, transfer and common-checkout suites pass | Preserve through PR review. |
+| WC112-US-T02 | One free 14-day default Trial per customer + Agent + Version uses read-only coupon/payment presentation and no provider mutation. | R032, R051-R053 | `PASS` | Commit `cd134985`; focused Billing/Trial 108/108 and PostgreSQL Trial 3/3 pass | Preserve through PR review. |
+| WC112-US-T03 | Confirmed Trial and expiry project truthfully into My Agents without automatic Hire. | R017-R018, R040, R053-R054 | `PASS` | Commit `cd134985`; Trial handoff, expiry and no-conversion tests pass | Preserve through PR review. |
+| WC112-US-H01 | Founder-governed coupon produces one authoritative, concurrency-safe Hire quote. | R010-R011, R056 | `PASS` | Commit `cd134985`; coupon PostgreSQL concurrency 1/1 and full Billing suite pass | Preserve through PR review. |
+| WC112-US-H02 | Positive-payable Hire uses one server-created Razorpay order and independently verified outcome. | R012-R016, R057 | `PASS` | Commit `cd134985`; provider verification, replay and correlation tests pass | Preserve through PR review. |
+| WC112-US-H03 | Zero-payable Hire retains the checkout experience without provider mutation or fabricated payment. | R015, R035-R036, R058 | `PASS` | Commit `cd134985`; zero-payable negative-provider and handoff tests pass | Preserve through PR review. |
 | WC112-US-H04 | Completion and recoverable failure produce one truthful My Agents outcome without duplicate payment or employment. | R014-R018, R036, R040 | `BLOCKED` | WC112-RG04-RG05 and RG09-RG12 | Resolve downstream lifecycle, activation and paid-customer exception authority. |
-| WC112-US-Q01 | All journeys are observable and protected from future drift by mandatory impact-selected gates. | R001-R003, R020-R027, R048, R059 | `IMPLEMENTED` | Versioned machine-readable state contract, stable acquisition correlation, transition-specific telemetry correction and service/component/API/concurrency test cases authored; Docker not started | Retain for generated-contract, telemetry, privacy and impact-selected Docker gates. |
+| WC112-US-Q01 | All journeys are observable and protected from future drift by mandatory impact-selected gates. | R001-R003, R020-R027, R048, R059 | `PASS` | Commit `cd134985`; mandatory impact-selected manifest `43d62f4b6f04250e74bd48f8358372af2eef2769` passes all seven selected gates | Preserve the gate contract through PR review. |
 
 ## 10. Definition Of Done
 
@@ -462,8 +462,8 @@ artifact or Founder decision that directly proves the row.
 
 | Done | Completion obligation | Required evidence |
 |---|---|---|
-| [ ] | Every authorized user story is `IMPLEMENTED`; no placeholder, TODO, disabled assertion or known source gap remains. | Exact commit plus story-to-files/test-cases trace. |
-| [ ] | All required test cases across all work components were created before Docker testing began. | Test inventory and timestamped/exact-commit implementation checkpoint. |
+| [x] | Every authorized user story is `IMPLEMENTED`; no placeholder, TODO, disabled assertion or known source gap remains. | Commit `cd134985`; A03 and H04 remain explicitly blocked outside the authorized slice. |
+| [x] | All required test cases across all work components were created before Docker testing began. | WC-112 implementation ledger and commit `cd134985`. |
 | [ ] | Every applicable WC112 requirement is `PASS`; blocked requirements name the unresolved Founder decision and cannot be represented as complete. | Requirement-to-test/evidence ledger. |
 | [ ] | Every WC112-D01 through D11 defect has a direct tested disposition. | Defect-to-test and outcome matrix. |
 | [ ] | Login, standalone Registration, Trial/Hire-triggered Registration, Logout, relogin and Switch Account pass service and browser journeys. | Focused Docker results plus Chromium, Firefox and WebKit artifacts. |
@@ -476,11 +476,11 @@ artifact or Founder decision that directly proves the row.
 | [ ] | Captured or zero-price commercial satisfaction survives browser loss and retryable downstream failure without duplicate charge, coupon use, relationship or handoff. | Saga/reconciliation fault-injection evidence. |
 | [ ] | Illegal, stale, duplicate, identity-conflicting, tenant-conflicting and price-drift transitions fail without unauthorized mutation. | Contract, security, RLS and concurrency evidence. |
 | [ ] | Logs/traces provide privacy-safe cross-service correlation and state transitions without tokens, secrets, provider payloads or unnecessary PII. | Telemetry assertions and secret/privacy scans. |
-| [ ] | Focused Docker suites pass before affected integrated suites; all invalidated suites rerun after repairs. | Exact commands, results and immutable artifacts. |
+| [x] | Focused Docker suites pass before affected integrated suites; all invalidated suites rerun after repairs. | Focused suites in Section 14 plus precheck manifest `43d62f4b6f04250e74bd48f8358372af2eef2769`. |
 | [ ] | Three-browser desktop/360px, keyboard, focus, RTL, zoom and accessibility gates pass with no critical violation. | Browser matrix and accessibility reports. |
-| [ ] | No CRITICAL/HIGH security finding, secret disclosure, migration hazard, generated-contract drift or quality-threshold reduction remains. | Security/static/schema/migration reports and author review. |
+| [x] | No CRITICAL/HIGH security finding, secret disclosure, migration hazard, generated-contract drift or quality-threshold reduction remains. | Author review, fresh migration replay, Gitleaks, dependency scan and quality gates at commit `cd134985`. |
 | [ ] | Rollback preserves payment, coupon, relationship, evidence and reconciliation obligations without two active authorities. | Rollback/fault-recovery evidence. |
-| [ ] | Exact-head author review finds no unresolved correctness, security, constitutional-compliance or customer-experience defect. | Author-review section bound to exact commit. |
+| [x] | Exact-head author review finds no unresolved correctness, security, constitutional-compliance or customer-experience defect. | Section 14 bound to implementation commit `cd134985`; blocked policy decisions remain explicitly excluded. |
 | [ ] | Founder reviews and merges the PR; separately authorized Demo/provider checks and customer acceptance remain accurately distinguished. | PR/merge reference and, when authorized, Demo acceptance evidence. |
 
 ## 11. Stop Conditions
@@ -547,11 +547,15 @@ Author review performed by INST-010 on 2026-10-06 before source implementation.
 | Coupon and Trial eligibility checks were database-unique but did not serialize concurrent capacity decisions into deterministic customer outcomes. | Added PostgreSQL coupon row locking, stable reservation expiry, deterministic Trial unique-conflict handling and real concurrent PostgreSQL tests. |
 
 **Author-review result:** contract review and implementation author review are complete for the
-authorized slice. Focused Docker evidence passes Business Platform 42 tests, Billing/Trial 108 tests,
-Web 87 tests, Hire preview 2 tests, PostgreSQL Trial concurrency 3 tests, PostgreSQL coupon concurrency
-1 test, Business Platform PostgreSQL integration 1 test, TypeScript quality, fresh database
-initialization/grants and migrations 48-52 replay. Trial owner failure no longer creates an Employment
-Relationship; Hire creates one only after captured or zero-price commercial satisfaction. A03 remains
-blocked by RG08; H04 and behavior dependent on RG04-RG05 or RG09-RG12 remain blocked and cannot be
-represented as implemented or complete. The next action is the full Docker commit gate; the Founder
-directed that no separate qualification run is required before the PR.
+authorized slice at implementation commit `cd134985`. Focused Docker evidence passes Business
+Platform 42 tests, Billing/Trial 108 tests, Web 87 tests, Hire preview 2 tests, PostgreSQL Trial
+concurrency 3 tests, PostgreSQL coupon concurrency 1 test, Business Platform PostgreSQL integration
+1 test, TypeScript quality, fresh database initialization/grants and migrations 48-52 replay. The
+mandatory commit precheck manifest `43d62f4b6f04250e74bd48f8358372af2eef2769` also passes Gitleaks,
+script quality, TypeScript dependency scan, Business Platform quality, TypeScript quality, all 947
+Business Platform tests at 90.32% line/80.20% branch coverage and all 535 Web tests. Trial owner
+failure no longer creates an Employment Relationship; Hire creates one only after captured or
+zero-price commercial satisfaction. A03 remains blocked by RG08; H04 and behavior dependent on
+RG04-RG05 or RG09-RG12 remain blocked and cannot be represented as implemented or complete. The
+implementation candidate is PR-ready; the Founder directed that no separate qualification run is
+required before the PR.
