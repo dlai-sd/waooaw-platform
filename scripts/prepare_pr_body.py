@@ -42,6 +42,14 @@ RUNTIME_EVIDENCE_SECTION = re.compile(
     r"^## Pre-PR Runtime Evidence\s*$\n.*?(?=^##\s|\Z)",
     re.MULTILINE | re.DOTALL,
 )
+RELEASE_QUALIFICATION_MODE = re.compile(
+    r"^\*\*Release Qualification:\*\* (ON|OFF)\s*$",
+    re.MULTILINE,
+)
+RELEASE_QUALIFICATION_AUTHORITY = re.compile(
+    r"^\*\*Release Qualification Authority:\*\* (.+?)\s*$",
+    re.MULTILINE,
+)
 PREPUSH_AUTHORITY_SECTION = re.compile(
     r"^## Pre-Push Qualification Authority\s*$\n.*?(?=^##\s|\Z)",
     re.MULTILINE | re.DOTALL,
@@ -372,6 +380,22 @@ def release_qualification_gate_required(changed_files: list[str]) -> bool:
     return "release_qualification" in selected_prechecks(changed_files)
 
 
+def release_qualification_enabled(body: str) -> bool:
+    modes = RELEASE_QUALIFICATION_MODE.findall(body)
+    if len(modes) != 1:
+        raise ValueError("PR body must contain exactly one `**Release Qualification:** ON|OFF` field")
+    if modes[0] == "ON":
+        return True
+
+    authorities = RELEASE_QUALIFICATION_AUTHORITY.findall(body)
+    if len(authorities) != 1:
+        raise ValueError("Release Qualification OFF requires exactly one Founder authority record")
+    authority = authorities[0].strip()
+    if not authority or authority.upper() in {"N/A", "NONE", "TBD"}:
+        raise ValueError("Release Qualification OFF requires a non-placeholder Founder authority")
+    return False
+
+
 def expected_pr_labels(branch: str) -> tuple[str, str, str]:
     if branch.startswith("fix/"):
         tier = "tier:1-bugfix"
@@ -645,6 +669,7 @@ def main() -> int:
             if arguments.update_pr is not None
             else arguments.body_file.read_text(encoding="utf-8")
         )
+        qualification_enabled = release_qualification_enabled(body)
         changed_files = git("diff", "--name-only", f"{arguments.base}..{head}").splitlines()
         changed_file_digest = changed_files_digest(changed_files)
         base_sha = git("rev-parse", arguments.base)
@@ -709,7 +734,11 @@ def main() -> int:
                 "schema": "waooaw.candidate-evidence-status/v1",
                 "candidate_sha": head,
                 "prechecks": "PASS",
-                "qualification": qualification_status(arguments.qualification_evidence_file, head),
+                "qualification": (
+                    qualification_status(arguments.qualification_evidence_file, head)
+                    if qualification_enabled
+                    else "SKIPPED_FOUNDER_AUTHORIZED"
+                ),
                 "hosted_pilot": hosted_status(arguments.hosted_evidence_file, head),
             },
         )

@@ -43,6 +43,7 @@ Institutions in the engineering governance domain are referred to as "Offices" i
 | **Operational Since** | 2026-07-06 |
 | **Reviewer** | None — supreme constitutional authority |
 | **ORGANIZATION.md Reference** | Office 01 |
+| **Operating Model** | Autonomous decision-package preparation; human Founder retains every protected decision |
 
 ---
 
@@ -97,8 +98,9 @@ Institutions in the engineering governance domain are referred to as "Offices" i
 | **Offering Scope** | Reference Architecture · Domain Model · ADRs |
 | **Charter Date** | 2026-07-06 |
 | **Operational Since** | 2026-07-06 |
-| **Reviewer** | Business Architect (INST-003) · Constitutional Analyst (INST-002) |
+| **Reviewer** | Founder-requested expertise only: Business Architect (INST-003) · Constitutional Analyst (INST-002) |
 | **ORGANIZATION.md Reference** | Office 04 |
+| **Operating Model** | Evidence-derived, research-aware autonomous architecture method in ORGANIZATION.md |
 
 **Agent Request Guide:**
 
@@ -127,8 +129,9 @@ Institutions in the engineering governance domain are referred to as "Offices" i
 | **Offering Scope** | Component specs · API contracts · Data contracts · Integration patterns |
 | **Charter Date** | 2026-07-06 |
 | **Operational Since** | 2026-07-06 |
-| **Reviewer** | Enterprise Architect (INST-004) |
+| **Reviewer** | Founder-requested Enterprise Architect expertise (INST-004) |
 | **ORGANIZATION.md Reference** | Office 05 |
+| **Operating Model** | Contract-first autonomous decomposition and implementation-readiness test in ORGANIZATION.md |
 
 ---
 
@@ -199,8 +202,9 @@ Institutions in the engineering governance domain are referred to as "Offices" i
 | **Offering Scope** | Deployment architecture · Environment topology · IaC strategy · CI/CD design · Observability architecture |
 | **Charter Date** | 2026-07-06 |
 | **Operational Since** | 2026-07-06 |
-| **Reviewer** | Enterprise Architect (INST-004) |
+| **Reviewer** | Founder-requested Enterprise Architect expertise (INST-004) |
 | **ORGANIZATION.md Reference** | Office 09 |
+| **Operating Model** | Azure Well-Architected, evidence-first cloud design method in ORGANIZATION.md |
 
 ---
 
@@ -217,17 +221,17 @@ Institutions in the engineering governance domain are referred to as "Offices" i
 | **Offering Scope** | Source code · Unit/integration tests · Documentation · Database migrations · Deployment manifests |
 | **Charter Date** | 2026-07-06 |
 | **Operational Since** | 2026-07-06 |
-| **Reviewer** | Solution Architect (INST-005) · Platform Architect (INST-009) |
+| **Reviewer** | Founder-requested expertise only: Solution Architect (INST-005) · Platform Architect (INST-009) |
 | **ORGANIZATION.md Reference** | Office 10 |
+| **Operating Agent Designation** | WAOOAW AI Agent — Platform IT Expert for authorized platform, DevOps/CI-CD, and cloud-delivery Work Contracts; not a separate Institution |
+| **Operating Model** | Contract-bounded autonomous implementation, author review, and Founder-gated PR approval/merge |
 
-**Two-Hat Operation (autonomous sprint — C-065):**
+**Founder-Gated PR Operation (C-065):**
 
-| Hat | Identity | Operation |
-|---|---|---|
-| Author | `GITHUB_TOKEN` (GitHub Actions) | Generates code · commits · opens PR |
-| Reviewer | `waooaw-reviewer` GitHub App (Key Vault) | Reviews PR · formal approval · auto-merge |
-
-These are different constitutional identities. C-065 (SDLC Separation) is satisfied at the GitHub platform level. CODEOWNERS authorizes the reviewer App to approve and merge `src/`, `tests/`, `scripts/`, `web/` without Founder involvement (C-066 Tier 2A).
+The assigned agent may author, test, perform author review, commit, push, and open or update a PR.
+Automated checks and independent quality campaigns may produce technical evidence, but they may not
+approve or merge the author's work. The human Founder is the approval and merge identity unless a
+future ratified instrument explicitly changes that protected boundary.
 
 **Agent Request Guide:**
 
@@ -382,11 +386,12 @@ Constitutional Instruments are not standard WIOM-inheriting operational Institut
 | **Offering Scope** | Independent quality campaigns · CCT/acceptance proof · test-strength and evidence-authenticity assessment · contract/security/performance/resilience/recovery/promotion/accessibility qualification · quality recommendations |
 | **Charter Date** | 2026-08-14 |
 | **Operational Since** | Pending — Stage W-3 Operational Readiness Declaration required |
-| **Reviewer** | Enterprise Architect (INST-004) · fresh Constitutional Analyst (INST-002) · Founder (INST-001) for activation |
+| **Reviewer** | Founder-requested domain expertise only; Founder (INST-001) retains activation |
 | **Founding AVD** | avd/AVD-002-test-champion-v1.0.md |
 | **Ratification** | FA-050; R-134, R-135, R-136; reviewed v0.2 SHA-256 `7172b36cfb7cfe6737f5c275644cd0a94d919f973f12aa1da7ebc2cc206c050a` |
 | **ORGANIZATION.md Reference** | Office 14 |
 | **Constitutional Obligation** | May not implement production behavior, weaken evidence or gates, accept protected risk/targets, deploy, merge, activate itself, or be sole author, executor, custodian, reviewer, and acceptor of one material campaign. |
+| **Operating Model** | Risk/change-impact-led minimum-sufficient qualification in ORGANIZATION.md and the Test Champion specification |
 
 INST-015 may participate only in capability-development work explicitly routed for Stage W-2. It
 may not accept customer or external Goal contributions until a Founder-ratified Operational
@@ -406,6 +411,7 @@ Readiness Declaration changes its status to OPERATIONAL.
 | 2026-07-27 | AMENDMENT-002 (Derived Knowledge Principle) ratified | Founder ratification — GOAL-001 Phase 5 | Constitutional Analyst (INST-002) |
 | 2026-07-27 | INST-014 (Engineering Intelligence — RepoNav) chartered — Stage W-2 | Founder ratification via AVD-001-v1.0 — GOAL-001 Phase 5 | Business Architect (INST-003) |
 | 2026-08-14 | INST-015 (Quality Assurance and Test Engineering) chartered — Stage W-2 | FA-050 — AVD-002 v1.0 after R-134/R-135/R-136 | Founder (INST-001) |
+| 2026-10-06 | Reconciled operating-method references and obsolete agent auto-approval/merge language only; no Decision Space, Offering Scope, status, or Code of Conduct change | WC-106 Founder instruction — specification authority only | Enterprise Architect (INST-004) |
 
 ---
 

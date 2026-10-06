@@ -64,6 +64,18 @@ Coverage:         NN% (threshold: NN%)
 
 ---
 
+## Release Qualification Control
+
+<!--
+ON: run release qualification when changed paths require it.
+OFF: skip the costly release qualification for this PR. OFF requires an explicit Founder authority
+record below. Pushes to main always retain their required qualification behavior.
+-->
+**Release Qualification:** ON
+**Release Qualification Authority:** N/A
+
+---
+
 ## Author Review
 
 <!--

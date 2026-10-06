@@ -25,6 +25,7 @@ from prepare_pr_body import (  # noqa: E402
     preparation_head,
     prepare_body,
     pull_request_body,
+    release_qualification_enabled,
     release_qualification_gate_required,
     run_ci_prechecks,
     runner_digest,
@@ -90,7 +91,13 @@ def test_main_runs_costly_prechecks_only_after_static_validation(
     expected_calls: int,
 ) -> None:
     body_file = tmp_path / "pr-body.md"
-    body_file.write_text("## Author Review\n\nPending.\n", encoding="utf-8")
+    body_file.write_text(
+        "## Release Qualification Control\n\n"
+        "**Release Qualification:** ON\n"
+        "**Release Qualification Authority:** N/A\n\n"
+        "## Author Review\n\nPending.\n",
+        encoding="utf-8",
+    )
     costly_calls: list[tuple[object, ...]] = []
     monkeypatch.setattr(
         sys,
@@ -357,6 +364,45 @@ def test_release_qualification_gate_matches_ci_change_paths() -> None:
 
 def test_release_qualification_gate_ignores_application_only_paths() -> None:
     assert not release_qualification_gate_required(["web/components/auth/LoginView.tsx"])
+
+
+def test_release_qualification_switch_accepts_default_on() -> None:
+    body = "**Release Qualification:** ON\n**Release Qualification Authority:** N/A\n"
+    assert release_qualification_enabled(body)
+
+
+def test_release_qualification_switch_allows_founder_authorized_off() -> None:
+    body = (
+        "**Release Qualification:** OFF\n"
+        "**Release Qualification Authority:** Founder instruction - WC-111\n"
+    )
+    assert not release_qualification_enabled(body)
+
+
+@pytest.mark.parametrize("authority", ("", "N/A", "NONE", "TBD"))
+def test_release_qualification_off_rejects_missing_or_placeholder_authority(
+    authority: str,
+) -> None:
+    body = (
+        "**Release Qualification:** OFF\n"
+        f"**Release Qualification Authority:** {authority}\n"
+    )
+    with pytest.raises(ValueError, match="Founder authority"):
+        release_qualification_enabled(body)
+
+
+@pytest.mark.parametrize(
+    "body",
+    (
+        "**Release Qualification Authority:** Founder instruction - WC-111\n",
+        "**Release Qualification:** ON\n"
+        "**Release Qualification:** OFF\n"
+        "**Release Qualification Authority:** Founder instruction - WC-111\n",
+    ),
+)
+def test_release_qualification_switch_rejects_missing_or_duplicate_mode(body: str) -> None:
+    with pytest.raises(ValueError, match="exactly one"):
+        release_qualification_enabled(body)
 
 
 def test_expected_pr_labels_include_lifecycle_and_branch_tier() -> None:
