@@ -2,13 +2,12 @@
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { signIn, signOut } from 'next-auth/react';
+import { signOut } from 'next-auth/react';
 import { AccountSwitchCommand, SignOutCommand } from './SignOutCommand';
 
-jest.mock('next-auth/react', () => ({ signIn: jest.fn(), signOut: jest.fn() }));
+jest.mock('next-auth/react', () => ({ signOut: jest.fn() }));
 
 beforeEach(() => {
-  jest.mocked(signIn).mockReset();
   jest.mocked(signOut).mockReset().mockResolvedValue({ url: '' });
 });
 
@@ -46,48 +45,48 @@ it('clears WAOOAW protected state before ending the session', () => {
 
 it('revokes prior server sessions before requesting a different Keycloak account', async () => {
   const fetchMock = jest.fn().mockResolvedValue({ ok: true });
+  const navigate = jest.fn();
   Object.defineProperty(globalThis, 'fetch', { configurable: true, value: fetchMock });
   sessionStorage.setItem('waooaw:relationship:draft', 'prior customer text');
   localStorage.setItem('waooaw:conversation:relationship-b:draft', 'prior account text');
   localStorage.setItem('unrelated-preference', 'retain');
-  render(<AccountSwitchCommand label="Switch account" />);
+  render(<AccountSwitchCommand label="Switch account" navigate={navigate} />);
   fireEvent.click(screen.getByRole('button', { name: 'Switch account' }));
   expect(sessionStorage.getItem('waooaw:relationship:draft')).toBeNull();
   expect(localStorage.getItem('waooaw:conversation:relationship-b:draft')).toBeNull();
   expect(localStorage.getItem('waooaw:identity:session-change')).toBeNull();
   expect(localStorage.getItem('unrelated-preference')).toBe('retain');
   expect(fetchMock).toHaveBeenCalledWith('/api/identity/sessions', expect.objectContaining({ method: 'DELETE' }));
-  await waitFor(() =>
-    expect(signIn).toHaveBeenCalledWith('keycloak-google', { callbackUrl: '/home' }, { prompt: 'select_account' })
-  );
+  await waitFor(() => expect(navigate).toHaveBeenCalledWith('/login?returnTo=%2Fhome&switch=1'));
   expect(signOut).toHaveBeenCalledWith({ redirect: false });
 });
 
 it.each([401, 403])('switches account when prior backend authority is already absent (%s)', async (status) => {
+  const navigate = jest.fn();
   Object.defineProperty(globalThis, 'fetch', {
     configurable: true,
     value: jest.fn().mockResolvedValue({ ok: false, status }),
   });
-  render(<AccountSwitchCommand label="Switch account" />);
+  render(<AccountSwitchCommand label="Switch account" navigate={navigate} />);
 
   fireEvent.click(screen.getByRole('button', { name: 'Switch account' }));
 
   await waitFor(() => expect(signOut).toHaveBeenCalledWith({ redirect: false }));
-  expect(signIn).toHaveBeenCalledWith('keycloak-google', { callbackUrl: '/home' }, { prompt: 'select_account' });
+  expect(navigate).toHaveBeenCalledWith('/login?returnTo=%2Fhome&switch=1');
 });
 
 it('does not launch account selection when prior-session revocation fails', async () => {
-  jest.mocked(signIn).mockClear();
+  const navigate = jest.fn();
   Object.defineProperty(globalThis, 'fetch', {
     configurable: true,
     value: jest.fn().mockResolvedValue({ ok: false, status: 503 }),
   });
-  render(<AccountSwitchCommand label="Switch account" />);
+  render(<AccountSwitchCommand label="Switch account" navigate={navigate} />);
 
   fireEvent.click(screen.getByRole('button', { name: 'Switch account' }));
 
   expect(await screen.findByRole('alert')).toHaveTextContent('Account switch could not start. Try again.');
-  expect(signIn).not.toHaveBeenCalled();
+  expect(navigate).not.toHaveBeenCalled();
 });
 
 it('falls back to local NextAuth sign-out when broker logout cannot start', async () => {

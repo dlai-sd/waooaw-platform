@@ -1,9 +1,9 @@
 // Implements: WC-088, infrastructure/postgres/init/32-relationship-skill-decisions.sql
 // constitutional_basis: C-005, C-007, C-023, C-026, C-059
 
-using Npgsql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Npgsql;
 using Testcontainers.PostgreSql;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
@@ -29,21 +29,46 @@ public sealed class Migration32PostgresIntegrationTests : IAsyncLifetime
         _ownerConnectionString = _container.GetConnectionString();
         await using var connection = new NpgsqlConnection(_ownerConnectionString);
         await connection.OpenAsync();
-        await ExecuteAsync(connection, "CREATE SCHEMA IF NOT EXISTS business; CREATE SCHEMA IF NOT EXISTS payload_store;");
-        await ExecuteAsync(connection, $"""
+        await ExecuteAsync(
+            connection,
+            "CREATE SCHEMA IF NOT EXISTS business; CREATE SCHEMA IF NOT EXISTS payload_store;"
+        );
+        await ExecuteAsync(
+            connection,
+            $"""
             DO $$ BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'business_app') THEN
                     CREATE ROLE business_app LOGIN PASSWORD '{Password}';
                 END IF;
             END $$;
             GRANT USAGE ON SCHEMA business, payload_store TO business_app;
-            """);
-        await ExecuteFileAsync(connection, "infrastructure/postgres/init/19-ae01-employment-relationship.sql");
-        await ExecuteAsync(connection, "ALTER TABLE business.employment_relationships ADD COLUMN acquisition_mode VARCHAR(8);");
-        await ExecuteFileAsync(connection, "infrastructure/postgres/init/20b-ae01-context-configuration.sql");
+            """
+        );
+        await ExecuteFileAsync(
+            connection,
+            "infrastructure/postgres/init/19-ae01-employment-relationship.sql"
+        );
+        await ExecuteAsync(
+            connection,
+            "ALTER TABLE business.employment_relationships ADD COLUMN acquisition_mode VARCHAR(8);"
+        );
+        await ExecuteFileAsync(
+            connection,
+            "infrastructure/postgres/init/20b-ae01-context-configuration.sql"
+        );
         await ExecuteFileAsync(connection, "infrastructure/postgres/init/25-agent-admission.sql");
-        await ExecuteFileAsync(connection, "infrastructure/postgres/init/31-agent-instance-binding.sql");
-        await ExecuteFileAsync(connection, "infrastructure/postgres/init/32-relationship-skill-decisions.sql");
+        await ExecuteFileAsync(
+            connection,
+            "infrastructure/postgres/init/31-agent-instance-binding.sql"
+        );
+        await ExecuteFileAsync(
+            connection,
+            "infrastructure/postgres/init/51-wc112-acquisition-contract-transfer.sql"
+        );
+        await ExecuteFileAsync(
+            connection,
+            "infrastructure/postgres/init/32-relationship-skill-decisions.sql"
+        );
         _businessConnectionString = new NpgsqlConnectionStringBuilder(_ownerConnectionString)
         {
             Username = "business_app",
@@ -53,7 +78,8 @@ public sealed class Migration32PostgresIntegrationTests : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        if (_container is not null) await _container.DisposeAsync();
+        if (_container is not null)
+            await _container.DisposeAsync();
     }
 
     [Fact]
@@ -68,7 +94,9 @@ public sealed class Migration32PostgresIntegrationTests : IAsyncLifetime
         await using (var owner = new NpgsqlConnection(_ownerConnectionString))
         {
             await owner.OpenAsync();
-            await ExecuteAsync(owner, $"""
+            await ExecuteAsync(
+                owner,
+                $"""
                 INSERT INTO business.employment_relationships
                     (relationship_id, tenant_id, professional_type, evaluation_intent_id, initiating_participant_id)
                 VALUES
@@ -87,24 +115,38 @@ public sealed class Migration32PostgresIntegrationTests : IAsyncLifetime
                 UPDATE business.relationship_skill_configuration
                 SET status = 'SELECTED'
                 WHERE configuration_id = '{configurationId:D}';
-                """);
+                """
+            );
 
-            var crossRelationship = await Assert.ThrowsAsync<PostgresException>(() => ExecuteAsync(owner, $"""
-                INSERT INTO business.relationship_skill_decisions
-                    (tenant_id, relationship_id, configuration_id, skill_id, skill_version,
-                     decision, actor_participant_id, expected_workspace_version, expected_subject_version,
-                     idempotency_key, material_request_hash, evidence_id)
-                VALUES ('{tenantId:D}', '{otherRelationshipId:D}', '{configurationId:D}',
-                    'local-seo', '1.0.0', 'SELECT_SKILL', gen_random_uuid(), 'relationship-1',
-                    'skill-1', gen_random_uuid(), repeat('b', 64), gen_random_uuid());
-                """));
+            var crossRelationship = await Assert.ThrowsAsync<PostgresException>(() =>
+                ExecuteAsync(
+                    owner,
+                    $"""
+                    INSERT INTO business.relationship_skill_decisions
+                        (tenant_id, relationship_id, configuration_id, skill_id, skill_version,
+                         decision, actor_participant_id, expected_workspace_version, expected_subject_version,
+                         idempotency_key, material_request_hash, evidence_id)
+                    VALUES ('{tenantId:D}', '{otherRelationshipId:D}', '{configurationId:D}',
+                        'local-seo', '1.0.0', 'SELECT_SKILL', gen_random_uuid(), 'relationship-1',
+                        'skill-1', gen_random_uuid(), repeat('b', 64), gen_random_uuid());
+                    """
+                )
+            );
             Assert.Equal(PostgresErrorCodes.ForeignKeyViolation, crossRelationship.SqlState);
 
-            var update = await Assert.ThrowsAsync<PostgresException>(() => ExecuteAsync(owner,
-                $"UPDATE business.relationship_skill_decisions SET decision = 'DEFER_SKILL' WHERE decision_id = '{decisionId:D}';"));
+            var update = await Assert.ThrowsAsync<PostgresException>(() =>
+                ExecuteAsync(
+                    owner,
+                    $"UPDATE business.relationship_skill_decisions SET decision = 'DEFER_SKILL' WHERE decision_id = '{decisionId:D}';"
+                )
+            );
             Assert.Contains("append-only", update.MessageText);
-            var delete = await Assert.ThrowsAsync<PostgresException>(() => ExecuteAsync(owner,
-                $"DELETE FROM business.relationship_skill_decisions WHERE decision_id = '{decisionId:D}';"));
+            var delete = await Assert.ThrowsAsync<PostgresException>(() =>
+                ExecuteAsync(
+                    owner,
+                    $"DELETE FROM business.relationship_skill_decisions WHERE decision_id = '{decisionId:D}';"
+                )
+            );
             Assert.Contains("append-only", delete.MessageText);
         }
 
@@ -112,7 +154,8 @@ public sealed class Migration32PostgresIntegrationTests : IAsyncLifetime
         await business.OpenAsync();
         await ExecuteAsync(business, $"SET app.current_tenant_id = '{otherTenantId:D}';");
         await using var command = business.CreateCommand();
-        command.CommandText = "SELECT count(*) FROM business.relationship_skill_decisions WHERE decision_id = @decision_id";
+        command.CommandText =
+            "SELECT count(*) FROM business.relationship_skill_decisions WHERE decision_id = @decision_id";
         command.Parameters.AddWithValue("decision_id", decisionId);
         Assert.Equal(0L, (long)(await command.ExecuteScalarAsync())!);
     }
@@ -126,14 +169,17 @@ public sealed class Migration32PostgresIntegrationTests : IAsyncLifetime
         await using (var owner = new NpgsqlConnection(_ownerConnectionString))
         {
             await owner.OpenAsync();
-            await ExecuteAsync(owner, $"""
+            await ExecuteAsync(
+                owner,
+                $"""
                 INSERT INTO business.employment_relationships
                     (relationship_id, tenant_id, professional_type, evaluation_intent_id, initiating_participant_id)
                 VALUES ('{relationshipId:D}', '{tenantId:D}', 'DMA', gen_random_uuid(), gen_random_uuid());
                 INSERT INTO business.relationship_skill_configuration
                     (configuration_id, tenant_id, relationship_id, skill_id, skill_version)
                 VALUES ('{configurationId:D}', '{tenantId:D}', '{relationshipId:D}', 'local-seo', '1.0.0');
-                """);
+                """
+            );
         }
         var options = new DbContextOptionsBuilder<EmploymentRelationshipDbContext>()
             .UseNpgsql(_ownerConnectionString)
@@ -146,20 +192,44 @@ public sealed class Migration32PostgresIntegrationTests : IAsyncLifetime
         await using (var db = await factory.CreateDbContextAsync())
         {
             skillVersion = RelationshipConfigurationService.GetSkillVersion(
-                await db.RelationshipSkillConfigurations.SingleAsync(item => item.ConfigurationId == configurationId));
+                await db.RelationshipSkillConfigurations.SingleAsync(item =>
+                    item.ConfigurationId == configurationId
+                )
+            );
         }
 
-        var results = await Task.WhenAll(Enumerable.Range(0, 2).Select(_ => service.DecideSkillAsync(
-            tenantId, relationshipId, Guid.NewGuid(), key, new string('f', 64), "relationship-0",
-            skillVersion, configurationId, "local-seo", "1.0.0", "ACCEPT_SKILL",
-            Guid.NewGuid(), CancellationToken.None)));
+        var results = await Task.WhenAll(
+            Enumerable
+                .Range(0, 2)
+                .Select(_ =>
+                    service.DecideSkillAsync(
+                        tenantId,
+                        relationshipId,
+                        Guid.NewGuid(),
+                        key,
+                        new string('f', 64),
+                        "relationship-0",
+                        skillVersion,
+                        configurationId,
+                        "local-seo",
+                        "1.0.0",
+                        "ACCEPT_SKILL",
+                        Guid.NewGuid(),
+                        CancellationToken.None
+                    )
+                )
+        );
 
         Assert.Equal(results[0].Decision.DecisionId, results[1].Decision.DecisionId);
         Assert.Single(results, result => result.Replayed);
         Assert.Equal(1, gateway.CallCount);
         await using var verificationDb = await factory.CreateDbContextAsync();
-        Assert.Equal(1, await verificationDb.RelationshipSkillDecisions.CountAsync(
-            item => item.TenantId == tenantId && item.RelationshipId == relationshipId));
+        Assert.Equal(
+            1,
+            await verificationDb.RelationshipSkillDecisions.CountAsync(item =>
+                item.TenantId == tenantId && item.RelationshipId == relationshipId
+            )
+        );
     }
 
     private static async Task ExecuteAsync(NpgsqlConnection connection, string sql)
@@ -170,7 +240,10 @@ public sealed class Migration32PostgresIntegrationTests : IAsyncLifetime
     }
 
     private static async Task ExecuteFileAsync(NpgsqlConnection connection, string relativePath) =>
-        await ExecuteAsync(connection, await File.ReadAllTextAsync(RepositoryPaths.Resolve(relativePath)));
+        await ExecuteAsync(
+            connection,
+            await File.ReadAllTextAsync(RepositoryPaths.Resolve(relativePath))
+        );
 
     private sealed class CountingGateway : IRelationshipConstitutionalGateway
     {
@@ -178,8 +251,14 @@ public sealed class Migration32PostgresIntegrationTests : IAsyncLifetime
         public int CallCount => _callCount;
 
         public async Task<Guid> AuthorizeAndRecordAsync(
-            Guid tenantId, Guid relationshipId, string professionalType, string actionType,
-            Guid correlationId, object actionParameters, CancellationToken cancellationToken)
+            Guid tenantId,
+            Guid relationshipId,
+            string professionalType,
+            string actionType,
+            Guid correlationId,
+            object actionParameters,
+            CancellationToken cancellationToken
+        )
         {
             Interlocked.Increment(ref _callCount);
             await Task.Delay(100, cancellationToken);

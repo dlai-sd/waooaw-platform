@@ -20,6 +20,7 @@ class TrialStartResult:
 class TrialStatus:
     trial_id: uuid.UUID
     agent_type: str
+    agent_version: str
     started_at: datetime
     expires_at: datetime
     status: str

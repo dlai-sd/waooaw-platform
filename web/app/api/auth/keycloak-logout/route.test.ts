@@ -1,7 +1,11 @@
 /** @jest-environment node */
 
 jest.mock('next-auth/jwt', () => ({ getToken: jest.fn() }));
+jest.mock('@/lib/identity-security-events', () => ({
+  recordWebIdentitySecurityEvent: jest.fn(),
+}));
 
+import { recordWebIdentitySecurityEvent } from '@/lib/identity-security-events';
 import { getToken } from 'next-auth/jwt';
 import { NextRequest } from 'next/server';
 import { GET, POST } from './route';
@@ -93,17 +97,20 @@ describe('Keycloak logout route', () => {
       expect.objectContaining({
         method: 'DELETE',
         cache: 'no-store',
-        headers: expect.objectContaining({ Authorization: 'Bearer server-held-access-token' }),
+        headers: expect.objectContaining({
+          Authorization: 'Bearer server-held-access-token',
+        }),
       })
     );
   });
 
   it('redeems the continuation server-side before clearing the session and redirecting', async () => {
     const nonce = '934aca5d-658e-4672-a555-313e88fa49a6';
+    const correlationId = '11111111-1111-4111-8111-111111111111';
     const response = await GET(
       new NextRequest(`https://app.example/api/auth/keycloak-logout?nonce=${nonce}`, {
         headers: {
-          cookie: `waooaw.logout-continuation=${nonce}; next-auth.session-token=local-session`,
+          cookie: `waooaw.logout-continuation=${nonce}; waooaw.logout-correlation=${correlationId}; next-auth.session-token=local-session`,
         },
       })
     );
@@ -116,6 +123,16 @@ describe('Keycloak logout route', () => {
       'waooaw.logout-continuation=; Path=/api/auth/keycloak-logout;'
     );
     expect(response.headers.get('set-cookie')).toContain('next-auth.session-token=;');
+    expect(recordWebIdentitySecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'LOGOUT_REQUEST',
+        outcome: 'ATTEMPTED',
+        reasonCode: 'IDP_LOGOUT_REDIRECT_STARTED',
+      })
+    );
+    expect(recordWebIdentitySecurityEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: 'LOGOUT_COMPLETION' })
+    );
   });
 
   it('rejects an invalid logout continuation without reading the session', async () => {

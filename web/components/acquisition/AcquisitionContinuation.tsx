@@ -15,10 +15,12 @@ export type AcquisitionContinuationProps = {
   disclosureRevision: string;
   termsVersion: string;
   idempotencyKey: string;
+  contractAcceptance: 'ACCEPT_EMPLOYMENT_CONTRACT';
   couponCode?: string;
 };
 
 interface CheckoutOutcome {
+  code?: string;
   outcome_kind?: string;
   checkout_intent_id?: string;
   provider_order_reference?: string;
@@ -84,7 +86,23 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
   );
   const [busy, setBusy] = useState(true);
   const [retryable, setRetryable] = useState(false);
+  const [registrationRequired, setRegistrationRequired] = useState(false);
   const [pendingPayment, setPendingPayment] = useState<RazorpaySuccessResponse | null>(null);
+
+  async function cancelHireCheckout() {
+    try {
+      const response = await fetch('/api/acquisition/hire-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...props, action: 'cancel' }),
+      });
+      if (!response.ok) {
+        setStatus('Razorpay Checkout closed, but coupon release is unresolved. Do not start another Hire yet.');
+      }
+    } catch {
+      setStatus('Razorpay Checkout closed, but coupon release could not be confirmed. Do not start another Hire yet.');
+    }
+  }
 
   async function continueTrial() {
     const response = await fetch('/api/acquisition/continue', {
@@ -94,7 +112,11 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
     });
     const result = (await response.json().catch(() => ({}))) as CheckoutOutcome & { code?: string };
     if (!response.ok || !result.resumePath) {
-      throw new AcquisitionResponseError({ code: result.code, status: response.status, title: result.title });
+      throw new AcquisitionResponseError({
+        code: result.code,
+        status: response.status,
+        title: result.title,
+      });
     }
     router.replace(result.resumePath);
   }
@@ -102,6 +124,7 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
   async function startTrial() {
     setBusy(true);
     setRetryable(false);
+    setRegistrationRequired(false);
     setStatus('Preparing your trial workspace...');
     try {
       await continueTrial();
@@ -109,6 +132,7 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
       const response = error instanceof AcquisitionResponseError ? error.response : null;
       setStatus(response?.title ?? 'We could not continue yet.');
       setBusy(false);
+      setRegistrationRequired(response?.code === 'REGISTRATION_REQUIRED');
       setRetryable(response?.status === 503);
     }
   }
@@ -142,6 +166,7 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
   async function startHireCheckout() {
     setBusy(true);
     setRetryable(false);
+    setRegistrationRequired(false);
     setStatus('Opening secure Razorpay Checkout...');
     try {
       const response = await fetch('/api/acquisition/hire-checkout', {
@@ -150,7 +175,12 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
         body: JSON.stringify({ ...props, action: 'start' }),
       });
       const outcome = (await response.json().catch(() => ({}))) as CheckoutOutcome;
-      if (!response.ok) throw new AcquisitionResponseError({ status: response.status, title: outcome.title });
+      if (!response.ok)
+        throw new AcquisitionResponseError({
+          code: outcome.code,
+          status: response.status,
+          title: outcome.title,
+        });
       if (outcome.resumePath) {
         router.replace(outcome.resumePath);
         return;
@@ -196,7 +226,8 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
           ondismiss: () => {
             setStatus('Razorpay Checkout was closed. No Hire was started.');
             setBusy(false);
-            setRetryable(true);
+            setRetryable(false);
+            void cancelHireCheckout();
           },
         },
       });
@@ -212,6 +243,7 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
       const response = error instanceof AcquisitionResponseError ? error.response : null;
       setStatus(response?.title ?? (error instanceof Error ? error.message : 'Secure checkout is unavailable.'));
       setBusy(false);
+      setRegistrationRequired(response?.code === 'REGISTRATION_REQUIRED');
       setRetryable(response?.status === 503);
     }
   }
@@ -225,13 +257,28 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const registrationReturnTo = `/marketplace?${new URLSearchParams({
+    professionalType: props.professionalType,
+    version: props.professionalVersion,
+    intent: props.intent,
+    disclosureRevision: props.disclosureRevision,
+    termsVersion: props.termsVersion,
+    idempotencyKey: props.idempotencyKey,
+    ...(props.couponCode ? { couponCode: props.couponCode } : {}),
+  }).toString()}`;
+
   return (
     <section className="portal-status" aria-live="polite">
       {busy ? <LoaderCircle aria-hidden="true" className="spin" /> : <CircleAlert aria-hidden="true" />}
       <h2>{props.intent === 'hire' ? 'Secure payment' : 'Starting your trial'}</h2>
       <p>{status}</p>
-      {!busy ? (
+      {busy ? null : (
         <div className="command-row">
+          {registrationRequired ? (
+            <Link className="primary-command" href={`/register?returnTo=${encodeURIComponent(registrationReturnTo)}`}>
+              Complete registration
+            </Link>
+          ) : null}
           {retryable ? (
             <button
               className="primary-command"
@@ -255,7 +302,7 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
             Cancel
           </Link>
         </div>
-      ) : null}
+      )}
     </section>
   );
 }

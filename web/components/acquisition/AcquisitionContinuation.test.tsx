@@ -12,6 +12,7 @@ const props: AcquisitionContinuationProps = {
   disclosureRevision: '1.0.0',
   termsVersion: '2026-07-18',
   idempotencyKey: '11111111-1111-4111-8111-111111111111',
+  contractAcceptance: 'ACCEPT_EMPLOYMENT_CONTRACT',
 };
 
 function getRazorpayScript() {
@@ -34,14 +35,37 @@ describe('AcquisitionContinuation', () => {
   it('keeps Trial paymentless and follows only the server resume path', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ resumePath: '/relationships/22222222-2222-4222-8222-222222222222' }),
+      json: async () => ({
+        resumePath: '/relationships/22222222-2222-4222-8222-222222222222',
+      }),
     });
+
     render(<AcquisitionContinuation {...props} />);
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/relationships/22222222-2222-4222-8222-222222222222'));
     expect(jest.mocked(fetch)).toHaveBeenCalledWith(
       '/api/acquisition/continue',
       expect.objectContaining({ method: 'POST', body: JSON.stringify(props) })
+    );
+  });
+
+  it('offers Registration with the exact persisted Trial continuation target', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: async () => ({
+        code: 'REGISTRATION_REQUIRED',
+        title: 'Complete registration before starting a professional.',
+      }),
+    }) as jest.Mock;
+
+    render(<AcquisitionContinuation {...props} />);
+
+    expect(await screen.findByRole('link', { name: 'Complete registration' })).toHaveAttribute(
+      'href',
+      `/register?returnTo=${encodeURIComponent(
+        '/marketplace?professionalType=DIGITAL_MARKETING_LOCAL_SERVICE&version=1.0.0&intent=trial&disclosureRevision=1.0.0&termsVersion=2026-07-18&idempotencyKey=11111111-1111-4111-8111-111111111111'
+      )}`
     );
   });
 
@@ -69,7 +93,9 @@ describe('AcquisitionContinuation', () => {
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ resumePath: '/relationships/22222222-2222-4222-8222-222222222222' }),
+        json: async () => ({
+          resumePath: '/relationships/22222222-2222-4222-8222-222222222222',
+        }),
       });
 
     render(<AcquisitionContinuation {...props} intent="hire" />);
@@ -144,7 +170,7 @@ describe('AcquisitionContinuation', () => {
     expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/marketplace');
   });
 
-  it('replays the same intent after Razorpay is dismissed', async () => {
+  it('cancels the same intent after Razorpay is dismissed so coupon capacity is released', async () => {
     let checkoutOptions: Record<string, unknown> | undefined;
     window.Razorpay = jest.fn().mockImplementation((options: Record<string, unknown>) => {
       checkoutOptions = options;
@@ -166,11 +192,15 @@ describe('AcquisitionContinuation', () => {
     render(<AcquisitionContinuation {...props} intent="hire" />);
     await waitFor(() => expect(checkoutOptions).toBeDefined());
     act(() => (checkoutOptions?.modal as { ondismiss: () => void }).ondismiss());
-    fireEvent.click(await screen.findByRole('button', { name: 'Open Razorpay Checkout' }));
 
     await waitFor(() => expect(jest.mocked(fetch)).toHaveBeenCalledTimes(2));
     expect(JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body)).idempotencyKey).toBe(props.idempotencyKey);
-    expect(JSON.parse(String(jest.mocked(fetch).mock.calls[1][1]?.body)).idempotencyKey).toBe(props.idempotencyKey);
+    expect(JSON.parse(String(jest.mocked(fetch).mock.calls[1][1]?.body))).toEqual(
+      expect.objectContaining({
+        idempotencyKey: props.idempotencyKey,
+        action: 'cancel',
+      })
+    );
   });
 
   it('rejects an invalid Razorpay callback and permits the same checkout to be retried', async () => {
@@ -229,10 +259,15 @@ describe('AcquisitionContinuation', () => {
           merchant_display_name: 'WAOOAW',
         }),
       })
-      .mockResolvedValueOnce({ ok: false, json: async () => ({ title: 'Payment is still reconciling.' }) })
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ title: 'Payment is still reconciling.' }),
+      })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ resumePath: '/relationships/22222222-2222-4222-8222-222222222222' }),
+        json: async () => ({
+          resumePath: '/relationships/22222222-2222-4222-8222-222222222222',
+        }),
       });
 
     render(<AcquisitionContinuation {...props} intent="hire" />);
@@ -294,11 +329,15 @@ describe('AcquisitionContinuation', () => {
       .mockResolvedValueOnce({
         ok: false,
         status: 503,
-        json: async () => ({ title: 'Customer service is temporarily unavailable.' }),
+        json: async () => ({
+          title: 'Customer service is temporarily unavailable.',
+        }),
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ resumePath: '/relationships/22222222-2222-4222-8222-222222222222' }),
+        json: async () => ({
+          resumePath: '/relationships/22222222-2222-4222-8222-222222222222',
+        }),
       });
 
     render(<AcquisitionContinuation {...props} />);

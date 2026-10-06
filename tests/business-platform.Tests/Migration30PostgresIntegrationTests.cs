@@ -1,9 +1,9 @@
 // Implements: WC-085 D-GOAL, infrastructure/postgres/init/30-relationship-goal-decisions.sql
 // constitutional_basis: C-005, C-007, C-023, C-026, C-059, C-063
 
-using Npgsql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Npgsql;
 using Testcontainers.PostgreSql;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
@@ -30,21 +30,57 @@ public sealed class Migration30PostgresFixture : IAsyncLifetime
         OwnerConnectionString = _container.GetConnectionString();
         await using var connection = new NpgsqlConnection(OwnerConnectionString);
         await connection.OpenAsync();
-        await ExecuteAsync(connection, "CREATE SCHEMA IF NOT EXISTS business; CREATE SCHEMA IF NOT EXISTS payload_store;");
-        await ExecuteAsync(connection, $"""
+        await ExecuteAsync(
+            connection,
+            "CREATE SCHEMA IF NOT EXISTS business; CREATE SCHEMA IF NOT EXISTS payload_store;"
+        );
+        await ExecuteAsync(
+            connection,
+            $"""
             DO $$ BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'business_app') THEN
                     CREATE ROLE business_app LOGIN PASSWORD '{Password}';
                 END IF;
             END $$;
             GRANT USAGE ON SCHEMA business TO business_app;
-            """);
-        await ExecuteFileAsync(connection, RepositoryPaths.Resolve("infrastructure/postgres/init/19-ae01-employment-relationship.sql"));
-        await ExecuteAsync(connection, "ALTER TABLE business.employment_relationships ADD COLUMN acquisition_mode VARCHAR(8);");
-        await ExecuteFileAsync(connection, RepositoryPaths.Resolve("infrastructure/postgres/init/20b-ae01-context-configuration.sql"));
-        await ExecuteFileAsync(connection, RepositoryPaths.Resolve("infrastructure/postgres/init/25-agent-admission.sql"));
-        await ExecuteFileAsync(connection, RepositoryPaths.Resolve("infrastructure/postgres/init/30-relationship-goal-decisions.sql"));
-        await ExecuteFileAsync(connection, RepositoryPaths.Resolve("infrastructure/postgres/init/31-agent-instance-binding.sql"));
+            """
+        );
+        await ExecuteFileAsync(
+            connection,
+            RepositoryPaths.Resolve(
+                "infrastructure/postgres/init/19-ae01-employment-relationship.sql"
+            )
+        );
+        await ExecuteAsync(
+            connection,
+            "ALTER TABLE business.employment_relationships ADD COLUMN acquisition_mode VARCHAR(8);"
+        );
+        await ExecuteFileAsync(
+            connection,
+            RepositoryPaths.Resolve(
+                "infrastructure/postgres/init/20b-ae01-context-configuration.sql"
+            )
+        );
+        await ExecuteFileAsync(
+            connection,
+            RepositoryPaths.Resolve("infrastructure/postgres/init/25-agent-admission.sql")
+        );
+        await ExecuteFileAsync(
+            connection,
+            RepositoryPaths.Resolve(
+                "infrastructure/postgres/init/30-relationship-goal-decisions.sql"
+            )
+        );
+        await ExecuteFileAsync(
+            connection,
+            RepositoryPaths.Resolve("infrastructure/postgres/init/31-agent-instance-binding.sql")
+        );
+        await ExecuteFileAsync(
+            connection,
+            RepositoryPaths.Resolve(
+                "infrastructure/postgres/init/51-wc112-acquisition-contract-transfer.sql"
+            )
+        );
         BusinessConnectionString = new NpgsqlConnectionStringBuilder(OwnerConnectionString)
         {
             Username = "business_app",
@@ -54,7 +90,8 @@ public sealed class Migration30PostgresFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        if (_container is not null) await _container.DisposeAsync();
+        if (_container is not null)
+            await _container.DisposeAsync();
     }
 
     public static async Task ExecuteAsync(NpgsqlConnection connection, string sql)
@@ -69,7 +106,8 @@ public sealed class Migration30PostgresFixture : IAsyncLifetime
 }
 
 [CollectionDefinition("Migration30Postgres")]
-public sealed class Migration30PostgresCollection : ICollectionFixture<Migration30PostgresFixture> { }
+public sealed class Migration30PostgresCollection
+    : ICollectionFixture<Migration30PostgresFixture> { }
 
 [Collection("Migration30Postgres")]
 public sealed class Migration30PostgresIntegrationTests(Migration30PostgresFixture fixture)
@@ -80,8 +118,7 @@ public sealed class Migration30PostgresIntegrationTests(Migration30PostgresFixtu
         await using var connection = new NpgsqlConnection(fixture.BusinessConnectionString);
         await connection.OpenAsync();
         await using var command = connection.CreateCommand();
-        command.CommandText =
-            "SELECT has_schema_privilege(current_user, 'payload_store', 'USAGE')";
+        command.CommandText = "SELECT has_schema_privilege(current_user, 'payload_store', 'USAGE')";
 
         Assert.True((bool?)await command.ExecuteScalarAsync());
     }
@@ -96,7 +133,9 @@ public sealed class Migration30PostgresIntegrationTests(Migration30PostgresFixtu
         await using (var owner = new NpgsqlConnection(fixture.OwnerConnectionString))
         {
             await owner.OpenAsync();
-            await Migration30PostgresFixture.ExecuteAsync(owner, $"""
+            await Migration30PostgresFixture.ExecuteAsync(
+                owner,
+                $"""
                 INSERT INTO business.employment_relationships
                     (relationship_id, tenant_id, professional_type, evaluation_intent_id,
                      initiating_participant_id, state, state_version)
@@ -107,7 +146,8 @@ public sealed class Migration30PostgresIntegrationTests(Migration30PostgresFixtu
                 INSERT INTO business.relationship_skill_configuration
                     (tenant_id, relationship_id, skill_id, skill_version, goal_id, status)
                 VALUES ('{tenantId:D}', '{relationshipId:D}', 'local-seo', '1.0.0', '{goalId:D}', 'ACCEPTED');
-                """);
+                """
+            );
         }
         var options = new DbContextOptionsBuilder<EmploymentRelationshipDbContext>()
             .UseNpgsql(fixture.OwnerConnectionString)
@@ -121,23 +161,53 @@ public sealed class Migration30PostgresIntegrationTests(Migration30PostgresFixtu
         await using (var db = await factory.CreateDbContextAsync())
         {
             goalVersion = RelationshipConfigurationService.GetGoalVersion(
-                await db.RelationshipGoals.SingleAsync(item => item.GoalId == goalId));
+                await db.RelationshipGoals.SingleAsync(item => item.GoalId == goalId)
+            );
         }
 
         var results = await Task.WhenAll(
             service.VerifyGoalAsync(
-                tenantId, relationshipId, actorId, key, hash, "relationship-1", goalVersion,
-                goalId, goalVersion, "VERIFIED", null, Guid.NewGuid(), CancellationToken.None),
+                tenantId,
+                relationshipId,
+                actorId,
+                key,
+                hash,
+                "relationship-1",
+                goalVersion,
+                goalId,
+                goalVersion,
+                "VERIFIED",
+                null,
+                Guid.NewGuid(),
+                CancellationToken.None
+            ),
             service.VerifyGoalAsync(
-                tenantId, relationshipId, actorId, key, hash, "relationship-1", goalVersion,
-                goalId, goalVersion, "VERIFIED", null, Guid.NewGuid(), CancellationToken.None));
+                tenantId,
+                relationshipId,
+                actorId,
+                key,
+                hash,
+                "relationship-1",
+                goalVersion,
+                goalId,
+                goalVersion,
+                "VERIFIED",
+                null,
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
 
         Assert.Equal(results[0].Decision.DecisionId, results[1].Decision.DecisionId);
         Assert.Single(results, result => result.Replayed);
         Assert.Equal(1, gateway.CallCount);
         await using var verificationDb = await factory.CreateDbContextAsync();
-        Assert.Equal(1, await verificationDb.RelationshipGoalDecisions.CountAsync(
-            item => item.TenantId == tenantId && item.RelationshipId == relationshipId));
+        Assert.Equal(
+            1,
+            await verificationDb.RelationshipGoalDecisions.CountAsync(item =>
+                item.TenantId == tenantId && item.RelationshipId == relationshipId
+            )
+        );
     }
 
     [Fact]
@@ -151,7 +221,9 @@ public sealed class Migration30PostgresIntegrationTests(Migration30PostgresFixtu
         await using (var owner = new NpgsqlConnection(fixture.OwnerConnectionString))
         {
             await owner.OpenAsync();
-            await Migration30PostgresFixture.ExecuteAsync(owner, $"""
+            await Migration30PostgresFixture.ExecuteAsync(
+                owner,
+                $"""
                 INSERT INTO business.employment_relationships
                     (relationship_id, tenant_id, professional_type, evaluation_intent_id,
                      initiating_participant_id, state, state_version)
@@ -167,31 +239,49 @@ public sealed class Migration30PostgresIntegrationTests(Migration30PostgresFixtu
                 VALUES ('{decisionId:D}', '{tenantId:D}', '{relationshipId:D}', '{goalId:D}', 'goal-1',
                     'local-seo', '1.0.0', 'Confirmed bookings', 2, 'VERIFIED',
                     gen_random_uuid(), 'relationship-1', 'goal-1', gen_random_uuid(), repeat('a', 64), gen_random_uuid());
-                """);
+                """
+            );
 
-            var update = await Assert.ThrowsAsync<PostgresException>(() => Migration30PostgresFixture.ExecuteAsync(
-                owner, $"UPDATE business.relationship_goal_decisions SET decision = 'CHANGES_REQUESTED' WHERE decision_id = '{decisionId:D}';"));
+            var update = await Assert.ThrowsAsync<PostgresException>(() =>
+                Migration30PostgresFixture.ExecuteAsync(
+                    owner,
+                    $"UPDATE business.relationship_goal_decisions SET decision = 'CHANGES_REQUESTED' WHERE decision_id = '{decisionId:D}';"
+                )
+            );
             Assert.Contains("append-only", update.MessageText);
-            var delete = await Assert.ThrowsAsync<PostgresException>(() => Migration30PostgresFixture.ExecuteAsync(
-                owner, $"DELETE FROM business.relationship_goal_decisions WHERE decision_id = '{decisionId:D}';"));
+            var delete = await Assert.ThrowsAsync<PostgresException>(() =>
+                Migration30PostgresFixture.ExecuteAsync(
+                    owner,
+                    $"DELETE FROM business.relationship_goal_decisions WHERE decision_id = '{decisionId:D}';"
+                )
+            );
             Assert.Contains("append-only", delete.MessageText);
-            await Assert.ThrowsAsync<PostgresException>(() => Migration30PostgresFixture.ExecuteAsync(owner, $"""
-                INSERT INTO business.relationship_goal_decisions
-                    (tenant_id, relationship_id, goal_id, goal_version, skill_id, skill_version,
-                     measure, review_cadence_months, decision, actor_participant_id,
-                     expected_workspace_version, expected_subject_version, idempotency_key,
-                     material_request_hash, evidence_id)
-                VALUES ('{tenantId:D}', '{relationshipId:D}', '{goalId:D}', 'goal-1', 'local-seo', '1.0.0',
-                    'Confirmed bookings', 2, 'CHANGES_REQUESTED', gen_random_uuid(),
-                    'relationship-1', 'goal-1', gen_random_uuid(), repeat('b', 64), gen_random_uuid());
-                """));
+            await Assert.ThrowsAsync<PostgresException>(() =>
+                Migration30PostgresFixture.ExecuteAsync(
+                    owner,
+                    $"""
+                    INSERT INTO business.relationship_goal_decisions
+                        (tenant_id, relationship_id, goal_id, goal_version, skill_id, skill_version,
+                         measure, review_cadence_months, decision, actor_participant_id,
+                         expected_workspace_version, expected_subject_version, idempotency_key,
+                         material_request_hash, evidence_id)
+                    VALUES ('{tenantId:D}', '{relationshipId:D}', '{goalId:D}', 'goal-1', 'local-seo', '1.0.0',
+                        'Confirmed bookings', 2, 'CHANGES_REQUESTED', gen_random_uuid(),
+                        'relationship-1', 'goal-1', gen_random_uuid(), repeat('b', 64), gen_random_uuid());
+                    """
+                )
+            );
         }
 
         await using var business = new NpgsqlConnection(fixture.BusinessConnectionString);
         await business.OpenAsync();
-        await Migration30PostgresFixture.ExecuteAsync(business, $"SET app.current_tenant_id = '{otherTenantId:D}';");
+        await Migration30PostgresFixture.ExecuteAsync(
+            business,
+            $"SET app.current_tenant_id = '{otherTenantId:D}';"
+        );
         await using var command = business.CreateCommand();
-        command.CommandText = "SELECT count(*) FROM business.relationship_goal_decisions WHERE decision_id = @decision_id";
+        command.CommandText =
+            "SELECT count(*) FROM business.relationship_goal_decisions WHERE decision_id = @decision_id";
         command.Parameters.AddWithValue("decision_id", decisionId);
         Assert.Equal(0L, (long)(await command.ExecuteScalarAsync())!);
     }
@@ -208,7 +298,8 @@ public sealed class Migration30PostgresIntegrationTests(Migration30PostgresFixtu
             string actionType,
             Guid correlationId,
             object actionParameters,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken
+        )
         {
             Interlocked.Increment(ref _callCount);
             await Task.Delay(100, cancellationToken);

@@ -2855,6 +2855,41 @@ select:focus-visible,
   font-size: .78rem;
   line-height: 1.4;
 }
+.checkout-method-preview {
+  display: grid;
+  gap: .65rem;
+  margin-block: 1rem;
+  padding: .85rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.checkout-method-preview legend {
+  padding-inline: .35rem;
+  color: var(--ink);
+  font-size: .84rem;
+  font-weight: 750;
+}
+.checkout-method-preview p {
+  margin: 0;
+  color: var(--muted);
+  font-size: .8rem;
+  line-height: 1.4;
+}
+.checkout-method-preview .command-row {
+  margin: 0;
+}
+.checkout-method-preview button {
+  min-height: 38px;
+  padding-inline: .7rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.checkout-method-preview button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
 .offer-terms-version {
   color: var(--muted);
   font-size: .76rem;

@@ -652,6 +652,7 @@ services:
       DATABASE_URL: "postgresql+asyncpg://wbe_app:${POSTGRES_PASSWORD:-changeme}@postgres:5432/waooaw"
       REDIS_URL: "redis://redis:6379/0"
       THREAD_CATALOG_CACHE_TTL_SECONDS: "30"
+      MAX_DISCOUNT_PCT: "100"
       OTLP_ENDPOINT: http://jaeger:4317
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
       SERVICE_REVISION: ${SERVICE_REVISION:-development}

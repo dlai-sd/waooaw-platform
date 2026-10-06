@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-09-24 · **Version:** 1.45.0 · **Work Contracts:** 97 recorded (81 closed · 16 active · 1 blocked)
+**Last Updated:** 2026-10-06 · **Version:** 1.45.0 · **Work Contracts:** 103 recorded (87 closed · 16 active · 1 blocked)
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -25,7 +25,6 @@ constitutional-repair record. Agents must select the record by title and Goal, n
 | **WC-068** | Portfolio Economics And Institutional Learning | Iteration 4 | PLANNED CANDIDATE — IMPLEMENTATION UNAUTHORIZED | Settled WC-065→WC-067 cohort evidence | Portfolio economics, resilience, commercial policy, offering, provider, and governed learning proposals |
 | **WC-069** | Helpdesk And Support Administration | Iteration 5 | DEFERRED — GROOMING/IMPLEMENTATION UNAUTHORIZED | Real customer-case evidence · WC-065→WC-068 | Support administration only if evidence proves a separate capability is necessary |
 | **WC-076** | GOAL-006 Phase 3 Execution | Cloud delivery and environment promotion | IN PROGRESS · P3-EX01→10 PASSED · P3-EX11 OFFLINE READINESS PENDING · PRODUCTION PROHIBITED | WC-071→074 · FA-052 · PR #371 · PR #388 | Demo accepted and UAT verified from one exact-six release; recent readiness repairs are merged, while dark-Production handover and owner inputs remain open |
-| **WC-089** | DMA Thin Vertical Slice And Agent Image Proof | Agent productization and Release 1 implementation | ENGINEERING QUALIFIED · ISSUE #437 · PR SUBMISSION PENDING · PROVIDER/CLOUD/DEPLOYMENT PROHIBITED | WC-079 · WC-080 · WC-087 · WC-088 · ADR-035 · ADR-049 | Release 1 / `professionalVersion: 1.0.0` remains independent from DMA specification `3.1`; exact-three Skills, instance isolation, owner attribution, authority-gated reproducible image `sha256:085fe312…`, 79 Python tests, 49 BP tests, OpenAPI, SBOM, Trivy and gitleaks pass on exact local head |
 | **WC-090** | Facebook Login Enablement And Google Readiness Repair | Demo identity delivery | IMPLEMENTATION AND FOLLOW-UP REPAIRS MERGED · REAL PROVIDER/DEMO ACCEPTANCE REMAINS BOUNDED | WC-084 SP-04 and §6.4 · PR #416 · Meta/Google protected credentials | PRs #417→#421, #426, #428→#430 and #433→#436 merged provider-neutral broker delivery, deployment/readiness repairs, progressive auth completion and CSP-safe Keycloak logout; real Google/Facebook account acceptance is not inferred |
 | **WC-091** | Environment Readiness And Data Continuity | Three-iteration delivery; I1 disposable Demo readiness | I1 MERGED · I2 UAT AND I3 DARK PRODUCTION REMAIN SEPARATELY GATED | WC-076 · WC-077 · WC-085 · WC-086 · WC-090 | PRs #422→#424 merged the I1 plan, disposable Demo implementation and HMAC deployment repair; local/emulator and merged source evidence do not prove real-account acceptance or authorize I2/I3 |
 | **WC-099** | Demo Customer Journey And Application Shell Remediation | Customer journey repair | IMPLEMENTATION MERGED · ACTUAL-CLOUD INTEGRATED JOURNEY REMAINS GATED | WC-092→098 · PRs #452/#454 | Local evidence covers fresh account selection and journey repairs; exact-release Demo acceptance remains separate |
@@ -33,8 +32,8 @@ constitutional-repair record. Agents must select the record by title and Goal, n
 | **WC-102** | Docker-Only Validation Control Plane | Validation control implementation | IMPLEMENTATION MERGED · SELECTIVE ENFORCEMENT REMAINS GATED | WC-100 · WC-101 · ADR-050 · PR #456 | Docker-only control plane merged; 20-sample Shadow floor and Founder activation remain required |
 | **WC-103** | Multi-Tenant Authentication Journeys | Customer identity and session integrity | IMPLEMENTATION MERGED · REAL PROVIDER ACCEPTANCE DEFERRED | WC-083 · WC-090 · WC-092→099 · PRs #459/#465/#469 | Provider-neutral authentication, registration, logout, account switching, stale-session controls and catalog-managed Demo secrets are merged; real Google/Facebook acceptance remains separate |
 | **WC-104** | End-to-End Docker Runner Supply And Cache Reuse | Validation infrastructure | IMPLEMENTATION AND FOLLOW-UP REPAIRS MERGED · SELECTIVE ENFORCEMENT GATED | WC-100→102 · ADR-050 · PRs #461/#462/#464/#466/#467 | Immutable Docker runner supply, deterministic evidence reuse and bounded validation repair are merged; selective enforcement remains Founder-gated |
-| **WC-105** | Authentication, Guide, Session And Landing Defect Repair | Customer journey and Codespaces review | PRs #470→#472 MERGED · FOLLOW-UP PR IN PREPARATION | WC-099 · WC-103 · WC-104 | Merged runtime repairs are followed by a repository-owned isolated Codespaces preview utility, session/acquisition integrity fixes and prominent authoritative Hire/Trial modes; Founder review remains pending |
-| **WC-106** | Unified Docker Build And Test Process | Validation process control | IMPLEMENTATION QUALIFIED · FOUNDER REVIEW PENDING | WC-100→104 · ADR-050 | One phase-aware catalog path with exact-container preflight, run-scoped evidence and unchanged-failure retry blocking |
+| **WC-110** | Product Validation Qualification Repair | Product validation repair | PARTIAL IMPLEMENTATION MERGED · CUSTOMER SCENARIOS PARKED · FINAL QUALIFICATION OPEN | WC-109 Stage 4 · CB-011 | PR #482 restored product-owned validation scope; WC110-R005→R007 remain explicitly parked, and the complete same-candidate qualification remains open |
+| **WC-112** | Customer Access And Agent Acquisition Integrity | Login/Register/Logout and Trial/Hire customer journeys | DRAFT EVOLVING · IMPLEMENTATION AUTHORIZED · AUTHOR REVIEW COMPLETE · FULL DOCKER GATE NEXT · DOWNSTREAM EXCEPTION POLICY BLOCKED | WC-083→WC-110 · live Demo read-only evidence · OAuth/OIDC/OWASP/Razorpay guidance | Identity-bound Acquisition Intent, exact Employment Contract acceptance, exact Agent + Version Trial/coupon policy, concurrency-safe coupon reservation, resilient commercial handoff and mode-specific checkout are implemented with focused Docker evidence; the full Docker commit gate is next, while logout completion, lifecycle precedence, paid-customer remedy and incident/refund policy remain blocked |
 
 ### Parked Owner Contracts From Delivered WC-084
 
@@ -58,7 +57,7 @@ parked dependencies for later slices, not completed capabilities and not reasons
 
 ---
 
-## Recent PR Reconciliation — 2026-08-23 Through 2026-09-24
+## Recent PR Reconciliation — 2026-08-23 Through 2026-10-06
 
 | Work Contract | Merged PRs in period | Reconciled delivery state |
 |---|---|---|
@@ -78,7 +77,7 @@ parked dependencies for later slices, not completed capabilities and not reasons
 | WC-087 | #411→#412 (`0883d21`) | Immutable agent-instance and multi-agent foundation merged with exact admission/version binding, same-type instance isolation, and Demo identity-reader secret seeding |
 | WC-088 | #413 (`9228c09`) | Customer Multi-Agent and Skill Journey merged with canonical My Experts, relationship switching, governed skill decisions, and cross-agent isolation proof |
 | WC-088 | #414 (`c6c0ca5`) | Demo Google manifest activation intent merged without claiming real-user acceptance; subsequent readiness repair is tracked by WC-090 |
-| WC-089 | #415 (`423136a`) | Owner-reviewed DMA type-image/customer-instance concept and execution plan merged; no runnable DMA image/version implementation was authorized or delivered |
+| WC-089 | #415 (`423136a`), #438→#439 (`b546ca0`) | Owner-reviewed plan followed by the DMA Release 1 thin vertical slice and exact-seven release/deployment code; provider access, cloud mutation, deployment execution and customer acceptance remain prohibited or separately gated |
 | WC-090 | #417→#421, #426, #428→#430, #433→#436 (`5430aff`) | Demo broker delivery and bounded follow-ups merged through progressive login/registration, deployment/readiness repairs and CSP-safe Keycloak logout; closed PR #427 is excluded, and real provider/Demo acceptance remains separately evidenced |
 | WC-091 | #422→#424 (`7c11f9f`), #426, #430 | I1 disposable Demo readiness plan, implementation and HMAC deployment repair merged; shared broker/precheck follow-ups landed without authorizing I2 UAT or I3 dark Production execution |
 | WC-092 | #425 (`b73338e`), #431 | Demo authentication UX and privacy-safe denial diagnostics merged; WC-093 subsequently preserved the route-backed identity behavior while finalizing the public/auth experience |
@@ -94,7 +93,13 @@ parked dependencies for later slices, not completed capabilities and not reasons
 | WC-102 | #456 (`6b7fff2c`), #457 (`502f70b5`) | Docker-only validation control plane merged; follow-up repaired squash-sensitive gitleaks behavior |
 | WC-103 | #459, #465, #469 (`818ec26`) | Multi-tenant authentication specification, implementation and catalog-managed Demo secret provisioning merged; real-provider acceptance remains deferred |
 | WC-104 | #461→#462, #464, #466→#467 (`6e8b738`) | End-to-end runner supply, deterministic carry-forward evidence, paginated release lookup and optimized validation execution merged without activating selective enforcement |
-| WC-105 | #470→#472 (`b50cb36`) | Authentication, Guide, session, landing, concurrency, tenant-RLS and customer-journey repairs merged; this session's Codespaces preview and acquisition-mode follow-up remains unmerged |
+| WC-105 | #470→#475 (`f80e885`) | Authentication, Guide, session, landing, concurrency, tenant-RLS and customer-journey repairs merged, followed by Codespaces preview, visitor Marketplace, session-integrity and Razorpay Hire checkout repairs |
+| WC-106 | #476 (`b72d3e4`) | Unified Docker validation process merged with phase-aware catalog execution, exact-container preflight, run-scoped evidence, unchanged-failure retry blocking and Docker-hosted gate probes |
+| WC-107 | #479 (`c7cd13c`) | Fundamental Login, Registration, Logout, Trial, Hire, payment-confirmation and My Agents continuation repairs merged across Web and Business Platform boundaries |
+| WC-108 | #480 (`b55e132`) | Agentic validation operating model merged with independent runner, execution, candidate and evidence identities plus tiered validation authority |
+| WC-109 | #481 (`604e725`) | Agentic validation control plane and bounded implementation-PR pilot merged; selective hosted enforcement remains unauthorized |
+| WC-110 | #482 (`1fedf83`) | Product-owned validation scope restored; customer scenarios WC110-R005→R007 remain parked and cannot be represented as PASS |
+| WC-111 | #483 (`a7d3c2c`) | Autonomous office specifications and fail-closed per-PR release-qualification control merged; protected Founder decisions and provider authority remain unchanged |
 
 PRs are grouped by the Work Contract references in their bodies. A merged planning PR proves delivery
 of the plan, not completion of future implementation tasks; rows above call implementation complete
@@ -189,6 +194,12 @@ only where an implementation PR merged.
 | WC-100 | Engineering Validation Efficiency | Platform IT Expert | 1.45.0 | Change-aware Shadow validation and immutable evidence controls merged in PR #449 |
 | WC-101 | Docker-Only Validation Architecture | Enterprise Architect | 1.45.0 | Founder-accepted architecture delivered with PR #456; no independent runtime component |
 | WC-102 | Docker-Only Validation Control Plane | Platform IT Expert | 1.45.0 | Docker-only control plane merged in PR #456 with PR #457 follow-up |
+| WC-105 | Authentication, Guide, Session And Landing Defect Repair | Platform IT Expert | 1.45.0 | Customer journey, Codespaces preview, session-integrity, visitor Marketplace and Razorpay Hire checkout repairs merged through PR #475 |
+| WC-106 | Unified Docker Build And Test Process | Platform IT Expert | 1.45.0 | Phase-aware Docker validation, exact-container preflight and run-scoped evidence merged in PR #476 |
+| WC-107 | Fundamental Customer Journey Integrity | Solution Architect / Platform IT Expert | 1.45.0 | Fundamental identity, Trial, Hire, payment-confirmation and My Agents journey integrity merged in PR #479 |
+| WC-108 | Agentic Validation Operating Model | Enterprise Architect | 1.45.0 | Four-identity, four-tier validation operating model and governance amendments merged in PR #480 |
+| WC-109 | Agentic Validation Control Plane Implementation And Pilot | Solution Architect / Platform IT Expert | 1.45.0 | Agentic validation control plane and bounded implementation-PR pilot merged in PR #481 |
+| WC-111 | Autonomous Office Capability Upgrade | Enterprise Architect | 1.45.0 | Autonomous office specifications and fail-closed release-qualification control merged in PR #483 |
 
 ---
 
@@ -210,7 +221,7 @@ only where an implementation PR merged.
 | L2 Trust | Provider Registry, oauth-vault, CTG, Token Refresh | ✅ 100% DONE | WC-037→039 |
 | L3 Business | WBE S1–S8 implemented and tested; AIR/BP end-to-end integration remains partial | ~90% repository evidence | WC-025→033, WC-042→043 |
 | L4 Skill Architecture | Skill Catalog, Skill Runtime, Intent Crystallizer | ✅ 100% DONE | WC-040→041 |
-| L5 Interface | Hybrid application, employment journey, shared identity, public acquisition, authentication, marketplace and customer portal | WC-103 consolidates residual authentication defects into implementation-ready journey acceptance; real-provider, exact-release, Apple/email and session-management implementation remain gated | WC-034 and WC-057→062; WC-077→078; WC-083→085; WC-090; WC-092→099; WC-103; WC-064→069 commercial governance remains separately gated |
-| L6 Agent Admission And Runtime | Versioned admission, runtime adapters, immutable instances, multi-agent navigation, governed skill decisions, and DMA Release 1 | Admission, adapter, instance and multi-agent foundations are merged; WC-089's separate Release 1 image, exact-three Skills and owner attribution are engineering-qualified locally, with PR review/merge and all deployment/provider acceptance still pending | WC-079→080; WC-087→089 |
+| L5 Interface | Hybrid application, employment journey, shared identity, public acquisition, authentication, marketplace and customer portal | WC-107 merges the fundamental Login, Registration, Logout, Trial, Hire, payment-confirmation and My Agents continuation contract; real-provider, exact-release, Apple/email and session-management acceptance remain gated | WC-034 and WC-057→062; WC-077→078; WC-083→085; WC-090; WC-092→099; WC-103; WC-105; WC-107; WC-064→069 commercial governance remains separately gated |
+| L6 Agent Admission And Runtime | Versioned admission, runtime adapters, immutable instances, multi-agent navigation, governed skill decisions, and DMA Release 1 | Admission, adapter, instance, multi-agent and exact-seven DMA Release 1 implementation are merged; provider/cloud execution and customer acceptance remain separately gated | WC-079→080; WC-087→089 |
 | L7 Cloud Delivery | Offline release foundation, Demo/UAT promotion, workflow consolidation, dark-Production handover | Phase 2, Demo, and UAT complete; P3-EX11 handover pending; Production apply and activation prohibited | WC-071→074; active WC-076; WC-081 consolidation |
-| L8 Quality Evolution | QA institution planning and promotion maturity backlog | Goal intake and groomed backlog complete; QA institution activation and IB-031 implementation unauthorized | WC-075; WC-082 |
+| L8 Quality Evolution | QA institution planning, Docker validation and agentic qualification controls | QA backlog grooming, unified Docker validation and the agentic validation operating model/control plane are merged; WC-110 customer scenarios and selective hosted enforcement remain gated | WC-075; WC-082; WC-100→104; WC-106; WC-108→110 |

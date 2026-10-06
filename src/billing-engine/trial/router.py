@@ -51,6 +51,7 @@ async def _require_ops_auth(
 class TrialStartRequest(BaseModel):
     customer_id: uuid.UUID
     agent_type: str
+    agent_version: str
     phone_verified: bool
 
 
@@ -94,6 +95,7 @@ async def start_trial(
     result = await service.start_trial(
         customer_id=body.customer_id,
         agent_type=body.agent_type,
+        agent_version=body.agent_version,
         phone_verified=body.phone_verified,
     )
     return TrialStartResponse(
@@ -109,14 +111,19 @@ async def start_trial(
 async def get_trial_status(
     customer_id: uuid.UUID,
     trial_id: uuid.UUID | None = None,
+    agent_type: str | None = None,
+    agent_version: str | None = None,
     service: TrialService = Depends(_get_trial_service),
 ) -> dict:
-    status = await service.get_status(customer_id, trial_id)
+    if (agent_type is None) != (agent_version is None):
+        raise HTTPException(status_code=422, detail={"code": "TRIAL_IDENTITY_INCOMPLETE"})
+    status = await service.get_status(customer_id, trial_id, agent_type, agent_version)
     if status is None:
         raise HTTPException(status_code=404, detail={"code": "TRIAL_NOT_FOUND"})
     return {
         "trial_id": str(status.trial_id),
         "agent_type": status.agent_type,
+        "agent_version": status.agent_version,
         "started_at": status.started_at.isoformat(),
         "expires_at": status.expires_at.isoformat(),
         "status": status.status,

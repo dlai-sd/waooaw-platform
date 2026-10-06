@@ -9,6 +9,7 @@ const marketplaceParameters = new Set([
   'disclosureRevision',
   'termsVersion',
   'idempotencyKey',
+  'couponCode',
 ]);
 
 export function safeReturnTarget(value: string | string[] | undefined, fallback = '/home'): string {
@@ -26,6 +27,7 @@ export function safeReturnTarget(value: string | string[] | undefined, fallback 
     const disclosureRevision = target.searchParams.get('disclosureRevision');
     const termsVersion = target.searchParams.get('termsVersion');
     const idempotencyKey = target.searchParams.get('idempotencyKey');
+    const couponCode = target.searchParams.get('couponCode');
     if (professionalType !== null && !/^[A-Z][A-Z0-9_]{0,63}$/.test(professionalType)) return fallback;
     if (version !== null && !/^[0-9]+\.[0-9]+\.[0-9]+$/.test(version)) return fallback;
     if (intent !== null && intent !== 'trial' && intent !== 'hire') return fallback;
@@ -36,6 +38,7 @@ export function safeReturnTarget(value: string | string[] | undefined, fallback 
       !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)
     )
       return fallback;
+    if (couponCode !== null && !/^[A-Z0-9_-]{1,64}$/.test(couponCode)) return fallback;
     return value;
   } catch {
     return fallback;

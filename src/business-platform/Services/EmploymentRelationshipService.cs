@@ -11,9 +11,11 @@ namespace Waooaw.BusinessPlatform.Services;
 public sealed record AdmitRelationshipResult(EmploymentRelationship Relationship, bool Created);
 
 public sealed record RelationshipAcquisitionEvidence(
+    Guid AcquisitionIntentId,
     string Intent,
     string DisclosureRevision,
     string TermsVersion,
+    string ContractHash,
     DateTimeOffset AcceptedAt
 );
 
@@ -187,6 +189,33 @@ public sealed class EmploymentRelationshipService
             cancellationToken
         );
 
+    public async Task<AdmitRelationshipResult> AdmitPreparedFromAcquisitionAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid evaluationIntentId,
+        string professionalType,
+        Guid professionalAdmissionId,
+        string professionalVersion,
+        Guid relationshipId,
+        Guid agentInstanceId,
+        Guid correlationId,
+        RelationshipAcquisitionEvidence acquisitionEvidence,
+        CancellationToken cancellationToken
+    ) =>
+        await AdmitCoreAsync(
+            tenantId,
+            participantId,
+            evaluationIntentId,
+            professionalType,
+            professionalAdmissionId,
+            professionalVersion,
+            correlationId,
+            acquisitionEvidence,
+            cancellationToken,
+            relationshipId,
+            agentInstanceId
+        );
+
     private async Task<AdmitRelationshipResult> AdmitCoreAsync(
         Guid tenantId,
         Guid participantId,
@@ -196,7 +225,9 @@ public sealed class EmploymentRelationshipService
         string? professionalVersion,
         Guid correlationId,
         RelationshipAcquisitionEvidence? acquisitionEvidence,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        Guid? preparedRelationshipId = null,
+        Guid? preparedAgentInstanceId = null
     )
     {
         var normalizedProfessionalType = professionalType.Trim().ToUpperInvariant();
@@ -255,8 +286,10 @@ public sealed class EmploymentRelationshipService
             throw new ProfessionalAdmissionBindingException();
         }
 
-        var relationshipId = Guid.NewGuid();
-        var agentInstanceId = Guid.NewGuid();
+        var relationshipId = preparedRelationshipId ?? Guid.NewGuid();
+        var agentInstanceId = preparedAgentInstanceId ?? Guid.NewGuid();
+        if (relationshipId == Guid.Empty || agentInstanceId == Guid.Empty)
+            throw new ArgumentException("Prepared relationship identities must not be empty.");
         var actionParameters = acquisitionEvidence is null
             ? (object)
                 new
@@ -278,9 +311,11 @@ public sealed class EmploymentRelationshipService
                 professional_type = normalizedProfessionalType,
                 professional_version = normalizedProfessionalVersion,
                 target_state = "DISCOVERED",
+                acquisition_intent_id = acquisitionEvidence.AcquisitionIntentId,
                 acquisition_intent = acquisitionEvidence.Intent,
                 disclosure_revision = acquisitionEvidence.DisclosureRevision,
                 terms_version = acquisitionEvidence.TermsVersion,
+                contract_hash = acquisitionEvidence.ContractHash,
                 disclosure_accepted_at = acquisitionEvidence.AcceptedAt,
             };
         var evidenceId = await _constitutionalGateway.AuthorizeAndRecordAsync(
@@ -302,6 +337,10 @@ public sealed class EmploymentRelationshipService
             ProfessionalType = normalizedProfessionalType,
             ProfessionalVersion = normalizedProfessionalVersion,
             AcquisitionMode = acquisitionEvidence?.Intent,
+            AcquisitionIntentId = acquisitionEvidence?.AcquisitionIntentId,
+            AcquisitionContractVersion = acquisitionEvidence?.TermsVersion,
+            AcquisitionContractHash = acquisitionEvidence?.ContractHash,
+            AcquisitionContractAcceptedAt = acquisitionEvidence?.AcceptedAt,
             EvaluationIntentId = evaluationIntentId,
             InitiatingParticipantId = participantId,
         };

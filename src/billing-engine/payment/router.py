@@ -1,6 +1,7 @@
 # Implements: architecture/reference/api-specs/business-platform.openapi.yaml §RelationshipCheckoutOutcome
 # Constitutional basis: C-059, C-088, C-090
 """Payment FastAPI router — onboarding order + Razorpay webhook endpoint."""
+
 from __future__ import annotations
 
 import json
@@ -65,9 +66,7 @@ class OnboardingOrderBody(BaseModel):
             self.contract_acceptance_id,
             self.payment_consent_evidence_id,
         )
-        if any(value is not None for value in contract_link) and any(
-            value is None for value in contract_link
-        ):
+        if any(value is not None for value in contract_link) and any(value is None for value in contract_link):
             raise ValueError("relationship onboarding orders require the complete contract link")
         return self
 
@@ -84,6 +83,7 @@ class PaymentCaptureBody(BaseModel):
 
 class HireCommercialPreviewBody(BaseModel):
     professional_type: str = Field(min_length=1, max_length=64)
+    professional_version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
     gross_amount_inr_paise: int = Field(gt=0)
     gst_amount_inr_paise: int = Field(ge=0)
     cadence: str = Field(min_length=1, max_length=32)
@@ -142,8 +142,8 @@ class RazorpayCheckoutConfirmationBody(BaseModel):
 
 class PreHireCheckoutBody(HireCommercialPreviewBody):
     checkout_intent_id: UUID
+    correlation_id: UUID
     customer_id: UUID
-    professional_version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
     disclosure_revision: str = Field(pattern=r"^\d+\.\d+\.\d+$")
     terms_version: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
 
@@ -157,6 +157,11 @@ class PreHireCheckoutBindingBody(BaseModel):
     checkout_intent_id: UUID
     customer_id: UUID
     relationship_id: UUID
+
+
+class PreHireCheckoutCancellationBody(BaseModel):
+    checkout_intent_id: UUID
+    customer_id: UUID
 
 
 class PreHireCheckoutOutcome(BaseModel):
@@ -193,7 +198,11 @@ async def create_hire_commercial_preview(body: HireCommercialPreviewBody) -> Hir
                 session_factory=get_session_factory(),
                 redis_client=redis_client,
                 settings=_settings,
-            ).validate_commercial_preview_coupon(coupon_code, body.professional_type)
+            ).validate_commercial_preview_coupon(
+                coupon_code,
+                body.professional_type,
+                body.professional_version,
+            )
         finally:
             await redis_client.aclose()
         if not validation.valid:
@@ -201,11 +210,7 @@ async def create_hire_commercial_preview(body: HireCommercialPreviewBody) -> Hir
         discount_pct = validation.discount_pct
     discount = body.gross_amount_inr_paise * discount_pct // 100
     fully_discounted = discount == body.gross_amount_inr_paise
-    expected_readiness = (
-        "READY_LIVE"
-        if _settings.WAOOAW_ENVIRONMENT == PaymentEnvironment.PRODUCTION.value
-        else "READY_TEST"
-    )
+    expected_readiness = "READY_LIVE" if _settings.WAOOAW_ENVIRONMENT == PaymentEnvironment.PRODUCTION.value else "READY_TEST"
     configured_values = (
         _settings.RAZORPAY_KEY_ID,
         _settings.RAZORPAY_KEY_SECRET,
@@ -233,29 +238,26 @@ async def create_hire_commercial_preview(body: HireCommercialPreviewBody) -> Hir
 
 def _pre_hire_outcome(row: object) -> PreHireCheckoutOutcome:
     status = str(row.status)
+    expires_at = None
+    if status == "AWAITING_PROVIDER":
+        created_at = _utc_datetime(row.created_at)
+        if created_at is None:
+            raise RuntimeError("Persisted pre-Hire checkout has no creation timestamp.")
+        expires_at = created_at + timedelta(seconds=_settings.RAZORPAY_CHECKOUT_TTL_SECONDS)
     return PreHireCheckoutOutcome(
         outcome_kind={
             "AWAITING_PROVIDER": "RAZORPAY_CHECKOUT_REQUIRED",
             "CAPTURED": "CAPTURED",
             "FULLY_DISCOUNTED": "FULLY_DISCOUNTED",
+            "CANCELLED": "CANCELLED",
         }.get(status, "OUTCOME_UNRESOLVED"),
         checkout_intent_id=UUID(str(row.checkout_intent_id)),
         provider_order_reference=row.razorpay_order_id,
         public_checkout_key=_settings.RAZORPAY_KEY_ID if status == "AWAITING_PROVIDER" else None,
         amount_inr_paise=row.payable_inr_paise,
-        merchant_display_name=(
-            _settings.RAZORPAY_MERCHANT_DISPLAY_NAME if status == "AWAITING_PROVIDER" else None
-        ),
-        enabled_method_families=(
-            list(_settings.razorpay_enabled_method_families)
-            if status == "AWAITING_PROVIDER"
-            else None
-        ),
-        expires_at=(
-            datetime.now(timezone.utc) + timedelta(seconds=_settings.RAZORPAY_CHECKOUT_TTL_SECONDS)
-            if status == "AWAITING_PROVIDER"
-            else None
-        ),
+        merchant_display_name=(_settings.RAZORPAY_MERCHANT_DISPLAY_NAME if status == "AWAITING_PROVIDER" else None),
+        enabled_method_families=(list(_settings.razorpay_enabled_method_families) if status == "AWAITING_PROVIDER" else None),
+        expires_at=expires_at,
         list_price_inr_paise=row.list_price_inr_paise,
         discount_inr_paise=row.discount_inr_paise,
         tax_inr_paise=row.tax_inr_paise,
@@ -264,14 +266,16 @@ def _pre_hire_outcome(row: object) -> PreHireCheckoutOutcome:
         commercial_outcome_reference=(
             row.razorpay_payment_id
             if status == "CAPTURED"
-            else f"zero-price:{row.checkout_intent_id}" if status == "FULLY_DISCOUNTED" else None
+            else f"zero-price:{row.checkout_intent_id}"
+            if status == "FULLY_DISCOUNTED"
+            else None
         ),
-        commercial_evidence_id=(
-            UUID(str(row.commercial_evidence_id)) if row.commercial_evidence_id else None
-        ),
+        commercial_evidence_id=(UUID(str(row.commercial_evidence_id)) if row.commercial_evidence_id else None),
         customer_safe_next_action=(
             "Wait while the existing checkout is reconciled."
             if status in {"CREATING", "UNRESOLVED"}
+            else "Checkout cancelled. Any reserved coupon capacity was released."
+            if status == "CANCELLED"
             else None
         ),
     )
@@ -279,15 +283,28 @@ def _pre_hire_outcome(row: object) -> PreHireCheckoutOutcome:
 
 def _validate_pre_hire_replay(row: object, body: PreHireCheckoutBody) -> None:
     expected = (
-        str(body.customer_id), body.professional_type, body.professional_version,
-        body.disclosure_revision, body.terms_version, body.cadence,
-        body.gross_amount_inr_paise, body.gst_amount_inr_paise,
+        str(body.customer_id),
+        str(body.correlation_id),
+        body.professional_type,
+        body.professional_version,
+        body.disclosure_revision,
+        body.terms_version,
+        body.cadence,
+        body.gross_amount_inr_paise,
+        body.gst_amount_inr_paise,
         body.coupon_code.strip().upper() if body.coupon_code else None,
     )
     actual = (
-        str(row.customer_id), row.professional_type, row.professional_version,
-        row.disclosure_revision, row.terms_version, row.cadence,
-        row.list_price_inr_paise, row.tax_inr_paise, row.coupon_code,
+        str(row.customer_id),
+        str(row.correlation_id),
+        row.professional_type,
+        row.professional_version,
+        row.disclosure_revision,
+        row.terms_version,
+        row.cadence,
+        row.list_price_inr_paise,
+        row.tax_inr_paise,
+        row.coupon_code,
     )
     if actual != expected:
         raise HTTPException(status_code=409, detail={"code": "PRE_HIRE_CHECKOUT_CONFLICT"})
@@ -297,14 +314,149 @@ def _uuid_bind(db: AsyncSession, value: UUID) -> UUID | str:
     return value if db.bind is not None and db.bind.dialect.name == "postgresql" else str(value)
 
 
+def _utc_datetime(value: object) -> datetime | None:
+    if value is None:
+        return None
+    parsed = value if isinstance(value, datetime) else datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed.astimezone(timezone.utc)
+
+
+async def _reserve_checkout_coupon(
+    db: AsyncSession,
+    body: PreHireCheckoutBody,
+    preview: HireCommercialPreview,
+) -> None:
+    if preview.coupon_code is None:
+        return
+    now = datetime.now(tz=timezone.utc)
+    expires_at = now + timedelta(seconds=_settings.RAZORPAY_CHECKOUT_TTL_SECONDS)
+    coupon_query = text(
+        "SELECT coupon_id, max_uses, uses_count FROM coupon_codes "
+        "WHERE code = :coupon_code AND active = TRUE "
+        "AND (agent_type IS NULL OR agent_type = :professional_type) "
+        "AND (agent_version IS NULL OR agent_version = :professional_version) "
+        "AND valid_from <= :now AND (valid_until IS NULL OR valid_until > :now)"
+    )
+    if db.bind is not None and db.bind.dialect.name == "postgresql":
+        coupon_query = text(
+            "SELECT coupon_id, max_uses, uses_count FROM coupon_codes "
+            "WHERE code = :coupon_code AND active = TRUE "
+            "AND (agent_type IS NULL OR agent_type = :professional_type) "
+            "AND (agent_version IS NULL OR agent_version = :professional_version) "
+            "AND valid_from <= :now AND (valid_until IS NULL OR valid_until > :now) "
+            "FOR UPDATE"
+        )
+    coupon = (
+        await db.execute(
+            coupon_query.bindparams(
+                coupon_code=preview.coupon_code,
+                professional_type=body.professional_type,
+                professional_version=body.professional_version,
+                now=now,
+            )
+        )
+    ).fetchone()
+    if coupon is None:
+        raise HTTPException(status_code=409, detail={"code": "COUPON_RESERVATION_UNAVAILABLE"})
+    await db.execute(
+        text(
+            "UPDATE coupon_reservations SET status = 'EXPIRED' "
+            "WHERE coupon_id = :coupon_id AND status = 'RESERVED' AND expires_at <= :now"
+        ).bindparams(coupon_id=coupon.coupon_id, now=now)
+    )
+    existing = (
+        await db.execute(
+            text("SELECT status FROM coupon_reservations WHERE checkout_intent_id = :checkout_intent_id").bindparams(
+                checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)
+            )
+        )
+    ).fetchone()
+    if existing is not None:
+        if existing.status == "RESERVED":
+            return
+        raise HTTPException(status_code=409, detail={"code": "COUPON_RESERVATION_UNAVAILABLE"})
+    active_reservations = (
+        await db.execute(
+            text(
+                "SELECT COUNT(*) FROM coupon_reservations "
+                "WHERE coupon_id = :coupon_id AND status = 'RESERVED' AND expires_at > :now"
+            ).bindparams(coupon_id=coupon.coupon_id, now=now)
+        )
+    ).scalar_one()
+    if coupon.max_uses is not None and coupon.uses_count + active_reservations >= coupon.max_uses:
+        raise HTTPException(status_code=409, detail={"code": "COUPON_RESERVATION_UNAVAILABLE"})
+    inserted = await db.execute(
+        text(
+            "INSERT INTO coupon_reservations "
+            "(reservation_id, checkout_intent_id, coupon_id, customer_id, professional_type, "
+            "professional_version, status, reserved_at, expires_at) "
+            "VALUES (:reservation_id, :checkout_intent_id, :coupon_id, :customer_id, "
+            ":professional_type, :professional_version, 'RESERVED', :now, :expires_at) "
+            "ON CONFLICT (checkout_intent_id) DO NOTHING"
+        ).bindparams(
+            reservation_id=_uuid_bind(db, uuid5(NAMESPACE_URL, f"waooaw:coupon:{body.checkout_intent_id}")),
+            checkout_intent_id=_uuid_bind(db, body.checkout_intent_id),
+            coupon_id=coupon.coupon_id,
+            customer_id=_uuid_bind(db, body.customer_id),
+            professional_type=body.professional_type,
+            professional_version=body.professional_version,
+            now=now,
+            expires_at=expires_at,
+        )
+    )
+    if inserted.rowcount == 1:
+        return
+    existing = (
+        await db.execute(
+            text("SELECT status FROM coupon_reservations WHERE checkout_intent_id = :checkout_intent_id").bindparams(
+                checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)
+            )
+        )
+    ).fetchone()
+    if existing is None or existing.status != "RESERVED":
+        raise HTTPException(status_code=409, detail={"code": "COUPON_RESERVATION_UNAVAILABLE"})
+
+
+async def _consume_checkout_coupon(db: AsyncSession, checkout_intent_id: UUID) -> None:
+    reservation = (
+        await db.execute(
+            text(
+                "SELECT coupon_id, status, expires_at FROM coupon_reservations WHERE checkout_intent_id = :checkout_intent_id"
+            ).bindparams(checkout_intent_id=_uuid_bind(db, checkout_intent_id))
+        )
+    ).fetchone()
+    if reservation is None or reservation.status == "CONSUMED":
+        return
+    expires_at = _utc_datetime(reservation.expires_at)
+    if reservation.status != "RESERVED" or expires_at is None or expires_at <= datetime.now(tz=timezone.utc):
+        raise HTTPException(status_code=409, detail={"code": "COUPON_RESERVATION_EXPIRED"})
+    consumed = await db.execute(
+        text(
+            "UPDATE coupon_reservations SET status = 'CONSUMED', consumed_at = CURRENT_TIMESTAMP "
+            "WHERE checkout_intent_id = :checkout_intent_id AND status = 'RESERVED'"
+        ).bindparams(checkout_intent_id=_uuid_bind(db, checkout_intent_id))
+    )
+    if consumed.rowcount != 1:
+        raise HTTPException(status_code=409, detail={"code": "COUPON_RESERVATION_CONFLICT"})
+    await db.execute(
+        text("UPDATE coupon_codes SET uses_count = uses_count + 1 WHERE coupon_id = :coupon_id").bindparams(
+            coupon_id=reservation.coupon_id
+        )
+    )
+
+
 @router.post("/hire-checkout", response_model=PreHireCheckoutOutcome)
 async def create_pre_hire_checkout(body: PreHireCheckoutBody) -> PreHireCheckoutOutcome:
     """Create one customer-bound Razorpay order before Hire setup begins."""
     session_factory = get_session_factory()
     async with session_factory() as db:
-        existing = (await db.execute(text(
-            "SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id"
-        ).bindparams(checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)))).fetchone()
+        existing = (
+            await db.execute(
+                text("SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id").bindparams(
+                    checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)
+                )
+            )
+        ).fetchone()
         if existing is not None:
             _validate_pre_hire_replay(existing, body)
             return _pre_hire_outcome(existing)
@@ -312,6 +464,7 @@ async def create_pre_hire_checkout(body: PreHireCheckoutBody) -> PreHireCheckout
     preview = await create_hire_commercial_preview(
         HireCommercialPreviewBody(
             professional_type=body.professional_type,
+            professional_version=body.professional_version,
             gross_amount_inr_paise=body.gross_amount_inr_paise,
             gst_amount_inr_paise=body.gst_amount_inr_paise,
             cadence=body.cadence,
@@ -332,39 +485,57 @@ async def create_pre_hire_checkout(body: PreHireCheckoutBody) -> PreHireCheckout
         )
 
     async with session_factory() as db:
-        existing = (await db.execute(text(
-            "SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id"
-        ).bindparams(checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)))).fetchone()
+        existing = (
+            await db.execute(
+                text("SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id").bindparams(
+                    checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)
+                )
+            )
+        ).fetchone()
         if existing is not None:
             _validate_pre_hire_replay(existing, body)
             return _pre_hire_outcome(existing)
 
         evidence_id = uuid5(NAMESPACE_URL, f"waooaw:pre-hire:{body.checkout_intent_id}")
         status = "FULLY_DISCOUNTED" if preview.payable_inr_paise == 0 else "CREATING"
-        inserted = await db.execute(text(
-            "INSERT INTO pre_hire_checkout_orders "
-            "(checkout_intent_id, customer_id, professional_type, professional_version, "
-            "disclosure_revision, terms_version, cadence, list_price_inr_paise, "
-            "discount_inr_paise, tax_inr_paise, payable_inr_paise, coupon_code, "
-            "commercial_evidence_id, status) VALUES "
-            "(:checkout_intent_id, :customer_id, :professional_type, :professional_version, "
-            ":disclosure_revision, :terms_version, :cadence, :list_price, :discount, :tax, "
-            ":payable, :coupon_code, :evidence_id, :status) "
-            "ON CONFLICT (checkout_intent_id) DO NOTHING"
-        ).bindparams(
-            checkout_intent_id=_uuid_bind(db, body.checkout_intent_id),
-            customer_id=_uuid_bind(db, body.customer_id),
-            professional_type=body.professional_type, professional_version=body.professional_version,
-            disclosure_revision=body.disclosure_revision, terms_version=body.terms_version,
-            cadence=body.cadence, list_price=preview.list_price_inr_paise,
-            discount=preview.discount_inr_paise, tax=preview.tax_inr_paise,
-            payable=preview.payable_inr_paise, coupon_code=preview.coupon_code,
-            evidence_id=_uuid_bind(db, evidence_id), status=status,
-        ))
+        await _reserve_checkout_coupon(db, body, preview)
+        inserted = await db.execute(
+            text(
+                "INSERT INTO pre_hire_checkout_orders "
+                "(checkout_intent_id, customer_id, professional_type, professional_version, "
+                "correlation_id, disclosure_revision, terms_version, cadence, list_price_inr_paise, "
+                "discount_inr_paise, tax_inr_paise, payable_inr_paise, coupon_code, "
+                "commercial_evidence_id, status) VALUES "
+                "(:checkout_intent_id, :customer_id, :professional_type, :professional_version, "
+                ":correlation_id, :disclosure_revision, :terms_version, :cadence, :list_price, :discount, :tax, "
+                ":payable, :coupon_code, :evidence_id, :status) "
+                "ON CONFLICT (checkout_intent_id) DO NOTHING"
+            ).bindparams(
+                checkout_intent_id=_uuid_bind(db, body.checkout_intent_id),
+                customer_id=_uuid_bind(db, body.customer_id),
+                professional_type=body.professional_type,
+                professional_version=body.professional_version,
+                correlation_id=_uuid_bind(db, body.correlation_id),
+                disclosure_revision=body.disclosure_revision,
+                terms_version=body.terms_version,
+                cadence=body.cadence,
+                list_price=preview.list_price_inr_paise,
+                discount=preview.discount_inr_paise,
+                tax=preview.tax_inr_paise,
+                payable=preview.payable_inr_paise,
+                coupon_code=preview.coupon_code,
+                evidence_id=_uuid_bind(db, evidence_id),
+                status=status,
+            )
+        )
         if inserted.rowcount != 1:
-            raced = (await db.execute(text(
-                "SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id"
-            ).bindparams(checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)))).one()
+            raced = (
+                await db.execute(
+                    text("SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id").bindparams(
+                        checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)
+                    )
+                )
+            ).one()
             _validate_pre_hire_replay(raced, body)
             return _pre_hire_outcome(raced)
         await db.commit()
@@ -380,26 +551,41 @@ async def create_pre_hire_checkout(body: PreHireCheckoutBody) -> PreHireCheckout
                         "professional_version": body.professional_version,
                     },
                 )
-                await db.execute(text(
-                    "UPDATE pre_hire_checkout_orders SET razorpay_order_id = :order_id, "
-                    "status = 'AWAITING_PROVIDER', updated_at = CURRENT_TIMESTAMP "
-                    "WHERE checkout_intent_id = :checkout_intent_id AND status = 'CREATING'"
-                ).bindparams(
-                    order_id=str(order["id"]),
-                    checkout_intent_id=_uuid_bind(db, body.checkout_intent_id),
-                ))
+                await db.execute(
+                    text(
+                        "UPDATE pre_hire_checkout_orders SET razorpay_order_id = :order_id, "
+                        "status = 'AWAITING_PROVIDER', updated_at = CURRENT_TIMESTAMP "
+                        "WHERE checkout_intent_id = :checkout_intent_id AND status = 'CREATING'"
+                    ).bindparams(
+                        order_id=str(order["id"]),
+                        checkout_intent_id=_uuid_bind(db, body.checkout_intent_id),
+                    )
+                )
                 await db.commit()
             except Exception:
                 await db.rollback()
-                await db.execute(text(
-                    "UPDATE pre_hire_checkout_orders SET status = 'UNRESOLVED', "
-                    "updated_at = CURRENT_TIMESTAMP WHERE checkout_intent_id = :checkout_intent_id"
-                ).bindparams(checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)))
+                await db.execute(
+                    text(
+                        "UPDATE coupon_reservations SET status = 'RELEASED', "
+                        "released_at = CURRENT_TIMESTAMP WHERE checkout_intent_id = :checkout_intent_id "
+                        "AND status = 'RESERVED'"
+                    ).bindparams(checkout_intent_id=_uuid_bind(db, body.checkout_intent_id))
+                )
+                await db.execute(
+                    text(
+                        "UPDATE pre_hire_checkout_orders SET status = 'UNRESOLVED', "
+                        "updated_at = CURRENT_TIMESTAMP WHERE checkout_intent_id = :checkout_intent_id"
+                    ).bindparams(checkout_intent_id=_uuid_bind(db, body.checkout_intent_id))
+                )
                 await db.commit()
                 raise HTTPException(status_code=503, detail={"code": "RAZORPAY_ORDER_UNRESOLVED"}) from None
-        stored = (await db.execute(text(
-            "SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id"
-        ).bindparams(checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)))).one()
+        stored = (
+            await db.execute(
+                text("SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id").bindparams(
+                    checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)
+                )
+            )
+        ).one()
         return _pre_hire_outcome(stored)
 
 
@@ -410,9 +596,13 @@ async def confirm_pre_hire_checkout(
     """Verify and retain Razorpay's signed browser result without activating an unconfigured agent."""
     session_factory = get_session_factory()
     async with session_factory() as db:
-        row = (await db.execute(text(
-            "SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id"
-        ).bindparams(checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)))).fetchone()
+        row = (
+            await db.execute(
+                text("SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id").bindparams(
+                    checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)
+                )
+            )
+        ).fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail={"code": "PRE_HIRE_CHECKOUT_NOT_FOUND"})
         if str(row.customer_id) != str(body.customer_id) or row.razorpay_order_id != body.razorpay_order_id:
@@ -442,18 +632,24 @@ async def confirm_pre_hire_checkout(
             or provider_payment.get("amount") != row.payable_inr_paise
         ):
             raise HTTPException(status_code=409, detail={"code": "PAYMENT_NOT_CAPTURED"})
-        await db.execute(text(
-            "UPDATE pre_hire_checkout_orders SET razorpay_payment_id = :payment_id, "
-            "status = 'CAPTURED', updated_at = CURRENT_TIMESTAMP "
-            "WHERE checkout_intent_id = :checkout_intent_id AND status = 'AWAITING_PROVIDER'"
-        ).bindparams(
-            payment_id=body.razorpay_payment_id,
-            checkout_intent_id=_uuid_bind(db, body.checkout_intent_id),
-        ))
+        await db.execute(
+            text(
+                "UPDATE pre_hire_checkout_orders SET razorpay_payment_id = :payment_id, "
+                "status = 'CAPTURED', updated_at = CURRENT_TIMESTAMP "
+                "WHERE checkout_intent_id = :checkout_intent_id AND status = 'AWAITING_PROVIDER'"
+            ).bindparams(
+                payment_id=body.razorpay_payment_id,
+                checkout_intent_id=_uuid_bind(db, body.checkout_intent_id),
+            )
+        )
         await db.commit()
-        stored = (await db.execute(text(
-            "SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id"
-        ).bindparams(checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)))).one()
+        stored = (
+            await db.execute(
+                text("SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id").bindparams(
+                    checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)
+                )
+            )
+        ).one()
         return _pre_hire_outcome(stored)
 
 
@@ -464,26 +660,83 @@ async def bind_pre_hire_checkout(
     """Bind one captured or zero-price outcome to the relationship created after payment."""
     session_factory = get_session_factory()
     async with session_factory() as db:
-        row = (await db.execute(text(
-            "SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id"
-        ).bindparams(checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)))).fetchone()
+        row = (
+            await db.execute(
+                text("SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id").bindparams(
+                    checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)
+                )
+            )
+        ).fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail={"code": "PRE_HIRE_CHECKOUT_NOT_FOUND"})
         if str(row.customer_id) != str(body.customer_id) or row.status not in {"CAPTURED", "FULLY_DISCOUNTED"}:
             raise HTTPException(status_code=409, detail={"code": "PRE_HIRE_CHECKOUT_NOT_BINDABLE"})
         if row.relationship_id is not None and str(row.relationship_id) != str(body.relationship_id):
             raise HTTPException(status_code=409, detail={"code": "PRE_HIRE_RELATIONSHIP_CONFLICT"})
-        await db.execute(text(
-            "UPDATE pre_hire_checkout_orders SET relationship_id = :relationship_id, "
-            "updated_at = CURRENT_TIMESTAMP WHERE checkout_intent_id = :checkout_intent_id"
-        ).bindparams(
-            relationship_id=_uuid_bind(db, body.relationship_id),
-            checkout_intent_id=_uuid_bind(db, body.checkout_intent_id),
-        ))
+        if row.coupon_code is not None:
+            await _consume_checkout_coupon(db, body.checkout_intent_id)
+        await db.execute(
+            text(
+                "UPDATE pre_hire_checkout_orders SET relationship_id = :relationship_id, "
+                "updated_at = CURRENT_TIMESTAMP WHERE checkout_intent_id = :checkout_intent_id"
+            ).bindparams(
+                relationship_id=_uuid_bind(db, body.relationship_id),
+                checkout_intent_id=_uuid_bind(db, body.checkout_intent_id),
+            )
+        )
         await db.commit()
-        stored = (await db.execute(text(
-            "SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id"
-        ).bindparams(checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)))).one()
+        stored = (
+            await db.execute(
+                text("SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id").bindparams(
+                    checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)
+                )
+            )
+        ).one()
+        return _pre_hire_outcome(stored)
+
+
+@router.post("/hire-checkout/cancel", response_model=PreHireCheckoutOutcome)
+async def cancel_pre_hire_checkout(
+    body: PreHireCheckoutCancellationBody,
+) -> PreHireCheckoutOutcome:
+    """Cancel an unpaid checkout and release its coupon reservation."""
+    session_factory = get_session_factory()
+    async with session_factory() as db:
+        row = (
+            await db.execute(
+                text("SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id").bindparams(
+                    checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)
+                )
+            )
+        ).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail={"code": "PRE_HIRE_CHECKOUT_NOT_FOUND"})
+        if str(row.customer_id) != str(body.customer_id):
+            raise HTTPException(status_code=409, detail={"code": "PRE_HIRE_CHECKOUT_MISMATCH"})
+        if row.status in {"CAPTURED", "FULLY_DISCOUNTED"}:
+            raise HTTPException(status_code=409, detail={"code": "PRE_HIRE_CHECKOUT_NOT_CANCELLABLE"})
+        if row.status != "CANCELLED":
+            await db.execute(
+                text(
+                    "UPDATE pre_hire_checkout_orders SET status = 'CANCELLED', "
+                    "updated_at = CURRENT_TIMESTAMP WHERE checkout_intent_id = :checkout_intent_id"
+                ).bindparams(checkout_intent_id=_uuid_bind(db, body.checkout_intent_id))
+            )
+            await db.execute(
+                text(
+                    "UPDATE coupon_reservations SET status = 'RELEASED', "
+                    "released_at = CURRENT_TIMESTAMP WHERE checkout_intent_id = :checkout_intent_id "
+                    "AND status = 'RESERVED'"
+                ).bindparams(checkout_intent_id=_uuid_bind(db, body.checkout_intent_id))
+            )
+            await db.commit()
+        stored = (
+            await db.execute(
+                text("SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id").bindparams(
+                    checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)
+                )
+            )
+        ).one()
         return _pre_hire_outcome(stored)
 
 
@@ -492,19 +745,22 @@ async def create_relationship_checkout(body: RelationshipCheckoutBody) -> Relati
     """Return WBE-owned commercial truth for one accepted relationship contract."""
     session_factory = get_session_factory()
     async with session_factory() as db:
-        pre_hire = (await db.execute(text(
-            "SELECT * FROM pre_hire_checkout_orders WHERE relationship_id = :relationship_id "
-            "AND customer_id = :customer_id AND professional_type = :agent_type "
-            "ORDER BY created_at DESC LIMIT 1"
-        ).bindparams(
-            relationship_id=_uuid_bind(db, body.relationship_id),
-            customer_id=_uuid_bind(db, body.customer_id),
-            agent_type=body.agent_type,
-        ))).fetchone()
+        pre_hire = (
+            await db.execute(
+                text(
+                    "SELECT * FROM pre_hire_checkout_orders WHERE relationship_id = :relationship_id "
+                    "AND customer_id = :customer_id AND professional_type = :agent_type "
+                    "ORDER BY created_at DESC LIMIT 1"
+                ).bindparams(
+                    relationship_id=_uuid_bind(db, body.relationship_id),
+                    customer_id=_uuid_bind(db, body.customer_id),
+                    agent_type=body.agent_type,
+                )
+            )
+        ).fetchone()
         if pre_hire is not None:
-            if (
-                pre_hire.contract_checkout_intent_id is not None
-                and str(pre_hire.contract_checkout_intent_id) != str(body.checkout_intent_id)
+            if pre_hire.contract_checkout_intent_id is not None and str(pre_hire.contract_checkout_intent_id) != str(
+                body.checkout_intent_id
             ):
                 raise HTTPException(status_code=409, detail={"code": "PRE_HIRE_CONTRACT_CONFLICT"})
             if (
@@ -512,41 +768,48 @@ async def create_relationship_checkout(body: RelationshipCheckoutBody) -> Relati
                 or pre_hire.tax_inr_paise != body.gst_amount_inr_paise
             ):
                 raise HTTPException(status_code=409, detail={"code": "PRE_HIRE_CONTRACT_PRICE_MISMATCH"})
-            claim = await db.execute(text(
-                "UPDATE pre_hire_checkout_orders SET contract_checkout_intent_id = :contract_checkout_intent_id, "
-                "updated_at = CURRENT_TIMESTAMP WHERE checkout_intent_id = :pre_hire_checkout_intent_id "
-                "AND (contract_checkout_intent_id IS NULL OR contract_checkout_intent_id = :contract_checkout_intent_id)"
-            ).bindparams(
-                contract_checkout_intent_id=_uuid_bind(db, body.checkout_intent_id),
-                pre_hire_checkout_intent_id=_uuid_bind(db, UUID(str(pre_hire.checkout_intent_id))),
-            ))
+            claim = await db.execute(
+                text(
+                    "UPDATE pre_hire_checkout_orders SET contract_checkout_intent_id = :contract_checkout_intent_id, "
+                    "updated_at = CURRENT_TIMESTAMP WHERE checkout_intent_id = :pre_hire_checkout_intent_id "
+                    "AND (contract_checkout_intent_id IS NULL OR contract_checkout_intent_id = :contract_checkout_intent_id)"
+                ).bindparams(
+                    contract_checkout_intent_id=_uuid_bind(db, body.checkout_intent_id),
+                    pre_hire_checkout_intent_id=_uuid_bind(db, UUID(str(pre_hire.checkout_intent_id))),
+                )
+            )
             if claim.rowcount != 1:
                 await db.rollback()
                 raise HTTPException(status_code=409, detail={"code": "PRE_HIRE_CONTRACT_CONFLICT"})
             if pre_hire.status == "CAPTURED":
-                await db.execute(text(
-                    "INSERT INTO payment_intents "
-                    "(razorpay_order_id, razorpay_payment_id, customer_id, status, relationship_id, "
-                    "tenant_id, accepted_contract_id, contract_version, contract_hash, "
-                    "contract_acceptance_id, payment_consent_evidence_id, payment_evidence_id, "
-                    "checkout_intent_id, agent_type, bundle_tier) VALUES "
-                    "(:order_id, :payment_id, :customer_id, 'CAPTURED', :relationship_id, :tenant_id, "
-                    ":contract_id, :contract_version, :contract_hash, :acceptance_id, :consent_id, "
-                    ":evidence_id, :checkout_intent_id, :agent_type, :bundle_tier) "
-                    "ON CONFLICT (razorpay_payment_id) DO NOTHING"
-                ).bindparams(
-                    order_id=pre_hire.razorpay_order_id, payment_id=pre_hire.razorpay_payment_id,
-                    customer_id=_uuid_bind(db, body.customer_id),
-                    relationship_id=_uuid_bind(db, body.relationship_id),
-                    tenant_id=_uuid_bind(db, body.tenant_id),
-                    contract_id=_uuid_bind(db, body.contract_id),
-                    contract_version=body.contract_version, contract_hash=body.contract_hash,
-                    acceptance_id=_uuid_bind(db, body.contract_acceptance_id),
-                    consent_id=_uuid_bind(db, body.payment_consent_evidence_id),
-                    evidence_id=_uuid_bind(db, UUID(str(pre_hire.commercial_evidence_id))),
-                    checkout_intent_id=_uuid_bind(db, body.checkout_intent_id), agent_type=body.agent_type,
-                    bundle_tier=body.bundle_tier,
-                ))
+                await db.execute(
+                    text(
+                        "INSERT INTO payment_intents "
+                        "(razorpay_order_id, razorpay_payment_id, customer_id, status, relationship_id, "
+                        "tenant_id, accepted_contract_id, contract_version, contract_hash, "
+                        "contract_acceptance_id, payment_consent_evidence_id, payment_evidence_id, "
+                        "checkout_intent_id, agent_type, bundle_tier) VALUES "
+                        "(:order_id, :payment_id, :customer_id, 'CAPTURED', :relationship_id, :tenant_id, "
+                        ":contract_id, :contract_version, :contract_hash, :acceptance_id, :consent_id, "
+                        ":evidence_id, :checkout_intent_id, :agent_type, :bundle_tier) "
+                        "ON CONFLICT (razorpay_payment_id) DO NOTHING"
+                    ).bindparams(
+                        order_id=pre_hire.razorpay_order_id,
+                        payment_id=pre_hire.razorpay_payment_id,
+                        customer_id=_uuid_bind(db, body.customer_id),
+                        relationship_id=_uuid_bind(db, body.relationship_id),
+                        tenant_id=_uuid_bind(db, body.tenant_id),
+                        contract_id=_uuid_bind(db, body.contract_id),
+                        contract_version=body.contract_version,
+                        contract_hash=body.contract_hash,
+                        acceptance_id=_uuid_bind(db, body.contract_acceptance_id),
+                        consent_id=_uuid_bind(db, body.payment_consent_evidence_id),
+                        evidence_id=_uuid_bind(db, UUID(str(pre_hire.commercial_evidence_id))),
+                        checkout_intent_id=_uuid_bind(db, body.checkout_intent_id),
+                        agent_type=body.agent_type,
+                        bundle_tier=body.bundle_tier,
+                    )
+                )
                 await db.commit()
                 return RelationshipCheckoutResult(
                     outcome_kind=CheckoutOutcomeKind.CAPTURED,
@@ -576,9 +839,7 @@ async def create_relationship_checkout(body: RelationshipCheckoutBody) -> Relati
                     commercial_evidence_id=UUID(str(pre_hire.commercial_evidence_id)),
                     evidence_state="COMMITTED",
                 )
-                await ZeroPriceCommercialOutcomeStore(db).record(
-                    RelationshipCheckoutRequest(**body.model_dump()), outcome
-                )
+                await ZeroPriceCommercialOutcomeStore(db).record(RelationshipCheckoutRequest(**body.model_dump()), outcome)
                 await db.commit()
                 return outcome
             await db.rollback()
@@ -588,28 +849,30 @@ async def create_relationship_checkout(body: RelationshipCheckoutBody) -> Relati
             zero_price_outcomes=ZeroPriceCommercialOutcomeStore(db),
         ).create_relationship_checkout(RelationshipCheckoutRequest(**body.model_dump()))
         if result.outcome_kind == CheckoutOutcomeKind.RAZORPAY_CHECKOUT_REQUIRED:
-            await db.execute(text(
-                "INSERT INTO razorpay_checkout_orders "
-                "(checkout_intent_id, razorpay_order_id, tenant_id, customer_id, relationship_id, "
-                "accepted_contract_id, contract_version, contract_hash, contract_acceptance_id, "
-                "payment_consent_evidence_id, agent_type, bundle_tier) "
-                "VALUES (:checkout_intent_id, :order_id, :tenant_id, :customer_id, :relationship_id, "
-                ":contract_id, :contract_version, :contract_hash, :acceptance_id, :consent_id, "
-                ":agent_type, :bundle_tier) ON CONFLICT (checkout_intent_id) DO NOTHING"
-            ).bindparams(
-                checkout_intent_id=_uuid_bind(db, body.checkout_intent_id),
-                order_id=result.provider_order_reference,
-                tenant_id=_uuid_bind(db, body.tenant_id),
-                customer_id=_uuid_bind(db, body.customer_id),
-                relationship_id=_uuid_bind(db, body.relationship_id),
-                contract_id=_uuid_bind(db, body.contract_id),
-                contract_version=body.contract_version,
-                contract_hash=body.contract_hash,
-                acceptance_id=_uuid_bind(db, body.contract_acceptance_id),
-                consent_id=_uuid_bind(db, body.payment_consent_evidence_id),
-                agent_type=body.agent_type,
-                bundle_tier=body.bundle_tier,
-            ))
+            await db.execute(
+                text(
+                    "INSERT INTO razorpay_checkout_orders "
+                    "(checkout_intent_id, razorpay_order_id, tenant_id, customer_id, relationship_id, "
+                    "accepted_contract_id, contract_version, contract_hash, contract_acceptance_id, "
+                    "payment_consent_evidence_id, agent_type, bundle_tier) "
+                    "VALUES (:checkout_intent_id, :order_id, :tenant_id, :customer_id, :relationship_id, "
+                    ":contract_id, :contract_version, :contract_hash, :acceptance_id, :consent_id, "
+                    ":agent_type, :bundle_tier) ON CONFLICT (checkout_intent_id) DO NOTHING"
+                ).bindparams(
+                    checkout_intent_id=_uuid_bind(db, body.checkout_intent_id),
+                    order_id=result.provider_order_reference,
+                    tenant_id=_uuid_bind(db, body.tenant_id),
+                    customer_id=_uuid_bind(db, body.customer_id),
+                    relationship_id=_uuid_bind(db, body.relationship_id),
+                    contract_id=_uuid_bind(db, body.contract_id),
+                    contract_version=body.contract_version,
+                    contract_hash=body.contract_hash,
+                    acceptance_id=_uuid_bind(db, body.contract_acceptance_id),
+                    consent_id=_uuid_bind(db, body.payment_consent_evidence_id),
+                    agent_type=body.agent_type,
+                    bundle_tier=body.bundle_tier,
+                )
+            )
             await db.commit()
         return result
 
@@ -622,12 +885,16 @@ async def confirm_razorpay_checkout(
     """Verify Razorpay Standard Checkout's signed browser response."""
     session_factory = get_session_factory()
     async with session_factory() as db:
-        row = (await db.execute(text(
-            "SELECT razorpay_order_id, tenant_id, customer_id, relationship_id, accepted_contract_id, "
-            "contract_version, contract_hash, contract_acceptance_id, payment_consent_evidence_id, "
-            "agent_type, bundle_tier FROM razorpay_checkout_orders "
-            "WHERE checkout_intent_id = :checkout_intent_id"
-        ).bindparams(checkout_intent_id=_uuid_bind(db, checkout_intent_id)))).fetchone()
+        row = (
+            await db.execute(
+                text(
+                    "SELECT razorpay_order_id, tenant_id, customer_id, relationship_id, accepted_contract_id, "
+                    "contract_version, contract_hash, contract_acceptance_id, payment_consent_evidence_id, "
+                    "agent_type, bundle_tier FROM razorpay_checkout_orders "
+                    "WHERE checkout_intent_id = :checkout_intent_id"
+                ).bindparams(checkout_intent_id=_uuid_bind(db, checkout_intent_id))
+            )
+        ).fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail={"code": "CHECKOUT_ORDER_NOT_FOUND"})
         if row.razorpay_order_id != body.razorpay_order_id:
@@ -698,11 +965,15 @@ async def reconcile_relationship_checkout(
 ) -> RelationshipCheckoutResult:
     session_factory = get_session_factory()
     async with session_factory() as db:
-        row = (await db.execute(text(
-            "SELECT tenant_id, relationship_id, accepted_contract_id, contract_version, contract_hash, "
-            "contract_acceptance_id, payment_consent_evidence_id, payment_evidence_id, "
-            "razorpay_payment_id, status FROM payment_intents WHERE checkout_intent_id = :checkout_intent_id"
-        ).bindparams(checkout_intent_id=_uuid_bind(db, checkout_intent_id)))).fetchone()
+        row = (
+            await db.execute(
+                text(
+                    "SELECT tenant_id, relationship_id, accepted_contract_id, contract_version, contract_hash, "
+                    "contract_acceptance_id, payment_consent_evidence_id, payment_evidence_id, "
+                    "razorpay_payment_id, status FROM payment_intents WHERE checkout_intent_id = :checkout_intent_id"
+                ).bindparams(checkout_intent_id=_uuid_bind(db, checkout_intent_id))
+            )
+        ).fetchone()
         if row is None:
             return RelationshipCheckoutResult(
                 outcome_kind=CheckoutOutcomeKind.OUTCOME_UNRESOLVED,
@@ -714,10 +985,18 @@ async def reconcile_relationship_checkout(
                 retryable=True,
                 customer_safe_next_action="Wait while the existing checkout is reconciled.",
             )
-        expected = tuple(str(value) for value in (
-            body.tenant_id, body.relationship_id, body.contract_id, body.contract_version,
-            body.contract_hash, body.contract_acceptance_id, body.payment_consent_evidence_id,
-        ))
+        expected = tuple(
+            str(value)
+            for value in (
+                body.tenant_id,
+                body.relationship_id,
+                body.contract_id,
+                body.contract_version,
+                body.contract_hash,
+                body.contract_acceptance_id,
+                body.payment_consent_evidence_id,
+            )
+        )
         if tuple(str(row[index]) for index in range(7)) != expected:
             raise HTTPException(status_code=409, detail={"code": "CHECKOUT_RECONCILIATION_CONFLICT"})
         if row.status != "CAPTURED":
@@ -812,9 +1091,13 @@ async def razorpay_webhook(request: Request) -> dict:
             raise HTTPException(status_code=400, detail={"code": "INVALID_PAYMENT_REFERENCE"})
         session_factory = get_session_factory()
         async with session_factory() as db:
-            stored = (await db.execute(text(
-                "SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id"
-            ).bindparams(checkout_intent_id=_uuid_bind(db, checkout_intent_id)))).fetchone()
+            stored = (
+                await db.execute(
+                    text("SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id").bindparams(
+                        checkout_intent_id=_uuid_bind(db, checkout_intent_id)
+                    )
+                )
+            ).fetchone()
             if (
                 stored is None
                 or str(stored.customer_id) != str(customer_id)
@@ -828,14 +1111,16 @@ async def razorpay_webhook(request: Request) -> dict:
             ):
                 raise HTTPException(status_code=409, detail={"code": "PRE_HIRE_CAPTURE_CONFLICT"})
             evidence_id = UUID(str(stored.commercial_evidence_id))
-            await db.execute(text(
-                "UPDATE pre_hire_checkout_orders SET razorpay_payment_id = :payment_id, "
-                "status = 'CAPTURED', updated_at = CURRENT_TIMESTAMP "
-                "WHERE checkout_intent_id = :checkout_intent_id"
-            ).bindparams(
-                payment_id=payment_id,
-                checkout_intent_id=_uuid_bind(db, checkout_intent_id),
-            ))
+            await db.execute(
+                text(
+                    "UPDATE pre_hire_checkout_orders SET razorpay_payment_id = :payment_id, "
+                    "status = 'CAPTURED', updated_at = CURRENT_TIMESTAMP "
+                    "WHERE checkout_intent_id = :checkout_intent_id"
+                ).bindparams(
+                    payment_id=payment_id,
+                    checkout_intent_id=_uuid_bind(db, checkout_intent_id),
+                )
+            )
             await db.commit()
         return {
             "status": "CAPTURED",

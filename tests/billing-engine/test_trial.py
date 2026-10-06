@@ -24,16 +24,25 @@ from trial.service import TrialService
 # ---------------------------------------------------------------------------
 
 _DDL = [
+    """CREATE TABLE IF NOT EXISTS agent_trial_policies (
+        agent_type TEXT NOT NULL,
+        agent_version TEXT NOT NULL,
+        duration_days INTEGER NOT NULL,
+        authorized_by TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (agent_type, agent_version)
+    )""",
     """CREATE TABLE IF NOT EXISTS trial_allocations (
         trial_id TEXT PRIMARY KEY,
         customer_id TEXT NOT NULL,
         agent_type TEXT NOT NULL,
+        agent_version TEXT NOT NULL,
         started_at TEXT NOT NULL,
         expires_at TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'ACTIVE',
         converted_at TEXT,
         new_subscription_id TEXT,
-        UNIQUE (customer_id, agent_type)
+        UNIQUE (customer_id, agent_type, agent_version)
     )""",
     """CREATE TABLE IF NOT EXISTS trial_free_unit_ledger (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -136,6 +145,40 @@ async def test_different_agent_type_allowed_for_same_customer(trial_service, ses
     await svc.start_trial(cid, "DMA", phone_verified=True)
     result = await svc.start_trial(cid, "DPA", phone_verified=True)
     assert result.trial_id is not None
+
+
+@pytest.mark.asyncio
+async def test_different_agent_version_allowed_for_same_customer(trial_service):
+    """A customer may use one Trial for each exact agent version."""
+    cid = uuid.uuid4()
+
+    first = await trial_service.start_trial(cid, "DMA", phone_verified=True, agent_version="1.0.0")
+    second = await trial_service.start_trial(cid, "DMA", phone_verified=True, agent_version="2.0.0")
+
+    assert first.trial_id != second.trial_id
+
+
+@pytest.mark.asyncio
+async def test_founder_authorized_agent_version_duration_override(
+    trial_service,
+    session_factory,
+):
+    async with session_factory() as session:
+        await session.execute(text(
+            "INSERT INTO agent_trial_policies "
+            "(agent_type, agent_version, duration_days, authorized_by) "
+            "VALUES ('DMA', '2.0.0', 21, 'founder')"
+        ))
+        await session.commit()
+
+    result = await trial_service.start_trial(
+        uuid.uuid4(),
+        "DMA",
+        phone_verified=True,
+        agent_version="2.0.0",
+    )
+
+    assert result.expires_at - result.started_at == timedelta(days=21)
 
 
 # ---------------------------------------------------------------------------
@@ -463,9 +506,49 @@ async def test_get_status_targets_exact_trial(trial_service):
 
 
 @pytest.mark.asyncio
+async def test_get_status_targets_exact_agent_version(trial_service):
+    cid = uuid.uuid4()
+    await trial_service.start_trial(cid, "DMA", phone_verified=True, agent_version="1.0.0")
+    expected = await trial_service.start_trial(
+        cid,
+        "DMA",
+        phone_verified=True,
+        agent_version="2.0.0",
+    )
+
+    status = await trial_service.get_status(cid, None, "DMA", "1.0.0")
+
+    assert status is not None
+    assert status.agent_version == "1.0.0"
+    assert status.trial_id != expected.trial_id
+
+
+@pytest.mark.asyncio
 async def test_get_status_returns_none_for_unknown_customer(trial_service):
     status = await trial_service.get_status(uuid.uuid4())
     assert status is None
+
+
+@pytest.mark.asyncio
+async def test_get_status_projects_elapsed_active_trial_as_expired(
+    trial_service,
+    session_factory,
+):
+    cid = uuid.uuid4()
+    started = await trial_service.start_trial(cid, "DMA", phone_verified=True)
+    async with session_factory() as session:
+        await session.execute(text(
+            "UPDATE trial_allocations SET expires_at = :expired WHERE trial_id = :trial_id"
+        ), {
+            "expired": (datetime.now(tz=timezone.utc) - timedelta(minutes=1)).isoformat(),
+            "trial_id": str(started.trial_id),
+        })
+        await session.commit()
+
+    status = await trial_service.get_status(cid, started.trial_id)
+
+    assert status is not None
+    assert status.status == "EXPIRED"
 
 
 # ---------------------------------------------------------------------------
@@ -503,6 +586,7 @@ async def test_router_post_start_returns_200():
             resp = await c.post("/trial/start", json={
                 "customer_id": str(uuid.uuid4()),
                 "agent_type": "DMA",
+                "agent_version": "1.0.0",
                 "phone_verified": True,
             })
     finally:
@@ -525,6 +609,7 @@ async def test_router_post_start_service_error_propagates():
             resp = await c.post("/trial/start", json={
                 "customer_id": str(uuid.uuid4()),
                 "agent_type": "DMA",
+                "agent_version": "1.0.0",
                 "phone_verified": True,
             })
     finally:
@@ -542,6 +627,7 @@ async def test_router_get_status_returns_200():
     mock_status = TrialStatus(
         trial_id=tid,
         agent_type="DMA",
+        agent_version="1.0.0",
         started_at=now,
         expires_at=now + timedelta(days=14),
         status="ACTIVE",
@@ -558,7 +644,7 @@ async def test_router_get_status_returns_200():
 
     assert resp.status_code == 200
     assert resp.json()["status"] == "ACTIVE"
-    mock_svc.get_status.assert_awaited_once_with(cid, tid)
+    mock_svc.get_status.assert_awaited_once_with(cid, tid, None, None)
 
 
 @pytest.mark.asyncio

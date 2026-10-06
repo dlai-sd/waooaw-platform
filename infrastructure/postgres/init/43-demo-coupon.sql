@@ -1,13 +1,15 @@
 -- Demo checkout coupon and zero-price evidence upgrade for fresh and reused databases.
 
 INSERT INTO business.coupon_codes
-    (coupon_id, code, discount_pct, bonus_credits_paise, agent_type, min_bundle_tier,
+    (coupon_id, code, discount_pct, bonus_credits_paise, agent_type, agent_version, min_bundle_tier,
      max_uses, uses_count, valid_from, valid_until, active, is_active)
 VALUES
-    (gen_random_uuid(), 'DEMO100', 100, 0, NULL, NULL,
+    (gen_random_uuid(), 'DEMO100', 100, 0, 'DIGITAL_MARKETING_LOCAL_SERVICE', '1.0.0', NULL,
      NULL, 0, NOW(), NULL, TRUE, TRUE)
 ON CONFLICT (code) DO UPDATE SET
     discount_pct = EXCLUDED.discount_pct,
+    agent_type = EXCLUDED.agent_type,
+    agent_version = EXCLUDED.agent_version,
     max_uses = NULL,
     valid_until = NULL,
     active = TRUE,

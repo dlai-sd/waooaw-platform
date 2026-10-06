@@ -55,6 +55,12 @@ export interface ContinueAcquisitionRequest {
    * @memberof ContinueAcquisitionRequest
    */
   acceptance: ContinueAcquisitionRequestAcceptanceEnum;
+  /**
+   *
+   * @type {string}
+   * @memberof ContinueAcquisitionRequest
+   */
+  couponCode?: string;
 }
 
 /**
@@ -71,7 +77,7 @@ export type ContinueAcquisitionRequestIntentEnum =
  * @export
  */
 export const ContinueAcquisitionRequestAcceptanceEnum = {
-  AcceptDisclosure: "ACCEPT_DISCLOSURE",
+  AcceptEmploymentContract: "ACCEPT_EMPLOYMENT_CONTRACT",
 } as const;
 export type ContinueAcquisitionRequestAcceptanceEnum =
   (typeof ContinueAcquisitionRequestAcceptanceEnum)[keyof typeof ContinueAcquisitionRequestAcceptanceEnum];
@@ -122,6 +128,7 @@ export function ContinueAcquisitionRequestFromJSONTyped(
     disclosureRevision: json["disclosureRevision"],
     termsVersion: new Date(json["termsVersion"]),
     acceptance: json["acceptance"],
+    couponCode: json["couponCode"] == null ? undefined : json["couponCode"],
   };
 }
 
@@ -146,5 +153,6 @@ export function ContinueAcquisitionRequestToJSONTyped(
     disclosureRevision: value["disclosureRevision"],
     termsVersion: value["termsVersion"].toISOString().substring(0, 10),
     acceptance: value["acceptance"],
+    couponCode: value["couponCode"],
   };
 }

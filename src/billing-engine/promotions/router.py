@@ -43,6 +43,7 @@ class ValidateCouponRequest(BaseModel):
     coupon_code: str
     customer_id: uuid.UUID
     agent_type: str
+    agent_version: str
     subscription_tier: str
 
 
@@ -79,6 +80,7 @@ async def validate_coupon(
         code=body.coupon_code,
         customer_id=body.customer_id,
         agent_type=body.agent_type,
+        agent_version=body.agent_version,
         tier=body.subscription_tier,
     )
     return ValidateCouponResponse(

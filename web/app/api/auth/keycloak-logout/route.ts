@@ -148,10 +148,10 @@ async function logoutGet(request: NextRequest) {
   if (correlationId) {
     await recordWebIdentitySecurityEvent({
       correlationId,
-      eventType: 'LOGOUT_COMPLETION',
+      eventType: 'LOGOUT_REQUEST',
       providerClass: 'INTERNAL',
-      outcome: 'SUCCEEDED',
-      reasonCode: 'LOCAL_SESSION_CLEARED',
+      outcome: 'ATTEMPTED',
+      reasonCode: 'IDP_LOGOUT_REDIRECT_STARTED',
       assuranceClass: 'ANONYMOUS',
     });
   }
