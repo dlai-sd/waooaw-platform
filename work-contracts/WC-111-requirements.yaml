@@ -1,0 +1,70 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-111
+contract_path: work-contracts/WC-111-autonomous-office-capability-upgrade.md
+contract_digest: 818d965f80952898ebb99ff763cdfe7ee2d14d89e3dd90a22cb564fa4a442ac5
+contract_status: DONE
+implementation_scope: true
+result: DONE
+completion_rule: >-
+  Every requirement must be PASS with direct specification or Docker policy evidence, while protected
+  Founder authority and current-main validation controls remain intact.
+
+requirement_defaults: &requirement_defaults
+  evidence_class: Specification and Docker policy evidence
+  initial_state: new
+  dependencies: Founder instruction and current origin/main validation baseline
+  residual_risk: Founder review and merge remain open.
+  result: PASS
+
+requirements:
+  - <<: *requirement_defaults
+    requirement_id: WC111-R001
+    source: Definition of Done and Requirement Ledger
+    observable_outcome: Every named office has an explicit bounded autonomous trigger-to-evidence path without authority transfer or unrequested subordinate agents.
+    component_owner: Enterprise Architecture
+    test_path_or_plan: Review office cards, standards, registry and autonomous operating contract; run the agent operating policy tests.
+    completion_rule: All scoped offices expose deterministic triggers, inputs, stops, evidence and handoff while protected Founder decisions remain human.
+    evidence_refs:
+      - constitution/ORGANIZATION.md
+      - constitution/INSTITUTION-REGISTRY.md
+      - .github/agent-context/
+      - tests/pipeline/test_agent_operating_policy.py
+
+  - <<: *requirement_defaults
+    requirement_id: WC111-R002
+    source: PR Delivery Addendum and Requirement Ledger
+    observable_outcome: Release qualification defaults ON and OFF requires a non-placeholder Founder authority record in local preparation and CI.
+    component_owner: Platform delivery control
+    test_path_or_plan: Run focused Docker tests for PR-body parsing and CI workflow conditions.
+    completion_rule: Missing, duplicate and placeholder OFF authority is rejected; the template default remains ON.
+    evidence_refs:
+      - .github/pull_request_template.md
+      - scripts/prepare_pr_body.py
+      - .github/workflows/ci.yaml
+      - tests/pipeline/test_prepare_pr_body.py
+      - tests/pipeline/test_ci_validation_efficiency.py
+
+  - <<: *requirement_defaults
+    requirement_id: WC111-R003
+    source: PR Delivery Addendum and PR Delivery Author Review
+    observable_outcome: PR suppression is truthful, push-to-main stays enabled and current-main validation controls are preserved.
+    component_owner: Platform delivery control
+    test_path_or_plan: Inspect current-main reconciliation and run focused Docker workflow and policy tests.
+    completion_rule: OFF records SKIPPED_FOUNDER_AUTHORIZED, non-PR events default enabled and no legacy validation runner path is restored.
+    evidence_refs:
+      - scripts/prepare_pr_body.py
+      - .github/workflows/ci.yaml
+      - work-contracts/WC-111-autonomous-office-capability-upgrade.md
+      - tests/pipeline/test_ci_validation_efficiency.py
+
+  - <<: *requirement_defaults
+    requirement_id: WC111-R004
+    source: PR Delivery Addendum and Requirement Ledger
+    observable_outcome: The TypeScript dependency scan passes with source-map-js resolved to patched version 1.2.2 and no unrelated dependency change.
+    component_owner: Web dependency supply chain
+    test_path_or_plan: Regenerate the pnpm lockfile in Docker and rerun the mandatory TypeScript dependency scan.
+    completion_rule: The lockfile contains source-map-js 1.2.2, contains no 1.2.1 resolution and the dependency security gate passes.
+    evidence_refs:
+      - web/package.json
+      - web/pnpm-lock.yaml
+      - test-results/wc109/precommit/

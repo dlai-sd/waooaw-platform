@@ -55,6 +55,48 @@ jobs:
       packages: read
       attestations: read
 
+  qualification-control:
+    name: Release qualification control
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.control.outputs.enabled }}
+      authority: ${{ steps.control.outputs.authority }}
+    steps:
+      - name: Resolve PR qualification control
+        id: control
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          enabled=true
+          authority="push-to-main"
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            mode_count=$(grep -Ec '^\*\*Release Qualification:\*\* (ON|OFF)$' <<< "$PR_BODY" || true)
+            if [[ "$mode_count" != "1" ]]; then
+              echo "::error::PR body must contain exactly one **Release Qualification:** ON|OFF field"
+              exit 1
+            fi
+            mode=$(sed -nE 's/^\*\*Release Qualification:\*\* (ON|OFF)$/\1/p' <<< "$PR_BODY")
+            authority="template-default"
+            if [[ "$mode" == "OFF" ]]; then
+              authority_count=$(grep -Ec '^\*\*Release Qualification Authority:\*\* .+$' <<< "$PR_BODY" || true)
+              authority=$(sed -nE 's/^\*\*Release Qualification Authority:\*\* (.+)$/\1/p' <<< "$PR_BODY")
+              if [[ "$authority_count" != "1" || -z "$authority" || "$authority" =~ ^(N/A|NONE|TBD)$ ]]; then
+                echo "::error::Release Qualification OFF requires one non-placeholder Founder authority record"
+                exit 1
+              fi
+              enabled=false
+            fi
+          fi
+          echo "enabled=$enabled" >> "$GITHUB_OUTPUT"
+          echo "authority=$authority" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Release qualification control"
+            echo "- Enabled: $enabled"
+            echo "- Authority: $authority"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   # ─── Build and scan all pull-request release images ──────────────────────
   build:
     name: Build Docker image (${{ matrix.service.name }})
@@ -403,8 +445,10 @@ jobs:
   release-qualification:
     name: Release qualification
     runs-on: ubuntu-latest
-    needs: [runner-supply, validation-plan]
-    if: needs.validation-plan.outputs.release_required == 'true'
+    needs: [runner-supply, validation-plan, qualification-control]
+    if: >-
+      needs.validation-plan.outputs.release_required == 'true' &&
+      needs.qualification-control.outputs.enabled == 'true'
     permissions:
       contents: read
       packages: read

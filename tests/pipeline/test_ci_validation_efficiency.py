@@ -205,7 +205,25 @@ def test_costly_ci_jobs_are_guarded_by_the_validation_plan() -> None:
         assert "validation-plan" in (
             [ci["jobs"][job_id]["needs"]] if isinstance(ci["jobs"][job_id]["needs"], str) else ci["jobs"][job_id]["needs"]
         ), job_id
-    assert ci["jobs"]["release-qualification"]["if"] == ("needs.validation-plan.outputs.release_required == 'true'")
+    assert "needs.validation-plan.outputs.release_required == 'true'" in ci["jobs"]["release-qualification"]["if"]
+    assert "needs.qualification-control.outputs.enabled == 'true'" in ci["jobs"]["release-qualification"]["if"]
+    assert set(ci["jobs"]["release-qualification"]["needs"]) == {
+        "runner-supply",
+        "validation-plan",
+        "qualification-control",
+    }
+
+
+def test_release_qualification_control_is_founder_bound_and_push_fail_closed() -> None:
+    control = load_ci()["jobs"]["qualification-control"]
+    source = control["steps"][0]["run"]
+
+    assert control["outputs"]["enabled"] == "${{ steps.control.outputs.enabled }}"
+    assert 'authority="push-to-main"' in source
+    assert 'if [[ "$EVENT_NAME" == "pull_request" ]]' in source
+    assert "Release Qualification:" in source
+    assert "(ON|OFF)" in source
+    assert "OFF requires one non-placeholder Founder authority record" in source
 
 
 def test_main_release_manifest_fails_when_a_prerequisite_is_not_successful() -> None:

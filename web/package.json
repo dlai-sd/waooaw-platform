@@ -17,7 +17,8 @@
       "js-yaml@>=4.0.0 <4.3.2": "4.3.2",
       "next>postcss": "8.5.26",
       "next>sharp": "0.35.4",
-      "serialize-javascript@<=7.0.2": "7.0.3"
+      "serialize-javascript@<=7.0.2": "7.0.3",
+      "source-map-js@<1.2.2": "1.2.2"
     },
     "patchedDependencies": {
       "braces@3.0.3": "patches/braces@3.0.3.patch"
