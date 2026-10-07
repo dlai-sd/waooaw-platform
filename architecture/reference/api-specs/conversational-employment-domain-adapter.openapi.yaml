@@ -1,0 +1,441 @@
+openapi: "3.1.0"
+info:
+  title: WAOOAW Conversational Employment Domain Adapter Candidate API
+  version: "1.0.0-candidate.1"
+  contact:
+    name: WAOOAW Architecture
+  description: |
+    Generic private adapter contract for agent-specific induction, planning, dependency,
+    material-change and performance semantics. It owns no public relationship, lifecycle,
+    billing, authority, constitutional evidence or customer ordering truth.
+servers:
+  - url: https://domain-adapter.internal.waooaw
+tags:
+  - name: Employment Domain Semantics
+security:
+  - ServiceBearerAuth: []
+paths:
+  /internal/v1/employment-interface/manifest:
+    get:
+      tags: [Employment Domain Semantics]
+      operationId: getEmploymentInterfaceManifest
+      summary: Resolve one exact immutable agent employment interface manifest
+      description: Returns exact protocol and manifest support without reading mutable repository text at action time.
+      parameters:
+        - $ref: "#/components/parameters/AgentType"
+        - $ref: "#/components/parameters/AgentVersion"
+        - $ref: "#/components/parameters/ManifestVersion"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Exact manifest
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmploymentInterfaceManifestV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /internal/v1/relationships/{relationshipId}/employment/induction-requirements:
+    get:
+      tags: [Employment Domain Semantics]
+      operationId: getInductionRequirementSet
+      summary: Get profession-specific induction requirements in generic envelopes
+      description: Returns versioned domain requirements and affected Skills without owning BP readiness.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/ManifestVersion"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Versioned induction requirement set
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InductionRequirementSetV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /internal/v1/relationships/{relationshipId}/employment/plan-validation:
+    post:
+      tags: [Employment Domain Semantics]
+      operationId: validatePlanCandidate
+      summary: Validate domain semantics without accepting or authorizing the plan
+      description: Assesses a candidate against admitted domain semantics while BP retains plan acceptance.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlanValidationRequestV1" }
+      responses:
+        "200":
+          description: Domain assessment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlanValidationAssessmentV1" }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /internal/v1/relationships/{relationshipId}/employment/material-change-classification:
+    post:
+      tags: [Employment Domain Semantics]
+      operationId: classifyMaterialChange
+      summary: Classify domain materiality and affected work without changing plan state
+      description: Returns domain materiality and affected references; protected BP materiality categories remain mandatory.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MaterialChangeRequestV1" }
+      responses:
+        "200":
+          description: Domain materiality assessment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MaterialChangeAssessmentV1" }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /internal/v1/relationships/{relationshipId}/employment/dependency-isolation:
+    post:
+      tags: [Employment Domain Semantics]
+      operationId: evaluateDependencyIsolation
+      summary: Prove or reject bounded Skill isolation after dependency change
+      description: Proves bounded isolation or returns unknown so BP can fail closed for dependent work.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DependencyIsolationRequestV1" }
+      responses:
+        "200":
+          description: Isolation assessment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DependencyIsolationAssessmentV1" }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /internal/v1/relationships/{relationshipId}/employment/performance-assessments/{reviewPeriodRef}:
+    get:
+      tags: [Employment Domain Semantics]
+      operationId: getPerformanceAssessment
+      summary: Get domain business-outcome and agent-performance meanings separately
+      description: Returns evidence-linked domain meaning without converting technical execution metrics into business outcomes.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/ReviewPeriodRef"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Domain performance assessment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PerformanceAssessmentV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+components:
+  securitySchemes:
+    ServiceBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Exact adapter audience and delegated purpose, tenant and relationship context.
+  parameters:
+    RelationshipId:
+      name: relationshipId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AgentType:
+      name: agentType
+      in: query
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 100 }
+    AgentVersion:
+      name: agentVersion
+      in: query
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 64 }
+    ManifestVersion:
+      name: manifestVersion
+      in: query
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 64 }
+    ReviewPeriodRef:
+      name: reviewPeriodRef
+      in: path
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 128 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    InvalidRequest:
+      description: Invalid generic envelope or unsupported domain reference
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/DomainEmploymentProblemV1" }
+    Unauthorized:
+      description: Invalid service assertion, audience, purpose or relationship delegation
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/DomainEmploymentProblemV1" }
+    NotFound:
+      description: Resource absent or inaccessible
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/DomainEmploymentProblemV1" }
+    Conflict:
+      description: Idempotency, exact-version or source conflict
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/DomainEmploymentProblemV1" }
+    Unavailable:
+      description: Adapter cannot provide current domain meaning
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/DomainEmploymentProblemV1" }
+  schemas:
+    DomainEmploymentSchemaVersion:
+      type: string
+      const: "1.0"
+    EmploymentInterfaceManifestV1:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - protocolVersion
+        - agentType
+        - agentVersion
+        - manifestVersion
+        - requirementSetVersion
+        - supportedGoalTypes
+        - milestoneTypes
+        - dependencyTypes
+        - workItemTypes
+        - performanceMeasureTypes
+        - conformanceScenarioRefs
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/DomainEmploymentSchemaVersion" }
+        protocolVersion: { type: string, const: "1.0-candidate" }
+        agentType: { type: string, minLength: 1, maxLength: 100 }
+        agentVersion: { type: string, minLength: 1, maxLength: 64 }
+        manifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        requirementSetVersion: { type: string, minLength: 1, maxLength: 64 }
+        supportedGoalTypes:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1, maxLength: 100 }
+        milestoneTypes:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 100 }
+        dependencyTypes:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 100 }
+        workItemTypes:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 100 }
+        performanceMeasureTypes:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 100 }
+        conformanceScenarioRefs:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1, maxLength: 200 }
+        shorterMissedReviewThreshold:
+          type: integer
+          minimum: 1
+          maximum: 2
+    DomainRequirementV1:
+      type: object
+      additionalProperties: false
+      required: [requirementRef, label, mandatory, dependencyType, affectedSkillRefs]
+      properties:
+        requirementRef: { type: string, minLength: 1, maxLength: 128 }
+        label: { type: string, minLength: 1, maxLength: 240 }
+        description: { type: string, maxLength: 1000 }
+        mandatory: { type: boolean }
+        dependencyType: { type: string, minLength: 1, maxLength: 100 }
+        affectedSkillRefs:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1, maxLength: 128 }
+        confirmationClass:
+          type: string
+          enum: [CUSTOMER, AUTHORITY_SOURCE, OWNER_BOUND_ASSUMPTION]
+    InductionRequirementSetV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, manifestVersion, requirementSetVersion, requirements, producedAt]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/DomainEmploymentSchemaVersion" }
+        manifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        requirementSetVersion: { type: string, minLength: 1, maxLength: 64 }
+        requirements:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/DomainRequirementV1" }
+        producedAt: { type: string, format: date-time }
+    PlanValidationRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, manifestVersion, requirementSetVersion, planVersion, goalType, skillRefs, milestoneTypes, sourceVersion]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/DomainEmploymentSchemaVersion" }
+        manifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        requirementSetVersion: { type: string, minLength: 1, maxLength: 64 }
+        planVersion: { type: string, minLength: 1, maxLength: 64 }
+        goalType: { type: string, minLength: 1, maxLength: 100 }
+        skillRefs:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1, maxLength: 128 }
+        milestoneTypes:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 100 }
+        sourceVersion: { type: string, minLength: 1, maxLength: 128 }
+    PlanValidationAssessmentV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, assessmentVersion, state, unmetDomainConditions, limitations, producedAt]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/DomainEmploymentSchemaVersion" }
+        assessmentVersion: { type: string, minLength: 1, maxLength: 64 }
+        state: { type: string, enum: [VALID, INVALID, PARTIAL, UNKNOWN] }
+        unmetDomainConditions:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 240 }
+        limitations:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 500 }
+        producedAt: { type: string, format: date-time }
+    MaterialChangeRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, manifestVersion, currentPlanVersion, candidatePatchRef, protectedCategoryFlags]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/DomainEmploymentSchemaVersion" }
+        manifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        currentPlanVersion: { type: string, minLength: 1, maxLength: 64 }
+        candidatePatchRef: { type: string, format: uuid }
+        protectedCategoryFlags:
+          type: array
+          items:
+            type: string
+            enum: [OUTCOME, BASELINE, TARGET, BUDGET, AUTHORITY, CALENDAR, SKILL_SET, CREDENTIAL, SAFETY, MEASUREMENT]
+    MaterialChangeAssessmentV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, classification, reasons, affectedSkillRefs, affectedWorkRefs, renewedAgreementRequired]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/DomainEmploymentSchemaVersion" }
+        classification: { type: string, enum: [NON_MATERIAL, MATERIAL, UNKNOWN] }
+        reasons:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1, maxLength: 240 }
+        affectedSkillRefs:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 128 }
+        affectedWorkRefs:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 128 }
+        renewedAgreementRequired: { type: boolean }
+    DependencyIsolationRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, manifestVersion, dependencyRef, dependencyState, candidateAffectedSkillRefs]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/DomainEmploymentSchemaVersion" }
+        manifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        dependencyRef: { type: string, minLength: 1, maxLength: 128 }
+        dependencyState: { type: string, enum: [READY, LOST, EXPIRED, REVOKED, UNAVAILABLE, UNKNOWN] }
+        candidateAffectedSkillRefs:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1, maxLength: 128 }
+    DependencyIsolationAssessmentV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, isolation, affectedSkillRefs, dependentWorkRefs, rationale]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/DomainEmploymentSchemaVersion" }
+        isolation: { type: string, enum: [PROVEN_BOUNDED, NOT_BOUNDED, UNKNOWN] }
+        affectedSkillRefs:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1, maxLength: 128 }
+        dependentWorkRefs:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 128 }
+        rationale: { type: string, minLength: 1, maxLength: 1000 }
+    PerformanceAssessmentV1:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - assessmentVersion
+        - reviewPeriodRef
+        - outcomeLabel
+        - outcomeState
+        - attributionBasis
+        - attributionConfidence
+        - agentPerformanceState
+        - missedReviewPeriods
+        - evidenceRefs
+        - limitations
+        - producedAt
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/DomainEmploymentSchemaVersion" }
+        assessmentVersion: { type: string, minLength: 1, maxLength: 64 }
+        reviewPeriodRef: { type: string, minLength: 1, maxLength: 128 }
+        outcomeLabel: { type: string, minLength: 1, maxLength: 240 }
+        outcomeState: { type: string, enum: [ACHIEVED, MISSED, PARTIAL, UNKNOWN, UNAVAILABLE, DISPUTED] }
+        observedValue: { type: string, maxLength: 240 }
+        attributionBasis: { type: string, minLength: 1, maxLength: 1000 }
+        attributionConfidence: { type: number, minimum: 0, maximum: 1 }
+        agentPerformanceState: { type: string, enum: [MEETING, NOT_MEETING, UNKNOWN, UNAVAILABLE] }
+        missedReviewPeriods: { type: integer, minimum: 0 }
+        diagnosisRequired: { type: boolean }
+        correctiveProposalRequired: { type: boolean }
+        evidenceRefs:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 200 }
+        limitations:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 500 }
+        producedAt: { type: string, format: date-time }
+    DomainEmploymentProblemV1:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, correlationId]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string, minLength: 1, maxLength: 160 }
+        status: { type: integer, minimum: 400, maximum: 599 }
+        code:
+          type: string
+          enum: [DOMAIN_EMPLOYMENT_INVALID, DOMAIN_EMPLOYMENT_UNAUTHORIZED, DOMAIN_EMPLOYMENT_NOT_FOUND, DOMAIN_EMPLOYMENT_CONFLICT, DOMAIN_EMPLOYMENT_UNAVAILABLE, DOMAIN_EMPLOYMENT_VERSION_UNSUPPORTED]
+        correlationId: { type: string, format: uuid }

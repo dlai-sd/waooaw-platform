@@ -1,0 +1,257 @@
+openapi: "3.1.0"
+info:
+  title: WAOOAW Conversational Employment AI Runtime Candidate API
+  version: "1.0.0-candidate.1"
+  contact:
+    name: WAOOAW Architecture
+  description: |
+    PR-only proposal contract. AI Runtime produces immutable typed proposals and owns no
+    relationship, plan, readiness, authority, billing, evidence or completion truth.
+servers:
+  - url: https://ai-runtime.internal.waooaw
+tags:
+  - name: Employment Interpretation
+security:
+  - ServiceBearerAuth: []
+paths:
+  /internal/v1/employment-patch-proposals:
+    post:
+      tags: [Employment Interpretation]
+      operationId: proposeEmploymentPatch
+      summary: Produce or replay one non-authoritative typed employment patch proposal
+      description: Interprets one bounded contribution into a proposal that BP must independently validate and confirm.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmploymentPatchProposalRequestV1" }
+      responses:
+        "202":
+          description: Proposal responsibility accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmploymentPatchProposalReceiptV1" }
+        "200":
+          description: Identical immutable proposal replayed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmploymentPatchProposalV1" }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /internal/v1/employment-patch-proposals/{proposalId}:
+    get:
+      tags: [Employment Interpretation]
+      operationId: getEmploymentPatchProposal
+      summary: Reconcile one immutable proposal result
+      description: Returns the immutable proposal result or an explicit unavailable outcome without fabricating a patch.
+      parameters:
+        - $ref: "#/components/parameters/ProposalId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Proposal result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmploymentPatchProposalV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+components:
+  securitySchemes:
+    ServiceBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: PR workload assertion bound to AIR audience, purpose and request digest.
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+    ProposalId:
+      name: proposalId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    InvalidRequest:
+      description: Invalid closed request
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/AirEmploymentProblemV1" }
+    Unauthorized:
+      description: Invalid service assertion
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/AirEmploymentProblemV1" }
+    NotFound:
+      description: Proposal absent or inaccessible
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/AirEmploymentProblemV1" }
+    Conflict:
+      description: Idempotency or exact-version conflict
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/AirEmploymentProblemV1" }
+    Unprocessable:
+      description: Contribution cannot be represented in the allowed semantic path catalogue
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/AirEmploymentProblemV1" }
+    Unavailable:
+      description: Inference unavailable; no proposal is fabricated
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/AirEmploymentProblemV1" }
+  schemas:
+    AirEmploymentSchemaVersion:
+      type: string
+      const: "1.0"
+    ProposalPatchType:
+      type: string
+      enum: [INDUCTION_CONTEXT, GOAL, PLAN, CALENDAR, DEPENDENCY, OPERATING_CYCLE, CORRECTIVE_PROPOSAL]
+    ProposalState:
+      type: string
+      enum: [PENDING, PROPOSED, UNREPRESENTABLE, FAILED]
+    ProposalOperation:
+      type: object
+      additionalProperties: false
+      required: [op, semanticPath]
+      properties:
+        op: { type: string, enum: [ADD, REPLACE, REMOVE] }
+        semanticPath:
+          type: string
+          pattern: "^/[a-z][a-zA-Z0-9]*(/[a-zA-Z0-9_-]+)*$"
+          maxLength: 240
+        value:
+          description: Candidate value constrained by the separately accepted AI semantic catalogue.
+        rationale: { type: string, maxLength: 500 }
+        sourceRefs:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 200 }
+    EmploymentPatchProposalRequestV1:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - protocolVersion
+        - relationshipRef
+        - contributionRef
+        - agentType
+        - agentVersion
+        - manifestVersion
+        - semanticCatalogueVersion
+        - promptPolicyRef
+        - patchType
+        - contribution
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/AirEmploymentSchemaVersion" }
+        protocolVersion: { type: string, const: "1.0-candidate" }
+        relationshipRef:
+          type: string
+          description: PR-issued opaque reference; not a customer identifier.
+          minLength: 1
+          maxLength: 160
+        contributionRef: { type: string, minLength: 1, maxLength: 160 }
+        agentType: { type: string, minLength: 1, maxLength: 100 }
+        agentVersion: { type: string, minLength: 1, maxLength: 64 }
+        manifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        semanticCatalogueVersion: { type: string, minLength: 1, maxLength: 64 }
+        promptPolicyRef: { type: string, minLength: 1, maxLength: 200 }
+        patchType: { $ref: "#/components/schemas/ProposalPatchType" }
+        contribution:
+          type: object
+          additionalProperties: false
+          required: [text, locale]
+          properties:
+            text: { type: string, minLength: 1, maxLength: 20000 }
+            locale: { type: string, minLength: 2, maxLength: 35 }
+        boundedContext:
+          type: object
+          additionalProperties: false
+          properties:
+            currentPlanVersion: { type: string, maxLength: 64 }
+            requirementSetVersion: { type: string, maxLength: 64 }
+            allowedSemanticPathPrefixes:
+              type: array
+              minItems: 1
+              items: { type: string, minLength: 1, maxLength: 120 }
+    EmploymentPatchProposalReceiptV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, proposalId, state, acceptedAt, reconciliationUri]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/AirEmploymentSchemaVersion" }
+        proposalId: { type: string, format: uuid }
+        state: { type: string, const: PENDING }
+        acceptedAt: { type: string, format: date-time }
+        reconciliationUri: { type: string, format: uri-reference }
+    EmploymentPatchProposalV1:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - proposalId
+        - protocolVersion
+        - manifestVersion
+        - patchType
+        - state
+        - operations
+        - confidence
+        - assumptions
+        - unresolvedQuestions
+        - sourceRefs
+        - promptPolicyRef
+        - producedAt
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/AirEmploymentSchemaVersion" }
+        proposalId: { type: string, format: uuid }
+        protocolVersion: { type: string, const: "1.0-candidate" }
+        manifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        patchType: { $ref: "#/components/schemas/ProposalPatchType" }
+        state: { $ref: "#/components/schemas/ProposalState" }
+        operations:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/ProposalOperation" }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+        assumptions:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 500 }
+        unresolvedQuestions:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 500 }
+        sourceRefs:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 200 }
+        promptPolicyRef: { type: string, minLength: 1, maxLength: 200 }
+        modelDecisionRef:
+          type: string
+          description: Privacy-minimised provider-selection evidence reference.
+          maxLength: 200
+        producedAt: { type: string, format: date-time }
+    AirEmploymentProblemV1:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, correlationId]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string, minLength: 1, maxLength: 160 }
+        status: { type: integer, minimum: 400, maximum: 599 }
+        code:
+          type: string
+          enum: [AIR_EMPLOYMENT_INVALID, AIR_EMPLOYMENT_UNAUTHORIZED, AIR_EMPLOYMENT_NOT_FOUND, AIR_EMPLOYMENT_CONFLICT, AIR_EMPLOYMENT_UNREPRESENTABLE, AIR_EMPLOYMENT_UNAVAILABLE]
+        correlationId: { type: string, format: uuid }

@@ -14,6 +14,7 @@
 | Latest completed Work Contract | WC-102 - Docker-Only Validation Control Plane |
 | Latest merge | PR #472 merged to `main` as `b50cb36b` |
 | Active delivery | WC-105 follow-up on `fix/wc105-session-defects` is locally deployed and qualified in the isolated Codespaces preview. It adds the repository-owned preview launcher and standard, session/acquisition integrity repairs, and authoritative Hire/Trial card modes. PR submission and Founder review/merge remain open; no Azure or provider mutation occurred. |
+| Active architecture delivery | WC-114 Solution Architecture package passes author review and local contract validation on `sa/conversational-employment-workspace`; exact-head PR preparation and Founder review remain, while implementation and protocol activation are unauthorized. |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 

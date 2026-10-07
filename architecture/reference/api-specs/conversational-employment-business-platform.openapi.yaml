@@ -1,0 +1,649 @@
+openapi: "3.1.0"
+info:
+  title: WAOOAW Conversational Employment Business Platform Candidate API
+  version: "1.0.0-candidate.1"
+  contact:
+    name: WAOOAW Architecture
+  description: |
+    Additive public Business Platform contract candidate for WC-114.
+    It does not activate an employment protocol or authorize implementation.
+    Business Platform remains the sole ordinary public facade.
+servers:
+  - url: https://api.waooaw.com
+tags:
+  - name: Conversational Employment
+security:
+  - BearerAuth: []
+paths:
+  /api/v1/employment/relationships/{relationshipId}/workspace/employment:
+    get:
+      tags: [Conversational Employment]
+      operationId: getEmploymentWorkspace
+      summary: Read the complete conversational employment projection
+      description: Returns BP-composed owner truth without transferring CE, WBE, PR or adapter authority.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      responses:
+        "200":
+          description: Authoritative BP-composed projection
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmploymentWorkspaceV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workspace/employment/phases/{phase}:
+    get:
+      tags: [Conversational Employment]
+      operationId: getEmploymentPhase
+      summary: Read one phase with requirement-derived progress
+      description: Returns one phase whose progress is derived from declared requirements and owner-confirmed item states.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/Phase"
+      responses:
+        "200":
+          description: Phase projection
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmploymentPhaseV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workspace/employment/readiness:
+    get:
+      tags: [Conversational Employment]
+      operationId: getEmploymentReadiness
+      summary: Read all independent readiness facets
+      description: Returns induction, plan, operations and performance facets without changing the C-034 lifecycle.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      responses:
+        "200":
+          description: Readiness projection
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmploymentReadinessV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workspace/employment/plans/current:
+    get:
+      tags: [Conversational Employment]
+      operationId: getEmploymentPlan
+      summary: Read the current plan version
+      description: Returns the current immutable plan projection and its exact owner source version.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      responses:
+        "200":
+          description: Current plan
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmploymentPlanV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workspace/employment/plans/{planVersion}:
+    get:
+      tags: [Conversational Employment]
+      operationId: getEmploymentPlanVersion
+      summary: Read one immutable plan version
+      description: Returns an authorized historical plan version without promoting it to current.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/PlanVersion"
+      responses:
+        "200":
+          description: Exact plan version
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmploymentPlanV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workspace/employment/commands:
+    post:
+      tags: [Conversational Employment]
+      operationId: submitEmploymentCommand
+      summary: Submit or replay one closed typed employment command
+      description: Accepts a version-bound command; transport acceptance never represents owner commit or governed success.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmploymentCommandRequestV1" }
+      responses:
+        "202":
+          description: BP accepted durable responsibility; no business success is implied
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmploymentCommandReceiptV1" }
+        "200":
+          description: Prior identical receipt or terminal outcome replayed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmploymentCommandReceiptV1" }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/AssuranceRequired" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "423": { $ref: "#/components/responses/Blocked" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workspace/employment/commands/{commandId}:
+    get:
+      tags: [Conversational Employment]
+      operationId: getEmploymentCommand
+      summary: Reconcile one command by its durable BP identity
+      description: Returns the owner-by-owner command state and prevents blind retry after an ambiguous outcome.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/CommandId"
+      responses:
+        "200":
+          description: Current authoritative command outcome
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmploymentCommandOutcomeV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Tenant and relationship authority are resolved server-side from validated identity.
+  parameters:
+    RelationshipId:
+      name: relationshipId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    Phase:
+      name: phase
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/EmploymentPhaseKind" }
+    PlanVersion:
+      name: planVersion
+      in: path
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 64 }
+    CommandId:
+      name: commandId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    InvalidRequest:
+      description: Invalid request
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/EmploymentProblemDetailV1" }
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/EmploymentProblemDetailV1" }
+    AssuranceRequired:
+      description: Accepted assurance is insufficient
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/EmploymentProblemDetailV1" }
+    NotAccessible:
+      description: Resource absent or inaccessible
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/EmploymentProblemDetailV1" }
+    Conflict:
+      description: Expected-version, reassessment or idempotency conflict
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/EmploymentProblemDetailV1" }
+    Blocked:
+      description: Known policy, dependency or commercial condition blocks the command
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/EmploymentProblemDetailV1" }
+    Unavailable:
+      description: Required source unavailable or command outcome unknown
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/EmploymentProblemDetailV1" }
+  schemas:
+    EmploymentSchemaVersion:
+      type: string
+      const: "1.0"
+    EmploymentPhaseKind:
+      type: string
+      enum: [INDUCTION, PLANNING, OPERATIONS]
+    SourceState:
+      type: string
+      enum: [CURRENT, STALE, PARTIAL, DISPUTED, UNKNOWN, UNAVAILABLE, BLOCKED]
+    EmploymentItemState:
+      type: string
+      enum:
+        - PROPOSED
+        - READY
+        - IN_PROGRESS
+        - WAITING_ON_CUSTOMER
+        - WAITING_ON_AGENT
+        - WAITING_ON_PLATFORM
+        - BLOCKED
+        - COMPLETED
+        - DEFERRED
+        - CANCELLED
+        - SUPERSEDED
+        - OUTCOME_UNKNOWN
+    InductionReadinessState:
+      type: string
+      enum: [NOT_STARTED, IN_PROGRESS, READY_WITH_DEFERRED_ITEMS, READY, BLOCKED, STALE_REASSESSMENT_REQUIRED]
+    PlanReadinessState:
+      type: string
+      enum: [NO_PLAN, DRAFT, GROOMING, READY_FOR_REVIEW, AGREED, BLOCKED, STALE_REASSESSMENT_REQUIRED]
+    OperationsEligibilityState:
+      type: string
+      enum: [LOCKED, ELIGIBLE, ACTIVE, PAUSED, BLOCKED, REASSESSMENT_REQUIRED, TERMINATED]
+    EmploymentOperationMode:
+      type: string
+      enum: [TRIAL_ADVISORY, ACTIVE_BOUNDED]
+    PerformanceAssuranceState:
+      type: string
+      enum: [NOT_ESTABLISHED, CURRENT, DEGRADED, CORRECTIVE_ACTION_REQUIRED, BLOCKED, UNAVAILABLE]
+    PlanState:
+      type: string
+      enum: [DRAFT, GROOMING, READY_FOR_REVIEW, AGREED, ACTIVE, BLOCKED, SUPERSEDED, CANCELLED, COMPLETED]
+    EmploymentSourceV1:
+      type: object
+      additionalProperties: false
+      required: [owner, contractVersion, sourceVersion, state, observedAt]
+      properties:
+        owner: { type: string, enum: [BP, PR, CE, WBE, DOMAIN_ADAPTER] }
+        contractVersion: { type: string, minLength: 1, maxLength: 64 }
+        sourceVersion: { type: string, minLength: 1, maxLength: 128 }
+        state: { $ref: "#/components/schemas/SourceState" }
+        observedAt: { type: string, format: date-time }
+        validUntil: { type: string, format: date-time }
+        limitation: { type: string, minLength: 1, maxLength: 500 }
+    RequirementProgressV1:
+      type: object
+      additionalProperties: false
+      required: [mandatoryTotal, mandatoryCompleted, optionalTotal, optionalCompleted, blockedCount, deferredCount]
+      properties:
+        mandatoryTotal: { type: integer, minimum: 0 }
+        mandatoryCompleted: { type: integer, minimum: 0 }
+        optionalTotal: { type: integer, minimum: 0 }
+        optionalCompleted: { type: integer, minimum: 0 }
+        blockedCount: { type: integer, minimum: 0 }
+        deferredCount: { type: integer, minimum: 0 }
+    BlockedEffectV1:
+      type: object
+      additionalProperties: false
+      required: [effectType, effectRef]
+      properties:
+        effectType: { type: string, enum: [SKILL, WORK_ITEM, MILESTONE, GOAL, ACTION] }
+        effectRef: { type: string, minLength: 1, maxLength: 128 }
+    AvailableCommandV1:
+      type: object
+      additionalProperties: false
+      required: [kind, subjectRef, requiresExplicitAcknowledgement]
+      properties:
+        kind: { $ref: "#/components/schemas/EmploymentCommandKind" }
+        subjectRef: { type: string, minLength: 1, maxLength: 128 }
+        requiresExplicitAcknowledgement: { type: boolean }
+    EmploymentWorkspaceItemV1:
+      type: object
+      additionalProperties: false
+      required:
+        - itemId
+        - itemVersion
+        - phase
+        - label
+        - mandatory
+        - state
+        - reason
+        - accountableOwner
+        - blockedEffects
+        - source
+        - availableCommands
+      properties:
+        itemId: { type: string, format: uuid }
+        itemVersion: { type: string, minLength: 1, maxLength: 64 }
+        phase: { $ref: "#/components/schemas/EmploymentPhaseKind" }
+        label: { type: string, minLength: 1, maxLength: 240 }
+        mandatory: { type: boolean }
+        state: { $ref: "#/components/schemas/EmploymentItemState" }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+        accountableOwner: { type: string, minLength: 1, maxLength: 120 }
+        dueMeaning: { type: string, minLength: 1, maxLength: 240 }
+        blockedEffects:
+          type: array
+          items: { $ref: "#/components/schemas/BlockedEffectV1" }
+        completionReference: { type: string, minLength: 1, maxLength: 200 }
+        source: { $ref: "#/components/schemas/EmploymentSourceV1" }
+        availableCommands:
+          type: array
+          items: { $ref: "#/components/schemas/AvailableCommandV1" }
+    EmploymentPhaseV1:
+      type: object
+      additionalProperties: false
+      required: [phase, status, progress, items, sources]
+      properties:
+        phase: { $ref: "#/components/schemas/EmploymentPhaseKind" }
+        status:
+          type: string
+          enum: [NOT_STARTED, IN_PROGRESS, READY, ACTIVE, BLOCKED, DEGRADED, COMPLETE]
+        progress: { $ref: "#/components/schemas/RequirementProgressV1" }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/EmploymentWorkspaceItemV1" }
+        sources:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/EmploymentSourceV1" }
+    EmploymentReadinessV1:
+      type: object
+      additionalProperties: false
+      required: [induction, plan, operations, performance, unmetConditions, sources]
+      properties:
+        induction: { $ref: "#/components/schemas/InductionReadinessState" }
+        plan: { $ref: "#/components/schemas/PlanReadinessState" }
+        operations: { $ref: "#/components/schemas/OperationsEligibilityState" }
+        performance: { $ref: "#/components/schemas/PerformanceAssuranceState" }
+        eligibleSkillRefs:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 128 }
+        lockedSkillRefs:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 128 }
+        unmetConditions:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 160 }
+        sources:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/EmploymentSourceV1" }
+    EmploymentOperationsV1:
+      type: object
+      additionalProperties: false
+      required: [mode, eligibility, eligibleSkillRefs, lockedSkillRefs, permittedOperationClasses, stopReachable, commercialSource]
+      properties:
+        mode: { $ref: "#/components/schemas/EmploymentOperationMode" }
+        eligibility: { $ref: "#/components/schemas/OperationsEligibilityState" }
+        eligibleSkillRefs:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 128 }
+        lockedSkillRefs:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 128 }
+        permittedOperationClasses:
+          type: array
+          uniqueItems: true
+          items: { type: string, enum: [SIMULATED, READ_ONLY, ADVISORY, CONSEQUENTIAL] }
+        stopReachable: { type: boolean, const: true }
+        commercialSource: { $ref: "#/components/schemas/EmploymentSourceV1" }
+      allOf:
+        - if:
+            properties:
+              mode: { const: TRIAL_ADVISORY }
+          then:
+            properties:
+              permittedOperationClasses:
+                type: array
+                uniqueItems: true
+                items: { type: string, enum: [SIMULATED, READ_ONLY, ADVISORY] }
+    CalendarCommitmentV1:
+      type: object
+      additionalProperties: false
+      required: [commitmentId, timezone, localDateTime, instant, tolerance]
+      properties:
+        commitmentId: { type: string, format: uuid }
+        timezone: { type: string, minLength: 1, maxLength: 64 }
+        localDateTime: { type: string, minLength: 1, maxLength: 40 }
+        instant: { type: string, format: date-time }
+        recurrence: { type: string, maxLength: 240 }
+        tolerance: { type: string, minLength: 1, maxLength: 120 }
+        missedWindowPolicy: { type: string, maxLength: 240 }
+    EmploymentPlanV1:
+      type: object
+      additionalProperties: false
+      required:
+        - planId
+        - planVersion
+        - state
+        - goalRef
+        - outcomeLabel
+        - accountableOwner
+        - skillRefs
+        - milestones
+        - calendarCommitments
+        - source
+      properties:
+        planId: { type: string, format: uuid }
+        planVersion: { type: string, minLength: 1, maxLength: 64 }
+        priorPlanVersion: { type: string, minLength: 1, maxLength: 64 }
+        state: { $ref: "#/components/schemas/PlanState" }
+        goalRef: { type: string, minLength: 1, maxLength: 128 }
+        outcomeLabel: { type: string, minLength: 1, maxLength: 240 }
+        accountableOwner: { type: string, minLength: 1, maxLength: 120 }
+        skillRefs:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1, maxLength: 128 }
+        milestones:
+          type: array
+          items: { $ref: "#/components/schemas/EmploymentWorkspaceItemV1" }
+        calendarCommitments:
+          type: array
+          items: { $ref: "#/components/schemas/CalendarCommitmentV1" }
+        impactSummary: { type: string, maxLength: 1000 }
+        source: { $ref: "#/components/schemas/EmploymentSourceV1" }
+    EmploymentWorkspaceV1:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - protocolVersion
+        - relationshipId
+        - workspaceVersion
+        - agentType
+        - agentVersion
+        - manifestVersion
+        - readiness
+        - phases
+        - operations
+        - sources
+        - limitations
+        - availableCommands
+        - authoritativeCursor
+        - producedAt
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/EmploymentSchemaVersion" }
+        protocolVersion: { type: string, const: "1.0-candidate" }
+        relationshipId: { type: string, format: uuid }
+        workspaceVersion: { type: string, minLength: 1, maxLength: 64 }
+        agentType: { type: string, minLength: 1, maxLength: 100 }
+        agentVersion: { type: string, minLength: 1, maxLength: 64 }
+        manifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        readiness: { $ref: "#/components/schemas/EmploymentReadinessV1" }
+        phases:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items: { $ref: "#/components/schemas/EmploymentPhaseV1" }
+        currentPlan:
+          oneOf:
+            - { $ref: "#/components/schemas/EmploymentPlanV1" }
+            - { type: "null" }
+        operations: { $ref: "#/components/schemas/EmploymentOperationsV1" }
+        sources:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/EmploymentSourceV1" }
+        limitations:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 500 }
+        recommendedNextAction: { type: string, maxLength: 500 }
+        availableCommands:
+          type: array
+          items: { $ref: "#/components/schemas/AvailableCommandV1" }
+        authoritativeCursor: { type: string, minLength: 1, maxLength: 512 }
+        producedAt: { type: string, format: date-time }
+    EmploymentCommandKind:
+      type: string
+      enum:
+        - CONFIRM_INDUCTION_ITEM
+        - DEFER_INDUCTION_ITEM
+        - APPLY_CANDIDATE_PATCH
+        - SUBMIT_PLAN_FOR_REVIEW
+        - ACCEPT_PLAN_VERSION
+        - ACKNOWLEDGE_MATERIAL_CHANGE
+        - RESCHEDULE_WITHIN_TOLERANCE
+        - REQUEST_REASSESSMENT
+        - ACKNOWLEDGE_CORRECTIVE_PROPOSAL
+    EmploymentCommandRequestV1:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - kind
+        - subjectRef
+        - expectedWorkspaceVersion
+        - expectedManifestVersion
+        - payload
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/EmploymentSchemaVersion" }
+        kind: { $ref: "#/components/schemas/EmploymentCommandKind" }
+        subjectRef: { type: string, minLength: 1, maxLength: 128 }
+        expectedWorkspaceVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedPlanVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedManifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedDecisionSpaceVersion: { type: integer, minimum: 1 }
+        expectedWbeSourceVersion: { type: string, minLength: 1, maxLength: 128 }
+        acknowledgement: { type: string, minLength: 1, maxLength: 1000 }
+        payload:
+          type: object
+          additionalProperties: false
+          properties:
+            candidatePatchRef: { type: string, format: uuid }
+            deferredReason: { type: string, minLength: 1, maxLength: 500 }
+            blockedSkillRefs:
+              type: array
+              items: { type: string, minLength: 1, maxLength: 128 }
+            requestedInstant: { type: string, format: date-time }
+      allOf:
+        - if:
+            properties:
+              kind: { const: DEFER_INDUCTION_ITEM }
+          then:
+            properties:
+              payload:
+                required: [deferredReason, blockedSkillRefs]
+                properties:
+                  blockedSkillRefs:
+                    minItems: 1
+        - if:
+            properties:
+              kind: { const: APPLY_CANDIDATE_PATCH }
+          then:
+            properties:
+              payload:
+                required: [candidatePatchRef]
+        - if:
+            properties:
+              kind: { enum: [SUBMIT_PLAN_FOR_REVIEW, REQUEST_REASSESSMENT] }
+          then:
+            required: [expectedPlanVersion]
+        - if:
+            properties:
+              kind: { enum: [ACCEPT_PLAN_VERSION, ACKNOWLEDGE_MATERIAL_CHANGE] }
+          then:
+            required: [expectedPlanVersion, expectedDecisionSpaceVersion, expectedWbeSourceVersion, acknowledgement]
+        - if:
+            properties:
+              kind: { const: RESCHEDULE_WITHIN_TOLERANCE }
+          then:
+            required: [expectedPlanVersion, acknowledgement]
+            properties:
+              payload:
+                required: [requestedInstant]
+        - if:
+            properties:
+              kind: { const: ACKNOWLEDGE_CORRECTIVE_PROPOSAL }
+          then:
+            required: [acknowledgement]
+    EmploymentCommandState:
+      type: string
+      enum: [ACCEPTED, VALIDATING, DISPATCHED, PARTIAL, UNKNOWN, RECONCILING, COMPLETED, REJECTED, CONFLICT, BLOCKED]
+    OwnerStepV1:
+      type: object
+      additionalProperties: false
+      required: [owner, state]
+      properties:
+        owner: { type: string, enum: [BP, PR, CE, WBE, DOMAIN_ADAPTER] }
+        state: { type: string, enum: [NOT_REQUIRED, PENDING, COMMITTED, REJECTED, UNKNOWN, BLOCKED] }
+        ownerCommandRef: { type: string, maxLength: 128 }
+        sourceVersion: { type: string, maxLength: 128 }
+    EmploymentCommandReceiptV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, commandId, state, acceptedAt, reconciliationUri]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/EmploymentSchemaVersion" }
+        commandId: { type: string, format: uuid }
+        state: { $ref: "#/components/schemas/EmploymentCommandState" }
+        acceptedAt: { type: string, format: date-time }
+        reconciliationUri: { type: string, format: uri-reference }
+    EmploymentCommandOutcomeV1:
+      unevaluatedProperties: false
+      allOf:
+        - $ref: "#/components/schemas/EmploymentCommandReceiptV1"
+        - type: object
+          required: [ownerSteps, updatedAt]
+          properties:
+            ownerSteps:
+              type: array
+              minItems: 1
+              items: { $ref: "#/components/schemas/OwnerStepV1" }
+            resultingWorkspaceVersion: { type: string, minLength: 1, maxLength: 64 }
+            evidenceRef: { type: string, maxLength: 128 }
+            limitation: { type: string, maxLength: 500 }
+            updatedAt: { type: string, format: date-time }
+    EmploymentProblemCode:
+      type: string
+      enum:
+        - EMPLOYMENT_NOT_ACCESSIBLE
+        - EMPLOYMENT_INVALID_REQUEST
+        - EMPLOYMENT_ASSURANCE_REQUIRED
+        - EMPLOYMENT_VERSION_CONFLICT
+        - EMPLOYMENT_IDEMPOTENCY_CONFLICT
+        - EMPLOYMENT_REASSESSMENT_REQUIRED
+        - EMPLOYMENT_BLOCKED
+        - EMPLOYMENT_OUTCOME_UNKNOWN
+        - EMPLOYMENT_SOURCE_UNAVAILABLE
+        - EMPLOYMENT_PROTOCOL_UNSUPPORTED
+    EmploymentProblemDetailV1:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, correlationId]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string, minLength: 1, maxLength: 160 }
+        status: { type: integer, minimum: 400, maximum: 599 }
+        detail: { type: string, maxLength: 500 }
+        code: { $ref: "#/components/schemas/EmploymentProblemCode" }
+        correlationId: { type: string, format: uuid }
+        reconciliationUri: { type: string, format: uri-reference }
+        currentWorkspaceVersion: { type: string, maxLength: 64 }
+        currentPlanVersion: { type: string, maxLength: 64 }
