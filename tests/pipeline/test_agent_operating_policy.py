@@ -175,6 +175,22 @@ def test_platform_it_policy_defines_costly_run_contract() -> None:
         assert "first causal" in normalized
 
 
+def test_platform_it_policy_requires_sustainable_author_authentication() -> None:
+    quick_start = (ROOT / ".github/agent-context/office-platform-it-expert.md").read_text(encoding="utf-8")
+    canonical = (ROOT / "architecture/reference/agents/platform-it-expert-agent.md").read_text(encoding="utf-8")
+
+    for policy in (quick_start, canonical):
+        normalized = " ".join(policy.lower().split())
+        assert "hosted github actions execute job" in normalized
+        assert "short-lived `github_token`" in normalized
+        assert "oidc" in normalized
+        assert "github app" in normalized
+        assert "separate" in normalized and "identity" in normalized
+        assert "never run `gh auth login`" in normalized or "must not start `gh auth login`" in normalized
+        assert "founder pat" in normalized or "personal access token" in normalized
+        assert "publication" in normalized and "block" in normalized
+
+
 def test_platform_it_policy_requires_static_first_focused_validation() -> None:
     canonical = IT_EXPERT_SPEC.read_text(encoding="utf-8")
     normalized = " ".join(canonical.split())

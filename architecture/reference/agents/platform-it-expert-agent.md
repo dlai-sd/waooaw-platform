@@ -269,6 +269,19 @@ pytest tests/ -v --cov=src --cov-report=xml
 
 **Mandatory PR structure (per `.github/pull_request_template.md`):**
 
+**Governed author authentication (mandatory):**
+
+- The sustainable author path is the hosted GitHub Actions execute job. GitHub automatically issues
+  its short-lived `GITHUB_TOKEN`; Azure access uses OIDC, and Key Vault retains application secrets.
+- The `waooaw-reviewer` GitHub App is a separate review identity and must never be reused to push an
+  author branch, open the author's PR, or bypass a missing author token.
+- An interactive development session may publish only when its approved environment has already
+  injected a short-lived author token. It must not start `gh auth login`, use GitHub device
+  authorization, ask the Founder for a personal access token, persist a personal credential, or fetch
+  Key Vault credentials into the session.
+- If an author token is absent, record publication as blocked and hand the exact candidate to the
+  hosted author job. Authentication failure is not permission to invent a parallel credential path.
+
 After final author review and the final push, populate the template, then run
 `scripts/prepare_pr_body.sh --body-file /tmp/pr-body.md --base origin/main --expected-worktree "$PWD" --expected-head "$(git rev-parse HEAD)"`. The preparer
 refuses an unpushed or stale branch, binds Author Review to the authoritative remote SHA, and runs
