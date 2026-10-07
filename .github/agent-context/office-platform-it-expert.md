@@ -54,11 +54,12 @@ own PR, access or mutate a provider without exact authority, or invoke another i
    local commit and update the PR body before push. Push, then rerun without the flag and update the
    body again; this prevents C-065 from evaluating stale commit-bound evidence during synchronization.
 8. In Codespaces, use the preconfigured `/.codespaces/bin/gitcredential_github.sh` helper for author
-   publication. Copilot SDK sessions expose the short-lived credential as `GITHUB_CODESPACE_TOKEN`;
-   map it only for the command that needs it as `GITHUB_TOKEN="$GITHUB_CODESPACE_TOKEN"` for Git and
-   `GH_TOKEN="$GITHUB_CODESPACE_TOKEN"` for GitHub CLI. Never print, persist or copy the token, start
-   `gh auth login` or a device flow, request a Founder PAT, or reuse the reviewer GitHub App, which is
-   a separate review identity.
+   publication. Copilot SDK shells may not inherit the refreshed credential; source
+   `/workspaces/.codespaces/shared/.env` in the publishing subprocess and use its `GITHUB_TOKEN`
+   directly for Git or as `GH_TOKEN="$GITHUB_TOKEN"` for GitHub CLI. Do not reuse the SDK-inherited
+   `GITHUB_CODESPACE_TOKEN`, which may be stale. Never print, persist or copy either token, start
+   `gh auth login` or a device flow, request a Founder PAT, or reuse the reviewer GitHub App, which
+   is a separate review identity.
 
 Do not load the full agent specification, GEOM, ORGANIZATION, ADR index, workflow directory, or
 constitutional corpus. Expand context only when a concrete authority or engineering decision cannot

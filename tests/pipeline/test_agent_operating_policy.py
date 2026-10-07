@@ -182,9 +182,10 @@ def test_platform_it_policy_uses_codespaces_author_authentication() -> None:
     for policy in (quick_start, canonical):
         normalized = " ".join(policy.lower().split())
         assert "/.codespaces/bin/gitcredential_github.sh" in policy
+        assert "/workspaces/.codespaces/shared/.env" in policy
         assert "github_codespace_token" in normalized
-        assert 'github_token="$github_codespace_token"' in normalized
-        assert 'gh_token="$github_codespace_token"' in normalized
+        assert "may be stale" in normalized
+        assert 'gh_token="$github_token"' in normalized
         assert "gh auth login" in normalized
         assert "device" in normalized
         assert "github app" in normalized
