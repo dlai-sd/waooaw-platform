@@ -240,20 +240,22 @@ contract.
 
 ## 6. Founder Decision Package
 
-The Founder must decide or explicitly defer:
+On 2026-10-07, the Founder accepted all ten recommended defaults with their stated guardrails.
+These are binding constraints for downstream decomposition; they do not authorize implementation or
+protocol activation.
 
-| Decision | Recommended default |
-|---|---|
-| Partial readiness | Permit ready Skills to operate only when dependencies, billing and Decision Space are independently bounded; otherwise keep affected Skills locked |
-| Trial operations | Simulated or non-consequential read-only/advisory work only unless a separate trial policy explicitly authorizes a real action |
-| Material goal change | Relock affected work and require plan impact review and renewed agreement |
-| Deferred dependencies | Permit `READY_WITH_DEFERRED_ITEMS` only when every deferred item names blocked Skills and cannot weaken a mandatory gate |
-| Plan acknowledgement | Explicit acceptance for initial plan, material goal/budget/authority/calendar changes and irreversible consequences |
-| Performance failure | Require diagnosis and customer-visible corrective proposal after two consecutive missed review periods unless the domain requires a shorter threshold |
-| Billing exhaustion | Preserve constitutional and read-only review paths; block unfunded consequential work according to WBE-owned consequence |
-| Calendar authority | Permit rescheduling only inside an explicitly agreed tolerance window |
-| Credential loss | Block only the affected Skills when isolation is proven; otherwise fail closed for dependent work |
-| Mandatory readiness override | No override for constitutional, safety, evidence, tenant, authority or financial gates |
+| Decision | Founder-accepted rule | Status |
+|---|---|---|
+| Partial readiness | Permit ready Skills to operate only when dependencies, billing and Decision Space are independently bounded; otherwise keep affected Skills locked | ACCEPTED |
+| Trial operations | Simulated or non-consequential read-only/advisory work only unless a separate trial policy explicitly authorizes a real action | ACCEPTED |
+| Material goal change | Relock affected work and require plan impact review and renewed agreement | ACCEPTED |
+| Deferred dependencies | Permit `READY_WITH_DEFERRED_ITEMS` only when every deferred item names blocked Skills and cannot weaken a mandatory gate | ACCEPTED |
+| Plan acknowledgement | Explicit acceptance for initial plan, material goal/budget/authority/calendar changes and irreversible consequences | ACCEPTED |
+| Performance failure | Require diagnosis and customer-visible corrective proposal after two consecutive missed review periods unless the domain requires a shorter threshold | ACCEPTED |
+| Billing exhaustion | Preserve constitutional and read-only review paths; block unfunded consequential work according to WBE-owned consequence | ACCEPTED |
+| Calendar authority | Permit rescheduling only inside an explicitly agreed tolerance window | ACCEPTED |
+| Credential loss | Block only the affected Skills when isolation is proven; otherwise fail closed for dependent work | ACCEPTED |
+| Mandatory readiness override | No override for constitutional, safety, evidence, tenant, authority or financial gates | ACCEPTED |
 
 ## 7. Required Outputs
 
@@ -403,9 +405,9 @@ capabilities, drivers, EA Professional Standard and Definition of Done.
 
 ### Residual decisions
 
-The ten protected options in Section 6 remain Founder decisions. ADR-051 remains proposed, the
-employment-interface protocol is not active, current agents are not represented as conforming to the
-candidate protocol, and implementation remains unauthorized.
+No Section 6 policy option remains unresolved. ADR-051 remains proposed pending Founder review of the
+complete architecture package, the employment-interface protocol is not active, current agents are
+not represented as conforming to the candidate protocol, and implementation remains unauthorized.
 
 **Result:** PASS. No unresolved author finding prevents Founder review or Solution Architect
 decomposition after Founder acceptance.

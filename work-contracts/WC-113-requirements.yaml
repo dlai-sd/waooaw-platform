@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-113
 contract_path: work-contracts/WC-113-conversational-employment-workspace.md
-contract_digest: 2f757c20c1d601fd8fa940624bd4df68e848a740f7e41a5dfd2a2c5250bc6c74
+contract_digest: 7601ccd71573b9e4c00f7a81a55b074fc8c79ee6275da9203a647164e3cf5186
 contract_status: EA_PACKAGE_PASS_FOUNDER_REVIEW_PENDING
 implementation_scope: false
 result: NOT_APPLICABLE

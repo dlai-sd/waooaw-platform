@@ -196,11 +196,13 @@ restores the prior protocol projection and blocks commands introduced only by th
 does not delete plans, evidence or customer work. A later ADR must supersede this decision and name
 relationship, agent and evidence migration consequences.
 
-## Founder Decisions Required
+## Founder Decisions
 
-The Founder must accept or change the WC-113 defaults for partial Skill readiness, trial operations,
-material goal change, deferred dependencies, plan acknowledgement, performance-failure escalation,
-billing exhaustion, calendar tolerance, credential loss and readiness override.
+On 2026-10-07, the Founder accepted the WC-113 defaults and guardrails for partial Skill readiness,
+trial operations, material goal change, deferred dependencies, plan acknowledgement,
+performance-failure escalation, billing exhaustion, calendar tolerance, credential loss and
+readiness override. The accepted decisions constrain downstream decomposition but do not accept this
+ADR, authorize implementation or activate the protocol.
 
 ## Implementation Boundary
 
