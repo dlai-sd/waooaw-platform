@@ -202,7 +202,7 @@ Tasks:
    resilience, reversibility and decision traceability.
 4. Repair every finding, rerun affected checks and record the final result in this Work Contract.
 
-Outputs: completed requirement ledger and author-review record.
+Outputs: completed non-implementation ledger and author-review record.
 
 ### Stage 7 - Founder Review And Downstream Handoff
 
@@ -268,7 +268,8 @@ The Founder must decide or explicitly defer:
 
 WC-113 is complete only when:
 
-- every requirement in `WC-113-requirements.yaml` is `PASS` with direct evidence;
+- `WC-113-requirements.yaml` validly declares implementation evidence `NOT_APPLICABLE`, while the
+  eighteen architecture fitness conditions remain explicit in the reference architecture;
 - the three conversational phases and their visual reflections are fully defined;
 - progress, completed, in-progress and pending semantics are authoritative and explainable;
 - readiness is orthogonal to C-034 lifecycle and all gate transitions are explicit;
@@ -396,6 +397,9 @@ capabilities, drivers, EA Professional Standard and Definition of Done.
    authorizes no implementation. Repository policy requires an implementation-free contract to
    declare `NOT_APPLICABLE`; the ledger now does so, while the eighteen architecture fitness
    conditions remain in the reference architecture as downstream executable requirements.
+7. The Definition of Done still required PASS rows after the ledger policy correction. It now
+   requires a valid non-implementation ledger and preserves the eighteen architecture fitness
+   conditions as the downstream proof contract.
 
 ### Residual decisions
 
