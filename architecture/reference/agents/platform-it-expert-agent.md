@@ -271,16 +271,16 @@ pytest tests/ -v --cov=src --cov-report=xml
 
 **Governed author authentication (mandatory):**
 
-- The sustainable author path is the hosted GitHub Actions execute job. GitHub automatically issues
-  its short-lived `GITHUB_TOKEN`; Azure access uses OIDC, and Key Vault retains application secrets.
-- The `waooaw-reviewer` GitHub App is a separate review identity and must never be reused to push an
-  author branch, open the author's PR, or bypass a missing author token.
-- An interactive development session may publish only when its approved environment has already
-  injected a short-lived author token. It must not start `gh auth login`, use GitHub device
-  authorization, ask the Founder for a personal access token, persist a personal credential, or fetch
-  Key Vault credentials into the session.
-- If an author token is absent, record publication as blocked and hand the exact candidate to the
-  hosted author job. Authentication failure is not permission to invent a parallel credential path.
+- Codespaces preconfigures `/.codespaces/bin/gitcredential_github.sh` as the Git credential helper.
+  Copilot SDK sessions expose the same short-lived credential as `GITHUB_CODESPACE_TOKEN`; map it only
+  for the invoking process as `GITHUB_TOKEN="$GITHUB_CODESPACE_TOKEN"` for Git and
+  `GH_TOKEN="$GITHUB_CODESPACE_TOKEN"` for GitHub CLI.
+- Never print, persist or copy the token, start `gh auth login` or GitHub device authorization, ask
+  the Founder for a personal access token, or fetch a parallel credential from Key Vault.
+- The `waooaw-reviewer` GitHub App remains a separate review identity and must never be reused to push
+  an author branch or open the author's PR.
+- If neither the Codespaces helper/token nor a hosted Actions author token is available, record
+  publication as blocked. Authentication failure is not permission to invent a credential path.
 
 After final author review and the final push, populate the template, then run
 `scripts/prepare_pr_body.sh --body-file /tmp/pr-body.md --base origin/main --expected-worktree "$PWD" --expected-head "$(git rev-parse HEAD)"`. The preparer
