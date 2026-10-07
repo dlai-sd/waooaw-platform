@@ -30,6 +30,7 @@ _DDL = [
         discount_pct INTEGER NOT NULL DEFAULT 0,
         bonus_credits TEXT NOT NULL DEFAULT '{}',
         agent_type TEXT,
+        agent_version TEXT,
         min_tier TEXT,
         max_uses INTEGER,
         uses_count INTEGER NOT NULL DEFAULT 0,
@@ -62,6 +63,7 @@ _DDL = [
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 async def in_memory_engine():
@@ -107,12 +109,14 @@ def promotions_service(session_factory, mock_redis, mock_settings):
 # Helpers: seed test data
 # ---------------------------------------------------------------------------
 
+
 async def _ins_coupon(
     sf,
     *,
     code: str = "LAUNCH10",
     discount_pct: int = 10,
     agent_type: str | None = None,
+    agent_version: str | None = None,
     min_tier: str | None = None,
     max_uses: int | None = None,
     uses_count: int = 0,
@@ -127,14 +131,15 @@ async def _ins_coupon(
         await session.execute(
             text(
                 "INSERT INTO coupon_codes "
-                "(coupon_id, code, discount_pct, bonus_credits, agent_type, min_tier, "
+                "(coupon_id, code, discount_pct, bonus_credits, agent_type, agent_version, min_tier, "
                 "max_uses, uses_count, valid_from, valid_until, active) "
-                "VALUES (:cid, :code, :disc, '{}', :at, :tier, :max_uses, :uses, :vf, :vu, :active)"
+                "VALUES (:cid, :code, :disc, '{}', :at, :av, :tier, :max_uses, :uses, :vf, :vu, :active)"
             ).bindparams(
                 cid=str(cid),
                 code=code,
                 disc=discount_pct,
                 at=agent_type,
+                av=agent_version,
                 tier=min_tier,
                 max_uses=max_uses,
                 uses=uses_count,
@@ -195,6 +200,7 @@ async def _ins_wallet_bucket(sf, *, customer_id: uuid.UUID, balance_paise: int =
 # validate_coupon
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_validate_coupon_valid_returns_discount_pct(promotions_service, session_factory):
     """validate_coupon('LAUNCH10', ...) → CouponValidation(valid=True, discount_pct=10)."""
@@ -242,7 +248,11 @@ async def test_validate_commercial_preview_coupon_reads_global_coupon_registry(
 ):
     await _ins_coupon(session_factory, code="PREVIEW25", discount_pct=25)
 
-    result = await promotions_service.validate_commercial_preview_coupon("PREVIEW25", "TUTOR")
+    result = await promotions_service.validate_commercial_preview_coupon(
+        "PREVIEW25",
+        "TUTOR",
+        "1.0.0",
+    )
 
     assert result.valid is True
     assert result.discount_pct == 25
@@ -255,7 +265,11 @@ async def test_validate_commercial_preview_coupon_rejects_tier_restricted_coupon
 ):
     await _ins_coupon(session_factory, code="TIER25", discount_pct=25, min_tier="PRO")
 
-    result = await promotions_service.validate_commercial_preview_coupon("TIER25", "TUTOR")
+    result = await promotions_service.validate_commercial_preview_coupon(
+        "TIER25",
+        "TUTOR",
+        "1.0.0",
+    )
 
     assert result.valid is False
     assert result.error_code == "COUPON_TIER_MISMATCH"
@@ -315,6 +329,54 @@ async def test_validate_coupon_agent_mismatch(promotions_service, session_factor
 
 
 @pytest.mark.asyncio
+async def test_validate_coupon_agent_version_mismatch(promotions_service, session_factory):
+    await _ins_coupon(
+        session_factory,
+        code="DMA100",
+        agent_type="DMA",
+        agent_version="1.0.0",
+    )
+
+    result = await promotions_service.validate_coupon(
+        "DMA100",
+        uuid.uuid4(),
+        "DMA",
+        "STANDARD",
+        agent_version="2.0.0",
+    )
+
+    assert result.valid is False
+    assert result.error_code == "COUPON_VERSION_MISMATCH"
+
+
+@pytest.mark.asyncio
+async def test_demo_coupon_matches_canonical_marketplace_professional(
+    promotions_service,
+    session_factory,
+    mock_settings,
+):
+    mock_settings.MAX_DISCOUNT_PCT = 100
+    await _ins_coupon(
+        session_factory,
+        code="DEMO100",
+        discount_pct=100,
+        agent_type="DIGITAL_MARKETING_LOCAL_SERVICE",
+        agent_version="1.0.0",
+    )
+
+    result = await promotions_service.validate_coupon(
+        "DEMO100",
+        uuid.uuid4(),
+        "DIGITAL_MARKETING_LOCAL_SERVICE",
+        "STANDARD",
+        agent_version="1.0.0",
+    )
+
+    assert result.valid is True
+    assert result.discount_pct == 100
+
+
+@pytest.mark.asyncio
 async def test_validate_coupon_tier_mismatch(promotions_service, session_factory):
     """COUPON_TIER_MISMATCH when coupon requires a different tier."""
     await _ins_coupon(session_factory, code="PRO10", min_tier="PRO")
@@ -328,6 +390,7 @@ async def test_validate_coupon_tier_mismatch(promotions_service, session_factory
 # ---------------------------------------------------------------------------
 # CCT-COUPON-01 — Discount cap enforcement
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_cct_coupon_01_50pct_discount_applied(promotions_service, session_factory):
@@ -390,16 +453,16 @@ async def test_apply_discount_coupon_used_raises_409(promotions_service, session
 # CCT-REFERRAL-01 — Referral credit on conversion
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
-async def test_cct_referral_01_credit_fires_on_apply_discount(
-    promotions_service, session_factory
-):
+async def test_cct_referral_01_credit_fires_on_apply_discount(promotions_service, session_factory):
     """CCT-REFERRAL-01: apply_discount with PENDING referral → credit_status=CREDITED."""
     referrer_id = uuid.uuid4()
     referee_id = uuid.uuid4()
     coupon_id = await _ins_coupon(session_factory, code="REF10", discount_pct=10)
-    await _ins_referral(session_factory, referrer_id=referrer_id, referee_id=referee_id,
-                        coupon_id=coupon_id, credit_amount_paise=300)
+    await _ins_referral(
+        session_factory, referrer_id=referrer_id, referee_id=referee_id, coupon_id=coupon_id, credit_amount_paise=300
+    )
     await _ins_wallet_bucket(session_factory, customer_id=referrer_id, balance_paise=1000)
 
     result = await promotions_service.apply_discount(
@@ -412,22 +475,20 @@ async def test_cct_referral_01_credit_fires_on_apply_discount(
 
     async with session_factory() as session:
         row = await session.execute(
-            text("SELECT credit_status FROM referral_records WHERE referee_customer_id = :cid")
-            .bindparams(cid=str(referee_id))
+            text("SELECT credit_status FROM referral_records WHERE referee_customer_id = :cid").bindparams(cid=str(referee_id))
         )
         assert row.fetchone()[0] == "CREDITED"
 
 
 @pytest.mark.asyncio
-async def test_cct_referral_01_referrer_wallet_credited(
-    promotions_service, session_factory
-):
+async def test_cct_referral_01_referrer_wallet_credited(promotions_service, session_factory):
     """CCT-REFERRAL-01: referrer's wallet balance increases by credit_amount_paise."""
     referrer_id = uuid.uuid4()
     referee_id = uuid.uuid4()
     coupon_id = await _ins_coupon(session_factory, code="REF20", discount_pct=10)
-    await _ins_referral(session_factory, referrer_id=referrer_id, referee_id=referee_id,
-                        coupon_id=coupon_id, credit_amount_paise=300)
+    await _ins_referral(
+        session_factory, referrer_id=referrer_id, referee_id=referee_id, coupon_id=coupon_id, credit_amount_paise=300
+    )
     bucket_id = await _ins_wallet_bucket(session_factory, customer_id=referrer_id, balance_paise=1000)
 
     await promotions_service.apply_discount(
@@ -444,15 +505,14 @@ async def test_cct_referral_01_referrer_wallet_credited(
 
 
 @pytest.mark.asyncio
-async def test_cct_referral_01_no_duplicate_credit_idempotent(
-    promotions_service, session_factory
-):
+async def test_cct_referral_01_no_duplicate_credit_idempotent(promotions_service, session_factory):
     """CCT-REFERRAL-01: credit fires only once per referral pair (idempotent)."""
     referrer_id = uuid.uuid4()
     referee_id = uuid.uuid4()
     coupon_id = await _ins_coupon(session_factory, code="REF30", discount_pct=10)
-    referral_id = await _ins_referral(session_factory, referrer_id=referrer_id, referee_id=referee_id,
-                                       coupon_id=coupon_id, credit_amount_paise=300)
+    referral_id = await _ins_referral(
+        session_factory, referrer_id=referrer_id, referee_id=referee_id, coupon_id=coupon_id, credit_amount_paise=300
+    )
     bucket_id = await _ins_wallet_bucket(session_factory, customer_id=referrer_id, balance_paise=1000)
 
     # First credit
@@ -486,14 +546,16 @@ async def test_apply_discount_no_referral_returns_false(promotions_service, sess
 # credit_referrer standalone
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_credit_referrer_standalone_idempotent(promotions_service, session_factory):
     """credit_referrer() directly: second call is no-op."""
     referrer_id = uuid.uuid4()
     referee_id = uuid.uuid4()
     coupon_id = await _ins_coupon(session_factory, code="STDALONE", discount_pct=5)
-    referral_id = await _ins_referral(session_factory, referrer_id=referrer_id, referee_id=referee_id,
-                                       coupon_id=coupon_id, credit_amount_paise=200)
+    referral_id = await _ins_referral(
+        session_factory, referrer_id=referrer_id, referee_id=referee_id, coupon_id=coupon_id, credit_amount_paise=200
+    )
     await _ins_wallet_bucket(session_factory, customer_id=referrer_id, balance_paise=500)
 
     await promotions_service.credit_referrer(referral_id)
@@ -510,13 +572,20 @@ async def test_credit_referrer_standalone_idempotent(promotions_service, session
 # get_referral_status
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_get_referral_status_returns_referrals(promotions_service, session_factory):
     referrer_id = uuid.uuid4()
     referee_id = uuid.uuid4()
     coupon_id = await _ins_coupon(session_factory, code="REFSTAT10")
-    await _ins_referral(session_factory, referrer_id=referrer_id, referee_id=referee_id,
-                        coupon_id=coupon_id, credit_amount_paise=100, credit_status="CREDITED")
+    await _ins_referral(
+        session_factory,
+        referrer_id=referrer_id,
+        referee_id=referee_id,
+        coupon_id=coupon_id,
+        credit_amount_paise=100,
+        credit_status="CREDITED",
+    )
 
     status = await promotions_service.get_referral_status(referrer_id)
 
@@ -535,6 +604,7 @@ async def test_get_referral_status_empty_for_unknown_customer(promotions_service
 # ---------------------------------------------------------------------------
 # validate_coupon: agent_type=None (all agents) and min_tier=None (all tiers)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_validate_coupon_no_agent_restriction_matches_all(promotions_service, session_factory):
@@ -563,12 +633,10 @@ async def test_validate_coupon_max_uses_none_is_unlimited(promotions_service, se
 
 def _make_mock_promotions_service():
     svc = MagicMock()
-    svc.validate_coupon = AsyncMock(return_value=CouponValidation(
-        valid=True, discount_pct=10, bonus_credits={}, expires_at=None
-    ))
-    svc.apply_discount = AsyncMock(return_value=DiscountResult(
-        discounted_price_paise=900, discount_amount_paise=100, referral_credited=False
-    ))
+    svc.validate_coupon = AsyncMock(return_value=CouponValidation(valid=True, discount_pct=10, bonus_credits={}, expires_at=None))
+    svc.apply_discount = AsyncMock(
+        return_value=DiscountResult(discounted_price_paise=900, discount_amount_paise=100, referral_credited=False)
+    )
     svc.get_referral_status = AsyncMock(return_value=ReferralStatus(referrals=[], total_credits_paise=0))
     return svc
 
@@ -583,12 +651,16 @@ async def test_router_validate_coupon_returns_200():
     app.dependency_overrides[_get_promotions_service] = lambda: mock_svc
     try:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-            resp = await c.post("/promotions/validate-coupon", json={
-                "coupon_code": "LAUNCH10",
-                "customer_id": str(uuid.uuid4()),
-                "agent_type": "DMA",
-                "subscription_tier": "STANDARD",
-            })
+            resp = await c.post(
+                "/promotions/validate-coupon",
+                json={
+                    "coupon_code": "LAUNCH10",
+                    "customer_id": str(uuid.uuid4()),
+                    "agent_type": "DMA",
+                    "agent_version": "1.0.0",
+                    "subscription_tier": "STANDARD",
+                },
+            )
     finally:
         _clear_overrides()
 
@@ -601,18 +673,22 @@ async def test_router_validate_coupon_returns_200():
 @pytest.mark.asyncio
 async def test_router_validate_coupon_invalid_returns_200_with_error():
     mock_svc = MagicMock()
-    mock_svc.validate_coupon = AsyncMock(return_value=CouponValidation(
-        valid=False, discount_pct=0, bonus_credits={}, expires_at=None, error_code="COUPON_EXPIRED"
-    ))
+    mock_svc.validate_coupon = AsyncMock(
+        return_value=CouponValidation(valid=False, discount_pct=0, bonus_credits={}, expires_at=None, error_code="COUPON_EXPIRED")
+    )
     app.dependency_overrides[_get_promotions_service] = lambda: mock_svc
     try:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-            resp = await c.post("/promotions/validate-coupon", json={
-                "coupon_code": "OLD",
-                "customer_id": str(uuid.uuid4()),
-                "agent_type": "DMA",
-                "subscription_tier": "STANDARD",
-            })
+            resp = await c.post(
+                "/promotions/validate-coupon",
+                json={
+                    "coupon_code": "OLD",
+                    "customer_id": str(uuid.uuid4()),
+                    "agent_type": "DMA",
+                    "agent_version": "1.0.0",
+                    "subscription_tier": "STANDARD",
+                },
+            )
     finally:
         _clear_overrides()
 
@@ -626,11 +702,14 @@ async def test_router_apply_discount_returns_200():
     app.dependency_overrides[_get_promotions_service] = lambda: mock_svc
     try:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-            resp = await c.post("/promotions/apply-discount", json={
-                "coupon_id": str(uuid.uuid4()),
-                "customer_id": str(uuid.uuid4()),
-                "original_price_paise": 1000,
-            })
+            resp = await c.post(
+                "/promotions/apply-discount",
+                json={
+                    "coupon_id": str(uuid.uuid4()),
+                    "customer_id": str(uuid.uuid4()),
+                    "original_price_paise": 1000,
+                },
+            )
     finally:
         _clear_overrides()
 

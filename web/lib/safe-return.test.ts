@@ -24,6 +24,7 @@ describe('safe return targets', () => {
     '/home',
     '/marketplace',
     '/marketplace?professionalType=DIGITAL_MARKETING&version=3.1.0&intent=trial',
+    '/marketplace?professionalType=DIGITAL_MARKETING&version=3.1.0&intent=hire&couponCode=DEMO100',
     '/marketplace?professionalType=DIGITAL_MARKETING_LOCAL_SERVICE&version=1.0.0&intent=hire&disclosureRevision=1.0.0&termsVersion=2026-07-18&idempotencyKey=11111111-1111-4111-8111-111111111111',
     '/settings',
     '/professionals/mine',

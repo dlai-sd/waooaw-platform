@@ -11,7 +11,8 @@ from datetime import datetime, timedelta, timezone
 import redis.asyncio as aioredis
 from fastapi import HTTPException
 from sqlalchemy import DateTime, String, bindparam, text
-from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUuid
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from config import Settings
@@ -20,8 +21,8 @@ from trial.models import ConvertResult, TrialStartResult, TrialStatus
 logger = logging.getLogger(__name__)
 
 _GRANDFATHER_DAYS = 14
-_TRIAL_DURATION_DAYS = 14
-_UUID_BIND_TYPE = String(36).with_variant(PostgreSQLUuid(as_uuid=False), "postgresql")
+_DEFAULT_TRIAL_DURATION_DAYS = 14
+_UUID_BIND_TYPE = String(36).with_variant(postgresql.UUID(as_uuid=False), "postgresql")
 
 
 class TrialService:
@@ -55,9 +56,10 @@ class TrialService:
         customer_id: uuid.UUID,
         agent_type: str,
         phone_verified: bool,
+        agent_version: str = "1.0.0",
     ) -> TrialStartResult:
         """
-        Start a trial for the given customer and agent type.
+        Start a trial for the given customer and exact agent version.
 
         C-019: phone_verified=True is required before trial starts.
         C-088: inserts wallet_buckets + trial_free_unit_ledger in ONE transaction.
@@ -78,38 +80,65 @@ class TrialService:
             )
 
         async with self._session_factory() as session:
-            # C-088: one trial per customer per agent_type (UNIQUE constraint)
+            # C-088: one trial per customer per exact agent version (UNIQUE constraint)
             existing = await session.execute(
                 text(
-                    "SELECT trial_id FROM trial_allocations "
-                    "WHERE customer_id = :cid AND agent_type = :at"
-                ).bindparams(bindparam("cid", str(customer_id), type_=_UUID_BIND_TYPE), at=agent_type)
+                    "SELECT trial_id FROM trial_allocations WHERE customer_id = :cid AND agent_type = :at AND agent_version = :av"
+                ).bindparams(
+                    bindparam("cid", str(customer_id), type_=_UUID_BIND_TYPE),
+                    at=agent_type,
+                    av=agent_version,
+                )
             )
             if existing.fetchone():
                 raise HTTPException(
                     status_code=409,
-                    detail={"code": "TRIAL_ALREADY_USED", "message": "A trial for this agent type already exists for this customer"},
+                    detail={
+                        "code": "TRIAL_ALREADY_USED",
+                        "message": "A trial for this agent type already exists for this customer",
+                    },
                 )
 
+            duration_result = await session.execute(
+                text("SELECT duration_days FROM agent_trial_policies WHERE agent_type = :at AND agent_version = :av").bindparams(
+                    at=agent_type, av=agent_version
+                )
+            )
+            duration_days = duration_result.scalar_one_or_none() or _DEFAULT_TRIAL_DURATION_DAYS
             trial_id = uuid.uuid4()
             now = datetime.now(tz=timezone.utc)
-            expires_at = now + timedelta(days=_TRIAL_DURATION_DAYS)
+            expires_at = now + timedelta(days=duration_days)
             # Shared employment_contract_id for all trial buckets (trial-specific EC)
             trial_ec_id = uuid.uuid4()
 
-            await session.execute(
-                text(
-                    "INSERT INTO trial_allocations "
-                    "(trial_id, customer_id, agent_type, started_at, expires_at, status) "
-                    "VALUES (:trial_id, :cid, :at, :started_at, :expires_at, 'ACTIVE')"
-                ).bindparams(
-                    bindparam("trial_id", str(trial_id), type_=_UUID_BIND_TYPE),
-                    bindparam("cid", str(customer_id), type_=_UUID_BIND_TYPE),
-                    bindparam("started_at", now, type_=DateTime(timezone=True)),
-                    bindparam("expires_at", expires_at, type_=DateTime(timezone=True)),
-                    at=agent_type,
+            try:
+                await session.execute(
+                    text(
+                        "INSERT INTO trial_allocations "
+                        "(trial_id, customer_id, agent_type, agent_version, started_at, expires_at, status) "
+                        "VALUES (:trial_id, :cid, :at, :av, :started_at, :expires_at, 'ACTIVE')"
+                    ).bindparams(
+                        bindparam("trial_id", str(trial_id), type_=_UUID_BIND_TYPE),
+                        bindparam("cid", str(customer_id), type_=_UUID_BIND_TYPE),
+                        bindparam("started_at", now, type_=DateTime(timezone=True)),
+                        bindparam("expires_at", expires_at, type_=DateTime(timezone=True)),
+                        at=agent_type,
+                        av=agent_version,
+                    )
                 )
-            )
+            except IntegrityError as error:
+                await session.rollback()
+                constraint_name = getattr(getattr(error.orig, "diag", None), "constraint_name", None)
+                sqlstate = getattr(error.orig, "sqlstate", None) or getattr(error.orig, "pgcode", None)
+                if constraint_name != "trial_one_per_agent_version" and sqlstate != "23505":
+                    raise
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "code": "TRIAL_ALREADY_USED",
+                        "message": "A trial for this agent version already exists for this customer",
+                    },
+                ) from error
 
             bucket_ids: list[uuid.UUID] = []
             for thread_type, units in agent_free_units.items():
@@ -152,8 +181,10 @@ class TrialService:
             logger.error("Failed to set Trial mode in Redis", exc_info=True)
 
         logger.info(
-            "Trial started: agent_type=%s expires_at=%s",
-            agent_type, expires_at.isoformat(),
+            "Trial started: agent_type=%s agent_version=%s expires_at=%s",
+            agent_type,
+            agent_version,
+            expires_at.isoformat(),
         )
         return TrialStartResult(
             trial_id=trial_id,
@@ -171,9 +202,9 @@ class TrialService:
         """Mark trial as EXPIRED and clear Redis customer_mode key."""
         async with self._session_factory() as session:
             result = await session.execute(
-                text(
-                    "SELECT customer_id, status FROM trial_allocations WHERE trial_id = :trial_id"
-                ).bindparams(bindparam("trial_id", str(trial_id), type_=_UUID_BIND_TYPE))
+                text("SELECT customer_id, status FROM trial_allocations WHERE trial_id = :trial_id").bindparams(
+                    bindparam("trial_id", str(trial_id), type_=_UUID_BIND_TYPE)
+                )
             )
             row = result.fetchone()
             if row is None:
@@ -182,9 +213,9 @@ class TrialService:
                 return str(row[1])  # already expired or converted — idempotent
 
             await session.execute(
-                text(
-                    "UPDATE trial_allocations SET status = 'EXPIRED' WHERE trial_id = :trial_id"
-                ).bindparams(bindparam("trial_id", str(trial_id), type_=_UUID_BIND_TYPE))
+                text("UPDATE trial_allocations SET status = 'EXPIRED' WHERE trial_id = :trial_id").bindparams(
+                    bindparam("trial_id", str(trial_id), type_=_UUID_BIND_TYPE)
+                )
             )
             await session.commit()
             customer_id = row[0]
@@ -218,8 +249,7 @@ class TrialService:
         async with self._session_factory() as session:
             result = await session.execute(
                 text(
-                    "SELECT customer_id, agent_type, started_at, status "
-                    "FROM trial_allocations WHERE trial_id = :trial_id"
+                    "SELECT customer_id, agent_type, started_at, status FROM trial_allocations WHERE trial_id = :trial_id"
                 ).bindparams(bindparam("trial_id", str(trial_id), type_=_UUID_BIND_TYPE))
             )
             row = result.fetchone()
@@ -290,22 +320,39 @@ class TrialService:
         self,
         customer_id: uuid.UUID,
         trial_id: uuid.UUID | None = None,
+        agent_type: str | None = None,
+        agent_version: str | None = None,
     ) -> TrialStatus | None:
         """Return an exact trial status, or the customer's most recent trial when unspecified."""
         async with self._session_factory() as session:
-            trial_filter = "AND trial_id = :trial_id " if trial_id is not None else ""
             parameters: dict[str, object] = {"cid": str(customer_id)}
             if trial_id is not None:
                 parameters["trial_id"] = str(trial_id)
-            query = text(
-                    "SELECT trial_id, agent_type, started_at, expires_at, status "
-                    "FROM trial_allocations "
-                    "WHERE customer_id = :cid "
-                    f"{trial_filter}"
+                query = text(
+                    "SELECT trial_id, agent_type, agent_version, started_at, expires_at, status "
+                    "FROM trial_allocations WHERE customer_id = :cid AND trial_id = :trial_id "
+                    "ORDER BY started_at DESC LIMIT 1"
+                ).bindparams(
+                    bindparam("cid", type_=_UUID_BIND_TYPE),
+                    bindparam("trial_id", type_=_UUID_BIND_TYPE),
+                )
+            elif agent_type is not None and agent_version is not None:
+                parameters["agent_type"] = agent_type
+                parameters["agent_version"] = agent_version
+                query = text(
+                    "SELECT trial_id, agent_type, agent_version, started_at, expires_at, status "
+                    "FROM trial_allocations WHERE customer_id = :cid "
+                    "AND agent_type = :agent_type AND agent_version = :agent_version "
                     "ORDER BY started_at DESC LIMIT 1"
                 ).bindparams(bindparam("cid", type_=_UUID_BIND_TYPE))
-            if trial_id is not None:
-                query = query.bindparams(bindparam("trial_id", type_=_UUID_BIND_TYPE))
+            elif agent_type is not None or agent_version is not None:
+                raise ValueError("agent_type and agent_version must be provided together")
+            else:
+                query = text(
+                    "SELECT trial_id, agent_type, agent_version, started_at, expires_at, status "
+                    "FROM trial_allocations WHERE customer_id = :cid "
+                    "ORDER BY started_at DESC LIMIT 1"
+                ).bindparams(bindparam("cid", type_=_UUID_BIND_TYPE))
             result = await session.execute(query, parameters)
             row = result.fetchone()
             if row is None:
@@ -314,8 +361,7 @@ class TrialService:
             trial_id = uuid.UUID(str(row[0]))
             ledger = await session.execute(
                 text(
-                    "SELECT thread_type, units_granted, units_consumed "
-                    "FROM trial_free_unit_ledger WHERE trial_id = :trial_id"
+                    "SELECT thread_type, units_granted, units_consumed FROM trial_free_unit_ledger WHERE trial_id = :trial_id"
                 ).bindparams(bindparam("trial_id", str(trial_id), type_=_UUID_BIND_TYPE))
             )
             units_consumed: dict[str, int] = {}
@@ -324,19 +370,29 @@ class TrialService:
                 units_consumed[ledger_row[0]] = ledger_row[2]
                 units_remaining[ledger_row[0]] = ledger_row[1] - ledger_row[2]
 
-            started_at = datetime.fromisoformat(str(row[2]).replace("Z", "+00:00"))
-            expires_at = datetime.fromisoformat(str(row[3]).replace("Z", "+00:00"))
+            started_at = datetime.fromisoformat(str(row[3]).replace("Z", "+00:00"))
+            expires_at = datetime.fromisoformat(str(row[4]).replace("Z", "+00:00"))
             if started_at.tzinfo is None:
                 started_at = started_at.replace(tzinfo=timezone.utc)
             if expires_at.tzinfo is None:
                 expires_at = expires_at.replace(tzinfo=timezone.utc)
+            status = row[5]
+            if status == "ACTIVE" and expires_at <= datetime.now(tz=timezone.utc):
+                await session.execute(
+                    text(
+                        "UPDATE trial_allocations SET status = 'EXPIRED' WHERE trial_id = :trial_id AND status = 'ACTIVE'"
+                    ).bindparams(bindparam("trial_id", str(trial_id), type_=_UUID_BIND_TYPE))
+                )
+                await session.commit()
+                status = "EXPIRED"
 
             return TrialStatus(
                 trial_id=trial_id,
                 agent_type=row[1],
+                agent_version=row[2],
                 started_at=started_at,
                 expires_at=expires_at,
-                status=row[4],
+                status=status,
                 units_consumed=units_consumed,
                 units_remaining=units_remaining,
             )

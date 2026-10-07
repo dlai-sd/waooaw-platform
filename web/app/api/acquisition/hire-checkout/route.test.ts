@@ -1,15 +1,21 @@
 /** @jest-environment node */
 
-import { NextRequest } from 'next/server';
+import { persistAcquisitionIntent } from '@/lib/api/acquisition-intent';
 import { getIdentitySession } from '@/lib/api/identity';
 import { createMyAgentsSelection } from '@/lib/api/my-agents-selection';
 import { getProfessionalDisclosure } from '@/lib/api/professionals';
 import { accessTokenFromRequest } from '@/lib/server-auth';
+import { NextRequest } from 'next/server';
 
 const continueAcquisition = jest.fn();
 jest.mock('@/lib/server-auth', () => ({ accessTokenFromRequest: jest.fn() }));
 jest.mock('@/lib/api/identity', () => ({ getIdentitySession: jest.fn() }));
-jest.mock('@/lib/api/professionals', () => ({ getProfessionalDisclosure: jest.fn() }));
+jest.mock('@/lib/api/acquisition-intent', () => ({
+  persistAcquisitionIntent: jest.fn(),
+}));
+jest.mock('@/lib/api/professionals', () => ({
+  getProfessionalDisclosure: jest.fn(),
+}));
 jest.mock('@/lib/api/my-agents-selection', () => ({
   createMyAgentsSelection: jest.fn(),
   myAgentsSelectionCookie: 'waooaw_my_agents_selection',
@@ -28,6 +34,7 @@ const baseBody = {
   disclosureRevision: '1.0.0',
   termsVersion: '2026-07-18',
   idempotencyKey: '11111111-1111-4111-8111-111111111111',
+  contractAcceptance: 'ACCEPT_EMPLOYMENT_CONTRACT',
   couponCode: 'demo100',
 };
 
@@ -41,6 +48,12 @@ describe('pre-hire checkout boundary', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.mocked(accessTokenFromRequest).mockResolvedValue('access-token');
+    jest.mocked(persistAcquisitionIntent).mockResolvedValue(
+      new Response('{}', {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
     jest.mocked(getIdentitySession).mockResolvedValue({
       kind: 'ready',
       session: { accountReference: customerId } as never,
@@ -58,11 +71,24 @@ describe('pre-hire checkout boundary', () => {
       limitations: [],
       authorityNeeds: [],
       customerRights: [],
-      trial: { available: true, durationDays: 14, paidApiCallsAllowed: false, externalActionsAllowed: false },
+      trial: {
+        available: true,
+        durationDays: 14,
+        paidApiCallsAllowed: false,
+        externalActionsAllowed: false,
+      },
       evidencePosture: 'Evidence First',
-      indicativePrice: { currency: 'INR', amountInrPaise: 118000, cadence: 'MONTHLY', qualification: 'Indicative' },
+      indicativePrice: {
+        currency: 'INR',
+        amountInrPaise: 118000,
+        cadence: 'MONTHLY',
+        qualification: 'Indicative',
+      },
     });
-    continueAcquisition.mockResolvedValue({ relationshipId, resumePath: `/relationships/${relationshipId}` });
+    continueAcquisition.mockResolvedValue({
+      relationshipId,
+      resumePath: `/relationships/${relationshipId}`,
+    });
     jest.mocked(createMyAgentsSelection).mockResolvedValue({
       handle: 'b'.repeat(64),
       expiresAt: '2026-09-28T12:05:00.000Z',
@@ -71,6 +97,68 @@ describe('pre-hire checkout boundary', () => {
 
   afterEach(() => {
     global.fetch = originalFetch;
+  });
+
+  it('rejects Hire checkout without explicit Employment Contract acceptance', async () => {
+    global.fetch = jest.fn();
+    const { POST } = await import('./route');
+
+    const response = await POST(
+      request({
+        ...baseBody,
+        contractAcceptance: undefined,
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(continueAcquisition).not.toHaveBeenCalled();
+  });
+
+  it('persists the Hire intent before requiring Registration', async () => {
+    jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'registration-required' });
+    const { POST } = await import('./route');
+
+    const response = await POST(request(baseBody));
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      code: 'REGISTRATION_REQUIRED',
+      title: 'Complete registration before hiring.',
+    });
+    expect(persistAcquisitionIntent).toHaveBeenCalledWith(
+      'access-token',
+      baseBody.idempotencyKey,
+      expect.objectContaining({ intent: 'HIRE', professionalVersion: '1.0.0' })
+    );
+    expect(continueAcquisition).not.toHaveBeenCalled();
+  });
+
+  it('releases the server-owned checkout when Razorpay is dismissed', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        outcome_kind: 'CANCELLED',
+        checkout_intent_id: baseBody.idempotencyKey,
+      }),
+    }) as jest.Mock;
+    const { POST } = await import('./route');
+
+    const response = await POST(request({ ...baseBody, action: 'cancel' }));
+
+    expect(response.status).toBe(200);
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://localhost:8140/payments/hire-checkout/cancel',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          checkout_intent_id: baseBody.idempotencyKey,
+          customer_id: customerId,
+        }),
+      })
+    );
+    expect(continueAcquisition).not.toHaveBeenCalled();
   });
 
   it('creates a Razorpay order from canonical server pricing without creating a relationship', async () => {
@@ -118,7 +206,10 @@ describe('pre-hire checkout boundary', () => {
           currency: 'INR',
         }),
       })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ outcome_kind: 'CAPTURED' }) });
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ outcome_kind: 'CAPTURED' }),
+      });
     const { POST } = await import('./route');
 
     const response = await POST(
@@ -166,7 +257,10 @@ describe('pre-hire checkout boundary', () => {
     global.fetch = jest
       .fn()
       .mockResolvedValueOnce({ ok: true, json: async () => captured })
-      .mockResolvedValueOnce({ ok: false, json: async () => ({ title: 'Bind unavailable' }) })
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ title: 'Bind unavailable' }),
+      })
       .mockResolvedValueOnce({ ok: true, json: async () => captured })
       .mockResolvedValueOnce({ ok: true, json: async () => captured });
     const { POST } = await import('./route');
@@ -241,7 +335,10 @@ describe('pre-hire checkout boundary', () => {
           currency: 'INR',
         }),
       })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ outcome_kind: 'CAPTURED' }) });
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ outcome_kind: 'CAPTURED' }),
+      });
     jest.mocked(createMyAgentsSelection).mockRejectedValue(new Error('authoritative state unavailable'));
     const { POST } = await import('./route');
 
@@ -271,7 +368,10 @@ describe('pre-hire checkout boundary', () => {
           currency: 'INR',
         }),
       })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ outcome_kind: 'FULLY_DISCOUNTED' }) });
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ outcome_kind: 'FULLY_DISCOUNTED' }),
+      });
     const { POST } = await import('./route');
 
     const response = await POST(request(baseBody));

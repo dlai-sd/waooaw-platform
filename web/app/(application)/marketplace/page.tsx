@@ -56,6 +56,7 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
         professionalVersion={filters.version}
         termsVersion={filters.termsVersion}
         couponCode={filters.couponCode}
+        contractAcceptance="ACCEPT_EMPLOYMENT_CONTRACT"
       />
     ) : null;
 

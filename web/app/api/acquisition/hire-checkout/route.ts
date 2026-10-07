@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from 'next/server';
+import { persistAcquisitionIntent } from '@/lib/api/acquisition-intent';
 import { ProfessionalsApi } from '@/lib/api/generated/apis/ProfessionalsApi';
 import { Configuration, ResponseError } from '@/lib/api/generated/runtime';
 import { getIdentitySession } from '@/lib/api/identity';
@@ -6,6 +6,7 @@ import { createMyAgentsSelection, myAgentsSelectionCookie } from '@/lib/api/my-a
 import { getProfessionalDisclosure } from '@/lib/api/professionals';
 import { withJourneyTrace } from '@/lib/journey-telemetry';
 import { accessTokenFromRequest } from '@/lib/server-auth';
+import { type NextRequest, NextResponse } from 'next/server';
 
 const billingEngineUrl = process.env.BILLING_ENGINE_URL ?? 'http://localhost:8140';
 const versionPattern = /^\d+\.\d+\.\d+$/;
@@ -14,12 +15,13 @@ const orderPattern = /^order_[A-Za-z0-9_-]{1,120}$/;
 const paymentPattern = /^pay_[A-Za-z0-9_-]{1,122}$/;
 
 interface HireCheckoutCommand {
-  action?: 'start' | 'confirm';
+  action?: 'start' | 'confirm' | 'cancel';
   professionalType?: string;
   professionalVersion?: string;
   disclosureRevision?: string;
   termsVersion?: string;
   idempotencyKey?: string;
+  contractAcceptance?: string;
   couponCode?: string;
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
@@ -44,22 +46,10 @@ interface BillingCheckoutOutcome {
 async function hireCheckout(request: NextRequest) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return NextResponse.json({ title: 'Secure sign in is required.' }, { status: 401 });
-  const identity = await getIdentitySession(accessToken);
-  if (identity.kind !== 'ready') {
-    return NextResponse.json(
-      {
-        title:
-          identity.kind === 'registration-required'
-            ? 'Complete registration before hiring.'
-            : 'Hiring is not permitted.',
-      },
-      { status: identity.kind === 'registration-required' ? 409 : 403 }
-    );
-  }
 
   const body = (await request.json()) as HireCheckoutCommand;
   if (
-    (body.action !== 'start' && body.action !== 'confirm') ||
+    (body.action !== 'start' && body.action !== 'confirm' && body.action !== 'cancel') ||
     !body.professionalType ||
     !/^[A-Z][A-Z0-9_]{0,63}$/.test(body.professionalType) ||
     !body.professionalVersion ||
@@ -70,12 +60,44 @@ async function hireCheckout(request: NextRequest) {
     !/^\d{4}-\d{2}-\d{2}$/.test(body.termsVersion) ||
     !body.idempotencyKey ||
     !uuidPattern.test(body.idempotencyKey) ||
-    !uuidPattern.test(identity.session.accountReference)
+    body.contractAcceptance !== 'ACCEPT_EMPLOYMENT_CONTRACT'
   ) {
     return NextResponse.json({ title: 'Hire checkout request is invalid.' }, { status: 400 });
   }
 
+  const persisted = await persistAcquisitionIntent(accessToken, body.idempotencyKey, {
+    professionalType: body.professionalType,
+    professionalVersion: body.professionalVersion,
+    intent: 'HIRE',
+    disclosureRevision: body.disclosureRevision,
+    termsVersion: body.termsVersion,
+    acceptance: body.contractAcceptance,
+    ...(body.couponCode ? { couponCode: body.couponCode.trim().toUpperCase() } : {}),
+  });
+  if (!persisted.ok) {
+    const payload = await persisted.json().catch(() => ({ title: 'Acquisition intent could not be saved.' }));
+    return NextResponse.json(payload, { status: persisted.status, headers: { 'Cache-Control': 'no-store' } });
+  }
+
+  const identity = await getIdentitySession(accessToken);
+  if (identity.kind !== 'ready') {
+    return NextResponse.json(
+      {
+        code: identity.kind === 'registration-required' ? 'REGISTRATION_REQUIRED' : undefined,
+        title:
+          identity.kind === 'registration-required'
+            ? 'Complete registration before hiring.'
+            : 'Hiring is not permitted.',
+      },
+      { status: identity.kind === 'registration-required' ? 409 : 403 }
+    );
+  }
+  if (!uuidPattern.test(identity.session.accountReference)) {
+    return NextResponse.json({ title: 'Hire checkout request is invalid.' }, { status: 400 });
+  }
+
   try {
+    const correlationId = body.idempotencyKey;
     const disclosure = await getProfessionalDisclosure(body.professionalType);
     if (
       !disclosure.eligibility.eligible ||
@@ -94,9 +116,10 @@ async function hireCheckout(request: NextRequest) {
     if (body.action === 'start') {
       const billingResponse = await fetch(`${billingEngineUrl}/payments/hire-checkout`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Correlation-ID': correlationId },
         body: JSON.stringify({
           checkout_intent_id: body.idempotencyKey,
+          correlation_id: correlationId,
           customer_id: identity.session.accountReference,
           professional_type: disclosure.professionalType,
           professional_version: disclosure.projectionVersion,
@@ -116,7 +139,7 @@ async function hireCheckout(request: NextRequest) {
         return NextResponse.json(result, { status: billingResponse.status, headers: { 'Cache-Control': 'no-store' } });
       }
       outcome = result as BillingCheckoutOutcome;
-    } else {
+    } else if (body.action === 'confirm') {
       if (
         !body.razorpayOrderId ||
         !orderPattern.test(body.razorpayOrderId) ||
@@ -144,6 +167,21 @@ async function hireCheckout(request: NextRequest) {
         return NextResponse.json(result, { status: billingResponse.status, headers: { 'Cache-Control': 'no-store' } });
       }
       outcome = result as BillingCheckoutOutcome;
+    } else {
+      const billingResponse = await fetch(`${billingEngineUrl}/payments/hire-checkout/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          checkout_intent_id: body.idempotencyKey,
+          customer_id: identity.session.accountReference,
+        }),
+        cache: 'no-store',
+      });
+      const result = await billingResponse.json().catch(() => ({ title: 'Checkout cancellation is unavailable.' }));
+      return NextResponse.json(result, {
+        status: billingResponse.status,
+        headers: { 'Cache-Control': 'no-store' },
+      });
     }
 
     if (outcome.outcome_kind !== 'CAPTURED' && outcome.outcome_kind !== 'FULLY_DISCOUNTED') {
@@ -156,14 +194,15 @@ async function hireCheckout(request: NextRequest) {
     const continuation = await api.continueAcquisition(
       {
         idempotencyKey: body.idempotencyKey,
-        xCorrelationID: crypto.randomUUID(),
+        xCorrelationID: correlationId,
         continueAcquisitionRequest: {
           professionalType: body.professionalType,
           professionalVersion: body.professionalVersion,
           intent: 'HIRE',
           disclosureRevision: body.disclosureRevision,
           termsVersion: new Date(`${body.termsVersion}T00:00:00.000Z`),
-          acceptance: 'ACCEPT_DISCLOSURE',
+          acceptance: body.contractAcceptance,
+          ...(body.couponCode ? { couponCode: body.couponCode.trim().toUpperCase() } : {}),
         },
       },
       { cache: 'no-store' }

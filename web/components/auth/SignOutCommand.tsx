@@ -3,10 +3,10 @@
 // Implements: architecture/reference/ux/hybrid-ui-acceptance-contract.md §UX-PWA-04
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
-import { LogOut, RefreshCw } from 'lucide-react';
-import { signIn, signOut as nextAuthSignOut } from 'next-auth/react';
-import { useState } from 'react';
 import { beginAuthTransition, recordAuthTransition } from '@/lib/auth-transition';
+import { LogOut, RefreshCw } from 'lucide-react';
+import { signOut as nextAuthSignOut } from 'next-auth/react';
+import { useState } from 'react';
 
 export const identitySessionChangeKey = 'waooaw:identity:session-change';
 
@@ -83,7 +83,13 @@ export function SignOutCommand({
   );
 }
 
-export function AccountSwitchCommand({ label }: { label: string }) {
+export function AccountSwitchCommand({
+  label,
+  navigate = (path) => window.location.assign(path),
+}: {
+  label: string;
+  navigate?: (path: string) => void;
+}) {
   const [switching, setSwitching] = useState(false);
   const [switchFailed, setSwitchFailed] = useState(false);
 
@@ -102,10 +108,9 @@ export function AccountSwitchCommand({ label }: { label: string }) {
       if (!response.ok && response.status !== 401 && response.status !== 403) {
         throw new Error('Session revocation was not confirmed.');
       }
-      recordAuthTransition('ACCOUNT_SWITCH_COMPLETED', 'PRIOR_SESSION_REVOKED', 'UNKNOWN');
       await nextAuthSignOut({ redirect: false });
       recordAuthTransition('BROKER_REDIRECT_REQUESTED', 'OK', 'UNKNOWN');
-      await signIn('keycloak-google', { callbackUrl: '/home' }, { prompt: 'select_account' });
+      navigate('/login?returnTo=%2Fhome&switch=1');
     } catch {
       recordAuthTransition('ACCOUNT_SWITCH_FAILED', 'SESSION_REVOCATION_UNCONFIRMED', 'UNKNOWN');
       setSwitching(false);

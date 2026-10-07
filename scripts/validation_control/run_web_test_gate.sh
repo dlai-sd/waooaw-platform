@@ -15,6 +15,7 @@ run_directory=/tmp/web
 mkdir -p "$coverage_directory"
 rm -rf "$run_directory"
 cp -a "$workspace/web" "$run_directory"
+rm -rf "$run_directory/node_modules"
 ln -s /opt/waooaw-web/node_modules "$run_directory/node_modules"
 cd "$run_directory"
 

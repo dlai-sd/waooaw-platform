@@ -26,13 +26,14 @@ beforeEach(() => {
   });
 });
 
-it('keeps a broker-authenticated visitor outside the customer shell until registration', async () => {
+it('renders the basic customer shell for a broker-authenticated visitor without registering them', async () => {
   jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'registration-required' });
 
-  await expect(ApplicationLayout({ children: <p>Marketplace</p> })).rejects.toThrow('NEXT_REDIRECT');
+  render(await ApplicationLayout({ children: <p>Marketplace</p> }));
 
-  expect(redirect).toHaveBeenCalledWith('/register');
-  expect(screen.queryByTestId('application-shell')).not.toBeInTheDocument();
+  expect(redirect).not.toHaveBeenCalled();
+  expect(screen.getByTestId('application-shell')).toHaveAttribute('data-has-membership', 'false');
+  expect(screen.getByText('Marketplace')).toBeVisible();
 });
 
 it('keeps anonymous users outside the application shell', async () => {

@@ -4,6 +4,7 @@
 CREATE TABLE IF NOT EXISTS business.pre_hire_checkout_orders (
     checkout_intent_id UUID PRIMARY KEY,
     customer_id UUID NOT NULL,
+    correlation_id UUID NOT NULL,
     professional_type VARCHAR(64) NOT NULL,
     professional_version VARCHAR(32) NOT NULL,
     disclosure_revision VARCHAR(32) NOT NULL,

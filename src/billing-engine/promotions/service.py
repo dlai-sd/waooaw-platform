@@ -53,6 +53,7 @@ class PromotionsService:
         customer_id: uuid.UUID,
         agent_type: str,
         tier: str,
+        agent_version: str = "1.0.0",
     ) -> CouponValidation:
         """
         Validate a coupon code without applying it.
@@ -64,17 +65,17 @@ class PromotionsService:
         async with self._session_factory() as session:
             result = await session.execute(
                 text(
-                    "SELECT coupon_id, discount_pct, bonus_credits, agent_type, "
+                    "SELECT coupon_id, discount_pct, bonus_credits, agent_type, agent_version, "
                     "min_tier, max_uses, uses_count, valid_from, valid_until, active "
                     "FROM coupon_codes WHERE code = :code"
                 ).bindparams(code=code)
             )
             row = result.fetchone()
 
-        if row is None or not row[9]:  # not found or inactive
+        if row is None or not row[10]:  # not found or inactive
             return CouponValidation(valid=False, discount_pct=0, bonus_credits={}, expires_at=None, error_code="COUPON_NOT_FOUND")
 
-        _coupon_id, discount_pct, bonus_credits_raw, coupon_agent_type, min_tier, max_uses, uses_count, valid_from, valid_until, _active = row
+        _coupon_id, discount_pct, bonus_credits_raw, coupon_agent_type, coupon_agent_version, min_tier, max_uses, uses_count, valid_from, valid_until, _active = row
 
         # Parse bonus_credits (stored as JSON string in SQLite, dict in Postgres)
         if isinstance(bonus_credits_raw, str):
@@ -105,6 +106,8 @@ class PromotionsService:
 
         if coupon_agent_type is not None and coupon_agent_type != agent_type:
             return CouponValidation(valid=False, discount_pct=0, bonus_credits={}, expires_at=valid_until_dt, error_code="COUPON_AGENT_MISMATCH")
+        if coupon_agent_version is not None and coupon_agent_version != agent_version:
+            return CouponValidation(valid=False, discount_pct=0, bonus_credits={}, expires_at=valid_until_dt, error_code="COUPON_VERSION_MISMATCH")
 
         if min_tier is not None and min_tier != tier:
             return CouponValidation(valid=False, discount_pct=0, bonus_credits={}, expires_at=valid_until_dt, error_code="COUPON_TIER_MISMATCH")
@@ -124,22 +127,23 @@ class PromotionsService:
         self,
         code: str,
         agent_type: str,
+        agent_version: str,
     ) -> CouponValidation:
         """Validate an unconsumed coupon before a customer relationship exists."""
         max_discount: int = getattr(self._settings, "MAX_DISCOUNT_PCT", 100)
         async with self._session_factory() as session:
             result = await session.execute(
                 text(
-                    "SELECT discount_pct, bonus_credits, agent_type, min_tier, max_uses, uses_count, "
+                    "SELECT discount_pct, bonus_credits, agent_type, agent_version, min_tier, max_uses, uses_count, "
                     "valid_from, valid_until, active FROM coupon_codes WHERE code = :code"
                 ).bindparams(code=code)
             )
             row = result.fetchone()
 
-        if row is None or not row[8]:
+        if row is None or not row[9]:
             return CouponValidation(False, 0, {}, None, "COUPON_NOT_FOUND")
 
-        discount_pct, bonus_credits_raw, coupon_agent_type, min_tier, max_uses, uses_count, valid_from, valid_until, _active = row
+        discount_pct, bonus_credits_raw, coupon_agent_type, coupon_agent_version, min_tier, max_uses, uses_count, valid_from, valid_until, _active = row
         if isinstance(bonus_credits_raw, str):
             bonus_credits = json.loads(bonus_credits_raw) if bonus_credits_raw else {}
         else:
@@ -154,6 +158,8 @@ class PromotionsService:
             return CouponValidation(False, 0, {}, valid_until_dt, "COUPON_USED")
         if coupon_agent_type is not None and coupon_agent_type != agent_type:
             return CouponValidation(False, 0, {}, valid_until_dt, "COUPON_AGENT_MISMATCH")
+        if coupon_agent_version is not None and coupon_agent_version != agent_version:
+            return CouponValidation(False, 0, {}, valid_until_dt, "COUPON_VERSION_MISMATCH")
         if min_tier is not None:
             return CouponValidation(False, 0, {}, valid_until_dt, "COUPON_TIER_MISMATCH")
         if discount_pct > max_discount:

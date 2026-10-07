@@ -33,10 +33,16 @@ describe('DisclosureContinuation', () => {
       />
     );
 
-    const continueButton = screen.getByRole('button', { name: 'Start 14-day trial' });
+    const continueButton = screen.getByRole('button', { name: 'Confirm free 14-day trial' });
     expect(continueButton).toBeDisabled();
-    expect(screen.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms');
+    expect(screen.getByRole('link', { name: 'Employment Contract' })).toHaveAttribute(
+      'href',
+      '/employment-contract?professionalType=DIGITAL_MARKETING_LOCAL_SERVICE&version=1.0.0&disclosureRevision=1.0.0&termsVersion=2026-07-18&mode=trial'
+    );
     expect(screen.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
+    expect(screen.getByLabelText('Coupon code')).toHaveValue('Not applicable during Trial');
+    expect(screen.getByRole('button', { name: 'Credit or debit card' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'UPI' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Continue to hire' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(continueButton);
@@ -48,6 +54,7 @@ describe('DisclosureContinuation', () => {
       disclosureRevision: '1.0.0',
       termsVersion: '2026-07-18',
       idempotencyKey: '11111111-1111-4111-8111-111111111111',
+      contractAcceptance: 'ACCEPT_EMPLOYMENT_CONTRACT',
     });
   });
 
@@ -68,6 +75,26 @@ describe('DisclosureContinuation', () => {
     expect(screen.queryByTestId('continuation')).not.toBeInTheDocument();
   });
 
+  it('requires mode selection before showing mode-specific checkout controls', () => {
+    render(
+      <DisclosureContinuation
+        disclosureRevision="1.0.0"
+        professionalType="DIGITAL_MARKETING_LOCAL_SERVICE"
+        professionalVersion="1.0.0"
+        termsVersion="2026-07-18"
+        priceInrPaise={249900}
+        trialAvailable
+        trialDurationDays={14}
+      />
+    );
+
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Review free 14-day Trial' }));
+    expect(screen.getByLabelText('Coupon code')).toHaveValue('Not applicable during Trial');
+    expect(screen.getByRole('button', { name: 'Credit or debit card' })).toBeDisabled();
+    expect(screen.queryByLabelText('Coupon code (optional)')).not.toBeInTheDocument();
+  });
+
   it('withdraws consent and requires fresh consent when the offer contract changes', () => {
     const { rerender } = render(
       <DisclosureContinuation
@@ -83,9 +110,9 @@ describe('DisclosureContinuation', () => {
     );
     const consent = screen.getByRole('checkbox');
     fireEvent.click(consent);
-    expect(screen.getByRole('button', { name: 'Hire for ₹2,499.00' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Continue to Razorpay - ₹2,499.00' })).toBeEnabled();
     fireEvent.click(consent);
-    expect(screen.getByRole('button', { name: 'Hire for ₹2,499.00' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Continue to Razorpay - ₹2,499.00' })).toBeDisabled();
     expect(screen.queryByTestId('continuation')).not.toBeInTheDocument();
 
     fireEvent.click(consent);
@@ -102,7 +129,7 @@ describe('DisclosureContinuation', () => {
       />
     );
     expect(screen.getByRole('checkbox')).not.toBeChecked();
-    expect(screen.getByRole('button', { name: 'Hire for ₹2,499.00' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Continue to Razorpay - ₹2,499.00' })).toBeDisabled();
   });
 
   it('carries a coupon into Hire only after server validation', async () => {
@@ -137,12 +164,17 @@ describe('DisclosureContinuation', () => {
     });
     const locationBeforeCommand = window.location.href;
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.click(screen.getByRole('button', { name: 'Hire for ₹0.00' }));
+    expect(screen.getByRole('button', { name: 'Credit or debit card' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Hire - no payment required' }));
 
     await waitFor(() => expect(screen.getByTestId('continuation')).toBeVisible());
     expect(window.location.href).toBe(locationBeforeCommand);
     expect(JSON.parse(screen.getByTestId('continuation').textContent ?? '{}')).toEqual(
-      expect.objectContaining({ couponCode: 'DEMO100', intent: 'hire' })
+      expect.objectContaining({
+        couponCode: 'DEMO100',
+        contractAcceptance: 'ACCEPT_EMPLOYMENT_CONTRACT',
+        intent: 'hire',
+      })
     );
   });
 
@@ -172,6 +204,6 @@ describe('DisclosureContinuation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
     expect(await screen.findByText(message)).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Hire for ₹2,499.00' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Continue to Razorpay - ₹2,499.00' })).toBeDisabled();
   });
 });

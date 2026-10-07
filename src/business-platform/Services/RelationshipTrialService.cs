@@ -28,6 +28,11 @@ public sealed record RelationshipTrialResult(
     string Status
 );
 
+public sealed record TrialAcquisitionCompletion(
+    AdmitRelationshipResult Admission,
+    RelationshipTrialResult Trial
+);
+
 public interface IRelationshipTrialOwnerGateway
 {
     bool IsConfigured { get; }
@@ -35,6 +40,7 @@ public interface IRelationshipTrialOwnerGateway
     Task<WbeTrialEntitlement?> StartWbeTrialAsync(
         Guid customerId,
         string professionalType,
+        string professionalVersion,
         Guid relationshipId,
         Guid correlationId,
         CancellationToken cancellationToken
@@ -66,6 +72,7 @@ public sealed class UnconfiguredRelationshipTrialOwnerGateway : IRelationshipTri
     public Task<WbeTrialEntitlement?> StartWbeTrialAsync(
         Guid customerId,
         string professionalType,
+        string professionalVersion,
         Guid relationshipId,
         Guid correlationId,
         CancellationToken cancellationToken
@@ -119,6 +126,7 @@ public sealed class HttpRelationshipTrialOwnerGateway : IRelationshipTrialOwnerG
     public async Task<WbeTrialEntitlement?> StartWbeTrialAsync(
         Guid customerId,
         string professionalType,
+        string professionalVersion,
         Guid relationshipId,
         Guid correlationId,
         CancellationToken cancellationToken
@@ -133,6 +141,7 @@ public sealed class HttpRelationshipTrialOwnerGateway : IRelationshipTrialOwnerG
                 {
                     customer_id = customerId,
                     agent_type = professionalType,
+                    agent_version = professionalVersion,
                     phone_verified = true,
                 },
                 cancellationToken
@@ -140,7 +149,8 @@ public sealed class HttpRelationshipTrialOwnerGateway : IRelationshipTrialOwnerG
             if (response.StatusCode == HttpStatusCode.Conflict)
             {
                 using var statusResponse = await client.GetAsync(
-                    $"/trial/status/{customerId}",
+                    $"/trial/status/{customerId}?agent_type={Uri.EscapeDataString(professionalType)}"
+                        + $"&agent_version={Uri.EscapeDataString(professionalVersion)}",
                     cancellationToken
                 );
                 if (!statusResponse.IsSuccessStatusCode)
@@ -152,6 +162,7 @@ public sealed class HttpRelationshipTrialOwnerGateway : IRelationshipTrialOwnerG
                 var status = statusDocument.RootElement;
                 if (
                     status.GetProperty("agent_type").GetString() != professionalType
+                    || status.GetProperty("agent_version").GetString() != professionalVersion
                     || status.GetProperty("status").GetString() != "ACTIVE"
                 )
                     return null;
@@ -416,11 +427,19 @@ public sealed class RelationshipTrialService(
                 : await owners.StartWbeTrialAsync(
                     binding.CustomerId,
                     relationship.ProfessionalType,
+                    relationship.ProfessionalVersion
+                        ?? throw new InvalidOperationException(
+                            "Relationship has no admitted professional version."
+                        ),
                     relationshipId,
                     binding.CorrelationId,
                     cancellationToken
                 );
-        if (wbe is null || wbe.ExpiresAt - wbe.StartsAt != TimeSpan.FromDays(14))
+        if (
+            wbe is null
+            || wbe.ExpiresAt <= wbe.StartsAt
+            || wbe.ExpiresAt - wbe.StartsAt > TimeSpan.FromDays(90)
+        )
         {
             binding.Status = "UNRESOLVED";
             binding.UnresolvedOwner = "WBE";
@@ -481,5 +500,122 @@ public sealed class RelationshipTrialService(
         binding.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
         return new(wbe.TrialId, wbe.StartsAt, wbe.ExpiresAt, binding.Status);
+    }
+
+    public async Task<TrialAcquisitionCompletion> CompleteAcquisitionAsync(
+        Guid tenantId,
+        Guid customerId,
+        Guid acquisitionIntentId,
+        string professionalType,
+        string professionalVersion,
+        Guid professionalAdmissionId,
+        Guid relationshipId,
+        Guid agentInstanceId,
+        Guid correlationId,
+        RelationshipAcquisitionEvidence acquisitionEvidence,
+        CancellationToken cancellationToken
+    )
+    {
+        var wbe = await owners.StartWbeTrialAsync(
+            customerId,
+            professionalType,
+            professionalVersion,
+            relationshipId,
+            correlationId,
+            cancellationToken
+        );
+        if (
+            wbe is null
+            || wbe.ExpiresAt <= wbe.StartsAt
+            || wbe.ExpiresAt - wbe.StartsAt > TimeSpan.FromDays(90)
+        )
+            throw new InvalidOperationException("WBE trial entitlement is unresolved or invalid.");
+
+        var pr = await owners.StartPrTrialAsync(
+            tenantId,
+            relationshipId,
+            agentInstanceId,
+            professionalAdmissionId,
+            professionalType,
+            professionalVersion,
+            wbe.TrialId,
+            wbe.StartsAt,
+            wbe.ExpiresAt,
+            correlationId,
+            cancellationToken
+        );
+        if (
+            pr is null
+            || pr.TrialId != wbe.TrialId
+            || pr.ExpiresAt != wbe.ExpiresAt
+            || pr.WorkflowState != "TRIAL_DEMONSTRATING"
+        )
+            throw new InvalidOperationException("PR trial workflow is unresolved or inconsistent.");
+
+        var admission = await relationships.AdmitPreparedFromAcquisitionAsync(
+            tenantId,
+            customerId,
+            acquisitionIntentId,
+            professionalType,
+            professionalAdmissionId,
+            professionalVersion,
+            relationshipId,
+            agentInstanceId,
+            correlationId,
+            acquisitionEvidence,
+            cancellationToken
+        );
+        if (admission.Relationship.State == EmploymentRelationshipState.Discovered)
+            await relationships.TransitionAsync(
+                tenantId,
+                relationshipId,
+                customerId,
+                RelationshipParticipantRole.Evaluator,
+                EmploymentRelationshipState.Interviewing,
+                correlationId,
+                false,
+                cancellationToken
+            );
+        if (
+            admission.Relationship.State
+            is EmploymentRelationshipState.Discovered
+                or EmploymentRelationshipState.Interviewing
+        )
+            await relationships.TransitionAsync(
+                tenantId,
+                relationshipId,
+                customerId,
+                RelationshipParticipantRole.Evaluator,
+                EmploymentRelationshipState.TrialActive,
+                correlationId,
+                false,
+                cancellationToken
+            );
+
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var binding = await db.RelationshipTrialBindings.SingleOrDefaultAsync(
+            item => item.TenantId == tenantId && item.RelationshipId == relationshipId,
+            cancellationToken
+        );
+        binding ??= new RelationshipTrialBinding
+        {
+            TenantId = tenantId,
+            RelationshipId = relationshipId,
+            CustomerId = customerId,
+            CorrelationId = correlationId,
+        };
+        binding.TrialId = wbe.TrialId;
+        binding.StartsAt = wbe.StartsAt;
+        binding.ExpiresAt = wbe.ExpiresAt;
+        binding.Status = "ACTIVE";
+        binding.UnresolvedOwner = null;
+        binding.UpdatedAt = DateTimeOffset.UtcNow;
+        if (db.Entry(binding).State == EntityState.Detached)
+            db.RelationshipTrialBindings.Add(binding);
+        await db.SaveChangesAsync(cancellationToken);
+        return new(
+            admission,
+            new RelationshipTrialResult(wbe.TrialId, wbe.StartsAt, wbe.ExpiresAt, "ACTIVE")
+        );
     }
 }

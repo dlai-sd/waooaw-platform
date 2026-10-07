@@ -10,23 +10,33 @@
 GRANT USAGE ON SCHEMA business TO wbe_app;
 
 -- --------------------------------------------------------------------------
--- business.trial_allocations — one trial per customer per agent type
+-- business.trial_allocations — one trial per customer per exact agent version
 -- --------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS business.trial_allocations (
     trial_id            UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
     customer_id         UUID            NOT NULL REFERENCES business.organisations(id),
     agent_type          VARCHAR(20)     NOT NULL CHECK (agent_type IN ('DMA','DPA','DCA','DSA')),
+    agent_version       VARCHAR(32)     NOT NULL CHECK (agent_version ~ '^[0-9]+\.[0-9]+\.[0-9]+$'),
     started_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     expires_at          TIMESTAMPTZ     NOT NULL,
     status              VARCHAR(10)     NOT NULL DEFAULT 'ACTIVE'
                             CHECK (status IN ('ACTIVE','EXPIRED','CONVERTED')),
     converted_at        TIMESTAMPTZ,
     new_subscription_id UUID,
-    CONSTRAINT trial_one_per_agent UNIQUE (customer_id, agent_type)
+    CONSTRAINT trial_one_per_agent_version UNIQUE (customer_id, agent_type, agent_version)
 );
 
 CREATE INDEX IF NOT EXISTS idx_trial_customer_status
     ON business.trial_allocations (customer_id, status);
+
+CREATE TABLE IF NOT EXISTS business.agent_trial_policies (
+    agent_type      VARCHAR(50)     NOT NULL,
+    agent_version   VARCHAR(32)     NOT NULL,
+    duration_days   SMALLINT        NOT NULL CHECK (duration_days BETWEEN 1 AND 90),
+    authorized_by   TEXT            NOT NULL CHECK (authorized_by = 'founder'),
+    updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (agent_type, agent_version)
+);
 
 -- --------------------------------------------------------------------------
 -- business.trial_free_unit_ledger — per-thread-type quota tracking
@@ -51,7 +61,8 @@ CREATE TABLE IF NOT EXISTS business.coupon_codes (
     discount_pct    SMALLINT        NOT NULL DEFAULT 0 CHECK (discount_pct BETWEEN 0 AND 100),
     bonus_credits   JSONB           NOT NULL DEFAULT '{}',
     bonus_credits_paise INTEGER     NOT NULL DEFAULT 0 CHECK (bonus_credits_paise >= 0),
-    agent_type      VARCHAR(20),                                     -- NULL = all agents
+    agent_type      VARCHAR(64),                                     -- NULL = all agents
+    agent_version   VARCHAR(32),                                     -- NULL = all admitted versions
     min_tier        VARCHAR(20),                                     -- NULL = all tiers
     min_bundle_tier VARCHAR(20),
     max_uses        INTEGER         CHECK (max_uses > 0),            -- NULL = unlimited
@@ -90,6 +101,7 @@ CREATE INDEX IF NOT EXISTS idx_referral_referrer
 -- GRANT permissions
 -- --------------------------------------------------------------------------
 GRANT SELECT, INSERT, UPDATE ON business.trial_allocations TO wbe_app;
+GRANT SELECT ON business.agent_trial_policies TO wbe_app;
 GRANT SELECT, INSERT, UPDATE ON business.trial_free_unit_ledger TO wbe_app;
 GRANT SELECT, INSERT, UPDATE ON business.coupon_codes TO wbe_app;
 GRANT SELECT, INSERT, UPDATE ON business.referral_records TO wbe_app;

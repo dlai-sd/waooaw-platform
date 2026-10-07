@@ -269,6 +269,20 @@ pytest tests/ -v --cov=src --cov-report=xml
 
 **Mandatory PR structure (per `.github/pull_request_template.md`):**
 
+**Governed author authentication (mandatory):**
+
+- Codespaces preconfigures `/.codespaces/bin/gitcredential_github.sh` as the Git credential helper.
+  Copilot SDK shells may not inherit the refreshed credential, so source
+  `/workspaces/.codespaces/shared/.env` inside the publishing subprocess. Use its `GITHUB_TOKEN`
+  directly for Git or as `GH_TOKEN="$GITHUB_TOKEN"` for GitHub CLI. Do not substitute the
+  SDK-inherited `GITHUB_CODESPACE_TOKEN`, which may be stale.
+- Never print, persist or copy the token, start `gh auth login` or GitHub device authorization, ask
+  the Founder for a personal access token, or fetch a parallel credential from Key Vault.
+- The `waooaw-reviewer` GitHub App remains a separate review identity and must never be reused to push
+  an author branch or open the author's PR.
+- If neither the Codespaces helper/token nor a hosted Actions author token is available, record
+  publication as blocked. Authentication failure is not permission to invent a credential path.
+
 After final author review and the final push, populate the template, then run
 `scripts/prepare_pr_body.sh --body-file /tmp/pr-body.md --base origin/main --expected-worktree "$PWD" --expected-head "$(git rev-parse HEAD)"`. The preparer
 refuses an unpushed or stale branch, binds Author Review to the authoritative remote SHA, and runs

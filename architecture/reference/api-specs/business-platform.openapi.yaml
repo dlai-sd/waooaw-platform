@@ -753,15 +753,39 @@ paths:
               schema: { type: array, items: { $ref: "#/components/schemas/OfferableProfessionalVersion" } }
         "400": { $ref: "#/components/responses/ValidationError" }
 
+  /api/v1/acquisition/intents:
+    post:
+      tags: [Professionals]
+      summary: Persist an accepted Trial or Hire intent before Registration or completion
+      description: |
+        Stores a server-owned, identity-bound Acquisition Intent for the exact Agent + Version,
+        disclosure and Employment Contract identity. The intent survives Registration and does not
+        create an Employment Relationship, allocate a Trial, invoke payment or expose My Agents.
+      operationId: createAcquisitionIntent
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContinueAcquisitionRequest" }
+      responses:
+        "200": { description: Existing identical intent replayed, content: { application/json: { schema: { $ref: "#/components/schemas/AcquisitionIntent" } } } }
+        "201": { description: Acquisition Intent persisted, content: { application/json: { schema: { $ref: "#/components/schemas/AcquisitionIntent" } } } }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+
   /api/v1/acquisition/continuations:
     post:
       tags: [Professionals]
       summary: Continue an explicitly accepted Trial or Hire journey
       description: |
         Validates the exact active professional release, disclosure revision and terms version,
-        resolves the active admission server-side, records the accepted acquisition context in
-        constitutional evidence and idempotently creates the initial relationship. This operation
-        does not start a trial, accept a contract, initiate payment or activate live work.
+        resolves the active admission server-side, resumes the identity-bound Acquisition Intent,
+        and completes the selected Trial or Hire transition. A relationship is returned only after
+        the selected completion path has succeeded.
       operationId: continueAcquisition
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -4847,7 +4871,21 @@ components:
         intent: { type: string, enum: [TRIAL, HIRE] }
         disclosureRevision: { type: string, pattern: '^\d+\.\d+\.\d+$' }
         termsVersion: { type: string, format: date }
-        acceptance: { type: string, const: ACCEPT_DISCLOSURE }
+        acceptance: { type: string, const: ACCEPT_EMPLOYMENT_CONTRACT }
+        couponCode: { type: string, pattern: '^[A-Z0-9_-]{1,64}$' }
+
+    AcquisitionIntent:
+      type: object
+      additionalProperties: false
+      required: [acquisitionIntentId, intent, status, contractDocumentUri, contractHash, expiresAt, replayed]
+      properties:
+        acquisitionIntentId: { type: string, format: uuid }
+        intent: { type: string, enum: [TRIAL, HIRE] }
+        status: { type: string, enum: [PENDING_REGISTRATION, READY_TO_COMPLETE, COMPLETED] }
+        contractDocumentUri: { type: string, maxLength: 500 }
+        contractHash: { type: string, pattern: '^[0-9a-f]{64}$' }
+        expiresAt: { type: string, format: date-time }
+        replayed: { type: boolean }
 
     AcquisitionContinuation:
       type: object

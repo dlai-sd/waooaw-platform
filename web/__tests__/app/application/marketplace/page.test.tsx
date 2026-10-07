@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import MarketplacePage from '@/app/(application)/marketplace/page';
 import { browseMarketplaceProfessionals } from '@/lib/api/professionals';
 import { getRequestI18n } from '@/lib/i18n-server';
@@ -71,8 +71,10 @@ it('uses the canonical disclosure route and preserves each available intent', as
 
   render(await MarketplacePage({ searchParams: Promise.resolve({}) }));
 
-  expect(screen.getByRole('button', { name: 'Start 14-day trial' })).toBeDisabled();
-  expect(screen.getByRole('button', { name: 'Hire for ₹2,499.00' })).toBeDisabled();
+  expect(screen.queryByRole('button', { name: 'Start 14-day trial' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Hire for ₹2,499.00' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Review free 14-day Trial' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Review Hire' })).toBeEnabled();
   expect(screen.getByRole('link', { name: 'Open expanded disclosure' })).toHaveAttribute(
     'href',
     '/marketplace/digital-marketing'
@@ -84,10 +86,15 @@ it('uses the canonical disclosure route and preserves each available intent', as
   expect(screen.getByRole('list', { name: 'Included capabilities' }).children).toHaveLength(3);
   expect(screen.getByText('No guaranteed outcome')).toBeInTheDocument();
   expect(screen.getByText('Stop at any time')).toBeInTheDocument();
-  expect(screen.getByRole('checkbox')).not.toBeChecked();
-  expect(screen.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms');
-  expect(screen.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
+  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: 'Terms' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: 'Privacy Policy' })).not.toBeInTheDocument();
   expect(screen.getByText('14-day governed trial')).toBeInTheDocument();
   expect(screen.queryByRole('search')).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Apply' })).toBeDisabled();
+  expect(screen.queryByRole('button', { name: 'Apply' })).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Review Hire' }));
+
+  expect(screen.getByRole('heading', { name: 'Hire checkout' })).toBeInTheDocument();
+  expect(screen.getByRole('checkbox')).not.toBeChecked();
 });

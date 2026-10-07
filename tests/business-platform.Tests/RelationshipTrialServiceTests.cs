@@ -23,21 +23,38 @@ internal sealed class TrialOwnerGatewayStub : IRelationshipTrialOwnerGateway
     public string? ProfessionalVersion { get; private set; }
 
     public Task<WbeTrialEntitlement?> StartWbeTrialAsync(
-        Guid customerId, string professionalType, Guid relationshipId, Guid correlationId,
-        CancellationToken cancellationToken)
+        Guid customerId,
+        string professionalType,
+        string professionalVersion,
+        Guid relationshipId,
+        Guid correlationId,
+        CancellationToken cancellationToken
+    )
     {
         WbeCalls++;
+        ProfessionalVersion = professionalVersion;
         return Task.FromResult(Wbe);
     }
 
     public Task<WbeTrialStatus?> GetWbeTrialStatusAsync(
-        Guid customerId, Guid trialId, CancellationToken cancellationToken) =>
-        Task.FromResult(WbeStatus);
+        Guid customerId,
+        Guid trialId,
+        CancellationToken cancellationToken
+    ) => Task.FromResult(WbeStatus);
 
     public Task<PrTrialWorkflow?> StartPrTrialAsync(
-        Guid tenantId, Guid relationshipId, Guid agentInstanceId, Guid professionalAdmissionId,
-        string professionalType, string professionalVersion, Guid trialId, DateTimeOffset startsAt,
-        DateTimeOffset expiresAt, Guid correlationId, CancellationToken cancellationToken)
+        Guid tenantId,
+        Guid relationshipId,
+        Guid agentInstanceId,
+        Guid professionalAdmissionId,
+        string professionalType,
+        string professionalVersion,
+        Guid trialId,
+        DateTimeOffset startsAt,
+        DateTimeOffset expiresAt,
+        Guid correlationId,
+        CancellationToken cancellationToken
+    )
     {
         PrCalls++;
         AgentInstanceId = agentInstanceId;
@@ -50,23 +67,57 @@ internal sealed class TrialOwnerGatewayStub : IRelationshipTrialOwnerGateway
 public sealed class RelationshipTrialServiceTests
 {
     [Fact]
+    public async Task AuthorizedOwnerDurationOverrideIsPreserved()
+    {
+        var (service, _, _, gateway, relationship, tenantId, actorId) = await CreateAsync();
+        var startsAt = DateTimeOffset.UtcNow;
+        var trialId = Guid.NewGuid();
+        gateway.Wbe = new(trialId, startsAt, startsAt.AddDays(21));
+        gateway.Pr = new(trialId, "TRIAL_DEMONSTRATING", startsAt.AddDays(21));
+
+        var result = await service.StartAsync(
+            tenantId,
+            relationship.RelationshipId,
+            actorId,
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
+
+        Assert.Equal(startsAt.AddDays(21), result.ExpiresAt);
+    }
+
+    [Fact]
     public async Task BothOwnersConfirmBeforeDurableRelationshipBecomesTrialActive()
     {
-        var (service, relationships, factory, gateway, relationship, tenantId, actorId) = await CreateAsync();
+        var (service, relationships, factory, gateway, relationship, tenantId, actorId) =
+            await CreateAsync();
         var startsAt = DateTimeOffset.UtcNow;
         var trialId = Guid.NewGuid();
         gateway.Wbe = new(trialId, startsAt, startsAt.AddDays(14));
         gateway.Pr = new(trialId, "TRIAL_DEMONSTRATING", startsAt.AddDays(14));
 
         var result = await service.StartAsync(
-            tenantId, relationship.RelationshipId, actorId, Guid.NewGuid(), CancellationToken.None);
+            tenantId,
+            relationship.RelationshipId,
+            actorId,
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
 
         Assert.Equal("ACTIVE", result.Status);
         Assert.Equal(relationship.AgentInstanceId, gateway.AgentInstanceId);
         Assert.Equal(relationship.ProfessionalAdmissionId, gateway.ProfessionalAdmissionId);
         Assert.Equal(relationship.ProfessionalVersion, gateway.ProfessionalVersion);
-        Assert.Equal(EmploymentRelationshipState.TrialActive,
-            (await relationships.GetAsync(tenantId, relationship.RelationshipId, CancellationToken.None))?.State);
+        Assert.Equal(
+            EmploymentRelationshipState.TrialActive,
+            (
+                await relationships.GetAsync(
+                    tenantId,
+                    relationship.RelationshipId,
+                    CancellationToken.None
+                )
+            )?.State
+        );
         await using var db = factory.CreateDbContext();
         Assert.Equal("ACTIVE", (await db.RelationshipTrialBindings.SingleAsync()).Status);
     }
@@ -76,17 +127,34 @@ public sealed class RelationshipTrialServiceTests
     [InlineData("PR")]
     public async Task OwnerUncertaintyLeavesRelationshipPreTrial(string owner)
     {
-        var (service, relationships, factory, gateway, relationship, tenantId, actorId) = await CreateAsync();
+        var (service, relationships, factory, gateway, relationship, tenantId, actorId) =
+            await CreateAsync();
         var startsAt = DateTimeOffset.UtcNow;
         var trialId = Guid.NewGuid();
         gateway.Wbe = owner == "WBE" ? null : new(trialId, startsAt, startsAt.AddDays(14));
-        gateway.Pr = owner == "PR" ? null : new(trialId, "TRIAL_DEMONSTRATING", startsAt.AddDays(14));
+        gateway.Pr =
+            owner == "PR" ? null : new(trialId, "TRIAL_DEMONSTRATING", startsAt.AddDays(14));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.StartAsync(
-            tenantId, relationship.RelationshipId, actorId, Guid.NewGuid(), CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.StartAsync(
+                tenantId,
+                relationship.RelationshipId,
+                actorId,
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
 
-        Assert.Equal(EmploymentRelationshipState.Interviewing,
-            (await relationships.GetAsync(tenantId, relationship.RelationshipId, CancellationToken.None))?.State);
+        Assert.Equal(
+            EmploymentRelationshipState.Interviewing,
+            (
+                await relationships.GetAsync(
+                    tenantId,
+                    relationship.RelationshipId,
+                    CancellationToken.None
+                )
+            )?.State
+        );
         await using var db = factory.CreateDbContext();
         var binding = await db.RelationshipTrialBindings.SingleAsync();
         Assert.Equal("UNRESOLVED", binding.Status);
@@ -102,10 +170,21 @@ public sealed class RelationshipTrialServiceTests
         gateway.Wbe = new(trialId, startsAt, startsAt.AddDays(14));
         gateway.Pr = new(trialId, "TRIAL_DEMONSTRATING", startsAt.AddDays(14));
         var correlationId = Guid.NewGuid();
-        await service.StartAsync(tenantId, relationship.RelationshipId, actorId, correlationId, CancellationToken.None);
+        await service.StartAsync(
+            tenantId,
+            relationship.RelationshipId,
+            actorId,
+            correlationId,
+            CancellationToken.None
+        );
 
         var replay = await service.StartAsync(
-            tenantId, relationship.RelationshipId, actorId, correlationId, CancellationToken.None);
+            tenantId,
+            relationship.RelationshipId,
+            actorId,
+            correlationId,
+            CancellationToken.None
+        );
 
         Assert.Equal(trialId, replay.TrialId);
         Assert.Equal(1, gateway.WbeCalls);
@@ -115,21 +194,38 @@ public sealed class RelationshipTrialServiceTests
     [Fact]
     public async Task RelationshipListUsesAuthoritativeExpiredStatusWithoutChangingLifecycle()
     {
-        var (service, relationships, _, gateway, relationship, tenantId, actorId) = await CreateAsync();
+        var (service, relationships, _, gateway, relationship, tenantId, actorId) =
+            await CreateAsync();
         var startsAt = DateTimeOffset.UtcNow;
         var trialId = Guid.NewGuid();
         gateway.Wbe = new(trialId, startsAt, startsAt.AddDays(14));
         gateway.Pr = new(trialId, "TRIAL_DEMONSTRATING", startsAt.AddDays(14));
         await service.StartAsync(
-            tenantId, relationship.RelationshipId, actorId, Guid.NewGuid(), CancellationToken.None);
+            tenantId,
+            relationship.RelationshipId,
+            actorId,
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
         gateway.WbeStatus = new(trialId, "EXPIRED");
 
         var statuses = await service.GetAuthoritativeStatusesAsync(
-            tenantId, [relationship.RelationshipId], CancellationToken.None);
+            tenantId,
+            [relationship.RelationshipId],
+            CancellationToken.None
+        );
 
         Assert.Equal("EXPIRED", statuses[relationship.RelationshipId]);
-        Assert.Equal(EmploymentRelationshipState.TrialActive,
-            (await relationships.GetAsync(tenantId, relationship.RelationshipId, CancellationToken.None))?.State);
+        Assert.Equal(
+            EmploymentRelationshipState.TrialActive,
+            (
+                await relationships.GetAsync(
+                    tenantId,
+                    relationship.RelationshipId,
+                    CancellationToken.None
+                )
+            )?.State
+        );
     }
 
     [Fact]
@@ -141,10 +237,18 @@ public sealed class RelationshipTrialServiceTests
         gateway.Wbe = new(trialId, startsAt, startsAt.AddDays(14));
         gateway.Pr = new(trialId, "TRIAL_DEMONSTRATING", startsAt.AddDays(14));
         await service.StartAsync(
-            tenantId, relationship.RelationshipId, actorId, Guid.NewGuid(), CancellationToken.None);
+            tenantId,
+            relationship.RelationshipId,
+            actorId,
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
 
         var statuses = await service.GetAuthoritativeStatusesAsync(
-            tenantId, [relationship.RelationshipId], CancellationToken.None);
+            tenantId,
+            [relationship.RelationshipId],
+            CancellationToken.None
+        );
 
         Assert.Equal("UNRESOLVED", statuses[relationship.RelationshipId]);
     }
@@ -155,20 +259,25 @@ public sealed class RelationshipTrialServiceTests
         var (service, _, factory, gateway, relationship, tenantId, _) = await CreateAsync();
         await using (var db = factory.CreateDbContext())
         {
-            db.RelationshipTrialBindings.Add(new RelationshipTrialBinding
-            {
-                TenantId = tenantId,
-                RelationshipId = relationship.RelationshipId,
-                CustomerId = relationship.InitiatingParticipantId,
-                CorrelationId = Guid.NewGuid(),
-                Status = "PENDING",
-            });
+            db.RelationshipTrialBindings.Add(
+                new RelationshipTrialBinding
+                {
+                    TenantId = tenantId,
+                    RelationshipId = relationship.RelationshipId,
+                    CustomerId = relationship.InitiatingParticipantId,
+                    CorrelationId = Guid.NewGuid(),
+                    Status = "PENDING",
+                }
+            );
             await db.SaveChangesAsync();
         }
         gateway.WbeStatus = new(Guid.NewGuid(), "ACTIVE");
 
         var statuses = await service.GetAuthoritativeStatusesAsync(
-            tenantId, [relationship.RelationshipId], CancellationToken.None);
+            tenantId,
+            [relationship.RelationshipId],
+            CancellationToken.None
+        );
 
         Assert.Equal("PENDING", statuses[relationship.RelationshipId]);
     }
@@ -176,34 +285,64 @@ public sealed class RelationshipTrialServiceTests
     [Fact]
     public async Task PrUncertaintyRetryReusesDurableWbeConfirmation()
     {
-        var (service, relationships, _, gateway, relationship, tenantId, actorId) = await CreateAsync();
+        var (service, relationships, _, gateway, relationship, tenantId, actorId) =
+            await CreateAsync();
         var startsAt = DateTimeOffset.UtcNow;
         var trialId = Guid.NewGuid();
         gateway.Wbe = new(trialId, startsAt, startsAt.AddDays(14));
         gateway.Pr = null;
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.StartAsync(
-            tenantId, relationship.RelationshipId, actorId, Guid.NewGuid(), CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.StartAsync(
+                tenantId,
+                relationship.RelationshipId,
+                actorId,
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
         gateway.Pr = new(trialId, "TRIAL_DEMONSTRATING", startsAt.AddDays(14));
 
         var result = await service.StartAsync(
-            tenantId, relationship.RelationshipId, actorId, Guid.NewGuid(), CancellationToken.None);
+            tenantId,
+            relationship.RelationshipId,
+            actorId,
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
 
         Assert.Equal("ACTIVE", result.Status);
         Assert.Equal(1, gateway.WbeCalls);
         Assert.Equal(2, gateway.PrCalls);
-        Assert.Equal(EmploymentRelationshipState.TrialActive,
-            (await relationships.GetAsync(tenantId, relationship.RelationshipId, CancellationToken.None))?.State);
+        Assert.Equal(
+            EmploymentRelationshipState.TrialActive,
+            (
+                await relationships.GetAsync(
+                    tenantId,
+                    relationship.RelationshipId,
+                    CancellationToken.None
+                )
+            )?.State
+        );
     }
 
-    private static async Task<(RelationshipTrialService Service, EmploymentRelationshipService Relationships,
-        InMemoryEmploymentRelationshipFactory Factory, TrialOwnerGatewayStub Gateway,
-        EmploymentRelationship Relationship, Guid TenantId, Guid ActorId)> CreateAsync()
+    private static async Task<(
+        RelationshipTrialService Service,
+        EmploymentRelationshipService Relationships,
+        InMemoryEmploymentRelationshipFactory Factory,
+        TrialOwnerGatewayStub Gateway,
+        EmploymentRelationship Relationship,
+        Guid TenantId,
+        Guid ActorId
+    )> CreateAsync()
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
         var constitutionalGateway = new RecordingRelationshipConstitutionalGateway();
         var relationships = new EmploymentRelationshipService(
-            factory, constitutionalGateway, NullLogger<EmploymentRelationshipService>.Instance);
+            factory,
+            constitutionalGateway,
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
         var tenantId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         var admission = new AgentAdmission
@@ -220,13 +359,34 @@ public sealed class RelationshipTrialServiceTests
             await seed.SaveChangesAsync();
         }
         var admitted = await relationships.AdmitAsync(
-            tenantId, actorId, Guid.NewGuid(), "DMA", admission.AdmissionId,
-            admission.ProfessionalVersion, Guid.NewGuid(), CancellationToken.None);
+            tenantId,
+            actorId,
+            Guid.NewGuid(),
+            "DMA",
+            admission.AdmissionId,
+            admission.ProfessionalVersion,
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
         var relationship = await relationships.TransitionAsync(
-            tenantId, admitted.Relationship.RelationshipId, actorId, RelationshipParticipantRole.Evaluator,
-            EmploymentRelationshipState.Interviewing, Guid.NewGuid(), false, CancellationToken.None);
+            tenantId,
+            admitted.Relationship.RelationshipId,
+            actorId,
+            RelationshipParticipantRole.Evaluator,
+            EmploymentRelationshipState.Interviewing,
+            Guid.NewGuid(),
+            false,
+            CancellationToken.None
+        );
         var gateway = new TrialOwnerGatewayStub();
-        return (new RelationshipTrialService(factory, relationships, gateway), relationships,
-            factory, gateway, relationship!, tenantId, actorId);
+        return (
+            new RelationshipTrialService(factory, relationships, gateway),
+            relationships,
+            factory,
+            gateway,
+            relationship!,
+            tenantId,
+            actorId
+        );
     }
 }

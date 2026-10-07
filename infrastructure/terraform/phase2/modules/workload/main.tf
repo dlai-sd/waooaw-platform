@@ -419,6 +419,7 @@ locals {
       BILLING_DECISION_SPACE_VERSION = "1"
       CONSTITUTIONAL_ENGINE_ADDRESS  = "ca-${var.environment}-constitutional-engine:80"
       DATABASE_URL                   = "postgresql+asyncpg://postgres@localhost:5432/waooaw"
+      MAX_DISCOUNT_PCT               = contains(["demo", "uat"], var.environment) ? "100" : "0"
       RAZORPAY_READINESS_STATE       = contains(["demo", "uat"], var.environment) ? "READY_TEST" : "NOT_CONFIGURED"
       REDIS_URL                      = "redis://localhost:6379/0"
       WBE_INTERNAL_BASE_URL          = local.service_urls.billing_engine

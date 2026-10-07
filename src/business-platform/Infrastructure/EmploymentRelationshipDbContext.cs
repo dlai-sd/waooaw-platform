@@ -38,6 +38,10 @@ public sealed class EmploymentRelationship
     public string ProfessionalType { get; init; } = string.Empty;
     public string? ProfessionalVersion { get; init; }
     public string? AcquisitionMode { get; init; }
+    public Guid? AcquisitionIntentId { get; init; }
+    public string? AcquisitionContractVersion { get; init; }
+    public string? AcquisitionContractHash { get; init; }
+    public DateTimeOffset? AcquisitionContractAcceptedAt { get; init; }
     public DateTimeOffset AgentInstanceMintedAt { get; init; } = DateTimeOffset.UtcNow;
     public Guid EvaluationIntentId { get; init; }
     public Guid InitiatingParticipantId { get; init; }
@@ -373,6 +377,33 @@ public sealed class ContractAcceptance
     public DateTimeOffset AcceptedAt { get; init; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class AcquisitionIntent
+{
+    public Guid AcquisitionIntentId { get; init; }
+    public string ActorIdentityHash { get; init; } = string.Empty;
+    public Guid IdempotencyKey { get; init; }
+    public Guid? TenantId { get; set; }
+    public Guid? ParticipantId { get; set; }
+    public string ProfessionalType { get; init; } = string.Empty;
+    public string ProfessionalVersion { get; init; } = string.Empty;
+    public string Mode { get; init; } = string.Empty;
+    public string DisclosureRevision { get; init; } = string.Empty;
+    public string ContractVersion { get; init; } = string.Empty;
+    public string ContractDocumentUri { get; init; } = string.Empty;
+    public string ContractHash { get; init; } = string.Empty;
+    public string MaterialRequestHash { get; init; } = string.Empty;
+    public string? CouponCode { get; init; }
+    public Guid? PlannedRelationshipId { get; set; }
+    public Guid? PlannedAgentInstanceId { get; set; }
+    public string Status { get; set; } = "PENDING_REGISTRATION";
+    public DateTimeOffset ContractAcceptedAt { get; init; }
+    public Guid? RelationshipId { get; set; }
+    public DateTimeOffset ExpiresAt { get; init; }
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? CompletedAt { get; set; }
+}
+
 public sealed class ActivationIntent
 {
     public Guid ActivationIntentId { get; init; } = Guid.NewGuid();
@@ -612,6 +643,7 @@ public sealed class EmploymentRelationshipDbContext : DbContext
     public DbSet<EmploymentContractVersion> EmploymentContractVersions =>
         Set<EmploymentContractVersion>();
     public DbSet<ContractAcceptance> ContractAcceptances => Set<ContractAcceptance>();
+    public DbSet<AcquisitionIntent> AcquisitionIntents => Set<AcquisitionIntent>();
     public DbSet<ActivationIntent> ActivationIntents => Set<ActivationIntent>();
     public DbSet<RelationshipCheckoutIntent> RelationshipCheckoutIntents =>
         Set<RelationshipCheckoutIntent>();
@@ -673,6 +705,18 @@ public sealed class EmploymentRelationshipDbContext : DbContext
                 .Property(value => value.ProfessionalVersion)
                 .HasColumnName("professional_version");
             entity.Property(value => value.AcquisitionMode).HasColumnName("acquisition_mode");
+            entity
+                .Property(value => value.AcquisitionIntentId)
+                .HasColumnName("acquisition_intent_id");
+            entity
+                .Property(value => value.AcquisitionContractVersion)
+                .HasColumnName("acquisition_contract_version");
+            entity
+                .Property(value => value.AcquisitionContractHash)
+                .HasColumnName("acquisition_contract_hash");
+            entity
+                .Property(value => value.AcquisitionContractAcceptedAt)
+                .HasColumnName("acquisition_contract_accepted_at");
             entity
                 .Property(value => value.AgentInstanceMintedAt)
                 .HasColumnName("agent_instance_minted_at");
@@ -1630,6 +1674,52 @@ public sealed class EmploymentRelationshipDbContext : DbContext
                     value.Version,
                     value.ContractHash,
                 });
+        });
+
+        modelBuilder.Entity<AcquisitionIntent>(entity =>
+        {
+            entity.ToTable("acquisition_intents", "business");
+            entity.HasKey(value => value.AcquisitionIntentId);
+            entity
+                .HasIndex(value => new { value.ActorIdentityHash, value.IdempotencyKey })
+                .IsUnique();
+            entity
+                .Property(value => value.AcquisitionIntentId)
+                .HasColumnName("acquisition_intent_id");
+            entity.Property(value => value.ActorIdentityHash).HasColumnName("actor_identity_hash");
+            entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.ParticipantId).HasColumnName("participant_id");
+            entity.Property(value => value.ProfessionalType).HasColumnName("professional_type");
+            entity
+                .Property(value => value.ProfessionalVersion)
+                .HasColumnName("professional_version");
+            entity.Property(value => value.Mode).HasColumnName("mode");
+            entity.Property(value => value.DisclosureRevision).HasColumnName("disclosure_revision");
+            entity.Property(value => value.ContractVersion).HasColumnName("contract_version");
+            entity
+                .Property(value => value.ContractDocumentUri)
+                .HasColumnName("contract_document_uri");
+            entity.Property(value => value.ContractHash).HasColumnName("contract_hash");
+            entity
+                .Property(value => value.MaterialRequestHash)
+                .HasColumnName("material_request_hash");
+            entity.Property(value => value.CouponCode).HasColumnName("coupon_code");
+            entity
+                .Property(value => value.PlannedRelationshipId)
+                .HasColumnName("planned_relationship_id");
+            entity
+                .Property(value => value.PlannedAgentInstanceId)
+                .HasColumnName("planned_agent_instance_id");
+            entity.Property(value => value.Status).HasColumnName("status");
+            entity
+                .Property(value => value.ContractAcceptedAt)
+                .HasColumnName("contract_accepted_at");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+            entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
+            entity.Property(value => value.CompletedAt).HasColumnName("completed_at");
         });
 
         modelBuilder.Entity<ActivationIntent>(entity =>
