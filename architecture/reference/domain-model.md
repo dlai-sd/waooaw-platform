@@ -147,13 +147,73 @@ ProfessionalIdentity {
 }
 ```
 
+### Conversational Employment Workspace (ADR-051)
+
+The relationship-scoped composition of conversation, visual workboard and readiness. This is a
+Business Platform aggregate projection over authoritative owner state, not a new service.
+
+```
+ConversationalEmploymentWorkspace {
+  relationshipId: UUID
+  protocolVersion: string
+  conversationId: UUID
+  lifecycleState: enum(EVALUATION, ACTIVE, SUSPENDED, TERMINATED)
+  inductionReadiness: InductionReadiness
+  planReadiness: PlanReadiness
+  operationsEligibility: OperationsEligibility
+  performanceAssurance: PerformanceAssurance
+  currentGoalId: UUID?
+  currentPlanVersion: int?
+  sourceVersion: string
+  freshnessState: enum(CURRENT, STALE, UNKNOWN, UNAVAILABLE, PARTIAL, DISPUTED)
+}
+```
+
+### Relationship Plan And Workboard (ADR-051)
+
+```
+RelationshipPlan {
+  id: UUID
+  relationshipId: UUID
+  version: int
+  state: enum(DRAFT, GROOMING, READY_FOR_REVIEW, AGREED, ACTIVE, BLOCKED,
+              SUPERSEDED, CANCELLED, COMPLETED)
+  goalIds: [UUID]
+  milestoneIds: [UUID]
+  dependencyIds: [UUID]
+  calendarCommitmentIds: [UUID]
+  decisionSpaceVersion: int
+  billingProjectionVersion: string?
+  attributionBoundary: string
+  acceptedBy: UUID?
+  acceptedAt: datetime?
+}
+
+WorkboardItem {
+  id: UUID
+  relationshipId: UUID
+  planId: UUID?
+  phase: enum(INDUCTION, PLANNING, OPERATIONS)
+  state: enum(PROPOSED, READY, IN_PROGRESS, WAITING_ON_CUSTOMER, WAITING_ON_AGENT,
+              WAITING_ON_PLATFORM, BLOCKED, COMPLETED, DEFERRED, CANCELLED,
+              SUPERSEDED, OUTCOME_UNKNOWN)
+  accountableOwner: string
+  reasonRequired: string?
+  blockedEffects: [string]
+  evidenceState: string
+  freshnessState: string
+}
+```
+
 ---
 
 ## Bounded Contexts
 
 ### Employment Context (Business Platform owns)
-**Responsibility:** Everything about the employment relationship.
-**Aggregates:** EmploymentContract (root), DecisionSpace, BusinessGoal, ReviewRecord
+**Responsibility:** Everything about the employment relationship, including the authoritative
+conversation/workspace identity, induction truth, goal/plan truth and readiness composition.
+**Aggregates:** EmploymentContract (root), DecisionSpace, BusinessGoal, RelationshipPlan,
+ConversationalEmploymentWorkspace, WorkboardItem, ReviewRecord
 **Domain Events emitted:**
 - `EmploymentContractFormed` — customer signed contract
 - `DecisionSpaceConfigured` — Decision Space set/updated
@@ -161,6 +221,10 @@ ProfessionalIdentity {
 - `EmploymentSuspended` — moved to SUSPENDED state
 - `EmploymentTerminated` — moved to TERMINATED state
 - `ContractRenewed` — governed re-consent event
+- `InductionReadinessChanged` — requirement-derived readiness changed
+- `RelationshipPlanVersioned` — a proposed or accepted plan version was created
+- `OperationsEligibilityChanged` — operations locked, became eligible, paused or require reassessment
+- `MaterialChangeDetected` — affected work requires plan/readiness reassessment
 
 ### Governance Context (Business Platform + Constitutional Engine)
 **Responsibility:** All customer oversight actions and constitutional boundary enforcement.
@@ -202,7 +266,9 @@ ProfessionalIdentity {
 
 | Aggregate | Owns | Does NOT own |
 |---|---|---|
-| EmploymentContract | DecisionSpace, Goals, ReviewSchedule | EvidenceRecords (those are Constitutional Engine's) |
+| EmploymentContract | DecisionSpace, Goals, ReviewSchedule, relationship workspace identity | EvidenceRecords or WBE commercial truth |
+| RelationshipPlan | Goals, milestones, dependencies, calendar commitments and accepted versions | Execution outcomes, billing actuals or constitutional evidence |
+| ConversationalEmploymentWorkspace | Public phase/readiness composition and available relationship commands | CE, WBE, PR or domain source truth |
 | EvidenceRecord | ConstitutionalAuditEntry, AuthorityLicense | Business schema data |
 | PAASSession | In-memory Decision Space snapshot | The canonical Decision Space (owned by EmploymentContract) |
 | ApprovalGateSession | Approval workflow state | The evidence record (written by Constitutional Engine) |
@@ -212,6 +278,34 @@ ProfessionalIdentity {
 ## State Machines
 
 ### Employment Lifecycle (C-034)
+```
+
+ADR-051 does not add employment lifecycle states. Readiness is orthogonal:
+
+### Induction Readiness (ADR-051)
+```
+[NOT_STARTED] -> [IN_PROGRESS] -> [READY_WITH_DEFERRED_ITEMS | READY]
+                      |                         |
+                      v                         v
+                  [BLOCKED]          [STALE_REASSESSMENT_REQUIRED]
+```
+
+### Plan Readiness (ADR-051)
+```
+[NO_PLAN] -> [DRAFT] -> [GROOMING] -> [READY_FOR_REVIEW] -> [AGREED]
+                            |                                  |
+                            v                                  v
+                        [BLOCKED]               [STALE_REASSESSMENT_REQUIRED]
+```
+
+### Operations Eligibility (ADR-051)
+```
+[LOCKED] -> [ELIGIBLE] -> [ACTIVE] -> [PAUSED]
+    ^             |          |           |
+    |             v          v           v
+    +-------- [BLOCKED | REASSESSMENT_REQUIRED]
+
+[TERMINATED] is entered only from the C-034 employment lifecycle consequence.
 ```
 [EVALUATION] ──(contract signed)──► [ACTIVE]
 [ACTIVE]     ──(suspend command)──► [SUSPENDED]
@@ -238,3 +332,7 @@ Note: PAAS execution skips PROPOSED/AWAITING_APPROVAL — it goes directly to EX
 3. **AuthorityLicense records are append-only** — authority history must never be rewritten
 4. **PAASSession Decision Space snapshot must match EmploymentContract.DecisionSpace at session start** — any mid-session Decision Space change terminates the PAAS session
 5. **EmergencyStop must produce an EvidenceRecord before confirmation is sent to customer** (AD-002)
+6. **Conversation/model output proposes but never commits authoritative workspace truth** (ADR-051)
+7. **Operations eligibility requires distinct relationship, induction, plan and continuous-action gates** (ADR-051)
+8. **WBE billing truth and domain outcome truth are composed but never recalculated by the workspace** (ADR-051)
+9. **A mandatory employment-interface version cannot activate with a non-conforming offered agent** (C-094, ADR-051)

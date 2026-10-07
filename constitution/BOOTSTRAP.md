@@ -73,6 +73,7 @@ activity complete or presenting its output, the author must:
 5. For a PR, complete the mandatory Author Review section only after the final push, bind it to the
   exact 40-character head commit, and set PASS only when all checks and findings are resolved. Any
   later commit invalidates that review and requires a fresh author review.
+6. In Codespaces tool shells, source `/workspaces/.codespaces/shared/.env` before authenticated GitHub commands; test this standard credential path before requesting re-authentication.
 
 Author review is self-verification, not approval. The author may not self-approve, self-merge, or
 claim independent assurance. Only the Founder may request an additional institutional review.

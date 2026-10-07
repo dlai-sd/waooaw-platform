@@ -3,7 +3,9 @@
 **Produced by:** Enterprise Architect (Sprint 003)
 **Date:** 2026-07-07
 
-Each of the 26 business capabilities is owned by exactly one container. Ownership means: the container is the primary implementer and holds the authoritative state for that capability.
+Each approved business capability is owned by exactly one authoritative container or institutional
+role. Ownership means that owner holds the authoritative state or decision; supporting containers
+may contribute evidence or execution facts without becoming authoritative.
 
 ---
 
@@ -13,33 +15,43 @@ Each of the 26 business capabilities is owned by exactly one container. Ownershi
 | **1.2 Configure Employment Terms** | Business Platform | — |
 | **1.3 Define Decision Space** | Business Platform | Constitutional Engine (validates boundary) |
 | **1.4 Form Employment Contract** | Business Platform | Constitutional Engine (records formation event) |
-| **1.5 Onboard Digital Professional** | Professional Runtime | AI Runtime (learns Creative Standard) |
+| **1.5 Onboard Digital Professional** | Business Platform (relationship induction truth) | Professional Runtime and AI Runtime (professional interpretation); domain adapter (requirements and evidence) |
+| **1.6 Browse Agent and Skill Catalogue** | Business Platform | Web (presentation) |
+| **1.7 Configure Agent via Conversation** | Business Platform (Conversation Core and relationship governance) | Professional Runtime and AI Runtime (typed candidate patches); Constitutional Engine (governed evidence) |
+| **1.8 Enroll in Trial Engagement** | Business Platform | WBE (trial/commercial eligibility); Constitutional Engine (evidence) |
 | **2.1 Review Proposed Actions** | Business Platform | — |
 | **2.2 Approve or Reject Actions** | Business Platform | Constitutional Engine (records approval/rejection) |
 | **2.3 Confirm Scope-Boundary Crossings** | Business Platform | Constitutional Engine (records ScopeBoundaryConfirmation) |
 | **2.4 Exercise Emergency Stop** | Professional Runtime | Constitutional Engine (records stop event) / Azure SignalR (transport) |
 | **2.5 Monitor Professional Activity** | Business Platform | Constitutional Engine (reads ledger) |
 | **2.6 Audit Evidence Ledger** | Business Platform | Constitutional Engine (read-only API) |
+| **2.7 Monitor Skill Performance Against Business KPIs** | Business Platform (public Results projection) | Domain adapter (outcome semantics); Professional Runtime (execution facts); Constitutional Engine (evidence) |
 | **3.1 Execute Approval-Gate Work** | Professional Runtime | Constitutional Engine (Evidence First) / AI Runtime (inference) |
 | **3.2 Execute Pre-Authorized Work (PAAS)** | Professional Runtime | Constitutional Engine (evidence recording) / AI Runtime (inference) |
 | **3.3 Manage Creative Standard Profile** | Professional Runtime | AI Runtime (learns and applies standard) |
+| **3.4 Self-Improve Skill Performance** | Professional Runtime | AI Runtime (assessment/proposal); Business Platform (plan/goal change); Constitutional Engine (evidence) |
 | **4.1 Assess Professional Performance** | Business Platform | — |
 | **4.2 Expand Professional Authority** | Business Platform | Constitutional Engine (records authority grant) |
 | **4.3 Restrict or Suspend Authority** | Business Platform | Constitutional Engine (records restriction) |
 | **4.4 Renew Employment Contract** | Business Platform | Constitutional Engine (records renewal) |
+| **4.5 Set and Update Skill Goals** | Business Platform (goal and plan truth) | Professional Runtime and AI Runtime (professional proposal); Constitutional Engine (governed change) |
+| **4.6 Earn Synthetic Approval Authority** | AI Runtime (Synthetic Approval Pipeline) | Business Platform (mode upgrade amendment), Constitutional Engine (evidence record per synthetic approval + mode upgrade event) |
 | **5.1 Suspend Professional Employment** | Business Platform | Constitutional Engine (records suspension) |
 | **5.2 Terminate Professional Employment** | Business Platform | Constitutional Engine (records termination) |
 | **5.3 Export Customer Evidence** | Business Platform | Constitutional Engine (evidence export) |
+| **5.4 Pause Individual Skill** | Business Platform | WBE (pro-rata consequence); Professional Runtime (execution stop); Constitutional Engine (evidence) |
+| **5.5 Resume Paused Skill** | Business Platform | WBE (pro-rata consequence); Professional Runtime (execution resume); Constitutional Engine (evidence) |
 | **6.1 Authenticate and Authorize Customers** | Keycloak (web/mobile credential authority) | Business Platform (public facade, JWT and current-policy authorization); Phone Identity Service (ADR-023 WhatsApp proof); Identity Edge (proposed ADR-048 public OIDC mediation) |
 | **6.2 Isolate Tenant Data** | PostgreSQL (RLS) | All containers (JWT propagation) |
 | **6.3 Record Constitutional Evidence** | Constitutional Engine | — |
 | **6.4 Observe Platform Health** | All containers (OTel) | Jaeger/Azure Monitor |
-| **6.5 Bill Customers** | Business Platform | — |
+| **6.5 Bill Customers** | WAOOAW Billing Engine | Business Platform (public projection and relationship consequence) |
 | **6.6 Engineer Governed Web Experiences** | Next.js Web App | Business Platform (approved REST contracts), Professional Runtime (approved streams and Emergency Stop), Constitutional Engine (Evidence First), GitHub Actions (quality evidence) |
 | **6.7 Implement Governed Cloud Delivery** | GitHub Actions, GHCR, Docker/Compose, Terraform/AzureRM, OTel/Azure Monitor configuration | INST-009 Platform architecture; INST-005 component contracts; INST-007 security controls; INST-006 data/recovery; independent QA evidence; Founder retains provider, spend, DNS, Production and activation decisions |
+| **9.1 Manage Subscription Lifecycle** | WAOOAW Billing Engine (commercial truth) | Business Platform (employment relationship lifecycle); Constitutional Engine (evidence) |
+| **9.2 Provide Transparent Billing** | WAOOAW Billing Engine | Business Platform (public relationship projection); Web/channels (presentation) |
 | **13.1–13.8 Independent Quality Engineering** | INST-015 Test Champion via GitHub Actions and existing Docker test runners | Constitutional Engine (authorization/evidence), service test stacks (raw results), Goal evidence store (custody); INST-015 recommends but never approves or merges |
 | **11.1 Profile Customer** | AI Runtime (Customer Profiling Pipeline) | Business Platform (profile storage via customer-profile-mcp) |
-| **4.6 Earn Synthetic Approval Authority** | AI Runtime (Synthetic Approval Pipeline) | Business Platform (mode upgrade amendment), Constitutional Engine (evidence record per synthetic approval + mode upgrade event) |
 | **11.2 Assess Digital Marketing Maturity** | AI Runtime (Market Research Pipeline) | Business Platform (score + heatmap storage), CE (ValidateAction before each MCP call) |
 | **11.3 Execute Social Content** | Professional Runtime | AI Runtime (content creation + MCP publishing: instagram-mcp, facebook-mcp, google-business-mcp, whatsapp-business-mcp, scheduling-mcp, image-generation-mcp, video-generation-mcp), CE (evidence per action) |
 | **11.4 Improve Local SEO + Reputation** | Professional Runtime | AI Runtime (seo-mcp, google-places-mcp, web-scan-mcp, google-search-console-mcp), CE (evidence) |

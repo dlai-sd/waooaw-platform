@@ -1,7 +1,7 @@
 # ADR Quick Reference
 
-**21 ADRs — one line each. Read only the full ADR if you need rationale or alternatives.**
-**All status: Accepted (ADR-039 Proposed). Date: 2026-07-07 (ADR-001 to 018) / 2026-07-08 (ADR-019 to 020) / 2026-08-01 (ADR-037 to 038) / 2026-08-04 (ADR-039 to 041).**
+**51 ADRs — one line each. Read only the full ADR if you need rationale or alternatives.**
+**Status is recorded per row; ADR-051 is proposed pending Founder review.**
 
 | ADR | Decision (one line) | Your constraint | Read full if... |
 |---|---|---|---|
@@ -55,3 +55,4 @@ event storage technology, or provider protocol requires a new or amended ADR bef
 | **047** | Private Ephemeral Deployment Runners — environment-isolated ACA manual Jobs, Azure Deployment Stack bootstrap, Storage private endpoints, shared private DNS and Key Vault-held GitHub App registration authority | C-023, C-059, C-065, C-066, C-067; ADR-013/014; FA-052; WC-076 | Any private self-hosted deployment runner, runner bootstrap, GitHub App registration-token broker, or private Terraform backend activation (ADR-047) — **Status: Accepted** |
 | **049** | Agent Runtime Adapter Transport and Isolation — private HTTP/JSON/SSE port behind Professional Runtime, exact workload identity and registry binding, one immutable isolated deployment per admitted professional version | C-001, C-023, C-035, C-059, C-079, C-080; ADR-031/035/046; WC-080 | Implementing or changing adapter discovery, transport, identity, deadlines, streaming, isolation, or failure behavior (ADR-049) — **Status: Accepted by Founder, 2026-08-31** |
 | **050** | AI-Operated Docker Validation — digest-addressed stack runners; independent runner, test-execution, candidate and evidence identities; four-tier agent loop; fail-closed impact catalog and structured failure evidence | C-059, C-065, C-071, C-076, C-077, C-080, C-086; ADR-012/013/045; WC-101/WC-108 | Changing Docker test execution, identity/invalidation, runner reuse, candidate qualification, validation selection, failure evidence or qualification trust (ADR-050) — **Status: Accepted by Founder, 2026-09-19; WC-108 amendment authorized, 2026-09-29** |
+| **051** | Conversational Employment Workspace and Employment Readiness Protocol — one relationship, durable conversation and authoritative visual workboard across induction, planning and operations; distinct readiness gates and atomic all-agent conformance activation | C-023, C-034, C-036-C-039, C-049, C-070, C-088, C-094; ADR-035; WC-113 | Changing universal employment phases, workspace ownership, readiness/gate semantics, agent conformance manifests or protocol activation (ADR-051) — **Status: Proposed, Founder review required** |

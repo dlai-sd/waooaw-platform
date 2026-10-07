@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-10-06 · **Version:** 1.45.0 · **Work Contracts:** 103 recorded (87 closed · 16 active · 1 blocked)
+**Last Updated:** 2026-10-07 · **Version:** 1.45.0 · **Work Contracts:** 104 recorded (87 closed · 17 active · 1 blocked)
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -34,6 +34,7 @@ constitutional-repair record. Agents must select the record by title and Goal, n
 | **WC-104** | End-to-End Docker Runner Supply And Cache Reuse | Validation infrastructure | IMPLEMENTATION AND FOLLOW-UP REPAIRS MERGED · SELECTIVE ENFORCEMENT GATED | WC-100→102 · ADR-050 · PRs #461/#462/#464/#466/#467 | Immutable Docker runner supply, deterministic evidence reuse and bounded validation repair are merged; selective enforcement remains Founder-gated |
 | **WC-110** | Product Validation Qualification Repair | Product validation repair | PARTIAL IMPLEMENTATION MERGED · CUSTOMER SCENARIOS PARKED · FINAL QUALIFICATION OPEN | WC-109 Stage 4 · CB-011 | PR #482 restored product-owned validation scope; WC110-R005→R007 remain explicitly parked, and the complete same-candidate qualification remains open |
 | **WC-112** | Customer Access And Agent Acquisition Integrity | Login/Register/Logout and Trial/Hire customer journeys | DRAFT EVOLVING · IMPLEMENTATION CANDIDATE · AUTHOR REVIEW COMPLETE · MANDATORY DOCKER GATE PASS · PR READY · DOWNSTREAM EXCEPTION POLICY BLOCKED | WC-083→WC-110 · live Demo read-only evidence · OAuth/OIDC/OWASP/Razorpay guidance | Commit `cd134985` implements identity-bound Acquisition Intent, exact Employment Contract acceptance, exact Agent + Version Trial/coupon policy, concurrency-safe coupon reservation, resilient commercial handoff and mode-specific checkout; all seven impact-selected precheck gates pass, while logout completion, lifecycle precedence, paid-customer remedy and incident/refund policy remain blocked |
+| **WC-113** | Conversational Employment Workspace And Agent Conformance | Enterprise Architecture and downstream handoff | EA PACKAGE PASS · FOUNDER REVIEW PENDING · IMPLEMENTATION AND PROTOCOL ACTIVATION UNAUTHORIZED | Founder requirements · AEEC · Conversation Core · Relationship Workspace · ADR-035 · C-034/C-039/C-094 | Defines the universal three-phase conversational employment interface, visual workboard, readiness gates, all-agent conformance migration, DMA proof and downstream office plan |
 
 ### Parked Owner Contracts From Delivered WC-084
 
