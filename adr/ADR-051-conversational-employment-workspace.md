@@ -1,10 +1,10 @@
 # ADR-051 - Conversational Employment Workspace And Readiness Protocol
 
-**Status:** Proposed - Founder review required  
-**Date:** 2026-10-07  
-**Author:** Chief Enterprise Architect (INST-004)  
-**Work Contract:** WC-113  
-**Constitutional Basis:** C-023, C-034, C-036-C-039, C-041, C-048-C-049, C-059, C-070, C-079, C-088 and C-094  
+**Status:** Proposed - Founder review required
+**Date:** 2026-10-07
+**Author:** Chief Enterprise Architect (INST-004)
+**Work Contract:** WC-113
+**Constitutional Basis:** C-001, C-003, C-005, C-007, C-023, C-026, C-030, C-034-C-039, C-041-C-044, C-048-C-049, C-051, C-059, C-063, C-070, C-079, C-088 and C-094
 **Related Decisions:** ADR-002, ADR-003, ADR-015, ADR-018, ADR-031, ADR-034, ADR-035, ADR-040, ADR-043, ADR-044 and ADR-049
 
 ## Context
@@ -207,4 +207,3 @@ billing exhaustion, calendar tolerance, credential loss and readiness override.
 This ADR authorizes no endpoint, schema, prompt, code, deployment or agent-protocol activation.
 Solution, Data, Security, AI, Product, Platform, Test and Runtime work require the ordered handoff and
 separate authority in WC-113.
-

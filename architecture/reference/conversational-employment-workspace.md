@@ -5,7 +5,7 @@
 **Author:** Chief Enterprise Architect (INST-004)  
 **Work Contract:** WC-113  
 **Decision:** ADR-051  
-**Constitutional basis:** C-023, C-034, C-036-C-039, C-041, C-048-C-049, C-059, C-070, C-079, C-088 and C-094
+**Constitutional basis:** C-001, C-003, C-005, C-007, C-023, C-026, C-030, C-034-C-039, C-041-C-044, C-048-C-049, C-051, C-059, C-063, C-070, C-079, C-088 and C-094
 
 ## 1. Purpose And Boundary
 
@@ -740,4 +740,3 @@ The Solution Architect may not change:
 - Founder policy defaults without a Founder decision.
 
 Data, Security, AI, Product, Platform, Test and Runtime offices follow the ordered WC-113 handoff.
-
