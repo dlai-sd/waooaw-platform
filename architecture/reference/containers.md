@@ -105,13 +105,20 @@ CTG Call Flow (ADR-042):
 
 ### Next.js Web App
 - **Technology:** Next.js 14, TypeScript, React, Tailwind CSS
-- **Responsibility:** Customer-facing PWA. Hiring wizard, approval dashboard, evidence viewer, Emergency Stop button, performance dashboard
+- **Responsibility:** Customer-facing PWA. Presents the BP-owned conversational employment workspace,
+  visual phase workboard, hiring journey, approvals, evidence, Emergency Stop, billing and performance.
+  It owns drafts and presentation only; it never computes readiness, plan, billing or outcome truth.
 - **Communication:** REST to Business Platform; WebSocket to Professional Runtime (Emergency Stop)
 - **Hosting:** Container Apps (cloud) / port 3000 (dev)
 
 ### Business Platform
 - **Technology:** .NET 9, ASP.NET Core, Entity Framework Core, Temporal SDK
-- **Responsibility:** External REST API for all customer operations. Employment lifecycle management, approval workflow state machine, Temporal workflow orchestration, JWT validation, multi-tenant isolation. Owns **Skill Catalog** (`skills` table, ADR-043), **Provider Registry** (`provider_configs` table, ADR-042), and **Erasable Payload Store** (`payload_store` schema, ADR-044).
+- **Responsibility:** External REST API for all customer operations. Employment lifecycle,
+  Conversation Core, Relationship Workspace, induction/plan/readiness governance, public workboard
+  projection, approval workflow state machine, Temporal workflow orchestration, JWT validation and
+  multi-tenant isolation. Owns **Skill Catalog** (`skills` table, ADR-043), **Provider Registry**
+  (`provider_configs` table, ADR-042), and **Erasable Payload Store** (`payload_store` schema,
+  ADR-044). Composes owner truth without recalculating CE, WBE, PR or domain outcomes.
 - **Communication:** Calls Constitutional Engine (gRPC, synchronous, Evidence First); publishes Temporal workflows; reads/writes PostgreSQL business + payload_store schemas
 - **Hosting:** Container Apps (cloud) / port 5001 (dev)
 
@@ -123,13 +130,19 @@ CTG Call Flow (ADR-042):
 
 ### Professional Runtime
 - **Technology:** Python 3.12, FastAPI, Temporal SDK (Python)
-- **Responsibility:** Three execution engines in one service: (1) Approval-Gate Engine — manages proposal/approval/execution state machine; (2) PAAS Engine — session-affinity per customer (ADR-005); (3) **Skill Runtime** (in-process, ADR-043) — resolves skill manifests from BP Skill Catalog at session open, enforces `authorized_tools`, runs Intent Crystallizer for skills that require it. CTG library imported here for all external tool calls — every call governed by CE.ValidateAction.
+- **Responsibility:** Three execution engines in one service: (1) Approval-Gate Engine — manages proposal/approval/execution state machine; (2) PAAS Engine — session-affinity per customer (ADR-005); (3) **Skill Runtime** (in-process, ADR-043) — resolves skill manifests from BP Skill Catalog at session open, enforces `authorized_tools`, runs Intent Crystallizer for skills that require it. Owns execution truth for admitted work but not public readiness, plan, billing or outcome meaning. CTG library imported here for all external tool calls — every call governed by CE.ValidateAction.
 - **Communication:** gRPC client to CE; REST client to AIR; HTTP client to BP (Skill Catalog, Provider Registry); HTTP client to oauth-vault (via CTG); WebSocket server for Emergency Stop; Temporal worker
 - **Hosting:** Container Apps (cloud, session-affinity enabled) / port 5003 (dev)
 
 ### AI Runtime
 - **Technology:** Python 3.12, FastAPI, LLM client libraries
-- **Responsibility:** LLM gateway — abstracts all AI provider communication. **After WC-039:** all LLM provider calls route through the **CTG library** (ADR-042) — no direct SDK calls remain. CTG → CE.ValidateAction → oauth-vault → LLM API. Every LLM call produces a constitutional evidence record (budget enforcement, C-043). Tool execution via MCP clients (ADR-020). RAG pipeline (ADR-019). PII injection guard. Internal-only.
+- **Responsibility:** LLM gateway — abstracts all AI provider communication and may produce typed
+  candidate context/plan patches and domain interpretations. It cannot commit relationship,
+  readiness, plan, billing or performance truth. **After WC-039:** all LLM provider calls route
+  through the **CTG library** (ADR-042) — no direct SDK calls remain. CTG → CE.ValidateAction →
+  oauth-vault → LLM API. Every LLM call produces a constitutional evidence record (budget
+  enforcement, C-043). Tool execution via MCP clients (ADR-020). RAG pipeline (ADR-019). PII
+  injection guard. Internal-only.
 - **Communication:** Called by Professional Runtime (REST internal); CTG library calls CE (gRPC) + oauth-vault (HTTP) + LLM provider (HTTPS); calls vector store in PostgreSQL (pgvector)
 - **Hosting:** Container Apps (cloud, internal ingress only) / port 5004 (dev)
 - **Breaking change (ADR-042):** WC-039 refactors direct LLM SDK calls to CTG — no code touches LLM provider SDK directly after WC-039.
@@ -174,7 +187,10 @@ CTG Call Flow (ADR-042):
 
 ### WAOOAW Billing Engine *(WC-025→033, WC-042→043)*
 - **Technology:** Python 3.12, FastAPI, PostgreSQL, Redis
-- **Responsibility:** Agent-agnostic prepaid wallet buckets, pricing and margin floors, usage metering, platform procurement, Razorpay onboarding/payment lifecycle, renewal failure handling, and reconciliation self-halt.
+- **Responsibility:** Sole authority for agent-agnostic prepaid wallet buckets, pricing and margin
+  floors, usage metering, allowance, forecast, threshold/commercial consequence, platform
+  procurement, Razorpay onboarding/payment lifecycle, renewal failure handling, and reconciliation
+  self-halt. BP relays this truth in the relationship workspace without recomputation.
 - **Communication:** Called by BP for subscription/payment operations and intended to be called by AIR before LLM dispatch; AIR end-to-end reserve integration remains only partially evidenced.
 - **Hosting:** Internal service on port 8140. Repository implementation and tests exist; environment deployment and customer-operation evidence are unverified.
 

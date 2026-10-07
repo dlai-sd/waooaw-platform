@@ -2,7 +2,7 @@
 
 **Produced by:** Enterprise Architect (Sprint 003)
 **Date:** 2026-07-07
-**Constitutional Basis:** AD-004 (multi-tenant isolation), AD-009 (security by design), capability domains 1–6
+**Constitutional Basis:** AD-004 (multi-tenant isolation), AD-009 (security by design), capability domains 1–6, ADR-051
 
 ---
 
@@ -46,9 +46,17 @@
 
 **Customer → Platform:**
 - Hire, configure, and govern digital professionals (REST API)
+- Converse with the professional through Onboard/Induct/Groom, Goal/Plan/Milestone/Calendar, and
+  Operations/Billing/Performance phases
+- View authoritative progress, completed, in-progress and pending work with reasons, owners,
+  blocked effects, evidence and next actions
 - Review proposed actions and exercise approvals (REST API)
 - Emergency Stop (persistent WebSocket, ≤250ms — AD-001)
 - View evidence ledger and performance dashboards (REST API)
+
+The three conversational phases share one Employment Relationship, durable conversation and
+Business Platform relationship workspace. They do not create new system actors or deployable
+services.
 
 **Platform → LLM Provider:**
 - AI inference for professional reasoning and content generation
