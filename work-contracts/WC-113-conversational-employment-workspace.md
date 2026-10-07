@@ -8,7 +8,7 @@
 | Assigned by | Founder instruction in the 2026-10-07 continuous working session |
 | Status | EA PACKAGE PASS - FOUNDER REVIEW PENDING - IMPLEMENTATION AND AGENT-PROTOCOL ACTIVATION UNAUTHORIZED |
 | Baseline | `origin/main` at `34ce317c0d4d70c55c59ddf8d8855d37f5822353` |
-| Delivery unit | One bounded enterprise architecture package, structural ADR, requirement ledger and downstream office handoff |
+| Delivery unit | One bounded enterprise architecture package, structural ADR, architecture fitness contract, non-implementation ledger and downstream office handoff |
 | Constitutional basis | C-001, C-003, C-005, C-007, C-023, C-026, C-030, C-034-C-039, C-041-C-044, C-048-C-049, C-051, C-059, C-063, C-070, C-079, C-088 and C-094 |
 | Capability basis | 1.2, 1.3, 1.5, 1.7, 1.8, 2.1-2.7, 3.1-3.4, 4.1-4.6, 5.1-5.5, 6.2-6.5, 9.1-9.2 and DMA 11.1-11.8 |
 | Driver/principle basis | AD-002, AD-004, AD-007-014, AD-016-019, AD-021, AD-025, AD-027-028; DP-001-012, DP-014-019, DP-024-025 |
@@ -122,7 +122,8 @@ Tasks:
 3. Record gaps, assumptions, dependencies, decision owners and non-goals.
 4. Stop on any material obligation that lacks an approved derivation source.
 
-Output: obligation/gap ledger in the reference architecture package and `WC-113-requirements.yaml`.
+Output: obligation/gap ledger in the reference architecture package. The repository requirement
+ledger declares implementation evidence not applicable because WC-113 authorizes no implementation.
 
 ### Stage 2 - Enterprise Architecture Decision Package
 
@@ -356,7 +357,7 @@ IB/Work Contract label.
 
 **Status:** PASS - 2026-10-07
 
-The Chief Enterprise Architect re-read the complete Work Contract, requirement ledger, ADR-051,
+The Chief Enterprise Architect re-read the complete Work Contract, non-implementation ledger, ADR-051,
 reference package and compact map amendments against the Founder-authorized scope, approved claims,
 capabilities, drivers, EA Professional Standard and Definition of Done.
 
@@ -381,15 +382,20 @@ capabilities, drivers, EA Professional Standard and Definition of Done.
    derivation headers were expanded without altering any claim.
 2. The Product Owner row initially depended only on the EA package while the sequencing rule required
    the first Solution Architect boundary. The dependency now matches the ordered handoff.
-3. The initial requirement ledger made opening the PR an in-repository PASS condition, creating a
-   circular exact-head update. The committed requirement now covers a complete handoff package and
-   exact next-session instructions; push, precheck and PR URL remain external Stage 7 evidence.
+3. The initial architecture fitness condition made opening the PR an in-repository PASS condition,
+   creating a circular exact-head update. The committed condition now covers a complete handoff
+   package and exact next-session instructions; push, precheck and PR URL remain external Stage 7
+   evidence.
 4. The capability map still assigned onboarding and billing to obsolete owners. It now distinguishes
    BP relationship induction truth from professional interpretation and assigns commercial truth to
    WBE.
 5. The architecture initially lacked compact domain entities and orthogonal readiness state
    machines. The domain model now names the workspace, plan, workboard and readiness facets while
    preserving C-034 lifecycle states.
+6. The initial requirement ledger recorded architecture evidence rows even though WC-113 explicitly
+   authorizes no implementation. Repository policy requires an implementation-free contract to
+   declare `NOT_APPLICABLE`; the ledger now does so, while the eighteen architecture fitness
+   conditions remain in the reference architecture as downstream executable requirements.
 
 ### Residual decisions
 
