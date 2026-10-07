@@ -1,0 +1,212 @@
+schema: waooaw.requirement-evidence-ledger/v1
+contract_digest: 12beb3528123e0d302f401bfea6fff91e550859085299300729dfa39fd1b3571
+implementation_scope: true
+result: QUALIFIED
+
+qualified_defaults: &qualified
+  source: WC-112 Section 6
+  observable_outcome: The normative requirement is enforced by the implemented customer-journey state machines and owning service boundaries.
+  component_owner: Platform IT Expert with the owning Web, Business Platform, or Billing component
+  evidence_class: Docker unit, integration, concurrency, contract, security, and journey evidence
+  test_path_or_plan: WC-112 Section 14 evidence and impact-selected precheck manifest 43d62f4b6f04250e74bd48f8358372af2eef2769
+  initial_state: new
+  dependencies:
+    - WC-112 frozen access and acquisition components
+  completion_rule: Owning implementation and directly dependent regression gates pass without weakening the normative outcome.
+  residual_risk: Founder acceptance, live provider checks, and merge remain separate from local engineering qualification.
+  result: PASS
+  evidence_refs:
+    - cd134985851f4a5cb34515d3804b768bb978d586
+    - precheck:43d62f4b6f04250e74bd48f8358372af2eef2769
+
+blocked_defaults: &blocked
+  source: WC-112 Section 6
+  observable_outcome: The requirement remains explicit and cannot be represented as complete until its named authority or external evidence is supplied.
+  component_owner: Founder decision followed by the owning implementation component
+  evidence_class: Founder disposition plus provider, browser, lifecycle, reconciliation, or post-deployment evidence
+  test_path_or_plan: Resolve the linked WC112 requirement gap, then implement and execute its dependency-complete Docker and authorized provider gates.
+  initial_state: blocked
+  dependencies:
+    - WC-112 Section 13 Founder decision
+  completion_rule: The Founder resolves the authority boundary and the resulting implementation and direct evidence pass.
+  residual_risk: Implementing before the decision would invent identity, lifecycle, incident, refund, or provider policy.
+  result: BLOCKED
+
+requirements:
+  - <<: *qualified
+    requirement_id: WC112-R001
+    source: WC-112 Section 6 WC112-R001
+  - <<: *qualified
+    requirement_id: WC112-R002
+    source: WC-112 Section 6 WC112-R002
+  - <<: *qualified
+    requirement_id: WC112-R003
+    source: WC-112 Section 6 WC112-R003
+  - <<: *qualified
+    requirement_id: WC112-R004
+    source: WC-112 Section 6 WC112-R004
+  - <<: *qualified
+    requirement_id: WC112-R005
+    source: WC-112 Section 6 WC112-R005
+  - <<: *qualified
+    requirement_id: WC112-R006
+    source: WC-112 Section 6 WC112-R006
+  - <<: *blocked
+    requirement_id: WC112-R007
+    source: WC-112 Section 6 WC112-R007; WC112-RG08
+  - <<: *qualified
+    requirement_id: WC112-R008
+    source: WC-112 Section 6 WC112-R008
+  - <<: *qualified
+    requirement_id: WC112-R009
+    source: WC-112 Section 6 WC112-R009
+  - <<: *qualified
+    requirement_id: WC112-R010
+    source: WC-112 Section 6 WC112-R010
+  - <<: *qualified
+    requirement_id: WC112-R011
+    source: WC-112 Section 6 WC112-R011
+  - <<: *qualified
+    requirement_id: WC112-R012
+    source: WC-112 Section 6 WC112-R012
+  - <<: *qualified
+    requirement_id: WC112-R013
+    source: WC-112 Section 6 WC112-R013
+  - <<: *qualified
+    requirement_id: WC112-R014
+    source: WC-112 Section 6 WC112-R014
+  - <<: *qualified
+    requirement_id: WC112-R015
+    source: WC-112 Section 6 WC112-R015
+  - <<: *blocked
+    requirement_id: WC112-R016
+    source: WC-112 Section 6 WC112-R016; WC112-RG04-RG05 and WC112-RG09-RG12
+  - <<: *qualified
+    requirement_id: WC112-R017
+    source: WC-112 Section 6 WC112-R017
+  - <<: *qualified
+    requirement_id: WC112-R018
+    source: WC-112 Section 6 WC112-R018
+  - <<: *qualified
+    requirement_id: WC112-R019
+    source: WC-112 Section 6 WC112-R019
+  - <<: *qualified
+    requirement_id: WC112-R020
+    source: WC-112 Section 6 WC112-R020
+  - <<: *blocked
+    requirement_id: WC112-R021
+    source: WC-112 Section 6 WC112-R021; dashboard acceptance remains outside the frozen implementation slice
+  - <<: *qualified
+    requirement_id: WC112-R022
+    source: WC-112 Section 6 WC112-R022
+  - <<: *blocked
+    requirement_id: WC112-R023
+    source: WC-112 Section 6 WC112-R023; authorized real-provider and complete browser-loss matrix pending
+  - <<: *blocked
+    requirement_id: WC112-R024
+    source: WC-112 Section 6 WC112-R024; immutable three-browser acceptance pending
+  - <<: *qualified
+    requirement_id: WC112-R025
+    source: WC-112 Section 6 WC112-R025
+  - <<: *blocked
+    requirement_id: WC112-R026
+    source: WC-112 Section 6 WC112-R026; separately authorized Demo/provider verification pending
+  - <<: *blocked
+    requirement_id: WC112-R027
+    source: WC-112 Section 6 WC112-R027; blocked defect dispositions remain
+  - <<: *blocked
+    requirement_id: WC112-R028
+    source: WC-112 Section 6 WC112-R028; WC112-RG04-RG05 and WC112-RG08-RG12
+  - <<: *qualified
+    requirement_id: WC112-R029
+    source: WC-112 Section 6 WC112-R029
+  - <<: *qualified
+    requirement_id: WC112-R030
+    source: WC-112 Section 6 WC112-R030
+  - <<: *qualified
+    requirement_id: WC112-R031
+    source: WC-112 Section 6 WC112-R031
+  - <<: *qualified
+    requirement_id: WC112-R032
+    source: WC-112 Section 6 WC112-R032
+  - <<: *blocked
+    requirement_id: WC112-R033
+    source: WC-112 Section 6 WC112-R033; downstream Hire configuration authority remains unresolved
+  - <<: *qualified
+    requirement_id: WC112-R034
+    source: WC-112 Section 6 WC112-R034
+  - <<: *qualified
+    requirement_id: WC112-R035
+    source: WC-112 Section 6 WC112-R035
+  - <<: *blocked
+    requirement_id: WC112-R036
+    source: WC-112 Section 6 WC112-R036; downstream activation and exception lifecycle authority pending
+  - <<: *blocked
+    requirement_id: WC112-R037
+    source: WC-112 Section 6 WC112-R037; CE-unavailability end-to-end acceptance pending
+  - <<: *blocked
+    requirement_id: WC112-R038
+    source: WC-112 Section 6 WC112-R038; complete separate-ledger acceptance pending
+  - <<: *blocked
+    requirement_id: WC112-R039
+    source: WC-112 Section 6 WC112-R039; downstream pause, termination, and billing policy pending
+  - <<: *blocked
+    requirement_id: WC112-R040
+    source: WC-112 Section 6 WC112-R040; complete lifecycle and incident status authority pending
+  - <<: *blocked
+    requirement_id: WC112-R041
+    source: WC-112 Section 6 WC112-R041; separately authorized provider matrix pending
+  - <<: *qualified
+    requirement_id: WC112-R042
+    source: WC-112 Section 6 WC112-R042
+  - <<: *qualified
+    requirement_id: WC112-R043
+    source: WC-112 Section 6 WC112-R043
+  - <<: *qualified
+    requirement_id: WC112-R044
+    source: WC-112 Section 6 WC112-R044
+  - <<: *qualified
+    requirement_id: WC112-R045
+    source: WC-112 Section 6 WC112-R045
+  - <<: *blocked
+    requirement_id: WC112-R046
+    source: WC-112 Section 6 WC112-R046; WC112-RG08 provider-return completion semantics
+  - <<: *qualified
+    requirement_id: WC112-R047
+    source: WC-112 Section 6 WC112-R047
+  - <<: *qualified
+    requirement_id: WC112-R048
+    source: WC-112 Section 6 WC112-R048
+  - <<: *qualified
+    requirement_id: WC112-R049
+    source: WC-112 Section 6 WC112-R049
+  - <<: *qualified
+    requirement_id: WC112-R050
+    source: WC-112 Section 6 WC112-R050
+  - <<: *qualified
+    requirement_id: WC112-R051
+    source: WC-112 Section 6 WC112-R051
+  - <<: *qualified
+    requirement_id: WC112-R052
+    source: WC-112 Section 6 WC112-R052
+  - <<: *qualified
+    requirement_id: WC112-R053
+    source: WC-112 Section 6 WC112-R053
+  - <<: *qualified
+    requirement_id: WC112-R054
+    source: WC-112 Section 6 WC112-R054
+  - <<: *qualified
+    requirement_id: WC112-R055
+    source: WC-112 Section 6 WC112-R055
+  - <<: *qualified
+    requirement_id: WC112-R056
+    source: WC-112 Section 6 WC112-R056
+  - <<: *qualified
+    requirement_id: WC112-R057
+    source: WC-112 Section 6 WC112-R057
+  - <<: *qualified
+    requirement_id: WC112-R058
+    source: WC-112 Section 6 WC112-R058
+  - <<: *qualified
+    requirement_id: WC112-R059
+    source: WC-112 Section 6 WC112-R059
