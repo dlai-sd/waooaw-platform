@@ -19,7 +19,7 @@ ruff format --check "$source_path" "$@" || status=1
 (
     cd /tmp
     MYPYPATH="$mypy_path" mypy --strict --explicit-package-bases \
-        $(find "/workspace/$source_path" -name "*.py" -type f | sort) \
+        $(find "/workspace/$source_path" -path "*/clients/generated" -prune -o -name "*.py" -type f -print | sort) \
         --config-file /workspace/pyproject.toml \
         --cache-dir /tmp/mypy-cache
 ) || status=1

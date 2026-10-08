@@ -1,7 +1,7 @@
 # Conversational Employment Solution Contract
 
 **Status:** Superseding candidate for Founder acceptance - implementation and activation unauthorized
-**Version:** 1.0.0-candidate.2
+**Version:** 1.0.0-candidate.3
 **Office:** Chief Solution Architect (INST-005)
 **Work Contract:** WC-114
 **Parent:** WC-113 §11.1; ADR-051; Conversational Employment Workspace 1.0-candidate
@@ -296,6 +296,40 @@ Every discriminator has its own closed schema and only its applicable expected v
 Unknown, extra or missing command fields reject before any owner call. An identical terminal replay
 returns `EmploymentCommandOutcomeV1`, including all owner steps, evidence references and resulting
 versions; it never degrades to the original transport receipt.
+
+#### 5.5.1 Closed command-to-owner execution matrix
+
+The command path is distinct from conversation interpretation and professional work execution.
+Employment commands do not call PR `startConversationExecution`; that operation remains limited to
+a canonical Conversation Core contribution carrying its existing `conversationId`, `messageId` and
+complete `OperationalMandateV1`. No employment command may synthesize those identities.
+
+BP first performs actor, tenant, relationship, assurance, schema, idempotency and expected-version
+validation and durably reserves the command. A failure in that step produces zero owner calls.
+After reservation, owner steps are exactly:
+
+| Command | Domain-adapter validation | WBE validation | PR control | CE and BP commit |
+|---|---|---|---|---|
+| `CONFIRM_INDUCTION_ITEM` | Read the exact requirement set and confirm the subject/version exists | Prohibited | Prohibited | CE validates and records the confirmation; BP appends the item transition |
+| `DEFER_INDUCTION_ITEM` | Read the exact requirement set and verify the subject plus blocked Skill references | Prohibited | Prohibited | CE validates that deferral weakens no mandatory gate and records evidence; BP appends the deferral |
+| `APPLY_CANDIDATE_PATCH` | Validate the referenced immutable proposal using the operation selected by its BP-owned patch type: induction requirement, plan candidate, material change, dependency isolation or performance assessment | Prohibited | Prohibited | CE validates the exact proposal digest and records accept/reject evidence; BP appends only the validated owner-state change |
+| `SUBMIT_PLAN_FOR_REVIEW` | `validatePlanCandidate` against the exact manifest and expected plan version | Prohibited | Prohibited | CE validates and records submission; BP appends the review transition |
+| `ACCEPT_PLAN_VERSION` | `validatePlanCandidate` against the exact manifest and plan version | `getEmploymentCommercialEligibility` using the exact plan, manifest and expected WBE source version; no WBE mutation | Prohibited | CE validates Decision Space, WBE, adapter and acknowledgement inputs and records evidence before BP appends agreement |
+| `ACKNOWLEDGE_MATERIAL_CHANGE` | `classifyMaterialChange`, then `validatePlanCandidate` when a new plan candidate exists | `getEmploymentCommercialEligibility` using the exact plan, manifest and expected WBE source version; no WBE mutation | Prohibited; affected work remains paused by the separately governed operations path | CE validates affected-work fencing and records evidence before BP appends acknowledgement/relock |
+| `RESCHEDULE_WITHIN_TOLERANCE` | `validatePlanCandidate` validates the complete calendar commitment against the active plan tolerance | Prohibited | Prohibited | CE validates the bounded calendar change and records evidence before BP appends a new immutable plan version |
+| `REQUEST_REASSESSMENT` | `getPerformanceAssessment`; protected-category changes additionally use `classifyMaterialChange` | Prohibited | Prohibited; reassessment does not itself control running work | CE records the reassessment request; BP appends the pending reassessment transition |
+| `ACKNOWLEDGE_CORRECTIVE_PROPOSAL` | `getPerformanceAssessment` verifies the exact corrective proposal reference and source evidence | Prohibited | Prohibited | CE validates acknowledgement and records evidence before BP appends the acknowledgement |
+
+An adapter or WBE read is represented as an owner step only after response identity, relationship,
+manifest/plan version, freshness and source digest match the reserved command. Read-only validation
+never transfers mutation authority. `PENDING`, timeout, disconnect or mismatched identity becomes
+`UNKNOWN` and enters reconciliation; it cannot be retried as a new owner action.
+
+The CE `action_instance_id` is the BP command ID for every retry and evidence transition. Adapter and
+WBE idempotency keys are UUIDv5 values derived from that command ID plus the closed owner operation.
+Owner execution order is domain adapter, WBE when required, CE validation/evidence, then BP append.
+BP may omit later calls after a fail-closed owner result but must retain explicit `BLOCKED`,
+`REJECTED` or `UNKNOWN` steps. PR is absent from all nine command outcomes.
 
 ### 5.6 Compatibility scan
 

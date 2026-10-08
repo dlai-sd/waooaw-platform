@@ -38,6 +38,8 @@ from routers.voice_orchestration import (
 from routers.voice_orchestration import router as voice_orchestration_router
 from relationship_workspace import configure_relationship_workspace
 from relationship_workspace import router as relationship_workspace_router
+from employment_protocol import configure_employment_protocol
+from employment_air_gateway import EmploymentAirGateway
 from workflows.conversation_execution_workflow import ConversationExecutionWorkflow
 
 logger = logging.getLogger(__name__)
@@ -120,9 +122,11 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     application.state.bp_service_jwt_secret = os.getenv("BP_SERVICE_JWT_SECRET")
     application.state.conversation_constitutional_gateway = None
     application.state.emergency_stop_jwt_validator = None
+    application.state.employment_air_gateway = None
     gateway: GrpcConversationConstitutionalGateway | None = None
     keycloak_client: httpx.AsyncClient | None = None
     air_client: httpx.AsyncClient | None = None
+    employment_air_gateway: EmploymentAirGateway | None = None
     ce_address = os.getenv("CONSTITUTIONAL_ENGINE_ADDRESS")
     if ce_address:
         gateway = GrpcConversationConstitutionalGateway(ce_address)
@@ -133,6 +137,14 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     if air_base_url and air_secret:
         air_client = httpx.AsyncClient(timeout=15.0)
         application.state.air_transcription_client = HttpAirTranscriptionClient(air_base_url, air_secret, air_client)
+    employment_air_base_url = os.getenv("AIR_EMPLOYMENT_BASE_URL")
+    workload_credentials = os.getenv("WAOOAW_WORKLOAD_CREDENTIALS")
+    if employment_air_base_url and workload_credentials:
+        employment_air_gateway = EmploymentAirGateway.from_credentials(
+            employment_air_base_url,
+            Path(workload_credentials),
+        )
+        application.state.employment_air_gateway = employment_air_gateway
     jwks_url = os.getenv("KEYCLOAK_JWKS_URL")
     if jwks_url:
         issuer = os.getenv("KEYCLOAK_ISSUER") or jwks_url.removesuffix("/protocol/openid-connect/certs")
@@ -167,6 +179,7 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     application.state.temporal_worker_task = None
     application.state.conversation_constitutional_gateway = None
     application.state.emergency_stop_jwt_validator = None
+    application.state.employment_air_gateway = None
     application.state.bp_service_jwt_secret = None
     application.state.voice_stop_authority = UnavailableStopAuthority()
     application.state.air_transcription_client = UnavailableAirClient()
@@ -176,6 +189,8 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         await keycloak_client.aclose()
     if air_client is not None:
         await air_client.aclose()
+    if employment_air_gateway is not None:
+        await employment_air_gateway.close()
 
 
 app = FastAPI(
@@ -191,6 +206,7 @@ app.include_router(conversation_execution_router)
 app.include_router(relationship_workspace_router)
 app.include_router(voice_orchestration_router)
 configure_relationship_workspace(app)
+configure_employment_protocol(app)
 app.state.voice_stop_authority = UnavailableStopAuthority()
 app.state.air_transcription_client = UnavailableAirClient()
 app.state.voice_orchestration_store = {}

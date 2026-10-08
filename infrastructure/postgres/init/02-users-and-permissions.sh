@@ -32,6 +32,9 @@ CREATE USER ai_runtime_app WITH PASSWORD '${POSTGRES_PASSWORD}';
 -- Billing Engine: grants are applied by the billing schema migrations
 CREATE USER wbe_app WITH PASSWORD '${POSTGRES_PASSWORD}';
 
+-- Generic domain-adapter runtime: grants are applied by WC-115 migrations
+CREATE USER domain_adapter_app WITH PASSWORD '${POSTGRES_PASSWORD}';
+
 -- Temporal workflow server
 CREATE USER temporal WITH PASSWORD '${TEMPORAL_PASS}';
 

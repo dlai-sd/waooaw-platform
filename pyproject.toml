@@ -12,6 +12,7 @@
 [tool.ruff]
 target-version = "py312"
 line-length = 130  # AI-generated code + regex patterns naturally exceed 120; 130 is practical ceiling
+extend-exclude = ["src/**/clients/generated/**"]
 
 [tool.ruff.lint]
 select = [

@@ -9,6 +9,7 @@ import {
   listEmploymentRelationships,
 } from '@/lib/api/relationships';
 import { getRelationshipWorkspaceViews } from '@/lib/api/relationship-workspace';
+import { getEmploymentWorkspace } from '@/lib/api/employment-workspace';
 import { getProfessionalDisclosure } from '@/lib/api/professionals';
 import { getServerAccessToken } from '@/lib/server-auth';
 
@@ -39,7 +40,10 @@ export default async function RelationshipPage({ params }: { params: Promise<{ r
       />
     );
   }
-  const workspaceViews = await getRelationshipWorkspaceViews(relationshipId, accessToken);
+  const [workspaceViews, employment] = await Promise.all([
+    getRelationshipWorkspaceViews(relationshipId, accessToken),
+    getEmploymentWorkspace(relationshipId, accessToken),
+  ]);
   return (
     <RelationshipWorkspace
       relationship={relationship}
@@ -48,6 +52,7 @@ export default async function RelationshipPage({ params }: { params: Promise<{ r
       views={workspaceViews}
       evaluation={evaluation}
       contractJourney={contractJourney}
+      employment={employment}
     />
   );
 }

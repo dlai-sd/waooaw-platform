@@ -23,6 +23,8 @@
         "requirements-test.txt",
         "src/constitutional-engine/constitutional-engine.csproj",
         "src/business-platform/business-platform.csproj",
+        "src/business-platform/Clients/Generated/EmploymentWbe/src/Waooaw.Generated.WbeEmployment/Waooaw.Generated.WbeEmployment.csproj",
+        "src/business-platform/Clients/Generated/EmploymentDomainAdapter/src/Waooaw.Generated.DomainEmployment/Waooaw.Generated.DomainEmployment.csproj",
         "tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj",
         "tests/business-platform.Tests/business-platform.Tests.csproj"
       ]

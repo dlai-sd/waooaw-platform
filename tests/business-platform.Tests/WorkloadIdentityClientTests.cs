@@ -63,6 +63,21 @@ public sealed class WorkloadIdentityClientTests : IDisposable
         action.Should().Throw<InvalidOperationException>().WithMessage("*HTTPS*");
     }
 
+    [Fact]
+    public void GenericDomainAdapterIdentityIsAvailableToEmploymentOwners()
+    {
+        Bootstrap();
+        using var client = WorkloadIdentityClient.Load(_credentials);
+
+        client.GetAudience("domain-adapter").Should().Be("urn:waooaw:service:domain-adapter");
+        using var domainClient = client.CreateClient(
+            new Uri("https://domain-adapter:8443"),
+            "domain-adapter"
+        );
+
+        domainClient.BaseAddress.Should().Be(new Uri("https://domain-adapter:8443"));
+    }
+
     private void Bootstrap()
     {
         var root = FindRepositoryRoot();

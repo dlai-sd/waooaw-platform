@@ -4,6 +4,7 @@
 # Constitutional basis: C-023, C-035, C-059, C-065, C-071, C-079, C-080
 
 from .adapter import AdapterContractError, ReferenceAdapter
+from .employment import EmploymentDomainSemantics
 from .models import (
     AdapterDescriptorV1,
     AdapterEventV1,
@@ -20,6 +21,7 @@ __all__ = [
     "AdapterInvocationEnvelopeV1",
     "AdapterInvocationV1",
     "AdapterResultV1",
+    "EmploymentDomainSemantics",
     "InvocationState",
     "ReferenceAdapter",
 ]

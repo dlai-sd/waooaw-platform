@@ -34,10 +34,21 @@ workloads:
     owner: INST-010
     audience: urn:waooaw:service:professional-runtime
     tls_usages: [client_auth, server_auth]
+    delegation_signer: true
+  ai-runtime:
+    identity_path: ai-runtime
+    owner: INST-010
+    audience: urn:waooaw:service:ai-runtime
+    tls_usages: [server_auth]
   domain-adapter-dma:
     identity_path: domain-adapter/dma
     owner: INST-010
     audience: urn:waooaw:service:domain-adapter:dma
+    tls_usages: [server_auth]
+  domain-adapter:
+    identity_path: domain-adapter/generic
+    owner: INST-010
+    audience: urn:waooaw:service:domain-adapter
     tls_usages: [server_auth]
   agent-runtime-adapter-digital-marketing:
     identity_path: agent-runtime-adapter/digital-marketing-local-service/1.0.0
@@ -78,11 +89,20 @@ route_grants:
   - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/relationships/{relationshipId}/offerability-validation", operation: validateRelationshipOfferability, contract_major: 1 }
   - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/relationships/{relationshipId}/commercial-commands", operation: submitRelationshipCommercialCommand, contract_major: 1 }
   - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/relationships/{relationshipId}/commercial-commands/{commandId}", operation: getRelationshipCommercialCommand, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/relationships/{relationshipId}/employment-eligibility", operation: getEmploymentCommercialEligibility, contract_major: 1 }
   - { caller: business-platform, target: professional-runtime, method: GET, route: "/api/v1/internal/relationships/{relationshipId}/workspace-execution", operation: getRelationshipExecutionProjection, contract_major: 1 }
   - { caller: business-platform, target: professional-runtime, method: POST, route: "/api/v1/internal/relationships/{relationshipId}/evaluation-trial", operation: startRelationshipTrial, contract_major: 1 }
   - { caller: business-platform, target: professional-runtime, method: POST, route: "/api/v1/internal/relationships/{relationshipId}/workspace-controls", operation: submitRelationshipExecutionControl, contract_major: 1 }
   - { caller: business-platform, target: professional-runtime, method: GET, route: "/api/v1/internal/relationships/{relationshipId}/workspace-controls/{controlId}", operation: getRelationshipExecutionControl, contract_major: 1 }
   - { caller: business-platform, target: professional-runtime, method: POST, route: "/api/v1/paas/sessions", operation: startPAASSession, contract_major: 1 }
+  - { caller: professional-runtime, target: ai-runtime, method: POST, route: "/internal/v1/employment-patch-proposals", operation: proposeEmploymentPatch, contract_major: 1 }
+  - { caller: professional-runtime, target: ai-runtime, method: GET, route: "/internal/v1/employment-patch-proposals/{proposalId}", operation: getEmploymentPatchProposal, contract_major: 1 }
   - { caller: business-platform, target: domain-adapter-dma, method: GET, route: "/internal/v1/relationships/{relationshipId}/domain-outcomes/projection", operation: getDomainOutcomeProjection, contract_major: 1 }
   - { caller: business-platform, target: domain-adapter-dma, method: POST, route: "/internal/v1/relationships/{relationshipId}/domain-outcomes/goal-change-validation", operation: validateDomainGoalChange, contract_major: 1 }
   - { caller: business-platform, target: domain-adapter-dma, method: GET, route: "/internal/v1/relationships/{relationshipId}/domain-outcomes/commands/{ownerCommandId}", operation: getDomainCommandOutcome, contract_major: 1 }
+  - { caller: business-platform, target: domain-adapter, method: GET, route: "/internal/v1/employment-interface/manifest", operation: getEmploymentInterfaceManifest, contract_major: 1 }
+  - { caller: business-platform, target: domain-adapter, method: GET, route: "/internal/v1/relationships/{relationshipId}/employment/induction-requirements", operation: getInductionRequirementSet, contract_major: 1 }
+  - { caller: business-platform, target: domain-adapter, method: POST, route: "/internal/v1/relationships/{relationshipId}/employment/plan-validation", operation: validatePlanCandidate, contract_major: 1 }
+  - { caller: business-platform, target: domain-adapter, method: POST, route: "/internal/v1/relationships/{relationshipId}/employment/material-change-classification", operation: classifyMaterialChange, contract_major: 1 }
+  - { caller: business-platform, target: domain-adapter, method: POST, route: "/internal/v1/relationships/{relationshipId}/employment/dependency-isolation", operation: evaluateDependencyIsolation, contract_major: 1 }
+  - { caller: business-platform, target: domain-adapter, method: GET, route: "/internal/v1/relationships/{relationshipId}/employment/performance-assessments/{reviewPeriodRef}", operation: getPerformanceAssessment, contract_major: 1 }

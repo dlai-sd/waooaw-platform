@@ -8,7 +8,7 @@
 | Implementing office | WAOOAW AI Agent - Platform IT Expert (INST-010) |
 | Status | FOUNDER-AUTHORIZED FOR IMPLEMENTATION - PROTOCOL ACTIVATION AND DEPLOYMENT UNAUTHORIZED |
 | Parent authority | Founder instruction dated 2026-10-08; merged WC-114; ADR-051; WC-113 |
-| Controlling solution package | `architecture/reference/components/conversational-employment-solution-contract.md` `1.0.0-candidate.2`, its five candidate OpenAPI contracts and the specialist profile |
+| Controlling solution package | `architecture/reference/components/conversational-employment-solution-contract.md` `1.0.0-candidate.3`, its unchanged five `1.0.0-candidate.2` OpenAPI contracts and specialist profile |
 | Delivery unit | One bounded implementation PR after separate current-session Founder implementation authorization |
 | Constitutional basis | C-001, C-003, C-005, C-007, C-023, C-026, C-030, C-034-C-039, C-041-C-044, C-048-C-049, C-051, C-059, C-063, C-065, C-066, C-070, C-079, C-080, C-088 and C-094 |
 | Activation authority | None |
@@ -93,7 +93,7 @@ This Work Contract excludes:
 | 0 | Current `origin/main`, `validation/process-control.yaml`, Platform IT Expert office card | Freshness and declared digests PASS |
 | 1 | WC-113, ADR-051 and Conversational Employment Workspace 1.0-candidate | Merged and unchanged |
 | 2 | WC-114 Work Contract and requirement ledger | Merged; architecture-only ledger remains `NOT_APPLICABLE` |
-| 3 | WC-114 solution contract, five candidate OpenAPI documents and specialist profile | Exact `1.0.0-candidate.2`; profile digest `41e2147f5d4c6e95b3f3bb714ea43ecedbfb4deb2cebd535d236b90e8a87455f`; schema and reference checks PASS |
+| 3 | WC-114 solution contract, five candidate OpenAPI documents and specialist profile | Solution exact `1.0.0-candidate.3`; unchanged interfaces/profile exact `1.0.0-candidate.2`; profile digest `41e2147f5d4c6e95b3f3bb714ea43ecedbfb4deb2cebd535d236b90e8a87455f`; schema and reference checks PASS |
 | 4 | Conversation Core BP `1.10.0`, PR `1.3.0`, CE `constitutional.v1`, WBE `1.1.0` | Current canonical contracts present |
 | 5 | Specialist controls in Sections 7.1-7.5 | Accepted in this contract by Founder review or supplied by separately approved owner contract |
 | 6 | `work-contracts/WC-115-requirements.yaml` | Digest matches this complete contract; Docker ledger validation PASS |

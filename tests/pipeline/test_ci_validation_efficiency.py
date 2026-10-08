@@ -14,6 +14,7 @@ CATALOG_EXECUTION_PATH = ROOT / "scripts/validation_control/catalog_execution.py
 DOTNET_GATE_PATH = ROOT / "scripts/validation_control/run_dotnet_test_gate.sh"
 DOTNET_QUALITY_GATE_PATH = ROOT / "scripts/validation_control/run_dotnet_quality_gate.sh"
 PYTHON_GATE_PATH = ROOT / "scripts/validation_control/run_python_test_gate.sh"
+PYTHON_QUALITY_GATE_PATH = ROOT / "scripts/validation_control/run_python_quality_gate.sh"
 DEPENDENCY_GATE_PATH = ROOT / "scripts/validation_control/run_dependency_scan_gate.sh"
 DOTNET_RUNNER_PATH = ROOT / "architecture/reference/dockerfiles/Dockerfile.test-runner-dotnet"
 STATIC_PREFLIGHT_PATH = ROOT / "scripts/run_static_validation_preflight.sh"
@@ -45,6 +46,13 @@ def test_dotnet_vulnerability_audit_has_one_owning_gate() -> None:
 
     assert "package --vulnerable --include-transitive" not in quality_gate
     assert 'dotnet list "$1" package --vulnerable --include-transitive' in dependency_gate
+
+
+def test_python_strict_quality_defers_generated_clients_to_contract_gates() -> None:
+    quality_gate = PYTHON_QUALITY_GATE_PATH.read_text(encoding="utf-8")
+
+    assert '-path "*/clients/generated/*" -prune' in quality_gate
+    assert "--strict --explicit-package-bases" in quality_gate
 
 
 def test_dotnet_runner_installs_only_required_python_bootstrap_dependencies() -> None:
@@ -274,4 +282,4 @@ def test_language_tests_use_docker_runners() -> None:
     assert '"compose"' in executor
     assert '"--pull"' in executor and '"never"' in executor
     assert "export COVERAGE_FILE=/tmp/.coverage" in python_gate
-    assert 'export BaseIntermediateOutputPath="/tmp/dependency-audit/$project_name/obj/"' in dependency_gate
+    assert 'export ArtifactsPath="/tmp/dependency-audit/$project_name"' in dependency_gate

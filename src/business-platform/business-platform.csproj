@@ -54,4 +54,10 @@
     <ItemGroup>
         <Content Update="Catalog/Professionals/*.json" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
+
+    <ItemGroup>
+        <Compile Remove="Clients/Generated/**/*.cs" />
+        <ProjectReference Include="Clients/Generated/EmploymentWbe/src/Waooaw.Generated.WbeEmployment/Waooaw.Generated.WbeEmployment.csproj" />
+        <ProjectReference Include="Clients/Generated/EmploymentDomainAdapter/src/Waooaw.Generated.DomainEmployment/Waooaw.Generated.DomainEmployment.csproj" />
+    </ItemGroup>
 </Project>

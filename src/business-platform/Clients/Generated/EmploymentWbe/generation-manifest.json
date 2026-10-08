@@ -1,0 +1,8 @@
+{
+  "generator": "openapi-generator-cli",
+  "generatorVersion": "7.17.0",
+  "language": "csharp",
+  "library": "httpclient",
+  "input": "architecture/reference/api-specs/conversational-employment-wbe.openapi.yaml",
+  "inputSha256": "18963f8fba0015c68c88fdbdc6b1ae947b9a9eb63b7a3da39bb51cd6e8d9d00e"
+}

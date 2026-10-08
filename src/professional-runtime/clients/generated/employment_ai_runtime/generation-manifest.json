@@ -1,0 +1,8 @@
+{
+  "generator": "openapi-generator-cli",
+  "generatorVersion": "7.17.0",
+  "language": "python",
+  "library": "urllib3",
+  "input": "architecture/reference/api-specs/conversational-employment-ai-runtime.openapi.yaml",
+  "inputSha256": "e017188199cbde4aada13ff10b786cef8628991e6bc89c04867862cf9b0801f3"
+}

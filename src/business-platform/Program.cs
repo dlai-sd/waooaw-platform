@@ -514,6 +514,43 @@ builder.Services.AddScoped<IOperationalMandateResolver, OperationalMandateResolv
 builder.Services.AddScoped<PerformanceReviewService>();
 builder.Services.AddScoped<ConversationService>();
 builder.Services.AddScoped<PortalInteractionService>();
+builder.Services.AddSingleton<
+    IValidateOptions<EmploymentProtocolOptions>,
+    EmploymentProtocolOptionsValidator
+>();
+builder
+    .Services.AddOptions<EmploymentProtocolOptions>()
+    .Bind(builder.Configuration.GetSection("EmploymentProtocol"))
+    .ValidateOnStart();
+builder.Services.AddSingleton<IEmploymentProtocolGate, EmploymentProtocolGate>();
+builder.Services.AddSingleton<IConversationalEmploymentPersistence>(
+    new PostgresConversationalEmploymentPersistence(employmentRelationshipConn)
+);
+builder.Services.AddSingleton<ConversationalEmploymentService>();
+var employmentDomainBaseUrl = builder.Configuration["AgentAdapters:EmploymentBaseUrl"];
+if (
+    workloadIdentity is not null
+    && Uri.TryCreate(employmentDomainBaseUrl, UriKind.Absolute, out var employmentDomainUri)
+    && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var employmentWbeUri)
+)
+{
+    builder.Services.AddScoped<IEmploymentCommandOwnerGateway>(
+        services => new GeneratedEmploymentCommandOwnerGateway(
+            workloadIdentity,
+            workloadIdentity.CreateClient(employmentDomainUri, "domain-adapter"),
+            workloadIdentity.CreateClient(employmentWbeUri, "billing-engine"),
+            services.GetRequiredService<IRelationshipConstitutionalGateway>(),
+            services.GetRequiredService<IConversationalEmploymentPersistence>()
+        )
+    );
+}
+else
+    builder.Services.AddScoped<
+        IEmploymentCommandOwnerGateway,
+        UnconfiguredEmploymentCommandOwnerGateway
+    >();
+builder.Services.AddScoped<IEmploymentCommandCoordinator, EmploymentCommandCoordinator>();
+builder.Services.AddSingleton<EmploymentCompatibilityService>();
 
 // ── Voice Contributions — WC-062 / GOAL-005 F6 ─────────────────────────────
 var voiceConn =

@@ -520,7 +520,7 @@ services:
       - "5004:5004"
     environment:
       ENVIRONMENT: development
-      DATABASE_URL: "postgresql+asyncpg://runtime_app:${POSTGRES_PASSWORD:-waooaw-local-dev-only}@postgres:5432/waooaw"
+      DATABASE_URL: "postgresql+asyncpg://ai_runtime_app:${POSTGRES_PASSWORD:-waooaw-local-dev-only}@postgres:5432/waooaw"
       # ── LLM Provider config (ADR-029 — Multi-Provider Strategy) ────────────
       # LOCAL tier
       OLLAMA_BASE_URL: http://ollama:11434

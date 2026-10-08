@@ -14,6 +14,8 @@ import { PerformanceReviewControls } from './PerformanceReviewControls';
 import { SkillDecisionControls } from './SkillDecisionControls';
 import type { EmploymentRelationshipSummaryV1 } from '@/lib/api/generated/models/EmploymentRelationshipSummaryV1';
 import { OpenConversationCommand } from '@/components/conversation/OpenConversationCommand';
+import type { EmploymentWorkspaceLoad } from '@/lib/api/employment-workspace';
+import { ConversationalEmploymentWorkspace } from './ConversationalEmploymentWorkspace';
 
 interface RelationshipWorkspaceProps {
   relationship: EmploymentRelationship;
@@ -22,6 +24,7 @@ interface RelationshipWorkspaceProps {
   views: RelationshipWorkspaceViews;
   evaluation: RelationshipEvaluationProjection;
   contractJourney?: ContractJourneyProjection | null;
+  employment?: EmploymentWorkspaceLoad;
 }
 
 const stateLabel = (state: string) => state.replaceAll('_', ' ').toLowerCase();
@@ -33,6 +36,7 @@ export function RelationshipWorkspace({
   views,
   evaluation,
   contractJourney = null,
+  employment = { state: 'unavailable', reason: 'not-established' },
 }: RelationshipWorkspaceProps) {
   const live = relationship.state === 'ACTIVE';
   const performance = views.performance.current;
@@ -103,6 +107,7 @@ export function RelationshipWorkspace({
       </section>
 
       <RelationshipEvaluation evaluation={evaluation} />
+      <ConversationalEmploymentWorkspace employment={employment} />
       <SkillDecisionControls
         relationshipId={relationship.relationshipId}
         workspaceVersion={views.workspace.workspaceVersion}
