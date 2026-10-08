@@ -1,0 +1,775 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-115
+contract_path: work-contracts/WC-115-conversational-employment-implementation.md
+contract_digest: 130b7d759d7a8433b34315dfcbfda7317184de7fb6de0702fed775835798dc34
+contract_status: DRAFT_FOR_FOUNDER_REVIEW_IMPLEMENTATION_ACTIVATION_DEPLOYMENT_UNAUTHORIZED
+implementation_scope: true
+result: PLANNED
+completion_rule: >-
+  Every requirement must have direct Docker-produced evidence bound to the exact candidate and
+  result identity. Protocol activation, deployment and customer traffic remain outside this ledger.
+
+requirement_defaults: &defaults
+  evidence_class: Docker implementation, contract, journey or qualification evidence
+  initial_state: expected-fail
+  dependencies: Merged WC-114 solution package and explicit current-session Founder implementation authorization
+  residual_risk: Founder review, PR approval and merge remain open; activation and deployment remain prohibited.
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC115-R001
+    source: Sections 1, 3 and 11
+    observable_outcome: Implementation starts only from fresh controls, accepted inputs, a valid ledger and explicit session authority.
+    component_owner: Platform IT Expert baseline control
+    test_path_or_plan: Docker requirement-ledger, process-digest and ancestry preflight with recorded Founder authority.
+    completion_rule: Every precondition passes before the first implementation story START.
+  - <<: *defaults
+    requirement_id: WC115-R002
+    source: Sections 2.1 and 2.3
+    observable_outcome: Candidate behavior is additive on existing deployables and disabled by default.
+    component_owner: Cross-component capability gate
+    test_path_or_plan: Configuration and startup tests prove no new service and no default-on path.
+    completion_rule: Existing behavior remains default and no activation or deployment input is committed.
+  - <<: *defaults
+    requirement_id: WC115-R003
+    source: Sections 2.3 and 4
+    observable_outcome: The diff stays inside permitted surfaces and contains no unrelated repair.
+    component_owner: Platform IT Expert scope control
+    test_path_or_plan: Changed-path allow-list and dependency-closure test.
+    completion_rule: Every changed path maps to one WC115 requirement and permitted owner.
+  - <<: *defaults
+    requirement_id: WC115-R004
+    source: Section 4
+    observable_outcome: Source and generated artifacts carry exact C-059 traceability.
+    component_owner: C-059 traceability control
+    test_path_or_plan: Catalog traceability gate plus generation-manifest verification.
+    completion_rule: Every changed source/generated file resolves to an approved controlling section.
+  - <<: *defaults
+    requirement_id: WC115-R005
+    source: Sections 2.2 and 4
+    observable_outcome: BP remains sole public facade, relationship authority, composition owner and error mapper.
+    component_owner: Business Platform
+    test_path_or_plan: Public-route inventory and authority-boundary negative tests.
+    completion_rule: No other component exposes or decides public employment state.
+  - <<: *defaults
+    requirement_id: WC115-R006
+    source: Sections 2.2 and 4
+    observable_outcome: Conversation Core and Relationship Workspace are reused without duplicate truth.
+    component_owner: Business Platform
+    test_path_or_plan: Identity and persistence contract tests against existing relationship/conversation fixtures.
+    completion_rule: One relationship, conversation and phase identity is authoritative.
+  - <<: *defaults
+    requirement_id: WC115-R007
+    source: Sections 2.2 and 4
+    observable_outcome: PR owns coordination, external intent and reconciliation without public lifecycle authority.
+    component_owner: Professional Runtime
+    test_path_or_plan: PR unit and integration tests for dispatch, durable intent and authority rejection.
+    completion_rule: Every dispatch has prior intent and no PR path mutates BP-owned lifecycle.
+  - <<: *defaults
+    requirement_id: WC115-R008
+    source: Sections 2.2 and 7.2
+    observable_outcome: CE validation/evidence precedes success and Stop remains independent.
+    component_owner: BP and PR CE clients
+    test_path_or_plan: Evidence-first and CE-unavailability constitutional tests.
+    completion_rule: Governed success is impossible before CE evidence; Stop works during CE failure.
+  - <<: *defaults
+    requirement_id: WC115-R009
+    source: Sections 2.2 and 5.4
+    observable_outcome: WBE solely owns commercial/Skill eligibility and stale states fail closed.
+    component_owner: Work and Billing Engine
+    test_path_or_plan: WBE owner contract and BP projection equality tests.
+    completion_rule: BP relays exact WBE value/version and never computes eligibility.
+  - <<: *defaults
+    requirement_id: WC115-R010
+    source: Sections 2.2 and 7.3
+    observable_outcome: AIR remains proposal-only with no authoritative mutation.
+    component_owner: AI Runtime
+    test_path_or_plan: AIR negative mutation and BP owner-state comparison tests.
+    completion_rule: AIR outputs only immutable PROPOSED records.
+  - <<: *defaults
+    requirement_id: WC115-R011
+    source: Sections 4 and 5.5
+    observable_outcome: Domain adapters stay generic and own only domain interpretation.
+    component_owner: Agent adapters
+    test_path_or_plan: Generic-schema tests using DMA, Trading and Tutor fixtures.
+    completion_rule: No platform schema contains profession-specific fields.
+  - <<: *defaults
+    requirement_id: WC115-R012
+    source: Sections 4, 5.1 and 7.4
+    observable_outcome: Web uses generated BP clients and never private owners or cached authority.
+    component_owner: Web application
+    test_path_or_plan: Import-boundary, browser-network and stale-cache tests.
+    completion_rule: All employment wire calls use generated BP client and server authority.
+  - <<: *defaults
+    requirement_id: WC115-R013
+    source: Section 5.1 getEmploymentWorkspace
+    observable_outcome: BP returns the exact closed complete EmploymentWorkspaceV1 aggregate.
+    component_owner: Business Platform
+    test_path_or_plan: Provider/consumer contract tests and incomplete-source fixtures.
+    completion_rule: Response validates exactly and preserves every required owner/source field.
+  - <<: *defaults
+    requirement_id: WC115-R014
+    source: Section 5.1 getEmploymentPhase
+    observable_outcome: BP returns the complete common phase projection with phase constraints.
+    component_owner: Business Platform
+    test_path_or_plan: Phase contract tests including Operations COMPLETE rejection.
+    completion_rule: Every phase field and phase-specific state rule is enforced.
+  - <<: *defaults
+    requirement_id: WC115-R015
+    source: Section 5.1 getEmploymentReadiness
+    observable_outcome: BP returns four owner-backed readiness facets with unmet conditions and sources.
+    component_owner: Business Platform
+    test_path_or_plan: Readiness composition tests across fresh, stale, blocked and unknown sources.
+    completion_rule: No missing or unsafe source can produce ready.
+  - <<: *defaults
+    requirement_id: WC115-R016
+    source: Section 5.1 plan reads
+    observable_outcome: BP exposes current and immutable historical plans without rewriting versions.
+    component_owner: Business Platform
+    test_path_or_plan: Plan-version persistence, supersession and historical-read tests.
+    completion_rule: Historical content/digest remains immutable after material change.
+  - <<: *defaults
+    requirement_id: WC115-R017
+    source: Section 5.1 submitEmploymentCommand
+    observable_outcome: BP durably accepts only closed command variants and returns responsibility not success.
+    component_owner: Business Platform
+    test_path_or_plan: Command discriminator, validation and 202 responsibility tests.
+    completion_rule: Invalid/unknown commands call no owner; accepted commands have durable receipts.
+  - <<: *defaults
+    requirement_id: WC115-R018
+    source: Section 5.1 getEmploymentCommand
+    observable_outcome: BP reconciles every required owner step to a stable outcome.
+    component_owner: Business Platform
+    test_path_or_plan: Complete, partial, blocked, rejected, conflict and unknown owner-step tests.
+    completion_rule: Completion requires every owner commit and CE evidence.
+  - <<: *defaults
+    requirement_id: WC115-R019
+    source: Section 5.2 startEmploymentCompatibilityScan
+    observable_outcome: Scan start binds required protocol and one exact offered-agent inventory.
+    component_owner: Business Platform private compatibility
+    test_path_or_plan: Inventory version/digest and idempotent start tests.
+    completion_rule: Partial or changed inventory cannot replay an existing scan.
+  - <<: *defaults
+    requirement_id: WC115-R020
+    source: Section 5.2 getEmploymentCompatibilityScan
+    observable_outcome: Scan read fails closed on incomplete, stale, unknown, mixed or unresolved evidence.
+    component_owner: Business Platform private compatibility
+    test_path_or_plan: Closed-reason-code matrix and aggregate eligibility tests.
+    completion_rule: activationEligible is true only for exact all-agent PASS plus rollback safety.
+  - <<: *defaults
+    requirement_id: WC115-R021
+    source: Section 5.3 proposeEmploymentPatch
+    observable_outcome: AIR accepts proposals only after independently verifying digest and identities.
+    component_owner: AI Runtime
+    test_path_or_plan: Canonical digest golden vectors and mismatch rejection tests.
+    completion_rule: Accepted receipt binds every immutable request identity.
+  - <<: *defaults
+    requirement_id: WC115-R022
+    source: Section 5.3 getEmploymentPatchProposal
+    observable_outcome: AIR proposal reconciliation rejects identity or digest drift.
+    component_owner: Professional Runtime and AI Runtime
+    test_path_or_plan: Receipt/result reconciliation mismatch matrix.
+    completion_rule: Only the exact accepted proposal identity can reconcile.
+  - <<: *defaults
+    requirement_id: WC115-R023
+    source: Section 5.4
+    observable_outcome: WBE returns exact Skill-scoped eligibility while preserving protected paths.
+    component_owner: Work and Billing Engine
+    test_path_or_plan: Funded, exhausted, stale and constitutional/read-only preservation tests.
+    completion_rule: Unfunded consequential work blocks while protected paths remain.
+  - <<: *defaults
+    requirement_id: WC115-R024
+    source: Section 5.5 manifest and induction operations
+    observable_outcome: Adapters implement exact immutable manifest and induction requirement contracts.
+    component_owner: Agent adapters
+    test_path_or_plan: Manifest completeness/evidence and requirement-set contract tests.
+    completion_rule: Missing mutable or unresolved declarations fail closed.
+  - <<: *defaults
+    requirement_id: WC115-R025
+    source: Section 5.5 plan and material-change operations
+    observable_outcome: Adapters validate plan semantics and classify material change without accepting plans.
+    component_owner: Agent adapters
+    test_path_or_plan: Plan semantic and protected materiality fixture matrix.
+    completion_rule: Material categories relock affected bounded work and create a new plan version.
+  - <<: *defaults
+    requirement_id: WC115-R026
+    source: Section 5.5 isolation and performance operations
+    observable_outcome: Adapters prove dependency isolation and separate performance/outcome meanings.
+    component_owner: Agent adapters
+    test_path_or_plan: Isolation unknown/fail/pass and attribution-evidence tests.
+    completion_rule: Unknown isolation fails closed and assessments preserve attribution limits.
+  - <<: *defaults
+    requirement_id: WC115-R027
+    source: Section 5.6
+    observable_outcome: Generated clients pin tool/version, input digest, output owner and reproducible command.
+    component_owner: Generated-client owners
+    test_path_or_plan: Clean regeneration and byte/diff determinism test.
+    completion_rule: Two clean generations are identical and manifest matches outputs.
+  - <<: *defaults
+    requirement_id: WC115-R028
+    source: Section 5.6
+    observable_outcome: Duplicate DTOs, browser-private clients and cross-owner generated output are absent.
+    component_owner: Architecture boundary tests
+    test_path_or_plan: Import graph and wire-type inventory test.
+    completion_rule: One generated owner exists per wire contract and prohibited consumers have none.
+  - <<: *defaults
+    requirement_id: WC115-R029
+    source: Section 6.1
+    observable_outcome: Item, induction, plan and operations transitions exactly match WC-114.
+    component_owner: Business Platform state machines
+    test_path_or_plan: Exhaustive legal/illegal transition tables with owner-call spies.
+    completion_rule: Legal transitions pass and every illegal transition performs zero owner calls.
+  - <<: *defaults
+    requirement_id: WC115-R030
+    source: Section 6.1
+    observable_outcome: Patch, command, phase and scan transitions exactly match WC-114.
+    component_owner: BP, PR and AIR state machines
+    test_path_or_plan: Exhaustive state transition and reconciliation tables.
+    completion_rule: No component can skip validation, confirmation, reconciliation or terminal rules.
+  - <<: *defaults
+    requirement_id: WC115-R031
+    source: Sections 2.2 and 6.1
+    observable_outcome: Non-authoritative source states remain explicit and cannot become success.
+    component_owner: Business Platform projections
+    test_path_or_plan: State coercion negative fixtures across every owner.
+    completion_rule: Stale/partial/disputed/unknown/unavailable/blocked never serialize ready/active/complete.
+  - <<: *defaults
+    requirement_id: WC115-R032
+    source: Sections 2.2 and 6.1
+    observable_outcome: Operations never serializes COMPLETE.
+    component_owner: Business Platform projections
+    test_path_or_plan: Schema, unit and journey tests for continuous Operations.
+    completion_rule: Completion exists only on bounded cycle/goal/milestone/review/work-item records.
+  - <<: *defaults
+    requirement_id: WC115-R033
+    source: Section 6.2
+    observable_outcome: Every mutation binds the complete idempotency and expected-version identity.
+    component_owner: All mutating owners
+    test_path_or_plan: Canonical identity golden vectors and omitted-field negatives.
+    completion_rule: Missing identity/version input rejects before mutation.
+  - <<: *defaults
+    requirement_id: WC115-R034
+    source: Section 6.2
+    observable_outcome: Same key/hash replays and different hash conflicts without owner calls.
+    component_owner: Business Platform idempotency
+    test_path_or_plan: Concurrent same/different payload replay tests.
+    completion_rule: One logical command exists and conflict has zero downstream calls.
+  - <<: *defaults
+    requirement_id: WC115-R035
+    source: Section 6.2
+    observable_outcome: Expected-version conflict requires fresh read and returns only safe versions.
+    component_owner: Business Platform concurrency
+    test_path_or_plan: Stale workspace/plan/manifest/Decision Space/WBE version matrix.
+    completion_rule: Every stale expected version conflicts without protected data.
+  - <<: *defaults
+    requirement_id: WC115-R036
+    source: Section 6.2
+    observable_outcome: Derived owner keys and CE action instance stay stable across retries.
+    component_owner: Business Platform orchestration
+    test_path_or_plan: Retry/recovery identity equality tests.
+    completion_rule: One logical command maps to one owner key per owner and one CE action instance.
+  - <<: *defaults
+    requirement_id: WC115-R037
+    source: Section 6.2
+    observable_outcome: Possible commit enters OUTCOME_UNKNOWN and cannot blind retry.
+    component_owner: PR and BP reconciliation
+    test_path_or_plan: Timeout/disconnect/partial-commit fault injection.
+    completion_rule: Retry occurs only after no-commit or idempotent replay is proven.
+  - <<: *defaults
+    requirement_id: WC115-R038
+    source: Section 6.2
+    observable_outcome: Compatibility identity binds protocol and exact inventory version/digest.
+    component_owner: Business Platform compatibility
+    test_path_or_plan: Scan identity mutation matrix.
+    completion_rule: Any inventory/protocol identity change creates a distinct scan.
+  - <<: *defaults
+    requirement_id: WC115-R039
+    source: Section 6.3
+    observable_outcome: BP emits only exact RFC 9457 public codes and statuses.
+    component_owner: Business Platform error mapper
+    test_path_or_plan: Complete public error mapping contract table.
+    completion_rule: Every owner failure maps deterministically with no success-shaped fallback.
+  - <<: *defaults
+    requirement_id: WC115-R040
+    source: Sections 6.3 and 7.2
+    observable_outcome: Missing, inaccessible and cross-tenant resources are indistinguishable 404s.
+    component_owner: Business Platform authorization
+    test_path_or_plan: Timing/body/header/log anti-enumeration comparisons.
+    completion_rule: No observable response or telemetry reveals resource or tenant existence.
+  - <<: *defaults
+    requirement_id: WC115-R041
+    source: Sections 6.3 and 7.2
+    observable_outcome: Private diagnostics are closed and all observability is privacy-safe.
+    component_owner: All component telemetry
+    test_path_or_plan: Redaction and forbidden-field fixtures over errors/logs/traces/metrics.
+    completion_rule: No protected payload or high-cardinality raw identity escapes.
+  - <<: *defaults
+    requirement_id: WC115-R042
+    source: Section 7.1
+    observable_outcome: Owner data remains separate and tenant persistence enforces RLS.
+    component_owner: Data persistence owners
+    test_path_or_plan: PostgreSQL RLS, GRANT and cross-owner/cross-tenant integration tests.
+    completion_rule: Every tenant row denies cross-tenant and bypass-role access.
+  - <<: *defaults
+    requirement_id: WC115-R043
+    source: Section 7.1
+    observable_outcome: Plans, commands, proposals, findings and evidence references are append-only or superseded.
+    component_owner: Data persistence owners
+    test_path_or_plan: Update/delete denial and explicit supersession tests.
+    completion_rule: Historical owner state remains immutable and traceable.
+  - <<: *defaults
+    requirement_id: WC115-R044
+    source: Section 7.1
+    observable_outcome: Outbox and reconciliation recover idempotently without manufactured success.
+    component_owner: BP and PR persistence
+    test_path_or_plan: Crash/restart, duplicate delivery, reorder and poison-event tests.
+    completion_rule: Recovery reaches authoritative state once with preserved unknown/blocked outcomes.
+  - <<: *defaults
+    requirement_id: WC115-R045
+    source: Section 7.1
+    observable_outcome: Erasure removes removable content while preserving mandatory references/tombstones.
+    component_owner: Data persistence owners
+    test_path_or_plan: Retention/erasure integration fixtures with CE evidence comparison.
+    completion_rule: Erasure is privacy-effective and does not rewrite mandatory evidence.
+  - <<: *defaults
+    requirement_id: WC115-R046
+    source: Section 7.1
+    observable_outcome: Calendar data preserves instant, IANA zone, local value, tolerance and ambiguity.
+    component_owner: Business Platform planning data
+    test_path_or_plan: DST gap/fold, zone change and tolerance-version tests.
+    completion_rule: Ambiguous or outside-tolerance reschedule fails closed.
+  - <<: *defaults
+    requirement_id: WC115-R047
+    source: Section 7.2
+    observable_outcome: Public/private calls enforce exact actor/workload, audience and purpose assertions.
+    component_owner: Service security boundaries
+    test_path_or_plan: Forged caller, audience, purpose and delegated-identity matrix.
+    completion_rule: Only the permitted caller/purpose reaches owner logic.
+  - <<: *defaults
+    requirement_id: WC115-R048
+    source: Section 7.2
+    observable_outcome: Assurance binds consequence and stale/cached/offline/partial state cannot authorize.
+    component_owner: Business Platform authorization
+    test_path_or_plan: Consequence-by-assurance and state-freshness negative matrix.
+    completion_rule: Every insufficient or non-current authority input fails closed.
+  - <<: *defaults
+    requirement_id: WC115-R049
+    source: Sections 2.2 and 7.2
+    observable_outcome: Stop remains reachable and meets existing independence/latency guarantees.
+    component_owner: Professional Runtime and Web
+    test_path_or_plan: CE/owner outage and end-to-end Stop latency tests.
+    completion_rule: Stop remains visible and halts within existing constitutional SLO.
+  - <<: *defaults
+    requirement_id: WC115-R050
+    source: Section 7.3
+    observable_outcome: AIR enforces path allow-list, provenance, injection resistance and minimisation.
+    component_owner: AI Runtime
+    test_path_or_plan: Unknown/owner path, prompt/tool injection and excessive-input fixtures.
+    completion_rule: Hostile input cannot alter policy/identity and bounded provenance is complete.
+  - <<: *defaults
+    requirement_id: WC115-R051
+    source: WC-114 observability and Section 7
+    observable_outcome: Telemetry binds safe correlation, exact versions, freshness, decisions and reconciliation.
+    component_owner: All components
+    test_path_or_plan: Structured telemetry schema tests for every success/failure sequence.
+    completion_rule: Every required field exists without evidence or domain payload.
+  - <<: *defaults
+    requirement_id: WC115-R052
+    source: WC-114 observability and Section 7
+    observable_outcome: Metrics avoid raw identities and dashboards separate eight concern classes.
+    component_owner: Platform observability
+    test_path_or_plan: Metric-label policy and dashboard-query contract tests.
+    completion_rule: Forbidden labels are absent and concern classes cannot be conflated.
+  - <<: *defaults
+    requirement_id: WC115-R053
+    source: Sections 2.3 and 15
+    observable_outcome: Rollout order ends before activation and requires accepted specialists, tests, scan and shadow.
+    component_owner: Platform IT Expert handoff
+    test_path_or_plan: Release-state machine and default-off configuration tests.
+    completion_rule: No implementation state can transition to activated or deployed.
+  - <<: *defaults
+    requirement_id: WC115-R054
+    source: Section 15
+    observable_outcome: Rollback disables candidate commands, restores prior projection and preserves history.
+    component_owner: BP and data owners
+    test_path_or_plan: Populated-state rollback and post-rollback reconciliation tests.
+    completion_rule: Prior protocol serves while all candidate facts/evidence remain intact.
+  - <<: *defaults
+    requirement_id: WC115-R055
+    source: Section 10.1 unit
+    observable_outcome: Every owner has focused success, validation, illegal-transition and failure tests.
+    component_owner: All implementation owners
+    test_path_or_plan: Catalog-selected BP, PR, AIR, WBE, adapter and web unit suites.
+    completion_rule: Every changed branch has direct owner-local executable evidence.
+  - <<: *defaults
+    requirement_id: WC115-R056
+    source: Section 10.1 contract
+    observable_outcome: All five OpenAPI provider/consumer contracts pass without reference or DTO drift.
+    component_owner: Contract test suite
+    test_path_or_plan: OpenAPI validation, generation, provider and consumer tests.
+    completion_rule: Every operation/schema is exercised against generated types and live owner boundary.
+  - <<: *defaults
+    requirement_id: WC115-R057
+    source: Section 10.1 integration
+    observable_outcome: All seven WC-114 interaction sequences pass owner-realistic integration.
+    component_owner: Cross-service integration suite
+    test_path_or_plan: Database/outbox/CE/WBE/AIR/adapter composition scenarios.
+    completion_rule: Each sequence proves success and named failure/reconciliation paths.
+  - <<: *defaults
+    requirement_id: WC115-R058
+    source: Section 10.1 security
+    observable_outcome: Security suite proves RLS, non-enumeration, assertion, assurance, redaction and anti-bypass.
+    component_owner: Security test suite
+    test_path_or_plan: Hostile multi-tenant and service-boundary matrix in Docker.
+    completion_rule: Every attack fails closed with privacy-safe evidence.
+  - <<: *defaults
+    requirement_id: WC115-R059
+    source: Section 10.1 AI
+    observable_outcome: AI suite proves proposal-only, identity/digest, path, injection, minimisation and mismatch denial.
+    component_owner: AI Runtime test suite
+    test_path_or_plan: AIR and PR adversarial contract/integration fixtures.
+    completion_rule: No model result can gain authority or reconcile across identities.
+  - <<: *defaults
+    requirement_id: WC115-R060
+    source: Section 10.1 data
+    observable_outcome: Data suite proves append-only, outbox, recovery, erasure and calendar semantics.
+    component_owner: Data integration suite
+    test_path_or_plan: PostgreSQL owner-realistic fault/recovery fixtures.
+    completion_rule: Every data invariant survives duplicate, crash, recovery and erasure paths.
+  - <<: *defaults
+    requirement_id: WC115-R061
+    source: Sections 7.4 and 10.1
+    observable_outcome: Web truthfully distinguishes states and retains accessible Stop through generated clients.
+    component_owner: Web test suite
+    test_path_or_plan: Unit, type, browser network and accessibility tests.
+    completion_rule: No premature success/private call and Stop passes keyboard/screen-reader checks.
+  - <<: *defaults
+    requirement_id: WC115-R062
+    source: Sections 7.2 and 10.1
+    observable_outcome: CE outage fails writes closed, preserves safe reads, pauses PR and leaves Stop independent.
+    component_owner: Constitutional integration suite
+    test_path_or_plan: CE unavailable/recovery/flush fault injection.
+    completion_rule: No governed work succeeds during CE failure and recovery preserves ordering.
+  - <<: *defaults
+    requirement_id: WC115-R063
+    source: Sections 5.2 and 10.2
+    observable_outcome: Exact-inventory compatibility requires complete evidence and never activates protocol.
+    component_owner: Compatibility acceptance suite
+    test_path_or_plan: Complete/partial/stale/unknown/mixed-major inventory scenarios.
+    completion_rule: Only exact all-pass is eligible and activation/default flag remains false.
+  - <<: *defaults
+    requirement_id: WC115-R064
+    source: Sections 5.5 and 10.2
+    observable_outcome: DMA, Trading and Tutor pass one generic BP/adapter contract.
+    component_owner: Generic adapter contract suite
+    test_path_or_plan: Three profession fixtures against identical schemas.
+    completion_rule: All pass without platform-domain schema changes.
+  - <<: *defaults
+    requirement_id: WC115-R065
+    source: Section 10.1 fitness
+    observable_outcome: CEW-FIT-01 through CEW-FIT-18 each have exact executable oracles.
+    component_owner: Enterprise fitness suite
+    test_path_or_plan: One named owner contract or journey test per fitness ID.
+    completion_rule: All 18 pass against implementation boundaries, not schema parsing alone.
+  - <<: *defaults
+    requirement_id: WC115-R066
+    source: Section 10.1 negative
+    observable_outcome: CEW-NEG-001 through 011 and CEW-POLICY-001 execute as runtime negatives.
+    component_owner: Negative contract/journey suite
+    test_path_or_plan: Convert every WC-114 fixture into provider/consumer or journey execution.
+    completion_rule: All 12 reject the prohibited behavior with exact safe result.
+  - <<: *defaults
+    requirement_id: WC115-R067
+    source: Section 10.2
+    observable_outcome: Full three-phase acceptance covers readiness, deferral, relock, billing, isolation and correction.
+    component_owner: Acceptance suite
+    test_path_or_plan: Twelve named end-to-end acceptance scenarios in Section 10.2.
+    completion_rule: Every scenario passes on the same immutable candidate.
+  - <<: *defaults
+    requirement_id: WC115-R068
+    source: Sections 10.1 and 11
+    observable_outcome: Accessibility, performance, CCT, quality and security gates pass without reduced thresholds.
+    component_owner: Validation catalog
+    test_path_or_plan: Complete applicable catalog gate set.
+    completion_rule: No applicable gate is failed, omitted or weakened.
+  - <<: *defaults
+    requirement_id: WC115-R069
+    source: Section 11
+    observable_outcome: Tests/tooling use catalog-owned Docker runners only.
+    component_owner: Docker validation control
+    test_path_or_plan: Execution-contract and hosted policy gates.
+    completion_rule: Host language, virtualenv and ad hoc Docker paths produce no authoritative evidence.
+  - <<: *defaults
+    requirement_id: WC115-R070
+    source: Sections 8 and 11
+    observable_outcome: Focused story selection culminates in one dependency-complete final qualification.
+    component_owner: WC-104 qualification control
+    test_path_or_plan: Story envelopes plus final run_wc104_qualification result.
+    completion_rule: Exact frozen candidate consumes complete applicable inventory once.
+  - <<: *defaults
+    requirement_id: WC115-R071
+    source: Section 12
+    observable_outcome: Every requirement has direct machine-readable exact-identity evidence.
+    component_owner: Requirement evidence ledger
+    test_path_or_plan: Docker ledger validation and evidence-reference existence/identity checks.
+    completion_rule: All rows are PASS or FOUNDER_RESERVED before DONE.
+  - <<: *defaults
+    requirement_id: WC115-R072
+    source: Sections 13 and 16
+    observable_outcome: Complete author review repairs findings and binds PASS to remote exact head.
+    component_owner: Platform IT Expert author review
+    test_path_or_plan: C-065 author-review gate and exact remote-head comparison.
+    completion_rule: Reviewed commit is the final 40-character remote head with no open finding.
+  - <<: *defaults
+    requirement_id: WC115-R073
+    source: Section 8
+    observable_outcome: Milestone commits remain executable and use required traceability/checkpoint rules.
+    component_owner: Git delivery control
+    test_path_or_plan: Commitlint, commit-message trace and PROJECT_STATE diff checks.
+    completion_rule: Every milestone follows convention and no routine state checkpoint is committed.
+  - <<: *defaults
+    requirement_id: WC115-R074
+    source: Sections 11 and 13
+    observable_outcome: Exact prepared PR body is submitted without author approval, merge, activation or deployment.
+    component_owner: Founder handoff
+    test_path_or_plan: PR preparation precheck and GitHub remote-head/body verification.
+    completion_rule: PR is open with exact body and prohibited actions remain absent.
+  - <<: *defaults
+    requirement_id: WC115-R075
+    source: Section 14
+    observable_outcome: Every stop condition halts without compensation, bypass or scope expansion.
+    component_owner: Platform IT Expert execution control
+    test_path_or_plan: Stop-condition review at every stage boundary and failure-router evidence.
+    completion_rule: Any triggered stop records BLOCKED and no later stage proceeds.
+  - <<: *defaults
+    requirement_id: WC115-R076
+    source: Section 15
+    observable_outcome: Rollback restores last qualified/prior protocol state while preserving immutable history.
+    component_owner: Rollback control
+    test_path_or_plan: Pre/post-freeze and populated-runtime rollback rehearsals.
+    completion_rule: Recovery passes with history/evidence intact and no deployment/activation action.
+  - <<: *defaults
+    requirement_id: WC115-R077
+    source: Section 7.5 data persistence profile
+    observable_outcome: Accepted owner-by-record matrix fixes stores, keys, versions, transactions and prohibited writers.
+    component_owner: Chief Data Architect input
+    test_path_or_plan: Machine-readable profile completeness and ownership-conflict validation.
+    completion_rule: Every persisted record has one owner, canonical store, transaction and prohibited-writer rule.
+  - <<: *defaults
+    requirement_id: WC115-R078
+    source: Sections 7.1 and 7.5
+    observable_outcome: Tenant tables force RLS with transaction-local context and no application/worker bypass.
+    component_owner: Data persistence owners
+    test_path_or_plan: Missing-context, cross-tenant, worker, migration and composite-reference PostgreSQL tests.
+    completion_rule: All unauthorized tuples deny and every cross-table reference carries tenant identity.
+  - <<: *defaults
+    requirement_id: WC115-R079
+    source: Sections 7.1 and 7.5
+    observable_outcome: Corrections use immutable same-owner acyclic supersession with compare-and-swap.
+    component_owner: Data persistence owners
+    test_path_or_plan: Lineage, cycle, competing successor and update/delete denial tests.
+    completion_rule: One direct successor wins and superseded records remain immutable.
+  - <<: *defaults
+    requirement_id: WC115-R080
+    source: Sections 7.1 and 7.5
+    observable_outcome: Outbox/inbox effects are atomic and preserve identity, ordering, leases, retries and poison state.
+    component_owner: BP and PR persistence
+    test_path_or_plan: Crash injection at every producer/consumer checkpoint plus duplicate/reorder/poison cases.
+    completion_rule: Effects are once-logical, poison becomes BLOCKED and no record is silently discarded.
+  - <<: *defaults
+    requirement_id: WC115-R081
+    source: Section 7.5 retention profile
+    observable_outcome: Accepted retention matrix fixes basis, periods, authority, fields, order, backups and verification.
+    component_owner: Chief Data Architect input
+    test_path_or_plan: Profile completeness and owner-by-owner erasure rehearsal.
+    completion_rule: Every data class has an accepted retention and erasure disposition before implementation.
+  - <<: *defaults
+    requirement_id: WC115-R082
+    source: Section 7.5 calendar repair
+    observable_outcome: Calendar uses repaired instant, zone, fold, tzdb and tolerance wire semantics.
+    component_owner: Solution Architecture prerequisite
+    test_path_or_plan: Repaired OpenAPI validation plus gap/fold/version-drift contract tests.
+    completion_rule: Accepted candidate schema exists and every temporal inconsistency rejects.
+  - <<: *defaults
+    requirement_id: WC115-R083
+    source: Sections 6.2 and 7.5
+    observable_outcome: Accepted canonical vectors and atomic reservation govern every mutation identity.
+    component_owner: Mutating service owners
+    test_path_or_plan: Concurrent reservation, digest golden-vector and lifetime/reconciliation tests.
+    completion_rule: One reservation wins and cannot expire while an owner effect remains possible.
+  - <<: *defaults
+    requirement_id: WC115-R084
+    source: Sections 7.5 and 15
+    observable_outcome: Database evolution uses resumable forward-only expand/backfill/verify/cutover.
+    component_owner: Data migration owners
+    test_path_or_plan: Interrupted, duplicate-safe restart, deterministic order and shadow comparison tests.
+    completion_rule: Every checkpoint restarts safely and cutover occurs only after exact verification.
+  - <<: *defaults
+    requirement_id: WC115-R085
+    source: Sections 7.4 and 7.5
+    observable_outcome: Customer UI uses only approved lexicon and state/accessibility mapping.
+    component_owner: Product Office input and Web
+    test_path_or_plan: Resource inventory and state-to-copy/accessibility contract tests.
+    completion_rule: Every visible state maps to approved copy; raw owner codes and generated copy are absent.
+  - <<: *defaults
+    requirement_id: WC115-R086
+    source: Section 7.5 BP authentication repair
+    observable_outcome: BP 401 uses canonical authentication problems without invented employment codes.
+    component_owner: Solution Architecture prerequisite and BP
+    test_path_or_plan: Repaired OpenAPI plus authentication response contract tests.
+    completion_rule: Accepted schema exists and every 401 validates against canonical BP auth contract.
+  - <<: *defaults
+    requirement_id: WC115-R087
+    source: Section 7.5 command repair
+    observable_outcome: Commands use closed discriminated per-kind schemas and exact applicable versions.
+    component_owner: Solution Architecture prerequisite and BP
+    test_path_or_plan: One valid and extra/missing-field negatives for every command kind.
+    completion_rule: Accepted schema exists and invalid variants call no owner.
+  - <<: *defaults
+    requirement_id: WC115-R088
+    source: Section 7.5 terminal replay repair
+    observable_outcome: Terminal replay returns complete immutable owner/evidence/result outcome.
+    component_owner: Solution Architecture prerequisite and BP
+    test_path_or_plan: Generated-client replay equality contract tests.
+    completion_rule: Replayed terminal result equals original complete outcome.
+  - <<: *defaults
+    requirement_id: WC115-R089
+    source: Sections 7.5 and 10
+    observable_outcome: Runtime negative fixtures define setup, input, safe result, prohibited observations and side effects.
+    component_owner: Negative test suite
+    test_path_or_plan: Fixture-schema validation and execution for each CEW negative ID.
+    completion_rule: Every fixture is executable and asserts exact zero/expected side-effect count.
+  - <<: *defaults
+    requirement_id: WC115-R090
+    source: Section 7.5 CEW-FIT-12 repair
+    observable_outcome: Stop fitness reads aggregate operations.stopReachable for every degraded setup.
+    component_owner: Enterprise fitness suite
+    test_path_or_plan: Aggregate workspace plus independent Stop-control tests per setup.
+    completion_rule: stopReachable is true and the control is operational in every case.
+  - <<: *defaults
+    requirement_id: WC115-R091
+    source: Section 7.5 CEW-NEG-010 repair
+    observable_outcome: Mixed-major fixture uses multiple offered agents and cannot mutate activation.
+    component_owner: Compatibility negative suite
+    test_path_or_plan: Two-agent different-major aggregate scan fixture.
+    completion_rule: Result is FAIL, ineligible, closed-reasoned and activation state is unchanged.
+  - <<: *defaults
+    requirement_id: WC115-R092
+    source: Sections 7.5, 11 and 12
+    observable_outcome: PASS envelope binds catalog gate, image, container command, candidate, environment and artifact.
+    component_owner: Docker validation control
+    test_path_or_plan: Evidence-envelope schema and host-command rejection tests.
+    completion_rule: Missing identity or host-executed test command cannot record PASS.
+  - <<: *defaults
+    requirement_id: WC115-R093
+    source: Sections 7.5 and 12
+    observable_outcome: PASS ledger references are immutable and fully identity/digest bound.
+    component_owner: Requirement ledger control
+    test_path_or_plan: Validator negatives for prose, mutable path and missing evidence identity.
+    completion_rule: Validator rejects PASS without every required immutable evidence field.
+  - <<: *defaults
+    requirement_id: WC115-R094
+    source: Sections 7.5 and 15
+    observable_outcome: Rollback waits for accepted existing gate owner, identifier, route, selector and reconciliation.
+    component_owner: Solution Architecture prerequisite
+    test_path_or_plan: Rollback-profile completeness and authority validation.
+    completion_rule: Accepted profile exists before rollback implementation or qualification starts.
+  - <<: *defaults
+    requirement_id: WC115-R095
+    source: Sections 7.3 and 7.5
+    observable_outcome: AIR uses RFC 8785/JCS digest and accepted PR/relationship/operation/key identity.
+    component_owner: AI Runtime
+    test_path_or_plan: Cross-language JCS SHA-256 vectors and replay/conflict tests.
+    completion_rule: Same identity/digest replays and different digest conflicts before inference.
+  - <<: *defaults
+    requirement_id: WC115-R096
+    source: Sections 7.3 and 7.5
+    observable_outcome: AIR resolves trusted digested semantic entries fixing patch/value constraints.
+    component_owner: BP semantic catalogue and AIR
+    test_path_or_plan: Trusted-resolution, digest drift and entry constraint tests.
+    completion_rule: Caller cannot select/alter catalogue; unknown or mismatched entries reject before inference.
+  - <<: *defaults
+    requirement_id: WC115-R097
+    source: Section 7.5 AIR provenance repair
+    observable_outcome: AIR request/receipt/result retain protocol, patch and prompt/model provenance.
+    component_owner: AIR and PR
+    test_path_or_plan: Generated contract and reconciliation field-equality tests.
+    completion_rule: Any provenance drift rejects reconciliation.
+  - <<: *defaults
+    requirement_id: WC115-R098
+    source: Section 7.5 AIR state repair
+    observable_outcome: AIR variants are closed and non-success results contain no operations.
+    component_owner: AIR
+    test_path_or_plan: State-dependent positive/negative schema and runtime tests.
+    completion_rule: PROPOSED has operations; UNREPRESENTABLE/FAILED have reason and zero operations.
+  - <<: *defaults
+    requirement_id: WC115-R099
+    source: Sections 7.3 and 7.5
+    observable_outcome: Confidence is diagnostic and material uncertainty yields unresolved/no patch.
+    component_owner: AIR and BP
+    test_path_or_plan: Confidence and material-uncertainty decision fixtures.
+    completion_rule: Confidence never changes authority and unresolved material questions cannot apply.
+  - <<: *defaults
+    requirement_id: WC115-R100
+    source: Sections 7.3 and 7.5
+    observable_outcome: AIR persists bounded identities/results while raw content is encrypted transient and expires.
+    component_owner: AIR data handling
+    test_path_or_plan: Persistence/log inventory and expiry/terminal deletion tests.
+    completion_rule: Raw content is absent from durable stores/telemetry and removed by accepted expiry.
+  - <<: *defaults
+    requirement_id: WC115-R101
+    source: Section 7.5 AI evaluation profile
+    observable_outcome: Immutable corpus proves digest, path, provenance, injection, minimisation and uncertainty safety.
+    component_owner: AI evaluation suite
+    test_path_or_plan: Exact-candidate execution of every accepted corpus case.
+    completion_rule: Safety cases pass 100% with exact state, operations, reason and persistence oracle.
+  - <<: *defaults
+    requirement_id: WC115-R102
+    source: Sections 7.2 and 7.5
+    observable_outcome: Accepted security profile fixes every caller/issuer/subject/audience/purpose/delegation/age tuple.
+    component_owner: Chief Security Architect input
+    test_path_or_plan: Profile completeness plus every permitted/forbidden tuple.
+    completion_rule: No operation has an unspecified caller or token assertion.
+  - <<: *defaults
+    requirement_id: WC115-R103
+    source: Sections 7.2 and 7.5
+    observable_outcome: Accepted assurance matrix fixes level, age, reauthentication and revocation per consequence.
+    component_owner: Chief Security Architect input
+    test_path_or_plan: Every command and operation against exact assurance tuples.
+    completion_rule: Missing, stale, revoked, cached or weaker assurance rejects before owner calls.
+  - <<: *defaults
+    requirement_id: WC115-R104
+    source: Sections 6.1 and 7.5
+    observable_outcome: Accepted freshness profile fixes timestamp, age, skew, invalidation and outage behavior.
+    component_owner: Security and owner inputs
+    test_path_or_plan: Boundary-time, skew and invalidation-event tests for every source.
+    completion_rule: No source relies on an unspecified freshness default.
+  - <<: *defaults
+    requirement_id: WC115-R105
+    source: Sections 7.2 and 7.5
+    observable_outcome: Stop tests bind exact endpoint, actors, independent dependencies and numeric SLO.
+    component_owner: PR and Web
+    test_path_or_plan: Degrade BP, CE, PR, WBE, adapter and identity provider while measuring Stop.
+    completion_rule: Accepted existing contract remains reachable within exact SLO for every applicable degradation.
+  - <<: *defaults
+    requirement_id: WC115-R106
+    source: Sections 6.3 and 7.5
+    observable_outcome: Closed error templates/reasons prohibit protected text and prove enumeration equivalence.
+    component_owner: BP and private owners
+    test_path_or_plan: Status/code/schema/optional-field/size/timing and telemetry equivalence tests.
+    completion_rule: Free-form protected text is absent and resource existence is not observable.
+  - <<: *defaults
+    requirement_id: WC115-R107
+    source: Sections 7.5 and 15
+    observable_outcome: Rollback fences new work by epoch and handles in-flight/outbox work without duplicates.
+    component_owner: Rollback control
+    test_path_or_plan: Stale client, delayed event, partial dispatch and post-fence reconciliation tests.
+    completion_rule: New/stale submissions reject and pre-fence commands reconcile without duplicate owner actions.
+  - <<: *defaults
+    requirement_id: WC115-R108
+    source: Sections 5 and 7.5
+    observable_outcome: Private APIs enforce private ingress and workload allow-lists and are absent publicly.
+    component_owner: BP, AIR, WBE and adapter security boundaries
+    test_path_or_plan: Browser/mobile token, public gateway, CORS, wrong client and wrong workload tests.
+    completion_rule: Every prohibited route fails before owner logic and no private code enters browser bundles.
