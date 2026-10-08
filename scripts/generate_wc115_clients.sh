@@ -43,6 +43,18 @@ sed -i \
   '/if not re.match(r".*readiness/c\        if value.split("/", 2)[1] in {"readiness", "billing", "authority", "evidence", "tenant", "relationship"} or not re.fullmatch(r"/[a-z][a-zA-Z0-9]*(?:/[a-zA-Z0-9_-]+)*", value):' \
   "${repo_root}/src/professional-runtime/clients/generated/employment_ai_runtime/employment_air_client/models/proposal_operation.py"
 
+for generated_root in \
+  "${repo_root}/src/business-platform/Clients/Generated/EmploymentWbe/src/Waooaw.Generated.WbeEmployment" \
+  "${repo_root}/src/business-platform/Clients/Generated/EmploymentDomainAdapter/src/Waooaw.Generated.DomainEmployment"
+do
+  sed -i \
+    '/List<Tuple<HttpContent, string, string>> contentList = new List<Tuple<HttpContent, string, string>>();/d' \
+    "${generated_root}/Client/ApiClient.cs"
+  sed -i \
+    '/get { return _globalConfiguration; }/c\            get\n            {\n                lock (GlobalConfigSync)\n                {\n                    return _globalConfiguration;\n                }\n            }' \
+    "${generated_root}/Client/GlobalConfiguration.cs"
+done
+
 generate \
   -i /local/architecture/reference/api-specs/conversational-employment-domain-adapter.openapi.yaml \
   -g python \

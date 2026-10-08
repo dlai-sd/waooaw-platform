@@ -84,6 +84,7 @@ async def test_gateway_signs_exact_pr_air_route_and_preserves_trusted_context() 
     assert envelope["operation"] == "proposeEmploymentPatch"
     await gateway.close()
 
+
 @pytest.mark.asyncio
 async def test_gateway_rejects_caller_supplied_relationship_rebinding() -> None:
     gateway = EmploymentAirGateway(

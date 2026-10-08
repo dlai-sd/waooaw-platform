@@ -375,8 +375,6 @@ namespace Waooaw.Generated.WbeEmployment.Client
                 }
             }
 
-            List<Tuple<HttpContent, string, string>> contentList = new List<Tuple<HttpContent, string, string>>();
-
             string contentType = null;
             if (options.HeaderParameters != null && options.HeaderParameters.ContainsKey("Content-Type"))
             {

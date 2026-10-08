@@ -25,6 +25,10 @@ AIR_PROPOSAL_OPERATION_PATH = (
     / "src/professional-runtime/clients/generated/employment_ai_runtime"
     / "employment_air_client/models/proposal_operation.py"
 )
+WC115_CSHARP_CLIENT_ROOTS = (
+    ROOT / "src/business-platform/Clients/Generated/EmploymentWbe/src/Waooaw.Generated.WbeEmployment",
+    ROOT / ("src/business-platform/Clients/Generated/EmploymentDomainAdapter/src/Waooaw.Generated.DomainEmployment"),
+)
 
 
 def load_ci() -> dict[str, object]:
@@ -72,6 +76,19 @@ def test_wc115_generator_rewrites_air_path_validation_without_codeql_invalid_reg
     assert replacement in generator
     assert replacement in generated_model
     assert 'if not re.match(r"^\\/(?!readiness' not in generated_model
+
+
+def test_wc115_generator_removes_generated_csharp_codeql_findings() -> None:
+    generator = WC115_GENERATOR_PATH.read_text(encoding="utf-8")
+
+    assert "contentList = new List<Tuple<HttpContent" in generator
+    assert "lock (GlobalConfigSync)" in generator
+    for client_root in WC115_CSHARP_CLIENT_ROOTS:
+        api_client = (client_root / "Client/ApiClient.cs").read_text(encoding="utf-8")
+        global_configuration = (client_root / "Client/GlobalConfiguration.cs").read_text(encoding="utf-8")
+        assert "contentList = new List<Tuple<HttpContent" not in api_client
+        assert "get { return _globalConfiguration; }" not in global_configuration
+        assert global_configuration.count("lock (GlobalConfigSync)") == 2
 
 
 def test_dotnet_runner_installs_only_required_python_bootstrap_dependencies() -> None:

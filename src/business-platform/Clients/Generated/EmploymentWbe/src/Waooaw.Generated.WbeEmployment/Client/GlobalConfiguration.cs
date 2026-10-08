@@ -54,7 +54,13 @@ namespace Waooaw.Generated.WbeEmployment.Client
         /// <value>Configuration.</value>
         public static IReadableConfiguration Instance
         {
-            get { return _globalConfiguration; }
+            get
+            {
+                lock (GlobalConfigSync)
+                {
+                    return _globalConfiguration;
+                }
+            }
             set
             {
                 lock (GlobalConfigSync)
