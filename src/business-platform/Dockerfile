@@ -3,6 +3,8 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0@sha256:01fabc4758d1d74e39eda700c8463dae6241a61481f973683692ddcb59a5eeb7 AS build
 WORKDIR /src
 COPY src/business-platform/business-platform.csproj .
+COPY src/business-platform/Clients/Generated/EmploymentWbe/src/Waooaw.Generated.WbeEmployment/Waooaw.Generated.WbeEmployment.csproj Clients/Generated/EmploymentWbe/src/Waooaw.Generated.WbeEmployment/
+COPY src/business-platform/Clients/Generated/EmploymentDomainAdapter/src/Waooaw.Generated.DomainEmployment/Waooaw.Generated.DomainEmployment.csproj Clients/Generated/EmploymentDomainAdapter/src/Waooaw.Generated.DomainEmployment/
 RUN dotnet restore --runtime linux-musl-x64
 COPY src/business-platform/ .
 RUN dotnet publish --configuration Release --runtime linux-musl-x64 \

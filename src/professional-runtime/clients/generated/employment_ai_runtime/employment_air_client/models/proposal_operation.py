@@ -44,6 +44,7 @@ class ProposalOperation(BaseModel):
     @field_validator('semantic_path')
     def semantic_path_validate_regular_expression(cls, value):
         """Validates the regular expression"""
+        # lgtm[py/regex/unmatchable-dollar] Generated OpenAPI end-of-segment alternatives are intentional.
         if not re.match(r"^\/(?!readiness(?:\/|$)|billing(?:\/|$)|authority(?:\/|$)|evidence(?:\/|$)|tenant(?:\/|$)|relationship(?:\/|$))[a-z][a-zA-Z0-9]*(\/[a-zA-Z0-9_-]+)*$", value):
             raise ValueError(r"must validate the regular expression /^\/(?!readiness(?:\/|$)|billing(?:\/|$)|authority(?:\/|$)|evidence(?:\/|$)|tenant(?:\/|$)|relationship(?:\/|$))[a-z][a-zA-Z0-9]*(\/[a-zA-Z0-9_-]+)*$/")
         return value
