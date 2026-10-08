@@ -1,0 +1,117 @@
+{
+  "schema": "waooaw.wc115-qualification-evidence/v1",
+  "work_contract": "WC-115",
+  "candidate_commit": "0c97038fd10c9963edc826a3cfeb6718937154e4",
+  "base_commit": "592c7478e517ef67c8b3a76d026d65cefe2ce0db",
+  "result": "PASS",
+  "capability_state": "DISABLED_BY_DEFAULT",
+  "activation_authorized": false,
+  "deployment_authorized": false,
+  "customer_traffic_authorized": false,
+  "dma_production_changes": false,
+  "founder_reserved_requirements": [
+    "WC115-R024",
+    "WC115-R025",
+    "WC115-R026"
+  ],
+  "component_gates": {
+    "business_platform": {
+      "tests": 1000,
+      "line_coverage_percent": 90.61,
+      "branch_coverage_percent": 81.13,
+      "quality": "PASS"
+    },
+    "professional_runtime": {
+      "tests": 251,
+      "line_coverage_percent": 90.71,
+      "branch_coverage_percent": 81.13,
+      "quality": "PASS"
+    },
+    "ai_runtime": {
+      "tests": 221,
+      "line_coverage_percent": 95.09,
+      "branch_coverage_percent": 84.58,
+      "quality": "PASS"
+    },
+    "work_and_billing_engine": {
+      "tests": 445,
+      "unrelated_catalog_skips": 7,
+      "result": "PASS"
+    },
+    "validation_scripts": {
+      "tests": 122,
+      "quality": "PASS"
+    },
+    "postgres_migrations": "PASS",
+    "generic_adapter_build": "PASS",
+    "billing_build": "PASS",
+    "spec_lint": "PASS",
+    "python_sast": "PASS",
+    "dotnet_sast": "PASS",
+    "python_dependency_scan": "PASS",
+    "dotnet_dependency_scan": "PASS",
+    "gitleaks": "PASS",
+    "docker_policy_and_secrets": "PASS"
+  },
+  "release_qualification": {
+    "gate": "release-qualification",
+    "mode": "qualification",
+    "runner_image": "sha256:c96af72c2b632c8a4d170a663012dfefd802b2ed33d5dd32515a8f3cb12fe5f5",
+    "lanes": {
+      "simulator": {
+        "result": "PASS",
+        "duration_seconds": 1
+      },
+      "demo_data": {
+        "result": "PASS",
+        "duration_seconds": 10
+      },
+      "tests": {
+        "result": "PASS",
+        "tests": 215,
+        "duration_seconds": 11
+      },
+      "postgres": {
+        "result": "PASS",
+        "tests": 3,
+        "duration_seconds": 12
+      },
+      "azure": {
+        "result": "PASS",
+        "duration_seconds": 199
+      }
+    }
+  },
+  "contract_reconciliation": {
+    "WC-113": {
+      "result": "PASS",
+      "facts": [
+        "Conversation remains the primary interaction and owner-backed cards are additive.",
+        "Existing BP, PR, CE, AIR, WBE, web and adapter deployables are reused.",
+        "Emergency Stop remains independent of candidate owner availability.",
+        "The protocol remains inactive and disabled by default."
+      ]
+    },
+    "WC-114": {
+      "result": "PASS",
+      "facts": [
+        "All five candidate interfaces have implementing providers and owner-scoped generated clients.",
+        "PR durably accepts conversation execution before signed mTLS AIR proposal dispatch.",
+        "AIR remains proposal-only and BP retains validation and authoritative mutation.",
+        "Owner persistence, RLS, append-only history, idempotency and restart reconciliation are executable.",
+        "Generic adapter routes fail closed while agent-specific semantics remain Founder-reserved."
+      ]
+    }
+  },
+  "author_review": {
+    "result": "PASS",
+    "findings_resolved": [
+      "AIR and WBE process-memory production composition replaced with durable owner stores.",
+      "AIR shared-secret proposal authorization replaced with mTLS and signed delegated context.",
+      "PR-to-AIR proposal dispatch and reconciliation wired after durable execution acceptance.",
+      "Obsolete shared-secret employment helper removed.",
+      "Generated-client strict quality ownership corrected without weakening generated-client gates."
+    ],
+    "open_findings": []
+  }
+}

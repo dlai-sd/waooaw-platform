@@ -6,7 +6,7 @@
 | `record_id` | `CB-015` |
 | `record_type` | Constitutional Blocker |
 | `produced_at` | `2026-10-08` |
-| Status | **OPEN - IMPLEMENTATION REPAIR REQUIRED** |
+| Status | **RESOLVED - OWNER PERSISTENCE AND AUTHORIZATION QUALIFIED** |
 | Raised by | INST-010 - Platform IT Expert |
 | Affected work | WC-115 Stages WC115-01, WC115-02, WC115-05 through WC115-07; WC115-R007, R010, R021-R023, R037, R050, R057-R060, R077-R080, R083, R102 and R108 |
 | Constitutional basis | C-023, C-026, C-059, C-063, C-079, C-080; ADR-046; ADR-051; WC-115 Sections 2.2, 7.1-7.3, 7.5, 8, 13 and 14 |
@@ -76,3 +76,23 @@ These are platform-side WAOOAW gaps. They require no DMA-specific production cod
 No repair may reintroduce a shared secret as workload identity, accept tenant identity from request
 payload, represent process memory as durable owner truth, touch DMA production semantics, weaken a
 threshold or mark the blocked requirements PASS from schema-only evidence.
+
+## Resolution
+
+The Platform IT Expert completed the authorized WAOOAW-side repairs:
+
+- AIR and WBE use their PostgreSQL owner tables with transaction-local, server-derived tenant
+  context; AIR idempotency and proposal reconciliation survive process restart.
+- AIR authenticates the exact PR mTLS peer and signed delegated envelope with route, operation,
+  audience, digest, tenant, relationship, correlation and replay binding.
+- PR is registered as a delegation signer, AIR has an exact workload identity, and the two
+  PR-to-AIR proposal routes have exact grants.
+- PR durably accepts conversation execution before dispatching the AIR proposal, reconciles the
+  immutable result and emits the typed non-authoritative proposal card.
+- Generic adapter employment routes require an injected authorization boundary and fail closed
+  while WC115-R024 through WC115-R026 remain Founder-reserved.
+- Docker component, security, PostgreSQL, parallel catalog and final release-qualification gates
+  pass on candidate commit `0c97038fd10c9963edc826a3cfeb6718937154e4`.
+
+No DMA production semantics, activation, deployment or customer traffic was introduced. The
+immutable evidence summary is `validation/evidence/wc115/qualification.json`.

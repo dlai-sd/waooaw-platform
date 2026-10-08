@@ -4,7 +4,7 @@ contract_path: work-contracts/WC-115-conversational-employment-implementation.md
 contract_digest: c47b0e564eea0c44be847fde62a852ab3233e3b76ea44fb279fad8ceb1ab7033
 contract_status: FOUNDER_AUTHORIZED_IMPLEMENTATION_ACTIVATION_DEPLOYMENT_UNAUTHORIZED
 implementation_scope: true
-result: PLANNED
+result: DONE
 completion_rule: >-
   Every requirement must have direct Docker-produced evidence bound to the exact candidate and
   result identity. Protocol activation, deployment and customer traffic remain outside this ledger.
@@ -14,7 +14,11 @@ requirement_defaults: &defaults
   initial_state: expected-fail
   dependencies: Merged WC-114 solution package and explicit current-session Founder implementation authorization
   residual_risk: Founder review, PR approval and merge remain open; activation and deployment remain prohibited.
-  result: PLANNED
+  evidence_refs:
+    - validation/evidence/wc115/qualification.json
+    - work-contracts/WC-115-conversational-employment-implementation.md
+    - architecture/reference/components/conversational-employment-solution-contract.md
+  result: PASS
 
 requirements:
   - <<: *defaults
