@@ -20,6 +20,7 @@ semantics. No owner transfers authority and no mandatory protocol version change
 | Boundary | Version | Disposition | Authority retained |
 |---|---:|---|---|
 | BP public employment workspace | `1.0.0-candidate.1` | ADD candidate slice | Relationship, phase, plan, readiness, command and public projection truth |
+| BP private compatibility scan | `1.0.0-candidate.1` | ADD candidate slice on existing BP deployable | Exact-inventory compatibility evidence and fail-closed activation eligibility |
 | Conversation Core | BP `1.10.0`; PR `1.3.0` | REUSE | Durable conversation and execution-event projection |
 | Relationship Workspace | BP `1.10.0` | REUSE + compose | Public Plan, Work, Results, Usage/Budget, Rights and command truth |
 | PR internal | PR `1.3.0` | REUSE | Execution facts, controls and reconciliation |
@@ -40,6 +41,7 @@ semantics. No owner transfers authority and no mandatory protocol version change
 | AIR interpretation | ADD bounded proposal profile | Existing inference ownership is correct; exact typed patch envelope is missing |
 | Domain employment semantics | ADD generic adapter profile | Existing DMA outcome adapter is too narrow for induction and planning |
 | Public employment protocol | ADD BP subresource | Existing workspace needs exact phase/readiness/plan-version semantics |
+| All-agent compatibility scan | ADD BP private operation family | BP already composes admitted agent/version truth; a new deployable would split activation evidence from publication ownership |
 
 ## 2. Protected Policy Trace
 
@@ -60,7 +62,7 @@ semantics. No owner transfers authority and no mandatory protocol version change
 
 | Component | Must | Must not |
 |---|---|---|
-| BP Employment Context | Authorize relationship, compose owner truth, version plan/readiness, own public commands | Infer tenant from input, execute work, recalculate WBE or accept AIR output as truth |
+| BP Employment Context | Authorize relationship, compose owner truth, version plan/readiness, own public commands and exact-inventory compatibility results | Infer tenant from input, execute work, recalculate WBE, accept AIR output as truth or activate a protocol |
 | Conversation Core | Persist one timeline and typed candidate-card references | Treat chat completion as readiness or plan agreement |
 | Relationship Workspace | Project phases, items, readiness, plans, commands and reconciliation | Create a second relationship or phase-specific source of truth |
 | PR | Coordinate professional execution and AIR/adapter calls after BP responsibility is durable | Own plan, readiness, billing, public errors or customer relationship authority |
@@ -170,6 +172,17 @@ The exact contract is
 The exact generic contract is
 `architecture/reference/api-specs/conversational-employment-domain-adapter.openapi.yaml`.
 
+### 4.8 BP private compatibility candidate operations
+
+| Operation | Purpose |
+|---|---|
+| `startEmploymentCompatibilityScan` | Start or replay a scan bound to one exact offered-agent inventory and required protocol version |
+| `getEmploymentCompatibilityScan` | Reconcile per-agent findings and aggregate activation/rollback safety without converting partial or unknown evidence into success |
+
+The exact private contract is
+`architecture/reference/api-specs/conversational-employment-compatibility-scan.openapi.yaml`.
+It runs on the existing BP deployable and is never included in the ordinary web-generated client.
+
 ## 5. Canonical Public Schemas
 
 ### 5.1 Aggregate
@@ -186,6 +199,15 @@ The exact generic contract is
 Every source has `owner`, `contractVersion`, `sourceVersion`, `state`, `observedAt`, optional
 `validUntil` and optional customer-safe limitation. Missing owner data is an explicit source entry.
 
+`EmploymentPhaseV1` is the complete common phase projection, not a summary that requires
+agent-specific joins. It carries current goal/plan references, progress, explicitly grouped
+completed/in-progress/pending items, blockers, assumptions, dependencies, milestones, calendar
+commitments, billing/performance owner summaries, phase evidence/freshness, limitations, recommended
+next action, available commands and sources.
+`OPERATIONS` cannot serialize `COMPLETE`; completion remains bounded to an operating cycle, goal,
+milestone, review period or work item. A phase whose evidence is stale, partial, disputed, unknown,
+unavailable or blocked cannot serialize `READY`, `ACTIVE` or `COMPLETE`.
+
 ### 5.2 Item and progress
 
 `EmploymentWorkspaceItemV1` requires identity, phase, label, mandatory flag, state, reason,
@@ -199,7 +221,8 @@ deferred counts. It never contains a model-generated percentage.
 
 `EmploymentPatchProposalV1` is immutable and requires:
 
-- proposal, relationship, contribution, protocol and manifest identities;
+- proposal, relationship, contribution, agent, protocol, manifest and semantic-catalogue identities;
+- the canonical request digest echoed by acceptance and reconciliation;
 - `patchType`: `INDUCTION_CONTEXT`, `GOAL`, `PLAN`, `CALENDAR`, `DEPENDENCY`,
   `OPERATING_CYCLE` or `CORRECTIVE_PROPOSAL`;
 - `operations[]` limited to JSON-Patch-like `ADD`, `REPLACE`, `REMOVE` over an allow-listed semantic
@@ -208,9 +231,28 @@ deferred counts. It never contains a model-generated percentage.
 - `PROPOSED` state only.
 
 BP rejects unknown paths, owner fields, authority fields, evidence states, billing calculations and
-direct readiness mutations.
+direct readiness mutations. PR rejects an AIR receipt or result whose immutable identities or digest
+do not exactly match the accepted request. AIR independently recalculates the canonical request
+digest and rejects a caller-supplied mismatch before accepting proposal responsibility.
 
-### 5.4 Command
+### 5.4 All-agent conformance manifest
+
+`EmploymentInterfaceManifestV1` is a closed exact-version declaration containing:
+
+- immutable approved agent-specification, prompt-policy, tool-profile and Decision Consequence Map
+  references;
+- induction requirement set, mandatory/optional context, dependency types, readiness rules and
+  immutable domain-summary adapter reference;
+- supported goal/milestone types, calendar constraints, material-change rules,
+  performance-measure types and immutable plan-adapter reference;
+- operating-cycle/work-item types, reassessment triggers and immutable outcome, billing and
+  degradation profile references; and
+- one or more conformance scenarios, each bound to evidence, result, protocol and manifest version.
+
+Missing declarations, mutable/unresolved references, absent evidence or a scenario/version mismatch
+is non-conformance. Domain vocabulary remains inside the manifest and adapter payloads.
+
+### 5.5 Command
 
 `EmploymentCommandRequestV1` is a closed discriminator:
 
@@ -225,6 +267,17 @@ direct readiness mutations.
 - `ACKNOWLEDGE_CORRECTIVE_PROPOSAL`
 
 There is intentionally no readiness override, force-success, arbitrary action or destination field.
+
+### 5.6 Compatibility scan
+
+`CompatibilityScanRequestV1` binds the required protocol version and one exact offered-agent
+inventory version/digest. Every inventory row binds agent, declared protocol, manifest and
+domain-adapter versions and digests. `CompatibilityScanResultV1` returns closed per-agent reason
+codes, unresolved references, evidence references, `activationEligible` and `rollbackSafe`.
+
+`activationEligible=true` is valid only when the scan and every exact offered-agent result are
+`PASS`. Partial, stale, unknown, mixed-major, missing-reference or missing-evidence results fail
+closed. The result is eligibility evidence only; it is not Founder activation authority.
 
 ## 6. State Machines
 
@@ -302,6 +355,36 @@ ACCEPTED -> VALIDATING -> DISPATCHED -> COMPLETED
 
 `202` maps only to `ACCEPTED`. `COMPLETED` requires all required owner commits and CE evidence.
 
+### 6.7 Phase projection
+
+```text
+INDUCTION:  NOT_STARTED -> IN_PROGRESS
+            IN_PROGRESS -> READY | BLOCKED | DEGRADED
+            READY | BLOCKED | DEGRADED -> IN_PROGRESS
+PLANNING:   NOT_STARTED -> IN_PROGRESS
+            IN_PROGRESS -> READY | BLOCKED | DEGRADED
+            READY -> IN_PROGRESS | COMPLETE
+            BLOCKED | DEGRADED -> IN_PROGRESS
+OPERATIONS: NOT_STARTED -> READY
+            READY -> ACTIVE | BLOCKED | DEGRADED
+            ACTIVE -> BLOCKED | DEGRADED
+            BLOCKED | DEGRADED -> ACTIVE
+```
+
+`COMPLETE` is prohibited for `OPERATIONS`. Bounded operating cycles, goals, milestones, review
+periods and work items carry their own completion state.
+
+### 6.8 Compatibility scan
+
+```text
+ACCEPTED -> RUNNING -> PASS | FAIL
+                    +-> UNKNOWN -> RUNNING | FAIL
+```
+
+Only `PASS` with every exact offered-agent result `PASS` can set `activationEligible=true`.
+`UNKNOWN`, partial inventory, stale evidence, unresolved references or mixed mandatory major
+versions set it to `false`. No scan state activates the protocol.
+
 ## 7. Interaction Sequences
 
 ### 7.1 Conversation to authoritative induction item
@@ -360,6 +443,19 @@ ACCEPTED -> VALIDATING -> DISPATCHED -> COMPLETED
 4. BP shows accountable owner and limitation.
 5. Retry is legal only after authoritative no-commit or idempotent replay is proven.
 
+### 7.7 All-agent compatibility scan
+
+1. BP freezes the exact offered-agent inventory version and digest.
+2. The caller starts or replays a scan with one idempotency key and required protocol version.
+3. BP resolves each exact manifest and domain adapter, validates every mandatory declaration and
+   immutable profile reference, and binds exact conformance evidence.
+4. Missing, stale, unparsable, unresolved, mixed-major or unknown input records a closed per-agent
+   finding and makes aggregate activation ineligible.
+5. A timeout returns the existing scan identity; the caller reconciles rather than starting a blind
+   replacement scan.
+6. BP reports `activationEligible=true` only when the exact inventory and every offered agent pass.
+7. Founder activation remains a separate protected decision outside this contract.
+
 ## 8. Idempotency, Concurrency And Reconciliation
 
 Every mutation binds:
@@ -382,6 +478,8 @@ authenticated actor
 - Partial owner commit freezes incompatible commands until reconciliation.
 - Reconciliation can report authoritative success, rejection or block; it cannot manufacture
   success or delete prior records.
+- Compatibility-scan identity additionally binds required protocol version and exact offered-agent
+  inventory version/digest. A changed inventory is a new scan, never a replay.
 
 ## 9. Error Contract
 
@@ -402,12 +500,16 @@ Public errors use RFC 9457 and the candidate `EmploymentProblemDetailV1`.
 
 Private errors add owner-safe diagnostics but never expose customer PII, provider secrets, tenant
 existence or internal policy text. BP maps private errors to the stable public vocabulary.
+Compatibility scanning uses closed private reason codes for missing/unparsable/unsupported
+manifests, incomplete declarations, unresolved references, missing/stale/version-mismatched evidence,
+stale adapters, mixed mandatory majors, unavailable owners and unknown results.
 
 ## 10. Generated-Client Boundaries
 
 | Contract | Generated consumer | Prohibited consumer |
 |---|---|---|
 | BP public candidate | Web server/client boundary and approved customer channels | PR, AIR, WBE or adapters as authority shortcuts |
+| BP compatibility candidate | Platform-owned admission/activation tooling through a private BP service client | Browser/mobile, agent runtime, domain adapter or customer channel |
 | PR existing private | BP service client | Browser/mobile |
 | WBE existing private | BP service client | Browser, PR, AIR, domain adapter |
 | WBE eligibility candidate | BP service client | Browser, PR, AIR, domain adapter |
@@ -432,6 +534,10 @@ Every gate, command and reconciliation span/event includes:
 - evidence reference/state, never evidence payload;
 - latency/timeout class and retry disposition.
 
+Compatibility spans additionally bind scan identity, required protocol version, offered-inventory
+version/digest, exact agent/manifest/adapter versions, reason code and evidence state. They never
+label metrics with agent-owned domain payloads or evidence content.
+
 Dashboards and alerts must keep separate:
 
 1. platform availability;
@@ -454,44 +560,73 @@ No metric label contains raw tenant, customer, prompt, credential or plan conten
 - The BP public candidate is not advertised as mandatory until downstream contracts and all-agent
   conformance pass.
 - Rollout order: accepted specialist contracts, frozen schema, implementation WC, generated clients,
-  owner contract tests, agent manifests/scenarios, compatibility scan, shadow projection, Founder
-  activation.
+  owner contract tests, complete agent manifests/scenarios, exact-inventory compatibility scan,
+  shadow projection, Founder activation.
 - Prior mandatory version remains supported through a bounded rollback window.
 - Rollback blocks new candidate-only commands and restores the prior projection; it does not delete
   plans, commands, owner facts or CE evidence.
 - Mixed conformance cannot be activated and no offered agent is grandfathered after activation.
+- Compatibility scan `PASS` is necessary but never sufficient authority for activation.
 
-## 13. Downstream Handoff Constraints
+## 13. Enterprise Fitness Trace
 
-### 13.1 Data Architect
+| Fitness | Owner and contract rule | Executable implementation oracle |
+|---|---|---|
+| CEW-FIT-01 | BP compatibility scan resolves exactly one supported manifest per offered agent | Duplicate, missing or unsupported manifest makes scan `FAIL` |
+| CEW-FIT-02 | BP aggregate binds one relationship, workspace and Conversation Core identity | Contract test rejects duplicate/mismatched relationship identity |
+| CEW-FIT-03 | BP item requires reason, owner, blocked effects, source freshness and commands | Schema/contract test rejects incomplete mandatory pending item |
+| CEW-FIT-04 | BP composes CE, WBE, Decision Space and adapter admission before consequential availability | Journey test proves consequential command absent while any mandatory gate fails |
+| CEW-FIT-05 | AIR returns proposal-only state; BP owns validation/application | Negative test proves AIR output cannot mutate owner state |
+| CEW-FIT-06 | BP immutable plan versions and command replay preserve impact summary | Same key/hash replays; material change produces a new version |
+| CEW-FIT-07 | BP displays exact WBE source version and never recalculates | Projection test compares BP values/version with WBE fixture |
+| CEW-FIT-08 | Adapter performance assessment separates business outcome, agent performance and attribution limits | Contract test rejects assessment without outcome and attribution evidence |
+| CEW-FIT-09 | Closed states preserve unknown, stale, partial, disputed, unavailable and blocked | Negative fixtures reject success/completion coercion |
+| CEW-FIT-10 | BP/Conversation identity is channel-independent | Cross-channel journey reads the same relationship, plan, rights and evidence identities |
+| CEW-FIT-11 | Adapter isolation plus WBE consequence scopes Skill pause | Journey test proves independently bounded Skills continue and affected billing follows WBE |
+| CEW-FIT-12 | BP operations projection always exposes Stop reachability | Every phase/readiness/billing fixture retains `stopReachable=true` |
+| CEW-FIT-13 | BP protected classification triggers reassessment for material categories | Goal/budget/authority/dependency/calendar fixtures relock affected work |
+| CEW-FIT-14 | PR intent/outcome reconciliation precedes retry | Ambiguous provider fixture proves no duplicate consequential dispatch |
+| CEW-FIT-15 | BP compatibility scan fails closed on missing, stale, unparsable or unresolved manifests | Closed reason-code fixtures make aggregate activation ineligible |
+| CEW-FIT-16 | BP scan binds exact evidence for every offered agent; Founder activation remains separate | Partial/unknown/mixed-major inventory can never return `activationEligible=true` |
+| CEW-FIT-17 | One generic BP/adapter contract accepts DMA, Trading and Tutor fixtures | Same schema suite validates all three without platform domain fields |
+| CEW-FIT-18 | BP derives tenant/relationship authority server-side and uses non-enumerating errors | Cross-tenant fixture returns indistinguishable `404` and no existence signal |
+
+Specification-negative cases are catalogued in
+`architecture/reference/api-specs/conversational-employment-negative-fixtures.yaml`. Runtime
+implementation must turn every row above and every negative fixture into owner contract and journey
+tests; schema syntax checks are not substitutes.
+
+## 14. Downstream Handoff Constraints
+
+### 14.1 Data Architect
 
 Must define canonical persistence/projection ownership, provenance, version columns, tenant/RLS
 policy, correction/supersession, retention/erasure split, calendar instant/local-time semantics,
 outbox/reconciliation records, recovery and migration. Must not merge owner ledgers, store secrets in
 workspace records or turn transcript/model output into authority.
 
-### 13.2 Security Architect
+### 14.2 Security Architect
 
 Must define accepted actor/service assertions, assurance by consequence, anti-enumeration,
 anti-bypass, delegated audience/purpose binding, credential-reference minimisation, stale-state and
 cross-tenant abuse tests, Stop independence, and private error/log redaction. Must not add a readiness
 override or let cached/offline state authorize.
 
-### 13.3 AI Architect
+### 14.3 AI Architect
 
 Must define prompt/model policy, semantic path catalogue, confidence interpretation, provenance,
 assumption and unresolved-question rules, injection resistance, minimisation and evaluation. AIR
 must remain proposal-only and cannot directly mutate relationship, readiness, plan, billing,
 authority or evidence state.
 
-### 13.4 Product Office
+### 14.4 Product Office
 
 Must define first-release journey, customer vocabulary, visual hierarchy, accessibility and
 acceptance scenarios while preserving every owner/state distinction. Product may not replace
 conversation with forms, hide pending reasons/owners/blocked effects, collapse stale/partial/unknown
 into success, or alter protected guardrails.
 
-## 14. Implementation-Readiness Test
+## 15. Implementation-Readiness Test
 
 | Question | Result |
 |---|---|
@@ -500,6 +635,8 @@ into success, or alter protected guardrails.
 | Must an implementer invent a state or transition? | NO |
 | Must an implementer invent idempotency or reconciliation? | NO |
 | Must an implementer invent failure, telemetry, rollout or rollback behavior? | NO |
+| Must an implementer invent all-agent manifest, compatibility-scan or activation-eligibility semantics? | NO |
+| Are CEW-FIT-01 through CEW-FIT-18 mapped to owners, contracts and executable future tests? | YES |
 | Are Data/Security/AI/Product-owned decisions explicitly deferred to their offices? | YES |
 | Does this package authorize implementation or activation? | NO |
 

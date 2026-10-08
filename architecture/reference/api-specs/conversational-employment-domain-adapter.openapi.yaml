@@ -230,44 +230,153 @@ components:
         - agentType
         - agentVersion
         - manifestVersion
-        - requirementSetVersion
-        - supportedGoalTypes
-        - milestoneTypes
-        - dependencyTypes
-        - workItemTypes
-        - performanceMeasureTypes
-        - conformanceScenarioRefs
+        - governance
+        - induction
+        - planning
+        - operations
+        - conformanceScenarios
       properties:
         schemaVersion: { $ref: "#/components/schemas/DomainEmploymentSchemaVersion" }
         protocolVersion: { type: string, const: "1.0-candidate" }
         agentType: { type: string, minLength: 1, maxLength: 100 }
         agentVersion: { type: string, minLength: 1, maxLength: 64 }
         manifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        governance: { $ref: "#/components/schemas/EmploymentGovernanceReferencesV1" }
+        induction: { $ref: "#/components/schemas/EmploymentInductionManifestV1" }
+        planning: { $ref: "#/components/schemas/EmploymentPlanningManifestV1" }
+        operations: { $ref: "#/components/schemas/EmploymentOperationsManifestV1" }
+        conformanceScenarios:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/EmploymentConformanceScenarioV1" }
+    ImmutableContractReferenceV1:
+      type: object
+      additionalProperties: false
+      required: [contractRef, contractVersion, contractDigest]
+      properties:
+        contractRef: { type: string, minLength: 1, maxLength: 240 }
+        contractVersion: { type: string, minLength: 1, maxLength: 64 }
+        contractDigest:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+    EmploymentGovernanceReferencesV1:
+      type: object
+      additionalProperties: false
+      required: [agentSpecification, promptPolicy, toolProfile, decisionConsequenceMap]
+      properties:
+        agentSpecification: { $ref: "#/components/schemas/ImmutableContractReferenceV1" }
+        promptPolicy: { $ref: "#/components/schemas/ImmutableContractReferenceV1" }
+        toolProfile: { $ref: "#/components/schemas/ImmutableContractReferenceV1" }
+        decisionConsequenceMap: { $ref: "#/components/schemas/ImmutableContractReferenceV1" }
+    EmploymentInductionManifestV1:
+      type: object
+      additionalProperties: false
+      required:
+        - requirementSetVersion
+        - mandatoryContext
+        - optionalContext
+        - dependencyTypes
+        - readinessRules
+        - domainSummaryAdapter
+      properties:
         requirementSetVersion: { type: string, minLength: 1, maxLength: 64 }
+        mandatoryContext:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1, maxLength: 100 }
+        optionalContext:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 100 }
+        dependencyTypes:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1, maxLength: 100 }
+        readinessRules:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1, maxLength: 200 }
+        domainSummaryAdapter: { $ref: "#/components/schemas/ImmutableContractReferenceV1" }
+    EmploymentPlanningManifestV1:
+      type: object
+      additionalProperties: false
+      required:
+        - supportedGoalTypes
+        - milestoneTypes
+        - calendarConstraints
+        - materialChangeRules
+        - performanceMeasureTypes
+        - planAdapter
+      properties:
         supportedGoalTypes:
           type: array
           minItems: 1
           items: { type: string, minLength: 1, maxLength: 100 }
         milestoneTypes:
           type: array
+          minItems: 1
           items: { type: string, minLength: 1, maxLength: 100 }
-        dependencyTypes:
-          type: array
-          items: { type: string, minLength: 1, maxLength: 100 }
-        workItemTypes:
-          type: array
-          items: { type: string, minLength: 1, maxLength: 100 }
-        performanceMeasureTypes:
-          type: array
-          items: { type: string, minLength: 1, maxLength: 100 }
-        conformanceScenarioRefs:
+        calendarConstraints:
           type: array
           minItems: 1
           items: { type: string, minLength: 1, maxLength: 200 }
+        materialChangeRules:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1, maxLength: 200 }
+        performanceMeasureTypes:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1, maxLength: 100 }
+        planAdapter: { $ref: "#/components/schemas/ImmutableContractReferenceV1" }
+    EmploymentOperationsManifestV1:
+      type: object
+      additionalProperties: false
+      required:
+        - operatingCycleTypes
+        - workItemTypes
+        - reassessmentTriggers
+        - outcomeAdapter
+        - billingProfile
+        - degradationProfile
+      properties:
+        operatingCycleTypes:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1, maxLength: 100 }
+        workItemTypes:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1, maxLength: 100 }
+        reassessmentTriggers:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1, maxLength: 200 }
+        outcomeAdapter: { $ref: "#/components/schemas/ImmutableContractReferenceV1" }
+        billingProfile: { $ref: "#/components/schemas/ImmutableContractReferenceV1" }
+        degradationProfile: { $ref: "#/components/schemas/ImmutableContractReferenceV1" }
         shorterMissedReviewThreshold:
           type: integer
           minimum: 1
           maximum: 2
+    EmploymentConformanceScenarioV1:
+      type: object
+      additionalProperties: false
+      required:
+        - scenarioId
+        - evidenceRef
+        - result
+        - validatedProtocolVersion
+        - validatedManifestVersion
+      properties:
+        scenarioId: { type: string, minLength: 1, maxLength: 160 }
+        evidenceRef: { type: string, minLength: 1, maxLength: 240 }
+        result: { type: string, enum: [PASS] }
+        validatedProtocolVersion: { type: string, const: "1.0-candidate" }
+        validatedManifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        validatedAt: { type: string, format: date-time }
+        limitationRefs:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 200 }
     DomainRequirementV1:
       type: object
       additionalProperties: false

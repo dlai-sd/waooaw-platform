@@ -29,8 +29,8 @@ Founder-accepted WC-113 guardrails verbatim and must not activate the protocol.
 ### 2.1 In scope
 
 - bind the accepted enterprise boundary to existing deployables and existing canonical contracts;
-- define the minimum additive BP public, WBE eligibility, AIR proposal-only and generic
-  domain-adapter wire slices;
+- define the minimum additive BP public, BP private compatibility-scan, WBE eligibility, AIR
+  proposal-only and generic domain-adapter wire slices;
 - bind existing Conversation Core, Relationship Workspace, PR, CE and WBE operations without
   duplicating or transferring their authority;
 - define exact states, transitions, sequence preconditions, idempotency identities, ambiguous-outcome
@@ -101,8 +101,10 @@ No implementation input is required or authorized.
 5. `architecture/reference/api-specs/conversational-employment-ai-runtime.openapi.yaml`
 6. `architecture/reference/api-specs/conversational-employment-wbe.openapi.yaml`
 7. `architecture/reference/api-specs/conversational-employment-domain-adapter.openapi.yaml`
-8. compact routing updates to `SPRINT-REGISTRY.md`
-9. template-compliant PR body and a new PR for Founder review
+8. `architecture/reference/api-specs/conversational-employment-compatibility-scan.openapi.yaml`
+9. `architecture/reference/api-specs/conversational-employment-negative-fixtures.yaml`
+10. compact routing updates to `SPRINT-REGISTRY.md`
+11. template-compliant PR body and a new PR for Founder review
 
 ## 5. Delivery Plan
 
@@ -112,6 +114,7 @@ No implementation input is required or authorized.
 | SA-02 | Operation and schema package | Every cross-boundary call has a versioned operation and closed schema |
 | SA-03 | State and sequence package | Every success, partial, stale, blocked, unknown and failure path is explicit |
 | SA-04 | Reliability and operability package | Idempotency, reconciliation, telemetry, rollout and rollback are deterministic |
+| SA-04A | Universal conformance package | Complete agent manifest, exact-inventory compatibility scan and CEW-FIT trace have closed acceptance oracles |
 | SA-05 | Downstream handoffs | Data, Security, AI and Product constraints identify decisions still owned downstream |
 | SA-06 | Validation and author review | All checks pass and every finding is repaired |
 | SA-07 | Founder handoff | Exact-head PR is open without approval, merge or activation |
@@ -121,8 +124,16 @@ No implementation input is required or authorized.
 WC-114 is complete only when:
 
 - one versioned solution contract covers all nine named boundaries without creating a new deployable;
-- the four additive candidate OpenAPI documents are syntactically valid OpenAPI 3.1 and have no
+- the five additive candidate OpenAPI documents are syntactically valid OpenAPI 3.1 and have no
   unresolved local references;
+- the all-agent manifest carries every mandatory WC-113 induction, planning, operations, profile,
+  adapter and scenario-evidence declaration;
+- the BP private compatibility scan binds one exact offered-agent inventory and fails closed on
+  partial, stale, unknown, mixed-major, unresolved or missing evidence;
+- AIR proposal acceptance and reconciliation retain exact relationship, contribution, agent,
+  manifest, semantic-catalogue and canonical request-digest identity;
+- the common phase projection carries every WC-113 customer-facing field and mechanically prohibits
+  completion of the continuous Operations phase;
 - every reused PR, CE and WBE operation is pinned to an exact existing contract and compatibility
   expectation;
 - all state machines define legal transitions and terminal or reconciliation behavior;
@@ -135,6 +146,9 @@ WC-114 is complete only when:
   reconciliation, provider failure, agent performance and business outcomes;
 - rollback retains append-only plan/evidence history and never rolls back constitutional evidence;
 - all ten protected guardrails are traced without reinterpretation;
+- CEW-FIT-01 through CEW-FIT-18 map to an owner, contract rule and executable implementation oracle;
+- specification-negative fixtures cover manifest incompleteness, missing scenario evidence,
+  fail-open compatibility, lost AIR identity, Operations completion and incomplete phase projection;
 - Data, Security, AI and Product handoff constraints leave no Solution Architecture decision gap;
 - the requirement ledger declares implementation evidence `NOT_APPLICABLE`;
 - no `src/`, `web/`, implementation, activation, self-approval or merge occurs; and
@@ -184,14 +198,23 @@ protocol activation, deployment, PR approval or merge.
 | Partial readiness | WBE `1.1.0` exposes a string consequence but no exact Skill-scoped eligibility shape | Added the bounded WBE eligibility candidate while retaining WBE ownership and the existing command family | RESOLVED |
 | Version compatibility | Candidate BP used a string Decision Space version while the active CE and conversation contracts use an integer | Aligned `expectedDecisionSpaceVersion` to integer `minimum: 1` | RESOLVED |
 | Command ambiguity | Protected commands did not mechanically require their command-specific version, acknowledgement or payload fields | Added conditional schema requirements for deferral, patch application, plan review/acceptance, material change, rescheduling and corrective acknowledgement | RESOLVED |
+| Universal conformance | The manifest omitted readiness, calendar, material-change, adapter/profile, degradation and exact scenario-evidence declarations | Expanded the manifest into closed induction, planning, operations and conformance objects with immutable contract references | RESOLVED |
+| Activation safety | Compatibility scanning had no owner, operation family, result schema or fail-closed activation oracle | Added the private BP compatibility-scan candidate on the existing BP deployable with exact-inventory binding and closed findings | RESOLVED |
+| AIR provenance | Reconciled proposals did not retain relationship, contribution, agent or semantic-catalogue identity | Bound request, receipt and result to the same immutable identities and canonical request digest | RESOLVED |
+| Continuous operations | The generic phase status allowed Operations to serialize as `COMPLETE` | Added phase-specific schema/state constraints and a negative fixture prohibiting Operations completion | RESOLVED |
+| Common phase interface | The phase resource omitted required goal/plan, blocker, dependency, milestone, calendar, evidence, limitation and next-action fields | Expanded the closed phase projection to the complete universal WC-113 shape | RESOLVED |
+| Fitness traceability | The solution package did not map CEW-FIT-01 through CEW-FIT-18 | Added owner/contract/oracle traceability, eleven schema-negative fixtures and one non-enumeration policy fixture | RESOLVED |
+| Repair author review | The first repair pass still flattened completed/in-progress/pending groups and omitted explicit agent/prompt/tool/DCM bindings | Added required grouped phase collections and immutable governance references | RESOLVED |
+| Compatibility proof | The first scan schema did not mechanically require evidence and rollback safety for aggregate eligibility | Made per-agent PASS require exact evidence and aggregate eligibility require complete inventory, all-agent PASS and rollback safety | RESOLVED |
 
 ### 10.2 Review result
 
 | Review lens | Result |
 |---|---|
 | WC-113 §11.1 scope and nine named boundaries | PASS |
+| Universal all-agent conformance and compatibility boundary | PASS |
 | Ten Founder-accepted guardrails preserved without reinterpretation | PASS |
-| Requirements, interfaces, states, sequences and failure modes | PASS |
+| Requirements, five interfaces, states, sequences and failure modes | PASS |
 | Authority, security boundary and privacy-safe errors | PASS |
 | Idempotency, reconciliation, observability and reversibility | PASS |
 | Data/Security/AI/Product handoff closure | PASS |
@@ -203,8 +226,10 @@ protocol activation, deployment, PR approval or merge.
 | Check | Result |
 |---|---|
 | Requirement ledger validation in repository Python Docker runner | PASS - 0 implementation requirements |
-| YAML parse and local `$ref` closure for four candidate OpenAPI 3.1 contracts | PASS - 198 references resolved |
-| Stoplight Spectral `6.15.0` with `--fail-severity warn` | PASS - no warning-or-higher result |
+| YAML parse and local `$ref` closure for five candidate OpenAPI 3.1 contracts | PASS - 252 references resolved |
+| Specification-negative fixture validation | PASS - 11 prohibited schema cases rejected and 1 cross-tenant policy oracle verified |
+| OpenAPI Generator `7.17.0` validation for all five contracts | PASS - no validation issues |
+| Stoplight Spectral `6.15.0` with `--fail-severity warn` | PASS - no warning-or-higher result across all five contracts |
 | Repository architectural fitness functions | PASS - all checks |
 | `git diff --check` | PASS |
 

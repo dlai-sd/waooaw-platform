@@ -134,7 +134,7 @@ components:
         op: { type: string, enum: [ADD, REPLACE, REMOVE] }
         semanticPath:
           type: string
-          pattern: "^/[a-z][a-zA-Z0-9]*(/[a-zA-Z0-9_-]+)*$"
+          pattern: "^/(?!readiness(?:/|$)|billing(?:/|$)|authority(?:/|$)|evidence(?:/|$)|tenant(?:/|$)|relationship(?:/|$))[a-z][a-zA-Z0-9]*(/[a-zA-Z0-9_-]+)*$"
           maxLength: 240
         value:
           description: Candidate value constrained by the separately accepted AI semantic catalogue.
@@ -157,6 +157,7 @@ components:
         - promptPolicyRef
         - patchType
         - contribution
+        - requestDigest
       properties:
         schemaVersion: { $ref: "#/components/schemas/AirEmploymentSchemaVersion" }
         protocolVersion: { type: string, const: "1.0-candidate" }
@@ -172,6 +173,10 @@ components:
         semanticCatalogueVersion: { type: string, minLength: 1, maxLength: 64 }
         promptPolicyRef: { type: string, minLength: 1, maxLength: 200 }
         patchType: { $ref: "#/components/schemas/ProposalPatchType" }
+        requestDigest:
+          type: string
+          description: Canonical SHA-256 digest of the immutable request identity and payload, excluding this field.
+          pattern: "^[a-f0-9]{64}$"
         contribution:
           type: object
           additionalProperties: false
@@ -192,11 +197,30 @@ components:
     EmploymentPatchProposalReceiptV1:
       type: object
       additionalProperties: false
-      required: [schemaVersion, proposalId, state, acceptedAt, reconciliationUri]
+      required:
+        - schemaVersion
+        - proposalId
+        - state
+        - relationshipRef
+        - contributionRef
+        - agentType
+        - agentVersion
+        - manifestVersion
+        - semanticCatalogueVersion
+        - requestDigest
+        - acceptedAt
+        - reconciliationUri
       properties:
         schemaVersion: { $ref: "#/components/schemas/AirEmploymentSchemaVersion" }
         proposalId: { type: string, format: uuid }
         state: { type: string, const: PENDING }
+        relationshipRef: { type: string, minLength: 1, maxLength: 160 }
+        contributionRef: { type: string, minLength: 1, maxLength: 160 }
+        agentType: { type: string, minLength: 1, maxLength: 100 }
+        agentVersion: { type: string, minLength: 1, maxLength: 64 }
+        manifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        semanticCatalogueVersion: { type: string, minLength: 1, maxLength: 64 }
+        requestDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
         acceptedAt: { type: string, format: date-time }
         reconciliationUri: { type: string, format: uri-reference }
     EmploymentPatchProposalV1:
@@ -206,7 +230,13 @@ components:
         - schemaVersion
         - proposalId
         - protocolVersion
+        - relationshipRef
+        - contributionRef
+        - agentType
+        - agentVersion
         - manifestVersion
+        - semanticCatalogueVersion
+        - requestDigest
         - patchType
         - state
         - operations
@@ -220,7 +250,13 @@ components:
         schemaVersion: { $ref: "#/components/schemas/AirEmploymentSchemaVersion" }
         proposalId: { type: string, format: uuid }
         protocolVersion: { type: string, const: "1.0-candidate" }
+        relationshipRef: { type: string, minLength: 1, maxLength: 160 }
+        contributionRef: { type: string, minLength: 1, maxLength: 160 }
+        agentType: { type: string, minLength: 1, maxLength: 100 }
+        agentVersion: { type: string, minLength: 1, maxLength: 64 }
         manifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        semanticCatalogueVersion: { type: string, minLength: 1, maxLength: 64 }
+        requestDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
         patchType: { $ref: "#/components/schemas/ProposalPatchType" }
         state: { $ref: "#/components/schemas/ProposalState" }
         operations:

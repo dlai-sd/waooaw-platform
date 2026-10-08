@@ -338,20 +338,100 @@ components:
     EmploymentPhaseV1:
       type: object
       additionalProperties: false
-      required: [phase, status, progress, items, sources]
+      required:
+        - phase
+        - status
+        - progress
+        - completedItems
+        - inProgressItems
+        - pendingItems
+        - blockers
+        - assumptions
+        - dependencies
+        - milestones
+        - calendarCommitments
+        - evidenceState
+        - sourceFreshness
+        - limitations
+        - availableCommands
+        - sources
       properties:
         phase: { $ref: "#/components/schemas/EmploymentPhaseKind" }
         status:
           type: string
           enum: [NOT_STARTED, IN_PROGRESS, READY, ACTIVE, BLOCKED, DEGRADED, COMPLETE]
         progress: { $ref: "#/components/schemas/RequirementProgressV1" }
-        items:
+        currentGoalRef: { type: string, minLength: 1, maxLength: 128 }
+        currentPlanVersion: { type: string, minLength: 1, maxLength: 64 }
+        completedItems:
           type: array
           items: { $ref: "#/components/schemas/EmploymentWorkspaceItemV1" }
+        inProgressItems:
+          type: array
+          items: { $ref: "#/components/schemas/EmploymentWorkspaceItemV1" }
+        pendingItems:
+          type: array
+          items: { $ref: "#/components/schemas/EmploymentWorkspaceItemV1" }
+        blockers:
+          type: array
+          items: { $ref: "#/components/schemas/EmploymentWorkspaceItemV1" }
+        assumptions:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 500 }
+        dependencies:
+          type: array
+          items: { $ref: "#/components/schemas/EmploymentWorkspaceItemV1" }
+        milestones:
+          type: array
+          items: { $ref: "#/components/schemas/EmploymentWorkspaceItemV1" }
+        calendarCommitments:
+          type: array
+          items: { $ref: "#/components/schemas/CalendarCommitmentV1" }
+        billingSummary: { $ref: "#/components/schemas/EmploymentPhaseOwnerSummaryV1" }
+        performanceSummary: { $ref: "#/components/schemas/EmploymentPhaseOwnerSummaryV1" }
+        evidenceState: { $ref: "#/components/schemas/SourceState" }
+        sourceFreshness: { type: string, format: date-time }
+        limitations:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 500 }
+        recommendedNextAction: { type: string, maxLength: 500 }
+        availableCommands:
+          type: array
+          items: { $ref: "#/components/schemas/AvailableCommandV1" }
         sources:
           type: array
           minItems: 1
           items: { $ref: "#/components/schemas/EmploymentSourceV1" }
+      allOf:
+        - if:
+            properties:
+              phase: { const: OPERATIONS }
+            required: [phase]
+          then:
+            properties:
+              status:
+                type: string
+                enum: [NOT_STARTED, IN_PROGRESS, READY, ACTIVE, BLOCKED, DEGRADED]
+        - if:
+            properties:
+              evidenceState:
+                enum: [STALE, PARTIAL, DISPUTED, UNKNOWN, UNAVAILABLE, BLOCKED]
+            required: [evidenceState]
+          then:
+            properties:
+              status:
+                type: string
+                enum: [NOT_STARTED, IN_PROGRESS, BLOCKED, DEGRADED]
+    EmploymentPhaseOwnerSummaryV1:
+      type: object
+      additionalProperties: false
+      required: [owner, state, label, source]
+      properties:
+        owner: { type: string, enum: [BP, PR, CE, WBE, DOMAIN_ADAPTER] }
+        state: { $ref: "#/components/schemas/SourceState" }
+        label: { type: string, minLength: 1, maxLength: 240 }
+        source: { $ref: "#/components/schemas/EmploymentSourceV1" }
+        limitation: { type: string, maxLength: 500 }
     EmploymentReadinessV1:
       type: object
       additionalProperties: false
