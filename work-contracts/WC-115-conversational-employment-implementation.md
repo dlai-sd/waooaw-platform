@@ -6,7 +6,7 @@
 |---|---|
 | Authoring office | Chief Solution Architect (INST-005) |
 | Implementing office | WAOOAW AI Agent - Platform IT Expert (INST-010) |
-| Status | DRAFT FOR FOUNDER REVIEW - IMPLEMENTATION, PROTOCOL ACTIVATION AND DEPLOYMENT NOT AUTHORIZED |
+| Status | FOUNDER-AUTHORIZED FOR IMPLEMENTATION - PROTOCOL ACTIVATION AND DEPLOYMENT UNAUTHORIZED |
 | Parent authority | Founder instruction dated 2026-10-08; merged WC-114; ADR-051; WC-113 |
 | Controlling solution package | `architecture/reference/components/conversational-employment-solution-contract.md` `1.0.0-candidate.2`, its five candidate OpenAPI contracts and the specialist profile |
 | Delivery unit | One bounded implementation PR after separate current-session Founder implementation authorization |

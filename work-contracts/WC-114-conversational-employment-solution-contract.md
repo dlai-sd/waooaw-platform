@@ -6,7 +6,7 @@
 |---|---|
 | Authoring office | Chief Solution Architect (INST-005) |
 | Assigned by | Founder instruction in the 2026-10-07 continuous working session |
-| Status | SUPERSEDING CANDIDATE 2 - FOUNDER REVIEW PENDING - IMPLEMENTATION AND PROTOCOL ACTIVATION UNAUTHORIZED |
+| Status | FOUNDER-ACCEPTED CANDIDATE 2 - IMPLEMENTATION AUTHORIZED UNDER WC-115 - PROTOCOL ACTIVATION UNAUTHORIZED |
 | Baseline | `origin/main` at `592c7478f51685b702ffecabb0e82b4ad6def52d` |
 | Delivery unit | One bounded, non-implementation Solution Architecture repair package |
 | Parent authority | WC-113 §11.1; ADR-051; Conversational Employment Workspace 1.0-candidate |
