@@ -19,6 +19,12 @@ DEPENDENCY_GATE_PATH = ROOT / "scripts/validation_control/run_dependency_scan_ga
 DOTNET_RUNNER_PATH = ROOT / "architecture/reference/dockerfiles/Dockerfile.test-runner-dotnet"
 STATIC_PREFLIGHT_PATH = ROOT / "scripts/run_static_validation_preflight.sh"
 IDENTITY_TEST_PATH = ROOT / "tests/business-platform.Tests/Identity"
+WC115_GENERATOR_PATH = ROOT / "scripts/generate_wc115_clients.sh"
+AIR_PROPOSAL_OPERATION_PATH = (
+    ROOT
+    / "src/professional-runtime/clients/generated/employment_ai_runtime"
+    / "employment_air_client/models/proposal_operation.py"
+)
 
 
 def load_ci() -> dict[str, object]:
@@ -53,6 +59,19 @@ def test_python_strict_quality_defers_generated_clients_to_contract_gates() -> N
 
     assert '-path "*/clients/generated/*" -prune' in quality_gate
     assert "--strict --explicit-package-bases" in quality_gate
+
+
+def test_wc115_generator_rewrites_air_path_validation_without_codeql_invalid_regex() -> None:
+    generator = WC115_GENERATOR_PATH.read_text(encoding="utf-8")
+    generated_model = AIR_PROPOSAL_OPERATION_PATH.read_text(encoding="utf-8")
+    replacement = (
+        'value.split("/", 2)[1] in {"readiness", "billing", "authority", '
+        '"evidence", "tenant", "relationship"} or not re.fullmatch'
+    )
+
+    assert replacement in generator
+    assert replacement in generated_model
+    assert 'if not re.match(r"^\\/(?!readiness' not in generated_model
 
 
 def test_dotnet_runner_installs_only_required_python_bootstrap_dependencies() -> None:

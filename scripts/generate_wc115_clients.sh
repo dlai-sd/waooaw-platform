@@ -40,7 +40,7 @@ generate \
   --additional-properties=packageName=employment_air_client,packageVersion=1.0.0-candidate.2,generateSourceCodeOnly=true
 
 sed -i \
-  '/if not re.match(r".*readiness/i\        # lgtm[py/regex/unmatchable-dollar] Generated OpenAPI end-of-segment alternatives are intentional.' \
+  '/if not re.match(r".*readiness/c\        if value.split("/", 2)[1] in {"readiness", "billing", "authority", "evidence", "tenant", "relationship"} or not re.fullmatch(r"/[a-z][a-zA-Z0-9]*(?:/[a-zA-Z0-9_-]+)*", value):' \
   "${repo_root}/src/professional-runtime/clients/generated/employment_ai_runtime/employment_air_client/models/proposal_operation.py"
 
 generate \
