@@ -1,5 +1,5 @@
 schema: waooaw.spec-negative-fixtures/v1
-contract_version: 1.0.0-candidate.1
+contract_version: 1.0.0-candidate.2
 cases:
   - id: CEW-NEG-001
     contract: conversational-employment-domain-adapter.openapi.yaml
@@ -210,17 +210,37 @@ cases:
           observedAt: "2026-10-08T00:00:00Z"
   - id: CEW-NEG-010
     contract: conversational-employment-compatibility-scan.openapi.yaml
-    schema_ref: "#/components/schemas/OfferedAgentCandidateV1"
+    operation_id: startEmploymentCompatibilityScan
     expected_invalid_reason: mixed mandatory protocol versions fail closed
-    instance:
-      agentType: example-professional
-      agentVersion: "1.0.0"
-      publicationState: OFFERED
-      declaredProtocolVersion: "2.0"
-      manifestVersion: "1"
-      manifestDigest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-      domainAdapterVersion: "1"
-      domainAdapterDigest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    setup:
+      activation_state: DISABLED
+      required_protocol_version: 1.0-candidate
+      offered_agents:
+        - agentType: example-professional-a
+          agentVersion: "1.0.0"
+          publicationState: OFFERED
+          declaredProtocolVersion: "1.0-candidate"
+          manifestVersion: "1"
+          manifestDigest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          domainAdapterVersion: "1"
+          domainAdapterDigest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        - agentType: example-professional-b
+          agentVersion: "2.0.0"
+          publicationState: OFFERED
+          declaredProtocolVersion: "2.0"
+          manifestVersion: "2"
+          manifestDigest: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+          domainAdapterVersion: "2"
+          domainAdapterDigest: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    expected_result:
+      state: FAIL
+      activationEligible: false
+      reasonCode: MIXED_MANDATORY_PROTOCOL_MAJOR
+      activation_state: DISABLED
+    prohibited_observations:
+      - activation_state_changed
+      - offered_agent_grandfathered
+    expected_side_effect_count: 0
   - id: CEW-NEG-011
     contract: conversational-employment-ai-runtime.openapi.yaml
     schema_ref: "#/components/schemas/ProposalOperation"
@@ -229,6 +249,20 @@ cases:
       op: REPLACE
       semanticPath: /readiness/operations
       value: ACTIVE
+fitness_cases:
+  - id: CEW-FIT-12
+    contract: conversational-employment-business-platform.openapi.yaml
+    operation_id: getEmploymentWorkspace
+    expected_valid_reason: aggregate Stop remains reachable in every degraded projection
+    setups:
+      - { phase: INDUCTION, readiness: BLOCKED, billing: CURRENT }
+      - { phase: PLANNING, readiness: STALE, billing: BLOCKED }
+      - { phase: OPERATIONS, readiness: UNKNOWN, billing: UNAVAILABLE }
+      - { phase: OPERATIONS, readiness: PARTIAL, billing: EXHAUSTED }
+    expected_result:
+      operations:
+        stopReachable: true
+    expected_side_effect_count: 0
 policy_cases:
   - id: CEW-POLICY-001
     contract: conversational-employment-business-platform.openapi.yaml

@@ -1,7 +1,7 @@
 # Conversational Employment Solution Contract
 
-**Status:** Candidate for Founder acceptance - implementation and activation unauthorized
-**Version:** 1.0.0-candidate.1
+**Status:** Superseding candidate for Founder acceptance - implementation and activation unauthorized
+**Version:** 1.0.0-candidate.2
 **Office:** Chief Solution Architect (INST-005)
 **Work Contract:** WC-114
 **Parent:** WC-113 §11.1; ADR-051; Conversational Employment Workspace 1.0-candidate
@@ -19,15 +19,16 @@ semantics. No owner transfers authority and no mandatory protocol version change
 
 | Boundary | Version | Disposition | Authority retained |
 |---|---:|---|---|
-| BP public employment workspace | `1.0.0-candidate.1` | ADD candidate slice | Relationship, phase, plan, readiness, command and public projection truth |
-| BP private compatibility scan | `1.0.0-candidate.1` | ADD candidate slice on existing BP deployable | Exact-inventory compatibility evidence and fail-closed activation eligibility |
+| BP public employment workspace | `1.0.0-candidate.2` | ADD candidate slice | Relationship, phase, plan, readiness, command and public projection truth |
+| BP private compatibility scan | `1.0.0-candidate.2` | ADD candidate slice on existing BP deployable | Exact-inventory compatibility evidence and fail-closed activation eligibility |
 | Conversation Core | BP `1.10.0`; PR `1.3.0` | REUSE | Durable conversation and execution-event projection |
 | Relationship Workspace | BP `1.10.0` | REUSE + compose | Public Plan, Work, Results, Usage/Budget, Rights and command truth |
 | PR internal | PR `1.3.0` | REUSE | Execution facts, controls and reconciliation |
 | CE internal | `constitutional.v1` | REUSE | Constitutional validation and evidence |
-| WBE private | `1.1.0` + eligibility `1.0.0-candidate.1` | REUSE + ADD candidate slice | Commercial projection, Skill eligibility and consequence |
-| AIR proposal-only | `1.0.0-candidate.1` | ADD candidate slice | Inference output only; no relationship authority |
-| Domain adapter private | `1.0.0-candidate.1` | ADD generic candidate slice | Domain meanings, constraints and outcome interpretation |
+| WBE private | `1.1.0` + eligibility `1.0.0-candidate.2` | REUSE + ADD candidate slice | Commercial projection, Skill eligibility and consequence |
+| AIR proposal-only | `1.0.0-candidate.2` | ADD candidate slice | Inference output only; no relationship authority |
+| Domain adapter private | `1.0.0-candidate.2` | ADD generic candidate slice | Domain meanings, constraints and outcome interpretation |
+| Specialist controls | `1.0.0-candidate.2` | ADD digest-bound profile | Data, security, freshness, Stop, AI, product truth and rollback controls |
 | Web | generated BP candidate client | REUSE boundary | Presentation and local drafts only |
 
 ### 1.2 Build-versus-adopt decisions
@@ -42,6 +43,18 @@ semantics. No owner transfers authority and no mandatory protocol version change
 | Domain employment semantics | ADD generic adapter profile | Existing DMA outcome adapter is too narrow for induction and planning |
 | Public employment protocol | ADD BP subresource | Existing workspace needs exact phase/readiness/plan-version semantics |
 | All-agent compatibility scan | ADD BP private operation family | BP already composes admitted agent/version truth; a new deployable would split activation evidence from publication ownership |
+
+### 1.3 Candidate artifact identity
+
+| Artifact | SHA-256 |
+|---|---|
+| Specialist profiles | `41e2147f5d4c6e95b3f3bb714ea43ecedbfb4deb2cebd535d236b90e8a87455f` |
+| BP public candidate | `aa9f3992cb35036c9757c507860039d24fad161a0e79e38b8ad898b12b0deefa` |
+| AIR candidate | `e017188199cbde4aada13ff10b786cef8628991e6bc89c04867862cf9b0801f3` |
+| WBE candidate | `18963f8fba0015c68c88fdbdc6b1ae947b9a9eb63b7a3da39bb51cd6e8d9d00e` |
+| Domain-adapter candidate | `903285269df0d074e6f2e3da7fbe792ae1c98fade9f4952327913bf9bca3830d` |
+| Compatibility-scan candidate | `29203e4771d8369fdc83698435ec9f88d366ae77e24f9c783a19374163a77f84` |
+| Fitness/negative fixtures | `4322b1749481bf67af9fab738ac3113111ecd790ee6c3d96fee0dfb3f71a4978` |
 
 ## 2. Protected Policy Trace
 
@@ -158,6 +171,11 @@ the `1.1.0` projection or command family.
 The exact contract is
 `architecture/reference/api-specs/conversational-employment-ai-runtime.openapi.yaml`.
 
+AIR accepts only PR workload identity. The semantic catalogue, prompt policy and model policy are
+immutable `{ref, version, digest}` contracts, and callers cannot supply path prefixes. Results are a
+closed union: `PENDING`, `PROPOSED`, `UNREPRESENTABLE` or `FAILED`; only `PROPOSED` contains
+operations, and material uncertainty produces an unresolved question with no operation.
+
 ### 4.7 Domain-adapter candidate operations
 
 | Operation | Purpose |
@@ -267,6 +285,17 @@ is non-conformance. Domain vocabulary remains inside the manifest and adapter pa
 - `ACKNOWLEDGE_CORRECTIVE_PROPOSAL`
 
 There is intentionally no readiness override, force-success, arbitrary action or destination field.
+Every discriminator has its own closed schema and only its applicable expected versions:
+
+- induction confirmation/deferral and patch application bind workspace and manifest;
+- plan review/reassessment additionally bind the plan version;
+- plan acceptance/material-change acknowledgement additionally bind Decision Space and WBE source;
+- rescheduling binds the complete repaired calendar commitment and active plan version; and
+- corrective-proposal acknowledgement binds the exact workspace and manifest.
+
+Unknown, extra or missing command fields reject before any owner call. An identical terminal replay
+returns `EmploymentCommandOutcomeV1`, including all owner steps, evidence references and resulting
+versions; it never degrades to the original transport receipt.
 
 ### 5.6 Compatibility scan
 
@@ -565,6 +594,9 @@ No metric label contains raw tenant, customer, prompt, credential or plan conten
 - Prior mandatory version remains supported through a bounded rollback window.
 - Rollback blocks new candidate-only commands and restores the prior projection; it does not delete
   plans, commands, owner facts or CE evidence.
+- The BP-owned `conversational-employment-candidate-v1` capability gate remains disabled by default.
+  Rollback advances a monotonic epoch, fences new candidate commands, quarantines delayed work and
+  reconciles pre-fence commands without duplicate owner action.
 - Mixed conformance cannot be activated and no offered agent is grandfathered after activation.
 - Compatibility scan `PASS` is necessary but never sufficient authority for activation.
 
@@ -598,33 +630,21 @@ tests; schema syntax checks are not substitutes.
 
 ## 14. Downstream Handoff Constraints
 
-### 14.1 Data Architect
+The exact downstream controls are closed in
+`architecture/reference/api-specs/conversational-employment-specialist-profiles.yaml`
+`1.0.0-candidate.2`. That machine-readable profile is normative for:
 
-Must define canonical persistence/projection ownership, provenance, version columns, tenant/RLS
-policy, correction/supersession, retention/erasure split, calendar instant/local-time semantics,
-outbox/reconciliation records, recovery and migration. Must not merge owner ledgers, store secrets in
-workspace records or turn transcript/model output into authority.
+- owner-by-record persistence, forced RLS, immutable correction, outbox/inbox and retention;
+- public and workload assertions, assurance, source freshness and privacy-safe denial;
+- Emergency Stop route, actors, independence, latching and the existing 250 ms P99 floor;
+- AIR canonicalization, trusted semantic catalogue, provenance, closed result states, minimisation
+  and the immutable evaluation corpus;
+- truthful customer state language and accessibility; and
+- the default-off capability gate, rollback epoch, fencing and reconciliation.
 
-### 14.2 Security Architect
-
-Must define accepted actor/service assertions, assurance by consequence, anti-enumeration,
-anti-bypass, delegated audience/purpose binding, credential-reference minimisation, stale-state and
-cross-tenant abuse tests, Stop independence, and private error/log redaction. Must not add a readiness
-override or let cached/offline state authorize.
-
-### 14.3 AI Architect
-
-Must define prompt/model policy, semantic path catalogue, confidence interpretation, provenance,
-assumption and unresolved-question rules, injection resistance, minimisation and evaluation. AIR
-must remain proposal-only and cannot directly mutate relationship, readiness, plan, billing,
-authority or evidence state.
-
-### 14.4 Product Office
-
-Must define first-release journey, customer vocabulary, visual hierarchy, accessibility and
-acceptance scenarios while preserving every owner/state distinction. Product may not replace
-conversation with forms, hide pending reasons/owners/blocked effects, collapse stale/partial/unknown
-into success, or alter protected guardrails.
+The profile selects no new deployable or owner. It reuses Keycloak, ADR-046 workload identity, the
+existing PR Emergency Stop contract, BP composition, owner-local persistence and the current
+capability-gate mechanism. Implementation may not substitute a different value or silent default.
 
 ## 15. Implementation-Readiness Test
 
@@ -637,7 +657,7 @@ into success, or alter protected guardrails.
 | Must an implementer invent failure, telemetry, rollout or rollback behavior? | NO |
 | Must an implementer invent all-agent manifest, compatibility-scan or activation-eligibility semantics? | NO |
 | Are CEW-FIT-01 through CEW-FIT-18 mapped to owners, contracts and executable future tests? | YES |
-| Are Data/Security/AI/Product-owned decisions explicitly deferred to their offices? | YES |
+| Are Data/Security/AI/Product controls closed without implementation discretion? | YES - specialist profile `1.0.0-candidate.2` |
 | Does this package authorize implementation or activation? | NO |
 
 Implementation remains blocked until the downstream contracts are accepted and a later bounded Work

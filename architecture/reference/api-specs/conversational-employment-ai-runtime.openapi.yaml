@@ -1,7 +1,7 @@
 openapi: "3.1.0"
 info:
   title: WAOOAW Conversational Employment AI Runtime Candidate API
-  version: "1.0.0-candidate.1"
+  version: "1.0.0-candidate.2"
   contact:
     name: WAOOAW Architecture
   description: |
@@ -126,6 +126,14 @@ components:
     ProposalState:
       type: string
       enum: [PENDING, PROPOSED, UNREPRESENTABLE, FAILED]
+    ImmutableContractReferenceV1:
+      type: object
+      additionalProperties: false
+      required: [ref, version, digest]
+      properties:
+        ref: { type: string, minLength: 1, maxLength: 200 }
+        version: { type: string, minLength: 1, maxLength: 64 }
+        digest: { type: string, pattern: "^[a-f0-9]{64}$" }
     ProposalOperation:
       type: object
       additionalProperties: false
@@ -153,8 +161,9 @@ components:
         - agentType
         - agentVersion
         - manifestVersion
-        - semanticCatalogueVersion
-        - promptPolicyRef
+        - semanticCatalogue
+        - promptPolicy
+        - modelPolicy
         - patchType
         - contribution
         - requestDigest
@@ -170,8 +179,9 @@ components:
         agentType: { type: string, minLength: 1, maxLength: 100 }
         agentVersion: { type: string, minLength: 1, maxLength: 64 }
         manifestVersion: { type: string, minLength: 1, maxLength: 64 }
-        semanticCatalogueVersion: { type: string, minLength: 1, maxLength: 64 }
-        promptPolicyRef: { type: string, minLength: 1, maxLength: 200 }
+        semanticCatalogue: { $ref: "#/components/schemas/ImmutableContractReferenceV1" }
+        promptPolicy: { $ref: "#/components/schemas/ImmutableContractReferenceV1" }
+        modelPolicy: { $ref: "#/components/schemas/ImmutableContractReferenceV1" }
         patchType: { $ref: "#/components/schemas/ProposalPatchType" }
         requestDigest:
           type: string
@@ -190,10 +200,6 @@ components:
           properties:
             currentPlanVersion: { type: string, maxLength: 64 }
             requirementSetVersion: { type: string, maxLength: 64 }
-            allowedSemanticPathPrefixes:
-              type: array
-              minItems: 1
-              items: { type: string, minLength: 1, maxLength: 120 }
     EmploymentPatchProposalReceiptV1:
       type: object
       additionalProperties: false
@@ -206,7 +212,11 @@ components:
         - agentType
         - agentVersion
         - manifestVersion
-        - semanticCatalogueVersion
+        - protocolVersion
+        - patchType
+        - semanticCatalogue
+        - promptPolicy
+        - modelPolicy
         - requestDigest
         - acceptedAt
         - reconciliationUri
@@ -214,12 +224,16 @@ components:
         schemaVersion: { $ref: "#/components/schemas/AirEmploymentSchemaVersion" }
         proposalId: { type: string, format: uuid }
         state: { type: string, const: PENDING }
+        protocolVersion: { type: string, const: "1.0-candidate" }
         relationshipRef: { type: string, minLength: 1, maxLength: 160 }
         contributionRef: { type: string, minLength: 1, maxLength: 160 }
         agentType: { type: string, minLength: 1, maxLength: 100 }
         agentVersion: { type: string, minLength: 1, maxLength: 64 }
         manifestVersion: { type: string, minLength: 1, maxLength: 64 }
-        semanticCatalogueVersion: { type: string, minLength: 1, maxLength: 64 }
+        patchType: { $ref: "#/components/schemas/ProposalPatchType" }
+        semanticCatalogue: { $ref: "#/components/schemas/ImmutableContractReferenceV1" }
+        promptPolicy: { $ref: "#/components/schemas/ImmutableContractReferenceV1" }
+        modelPolicy: { $ref: "#/components/schemas/ImmutableContractReferenceV1" }
         requestDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
         acceptedAt: { type: string, format: date-time }
         reconciliationUri: { type: string, format: uri-reference }
@@ -235,7 +249,7 @@ components:
         - agentType
         - agentVersion
         - manifestVersion
-        - semanticCatalogueVersion
+        - semanticCatalogue
         - requestDigest
         - patchType
         - state
@@ -244,7 +258,9 @@ components:
         - assumptions
         - unresolvedQuestions
         - sourceRefs
-        - promptPolicyRef
+        - promptPolicy
+        - modelPolicy
+        - modelDecisionRef
         - producedAt
       properties:
         schemaVersion: { $ref: "#/components/schemas/AirEmploymentSchemaVersion" }
@@ -255,7 +271,7 @@ components:
         agentType: { type: string, minLength: 1, maxLength: 100 }
         agentVersion: { type: string, minLength: 1, maxLength: 64 }
         manifestVersion: { type: string, minLength: 1, maxLength: 64 }
-        semanticCatalogueVersion: { type: string, minLength: 1, maxLength: 64 }
+        semanticCatalogue: { $ref: "#/components/schemas/ImmutableContractReferenceV1" }
         requestDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
         patchType: { $ref: "#/components/schemas/ProposalPatchType" }
         state: { $ref: "#/components/schemas/ProposalState" }
@@ -273,12 +289,44 @@ components:
         sourceRefs:
           type: array
           items: { type: string, minLength: 1, maxLength: 200 }
-        promptPolicyRef: { type: string, minLength: 1, maxLength: 200 }
+        promptPolicy: { $ref: "#/components/schemas/ImmutableContractReferenceV1" }
+        modelPolicy: { $ref: "#/components/schemas/ImmutableContractReferenceV1" }
         modelDecisionRef:
           type: string
           description: Privacy-minimised provider-selection evidence reference.
+          minLength: 1
           maxLength: 200
+        reasonCode:
+          type: string
+          enum: [SEMANTIC_PATH_UNREPRESENTABLE, MATERIAL_UNCERTAINTY, POLICY_REJECTED, MODEL_UNAVAILABLE, INTERNAL_FAILURE]
         producedAt: { type: string, format: date-time }
+      allOf:
+        - if:
+            properties:
+              state: { const: PROPOSED }
+          then:
+            properties:
+              operations: { minItems: 1 }
+          else:
+            properties:
+              operations: { maxItems: 0 }
+        - if:
+            properties:
+              state: { enum: [UNREPRESENTABLE, FAILED] }
+          then:
+            required: [reasonCode]
+        - if:
+            properties:
+              unresolvedQuestions: { minItems: 1 }
+          then:
+            properties:
+              operations: { maxItems: 0 }
+        - if:
+            properties:
+              state: { const: PROPOSED }
+          then:
+            not:
+              required: [reasonCode]
     AirEmploymentProblemV1:
       type: object
       additionalProperties: false

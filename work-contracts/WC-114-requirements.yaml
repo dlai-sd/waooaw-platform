@@ -1,8 +1,8 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-114
 contract_path: work-contracts/WC-114-conversational-employment-solution-contract.md
-contract_digest: 529b2b65f616872f00ea02407a5d18e6c36c5670018d9de66b367e0952189509
-contract_status: SOLUTION_PACKAGE_PASS_FOUNDER_REVIEW_PENDING
+contract_digest: 5cea8c2b8e8456246cc47f12432ff1a5879d7f28c103a35b5e14cde02b7eae31
+contract_status: SUPERSEDING_CANDIDATE_2_FOUNDER_REVIEW_PENDING
 implementation_scope: false
 result: NOT_APPLICABLE
 not_applicable_reason: WC-114 is an architecture-only contract that explicitly authorizes no implementation.

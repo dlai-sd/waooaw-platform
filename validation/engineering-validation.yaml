@@ -134,7 +134,7 @@ gates:
     cost_class: FOCUSED
     resources: *typescript_resources
     artifacts: {native: [test-results/web-test-results.json, test-results/web-test.log, test-results/coverage/**], common: test-results/validation/test-web.json}
-  spec-lint: {<<: *python_static, gate_id: spec-lint, runner_id: full, command_id: spec-lint, evidence_class: contract, resources: {cpus: 2, memory_mb: 6144, disk_mb: 2048, timeout_seconds: 900, docker_socket: true, socket_classification: nested-docker, concurrency_class: full}}
+  spec-lint: {<<: *python_static, gate_id: spec-lint, runner_id: full, command_id: spec-lint, evidence_class: contract, resources: {cpus: 2, memory_mb: 6144, disk_mb: 2048, timeout_seconds: 900, docker_socket: true, socket_classification: nested-docker, concurrency_class: full}, environment: [WAOOAW_CHANGED_FILES_FILE]}
   sast: &security_gate {<<: *python_static, gate_id: sast, command_id: sast-python, evidence_class: security, artifacts: {native: [test-results/**/*.json], common: test-results/validation/security.json}}
   sast:csharp: {<<: *security_gate, gate_id: "sast:csharp", runner_id: dotnet, command_id: sast-csharp, resources: *dotnet_resources}
   sast:python: {<<: *security_gate, gate_id: "sast:python", command_id: sast-python}
@@ -329,6 +329,10 @@ global_triggers:
   - infrastructure/environment-readiness/**
   - work-contracts/**
 scoped_paths:
+  openapi-contracts:
+    paths:
+      - architecture/reference/api-specs/*.openapi.yaml
+    gates: [spec-lint]
   deployment-workflows:
     paths:
       - .github/workflows/deploy.yaml

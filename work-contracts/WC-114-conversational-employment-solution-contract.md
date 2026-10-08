@@ -6,9 +6,9 @@
 |---|---|
 | Authoring office | Chief Solution Architect (INST-005) |
 | Assigned by | Founder instruction in the 2026-10-07 continuous working session |
-| Status | SOLUTION PACKAGE PASS - FOUNDER REVIEW PENDING - IMPLEMENTATION AND PROTOCOL ACTIVATION UNAUTHORIZED |
-| Baseline | `origin/main` at `622c152404bf731afa6c6d61ea02d96558bcd749`, plus process-control repair `5a895df56dfaf77f90471fb07b566320746b4c80` |
-| Delivery unit | One bounded, non-implementation Solution Architecture package |
+| Status | SUPERSEDING CANDIDATE 2 - FOUNDER REVIEW PENDING - IMPLEMENTATION AND PROTOCOL ACTIVATION UNAUTHORIZED |
+| Baseline | `origin/main` at `592c7478f51685b702ffecabb0e82b4ad6def52d` |
+| Delivery unit | One bounded, non-implementation Solution Architecture repair package |
 | Parent authority | WC-113 §11.1; ADR-051; Conversational Employment Workspace 1.0-candidate |
 | Constitutional basis | C-001, C-003, C-005, C-007, C-023, C-026, C-030, C-034-C-039, C-041-C-044, C-048-C-049, C-051, C-059, C-063, C-070, C-079, C-088 and C-094 |
 | Implementation scope | None |
@@ -19,10 +19,11 @@ Produce the concrete, versioned solution contract required by WC-113 §11.1 for 
 Platform, Conversation Core, Relationship Workspace, Professional Runtime, Constitutional Engine,
 WBE, AI Runtime, web and domain-adapter boundaries.
 
-The package must define operation families, wire schemas, state machines, interaction sequences,
+The superseding package must define operation families, wire schemas, state machines, interaction sequences,
 idempotency, reconciliation, errors, generated-client boundaries, observability, rollback and the
-constraints inherited by the Data, Security, AI and Product handoffs. It must preserve the ten
-Founder-accepted WC-113 guardrails verbatim and must not activate the protocol.
+closed Data, Security, AI and Product controls required by WC-115. It must preserve the ten
+Founder-accepted WC-113 guardrails verbatim, repair the six WC-115 Section 7.5 findings and must not
+activate the protocol.
 
 ## 2. Authority And Scope
 
@@ -39,6 +40,8 @@ Founder-accepted WC-113 guardrails verbatim and must not activate the protocol.
 - define compatibility, rollout and rollback constraints without changing a mandatory protocol
   version;
 - define implementation-ready acceptance oracles and downstream handoff constraints; and
+- define one machine-readable specialist profile from the Founder-directed privacy-first,
+  fail-closed, data-minimised, Stop-preserving and default-off boundary;
 - perform author review, repository validation, exact-head PR preparation and Founder handoff.
 
 ### 2.2 Out of scope
@@ -46,8 +49,7 @@ Founder-accepted WC-113 guardrails verbatim and must not activate the protocol.
 - any change under `src/` or `web/`;
 - runnable implementation, generated clients, generated server stubs, migrations, tests, workflows,
   deployment, cloud resources, providers, secrets, DNS, customer traffic or production state;
-- a new deployable service, database schema, prompt body, model policy, retention period, security
-  control value, product label or visual design;
+- a new deployable service, database schema, prompt body, model policy body or visual design;
 - amendment of ADR-051, WC-113 policy, the C-034 lifecycle or any business capability;
 - creation of an Institutional Backlog item;
 - Agent Base Specification or Platform-Agent Contract version activation;
@@ -103,8 +105,9 @@ No implementation input is required or authorized.
 7. `architecture/reference/api-specs/conversational-employment-domain-adapter.openapi.yaml`
 8. `architecture/reference/api-specs/conversational-employment-compatibility-scan.openapi.yaml`
 9. `architecture/reference/api-specs/conversational-employment-negative-fixtures.yaml`
-10. compact routing updates to `SPRINT-REGISTRY.md`
-11. template-compliant PR body and a new PR for Founder review
+10. `architecture/reference/api-specs/conversational-employment-specialist-profiles.yaml`
+11. compact routing updates to `SPRINT-REGISTRY.md`
+12. template-compliant PR body and a new PR for Founder review
 
 ## 5. Delivery Plan
 
@@ -150,6 +153,10 @@ WC-114 is complete only when:
 - specification-negative fixtures cover manifest incompleteness, missing scenario evidence,
   fail-open compatibility, lost AIR identity, Operations completion and incomplete phase projection;
 - Data, Security, AI and Product handoff constraints leave no Solution Architecture decision gap;
+- the specialist profile fixes every value required by WC-115 R077-R108 and remains disabled by
+  default without deployment or customer activation authority;
+- calendar, authentication, command/replay, AIR provenance/state, Stop fitness and mixed-major
+  fixtures contain the six WC-115 Section 7.5 repairs;
 - the requirement ledger declares implementation evidence `NOT_APPLICABLE`;
 - no `src/`, `web/`, implementation, activation, self-approval or merge occurs; and
 - author review and repository prechecks pass on the exact pushed commit before the PR is opened.
@@ -206,6 +213,14 @@ protocol activation, deployment, PR approval or merge.
 | Fitness traceability | The solution package did not map CEW-FIT-01 through CEW-FIT-18 | Added owner/contract/oracle traceability, eleven schema-negative fixtures and one non-enumeration policy fixture | RESOLVED |
 | Repair author review | The first repair pass still flattened completed/in-progress/pending groups and omitted explicit agent/prompt/tool/DCM bindings | Added required grouped phase collections and immutable governance references | RESOLVED |
 | Compatibility proof | The first scan schema did not mechanically require evidence and rollback safety for aggregate eligibility | Made per-agent PASS require exact evidence and aggregate eligibility require complete inventory, all-agent PASS and rollback safety | RESOLVED |
+| WC-115 specialist closure | The implementation contract required exact data, security, freshness, Stop, AI, product-truth and rollback values that candidate.1 deferred | Added one machine-readable, privacy-first, fail-closed specialist profile bound to existing owners and constitutional controls | RESOLVED |
+| Calendar correctness | Candidate.1 could not prove local/instant consistency or daylight-saving ambiguity | Required IANA zone, local value, UTC instant, offset, fold, tzdb version and versioned tolerance policy | RESOLVED |
+| Authentication ownership | Candidate.1 forced unauthenticated requests into the employment error vocabulary | Reused the canonical BP `IdentityUnauthorized` response by reference | RESOLVED |
+| Command and replay closure | Conditional fields still allowed non-applicable command fields and terminal replay returned only a receipt | Replaced the command with nine closed discriminated schemas and made terminal replay return complete owner/evidence/version outcome | RESOLVED |
+| AIR control closure | Candidate.1 allowed caller-selected path prefixes and incomplete prompt/model provenance | Added immutable catalogue/prompt/model references with digests and a closed state-dependent result union | RESOLVED |
+| Stop fitness | CEW-FIT-12 described a rule but did not provide degraded aggregate fixtures | Added four aggregate workspace setups requiring `operations.stopReachable=true` | RESOLVED |
+| Mixed-major safety | CEW-NEG-010 validated one agent schema rather than aggregate behavior | Added two offered agents with different mandatory majors, aggregate failure, zero activation mutation and zero side effects | RESOLVED |
+| Stop authority | The first specialist profile draft added employer and Founder actors beyond the existing PR contract | Restricted the profile to the existing customer actor; any actor expansion requires a separate upstream decision | RESOLVED |
 
 ### 10.2 Review result
 
@@ -217,7 +232,7 @@ protocol activation, deployment, PR approval or merge.
 | Requirements, five interfaces, states, sequences and failure modes | PASS |
 | Authority, security boundary and privacy-safe errors | PASS |
 | Idempotency, reconciliation, observability and reversibility | PASS |
-| Data/Security/AI/Product handoff closure | PASS |
+| Data/Security/AI/Product profile closure | PASS |
 | No implementation, activation, `src/` or `web/` change | PASS |
 | Implementation-readiness test | PASS |
 
@@ -225,13 +240,15 @@ protocol activation, deployment, PR approval or merge.
 
 | Check | Result |
 |---|---|
-| Requirement ledger validation in repository Python Docker runner | PASS - 0 implementation requirements |
-| YAML parse and local `$ref` closure for five candidate OpenAPI 3.1 contracts | PASS - 252 references resolved |
-| Specification-negative fixture validation | PASS - 11 prohibited schema cases rejected and 1 cross-tenant policy oracle verified |
-| OpenAPI Generator `7.17.0` validation for all five contracts | PASS - no validation issues |
-| Stoplight Spectral `6.15.0` with `--fail-severity warn` | PASS - no warning-or-higher result across all five contracts |
-| Repository architectural fitness functions | PASS - all checks |
+| Requirement ledger validation in repository Docker runner | PASS - WC-114 and WC-115 digests valid |
+| YAML parse and `$ref` closure for candidate OpenAPI 3.1 contracts and specialist profile | PASS - five APIs and profile |
+| Closed command, calendar, authentication and AIR contract assertions | PASS |
+| CEW-FIT-12 and CEW-NEG-010 fixture validation | PASS |
+| Catalog-controlled repository `spec-lint` | PASS - canonical inventory plus all five candidate contracts; 67 pre-existing canonical warnings, zero errors |
+| OpenAPI Generator `7.17.0` validation for all five candidate contracts | PASS - catalog-owned nested-Docker runner |
+| Candidate-specific Stoplight Spectral `6.15.0` validation | PASS - catalog-owned nested-Docker runner |
 | `git diff --check` | PASS |
 
-Package author review is **PASS**. Exact pushed-head PR author review remains separately required by
-the repository PR preparation control.
+Package author review is **PASS**. CB-013 is resolved by the catalogued changed-contract validation
+route and successful candidate execution. Exact pushed-head PR author review remains separately
+required by the repository PR preparation control.

@@ -1,0 +1,261 @@
+schema: waooaw.conversational-employment-specialist-profiles/v1
+version: 1.0.0-candidate.2
+status: PROPOSED_FOR_FOUNDER_ACCEPTANCE
+work_contract: WC-114
+implementation_contract: WC-115
+founder_direction:
+  recorded_at: "2026-10-08"
+  principles:
+    - PRIVACY_FIRST
+    - FAIL_CLOSED
+    - CUSTOMER_DATA_MINIMIZED
+    - EMERGENCY_STOP_PRESERVED
+    - CANDIDATE_DISABLED_BY_DEFAULT
+    - NO_DEPLOYMENT_OR_CUSTOMER_ACTIVATION
+  material_consequence: >-
+    Legally required evidence is retained while customer-removable content is erased.
+  residual_risk: >-
+    Implementation and Docker qualification remain pending.
+
+authority_boundary:
+  protocol_activation: PROHIBITED
+  deployment: PROHIBITED
+  customer_traffic: PROHIBITED
+  default_enabled: false
+
+data_profile:
+  owner_records:
+    - owner: BP
+      records: [workspace, phase, readiness, plan, command, compatibility_scan, projection]
+      tenant_key: [tenant_id, relationship_id]
+    - owner: PR
+      records: [execution_intent, execution_outcome, provider_correlation, reconciliation]
+      tenant_key: [tenant_id, relationship_id]
+    - owner: AIR
+      records: [proposal_identity, proposal_receipt, proposal_result, transient_content_reference]
+      tenant_key: [tenant_id, relationship_ref]
+    - owner: WBE
+      records: [commercial_eligibility, billing_consequence]
+      tenant_key: [tenant_id, relationship_id]
+    - owner: DOMAIN_ADAPTER
+      records: [manifest, induction_requirements, domain_assessment]
+      tenant_key: [tenant_id, agent_type, agent_version]
+    - owner: CE
+      records: [constitutional_evidence]
+      tenant_key: [tenant_id, evidence_id]
+  tenant_controls:
+    row_level_security: FORCE
+    context: TRANSACTION_LOCAL_SERVER_DERIVED
+    tenant_complete_foreign_keys: true
+    runtime_bypass_role: false
+    worker_bypass_role: false
+    migration_role: BOUNDED_SCHEMA_ONLY
+  immutability:
+    correction: APPEND_ONLY_SUPERSESSION
+    concurrency: COMPARE_AND_SWAP
+    cycles_prohibited: true
+    update_or_delete_history: false
+  delivery:
+    producer_commit: ATOMIC_WITH_OUTBOX
+    consumer_commit: ATOMIC_WITH_INBOX_EFFECT
+    ordering_key: [tenant_id, relationship_id, owner, aggregate_id]
+    duplicate_handling: IDEMPOTENT
+    poison_disposition: BLOCKED
+    silent_discard: false
+  retention:
+    constitutional_evidence: PERMANENT
+    plans_commands_owner_facts: RELATIONSHIP_CLOSURE_PLUS_7_YEARS
+    customer_projection_content: RELATIONSHIP_CLOSURE_PLUS_90_DAYS
+    idempotency_and_reconciliation: TERMINAL_OUTCOME_PLUS_30_DAYS
+    air_transient_content:
+      delete_after_terminal: PT1H
+      absolute_maximum: PT24H
+      encrypted: true
+    legal_hold: SUSPEND_ERASURE_WITHOUT_REWRITE
+    backups: INHERIT_SOURCE_EXPIRY
+    erasure_verification: REQUIRED
+  calendar:
+    required: [utc_instant, iana_time_zone, local_date_time, utc_offset, fold, tzdb_version, tolerance_policy]
+    inconsistent_representation: REJECT
+    ambiguous_without_fold: REJECT
+
+security_profile:
+  public_identity:
+    issuer: KEYCLOAK_CUSTOMER_REALM
+    audience: waooaw-bp
+    tenant_resolution: SERVER_DERIVED
+    relationship_resolution: SERVER_DERIVED
+  workload_identity:
+    transport: MTLS_PLUS_SIGNED_DELEGATED_ENVELOPE
+    envelope_max_age: PT60S
+    clock_skew: PT60S
+    replay_control: UNIQUE_ENVELOPE_ID
+    reusable_customer_credential: false
+    operations:
+      - caller: PR
+        audience: waooaw-air
+        purpose: EMPLOYMENT_PATCH_PROPOSAL
+      - caller: BP
+        audience: waooaw-wbe
+        purpose: EMPLOYMENT_COMMERCIAL_ELIGIBILITY
+      - caller: BP
+        audience: waooaw-domain-adapter
+        purpose: EMPLOYMENT_VALIDATION_AND_PROJECTION
+      - caller: PR
+        audience: waooaw-domain-adapter
+        purpose: ADMITTED_EXECUTION_SEMANTICS
+      - caller: PLATFORM_ADMISSION
+        audience: waooaw-bp
+        purpose: EMPLOYMENT_COMPATIBILITY_SCAN
+  assurance:
+    - operation_class: READ_ONLY_RELATIONSHIP
+      minimum: AAL2_ACCOUNT
+      max_authentication_age: PT15M
+      live_revocation_check: true
+      reauthentication: false
+    - operation_class: PLAN_OR_INDUCTION_CONFIRMATION
+      minimum: AAL3_FRESH
+      max_authentication_age: PT5M
+      live_revocation_check: true
+      reauthentication: true
+    - operation_class: MATERIAL_CHANGE_OR_CONSEQUENTIAL_WORK
+      minimum: AAL3_FRESH
+      max_authentication_age: PT5M
+      live_revocation_check: true
+      reauthentication: true
+    - operation_class: PROTOCOL_OR_ROLLBACK_CONTROL
+      minimum: AAL3_FRESH
+      max_authentication_age: PT5M
+      live_revocation_check: true
+      reauthentication: true
+  denial:
+    public_authentication: IDENTITY_SESSION_REQUIRED
+    public_assurance: EMPLOYMENT_ASSURANCE_REQUIRED
+    private_authentication: SERVICE_AUTHENTICATION_FAILED
+    private_authorization: SERVICE_AUTHORIZATION_DENIED
+    owner_call_on_denial: false
+
+freshness_profile:
+  clock_skew: PT60S
+  sources:
+    - source: CE
+      maximum_age: PT30S
+      invalidation: [EVIDENCE_REVOKED, AUTHORITY_CHANGED, CE_UNAVAILABLE]
+    - source: WBE
+      maximum_age: PT30S
+      invalidation: [BALANCE_CHANGED, RESERVATION_CHANGED, COMMERCIAL_POLICY_CHANGED, WBE_UNAVAILABLE]
+    - source: PR
+      maximum_age: PT15S
+      invalidation: [EXECUTION_STATE_CHANGED, STOP_LATCHED, PROVIDER_OUTCOME_UNKNOWN, PR_UNAVAILABLE]
+    - source: ADAPTER_MANIFEST
+      maximum_age: IMMUTABLE_DIGEST
+      invalidation: [MANIFEST_VERSION_CHANGED, ADAPTER_VERSION_CHANGED, REGISTRY_BINDING_CHANGED]
+    - source: PLAN_AND_WORKSPACE
+      maximum_age: EXACT_EXPECTED_VERSION
+      invalidation: [PLAN_SUPERSEDED, WORKSPACE_VERSION_CHANGED, MATERIAL_CHANGE_RECORDED]
+  stale_behavior: BLOCK
+  unavailable_behavior: BLOCK
+  cached_authorization: PROHIBITED
+
+emergency_stop_profile:
+  primary_route: "wss://rt.waooaw.com/ws/emergency-stop"
+  fallback_route: "POST /api/v1/emergency-stop"
+  contract: architecture/reference/api-specs/professional-runtime.openapi.yaml
+  authorized_actors: [CUSTOMER]
+  halt_owner: PR
+  halt_dependencies_excluded: [CE, BP, WBE, AIR, DOMAIN_ADAPTER, IDENTITY_PROVIDER]
+  identity_provider_unavailable_behavior: USE_PREWARMED_AUTHENTICATED_STOP_CHANNEL
+  latch_release: SEPARATE_FRESH_AUTHORITY_RESUME
+  end_to_end_p99: PT0.25S
+  pr_halt_confirmation_target: PT0.05S
+
+ai_profile:
+  canonicalization: RFC_8785_JCS
+  digest: SHA_256_EXCLUDING_REQUEST_DIGEST_FIELD
+  idempotency_identity:
+    - pr_workload_identity
+    - relationship_ref
+    - operation_family
+    - idempotency_key
+    - request_digest
+  semantic_catalogue:
+    owner: BP
+    caller_selectable: false
+    required_identity: [catalogue_ref, catalogue_version, catalogue_digest]
+    entry_fields: [patch_type, operation, pointer_template, value_schema_ref, cardinality]
+  provenance:
+    required:
+      - protocol_version
+      - patch_type
+      - prompt_policy_ref
+      - prompt_policy_digest
+      - model_policy_ref
+      - model_policy_digest
+      - model_decision_ref
+  result_states:
+    PENDING: { operations: PROHIBITED, reason_code: OPTIONAL }
+    PROPOSED: { operations: REQUIRED_NON_EMPTY, reason_code: PROHIBITED }
+    UNREPRESENTABLE: { operations: PROHIBITED, reason_code: REQUIRED }
+    FAILED: { operations: PROHIBITED, reason_code: REQUIRED }
+  confidence_authority: NONE
+  material_uncertainty:
+    unresolved_question: REQUIRED
+    operations: PROHIBITED
+  transient_content:
+    encrypted: true
+    delete_after_terminal: PT1H
+    absolute_maximum: PT24H
+    logging: PROHIBITED
+  evaluation:
+    corpus: IMMUTABLE_DIGEST_BOUND
+    required_pass_rate: 1.0
+
+product_truth_profile:
+  raw_owner_codes_visible: false
+  colour_only_distinction: false
+  states:
+    PENDING:
+      message: Waiting for an authoritative check.
+      implication: NO_SUCCESS
+    PARTIAL:
+      message: Some required checks are incomplete; work remains paused.
+      implication: NO_SUCCESS
+    STALE:
+      message: Information changed; refresh and review.
+      implication: NO_AUTHORIZATION
+    UNKNOWN:
+      message: The original outcome is being reconciled; do not retry.
+      implication: NO_RETRY
+    BLOCKED:
+      message: Work is paused until the named requirement is resolved.
+      implication: NO_SUCCESS
+    UNAVAILABLE:
+      message: A required service is unavailable; no new work was authorized.
+      implication: NO_AUTHORIZATION
+    READY:
+      message: Required checks passed; your confirmation may still be required.
+      implication: NO_EXECUTION_SUCCESS
+  stop:
+    visible: ALWAYS
+    keyboard_reachable: true
+    screen_reader_label: Stop all agent work now
+
+rollback_profile:
+  capability_gate:
+    identifier: conversational-employment-candidate-v1
+    owner: BP
+    default_enabled: false
+  authorized_actor: FOUNDER
+  invocation_route: INTERNAL_BP_CONTROL_PLANE
+  prior_projection_selector: pre_candidate_workspace_version
+  epoch: MONOTONIC_ROLLBACK_EPOCH
+  new_candidate_commands_after_fence: REJECT
+  delayed_events_after_fence: QUARANTINE_AND_RECONCILE
+  pre_fence_commands: RECONCILE_WITHOUT_DUPLICATE_OWNER_ACTION
+  preserve:
+    - plans
+    - commands
+    - owner_facts
+    - outbox_records
+    - constitutional_evidence
+  execution_authorized: false

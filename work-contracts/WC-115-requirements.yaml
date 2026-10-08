@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-115
 contract_path: work-contracts/WC-115-conversational-employment-implementation.md
-contract_digest: 130b7d759d7a8433b34315dfcbfda7317184de7fb6de0702fed775835798dc34
+contract_digest: 203647ee62d1ab86b633622c2ca705a70ddb98c83759fae1d145463e50ca4649
 contract_status: DRAFT_FOR_FOUNDER_REVIEW_IMPLEMENTATION_ACTIVATION_DEPLOYMENT_UNAUTHORIZED
 implementation_scope: true
 result: PLANNED
