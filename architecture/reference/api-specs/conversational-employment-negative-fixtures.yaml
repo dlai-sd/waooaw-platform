@@ -1,0 +1,239 @@
+schema: waooaw.spec-negative-fixtures/v1
+contract_version: 1.0.0-candidate.1
+cases:
+  - id: CEW-NEG-001
+    contract: conversational-employment-domain-adapter.openapi.yaml
+    schema_ref: "#/components/schemas/EmploymentInterfaceManifestV1"
+    expected_invalid_reason: operations declaration is mandatory
+    instance:
+      schemaVersion: "1.0"
+      protocolVersion: 1.0-candidate
+      agentType: example-professional
+      agentVersion: "1.0.0"
+      manifestVersion: "1"
+      governance:
+        agentSpecification: &contract_ref
+          contractRef: agent/example-professional
+          contractVersion: "1"
+          contractDigest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        promptPolicy: *contract_ref
+        toolProfile: *contract_ref
+        decisionConsequenceMap: *contract_ref
+      induction:
+        requirementSetVersion: "1"
+        mandatoryContext: [customer-outcome]
+        optionalContext: []
+        dependencyTypes: [customer-input]
+        readinessRules: [all-mandatory-context-confirmed]
+        domainSummaryAdapter: *contract_ref
+      planning:
+        supportedGoalTypes: [business-outcome]
+        milestoneTypes: [outcome-milestone]
+        calendarConstraints: [customer-timezone]
+        materialChangeRules: [goal-change-is-material]
+        performanceMeasureTypes: [business-outcome]
+        planAdapter: *contract_ref
+      conformanceScenarios:
+        - scenarioId: universal-induction
+          evidenceRef: evidence/example
+          result: PASS
+          validatedProtocolVersion: 1.0-candidate
+          validatedManifestVersion: "1"
+  - id: CEW-NEG-002
+    contract: conversational-employment-domain-adapter.openapi.yaml
+    schema_ref: "#/components/schemas/EmploymentConformanceScenarioV1"
+    expected_invalid_reason: exact conformance evidence reference is mandatory
+    instance:
+      scenarioId: universal-induction
+      result: PASS
+      validatedProtocolVersion: 1.0-candidate
+      validatedManifestVersion: "1"
+  - id: CEW-NEG-003
+    contract: conversational-employment-compatibility-scan.openapi.yaml
+    schema_ref: "#/components/schemas/CompatibilityScanResultV1"
+    expected_invalid_reason: activation eligibility cannot be true for a failed scan
+    instance:
+      schemaVersion: "1.0"
+      scanId: 00000000-0000-4000-8000-000000000003
+      state: FAIL
+      requiredProtocolVersion: 1.0-candidate
+      offeredInventoryVersion: "1"
+      offeredInventoryDigest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      agentResults:
+        - agentType: example-professional
+          agentVersion: "1.0.0"
+          manifestVersion: "1"
+          domainAdapterVersion: "1"
+          state: FAIL
+          reasonCodes: [MANIFEST_DECLARATION_INCOMPLETE]
+          evidenceRefs: []
+      inventoryComplete: true
+      activationEligible: true
+      rollbackSafe: false
+      completedAt: "2026-10-08T00:00:00Z"
+      observedAt: "2026-10-08T00:00:00Z"
+  - id: CEW-NEG-004
+    contract: conversational-employment-ai-runtime.openapi.yaml
+    schema_ref: "#/components/schemas/EmploymentPatchProposalV1"
+    expected_invalid_reason: reconciled proposal must retain immutable request identity
+    instance:
+      schemaVersion: "1.0"
+      proposalId: 00000000-0000-4000-8000-000000000004
+      protocolVersion: 1.0-candidate
+      manifestVersion: "1"
+      patchType: PLAN
+      state: PROPOSED
+      operations: []
+      confidence: 1
+      assumptions: []
+      unresolvedQuestions: []
+      sourceRefs: []
+      promptPolicyRef: prompt/example/1
+      producedAt: "2026-10-08T00:00:00Z"
+  - id: CEW-NEG-005
+    contract: conversational-employment-business-platform.openapi.yaml
+    schema_ref: "#/components/schemas/EmploymentPhaseV1"
+    expected_invalid_reason: continuous Operations phase cannot be complete
+    instance:
+      phase: OPERATIONS
+      status: COMPLETE
+      progress:
+        mandatoryTotal: 0
+        mandatoryCompleted: 0
+        optionalTotal: 0
+        optionalCompleted: 0
+        blockedCount: 0
+        deferredCount: 0
+      completedItems: []
+      inProgressItems: []
+      pendingItems: []
+      blockers: []
+      assumptions: []
+      dependencies: []
+      milestones: []
+      calendarCommitments: []
+      evidenceState: CURRENT
+      sourceFreshness: "2026-10-08T00:00:00Z"
+      limitations: []
+      availableCommands: []
+      sources:
+        - owner: BP
+          contractVersion: "1"
+          sourceVersion: "1"
+          state: CURRENT
+          observedAt: "2026-10-08T00:00:00Z"
+  - id: CEW-NEG-006
+    contract: conversational-employment-business-platform.openapi.yaml
+    schema_ref: "#/components/schemas/EmploymentPhaseV1"
+    expected_invalid_reason: universal phase projection cannot omit next-action interface collections
+    instance:
+      phase: PLANNING
+      status: IN_PROGRESS
+      progress:
+        mandatoryTotal: 1
+        mandatoryCompleted: 0
+        optionalTotal: 0
+        optionalCompleted: 0
+        blockedCount: 0
+        deferredCount: 0
+      completedItems: []
+      inProgressItems: []
+      pendingItems: []
+      sources: []
+  - id: CEW-NEG-007
+    contract: conversational-employment-compatibility-scan.openapi.yaml
+    schema_ref: "#/components/schemas/AgentCompatibilityResultV1"
+    expected_invalid_reason: a passing agent requires exact conformance evidence
+    instance:
+      agentType: example-professional
+      agentVersion: "1.0.0"
+      manifestVersion: "1"
+      domainAdapterVersion: "1"
+      state: PASS
+      reasonCodes: [COMPATIBLE]
+      evidenceRefs: []
+  - id: CEW-NEG-008
+    contract: conversational-employment-compatibility-scan.openapi.yaml
+    schema_ref: "#/components/schemas/CompatibilityScanResultV1"
+    expected_invalid_reason: activation eligibility requires rollback safety
+    instance:
+      schemaVersion: "1.0"
+      scanId: 00000000-0000-4000-8000-000000000008
+      state: PASS
+      requiredProtocolVersion: 1.0-candidate
+      offeredInventoryVersion: "1"
+      offeredInventoryDigest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      agentResults:
+        - agentType: example-professional
+          agentVersion: "1.0.0"
+          manifestVersion: "1"
+          domainAdapterVersion: "1"
+          state: PASS
+          reasonCodes: [COMPATIBLE]
+          evidenceRefs: [evidence/example]
+      inventoryComplete: true
+      activationEligible: true
+      rollbackSafe: false
+      completedAt: "2026-10-08T00:00:00Z"
+      observedAt: "2026-10-08T00:00:00Z"
+  - id: CEW-NEG-009
+    contract: conversational-employment-business-platform.openapi.yaml
+    schema_ref: "#/components/schemas/EmploymentPhaseV1"
+    expected_invalid_reason: stale phase evidence cannot serialize as ready
+    instance:
+      phase: PLANNING
+      status: READY
+      progress:
+        mandatoryTotal: 1
+        mandatoryCompleted: 1
+        optionalTotal: 0
+        optionalCompleted: 0
+        blockedCount: 0
+        deferredCount: 0
+      completedItems: []
+      inProgressItems: []
+      pendingItems: []
+      blockers: []
+      assumptions: []
+      dependencies: []
+      milestones: []
+      calendarCommitments: []
+      evidenceState: STALE
+      sourceFreshness: "2026-10-08T00:00:00Z"
+      limitations: [source requires refresh]
+      availableCommands: []
+      sources:
+        - owner: BP
+          contractVersion: "1"
+          sourceVersion: "1"
+          state: STALE
+          observedAt: "2026-10-08T00:00:00Z"
+  - id: CEW-NEG-010
+    contract: conversational-employment-compatibility-scan.openapi.yaml
+    schema_ref: "#/components/schemas/OfferedAgentCandidateV1"
+    expected_invalid_reason: mixed mandatory protocol versions fail closed
+    instance:
+      agentType: example-professional
+      agentVersion: "1.0.0"
+      publicationState: OFFERED
+      declaredProtocolVersion: "2.0"
+      manifestVersion: "1"
+      manifestDigest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      domainAdapterVersion: "1"
+      domainAdapterDigest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  - id: CEW-NEG-011
+    contract: conversational-employment-ai-runtime.openapi.yaml
+    schema_ref: "#/components/schemas/ProposalOperation"
+    expected_invalid_reason: AIR cannot propose direct readiness mutation
+    instance:
+      op: REPLACE
+      semanticPath: /readiness/operations
+      value: ACTIVE
+policy_cases:
+  - id: CEW-POLICY-001
+    contract: conversational-employment-business-platform.openapi.yaml
+    operation_id: getEmploymentWorkspace
+    scenario: cross-tenant relationship probe
+    expected_http_status: 404
+    expected_problem_code: EMPLOYMENT_NOT_ACCESSIBLE
+    prohibited_observation: relationship or tenant existence disclosure
