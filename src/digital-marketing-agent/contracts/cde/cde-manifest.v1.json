@@ -1,0 +1,107 @@
+{
+  "schemaVersion": "1.0",
+  "manifestVersion": "1.0.0",
+  "defaultPackageState": "LOCKED",
+  "accountModel": "WAOOAW_MANAGED",
+  "dependencies": {
+    "packageA": {
+      "workContract": "WC-116",
+      "manifestVersion": "1.0.0",
+      "protocolVersion": "1.0-candidate",
+      "qualificationState": "QUALIFIED"
+    },
+    "packagesB1B2": {
+      "workContract": "WC-117",
+      "manifestVersion": "1.0.0",
+      "candidateHead": "79d22219b09a6f4b5e2dcee16a60bc3a30e0faeb",
+      "qualificationState": "QUALIFIED"
+    }
+  },
+  "packages": {
+    "C": {
+      "availability": "DEFAULT_OFF",
+      "activationAuthority": "FOUNDER_SEPARATE_DECISION",
+      "subGates": {
+        "FIRST_PARTY_AUDIENCE_ACTIVATION": "LOCKED"
+      }
+    },
+    "D": {
+      "availability": "DEFAULT_OFF",
+      "activationAuthority": "FOUNDER_SEPARATE_DECISION"
+    },
+    "E": {
+      "availability": "DEFAULT_OFF",
+      "activationAuthority": "FOUNDER_SEPARATE_DECISION"
+    }
+  },
+  "skills": [
+    {
+      "stableId": "PAID_MEDIA_MANAGEMENT",
+      "package": "C",
+      "legacyAliases": ["Skill 11"]
+    },
+    {
+      "stableId": "FIRST_PARTY_AUDIENCE_ACTIVATION",
+      "package": "C",
+      "legacyAliases": []
+    },
+    {
+      "stableId": "LEAD_MANAGEMENT",
+      "package": "C",
+      "legacyAliases": ["Skill 12"]
+    },
+    {
+      "stableId": "MARKETING_PERFORMANCE",
+      "package": "C_D",
+      "legacyAliases": ["Skill 9"]
+    },
+    {
+      "stableId": "SEARCH_DISCOVERABILITY",
+      "package": "D",
+      "legacyAliases": ["Skill 10"]
+    },
+    {
+      "stableId": "CUSTOMER_LIFECYCLE",
+      "package": "D",
+      "legacyAliases": ["Skill 13"]
+    },
+    {
+      "stableId": "MULTI_LOCATION_OPERATIONS",
+      "package": "D",
+      "legacyAliases": ["Skill 15"]
+    },
+    {
+      "stableId": "REPUTATION_AND_RESPONSE",
+      "package": "D",
+      "legacyAliases": ["Legacy Skill 14 Reputation"]
+    },
+    {
+      "stableId": "INSTITUTIONAL_MARKETING",
+      "package": "E",
+      "legacyAliases": ["Skill 14"]
+    },
+    {
+      "stableId": "ADVANCED_CREATIVE_OPTIMIZATION",
+      "package": "E",
+      "legacyAliases": ["Skill 16"]
+    },
+    {
+      "stableId": "ADVANCED_MULTI_CLIENT_INTELLIGENCE",
+      "package": "E",
+      "legacyAliases": ["Skill 17"]
+    },
+    {
+      "stableId": "CRISIS_COMMUNICATIONS",
+      "package": "E",
+      "legacyAliases": ["Skill 18"]
+    }
+  ],
+  "providerAdoptionStops": {
+    "crm": "NOT_CONFIGURED",
+    "booking": "NOT_CONFIGURED",
+    "cms": "NOT_CONFIGURED",
+    "email": "NOT_CONFIGURED",
+    "review": "NOT_CONFIGURED",
+    "platformIntelligence": "NOT_CONFIGURED"
+  }
+}
