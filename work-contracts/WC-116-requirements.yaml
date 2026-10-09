@@ -1,8 +1,8 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-116
 contract_path: work-contracts/WC-116-dma-employment-conformance.md
-contract_digest: e59dfe50f1f86d8842a9e1910f31a1f32e865dee07309a8e17358eb869408f41
-contract_status: SPECIFICATION_COMPLETE_IMPLEMENTATION_UNAUTHORIZED
+contract_digest: 5470b54896bec9e3aa90eab819c491448090310d3c023c5e802cf40a0185a4f2
+contract_status: FOUNDER_ACCEPTED_IMPLEMENTATION_AUTHORIZED_ACTIVATION_UNAUTHORIZED
 implementation_scope: true
 result: PLANNED
 completion_rule: >-

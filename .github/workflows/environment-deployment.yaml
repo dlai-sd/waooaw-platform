@@ -542,7 +542,7 @@ jobs:
               > configuration-lease-validation.json
           fi
           manifest_digest="sha256:$(sha256sum registry-release-manifest.json | cut -d' ' -f1)"
-          dma_admission_content_digest="sha256:$(sha256sum tests/fixtures/agent-admission/digital-marketing-local-service-v1.0.0.json | cut -d' ' -f1)"
+          dma_admission_content_digest="sha256:$(sha256sum src/digital-marketing-agent/tests/fixtures/agent-admission/digital-marketing-local-service-v1.0.0.json | cut -d' ' -f1)"
           jq --arg manifest_digest "$manifest_digest" \
             --arg dma_admission_content_digest "$dma_admission_content_digest" \
             '.manifest_digest = $manifest_digest | .dma_admission_content_digest = $dma_admission_content_digest' \

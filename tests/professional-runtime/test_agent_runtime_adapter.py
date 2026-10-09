@@ -28,6 +28,7 @@ from adapter_gateway import (
 )
 from admission_guard import AdmissionActivationBinding
 from digital_marketing import create_adapter as create_digital_marketing_adapter
+from digital_marketing.employment import MATURITY_DIMENSIONS
 from runtime_contract import (
     AdapterContractError,
     AdapterDescriptorV1,
@@ -284,16 +285,23 @@ def test_two_tenants_complete_release_one_skill_sequence_on_one_digest_without_c
         profile_payload["fields"]["businessIdentity"]["value"] = business_name
         profile = execute("CUSTOMER_PROFILING", profile_payload)
         research = execute(
-            "MARKET_RESEARCH",
+            "MARKET_RESEARCH_AND_MATURITY",
             {
                 "sources": [{"sourceId": source_id, "url": f"https://{source_id}.example/market", "observedAt": "2026-09-15"}],
                 "claims": [{"claim": f"Evidence for {business_name}.", "sourceId": source_id}],
-                "maturitySignals": {"website": 2},
+                "maturityDimensions": {
+                    dimension: {
+                        "score": 8,
+                        "evidenceRefs": [f"evidence:{dimension.lower()}"],
+                        "confidence": 0.8,
+                    }
+                    for dimension in MATURITY_DIMENSIONS
+                },
                 "unavailableProviders": [],
             },
         )
         strategy = execute(
-            "CONTENT_STRATEGY",
+            "CONTENT_STRATEGY_AND_CALENDAR",
             {
                 "profileRevision": f"profile-{source_id}",
                 "researchRevision": f"research-{source_id}",

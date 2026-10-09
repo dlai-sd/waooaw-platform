@@ -194,7 +194,7 @@ def test_ci_build_and_scan_matrices_contain_exactly_seven_release_members() -> N
         **dma,
         "service_image": "agent-runtime-adapter-digital-marketing",
         "service_context": "src/agent-adapters",
-        "service_dockerfile": "src/agent-adapters/digital_marketing/Dockerfile",
+        "service_dockerfile": "src/digital-marketing-agent/Dockerfile",
     }
     scan_step = next(
         step for step in workflow["jobs"]["trivy"]["steps"] if step.get("uses", "").startswith("aquasecurity/trivy-action@")

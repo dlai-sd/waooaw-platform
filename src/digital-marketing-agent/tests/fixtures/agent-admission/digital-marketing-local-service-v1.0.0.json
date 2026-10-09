@@ -10,7 +10,7 @@
     "agentSpecification": {
       "path": "architecture/reference/agents/digital-marketing-agent.md",
       "version": "3.1",
-      "digest": "sha256:128b39b26346e5d09047e8cc835a3e3e6c7e627386d5ce9ad0df7e17c13a4ea2"
+      "digest": "sha256:703530cef938b21da8e910a7071eb3465467fe65d108e51c0e1fa17b150a3972"
     },
     "agentVerificationDocument": {
       "path": "avd/AVD-DMA-release-1.md",
@@ -40,7 +40,7 @@
     "decisionConsequenceMap": {
       "path": "architecture/reference/agents/digital-marketing-agent.md",
       "version": "3.1#3.25",
-      "digest": "sha256:128b39b26346e5d09047e8cc835a3e3e6c7e627386d5ce9ad0df7e17c13a4ea2"
+      "digest": "sha256:703530cef938b21da8e910a7071eb3465467fe65d108e51c0e1fa17b150a3972"
     },
     "evidenceFirstOperations": ["PRESENT_PROFILE_PROPOSAL", "PRESENT_RESEARCH_REPORT", "PRESENT_STRATEGY_PROPOSAL"],
     "emergencyStop": {
@@ -99,28 +99,28 @@
       "compatibility": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:916e65184d907abce40106b330cd217b89431ca313f295f5d3c89569fc955813" }
     },
     {
-      "skillId": "MARKET_RESEARCH",
+      "skillId": "MARKET_RESEARCH_AND_MATURITY",
       "skillVersion": "1.0.0",
-      "capability": "Produce a cited market maturity report from approved public sources.",
-      "businessKpi": "research claims with resolvable public source and observation date",
-      "inputs": ["public sources", "source-bound claims", "maturity signals"],
-      "outputs": ["market research report", "maturity percentage", "limitations"],
-      "decisionSpaceSubset": ["interpret approved public evidence", "calculate bounded maturity"],
+      "capability": "Produce a cited ten-dimension market maturity report from approved public sources.",
+      "businessKpi": "research claims with resolvable evidence, observation date, confidence and coverage",
+      "inputs": ["public sources", "source-bound claims", "ten maturity dimensions"],
+      "outputs": ["market research report", "maturity level and evidence coverage", "limitations"],
+      "decisionSpaceSubset": ["interpret approved public evidence", "calculate equal-weight maturity"],
       "tools": [
         { "toolId": "PUBLIC_RESEARCH", "providerId": "DETERMINISTIC_SIMULATOR", "defaultDenied": true, "governedAction": "RESEARCH_PUBLIC_SOURCE" }
       ],
       "constitutionalActions": ["RESEARCH_PUBLIC_SOURCE", "PRESENT_RESEARCH_REPORT"],
-      "configurationSchema": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:576a52ff1286e33cd4e4cc39ad7da91541cf6820b1cb32b00cb7333bbfadd722" },
-      "goalSchema": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:576a52ff1286e33cd4e4cc39ad7da91541cf6820b1cb32b00cb7333bbfadd722" },
+      "configurationSchema": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:e4f8efd2a9c8674cb37e94ccd91e870775ca5b4c8d4ef69be1e0e7cad141f15b" },
+      "goalSchema": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:e4f8efd2a9c8674cb37e94ccd91e870775ca5b4c8d4ef69be1e0e7cad141f15b" },
       "schedulePolicy": { "mode": "BOUNDED", "customerAdjustable": true },
       "reviewPolicy": { "performanceReviewDays": 30, "customerContractReviewDays": 30 },
       "costUnits": { "publicSourceReview": 1, "researchReport": 1 },
       "trialBehavior": "Use deterministic public-source fixtures only and return a cited report without provider writes.",
       "degradationBehavior": "Return PARTIAL with unavailable sources and explicit limitations.",
-      "compatibility": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:576a52ff1286e33cd4e4cc39ad7da91541cf6820b1cb32b00cb7333bbfadd722" }
+      "compatibility": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:e4f8efd2a9c8674cb37e94ccd91e870775ca5b4c8d4ef69be1e0e7cad141f15b" }
     },
     {
-      "skillId": "CONTENT_STRATEGY",
+      "skillId": "CONTENT_STRATEGY_AND_CALENDAR",
       "skillVersion": "1.0.0",
       "capability": "Produce an approval-gated 30-day content strategy from exact profile and research revisions.",
       "businessKpi": "customer-reviewed strategy proposals bound to current upstream evidence",

@@ -1,5 +1,8 @@
 """CCT-DMA-BUILD-AUTH-01 candidate build denial proof."""
 
+# Implements: architecture/reference/components/dma-employment-conformance-work-component.md §20
+# Constitutional basis: C-001, C-059, C-065, C-070, C-080
+
 from __future__ import annotations
 
 import copy
@@ -11,8 +14,8 @@ from typing import Any
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "src/agent-adapters"))
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / "src/digital-marketing-agent"))
 
 from digital_marketing.build_authority import (  # noqa: E402 - path bootstrap precedes package import
     BuildAuthorityDenied,
@@ -21,7 +24,7 @@ from digital_marketing.build_authority import (  # noqa: E402 - path bootstrap p
 )
 
 
-FIXTURES = ROOT / "tests/fixtures/dma-release-1"
+FIXTURES = ROOT / "src/digital-marketing-agent/tests/fixtures/dma-release-1"
 SOURCE_HEAD = "a" * 40
 NOW = datetime(2026, 9, 15, 12, tzinfo=timezone.utc)
 

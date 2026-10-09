@@ -1,6 +1,6 @@
 """Digital Marketing domain behavior behind the common runtime contract."""
 
-# Implements: architecture/agent-runtime-adapter-contract-v1-execution-plan.md §8 ARA-06
+# Implements: architecture/reference/components/dma-employment-conformance-work-component.md §4, §20
 # Constitutional basis: C-035, C-059, C-071, C-079
 
 from __future__ import annotations
@@ -16,8 +16,8 @@ from .skills import SkillInputDenied, create_content_strategy, profile_customer,
 def _handle(envelope: AdapterInvocationEnvelopeV1, payload: dict[str, Any]) -> dict[str, Any]:
     handlers = {
         "CUSTOMER_PROFILING": profile_customer,
-        "MARKET_RESEARCH": research_market,
-        "CONTENT_STRATEGY": create_content_strategy,
+        "MARKET_RESEARCH_AND_MATURITY": research_market,
+        "CONTENT_STRATEGY_AND_CALENDAR": create_content_strategy,
     }
     try:
         return handlers[envelope.skill_id](payload)
@@ -44,8 +44,8 @@ def create_adapter() -> ReferenceAdapter:
             pac_digest="sha256:" + "44" * 32,
             skill_versions={
                 "CUSTOMER_PROFILING": "1.0.0",
-                "MARKET_RESEARCH": "1.0.0",
-                "CONTENT_STRATEGY": "1.0.0",
+                "MARKET_RESEARCH_AND_MATURITY": "1.0.0",
+                "CONTENT_STRATEGY_AND_CALENDAR": "1.0.0",
             },
             schema_digests={"configuration": "sha256:" + "99" * 32, "goal": "sha256:" + "aa" * 32},
             execution_models=("APPROVAL_GATE", "PRE_AUTHORIZED"),

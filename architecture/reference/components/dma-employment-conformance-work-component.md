@@ -5,14 +5,14 @@
 | Field | Value |
 |---|---|
 | Authoring office | Chief Solution Architect (INST-005) |
-| Status | IMPLEMENTATION-READY CANDIDATE - FOUNDER ACCEPTANCE AND IMPLEMENTATION AUTHORIZATION REQUIRED |
+| Status | FOUNDER ACCEPTED - WC-116 IMPLEMENTATION AUTHORIZED 2026-10-09 - ACTIVATION UNAUTHORIZED |
 | Version | `1.0.0-candidate.1` |
 | Parent requirement | `architecture/reference/components/dma-onboarding-and-autonomous-operation-enterprise-requirements.md` |
 | Generic interface baseline | WC-115 Conversational Employment Protocol; domain-adapter contract `1.0.0-candidate.2` |
 | Product boundary | DMA Release 1; `professionalVersion: 1.0.0`; specification revision `3.1`; Skills 0/1/2 only |
 | Delivery package | Package A - DMA employment conformance |
-| Implementing office | Platform IT Expert (INST-010), only after a separate current-session Founder implementation authorization |
-| Authority boundary | Solution specification only. No implementation, activation, deployment, provider connection, publication, spend, or customer traffic is authorized by this component. |
+| Implementing office | Platform IT Expert (INST-010), authorized for the current session by the Founder on 2026-10-09 |
+| Authority boundary | Package A implementation and local qualification only. No activation, deployment, provider connection, publication, spend, or customer traffic is authorized. |
 
 ## 1. Decision Summary
 

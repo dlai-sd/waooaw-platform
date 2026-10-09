@@ -74,7 +74,7 @@ public sealed class ProfessionalsControllerTests
         var disclosure = ok.Value.Should().BeOfType<ProfessionalDisclosure>().Subject;
         disclosure.ProjectionVersion.Should().Be("1.0.0");
         disclosure.Skills.Select(skill => skill.SkillId).Should().BeEquivalentTo(
-            ["CUSTOMER_PROFILING", "MARKET_RESEARCH", "CONTENT_STRATEGY"]);
+            ["CUSTOMER_PROFILING", "MARKET_RESEARCH_AND_MATURITY", "CONTENT_STRATEGY_AND_CALENDAR"]);
         disclosure.Trial.DurationDays.Should().Be(14);
         disclosure.Trial.PaidApiCallsAllowed.Should().BeFalse();
         disclosure.Trial.ExternalActionsAllowed.Should().BeFalse();

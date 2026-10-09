@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0",
+  "requirementSetVersion": "1.0.0",
+  "requirements": [
+    {"requirementRef":"DMA-IND-001","label":"Employment mode","mandatoryRule":"ALWAYS","dependencyType":"CUSTOMER_CONFIRMATION","affectedSkillRefs":["CUSTOMER_PROFILING","MARKET_RESEARCH_AND_MATURITY","CONTENT_STRATEGY_AND_CALENDAR"],"confirmationClass":"CUSTOMER"},
+    {"requirementRef":"DMA-IND-002","label":"Selected business outcomes","mandatoryRule":"ALWAYS","dependencyType":"CUSTOMER_CONFIRMATION","affectedSkillRefs":["CUSTOMER_PROFILING","MARKET_RESEARCH_AND_MATURITY","CONTENT_STRATEGY_AND_CALENDAR"],"confirmationClass":"CUSTOMER"},
+    {"requirementRef":"DMA-IND-003","label":"Account mode","mandatoryRule":"ALWAYS","dependencyType":"CUSTOMER_CONFIRMATION","affectedSkillRefs":["CUSTOMER_PROFILING"],"confirmationClass":"CUSTOMER"},
+    {"requirementRef":"DMA-IND-004","label":"Business identity","mandatoryRule":"ALWAYS","dependencyType":"CUSTOMER_CONFIRMATION","affectedSkillRefs":["CUSTOMER_PROFILING","MARKET_RESEARCH_AND_MATURITY","CONTENT_STRATEGY_AND_CALENDAR"],"confirmationClass":"CUSTOMER"},
+    {"requirementRef":"DMA-IND-005","label":"Business domain","mandatoryRule":"ALWAYS","dependencyType":"CUSTOMER_CONFIRMATION","affectedSkillRefs":["CUSTOMER_PROFILING","MARKET_RESEARCH_AND_MATURITY","CONTENT_STRATEGY_AND_CALENDAR"],"confirmationClass":"CUSTOMER"},
+    {"requirementRef":"DMA-IND-006","label":"Primary location","mandatoryRule":"ALWAYS","dependencyType":"CUSTOMER_CONFIRMATION","affectedSkillRefs":["CUSTOMER_PROFILING","MARKET_RESEARCH_AND_MATURITY","CONTENT_STRATEGY_AND_CALENDAR"],"confirmationClass":"CUSTOMER"},
+    {"requirementRef":"DMA-IND-007","label":"Prospective customers","mandatoryRule":"ALWAYS","dependencyType":"CUSTOMER_CONFIRMATION","affectedSkillRefs":["CUSTOMER_PROFILING","MARKET_RESEARCH_AND_MATURITY","CONTENT_STRATEGY_AND_CALENDAR"],"confirmationClass":"CUSTOMER"},
+    {"requirementRef":"DMA-IND-008","label":"Three-month aspiration","mandatoryRule":"ALWAYS","dependencyType":"CUSTOMER_CONFIRMATION","affectedSkillRefs":["CUSTOMER_PROFILING","MARKET_RESEARCH_AND_MATURITY","CONTENT_STRATEGY_AND_CALENDAR"],"confirmationClass":"CUSTOMER"},
+    {"requirementRef":"DMA-IND-009","label":"Website URL","mandatoryRule":"NEVER","dependencyType":"PUBLIC_OBSERVATION","affectedSkillRefs":["MARKET_RESEARCH_AND_MATURITY"],"confirmationClass":"AUTHORITY_SOURCE"},
+    {"requirementRef":"DMA-IND-010","label":"Current channels","mandatoryRule":"NEVER","dependencyType":"CUSTOMER_CONFIRMATION","affectedSkillRefs":["MARKET_RESEARCH_AND_MATURITY","CONTENT_STRATEGY_AND_CALENDAR"],"confirmationClass":"CUSTOMER"},
+    {"requirementRef":"DMA-IND-011","label":"Public-observation scope and notice","mandatoryRule":"WHEN_SKILL_SELECTED","dependencyType":"PUBLIC_OBSERVATION","affectedSkillRefs":["MARKET_RESEARCH_AND_MATURITY"],"confirmationClass":"OWNER_BOUND_ASSUMPTION"},
+    {"requirementRef":"DMA-IND-012","label":"Read-only connected-account consent","mandatoryRule":"NEVER","dependencyType":"READ_ONLY_CONNECTION","affectedSkillRefs":["MARKET_RESEARCH_AND_MATURITY"],"confirmationClass":"CUSTOMER"},
+    {"requirementRef":"DMA-IND-013","label":"Known competitors","mandatoryRule":"NEVER","dependencyType":"CUSTOMER_CONFIRMATION","affectedSkillRefs":["MARKET_RESEARCH_AND_MATURITY"],"confirmationClass":"CUSTOMER"},
+    {"requirementRef":"DMA-IND-014","label":"Brand and approved claims","mandatoryRule":"WHEN_SKILL_SELECTED","dependencyType":"CUSTOMER_CONFIRMATION","affectedSkillRefs":["CONTENT_STRATEGY_AND_CALENDAR"],"confirmationClass":"CUSTOMER"},
+    {"requirementRef":"DMA-IND-015","label":"Content assets and rights","mandatoryRule":"NEVER","dependencyType":"CUSTOMER_CONFIRMATION","affectedSkillRefs":["CONTENT_STRATEGY_AND_CALENDAR"],"confirmationClass":"CUSTOMER"},
+    {"requirementRef":"DMA-IND-016","label":"Language and communication preference","mandatoryRule":"NEVER","dependencyType":"CUSTOMER_CONFIRMATION","affectedSkillRefs":["CUSTOMER_PROFILING","MARKET_RESEARCH_AND_MATURITY","CONTENT_STRATEGY_AND_CALENDAR"],"confirmationClass":"CUSTOMER"},
+    {"requirementRef":"DMA-IND-017","label":"Measurement and outcome sources","mandatoryRule":"NEVER","dependencyType":"CUSTOMER_OWNED_OUTCOME_SOURCE","affectedSkillRefs":["MARKET_RESEARCH_AND_MATURITY","CONTENT_STRATEGY_AND_CALENDAR"],"confirmationClass":"AUTHORITY_SOURCE"}
+  ]
+}

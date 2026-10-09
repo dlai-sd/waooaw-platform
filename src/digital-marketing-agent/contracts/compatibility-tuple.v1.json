@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0",
+  "professionalTypeId": "DIGITAL_MARKETING_LOCAL_SERVICE",
+  "professionalVersion": "1.0.0",
+  "specificationRevision": "3.1",
+  "manifestVersion": "1.0.0",
+  "adapterVersion": "1.0.0",
+  "wc115ProtocolVersion": "1.0-candidate",
+  "ociDigest": "sha256:085fe3121aeae81b3ce25b1c7a9dc1eec6437719b7115a052c5e54591d07bc7b",
+  "sourceCommitAuthority": "IMMUTABLE_BUILD_PROVENANCE",
+  "evidenceDigestAuthority": "WC116_QUALIFICATION_ENVELOPE"
+}

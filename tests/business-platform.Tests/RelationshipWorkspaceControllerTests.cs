@@ -594,7 +594,7 @@ public sealed class RelationshipWorkspaceControllerTests
         gateway.Execution = new ExecutionOwnerProjection("execution-7", "CURRENT", producedAt,
         [
             new ExecutionOwnerWorkItem(
-                workItemId, relationship.AgentInstanceId, "MARKET_RESEARCH", "1.0.0",
+                workItemId, relationship.AgentInstanceId, "MARKET_RESEARCH_AND_MATURITY", "1.0.0",
                 invocationId, 2, "SUCCEEDED", "Cited market research is ready.", "result-research-2", producedAt),
         ]);
         gateway.Commercial = new CommercialOwnerProjection(
@@ -609,7 +609,7 @@ public sealed class RelationshipWorkspaceControllerTests
         var workItem = Assert.Single(work.GetProperty("items").EnumerateArray());
         Assert.Equal(workItemId, workItem.GetProperty("itemId").GetGuid());
         Assert.Equal(relationship.AgentInstanceId, workItem.GetProperty("agentInstanceId").GetGuid());
-        Assert.Equal("MARKET_RESEARCH", workItem.GetProperty("skillId").GetString());
+        Assert.Equal("MARKET_RESEARCH_AND_MATURITY", workItem.GetProperty("skillId").GetString());
         Assert.Equal(invocationId, workItem.GetProperty("invocationId").GetGuid());
         var outcome = Assert.Single(results.GetProperty("outcomes").EnumerateArray());
         Assert.Equal("result-research-2", outcome.GetProperty("attributionBasis").GetString());

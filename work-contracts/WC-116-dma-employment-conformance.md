@@ -6,7 +6,7 @@
 |---|---|
 | Authoring office | Chief Solution Architect (INST-005) |
 | Implementing office | Platform IT Expert (INST-010) |
-| Status | IMPLEMENTATION SPECIFICATION COMPLETE - FOUNDER ACCEPTANCE AND CURRENT-SESSION IMPLEMENTATION AUTHORIZATION REQUIRED |
+| Status | FOUNDER ACCEPTED - CURRENT-SESSION IMPLEMENTATION AUTHORIZED 2026-10-09 - ACTIVATION UNAUTHORIZED |
 | Parent enterprise requirement | `architecture/reference/components/dma-onboarding-and-autonomous-operation-enterprise-requirements.md` |
 | Controlling work component | `architecture/reference/components/dma-employment-conformance-work-component.md` `1.0.0-candidate.1` |
 | Generic baseline | WC-115; domain-adapter OpenAPI `1.0.0-candidate.2` |
@@ -89,9 +89,10 @@ Only dependency-complete changes directly required by WC116 requirements are all
 | Prompt references | `architecture/reference/prompts/digital-marketing-agent-prompts.md` |
 | Dependency references | `architecture/reference/skill-dependency-register.md` |
 | Image/manifest reference repair | `architecture/dma-agent-image-concept.md` and owning admission/catalogue records |
-| DMA adapter implementation | `src/agent-adapters/digital_marketing/**` |
+| DMA adapter implementation | `src/digital-marketing-agent/**` |
 | Shared adapter runtime only when required by unchanged generic contract | `src/agent-adapters/runtime_contract/**` |
-| DMA adapter tests | `tests/agent-adapters/**` and existing DMA adapter fixture surfaces |
+| DMA-specific tests and fixtures | `src/digital-marketing-agent/tests/**` |
+| Thin generic conformance wiring | Existing profession-neutral WC-115 registration and cross-profession fixture surfaces only |
 | Generic conformance fixtures | Existing DMA, Trading, and Tutor contract-fixture surfaces |
 | Validation evidence | `validation/evidence/wc116/**` |
 | Contract/ledger | This WC and `work-contracts/WC-116-requirements.yaml` |
@@ -102,12 +103,16 @@ implementer does not create a second copy.
 
 | Artifact | Exact Package A path |
 |---|---|
-| Employment manifest | `src/agent-adapters/digital_marketing/contracts/employment-interface-manifest.v1.json` |
-| Induction requirements | `src/agent-adapters/digital_marketing/contracts/induction-requirements.v1.json` |
-| Dependency graph | `src/agent-adapters/digital_marketing/contracts/dependency-graph.v1.json` |
-| Degradation profile | `src/agent-adapters/digital_marketing/contracts/degradation-profile.v1.json` |
-| Adapter semantics | `src/agent-adapters/digital_marketing/employment.py` |
-| Direct Package A tests | `tests/agent-adapters/test_dma_employment_conformance.py` |
+| Employment manifest | `src/digital-marketing-agent/contracts/employment-interface-manifest.v1.json` |
+| Compatibility tuple | `src/digital-marketing-agent/contracts/compatibility-tuple.v1.json` resolved from immutable build and qualification evidence |
+| Induction requirements | `src/digital-marketing-agent/contracts/induction-requirements.v1.json` |
+| Induction summary | `src/digital-marketing-agent/contracts/induction-summary-contract.v1.json` |
+| Planning contract | `src/digital-marketing-agent/contracts/planning-contract.v1.json` |
+| Outcome/performance contract | `src/digital-marketing-agent/contracts/outcome-contract.v1.json` |
+| Dependency graph | `src/digital-marketing-agent/contracts/dependency-graph.v1.json` |
+| Degradation profile | `src/digital-marketing-agent/contracts/degradation-profile.v1.json` |
+| Adapter semantics | `src/digital-marketing-agent/digital_marketing/employment.py` |
+| Direct Package A tests | `src/digital-marketing-agent/tests/test_dma_employment_conformance.py` |
 | Cross-profession fixtures | `tests/fixtures/conversational-employment/agents/` |
 
 Changes to BP, PR, CE, WBE, AIR, Web, infrastructure, workflows, generic OpenAPI, or databases are
@@ -452,4 +457,6 @@ specification, the Solution Architect professional standard, and the Package A a
 After the repairs above, the package has no unresolved scope, authority, identity, scoring, consent,
 interface, state, failure, security, privacy, operability, test, rollout, rollback, or handoff gap.
 
-**Result: PASS - Founder review remains required; implementation remains unauthorized.**
+**Result: PASS - Founder accepted the package and authorized current-session WC-116 implementation
+on 2026-10-09 with the merged PR #491 `src/digital-marketing-agent/**` boundary controlling every
+stale candidate path. Activation remains unauthorized.**

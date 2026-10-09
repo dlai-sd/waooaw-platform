@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "1.0",
+  "contractVersion": "1.0.0",
+  "customerOutcomeMeasures": [
+    "PROFILE_COVERAGE",
+    "MATURITY_EVIDENCE_COVERAGE",
+    "PRIORITY_ACTION_PROGRESS",
+    "PLAN_REVIEW_TIMELINESS",
+    "CALENDAR_READINESS"
+  ],
+  "professionalPerformanceMeasures": [
+    "TIMELINESS",
+    "CONTRACT_COMPLETENESS",
+    "EVIDENCE_AND_LIMITATION_QUALITY",
+    "CORRECTION_AND_RECONCILIATION",
+    "AUTHORITY_AND_PLAN_ADHERENCE"
+  ],
+  "independentDerivationRequired": true,
+  "missedReviewPeriodsBeforeCorrectiveProposal": 2,
+  "activityIsNotCustomerOutcome": true
+}

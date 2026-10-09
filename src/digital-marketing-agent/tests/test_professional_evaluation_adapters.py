@@ -14,15 +14,15 @@ from evaluation_workflow import (
     TrialDemonstrationRequest,
     TrialDemonstrationService,
 )
-from professionals.digital_marketing import (
+from digital_marketing.evaluation import (
     DMA_RECIPES,
     DMA_TRIAL_CAPABILITIES,
     DigitalMarketingEvaluationAdapter,
 )
 
 
-ROOT = Path(__file__).resolve().parents[2]
-DMA_CATALOG = ROOT / "src/business-platform/Catalog/Professionals/digital-marketing-local-service.v1.json"
+ROOT = Path(__file__).resolve().parents[3]
+DMA_CATALOG = ROOT / "src/digital-marketing-agent/integration/business-platform/digital-marketing-local-service.v1.json"
 
 
 def capabilities() -> tuple[TrialCapability, ...]:
@@ -33,7 +33,11 @@ def capabilities() -> tuple[TrialCapability, ...]:
 async def test_dma_adapter_covers_exact_release_one_catalog() -> None:
     catalog = json.loads(DMA_CATALOG.read_text(encoding="utf-8"))
     catalog_skills = {item["skillId"] for item in catalog["skills"]}
-    assert catalog_skills == {"CUSTOMER_PROFILING", "MARKET_RESEARCH", "CONTENT_STRATEGY"}
+    assert catalog_skills == {
+        "CUSTOMER_PROFILING",
+        "MARKET_RESEARCH_AND_MATURITY",
+        "CONTENT_STRATEGY_AND_CALENDAR",
+    }
     assert catalog_skills <= set(DMA_RECIPES)
 
     service = TrialDemonstrationService(DigitalMarketingEvaluationAdapter())

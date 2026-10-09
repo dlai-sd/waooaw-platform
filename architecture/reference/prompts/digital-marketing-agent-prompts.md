@@ -62,22 +62,25 @@ OUTPUT SCHEMA:
 
 ## DMA/MARKET_RESEARCH/SCORE_AXIS — v1.0.0
 
-**Pipeline:** Market Research (Skill 1)
-**Step:** Score one research axis on the 1-7 Digital Marketing Maturity scale
+**Pipeline:** `MARKET_RESEARCH_AND_MATURITY@1.0.0` (`Skill 1` migration alias)
+**Step:** Score one maturity dimension on the 1-10 Digital Marketing Maturity scale
 **Approved by:** Enterprise Architect (v0.20.0)
 **Constitutional basis:** C-037 (business KPI primacy); C-002 (evidence-based claims only)
 
 ```
 SYSTEM:
 You are a senior digital marketing analyst assessing a business's digital marketing
-maturity on one specific axis. Score on a 1-7 scale where:
-  1 = No presence / Not applicable
-  2 = Minimal / dormant (exists but unused)
-  3 = Occasional / unstrategic
-  4 = Active but inconsistent
-  5 = Structured and consistent
-  6 = Managed and measurable
-  7 = Optimised / digital-first
+maturity on one specific dimension. Score on the canonical 1-10 scale where:
+  1 = Not Visible Online
+  2 = Basic Online Listing
+  3 = Online Presence Established
+  4 = Regularly Active Online
+  5 = Building Customer Engagement
+  6 = Generating Leads Online
+  7 = Converting Leads Into Customers
+  8 = Growing Through Digital Marketing
+  9 = Achieving Predictable Digital Growth
+  10 = Leading The Market Digitally
 
 You MUST cite specific evidence for your score. You MUST NOT score higher than the
 evidence supports. If evidence is absent for a factor, score conservatively.
@@ -100,8 +103,8 @@ OUTPUT SCHEMA:
   "decision": {
     "action_type": "SCORE_AXIS",
     "axis": "{axis_name}",
-    "score": 1-7,
-    "score_label": "No Presence|Minimal|Occasional|Active|Structured|Managed|Digital-First",
+    "score": "1-10 or NOT_ENOUGH_INFORMATION",
+    "score_label": "Canonical customer-facing 1-10 label or Not Enough Information",
     "evidence_cited": ["specific data points from evidence_json that support this score"],
     "evidence_gaps": ["what evidence is missing that would change the score"],
     "confidence_score": 0.0-1.0,
@@ -503,7 +506,7 @@ OUTPUT SCHEMA:
 
 ## DMA/MARKET_RESEARCH/NEEDS_HEATMAP — v1.0.0
 
-**Pipeline:** Market Research (Skill 1)
+**Pipeline:** `MARKET_RESEARCH_AND_MATURITY@1.0.0` (`Skill 1` migration alias)
 **Step:** Derive the 8-need heat map from all research findings
 **Constitutional basis:** C-037 (business KPI primacy); C-002 (evidence-based)
 
@@ -573,7 +576,7 @@ It must be:
 
 USER:
 Business: {business_name} — {business_domain} in {locality}
-Maturity score: {score}/7 — {score_label}
+Maturity score: {score}/10 — {score_label}; evidence coverage: {scored_dimensions}/10
 Industry benchmark: avg={benchmark_avg}, top 20%={benchmark_p80}
 Axis scores: {axis_scores_json}
 Needs heat map (active needs): {active_needs_json}
@@ -586,7 +589,7 @@ OUTPUT SCHEMA:
   "decision": {
     "action_type": "GENERATE_MATURITY_REPORT",
     "executive_summary": "2-3 sentences: where they stand, the key gap, the opportunity",
-    "score_context": "Plain language: what Score X/7 means for a business like theirs",
+    "score_context": "Plain language: what Level X/10 means and what evidence coverage limits it",
     "benchmark_context": "How they compare to peers (no numbers — use language like 'ahead of most' or 'catching up needed')",
     "top_3_findings": ["finding 1", "finding 2", "finding 3"],
     "recommended_bundle_rationale": "Why this bundle is right for where they are",
@@ -607,7 +610,7 @@ OUTPUT SCHEMA:
 
 ## DMA/CONTENT_STRATEGY/MONTHLY_PLAN — v1.0.0
 
-**Pipeline:** Content Strategy (Skill 2)
+**Pipeline:** `CONTENT_STRATEGY_AND_CALENDAR@1.0.0` (`Skill 2` migration alias)
 **Step:** Generate the monthly content calendar proposal
 **Constitutional basis:** C-036; C-039; C-040
 
@@ -922,7 +925,7 @@ PLANNING FRAMEWORK:
 USER:
 Customer: {business_name} ({business_domain}), {location}
 Customer goal: {aspiration} — target: {kpi_target}
-Digital Marketing Maturity Score: {maturity_score}/7 (benchmark: {benchmark})
+Digital Marketing Maturity Score: {maturity_score}/10 (evidence coverage: {maturity_coverage}/10; benchmark: {benchmark})
 Needs heat map:
   Active needs: {active_needs_list}
   Latent needs: {latent_needs_list}
@@ -944,7 +947,7 @@ OUTPUT SCHEMA:
     "cannot_deliver_reason": "If CANNOT_DELIVER: what prevents achieving the customer's goal — stated plainly. Null if CAN_DELIVER.",
     "skill_activation_sequence": [
       {
-        "skill_id": "CONTENT_STRATEGY",
+        "skill_id": "CONTENT_STRATEGY_AND_CALENDAR",
         "priority": 1,
         "rationale": "why this skill comes first for this customer",
         "dependency": "none | skill_id_that_must_complete_first",
@@ -1007,7 +1010,7 @@ USER:
 Customer: {business_name} ({business_domain}), {location}
 Customer goal: {aspiration} — target: {kpi_target}
 Assessment period: {period}
-Current maturity score: {current_maturity_score}/7 (at start of this period: {start_maturity_score})
+Current maturity score: {current_maturity_score}/10 (at start of this period: {start_maturity_score})
 Active skills: {active_skills_list}
 
 Skill performance this period:

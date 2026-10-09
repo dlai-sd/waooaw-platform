@@ -1,4 +1,4 @@
-# Implements: WC058-07 DMA-owned Professional Evaluation Adapter
+# Implements: architecture/reference/components/dma-employment-conformance-work-component.md §7, §19
 # constitutional_basis: C-036, C-041, C-048, C-049, C-050, C-055, C-056, C-057
 from __future__ import annotations
 
@@ -40,12 +40,12 @@ DMA_RECIPES: Mapping[str, DemonstrationRecipe] = {
         ("approved-template", "local-inference"),
         ("confirmed_context", "open_questions", "assumptions"),
     ),
-    "MARKET_RESEARCH": DemonstrationRecipe(
+    "MARKET_RESEARCH_AND_MATURITY": DemonstrationRecipe(
         "market-maturity-brief",
         ("public-free-research", "deterministic-analysis"),
         ("public_observations", "maturity_score", "limitations"),
     ),
-    "CONTENT_STRATEGY": DemonstrationRecipe(
+    "CONTENT_STRATEGY_AND_CALENDAR": DemonstrationRecipe(
         "content-calendar",
         ("local-inference", "approved-template"),
         ("campaign_theme", "channel_plan", "approval_points"),

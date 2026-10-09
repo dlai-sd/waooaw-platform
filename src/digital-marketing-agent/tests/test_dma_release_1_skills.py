@@ -1,5 +1,8 @@
 """Focused deterministic behavior tests for DMA Release 1 Skills 0/1/2."""
 
+# Implements: architecture/reference/components/dma-employment-conformance-work-component.md §19
+# Constitutional basis: C-059, C-071, C-076, C-080
+
 from __future__ import annotations
 
 import json
@@ -14,10 +17,11 @@ from digital_marketing.skills import (
     profile_customer,
     research_market,
 )
+from digital_marketing.employment import MATURITY_DIMENSIONS
 
 
-ROOT = Path(__file__).resolve().parents[2]
-SCHEMA_DIRECTORY = ROOT / "architecture/reference/api-specs/schemas"
+ROOT = Path(__file__).resolve().parents[3]
+SCHEMA_DIRECTORY = ROOT / "src/digital-marketing-agent/contracts/schemas"
 
 
 def validate_contract(name: str, payload: dict[str, object]) -> None:
@@ -45,10 +49,18 @@ def test_profile_never_promotes_inference_to_confirmed_fact() -> None:
 
 
 def test_research_requires_citations_and_discloses_partial_sources() -> None:
+    maturity_dimensions = {
+        dimension: {
+            "score": 8,
+            "evidenceRefs": [f"evidence:{dimension.lower()}"],
+            "confidence": 0.8,
+        }
+        for dimension in MATURITY_DIMENSIONS
+    }
     payload = {
         "sources": [{"sourceId": "source-1", "url": "https://public.example/market", "observedAt": "2026-09-15"}],
         "claims": [{"claim": "Demand is seasonal.", "sourceId": "source-1"}],
-        "maturitySignals": {"website": 2, "directory": 1},
+        "maturityDimensions": maturity_dimensions,
         "unavailableProviders": ["public-directory-simulator"],
     }
 
@@ -57,7 +69,13 @@ def test_research_requires_citations_and_discloses_partial_sources() -> None:
     validate_contract("dma-market-research-v1.schema.json", payload)
     validate_contract("dma-market-research-v1.schema.json", result)
     assert result["status"] == "PARTIAL"
-    assert result["maturityPercent"] == 75
+    assert result["maturity"] == {
+        "state": "PUBLISHED",
+        "auditScore": "8.0",
+        "displayLevel": 8,
+        "evidenceCoverage": "10/10",
+        "missingDimensions": [],
+    }
     assert result["claims"][0]["sourceId"] == "source-1"
     assert result["limitations"] == ["Unavailable source: public-directory-simulator"]
     with pytest.raises(SkillInputDenied, match="DMA_RESEARCH_CITATION_MISSING"):

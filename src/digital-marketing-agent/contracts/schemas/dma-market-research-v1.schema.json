@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://waooaw.com/schemas/dma/market-research/1.0.0",
+  "title": "DMA Market Research Skill Contract v1",
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceId", "url", "observedAt"],
+      "properties": {
+        "sourceId": { "type": "string", "minLength": 1 },
+        "url": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "observedAt": { "type": "string", "format": "date" }
+      }
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim", "sourceId"],
+      "properties": {
+        "claim": { "type": "string", "minLength": 1 },
+        "sourceId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "maturityDimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["score", "evidenceRefs", "confidence"],
+      "properties": {
+        "score": { "type": ["integer", "null"], "minimum": 1, "maximum": 10 },
+        "evidenceRefs": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "limitations": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "disputed": { "type": "boolean" },
+        "stale": { "type": "boolean" }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "title": "Input",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sources", "claims", "maturityDimensions"],
+      "properties": {
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/source" } },
+        "claims": { "type": "array", "items": { "$ref": "#/$defs/claim" } },
+        "maturityDimensions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "BUSINESS_DIRECTION",
+            "ONLINE_PRESENCE",
+            "SEARCH_VISIBILITY",
+            "CONTENT_CONSISTENCY",
+            "CUSTOMER_ENGAGEMENT",
+            "LEAD_HANDLING",
+            "CUSTOMER_RETENTION",
+            "MEASUREMENT",
+            "IMPROVEMENT_DISCIPLINE",
+            "GOVERNANCE_AND_TRUST"
+          ],
+          "properties": {
+            "BUSINESS_DIRECTION": { "$ref": "#/$defs/maturityDimension" },
+            "ONLINE_PRESENCE": { "$ref": "#/$defs/maturityDimension" },
+            "SEARCH_VISIBILITY": { "$ref": "#/$defs/maturityDimension" },
+            "CONTENT_CONSISTENCY": { "$ref": "#/$defs/maturityDimension" },
+            "CUSTOMER_ENGAGEMENT": { "$ref": "#/$defs/maturityDimension" },
+            "LEAD_HANDLING": { "$ref": "#/$defs/maturityDimension" },
+            "CUSTOMER_RETENTION": { "$ref": "#/$defs/maturityDimension" },
+            "MEASUREMENT": { "$ref": "#/$defs/maturityDimension" },
+            "IMPROVEMENT_DISCIPLINE": { "$ref": "#/$defs/maturityDimension" },
+            "GOVERNANCE_AND_TRUST": { "$ref": "#/$defs/maturityDimension" }
+          }
+        },
+        "unavailableProviders": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    {
+      "title": "Output",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "status", "sources", "claims", "maturity", "unavailableProviders", "limitations", "sideEffects"],
+      "properties": {
+        "kind": { "const": "MARKET_RESEARCH_REPORT" },
+        "status": { "enum": ["COMPLETE", "PARTIAL"] },
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/source" } },
+        "claims": { "type": "array", "items": { "$ref": "#/$defs/claim" } },
+        "maturity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "auditScore", "displayLevel", "evidenceCoverage", "missingDimensions"],
+          "properties": {
+            "state": { "enum": ["MATURITY_ASSESSMENT_IN_PROGRESS", "PUBLISHED"] },
+            "auditScore": { "type": ["string", "null"], "pattern": "^(10\\.0|[1-9]\\.\\d)$" },
+            "displayLevel": { "type": ["integer", "null"], "minimum": 1, "maximum": 10 },
+            "evidenceCoverage": { "type": "string", "pattern": "^(10|[0-9])/10$" },
+            "missingDimensions": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "unavailableProviders": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "limitations": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "sideEffects": { "const": [] }
+      }
+    }
+  ]
+}
