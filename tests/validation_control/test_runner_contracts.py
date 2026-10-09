@@ -120,6 +120,7 @@ def test_typescript_runner_uses_preprovisioned_playwright_browser() -> None:
     assert "mcr.microsoft.com/playwright:v1.62.1-noble@" in source
     assert "PLAYWRIGHT_BROWSERS_PATH=/ms-playwright" in source
     assert "playwright install" not in source
+    assert "git config --system --add safe.directory /workspace" in source
 
 
 def test_primary_service_build_contexts_match_root_relative_dockerfiles() -> None:

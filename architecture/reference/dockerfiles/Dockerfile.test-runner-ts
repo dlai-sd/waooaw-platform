@@ -10,6 +10,7 @@ WORKDIR /workspace
 RUN mkdir -p "$COREPACK_HOME" \
 	&& corepack enable \
 	&& corepack prepare pnpm@9.15.9 --activate \
+	&& git config --system --add safe.directory /workspace \
 	&& chmod -R a+rX "$COREPACK_HOME"
 
 COPY --chown=1000:1000 web/package.json web/pnpm-lock.yaml /opt/waooaw-web/

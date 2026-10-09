@@ -47,8 +47,8 @@ module.exports = {
       ]
     ],
 
-    // Subject: lowercase, no period at end, max 100 chars
-    'subject-case': [2, 'always', 'lower-case'],
+    // Subject: reject title/sentence casing while permitting stable acronyms.
+    'subject-case': [2, 'never', ['sentence-case', 'start-case', 'pascal-case', 'upper-case']],
     'subject-full-stop': [2, 'never', '.'],
     'subject-max-length': [2, 'always', 100],
 
