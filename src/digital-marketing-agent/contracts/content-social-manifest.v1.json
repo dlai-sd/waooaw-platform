@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "1.0",
+  "manifestVersion": "1.0.0",
+  "defaultPackageState": "LOCKED",
+  "packages": {
+    "B1": {
+      "availability": "DEFAULT_OFF",
+      "sideEffects": [],
+      "activationAuthority": "FOUNDER_SEPARATE_DECISION"
+    },
+    "B2": {
+      "availability": "DEFAULT_OFF",
+      "dependsOn": ["B1_QUALIFIED"],
+      "sideEffects": ["EXTERNAL_PUBLICATION", "CONNECTED_ANALYTICS"],
+      "activationAuthority": "FOUNDER_SEPARATE_DECISION"
+    }
+  },
+  "skills": [
+    {
+      "stableId": "CONTENT_STRATEGY_AND_CALENDAR",
+      "version": "1.0.0",
+      "package": "B1",
+      "mode": "DRAFT_ONLY",
+      "approvalMode": "EXACT_VERSION",
+      "costUnit": "CONTENT_PLAN",
+      "degradation": "NEEDS_INPUT",
+      "legacyAliases": ["Skill 2"]
+    },
+    {
+      "stableId": "SOCIAL_CONTENT_CREATION_AND_PUBLISHING",
+      "version": "1.0.0",
+      "package": "B1",
+      "mode": "DRAFT_ONLY",
+      "approvalMode": "EXACT_VERSION",
+      "costUnit": "CONTENT_DRAFT",
+      "degradation": "BLOCKED",
+      "legacyAliases": ["Skill 4", "Skill 5"]
+    },
+    {
+      "stableId": "VISUAL_AND_VIDEO_CONTENT",
+      "version": "1.0.0",
+      "package": "B1",
+      "mode": "ASSET_METADATA_ONLY",
+      "approvalMode": "EXACT_RIGHTS_VERSION",
+      "costUnit": "CONTENT_ASSET",
+      "degradation": "TEXT_ONLY",
+      "legacyAliases": ["Skill 8"]
+    },
+    {
+      "stableId": "SOCIAL_CONTENT_CREATION_AND_PUBLISHING",
+      "version": "1.0.0",
+      "package": "B2",
+      "mode": "PUBLISH_APPROVED_VERSION",
+      "approvalMode": "SEPARATE_PUBLICATION_AUTHORITY",
+      "costUnit": "SOCIAL_PUBLICATION",
+      "degradation": "NOT_CONFIGURED",
+      "legacyAliases": []
+    },
+    {
+      "stableId": "MARKETING_PERFORMANCE_AND_IMPROVEMENT",
+      "version": "1.0.0",
+      "package": "B2",
+      "mode": "SOCIAL_OBSERVATION_ONLY",
+      "approvalMode": "PROPOSAL_ONLY",
+      "costUnit": "SOCIAL_OBSERVATION",
+      "degradation": "UNAVAILABLE",
+      "legacyAliases": ["Skill 9"]
+    }
+  ],
+  "excludedPackages": {
+    "C": "UNAVAILABLE",
+    "D": "UNAVAILABLE",
+    "E": "UNAVAILABLE"
+  }
+}
