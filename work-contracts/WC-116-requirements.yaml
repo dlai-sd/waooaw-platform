@@ -4,7 +4,7 @@ contract_path: work-contracts/WC-116-dma-employment-conformance.md
 contract_digest: 5470b54896bec9e3aa90eab819c491448090310d3c023c5e802cf40a0185a4f2
 contract_status: FOUNDER_ACCEPTED_IMPLEMENTATION_AUTHORIZED_ACTIVATION_UNAUTHORIZED
 implementation_scope: true
-result: PLANNED
+result: QUALIFIED
 completion_rule: >-
   Every requirement must have direct Docker-produced evidence bound to the exact Package A
   candidate. Architecture acceptance does not authorize implementation, activation, deployment,
@@ -14,8 +14,12 @@ requirement_defaults: &defaults
   evidence_class: Docker implementation, contract, journey, security or qualification evidence
   initial_state: expected-fail
   dependencies: Founder-accepted Package A work component and explicit current-session WC-116 implementation authorization
-  residual_risk: Founder review, implementation authorization, PR approval and merge remain open; activation and deployment remain prohibited.
-  result: PLANNED
+  residual_risk: Founder review, PR approval and merge remain open; activation and deployment remain prohibited.
+  result: PASS
+  evidence_refs:
+    - commit:1c9a4be02ebd82181b27423031e6f69e41328358
+    - tree:a2d93ebc6f710e2eadf76f28836a85e3b5414fcc
+    - precheck:4e90a1b068521c95b28d016edb81dfcfb7e9e0aba7ffa9bad4f723014c1eb48e
 
 requirements:
   - <<: *defaults
@@ -179,6 +183,8 @@ requirements:
     component_owner: Requirement evidence ledger
     test_path_or_plan: Docker ledger validation and evidence identity/digest/reference checks.
     completion_rule: Every row is PASS against one frozen candidate before qualification is complete.
+    result: BLOCKED
+    dependencies: Exact remote head, author review and Founder handoff evidence for WC116-R024 and WC116-R025.
   - <<: *defaults
     requirement_id: WC116-R024
     source: WC116-11
@@ -186,6 +192,8 @@ requirements:
     component_owner: Platform IT Expert author review
     test_path_or_plan: Full-scope review plus exact 40-character remote-head precheck.
     completion_rule: No open finding remains and any later commit invalidates the review.
+    result: BLOCKED
+    dependencies: Final ledger commit, exact remote push and exact-head author review.
   - <<: *defaults
     requirement_id: WC116-R025
     source: WC116-11
@@ -193,3 +201,5 @@ requirements:
     component_owner: Founder handoff
     test_path_or_plan: Prepared PR body and changed-action review.
     completion_rule: PR is open for Founder review and every prohibited action remains absent.
+    result: BLOCKED
+    dependencies: Exact remote push, prepared PR body and unmerged Founder handoff.
