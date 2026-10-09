@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "1.0",
+  "workContract": "WC-118",
+  "authorityState": "NOT_AUTHORIZED",
+  "containsSecrets": false,
+  "requiredInputs": [
+    "separate Founder hosted-qualification authority",
+    "Demo-only managed identity",
+    "Demo Key Vault secret references",
+    "Demo oauth-vault grant references",
+    "accepted customer credential compartment references",
+    "official provider test/development accounts",
+    "exact scopes and provider capability versions",
+    "approved callbacks and signed webhook endpoints",
+    "accepted CRM, booking, CMS, email, analytics, and platform-intelligence owners",
+    "funding ceiling and WBE reservation policy",
+    "cleanup and rollback procedure",
+    "environment/account-bound evidence identity"
+  ],
+  "prohibitedWithoutAuthority": [
+    "credential entry",
+    "provider connection",
+    "Azure mutation",
+    "deployment",
+    "spend",
+    "audience upload",
+    "lead or customer contact",
+    "website or profile mutation",
+    "email or lifecycle dispatch",
+    "institutional marketing",
+    "customer traffic",
+    "package activation"
+  ]
+}
