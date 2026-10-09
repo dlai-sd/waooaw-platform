@@ -76,18 +76,23 @@ public sealed class ProfessionalCatalog : IProfessionalCatalog
 
     public ProfessionalCatalog(IHostEnvironment environment)
     {
-        var catalogDirectory = Path.Combine(
-            environment.ContentRootPath,
-            "Catalog",
-            "Professionals"
-        );
-        _manifests = Directory.Exists(catalogDirectory)
-            ? Directory
-                .EnumerateFiles(catalogDirectory, "*.json", SearchOption.TopDirectoryOnly)
-                .OrderBy(path => path, StringComparer.Ordinal)
-                .Select(LoadManifest)
-                .ToList()
-            : [];
+        var roots = new List<string> { environment.ContentRootPath };
+        if (File.Exists(Path.Combine(environment.ContentRootPath, "business-platform.csproj")))
+        {
+            roots.Add(AppContext.BaseDirectory);
+        }
+
+        _manifests = roots
+            .Distinct(StringComparer.Ordinal)
+            .Select(root => Path.Combine(root, "Catalog", "Professionals"))
+            .Where(Directory.Exists)
+            .SelectMany(directory =>
+                Directory.EnumerateFiles(directory, "*.json", SearchOption.TopDirectoryOnly)
+            )
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .DistinctBy(Path.GetFileName, StringComparer.Ordinal)
+            .Select(LoadManifest)
+            .ToList();
     }
 
     public IReadOnlyList<ProfessionalDiscoveryResult> Discover(string outcome)

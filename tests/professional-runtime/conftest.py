@@ -18,6 +18,7 @@ sys.path.insert(0, str(dma_path))
 os.environ.setdefault("DMA_ARTIFACT_DIGEST", "sha256:" + "ab" * 32)
 os.environ.setdefault("DMA_ADMISSION_CONTENT_DIGEST", "sha256:" + "cd" * 32)
 os.environ.setdefault("PR_SERVICE_JWT_SECRET", "test-service-assertion")
+sys.modules.pop("relationship_workspace", None)
 
 module_spec = importlib.util.spec_from_file_location(
     "professional_runtime_main",

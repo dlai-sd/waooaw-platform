@@ -193,7 +193,7 @@ def test_ci_build_and_scan_matrices_contain_exactly_seven_release_members() -> N
     assert dma == {
         **dma,
         "service_image": "agent-runtime-adapter-digital-marketing",
-        "service_context": "src/agent-adapters",
+        "service_context": "src",
         "service_dockerfile": "src/digital-marketing-agent/Dockerfile",
     }
     scan_step = next(

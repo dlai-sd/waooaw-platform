@@ -144,9 +144,7 @@ def test_compatibility_tuple_requires_exact_source_and_evidence_identities() -> 
 def test_manifest_contract_references_match_repository_content() -> None:
     root = Path(__file__).resolve().parents[3]
     manifest = json.loads(
-        (root / "src/digital-marketing-agent/contracts/employment-interface-manifest.v1.json").read_text(
-            encoding="utf-8"
-        )
+        (root / "src/digital-marketing-agent/contracts/employment-interface-manifest.v1.json").read_text(encoding="utf-8")
     )
     references = [
         *manifest["governance"].values(),
@@ -192,7 +190,7 @@ async def test_dma_semantics_use_the_existing_private_wc115_routes(
 
 
 @pytest.mark.parametrize(
-    ("request", "state"),
+    ("plan_request", "state"),
     [
         (plan(), "VALID"),
         (
@@ -208,14 +206,14 @@ async def test_dma_semantics_use_the_existing_private_wc115_routes(
     ],
 )
 def test_plan_validation_has_closed_outcomes_and_idempotent_replay(
-    request: PlanValidationRequest,
+    plan_request: PlanValidationRequest,
     state: str,
 ) -> None:
     subject = semantics()
     idempotency_key = uuid4()
 
-    first = subject.validate_plan(RELATIONSHIP, idempotency_key, request)
-    second = subject.validate_plan(RELATIONSHIP, idempotency_key, request)
+    first = subject.validate_plan(RELATIONSHIP, idempotency_key, plan_request)
+    second = subject.validate_plan(RELATIONSHIP, idempotency_key, plan_request)
 
     assert first is second
     assert first.state == state
@@ -225,7 +223,7 @@ def test_plan_validation_has_closed_outcomes_and_idempotent_replay(
             idempotency_key,
             plan(planVersion="plan-2"),
         )
-    assert subject.validate_plan(OTHER_RELATIONSHIP, idempotency_key, request).state == state
+    assert subject.validate_plan(OTHER_RELATIONSHIP, idempotency_key, plan_request).state == state
 
 
 @pytest.mark.parametrize(
@@ -263,6 +261,21 @@ def test_plan_validation_has_closed_outcomes_and_idempotent_replay(
             ),
             "INVALID",
         ),
+        (
+            PlanContext(
+                source_version="profile-2",
+                mandatory_requirements_confirmed=True,
+            ),
+            "UNKNOWN",
+        ),
+        (
+            PlanContext(
+                source_version="profile-1",
+                mandatory_requirements_confirmed=True,
+                calendar_commitments_complete=False,
+            ),
+            "INVALID",
+        ),
     ],
 )
 def test_plan_context_preserves_deferral_and_side_effect_boundaries(
@@ -278,6 +291,17 @@ def test_plan_context_preserves_deferral_and_side_effect_boundaries(
     )
 
     assert subject.validate_plan(RELATIONSHIP, uuid4(), plan()).state == expected
+
+
+def test_plan_rejects_coordinates_outside_package_a() -> None:
+    result = semantics().validate_plan(
+        RELATIONSHIP,
+        uuid4(),
+        plan(skillRefs=("UNAVAILABLE_SKILL",)),
+    )
+
+    assert result.state == "INVALID"
+    assert result.unmet_domain_conditions == ("PACKAGE_A_COORDINATES_REQUIRED",)
 
 
 @pytest.mark.parametrize(
@@ -334,11 +358,14 @@ def test_calendar_change_outside_tolerance_is_material() -> None:
         }
     )
 
-    assert subject.classify_material_change(
-        RELATIONSHIP,
-        uuid4(),
-        request,
-    ).classification == "MATERIAL"
+    assert (
+        subject.classify_material_change(
+            RELATIONSHIP,
+            uuid4(),
+            request,
+        ).classification
+        == "MATERIAL"
+    )
 
 
 @pytest.mark.parametrize(
@@ -417,6 +444,33 @@ def test_maturity_uses_equal_weights_threshold_rounding_and_missing_as_unknown()
     )
     with pytest.raises(ValueError, match="DMA_MATURITY_SCORE_INVALID"):
         assess_maturity(dimensions)
+
+
+def test_maturity_rejects_incomplete_and_mismatched_dimension_sets() -> None:
+    dimensions = {
+        dimension_id: MaturityDimension(
+            dimension_id=dimension_id,
+            score=7,
+            evidence_refs=(f"evidence:{dimension_id.lower()}",),
+            confidence=Decimal("0.8"),
+        )
+        for dimension_id in MATURITY_DIMENSIONS
+    }
+
+    incomplete = dict(dimensions)
+    incomplete.pop(MATURITY_DIMENSIONS[-1])
+    with pytest.raises(ValueError, match="DMA_MATURITY_DIMENSIONS_INVALID"):
+        assess_maturity(incomplete)
+
+    mismatched = dict(dimensions)
+    mismatched[MATURITY_DIMENSIONS[0]] = MaturityDimension(
+        dimension_id="WRONG_DIMENSION",
+        score=7,
+        evidence_refs=("evidence:wrong",),
+        confidence=Decimal("0.8"),
+    )
+    with pytest.raises(ValueError, match="DMA_MATURITY_DIMENSION_ID_MISMATCH"):
+        assess_maturity(mismatched)
 
 
 def test_performance_keeps_customer_outcome_and_professional_state_independent() -> None:

@@ -41,9 +41,7 @@ def fixture(name: str) -> dict[str, Any]:
         pytest.param({**fixture("build-authority-valid.json"), "expiresAt": "2026-09-15T11:59:59Z"}, id="expired"),
     ],
 )
-def test_invalid_authority_creates_no_artifact(
-    authority: dict[str, Any], tmp_path: Path
-) -> None:
+def test_invalid_authority_creates_no_artifact(authority: dict[str, Any], tmp_path: Path) -> None:
     output = tmp_path / "candidate"
     builder_calls: list[Path] = []
 

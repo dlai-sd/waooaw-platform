@@ -112,7 +112,7 @@ public sealed class ProfessionalsControllerTests
             .Select(value => value.GetString()).Should().Equal(
                 "Customer Profiling",
                 "Market Research and Maturity Scoring",
-                "Content Strategy"
+                "Content Strategy and Calendar"
             );
         listing.GetProperty("limitations").EnumerateArray().Should().NotBeEmpty();
         listing.GetProperty("customerRights").EnumerateArray().Should().NotBeEmpty();

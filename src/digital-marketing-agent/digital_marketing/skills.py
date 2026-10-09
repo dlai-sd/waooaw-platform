@@ -76,9 +76,7 @@ def research_market(payload: dict[str, Any]) -> dict[str, Any]:
         if not source_id or source_id in source_ids:
             raise SkillInputDenied("DMA_RESEARCH_SOURCE_INVALID")
         source_ids.add(source_id)
-        normalized_sources.append(
-            {"sourceId": source_id, "url": str(source["url"]), "observedAt": str(source["observedAt"])}
-        )
+        normalized_sources.append({"sourceId": source_id, "url": str(source["url"]), "observedAt": str(source["observedAt"])})
 
     normalized_claims: list[dict[str, str]] = []
     for claim in claims:

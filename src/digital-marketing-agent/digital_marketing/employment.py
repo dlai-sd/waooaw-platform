@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from threading import Lock
-from typing import Any
+from typing import Any, TypeVar, cast
 from uuid import UUID
 
 from runtime_contract import AdapterContractError
@@ -38,6 +38,7 @@ REQUIREMENT_SET_VERSION = "1.0.0"
 ASSESSMENT_VERSION = "1.0.0"
 SHA256_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
+T = TypeVar("T")
 
 STABLE_SKILLS = frozenset(
     {
@@ -126,12 +127,7 @@ def assess_maturity(dimensions: Mapping[str, MaturityDimension]) -> MaturityAsse
         dimension = dimensions[dimension_id]
         if dimension.dimension_id != dimension_id:
             raise ValueError("DMA_MATURITY_DIMENSION_ID_MISMATCH")
-        if (
-            dimension.score is None
-            or not dimension.evidence_refs
-            or dimension.disputed
-            or dimension.stale
-        ):
+        if dimension.score is None or not dimension.evidence_refs or dimension.disputed or dimension.stale:
             missing.append(dimension_id)
             continue
         if not 1 <= dimension.score <= 10:
@@ -212,7 +208,7 @@ class DmaEmploymentSemantics:
         self._manifest = EmploymentInterfaceManifest.model_validate(_load_json("employment-interface-manifest.v1.json"))
         self._requirement_contract = _load_json("induction-requirements.v1.json")
         self._dependency_graph = _load_json("dependency-graph.v1.json")
-        self._replays: dict[tuple[str, UUID, UUID], tuple[str, Any]] = {}
+        self._replays: dict[tuple[str, UUID, UUID], tuple[str, object]] = {}
         self._replay_lock = Lock()
 
     def manifest(
@@ -244,10 +240,10 @@ class DmaEmploymentSemantics:
             for item in self._requirement_contract["requirements"]
         )
         return InductionRequirementSet(
-            manifestVersion=MANIFEST_VERSION,
-            requirementSetVersion=REQUIREMENT_SET_VERSION,
+            manifest_version=MANIFEST_VERSION,
+            requirement_set_version=REQUIREMENT_SET_VERSION,
             requirements=requirements,
-            producedAt=self._clock(),
+            produced_at=self._clock(),
         )
 
     def validate_plan(
@@ -308,8 +304,7 @@ class DmaEmploymentSemantics:
     ) -> PerformanceAssessment:
         assessment = self._performance_provider(relationship_id, review_period_ref)
         if assessment.missed_review_periods >= 2 and (
-            assessment.diagnosis_required is not True
-            or assessment.corrective_proposal_required is not True
+            assessment.diagnosis_required is not True or assessment.corrective_proposal_required is not True
         ):
             raise _contract_error("DOMAIN_EMPLOYMENT_INVALID")
         return assessment
@@ -320,95 +315,92 @@ class DmaEmploymentSemantics:
         context: PlanContext,
     ) -> PlanValidationAssessment:
         produced_at = self._clock()
-        if (
-            request.manifest_version != MANIFEST_VERSION
-            or request.requirement_set_version != REQUIREMENT_SET_VERSION
-        ):
+        if request.manifest_version != MANIFEST_VERSION or request.requirement_set_version != REQUIREMENT_SET_VERSION:
             return PlanValidationAssessment(
-                assessmentVersion=ASSESSMENT_VERSION,
+                assessment_version=ASSESSMENT_VERSION,
                 state="UNKNOWN",
-                unmetDomainConditions=("CURRENT_VERSION_REQUIRED",),
+                unmet_domain_conditions=("CURRENT_VERSION_REQUIRED",),
                 limitations=("Plan versions cannot be reconciled to the admitted Package A tuple.",),
-                producedAt=produced_at,
+                produced_at=produced_at,
             )
         if context.source_version != request.source_version:
             return PlanValidationAssessment(
-                assessmentVersion=ASSESSMENT_VERSION,
+                assessment_version=ASSESSMENT_VERSION,
                 state="UNKNOWN",
-                unmetDomainConditions=("CURRENT_SOURCE_VERSION_REQUIRED",),
+                unmet_domain_conditions=("CURRENT_SOURCE_VERSION_REQUIRED",),
                 limitations=("The plan source cannot be reconciled to current owner evidence.",),
-                producedAt=produced_at,
+                produced_at=produced_at,
             )
         if request.goal_type not in SUPPORTED_GOALS:
             return PlanValidationAssessment(
-                assessmentVersion=ASSESSMENT_VERSION,
+                assessment_version=ASSESSMENT_VERSION,
                 state="INVALID",
-                unmetDomainConditions=("SUPPORTED_GOAL_REQUIRED",),
+                unmet_domain_conditions=("SUPPORTED_GOAL_REQUIRED",),
                 limitations=("The requested goal is outside Package A.",),
-                producedAt=produced_at,
+                produced_at=produced_at,
             )
         if not context.mandatory_requirements_confirmed:
             return PlanValidationAssessment(
-                assessmentVersion=ASSESSMENT_VERSION,
+                assessment_version=ASSESSMENT_VERSION,
                 state="INVALID",
-                unmetDomainConditions=("MANDATORY_INDUCTION_REQUIRED",),
+                unmet_domain_conditions=("MANDATORY_INDUCTION_REQUIRED",),
                 limitations=("A mandatory Package A induction requirement is incomplete.",),
-                producedAt=produced_at,
+                produced_at=produced_at,
             )
         if context.requested_side_effects:
             return PlanValidationAssessment(
-                assessmentVersion=ASSESSMENT_VERSION,
+                assessment_version=ASSESSMENT_VERSION,
                 state="INVALID",
-                unmetDomainConditions=("PACKAGE_A_SIDE_EFFECT_PROHIBITED",),
+                unmet_domain_conditions=("PACKAGE_A_SIDE_EFFECT_PROHIBITED",),
                 limitations=("Package A cannot publish, spend, contact leads, or mutate a provider.",),
-                producedAt=produced_at,
+                produced_at=produced_at,
             )
         if not context.calendar_commitments_complete:
             return PlanValidationAssessment(
-                assessmentVersion=ASSESSMENT_VERSION,
+                assessment_version=ASSESSMENT_VERSION,
                 state="INVALID",
-                unmetDomainConditions=("COMPLETE_CALENDAR_SEMANTICS_REQUIRED",),
+                unmet_domain_conditions=("COMPLETE_CALENDAR_SEMANTICS_REQUIRED",),
                 limitations=("Calendar commitments require complete WC-115 time semantics.",),
-                producedAt=produced_at,
+                produced_at=produced_at,
             )
         if context.deferred_requirement_refs:
             if not context.deferred_isolation_proven:
                 return PlanValidationAssessment(
-                    assessmentVersion=ASSESSMENT_VERSION,
+                    assessment_version=ASSESSMENT_VERSION,
                     state="UNKNOWN",
-                    unmetDomainConditions=("DEFERRED_SCOPE_ISOLATION_REQUIRED",),
+                    unmet_domain_conditions=("DEFERRED_SCOPE_ISOLATION_REQUIRED",),
                     limitations=("Deferred work cannot be bounded from the current dependency proof.",),
-                    producedAt=produced_at,
+                    produced_at=produced_at,
                 )
             return PlanValidationAssessment(
-                assessmentVersion=ASSESSMENT_VERSION,
+                assessment_version=ASSESSMENT_VERSION,
                 state="PARTIAL",
-                unmetDomainConditions=context.deferred_requirement_refs,
+                unmet_domain_conditions=context.deferred_requirement_refs,
                 limitations=("Optional work is deferred with proven bounded impact.",),
-                producedAt=produced_at,
+                produced_at=produced_at,
             )
         if not set(request.skill_refs) <= STABLE_SKILLS or not set(request.milestone_types) <= SUPPORTED_MILESTONES:
             return PlanValidationAssessment(
-                assessmentVersion=ASSESSMENT_VERSION,
+                assessment_version=ASSESSMENT_VERSION,
                 state="INVALID",
-                unmetDomainConditions=("PACKAGE_A_COORDINATES_REQUIRED",),
+                unmet_domain_conditions=("PACKAGE_A_COORDINATES_REQUIRED",),
                 limitations=("The plan contains an unavailable skill or milestone.",),
-                producedAt=produced_at,
+                produced_at=produced_at,
             )
         if request.goal_type == "PLAN_CONTENT_AND_CAMPAIGNS" and "CONTENT_CALENDAR_ACCEPTED" not in request.milestone_types:
             return PlanValidationAssessment(
-                assessmentVersion=ASSESSMENT_VERSION,
+                assessment_version=ASSESSMENT_VERSION,
                 state="PARTIAL",
-                unmetDomainConditions=("CONTENT_CALENDAR_MILESTONE_REQUIRED",),
+                unmet_domain_conditions=("CONTENT_CALENDAR_MILESTONE_REQUIRED",),
                 limitations=("Content planning remains bounded and cannot publish.",),
-                producedAt=produced_at,
+                produced_at=produced_at,
             )
         return PlanValidationAssessment(
-            assessmentVersion=ASSESSMENT_VERSION,
+            assessment_version=ASSESSMENT_VERSION,
             state="VALID",
-            unmetDomainConditions=(),
+            unmet_domain_conditions=(),
             limitations=("Package A grants no publication, provider mutation, spend, or lead-contact authority.",),
-            producedAt=produced_at,
+            produced_at=produced_at,
         )
 
     def _classify_material_change(
@@ -422,25 +414,25 @@ class DmaEmploymentSemantics:
             return MaterialChangeAssessment(
                 classification="UNKNOWN",
                 reasons=("NO_CLOSED_CHANGE_CATEGORY",),
-                affectedSkillRefs=tuple(sorted(STABLE_SKILLS)),
-                affectedWorkRefs=("PACKAGE_A_ACTIVE_WORK",),
-                renewedAgreementRequired=True,
+                affected_skill_refs=tuple(sorted(STABLE_SKILLS)),
+                affected_work_refs=("PACKAGE_A_ACTIVE_WORK",),
+                renewed_agreement_required=True,
             )
         if flags == {"CALENDAR"} and context.calendar_within_accepted_tolerance:
             return MaterialChangeAssessment(
                 classification="NON_MATERIAL",
                 reasons=("CALENDAR_WITHIN_ACCEPTED_TOLERANCE",),
-                affectedSkillRefs=("CONTENT_STRATEGY_AND_CALENDAR",),
-                affectedWorkRefs=("CONTENT_CALENDAR",),
-                renewedAgreementRequired=False,
+                affected_skill_refs=("CONTENT_STRATEGY_AND_CALENDAR",),
+                affected_work_refs=("CONTENT_CALENDAR",),
+                renewed_agreement_required=False,
             )
         affected = _skills_for_flags(flags)
         return MaterialChangeAssessment(
             classification="MATERIAL",
             reasons=tuple(f"{flag}_CHANGED" for flag in sorted(flags)),
-            affectedSkillRefs=tuple(sorted(affected)),
-            affectedWorkRefs=("PACKAGE_A_ACTIVE_WORK",),
-            renewedAgreementRequired=True,
+            affected_skill_refs=tuple(sorted(affected)),
+            affected_work_refs=("PACKAGE_A_ACTIVE_WORK",),
+            renewed_agreement_required=True,
         )
 
     def _evaluate_dependency_isolation(
@@ -452,8 +444,8 @@ class DmaEmploymentSemantics:
         if node is None or request.dependency_state == "UNKNOWN":
             return DependencyIsolationAssessment(
                 isolation="UNKNOWN",
-                affectedSkillRefs=tuple(sorted(STABLE_SKILLS)),
-                dependentWorkRefs=("PACKAGE_A_ACTIVE_WORK",),
+                affected_skill_refs=tuple(sorted(STABLE_SKILLS)),
+                dependent_work_refs=("PACKAGE_A_ACTIVE_WORK",),
                 rationale="The dependency graph cannot prove a complete current impact.",
             )
         affected = frozenset(node["affectedSkillRefs"])
@@ -462,14 +454,14 @@ class DmaEmploymentSemantics:
         if shared_gate or not affected <= candidate:
             return DependencyIsolationAssessment(
                 isolation="NOT_BOUNDED",
-                affectedSkillRefs=tuple(sorted(affected)),
-                dependentWorkRefs=tuple(node["dependentWorkRefs"]),
+                affected_skill_refs=tuple(sorted(affected)),
+                dependent_work_refs=tuple(node["dependentWorkRefs"]),
                 rationale="The dependency reaches omitted work or a shared mandatory gate.",
             )
         return DependencyIsolationAssessment(
             isolation="PROVEN_BOUNDED",
-            affectedSkillRefs=tuple(sorted(affected)),
-            dependentWorkRefs=tuple(node["dependentWorkRefs"]),
+            affected_skill_refs=tuple(sorted(affected)),
+            dependent_work_refs=tuple(node["dependentWorkRefs"]),
             rationale="Every transitive dependent is present in the caller candidate set.",
         )
 
@@ -483,15 +475,15 @@ class DmaEmploymentSemantics:
         relationship_id: UUID,
         idempotency_key: UUID,
         digest: str,
-        execute: Callable[[], Any],
-    ) -> Any:
+        execute: Callable[[], T],
+    ) -> T:
         key = (operation, relationship_id, idempotency_key)
         with self._replay_lock:
             previous = self._replays.get(key)
             if previous is not None:
                 if previous[0] != digest:
                     raise _contract_error("DOMAIN_EMPLOYMENT_CONFLICT")
-                return previous[1]
+                return cast(T, previous[1])
             result = execute()
             self._replays[key] = (digest, result)
             return result
@@ -518,11 +510,9 @@ def _requirement_payload(
     item: Mapping[str, Any],
     selected: frozenset[str],
 ) -> dict[str, Any]:
-    return {
-        key: value
-        for key, value in item.items()
-        if key != "mandatoryRule"
-    } | {"mandatory": _resolved_mandatory(item, selected)}
+    return {key: value for key, value in item.items() if key != "mandatoryRule"} | {
+        "mandatory": _resolved_mandatory(item, selected)
+    }
 
 
 def _digest(payload: Mapping[str, Any]) -> str:
