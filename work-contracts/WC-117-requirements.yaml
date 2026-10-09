@@ -7,7 +7,7 @@ solution_digest: a15a33767ad100c73ed70330364559c06b37d685a929f534551cd0b282c1a4d
 contract_status: FOUNDER_ACCEPTED_IMPLEMENTATION_AUTHORIZED_ACTIVATION_UNAUTHORIZED
 implementation_scope: true
 result: QUALIFIED
-candidate_head: 6ff4569fe40a229d110bd5d9e87c4cfbc0fecb06
+candidate_head: 79d22219b09a6f4b5e2dcee16a60bc3a30e0faeb
 candidate_scope: LOCAL_DETERMINISTIC_B1_B2_DEFAULT_OFF
 completion_rule: >-
   Every requirement must have direct repository-owned Docker evidence bound to one exact B1/B2
@@ -22,11 +22,12 @@ requirement_defaults: &defaults
   residual_risk: Founder review, PR approval and merge remain open; B1/B2 activation, deployment and provider actions remain prohibited.
   result: PASS
   evidence_refs:
-    - git:6ff4569fe40a229d110bd5d9e87c4cfbc0fecb06
+    - git:79d22219b09a6f4b5e2dcee16a60bc3a30e0faeb
     - src/digital-marketing-agent/tests/test_content_production.py
     - src/digital-marketing-agent/tests/test_content_service.py
     - src/digital-marketing-agent/tests/test_social_mcp.py
     - src/digital-marketing-agent/tests/test_publication_measurement.py
+    - tests/professional-runtime/test_social_publication.py
     - tests/business-platform.Tests/CustomerAssetPolicyTests.cs
     - validation/evidence/wc117/hosted-demo-required-inputs.json
 
