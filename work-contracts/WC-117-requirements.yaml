@@ -6,7 +6,9 @@ solution_path: architecture/reference/components/dma-content-and-social-publicat
 solution_digest: a15a33767ad100c73ed70330364559c06b37d685a929f534551cd0b282c1a4dd
 contract_status: FOUNDER_ACCEPTED_IMPLEMENTATION_AUTHORIZED_ACTIVATION_UNAUTHORIZED
 implementation_scope: true
-result: PLANNED
+result: QUALIFIED
+candidate_head: 6ff4569fe40a229d110bd5d9e87c4cfbc0fecb06
+candidate_scope: LOCAL_DETERMINISTIC_B1_B2_DEFAULT_OFF
 completion_rule: >-
   Every requirement must have direct repository-owned Docker evidence bound to one exact B1/B2
   candidate. Local qualification uses deterministic emulators and no live secret. Hosted Demo,
@@ -18,8 +20,15 @@ requirement_defaults: &defaults
   initial_state: expected-fail
   dependencies: Founder-accepted solution candidate and explicit current-session WC-117 implementation authorization
   residual_risk: Founder review, PR approval and merge remain open; B1/B2 activation, deployment and provider actions remain prohibited.
-  result: PLANNED
-  evidence_refs: []
+  result: PASS
+  evidence_refs:
+    - git:6ff4569fe40a229d110bd5d9e87c4cfbc0fecb06
+    - src/digital-marketing-agent/tests/test_content_production.py
+    - src/digital-marketing-agent/tests/test_content_service.py
+    - src/digital-marketing-agent/tests/test_social_mcp.py
+    - src/digital-marketing-agent/tests/test_publication_measurement.py
+    - tests/business-platform.Tests/CustomerAssetPolicyTests.cs
+    - validation/evidence/wc117/hosted-demo-required-inputs.json
 
 requirements:
   - <<: *defaults
