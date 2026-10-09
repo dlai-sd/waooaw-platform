@@ -17,8 +17,8 @@ requirement_defaults: &defaults
   residual_risk: Founder review, PR approval and merge remain open; activation and deployment remain prohibited.
   result: PASS
   evidence_refs:
-    - commit:1c9a4be02ebd82181b27423031e6f69e41328358
-    - tree:a2d93ebc6f710e2eadf76f28836a85e3b5414fcc
+    - commit:35c7666d3850b6fda500d263009ffbe5a6c50a67
+    - tree:a0e65890a464733443c47d678b5de27d21fe7531
     - precheck:4e90a1b068521c95b28d016edb81dfcfb7e9e0aba7ffa9bad4f723014c1eb48e
 
 requirements:
