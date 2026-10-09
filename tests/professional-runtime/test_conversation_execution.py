@@ -109,6 +109,52 @@ class FakeEmergencyStopGateway(FakeConstitutionalGateway):
         )
 
 
+class FakeEmploymentAirGateway:
+    def __init__(self, *, fail: bool = False) -> None:
+        self.fail = fail
+        self.proposals: list[dict[str, Any]] = []
+        self.proposal_id = uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+
+    async def propose(
+        self,
+        trusted_context: Any,
+        idempotency_key: uuid.UUID,
+        payload: dict[str, Any],
+    ) -> Any:
+        self.proposals.append(
+            {
+                "trusted_context": trusted_context,
+                "idempotency_key": idempotency_key,
+                "payload": payload,
+            }
+        )
+        if self.fail:
+            raise ValueError("AIR unavailable")
+        return SimpleNamespace(
+            raise_for_status=lambda: None,
+            json=lambda: {"proposalId": str(self.proposal_id), "state": "PENDING"},
+        )
+
+    async def get(self, trusted_context: Any, proposal_id: uuid.UUID) -> Any:
+        assert trusted_context.relationship_id == "relationship-a"
+        assert proposal_id == self.proposal_id
+        payload = self.proposals[-1]["payload"]
+        return SimpleNamespace(
+            raise_for_status=lambda: None,
+            json=lambda: {
+                **payload,
+                "proposalId": str(self.proposal_id),
+                "state": "PROPOSED",
+                "confidence": 0.9,
+                "operations": [],
+                "assumptions": [],
+                "unresolvedQuestions": [],
+                "sourceRefs": [],
+                "createdAt": "2026-10-08T00:00:00Z",
+            },
+        )
+
+
 class FakeWorkflowHandle:
     def __init__(self, workflow_input: ConversationExecutionInput) -> None:
         self.workflow_input = workflow_input
@@ -400,6 +446,7 @@ def execution_state() -> FakeTemporalClient:
     app.state.temporal_client = temporal
     app.state.conversation_constitutional_gateway = FakeConstitutionalGateway()
     app.state.emergency_stop_jwt_validator = FakeEmergencyStopJWTValidator()
+    app.state.employment_air_gateway = None
     app.state.temporal_worker_task = MagicMock(done=MagicMock(return_value=False))
     app.state.conversation_stream_poll_seconds = 0
     app.state.conversation_stream_heartbeat_seconds = 60
@@ -416,6 +463,44 @@ async def _start(client: Any, **kwargs: Any) -> tuple[uuid.UUID, dict[str, Any]]
     )
     assert response.status_code == 202
     return conversation_id, response.json()
+
+
+async def test_employment_contribution_dispatches_air_proposal_after_durable_acceptance(
+    client: Any,
+) -> None:
+    gateway = FakeEmploymentAirGateway()
+    app.state.employment_air_gateway = gateway
+    body = _body()
+
+    conversation_id, execution = await _start(client, body=body)
+
+    assert len(gateway.proposals) == 1
+    dispatched = gateway.proposals[0]
+    assert dispatched["trusted_context"].tenant_id == "tenant-a"
+    assert dispatched["trusted_context"].relationship_id == "relationship-a"
+    assert dispatched["payload"]["contributionRef"] == body["messageId"]
+    assert dispatched["payload"]["agentType"] == body["operationalMandate"]["professionalType"]
+    expected = dict(dispatched["payload"])
+    request_digest = expected.pop("requestDigest")
+    canonical = json.dumps(expected, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()
+    assert request_digest == hashlib.sha256(canonical).hexdigest()
+    handle = app.state.temporal_client.handles[execution["executionId"]]
+    proposal_event = handle.events[-1]
+    assert proposal_event["eventType"] == "card.proposed"
+    assert proposal_event["data"]["data"]["employmentPatchProposal"]["state"] == "PROPOSED"
+    assert proposal_event["conversationId"] == str(conversation_id)
+
+
+async def test_employment_air_failure_preserves_durable_execution_and_requests_reconciliation(
+    client: Any,
+) -> None:
+    app.state.employment_air_gateway = FakeEmploymentAirGateway(fail=True)
+
+    _, execution = await _start(client)
+
+    handle = app.state.temporal_client.handles[execution["executionId"]]
+    assert handle.events[-1]["eventType"] == "reconciliation.required"
+    assert handle.events[-1]["data"] == {"reason": "STATE_CONFLICT"}
 
 
 @pytest.mark.parametrize(

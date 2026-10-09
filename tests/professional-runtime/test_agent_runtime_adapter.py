@@ -89,6 +89,46 @@ def envelope(descriptor: AdapterDescriptorV1, **changes: Any) -> AdapterInvocati
     return AdapterInvocationEnvelopeV1(**values)
 
 
+@pytest.mark.asyncio
+async def test_generic_employment_routes_require_injected_delegated_authorizer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("PR_SERVICE_JWT_SECRET", "test-only-adapter-secret")
+    adapter = create_digital_marketing_adapter()
+    query = "?agentType=neutral&agentVersion=1&manifestVersion=1"
+
+    unavailable = create_app(adapter)
+    headers = {"X-Correlation-Id": str(uuid4())}
+    async with AsyncClient(
+        transport=ASGITransport(app=unavailable),
+        base_url="http://adapter",
+    ) as client:
+        response = await client.get(
+            f"/internal/v1/employment-interface/manifest{query}",
+            headers=headers,
+        )
+    assert response.status_code == 503
+    assert response.json()["detail"] == "DOMAIN_AUTHORIZATION_UNAVAILABLE"
+
+    observed: list[str] = []
+
+    async def authorize(request: Any) -> None:
+        observed.append(request.url.path)
+
+    authorized = create_app(adapter, employment_authorizer=authorize)
+    async with AsyncClient(
+        transport=ASGITransport(app=authorized),
+        base_url="http://adapter",
+    ) as client:
+        response = await client.get(
+            f"/internal/v1/employment-interface/manifest{query}",
+            headers=headers,
+        )
+    assert response.status_code == 503
+    assert response.json()["detail"] == "DOMAIN_SEMANTICS_UNAVAILABLE"
+    assert observed == ["/internal/v1/employment-interface/manifest"]
+
+
 @pytest.mark.parametrize("factory", [create_digital_marketing_adapter, create_trading_adapter])
 def test_both_professions_pass_one_common_operation_contract(factory: Any) -> None:
     adapter = factory()

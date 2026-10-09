@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 **State Schema:** 2.0.0
-**State Revision:** 257
-**Last Updated:** 2026-10-05 (WC-109 QUALIFICATION AND PR PROCESS REPAIR)
+**State Revision:** 258
+**Last Updated:** 2026-10-08 (WC-115 ENGINEERING QUALIFICATION)
 **Purpose:** Current operational snapshot for bootstrap, recovery, and automated sprint controls; keep it below 200 lines, update checkpoints in place, and retain durable detail in the owning Work Contract, Goal, review, evidence artifact, Git history, or archive index.
 ---
 ## Institutional Snapshot
@@ -14,7 +14,7 @@
 | Latest completed Work Contract | WC-102 - Docker-Only Validation Control Plane |
 | Latest merge | PR #472 merged to `main` as `b50cb36b` |
 | Active delivery | WC-105 follow-up on `fix/wc105-session-defects` is locally deployed and qualified in the isolated Codespaces preview. It adds the repository-owned preview launcher and standard, session/acquisition integrity repairs, and authoritative Hire/Trial card modes. PR submission and Founder review/merge remain open; no Azure or provider mutation occurred. |
-| Active architecture delivery | WC-114 Solution Architecture package passes author review and local contract validation on `sa/conversational-employment-workspace`; exact-head PR preparation and Founder review remain, while implementation and protocol activation are unauthorized. |
+| Active architecture delivery | WC-115 Conversational Employment is ENGINEERING QUALIFIED on `ib/115/conversational-employment-implementation`: BP, PR, AIR, WBE, web, generic adapter, owner persistence, security, cross-owner and final Docker qualification pass. WC115-R024-R026 remain Founder-reserved for a separate admitted-agent PR. The candidate is disabled by default; activation, deployment, customer traffic, Founder PR approval and merge remain open. |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 

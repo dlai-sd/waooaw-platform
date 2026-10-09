@@ -75,6 +75,7 @@ public sealed class WorkloadIdentityClient : IDisposable
             {
                 "billing-engine",
                 "professional-runtime",
+                "domain-adapter",
                 "domain-adapter-dma",
             }
         )

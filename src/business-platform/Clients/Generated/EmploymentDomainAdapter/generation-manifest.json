@@ -1,0 +1,8 @@
+{
+  "generator": "openapi-generator-cli",
+  "generatorVersion": "7.17.0",
+  "language": "csharp",
+  "library": "httpclient",
+  "input": "architecture/reference/api-specs/conversational-employment-domain-adapter.openapi.yaml",
+  "inputSha256": "903285269df0d074e6f2e3da7fbe792ae1c98fade9f4952327913bf9bca3830d"
+}

@@ -103,6 +103,8 @@ def test_ci_has_deterministic_spec_and_fixable_vulnerability_gates() -> None:
     spec_gate = (REPO_ROOT / "scripts/validation_control/run_spec_lint_gate.sh").read_text(encoding="utf-8")
     assert "spectral:oas" in spectral
     assert "stoplight/spectral:6.15.0" in spec_gate
+    assert "openapitools/openapi-generator-cli:v7.17.0" in spec_gate
+    assert "spec_lint_scope.py" in spec_gate
     assert "bufbuild/buf:1.72.0" in spec_gate
     assert "Detect affected image" not in workflow
     assert "steps.affected.outputs.build" not in workflow

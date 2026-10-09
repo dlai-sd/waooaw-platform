@@ -25,6 +25,8 @@ from wallet.router import router as wallet_router
 from reconciliation.service import ReconciliationService, FounderActionGenerator as _FAGBase
 from relationship_workspace import configure_relationship_workspace
 from relationship_workspace import router as relationship_workspace_router
+from employment_eligibility import configure_employment_eligibility
+from employment_eligibility import router as employment_eligibility_router
 from telemetry import configure_telemetry
 
 logger = logging.getLogger(__name__)
@@ -170,6 +172,8 @@ def create_app() -> FastAPI:
     app.include_router(wallet_router)
     app.include_router(relationship_workspace_router)
     configure_relationship_workspace(app)
+    app.include_router(employment_eligibility_router)
+    configure_employment_eligibility(app)
 
     @app.get("/health", response_model=dict[str, str])
     async def health_check() -> dict[str, str]:

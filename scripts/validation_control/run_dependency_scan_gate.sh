@@ -50,7 +50,7 @@ case "${1:-}" in
     dotnet)
         audit_dotnet_project() {
             project_name=$(basename "$1")
-            export BaseIntermediateOutputPath="/tmp/dependency-audit/$project_name/obj/"
+            export ArtifactsPath="/tmp/dependency-audit/$project_name"
             dotnet restore "$1" --nologo >/dev/null
             output=$(dotnet list "$1" package --vulnerable --include-transitive 2>&1)
             printf '%s\n' "$output"

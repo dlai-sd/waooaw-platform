@@ -4,6 +4,7 @@
     <DataCollectors>
       <DataCollector friendlyName="XPlat Code Coverage">
         <Configuration>
+          <Exclude>[Waooaw.Generated.*]*</Exclude>
           <ExcludeByFile>**/obj/**</ExcludeByFile>
         </Configuration>
       </DataCollector>

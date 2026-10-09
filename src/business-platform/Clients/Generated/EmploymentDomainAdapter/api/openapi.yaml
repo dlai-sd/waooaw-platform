@@ -1,0 +1,1273 @@
+openapi: 3.1.0
+info:
+  contact:
+    name: WAOOAW Architecture
+  description: |
+    Generic private adapter contract for agent-specific induction, planning, dependency,
+    material-change and performance semantics. It owns no public relationship, lifecycle,
+    billing, authority, constitutional evidence or customer ordering truth.
+  title: WAOOAW Conversational Employment Domain Adapter Candidate API
+  version: 1.0.0-candidate.2
+servers:
+- url: https://domain-adapter.internal.waooaw
+security:
+- ServiceBearerAuth: []
+tags:
+- name: Employment Domain Semantics
+paths:
+  /internal/v1/employment-interface/manifest:
+    get:
+      description: Returns exact protocol and manifest support without reading mutable
+        repository text at action time.
+      operationId: getEmploymentInterfaceManifest
+      parameters:
+      - $ref: "#/components/parameters/AgentType"
+      - $ref: "#/components/parameters/AgentVersion"
+      - $ref: "#/components/parameters/ManifestVersion"
+      - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentInterfaceManifestV1"
+          description: Exact manifest
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+      summary: Resolve one exact immutable agent employment interface manifest
+      tags:
+      - Employment Domain Semantics
+  /internal/v1/relationships/{relationshipId}/employment/induction-requirements:
+    get:
+      description: Returns versioned domain requirements and affected Skills without
+        owning BP readiness.
+      operationId: getInductionRequirementSet
+      parameters:
+      - $ref: "#/components/parameters/RelationshipId"
+      - $ref: "#/components/parameters/ManifestVersion"
+      - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InductionRequirementSetV1"
+          description: Versioned induction requirement set
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+      summary: Get profession-specific induction requirements in generic envelopes
+      tags:
+      - Employment Domain Semantics
+  /internal/v1/relationships/{relationshipId}/employment/plan-validation:
+    post:
+      description: Assesses a candidate against admitted domain semantics while BP
+        retains plan acceptance.
+      operationId: validatePlanCandidate
+      parameters:
+      - $ref: "#/components/parameters/RelationshipId"
+      - $ref: "#/components/parameters/IdempotencyKey"
+      - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlanValidationRequestV1"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanValidationAssessmentV1"
+          description: Domain assessment
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+      summary: Validate domain semantics without accepting or authorizing the plan
+      tags:
+      - Employment Domain Semantics
+  /internal/v1/relationships/{relationshipId}/employment/material-change-classification:
+    post:
+      description: Returns domain materiality and affected references; protected BP
+        materiality categories remain mandatory.
+      operationId: classifyMaterialChange
+      parameters:
+      - $ref: "#/components/parameters/RelationshipId"
+      - $ref: "#/components/parameters/IdempotencyKey"
+      - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MaterialChangeRequestV1"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaterialChangeAssessmentV1"
+          description: Domain materiality assessment
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+      summary: Classify domain materiality and affected work without changing plan
+        state
+      tags:
+      - Employment Domain Semantics
+  /internal/v1/relationships/{relationshipId}/employment/dependency-isolation:
+    post:
+      description: Proves bounded isolation or returns unknown so BP can fail closed
+        for dependent work.
+      operationId: evaluateDependencyIsolation
+      parameters:
+      - $ref: "#/components/parameters/RelationshipId"
+      - $ref: "#/components/parameters/IdempotencyKey"
+      - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DependencyIsolationRequestV1"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DependencyIsolationAssessmentV1"
+          description: Isolation assessment
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+      summary: Prove or reject bounded Skill isolation after dependency change
+      tags:
+      - Employment Domain Semantics
+  /internal/v1/relationships/{relationshipId}/employment/performance-assessments/{reviewPeriodRef}:
+    get:
+      description: Returns evidence-linked domain meaning without converting technical
+        execution metrics into business outcomes.
+      operationId: getPerformanceAssessment
+      parameters:
+      - $ref: "#/components/parameters/RelationshipId"
+      - $ref: "#/components/parameters/ReviewPeriodRef"
+      - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PerformanceAssessmentV1"
+          description: Domain performance assessment
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+      summary: Get domain business-outcome and agent-performance meanings separately
+      tags:
+      - Employment Domain Semantics
+components:
+  parameters:
+    RelationshipId:
+      explode: false
+      in: path
+      name: relationshipId
+      required: true
+      schema:
+        format: uuid
+        type: string
+      style: simple
+    AgentType:
+      explode: true
+      in: query
+      name: agentType
+      required: true
+      schema:
+        maxLength: 100
+        minLength: 1
+        type: string
+      style: form
+    AgentVersion:
+      explode: true
+      in: query
+      name: agentVersion
+      required: true
+      schema:
+        maxLength: 64
+        minLength: 1
+        type: string
+      style: form
+    ManifestVersion:
+      explode: true
+      in: query
+      name: manifestVersion
+      required: true
+      schema:
+        maxLength: 64
+        minLength: 1
+        type: string
+      style: form
+    ReviewPeriodRef:
+      explode: false
+      in: path
+      name: reviewPeriodRef
+      required: true
+      schema:
+        maxLength: 128
+        minLength: 1
+        type: string
+      style: simple
+    IdempotencyKey:
+      explode: false
+      in: header
+      name: Idempotency-Key
+      required: true
+      schema:
+        format: uuid
+        type: string
+      style: simple
+    CorrelationId:
+      explode: false
+      in: header
+      name: X-Correlation-Id
+      required: true
+      schema:
+        format: uuid
+        type: string
+      style: simple
+  responses:
+    InvalidRequest:
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/DomainEmploymentProblemV1"
+      description: Invalid generic envelope or unsupported domain reference
+    Unauthorized:
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/DomainEmploymentProblemV1"
+      description: "Invalid service assertion, audience, purpose or relationship delegation"
+    NotFound:
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/DomainEmploymentProblemV1"
+      description: Resource absent or inaccessible
+    Conflict:
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/DomainEmploymentProblemV1"
+      description: "Idempotency, exact-version or source conflict"
+    Unavailable:
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/DomainEmploymentProblemV1"
+      description: Adapter cannot provide current domain meaning
+  schemas:
+    DomainEmploymentSchemaVersion:
+      enum:
+      - "1.0"
+      type: string
+    EmploymentInterfaceManifestV1:
+      additionalProperties: false
+      example:
+        planning:
+          materialChangeRules:
+          - materialChangeRules
+          - materialChangeRules
+          performanceMeasureTypes:
+          - performanceMeasureTypes
+          - performanceMeasureTypes
+          milestoneTypes:
+          - milestoneTypes
+          - milestoneTypes
+          planAdapter:
+            contractDigest: contractDigest
+            contractVersion: contractVersion
+            contractRef: contractRef
+          calendarConstraints:
+          - calendarConstraints
+          - calendarConstraints
+          supportedGoalTypes:
+          - supportedGoalTypes
+          - supportedGoalTypes
+        schemaVersion: "1.0"
+        agentType: agentType
+        induction:
+          readinessRules:
+          - readinessRules
+          - readinessRules
+          domainSummaryAdapter:
+            contractDigest: contractDigest
+            contractVersion: contractVersion
+            contractRef: contractRef
+          optionalContext:
+          - optionalContext
+          - optionalContext
+          mandatoryContext:
+          - mandatoryContext
+          - mandatoryContext
+          dependencyTypes:
+          - dependencyTypes
+          - dependencyTypes
+          requirementSetVersion: requirementSetVersion
+        operations:
+          degradationProfile:
+            contractDigest: contractDigest
+            contractVersion: contractVersion
+            contractRef: contractRef
+          reassessmentTriggers:
+          - reassessmentTriggers
+          - reassessmentTriggers
+          workItemTypes:
+          - workItemTypes
+          - workItemTypes
+          billingProfile:
+            contractDigest: contractDigest
+            contractVersion: contractVersion
+            contractRef: contractRef
+          shorterMissedReviewThreshold: 1
+          operatingCycleTypes:
+          - operatingCycleTypes
+          - operatingCycleTypes
+          outcomeAdapter:
+            contractDigest: contractDigest
+            contractVersion: contractVersion
+            contractRef: contractRef
+        manifestVersion: manifestVersion
+        agentVersion: agentVersion
+        conformanceScenarios:
+        - result: PASS
+          limitationRefs:
+          - limitationRefs
+          - limitationRefs
+          validatedManifestVersion: validatedManifestVersion
+          evidenceRef: evidenceRef
+          validatedProtocolVersion: 1.0-candidate
+          scenarioId: scenarioId
+          validatedAt: 2000-01-23T04:56:07.000+00:00
+        - result: PASS
+          limitationRefs:
+          - limitationRefs
+          - limitationRefs
+          validatedManifestVersion: validatedManifestVersion
+          evidenceRef: evidenceRef
+          validatedProtocolVersion: 1.0-candidate
+          scenarioId: scenarioId
+          validatedAt: 2000-01-23T04:56:07.000+00:00
+        protocolVersion: 1.0-candidate
+        governance:
+          promptPolicy:
+            contractDigest: contractDigest
+            contractVersion: contractVersion
+            contractRef: contractRef
+          agentSpecification:
+            contractDigest: contractDigest
+            contractVersion: contractVersion
+            contractRef: contractRef
+          toolProfile:
+            contractDigest: contractDigest
+            contractVersion: contractVersion
+            contractRef: contractRef
+          decisionConsequenceMap:
+            contractDigest: contractDigest
+            contractVersion: contractVersion
+            contractRef: contractRef
+      properties:
+        schemaVersion:
+          $ref: "#/components/schemas/DomainEmploymentSchemaVersion"
+        protocolVersion:
+          enum:
+          - 1.0-candidate
+          type: string
+        agentType:
+          maxLength: 100
+          minLength: 1
+          type: string
+        agentVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        manifestVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        governance:
+          $ref: "#/components/schemas/EmploymentGovernanceReferencesV1"
+        induction:
+          $ref: "#/components/schemas/EmploymentInductionManifestV1"
+        planning:
+          $ref: "#/components/schemas/EmploymentPlanningManifestV1"
+        operations:
+          $ref: "#/components/schemas/EmploymentOperationsManifestV1"
+        conformanceScenarios:
+          items:
+            $ref: "#/components/schemas/EmploymentConformanceScenarioV1"
+          minItems: 1
+          type: array
+      required:
+      - agentType
+      - agentVersion
+      - conformanceScenarios
+      - governance
+      - induction
+      - manifestVersion
+      - operations
+      - planning
+      - protocolVersion
+      - schemaVersion
+    ImmutableContractReferenceV1:
+      additionalProperties: false
+      example:
+        contractDigest: contractDigest
+        contractVersion: contractVersion
+        contractRef: contractRef
+      properties:
+        contractRef:
+          maxLength: 240
+          minLength: 1
+          type: string
+        contractVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        contractDigest:
+          pattern: "^[a-f0-9]{64}$"
+          type: string
+      required:
+      - contractDigest
+      - contractRef
+      - contractVersion
+    EmploymentGovernanceReferencesV1:
+      additionalProperties: false
+      example:
+        promptPolicy:
+          contractDigest: contractDigest
+          contractVersion: contractVersion
+          contractRef: contractRef
+        agentSpecification:
+          contractDigest: contractDigest
+          contractVersion: contractVersion
+          contractRef: contractRef
+        toolProfile:
+          contractDigest: contractDigest
+          contractVersion: contractVersion
+          contractRef: contractRef
+        decisionConsequenceMap:
+          contractDigest: contractDigest
+          contractVersion: contractVersion
+          contractRef: contractRef
+      properties:
+        agentSpecification:
+          $ref: "#/components/schemas/ImmutableContractReferenceV1"
+        promptPolicy:
+          $ref: "#/components/schemas/ImmutableContractReferenceV1"
+        toolProfile:
+          $ref: "#/components/schemas/ImmutableContractReferenceV1"
+        decisionConsequenceMap:
+          $ref: "#/components/schemas/ImmutableContractReferenceV1"
+      required:
+      - agentSpecification
+      - decisionConsequenceMap
+      - promptPolicy
+      - toolProfile
+    EmploymentInductionManifestV1:
+      additionalProperties: false
+      example:
+        readinessRules:
+        - readinessRules
+        - readinessRules
+        domainSummaryAdapter:
+          contractDigest: contractDigest
+          contractVersion: contractVersion
+          contractRef: contractRef
+        optionalContext:
+        - optionalContext
+        - optionalContext
+        mandatoryContext:
+        - mandatoryContext
+        - mandatoryContext
+        dependencyTypes:
+        - dependencyTypes
+        - dependencyTypes
+        requirementSetVersion: requirementSetVersion
+      properties:
+        requirementSetVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        mandatoryContext:
+          items:
+            maxLength: 100
+            minLength: 1
+            type: string
+          minItems: 1
+          type: array
+        optionalContext:
+          items:
+            maxLength: 100
+            minLength: 1
+            type: string
+          type: array
+        dependencyTypes:
+          items:
+            maxLength: 100
+            minLength: 1
+            type: string
+          minItems: 1
+          type: array
+        readinessRules:
+          items:
+            maxLength: 200
+            minLength: 1
+            type: string
+          minItems: 1
+          type: array
+        domainSummaryAdapter:
+          $ref: "#/components/schemas/ImmutableContractReferenceV1"
+      required:
+      - dependencyTypes
+      - domainSummaryAdapter
+      - mandatoryContext
+      - optionalContext
+      - readinessRules
+      - requirementSetVersion
+    EmploymentPlanningManifestV1:
+      additionalProperties: false
+      example:
+        materialChangeRules:
+        - materialChangeRules
+        - materialChangeRules
+        performanceMeasureTypes:
+        - performanceMeasureTypes
+        - performanceMeasureTypes
+        milestoneTypes:
+        - milestoneTypes
+        - milestoneTypes
+        planAdapter:
+          contractDigest: contractDigest
+          contractVersion: contractVersion
+          contractRef: contractRef
+        calendarConstraints:
+        - calendarConstraints
+        - calendarConstraints
+        supportedGoalTypes:
+        - supportedGoalTypes
+        - supportedGoalTypes
+      properties:
+        supportedGoalTypes:
+          items:
+            maxLength: 100
+            minLength: 1
+            type: string
+          minItems: 1
+          type: array
+        milestoneTypes:
+          items:
+            maxLength: 100
+            minLength: 1
+            type: string
+          minItems: 1
+          type: array
+        calendarConstraints:
+          items:
+            maxLength: 200
+            minLength: 1
+            type: string
+          minItems: 1
+          type: array
+        materialChangeRules:
+          items:
+            maxLength: 200
+            minLength: 1
+            type: string
+          minItems: 1
+          type: array
+        performanceMeasureTypes:
+          items:
+            maxLength: 100
+            minLength: 1
+            type: string
+          minItems: 1
+          type: array
+        planAdapter:
+          $ref: "#/components/schemas/ImmutableContractReferenceV1"
+      required:
+      - calendarConstraints
+      - materialChangeRules
+      - milestoneTypes
+      - performanceMeasureTypes
+      - planAdapter
+      - supportedGoalTypes
+    EmploymentOperationsManifestV1:
+      additionalProperties: false
+      example:
+        degradationProfile:
+          contractDigest: contractDigest
+          contractVersion: contractVersion
+          contractRef: contractRef
+        reassessmentTriggers:
+        - reassessmentTriggers
+        - reassessmentTriggers
+        workItemTypes:
+        - workItemTypes
+        - workItemTypes
+        billingProfile:
+          contractDigest: contractDigest
+          contractVersion: contractVersion
+          contractRef: contractRef
+        shorterMissedReviewThreshold: 1
+        operatingCycleTypes:
+        - operatingCycleTypes
+        - operatingCycleTypes
+        outcomeAdapter:
+          contractDigest: contractDigest
+          contractVersion: contractVersion
+          contractRef: contractRef
+      properties:
+        operatingCycleTypes:
+          items:
+            maxLength: 100
+            minLength: 1
+            type: string
+          minItems: 1
+          type: array
+        workItemTypes:
+          items:
+            maxLength: 100
+            minLength: 1
+            type: string
+          minItems: 1
+          type: array
+        reassessmentTriggers:
+          items:
+            maxLength: 200
+            minLength: 1
+            type: string
+          minItems: 1
+          type: array
+        outcomeAdapter:
+          $ref: "#/components/schemas/ImmutableContractReferenceV1"
+        billingProfile:
+          $ref: "#/components/schemas/ImmutableContractReferenceV1"
+        degradationProfile:
+          $ref: "#/components/schemas/ImmutableContractReferenceV1"
+        shorterMissedReviewThreshold:
+          maximum: 2
+          minimum: 1
+          type: integer
+      required:
+      - billingProfile
+      - degradationProfile
+      - operatingCycleTypes
+      - outcomeAdapter
+      - reassessmentTriggers
+      - workItemTypes
+    EmploymentConformanceScenarioV1:
+      additionalProperties: false
+      example:
+        result: PASS
+        limitationRefs:
+        - limitationRefs
+        - limitationRefs
+        validatedManifestVersion: validatedManifestVersion
+        evidenceRef: evidenceRef
+        validatedProtocolVersion: 1.0-candidate
+        scenarioId: scenarioId
+        validatedAt: 2000-01-23T04:56:07.000+00:00
+      properties:
+        scenarioId:
+          maxLength: 160
+          minLength: 1
+          type: string
+        evidenceRef:
+          maxLength: 240
+          minLength: 1
+          type: string
+        result:
+          enum:
+          - PASS
+          type: string
+        validatedProtocolVersion:
+          enum:
+          - 1.0-candidate
+          type: string
+        validatedManifestVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        validatedAt:
+          format: date-time
+          type: string
+        limitationRefs:
+          items:
+            maxLength: 200
+            minLength: 1
+            type: string
+          type: array
+      required:
+      - evidenceRef
+      - result
+      - scenarioId
+      - validatedManifestVersion
+      - validatedProtocolVersion
+    DomainRequirementV1:
+      additionalProperties: false
+      example:
+        affectedSkillRefs:
+        - affectedSkillRefs
+        - affectedSkillRefs
+        dependencyType: dependencyType
+        requirementRef: requirementRef
+        description: description
+        label: label
+        mandatory: true
+        confirmationClass: CUSTOMER
+      properties:
+        requirementRef:
+          maxLength: 128
+          minLength: 1
+          type: string
+        label:
+          maxLength: 240
+          minLength: 1
+          type: string
+        description:
+          maxLength: 1000
+          type: string
+        mandatory:
+          type: boolean
+        dependencyType:
+          maxLength: 100
+          minLength: 1
+          type: string
+        affectedSkillRefs:
+          items:
+            maxLength: 128
+            minLength: 1
+            type: string
+          minItems: 1
+          type: array
+        confirmationClass:
+          enum:
+          - CUSTOMER
+          - AUTHORITY_SOURCE
+          - OWNER_BOUND_ASSUMPTION
+          type: string
+      required:
+      - affectedSkillRefs
+      - dependencyType
+      - label
+      - mandatory
+      - requirementRef
+    InductionRequirementSetV1:
+      additionalProperties: false
+      example:
+        producedAt: 2000-01-23T04:56:07.000+00:00
+        requirements:
+        - affectedSkillRefs:
+          - affectedSkillRefs
+          - affectedSkillRefs
+          dependencyType: dependencyType
+          requirementRef: requirementRef
+          description: description
+          label: label
+          mandatory: true
+          confirmationClass: CUSTOMER
+        - affectedSkillRefs:
+          - affectedSkillRefs
+          - affectedSkillRefs
+          dependencyType: dependencyType
+          requirementRef: requirementRef
+          description: description
+          label: label
+          mandatory: true
+          confirmationClass: CUSTOMER
+        schemaVersion: "1.0"
+        manifestVersion: manifestVersion
+        requirementSetVersion: requirementSetVersion
+      properties:
+        schemaVersion:
+          $ref: "#/components/schemas/DomainEmploymentSchemaVersion"
+        manifestVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        requirementSetVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        requirements:
+          items:
+            $ref: "#/components/schemas/DomainRequirementV1"
+          minItems: 1
+          type: array
+        producedAt:
+          format: date-time
+          type: string
+      required:
+      - manifestVersion
+      - producedAt
+      - requirementSetVersion
+      - requirements
+      - schemaVersion
+    PlanValidationRequestV1:
+      additionalProperties: false
+      example:
+        goalType: goalType
+        schemaVersion: "1.0"
+        milestoneTypes:
+        - milestoneTypes
+        - milestoneTypes
+        manifestVersion: manifestVersion
+        sourceVersion: sourceVersion
+        planVersion: planVersion
+        requirementSetVersion: requirementSetVersion
+        skillRefs:
+        - skillRefs
+        - skillRefs
+      properties:
+        schemaVersion:
+          $ref: "#/components/schemas/DomainEmploymentSchemaVersion"
+        manifestVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        requirementSetVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        planVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        goalType:
+          maxLength: 100
+          minLength: 1
+          type: string
+        skillRefs:
+          items:
+            maxLength: 128
+            minLength: 1
+            type: string
+          minItems: 1
+          type: array
+        milestoneTypes:
+          items:
+            maxLength: 100
+            minLength: 1
+            type: string
+          type: array
+        sourceVersion:
+          maxLength: 128
+          minLength: 1
+          type: string
+      required:
+      - goalType
+      - manifestVersion
+      - milestoneTypes
+      - planVersion
+      - requirementSetVersion
+      - schemaVersion
+      - skillRefs
+      - sourceVersion
+    PlanValidationAssessmentV1:
+      additionalProperties: false
+      example:
+        producedAt: 2000-01-23T04:56:07.000+00:00
+        schemaVersion: "1.0"
+        assessmentVersion: assessmentVersion
+        state: VALID
+        unmetDomainConditions:
+        - unmetDomainConditions
+        - unmetDomainConditions
+        limitations:
+        - limitations
+        - limitations
+      properties:
+        schemaVersion:
+          $ref: "#/components/schemas/DomainEmploymentSchemaVersion"
+        assessmentVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        state:
+          enum:
+          - VALID
+          - INVALID
+          - PARTIAL
+          - UNKNOWN
+          type: string
+        unmetDomainConditions:
+          items:
+            maxLength: 240
+            minLength: 1
+            type: string
+          type: array
+        limitations:
+          items:
+            maxLength: 500
+            minLength: 1
+            type: string
+          type: array
+        producedAt:
+          format: date-time
+          type: string
+      required:
+      - assessmentVersion
+      - limitations
+      - producedAt
+      - schemaVersion
+      - state
+      - unmetDomainConditions
+    MaterialChangeRequestV1:
+      additionalProperties: false
+      example:
+        schemaVersion: "1.0"
+        protectedCategoryFlags:
+        - OUTCOME
+        - OUTCOME
+        manifestVersion: manifestVersion
+        currentPlanVersion: currentPlanVersion
+        candidatePatchRef: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+      properties:
+        schemaVersion:
+          $ref: "#/components/schemas/DomainEmploymentSchemaVersion"
+        manifestVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        currentPlanVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        candidatePatchRef:
+          format: uuid
+          type: string
+        protectedCategoryFlags:
+          items:
+            enum:
+            - OUTCOME
+            - BASELINE
+            - TARGET
+            - BUDGET
+            - AUTHORITY
+            - CALENDAR
+            - SKILL_SET
+            - CREDENTIAL
+            - SAFETY
+            - MEASUREMENT
+            type: string
+          type: array
+      required:
+      - candidatePatchRef
+      - currentPlanVersion
+      - manifestVersion
+      - protectedCategoryFlags
+      - schemaVersion
+    MaterialChangeAssessmentV1:
+      additionalProperties: false
+      example:
+        affectedSkillRefs:
+        - affectedSkillRefs
+        - affectedSkillRefs
+        affectedWorkRefs:
+        - affectedWorkRefs
+        - affectedWorkRefs
+        schemaVersion: "1.0"
+        reasons:
+        - reasons
+        - reasons
+        renewedAgreementRequired: true
+        classification: NON_MATERIAL
+      properties:
+        schemaVersion:
+          $ref: "#/components/schemas/DomainEmploymentSchemaVersion"
+        classification:
+          enum:
+          - NON_MATERIAL
+          - MATERIAL
+          - UNKNOWN
+          type: string
+        reasons:
+          items:
+            maxLength: 240
+            minLength: 1
+            type: string
+          minItems: 1
+          type: array
+        affectedSkillRefs:
+          items:
+            maxLength: 128
+            minLength: 1
+            type: string
+          type: array
+        affectedWorkRefs:
+          items:
+            maxLength: 128
+            minLength: 1
+            type: string
+          type: array
+        renewedAgreementRequired:
+          type: boolean
+      required:
+      - affectedSkillRefs
+      - affectedWorkRefs
+      - classification
+      - reasons
+      - renewedAgreementRequired
+      - schemaVersion
+    DependencyIsolationRequestV1:
+      additionalProperties: false
+      example:
+        schemaVersion: "1.0"
+        manifestVersion: manifestVersion
+        dependencyState: READY
+        dependencyRef: dependencyRef
+        candidateAffectedSkillRefs:
+        - candidateAffectedSkillRefs
+        - candidateAffectedSkillRefs
+      properties:
+        schemaVersion:
+          $ref: "#/components/schemas/DomainEmploymentSchemaVersion"
+        manifestVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        dependencyRef:
+          maxLength: 128
+          minLength: 1
+          type: string
+        dependencyState:
+          enum:
+          - READY
+          - LOST
+          - EXPIRED
+          - REVOKED
+          - UNAVAILABLE
+          - UNKNOWN
+          type: string
+        candidateAffectedSkillRefs:
+          items:
+            maxLength: 128
+            minLength: 1
+            type: string
+          minItems: 1
+          type: array
+      required:
+      - candidateAffectedSkillRefs
+      - dependencyRef
+      - dependencyState
+      - manifestVersion
+      - schemaVersion
+    DependencyIsolationAssessmentV1:
+      additionalProperties: false
+      example:
+        affectedSkillRefs:
+        - affectedSkillRefs
+        - affectedSkillRefs
+        dependentWorkRefs:
+        - dependentWorkRefs
+        - dependentWorkRefs
+        schemaVersion: "1.0"
+        isolation: PROVEN_BOUNDED
+        rationale: rationale
+      properties:
+        schemaVersion:
+          $ref: "#/components/schemas/DomainEmploymentSchemaVersion"
+        isolation:
+          enum:
+          - PROVEN_BOUNDED
+          - NOT_BOUNDED
+          - UNKNOWN
+          type: string
+        affectedSkillRefs:
+          items:
+            maxLength: 128
+            minLength: 1
+            type: string
+          minItems: 1
+          type: array
+        dependentWorkRefs:
+          items:
+            maxLength: 128
+            minLength: 1
+            type: string
+          type: array
+        rationale:
+          maxLength: 1000
+          minLength: 1
+          type: string
+      required:
+      - affectedSkillRefs
+      - dependentWorkRefs
+      - isolation
+      - rationale
+      - schemaVersion
+    PerformanceAssessmentV1:
+      additionalProperties: false
+      example:
+        producedAt: 2000-01-23T04:56:07.000+00:00
+        schemaVersion: "1.0"
+        assessmentVersion: assessmentVersion
+        attributionBasis: attributionBasis
+        observedValue: observedValue
+        outcomeLabel: outcomeLabel
+        agentPerformanceState: MEETING
+        outcomeState: ACHIEVED
+        missedReviewPeriods: 0
+        attributionConfidence: 0.08008281904610115
+        correctiveProposalRequired: true
+        evidenceRefs:
+        - evidenceRefs
+        - evidenceRefs
+        diagnosisRequired: true
+        reviewPeriodRef: reviewPeriodRef
+        limitations:
+        - limitations
+        - limitations
+      properties:
+        schemaVersion:
+          $ref: "#/components/schemas/DomainEmploymentSchemaVersion"
+        assessmentVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        reviewPeriodRef:
+          maxLength: 128
+          minLength: 1
+          type: string
+        outcomeLabel:
+          maxLength: 240
+          minLength: 1
+          type: string
+        outcomeState:
+          enum:
+          - ACHIEVED
+          - MISSED
+          - PARTIAL
+          - UNKNOWN
+          - UNAVAILABLE
+          - DISPUTED
+          type: string
+        observedValue:
+          maxLength: 240
+          type: string
+        attributionBasis:
+          maxLength: 1000
+          minLength: 1
+          type: string
+        attributionConfidence:
+          maximum: 1
+          minimum: 0
+          type: number
+        agentPerformanceState:
+          enum:
+          - MEETING
+          - NOT_MEETING
+          - UNKNOWN
+          - UNAVAILABLE
+          type: string
+        missedReviewPeriods:
+          minimum: 0
+          type: integer
+        diagnosisRequired:
+          type: boolean
+        correctiveProposalRequired:
+          type: boolean
+        evidenceRefs:
+          items:
+            maxLength: 200
+            minLength: 1
+            type: string
+          type: array
+        limitations:
+          items:
+            maxLength: 500
+            minLength: 1
+            type: string
+          type: array
+        producedAt:
+          format: date-time
+          type: string
+      required:
+      - agentPerformanceState
+      - assessmentVersion
+      - attributionBasis
+      - attributionConfidence
+      - evidenceRefs
+      - limitations
+      - missedReviewPeriods
+      - outcomeLabel
+      - outcomeState
+      - producedAt
+      - reviewPeriodRef
+      - schemaVersion
+    DomainEmploymentProblemV1:
+      additionalProperties: false
+      properties:
+        type:
+          format: uri
+          type: string
+        title:
+          maxLength: 160
+          minLength: 1
+          type: string
+        status:
+          maximum: 599
+          minimum: 400
+          type: integer
+        code:
+          enum:
+          - DOMAIN_EMPLOYMENT_INVALID
+          - DOMAIN_EMPLOYMENT_UNAUTHORIZED
+          - DOMAIN_EMPLOYMENT_NOT_FOUND
+          - DOMAIN_EMPLOYMENT_CONFLICT
+          - DOMAIN_EMPLOYMENT_UNAVAILABLE
+          - DOMAIN_EMPLOYMENT_VERSION_UNSUPPORTED
+          type: string
+        correlationId:
+          format: uuid
+          type: string
+      required:
+      - code
+      - correlationId
+      - status
+      - title
+      - type
+  securitySchemes:
+    ServiceBearerAuth:
+      bearerFormat: JWT
+      description: "Exact adapter audience and delegated purpose, tenant and relationship\
+        \ context."
+      scheme: bearer
+      type: http
+

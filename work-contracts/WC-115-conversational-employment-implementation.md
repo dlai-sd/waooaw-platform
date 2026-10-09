@@ -6,9 +6,9 @@
 |---|---|
 | Authoring office | Chief Solution Architect (INST-005) |
 | Implementing office | WAOOAW AI Agent - Platform IT Expert (INST-010) |
-| Status | DRAFT FOR FOUNDER REVIEW - IMPLEMENTATION, PROTOCOL ACTIVATION AND DEPLOYMENT NOT AUTHORIZED |
+| Status | FOUNDER-AUTHORIZED FOR IMPLEMENTATION - PROTOCOL ACTIVATION AND DEPLOYMENT UNAUTHORIZED |
 | Parent authority | Founder instruction dated 2026-10-08; merged WC-114; ADR-051; WC-113 |
-| Controlling solution package | `architecture/reference/components/conversational-employment-solution-contract.md` `1.0.0-candidate.1` and its five candidate OpenAPI contracts |
+| Controlling solution package | `architecture/reference/components/conversational-employment-solution-contract.md` `1.0.0-candidate.3`, its unchanged five `1.0.0-candidate.2` OpenAPI contracts and specialist profile |
 | Delivery unit | One bounded implementation PR after separate current-session Founder implementation authorization |
 | Constitutional basis | C-001, C-003, C-005, C-007, C-023, C-026, C-030, C-034-C-039, C-041-C-044, C-048-C-049, C-051, C-059, C-063, C-065, C-066, C-070, C-079, C-080, C-088 and C-094 |
 | Activation authority | None |
@@ -93,7 +93,7 @@ This Work Contract excludes:
 | 0 | Current `origin/main`, `validation/process-control.yaml`, Platform IT Expert office card | Freshness and declared digests PASS |
 | 1 | WC-113, ADR-051 and Conversational Employment Workspace 1.0-candidate | Merged and unchanged |
 | 2 | WC-114 Work Contract and requirement ledger | Merged; architecture-only ledger remains `NOT_APPLICABLE` |
-| 3 | WC-114 solution contract and five candidate OpenAPI documents | Exact `1.0.0-candidate.1`; schema and local-reference checks PASS |
+| 3 | WC-114 solution contract, five candidate OpenAPI documents and specialist profile | Solution exact `1.0.0-candidate.3`; unchanged interfaces/profile exact `1.0.0-candidate.2`; profile digest `41e2147f5d4c6e95b3f3bb714ea43ecedbfb4deb2cebd535d236b90e8a87455f`; schema and reference checks PASS |
 | 4 | Conversation Core BP `1.10.0`, PR `1.3.0`, CE `constitutional.v1`, WBE `1.1.0` | Current canonical contracts present |
 | 5 | Specialist controls in Sections 7.1-7.5 | Accepted in this contract by Founder review or supplied by separately approved owner contract |
 | 6 | `work-contracts/WC-115-requirements.yaml` | Digest matches this complete contract; Docker ledger validation PASS |
@@ -260,9 +260,10 @@ provider payloads, policy text, prompts, plans or constitutional evidence payloa
 
 ## 7. Specialist Control Package
 
-These controls are implementation obligations, not permission for the Platform IT Expert to invent
-new policy. A contradiction with an approved owner contract stops implementation and returns to the
-owning office.
+These controls are implementation obligations fixed by
+`architecture/reference/api-specs/conversational-employment-specialist-profiles.yaml`
+`1.0.0-candidate.2`, not permission for the Platform IT Expert to select alternatives. A
+contradiction with an approved owner contract stops implementation and returns to the owning office.
 
 ### 7.1 Data controls
 
@@ -328,25 +329,24 @@ owning office.
 ### 7.5 Specialist closure profiles and upstream repairs
 
 The focused Data, Security, AI and Product/Quality review found controls that cannot be safely
-invented by the Platform IT Expert. WC-115 may be accepted as the implementation contract, but it
-must not advance to `IMPLEMENTATION_AUTHORIZED` until the following digest-bound profiles and
-candidate-interface repairs are Founder-accepted. They may be incorporated into a Founder-approved
-WC-114 superseding candidate or separately approved owner profiles; this Work Contract does not
-authorize the implementer to create or approve them.
+invented by the Platform IT Expert. WC-114 `1.0.0-candidate.2` now supplies the following
+digest-bound profiles and candidate-interface repairs. WC-115 must not advance to
+`IMPLEMENTATION_AUTHORIZED` until the Founder accepts that exact candidate and profile digest. This
+Work Contract does not authorize the implementer to replace their values.
 
 | Closure input | Exact mandatory content | Blocking stage |
 |---|---|---|
-| Data persistence profile | Owner-by-record table/ledger matrix; tenant and primary keys; immutable identity; source/version columns; transaction boundaries; prohibited writers; `FORCE ROW LEVEL SECURITY`; transaction-local tenant context; bounded migration/worker roles; correction lineage; outbox/inbox fields and crash checkpoints; retention/erasure matrix; calendar representation | WC115-01 |
-| Security assertion profile | Per operation: permitted caller, issuer, subject/workload claim, exact audience and purpose, delegation claims, maximum token age, replay control and denial response | WC115-01 |
-| Assurance matrix | Every command/operation class mapped to accepted assurance, authentication age, reauthentication, revocation check and exact failure code | WC115-01 |
-| Source freshness profile | CE/WBE/PR/adapter/manifest/plan authoritative timestamp/version, maximum age, clock-skew tolerance, invalidation events and unavailable behavior | WC115-01 |
-| Stop binding | Exact existing endpoint/contract, authorized actors, independent persistence/transport dependencies, identity-provider behavior and numeric latency SLO | WC115-01 |
-| AI control profile | RFC 8785/JCS digest vectors; AIR idempotency tuple; trusted semantic-catalogue reference/digest and entry schemas; prompt/model provenance; closed proposal-result union; confidence/unresolved-question rules; transient-content expiry; immutable adversarial evaluation corpus | WC115-02 |
-| Product truth profile | Founder-accepted customer lexicon and state-to-copy/accessibility mapping for pending reason, owner, blocked effect, limitation, confirmation and next action | WC115-04 |
-| Rollback control profile | Existing capability-gate identifier, owner, authorized actor, invocation route, prior-projection selector, rollback epoch, in-flight/outbox fencing and reconciliation behavior | WC115-01 |
+| Data persistence profile | Specialist profile `data_profile` | WC115-01 |
+| Security assertion profile | Specialist profile `security_profile.workload_identity` | WC115-01 |
+| Assurance matrix | Specialist profile `security_profile.assurance` | WC115-01 |
+| Source freshness profile | Specialist profile `freshness_profile` | WC115-01 |
+| Stop binding | Specialist profile `emergency_stop_profile` | WC115-01 |
+| AI control profile | Specialist profile `ai_profile` | WC115-02 |
+| Product truth profile | Specialist profile `product_truth_profile` | WC115-04 |
+| Rollback control profile | Specialist profile `rollback_profile` | WC115-01 |
 
-The accepted WC-114 wire package must be superseded or repaired before implementation where it
-currently cannot express these controlling requirements:
+WC-114 `1.0.0-candidate.2` repairs the prior candidate where it could not express these controlling
+requirements:
 
 1. `CalendarCommitmentV1` must require IANA zone, validated local datetime, UTC instant, UTC
    offset/fold discriminator, tzdb version, tolerance-policy reference/version and consistency

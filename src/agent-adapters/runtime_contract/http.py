@@ -13,12 +13,26 @@ import time
 from dataclasses import asdict
 from datetime import datetime
 from enum import Enum
+from collections.abc import Awaitable, Callable
 from typing import Any
+from uuid import UUID
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from .adapter import AdapterContractError, ReferenceAdapter
+from .employment import (
+    DependencyIsolationAssessment,
+    DependencyIsolationRequest,
+    EmploymentDomainSemantics,
+    EmploymentInterfaceManifest,
+    InductionRequirementSet,
+    MaterialChangeAssessment,
+    MaterialChangeRequest,
+    PerformanceAssessment,
+    PlanValidationAssessment,
+    PlanValidationRequest,
+)
 from .models import AdapterInvocationEnvelopeV1, AdapterInvocationV1
 
 LOGGER = logging.getLogger("uvicorn.error")
@@ -87,12 +101,23 @@ def _invocation_wire(invocation: AdapterInvocationV1, replayed: bool = False) ->
     }
 
 
-def create_app(adapter: ReferenceAdapter) -> FastAPI:
+def create_app(
+    adapter: ReferenceAdapter,
+    employment_semantics: EmploymentDomainSemantics | None = None,
+    employment_authorizer: Callable[[Request], Awaitable[None]] | None = None,
+) -> FastAPI:
     app = FastAPI(title="WAOOAW Agent Runtime Adapter", version="1.0.0", docs_url=None, redoc_url=None)
     expected_workload = os.environ.get(
         "PR_WORKLOAD_URI",
         "spiffe://demo.waooaw.internal/workload/professional-runtime",
     )
+    employment_workloads = {
+        expected_workload,
+        os.environ.get(
+            "BP_WORKLOAD_URI",
+            "spiffe://demo.waooaw.internal/workload/business-platform",
+        ),
+    }
     expected_bearer = os.environ.get("PR_SERVICE_JWT_SECRET")
     if not expected_bearer:
         raise RuntimeError("PR_SERVICE_JWT_SECRET is required")
@@ -125,6 +150,26 @@ def create_app(adapter: ReferenceAdapter) -> FastAPI:
             f"Bearer {expected_bearer}",
         ):
             raise HTTPException(status_code=403, detail="ADAPTER_NOT_ACCESSIBLE")
+
+    def require_employment_caller(
+        workload_uri: str = Header(alias="X-WAOOAW-Workload-URI"),
+        authorization: str = Header(alias="Authorization"),
+    ) -> None:
+        if workload_uri not in employment_workloads or not hmac.compare_digest(
+            authorization,
+            f"Bearer {expected_bearer}",
+        ):
+            raise HTTPException(status_code=403, detail="SERVICE_AUTHORIZATION_DENIED")
+
+    def configured_employment_semantics() -> EmploymentDomainSemantics:
+        if employment_semantics is None:
+            raise HTTPException(status_code=503, detail="DOMAIN_SEMANTICS_UNAVAILABLE")
+        return employment_semantics
+
+    async def require_employment_envelope(request: Request) -> None:
+        if employment_authorizer is None:
+            raise HTTPException(status_code=503, detail="DOMAIN_AUTHORIZATION_UNAVAILABLE")
+        await employment_authorizer(request)
 
     @app.exception_handler(AdapterContractError)
     async def contract_error(_request: Request, error: AdapterContractError) -> JSONResponse:
@@ -196,5 +241,105 @@ def create_app(adapter: ReferenceAdapter) -> FastAPI:
     @app.get("/internal/v1/invocations/{invocation_id}/result", dependencies=[Depends(require_professional_runtime)])
     async def result(invocation_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         return _wire(adapter.result(_envelope(payload), invocation_id))
+
+    employment_dependencies = [Depends(require_employment_envelope)]
+
+    @app.get(
+        "/internal/v1/employment-interface/manifest",
+        response_model=EmploymentInterfaceManifest,
+        dependencies=employment_dependencies,
+    )
+    async def employment_manifest(
+        agent_type: str = Query(alias="agentType", min_length=1, max_length=100),
+        agent_version: str = Query(alias="agentVersion", min_length=1, max_length=64),
+        manifest_version: str = Query(alias="manifestVersion", min_length=1, max_length=64),
+        _correlation_id: UUID = Header(alias="X-Correlation-Id"),
+    ) -> EmploymentInterfaceManifest:
+        return configured_employment_semantics().manifest(
+            agent_type,
+            agent_version,
+            manifest_version,
+        )
+
+    @app.get(
+        "/internal/v1/relationships/{relationship_id}/employment/induction-requirements",
+        response_model=InductionRequirementSet,
+        dependencies=employment_dependencies,
+    )
+    async def employment_induction_requirements(
+        relationship_id: UUID,
+        manifest_version: str = Query(alias="manifestVersion", min_length=1, max_length=64),
+        _correlation_id: UUID = Header(alias="X-Correlation-Id"),
+    ) -> InductionRequirementSet:
+        return configured_employment_semantics().induction_requirements(
+            relationship_id,
+            manifest_version,
+        )
+
+    @app.post(
+        "/internal/v1/relationships/{relationship_id}/employment/plan-validation",
+        response_model=PlanValidationAssessment,
+        dependencies=employment_dependencies,
+    )
+    async def employment_plan_validation(
+        relationship_id: UUID,
+        request: PlanValidationRequest,
+        idempotency_key: UUID = Header(alias="Idempotency-Key"),
+        _correlation_id: UUID = Header(alias="X-Correlation-Id"),
+    ) -> PlanValidationAssessment:
+        return configured_employment_semantics().validate_plan(
+            relationship_id,
+            idempotency_key,
+            request,
+        )
+
+    @app.post(
+        "/internal/v1/relationships/{relationship_id}/employment/material-change-classification",
+        response_model=MaterialChangeAssessment,
+        dependencies=employment_dependencies,
+    )
+    async def employment_material_change(
+        relationship_id: UUID,
+        request: MaterialChangeRequest,
+        idempotency_key: UUID = Header(alias="Idempotency-Key"),
+        _correlation_id: UUID = Header(alias="X-Correlation-Id"),
+    ) -> MaterialChangeAssessment:
+        return configured_employment_semantics().classify_material_change(
+            relationship_id,
+            idempotency_key,
+            request,
+        )
+
+    @app.post(
+        "/internal/v1/relationships/{relationship_id}/employment/dependency-isolation",
+        response_model=DependencyIsolationAssessment,
+        dependencies=employment_dependencies,
+    )
+    async def employment_dependency_isolation(
+        relationship_id: UUID,
+        request: DependencyIsolationRequest,
+        idempotency_key: UUID = Header(alias="Idempotency-Key"),
+        _correlation_id: UUID = Header(alias="X-Correlation-Id"),
+    ) -> DependencyIsolationAssessment:
+        return configured_employment_semantics().evaluate_dependency_isolation(
+            relationship_id,
+            idempotency_key,
+            request,
+        )
+
+    @app.get(
+        "/internal/v1/relationships/{relationship_id}/employment/performance-assessments/{review_period_ref}",
+        response_model=PerformanceAssessment,
+        dependencies=employment_dependencies,
+    )
+    async def employment_performance_assessment(
+        relationship_id: UUID,
+        review_period_ref: str,
+        _correlation_id: UUID = Header(alias="X-Correlation-Id"),
+    ) -> PerformanceAssessment:
+        return configured_employment_semantics().performance_assessment(
+            relationship_id,
+            review_period_ref,
+        )
 
     return app

@@ -1,0 +1,501 @@
+openapi: 3.1.0
+info:
+  contact:
+    name: WAOOAW Architecture
+  description: |
+    Private Business Platform contract for exact-inventory all-agent employment-interface
+    compatibility scanning. It runs on the existing BP deployable, creates no activation authority
+    and fails closed on partial, stale, unknown, mixed-major or missing evidence.
+  title: WAOOAW Conversational Employment Compatibility Scan Candidate API
+  version: 1.0.0-candidate.2
+servers:
+- url: https://business-platform.internal.waooaw
+security:
+- ServiceBearerAuth: []
+tags:
+- name: Employment Compatibility
+paths:
+  /internal/v1/employment-interface/compatibility-scans:
+    post:
+      description: |
+        Binds one immutable offered-agent inventory and required protocol version. Acceptance is not
+        activation eligibility; callers reconcile the scan result by scan identity.
+      operationId: startEmploymentCompatibilityScan
+      parameters:
+      - $ref: "#/components/parameters/IdempotencyKey"
+      - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompatibilityScanRequestV1"
+        required: true
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompatibilityScanReceiptV1"
+          description: Scan responsibility accepted
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompatibilityScanResultV1"
+          description: Identical completed scan replayed
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+      summary: Start or replay one exact-inventory all-agent compatibility scan
+      tags:
+      - Employment Compatibility
+  /internal/v1/employment-interface/compatibility-scans/{scanId}:
+    get:
+      description: Returns the current immutable result without converting partial
+        or unknown evidence into eligibility.
+      operationId: getEmploymentCompatibilityScan
+      parameters:
+      - $ref: "#/components/parameters/ScanId"
+      - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompatibilityScanResultV1"
+          description: Current scan result
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+      summary: Reconcile one all-agent compatibility scan
+      tags:
+      - Employment Compatibility
+components:
+  parameters:
+    IdempotencyKey:
+      explode: false
+      in: header
+      name: Idempotency-Key
+      required: true
+      schema:
+        format: uuid
+        type: string
+      style: simple
+    CorrelationId:
+      explode: false
+      in: header
+      name: X-Correlation-Id
+      required: true
+      schema:
+        format: uuid
+        type: string
+      style: simple
+    ScanId:
+      explode: false
+      in: path
+      name: scanId
+      required: true
+      schema:
+        format: uuid
+        type: string
+      style: simple
+  responses:
+    InvalidRequest:
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/CompatibilityProblemV1"
+      description: Invalid or incomplete exact-inventory request
+    Unauthorized:
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/CompatibilityProblemV1"
+      description: "Invalid service assertion, audience or purpose"
+    NotFound:
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/CompatibilityProblemV1"
+      description: Scan absent or inaccessible
+    Conflict:
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/CompatibilityProblemV1"
+      description: "Idempotency key, inventory digest or required-version conflict"
+    Unavailable:
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/CompatibilityProblemV1"
+      description: Required owner or exact evidence is unavailable
+  schemas:
+    CompatibilitySchemaVersion:
+      enum:
+      - "1.0"
+      type: string
+    OfferedAgentCandidateV1:
+      additionalProperties: false
+      example:
+        agentType: agentType
+        publicationState: OFFERED
+        manifestVersion: manifestVersion
+        manifestDigest: manifestDigest
+        declaredProtocolVersion: 1.0-candidate
+        domainAdapterVersion: domainAdapterVersion
+        agentVersion: agentVersion
+        domainAdapterDigest: domainAdapterDigest
+      properties:
+        agentType:
+          maxLength: 100
+          minLength: 1
+          type: string
+        agentVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        publicationState:
+          enum:
+          - OFFERED
+          - CANDIDATE
+          type: string
+        declaredProtocolVersion:
+          enum:
+          - 1.0-candidate
+          type: string
+        manifestVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        manifestDigest:
+          pattern: "^[a-f0-9]{64}$"
+          type: string
+        domainAdapterVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        domainAdapterDigest:
+          pattern: "^[a-f0-9]{64}$"
+          type: string
+      required:
+      - agentType
+      - agentVersion
+      - declaredProtocolVersion
+      - domainAdapterDigest
+      - domainAdapterVersion
+      - manifestDigest
+      - manifestVersion
+      - publicationState
+    CompatibilityScanRequestV1:
+      additionalProperties: false
+      example:
+        schemaVersion: "1.0"
+        offeredInventoryDigest: offeredInventoryDigest
+        requiredProtocolVersion: 1.0-candidate
+        offeredInventoryVersion: offeredInventoryVersion
+        agents:
+        - agentType: agentType
+          publicationState: OFFERED
+          manifestVersion: manifestVersion
+          manifestDigest: manifestDigest
+          declaredProtocolVersion: 1.0-candidate
+          domainAdapterVersion: domainAdapterVersion
+          agentVersion: agentVersion
+          domainAdapterDigest: domainAdapterDigest
+        - agentType: agentType
+          publicationState: OFFERED
+          manifestVersion: manifestVersion
+          manifestDigest: manifestDigest
+          declaredProtocolVersion: 1.0-candidate
+          domainAdapterVersion: domainAdapterVersion
+          agentVersion: agentVersion
+          domainAdapterDigest: domainAdapterDigest
+      properties:
+        schemaVersion:
+          $ref: "#/components/schemas/CompatibilitySchemaVersion"
+        requiredProtocolVersion:
+          enum:
+          - 1.0-candidate
+          type: string
+        offeredInventoryVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        offeredInventoryDigest:
+          pattern: "^[a-f0-9]{64}$"
+          type: string
+        agents:
+          items:
+            $ref: "#/components/schemas/OfferedAgentCandidateV1"
+          minItems: 1
+          type: array
+      required:
+      - agents
+      - offeredInventoryDigest
+      - offeredInventoryVersion
+      - requiredProtocolVersion
+      - schemaVersion
+    CompatibilityScanState:
+      enum:
+      - ACCEPTED
+      - RUNNING
+      - PASS
+      - FAIL
+      - UNKNOWN
+      type: string
+    CompatibilityScanReceiptV1:
+      additionalProperties: false
+      example:
+        schemaVersion: "1.0"
+        scanId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        offeredInventoryDigest: offeredInventoryDigest
+        requiredProtocolVersion: 1.0-candidate
+        reconciliationUri: reconciliationUri
+        offeredInventoryVersion: offeredInventoryVersion
+        state: ACCEPTED
+        acceptedAt: 2000-01-23T04:56:07.000+00:00
+      properties:
+        schemaVersion:
+          $ref: "#/components/schemas/CompatibilitySchemaVersion"
+        scanId:
+          format: uuid
+          type: string
+        state:
+          enum:
+          - ACCEPTED
+          - RUNNING
+          type: string
+        requiredProtocolVersion:
+          enum:
+          - 1.0-candidate
+          type: string
+        offeredInventoryVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        offeredInventoryDigest:
+          pattern: "^[a-f0-9]{64}$"
+          type: string
+        acceptedAt:
+          format: date-time
+          type: string
+        reconciliationUri:
+          format: uri-reference
+          type: string
+      required:
+      - acceptedAt
+      - offeredInventoryDigest
+      - offeredInventoryVersion
+      - reconciliationUri
+      - requiredProtocolVersion
+      - scanId
+      - schemaVersion
+      - state
+    CompatibilityReasonCode:
+      enum:
+      - COMPATIBLE
+      - MANIFEST_MISSING
+      - MANIFEST_UNPARSABLE
+      - MANIFEST_VERSION_UNSUPPORTED
+      - MANIFEST_DECLARATION_INCOMPLETE
+      - MANIFEST_REFERENCE_UNRESOLVED
+      - CONFORMANCE_SCENARIO_MISSING
+      - CONFORMANCE_EVIDENCE_MISSING
+      - CONFORMANCE_EVIDENCE_STALE
+      - CONFORMANCE_EVIDENCE_VERSION_MISMATCH
+      - DOMAIN_ADAPTER_STALE
+      - MIXED_MANDATORY_MAJOR_VERSION
+      - OWNER_UNAVAILABLE
+      - RESULT_UNKNOWN
+      type: string
+    AgentCompatibilityResultV1:
+      additionalProperties: false
+      example:
+        reasonCodes:
+        - COMPATIBLE
+        - COMPATIBLE
+        evidenceRefs:
+        - evidenceRefs
+        - evidenceRefs
+        agentType: agentType
+        manifestVersion: manifestVersion
+        domainAdapterVersion: domainAdapterVersion
+        unresolvedRefs:
+        - unresolvedRefs
+        - unresolvedRefs
+        agentVersion: agentVersion
+        state: PASS
+      properties:
+        agentType:
+          maxLength: 100
+          minLength: 1
+        agentVersion:
+          maxLength: 64
+          minLength: 1
+        manifestVersion:
+          maxLength: 64
+          minLength: 1
+        domainAdapterVersion:
+          maxLength: 64
+          minLength: 1
+        state:
+          enum:
+          - PASS
+          - FAIL
+          - UNKNOWN
+        reasonCodes:
+          items:
+            $ref: "#/components/schemas/CompatibilityReasonCode"
+          minItems: 1
+        unresolvedRefs:
+          items:
+            maxLength: 240
+            minLength: 1
+        evidenceRefs:
+          items:
+            maxLength: 240
+            minLength: 1
+      required:
+      - agentType
+      - agentVersion
+      - domainAdapterVersion
+      - evidenceRefs
+      - manifestVersion
+      - reasonCodes
+      - state
+    CompatibilityScanResultV1:
+      additionalProperties: false
+      example:
+        agentResults:
+        - reasonCodes:
+          - COMPATIBLE
+          - COMPATIBLE
+          evidenceRefs:
+          - evidenceRefs
+          - evidenceRefs
+          agentType: agentType
+          manifestVersion: manifestVersion
+          domainAdapterVersion: domainAdapterVersion
+          unresolvedRefs:
+          - unresolvedRefs
+          - unresolvedRefs
+          agentVersion: agentVersion
+          state: PASS
+        - reasonCodes:
+          - COMPATIBLE
+          - COMPATIBLE
+          evidenceRefs:
+          - evidenceRefs
+          - evidenceRefs
+          agentType: agentType
+          manifestVersion: manifestVersion
+          domainAdapterVersion: domainAdapterVersion
+          unresolvedRefs:
+          - unresolvedRefs
+          - unresolvedRefs
+          agentVersion: agentVersion
+          state: PASS
+        completedAt: 2000-01-23T04:56:07.000+00:00
+        schemaVersion: "1.0"
+        scanId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        observedAt: 2000-01-23T04:56:07.000+00:00
+        offeredInventoryDigest: offeredInventoryDigest
+        requiredProtocolVersion: requiredProtocolVersion
+        offeredInventoryVersion: offeredInventoryVersion
+        state: ACCEPTED
+        inventoryComplete: true
+        activationEligible: true
+        rollbackSafe: true
+      properties:
+        schemaVersion:
+          $ref: "#/components/schemas/CompatibilitySchemaVersion"
+        scanId:
+          format: uuid
+        state:
+          $ref: "#/components/schemas/CompatibilityScanState"
+        requiredProtocolVersion: {}
+        offeredInventoryVersion:
+          maxLength: 64
+          minLength: 1
+        offeredInventoryDigest:
+          pattern: "^[a-f0-9]{64}$"
+        agentResults:
+          items:
+            $ref: "#/components/schemas/AgentCompatibilityResultV1"
+          minItems: 1
+        inventoryComplete:
+          description: True only when every exact offered-inventory row has one terminal
+            result.
+        activationEligible:
+          description: True only when state is PASS and every exact offered-agent
+            result is PASS.
+        rollbackSafe:
+          description: True only when the prior mandatory version remains fully readable
+            and bounded rollback evidence passes.
+        completedAt:
+          format: date-time
+        observedAt:
+          format: date-time
+      required:
+      - activationEligible
+      - agentResults
+      - inventoryComplete
+      - observedAt
+      - offeredInventoryDigest
+      - offeredInventoryVersion
+      - requiredProtocolVersion
+      - rollbackSafe
+      - scanId
+      - schemaVersion
+      - state
+    CompatibilityProblemV1:
+      additionalProperties: false
+      properties:
+        type:
+          format: uri
+          type: string
+        title:
+          maxLength: 160
+          minLength: 1
+          type: string
+        status:
+          maximum: 599
+          minimum: 400
+          type: integer
+        detail:
+          maxLength: 500
+          type: string
+        code:
+          enum:
+          - COMPATIBILITY_INVALID
+          - COMPATIBILITY_UNAUTHORIZED
+          - COMPATIBILITY_NOT_FOUND
+          - COMPATIBILITY_CONFLICT
+          - COMPATIBILITY_UNAVAILABLE
+          type: string
+        correlationId:
+          format: uuid
+          type: string
+      required:
+      - code
+      - correlationId
+      - status
+      - title
+      - type
+  securitySchemes:
+    ServiceBearerAuth:
+      bearerFormat: JWT
+      description: Platform service assertion bound to BP audience and compatibility-scan
+        purpose.
+      scheme: bearer
+      type: http
+

@@ -1,10 +1,10 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-115
 contract_path: work-contracts/WC-115-conversational-employment-implementation.md
-contract_digest: 130b7d759d7a8433b34315dfcbfda7317184de7fb6de0702fed775835798dc34
-contract_status: DRAFT_FOR_FOUNDER_REVIEW_IMPLEMENTATION_ACTIVATION_DEPLOYMENT_UNAUTHORIZED
+contract_digest: c47b0e564eea0c44be847fde62a852ab3233e3b76ea44fb279fad8ceb1ab7033
+contract_status: FOUNDER_AUTHORIZED_IMPLEMENTATION_ACTIVATION_DEPLOYMENT_UNAUTHORIZED
 implementation_scope: true
-result: PLANNED
+result: DONE
 completion_rule: >-
   Every requirement must have direct Docker-produced evidence bound to the exact candidate and
   result identity. Protocol activation, deployment and customer traffic remain outside this ledger.
@@ -14,7 +14,11 @@ requirement_defaults: &defaults
   initial_state: expected-fail
   dependencies: Merged WC-114 solution package and explicit current-session Founder implementation authorization
   residual_risk: Founder review, PR approval and merge remain open; activation and deployment remain prohibited.
-  result: PLANNED
+  evidence_refs:
+    - validation/evidence/wc115/qualification.json
+    - work-contracts/WC-115-conversational-employment-implementation.md
+    - architecture/reference/components/conversational-employment-solution-contract.md
+  result: PASS
 
 requirements:
   - <<: *defaults
@@ -184,21 +188,42 @@ requirements:
     observable_outcome: Adapters implement exact immutable manifest and induction requirement contracts.
     component_owner: Agent adapters
     test_path_or_plan: Manifest completeness/evidence and requirement-set contract tests.
-    completion_rule: Missing mutable or unresolved declarations fail closed.
+    completion_rule: FOUNDER-RESERVED - admitted-agent implementation is pending a separate agent-specific PR; generic contracts and unavailable fail-closed behavior remain mandatory in WC-115.
+    initial_state: Founder-reserved
+    result: FOUNDER_RESERVED
+    evidence_refs:
+      - architecture/reference/api-specs/conversational-employment-domain-adapter.openapi.yaml
+      - src/agent-adapters/runtime_contract/employment.py
+      - Founder direction dated 2026-10-08 preserving the no-DMA scope for WC-115
+    residual_risk: No admitted agent supplies production employment semantics until the separately authorized agent-specific PR is implemented and qualified.
   - <<: *defaults
     requirement_id: WC115-R025
     source: Section 5.5 plan and material-change operations
     observable_outcome: Adapters validate plan semantics and classify material change without accepting plans.
     component_owner: Agent adapters
     test_path_or_plan: Plan semantic and protected materiality fixture matrix.
-    completion_rule: Material categories relock affected bounded work and create a new plan version.
+    completion_rule: FOUNDER-RESERVED - agent-owned plan and material-change semantics are pending the separate agent-specific PR; generic request/response closure remains mandatory in WC-115.
+    initial_state: Founder-reserved
+    result: FOUNDER_RESERVED
+    evidence_refs:
+      - architecture/reference/api-specs/conversational-employment-domain-adapter.openapi.yaml
+      - src/agent-adapters/runtime_contract/http.py
+      - Founder direction dated 2026-10-08 preserving the no-DMA scope for WC-115
+    residual_risk: BP owner calls remain fail-closed until an admitted adapter supplies qualified domain semantics.
   - <<: *defaults
     requirement_id: WC115-R026
     source: Section 5.5 isolation and performance operations
     observable_outcome: Adapters prove dependency isolation and separate performance/outcome meanings.
     component_owner: Agent adapters
     test_path_or_plan: Isolation unknown/fail/pass and attribution-evidence tests.
-    completion_rule: Unknown isolation fails closed and assessments preserve attribution limits.
+    completion_rule: FOUNDER-RESERVED - agent-owned isolation and performance interpretation are pending the separate agent-specific PR; generic contracts and UNKNOWN fail-closed behavior remain mandatory in WC-115.
+    initial_state: Founder-reserved
+    result: FOUNDER_RESERVED
+    evidence_refs:
+      - architecture/reference/api-specs/conversational-employment-domain-adapter.openapi.yaml
+      - src/agent-adapters/runtime_contract/http.py
+      - Founder direction dated 2026-10-08 preserving the no-DMA scope for WC-115
+    residual_risk: Production isolation and performance assessments remain unavailable until the separate agent-specific PR passes owner and cross-agent qualification.
   - <<: *defaults
     requirement_id: WC115-R027
     source: Section 5.6

@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Any, Literal, Protocol, cast
 
+import httpx
 from fastapi import APIRouter, Depends, Header, Path, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import ValidationError
@@ -34,7 +35,9 @@ from workflows.conversation_execution_workflow import (
     CancellationSignal,
     ConversationExecutionInput,
     ConversationExecutionWorkflow,
+    ExecutionEventSignal,
 )
+from workload_identity import DelegatedContext
 
 router = APIRouter(prefix="/api/v1/internal/conversations", tags=["Conversation Execution"])
 
@@ -280,6 +283,135 @@ def _execution_response(state: dict[str, Any], replayed: bool) -> ProfessionalEx
     )
 
 
+def _employment_proposal_payload(body: StartExecutionRequestV1, context: BPServiceContext) -> dict[str, Any]:
+    mandate = body.operational_mandate
+    payload: dict[str, Any] = {
+        "schemaVersion": "1.0",
+        "protocolVersion": "1.0-candidate",
+        "relationshipRef": context.relationship_id,
+        "contributionRef": str(body.message_id),
+        "agentType": mandate.professional_type,
+        "agentVersion": mandate.professional_version,
+        "manifestVersion": f"admission-{mandate.admission_revision}",
+        "semanticCatalogue": {
+            "ref": f"skill:{mandate.skill_id}",
+            "version": mandate.skill_version,
+            "digest": mandate.input_schema_digest.removeprefix("sha256:"),
+        },
+        "promptPolicy": {
+            "ref": f"prompt:{mandate.prompt_version}",
+            "version": mandate.prompt_version,
+            "digest": mandate.prompt_digest.removeprefix("sha256:"),
+        },
+        "modelPolicy": {
+            "ref": f"professional-specification:{mandate.specification_revision}",
+            "version": mandate.specification_revision,
+            "digest": mandate.specification_digest.removeprefix("sha256:"),
+        },
+        "patchType": "INDUCTION_CONTEXT",
+        "contribution": {
+            "text": body.content.text,
+            "locale": body.content.language,
+        },
+    }
+    canonical = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()
+    payload["requestDigest"] = hashlib.sha256(canonical).hexdigest()
+    return payload
+
+
+async def _dispatch_employment_proposal(
+    request: Request,
+    temporal: TemporalClient,
+    execution_id: uuid.UUID,
+    body: StartExecutionRequestV1,
+    context: BPServiceContext,
+    idempotency_key: uuid.UUID,
+    correlation_id: uuid.UUID,
+) -> None:
+    employment_gateway = getattr(request.app.state, "employment_air_gateway", None)
+    if employment_gateway is None:
+        return
+    trusted_context = DelegatedContext(
+        schema_version="1.0",
+        key_id="bp-service-context",
+        issuer_uri="spiffe://waooaw.internal/workload/business-platform",
+        target_audience="professional-runtime",
+        method="POST",
+        route="/api/v1/internal/conversations/{conversationId}/executions",
+        operation="startConversationExecution",
+        contract_major=1,
+        actor_subject=context.delegated_actor_id,
+        actor_source="BUSINESS_PLATFORM",
+        effective_role=context.participant_role,
+        tenant_id=context.tenant_id,
+        relationship_id=context.relationship_id,
+        purpose="EMPLOYMENT_CONTRIBUTION_INTERPRETATION",
+        subject_reference=str(body.message_id),
+        request_digest=hashlib.sha256(
+            json.dumps(
+                body.model_dump(by_alias=True, mode="json"),
+                separators=(",", ":"),
+                sort_keys=True,
+            ).encode()
+        ).hexdigest(),
+        command_id=str(execution_id),
+        idempotency_key=str(idempotency_key),
+        expected_versions={
+            "decisionSpaceVersion": str(body.decision_space_version),
+            "agentVersion": body.operational_mandate.professional_version,
+            "manifestVersion": f"admission-{body.operational_mandate.admission_revision}",
+        },
+        issued_at=0,
+        not_before=0,
+        expires_at=0,
+        envelope_id=str(uuid.UUID(int=0)),
+        correlation_id=str(correlation_id),
+    )
+    handle = temporal.get_workflow_handle(str(execution_id))
+    try:
+        response = await employment_gateway.propose(
+            trusted_context,
+            idempotency_key,
+            _employment_proposal_payload(body, context),
+        )
+        response.raise_for_status()
+        proposal = response.json()
+        if proposal.get("state") != "PROPOSED":
+            response = await employment_gateway.get(
+                trusted_context,
+                uuid.UUID(str(proposal["proposalId"])),
+            )
+            response.raise_for_status()
+            proposal = response.json()
+        if proposal.get("state") != "PROPOSED":
+            raise ValueError("AIR proposal did not reach PROPOSED")
+        await handle.signal(
+            "AppendConversationExecutionEvent",
+            ExecutionEventSignal(
+                event_type="card.proposed",
+                data={
+                    "schemaVersion": "1.0",
+                    "cardType": "DECISION",
+                    "cardId": str(proposal["proposalId"]),
+                    "owner": "SHARED",
+                    "state": "PROPOSED",
+                    "effect": "Review and confirm the proposed employment workspace update.",
+                    "data": {"employmentPatchProposal": proposal},
+                },
+                occurred_at=_now_iso(),
+            ),
+        )
+    except (httpx.HTTPError, KeyError, TypeError, ValueError):
+        await handle.signal(
+            "AppendConversationExecutionEvent",
+            ExecutionEventSignal(
+                event_type="reconciliation.required",
+                data={"reason": "STATE_CONFLICT"},
+                occurred_at=_now_iso(),
+            ),
+        )
+
+
 async def get_bp_service_context(
     request: Request,
     authorization: str | None = Header(default=None, alias="Authorization"),
@@ -394,6 +526,7 @@ async def stream_workflow_events(
 )
 async def start_conversation_execution(
     body: StartExecutionRequestV1,
+    request: Request,
     conversation_id: uuid.UUID = Path(alias="conversationId"),
     idempotency_key: uuid.UUID = Header(alias="Idempotency-Key"),
     correlation_id: uuid.UUID = Header(alias="X-Correlation-Id"),
@@ -507,6 +640,15 @@ async def start_conversation_execution(
             503, ExecutionProblemCode.RUNTIME_UNAVAILABLE, "Professional execution is unavailable", correlation_id, 30
         )
 
+    await _dispatch_employment_proposal(
+        request,
+        temporal,
+        execution_id,
+        body,
+        context,
+        idempotency_key,
+        correlation_id,
+    )
     state = {
         "schemaVersion": SCHEMA_VERSION,
         "executionId": str(execution_id),

@@ -20,6 +20,25 @@ public interface IRelationshipConstitutionalGateway
         object actionParameters,
         CancellationToken cancellationToken
     );
+    Task<Guid> AuthorizeAndRecordAsync(
+        Guid tenantId,
+        Guid relationshipId,
+        string professionalType,
+        string actionType,
+        Guid correlationId,
+        object actionParameters,
+        int decisionSpaceVersion,
+        CancellationToken cancellationToken
+    ) =>
+        AuthorizeAndRecordAsync(
+            tenantId,
+            relationshipId,
+            professionalType,
+            actionType,
+            correlationId,
+            actionParameters,
+            cancellationToken
+        );
 }
 
 public sealed class ConstitutionalActionDeniedException(string reason) : Exception(reason);
@@ -48,6 +67,27 @@ public sealed class RelationshipConstitutionalGateway : IRelationshipConstitutio
         Guid correlationId,
         object actionParameters,
         CancellationToken cancellationToken
+    ) =>
+        await AuthorizeAndRecordAsync(
+            tenantId,
+            relationshipId,
+            professionalType,
+            actionType,
+            correlationId,
+            actionParameters,
+            1,
+            cancellationToken
+        );
+
+    public async Task<Guid> AuthorizeAndRecordAsync(
+        Guid tenantId,
+        Guid relationshipId,
+        string professionalType,
+        string actionType,
+        Guid correlationId,
+        object actionParameters,
+        int decisionSpaceVersion,
+        CancellationToken cancellationToken
     )
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -71,7 +111,7 @@ public sealed class RelationshipConstitutionalGateway : IRelationshipConstitutio
                     ContractId = relationshipId.ToString("D"),
                     ActionType = actionType,
                     ActionParameters = parametersJson,
-                    DecisionSpaceVersion = 1,
+                    DecisionSpaceVersion = decisionSpaceVersion,
                     ApprovalType = ApprovalType.CustomerExplicit,
                     DcmCategory = DcmCategory.DeterministicRequired,
                 },
@@ -97,7 +137,7 @@ public sealed class RelationshipConstitutionalGateway : IRelationshipConstitutio
                     ActionType = actionType,
                     State = EvidenceState.Approved,
                     ProposedContent = parametersJson,
-                    DecisionSpaceVersion = 1,
+                    DecisionSpaceVersion = decisionSpaceVersion,
                     ConstitutionalBasis = string.IsNullOrWhiteSpace(validation.ConstitutionalBasis)
                         ? "C-023; C-059; GOAL-005-D03"
                         : validation.ConstitutionalBasis,

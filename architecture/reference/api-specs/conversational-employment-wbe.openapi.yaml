@@ -1,7 +1,7 @@
 openapi: "3.1.0"
 info:
   title: WAOOAW Conversational Employment WBE Eligibility Candidate API
-  version: "1.0.0-candidate.1"
+  version: "1.0.0-candidate.2"
   contact:
     name: WAOOAW Architecture
   description: |

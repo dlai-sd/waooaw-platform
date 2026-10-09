@@ -1,0 +1,7 @@
+{
+  "generator": "openapi-generator-cli",
+  "generatorVersion": "7.17.0",
+  "language": "typescript-fetch",
+  "input": "architecture/reference/api-specs/conversational-employment-business-platform.openapi.yaml",
+  "inputSha256": "aa9f3992cb35036c9757c507860039d24fad161a0e79e38b8ad898b12b0deefa"
+}

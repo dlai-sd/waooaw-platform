@@ -14,10 +14,21 @@ CATALOG_EXECUTION_PATH = ROOT / "scripts/validation_control/catalog_execution.py
 DOTNET_GATE_PATH = ROOT / "scripts/validation_control/run_dotnet_test_gate.sh"
 DOTNET_QUALITY_GATE_PATH = ROOT / "scripts/validation_control/run_dotnet_quality_gate.sh"
 PYTHON_GATE_PATH = ROOT / "scripts/validation_control/run_python_test_gate.sh"
+PYTHON_QUALITY_GATE_PATH = ROOT / "scripts/validation_control/run_python_quality_gate.sh"
 DEPENDENCY_GATE_PATH = ROOT / "scripts/validation_control/run_dependency_scan_gate.sh"
 DOTNET_RUNNER_PATH = ROOT / "architecture/reference/dockerfiles/Dockerfile.test-runner-dotnet"
 STATIC_PREFLIGHT_PATH = ROOT / "scripts/run_static_validation_preflight.sh"
 IDENTITY_TEST_PATH = ROOT / "tests/business-platform.Tests/Identity"
+WC115_GENERATOR_PATH = ROOT / "scripts/generate_wc115_clients.sh"
+AIR_PROPOSAL_OPERATION_PATH = (
+    ROOT
+    / "src/professional-runtime/clients/generated/employment_ai_runtime"
+    / "employment_air_client/models/proposal_operation.py"
+)
+WC115_CSHARP_CLIENT_ROOTS = (
+    ROOT / "src/business-platform/Clients/Generated/EmploymentWbe/src/Waooaw.Generated.WbeEmployment",
+    ROOT / ("src/business-platform/Clients/Generated/EmploymentDomainAdapter/src/Waooaw.Generated.DomainEmployment"),
+)
 
 
 def load_ci() -> dict[str, object]:
@@ -45,6 +56,39 @@ def test_dotnet_vulnerability_audit_has_one_owning_gate() -> None:
 
     assert "package --vulnerable --include-transitive" not in quality_gate
     assert 'dotnet list "$1" package --vulnerable --include-transitive' in dependency_gate
+
+
+def test_python_strict_quality_defers_generated_clients_to_contract_gates() -> None:
+    quality_gate = PYTHON_QUALITY_GATE_PATH.read_text(encoding="utf-8")
+
+    assert '-path "*/clients/generated/*" -prune' in quality_gate
+    assert "--strict --explicit-package-bases" in quality_gate
+
+
+def test_wc115_generator_rewrites_air_path_validation_without_codeql_invalid_regex() -> None:
+    generator = WC115_GENERATOR_PATH.read_text(encoding="utf-8")
+    generated_model = AIR_PROPOSAL_OPERATION_PATH.read_text(encoding="utf-8")
+    replacement = (
+        'value.split("/", 2)[1] in {"readiness", "billing", "authority", '
+        '"evidence", "tenant", "relationship"} or not re.fullmatch'
+    )
+
+    assert replacement in generator
+    assert replacement in generated_model
+    assert 'if not re.match(r"^\\/(?!readiness' not in generated_model
+
+
+def test_wc115_generator_removes_generated_csharp_codeql_findings() -> None:
+    generator = WC115_GENERATOR_PATH.read_text(encoding="utf-8")
+
+    assert "contentList = new List<Tuple<HttpContent" in generator
+    assert "lock (GlobalConfigSync)" in generator
+    for client_root in WC115_CSHARP_CLIENT_ROOTS:
+        api_client = (client_root / "Client/ApiClient.cs").read_text(encoding="utf-8")
+        global_configuration = (client_root / "Client/GlobalConfiguration.cs").read_text(encoding="utf-8")
+        assert "contentList = new List<Tuple<HttpContent" not in api_client
+        assert "get { return _globalConfiguration; }" not in global_configuration
+        assert global_configuration.count("lock (GlobalConfigSync)") == 2
 
 
 def test_dotnet_runner_installs_only_required_python_bootstrap_dependencies() -> None:
@@ -274,4 +318,4 @@ def test_language_tests_use_docker_runners() -> None:
     assert '"compose"' in executor
     assert '"--pull"' in executor and '"never"' in executor
     assert "export COVERAGE_FILE=/tmp/.coverage" in python_gate
-    assert 'export BaseIntermediateOutputPath="/tmp/dependency-audit/$project_name/obj/"' in dependency_gate
+    assert 'export ArtifactsPath="/tmp/dependency-audit/$project_name"' in dependency_gate

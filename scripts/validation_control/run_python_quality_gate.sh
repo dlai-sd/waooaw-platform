@@ -8,7 +8,7 @@ ruff check "$service" --output-format=github
 ruff format --check "$service"
 cd /tmp
 MYPYPATH="$mypy_path" mypy --strict --explicit-package-bases \
-    $(find "/workspace/$service" -name "*.py" -type f | sort) \
+    $(find "/workspace/$service" -path "*/clients/generated/*" -prune -o -name "*.py" -type f -print | sort) \
     --config-file /workspace/pyproject.toml
 cd /workspace
 bandit -r "$service" -c pyproject.toml -f json -o /tmp/bandit-results.json --exit-zero

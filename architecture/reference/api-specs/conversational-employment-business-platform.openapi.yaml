@@ -1,7 +1,7 @@
 openapi: "3.1.0"
 info:
   title: WAOOAW Conversational Employment Business Platform Candidate API
-  version: "1.0.0-candidate.1"
+  version: "1.0.0-candidate.2"
   contact:
     name: WAOOAW Architecture
   description: |
@@ -123,10 +123,10 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/EmploymentCommandReceiptV1" }
         "200":
-          description: Prior identical receipt or terminal outcome replayed
+          description: Prior identical terminal outcome replayed
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/EmploymentCommandReceiptV1" }
+              schema: { $ref: "#/components/schemas/EmploymentCommandOutcomeV1" }
         "400": { $ref: "#/components/responses/InvalidRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/AssuranceRequired" }
@@ -192,10 +192,7 @@ components:
         application/problem+json:
           schema: { $ref: "#/components/schemas/EmploymentProblemDetailV1" }
     Unauthorized:
-      description: Authentication required
-      content:
-        application/problem+json:
-          schema: { $ref: "#/components/schemas/EmploymentProblemDetailV1" }
+      $ref: "./business-platform.openapi.yaml#/components/responses/IdentityUnauthorized"
     AssuranceRequired:
       description: Accepted assurance is insufficient
       content:
@@ -486,15 +483,47 @@ components:
     CalendarCommitmentV1:
       type: object
       additionalProperties: false
-      required: [commitmentId, timezone, localDateTime, instant, tolerance]
+      required:
+        - commitmentId
+        - timeZone
+        - localDateTime
+        - utcInstant
+        - utcOffset
+        - fold
+        - tzdbVersion
+        - tolerancePolicy
       properties:
         commitmentId: { type: string, format: uuid }
-        timezone: { type: string, minLength: 1, maxLength: 64 }
-        localDateTime: { type: string, minLength: 1, maxLength: 40 }
-        instant: { type: string, format: date-time }
+        timeZone:
+          type: string
+          description: IANA time-zone identifier.
+          pattern: "^[A-Za-z]+(?:[_+-][A-Za-z]+)*(?:/[A-Za-z0-9._+-]+)+$"
+          maxLength: 64
+        localDateTime:
+          type: string
+          description: Local wall-clock value without an offset.
+          pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?$"
+        utcInstant: { type: string, format: date-time }
+        utcOffset:
+          type: string
+          pattern: "^[+-](?:0\\d|1[0-4]):[0-5]\\d$"
+        fold:
+          type: integer
+          minimum: 0
+          maximum: 1
+          description: PEP 495 fold discriminator; zero is required for unambiguous local values.
+        tzdbVersion: { type: string, minLength: 1, maxLength: 32 }
+        tolerancePolicy:
+          $ref: "#/components/schemas/CalendarTolerancePolicyRefV1"
         recurrence: { type: string, maxLength: 240 }
-        tolerance: { type: string, minLength: 1, maxLength: 120 }
         missedWindowPolicy: { type: string, maxLength: 240 }
+    CalendarTolerancePolicyRefV1:
+      type: object
+      additionalProperties: false
+      required: [policyRef, policyVersion]
+      properties:
+        policyRef: { type: string, minLength: 1, maxLength: 160 }
+        policyVersion: { type: string, minLength: 1, maxLength: 64 }
     EmploymentPlanV1:
       type: object
       additionalProperties: false
@@ -593,76 +622,139 @@ components:
         - REQUEST_REASSESSMENT
         - ACKNOWLEDGE_CORRECTIVE_PROPOSAL
     EmploymentCommandRequestV1:
+      oneOf:
+        - $ref: "#/components/schemas/ConfirmInductionItemCommandV1"
+        - $ref: "#/components/schemas/DeferInductionItemCommandV1"
+        - $ref: "#/components/schemas/ApplyCandidatePatchCommandV1"
+        - $ref: "#/components/schemas/SubmitPlanForReviewCommandV1"
+        - $ref: "#/components/schemas/AcceptPlanVersionCommandV1"
+        - $ref: "#/components/schemas/AcknowledgeMaterialChangeCommandV1"
+        - $ref: "#/components/schemas/RescheduleWithinToleranceCommandV1"
+        - $ref: "#/components/schemas/RequestReassessmentCommandV1"
+        - $ref: "#/components/schemas/AcknowledgeCorrectiveProposalCommandV1"
+      discriminator:
+        propertyName: kind
+        mapping:
+          CONFIRM_INDUCTION_ITEM: "#/components/schemas/ConfirmInductionItemCommandV1"
+          DEFER_INDUCTION_ITEM: "#/components/schemas/DeferInductionItemCommandV1"
+          APPLY_CANDIDATE_PATCH: "#/components/schemas/ApplyCandidatePatchCommandV1"
+          SUBMIT_PLAN_FOR_REVIEW: "#/components/schemas/SubmitPlanForReviewCommandV1"
+          ACCEPT_PLAN_VERSION: "#/components/schemas/AcceptPlanVersionCommandV1"
+          ACKNOWLEDGE_MATERIAL_CHANGE: "#/components/schemas/AcknowledgeMaterialChangeCommandV1"
+          RESCHEDULE_WITHIN_TOLERANCE: "#/components/schemas/RescheduleWithinToleranceCommandV1"
+          REQUEST_REASSESSMENT: "#/components/schemas/RequestReassessmentCommandV1"
+          ACKNOWLEDGE_CORRECTIVE_PROPOSAL: "#/components/schemas/AcknowledgeCorrectiveProposalCommandV1"
+    ConfirmInductionItemCommandV1:
       type: object
       additionalProperties: false
-      required:
-        - schemaVersion
-        - kind
-        - subjectRef
-        - expectedWorkspaceVersion
-        - expectedManifestVersion
-        - payload
+      required: [schemaVersion, kind, subjectRef, expectedWorkspaceVersion, expectedManifestVersion]
       properties:
         schemaVersion: { $ref: "#/components/schemas/EmploymentSchemaVersion" }
-        kind: { $ref: "#/components/schemas/EmploymentCommandKind" }
+        kind: { type: string, const: CONFIRM_INDUCTION_ITEM }
         subjectRef: { type: string, minLength: 1, maxLength: 128 }
         expectedWorkspaceVersion: { type: string, minLength: 1, maxLength: 64 }
-        expectedPlanVersion: { type: string, minLength: 1, maxLength: 64 }
         expectedManifestVersion: { type: string, minLength: 1, maxLength: 64 }
+    DeferInductionItemCommandV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, kind, subjectRef, expectedWorkspaceVersion, expectedManifestVersion, deferredReason, blockedSkillRefs]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/EmploymentSchemaVersion" }
+        kind: { type: string, const: DEFER_INDUCTION_ITEM }
+        subjectRef: { type: string, minLength: 1, maxLength: 128 }
+        expectedWorkspaceVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedManifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        deferredReason: { type: string, minLength: 1, maxLength: 500 }
+        blockedSkillRefs:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string, minLength: 1, maxLength: 128 }
+    ApplyCandidatePatchCommandV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, kind, subjectRef, expectedWorkspaceVersion, expectedManifestVersion, candidatePatchRef]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/EmploymentSchemaVersion" }
+        kind: { type: string, const: APPLY_CANDIDATE_PATCH }
+        subjectRef: { type: string, minLength: 1, maxLength: 128 }
+        expectedWorkspaceVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedManifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        candidatePatchRef: { type: string, format: uuid }
+    SubmitPlanForReviewCommandV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, kind, subjectRef, expectedWorkspaceVersion, expectedManifestVersion, expectedPlanVersion]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/EmploymentSchemaVersion" }
+        kind: { type: string, const: SUBMIT_PLAN_FOR_REVIEW }
+        subjectRef: { type: string, minLength: 1, maxLength: 128 }
+        expectedWorkspaceVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedManifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedPlanVersion: { type: string, minLength: 1, maxLength: 64 }
+    AcceptPlanVersionCommandV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, kind, subjectRef, expectedWorkspaceVersion, expectedManifestVersion, expectedPlanVersion, expectedDecisionSpaceVersion, expectedWbeSourceVersion, acknowledgement]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/EmploymentSchemaVersion" }
+        kind: { type: string, const: ACCEPT_PLAN_VERSION }
+        subjectRef: { type: string, minLength: 1, maxLength: 128 }
+        expectedWorkspaceVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedManifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedPlanVersion: { type: string, minLength: 1, maxLength: 64 }
         expectedDecisionSpaceVersion: { type: integer, minimum: 1 }
         expectedWbeSourceVersion: { type: string, minLength: 1, maxLength: 128 }
         acknowledgement: { type: string, minLength: 1, maxLength: 1000 }
-        payload:
-          type: object
-          additionalProperties: false
-          properties:
-            candidatePatchRef: { type: string, format: uuid }
-            deferredReason: { type: string, minLength: 1, maxLength: 500 }
-            blockedSkillRefs:
-              type: array
-              items: { type: string, minLength: 1, maxLength: 128 }
-            requestedInstant: { type: string, format: date-time }
-      allOf:
-        - if:
-            properties:
-              kind: { const: DEFER_INDUCTION_ITEM }
-          then:
-            properties:
-              payload:
-                required: [deferredReason, blockedSkillRefs]
-                properties:
-                  blockedSkillRefs:
-                    minItems: 1
-        - if:
-            properties:
-              kind: { const: APPLY_CANDIDATE_PATCH }
-          then:
-            properties:
-              payload:
-                required: [candidatePatchRef]
-        - if:
-            properties:
-              kind: { enum: [SUBMIT_PLAN_FOR_REVIEW, REQUEST_REASSESSMENT] }
-          then:
-            required: [expectedPlanVersion]
-        - if:
-            properties:
-              kind: { enum: [ACCEPT_PLAN_VERSION, ACKNOWLEDGE_MATERIAL_CHANGE] }
-          then:
-            required: [expectedPlanVersion, expectedDecisionSpaceVersion, expectedWbeSourceVersion, acknowledgement]
-        - if:
-            properties:
-              kind: { const: RESCHEDULE_WITHIN_TOLERANCE }
-          then:
-            required: [expectedPlanVersion, acknowledgement]
-            properties:
-              payload:
-                required: [requestedInstant]
-        - if:
-            properties:
-              kind: { const: ACKNOWLEDGE_CORRECTIVE_PROPOSAL }
-          then:
-            required: [acknowledgement]
+    AcknowledgeMaterialChangeCommandV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, kind, subjectRef, expectedWorkspaceVersion, expectedManifestVersion, expectedPlanVersion, expectedDecisionSpaceVersion, expectedWbeSourceVersion, acknowledgement]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/EmploymentSchemaVersion" }
+        kind: { type: string, const: ACKNOWLEDGE_MATERIAL_CHANGE }
+        subjectRef: { type: string, minLength: 1, maxLength: 128 }
+        expectedWorkspaceVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedManifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedPlanVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedDecisionSpaceVersion: { type: integer, minimum: 1 }
+        expectedWbeSourceVersion: { type: string, minLength: 1, maxLength: 128 }
+        acknowledgement: { type: string, minLength: 1, maxLength: 1000 }
+    RescheduleWithinToleranceCommandV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, kind, subjectRef, expectedWorkspaceVersion, expectedManifestVersion, expectedPlanVersion, requestedCalendarCommitment, acknowledgement]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/EmploymentSchemaVersion" }
+        kind: { type: string, const: RESCHEDULE_WITHIN_TOLERANCE }
+        subjectRef: { type: string, minLength: 1, maxLength: 128 }
+        expectedWorkspaceVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedManifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedPlanVersion: { type: string, minLength: 1, maxLength: 64 }
+        requestedCalendarCommitment: { $ref: "#/components/schemas/CalendarCommitmentV1" }
+        acknowledgement: { type: string, minLength: 1, maxLength: 1000 }
+    RequestReassessmentCommandV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, kind, subjectRef, expectedWorkspaceVersion, expectedManifestVersion, expectedPlanVersion]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/EmploymentSchemaVersion" }
+        kind: { type: string, const: REQUEST_REASSESSMENT }
+        subjectRef: { type: string, minLength: 1, maxLength: 128 }
+        expectedWorkspaceVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedManifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedPlanVersion: { type: string, minLength: 1, maxLength: 64 }
+    AcknowledgeCorrectiveProposalCommandV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, kind, subjectRef, expectedWorkspaceVersion, expectedManifestVersion, acknowledgement]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/EmploymentSchemaVersion" }
+        kind: { type: string, const: ACKNOWLEDGE_CORRECTIVE_PROPOSAL }
+        subjectRef: { type: string, minLength: 1, maxLength: 128 }
+        expectedWorkspaceVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedManifestVersion: { type: string, minLength: 1, maxLength: 64 }
+        acknowledgement: { type: string, minLength: 1, maxLength: 1000 }
     EmploymentCommandState:
       type: string
       enum: [ACCEPTED, VALIDATING, DISPATCHED, PARTIAL, UNKNOWN, RECONCILING, COMPLETED, REJECTED, CONFLICT, BLOCKED]
@@ -690,14 +782,27 @@ components:
       allOf:
         - $ref: "#/components/schemas/EmploymentCommandReceiptV1"
         - type: object
-          required: [ownerSteps, updatedAt]
+          required: [ownerSteps, evidenceRefs, resultingVersions, updatedAt]
           properties:
             ownerSteps:
               type: array
               minItems: 1
               items: { $ref: "#/components/schemas/OwnerStepV1" }
-            resultingWorkspaceVersion: { type: string, minLength: 1, maxLength: 64 }
-            evidenceRef: { type: string, maxLength: 128 }
+            evidenceRefs:
+              type: array
+              minItems: 1
+              uniqueItems: true
+              items: { type: string, minLength: 1, maxLength: 128 }
+            resultingVersions:
+              type: object
+              additionalProperties: false
+              required: [workspaceVersion]
+              properties:
+                workspaceVersion: { type: string, minLength: 1, maxLength: 64 }
+                planVersion: { type: string, minLength: 1, maxLength: 64 }
+                manifestVersion: { type: string, minLength: 1, maxLength: 64 }
+                decisionSpaceVersion: { type: integer, minimum: 1 }
+                wbeSourceVersion: { type: string, minLength: 1, maxLength: 128 }
             limitation: { type: string, maxLength: 500 }
             updatedAt: { type: string, format: date-time }
     EmploymentProblemCode:

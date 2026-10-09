@@ -1,0 +1,275 @@
+openapi: 3.1.0
+info:
+  contact:
+    name: WAOOAW Architecture
+  description: |
+    Additive BP-only WBE projection for Skill-scoped employment eligibility.
+    It supplements, and does not replace, WBE Relationship Workspace API 1.1.0.
+  title: WAOOAW Conversational Employment WBE Eligibility Candidate API
+  version: 1.0.0-candidate.2
+servers:
+- url: https://wbe.internal.waooaw
+security:
+- ServiceBearerAuth: []
+tags:
+- name: Employment Commercial Eligibility
+paths:
+  /internal/v1/relationships/{relationshipId}/employment-eligibility:
+    get:
+      description: Returns current commercial truth without transferring WBE calculation
+        or consequence ownership to BP.
+      operationId: getEmploymentCommercialEligibility
+      parameters:
+      - $ref: "#/components/parameters/RelationshipId"
+      - $ref: "#/components/parameters/PlanVersion"
+      - $ref: "#/components/parameters/ManifestVersion"
+      - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WbeEmploymentEligibilityV1"
+          description: WBE-authoritative eligibility projection
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+      summary: Read exact Skill-scoped WBE eligibility and consequences
+      tags:
+      - Employment Commercial Eligibility
+components:
+  parameters:
+    RelationshipId:
+      explode: false
+      in: path
+      name: relationshipId
+      required: true
+      schema:
+        format: uuid
+        type: string
+      style: simple
+    PlanVersion:
+      explode: true
+      in: query
+      name: planVersion
+      required: true
+      schema:
+        maxLength: 64
+        minLength: 1
+        type: string
+      style: form
+    ManifestVersion:
+      explode: true
+      in: query
+      name: manifestVersion
+      required: true
+      schema:
+        maxLength: 64
+        minLength: 1
+        type: string
+      style: form
+    CorrelationId:
+      explode: false
+      in: header
+      name: X-Correlation-Id
+      required: true
+      schema:
+        format: uuid
+        type: string
+      style: simple
+  responses:
+    Unauthorized:
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/WbeEmploymentProblemV1"
+      description: "Invalid BP service assertion, audience or relationship delegation"
+    NotFound:
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/WbeEmploymentProblemV1"
+      description: Relationship absent or inaccessible
+    Unavailable:
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/WbeEmploymentProblemV1"
+      description: Commercial truth unavailable; no eligible or zero-value default
+        is returned
+  schemas:
+    WbeEmploymentSchemaVersion:
+      enum:
+      - "1.0"
+      type: string
+    WbeCurrencyState:
+      enum:
+      - CURRENT
+      - STALE
+      - UNKNOWN
+      - UNAVAILABLE
+      - BLOCKED
+      type: string
+    WbeSkillEligibilityState:
+      enum:
+      - ELIGIBLE
+      - READ_ONLY
+      - BLOCKED
+      - UNKNOWN
+      type: string
+    WbeSkillEligibilityV1:
+      additionalProperties: false
+      example:
+        skillRef: skillRef
+        consequentialWorkFunded: true
+        state: ELIGIBLE
+        reasonCode: FUNDED
+        consequenceLabel: consequenceLabel
+      properties:
+        skillRef:
+          maxLength: 128
+          minLength: 1
+          type: string
+        state:
+          $ref: "#/components/schemas/WbeSkillEligibilityState"
+        consequentialWorkFunded:
+          type: boolean
+        reasonCode:
+          enum:
+          - FUNDED
+          - TRIAL_ADVISORY_ONLY
+          - ALLOWANCE_EXHAUSTED
+          - PAYMENT_BLOCKED
+          - PROFILE_STALE
+          - UNKNOWN
+          type: string
+        consequenceLabel:
+          maxLength: 240
+          type: string
+      required:
+      - consequentialWorkFunded
+      - reasonCode
+      - skillRef
+      - state
+    WbeEmploymentEligibilityV1:
+      additionalProperties: false
+      example:
+        producedAt: 2000-01-23T04:56:07.000+00:00
+        schemaVersion: "1.0"
+        currencyState: CURRENT
+        manifestVersion: manifestVersion
+        skillEligibility:
+        - skillRef: skillRef
+          consequentialWorkFunded: true
+          state: ELIGIBLE
+          reasonCode: FUNDED
+          consequenceLabel: consequenceLabel
+        - skillRef: skillRef
+          consequentialWorkFunded: true
+          state: ELIGIBLE
+          reasonCode: FUNDED
+          consequenceLabel: consequenceLabel
+        preservedPathClasses:
+        - EMERGENCY_STOP
+        - EMERGENCY_STOP
+        - EMERGENCY_STOP
+        - EMERGENCY_STOP
+        planVersion: planVersion
+        validUntil: 2000-01-23T04:56:07.000+00:00
+        relationshipId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        sourceProjectionVersion: sourceProjectionVersion
+      properties:
+        schemaVersion:
+          $ref: "#/components/schemas/WbeEmploymentSchemaVersion"
+        relationshipId:
+          format: uuid
+          type: string
+        planVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        manifestVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        sourceProjectionVersion:
+          description: Exact WBE Relationship Workspace 1.1.0 projection version.
+          maxLength: 64
+          minLength: 1
+          type: string
+        currencyState:
+          $ref: "#/components/schemas/WbeCurrencyState"
+        skillEligibility:
+          items:
+            $ref: "#/components/schemas/WbeSkillEligibilityV1"
+          minItems: 1
+          type: array
+        preservedPathClasses:
+          items:
+            enum:
+            - EMERGENCY_STOP
+            - CONSTITUTIONAL_RIGHTS
+            - EVIDENCE_READ
+            - READ_ONLY_REVIEW
+            type: string
+          maxItems: 4
+          minItems: 4
+          type: array
+          uniqueItems: true
+        validUntil:
+          format: date-time
+          type: string
+        producedAt:
+          format: date-time
+          type: string
+      required:
+      - currencyState
+      - manifestVersion
+      - planVersion
+      - preservedPathClasses
+      - producedAt
+      - relationshipId
+      - schemaVersion
+      - skillEligibility
+      - sourceProjectionVersion
+    WbeEmploymentProblemV1:
+      additionalProperties: false
+      properties:
+        type:
+          format: uri
+          type: string
+        title:
+          maxLength: 160
+          minLength: 1
+          type: string
+        status:
+          maximum: 599
+          minimum: 400
+          type: integer
+        code:
+          enum:
+          - WBE_EMPLOYMENT_UNAUTHORIZED
+          - WBE_EMPLOYMENT_NOT_ACCESSIBLE
+          - WBE_EMPLOYMENT_UNAVAILABLE
+          - WBE_EMPLOYMENT_VERSION_UNSUPPORTED
+          type: string
+        correlationId:
+          format: uuid
+          type: string
+      required:
+      - code
+      - correlationId
+      - status
+      - title
+      - type
+  securitySchemes:
+    ServiceBearerAuth:
+      bearerFormat: JWT
+      description: "BP workload assertion bound to WBE audience, delegated relationship\
+        \ and request digest."
+      scheme: bearer
+      type: http
+

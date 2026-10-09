@@ -196,7 +196,7 @@ services:
       dockerfile: src/ai-runtime/Dockerfile
     environment:
       ENVIRONMENT: release
-      DATABASE_URL: postgresql+asyncpg://runtime_app:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@pgbouncer:5433/waooaw
+      DATABASE_URL: postgresql+asyncpg://ai_runtime_app:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@pgbouncer:5433/waooaw
       CONSTITUTIONAL_ENGINE_ADDRESS: constitutional-engine:5002
       BUSINESS_PLATFORM_URL: http://business-platform:5001
     depends_on:
