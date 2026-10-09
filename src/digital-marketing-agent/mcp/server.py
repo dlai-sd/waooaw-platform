@@ -9,6 +9,7 @@ import os
 from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, ConfigDict
 
 from mcp.common import CredentialHealth, DeterministicTokenBroker, SocialToolContext, SocialToolDenied
 from mcp.facebook import FacebookMcp
@@ -20,6 +21,31 @@ class AllowingCeEmulator:
     def validate(self, action: str, context: SocialToolContext) -> None:
         if not context.ce_evidence_ref or not action:
             raise ValueError("AUTHORITY_DENIED")
+
+
+class SocialToolRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    operation_id: str
+    intent_id: str
+    idempotency_key: str
+    canonical_request_digest: str
+    tenant_authority_ref: str
+    relationship_ref: str
+    agent_instance_ref: str
+    channel: str
+    channel_account_ref: str
+    credential_ref_version: str
+    decision_space_version: str
+    ce_evidence_ref: str
+    wbe_eligibility_version: str
+    capability_profile_version: str
+    requested_at: datetime
+    deadline_at: datetime
+    trace_id: str
+
+    def to_context(self) -> SocialToolContext:
+        return SocialToolContext(**self.model_dump())
 
 
 def create_app(service_name: str) -> FastAPI:
@@ -61,7 +87,8 @@ def create_app(service_name: str) -> FastAPI:
         return {"tools": sorted(owner.operations), "emulator": True}
 
     @app.post("/call/{operation}")
-    def call(operation: str, context: SocialToolContext) -> dict[str, object]:
+    def call(operation: str, request: SocialToolRequest) -> dict[str, object]:
+        context = request.to_context()
         if context.channel_account_ref != "emulator-account":
             raise HTTPException(status_code=403, detail="NOT_ACCESSIBLE")
         try:

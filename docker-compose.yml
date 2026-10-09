@@ -798,7 +798,7 @@ services:
     # Meta Graph API — Instagram publishing and insights (customer OAuth)
     # Used by: Digital Marketing Agent (Skills 4, 8)
     image: python:3.12-slim
-    command: sh -c "pip install fastapi uvicorn --quiet && uvicorn mcp.server:app --host 0.0.0.0 --port 8106"
+    command: sh -c "pip install fastapi==0.135.1 uvicorn==0.30.6 --quiet && uvicorn mcp.server:app --host 0.0.0.0 --port 8106"
     volumes:
       - ./src/digital-marketing-agent:/workspace/src/digital-marketing-agent:ro
     working_dir: /workspace/src/digital-marketing-agent
@@ -817,7 +817,7 @@ services:
     # Meta Graph API — Facebook Pages publishing and insights (customer OAuth)
     # Used by: Digital Marketing Agent (Skill 5)
     image: python:3.12-slim
-    command: sh -c "pip install fastapi uvicorn --quiet && uvicorn mcp.server:app --host 0.0.0.0 --port 8107"
+    command: sh -c "pip install fastapi==0.135.1 uvicorn==0.30.6 --quiet && uvicorn mcp.server:app --host 0.0.0.0 --port 8107"
     volumes:
       - ./src/digital-marketing-agent:/workspace/src/digital-marketing-agent:ro
     working_dir: /workspace/src/digital-marketing-agent
@@ -856,7 +856,7 @@ services:
     # Aggregated analytics from Meta, Google Analytics 4, GBP (read-only, customer OAuth)
     # Used by: Digital Marketing Agent (Skill 9)
     image: python:3.12-slim
-    command: sh -c "pip install fastapi uvicorn --quiet && uvicorn mcp.server:app --host 0.0.0.0 --port 8109"
+    command: sh -c "pip install fastapi==0.135.1 uvicorn==0.30.6 --quiet && uvicorn mcp.server:app --host 0.0.0.0 --port 8109"
     volumes:
       - ./src/digital-marketing-agent:/workspace/src/digital-marketing-agent:ro
     working_dir: /workspace/src/digital-marketing-agent

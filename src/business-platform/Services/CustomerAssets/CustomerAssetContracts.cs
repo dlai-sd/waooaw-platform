@@ -60,6 +60,11 @@ public static class CustomerAssetPolicy
     {
         return Uri.TryCreate(value, UriKind.Absolute, out var uri)
             && uri.Scheme == Uri.UriSchemeHttps
+            && uri.Host.Length > 0
+            && !uri.Host.EndsWith(".invalid", StringComparison.OrdinalIgnoreCase)
+            && !value.Contains("CHANGEME", StringComparison.OrdinalIgnoreCase)
+            && !value.Contains("PLACEHOLDER", StringComparison.OrdinalIgnoreCase)
+            && !value.Contains("fixture", StringComparison.OrdinalIgnoreCase)
             && uri.Query.Contains("expires=", StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -1,6 +1,6 @@
-"""B2 publication intent, idempotency, reconciliation, and Stop semantics."""
+"""Profession-neutral publication intent, idempotency, reconciliation, and Stop semantics."""
 
-# Implements: architecture/reference/components/dma-content-and-social-publication-solution-contract.md §8.1, §8.3, §8.4
+# Implements: architecture/reference/components/dma-content-and-social-publication-solution-contract.md §5, §8.1, §8.3, §8.4
 # Constitutional basis: C-001, C-023, C-035, C-041, C-059, C-063, C-070, C-071, C-079
 
 from __future__ import annotations
@@ -9,8 +9,6 @@ from dataclasses import dataclass, replace
 from enum import StrEnum
 from threading import Lock
 from typing import Protocol
-
-from mcp.common import SocialToolContext
 
 
 class PublicationError(ValueError):
@@ -85,12 +83,12 @@ class PublicationIntent:
     receipt_digest: str | None = None
 
 
-class SocialPublisher(Protocol):
-    def call(self, operation: str, context: SocialToolContext) -> dict[str, str]: ...
+class SocialPublisher[PublicationContext](Protocol):
+    def call(self, operation: str, context: PublicationContext) -> dict[str, str]: ...
 
 
-class PublicationCoordinator:
-    def __init__(self, publisher: SocialPublisher, *, b2_enabled: bool = False) -> None:
+class PublicationCoordinator[PublicationContext]:
+    def __init__(self, publisher: SocialPublisher[PublicationContext], *, b2_enabled: bool = False) -> None:
         self._publisher = publisher
         self._b2_enabled = b2_enabled
         self._intents: dict[tuple[str, str], PublicationIntent] = {}
@@ -115,7 +113,7 @@ class PublicationCoordinator:
             self._intents[identity] = accepted
             return accepted
 
-    def dispatch(self, intent: PublicationIntent, context: SocialToolContext) -> PublicationIntent:
+    def dispatch(self, intent: PublicationIntent, context: PublicationContext) -> PublicationIntent:
         identity = (intent.tenant_ref, intent.idempotency_key)
         with self._lock:
             durable = self._intents.get(identity)

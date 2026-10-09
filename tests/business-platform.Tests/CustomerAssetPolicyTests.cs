@@ -30,7 +30,7 @@ public sealed class CustomerAssetPolicyTests
             DateTimeOffset.UtcNow.AddDays(1),
             null,
             "CUSTOMER_ASSET",
-            "https://assets.invalid/asset-1?expires=2026-10-10T00:00:00Z"
+            "https://assets.example.com/asset-1?expires=2026-10-10T00:00:00Z"
         );
 
         Assert.True(
@@ -75,6 +75,40 @@ public sealed class CustomerAssetPolicyTests
             null,
             "CUSTOMER_ASSET",
             "https://assets.invalid/asset-1"
+        );
+
+        Assert.False(
+            CustomerAssetPolicy.IsAuthorized(
+                asset,
+                Tenant,
+                Relationship,
+                "FACEBOOK",
+                "ORGANIC_SOCIAL",
+                DateTimeOffset.UtcNow
+            )
+        );
+    }
+
+    [Fact]
+    public void InvalidPlaceholderHostFailsClosed()
+    {
+        var asset = new CustomerAssetVersion(
+            Tenant,
+            Relationship,
+            "asset-1",
+            "1",
+            $"sha256:{new string('a', 64)}",
+            "customer",
+            new HashSet<string> { "FACEBOOK" },
+            new HashSet<string> { "ORGANIC_SOCIAL" },
+            "CUSTOMER_OWNED",
+            null,
+            null,
+            null,
+            DateTimeOffset.UtcNow.AddDays(1),
+            null,
+            "CUSTOMER_ASSET",
+            "https://assets.invalid/asset-1?expires=2026-10-10T00:00:00Z"
         );
 
         Assert.False(
