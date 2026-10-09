@@ -6,6 +6,7 @@ COPY src/business-platform/business-platform.csproj .
 COPY src/business-platform/Clients/Generated/EmploymentWbe/src/Waooaw.Generated.WbeEmployment/Waooaw.Generated.WbeEmployment.csproj Clients/Generated/EmploymentWbe/src/Waooaw.Generated.WbeEmployment/
 COPY src/business-platform/Clients/Generated/EmploymentDomainAdapter/src/Waooaw.Generated.DomainEmployment/Waooaw.Generated.DomainEmployment.csproj Clients/Generated/EmploymentDomainAdapter/src/Waooaw.Generated.DomainEmployment/
 RUN dotnet restore --runtime linux-musl-x64
+COPY src/digital-marketing-agent/integration/business-platform/ /digital-marketing-agent/integration/business-platform/
 COPY src/business-platform/ .
 RUN dotnet publish --configuration Release --runtime linux-musl-x64 \
     --self-contained false --no-restore --output /app/publish

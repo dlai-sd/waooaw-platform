@@ -1,7 +1,7 @@
 # Implements: ADR-045 §1, §2, §4, §6
 # Constitutional basis: C-076, C-080
 
-FROM node:20-bookworm-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0
+FROM mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
 
 ENV COREPACK_HOME=/opt/corepack
 
@@ -10,10 +10,11 @@ WORKDIR /workspace
 RUN mkdir -p "$COREPACK_HOME" \
 	&& corepack enable \
 	&& corepack prepare pnpm@9.15.9 --activate \
+	&& git config --system --add safe.directory /workspace \
 	&& chmod -R a+rX "$COREPACK_HOME"
 
-COPY --chown=node:node web/package.json web/pnpm-lock.yaml /opt/waooaw-web/
-COPY --chown=node:node web/patches/ /opt/waooaw-web/patches/
+COPY --chown=1000:1000 web/package.json web/pnpm-lock.yaml /opt/waooaw-web/
+COPY --chown=1000:1000 web/patches/ /opt/waooaw-web/patches/
 RUN --mount=type=cache,id=wc104-typescript-pnpm,target=/home/node/.local/share/pnpm/store,uid=1000,gid=1000,sharing=locked \
 	cd /opt/waooaw-web \
 	&& pnpm install --frozen-lockfile \
@@ -23,14 +24,10 @@ RUN --mount=type=cache,id=wc104-typescript-pnpm,target=/home/node/.local/share/p
 		chmod 0755 "/usr/local/bin/$name"; \
 	done
 
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN cd /opt/waooaw-web \
-	&& pnpm exec playwright install --with-deps chromium-headless-shell \
-	&& chmod -R a+rX "$PLAYWRIGHT_BROWSERS_PATH"
-
 ENV NODE_PATH=/opt/waooaw-web/node_modules \
+	PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
 	PATH=/opt/waooaw-web/node_modules/.bin:$PATH
 
-USER node
+USER 1000:1000
 
 CMD ["sh", "-lc", "cd web && jest --runInBand"]

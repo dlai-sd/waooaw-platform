@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0",
+  "contractVersion": "1.0.0",
+  "outcomes": ["VALID", "PARTIAL", "INVALID", "UNKNOWN"],
+  "supportedGoalTypes": [
+    "UNDERSTAND_CURRENT_POSITION",
+    "PRIORITIZE_MARKETING_IMPROVEMENTS",
+    "PLAN_CONTENT_AND_CAMPAIGNS"
+  ],
+  "prohibitedSideEffects": [
+    "PUBLICATION",
+    "PROVIDER_MUTATION",
+    "ADVERTISING_SPEND",
+    "LEAD_CONTACT"
+  ],
+  "acceptanceAuthority": "BUSINESS_PLATFORM",
+  "calendarAuthority": "WC115_COMPLETE_CALENDAR_SEMANTICS"
+}

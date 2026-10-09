@@ -40,7 +40,7 @@ write_evidence() {
     --arg failure "$FAILURE_CLASSIFICATION" --argjson exit_code "$exit_code" \
     '{schemaVersion:"1.0.0",workContract:"WC-089",issue:437,result:$result,
       headSha:$head,baseSha:$base,releaseSequence:1,professionalVersion:"1.0.0",
-      specificationRevision:"3.1",skills:["CUSTOMER_PROFILING","MARKET_RESEARCH","CONTENT_STRATEGY"],
+      specificationRevision:"3.1",skills:["CUSTOMER_PROFILING","MARKET_RESEARCH_AND_MATURITY","CONTENT_STRATEGY_AND_CALENDAR"],
       authority:{founderApprovalRef:"github-issue:437",sessionAuthorizationRef:"github-issue:437#authority",builderIdentity:"platform-it-expert"},
       image:{name:$image,id:$image_id},environment:"local-docker",startedAt:$started,completedAt:$completed,
       gates:{buildAuthority:$result,contracts:$result,skills:$result,runtimeIsolationReplayStop:$result,
@@ -94,10 +94,10 @@ AUTHORITY_FILE="$EVIDENCE_DIR/build-authority-effective.json"
 jq --arg head "$HEAD_SHA" --arg effective "$STARTED_AT" \
   --arg expires "$(date -u -d '+2 hours' +%Y-%m-%dT%H:%M:%SZ)" \
   '.sourceHead=$head | .effectiveAt=$effective | .expiresAt=$expires | .nonce=("wc089-final-" + $head)' \
-  tests/fixtures/dma-release-1/build-authority-valid.json > "$AUTHORITY_FILE"
+  src/digital-marketing-agent/tests/fixtures/dma-release-1/build-authority-valid.json > "$AUTHORITY_FILE"
 
 docker compose --profile test run --rm --user root \
-  -e PYTHONPATH=/workspace/src/agent-adapters \
+  -e PYTHONPATH=/workspace/src/digital-marketing-agent:/workspace/src/agent-adapters \
   -e WC089_HEAD="$HEAD_SHA" -e WC089_IMAGE="$IMAGE" -e WC089_AUTHORITY="$CONTAINER_EVIDENCE_DIR/build-authority-effective.json" \
   test-runner python3 -c '
 import json, os, subprocess
@@ -111,19 +111,19 @@ run_candidate_build(
     builder_identity="platform-it-expert", now=datetime.now(timezone.utc),
     output_directory=Path("/tmp/wc089-authorized-build"),
     build=lambda _: subprocess.run([
-        "docker", "build", "--pull", "--file", "src/agent-adapters/digital_marketing/Dockerfile",
-        "--tag", os.environ["WC089_IMAGE"], "src/agent-adapters"
+        "docker", "build", "--pull", "--file", "src/digital-marketing-agent/Dockerfile",
+        "--tag", os.environ["WC089_IMAGE"], "src"
     ], check=True),
 )
 ' | tee "$EVIDENCE_DIR/build-dma-image.log"
 IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$IMAGE")"
-EXPECTED_IMAGE_ID="$(jq -r '.runtimeAdapter.artifactDigest' tests/fixtures/agent-admission/digital-marketing-local-service-v1.0.0.json)"
+EXPECTED_IMAGE_ID="$(jq -r '.runtimeAdapter.artifactDigest' src/digital-marketing-agent/tests/fixtures/agent-admission/digital-marketing-local-service-v1.0.0.json)"
 [[ "$IMAGE_ID" == "$EXPECTED_IMAGE_ID" ]] || {
   echo "admission artifactDigest must be replaced with final image ID: $IMAGE_ID" >&2
   exit 1
 }
 
-ADMISSION_DIGEST="sha256:$(sha256sum tests/fixtures/agent-admission/digital-marketing-local-service-v1.0.0.json | cut -d' ' -f1)"
+ADMISSION_DIGEST="sha256:$(sha256sum src/digital-marketing-agent/tests/fixtures/agent-admission/digital-marketing-local-service-v1.0.0.json | cut -d' ' -f1)"
 docker run --rm --read-only --tmpfs /tmp:size=16m,mode=1770 \
   -e WAOOAW_ENVIRONMENT=demo -e DMA_ARTIFACT_DIGEST="$IMAGE_ID" \
   -e DMA_ADMISSION_CONTENT_DIGEST="$ADMISSION_DIGEST" "$IMAGE" \

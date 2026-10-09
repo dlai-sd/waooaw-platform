@@ -720,7 +720,7 @@ public sealed class EmploymentRelationshipsControllerTests
         "Increase qualified appointments",
         "Monthly qualified bookings",
         250000,
-        ["MARKET_RESEARCH"],
+        ["MARKET_RESEARCH_AND_MATURITY"],
         "CONFIRM_AUTHORITY_SCOPE");
 
     private sealed class HireTestCatalog : IProfessionalCatalog
@@ -735,7 +735,7 @@ public sealed class EmploymentRelationshipsControllerTests
                     "digital-marketing",
                     "Digital Marketing Professional",
                     ["Local service marketing"],
-                    [new ProfessionalSkillDisclosure("MARKET_RESEARCH", "Market Research", true, null)],
+                    [new ProfessionalSkillDisclosure("MARKET_RESEARCH_AND_MATURITY", "Market Research", true, null)],
                     ["No guaranteed outcomes"],
                     ["Customer-approved budget ceiling"],
                     ["Emergency Stop"],

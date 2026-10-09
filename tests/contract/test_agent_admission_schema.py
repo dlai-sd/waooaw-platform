@@ -18,11 +18,11 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = json.loads((ROOT / "architecture/reference/api-specs/schemas/agent-admission-contract-v1.schema.json").read_text())
 FIXTURES = [
-    ROOT / "tests/fixtures/agent-admission/digital-marketing-local-service-v1.0.0.json",
+    ROOT / "src/digital-marketing-agent/tests/fixtures/agent-admission/digital-marketing-local-service-v1.0.0.json",
     ROOT / "tests/fixtures/agent-admission/trading-fo-crypto-v1.8.0.json",
 ]
 SPEC_DIGESTS = {
-    "DIGITAL_MARKETING_LOCAL_SERVICE": "128b39b26346e5d09047e8cc835a3e3e6c7e627386d5ce9ad0df7e17c13a4ea2",
+    "DIGITAL_MARKETING_LOCAL_SERVICE": "703530cef938b21da8e910a7071eb3465467fe65d108e51c0e1fa17b150a3972",
     "TRADING_FO_CRYPTO": "10aaff0fa8c8fec8ec5becce8e85255ce43e0d0c7202c396aea26c28d07ce450",
 }
 
@@ -60,8 +60,8 @@ def test_dma_release_1_coordinates_are_distinct_and_content_bound() -> None:
     assert identity["agentSpecification"]["version"] == "3.1"
     assert {skill["skillId"]: skill["skillVersion"] for skill in contract["skillManifest"]} == {
         "CUSTOMER_PROFILING": "1.0.0",
-        "MARKET_RESEARCH": "1.0.0",
-        "CONTENT_STRATEGY": "1.0.0",
+        "MARKET_RESEARCH_AND_MATURITY": "1.0.0",
+        "CONTENT_STRATEGY_AND_CALENDAR": "1.0.0",
     }
 
     artifact_references = [
@@ -77,11 +77,11 @@ def test_dma_release_1_coordinates_are_distinct_and_content_bound() -> None:
 
     expected_schema_digests = {
         "CUSTOMER_PROFILING": "dma-customer-profiling-v1.schema.json",
-        "MARKET_RESEARCH": "dma-market-research-v1.schema.json",
-        "CONTENT_STRATEGY": "dma-content-strategy-v1.schema.json",
+        "MARKET_RESEARCH_AND_MATURITY": "dma-market-research-v1.schema.json",
+        "CONTENT_STRATEGY_AND_CALENDAR": "dma-content-strategy-v1.schema.json",
     }
     for skill in contract["skillManifest"]:
-        schema_path = ROOT / "architecture/reference/api-specs/schemas" / expected_schema_digests[skill["skillId"]]
+        schema_path = ROOT / "src/digital-marketing-agent/contracts/schemas" / expected_schema_digests[skill["skillId"]]
         expected = f"sha256:{hashlib.sha256(schema_path.read_bytes()).hexdigest()}"
         assert skill["configurationSchema"]["schemaDigest"] == expected
         assert skill["goalSchema"]["schemaDigest"] == expected

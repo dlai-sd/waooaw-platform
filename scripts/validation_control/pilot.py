@@ -32,7 +32,7 @@ WC109_ALLOWED_PREFIXES = (
 WC109_ALLOWED_FILES = {
     "constitution/PROJECT_STATE.md",
     "docker-compose.yml",
-    "src/agent-adapters/digital_marketing/Dockerfile",
+    "src/digital-marketing-agent/Dockerfile",
     "src/ai-runtime/Dockerfile",
     "src/billing-engine/Dockerfile",
     "src/business-platform/Dockerfile",

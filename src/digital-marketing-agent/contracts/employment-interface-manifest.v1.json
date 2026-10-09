@@ -1,0 +1,160 @@
+{
+  "schemaVersion": "1.0",
+  "protocolVersion": "1.0-candidate",
+  "agentType": "DIGITAL_MARKETING_LOCAL_SERVICE",
+  "agentVersion": "1.0.0",
+  "manifestVersion": "1.0.0",
+  "governance": {
+    "agentSpecification": {
+      "contractRef": "architecture/reference/agents/digital-marketing-agent.md",
+      "contractVersion": "3.1",
+      "contractDigest": "703530cef938b21da8e910a7071eb3465467fe65d108e51c0e1fa17b150a3972"
+    },
+    "promptPolicy": {
+      "contractRef": "architecture/reference/prompts/digital-marketing-agent-prompts.md",
+      "contractVersion": "1.0.0",
+      "contractDigest": "5aa15fb0d9f95b1c6d40dc18433412a0e96b17f0beb8854317856c873c81f772"
+    },
+    "toolProfile": {
+      "contractRef": "src/digital-marketing-agent/contracts/dependency-graph.v1.json",
+      "contractVersion": "1.0.0",
+      "contractDigest": "8c1181593f41079e1c0f6950312f94ee26510ee792e8d028f4aa412cab55b664"
+    },
+    "decisionConsequenceMap": {
+      "contractRef": "architecture/reference/agents/digital-marketing-agent.md#3.25",
+      "contractVersion": "3.1",
+      "contractDigest": "703530cef938b21da8e910a7071eb3465467fe65d108e51c0e1fa17b150a3972"
+    }
+  },
+  "induction": {
+    "requirementSetVersion": "1.0.0",
+    "mandatoryContext": [
+      "ACCOUNT_MODE",
+      "BUSINESS_IDENTITY",
+      "BUSINESS_DOMAIN",
+      "PRIMARY_LOCATION",
+      "PROSPECTIVE_CUSTOMERS",
+      "THREE_MONTH_ASPIRATION",
+      "EMPLOYMENT_MODE",
+      "SELECTED_OUTCOMES"
+    ],
+    "optionalContext": [
+      "WEBSITE_URL",
+      "CURRENT_CHANNELS",
+      "KNOWN_COMPETITORS",
+      "CURRENT_ENQUIRY_BASELINE",
+      "TEAM_SIZE",
+      "CURRENT_AD_SPEND",
+      "BIGGEST_MARKETING_PAIN",
+      "PREFERRED_LANGUAGE",
+      "CONTENT_INPUTS"
+    ],
+    "dependencyTypes": [
+      "CUSTOMER_CONFIRMATION",
+      "PUBLIC_OBSERVATION",
+      "READ_ONLY_CONNECTION",
+      "CUSTOMER_OWNED_OUTCOME_SOURCE",
+      "PLATFORM_OWNER_RECORD",
+      "ADMITTED_CONTRACT"
+    ],
+    "readinessRules": [
+      "ALL_MANDATORY_CURRENT_AND_CONFIRMED",
+      "OPTIONAL_DEFERRAL_REQUIRES_PROVEN_BOUNDED_ISOLATION",
+      "UNKNOWN_STALE_CONFLICTED_OR_INCOMPATIBLE_IS_NOT_READY"
+    ],
+    "domainSummaryAdapter": {
+      "contractRef": "src/digital-marketing-agent/contracts/induction-summary-contract.v1.json",
+      "contractVersion": "1.0.0",
+      "contractDigest": "5c91e8d4fd727e0deb47a04550b66277b958775d491aa2d1943ccbfd8cba5682"
+    }
+  },
+  "planning": {
+    "supportedGoalTypes": [
+      "UNDERSTAND_CURRENT_POSITION",
+      "PRIORITIZE_MARKETING_IMPROVEMENTS",
+      "PLAN_CONTENT_AND_CAMPAIGNS"
+    ],
+    "milestoneTypes": [
+      "PROFILE_CONFIRMED",
+      "MATURITY_ASSESSMENT_REVIEWED",
+      "PRIORITIES_CONFIRMED",
+      "CAMPAIGN_BRIEF_ACCEPTED",
+      "CONTENT_CALENDAR_ACCEPTED"
+    ],
+    "calendarConstraints": [
+      "IANA_TIME_ZONE_REQUIRED",
+      "LOCAL_INSTANT_FOLD_TZDB_REQUIRED_FOR_COMMITMENTS",
+      "NO_PUBLICATION_AUTHORITY",
+      "ACCEPTED_PLAN_TOLERANCE_REQUIRED"
+    ],
+    "materialChangeRules": [
+      "PROTECTED_WC115_CHANGE_IS_MATERIAL",
+      "DMA_OUTCOME_BASELINE_SKILL_MODE_SCOPE_OR_EVIDENCE_CHANGE_IS_MATERIAL",
+      "AMBIGUITY_IS_UNKNOWN_AND_REQUIRES_RENEWED_AGREEMENT"
+    ],
+    "performanceMeasureTypes": [
+      "PROFILE_COVERAGE",
+      "MATURITY_EVIDENCE_COVERAGE",
+      "PRIORITY_ACTION_PROGRESS",
+      "PLAN_REVIEW_TIMELINESS",
+      "CALENDAR_READINESS"
+    ],
+    "planAdapter": {
+      "contractRef": "src/digital-marketing-agent/contracts/planning-contract.v1.json",
+      "contractVersion": "1.0.0",
+      "contractDigest": "ac1f545cd44151350af499411bf9d6f27974863563bb01b05694f136f0083265"
+    }
+  },
+  "operations": {
+    "operatingCycleTypes": [
+      "UNDERSTAND_OBSERVE_ASSESS_PLAN",
+      "REASSESS_AND_CORRECT"
+    ],
+    "workItemTypes": [
+      "PROFILE_CONFIRMATION",
+      "PUBLIC_PRESENCE_OBSERVATION",
+      "MATURITY_DIMENSION_SCORING",
+      "MATURITY_REPORT",
+      "PRIORITY_RECOMMENDATION",
+      "CAMPAIGN_BRIEF",
+      "CONTENT_CALENDAR"
+    ],
+    "reassessmentTriggers": [
+      "MATERIAL_ACCOUNT_CONNECTION",
+      "MATERIAL_BUSINESS_CHANGE",
+      "ACCEPTED_REVIEW_CADENCE",
+      "CUSTOMER_REQUEST",
+      "DISPUTED_EVIDENCE_OR_SCORE",
+      "STALE_MANDATORY_EVIDENCE"
+    ],
+    "outcomeAdapter": {
+      "contractRef": "src/digital-marketing-agent/contracts/outcome-contract.v1.json",
+      "contractVersion": "1.0.0",
+      "contractDigest": "7c28f88caf5407b03b1e0a61746ff4196d5abbc7bb5d7c89b67654feb632c468"
+    },
+    "billingProfile": {
+      "contractRef": "architecture/reference/billing/billing-profiles/dma-billing-profile.md",
+      "contractVersion": "1.0.0",
+      "contractDigest": "470343b2621dafd39ac0460f5187b01708492ea211ef7c9f89b636b01d370faf"
+    },
+    "degradationProfile": {
+      "contractRef": "src/digital-marketing-agent/contracts/degradation-profile.v1.json",
+      "contractVersion": "1.0.0",
+      "contractDigest": "9a61737b766134b7178364ec8af9149fcf9fcef32d24beae15505b5f2a90bfc7"
+    },
+    "shorterMissedReviewThreshold": null
+  },
+  "conformanceScenarios": [
+    {
+      "scenarioId": "WC116-PACKAGE-A-QUALIFICATION",
+      "evidenceRef": "validation/evidence/wc116/qualification.json",
+      "result": "PASS",
+      "validatedProtocolVersion": "1.0-candidate",
+      "validatedManifestVersion": "1.0.0",
+      "limitationRefs": [
+        "PACKAGE_A_DEFAULT_OFF",
+        "NO_ACTIVATION_OR_DEPLOYMENT_AUTHORITY"
+      ]
+    }
+  ]
+}

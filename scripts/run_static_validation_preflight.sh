@@ -40,7 +40,7 @@ done <<'TARGETS'
 .	src/ai-runtime/Dockerfile
 .	web/Dockerfile
 .	src/billing-engine/Dockerfile
-src/agent-adapters	src/agent-adapters/digital_marketing/Dockerfile
+src	src/digital-marketing-agent/Dockerfile
 TARGETS
 
 echo "Static validation preflight passed; no image was exported."

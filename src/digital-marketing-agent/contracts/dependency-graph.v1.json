@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1.0",
+  "graphVersion": "1.0.0",
+  "dependencies": {
+    "CONFIRMED_PROFILE": {
+      "affectedSkillRefs": ["CUSTOMER_PROFILING","MARKET_RESEARCH_AND_MATURITY","CONTENT_STRATEGY_AND_CALENDAR"],
+      "dependentWorkRefs": ["PROFILE_CONFIRMATION","MATURITY_REPORT","CAMPAIGN_BRIEF","CONTENT_CALENDAR"],
+      "sharedMandatoryGate": true
+    },
+    "PUBLIC_OBSERVATION": {
+      "affectedSkillRefs": ["MARKET_RESEARCH_AND_MATURITY"],
+      "dependentWorkRefs": ["PUBLIC_PRESENCE_OBSERVATION","MATURITY_DIMENSION_SCORING","MATURITY_REPORT"],
+      "sharedMandatoryGate": false
+    },
+    "READ_ONLY_CONNECTION": {
+      "affectedSkillRefs": ["MARKET_RESEARCH_AND_MATURITY"],
+      "dependentWorkRefs": ["CHANNEL_MATURITY_DIMENSION_SCORING"],
+      "sharedMandatoryGate": false
+    },
+    "BRAND_AND_APPROVED_CLAIMS": {
+      "affectedSkillRefs": ["CONTENT_STRATEGY_AND_CALENDAR"],
+      "dependentWorkRefs": ["CAMPAIGN_BRIEF","CONTENT_CALENDAR"],
+      "sharedMandatoryGate": false
+    },
+    "MANIFEST_ADMISSION_COMPATIBILITY": {
+      "affectedSkillRefs": ["CUSTOMER_PROFILING","MARKET_RESEARCH_AND_MATURITY","CONTENT_STRATEGY_AND_CALENDAR"],
+      "dependentWorkRefs": ["PACKAGE_A_ACTIVE_WORK"],
+      "sharedMandatoryGate": true
+    },
+    "WBE_ELIGIBILITY": {
+      "affectedSkillRefs": ["CUSTOMER_PROFILING","MARKET_RESEARCH_AND_MATURITY","CONTENT_STRATEGY_AND_CALENDAR"],
+      "dependentWorkRefs": ["FUNDED_CONSEQUENTIAL_WORK"],
+      "sharedMandatoryGate": true
+    },
+    "EVIDENCE_FRESHNESS": {
+      "affectedSkillRefs": ["MARKET_RESEARCH_AND_MATURITY","CONTENT_STRATEGY_AND_CALENDAR"],
+      "dependentWorkRefs": ["MATURITY_DIMENSION_SCORING","MATURITY_REPORT","CAMPAIGN_BRIEF","CONTENT_CALENDAR"],
+      "sharedMandatoryGate": false
+    }
+  }
+}

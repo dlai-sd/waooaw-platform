@@ -532,7 +532,7 @@ are:
 | `infrastructure/workload-identity/registry.yaml` | Exact PR-to-adapter route grants only |
 | `src/professional-runtime/` | Generic adapter gateway/client, descriptor verifier, resolver, orchestration, Stop, and result validation |
 | `src/agent-adapters/runtime_contract/` | Language-neutral schema assets and Python reference adapter base; not a public platform service |
-| `src/agent-adapters/digital_marketing/` | Digital Marketing fixture adapter package using only admitted domain contracts |
+| `src/digital-marketing-agent/` | Dedicated Digital Marketing implementation, contracts, fixtures, and tests using the profession-neutral runtime contract |
 | `src/agent-adapters/trading/` | Trading fixture adapter package using only admitted domain contracts |
 | `tests/fixtures/agent-runtime-adapter/` | Frozen descriptor, envelope, result, error, and cross-language golden vectors |
 | `tests/contract/` | Schema, version, golden vector, compatibility, and generated drift tests |

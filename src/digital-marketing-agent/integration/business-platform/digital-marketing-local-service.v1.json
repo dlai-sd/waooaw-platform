@@ -19,8 +19,8 @@
   "eligibilityExplanation": "Eligibility depends only on lawful outcome fit, applicable regulation, and honest professional capability; customer value or preferred-segment scoring is not used.",
   "skills": [
     { "skillId": "CUSTOMER_PROFILING", "displayName": "Customer Profiling", "applicableInTrial": true },
-    { "skillId": "MARKET_RESEARCH", "displayName": "Market Research and Maturity Scoring", "applicableInTrial": true },
-    { "skillId": "CONTENT_STRATEGY", "displayName": "Content Strategy", "applicableInTrial": true }
+    { "skillId": "MARKET_RESEARCH_AND_MATURITY", "displayName": "Market Research and Maturity Scoring", "applicableInTrial": true },
+    { "skillId": "CONTENT_STRATEGY_AND_CALENDAR", "displayName": "Content Strategy and Calendar", "applicableInTrial": true }
   ],
   "limitations": [
     "Trial outputs are demonstrations and do not publish, spend, message third parties, or mutate provider state.",

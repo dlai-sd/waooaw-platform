@@ -66,7 +66,7 @@ public sealed class RelationshipEvaluationControllerTests
             {
                 TenantId = tenantId,
                 RelationshipId = relationshipId,
-                SkillId = "MARKET_RESEARCH",
+                SkillId = "MARKET_RESEARCH_AND_MATURITY",
                 SkillVersion = "1.0.0",
                 Status = "DEFERRED",
             });

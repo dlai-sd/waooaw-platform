@@ -16,8 +16,8 @@ RELEASE_MEMBERS = {
     "billing-engine": ("8140", ".", "src/billing-engine/Dockerfile"),
     "agent-runtime-adapter-digital-marketing": (
         "8443",
-        "src/agent-adapters",
-        "digital_marketing/Dockerfile",
+        "src",
+        "digital-marketing-agent/Dockerfile",
     ),
 }
 CI_WORKFLOW = REPO_ROOT / ".github/workflows/ci.yaml"
@@ -65,8 +65,8 @@ def test_ci_publishes_only_main_with_attestations_and_digest_artifacts() -> None
             for service in services
             if service["name"] == "agent-runtime-adapter-digital-marketing"
         )
-        assert dma["context"] == "src/agent-adapters"
-        assert dma["dockerfile"] == "src/agent-adapters/digital_marketing/Dockerfile"
+        assert dma["context"] == "src"
+        assert dma["dockerfile"] == "src/digital-marketing-agent/Dockerfile"
     assert "needs.validation-plan.outputs.has_service_builds == 'true'" in build["if"]
     assert build["permissions"] == {"contents": "read", "security-events": "write"}
     assert publish["if"] == "github.event_name == 'push' && github.ref == 'refs/heads/main'"

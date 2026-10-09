@@ -35,11 +35,12 @@ commands:
   build-professional-runtime: {shell: "PYTHONPYCACHEPREFIX=/tmp/pycache/professional-runtime python -m compileall -q src/professional-runtime"}
   build-ai-runtime: {shell: "PYTHONPYCACHEPREFIX=/tmp/pycache/ai-runtime python -m compileall -q src/ai-runtime src/trust-layer"}
   build-billing-engine: {shell: "PYTHONPYCACHEPREFIX=/tmp/pycache/billing-engine python -m compileall -q src/billing-engine"}
-  build-agent-adapter: {shell: "PYTHONPYCACHEPREFIX=/tmp/pycache/agent-adapters python -m compileall -q src/agent-adapters"}
+  build-agent-adapter: {shell: "PYTHONPYCACHEPREFIX=/tmp/pycache/agent-adapters python -m compileall -q src/agent-adapters src/digital-marketing-agent"}
   build-web: {shell: "cp -a web /tmp/web && ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules && cd /tmp/web && tsc --noEmit --incremental false"}
   test-constitutional-engine: {shell: "sh scripts/validation_control/run_dotnet_test_gate.sh constitutional-engine tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj"}
   test-business-platform: {shell: "sh scripts/validation_control/run_dotnet_test_gate.sh business-platform tests/business-platform.Tests/business-platform.Tests.csproj"}
   test-professional-runtime: {shell: "sh scripts/validation_control/run_python_test_gate.sh professional-runtime src/professional-runtime /workspace/src/professional-runtime tests/professional-runtime"}
+  test-digital-marketing-agent: {shell: "sh scripts/validation_control/run_python_test_gate.sh digital-marketing-agent src/digital-marketing-agent/digital_marketing /workspace/src/digital-marketing-agent:/workspace/src/agent-adapters:/workspace/src/professional-runtime src/digital-marketing-agent/tests"}
   test-ai-runtime: {shell: "sh scripts/validation_control/run_python_test_gate.sh ai-runtime src/ai-runtime /workspace/src/ai-runtime:/workspace/src/trust-layer tests/ai-runtime tests/trust-layer"}
   test-billing-engine: {shell: "pytest tests/billing-engine tests/pipeline/test_billing_ce_validator.py -q"}
   test-web: {shell: "sh scripts/validation_control/run_web_test_gate.sh"}
@@ -123,6 +124,7 @@ gates:
     cost_class: FOCUSED
     artifacts: &python_artifacts {native: [test-results/**/*.xml, test-results/coverage/**/*.xml], common: test-results/validation/test-python.json}
   test-python:professional-runtime: {<<: *python_test, gate_id: "test-python:professional-runtime", command_id: test-professional-runtime}
+  test-python:digital-marketing-agent: {<<: *python_test, gate_id: "test-python:digital-marketing-agent", command_id: test-digital-marketing-agent}
   test-python:ai-runtime: {<<: *python_test, gate_id: "test-python:ai-runtime", command_id: test-ai-runtime}
   test-python:billing-engine: {<<: *python_test, gate_id: "test-python:billing-engine", command_id: test-billing-engine}
   test-web: &web_test
@@ -279,11 +281,11 @@ components:
   agent-runtime-adapter-digital-marketing:
     component_id: agent-runtime-adapter-digital-marketing
     service_image: agent-runtime-adapter-digital-marketing
-    service_context: src/agent-adapters
-    service_dockerfile: src/agent-adapters/digital_marketing/Dockerfile
+    service_context: src
+    service_dockerfile: src/digital-marketing-agent/Dockerfile
     generated_artifacts: []
-    paths: [src/agent-adapters/**, tests/agent-adapters/**, tests/professional-runtime/test_dma_release_1_skills.py]
-    gates: [build:agent-runtime-adapter-digital-marketing, test-python:professional-runtime, sast:python, "dep-scan:python"]
+    paths: [src/digital-marketing-agent/**, src/agent-adapters/runtime_contract/**, tests/professional-runtime/**]
+    gates: [build:agent-runtime-adapter-digital-marketing, test-python:digital-marketing-agent, test-python:professional-runtime, sast:python, "dep-scan:python"]
     reverse_dependencies: []
   web:
     component_id: web

@@ -279,6 +279,7 @@ domain_compliance_table:
 ### Skill 0: Customer Profiling
 
 **Skill type:** `CUSTOMER_PROFILING`
+**Stable skill contract:** `CUSTOMER_PROFILING@1.0.0` (`Skill 0` is a migration alias only)
 **Business KPI:** Profile completeness score (% of fields confirmed) + correct account_mode set at first exchange
 **Execution model:** `PRODUCES_RECORD` — outputs a confirmed Customer Profile document; customer reviews and confirms before it becomes authoritative
 
@@ -399,7 +400,8 @@ WaooaW Expert (first message after registration):
 
 ### Skill 1: Market Research & Maturity Scoring
 
-**Skill type:** `MARKET_RESEARCH`
+**Skill type:** `MARKET_RESEARCH_AND_MATURITY`
+**Stable skill contract:** `MARKET_RESEARCH_AND_MATURITY@1.0.0` (`Skill 1` is a migration alias only)
 **Business KPI:** Digital Marketing Maturity Score accuracy (validated by customer at report delivery) + report delivery time from profile confirmation (target: < 10 minutes)
 **Execution model:** `PRODUCES_RECORD` — outputs the Digital Marketing Maturity Report; delivered to customer once at engagement start, then on 6-monthly refresh or customer request
 
@@ -441,16 +443,28 @@ skill_1_early_start:
 | Competitor landscape | Top 3 competitors' scores on same axes | `competition` |
 | Analytics signals | GA/Pixel installed? (via public page scan) | `clarity` |
 
-**Maturity Score — 1–7 fixed scale with industry/geo benchmark:**
+**Maturity Score — 1–10 fixed scale across ten equally weighted dimensions:**
 | Score | Label | Definition |
 |---|---|---|
-| 1 | No Presence | No digital footprint. No website, no social, no Google Business. Offline only. |
-| 2 | Minimal Presence | Exists on 1–2 platforms but dormant. Profile created, last post > 6 months ago. |
-| 3 | Occasional Activity | Posts irregularly (< 4/month). No content strategy. Responds to some reviews. No analytics. |
-| 4 | Active but Inconsistent | Posts 4–8/month on 1–2 platforms. KPIs not tracked. Customer response is slow. |
-| 5 | Structured Activity | Content calendar exists. 2–3 platforms active. KPIs tracked. Some digital-attributed enquiries. |
-| 6 | Managed Presence | All relevant platforms active. Consistent posting. Fast review response. Measurable ROI from digital. |
-| 7 | Digital-First Practice | Digital is primary acquisition channel. Campaigns run. Analytics-driven decisions. Strong brand identity. |
+| 1 | Not Visible Online | No supported digital evidence is visible. |
+| 2 | Basic Online Listing | A basic listing exists with little current activity. |
+| 3 | Online Presence Established | Core public profiles or website are established. |
+| 4 | Regularly Active Online | Current activity is visible but not consistently managed. |
+| 5 | Building Customer Engagement | Activity produces supported engagement signals. |
+| 6 | Generating Leads Online | Supported evidence shows online enquiry generation. |
+| 7 | Converting Leads Into Customers | Supported outcome evidence connects enquiries to customers. |
+| 8 | Growing Through Digital Marketing | Digital work supports repeatable growth with measurement. |
+| 9 | Achieving Predictable Digital Growth | Evidence supports predictable, governed improvement. |
+| 10 | Leading The Market Digitally | Strong, current evidence supports market-leading digital practice. |
+
+The dimensions are `BUSINESS_DIRECTION`, `ONLINE_PRESENCE`, `SEARCH_VISIBILITY`,
+`CONTENT_CONSISTENCY`, `CUSTOMER_ENGAGEMENT`, `LEAD_HANDLING`, `CUSTOMER_RETENTION`,
+`MEASUREMENT`, `IMPROVEMENT_DISCIPLINE`, and `GOVERNANCE_AND_TRUST`. Each dimension is scored
+independently from cited current evidence. The audit score is the arithmetic mean of scored
+dimensions to one decimal place and the display level is nearest whole number. An overall score is
+published only at coverage of at least 7/10; otherwise the result is
+`MATURITY_ASSESSMENT_IN_PROGRESS`. Missing, stale, or disputed evidence is
+`NOT_ENOUGH_INFORMATION`, never zero or a low score. Corrections create successor assessments.
 
 **Benchmark display:** "You are Score [N]. The average [domain] business in [city] is Score [B]. The top 20% are Score [T]." Benchmarks drawn from Platform Intelligence Store (Tier 3).
 
@@ -503,13 +517,13 @@ Used by: Skill 2 (Campaign Theme Engine) when proposing Campaign Briefs
 **MCP Tools:**
 | Tool | MCP Server | Action | Authorization | Failure |
 |---|---|---|---|---|
-| Web search | web-search-mcp | search.query | `MARKET_RESEARCH` authorized | DEGRADABLE (partial report) |
-| Google Business lookup | google-places-mcp | place.get_details | `MARKET_RESEARCH` authorized | DEGRADABLE |
-| Social profile scan | social-profile-mcp | profile.get_public_data | `MARKET_RESEARCH` authorized | DEGRADABLE |
-| Meta Ad Library check | meta-ad-library-mcp | ads.search_active | `MARKET_RESEARCH` authorized | DEGRADABLE |
-| Website signal scan | web-scan-mcp | page.get_signals | `MARKET_RESEARCH` authorized | DEGRADABLE |
-| Save maturity score | customer-profile-mcp | maturity.save_score | `MARKET_RESEARCH` authorized | REQUIRED |
-| Save needs heat map | customer-profile-mcp | needs.save_heatmap | `MARKET_RESEARCH` authorized | REQUIRED |
+| Web search | web-search-mcp | search.query | `MARKET_RESEARCH_AND_MATURITY` authorized | DEGRADABLE (partial report) |
+| Google Business lookup | google-places-mcp | place.get_details | `MARKET_RESEARCH_AND_MATURITY` authorized | DEGRADABLE |
+| Social profile scan | social-profile-mcp | profile.get_public_data | `MARKET_RESEARCH_AND_MATURITY` authorized | DEGRADABLE |
+| Meta Ad Library check | meta-ad-library-mcp | ads.search_active | `MARKET_RESEARCH_AND_MATURITY` authorized | DEGRADABLE |
+| Website signal scan | web-scan-mcp | page.get_signals | `MARKET_RESEARCH_AND_MATURITY` authorized | DEGRADABLE |
+| Save maturity score | customer-profile-mcp | maturity.save_score | `MARKET_RESEARCH_AND_MATURITY` authorized | REQUIRED |
+| Save needs heat map | customer-profile-mcp | needs.save_heatmap | `MARKET_RESEARCH_AND_MATURITY` authorized | REQUIRED |
 
 **Constitutional constraints:**
 - Only publicly available data may be used — no authenticated access, no data behind login
@@ -703,7 +717,9 @@ skill_1_keyword_feed:
 
 ### Skill 2: Content Strategy, Campaign Theme Engine & Calendar
 
-**Skill type:** `CONTENT_STRATEGY`
+**Skill type:** `CONTENT_STRATEGY_AND_CALENDAR`
+**Stable skill contract:** `CONTENT_STRATEGY_AND_CALENDAR@1.0.0` (`Skill 2` is a migration alias only)
+
 **Specification version:** 2.5 (Campaign Theme Engine upgrade — C-055)
 **Business KPI:** Campaign outcome achievement rate (% of campaign target_outcome achieved) + Content calendar adherence rate (%) + Customer effort score (how often customer has to manually intervene)
 **Execution model:** APPROVAL_GATE for Campaign Brief and monthly calendar; auto-execution within approved Campaign Brief scope (CAMPAIGN_APPROVAL / CAMPAIGN_AUTO modes)
@@ -787,10 +803,10 @@ PLATFORM CONTENT VARIANTS (Week 2 example):
 **MCP Tools:**
 | Tool | MCP Server | Action | Authorization | Failure |
 |---|---|---|---|---|
-| Read prior content + campaigns | scheduling-mcp | calendar.get_history | `CONTENT_STRATEGY` authorized | DEGRADABLE |
-| Publish campaign plan | scheduling-mcp | calendar.create_plan | `CONTENT_STRATEGY` authorized, customer APPROVED | REQUIRED |
-| Competitor platform research | meta-ad-library-mcp + social-profile-mcp | Platform Intelligence research | `MARKET_RESEARCH` authorized | DEGRADABLE |
-| Schedule content item | scheduling-mcp | content.schedule_item | `CONTENT_STRATEGY` authorized, SCR_PASSED | REQUIRED |
+| Read prior content + campaigns | scheduling-mcp | calendar.get_history | `CONTENT_STRATEGY_AND_CALENDAR` authorized | DEGRADABLE |
+| Publish campaign plan | scheduling-mcp | calendar.create_plan | `CONTENT_STRATEGY_AND_CALENDAR` authorized, customer APPROVED | REQUIRED |
+| Competitor platform research | meta-ad-library-mcp + social-profile-mcp | Platform Intelligence research | `MARKET_RESEARCH_AND_MATURITY` authorized | DEGRADABLE |
+| Schedule content item | scheduling-mcp | content.schedule_item | `CONTENT_STRATEGY_AND_CALENDAR` authorized, SCR_PASSED | REQUIRED |
 
 **Constitutional constraints:**
 - A Campaign Brief in DRAFT status may NOT have content variants generated for it — customer approval is the constitutional gate
@@ -2185,7 +2201,7 @@ skill_capability_manifest:
     - type: "campaign_performance_data"
       used_by: ["PERFORMANCE_ANALYTICS"]
   collaboration_affinities:
-    - with_skill: "CONTENT_STRATEGY"
+    - with_skill: "CONTENT_STRATEGY_AND_CALENDAR"
       relationship: "DOWNSTREAM"
       benefit: "Campaign Theme Engine brief → paid campaign uses same creative direction as organic"
     - with_skill: "INSTAGRAM_MARKETING"
@@ -3562,7 +3578,7 @@ skill_intelligence_router:
 
   skill_capability_manifests:
 
-    - skill_id: "MARKET_RESEARCH"
+    - skill_id: "MARKET_RESEARCH_AND_MATURITY"
       version: "2.4"
       intent_signatures:
         - "who are my competitors"
@@ -3577,7 +3593,7 @@ skill_intelligence_router:
         MATURITY_ASSESSMENT: "Scores customer's digital maturity and identifies priority gaps"
       unservable_request_types:
         - intent: "create content"
-          routes_to_skill: "CONTENT_STRATEGY"
+          routes_to_skill: "CONTENT_STRATEGY_AND_CALENDAR"
         - intent: "run paid ads"
           routes_to_skill: "PAID_ADVERTISING"
       input_requirements:
@@ -3585,18 +3601,18 @@ skill_intelligence_router:
         optional: []
       output_contributions:
         - type: "maturity_score"
-          used_by: ["CONTENT_STRATEGY", "PAID_ADVERTISING", "LOCAL_SEO"]
+          used_by: ["CONTENT_STRATEGY_AND_CALENDAR", "PAID_ADVERTISING", "LOCAL_SEO"]
         - type: "competitor_list"
           used_by: ["COMPETITIVE_INTELLIGENCE", "INSTAGRAM_MARKETING"]
       collaboration_affinities:
-        - with_skill: "CONTENT_STRATEGY"
+        - with_skill: "CONTENT_STRATEGY_AND_CALENDAR"
           relationship: "UPSTREAM"
           benefit: "Maturity score determines which phase skills are activated"
         - with_skill: "COMPETITIVE_INTELLIGENCE"
           relationship: "UPSTREAM"
           benefit: "Competitor list from research feeds competitive monitoring"
 
-    - skill_id: "CONTENT_STRATEGY"
+    - skill_id: "CONTENT_STRATEGY_AND_CALENDAR"
       version: "2.4"
       intent_signatures:
         - "content calendar for next month"
@@ -3659,9 +3675,9 @@ skill_intelligence_router:
         - type: "approved_instagram_post"
           used_by: ["PAID_ADVERTISING"]
         - type: "content_performance_data"
-          used_by: ["PERFORMANCE_ANALYTICS", "CONTENT_STRATEGY"]
+          used_by: ["PERFORMANCE_ANALYTICS", "CONTENT_STRATEGY_AND_CALENDAR"]
       collaboration_affinities:
-        - with_skill: "CONTENT_STRATEGY"
+        - with_skill: "CONTENT_STRATEGY_AND_CALENDAR"
           relationship: "DOWNSTREAM"
           benefit: "Content Strategy brief drives Instagram execution; calendar-aligned content"
         - with_skill: "PAID_ADVERTISING"
@@ -3700,7 +3716,7 @@ skill_intelligence_router:
         - with_skill: "INSTAGRAM_MARKETING"
           relationship: "DOWNSTREAM"
           benefit: "Organic post → paid amplification; unified creative across organic+paid"
-        - with_skill: "CONTENT_STRATEGY"
+        - with_skill: "CONTENT_STRATEGY_AND_CALENDAR"
           relationship: "DOWNSTREAM"
           benefit: "Campaign brief drives both content creation and paid targeting"
         - with_skill: "LOCAL_SEO"
@@ -3723,15 +3739,15 @@ skill_intelligence_router:
         UNDERPERFORMANCE_DIAGNOSIS: "Identifies underperforming skills and proposes adjustments"
       unservable_request_types:
         - intent: "create new content"
-          routes_to_skill: "CONTENT_STRATEGY"
+          routes_to_skill: "CONTENT_STRATEGY_AND_CALENDAR"
       input_requirements:
         required: []
         optional: ["all active skills' performance data"]
       output_contributions:
         - type: "performance_intelligence"
-          used_by: ["CONTENT_STRATEGY", "PAID_ADVERTISING", "LOCAL_SEO"]
+          used_by: ["CONTENT_STRATEGY_AND_CALENDAR", "PAID_ADVERTISING", "LOCAL_SEO"]
       collaboration_affinities:
-        - with_skill: "CONTENT_STRATEGY"
+        - with_skill: "CONTENT_STRATEGY_AND_CALENDAR"
           relationship: "BIDIRECTIONAL"
           benefit: "Analytics shows what content performs; strategy adapts accordingly"
         - with_skill: "PAID_ADVERTISING"
@@ -3765,12 +3781,12 @@ skill_intelligence_router:
         optional: ["performance_analytics.performance_intelligence"]
       output_contributions:
         - type: "keyword_intelligence"
-          used_by: ["PAID_ADVERTISING", "CONTENT_STRATEGY"]
+          used_by: ["PAID_ADVERTISING", "CONTENT_STRATEGY_AND_CALENDAR"]
       collaboration_affinities:
         - with_skill: "PAID_ADVERTISING"
           relationship: "BIDIRECTIONAL"
           benefit: "SEO keywords improve paid ad targeting; paid data reveals which terms convert"
-        - with_skill: "CONTENT_STRATEGY"
+        - with_skill: "CONTENT_STRATEGY_AND_CALENDAR"
           relationship: "UPSTREAM"
           benefit: "Keyword research informs content themes for maximum organic visibility"
 
@@ -3789,15 +3805,15 @@ skill_intelligence_router:
         COMPETITIVE_RESPONSE: "Recommends defensive or offensive response to competitor move"
       unservable_request_types:
         - intent: "initial competitor list setup"
-          routes_to_skill: "MARKET_RESEARCH"
+          routes_to_skill: "MARKET_RESEARCH_AND_MATURITY"
       input_requirements:
         required: ["customer_profile.confirmed_competitor_list"]
         optional: ["market_research.maturity_score", "performance_analytics.performance_intelligence"]
       output_contributions:
         - type: "competitor_intelligence_snapshot"
-          used_by: ["CONTENT_STRATEGY", "PAID_ADVERTISING"]
+          used_by: ["CONTENT_STRATEGY_AND_CALENDAR", "PAID_ADVERTISING"]
       collaboration_affinities:
-        - with_skill: "MARKET_RESEARCH"
+        - with_skill: "MARKET_RESEARCH_AND_MATURITY"
           relationship: "DOWNSTREAM"
           benefit: "Market Research produces the competitor list; Competitive Intelligence monitors it continuously"
         - with_skill: "PAID_ADVERTISING"
@@ -3972,7 +3988,7 @@ campaign_theme_engine:
   backward_compatible: true  # POST_APPROVAL mode customers unaffected
 
   platform_intelligence:
-    research_skill: "CONTENT_STRATEGY"
+    research_skill: "CONTENT_STRATEGY_AND_CALENDAR"
     research_prompt: "DMA/PLATFORM/PLATFORM_INTELLIGENCE_RESEARCH"
     research_cadence: "POST_ONBOARDING + QUARTERLY_REFRESH"
     research_signals:
@@ -4109,7 +4125,7 @@ campaign_theme_engine:
   backward_compatible: true  # POST_APPROVAL mode customers unaffected
 
   platform_intelligence:
-    research_skill: "CONTENT_STRATEGY"
+    research_skill: "CONTENT_STRATEGY_AND_CALENDAR"
     research_prompt: "DMA/CAMPAIGN/PLATFORM_INTELLIGENCE_RESEARCH"
     research_cadence: "POST_ONBOARDING + QUARTERLY_REFRESH"
     research_signals:
@@ -4614,7 +4630,7 @@ Each skill is shown to the customer as a capability card with:
 | Skill | What I do for you | What you get | Bundle |
 |---|---|---|---|
 | Customer Profiling | "I understand your business and goals before recommending anything" | Your personalized digital marketing plan | All bundles |
-| Market Research | "I research your current digital presence and score it honestly" | Digital Marketing Maturity Report (1–7 score + action plan) | All bundles |
+| Market Research | "I research your current digital presence and score it honestly" | Digital Marketing Maturity Report (1–10 score, evidence coverage + action plan) | All bundles |
 | Content Strategy | "I plan your monthly content calendar so you never wonder what to post" | A theme-aligned content plan, approved by you | Curtain Raiser+ |
 | Instagram | "I create and publish your Instagram posts and reels" | Consistent Instagram presence driving enquiries | Curtain Raiser+ |
 | Facebook | "I keep your Facebook page active and local" | Local community presence and event visibility | Curtain Raiser+ |
@@ -4642,7 +4658,7 @@ ProfessionalTemplate:
   lifecycle_type: "PERMANENT"
   phase_bundles:
     - bundle: "CURTAIN_RAISER"
-      skills: [CUSTOMER_PROFILING, MARKET_RESEARCH, CONTENT_STRATEGY, INSTAGRAM_MARKETING,
+      skills: [CUSTOMER_PROFILING, MARKET_RESEARCH_AND_MATURITY, CONTENT_STRATEGY_AND_CALENDAR, INSTAGRAM_MARKETING,
                FACEBOOK_MARKETING, GOOGLE_BUSINESS_PROFILE, WHATSAPP_BUSINESS, VIDEO_CONTENT_CREATION]
       target_maturity_range: "1-3"
     - bundle: "GROWTH_ENGINE"
@@ -4657,7 +4673,7 @@ ProfessionalTemplate:
     authorized_actions:
       # Intelligence skills (always authorized, all bundles)
       - { actionType: "CUSTOMER_PROFILING", description: "Conduct AI-native profiling conversation and build Customer Profile" }
-      - { actionType: "MARKET_RESEARCH", description: "Research customer's digital presence and calculate maturity score" }
+      - { actionType: "MARKET_RESEARCH_AND_MATURITY", description: "Research customer's digital presence and calculate maturity score" }
       # Phase 1 — Curtain Raiser
       - { actionType: "INSTAGRAM_POST", description: "Create and publish approved Instagram posts" }
       - { actionType: "INSTAGRAM_STORY", description: "Create and publish approved Instagram stories" }
@@ -4668,7 +4684,7 @@ ProfessionalTemplate:
       - { actionType: "GOOGLE_REVIEW_RESPONSE", description: "Respond to Google reviews with approved templates" }
       - { actionType: "WHATSAPP_BROADCAST", description: "Send approved broadcast messages to opted-in patients" }
       - { actionType: "WHATSAPP_REMINDER", description: "Send appointment reminders using pre-approved templates" }
-      - { actionType: "CONTENT_STRATEGY", description: "Propose monthly content calendar" }
+      - { actionType: "CONTENT_STRATEGY_AND_CALENDAR", description: "Propose monthly content calendar" }
       - { actionType: "VIDEO_CONTENT", description: "Create and publish approved video content" }
       # Phase 2 — Growth Engine (activated at Score 3+)
       - { actionType: "LOCAL_SEO_AUDIT", description: "Audit and report on local SEO signals", phase: "GROWTH_ENGINE" }

@@ -12,7 +12,9 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 PR_ROOT = ROOT / "src/professional-runtime"
+DMA_ROOT = ROOT / "src/digital-marketing-agent"
 sys.path.insert(0, str(PR_ROOT))
+sys.path.insert(0, str(DMA_ROOT))
 
 from evaluation_workflow import (  # noqa: E402
     AdapterAnswerProposal,
@@ -24,7 +26,7 @@ from evaluation_workflow import (  # noqa: E402
     TrialDemonstrationService,
 )
 from intent_crystallizer import LockedArtifact  # noqa: E402
-from professionals.digital_marketing import (  # noqa: E402
+from digital_marketing.evaluation import (  # noqa: E402
     DMA_RECIPES,
     DMA_TRIAL_CAPABILITIES,
     DigitalMarketingEvaluationAdapter,
@@ -41,7 +43,7 @@ FIXTURE = json.loads(
     (ROOT / "simulation/fixtures/wc058-whatsapp-first-dma.json").read_text(encoding="utf-8")
 )
 CATALOG = json.loads(
-    (ROOT / "src/business-platform/Catalog/Professionals/digital-marketing-local-service.v1.json")
+    (ROOT / "src/digital-marketing-agent/integration/business-platform/digital-marketing-local-service.v1.json")
     .read_text(encoding="utf-8")
 )
 
@@ -102,10 +104,10 @@ def test_cct_ae01_progressive_context_survives_restart_and_correction() -> None:
 
 
 @pytest.mark.asyncio
-async def test_cct_ae01_all_19_skills_are_simulated_without_paid_or_external_effects() -> None:
+async def test_cct_ae01_all_package_a_skills_are_simulated_without_paid_or_external_effects() -> None:
     catalog_skills = tuple(item["skillId"] for item in CATALOG["skills"])
-    assert len(catalog_skills) == 19
-    assert set(catalog_skills) == set(DMA_RECIPES)
+    assert len(catalog_skills) == 3
+    assert set(catalog_skills) <= set(DMA_RECIPES)
     service = TrialDemonstrationService(DigitalMarketingEvaluationAdapter())
 
     results = [
@@ -118,7 +120,7 @@ async def test_cct_ae01_all_19_skills_are_simulated_without_paid_or_external_eff
         for skill_id in catalog_skills
     ]
 
-    assert len(results) == 19
+    assert len(results) == 3
     assert all(not result.external_actions for result in results)
     assert all(
         not capability.paid and not capability.external_mutation

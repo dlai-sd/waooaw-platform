@@ -138,7 +138,7 @@ def test_static_preflight_blocks_runner_supply_and_compiles_docker_graphs() -> N
     assert "docker compose config --quiet" in source
     assert source.count("docker buildx build --check") == 1
     assert "src/constitutional-engine/Dockerfile" in source
-    assert "src/agent-adapters/digital_marketing/Dockerfile" in source
+    assert "src/digital-marketing-agent/Dockerfile" in source
     assert "--push" not in source
 
 

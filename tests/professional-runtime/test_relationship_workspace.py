@@ -81,7 +81,7 @@ def test_work_revisions_preserve_instance_binding_and_tenant_isolation() -> None
     item = ExecutionWorkItem(
         workItemId=work_item_id,
         agentInstanceId=uuid.uuid4(),
-        skillId="MARKET_RESEARCH",
+        skillId="MARKET_RESEARCH_AND_MATURITY",
         skillVersion="1.0.0",
         invocationId=uuid.uuid4(),
         revision=1,

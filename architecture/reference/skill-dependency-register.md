@@ -18,13 +18,17 @@
 
 ---
 
-## Agent 1: Digital Marketing Agent (DMA) v2.4
+## Agent 1: Digital Marketing Agent (DMA) specification 3.1
 
 **Professional Type:** `DIGITAL_MARKETING_HEALTHCARE`
 **Entry Channel:** Portal (web PWA)
 **Credential Model:** OAuth via oauth-vault service (ADR-021)
 
-### Skill 0 — Customer Profiling & Market Research
+This register owns dependency inventory only. Package A behavior is defined exclusively by the
+canonical DMA specification and digest-bound employment manifest. Numeric skill labels are
+migration aliases, never durable identity.
+
+### `CUSTOMER_PROFILING@1.0.0` (migration alias: Skill 0)
 
 | Dependency | Type | Status | Founder Action Required |
 |---|---|---|---|
@@ -35,13 +39,13 @@
 | `web-scan-mcp` | Website signal scanning | ✅ docker-compose stub | None |
 | `customer-profile-mcp` | Internal — Business Platform DB | 📋 internal | None |
 
-### Skill 1 — Digital Maturity Report
+### `MARKET_RESEARCH_AND_MATURITY@1.0.0` (migration alias: Skill 1)
 
 | Dependency | Type | Status | Founder Action Required |
 |---|---|---|---|
 | Same MCPs as Skill 0 | — | See above | See above |
 
-### Skills 2–3 — Content Strategy & Calendar / Content Creation
+### `CONTENT_STRATEGY_AND_CALENDAR@1.0.0` (migration alias: Skill 2)
 
 | Dependency | Type | Status | Founder Action Required |
 |---|---|---|---|
