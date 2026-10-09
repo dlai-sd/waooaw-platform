@@ -29,6 +29,20 @@ The Chief Solution Architect must translate this component into a bounded soluti
 detailed Work Contract without changing the customer outcomes, capability ownership, authority
 boundaries, or canonical source rules defined here.
 
+### 1.1 Mandatory DMA Source Boundary
+
+All DMA-specific implementation must reside in the dedicated
+`src/digital-marketing-agent/**` subtree. DMA business rules, domain state, maturity scoring,
+capability logic, provider behavior, prompts, orchestration, and profession-specific schemas must
+not be scattered across Business Platform, Professional Runtime, AI Runtime, WBE, Constitutional
+Engine, generic agent adapters, or other WAOOAW source directories.
+
+Other platform source directories may contain only thin, profession-neutral registration or
+integration wiring required to invoke the accepted generic WC-115 interfaces. That wiring must not
+duplicate or interpret DMA behavior. If the solution cannot preserve this boundary, the Chief
+Solution Architect must stop and return the conflict for Founder decision rather than distributing
+DMA implementation across platform owners.
+
 ## 2. Customer Promise
 
 The DMA must help the customer answer five plain-language questions:
@@ -469,6 +483,9 @@ that includes:
     duplicated normative content deleted or archived.
 19. Customer-facing catalogue and maturity-report projections that use the vocabulary in this
     component and never expose internal skill numbering as the primary experience.
+20. A source-allocation map proving that all DMA-specific implementation is contained under
+    `src/digital-marketing-agent/**` and that any changes elsewhere are thin, profession-neutral
+    WC-115 registration or integration wiring.
 
 ## 14. Mandatory Delivery Sequence
 
@@ -516,6 +533,9 @@ The Solution Architecture and resulting Work Contract are acceptable only when:
   customer, relationship, location, or agent instance.
 - Provider outage, partial completion, retry, cancellation, delayed receipt, ambiguity, and Emergency
   Stop have explicit safe behavior.
+- All DMA-specific implementation is contained under `src/digital-marketing-agent/**`; platform
+  component directories contain no DMA business rules, domain state, scoring, provider behavior,
+  prompts, orchestration, or profession-specific schemas.
 - The Platform IT Expert can implement the Work Contract without inventing a business rule,
   customer promise, consent rule, provider choice, skill identity, scoring rule, or ownership boundary.
 
@@ -531,6 +551,8 @@ decision if any of the following occurs:
   rule, or external-side-effect approval remains ambiguous.
 - A design requires one container per customer, a platform DMA branch, reusable credentials inside
   the DMA image, or duplicated Web/WhatsApp business logic.
+- A design distributes DMA-specific implementation outside `src/digital-marketing-agent/**` or
+  requires platform components to own or interpret DMA business behavior.
 - A provider selection becomes necessary without an authorized technology decision.
 - A capability would be advertised as available before exact manifest, dependency, conformance,
   qualification, and admission evidence exists.
@@ -738,6 +760,9 @@ Package A is solution-complete only when:
     accessibility, and generated-client ownership inherit and pass the WC-115 gates.
 11. The candidate remains disabled by default and no deployment, activation, provider access, or
     customer traffic is performed.
+12. All DMA-specific source is contained under `src/digital-marketing-agent/**`; any source change
+    outside that subtree is proven to be thin, profession-neutral WC-115 registration or integration
+    wiring with no DMA business rule or state.
 
 ### 20.6 Required Solution Artifacts
 
@@ -746,7 +771,7 @@ selected package:
 
 | Artifact | Required content |
 |---|---|
-| DMA solution contract | Package scope, owners, interactions, state transitions, failures, rollback, and acceptance mapping |
+| DMA solution contract | Package scope, owners, interactions, state transitions, failures, rollback, acceptance mapping, and the mandatory `src/digital-marketing-agent/**` source boundary |
 | DMA manifest definition | Exact values and references for the accepted generic manifest schema |
 | DMA induction contract | Requirement identities, mandatory/optional classification, evidence, readiness, deferral, and correction |
 | DMA planning contract | Goal/milestone/work types, calendar constraints, material-change rules, measures, and plan-validation semantics |

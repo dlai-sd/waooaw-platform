@@ -38,6 +38,31 @@ Execute these steps in exact order. Do not skip. Do not reorder.
 
 **CRITICAL BEFORE STEP 1:** After bootstrap is authorized, do NOT consult `/memories/`, `/memories/repo/`, or `/memories/session/` before completing this sequence. Memory files may only be used AFTER Step 8 declares READY, and only to supplement — never replace — this sequence.
 
+### Mandatory Codespaces GitHub Authentication
+
+In a Codespaces tool shell, the standard GitHub credential is provided by the shared environment.
+Every shell starts fresh, so source it in the same command that runs authenticated `git` or `gh`
+operations:
+
+```bash
+set -a
+. /workspaces/.codespaces/shared/.env
+set +a
+gh auth status
+```
+
+- This is the first authentication check. Do not run `gh auth login`, request a token, change the
+  remote, or report GitHub authentication as blocked before this exact path has been tested.
+- After `gh auth status` passes, use the loaded HTTPS credential for GitHub reads, pushes, checks,
+  comments, and Pull Request operations authorized by the Work Contract.
+- Source the shared environment again in each later tool-shell command that needs authentication;
+  a successful check in an earlier shell does not export credentials into a new shell.
+- Never print, persist, commit, log, or include the credential value in evidence or chat. A masked
+  `gh auth status` result is sufficient.
+- If the shared file is absent, cannot be read, or `gh auth status` still fails after sourcing it,
+  report the exact failure without exposing environment contents. Only then may authentication be
+  treated as blocked.
+
 ### Token Budget And Engineering-First Rule
 
 - Bootstrap is a routing check, not a repository study. Target at most 2,000 input tokens before READY.
@@ -73,8 +98,6 @@ activity complete or presenting its output, the author must:
 5. For a PR, complete the mandatory Author Review section only after the final push, bind it to the
   exact 40-character head commit, and set PASS only when all checks and findings are resolved. Any
   later commit invalidates that review and requires a fresh author review.
-6. In Codespaces tool shells, run `set -a; . /workspaces/.codespaces/shared/.env; set +a` before authenticated GitHub commands; always test this standard credential path before claiming credentials are unavailable or requesting re-authentication.
-
 Author review is self-verification, not approval. The author may not self-approve, self-merge, or
 claim independent assurance. Only the Founder may request an additional institutional review.
 
@@ -85,6 +108,8 @@ STEP 1 — Read only this Boot Sequence through Step 10b.
 
   PROCESS CONTROL BASELINE — execute immediately after reading this step and before STEP 2:
   - Bootstrap remains the first action. Do not inspect Git state before reading this protocol.
+  - In Codespaces, load `/workspaces/.codespaces/shared/.env` and verify `gh auth status` exactly as
+    specified in Mandatory Codespaces GitHub Authentication before any authenticated GitHub action.
   - Resolve the worktree that owns the assigned Work Contract; do not continue from an unrelated
     shell working directory merely because it was open when the session started.
   - Refresh `origin/main` once when network access is available, then record the selected worktree,
