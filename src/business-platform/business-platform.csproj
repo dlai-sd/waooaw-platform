@@ -53,9 +53,11 @@
 
     <ItemGroup>
         <Content Update="Catalog/Professionals/*.json" CopyToOutputDirectory="PreserveNewest" />
-        <Content Include="../digital-marketing-agent/integration/business-platform/*.json"
-                 Link="Catalog/Professionals/%(Filename)%(Extension)"
-                 CopyToOutputDirectory="PreserveNewest" />
+        <Content
+            Include="../digital-marketing-agent/integration/business-platform/*.json"
+            Link="Catalog/Professionals/%(Filename)%(Extension)"
+            CopyToOutputDirectory="PreserveNewest"
+        />
     </ItemGroup>
 
     <ItemGroup>
