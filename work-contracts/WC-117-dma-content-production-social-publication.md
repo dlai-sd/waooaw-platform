@@ -6,7 +6,7 @@
 |---|---|
 | Authoring office | Chief Solution Architect (INST-005) |
 | Implementing office | Platform IT Expert (INST-010) |
-| Status | DRAFT FOR FOUNDER ACCEPTANCE - IMPLEMENTATION, DEPLOYMENT, PROVIDER CONNECTION, PUBLICATION, AND ACTIVATION UNAUTHORIZED |
+| Status | FOUNDER ACCEPTED - CURRENT-SESSION IMPLEMENTATION AUTHORIZED 2026-10-09 - DEPLOYMENT, PROVIDER CONNECTION, PUBLICATION, AND ACTIVATION UNAUTHORIZED |
 | Parent enterprise requirement | `architecture/reference/components/dma-onboarding-and-autonomous-operation-enterprise-requirements.md` |
 | Controlling solution contract | `architecture/reference/components/dma-content-and-social-publication-solution-contract.md` `1.0.0-candidate.1` |
 | Generic baseline | WC-114/WC-115 Conversational Employment Protocol |
@@ -107,6 +107,17 @@ ledger before editing. Only dependency-complete surfaces directly owned by a req
 | Secret/config references | Existing environment templates, Docker fixtures, Terraform/Container Apps surfaces only when separately authorized and selected by impact |
 | Cross-owner evidence | Existing contract, integration, constitutional, acceptance, security, accessibility, and performance test surfaces |
 | Contract evidence | `validation/evidence/wc117/**` and `work-contracts/WC-117-requirements.yaml` |
+
+Founder amendment accepted 2026-10-09 fixes the previously unresolved paths:
+
+- customer-asset owner: `src/business-platform/Services/CustomerAssets/`;
+- Instagram MCP: `src/digital-marketing-agent/mcp/instagram/`;
+- Facebook MCP: `src/digital-marketing-agent/mcp/facebook/`; and
+- Platform Analytics MCP: `src/digital-marketing-agent/mcp/platform_analytics/`.
+
+The MCP paths serve existing Compose deployable identities and are not new deployables. The asset
+owner may use only existing BP persistence and tenant boundaries and introduces no database, storage
+product, or public API.
 
 If an exact owner/path does not exist, conflicts with another active source, or requires a new
 deployable/storage product/public endpoint, stop. Do not create a plausible parallel path.

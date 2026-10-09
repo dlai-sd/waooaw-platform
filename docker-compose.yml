@@ -798,14 +798,13 @@ services:
     # Meta Graph API — Instagram publishing and insights (customer OAuth)
     # Used by: Digital Marketing Agent (Skills 4, 8)
     image: python:3.12-slim
-    command: sh -c "pip install fastapi uvicorn --quiet && python /stub/mcp_stub_server.py"
+    command: sh -c "pip install fastapi==0.135.1 uvicorn==0.30.6 --quiet && uvicorn mcp.server:app --host 0.0.0.0 --port 8106"
     volumes:
-      - ./scripts/mcp_stub_server.py:/stub/mcp_stub_server.py:ro
+      - ./src/digital-marketing-agent:/workspace/src/digital-marketing-agent:ro
+    working_dir: /workspace/src/digital-marketing-agent
     environment:
-      MCP_SERVICE_NAME: instagram-mcp-stub
-      MCP_TOOLS: '["post.publish", "story.publish", "reel.publish", "get_insights"]'
-      MCP_PORT: "8106"
-      MCP_STUB_MESSAGE: "STUB — Meta Business credentials required (FA-002)"
+      DMA_MCP_SERVICE: instagram-mcp
+      PYTHONPATH: /workspace/src/digital-marketing-agent
 
     ports:
       - "8106:8106"
@@ -818,14 +817,13 @@ services:
     # Meta Graph API — Facebook Pages publishing and insights (customer OAuth)
     # Used by: Digital Marketing Agent (Skill 5)
     image: python:3.12-slim
-    command: sh -c "pip install fastapi uvicorn --quiet && python /stub/mcp_stub_server.py"
+    command: sh -c "pip install fastapi==0.135.1 uvicorn==0.30.6 --quiet && uvicorn mcp.server:app --host 0.0.0.0 --port 8107"
     volumes:
-      - ./scripts/mcp_stub_server.py:/stub/mcp_stub_server.py:ro
+      - ./src/digital-marketing-agent:/workspace/src/digital-marketing-agent:ro
+    working_dir: /workspace/src/digital-marketing-agent
     environment:
-      MCP_SERVICE_NAME: facebook-mcp-stub
-      MCP_TOOLS: '["post.publish", "get_page_insights", "create_ad"]'
-      MCP_PORT: "8107"
-      MCP_STUB_MESSAGE: "STUB — Meta Business credentials required (FA-002)"
+      DMA_MCP_SERVICE: facebook-mcp
+      PYTHONPATH: /workspace/src/digital-marketing-agent
 
     ports:
       - "8107:8107"
@@ -858,14 +856,13 @@ services:
     # Aggregated analytics from Meta, Google Analytics 4, GBP (read-only, customer OAuth)
     # Used by: Digital Marketing Agent (Skill 9)
     image: python:3.12-slim
-    command: sh -c "pip install fastapi uvicorn --quiet && python /stub/mcp_stub_server.py"
+    command: sh -c "pip install fastapi==0.135.1 uvicorn==0.30.6 --quiet && uvicorn mcp.server:app --host 0.0.0.0 --port 8109"
     volumes:
-      - ./scripts/mcp_stub_server.py:/stub/mcp_stub_server.py:ro
+      - ./src/digital-marketing-agent:/workspace/src/digital-marketing-agent:ro
+    working_dir: /workspace/src/digital-marketing-agent
     environment:
-      MCP_SERVICE_NAME: platform-analytics-mcp-stub
-      MCP_TOOLS: '["get_campaign_summary", "get_channel_breakdown", "get_roi_report", "get_content_performance"]'
-      MCP_PORT: "8109"
-      MCP_STUB_MESSAGE: "STUB — internal analytics DB required"
+      DMA_MCP_SERVICE: platform-analytics-mcp
+      PYTHONPATH: /workspace/src/digital-marketing-agent
 
     ports:
       - "8109:8109"
