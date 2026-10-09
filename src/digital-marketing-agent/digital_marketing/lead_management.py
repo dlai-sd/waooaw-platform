@@ -49,9 +49,7 @@ TAKEOVER_CLASSES = frozenset(
         "OUTSIDE_AUTHORITY",
     }
 )
-PROHIBITED_COMMITMENTS = frozenset(
-    {"PRICE", "LEGAL", "CLINICAL", "INVENTORY", "ELIGIBILITY", "CREDIT", "SERVICE_GUARANTEE"}
-)
+PROHIBITED_COMMITMENTS = frozenset({"PRICE", "LEGAL", "CLINICAL", "INVENTORY", "ELIGIBILITY", "CREDIT", "SERVICE_GUARANTEE"})
 
 
 @dataclass(frozen=True)
@@ -70,7 +68,12 @@ class LeadCaseVersion:
     classification: str | None = None
 
     def transition(self, target: LeadState) -> LeadCaseVersion:
-        if self.classification in TAKEOVER_CLASSES and target is not LeadState.HUMAN_TAKEOVER:
+        takeover_safe_targets = {
+            LeadState.ACKNOWLEDGED,
+            LeadState.HUMAN_TAKEOVER,
+            LeadState.SUPPRESSED,
+        }
+        if self.classification in TAKEOVER_CLASSES and target not in takeover_safe_targets:
             raise CdeDenied(CdeReason.AUTHORITY_DENIED)
         legal = {
             LeadState.CAPTURED: {

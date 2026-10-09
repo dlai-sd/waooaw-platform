@@ -108,18 +108,12 @@ def campaign(**changes: object) -> PaidCampaignVersion:
 
 
 def test_manifest_has_unique_stable_skills_and_resolves_skill_14() -> None:
-    manifest = json.loads(
-        (ROOT / "src/digital-marketing-agent/contracts/cde/cde-manifest.v1.json").read_text()
-    )
+    manifest = json.loads((ROOT / "src/digital-marketing-agent/contracts/cde/cde-manifest.v1.json").read_text())
     stable_ids = [skill["stableId"] for skill in manifest["skills"]]
     assert len(stable_ids) == len(set(stable_ids))
     assert manifest["accountModel"] == "WAOOAW_MANAGED"
     assert {package["availability"] for package in manifest["packages"].values()} == {"DEFAULT_OFF"}
-    aliases = {
-        alias: skill["stableId"]
-        for skill in manifest["skills"]
-        for alias in skill["legacyAliases"]
-    }
+    aliases = {alias: skill["stableId"] for skill in manifest["skills"] for alias in skill["legacyAliases"]}
     assert aliases["Skill 14"] == "INSTITUTIONAL_MARKETING"
     assert aliases["Legacy Skill 14 Reputation"] == "REPUTATION_AND_RESPONSE"
     assert set(manifest["providerAdoptionStops"].values()) == {"NOT_CONFIGURED"}
@@ -174,11 +168,7 @@ def test_campaign_requires_managed_account_reapproval_and_verified_activation() 
     successor = approved.material_successor(budget_ref="wbe:reservation:2")
     assert successor.version == 2
     assert successor.approval_ref is None
-    dispatching = (
-        approved.transition(CampaignState.READINESS_PENDING)
-        .transition(CampaignState.READY)
-        .transition(CampaignState.DISPATCHING)
-    )
+    dispatching = approved.transition(CampaignState.READINESS_PENDING).transition(CampaignState.READY).transition(CampaignState.DISPATCHING)
     with pytest.raises(CdeDenied, match="RECONCILIATION_REQUIRED"):
         dispatching.transition(CampaignState.ACTIVE)
     assert dispatching.transition(CampaignState.ACTIVE, provider_verified=True).state is CampaignState.ACTIVE
