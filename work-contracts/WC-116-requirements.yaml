@@ -1,0 +1,195 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-116
+contract_path: work-contracts/WC-116-dma-employment-conformance.md
+contract_digest: e59dfe50f1f86d8842a9e1910f31a1f32e865dee07309a8e17358eb869408f41
+contract_status: SPECIFICATION_COMPLETE_IMPLEMENTATION_UNAUTHORIZED
+implementation_scope: true
+result: PLANNED
+completion_rule: >-
+  Every requirement must have direct Docker-produced evidence bound to the exact Package A
+  candidate. Architecture acceptance does not authorize implementation, activation, deployment,
+  provider access or customer traffic.
+
+requirement_defaults: &defaults
+  evidence_class: Docker implementation, contract, journey, security or qualification evidence
+  initial_state: expected-fail
+  dependencies: Founder-accepted Package A work component and explicit current-session WC-116 implementation authorization
+  residual_risk: Founder review, implementation authorization, PR approval and merge remain open; activation and deployment remain prohibited.
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC116-R001
+    source: Sections 1 and 4
+    observable_outcome: Implementation starts only from accepted inputs, exact digests, a valid ledger and explicit current-session authority.
+    component_owner: Platform IT Expert baseline control
+    test_path_or_plan: Docker process-control, ancestry, contract-digest, admission-tuple and authority preflight.
+    completion_rule: Every precondition passes before WC116-01 or any runnable change starts.
+  - <<: *defaults
+    requirement_id: WC116-R002
+    source: Sections 2, 3 and 6
+    observable_outcome: Scope remains Package A Skills 0/1/2 and the six unchanged generic adapter operations.
+    component_owner: Platform IT Expert scope control
+    test_path_or_plan: Changed-path and contract-operation allow-list with dependency-closure validation.
+    completion_rule: Every changed path and behavior maps to Package A and no excluded capability appears.
+  - <<: *defaults
+    requirement_id: WC116-R003
+    source: WC116-01
+    observable_outcome: Active DMA records contain one canonical skill authority and no conflicting 1-7 maturity contract.
+    component_owner: Canonical DMA specification
+    test_path_or_plan: Active-source uniqueness, duplicate-behavior and obsolete-score repository scans.
+    completion_rule: The reconciled 1-10 contract is the only active Package A maturity meaning.
+  - <<: *defaults
+    requirement_id: WC116-R004
+    source: WC116-01
+    observable_outcome: Stable skill IDs and versions replace numeric labels as durable Package A identity.
+    component_owner: DMA manifest and canonical specification
+    test_path_or_plan: Stable-coordinate reference scan and numeric-alias negative fixtures.
+    completion_rule: Every runtime, contract and evidence identity uses a stable semantic coordinate.
+  - <<: *defaults
+    requirement_id: WC116-R005
+    source: WC116-02
+    observable_outcome: The manifest binds the exact professional, adapter, protocol, OCI, source and evidence tuple without placeholders.
+    component_owner: DMA manifest
+    test_path_or_plan: Tuple completeness, exact digest, mismatch, placeholder and stale-evidence tests.
+    completion_rule: Every tuple member independently matches authoritative admission and build evidence.
+  - <<: *defaults
+    requirement_id: WC116-R006
+    source: WC116-02
+    observable_outcome: Manifest governance, induction, planning, operations, dependency and conformance declarations are complete and digest-bound.
+    component_owner: DMA manifest
+    test_path_or_plan: Closed-schema, immutable-reference and deterministic serialization/digest tests.
+    completion_rule: The manifest validates unchanged and contains no mutable or unresolved reference.
+  - <<: *defaults
+    requirement_id: WC116-R007
+    source: WC116-03
+    observable_outcome: Induction implements DMA-IND-001 through DMA-IND-017 with exact mandatory, confirmation, impact and deferral semantics.
+    component_owner: DMA domain adapter
+    test_path_or_plan: Requirement-set provider/consumer and mandatory/optional/deferral fixture matrix.
+    completion_rule: Every requirement resolves exactly and no mandatory requirement can be deferred.
+  - <<: *defaults
+    requirement_id: WC116-R008
+    source: WC116-04
+    observable_outcome: Plan validation returns only valid, partial, invalid or unknown from closed Package A rules and never accepts a plan.
+    component_owner: DMA domain adapter
+    test_path_or_plan: Complete plan-rule and owner-mutation-negative matrix.
+    completion_rule: Every plan outcome is reproducible and the adapter performs zero authoritative mutation.
+  - <<: *defaults
+    requirement_id: WC116-R009
+    source: WC116-05
+    observable_outcome: Material-change classification covers every protected and DMA category, identifies bounded impact and never mutates or resumes work.
+    component_owner: DMA domain adapter
+    test_path_or_plan: Material/non-material/unknown boundary fixtures for every category.
+    completion_rule: Ambiguity requires renewed agreement and all affected work remains fenced.
+  - <<: *defaults
+    requirement_id: WC116-R010
+    source: WC116-06
+    observable_outcome: Dependency isolation uses a transitive digest-bound graph, distrusts caller completeness and fails closed on unknown.
+    component_owner: DMA domain adapter
+    test_path_or_plan: Transitive, incomplete-candidate, shared-gate, stale-graph and unknown-node tests.
+    completion_rule: Only proven bounded isolation permits unrelated work to continue.
+  - <<: *defaults
+    requirement_id: WC116-R011
+    source: WC116-07
+    observable_outcome: Maturity uses ten equal dimensions, 1-10 scores, at least seven dimensions for publication, one-decimal audit, nearest display and successor correction.
+    component_owner: DMA maturity assessment
+    test_path_or_plan: Example and property tests for calculation, coverage, rounding and correction lineage.
+    completion_rule: All score and publication outputs exactly satisfy the enterprise formula.
+  - <<: *defaults
+    requirement_id: WC116-R012
+    source: WC116-07
+    observable_outcome: Missing evidence remains unavailable and cannot become a low score, hidden weight, unsupported benchmark or success.
+    component_owner: DMA maturity assessment
+    test_path_or_plan: Missing, stale, disputed, benchmark and unsupported-inference negative fixtures.
+    completion_rule: Every insufficient dimension is NOT_ENOUGH_INFORMATION with explicit missing evidence.
+  - <<: *defaults
+    requirement_id: WC116-R013
+    source: WC116-07
+    observable_outcome: Customer outcomes and DMA professional performance remain separate, evidence-based and limitation-aware.
+    component_owner: DMA performance assessment
+    test_path_or_plan: Outcome/performance divergence, attribution, dispute and missed-review tests.
+    completion_rule: Neither result can manufacture or overwrite the other and two missed periods require diagnosis.
+  - <<: *defaults
+    requirement_id: WC116-R014
+    source: WC116-08
+    observable_outcome: All six operations conform to unchanged generic OpenAPI with closed errors and no duplicate DTO or public adapter route.
+    component_owner: DMA adapter contract
+    test_path_or_plan: OpenAPI provider/consumer, generated-client ownership and route-inventory tests.
+    completion_rule: Every operation passes with unchanged schemas and prohibited surfaces remain absent.
+  - <<: *defaults
+    requirement_id: WC116-R015
+    source: WC116-03 through WC116-08
+    observable_outcome: Tenant, relationship, instance, purpose, assurance, version and idempotency boundaries fail closed before domain logic.
+    component_owner: DMA adapter security boundary
+    test_path_or_plan: Hostile assertion, cross-boundary, stale-version and idempotency matrix.
+    completion_rule: Every invalid identity or authority tuple performs zero domain work.
+  - <<: *defaults
+    requirement_id: WC116-R016
+    source: WC116-08 and WC116-09
+    observable_outcome: Timeout, disconnect, duplicate, replay, restart and late-result paths reconcile once-logically without blind retry.
+    component_owner: DMA adapter and Professional Runtime boundary
+    test_path_or_plan: Fault injection and immutable replay/reconciliation tests.
+    completion_rule: One logical operation has at most one admitted semantic result.
+  - <<: *defaults
+    requirement_id: WC116-R017
+    source: Sections 3 and 6
+    observable_outcome: WBE, CE, BP, PR, AIR, oauth-vault, admission and Stop authorities remain unchanged.
+    component_owner: Architecture boundary tests
+    test_path_or_plan: Import, route, call-graph and owner-mutation negative tests.
+    completion_rule: The adapter interprets domain meaning only and no authority transfers.
+  - <<: *defaults
+    requirement_id: WC116-R018
+    source: Sections 2 and 3
+    observable_outcome: Trial and hire remain separate and neither permits excluded external side effects or activation.
+    component_owner: DMA mode policy
+    test_path_or_plan: Trial/hire capability and prohibited-side-effect journey matrix.
+    completion_rule: Package A produces only the allowed profile, assessment and plan outcomes.
+  - <<: *defaults
+    requirement_id: WC116-R019
+    source: WC116-09
+    observable_outcome: DMA, Trading and Tutor pass one unchanged generic contract with no DMA-specific platform schema or branch.
+    component_owner: Generic adapter conformance suite
+    test_path_or_plan: Three-profession provider/consumer fixtures including mixed-major and missing-manifest negatives.
+    completion_rule: All professions use identical generic schemas and platform operation paths.
+  - <<: *defaults
+    requirement_id: WC116-R020
+    source: WC116-09
+    observable_outcome: Two customer instances remain isolated while sharing one exact admitted artifact and Stop does not cross instances.
+    component_owner: DMA isolation journey
+    test_path_or_plan: Concurrent two-tenant/relationship/instance execution, replay and independent Stop tests.
+    completion_rule: No data, work, evidence, usage, result or Stop effect crosses the instance boundary.
+  - <<: *defaults
+    requirement_id: WC116-R021
+    source: WC116-08 and WC116-09
+    observable_outcome: Privacy-safe telemetry, PII minimization, public/read-only acquisition and closed diagnostics pass.
+    component_owner: DMA adapter observability and privacy
+    test_path_or_plan: Log/trace/metric/error redaction, egress and excessive-input tests.
+    completion_rule: Protected content and high-cardinality identities never escape approved owner payloads.
+  - <<: *defaults
+    requirement_id: WC116-R022
+    source: WC116-10 and Section 11
+    observable_outcome: Candidate remains disabled by default and rollback preserves prior behavior, append-only history and evidence.
+    component_owner: Package A rollout control
+    test_path_or_plan: Default-off startup, rollback epoch, in-flight reconciliation and history-preservation tests.
+    completion_rule: No implementation state activates or deploys Package A and rollback loses no history.
+  - <<: *defaults
+    requirement_id: WC116-R023
+    source: WC116-10
+    observable_outcome: Every requirement has immutable exact-candidate Docker evidence in this ledger.
+    component_owner: Requirement evidence ledger
+    test_path_or_plan: Docker ledger validation and evidence identity/digest/reference checks.
+    completion_rule: Every row is PASS against one frozen candidate before qualification is complete.
+  - <<: *defaults
+    requirement_id: WC116-R024
+    source: WC116-11
+    observable_outcome: Complete author review repairs all findings and binds PASS to the exact remote head.
+    component_owner: Platform IT Expert author review
+    test_path_or_plan: Full-scope review plus exact 40-character remote-head precheck.
+    completion_rule: No open finding remains and any later commit invalidates the review.
+  - <<: *defaults
+    requirement_id: WC116-R025
+    source: WC116-11
+    observable_outcome: Founder handoff contains no self-approval, merge, activation, deployment, provider access or customer-traffic action.
+    component_owner: Founder handoff
+    test_path_or_plan: Prepared PR body and changed-action review.
+    completion_rule: PR is open for Founder review and every prohibited action remains absent.
