@@ -1,0 +1,332 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-117
+contract_path: work-contracts/WC-117-dma-content-production-social-publication.md
+contract_digest: f06066ff42447f0a7d2ba14511e8152c739b6a088886a94b6728b162942edf22
+solution_path: architecture/reference/components/dma-content-and-social-publication-solution-contract.md
+solution_digest: 6c54d17459731c3f3aa2297580ddd20397951aba9706a9a5bc751e043f663b6e
+contract_status: DRAFT_FOUNDER_ACCEPTANCE_REQUIRED_IMPLEMENTATION_ACTIVATION_UNAUTHORIZED
+implementation_scope: true
+result: PLANNED
+completion_rule: >-
+  Every requirement must have direct repository-owned Docker evidence bound to one exact B1/B2
+  candidate. Local qualification uses deterministic emulators and no live secret. Hosted Demo,
+  deployment, provider connection, publication, customer traffic, and activation require separate
+  Founder authority and evidence.
+
+requirement_defaults: &defaults
+  evidence_class: Docker implementation, contract, journey, security, or qualification evidence
+  initial_state: expected-fail
+  dependencies: Founder-accepted solution candidate and explicit current-session WC-117 implementation authorization
+  residual_risk: Founder review, PR approval and merge remain open; B1/B2 activation, deployment and provider actions remain prohibited.
+  result: PLANNED
+  evidence_refs: []
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC117-R001
+    source: Sections 1, 3 and WC117-00
+    observable_outcome: Implementation starts only from accepted exact inputs, digest-valid ledger, fresh baseline and explicit current-session authority.
+    component_owner: Platform IT Expert baseline control
+    test_path_or_plan: Docker ancestry, process-control, contract/solution digest, Package A tuple and authority preflight.
+    completion_rule: Every precondition passes before any runnable change.
+  - <<: *defaults
+    requirement_id: WC117-R002
+    source: Sections 1, 2 and 9
+    observable_outcome: B1 and B2 remain dependency-ordered, independently qualified, default-off and separately activatable.
+    component_owner: Package gate control
+    test_path_or_plan: Package-state, feature-gate, candidate-identity and activation-negative tests.
+    completion_rule: B1 can qualify without B2 and neither package can activate the other.
+  - <<: *defaults
+    requirement_id: WC117-R003
+    source: Section 2
+    observable_outcome: Scope remains Instagram/Facebook organic content, publication, supported analytics and improvement; Packages C-E remain excluded.
+    component_owner: Scope control
+    test_path_or_plan: Changed-surface, tool, permission, side-effect and capability allow-list scans.
+    completion_rule: No paid media, lead, crisis, extra-channel or institutional behavior exists.
+  - <<: *defaults
+    requirement_id: WC117-R004
+    source: WC117-01
+    observable_outcome: Stable skill IDs and one human/machine authority replace duplicate numeric/channel behavior.
+    component_owner: DMA specification and manifest
+    test_path_or_plan: Active-source uniqueness, stable-reference and legacy-alias scans.
+    completion_rule: Every runtime identity uses one accepted stable coordinate.
+  - <<: *defaults
+    requirement_id: WC117-R005
+    source: Solution Sections 3 and 5
+    observable_outcome: BP, DMA adapter, AIR, PR, CE, WBE, oauth-vault, MCP, Key Vault and asset-owner boundaries remain exact.
+    component_owner: Cross-owner architecture
+    test_path_or_plan: Owner call-graph, route, data-writer and prohibited-dependency contract tests.
+    completion_rule: No owner gains authority or persistence assigned to another owner.
+  - <<: *defaults
+    requirement_id: WC117-R006
+    source: Section 4
+    observable_outcome: Every changed source/generated artifact has C-059 traceability and no parallel owner/path is invented.
+    component_owner: Traceability control
+    test_path_or_plan: C-059 header, generated-provenance, canonical-path and duplicate-DTO gates.
+    completion_rule: Every changed artifact traces to the exact accepted solution section.
+  - <<: *defaults
+    requirement_id: WC117-R007
+    source: WC117-02
+    observable_outcome: Customer inputs, claims, offers, topics, rights, likeness, voice, disclosures, accessibility and correction are explicit versioned records.
+    component_owner: DMA B1 input and rights contract
+    test_path_or_plan: Closed-schema, versioning, correction-lineage and required-field fixture matrix.
+    completion_rule: Every generated assertion has an accepted source or remains missing.
+  - <<: *defaults
+    requirement_id: WC117-R008
+    source: WC117-02
+    observable_outcome: Missing, disputed, expired or withdrawn input or rights fails closed without fabricated facts.
+    component_owner: DMA B1 rights gate
+    test_path_or_plan: Missing/disputed/expiry/withdrawal and fabricated-claim negative fixtures.
+    completion_rule: Affected work remains NEEDS_INPUT or blocked with zero unauthorized generation.
+  - <<: *defaults
+    requirement_id: WC117-R009
+    source: WC117-03
+    observable_outcome: Drafts are immutable successor versions with exact digests, provenance, cost, evidence, limitations and legal transitions.
+    component_owner: DMA draft aggregate
+    test_path_or_plan: State-machine, append-only, successor, digest and illegal-transition tests.
+    completion_rule: No draft version is updated in place and every transition is reproducible.
+  - <<: *defaults
+    requirement_id: WC117-R010
+    source: WC117-03
+    observable_outcome: AIR/PSE is the only model path; direct OpenAI/Grok/provider selection and permanent-free-tier assumptions are absent.
+    component_owner: AIR provider boundary
+    test_path_or_plan: Import/call/config scans, PSE routing tests and unfunded-provider fixtures.
+    completion_rule: DMA contains no direct provider SDK, key, endpoint or free-tier fallback.
+  - <<: *defaults
+    requirement_id: WC117-R011
+    source: WC117-03
+    observable_outcome: External providers receive minimized C-078-scrubbed data and model output never becomes authority.
+    component_owner: AIR privacy boundary
+    test_path_or_plan: PII scrubber, hostile prompt/tool output, minimization and owner-mutation-negative tests.
+    completion_rule: External dispatch accepts only scrubbed input and proposal output cannot mutate owner state.
+  - <<: *defaults
+    requirement_id: WC117-R012
+    source: WC117-04
+    observable_outcome: Instagram/Facebook renderings bind versioned constraints, tags, alt text, disclosures, assets and capability profile.
+    component_owner: DMA channel renderer
+    test_path_or_plan: Channel-specific text/image/video/carousel and unsupported-combination fixtures.
+    completion_rule: Every ready rendering validates against its exact capability profile.
+  - <<: *defaults
+    requirement_id: WC117-R013
+    source: WC117-04
+    observable_outcome: Calendar binds instant, zone, local value, tolerance, window, plan and materiality without granting publication.
+    component_owner: DMA calendar projection
+    test_path_or_plan: Time-zone, DST fold, tolerance, stale-plan and publication-authority-negative tests.
+    completion_rule: Calendar state is exact and has zero provider side effects.
+  - <<: *defaults
+    requirement_id: WC117-R014
+    source: WC117-05
+    observable_outcome: Review, correction, approval, material change, reschedule and reassessment reuse exact WC-115 commands.
+    component_owner: BP employment command composition
+    test_path_or_plan: Command/owner call matrix and DMA-public-command absence tests.
+    completion_rule: No DMA-specific lifecycle command or public route is introduced.
+  - <<: *defaults
+    requirement_id: WC117-R015
+    source: WC117-05
+    observable_outcome: Approval binds one exact version/digest and corrections never inherit approval.
+    component_owner: BP approval projection
+    test_path_or_plan: Stale-version, successor, replay, correction and material-relock tests.
+    completion_rule: Only the exact approved digest is approved.
+  - <<: *defaults
+    requirement_id: WC117-R016
+    source: WC117-06
+    observable_outcome: B1 qualification proves zero provider publication calls and B2 remains locked.
+    component_owner: B1 qualification
+    test_path_or_plan: End-to-end B1 journey with provider-call spies and B2 feature-gate assertions.
+    completion_rule: One immutable B1 candidate passes without an external publication attempt.
+  - <<: *defaults
+    requirement_id: WC117-R017
+    source: Section 5 and WC117-07
+    observable_outcome: Platform secrets are environment-isolated Key Vault references accessed by managed identity.
+    component_owner: Platform secret boundary
+    test_path_or_plan: Environment topology, managed-identity/RBAC, reference-only and cross-environment tests.
+    completion_rule: No usable platform secret is committed, embedded or shared across environments.
+  - <<: *defaults
+    requirement_id: WC117-R018
+    source: Section 5 and WC117-07
+    observable_outcome: Customer Meta tokens remain only in oauth-vault's tenant/relationship/account compartment and never enter another owner or evidence.
+    component_owner: oauth-vault
+    test_path_or_plan: Token retrieval purpose, storage inventory, redaction and cross-customer isolation tests.
+    completion_rule: Reusable tokens are visible only inside the exact oauth-vault-to-MCP purpose path.
+  - <<: *defaults
+    requirement_id: WC117-R019
+    source: Section 5 and WC117-07
+    observable_outcome: Placeholder, fixture, .invalid, empty and unresolved secret/OAuth references cannot pass readiness or deployment gates.
+    component_owner: Configuration readiness control
+    test_path_or_plan: Complete placeholder corpus against startup, readiness, qualification and deployment preflight.
+    completion_rule: Every placeholder returns NOT_CONFIGURED with zero external call.
+  - <<: *defaults
+    requirement_id: WC117-R020
+    source: Sections 3, 5 and 8
+    observable_outcome: Local implementation and qualification use deterministic emulators and do not wait for live credentials.
+    component_owner: Test infrastructure
+    test_path_or_plan: Offline Docker execution with network/provider denial and deterministic fixture replay.
+    completion_rule: All local gates pass with no live provider credential or mutation.
+  - <<: *defaults
+    requirement_id: WC117-R021
+    source: Sections 5 and WC117-13
+    observable_outcome: Demo uses only separately authorized app-role/test assets and cannot consume UAT/Production/customer secrets.
+    component_owner: Demo provider boundary
+    test_path_or_plan: Environment/account allow-list, secret-coordinate and non-test-account denial tests.
+    completion_rule: Demo cannot address or authenticate to a non-Demo non-test asset.
+  - <<: *defaults
+    requirement_id: WC117-R022
+    source: WC117-08
+    observable_outcome: The exact eight MCP operations use closed schemas, owner-local clients and no raw provider DTO outside MCP owners.
+    component_owner: Social and analytics MCP owners
+    test_path_or_plan: Schema closure, generated-client ownership, provider/consumer and DTO-leak scans.
+    completion_rule: Every tool operation passes its closed contract and provider shapes remain private.
+  - <<: *defaults
+    requirement_id: WC117-R023
+    source: WC117-08
+    observable_outcome: CE validation precedes every consequential external tool call and connected reads follow accepted purpose policy.
+    component_owner: AIR Tool Registry and CE client
+    test_path_or_plan: Ordered call trace for ALLOW, DENY, ESCALATE, CE outage and read-purpose cases.
+    completion_rule: No prohibited external call reaches MCP.
+  - <<: *defaults
+    requirement_id: WC117-R024
+    source: WC117-07 and WC117-08
+    observable_outcome: MCP token retrieval is exact-purpose, least-privilege, non-reusable and privacy-safe.
+    component_owner: oauth-vault and MCP ingress
+    test_path_or_plan: Audience/purpose/scope/account binding, replay and token-redaction tests.
+    completion_rule: Only the intended MCP operation can consume the bounded token.
+  - <<: *defaults
+    requirement_id: WC117-R025
+    source: Solution Section 8.1 and WC117-09
+    observable_outcome: Publication preconditions bind exact B1, draft, asset, calendar, approval, entitlement, Decision Space, credential, capability, CE and Stop state.
+    component_owner: BP/PR publication admission
+    test_path_or_plan: Cartesian precondition fixture matrix with one-failure-at-a-time negatives.
+    completion_rule: Dispatch occurs only when every exact precondition is current and allowed.
+  - <<: *defaults
+    requirement_id: WC117-R026
+    source: WC117-09
+    observable_outcome: Publication intent is durable before dispatch and binds complete idempotency/concurrency identity.
+    component_owner: PR publication coordinator
+    test_path_or_plan: Transaction/outbox ordering, canonical hash, expected-version and crash-boundary tests.
+    completion_rule: No MCP dispatch can occur without durable original intent.
+  - <<: *defaults
+    requirement_id: WC117-R027
+    source: WC117-09
+    observable_outcome: Same identity/hash replays; changed hash conflicts with zero owner/provider side effects.
+    component_owner: PR idempotency control
+    test_path_or_plan: Same-key/same-hash replay and same-key/different-hash conflict tests.
+    completion_rule: Replay returns the original immutable result and conflict performs zero dispatch.
+  - <<: *defaults
+    requirement_id: WC117-R028
+    source: WC117-09
+    observable_outcome: Timeout, disconnect, crash, duplicate, reorder and ambiguous outcomes reconcile the original intent without blind repost.
+    component_owner: PR reconciliation
+    test_path_or_plan: Fault-injection matrix across every dispatch and receipt boundary.
+    completion_rule: At most one logical publication exists for one intent.
+  - <<: *defaults
+    requirement_id: WC117-R029
+    source: WC117-09
+    observable_outcome: PUBLISHED requires verified exact provider evidence; accepted, receipt and unknown remain distinct.
+    component_owner: PR/BP publication projection
+    test_path_or_plan: Accepted-without-publish, receipt-mismatch, status-unavailable and verified-success tests.
+    completion_rule: Customer success is projected only from exact reconciled evidence.
+  - <<: *defaults
+    requirement_id: WC117-R030
+    source: WC117-10
+    observable_outcome: Correction, deletion and republication are separately authorized, capability-probed, immutable and limitation-aware.
+    component_owner: BP/PR correction flow
+    test_path_or_plan: Supported/unsupported edit, delete, failure, unknown and successor-publication tests.
+    completion_rule: No rollback or correction is claimed beyond verified provider capability/result.
+  - <<: *defaults
+    requirement_id: WC117-R031
+    source: WC117-09 and WC117-10
+    observable_outcome: Emergency Stop fences new dispatch, preserves reconciliation and prevents late result authority.
+    component_owner: PR Stop integration
+    test_path_or_plan: Stop-before-dispatch, in-flight, late-callback, restart and reconciliation race tests.
+    completion_rule: Stop is always reachable and no late result reauthorizes work.
+  - <<: *defaults
+    requirement_id: WC117-R032
+    source: WC117-11
+    observable_outcome: Observation snapshots preserve source, metric, mapping, window, freshness, coverage, confidence and limitations.
+    component_owner: DMA measurement interpretation
+    test_path_or_plan: Snapshot schema/version, freshness, coverage and provider-mapping tests.
+    completion_rule: Every displayed observation has complete provenance and limitations.
+  - <<: *defaults
+    requirement_id: WC117-R033
+    source: WC117-11
+    observable_outcome: Missing metrics are not zero; engagement, conversion, DMA performance and attribution remain distinct.
+    component_owner: DMA measurement interpretation
+    test_path_or_plan: Missing/partial/disputed metrics and outcome/performance divergence fixtures.
+    completion_rule: No unavailable evidence is serialized as zero or success.
+  - <<: *defaults
+    requirement_id: WC117-R034
+    source: WC117-11
+    observable_outcome: Improvement creates a proposal and successor plan/draft only; it cannot self-authorize publication or spend.
+    component_owner: DMA improvement loop
+    test_path_or_plan: Proposal/materiality/review path and owner-mutation/spend/publication negative tests.
+    completion_rule: Every improvement waits for the applicable customer command and authority.
+  - <<: *defaults
+    requirement_id: WC117-R035
+    source: WC117-07 through WC117-12
+    observable_outcome: Tenant, relationship, instance, account, channel, environment, purpose, secret, content, analytics, Stop and cost isolation pass hostile tests.
+    component_owner: Cross-owner security boundary
+    test_path_or_plan: Hostile cross-boundary matrix with indistinguishable denial and zero side effects.
+    completion_rule: No protected fact or action crosses an unauthorized boundary.
+  - <<: *defaults
+    requirement_id: WC117-R036
+    source: Sections 5, 8 and WC117-14
+    observable_outcome: Logs, traces, metrics, errors, fixtures, evidence and PR text contain no secrets, tokens, private payloads or unnecessary personal data.
+    component_owner: Observability and evidence control
+    test_path_or_plan: Structured redaction assertions plus secret/PII scans over runtime and artifacts.
+    completion_rule: Every prohibited value is absent at source and in retained evidence.
+  - <<: *defaults
+    requirement_id: WC117-R037
+    source: WC117-03, WC117-06 and WC117-11
+    observable_outcome: Costs are authorized, reserved and reconciled by existing owners and fallback cannot silently change cost or data policy.
+    component_owner: WBE and AIR/PSE cost boundary
+    test_path_or_plan: Reservation/actual/timeout/exhaustion/fallback policy and usage-evidence tests.
+    completion_rule: Every billable action has exact authority and reconciled usage.
+  - <<: *defaults
+    requirement_id: WC117-R038
+    source: Solution Sections 10 and 11
+    observable_outcome: Provider limits, permissions and account requirements are versioned capability facts revalidated at freeze, not permanent hard-coded policy.
+    component_owner: Provider capability profile
+    test_path_or_plan: Fresh/stale/version-change capability probes and hard-coded-limit scans.
+    completion_rule: Stale or unsupported provider facts block affected work.
+  - <<: *defaults
+    requirement_id: WC117-R039
+    source: WC117-05 and WC117-12
+    observable_outcome: Web and WhatsApp reuse one owner state/command path with idempotency, assurance, secure handoff and accessible truth.
+    component_owner: BP channel composition
+    test_path_or_plan: Cross-channel create/read/replay/correction/Stop and accessibility journeys.
+    completion_rule: Both channels reconcile identical owner versions and state.
+  - <<: *defaults
+    requirement_id: WC117-R040
+    source: WC117-06 through WC117-12
+    observable_outcome: B1/B2 success, failure, stale, blocked, unknown, outage, retry, cross-boundary, Stop, correction, rollback and accessibility journeys pass.
+    component_owner: Acceptance qualification
+    test_path_or_plan: Dependency-complete positive/negative/fault/accessibility journey inventory.
+    completion_rule: Every solution-contract acceptance oracle has a direct executable result.
+  - <<: *defaults
+    requirement_id: WC117-R041
+    source: WC117-14
+    observable_outcome: One immutable candidate passes dependency-complete Docker qualification with direct ledger evidence.
+    component_owner: Final qualification
+    test_path_or_plan: Current catalog-selected full impacted qualification and evidence-envelope validation.
+    completion_rule: Every applicable requirement is PASS or explicitly Founder-reserved on one identity.
+  - <<: *defaults
+    requirement_id: WC117-R042
+    source: WC117-13 and WC117-14
+    observable_outcome: Hosted Demo evidence, if authorized, is separately labelled and never substitutes for Production/customer acceptance.
+    component_owner: Hosted evidence control
+    test_path_or_plan: Evidence-class, environment/account identity and prohibited-claim validation.
+    completion_rule: Demo evidence states exact scope and cannot satisfy Production/customer gates.
+  - <<: *defaults
+    requirement_id: WC117-R043
+    source: Sections 12 and WC117-14
+    observable_outcome: Author review repairs all findings and binds PASS to the exact remote head.
+    component_owner: Platform IT Expert author review
+    test_path_or_plan: Author-review schema, finding closure, rerun evidence and remote-head precheck.
+    completion_rule: PASS names the exact pushed 40-character head after all repairs.
+  - <<: *defaults
+    requirement_id: WC117-R044
+    source: Sections 2, 10 and 13
+    observable_outcome: Founder handoff contains no self-approval, merge, provider connection, publication, deployment, customer traffic or activation.
+    component_owner: Founder handoff control
+    test_path_or_plan: PR body, changed-path, provider/cloud action and authority-record checks.
+    completion_rule: Exact prepared PR is open for Founder review with every protected action absent.
