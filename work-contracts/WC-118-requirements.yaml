@@ -4,10 +4,10 @@ contract_path: work-contracts/WC-118-dma-paid-demand-search-lifecycle-advanced.m
 contract_digest: a0c12bb0e3101fcd033242fce88de34cd6a4a082dd82c54c8df85d5787d5ef82
 solution_path: architecture/reference/components/dma-demand-search-lifecycle-and-advanced-solution-contract.md
 solution_digest: 3feec86de6103616460e837eedfcf349605795e75b1db5e3fd87bb8f9484c430
-contract_status: CANDIDATE_FOUNDER_REVIEW_IMPLEMENTATION_ACTIVATION_UNAUTHORIZED
+contract_status: FOUNDER_ACCEPTED_IMPLEMENTATION_QUALIFIED_ACTIVATION_UNAUTHORIZED
 implementation_scope: true
-result: PLANNED
-candidate_head: null
+result: QUALIFIED
+candidate_head: 0941e8ab4276edce62cf1f08f7b7d0aeb34045c7
 candidate_scope: C_D_E_DEFAULT_OFF_NO_LIVE_EXTERNAL_ACTION
 completion_rule: >-
   Every requirement must have direct repository-owned Docker evidence bound to the applicable exact
@@ -20,8 +20,9 @@ requirement_defaults: &defaults
   dependencies: Founder-accepted exact solution contract and explicit current-session WC-118 implementation authorization
   completion_rule: Direct executable oracle passes on the applicable immutable package candidate.
   residual_risk: Founder review, PR approval and merge remain open; deployment, provider action, spend, contact, traffic and activation remain prohibited.
-  result: PLANNED
-  evidence_refs: []
+  result: PASS
+  evidence_refs:
+    - validation/evidence/wc118/qualification.json
 
 requirements:
   - <<: *defaults

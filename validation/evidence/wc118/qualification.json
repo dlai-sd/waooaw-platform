@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0",
+  "workContract": "WC-118",
+  "result": "PASS",
+  "evidenceClass": "LOCAL_DETERMINISTIC_DOCKER_QUALIFICATION",
+  "sourceHead": "0941e8ab4276edce62cf1f08f7b7d0aeb34045c7",
+  "sourceTree": "668449252bb60e03b98bc542bb55b00bee47fb26",
+  "baseHead": "5f407a1c7415902a3761c85ff9e5c6034178330e",
+  "manifestDigest": "sha256:66f9b45376d2180bddd00b04577e8431735d297d32626509f4105afd7c5ba2d9",
+  "runnerDigest": "sha256:40b9a6833c93d2dd713e888159f49fe79713c2b95b7a5db6461ba81651de279b",
+  "executionIdentity": "sha256:55f4ea42e3436c8b9a512d82cc322e42d24d5ee8dd2a4f62598beebab021cad5",
+  "evidenceIdentity": "sha256:81140c3d2988eb4363e7a9b89e7e77d1769c957c4cf2a56c6357eae3654dcfa4",
+  "catalogGate": "release-qualification",
+  "catalogMode": "qualification",
+  "catalogResult": "PASS",
+  "packages": {
+    "C": {
+      "candidate": "wc118-c-0941e8ab4276edce",
+      "state": "QUALIFIED_DEFAULT_OFF",
+      "firstPartyAudienceState": "LOCKED"
+    },
+    "D": {
+      "candidate": "wc118-d-0941e8ab4276edce",
+      "state": "QUALIFIED_DEFAULT_OFF"
+    },
+    "E": {
+      "candidate": "wc118-e-0941e8ab4276edce",
+      "state": "QUALIFIED_DEFAULT_OFF"
+    }
+  },
+  "proofs": {
+    "packageCDoesNotActivateDOrE": true,
+    "packageDDoesNotAlterOrActivateCOrE": true,
+    "packageECannotConsumeCustomerAuthorityOrActivateCOrD": true,
+    "firstPartyAudienceSeparatelyGated": true,
+    "allPackagesDefaultOff": true,
+    "liveProviderActionOccurred": false
+  },
+  "hostedEvidence": "NOT_RUN_NOT_AUTHORIZED",
+  "deployment": "NOT_RUN_NOT_AUTHORIZED",
+  "activation": "NOT_RUN_NOT_AUTHORIZED"
+}
