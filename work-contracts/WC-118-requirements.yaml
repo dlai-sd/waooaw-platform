@@ -1,0 +1,386 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-118
+contract_path: work-contracts/WC-118-dma-paid-demand-search-lifecycle-advanced.md
+contract_digest: a0c12bb0e3101fcd033242fce88de34cd6a4a082dd82c54c8df85d5787d5ef82
+solution_path: architecture/reference/components/dma-demand-search-lifecycle-and-advanced-solution-contract.md
+solution_digest: 3feec86de6103616460e837eedfcf349605795e75b1db5e3fd87bb8f9484c430
+contract_status: CANDIDATE_FOUNDER_REVIEW_IMPLEMENTATION_ACTIVATION_UNAUTHORIZED
+implementation_scope: true
+result: PLANNED
+candidate_head: null
+candidate_scope: C_D_E_DEFAULT_OFF_NO_LIVE_EXTERNAL_ACTION
+completion_rule: >-
+  Every requirement must have direct repository-owned Docker evidence bound to the applicable exact
+  package candidate. Local emulator evidence, hosted provider evidence, deployment, external action,
+  customer traffic, and activation are distinct classes and never substitute for one another.
+
+requirement_defaults: &defaults
+  evidence_class: Docker implementation, contract, journey, security, privacy, or qualification evidence
+  initial_state: expected-fail
+  dependencies: Founder-accepted exact solution contract and explicit current-session WC-118 implementation authorization
+  completion_rule: Direct executable oracle passes on the applicable immutable package candidate.
+  residual_risk: Founder review, PR approval and merge remain open; deployment, provider action, spend, contact, traffic and activation remain prohibited.
+  result: PLANNED
+  evidence_refs: []
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC118-R001
+    source: Sections 1, 3 and WC118-00
+    observable_outcome: Implementation begins only from fresh exact inputs, valid contract and solution digests, resolved owners, valid ledger and explicit current-session authority.
+    component_owner: Platform IT Expert baseline control
+    test_path_or_plan: Docker ancestry, process-control, digest, owner-path and authorization preflight.
+  - <<: *defaults
+    requirement_id: WC118-R002
+    source: Sections 1, 6 and 9
+    observable_outcome: C, D and E remain dependency-ordered, independently frozen, qualified, rollbackable, default-off and separately activatable.
+    component_owner: Package gate control
+    test_path_or_plan: Package-state, candidate-identity, feature-gate, rollback and activation-negative matrix.
+  - <<: *defaults
+    requirement_id: WC118-R003
+    source: Section 2
+    observable_outcome: Scope contains only accepted C/D/E outcomes and excludes deployment, provider action, spend, contact, traffic and activation.
+    component_owner: Scope control
+    test_path_or_plan: Changed-surface, provider-call, secret, side-effect and authority allow-list scans.
+  - <<: *defaults
+    requirement_id: WC118-R004
+    source: WC118-01
+    observable_outcome: Stable semantic skill IDs replace numeric identity and resolve the Skill 14 institutional and reputation collision.
+    component_owner: DMA specification and manifest
+    test_path_or_plan: Active-source uniqueness, alias, collision and manifest-reference tests.
+  - <<: *defaults
+    requirement_id: WC118-R005
+    source: Sections 2 and 4
+    observable_outcome: DMA-specific implementation remains under src/digital-marketing-agent and other owners contain thin profession-neutral integration only.
+    component_owner: Source boundary control
+    test_path_or_plan: Changed-path and profession-specific symbol scans.
+  - <<: *defaults
+    requirement_id: WC118-R006
+    source: Section 4
+    observable_outcome: Every source and generated change has exact C-059 specification and generator traceability.
+    component_owner: Traceability control
+    test_path_or_plan: C-059 header, generated provenance, input digest and deterministic regeneration gates.
+  - <<: *defaults
+    requirement_id: WC118-R007
+    source: Solution Section 5
+    observable_outcome: BP, DMA, PR, CE, WBE, AIR/PSE, credential, MCP, analytics and platform-intelligence ownership remains exact.
+    component_owner: Cross-owner architecture
+    test_path_or_plan: Call-graph, route, writer, authority and prohibited-dependency contract tests.
+  - <<: *defaults
+    requirement_id: WC118-R008
+    source: Sections 2 and 3
+    observable_outcome: ADR-026 WAOOAW-managed paid accounts remain the only accepted paid-account model.
+    component_owner: Paid account boundary
+    test_path_or_plan: Configuration, manifest, tool and customer-owned-model prohibition tests.
+  - <<: *defaults
+    requirement_id: WC118-R009
+    source: Section 5
+    observable_outcome: Environment platform secrets use separate Azure Key Vault references and least-privilege managed identities.
+    component_owner: Platform secret owner
+    test_path_or_plan: Environment-vault, managed-identity, RBAC, reference and no-inline-secret tests.
+  - <<: *defaults
+    requirement_id: WC118-R010
+    source: Section 5
+    observable_outcome: Customer OAuth and non-OAuth credentials remain in accepted server-derived customer compartments and never enter other owners.
+    component_owner: oauth-vault and accepted customer credential owner
+    test_path_or_plan: Tenant, relationship, account, purpose, scope, audience, retrieval and leak-negative tests.
+  - <<: *defaults
+    requirement_id: WC118-R011
+    source: Sections 3, 5 and WC118-02
+    observable_outcome: Placeholder, fixture, empty, unresolved, invalid and cross-environment references fail readiness without blocking emulator implementation.
+    component_owner: Configuration readiness control
+    test_path_or_plan: Closed placeholder/reference fixture matrix and local emulator journey.
+  - <<: *defaults
+    requirement_id: WC118-R012
+    source: Sections 2 and 5
+    observable_outcome: No permanent free tier, hidden spend, unapproved fallback, dummy Key Vault value or data-sharing enrollment is assumed.
+    component_owner: PSE, WBE and configuration control
+    test_path_or_plan: Provider config, billing, fallback, fixture and secret-value scans.
+  - <<: *defaults
+    requirement_id: WC118-R013
+    source: WC118-02
+    observable_outcome: Deterministic emulators cover every external owner and protocol required for local qualification.
+    component_owner: DMA test harness
+    test_path_or_plan: Emulator contract, determinism, failure injection and no-network tests.
+  - <<: *defaults
+    requirement_id: WC118-R014
+    source: WC118-03
+    observable_outcome: Paid campaigns use immutable versions and exact plan, creative, rights, objective, account, budget, approval, capability and authority references.
+    component_owner: DMA paid campaign aggregate
+    test_path_or_plan: Closed-schema, version, state-machine and complete-reference fixtures.
+  - <<: *defaults
+    requirement_id: WC118-R015
+    source: WC118-03
+    observable_outcome: Material campaign changes create successor versions and never inherit approval or authority.
+    component_owner: DMA campaign materiality
+    test_path_or_plan: Material boundary, supersession, stale approval and zero-side-effect tests.
+  - <<: *defaults
+    requirement_id: WC118-R016
+    source: WC118-04
+    observable_outcome: WBE alone owns entitlement, wallet, reservation, charge, fee, credit or refund and commercial consequence.
+    component_owner: WBE integration
+    test_path_or_plan: Owner authority, no-recomputation, reserve, charge, fee and credit contract tests.
+  - <<: *defaults
+    requirement_id: WC118-R017
+    source: WC118-04
+    observable_outcome: Provider and WBE spend remain distinct and discrepancies block new spend pending reconciliation.
+    component_owner: WBE and PR reconciliation
+    test_path_or_plan: Difference, tolerance, stale, disputed, unknown and halt tests.
+  - <<: *defaults
+    requirement_id: WC118-R018
+    source: WC118-05
+    observable_outcome: Paid-media MCP operations use closed provider-neutral schemas and keep Meta and Google DTOs inside owners.
+    component_owner: Paid-media MCP owners
+    test_path_or_plan: Schema closure, provider/consumer and raw-provider-type leakage scans.
+  - <<: *defaults
+    requirement_id: WC118-R019
+    source: WC118-05 and WC118-06
+    observable_outcome: Every paid mutation persists one exact intent before dispatch and reconciles without blind duplicate action.
+    component_owner: Professional Runtime
+    test_path_or_plan: Outbox, inbox, idempotency, crash, timeout, retry, restart and correlation tests.
+  - <<: *defaults
+    requirement_id: WC118-R020
+    source: WC118-06
+    observable_outcome: Campaign state cannot become active or successful from HTTP acceptance, receipt, webhook or model output alone.
+    component_owner: PR and BP campaign projection
+    test_path_or_plan: Accepted, receipt-only, verification-missing and owner-truth-negative tests.
+  - <<: *defaults
+    requirement_id: WC118-R021
+    source: WC118-07
+    observable_outcome: First-party audience activation is separately gated by lawful-purpose, eligibility, minimization, suppression, retention, deletion and provider-policy evidence.
+    component_owner: DMA audience gate
+    test_path_or_plan: Rights, purpose, eligibility, data handling, suppression, expiry and policy profile matrix.
+  - <<: *defaults
+    requirement_id: WC118-R022
+    source: WC118-07
+    observable_outcome: Raw audience identifiers never enter AIR, logs, evidence, DMA durable state or unauthorized owner surfaces.
+    component_owner: Audience privacy boundary
+    test_path_or_plan: Data-flow, memory/log/trace/evidence, prompt and persistence leak tests.
+  - <<: *defaults
+    requirement_id: WC118-R023
+    source: WC118-07
+    observable_outcome: Blocking first-party audience activation does not block otherwise lawful isolated campaign strategies.
+    component_owner: DMA dependency isolation
+    test_path_or_plan: Contextual, geographic, interest and keyword campaign isolation journeys.
+  - <<: *defaults
+    requirement_id: WC118-R024
+    source: WC118-08
+    observable_outcome: Lead intake verifies webhook and source purpose and deduplicates replay and reorder into one logical case.
+    component_owner: Lead intake owner
+    test_path_or_plan: Signature, timestamp, replay, reorder, duplicate, forged-source and inbox tests.
+  - <<: *defaults
+    requirement_id: WC118-R025
+    source: WC118-08 and WC118-09
+    observable_outcome: Lead state preserves spam, invalid, duplicate, existing-customer, suppressed, qualified, routed, booked, won or lost, no-response and unknown distinctions.
+    component_owner: DMA lead aggregate
+    test_path_or_plan: Closed state-machine and illegal-transition fixture matrix.
+  - <<: *defaults
+    requirement_id: WC118-R026
+    source: WC118-09
+    observable_outcome: Customer-owned qualification, service area, availability, routing, response, escalation and channel rules control lead progression.
+    component_owner: DMA lead policy
+    test_path_or_plan: Rule version, boundary, stale rule, missing input and routing tests.
+  - <<: *defaults
+    requirement_id: WC118-R027
+    source: WC118-09
+    observable_outcome: Sensitive, disputed, high-value, complaint, apparent-minor, unsupported and outside-authority cases require human takeover.
+    component_owner: Lead escalation control
+    test_path_or_plan: Classified escalation matrix and zero-autonomous-contact tests.
+  - <<: *defaults
+    requirement_id: WC118-R028
+    source: WC118-09
+    observable_outcome: DMA never makes autonomous price, legal, clinical, inventory, eligibility, credit or service commitments.
+    component_owner: DMA Decision Space
+    test_path_or_plan: Hostile conversation, template boundary and prohibited-commitment tests.
+  - <<: *defaults
+    requirement_id: WC118-R029
+    source: WC118-09
+    observable_outcome: Lead contact, booking and handoff persist intent, enforce consent and suppression and reconcile ambiguous outcomes.
+    component_owner: PR and lead/booking MCP owners
+    test_path_or_plan: Consent, suppression, intent, timeout, duplicate, contact and booking reconciliation tests.
+  - <<: *defaults
+    requirement_id: WC118-R030
+    source: WC118-10
+    observable_outcome: Conversion evidence preserves source, method, window, mapping, confidence, coverage, correction and attribution limitations.
+    component_owner: Analytics and DMA interpretation
+    test_path_or_plan: Observation schema, mapping, freshness, correction and attribution fixtures.
+  - <<: *defaults
+    requirement_id: WC118-R031
+    source: WC118-10
+    observable_outcome: Engagement, lead, booking, conversion, revenue, customer outcome and DMA performance remain distinct.
+    component_owner: BP reporting projection
+    test_path_or_plan: Metric-type, causal-claim and cross-state conflation negatives.
+  - <<: *defaults
+    requirement_id: WC118-R032
+    source: WC118-12
+    observable_outcome: Search assessment binds verified business, site and location facts, source, freshness, evidence, confidence, limitations and correction.
+    component_owner: DMA discoverability assessment
+    test_path_or_plan: Complete, partial, stale, disputed, corrected and unverified-source fixtures.
+  - <<: *defaults
+    requirement_id: WC118-R033
+    source: WC118-12
+    observable_outcome: Search and GEO/AEO behavior cannot fabricate locations, expertise, citations, questions, reviews, ranking, inclusion, traffic or revenue claims.
+    component_owner: Search integrity control
+    test_path_or_plan: Fabrication, manipulation, low-value page, guarantee and provider-suggestion negatives.
+  - <<: *defaults
+    requirement_id: WC118-R034
+    source: WC118-13
+    observable_outcome: Search, profile and CMS changes use immutable approved packages, exact before and after versions, receipts, verification and truthful rollback or manual action.
+    component_owner: Search and CMS MCP owners
+    test_path_or_plan: Approval, stale-before, dispatch, receipt, verification, rollback and unknown-outcome tests.
+  - <<: *defaults
+    requirement_id: WC118-R035
+    source: WC118-13
+    observable_outcome: An absent accepted write owner yields an approved delivery package, never an invented provider or false applied state.
+    component_owner: Search degraded-mode control
+    test_path_or_plan: Missing owner, unsupported CMS, manual delivery and no-provider-call tests.
+  - <<: *defaults
+    requirement_id: WC118-R036
+    source: WC118-14
+    observable_outcome: Lifecycle sequences bind purpose, consent or lawful basis, sender, segment, template, cadence, trigger, expiry, approval and suppression.
+    component_owner: DMA lifecycle aggregate
+    test_path_or_plan: Closed-schema, version, cadence, trigger, consent and state-machine tests.
+  - <<: *defaults
+    requirement_id: WC118-R037
+    source: WC118-14
+    observable_outcome: Purchased, scraped, unsubstantiated, cross-purpose or withdrawn contact data cannot be imported or contacted.
+    component_owner: Lifecycle consent gate
+    test_path_or_plan: Source, purpose, withdrawal, list import and zero-dispatch negatives.
+  - <<: *defaults
+    requirement_id: WC118-R038
+    source: WC118-15
+    observable_outcome: Unsubscribe, opt-out, withdrawal, hard bounce, complaint and suppression commit before later dispatch and override optimization.
+    component_owner: Suppression owner and lifecycle MCP
+    test_path_or_plan: Race, reorder, duplicate, concurrent send and suppression precedence tests.
+  - <<: *defaults
+    requirement_id: WC118-R039
+    source: WC118-15
+    observable_outcome: A failed unsubscribe path fences affected sends and cannot degrade to continued contact.
+    component_owner: Lifecycle safety control
+    test_path_or_plan: Unsubscribe outage, retry, Stop and no-further-send tests.
+  - <<: *defaults
+    requirement_id: WC118-R040
+    source: Sections 3 and WC118-14
+    observable_outcome: Email and lifecycle provider adoption and sender-domain readiness remain accepted external decisions, not implementer choices.
+    component_owner: Provider readiness control
+    test_path_or_plan: Provider-neutral contract, absent-adoption stop and sender-domain readiness tests.
+  - <<: *defaults
+    requirement_id: WC118-R041
+    source: WC118-16
+    observable_outcome: Multi-location actions bind an exact location or set and isolate account, budget, lead, content, approval and Stop scope.
+    component_owner: DMA multi-location routing
+    test_path_or_plan: Location set, hierarchy, account, budget, lead, approval and Stop isolation tests.
+  - <<: *defaults
+    requirement_id: WC118-R042
+    source: WC118-16
+    observable_outcome: Aggregate location reporting exposes coverage and missing locations and never converts missing data to zero.
+    component_owner: Multi-location analytics projection
+    test_path_or_plan: Complete, partial, missing, stale and cross-location aggregation tests.
+  - <<: *defaults
+    requirement_id: WC118-R043
+    source: WC118-17
+    observable_outcome: Reputation observations remain read-only until an exact response is reviewed, approved, dispatched and verified.
+    component_owner: Reputation response workflow
+    test_path_or_plan: Observation, proposal, approval, publish, reconciliation and no-premature-success tests.
+  - <<: *defaults
+    requirement_id: WC118-R044
+    source: WC118-17 and WC118-21
+    observable_outcome: Sensitive complaint, legal, safety, clinical, financial, minor, extortion, media and crisis content escalates without autonomous response.
+    component_owner: Crisis escalation control
+    test_path_or_plan: Severity and escalation matrix with zero autonomous publication.
+  - <<: *defaults
+    requirement_id: WC118-R045
+    source: WC118-17
+    observable_outcome: Periodic strategy review creates evidence-based proposals and successor plans without self-authorizing changes.
+    component_owner: DMA strategy review
+    test_path_or_plan: Evidence, limitation, proposal, materiality and zero-owner-mutation tests.
+  - <<: *defaults
+    requirement_id: WC118-R046
+    source: WC118-19
+    observable_outcome: Institutional marketing uses only WAOOAW institutional relationship, Decision Space, budget, credentials, claims, evidence and Stop scope.
+    component_owner: Institutional marketing boundary
+    test_path_or_plan: Institutional identity, authority, funding, credential, claim and Stop contract tests.
+  - <<: *defaults
+    requirement_id: WC118-R047
+    source: WC118-19
+    observable_outcome: No customer authority, data, credential, wallet, audience, lead, asset, content or outcome satisfies an institutional prerequisite.
+    component_owner: Institutional isolation control
+    test_path_or_plan: Hostile customer-to-institutional reference and data-flow negatives.
+  - <<: *defaults
+    requirement_id: WC118-R048
+    source: WC118-20
+    observable_outcome: Advanced experiments stay inside approved hypothesis, variants, budget, audience, geography, guardrail, duration and stop-loss boundaries.
+    component_owner: DMA experiment control
+    test_path_or_plan: Boundary, budget, audience, claim, early-stop and guardrail-failure tests.
+  - <<: *defaults
+    requirement_id: WC118-R049
+    source: WC118-20
+    observable_outcome: Cross-client intelligence requires an accepted owner, minimum cohort, small-cell and membership-inference controls, lineage, confidence and limitations.
+    component_owner: Platform intelligence owner
+    test_path_or_plan: Owner, threshold, small-cell, inference, lineage and freshness tests.
+  - <<: *defaults
+    requirement_id: WC118-R050
+    source: WC118-20
+    observable_outcome: Cross-client outputs never expose raw records, identify or rank customers or become authority.
+    component_owner: Platform intelligence privacy boundary
+    test_path_or_plan: Re-identification, ranking, raw export, prompt, log and owner-mutation negatives.
+  - <<: *defaults
+    requirement_id: WC118-R051
+    source: WC118-21
+    observable_outcome: Crisis detection creates an urgent signal and evidence and every response remains approval-gated.
+    component_owner: Crisis communications workflow
+    test_path_or_plan: Detection, evidence, escalation, approval and zero-autonomous-response tests.
+  - <<: *defaults
+    requirement_id: WC118-R052
+    source: Solution Section 10 and WC118-02
+    observable_outcome: Every mutation binds actor, server-derived authority, package, operation, hash, idempotency key, exact owner versions, purpose, evidence and deadline.
+    component_owner: Cross-owner command control
+    test_path_or_plan: Identity completeness, server derivation, canonical hash and expected-version tests.
+  - <<: *defaults
+    requirement_id: WC118-R053
+    source: Solution Section 10
+    observable_outcome: Same identity and hash replays and changed hash conflicts with zero owner or provider side effects.
+    component_owner: Idempotency control
+    test_path_or_plan: Same-key same-hash and same-key different-hash matrix for each mutation family.
+  - <<: *defaults
+    requirement_id: WC118-R054
+    source: WC118-05 through WC118-23
+    observable_outcome: Timeout, disconnect, crash, duplicate, reorder, restart and late-result paths reconcile the original intent.
+    component_owner: PR reconciliation
+    test_path_or_plan: Cross-package failure-injection and restart matrix.
+  - <<: *defaults
+    requirement_id: WC118-R055
+    source: Solution Sections 2 and 13
+    observable_outcome: Emergency Stop fences new and queued action, preserves safe reconciliation and prevents late authority.
+    component_owner: PR and CE Stop path
+    test_path_or_plan: Stop-before, Stop-during, late-result, dependency-outage and isolation tests.
+  - <<: *defaults
+    requirement_id: WC118-R056
+    source: Solution Sections 10 and 11
+    observable_outcome: Logs, traces, metrics, errors, fixtures, evidence, screenshots and PR text remain secret, PII, audience, lead, content and payload safe.
+    component_owner: Observability and evidence control
+    test_path_or_plan: Structured redaction, forbidden-field, cardinality and artifact scans.
+  - <<: *defaults
+    requirement_id: WC118-R057
+    source: Solution Section 11 and WC118-23
+    observable_outcome: Web and WhatsApp reuse one BP state and command path with assurance, idempotency, correction, suppression, limitations and Stop.
+    component_owner: BP and channel adapters
+    test_path_or_plan: Cross-channel parity, replay, secure handoff, accessibility and Stop journeys.
+  - <<: *defaults
+    requirement_id: WC118-R058
+    source: Sections 8 and WC118-23
+    observable_outcome: C/D/E positive, negative, outage, replay, isolation, consent, suppression, cost, accessibility, rollback and channel journeys pass in Docker.
+    component_owner: Cross-package qualification
+    test_path_or_plan: Catalog-selected dependency-complete Docker aggregate.
+  - <<: *defaults
+    requirement_id: WC118-R059
+    source: WC118-11, WC118-18, WC118-22 and WC118-25
+    observable_outcome: Each package has one immutable candidate and direct ledger evidence and hosted evidence is distinct and authority-bound.
+    component_owner: Candidate and evidence control
+    test_path_or_plan: Candidate identity, evidence envelope, local/hosted class and stale-evidence gates.
+  - <<: *defaults
+    requirement_id: WC118-R060
+    source: WC118-25 and Sections 9-13
+    observable_outcome: Final author review repairs all findings and Founder handoff contains no self-approval, merge, deployment, provider action, spend, contact, traffic or activation.
+    component_owner: Platform IT Expert handoff control
+    test_path_or_plan: Exact remote-head author-review and prepared-PR precheck.
