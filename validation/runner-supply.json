@@ -31,7 +31,7 @@
     },
     "typescript": {
       "dockerfile": "architecture/reference/dockerfiles/Dockerfile.test-runner-ts",
-      "base_image_digest": "sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0",
+      "base_image_digest": "sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e",
       "system_packages": [],
       "build_arguments": {},
       "platform": "linux/amd64",
