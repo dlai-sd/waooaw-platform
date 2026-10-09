@@ -5,7 +5,7 @@
 | Field | Value |
 |---|---|
 | Authoring office | Chief Solution Architect (INST-005) |
-| Status | CANDIDATE FOR FOUNDER ACCEPTANCE - IMPLEMENTATION, DEPLOYMENT, PROVIDER CONNECTION, PUBLICATION, AND ACTIVATION UNAUTHORIZED |
+| Status | FOUNDER ACCEPTED - CURRENT-SESSION IMPLEMENTATION AUTHORIZED 2026-10-09 - DEPLOYMENT, PROVIDER CONNECTION, PUBLICATION, AND ACTIVATION UNAUTHORIZED |
 | Version | `1.0.0-candidate.1` |
 | Parent requirement | `architecture/reference/components/dma-onboarding-and-autonomous-operation-enterprise-requirements.md` Sections 13-16 and 20.4 |
 | Generic employment baseline | WC-114/WC-115 Conversational Employment Protocol |
@@ -81,6 +81,19 @@ autonomous crisis response, additional social channels, and institutional market
 | Customer-visible state | Reuse BP relationship workspace projections | No duplicate portal/channel truth |
 | Scheduling | Reuse admitted calendar/plan semantics and `scheduling-mcp` only if already qualified | Calendar does not grant publication authority |
 | Durable customer asset delivery | Reuse the repository-approved customer-asset owner when pinned by implementation baseline | No new storage product or unsigned public URL may be invented in WC-117 |
+
+Founder amendment accepted 2026-10-09:
+
+- the profession-neutral customer-asset contract is owned at
+  `src/business-platform/Services/CustomerAssets/` without a new endpoint, database, storage product,
+  or deployable; and
+- the existing `instagram-mcp`, `facebook-mcp`, and `platform-analytics-mcp` deployable identities
+  are implemented respectively at `src/digital-marketing-agent/mcp/instagram/`,
+  `src/digital-marketing-agent/mcp/facebook/`, and
+  `src/digital-marketing-agent/mcp/platform_analytics/`.
+
+These DMA-owned paths do not grant provider, credential, publication, analytics, deployment, traffic,
+activation, Production, approval, or merge authority.
 
 If no accepted customer-asset owner can provide a provider-fetchable, time-bounded media reference,
 B1 may qualify text-only draft behavior and asset metadata, but any dependent media story and all B2

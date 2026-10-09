@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "1.0",
+  "workContract": "WC-117",
+  "executionAuthorized": false,
+  "environment": "Demo",
+  "requiredInputs": [
+    {
+      "name": "metaAppSecretReference",
+      "classification": "AZURE_KEY_VAULT_REFERENCE",
+      "requiredState": "RESOLVED_NON_PLACEHOLDER",
+      "owner": "environment-platform"
+    },
+    {
+      "name": "customerMetaCredentialReference",
+      "classification": "OAUTH_VAULT_REFERENCE",
+      "requiredState": "VALID_APP_ROLE_OR_TEST_ASSET",
+      "owner": "oauth-vault"
+    },
+    {
+      "name": "channelAccountReference",
+      "classification": "OPAQUE_ACCOUNT_REFERENCE",
+      "requiredState": "DEMO_TEST_ACCOUNT_ONLY",
+      "owner": "customer-connection"
+    },
+    {
+      "name": "providerCapabilityProfile",
+      "classification": "VERSIONED_PROVIDER_FACT",
+      "requiredState": "FRESH_AND_SUPPORTED",
+      "owner": "dma-social-mcp"
+    }
+  ],
+  "requiredScopes": {
+    "instagram": ["instagram_content_publish", "instagram_manage_insights"],
+    "facebook": ["pages_manage_posts", "read_insights"]
+  },
+  "placeholderResult": "NOT_CONFIGURED",
+  "rollback": {
+    "action": "fence new publication intents and preserve reconciliation evidence",
+    "providerDeletionIsRollback": false
+  },
+  "prohibited": [
+    "credential-entry",
+    "provider-connection",
+    "azure-mutation",
+    "deployment",
+    "external-publication",
+    "live-analytics",
+    "customer-traffic",
+    "activation",
+    "production"
+  ]
+}

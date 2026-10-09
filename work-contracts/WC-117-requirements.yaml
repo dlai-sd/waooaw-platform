@@ -1,10 +1,10 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-117
 contract_path: work-contracts/WC-117-dma-content-production-social-publication.md
-contract_digest: f06066ff42447f0a7d2ba14511e8152c739b6a088886a94b6728b162942edf22
+contract_digest: 77e16990b66d1f24973a025a41fa1b23be90d343a10bb73f23f36c17c886429c
 solution_path: architecture/reference/components/dma-content-and-social-publication-solution-contract.md
-solution_digest: 6c54d17459731c3f3aa2297580ddd20397951aba9706a9a5bc751e043f663b6e
-contract_status: DRAFT_FOUNDER_ACCEPTANCE_REQUIRED_IMPLEMENTATION_ACTIVATION_UNAUTHORIZED
+solution_digest: a15a33767ad100c73ed70330364559c06b37d685a929f534551cd0b282c1a4dd
+contract_status: FOUNDER_ACCEPTED_IMPLEMENTATION_AUTHORIZED_ACTIVATION_UNAUTHORIZED
 implementation_scope: true
 result: PLANNED
 completion_rule: >-
