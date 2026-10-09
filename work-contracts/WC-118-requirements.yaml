@@ -7,7 +7,7 @@ solution_digest: 3feec86de6103616460e837eedfcf349605795e75b1db5e3fd87bb8f9484c43
 contract_status: FOUNDER_ACCEPTED_IMPLEMENTATION_QUALIFIED_ACTIVATION_UNAUTHORIZED
 implementation_scope: true
 result: QUALIFIED
-candidate_head: 0941e8ab4276edce62cf1f08f7b7d0aeb34045c7
+candidate_head: 285e7dc8f4409d34727fbaa09e04c11d6a0cdcee
 candidate_scope: C_D_E_DEFAULT_OFF_NO_LIVE_EXTERNAL_ACTION
 completion_rule: >-
   Every requirement must have direct repository-owned Docker evidence bound to the applicable exact
