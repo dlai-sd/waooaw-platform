@@ -168,7 +168,9 @@ def test_campaign_requires_managed_account_reapproval_and_verified_activation() 
     successor = approved.material_successor(budget_ref="wbe:reservation:2")
     assert successor.version == 2
     assert successor.approval_ref is None
-    dispatching = approved.transition(CampaignState.READINESS_PENDING).transition(CampaignState.READY).transition(CampaignState.DISPATCHING)
+    dispatching = (
+        approved.transition(CampaignState.READINESS_PENDING).transition(CampaignState.READY).transition(CampaignState.DISPATCHING)
+    )
     with pytest.raises(CdeDenied, match="RECONCILIATION_REQUIRED"):
         dispatching.transition(CampaignState.ACTIVE)
     assert dispatching.transition(CampaignState.ACTIVE, provider_verified=True).state is CampaignState.ACTIVE
@@ -445,3 +447,155 @@ def test_package_rollback_and_provider_reconciliation_are_isolated() -> None:
     assert c_owner.reconcile("key:1", verified_state="PAUSED").state == "PAUSED"
     assert d_owner.reconcile("key:d", verified_state="SENT").state == "SENT"
     assert c_result.intent_id != d_result.intent_id
+
+
+def test_shared_foundation_negative_branches_are_closed() -> None:
+    assert require_reference(
+        "oauthref://demo/tenant/relationship/provider/account",
+        expected_scheme="oauthref",
+        environment="demo",
+    )
+    coordinates().require_same_boundary(coordinates())
+    emulator = DeterministicOwnerEmulator()
+    with pytest.raises(CdeDenied, match="OUTCOME_UNKNOWN"):
+        emulator.reconcile("missing", verified_state="ACTIVE")
+
+
+def test_campaign_and_audience_reject_incomplete_or_illegal_state() -> None:
+    with pytest.raises(CdeDenied, match="INVALID_REQUEST"):
+        campaign(plan_ref="")
+    with pytest.raises(CdeDenied, match="AUTHORITY_DENIED"):
+        campaign(approval_ref=None).transition(CampaignState.READY_FOR_REVIEW).transition(CampaignState.APPROVED)
+    with pytest.raises(CdeDenied, match="VERSION_CONFLICT"):
+        campaign().transition(CampaignState.ACTIVE, provider_verified=True)
+    with pytest.raises(CdeDenied, match="BUDGET_UNAVAILABLE"):
+        SpendReadiness("LOW", "", 0, 0, 0).require_dispatch()
+    with pytest.raises(CdeDenied, match="CONSENT_REQUIRED"):
+        AudienceActivationVersion(
+            "audience:2",
+            1,
+            AudienceState.PROPOSED,
+            "",
+            "RETARGETING",
+            "META",
+            "account:1",
+            "suppression:1",
+            "retention:1",
+            "deletion:1",
+            "policy:1",
+        )
+
+
+def test_lead_and_conversion_reject_illegal_or_incomplete_outcomes() -> None:
+    lead = LeadCaseVersion(
+        "lead:2",
+        1,
+        LeadState.CAPTURED,
+        "tenant:1",
+        "relationship:1",
+        "source:1",
+        None,
+        "LEAD_CAPTURE",
+        "consent:1",
+        "",
+        "rules:1",
+    )
+    with pytest.raises(CdeDenied, match="VERSION_CONFLICT"):
+        lead.transition(LeadState.BOOKED)
+    require_contact_allowed(consent_current=True, suppressed=False, commitment=None)
+    with pytest.raises(CdeDenied, match="CONSENT_REQUIRED"):
+        require_contact_allowed(consent_current=False, suppressed=False, commitment=None)
+    with pytest.raises(CdeDenied, match="INVALID_REQUEST"):
+        ConversionObservation(
+            "observation:bad",
+            "SUCCESS",
+            "analytics:1",
+            "UNKNOWN",
+            "30D",
+            "mapping:1",
+            "LOW",
+            "PARTIAL",
+            None,
+            (),
+        )
+
+
+def test_discoverability_lifecycle_and_location_negative_branches() -> None:
+    with pytest.raises(CdeDenied, match="INVALID_REQUEST"):
+        EvidenceFact("SITE", None, "", "", "STALE", "LOW", (), False)
+    package = ApprovedChangePackage(
+        "change:2",
+        "site:1",
+        "v1",
+        "sha256:value",
+        "cms:accepted",
+        "approval:1",
+        True,
+    )
+    assert package.dispatch_state == "APPROVED"
+    assert package.verified_result(receipt_ref=None, after_version=None) == "OUTCOME_UNKNOWN"
+    assert package.verified_result(receipt_ref="receipt:1", after_version="v2") == "VERIFIED"
+    with pytest.raises(CdeDenied, match="NOT_CONFIGURED"):
+        LifecycleSequenceVersion(
+            "sequence:2",
+            1,
+            "RETENTION",
+            "consent:1",
+            "sender:1",
+            False,
+            "segment:1",
+            "template:1",
+            "cadence:1",
+            "trigger:1",
+            "2026-12-01",
+            "approval:1",
+            "suppression:1",
+            "FIRST_PARTY",
+        ).require_ready()
+    binding = LocationBinding(
+        "hierarchy:1",
+        frozenset({"location:1"}),
+        frozenset(),
+        {"location:1": "account:1"},
+    )
+    with pytest.raises(CdeDenied, match="AUTHORITY_DENIED"):
+        binding.require_action("location:2", "account:2")
+    with pytest.raises(CdeDenied, match="NOT_ACCESSIBLE"):
+        binding.require_action("location:1", "account:2")
+
+
+def test_advanced_capability_privacy_and_crisis_negative_branches() -> None:
+    with pytest.raises(CdeDenied, match="AUTHORITY_DENIED"):
+        InstitutionalBoundary(
+            "CUSTOMER",
+            "relationship:institutional",
+            "instance:institutional",
+            "WAOOAW_INSTITUTIONAL_MARKETING",
+            "wbe:institutional",
+            "credential:institutional",
+            "stop:institutional",
+        )
+    request = AggregateIntelligenceRequest(
+        "platform-intelligence:accepted",
+        100,
+        50,
+        20,
+        10,
+        "lineage:1",
+        "MEDIUM",
+        ("Aggregate only.",),
+    )
+    request.require_safe()
+    with pytest.raises(CdeDenied, match="NOT_ACCESSIBLE"):
+        AggregateIntelligenceRequest(
+            "platform-intelligence:accepted",
+            10,
+            50,
+            2,
+            10,
+            "lineage:1",
+            "LOW",
+            ("Small cohort.",),
+        ).require_safe()
+    with pytest.raises(CdeDenied, match="INVALID_REQUEST"):
+        CrisisSignal("signal:bad", "ORDINARY", "evidence:1", "LOW", "").require_known_type()
