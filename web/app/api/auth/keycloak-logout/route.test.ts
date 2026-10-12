@@ -45,7 +45,7 @@ describe('Keycloak logout route', () => {
     );
     expect(location.searchParams.get('id_token_hint')).toBe('server-held-id-token');
     expect(location.searchParams.get('client_id')).toBe('waooaw-web');
-    expect(location.searchParams.get('post_logout_redirect_uri')).toBe('https://app.example/');
+    expect(location.searchParams.get('post_logout_redirect_uri')).toBe('https://app.example/login');
     expect(response.headers.get('set-cookie')).toContain('next-auth.session-token=;');
     expect(response.headers.get('set-cookie')).toContain('__Host-next-auth.csrf-token=;');
     expect(response.headers.get('set-cookie')).toContain('next-auth.callback-url=;');
@@ -100,6 +100,61 @@ describe('Keycloak logout route', () => {
         headers: expect.objectContaining({
           Authorization: 'Bearer server-held-access-token',
         }),
+      })
+    );
+  });
+
+  it('does not issue a logout continuation when WAOOAW revocation returns an upstream error', async () => {
+    jest.mocked(getToken).mockResolvedValue({
+      accessToken: 'server-held-access-token',
+      accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 300,
+      idToken: 'server-held-id-token',
+    });
+    jest.mocked(fetch).mockResolvedValueOnce(new Response('{}', { status: 503 }));
+
+    const response = await POST(
+      new NextRequest('https://app.example/api/auth/keycloak-logout', {
+        method: 'POST',
+        headers: { accept: 'application/json', origin: 'https://app.example' },
+      })
+    );
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      code: 'SESSION_REVOCATION_UNCONFIRMED',
+      title: 'Sign out could not be completed.',
+    });
+    expect(response.headers.get('set-cookie')).toBeNull();
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(recordWebIdentitySecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'LOGOUT_FAILURE',
+        reasonCode: 'SESSION_REVOCATION_UNCONFIRMED',
+      })
+    );
+  });
+
+  it('does not issue a logout continuation when WAOOAW revocation cannot be reached', async () => {
+    jest.mocked(getToken).mockResolvedValue({
+      accessToken: 'server-held-access-token',
+      accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 300,
+      idToken: 'server-held-id-token',
+    });
+    jest.mocked(fetch).mockRejectedValueOnce(new TypeError('fetch failed'));
+
+    const response = await POST(
+      new NextRequest('https://app.example/api/auth/keycloak-logout', {
+        method: 'POST',
+        headers: { accept: 'application/json', origin: 'https://app.example' },
+      })
+    );
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get('set-cookie')).toBeNull();
+    expect(recordWebIdentitySecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'LOGOUT_FAILURE',
+        reasonCode: 'SESSION_REVOCATION_UNCONFIRMED',
       })
     );
   });
@@ -194,7 +249,7 @@ describe('Keycloak logout route', () => {
     );
 
     expect(new URL(requiredHeader(response, 'location')).searchParams.get('post_logout_redirect_uri')).toBe(
-      'https://app.example/'
+      'https://app.example/login'
     );
   });
 });

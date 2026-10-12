@@ -2,7 +2,7 @@
 // Constitutional basis: C-001, C-023, C-049, C-059, C-063
 
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type BrowserContext, type Locator, type Page, type TestInfo } from '@playwright/test';
+import { type BrowserContext, type Locator, type Page, type TestInfo, expect, test } from '@playwright/test';
 import { encode } from 'next-auth/jwt';
 import { supportedLocales } from '../../lib/preferences';
 
@@ -150,7 +150,7 @@ test('R-003: logout and second login request explicit Google account selection',
   await page.waitForURL('**/professionals/mine');
   await page.locator('summary[aria-label="Account"]').first().click();
   await page.getByRole('button', { name: 'Sign out' }).click();
-  await expect(page).toHaveURL('http://127.0.0.1:3000/');
+  await expect(page).toHaveURL('http://127.0.0.1:3000/login');
   await expect
     .poll(async () => context.cookies())
     .toEqual(expect.not.arrayContaining([expect.objectContaining({ name: 'next-auth.session-token' })]));
@@ -167,9 +167,8 @@ test('R-003: logout and second login request explicit Google account selection',
     await route.fulfill({ contentType: 'text/html', body: '<title>Test identity provider</title>' });
   });
   await page.goto('/login');
-  await page.getByRole('button', { name: 'Log in with Google' }).click();
   const brokerRequest = page.waitForRequest((request) => request.url().includes('/api/auth/signin/keycloak-google'));
-  await page.getByRole('button', { name: 'Continue to Google' }).click();
+  await page.getByRole('button', { name: 'Log in with Google' }).click();
 
   expect(new URL((await brokerRequest).url()).searchParams.get('prompt')).toBe('select_account');
   await expect(page).toHaveURL(/localhost:8080\/realms\/waooaw\/protocol\/openid-connect\/auth\?prompt=select_account/);

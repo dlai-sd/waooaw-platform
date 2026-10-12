@@ -8,14 +8,16 @@ COPY src/constitutional-engine/ .
 RUN dotnet publish --configuration Release --runtime linux-musl-x64 \
     --self-contained false --no-restore --output /app/publish
 
-FROM golang:1.26.7-alpine@sha256:28d89ee9cc0ff9fec75c82ca201e6bf7fdf9a679d4b7b24dfa04f2bb766bb468 AS health-probe
+FROM golang:1.26.9-alpine@sha256:3082400e369fa24d5fc60bca20edab3f6d604e0c5a690ec66b295eff4dd87ade AS health-probe
 ARG GRPC_HEALTH_PROBE_COMMIT=b5fef775b4ec749eefb19fb00787089ec9a772d5
 ARG GRPC_GO_VERSION=v1.83.2
+ARG GOLANG_X_NET_VERSION=v0.60.0
 RUN apk add --no-cache git \
     && git clone https://github.com/grpc-ecosystem/grpc-health-probe.git /src/grpc-health-probe \
     && cd /src/grpc-health-probe \
     && git checkout "${GRPC_HEALTH_PROBE_COMMIT}" \
     && go get "google.golang.org/grpc@${GRPC_GO_VERSION}" \
+    && go get "golang.org/x/net@${GOLANG_X_NET_VERSION}" \
     && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /grpc_health_probe .
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0@sha256:2680706c9656fafe34876446d694fd25077fd0b5da478f38d56073ac6c21d37e

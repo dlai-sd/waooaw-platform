@@ -16,8 +16,19 @@ jest.mock('./ProviderCommands', () => ({
     callbackUrl,
     intent,
     providers,
-  }: { callbackUrl: string; intent: string; providers: IdentityProvider[] }) => (
-    <div data-testid="provider-commands" data-callback-url={callbackUrl} data-intent={intent}>
+    resetSessionBeforeLaunch,
+  }: {
+    callbackUrl: string;
+    intent: string;
+    providers: IdentityProvider[];
+    resetSessionBeforeLaunch?: boolean;
+  }) => (
+    <div
+      data-testid="provider-commands"
+      data-callback-url={callbackUrl}
+      data-intent={intent}
+      data-reset-session={String(resetSessionBeforeLaunch === true)}
+    >
       {providers.length} providers
     </div>
   ),
@@ -120,6 +131,7 @@ describe('authentication views', () => {
     expect(screen.getByRole('alert')).toHaveAttribute('data-reason-code', 'IDENTITY_ACTION_DENIED');
     expect(screen.getByText('Reference: correlation-403')).toBeInTheDocument();
     expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-intent', 'login');
+    expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-reset-session', 'true');
   });
 
   it('keeps step-up recovery in the login modal', async () => {

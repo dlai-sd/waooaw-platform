@@ -50,6 +50,58 @@ describe('ProviderCommands', () => {
     expect(screen.getByRole('button', { name: 'Log in with Facebook (Unavailable)' })).toBeDisabled();
   });
 
+  it('clears a denied session through Keycloak logout before retrying a provider', async () => {
+    const navigate = jest.fn();
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ logoutPath: '/api/auth/keycloak-logout?nonce=recovery' }),
+    });
+    Object.defineProperty(globalThis, 'fetch', { configurable: true, value: fetchMock });
+    sessionStorage.setItem('waooaw:identity:registration-draft', '{"displayName":"Prior customer"}');
+    render(
+      <ProviderCommands
+        callbackUrl="/home"
+        intent="login"
+        navigate={navigate}
+        providers={providers}
+        resetSessionBeforeLaunch
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/api/auth/keycloak-logout?nonce=recovery'));
+    expect(fetchMock).toHaveBeenCalledWith('/api/auth/keycloak-logout', {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+    });
+    expect(sessionStorage.getItem('waooaw:identity:registration-draft')).toBeNull();
+    expect(signIn).not.toHaveBeenCalled();
+  });
+
+  it('does not launch a broker when denied-session logout cannot start', async () => {
+    const navigate = jest.fn();
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      value: jest.fn().mockResolvedValue({ ok: false }),
+    });
+    render(
+      <ProviderCommands
+        callbackUrl="/home"
+        intent="login"
+        navigate={navigate}
+        providers={providers}
+        resetSessionBeforeLaunch
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Google sign-in could not start.');
+    expect(navigate).not.toHaveBeenCalled();
+    expect(signIn).not.toHaveBeenCalled();
+  });
+
   it('orders provider icon controls into customer scanning order', () => {
     render(<ProviderCommands callbackUrl="/login" intent="login" providers={[...providers].reverse()} />);
 
