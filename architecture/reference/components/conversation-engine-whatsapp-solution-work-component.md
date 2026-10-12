@@ -9,7 +9,7 @@
 | Version | `1.0.0-candidate.1` |
 | Controlling enterprise package | `conversation-engine-whatsapp-enterprise-architecture.md` |
 | Reviewed enterprise head | `65add4540698116b00be1ec72e6000333d05eac9` |
-| Accepted merge | PR #498, merge commit `4a4420af6ee132623d6b87eb3863d700e56c9b86` |
+| Merged PR | PR #498, merge commit `4a4420af6ee132623d6b87eb3863d700e56c9b86` |
 | Decision package | ADR-052 and ADR-053, both still `Proposed - Founder review required` |
 | Implementing office | Platform IT Expert (INST-010), only under a separate Work Contract and explicit current-session implementation authority |
 | Authority boundary | Solution architecture and implementation planning only. No implementation, `src/` change, Meta/Azure/DNS/provider mutation, number purchase, deployment, traffic, activation, PR approval, or merge. |
@@ -21,7 +21,7 @@ implementation Work Contract. ADR-052 also depends on prior or simultaneous acce
 
 ## 1. Executive Implementation Overview
 
-This package decomposes the accepted enterprise package, without treating its proposed decisions as
+This package decomposes the merged enterprise package, without treating its proposed decisions as
 accepted, into one reusable channel-neutral conversation capability and one environment-configured
 WhatsApp adapter:
 
@@ -553,10 +553,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Existing Conversation Core, WC-062 voice, ADR-023 identity, ADR-031 Stop, outbox/Temporal, RLS, generated clients, validation runners. |
 | API/events | Inventory existing and proposed deltas; no mutation. |
 | Data/RLS | Inventory schemas, roles, keys, policies, migrations, backup/recovery. |
+| Migration/compatibility | Inventory current schema/API/event versions, compatibility obligations, and safe expand/migrate/contract path; make no migration. |
 | Config/secrets | Inventory names/owners only; never read values. |
 | Authority/security | Requires separate implementation Work Contract for later work; record current ADR status. |
 | Privacy/retention | Trace every payload/derivative/evidence lifecycle. |
-| Failure/retry/idempotency | Map existing semantics and gaps for each boundary. |
+| Failure/retry/idempotency/dedup/replay | Map existing semantics and gaps for each boundary. |
 | Observability | Inventory current safe telemetry and prohibited-data risks. |
 | Rollout/rollback | Define flags, compatibility window, watermark, stop and reversal per story. |
 | Targeted tests | No runtime test; validate impact record against a checklist and run repository path/spec lint. |
@@ -581,10 +582,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Existing BP Conversation Core, workspace commands, SSE, problem details, client generation. |
 | API/events | Implement candidate OpenAPI and Section 5 events; every mutation binds idempotency/digest/context/source versions. |
 | Data/RLS | Relationship-scoped access through trusted tenant; no tenant field from clients. |
+| Migration/compatibility | Additive versioned contract; retain existing endpoints/readers and prove generated-client backward compatibility before cutover. |
 | Config/secrets | Contract version and feature flag only; no secrets. |
 | Authority/security | BP reauthorizes every operation; clients cannot call PR/AIR/CE/WBE directly. |
 | Privacy/retention | Public projections minimize internal/provider/evidence details. |
-| Failure/retry/idempotency | Original receipt replay; same key/different digest 409; safe unavailable/conflict results. |
+| Failure/retry/idempotency/dedup/replay | Original receipt replay; same key/different digest 409; safe unavailable/conflict results. |
 | Observability | Operation/result/version/latency with opaque IDs only. |
 | Rollout/rollback | Additive disabled contract; dual-read; disable new operations without rewriting data. |
 | Targeted tests | BP OpenAPI lint/slice; generated-client compile; endpoint authorization/idempotency/error contract tests. |
@@ -609,10 +611,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Existing Conversation Core transaction and outbox patterns. |
 | API/events | Contribution receipt returns canonical message/sequence; accepted event publishes post-commit. |
 | Data/RLS | Unique environment+tenant+relationship+conversation+sequence; FORCE RLS and tenant-consistent FKs. |
+| Migration/compatibility | Expand allocator/state, provenance-backfill sequence watermarks, dual-read old/new records, then contract only after rollback expiry. |
 | Config/secrets | Feature flag and migration watermark only. |
 | Authority/security | Actor/relationship derived server-side; protected intent source-version check inside transaction. |
 | Privacy/retention | Payload reference separate from canonical metadata; erasure leaves permitted tombstone. |
-| Failure/retry/idempotency | Concurrent winner; same digest replay; conflict on changed digest; no gap reuse. |
+| Failure/retry/idempotency/dedup/replay | Concurrent winner; same digest replay; conflict on changed digest; no gap reuse. |
 | Observability | Commit/replay/conflict/outbox latency and sequence gap alerts without IDs. |
 | Rollout/rollback | Expand allocator/state, backfill watermark, dual-read, cut over, preserve new sequences on rollback. |
 | Targeted tests | BP persistence tests for 100 concurrent appends, duplicate/changed digest, ambiguous commit, outbox atomicity, RLS cross-tenant denial. |
@@ -637,10 +640,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Relationship/workspace projections, Decision Space and plan versions. |
 | API/events | InteractionContext schema; list contexts; context reference on every execution. |
 | Data/RLS | Immutable context row bound to environment/tenant/relationship/conversation/source versions. |
+| Migration/compatibility | Add immutable context versions beside legacy context, shadow-resolve/compare, retain prior-version reader through rollback window. |
 | Config/secrets | Registered context vocabulary/version; no secrets. |
 | Authority/security | Server authorization of key/subject; forged/unknown values cause zero mutation. |
 | Privacy/retention | Minimize context payload; inherit source sensitivity and lifecycle. |
-| Failure/retry/idempotency | Deterministic same-input resolution; stale source blocks consequential execution. |
+| Failure/retry/idempotency/dedup/replay | Deterministic same-input resolution; stale source blocks consequential execution; replay preserves the original bound version. |
 | Observability | Safe result category, staleness cause class, resolver latency. |
 | Rollout/rollback | Shadow-resolve and compare; feature-gate new context version; retain prior reader. |
 | Targeted tests | Precedence table, forged key, cross-subject, stale versions, pending intent, channel downgrade, deterministic replay. |
@@ -665,10 +669,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Existing agent policy/persona records and AIR typed-output contracts. |
 | API/events | ConversationPolicyReference and conclusion fields; no policy bytes in public client. |
 | Data/RLS | Immutable version references scoped to institution/professional/relationship as applicable. |
+| Migration/compatibility | Publish additive policy references, shadow old/new rendering, keep prior supported policy version and block new-only commands on rollback. |
 | Config/secrets | Policy registry versions; no secrets. |
 | Authority/security | Untrusted content cannot populate policy fields; lower layers cannot weaken safety. |
 | Privacy/retention | Communication profile is relationship-scoped and erasable per source class. |
-| Failure/retry/idempotency | Missing/conflicting policy fails closed before model call; replay binds original version. |
+| Failure/retry/idempotency/dedup/replay | Missing/conflicting policy fails closed before model call; retry/replay binds the original version without duplicate execution. |
 | Observability | Policy version distribution and safe conformance violation codes. |
 | Rollout/rollback | Shadow compare; per-professional opt-in; retain prior supported version. |
 | Targeted tests | Precedence conflicts, dialogue-act schema, conclusion fields, injection into policy, semantic-equivalence corpus. |
@@ -693,10 +698,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Existing customer profile, RAG, payload store, outbox/worker mechanisms. |
 | API/events | Profile inspect/correct; ContextSourcesChanged and ArtifactInvalidated events. |
 | Data/RLS | Environment+tenant+relationship+subject keys; append-only observation; erasable summary payload. |
+| Migration/compatibility | Backfill observations with explicit provenance, shadow the new projection, rebuild derived artifacts, and retain canonical source compatibility. |
 | Config/secrets | Derivation/model/policy version and lifecycle classes. |
 | Authority/security | Only accountable sources/owners promote confirmed facts; AIR proposes only. |
 | Privacy/retention | Highest-source sensitivity; correction/erasure propagates to summary/vector/cache. |
-| Failure/retry/idempotency | Idempotent invalidation/rebuild; stale artifact cannot enter new execution. |
+| Failure/retry/idempotency/dedup/replay | Idempotent deduplicated invalidation/rebuild; replay cannot reactivate a stale artifact or enter new execution. |
 | Observability | Projection lag, invalidation/rebuild state, stale-use violation count. |
 | Rollout/rollback | Backfill observations with provenance; shadow projection; rebuild derived artifacts. |
 | Targeted tests | Status transitions, correction/dispute/erasure, source expiry, model/policy change, cross-tenant leakage, rebuild determinism. |
@@ -721,10 +727,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Existing omnichannel handoff/checkpoint contracts. |
 | API/events | Prepare, authenticate, activate, revert; canonical cursor unchanged. |
 | Data/RLS | Binding includes environment/tenant/relationship/participant/channel/authenticatedAt/state. |
+| Migration/compatibility | Add checkpoint/binding version beside existing handoff, preserve source-channel behavior, and retain the prior handoff reader during rollout. |
 | Config/secrets | Handoff TTL/signing key through existing protected configuration. |
 | Authority/security | Target reauthentication; assurance cannot exceed proof; binding mismatch denies. |
 | Privacy/retention | Checkpoint contains opaque refs/digests, not transcript. |
-| Failure/retry/idempotency | Idempotent activation/revert; source remains active on timeout/failure. |
+| Failure/retry/idempotency/dedup/replay | Idempotent deduplicated activation/revert; replay cannot activate twice; source remains active on timeout/failure. |
 | Observability | Handoff stage/result/latency, no raw identity. |
 | Rollout/rollback | Additive checkpoint version; retain current path until equivalence passes. |
 | Targeted tests | Web->WhatsApp->Web, failed target auth, expired/replayed checkpoint, simultaneous activation, source-version change. |
@@ -749,10 +756,11 @@ when all dependencies and its authority gates pass.
 | Reuse | ADR-023 proof, BP Identity Boundary, Keycloak portal authentication. |
 | API/events | Internal assertion carries binding/assurance/version/expiry, never raw number or tenant input. |
 | Data/RLS | Composite environment/tenant/relationship binding; provider proof cannot bypass RLS. |
+| Migration/compatibility | Shadow-resolve existing bindings, backfill immutable environment/assurance versions, default-deny unknown legacy rows, retain prior reads only during bounded verification. |
 | Config/secrets | Admission policy, tier/freshness configuration; protected identity keys. |
 | Authority/security | Commit-time recheck; zero mutation on denial; Stop release portal-only. |
 | Privacy/retention | Minimized phone proof; reassignment revokes operational use and retains limited evidence. |
-| Failure/retry/idempotency | Same verified tuple resolves deterministically; ambiguous result never auto-retries mutation. |
+| Failure/retry/idempotency/dedup/replay | Same verified tuple resolves deterministically; retries replay the same denial/assertion; ambiguous result never auto-retries mutation. |
 | Observability | Safe denial reason class and reassignment alert; no phone/tenant IDs. |
 | Rollout/rollback | Shadow resolution; migrate bindings; default deny until exact match. |
 | Targeted tests | Zero/one/multiple, revoked/reassigned/stale, cross-tenant reuse, environment/recipient mismatch, stale step-up, exact-intent mismatch, Tier 4 denial. |
@@ -777,10 +785,11 @@ when all dependencies and its authority gates pass.
 | Reuse | ADR-023 verification utility if impact analysis proves exact raw-byte semantics. |
 | API/events | Candidate webhook GET/POST; verified envelope passed internally only. |
 | Data/RLS | No tenant lookup before verified environment/provider tuple; no durable payload on rejection. |
+| Migration/compatibility | Add callback version/config dark, retain existing phone path until raw-byte equivalence passes, and remove old verification only after rollback expiry. |
 | Config/secrets | Environment verify token/app secret versions through adapter identity only. |
 | Authority/security | Wrong workload/audience/environment/version fails closed; secrets never logged. |
 | Privacy/retention | Rejections retain safe reason/correlation only. |
-| Failure/retry/idempotency | Invalid returns non-retryable safe denial per provider contract; verified-but-undurable returns retryable failure. |
+| Failure/retry/idempotency/dedup/replay | Invalid returns non-retryable safe denial; verified-but-undurable returns retryable failure; durable retries enter Story 010 dedup/replay. |
 | Observability | Verification outcome and latency with bounded reason labels. |
 | Rollout/rollback | Endpoint dark until authorized callback; dual secret overlap only during bounded rotation. |
 | Targeted tests | Valid/invalid mode/token/host, valid/invalid/modified signature, middleware mutation, oversized body, `t-300s`/`t+300s` accepted and outside rejected, wrong environment. |
@@ -805,10 +814,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Existing inbox/outbox/idempotency/reconciliation primitives where invariants match. |
 | API/events | Callback returns success only for durable acceptance/outcome/replay; internal accepted event publishes post-commit. |
 | Data/RLS | Environment+app/WABA+recipient number ID+event ID uniqueness; resolved tenant/relationship added without provider-only lookup. |
+| Migration/compatibility | Expand inbox/tombstones, dual-record old/new dedup outcomes, backfill no fabricated claims, and preserve both stores through rollback/recovery horizon. |
 | Config/secrets | Retention class no shorter than all provider/reconciliation/security/backup/unresolved horizons. |
 | Authority/security | Verified event only; same identity/different digest is security conflict with zero additional mutation. |
 | Privacy/retention | Erase payload, retain non-reconstructive replay tombstone through horizon/hold. |
-| Failure/retry/idempotency | One concurrent winner; losers replay; crash before commit retries; crash after commit reconciles original result. |
+| Failure/retry/idempotency/dedup/replay | One concurrent winner; losers replay; crash before commit retries; crash after commit reconciles original result. |
 | Observability | Claim winner/replay/conflict/reconciliation/age and callback latency, safe dimensions only. |
 | Rollout/rollback | Add inbox and dual-record; prove recovery consistency; never drop old dedup during rollback. |
 | Targeted tests | 100 concurrent identical deliveries, changed-digest conflict, crash boundaries, stale unseen event, delayed known retry, restore/replay, cleanup denial. |
@@ -833,10 +843,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Existing Conversation Core contribution schema and WC-062 voice entry. |
 | API/events | Internal `VerifiedProviderEnvelopeV1`; normalized contribution/status event. |
 | Data/RLS | Provider provenance stored in transport boundary; canonical record gets opaque correlation. |
+| Migration/compatibility | Introduce versioned mapper beside existing normalization, run golden dual-output comparison, and retain previous provider-version mapper during overlap. |
 | Config/secrets | Supported Meta API/event schema versions by environment. |
 | Authority/security | Environment/identity binding precedes mapping; provider context reference never grants authority. |
 | Privacy/retention | Minimize phone/provider fields; raw payload follows inbox lifecycle. |
-| Failure/retry/idempotency | Mapping is deterministic; unsupported type records durable typed outcome for replay. |
+| Failure/retry/idempotency/dedup/replay | Mapping is deterministic; duplicate provider input deduplicates before mapping; unsupported type records a durable typed outcome for replay. |
 | Observability | Message type/schema version/result with bounded labels. |
 | Rollout/rollback | Versioned mapper behind adapter flag; retain previous mapper during provider version overlap. |
 | Targeted tests | Golden payloads for every supported type/version, unknown/malformed values, reply/media/status routing, privacy field rejection. |
@@ -861,10 +872,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Existing outbox/Temporal/provider registry and managed identity patterns. |
 | API/events | Consume `OutboundRepresentationQueuedV1`; emit provider submission/status observations. |
 | Data/RLS | Logical message bound to canonical message; attempt keyed by environment/message/number/attempt. |
+| Migration/compatibility | Add logical-message/attempt records and outbox beside legacy dispatch, dry-run/compare, cut over by flag, preserve queued work on rollback. |
 | Config/secrets | Endpoint/API version, timeout, retry policy, separate outbound authority in Key Vault. |
 | Authority/security | Adapter identity only; current environment/audience; no secret propagation. |
 | Privacy/retention | Payload ref instead of logged content; provider request retained only under lifecycle policy. |
-| Failure/retry/idempotency | Timeout -> UNKNOWN/reconcile same attempt; retry creates new attempt; no duplicate logical message. |
+| Failure/retry/idempotency/dedup/replay | Timeout -> UNKNOWN/reconcile same attempt; duplicate worker lease is idempotent; retry creates a new attempt; replay never duplicates the logical message. |
 | Observability | Queue age, attempt count, submission/result, reconciliation lag, credential denial class. |
 | Rollout/rollback | Provider client disabled; dry-run sink; enable environment after qualification; disable dispatch without deleting queue. |
 | Targeted tests | Outbox atomicity, timeout, retry/new attempt, duplicate worker lease, credential denial, environment mismatch, provider 4xx/5xx matrix. |
@@ -889,10 +901,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Existing consent/provider-config and policy evaluation mechanisms found in discovery. |
 | API/events | Eligibility evidence ref on queued event; typed non-dispatched outcome on change. |
 | Data/RLS | Template/consent evidence bound to environment/tenant/relationship/recipient/purpose. |
+| Migration/compatibility | Add versioned eligibility evidence and shadow evaluation; existing sends remain on old path until parity and rollback-window proof. |
 | Config/secrets | Environment template registry and provider window duration/version; no secret in template config. |
 | Authority/security | Queue and pre-send reauthorize; Stop/termination/revocation invalidates immediately. |
 | Privacy/retention | Consent/template evidence retained by Legal/Data class; variables follow message payload policy. |
-| Failure/retry/idempotency | Boundary race resolved by pre-send check; ineligible attempt never submitted; replay returns same typed outcome unless new command. |
+| Failure/retry/idempotency/dedup/replay | Boundary race resolved by pre-send check; ineligible attempt never submitted; duplicate queue work deduplicates; replay returns the same typed outcome unless a new command is created. |
 | Observability | Safe rejection reason, boundary timing, template version distribution. |
 | Rollout/rollback | Shadow eligibility against dry-run; enable only after complete environment template inventory. |
 | Targeted tests | Inside/outside/exact boundary, qualifying/nonqualifying inbound, opt-out after queue, template paused/revoked/mismatched locale/schema/version/environment, trusted-clock skew. |
@@ -917,10 +930,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Existing delivery/status projection and outbox correlation where compatible. |
 | API/events | `ProviderDeliveryObservedV1`; public independent delivery dimension. |
 | Data/RLS | Append-only observation keyed by environment/event/attempt; derived projection rebuildable. |
+| Migration/compatibility | Dual-write mutable state and immutable observations, compare projections, cut over reads, and retain observation history on rollback. |
 | Config/secrets | Provider status mapping/version. |
 | Authority/security | Only signed/correlated status can append; mismatched environment denied. |
 | Privacy/retention | Minimized provider refs under transport retention/hold class. |
-| Failure/retry/idempotency | Duplicate append is idempotent; unknown status preserves observation and marks reconciliation. |
+| Failure/retry/idempotency/dedup/replay | Duplicate observation append deduplicates idempotently; replay preserves history; unknown status marks reconciliation without destructive retry. |
 | Observability | Observation lag, projection conflict, unknown age, late status count. |
 | Rollout/rollback | Dual-write mutable+observation, compare, cut over; retain observation history on rollback. |
 | Targeted tests | All permutations of accepted/delivered/read/failed/expired/unknown, duplicate, contradiction, late success after uncertainty, multiple attempts, restore rebuild. |
@@ -945,10 +959,11 @@ when all dependencies and its authority gates pass.
 | Reuse | WC-062 voice data contract, payload store, AIR transcription, existing scanner/storage patterns. |
 | API/events | Opaque media ref and typed media states; canonical contribution only after required confirmation. |
 | Data/RLS | Payload boundary keyed by environment/tenant/relationship; no reconstructive hash outside boundary. |
+| Migration/compatibility | Extend WC-062 lineage additively, migrate opaque refs/derivatives with provenance, retain text fallback and prior accepted contributions on rollback. |
 | Config/secrets | Approved type/size/resource policy; separate media credential and scanner identity. |
 | Authority/security | Retrieval and scanner permissions separated; scanner has no conversation/provider dispatch authority. |
 | Privacy/retention | Payload/derivative/backup/cache/provider deletion tracked; hold is scoped and evidenced. |
-| Failure/retry/idempotency | Expired URL requests resend; timeout/error remains quarantine; scan/retrieval retry bounded and idempotent. |
+| Failure/retry/idempotency/dedup/replay | Expired URL requests resend; timeout/error remains quarantine; retrieval/scan retries deduplicate by payload/version and never replay unsafe content. |
 | Observability | Safe state/latency/verdict class; no filename/MIME/content/provider ref in ordinary telemetry. |
 | Rollout/rollback | Text first; media flag remains off until format/limit/retention owner decisions recorded; disable intake, retain safe cleanup. |
 | Targeted tests | MIME/signature mismatch, archive/polyglot/active format, expansion/resource limits, malware, scan timeout/error, expired URL, low-confidence transcript, correction, erasure/hold/backup propagation. |
@@ -973,10 +988,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Existing Stop orchestrator, SignalR/WebSocket path, ADR-031 local evidence buffer. |
 | API/events | Typed Stop command and `EmergencyStopLatchedV1`; safe acknowledgement includes pending CE sync state. |
 | Data/RLS | Relationship-scoped latch/idempotency; protected local evidence buffer; tenant-safe CE flush. |
+| Migration/compatibility | Add WhatsApp typed ingress to the existing ADR-031 latch without changing latch identity; rollback removes ingress only and never clears an active Stop. |
 | Config/secrets | Existing Stop latency budget; no new credential. |
 | Authority/security | Signature+binding required; Stop highest precedence; release Tier 4 portal-only. |
 | Privacy/retention | Minimized actor proof ref and constitutional evidence; no message text needed for typed control. |
-| Failure/retry/idempotency | Duplicate or simultaneous Stop returns same latch; CE flush idempotent; no release on recovery. |
+| Failure/retry/idempotency/dedup/replay | Duplicate/simultaneous/replayed Stop returns the same latch; CE flush deduplicates idempotently; no retry/recovery releases it. |
 | Observability | Stop detected/latched/halt/CE-sync latency and failure without customer IDs. |
 | Rollout/rollback | Stop path must be available before ordinary WhatsApp work; disabling WhatsApp leaves existing Stop active. |
 | Targeted tests | CE outage, duplicate delivery, simultaneous Web/WhatsApp, adapter/PR restart, reconnect, timeout, ambiguous text, WhatsApp release attempt, latency budget. |
@@ -1001,10 +1017,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Existing OTel/Azure Monitor, structured logging, privacy scanner, protected evidence patterns. |
 | API/events | Correlation uses opaque IDs; exception responses use stable safe problems. |
 | Data/RLS | Dead letters store safe metadata + protected payload ref; environment/tenant access enforced. |
+| Migration/compatibility | Add safe fields/exporters and leakage gates before new paths; retain existing dashboards during metric-name compatibility window. |
 | Config/secrets | Sampling/retention/alert routing per environment; no secret in telemetry config. |
 | Authority/security | Protected diagnostics separately authorized and audited; ordinary operators cannot read payloads. |
 | Privacy/retention | Explicit lifecycle/hold/deletion/export prohibition for diagnostics and telemetry. |
-| Failure/retry/idempotency | Telemetry failure cannot acknowledge business success; dead-letter replay uses original idempotency. |
+| Failure/retry/idempotency/dedup/replay | Telemetry failure cannot acknowledge business success; duplicate telemetry is bounded; dead-letter retry/replay uses original idempotency and dedup domains. |
 | Observability | Self-monitor privacy-scan failures, dropped spans, dead-letter age, alert delivery. |
 | Rollout/rollback | Enable leakage gate before path flags; rollback disables new exporters without losing required safe evidence. |
 | Targeted tests | Success/failure/framework/parser/HMAC/retry/dead-letter/scanner/media/trace-baggage leakage corpus; RBAC and retention. |
@@ -1029,10 +1046,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Existing Demo deploy/verify/cleanup patterns and environment rendering. |
 | API/events | Exact candidate contract/config versions; no Demo-specific API fork. |
 | Data/RLS | Demo namespaces/keys/backups only; cleanup respects attempts/horizons/holds. |
+| Migration/compatibility | Provision from environment-neutral artifacts; never import another environment; teardown preserves required tombstones/evidence and leaves reusable code unchanged. |
 | Config/secrets | Complete Section 11 isolation; separate runtime/scanner/configurator. |
 | Authority/security | Each manual/platform action needs exact authority; callback disabled before deletion. |
 | Privacy/retention | Dispose payload/derivatives; retain only required tombstone/evidence; provider copies tracked. |
-| Failure/retry/idempotency | Teardown blocked until work is terminal or isolated non-routable through horizon. |
+| Failure/retry/idempotency/dedup/replay | Teardown blocked until retry/replay work is terminal or isolated non-routable; dedup/tombstones persist through the required horizon. |
 | Observability | Demo-only namespace and alert route; prove UAT/Production unchanged. |
 | Rollout/rollback | Activate only after smoke matrix; rollback disables callback/dispatch and restores prior non-routable state. |
 | Targeted tests | Environment rendering, negative cross-env secrets/IDs/hosts/state, runbook smoke, teardown with pending/reconciled/hold cases. |
@@ -1057,10 +1075,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Existing UAT private runner/deploy/verify and recovery patterns. |
 | API/events | Same candidate versions as Demo; environment identity differs. |
 | Data/RLS | UAT durable namespaces/backups/restore qualification. |
+| Migration/compatibility | Promote immutable artifacts and recreate UAT-specific configuration only; never copy Demo identity/data/dedup; preserve rollback to dark UAT. |
 | Config/secrets | UAT-only Key Vault and workload identities; egress only if authorized dependency requires it. |
 | Authority/security | Separate UAT provider/DNS/deploy authority and negative cross-env proof. |
 | Privacy/retention | UAT retention/hold/erasure classes and test-data policy. |
-| Failure/retry/idempotency | Same production-grade state machines; callback migration retains UAT identity. |
+| Failure/retry/idempotency/dedup/replay | Same production-grade retry/dedup/replay state machines; callback migration retains UAT identity and durable outcomes. |
 | Observability | UAT namespace/alerts/SLO evidence. |
 | Rollout/rollback | Dark deploy -> smoke -> explicit activation; rollback callback/dispatch while retaining state. |
 | Targeted tests | DNS/TLS/hostname, stable ingress, no raw IP, egress independence, cross-env negatives, restore/non-routable reactivation. |
@@ -1085,10 +1104,11 @@ when all dependencies and its authority gates pass.
 | Reuse | UAT-qualified immutable candidate and controlled environment rendering; never UAT credentials/data. |
 | API/events | Exact qualified versions; no Production fork. |
 | Data/RLS | Isolated Production scope, keys, backups, retention, RPO/RTO acceptance. |
+| Migration/compatibility | Render the exact UAT-qualified artifact into new Production authority/data boundaries; no state copy; retain dark rollback before any traffic. |
 | Config/secrets | Placeholder references only until created under authority; no values in repo. |
 | Authority/security | Founder owns number purchase, risk/cost, DNS/provider/deploy/traffic/activation decisions. |
 | Privacy/retention | Legal/Data acceptance of Production classes and provider obligations. |
-| Failure/retry/idempotency | Production recovery and callback/dispatch rollback rehearsed without traffic. |
+| Failure/retry/idempotency/dedup/replay | Production recovery, idempotency/dedup restoration, callback/dispatch rollback, and replay denial are rehearsed without traffic. |
 | Observability | Production namespace/alerts/on-call/access audit prepared dark. |
 | Rollout/rollback | Dark default; multi-party evidence gate; callback/dispatch independent kill switches. |
 | Targeted tests | Environment render without secrets, Production-dark, cross-env denial, protected environment authority, rollback simulation. |
@@ -1113,10 +1133,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Existing Web conversation/workspace components and client-generation pipeline. |
 | API/events | Candidate BP API; SSE/polling canonical cursor. |
 | Data/RLS | No direct storage access; BP authorization only. |
+| Migration/compatibility | Generate the additive client, support old/new API during a feature-flag window, migrate views incrementally, and retain the current client for rollback. |
 | Config/secrets | API version feature flag; no provider secrets. |
 | Authority/security | Web cannot send tenant/policy/prompt/authority; Tier 4 portal flow remains authoritative. |
 | Privacy/retention | Existing privacy and accessibility behavior preserved. |
-| Failure/retry/idempotency | Reconcile ambiguous mutations; render independent states honestly. |
+| Failure/retry/idempotency/dedup/replay | Reconcile ambiguous mutations using original idempotency; deduplicate event replay by canonical sequence; render independent states honestly. |
 | Observability | Safe client operation/error/version metrics. |
 | Rollout/rollback | Per-environment/API-version flag; retain current client during compatibility window. |
 | Targeted tests | Generated client compile, current Web regression, cross-channel timeline, stale context, state dimensions, accessibility. |
@@ -1141,10 +1162,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Same BP OpenAPI and fixture server used by Web contract tests. |
 | API/events | No Mobile-specific endpoints/fields. |
 | Data/RLS | No direct data access; same BP identity/tenant/relationship controls. |
+| Migration/compatibility | Contract-only additive proof; no runtime migration. Future clients must honor the published compatibility and deprecation window. |
 | Config/secrets | None beyond generated-client test config. |
 | Authority/security | Client cannot inject tenant/policy/prompt/authority. |
 | Privacy/retention | No new storage or telemetry. |
-| Failure/retry/idempotency | Generated client exposes idempotency/reconcile/errors equivalently. |
+| Failure/retry/idempotency/dedup/replay | Generated client exposes idempotency/reconcile/dedup-safe cursor/error behavior equivalently. |
 | Observability | Contract test only. |
 | Rollout/rollback | Not applicable; no Mobile runtime. |
 | Targeted tests | Generate second client, compile, run timeline/contribution/command/context/state fixtures and forbidden-field tests. |
@@ -1169,10 +1191,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Existing migration runners, PostgreSQL backup/PITR, environment readiness evidence. |
 | API/events | Prior and candidate readers coexist; incompatible majors dead-letter safely. |
 | Data/RLS | Validate RLS/roles/composite refs/sequences/dedup/outbox/lineage/payload/projection. |
+| Migration/compatibility | Normative expand -> migrate -> cutover -> compatibility window -> contract flow; destructive down-migration is prohibited. |
 | Config/secrets | Environment-specific encryption/backup authority; temporary restore identity. |
 | Authority/security | Restore is isolated/non-routable; UAT/Production reactivation Founder-gated. |
 | Privacy/retention | Backup age-out/crypto-erasure and hold behavior verified. |
-| Failure/retry/idempotency | Backfill/rebuild rerunnable; restore at shared consistency watermark; reconcile after recovery. |
+| Failure/retry/idempotency/dedup/replay | Backfill/rebuild rerunnable and deduplicated; restore at shared consistency watermark; retry/replay reconciles original outcomes after recovery. |
 | Observability | Migration/rebuild/restore progress and invariant violations with safe counts. |
 | Rollout/rollback | Expand/migrate/cutover/compatibility/contract; rollback prior readers without deleting new data. |
 | Targeted tests | Empty/current/partial/repeated migration, mixed versions, rollback, isolated restore, RLS, dedup replay, outbox, erasure/hold/backups, cross-env import denial. |
@@ -1197,10 +1220,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Existing contract, integration, browser, recovery, security, data, and environment test runners. |
 | API/events | Verify exact candidate OpenAPI/events and backward compatibility. |
 | Data/RLS | Include cross-tenant/relationship/environment and restore/migration cases. |
+| Migration/compatibility | Qualify fresh, upgraded, mixed-version, rollback, and post-restore candidates before the compatibility window can close. |
 | Config/secrets | Injected fixtures/suffixes; no real secrets/numbers in test artifacts. |
 | Authority/security | Exact assurance, Stop, HMAC, credential, and environment negative matrix. |
 | Privacy/retention | Leakage, erasure, hold, lineage, provider obligation cases. |
-| Failure/retry/idempotency | Fault injection at each durable boundary and replay horizon. |
+| Failure/retry/idempotency/dedup/replay | Fault injection at every durable boundary, idempotency/dedup namespace, retry class, and replay horizon. |
 | Observability | Evidence links every test to CE-FIT/story/requirement and exact candidate. |
 | Rollout/rollback | Include feature disable and prior-version compatibility journeys. |
 | Targeted tests | Run all per-story commands, then the combined non-Docker CE-FIT orchestrator. |
@@ -1225,10 +1249,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Existing impact-selected ADR-050 runners and immutable candidate evidence. |
 | API/events | Same exact candidate artifacts as targeted qualification. |
 | Data/RLS | Start/migrate/restart/restore paths included where repository runner prescribes. |
+| Migration/compatibility | Container qualification exercises fresh install, upgrade/rollback compatibility, and migration watermark consistency on the complete candidate. |
 | Config/secrets | Test fixtures only; no live provider/cloud/Production authority. |
 | Authority/security | Container least privilege and secret/privacy scans. |
 | Privacy/retention | Test cleanup and evidence minimization. |
-| Failure/retry/idempotency | Full-stack duplicate/replay/outage/Stop cases. |
+| Failure/retry/idempotency/dedup/replay | Full-stack retry, duplicate, dedup conflict, delayed replay, outage, and Stop cases. |
 | Observability | Container logs/traces scanned and retained with exact digest. |
 | Rollout/rollback | Qualification includes feature disable/rollback smoke. |
 | Targeted tests | Prerequisite: all story commands. Final: exact repository-prescribed Docker/Compose/E2E commands selected by impact analysis. |
@@ -1253,10 +1278,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Existing deploy/verify/cleanup/recovery/on-call patterns. |
 | API/events | Operator reconciliation uses supported APIs/events, never direct state edits. |
 | Data/RLS | Break-glass access is environment-scoped, audited, least privilege, and tested. |
+| Migration/compatibility | Runbooks cover expand/migrate/cutover/rollback/contract, mixed versions, backup compatibility, and safe retirement of prior procedures. |
 | Config/secrets | Named refs and rotation procedures; values remain Key Vault/provider only. |
 | Authority/security | Runtime/deployment/scanner/operator/Founder duties separated. |
 | Privacy/retention | Incident/evidence collection follows protected diagnostic and lifecycle policy. |
-| Failure/retry/idempotency | Procedures reconcile before retry and preserve idempotency/tombstones. |
+| Failure/retry/idempotency/dedup/replay | Procedures reconcile before retry, preserve idempotency/dedup/tombstones, and replay only through supported commands. |
 | Observability | Every alert maps to diagnosis, safe evidence, action, escalation, and closure predicate. |
 | Rollout/rollback | Environment-specific activation and rollback checklists, Production dark default. |
 | Targeted tests | Tabletop and executable rehearsal for callback loss, secret revoke, provider outage, backlog, scanner failure, CE outage Stop, restore, Demo teardown. |
@@ -1281,10 +1307,11 @@ when all dependencies and its authority gates pass.
 | Reuse | Repository PR template, prepare-pr precheck, Work Contract conventions. |
 | API/events | Bind exact candidate versions; no runtime change. |
 | Data/RLS | Bind migration/recovery acceptance and unresolved owner values. |
+| Migration/compatibility | Founder handoff binds the accepted compatibility window, migration/rollback evidence, and conditions for later contract/removal. |
 | Config/secrets | Bind configuration ownership without values. |
 | Authority/security | Founder accepts ADRs/risks and separately authorizes implementation/activation decisions. |
 | Privacy/retention | Confirm Data/Legal lifecycle decisions. |
-| Failure/retry/idempotency | Unresolved decision keeps affected stories BLOCKED. |
+| Failure/retry/idempotency/dedup/replay | Unresolved decision keeps affected stories BLOCKED; handoff resubmission is idempotent and cannot imply acceptance. |
 | Observability | Decision/evidence references only. |
 | Rollout/rollback | Work Contract states feature, migration, environment, activation and rollback limits. |
 | Targeted tests | PR/document precheck and traceability completeness. |
@@ -1475,21 +1502,26 @@ number purchase, deployment, traffic, and activation remain separately blocked.
 
 | Lens | Result |
 |---|---|
-| Fidelity to PR #498 exact reviewed head | PENDING FINAL VALIDATION |
-| Consistency with ADR status and dependencies | PENDING FINAL VALIDATION |
-| CE-FIT-01 through CE-FIT-16 coverage | PENDING FINAL VALIDATION |
-| One shared capability; no duplicate engine/history/profile | PENDING FINAL VALIDATION |
-| API/event/data/identity/context/policy completeness | PENDING FINAL VALIDATION |
-| Environment/secret/authority isolation | PENDING FINAL VALIDATION |
-| Migration/recovery/rollback feasibility | PENDING FINAL VALIDATION |
-| Operator runbook and measurable story criteria | PENDING FINAL VALIDATION |
-| Targeted tests versus final Docker sequencing | PENDING FINAL VALIDATION |
-| Explicit blockers/Founder actions and no implementation code | PENDING FINAL VALIDATION |
+| Fidelity to PR #498 exact reviewed head | PASS |
+| Consistency with ADR status and dependencies | PASS |
+| CE-FIT-01 through CE-FIT-16 coverage | PASS |
+| One shared capability; no duplicate engine/history/profile | PASS |
+| API/event/data/identity/context/policy completeness | PASS |
+| Environment/secret/authority isolation | PASS |
+| Migration/recovery/rollback feasibility | PASS |
+| Operator runbook and measurable story criteria | PASS |
+| Targeted tests versus final Docker sequencing | PASS |
+| Explicit blockers/Founder actions and no implementation code | PASS |
 
 ### 24.2 Findings And Corrections
 
-Author review is performed after repository validation. Every finding will be recorded here with its
-correction. The exact 40-character reviewed commit and final PASS/BLOCK result are bound in the
-prepared PR body after the final push; any later commit invalidates that binding.
+| Finding | Correction | Result |
+|---|---|---|
+| AR-01: story tables combined rollout/rollback with migration and did not explicitly name backward compatibility or dedup/replay in every story | Added `Migration/compatibility` and `Failure/retry/idempotency/dedup/replay` to all 27 stories and strengthened story-specific predicates | RESOLVED |
+| AR-02: overview called the merged enterprise package “accepted,” which could be read as ADR acceptance | Changed the wording to “merged”; retained the explicit proposed-ADR and blocked-handoff statements | RESOLVED |
 
-**Current result:** PENDING.
+The exact 40-character reviewed commit and final PASS result are bound in the prepared PR body after
+the final push; any later commit invalidates that binding.
+
+**Current result:** PASS for the draft solution package. Implementation handoff remains BLOCKED by
+Section 21 and the Record Control blocking rule.
