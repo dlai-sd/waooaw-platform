@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-120
 contract_path: work-contracts/WC-120-conversation-engine-whatsapp-implementation.md
-contract_digest: 8c6dae57c1565597b684c22c811c73515b2e9bd0a594ac8320d645bc0c312a0c
+contract_digest: 19e948086eb0ec08d18b7d0537d1f6d01a476542962a0a1e2d5ba5e0d5251af4
 solution_path: architecture/reference/components/conversation-engine-whatsapp-solution-work-component.md
 solution_digest: 224d8f43f2a46e810eb5b13aac35570b6f0ebcda
 api_path: architecture/reference/api-specs/channel-neutral-conversation-business-platform.openapi.yaml

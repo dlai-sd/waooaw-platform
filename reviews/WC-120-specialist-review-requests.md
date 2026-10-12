@@ -24,8 +24,8 @@ pre-recorded here.
 
 | Record | Scope and original disposition | Use in WC-120 |
 |---|---|---|
-| [R-146 Security review](../reviews/R-146-conversation-engine-whatsapp-security-review.md) | One-pass review of the PR #498 enterprise architecture; original verdict `CHANGES REQUIRED`. | Input constraints. PR #498 §27 maps author repairs; it is not a post-repair Security approval or a review of WC-120. |
-| [R-147 Data review](../reviews/R-147-conversation-engine-whatsapp-data-review.md) | One-pass review of the PR #498 enterprise architecture; original verdict `CHANGES REQUIRED`. | Input constraints. PR #498 §27 maps author repairs; it is not a post-repair Data approval or a review of WC-120. |
+| [R-146 Security review](./R-146-conversation-engine-whatsapp-security-review.md) | One-pass review of the PR #498 enterprise architecture; original verdict `CHANGES REQUIRED`. | Input constraints. PR #498 §27 maps author repairs; it is not a post-repair Security approval or a review of WC-120. |
+| [R-147 Data review](./R-147-conversation-engine-whatsapp-data-review.md) | One-pass review of the PR #498 enterprise architecture; original verdict `CHANGES REQUIRED`. | Input constraints. PR #498 §27 maps author repairs; it is not a post-repair Data approval or a review of WC-120. |
 
 The downstream office contributions requested below remain necessary. The PR #498 reviews
 do not substitute for them.

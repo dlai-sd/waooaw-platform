@@ -159,7 +159,7 @@ replaced candidate operations. A duplicate owner or incompatible wire contract i
 the Platform IT Expert must not choose a successor or perform migration by inference.
 
 This Work Contract requests one-pass, write-access review and bounded owner contribution from
-the required offices listed in [WC-120-expert-review-requests.md](./WC-120-expert-review-requests.md):
+the required offices listed in [WC-120 specialist review requests](../reviews/WC-120-specialist-review-requests.md):
 Data Architect, Security Architect, Platform Architect, AI Architect, Product Owner, and Test
 Champion. Each office must return a scoped disposition with exact finding IDs and contract
 locations, or explicitly record no findings. The Chief Solution Architect repairs accepted
