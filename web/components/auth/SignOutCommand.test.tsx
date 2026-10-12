@@ -44,7 +44,10 @@ it('clears WAOOAW protected state before ending the session', () => {
 });
 
 it('revokes prior server sessions before requesting a different Keycloak account', async () => {
-  const fetchMock = jest.fn().mockResolvedValue({ ok: true });
+  const fetchMock = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ logoutPath: '/api/auth/keycloak-logout?nonce=switch' }),
+  });
   const navigate = jest.fn();
   Object.defineProperty(globalThis, 'fetch', { configurable: true, value: fetchMock });
   sessionStorage.setItem('waooaw:relationship:draft', 'prior customer text');
@@ -56,23 +59,29 @@ it('revokes prior server sessions before requesting a different Keycloak account
   expect(localStorage.getItem('waooaw:conversation:relationship-b:draft')).toBeNull();
   expect(localStorage.getItem('waooaw:identity:session-change')).toBeNull();
   expect(localStorage.getItem('unrelated-preference')).toBe('retain');
-  expect(fetchMock).toHaveBeenCalledWith('/api/identity/sessions', expect.objectContaining({ method: 'DELETE' }));
-  await waitFor(() => expect(navigate).toHaveBeenCalledWith('/login?returnTo=%2Fhome&switch=1'));
-  expect(signOut).toHaveBeenCalledWith({ redirect: false });
+  expect(fetchMock).toHaveBeenCalledWith('/api/auth/keycloak-logout', {
+    method: 'POST',
+    headers: { Accept: 'application/json' },
+  });
+  await waitFor(() => expect(navigate).toHaveBeenCalledWith('/api/auth/keycloak-logout?nonce=switch'));
+  expect(signOut).not.toHaveBeenCalled();
 });
 
-it.each([401, 403])('switches account when prior backend authority is already absent (%s)', async (status) => {
+it('switches account when the logout boundary reports a valid continuation', async () => {
   const navigate = jest.fn();
   Object.defineProperty(globalThis, 'fetch', {
     configurable: true,
-    value: jest.fn().mockResolvedValue({ ok: false, status }),
+    value: jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ logoutPath: '/api/auth/keycloak-logout?nonce=without-local-authority' }),
+    }),
   });
   render(<AccountSwitchCommand label="Switch account" navigate={navigate} />);
 
   fireEvent.click(screen.getByRole('button', { name: 'Switch account' }));
 
-  await waitFor(() => expect(signOut).toHaveBeenCalledWith({ redirect: false }));
-  expect(navigate).toHaveBeenCalledWith('/login?returnTo=%2Fhome&switch=1');
+  await waitFor(() => expect(navigate).toHaveBeenCalledWith('/api/auth/keycloak-logout?nonce=without-local-authority'));
+  expect(signOut).not.toHaveBeenCalled();
 });
 
 it('does not launch account selection when prior-session revocation fails', async () => {

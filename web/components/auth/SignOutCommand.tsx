@@ -1,9 +1,11 @@
 'use client';
 
 // Implements: architecture/reference/ux/hybrid-ui-acceptance-contract.md §UX-PWA-04
+// Implements: work-contracts/WC-119-auth-session-account-switch-recovery.md WC119-R002, WC119-R005
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import { beginAuthTransition, recordAuthTransition } from '@/lib/auth-transition';
+import { requestKeycloakLogout } from '@/lib/keycloak-logout';
 import { LogOut, RefreshCw } from 'lucide-react';
 import { signOut as nextAuthSignOut } from 'next-auth/react';
 import { useState } from 'react';
@@ -40,22 +42,7 @@ export function SignOutCommand({
     clearProtectedClientState();
     announceIdentitySessionChange('SIGN_OUT');
     try {
-      const response = await fetch('/api/auth/keycloak-logout', {
-        method: 'POST',
-        headers: { Accept: 'application/json' },
-      });
-      if (!response.ok) throw new Error('Sign out request was denied.');
-      const result: unknown = await response.json();
-      if (
-        !result ||
-        typeof result !== 'object' ||
-        !('logoutPath' in result) ||
-        typeof result.logoutPath !== 'string' ||
-        !result.logoutPath.startsWith('/api/auth/keycloak-logout?nonce=')
-      ) {
-        throw new Error('Sign out response was invalid.');
-      }
-      navigate(result.logoutPath);
+      navigate(await requestKeycloakLogout());
     } catch {
       try {
         await nextAuthSignOut({ callbackUrl: '/' });
@@ -101,16 +88,7 @@ export function AccountSwitchCommand({
     beginAuthTransition();
     recordAuthTransition('ACCOUNT_SWITCH_REQUESTED', 'CUSTOMER_REQUESTED', 'UNKNOWN');
     try {
-      const response = await fetch('/api/identity/sessions', {
-        method: 'DELETE',
-        headers: { 'Idempotency-Key': crypto.randomUUID() },
-      });
-      if (!response.ok && response.status !== 401 && response.status !== 403) {
-        throw new Error('Session revocation was not confirmed.');
-      }
-      await nextAuthSignOut({ redirect: false });
-      recordAuthTransition('BROKER_REDIRECT_REQUESTED', 'OK', 'UNKNOWN');
-      navigate('/login?returnTo=%2Fhome&switch=1');
+      navigate(await requestKeycloakLogout());
     } catch {
       recordAuthTransition('ACCOUNT_SWITCH_FAILED', 'SESSION_REVOCATION_UNCONFIRMED', 'UNKNOWN');
       setSwitching(false);

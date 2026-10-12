@@ -1,0 +1,84 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-119
+contract_digest: 9cbb70dc53ad31dbe03b2480b4ee99fe7937d09aa067811a4e476dfad862cfce
+implementation_scope: true
+result: QUALIFIED
+requirements:
+  - requirement_id: WC119-R001
+    source: Founder-provided Demo evidence and AUTH-STATE-01
+    observable_outcome: Recoverable Login denial clears stale WAOOAW and Keycloak authority before broker launch.
+    component_owner: web authentication
+    evidence_class: component-test
+    test_path_or_plan: web/lib/keycloak-logout.test.ts, web/components/auth/ProviderCommands.test.tsx, and web/components/auth/AuthViews.test.tsx
+    initial_state: expected-fail
+    dependencies: Existing nonce-bound Keycloak logout route
+    completion_rule: Recovery-mode provider selection navigates to RP logout and does not invoke NextAuth sign-in.
+    residual_risk: Real-provider acceptance requires separately authorized Demo deployment.
+    result: PASS
+    evidence_refs:
+      - ProviderCommands recovery tests PASS in Docker; denied recovery invokes nonce-bound RP logout and does not invoke NextAuth sign-in.
+  - requirement_id: WC119-R002
+    source: identity-boundary.md Section 11 and WC105-R043
+    observable_outcome: Account Switch clears both WAOOAW authority layers and the Keycloak SSO session before returning to Login.
+    component_owner: web/components/auth/SignOutCommand.tsx
+    evidence_class: component-and-route-test
+    test_path_or_plan: web/lib/keycloak-logout.test.ts, web/components/auth/SignOutCommand.test.tsx, and web/app/api/auth/keycloak-logout/route.test.ts
+    initial_state: expected-fail
+    dependencies: Business Platform revocation and Keycloak end-session endpoint
+    completion_rule: Account Switch uses the nonce-bound logout continuation and never performs local-only sign-out.
+    residual_risk: Browser/provider completion requires separately authorized Demo deployment.
+    result: PASS
+    evidence_refs:
+      - SignOutCommand and Keycloak logout route tests PASS in Docker; Account Switch uses the nonce-bound RP logout continuation.
+  - requirement_id: WC119-R003
+    source: Environment identity manifests and identity-boundary.md Section 11
+    observable_outcome: RP logout returns only to the exact same-origin Login route.
+    component_owner: web logout route and workload identity configuration
+    evidence_class: route-and-static-test
+    test_path_or_plan: web/app/api/auth/keycloak-logout/route.test.ts and infrastructure Terraform checks
+    initial_state: expected-fail
+    dependencies: Existing Keycloak client registration
+    completion_rule: Route and workload configuration agree on /login and reject arbitrary return targets.
+    residual_risk: Configuration takes effect only after separately authorized deployment.
+    result: PASS
+    evidence_refs:
+      - Keycloak logout route tests and Terraform fmt/contract tests PASS; route and workload configuration use the exact same-origin /login target.
+  - requirement_id: WC119-R004
+    source: WC105-R001 and WC105-R028
+    observable_outcome: Clean provider launches remain direct and provider-specific parameters remain unchanged.
+    component_owner: web/components/auth/ProviderCommands.tsx
+    evidence_class: component-test
+    test_path_or_plan: web/components/auth/ProviderCommands.test.tsx
+    initial_state: existing-pass
+    dependencies: Existing NextAuth broker providers
+    completion_rule: Google and Facebook direct-launch tests pass outside recovery mode.
+    residual_risk: External provider UI remains provider-controlled.
+    result: PASS
+    evidence_refs:
+      - ProviderCommands direct Google and Facebook launch regressions PASS in the 341-test full Web Docker suite.
+  - requirement_id: WC119-R005
+    source: C-049 and WC105-R043
+    observable_outcome: Failed revocation or logout cannot be represented as a successful broker transition.
+    component_owner: web authentication
+    evidence_class: failure-path-test
+    test_path_or_plan: SignOutCommand, ProviderCommands, and logout-route failure tests
+    initial_state: existing-pass
+    dependencies: Existing typed failure UI
+    completion_rule: Failure assertions pass and broker sign-in/navigation remains absent.
+    residual_risk: Upstream provider outages remain external.
+    result: PASS
+    evidence_refs:
+      - ProviderCommands, SignOutCommand, and logout-route failure-path tests PASS in Docker.
+  - requirement_id: WC119-R006
+    source: C-059, C-065, and C-080
+    observable_outcome: The bounded final candidate passes Docker validation and exact-head author review.
+    component_owner: WC-119 delivery
+    evidence_class: docker-and-pr
+    test_path_or_plan: Focused Jest, impacted Web checks, prepare_pr_body.py, and author review
+    initial_state: new
+    dependencies: WC119-R001 through WC119-R005
+    completion_rule: All required checks pass and the unmerged PR is ready for Founder review.
+    residual_risk: Live Demo qualification remains separate.
+    result: PASS
+    evidence_refs:
+      - "Docker evidence: focused auth helper and transition tests PASS; full Web suite and 90 percent coverage gate PASS; TypeScript and ESLint PASS; production image build PASS; Terraform contract 68/68 PASS; terraform fmt PASS."

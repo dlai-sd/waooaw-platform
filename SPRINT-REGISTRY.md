@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-10-07 · **Version:** 1.45.0 · **Work Contracts:** 104 recorded (87 closed · 17 active · 1 blocked)
+**Last Updated:** 2026-10-12 · **Version:** 1.45.0 · **Work Contracts:** 105 recorded (87 closed · 18 active · 1 blocked)
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -37,6 +37,7 @@ constitutional-repair record. Agents must select the record by title and Goal, n
 | **WC-113** | Conversational Employment Workspace And Agent Conformance | Enterprise Architecture and downstream handoff | EA PACKAGE PASS · FOUNDER REVIEW PENDING · IMPLEMENTATION AND PROTOCOL ACTIVATION UNAUTHORIZED | Founder requirements · AEEC · Conversation Core · Relationship Workspace · ADR-035 · C-034/C-039/C-094 | Defines the universal three-phase conversational employment interface, visual workboard, readiness gates, all-agent conformance migration, DMA proof and downstream office plan |
 | **WC-114** | Conversational Employment Solution Contract | Solution Architecture and specialist closure | FOUNDER-ACCEPTED CANDIDATE 2 · IMPLEMENTATION AUTHORIZED UNDER WC-115 · PROTOCOL ACTIVATION UNAUTHORIZED | WC-113 §11.1 · ADR-051 · Conversation Core · Relationship Workspace | Closes Data/Security/AI/Product profiles and repairs calendar, authentication, command/replay, AIR, Stop-fitness and mixed-major candidate contracts |
 | **WC-115** | Conversational Employment Protocol Implementation | Platform IT Expert implementation handoff | FOUNDER-AUTHORIZED FOR IMPLEMENTATION · PROTOCOL ACTIVATION AND DEPLOYMENT UNAUTHORIZED | WC-114 candidate.2 · ADR-051 · five candidate OpenAPI contracts · specialist profile | Atomizes the existing-deployable implementation, generated-client ownership, state, reconciliation, privacy-safe failures, Docker-only evidence, rollback and hard stops |
+| **WC-119** | Authentication Session Account-Switch Recovery | Bounded identity defect repair | IMPLEMENTATION CANDIDATE QUALIFIED · FOUNDER REVIEW PENDING · DEPLOYMENT UNAUTHORIZED | Identity Boundary §11 · AUTH-STATE-01 · WC105-R028/R043/R044 · Azure Demo evidence | Clears stale WAOOAW and Keycloak authority through nonce-bound RP logout before a different broker actor can authenticate; preserves fail-closed mismatch protection |
 
 ### Parked Owner Contracts From Delivered WC-084
 

@@ -45,7 +45,7 @@ describe('Keycloak logout route', () => {
     );
     expect(location.searchParams.get('id_token_hint')).toBe('server-held-id-token');
     expect(location.searchParams.get('client_id')).toBe('waooaw-web');
-    expect(location.searchParams.get('post_logout_redirect_uri')).toBe('https://app.example/');
+    expect(location.searchParams.get('post_logout_redirect_uri')).toBe('https://app.example/login');
     expect(response.headers.get('set-cookie')).toContain('next-auth.session-token=;');
     expect(response.headers.get('set-cookie')).toContain('__Host-next-auth.csrf-token=;');
     expect(response.headers.get('set-cookie')).toContain('next-auth.callback-url=;');
@@ -194,7 +194,7 @@ describe('Keycloak logout route', () => {
     );
 
     expect(new URL(requiredHeader(response, 'location')).searchParams.get('post_logout_redirect_uri')).toBe(
-      'https://app.example/'
+      'https://app.example/login'
     );
   });
 });

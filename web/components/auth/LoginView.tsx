@@ -1,6 +1,7 @@
 // Implements: work-contracts/WC-083-route-backed-auth-dialog.md §Milestone 1
 // Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R002
 // Implements: work-contracts/WC-107-requirements.yaml WC107-R001, WC107-R008
+// Implements: work-contracts/WC-119-auth-session-account-switch-recovery.md WC119-R001
 // Implements: architecture/reference/ux/wc-105-authentication-flow-defect-remediation-plan.md AUTH-UI-03
 // Constitutional basis: C-059 (Implementation Traceability)
 
@@ -38,7 +39,12 @@ export async function LoginView({ searchParams }: { searchParams?: Promise<{ ret
         </div>
       ) : null}
       <div aria-hidden="true" className="auth-provider-status auth-provider-status-ready" />
-      <ProviderCommands callbackUrl={callbackUrl} intent="login" providers={providers} />
+      <ProviderCommands
+        callbackUrl={callbackUrl}
+        intent="login"
+        providers={providers}
+        resetSessionBeforeLaunch={recovery !== undefined}
+      />
       <p className="auth-switch">
         Don&apos;t have an account? <Link href={`/register?returnTo=${encodeURIComponent(returnTo)}`}>Register</Link>
       </p>

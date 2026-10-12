@@ -140,7 +140,7 @@ locals {
         webOrigins = [local.service_urls.web]
         attributes = {
           "pkce.code.challenge.method" = "S256"
-          "post.logout.redirect.uris"  = "${local.service_urls.web}/"
+          "post.logout.redirect.uris"  = "${local.service_urls.web}/login"
         }
         protocolMappers = [
           {
@@ -223,7 +223,7 @@ locals {
         webOrigins = [var.auth_preview_origin]
         attributes = {
           "pkce.code.challenge.method" = "S256"
-          "post.logout.redirect.uris"  = "${var.auth_preview_origin}/"
+          "post.logout.redirect.uris"  = "${var.auth_preview_origin}/login"
         }
         protocolMappers = [
           {

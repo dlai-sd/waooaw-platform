@@ -1,4 +1,5 @@
 // Implements: architecture/reference/components/identity-boundary.md §11 Sign-out and account switch
+// Implements: work-contracts/WC-119-auth-session-account-switch-recovery.md WC119-R002, WC119-R003
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import { getToken } from 'next-auth/jwt';
@@ -31,7 +32,7 @@ async function keycloakLogoutUrl(request: NextRequest, applicationOrigin: string
   const issuer = new URL(process.env.KEYCLOAK_ISSUER ?? 'http://localhost:8080/realms/waooaw');
   const logout = new URL(`${issuer.toString().replace(/\/$/, '')}/protocol/openid-connect/logout`);
   logout.searchParams.set('client_id', process.env.KEYCLOAK_CLIENT_ID ?? 'waooaw-web');
-  logout.searchParams.set('post_logout_redirect_uri', new URL('/', applicationOrigin).toString());
+  logout.searchParams.set('post_logout_redirect_uri', new URL('/login', applicationOrigin).toString());
   if (typeof token?.idToken === 'string') logout.searchParams.set('id_token_hint', token.idToken);
   return logout;
 }

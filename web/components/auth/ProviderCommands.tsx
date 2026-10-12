@@ -2,14 +2,17 @@
 
 // Implements: work-contracts/WC-099-demo-customer-journey-and-application-shell-remediation.md §5.1 Identity And Disclosure
 // Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R001
+// Implements: work-contracts/WC-119-auth-session-account-switch-recovery.md WC119-R001, WC119-R004, WC119-R005
 // Implements: architecture/reference/ux/wc-105-authentication-flow-defect-remediation-plan.md AUTH-UI-02
 // Constitutional basis: C-049 (Honest Limitation), C-063 (Data Minimisation)
 
-import { useEffect, useState } from 'react';
-import { FaApple, FaEnvelope, FaFacebookF, FaGoogle } from 'react-icons/fa6';
-import { signIn } from 'next-auth/react';
 import type { IdentityProvider } from '@/lib/api/generated/models/IdentityProvider';
 import { recordAuthTransition } from '@/lib/auth-transition';
+import { requestKeycloakLogout } from '@/lib/keycloak-logout';
+import { signIn } from 'next-auth/react';
+import { useEffect, useState } from 'react';
+import { FaApple, FaEnvelope, FaFacebookF, FaGoogle } from 'react-icons/fa6';
+import { clearProtectedClientState } from './SignOutCommand';
 
 const nextAuthProvider = {
   GOOGLE: 'keycloak-google',
@@ -50,12 +53,16 @@ export function ProviderCommands({
   providers,
   readinessPending = false,
   reload = () => window.location.reload(),
+  resetSessionBeforeLaunch = false,
+  navigate,
 }: {
   callbackUrl: string;
   intent: ProviderIntent;
   providers: IdentityProvider[];
   readinessPending?: boolean;
   reload?: () => void;
+  resetSessionBeforeLaunch?: boolean;
+  navigate?: (path: string) => void;
 }) {
   const [pendingProvider, setPendingProvider] = useState<string>();
   const [launchFailure, setLaunchFailure] = useState<string>();
@@ -76,8 +83,16 @@ export function ProviderCommands({
     if (!isActionable(provider) || !supportsNextAuth(provider.id)) return;
     setLaunchFailure(undefined);
     setPendingProvider(provider.id);
-    recordAuthTransition('BROKER_REDIRECT_REQUESTED', 'OK', provider.id);
     try {
+      if (resetSessionBeforeLaunch) {
+        recordAuthTransition('ACCOUNT_SWITCH_REQUESTED', 'SESSION_RECOVERY', provider.id);
+        const logoutPath = await requestKeycloakLogout();
+        clearProtectedClientState();
+        if (navigate) navigate(logoutPath);
+        else window.location.assign(logoutPath);
+        return;
+      }
+      recordAuthTransition('BROKER_REDIRECT_REQUESTED', 'OK', provider.id);
       await signIn(
         nextAuthProvider[provider.id],
         { callbackUrl },
