@@ -1,0 +1,88 @@
+schema: waooaw.product-acceptance-matrix/v1
+work_contract: WC-120
+status: PENDING_PRODUCT_OWNER_CONFIRMATION
+authority:
+  product_owner:
+    owns:
+      - approved customer copy and next actions
+      - supported locales and readability profile
+      - customer consent journey
+      - customer-visible service-window/template outcomes
+      - voice correction and send-confirmation journey
+      - accessible presentation of stale, blocked, unavailable, and Stop states
+  business_platform:
+    owns:
+      - eligibility enforcement and zero-dispatch behavior
+      - canonical conversation and customer-visible status projection
+  security_data_platform:
+    owns:
+      - their security, data lifecycle, provider, and infrastructure controls
+      - no product matrix entry grants their authority
+closure_rule: >-
+  Product Owner must accept every journey and provide approved copy, supported-locale and
+  accessibility values before the affected journey is implementation-ready. Security,
+  Data, Platform, or Founder decisions remain with those owners; unresolved values block the
+  affected capability rather than becoming implementer defaults.
+
+decision_register:
+  - id: PRODUCT-01
+    decision: Supported locales, plain-language/readability expectations, and text/audio parity.
+    owner: Product Owner with Security/Data input where applicable
+    status: PENDING
+    stop: Do not claim supported-language or voice accessibility until accepted.
+  - id: PRODUCT-02
+    decision: Consent acquisition, withdrawal, and customer-visible re-consent/alternate-channel journey.
+    owner: Product Owner; BP enforces current consent; Legal/Founder owns material rights decisions.
+    status: PENDING
+    stop: Missing or withdrawn consent always blocks outbound dispatch.
+  - id: PRODUCT-03
+    decision: Supported media types/sizes/locales and customer-visible unsupported-media response.
+    owner: Product, Security, and Data
+    status: PENDING
+    stop: Media activation is blocked until all owners accept their part.
+  - id: PRODUCT-04
+    decision: Approved wording and next action for service-window expiry, template rejection/version mismatch, and retry boundaries.
+    owner: Product Owner; BP enforces eligibility; provider/platform constraints remain external-owner inputs.
+    status: PENDING
+    stop: No template substitution or dispatch while eligibility is unknown or rejected.
+  - id: PRODUCT-05
+    decision: Accessible labels, keyboard/focus/screen-reader behavior, non-color state presentation, and Stop reachability.
+    owner: Product Owner with Web/Test Champion
+    status: PENDING
+    stop: Affected customer journey is not accepted without accessible-state evidence.
+
+journeys:
+  - id: consent
+    trigger_states: [MISSING, ACTIVE, WITHDRAWN, UNKNOWN]
+    invariant: Outbound dispatch requires current affirmative consent and approved eligibility.
+    visible_state_and_next_action: Product Owner must approve the opt-in, wait, or alternate-channel outcome for each non-active state.
+    approved_copy: PENDING_PRODUCT_OWNER
+    oracle: CE-FIT-10 consent-positive and consent-denial cases; denied cases produce zero dispatch.
+    status: PENDING_PRODUCT_OWNER_CONFIRMATION
+  - id: service_window_and_template
+    trigger_states: [WINDOW_OPEN, WINDOW_EXPIRED, TEMPLATE_APPROVED, TEMPLATE_REJECTED, TEMPLATE_VERSION_MISMATCH, UNKNOWN]
+    invariant: No dispatch occurs outside the approved service-window/template rules.
+    visible_state_and_next_action: Product Owner must approve boundary, rejection, mismatch, and retry messaging and permitted next action.
+    approved_copy: PENDING_PRODUCT_OWNER
+    oracle: CE-FIT-10 inside/outside-window and approved/rejected/version-mismatch matrix; boundary races fail closed.
+    status: PENDING_PRODUCT_OWNER_CONFIRMATION
+  - id: voice_and_media
+    states: [RECEIVED, QUARANTINED, SCANNING, TRANSCRIBING, TRANSCRIPT_FOR_REVIEW, CORRECTED, CONFIRMED_AND_SEND_CONSENTED, SUBMITTED, UNAVAILABLE, CANCELLED]
+    invariant: No unscanned media is reasoned over; no transcript or corrected contribution is submitted before explicit customer confirmation and send consent.
+    visible_state_and_next_action: Product Owner must approve correction, confirm, cancel, low-confidence, scanner-unavailable, transcription-unavailable, and resend outcomes.
+    approved_copy: PENDING_PRODUCT_OWNER
+    oracle: CE-FIT-11 scan/correction/consent cases; failure and cancellation create no consequential submission.
+    status: PENDING_PRODUCT_OWNER_CONFIRMATION
+  - id: accessibility_and_low_literacy
+    dimensions: [locale, readability, text_audio_parity, accessible_label, keyboard_focus, screen_reader, non_color_state, stop_reachability]
+    invariant: Unknown, stale, blocked, and unavailable remain distinct; Stop remains reachable and state meaning is not conveyed by color alone.
+    accepted_values_and_evidence: PENDING_PRODUCT_OWNER_AND_TEST_CHAMPION
+    oracle: WC-115 Section 7.4 product-truth controls; Product Owner and Test Champion must add and accept direct accessible-journey test oracles before implementation.
+    status: PENDING_PRODUCT_OWNER_CONFIRMATION
+  - id: stale_ambiguous_or_degraded_context
+    trigger_states: [STALE, AMBIGUOUS, BLOCKED, AIR_UNAVAILABLE, CE_UNAVAILABLE, PROVIDER_UNAVAILABLE]
+    invariant: No synthetic success, consequential execution, or hidden channel-based downgrade.
+    visible_state_and_next_action: Product Owner must approve customer-safe explanation and next action; owner-defined authority and Stop rules remain controlling.
+    approved_copy: PENDING_PRODUCT_OWNER
+    oracle: CE-FIT-02/03/07/13; state transitions remain truthful and unauthorized work is not dispatched.
+    status: PENDING_PRODUCT_OWNER_CONFIRMATION

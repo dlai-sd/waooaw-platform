@@ -1,0 +1,123 @@
+schema: waooaw.ce-fitness-evidence-matrix/v1
+work_contract: WC-120
+source: PR #498 enterprise architecture Section 17
+status: PENDING_TEST_CHAMPION_SELECTION
+candidate_manifest: test-results/wc120/candidate-manifest.json
+selection_gate: >-
+  The Test Champion must replace every PENDING_TEST_CHAMPION selector with exact
+  repository-native commands and test node IDs, validate the source oracle and evidence
+  destination, and bind the result to CSA-CEWA-001 before implementation starts.
+candidate_binding:
+  required_fields:
+    - source_commit
+    - solution_package_digest
+    - api_contract_digest
+    - image_digest
+    - schema_version_and_migration_watermark
+    - configuration_and_feature_flag_versions
+    - targeted_test_results
+    - recovery_test_results
+    - ce_fitness_results
+    - final_docker_qualification
+  invalidation: >-
+    Any relevant source, image, schema, migration, configuration, or feature-flag change
+    invalidates affected tests and qualification evidence; rerun the affected targeted
+    selectors and final candidate qualification.
+
+fitness_items:
+  - id: CE-FIT-01
+    stories: [CSA-CEWA-007, CSA-CEWA-021]
+    oracle: Web-to-WhatsApp-to-Web retains relationship, conversation, message, sequence, plan, and authority identity.
+    negative_or_boundary_oracle: Handoff or channel resumption cannot create a second canonical conversation or expand authority.
+    test_selectors: PENDING_TEST_CHAMPION
+    evidence_location: test-results/wc120/CE-FIT-01/
+  - id: CE-FIT-02
+    stories: [CSA-CEWA-004, CSA-CEWA-008]
+    oracle: Registered context resolves only from authenticated identity and current server-owned state.
+    negative_or_boundary_oracle: Forged/unknown context keys and cross-subject references produce zero mutation and no disclosure.
+    test_selectors: PENDING_TEST_CHAMPION
+    evidence_location: test-results/wc120/CE-FIT-02/
+  - id: CE-FIT-03
+    stories: [CSA-CEWA-004, CSA-CEWA-006]
+    oracle: Decision Space, plan, or profile source-version changes stale affected context before the next execution.
+    negative_or_boundary_oracle: Stale source versions cannot execute under an apparently current context.
+    test_selectors: PENDING_TEST_CHAMPION
+    evidence_location: test-results/wc120/CE-FIT-03/
+  - id: CE-FIT-04
+    stories: [CSA-CEWA-005, CSA-CEWA-021]
+    oracle: The same confirmed context and policy produce semantically equivalent recommendations across Web and WhatsApp.
+    negative_or_boundary_oracle: Channel presentation differences cannot change recommendation authority, policy, or outcome.
+    test_selectors: PENDING_TEST_CHAMPION
+    evidence_location: test-results/wc120/CE-FIT-04/
+  - id: CE-FIT-05
+    stories: [CSA-CEWA-005, CSA-CEWA-006]
+    oracle: The approved corpus detects questions that repeat current confirmed facts and reports each violation.
+    negative_or_boundary_oracle: Known confirmed facts are not re-asked as unknown; inference is not treated as confirmation.
+    test_selectors: PENDING_TEST_CHAMPION
+    evidence_location: test-results/wc120/CE-FIT-05/
+  - id: CE-FIT-06
+    stories: [CSA-CEWA-005]
+    oracle: Material conversations contain required conclusion fields or a typed reason indicating continuation.
+    negative_or_boundary_oracle: An incomplete interaction cannot be represented as concluded or successful.
+    test_selectors: PENDING_TEST_CHAMPION
+    evidence_location: test-results/wc120/CE-FIT-06/
+  - id: CE-FIT-07
+    stories: [CSA-CEWA-003, CSA-CEWA-010, CSA-CEWA-014]
+    oracle: Acceptance, provider delivery/read, professional execution, customer decision, and constitutional evidence transition independently.
+    negative_or_boundary_oracle: A transport observation cannot imply execution completion, customer decision, or CE evidence.
+    test_selectors: PENDING_TEST_CHAMPION
+    evidence_location: test-results/wc120/CE-FIT-07/
+  - id: CE-FIT-08
+    stories: [CSA-CEWA-003, CSA-CEWA-007, CSA-CEWA-010, CSA-CEWA-012]
+    oracle: The same protected intent submitted concurrently across Web and WhatsApp commits at most once.
+    negative_or_boundary_oracle: Idempotent replay returns the prior outcome; divergent key reuse or a race creates no second mutation.
+    test_selectors: PENDING_TEST_CHAMPION
+    evidence_location: test-results/wc120/CE-FIT-08/
+  - id: CE-FIT-09
+    stories: [CSA-CEWA-009, CSA-CEWA-010]
+    oracle: Webhook challenge predicates and raw-byte HMAC validation accept authentic requests and reject modified, oversized, malformed, wrong-recipient, or wrong-environment requests before mutation.
+    negative_or_boundary_oracle: Concurrent claim, stale/fresh delivery, and delayed accepted retry preserve one durable outcome without duplicate effects.
+    test_selectors: PENDING_TEST_CHAMPION
+    evidence_location: test-results/wc120/CE-FIT-09/
+  - id: CE-FIT-10
+    stories: [CSA-CEWA-013]
+    oracle: Inside/outside service-window and approved/rejected/version-mismatched template cases produce deterministic eligibility.
+    negative_or_boundary_oracle: Expiry, withdrawal, rejection, or version mismatch causes zero dispatch and the Product-approved next action.
+    test_selectors: PENDING_TEST_CHAMPION
+    evidence_location: test-results/wc120/CE-FIT-10/
+  - id: CE-FIT-11
+    stories: [CSA-CEWA-015]
+    oracle: Supported media is scanned and accepted only after clean verdict and the approved voice correction/send-consent flow.
+    negative_or_boundary_oracle: MIME/signature mismatch, archive/polyglot/active format, resource expansion, malware, scanner timeout/error, expired URL, low confidence, and correction cases fail safely.
+    test_selectors: PENDING_TEST_CHAMPION
+    evidence_location: test-results/wc120/CE-FIT-11/
+  - id: CE-FIT-12
+    stories: [CSA-CEWA-018, CSA-CEWA-019, CSA-CEWA-020]
+    oracle: Demo, UAT, and Production credentials, numbers, hosts, and state remain environment-specific.
+    negative_or_boundary_oracle: Cross-environment identities and credentials are rejected without fallback or mutation.
+    test_selectors: PENDING_TEST_CHAMPION
+    evidence_location: test-results/wc120/CE-FIT-12/
+  - id: CE-FIT-13
+    stories: [CSA-CEWA-016]
+    oracle: Typed Stop blocks consequential contexts across channels within the accepted existing latency budget.
+    negative_or_boundary_oracle: Stop remains effective during CE outage, duplicate delivery, simultaneous channels, adapter restart, and WhatsApp release attempt.
+    test_selectors: PENDING_TEST_CHAMPION
+    evidence_location: test-results/wc120/CE-FIT-13/
+  - id: CE-FIT-14
+    stories: [CSA-CEWA-015, CSA-CEWA-017]
+    oracle: Automated success- and failure-path scans find no prohibited identity, payload, header, signature, prompt, transcript, media, or secret data in telemetry and dead letters.
+    negative_or_boundary_oracle: Framework errors, retry queues, scanner failures, and trace propagation cannot leak protected data.
+    test_selectors: PENDING_TEST_CHAMPION
+    evidence_location: test-results/wc120/CE-FIT-14/
+  - id: CE-FIT-15
+    stories: [CSA-CEWA-022]
+    oracle: A second generated client consumes the shared public contract without server semantic changes.
+    negative_or_boundary_oracle: Mobile presentation cannot introduce channel-specific authority or bypass BP.
+    test_selectors: PENDING_TEST_CHAMPION
+    evidence_location: test-results/wc120/CE-FIT-15/
+  - id: CE-FIT-16
+    stories: [CSA-CEWA-018]
+    oracle: Authorized Demo teardown proves callback disabled, temporary state handled, and UAT/Production bindings unchanged.
+    negative_or_boundary_oracle: Teardown is denied while unresolved provider work, replay horizon, legal hold, or erasure propagation remains open.
+    test_selectors: PENDING_TEST_CHAMPION
+    evidence_location: test-results/wc120/CE-FIT-16/

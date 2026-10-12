@@ -1,0 +1,378 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-120
+contract_path: work-contracts/WC-120-conversation-engine-whatsapp-implementation.md
+contract_digest: 7213dfc82b9a6c11663951a1f275109552035d9e5323ac2104d4be4adb363990
+solution_path: architecture/reference/components/conversation-engine-whatsapp-solution-work-component.md
+solution_digest: 224d8f43f2a46e810eb5b13aac35570b6f0ebcda
+api_path: architecture/reference/api-specs/channel-neutral-conversation-business-platform.openapi.yaml
+contract_status: FOUNDER_ADR_ACCEPTED_CROSSWALK_SPEC_CLOSURE_AND_SPECIALIST_REVIEWS_PENDING_IMPLEMENTATION_UNAUTHORIZED
+implementation_scope: true
+result: PLANNED
+candidate_scope: CHANNEL_NEUTRAL_CONVERSATION_WHATSAPP_DEFAULT_OFF_NO_EXTERNAL_ACTION
+completion_rule: >-
+  Every requirement must pass its direct repository-owned oracle on the applicable exact candidate.
+  The Core/WC-114/WC-115 crosswalk, seven PR #499 contract findings, and required specialist
+  dispositions must be closed before implementation; deployment, provider actions, traffic,
+  Production, and activation remain separately authorized decisions.
+
+requirement_defaults: &defaults
+  evidence_class: Repository-owned contract, implementation, journey, security, privacy, migration, or qualification evidence
+  initial_state: expected-fail
+  dependencies: Founder acceptance of exact WC-120, completed Core/WC-114/WC-115 crosswalk, closure of the PR #499 specification findings, accepted required specialist dispositions, and separate current-session implementation authorization
+  residual_risk: Implementation evidence does not authorize provider actions, deployment, external traffic, Production changes, activation, PR approval, or merge.
+  evidence_location: "test-results/wc120/<WC120-RNNN>/; exact repository-native artifact names and commands are frozen in CSA-CEWA-001 before implementation."
+  failure_and_rollback: "On oracle failure mark BLOCKED and stop dependent stories; apply the cited source-story recovery and WC-120 Section 8, preserve additive data/evidence, and do not represent external provider effects as reversed."
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC120-R001
+    source: Record Control, Sections 2 and 5; CSA-CEWA-001
+    observable_outcome: Implementation starts only from the pinned and reconciled enterprise, Core, WC-114/WC-115, and solution inputs, Founder-accepted ADR-051/052/053, accepted WC-120, validated ledger, required specialist dispositions, and explicit current-session authority.
+    component_owner: Baseline and authority control
+    test_path_or_plan: Docker preflight for exact source digests, accepted decision record, WC status, ledger digest, and authorization evidence.
+    completion_rule: Every baseline and authority predicate passes before an implementation plan or runnable change.
+
+  - <<: *defaults
+    requirement_id: WC120-R002
+    source: Sections 1 and 3; CSA-CEWA-001 through CSA-CEWA-027
+    observable_outcome: BP, PR, AIR, CE, identity, data, Web, and operations ownership remains exact; no new deployable, parallel history/profile, cross-owner write, or client authority is introduced.
+    component_owner: Cross-owner architecture and source-boundary control
+    test_path_or_plan: Impact-analysis owner/path inventory, changed-path scans, call-graph and data-writer contract tests.
+    completion_rule: Every changed path has one accepted owner and no prohibited parallel capability.
+
+  - <<: *defaults
+    requirement_id: WC120-R003
+    source: Solution Section 5; CSA-CEWA-002
+    observable_outcome: The shared API preserves one channel-neutral contract with explicit protocol, identity, authorization, versioning, limits, idempotency, errors, timeouts, retries, telemetry, and degraded behavior.
+    component_owner: BP shared conversation API
+    test_path_or_plan: OpenAPI lint/slice, generated-client build, and producer/consumer contract fixtures.
+    completion_rule: Candidate schema and fixtures agree on every advertised operation and failure contract.
+
+  - <<: *defaults
+    requirement_id: WC120-R004
+    source: Solution Sections 6.1-6.2; CSA-CEWA-003
+    observable_outcome: Canonical history, sequence allocation, transaction boundaries, idempotency domains, and transactional outbox prevent duplicate or reordered logical effects.
+    component_owner: BP canonical conversation persistence
+    test_path_or_plan: Concurrent append, sequence ordering, transaction rollback, idempotency replay/conflict, and outbox crash/restart tests.
+    completion_rule: One canonical sequence and one logical effect survive retries and process failure.
+
+  - <<: *defaults
+    requirement_id: WC120-R005
+    source: Solution Sections 8-9; CSA-CEWA-004/005
+    observable_outcome: Interaction context is server-resolved and versioned; layered policy and rendering use registered references and never accept client authority, free-form prompts, or policy content.
+    component_owner: BP context resolver and AIR policy consumer
+    test_path_or_plan: Registered/unregistered context, stale-version, hostile-client-input, policy precedence, and channel-rendering contract tests.
+    completion_rule: Only authorized server-resolved context and policy determine execution and rendering.
+
+  - <<: *defaults
+    requirement_id: WC120-R006
+    source: Solution Section 6.3; CSA-CEWA-006
+    observable_outcome: Context observations, profiles, summaries, and lineage preserve source/version, correction, privacy, retention, and authorized access semantics.
+    component_owner: BP context and data owners
+    test_path_or_plan: Source lineage, stale-version, cross-tenant, retention, correction, and erasure tests.
+    completion_rule: Every derived observation is attributable, bounded, and governed by its owner.
+
+  - <<: *defaults
+    requirement_id: WC120-R007
+    source: Solution Sections 4.1 and 7; CSA-CEWA-007
+    observable_outcome: Cross-channel continuity preserves relationship, conversation, message, sequence, and source binding; failed, expired, replayed, or reverted handoff cannot grant authority.
+    component_owner: BP identity boundary and binding persistence
+    test_path_or_plan: Web/WhatsApp/Web round trip, target-auth denial, expiry/replay, concurrent activation, version change, and revert retry tests.
+    completion_rule: Valid handoff preserves canonical identity; every denied handoff has zero authority mutation.
+
+  - <<: *defaults
+    requirement_id: WC120-R008
+    source: Solution Section 7; CSA-CEWA-008
+    observable_outcome: Identity resolution binds provider, app, recipient, participant, relationship, and environment deterministically and fails closed on zero, multiple, stale, revoked, reassigned, or mismatched matches.
+    component_owner: Phone Identity and BP identity boundary
+    test_path_or_plan: Zero/one/multiple match, replay, cross-tenant, cross-environment, stale-assurance, reassignment, and exact-intent negative matrix.
+    completion_rule: Every denial creates zero relationship, binding, or command mutation.
+
+  - <<: *defaults
+    requirement_id: WC120-R009
+    source: Solution Section 10.1; CSA-CEWA-009; review R-4248036961
+    observable_outcome: WhatsApp webhook declares application/json while exact raw bytes are authenticated before deserialization and signature freshness/app/recipient/environment checks fail closed.
+    component_owner: BP WhatsApp ingress
+    test_path_or_plan: OpenAPI content-type assertion, raw-byte HMAC tests, boundary timestamp, malformed JSON, replay, wrong app/recipient/environment tests.
+    completion_rule: Genuine provider JSON is accepted only after signature and binding checks; invalid callbacks create no mutation.
+
+  - <<: *defaults
+    requirement_id: WC120-R010
+    source: Solution Sections 10.1 and 13; CSA-CEWA-010
+    observable_outcome: Inbound claim, acknowledgement, deduplication, and replay handling are atomic, idempotent, retryable, and do not duplicate messages.
+    component_owner: BP inbox and inbound transaction
+    test_path_or_plan: Duplicate, concurrent delivery, crash-before/after-claim, delayed retry, acknowledgement loss, and replay tests.
+    completion_rule: One provider event produces at most one canonical inbound effect while valid retries remain recoverable.
+
+  - <<: *defaults
+    requirement_id: WC120-R011
+    source: Solution Sections 5 and 10; CSA-CEWA-011
+    observable_outcome: Provider payloads normalize into the accepted domain message contract without trusting provider-controlled tenant, authority, context, or policy values.
+    component_owner: BP inbound normalization
+    test_path_or_plan: Valid/invalid provider event fixtures, unknown event, malformed field, hostile context, and owner-boundary tests.
+    completion_rule: Only validated normalized fields enter canonical conversation state.
+
+  - <<: *defaults
+    requirement_id: WC120-R012
+    source: Solution Sections 10.2 and 13; CSA-CEWA-012
+    observable_outcome: Outbound work is queued and dispatched under distinct idempotency domains; timeout, crash, duplicate, reorder, and unknown outcomes reconcile safely.
+    component_owner: BP outbound queue and provider adapter
+    test_path_or_plan: Provider-emulator queue/send, duplicate key, conflicting key, timeout, restart, unknown result, and reconciliation tests.
+    completion_rule: Retries cannot create a second logical send or lose a recoverable outcome.
+
+  - <<: *defaults
+    requirement_id: WC120-R013
+    source: Solution Sections 10.2-10.3; CSA-CEWA-013
+    observable_outcome: Consent, service-window, and template eligibility are evaluated from current trusted state and ineligible sends fail closed before dispatch.
+    component_owner: BP eligibility and consent owner
+    test_path_or_plan: Boundary-window, missing/withdrawn consent, unapproved template, stale state, retry, and zero-dispatch tests.
+    completion_rule: Only eligible and authorized messages reach provider dispatch.
+
+  - <<: *defaults
+    requirement_id: WC120-R014
+    source: Solution Section 10; CSA-CEWA-014
+    observable_outcome: Delivery observations remain immutable and project independent delivery dimensions without overwriting unrelated state on duplicate or reordered callbacks.
+    component_owner: BP delivery projection
+    test_path_or_plan: Duplicate, reorder, partial, stale, and contradictory provider-status event tests.
+    completion_rule: Canonical observations are append-only and projections remain deterministic.
+
+  - <<: *defaults
+    requirement_id: WC120-R015
+    source: Solution Sections 10.3 and 12; CSA-CEWA-015
+    observable_outcome: Media retrieval, quarantine, scanning, retention, legal hold, erasure, and environment access remain isolated and owner-authorized.
+    component_owner: BP media and data owners
+    test_path_or_plan: Malicious media, size/type boundary, cross-environment retrieval, scan failure, retention/hold, and erasure tests.
+    completion_rule: Unsafe media is never rendered or retained outside its authorized class.
+
+  - <<: *defaults
+    requirement_id: WC120-R016
+    source: Solution Sections 12-13; CSA-CEWA-016
+    observable_outcome: Emergency Stop fences new work and late results, remains effective through dependency failure, and preserves safe reconciliation.
+    component_owner: PR Emergency Stop and BP enforcement
+    test_path_or_plan: Stop race, queued/in-flight cancellation, CE outage, restart, late result, and tenant/relationship isolation tests.
+    completion_rule: Stop prevents all new authority while allowing only explicitly safe reconciliation.
+
+  - <<: *defaults
+    requirement_id: WC120-R017
+    source: Solution Section 14; CSA-CEWA-017
+    observable_outcome: Logs, traces, metrics, alerts, and dead letters expose only approved operational metadata and never leak identity, secrets, raw payloads, or customer content.
+    component_owner: Observability and operations owners
+    test_path_or_plan: Structured log/trace capture, secret and PII canaries, dead-letter inspection, and alert reason-code tests.
+    completion_rule: Prohibited data is absent from all telemetry and operational evidence.
+
+  - <<: *defaults
+    requirement_id: WC120-R018
+    source: Solution Sections 11, 15-16; CSA-CEWA-018
+    observable_outcome: Demo provisioning is isolated, default-off, auditable, and completely torn down without changing UAT or Production state.
+    component_owner: Platform deployment and BP configuration
+    test_path_or_plan: Authorized local/emulator setup, isolation assertions, disabled-state checks, teardown, and zero-residual-resource proof.
+    completion_rule: Demo evidence proves isolation and teardown; live Demo action still requires separate authority.
+
+  - <<: *defaults
+    requirement_id: WC120-R019
+    source: Solution Sections 11 and 15; CSA-CEWA-019
+    observable_outcome: UAT ingress and configuration are stable and isolated, with activation gated by a separate exact authority.
+    component_owner: Platform deployment and operations
+    test_path_or_plan: Environment configuration parity/difference, hostname, secret reference, readiness, and activation-negative tests.
+    completion_rule: UAT readiness evidence passes without unauthorized provider or cloud mutation.
+
+  - <<: *defaults
+    requirement_id: WC120-R020
+    source: Solution Section 15; CSA-CEWA-020
+    observable_outcome: Production readiness remains dark and evidence-only; no Production mutation, traffic, or activation is performed under WC-120.
+    component_owner: Platform and Founder authority boundary
+    test_path_or_plan: Production-dark configuration, denied-action, no-traffic, and no-secret-value checks.
+    completion_rule: Production readiness evidence cannot activate or mutate Production.
+
+  - <<: *defaults
+    requirement_id: WC120-R021
+    source: Solution Section 4; CSA-CEWA-021
+    observable_outcome: Web adopts the shared generated-client API while preserving existing behavior and handling stale, denied, and unavailable states safely.
+    component_owner: Web and BP generated-client owners
+    test_path_or_plan: Exact Jest/Playwright projects, type/lint checks, old/new contract fixtures, and denial/unavailability journeys.
+    completion_rule: Web and BP semantics remain equivalent and clients cannot bypass the shared API.
+
+  - <<: *defaults
+    requirement_id: WC120-R022
+    source: Solution Section 4; CSA-CEWA-022
+    observable_outcome: Future Mobile compatibility is expressed through the shared contract without channel-specific server semantics or authority.
+    component_owner: API contract owner
+    test_path_or_plan: OpenAPI compatibility and generated-client fixture proving the second client needs no server semantic change.
+    completion_rule: The contract supports another client without a parallel conversation model.
+
+  - <<: *defaults
+    requirement_id: WC120-R023
+    source: Solution Sections 6, 13; CSA-CEWA-023
+    observable_outcome: Additive schema evolution, migration watermark, backup, restore, rollback, and recovery preserve data and compatibility before contraction; recovery evidence records accepted per-environment RPO/RTO and data-loss bounds, injected fault, exact commands, invariant/checksum, watermark, and provider-egress denial.
+    component_owner: BP data owners
+    test_path_or_plan: Data-owner accepted recovery profile; migration up/repeat, old-reader compatibility, backup/restore, rollback, RLS, fault injection, provider-egress denial, and invariant/checksum tests.
+    completion_rule: Every destructive contraction is preceded by passing, candidate-bound recovery evidence and separate authority.
+
+  - <<: *defaults
+    requirement_id: WC120-R024
+    source: Solution Sections 19-20; CSA-CEWA-024; work-contracts/WC-120-fitness-evidence-matrix.yaml
+    observable_outcome: Every CE-FIT item maps bidirectionally to stories, source oracles, exact Test Champion-selected test selectors, immutable candidate identity, and evidence.
+    component_owner: Cross-owner acceptance
+    test_path_or_plan: Review all 16 matrix rows for unique IDs, story mapping, positive/boundary oracle, exact repository-native test command/node, candidate manifest, and evidence location.
+    completion_rule: No fitness item is missing, duplicated, stale, unselected, or claimed PASS without candidate-bound direct evidence and Test Champion disposition.
+
+  - <<: *defaults
+    requirement_id: WC120-R025
+    source: Solution Section 19.3; CSA-CEWA-025
+    observable_outcome: Final Docker, image, and containerized end-to-end qualification binds to an immutable candidate manifest containing source, image, API/solution, schema, migration, configuration, targeted-test, recovery, CE-FIT, and qualification identities.
+    component_owner: Platform IT Expert qualification
+    test_path_or_plan: Verify test-results/wc120/candidate-manifest.json against exact source commit, image/config/schema digests, targeted evidence, recovery, CE-FIT, and final Docker qualification.
+    completion_rule: Any relevant source/configuration/image change invalidates affected evidence and requires targeted reruns plus final exact-candidate qualification.
+
+  - <<: *defaults
+    requirement_id: WC120-R026
+    source: Solution Sections 14-16 and 22; CSA-CEWA-026
+    observable_outcome: Runbooks cover alerting, dead letters, Stop, environment setup/teardown, recovery, rollback, privacy, and escalation with rehearsed evidence.
+    component_owner: Platform operations
+    test_path_or_plan: Runbook walkthrough, failure injection, Stop/recovery rehearsal, teardown proof, and evidence completeness checklist.
+    completion_rule: Operators can execute the procedures without inventing authority or recovery steps.
+
+  - <<: *defaults
+    requirement_id: WC120-R027
+    source: Solution Section 23; CSA-CEWA-027
+    observable_outcome: Founder receives exact candidate identity, evidence, residual risks, rollback, and requested decisions; implementation, deployment, activation, PR approval, and merge remain separate authorities.
+    component_owner: Chief Solution Architect and Founder handoff
+    test_path_or_plan: Handoff completeness checklist bound to the exact author-reviewed commit and evidence package.
+    completion_rule: All requested evidence is present and no ungranted authority is represented as approved.
+
+  - <<: *defaults
+    requirement_id: WC120-R028
+    source: Solution Sections 11-12; PR #499 review R-4248037029
+    observable_outcome: Complete Demo/UAT telephone identities are absent from current repository files, fixtures, logs, evidence, and PR text.
+    component_owner: Security/privacy and configuration owners
+    test_path_or_plan: Repository, fixture, log, evidence, and PR-content secret/PII scans; separately approved shared-history cleanup plan where required.
+    completion_rule: No complete telephone value is committed or disclosed; history remediation is never performed without its own approval.
+
+  - <<: *defaults
+    requirement_id: WC120-R029
+    source: Enterprise architecture §448; PR #499 review R-4248037076
+    observable_outcome: Durable conversation read-position advancement is exposed by the candidate API or a compatible successor.
+    component_owner: BP conversation API
+    test_path_or_plan: OpenAPI operation/schema assertion and state-transition tests for monotonic advancement, replay, and participant isolation.
+    completion_rule: Read position persists independently of an event-stream cursor.
+
+  - <<: *defaults
+    requirement_id: WC120-R030
+    source: Solution Section 8; PR #499 review R-4248037125
+    observable_outcome: Registered command descriptors and typed payload references are discoverable from interaction context or a typed catalog operation.
+    component_owner: BP interaction context contract
+    test_path_or_plan: OpenAPI schema assertion, generated-client discovery test, and unknown/unauthorized command denial tests.
+    completion_rule: A conforming client can discover only registered commands and their valid typed inputs.
+
+  - <<: *defaults
+    requirement_id: WC120-R031
+    source: Solution Sections 4.1 and 17; PR #499 review R-4248037174
+    observable_outcome: A handoff-revert operation is idempotent and preserves the source binding during retry, uncertainty, expiry, and denial.
+    component_owner: BP handoff and continuity contract
+    test_path_or_plan: OpenAPI operation test and exact-replay/conflict, timeout/retry, stale binding, and denial tests.
+    completion_rule: Revert resolves the pending handoff without changing source authority.
+
+  - <<: *defaults
+    requirement_id: WC120-R032
+    source: Solution Sections 5 and 9; PR #499 review R-4248037216
+    observable_outcome: Each contribution discriminator accepts exactly one matching non-null payload and rejects missing, mismatched, or simultaneous payload variants.
+    component_owner: Shared contribution schema
+    test_path_or_plan: OpenAPI oneOf/const validation and positive/negative serialization fixtures for every variant.
+    completion_rule: Invalid contribution shapes are unrepresentable or rejected before command execution.
+
+  - <<: *defaults
+    requirement_id: WC120-R033
+    source: Solution Section 5; PR #499 review R-4248037259
+    observable_outcome: Command type and parameters form a closed typed union of registered command schemas, with no arbitrary parameter map.
+    component_owner: BP command contract
+    test_path_or_plan: OpenAPI discriminator/schema validation, generated-client compile, unknown-key, missing-field, and invalid-command tests.
+    completion_rule: Only registered command payloads type-check and execute.
+
+  - <<: *defaults
+    requirement_id: WC120-R034
+    source: PR #499 package test evidence; candidate OpenAPI
+    observable_outcome: Candidate API validates as 14 paths and 23 schemas with every local reference resolved.
+    component_owner: API contract and generator owners
+    test_path_or_plan: "Run `PYTHONPATH=. pytest -q tests/test_openapi_slice.py tests/validation_control/test_spec_lint_scope.py`, OpenAPI parse/reference checks, and generated-client fixtures."
+    completion_rule: All advertised operations and schemas parse, resolve, and agree with producer/consumer fixtures.
+
+  - <<: *defaults
+    requirement_id: WC120-R035
+    source: Solution Sections 17-20; all CSA-CEWA stories; WC-120-fitness-evidence-matrix.yaml
+    observable_outcome: Every story and CE-FIT item has exact repository-native commands/test selectors, predicates, candidate binding, evidence references, and failure/rollback result frozen before implementation starts; the generic ledger validator alone is insufficient.
+    component_owner: Platform IT Expert delivery control
+    test_path_or_plan: Requirement-ledger structural validation plus Test Champion review of exact changed-path-to-command/node selectors, source oracles, candidate manifest, and test-results/wc120 evidence paths.
+    completion_rule: No story starts with a missing or stale test selector, acceptance oracle, evidence destination, candidate binding, or unresolved dependency.
+
+  - <<: *defaults
+    requirement_id: WC120-R036
+    source: PR #498 Sections 4 and 22; WC-114; WC-115-R005/R006
+    observable_outcome: WhatsApp remains an additive transport/session adapter over the existing BP Conversation Core and employment workspace, with no second timeline, transcript, relationship, API owner, or authority.
+    component_owner: BP Conversation Core and relationship workspace owners
+    test_path_or_plan: Impact-analysis owner/path inventory, public API diff, shared-client conformance, and Web-WhatsApp-Web continuity tests.
+    completion_rule: Every reused or additive surface has one named existing owner and proves canonical history/identity continuity.
+
+  - <<: *defaults
+    requirement_id: WC120-R037
+    source: Existing Core API; WC-114 BP API; PR #499 reviews R-4248037076/7125/7174
+    observable_outcome: Candidate operations are crosswalked to canonical read position, command discovery, employment operations, and handoff/revert contracts; only compatible additive operations remain.
+    component_owner: BP public contract owner
+    test_path_or_plan: Operation/schema-by-operation crosswalk, OpenAPI compatibility assertions, generated-client fixtures, and monotonic read-position/replay/revert tests.
+    completion_rule: No duplicate or incompatible operation remains and all seven PR #499 wire corrections have direct predicates.
+
+  - <<: *defaults
+    requirement_id: WC120-R038
+    source: ADR-023; WC-115 security profile and R102-R108; PR #498 Sections 12.7 and 13.6
+    observable_outcome: Phone identity, workload assertion, freshness, operation assurance, secret rotation/revocation, and Stop behavior reuse accepted owner profiles and cannot be weakened by the channel or candidate API.
+    component_owner: Phone Identity and Security owners
+    test_path_or_plan: Assurance-profile mapping, signed assertion audience/environment/operation tests, replay/freshness tests, rotation/revocation denial tests, and Stop under dependency failure.
+    completion_rule: Every security-sensitive operation maps to an accepted profile and fails closed on absent, stale, mismatched, revoked, or unknown authority.
+
+  - <<: *defaults
+    requirement_id: WC120-R039
+    source: WC-115 data profile and R077-R084; PR #498 Section 15 and R-147
+    observable_outcome: Data ownership, transaction/order, tenant RLS, lineage, deduplication, retention/erasure, backup/restore, and migration are bound to accepted Data-owner controls before persistence work.
+    component_owner: BP and payload Data owners
+    test_path_or_plan: Accepted profile crosswalk, RLS/composite-reference tests, idempotency and sequence crash/replay tests, erasure/hold lineage checks, and isolated restore/migration qualification.
+    completion_rule: No persistence, retention, recovery, or migration decision is invented by the Platform IT Expert.
+
+  - <<: *defaults
+    requirement_id: WC120-R040
+    source: WC-115 AIR profile and R095-R101; PR #498 Sections 8, 14, 16, and 21
+    observable_outcome: AIR receives minimized, server-resolved context and untrusted contribution content; provenance and degraded/unknown outcomes remain explicit, with no provider or authority choice delegated to the channel.
+    component_owner: BP context resolver and AIR owners
+    test_path_or_plan: Payload minimization and prompt-injection fixtures, source/version provenance checks, provider-neutral contract tests, and AIR-unavailable/unknown outcome tests.
+    completion_rule: No raw identity, client policy, unbounded history, or synthetic success crosses the AIR boundary.
+
+  - <<: *defaults
+    requirement_id: WC120-R041
+    source: PR #498 Sections 13, 17-21, 23-24; Platform Architect contribution
+    observable_outcome: Ingress, DNS/TLS, environment isolation, observability, recovery, teardown, and measurable WhatsApp SLOs have named owners and accepted targets; no infrastructure mutation is implied.
+    component_owner: Platform Architecture and Operations
+    test_path_or_plan: Environment topology review, provider-configuration denial tests, SLO/alert evidence, Demo teardown rehearsal, and isolated recovery validation.
+    completion_rule: Each target and action maps to an accepted owner source and separate authority; missing targets block the affected readiness stage.
+
+  - <<: *defaults
+    requirement_id: WC120-R042
+    source: PR #498 Sections 17, 23-24, and 26; WC-115 Section 7.4; WC-120-product-acceptance-matrix.yaml
+    observable_outcome: Product-owned journeys specify customer-visible consent/service-window/template outcomes, approved copy, locale/readability/accessibility, voice correction/send consent, Stop reachability, and degraded states; pending choices block the affected journey.
+    component_owner: Product and Test Champion
+    test_path_or_plan: Product disposition for every decision/journey row; approved copy and locale/accessibility values; consent/template boundaries; explicit voice correction/send consent; customer-state and accessibility tests.
+    completion_rule: No implementation-enabled journey has pending Product decisions, unapproved copy, missing accessible-state evidence, or inferred policy.
+
+  - <<: *defaults
+    requirement_id: WC120-R043
+    source: PR #498 Section 27; R-146; R-147; WC-120 Section 2.2
+    observable_outcome: Historical review findings, author repairs, and current office dispositions are represented separately; no author repair is labelled reviewer approval.
+    component_owner: Chief Solution Architect review control
+    test_path_or_plan: Compare review verdicts and Section 27 remediations with WC-120 review requests and final office dispositions.
+    completion_rule: Each review record preserves its original verdict and claims only the decision actually returned by its office.
+
+  - <<: *defaults
+    requirement_id: WC120-R044
+    source: PR #498 Section 17; CE-FIT-01..16; Test Champion disposition; WC-120-fitness-evidence-matrix.yaml
+    observable_outcome: The fitness matrix contains exactly one row per CE-FIT item, maps each to one or more stories and direct oracles, and binds exact test selectors, candidate identity, and planned evidence location.
+    component_owner: Test Champion and WC-120 qualification
+    test_path_or_plan: Test Champion disposition plus structural review of all 16 unique IDs, story links, source predicates, exact selectors, candidate-manifest fields, and evidence paths.
+    completion_rule: No CE-FIT row remains pending at implementation completion; any pre-start selector gap blocks readiness and any candidate change invalidates stale evidence.
