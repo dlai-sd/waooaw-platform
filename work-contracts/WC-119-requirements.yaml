@@ -55,7 +55,7 @@ requirements:
     residual_risk: External provider UI remains provider-controlled.
     result: PASS
     evidence_refs:
-      - ProviderCommands direct Google and Facebook launch regressions PASS in the 341-test full Web Docker suite.
+      - ProviderCommands direct Google and Facebook launch regressions PASS in the 547/547 full Web Docker suite.
   - requirement_id: WC119-R005
     source: C-049 and WC105-R043
     observable_outcome: Failed revocation or logout cannot be represented as a successful broker transition.
@@ -81,4 +81,4 @@ requirements:
     residual_risk: Live Demo qualification remains separate.
     result: PASS
     evidence_refs:
-      - "Docker evidence: focused auth helper and transition tests PASS; full Web suite and 90 percent coverage gate PASS; TypeScript and ESLint PASS; production image build PASS; Terraform contract 68/68 PASS; terraform fmt PASS."
+      - "Docker evidence: focused auth helper and transition tests PASS; full Web suite 547/547 and 90 percent coverage gate PASS; Biome and strict TypeScript (tsc) PASS; production image build PASS; Constitutional Engine Trivy HIGH/CRITICAL scan reports zero vulnerabilities; Terraform contract 68/68 PASS; terraform fmt PASS."

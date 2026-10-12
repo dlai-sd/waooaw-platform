@@ -2,7 +2,7 @@
 // Implements: work-contracts/WC-107-requirements.yaml WC107-R004, WC107-R005
 // Constitutional basis: C-049 (Honest Limitation), C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
-import { expect, test, type BrowserContext } from '@playwright/test';
+import { type BrowserContext, expect, test } from '@playwright/test';
 import { encode } from 'next-auth/jwt';
 
 const baseURL = process.env.BASE_URL ?? 'http://127.0.0.1:3000';
@@ -41,10 +41,7 @@ test('WC094-A03: Login and Register project the same available brokers', async (
   await expect(page.getByRole('button', { name: 'Sign up with Facebook' })).toBeEnabled();
 });
 
-test('WC094-A01: logout clears WAOOAW state and returns through Keycloak to the homepage', async ({
-  context,
-  page,
-}) => {
+test('WC094-A01: logout clears WAOOAW state and returns through Keycloak to login', async ({ context, page }) => {
   await addSession(context);
   let logoutContinuationStatus: number | undefined;
   page.on('response', (response) => {
@@ -65,8 +62,8 @@ test('WC094-A01: logout clears WAOOAW state and returns through Keycloak to the 
   await page.getByRole('button', { name: 'Sign out' }).click();
 
   await expect.poll(() => logoutContinuationStatus).toBe(303);
-  await expect(page).toHaveURL(`${baseURL}/`);
-  await expect(page.getByRole('heading', { name: 'Grow your business with WAOOAW AI professionals' })).toBeVisible();
+  await expect(page).toHaveURL(`${baseURL}/login`);
+  await expect(page.getByRole('heading', { name: 'Log in to WAOOAW' })).toBeVisible();
   await expect
     .poll(async () => context.cookies())
     .toEqual(

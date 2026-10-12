@@ -1477,14 +1477,14 @@ const identityServer = createServer((request, response) => {
   const redirectTarget = url.searchParams.get('post_logout_redirect_uri');
   if (
     !/^\/realms\/[^/]+\/protocol\/openid-connect\/logout$/.test(url.pathname) ||
-    redirectTarget !== 'http://127.0.0.1:3000/'
+    redirectTarget !== 'http://127.0.0.1:3000/login'
   ) {
     response.statusCode = 400;
     response.end('Invalid test identity logout request.');
     return;
   }
   response.statusCode = 302;
-  response.setHeader('Location', 'http://127.0.0.1:3000/');
+  response.setHeader('Location', 'http://127.0.0.1:3000/login');
   response.end();
 });
 

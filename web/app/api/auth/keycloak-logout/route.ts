@@ -2,11 +2,11 @@
 // Implements: work-contracts/WC-119-auth-session-account-switch-recovery.md WC119-R002, WC119-R003
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
-import { getToken } from 'next-auth/jwt';
-import { type NextRequest, NextResponse } from 'next/server';
 import { activeAccessToken } from '@/lib/auth';
 import { recordWebIdentitySecurityEvent } from '@/lib/identity-security-events';
 import { withJourneyTrace } from '@/lib/journey-telemetry';
+import { getToken } from 'next-auth/jwt';
+import { type NextRequest, NextResponse } from 'next/server';
 
 const sessionCookie = /^(?:(?:__Secure-|__Host-)?next-auth\.|waooaw[.-])/i;
 const logoutContinuationCookie = 'waooaw.logout-continuation';
@@ -40,7 +40,7 @@ async function keycloakLogoutUrl(request: NextRequest, applicationOrigin: string
 async function revokeWaooawSessions(request: NextRequest) {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
   const accessToken = token ? activeAccessToken(token) : undefined;
-  if (!accessToken) return false;
+  if (!accessToken) return 'not-applicable' as const;
 
   try {
     const response = await fetch(
@@ -56,15 +56,11 @@ async function revokeWaooawSessions(request: NextRequest) {
       }
     );
     if (!response.ok) {
-      console.error('WAOOAW session revocation was not confirmed.', { status: response.status });
-      return false;
+      return 'unconfirmed' as const;
     }
-    return true;
-  } catch (error) {
-    console.error('WAOOAW session revocation was not confirmed.', {
-      reason: error instanceof Error ? error.name : 'UnknownError',
-    });
-    return false;
+    return 'confirmed' as const;
+  } catch {
+    return 'unconfirmed' as const;
   }
 }
 
@@ -100,8 +96,8 @@ async function logoutPost(request: NextRequest) {
       reasonCode: 'CUSTOMER_REQUESTED',
       assuranceClass: 'AAL2',
     });
-    const revoked = await revokeWaooawSessions(request);
-    if (!revoked)
+    const revocation = await revokeWaooawSessions(request);
+    if (revocation === 'unconfirmed') {
       await recordWebIdentitySecurityEvent({
         correlationId,
         eventType: 'LOGOUT_FAILURE',
@@ -110,6 +106,16 @@ async function logoutPost(request: NextRequest) {
         reasonCode: 'SESSION_REVOCATION_UNCONFIRMED',
         assuranceClass: 'AAL2',
       });
+      const response = NextResponse.json(
+        {
+          code: 'SESSION_REVOCATION_UNCONFIRMED',
+          title: 'Sign out could not be completed.',
+        },
+        { status: 503 }
+      );
+      response.headers.set('Cache-Control', 'no-store');
+      return response;
+    }
     const nonce = crypto.randomUUID();
     const logoutPath = `/api/auth/keycloak-logout?nonce=${encodeURIComponent(nonce)}`;
     const response = NextResponse.json({ logoutPath });

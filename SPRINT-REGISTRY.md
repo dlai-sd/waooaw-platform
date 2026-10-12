@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-10-12 · **Version:** 1.45.0 · **Work Contracts:** 105 recorded (87 closed · 18 active · 1 blocked)
+**Last Updated:** 2026-09-11 · **Version:** 1.45.0 · **Work Contracts:** 83 recorded (73 closed · 10 active · 1 blocked)
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
