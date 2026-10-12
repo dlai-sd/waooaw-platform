@@ -1,0 +1,807 @@
+openapi: "3.1.0"
+info:
+  title: WAOOAW Channel-Neutral Conversation Business Platform Candidate API
+  version: "1.0.0-candidate.1"
+  contact:
+    name: WAOOAW Architecture
+  description: |
+    Additive candidate for the shared Conversation API and Meta WhatsApp callback boundary.
+    Web, WhatsApp normalization, and future Mobile share canonical Business Platform semantics.
+    The WhatsApp callback is a provider adapter, not a client API or separate conversation engine.
+    This contract does not authorize implementation, provider activation, deployment, or traffic.
+    ADR-052 and ADR-053 remain proposed until explicitly accepted by the Founder.
+servers:
+  - url: https://api.waooaw.com
+tags:
+  - name: Shared Conversation
+  - name: Context And Profile
+  - name: Channel Handoff
+  - name: Data Rights
+  - name: WhatsApp Provider Callback
+security:
+  - BearerAuth: []
+paths:
+  /api/v1/employment/relationships/{relationshipId}/conversation:
+    get:
+      tags: [Shared Conversation]
+      operationId: getCanonicalConversation
+      summary: Read the canonical relationship conversation and exact current references
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/AfterSequence"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Canonical ordered conversation projection
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CanonicalConversationV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/conversation/events:
+    get:
+      tags: [Shared Conversation]
+      operationId: streamCanonicalConversationEvents
+      summary: Stream canonical events after an authorized sequence cursor
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/AfterSequence"
+      responses:
+        "200":
+          description: Server-sent canonical event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/conversation/contributions:
+    post:
+      tags: [Shared Conversation]
+      operationId: submitConversationContribution
+      summary: Submit or replay a text or reviewed voice contribution
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConversationContributionRequestV1" }
+      responses:
+        "202":
+          description: Durable BP responsibility accepted; professional success is not implied
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConversationOperationReceiptV1" }
+        "200":
+          description: Original identical durable result replayed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConversationOperationOutcomeV1" }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/AssuranceRequired" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "423": { $ref: "#/components/responses/Blocked" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/conversation/commands:
+    post:
+      tags: [Shared Conversation]
+      operationId: submitConversationCommand
+      summary: Submit or replay one registered typed command
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConversationCommandRequestV1" }
+      responses:
+        "202":
+          description: Durable BP responsibility accepted; owner commit is not implied
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConversationOperationReceiptV1" }
+        "200":
+          description: Original identical durable result replayed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConversationOperationOutcomeV1" }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/AssuranceRequired" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "423": { $ref: "#/components/responses/Blocked" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/conversation/operations/{operationId}:
+    get:
+      tags: [Shared Conversation]
+      operationId: getConversationOperation
+      summary: Reconcile one durable contribution, command, cancellation, handoff, or rights request
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/OperationId"
+      responses:
+        "200":
+          description: Current durable outcome with independent state dimensions
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConversationOperationOutcomeV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/conversation/cancellations:
+    post:
+      tags: [Shared Conversation]
+      operationId: requestConversationCancellation
+      summary: Request cancellation without deleting canonical history
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CancellationRequestV1" }
+      responses:
+        "202":
+          description: Cancellation request accepted for reconciliation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConversationOperationReceiptV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/conversation/contexts:
+    get:
+      tags: [Context And Profile]
+      operationId: listAvailableInteractionContexts
+      summary: List server-authorized registered contexts and commands
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      responses:
+        "200":
+          description: Bounded context choices; never policy bytes or system prompts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AvailableInteractionContextV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/conversation/profile:
+    get:
+      tags: [Context And Profile]
+      operationId: getConversationContextProfile
+      summary: Read the authorized current context profile and lineage references
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      responses:
+        "200":
+          description: Current replaceable profile projection
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContextProfileV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/conversation/profile/corrections:
+    post:
+      tags: [Context And Profile]
+      operationId: correctConversationContextProfile
+      summary: Append a correction or dispute without overwriting source observations
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContextCorrectionRequestV1" }
+      responses:
+        "202":
+          description: Correction accepted for owner validation and projection rebuild
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConversationOperationReceiptV1" }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/conversation/handoffs:
+    post:
+      tags: [Channel Handoff]
+      operationId: prepareConversationHandoff
+      summary: Prepare a short-lived target-channel handoff
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/HandoffPrepareRequestV1" }
+      responses:
+        "201":
+          description: Prepared handoff; source channel remains active
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HandoffReceiptV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/conversation/handoffs/{handoffId}/activate:
+    post:
+      tags: [Channel Handoff]
+      operationId: activateConversationHandoff
+      summary: Activate a prepared handoff after fresh target authentication
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/HandoffId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/HandoffActivateRequestV1" }
+      responses:
+        "200":
+          description: Handoff activated without authority expansion
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HandoffReceiptV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/AssuranceRequired" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/conversation/messages/{messageId}/states:
+    get:
+      tags: [Shared Conversation]
+      operationId: getConversationMessageStates
+      summary: Inspect independent delivery, execution, customer-decision, and evidence states
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/MessageId"
+      responses:
+        "200":
+          description: Independent state dimensions
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConversationStateDimensionsV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/conversation/data-rights:
+    post:
+      tags: [Data Rights]
+      operationId: requestConversationDataRight
+      summary: Request authorized export, correction, or erasure processing
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DataRightRequestV1" }
+      responses:
+        "202":
+          description: Rights request accepted; completion and holds remain independently visible
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConversationOperationReceiptV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/AssuranceRequired" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/channels/whatsapp/webhook:
+    get:
+      tags: [WhatsApp Provider Callback]
+      operationId: verifyWhatsAppWebhook
+      summary: Complete exact environment-bound Meta subscription challenge
+      security: []
+      parameters:
+        - name: hub.mode
+          in: query
+          required: true
+          schema: { type: string, const: subscribe }
+        - name: hub.verify_token
+          in: query
+          required: true
+          schema: { type: string, minLength: 1 }
+        - name: hub.challenge
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 512 }
+      responses:
+        "200":
+          description: Exact challenge text after all predicates pass
+          content:
+            text/plain:
+              schema: { type: string, maxLength: 512 }
+        "403":
+          description: Non-reflective denial
+    post:
+      tags: [WhatsApp Provider Callback]
+      operationId: acceptWhatsAppWebhook
+      summary: Verify exact raw bytes and durably accept or replay a provider event
+      description: |
+        The approved X-Hub-Signature-256 HMAC-SHA256 is validated in constant time over
+        bounded exact raw bytes before decompression, normalization, parsing, or middleware
+        transformation. Success is returned only after durable acceptance/outcome or replay.
+      security: []
+      parameters:
+        - name: X-Hub-Signature-256
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: "^sha256=[a-f0-9]{64}$"
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Durable acceptance/outcome exists or the identical durable result was replayed
+        "400":
+          description: Safe invalid provider request; no attacker input reflected
+        "403":
+          description: Signature or environment binding denied; zero mutation
+        "409":
+          description: Same provider identity with a different canonical payload digest
+        "413":
+          description: Body exceeds the approved bounded raw-body limit
+        "503":
+          description: Durable responsibility not established; provider may retry
+          headers:
+            Retry-After:
+              schema: { type: integer, minimum: 1 }
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Tenant, membership, relationship, and authority are resolved server-side.
+  parameters:
+    RelationshipId:
+      name: relationshipId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    OperationId:
+      name: operationId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    HandoffId:
+      name: handoffId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    MessageId:
+      name: messageId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AfterSequence:
+      name: afterSequence
+      in: query
+      required: false
+      schema: { type: integer, format: int64, minimum: 0, default: 0 }
+    PageSize:
+      name: pageSize
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+    CorrelationId:
+      name: X-Correlation-ID
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    InvalidRequest:
+      description: Request failed closed-schema or registered-context validation
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ConversationProblemV1" }
+    Unauthorized:
+      description: Authentication is absent or invalid
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ConversationProblemV1" }
+    AssuranceRequired:
+      description: Current assurance cannot complete the exact operation
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ConversationProblemV1" }
+    NotAccessible:
+      description: Resource is absent or inaccessible; response does not enumerate which
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ConversationProblemV1" }
+    Conflict:
+      description: Source version, protected intent, or idempotency digest conflicts
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ConversationProblemV1" }
+    Blocked:
+      description: Stop, stale context, policy, or governance state blocks the operation
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ConversationProblemV1" }
+    Unavailable:
+      description: Required owner or governance boundary is unavailable; no success is implied
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ConversationProblemV1" }
+  schemas:
+    ChannelKind:
+      type: string
+      enum: [WEB, WHATSAPP, MOBILE]
+    ContextFreshness:
+      type: string
+      enum: [CURRENT, STALE, AMBIGUOUS, BLOCKED]
+    InteractionContextV1:
+      type: object
+      additionalProperties: false
+      required:
+        - contextId
+        - schemaVersion
+        - relationshipId
+        - professionalInstanceId
+        - conversationId
+        - phase
+        - purpose
+        - subjectType
+        - subjectReference
+        - decisionSpaceVersion
+        - policyVersion
+        - locale
+        - channel
+        - assuranceLevel
+        - sourceVersions
+        - freshness
+        - resolvedAt
+      properties:
+        contextId: { type: string, format: uuid }
+        schemaVersion: { type: string, const: "1.0" }
+        relationshipId: { type: string, format: uuid }
+        professionalInstanceId: { type: string, format: uuid }
+        conversationId: { type: string, format: uuid }
+        phase: { type: string, minLength: 1, maxLength: 64 }
+        purpose: { type: string, minLength: 1, maxLength: 64 }
+        subjectType: { type: string, minLength: 1, maxLength: 64 }
+        subjectReference: { type: string, minLength: 1, maxLength: 256 }
+        pendingIntentReference: { type: [string, "null"], maxLength: 256 }
+        decisionSpaceVersion: { type: integer, format: int64, minimum: 1 }
+        planVersion: { type: [integer, "null"], format: int64, minimum: 1 }
+        profileVersion: { type: [integer, "null"], format: int64, minimum: 1 }
+        policyVersion: { type: string, minLength: 1, maxLength: 128 }
+        locale: { type: string, minLength: 2, maxLength: 35 }
+        channel: { $ref: "#/components/schemas/ChannelKind" }
+        assuranceLevel: { type: string, enum: [TIER_1, TIER_2, TIER_3, TIER_4] }
+        sourceVersions:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/SourceVersionV1" }
+        freshness: { $ref: "#/components/schemas/ContextFreshness" }
+        resolvedAt: { type: string, format: date-time }
+    SourceVersionV1:
+      type: object
+      additionalProperties: false
+      required: [sourceType, sourceReference, version]
+      properties:
+        sourceType: { type: string, minLength: 1, maxLength: 64 }
+        sourceReference: { type: string, minLength: 1, maxLength: 256 }
+        version: { type: string, minLength: 1, maxLength: 128 }
+    ConversationPolicyReferenceV1:
+      type: object
+      additionalProperties: false
+      required:
+        - version
+        - institutionalPolicyVersion
+        - professionalPolicyVersion
+        - interactionPolicyVersion
+        - channelRenderingPolicyVersion
+      properties:
+        version: { type: string, minLength: 1, maxLength: 128 }
+        institutionalPolicyVersion: { type: string, minLength: 1, maxLength: 128 }
+        professionalPolicyVersion: { type: string, minLength: 1, maxLength: 128 }
+        interactionPolicyVersion: { type: string, minLength: 1, maxLength: 128 }
+        customerCommunicationProfileVersion: { type: [string, "null"], maxLength: 128 }
+        vocabularyPolicyVersion: { type: [string, "null"], maxLength: 128 }
+        localeAccessibilityPolicyVersion: { type: [string, "null"], maxLength: 128 }
+        channelRenderingPolicyVersion: { type: string, minLength: 1, maxLength: 128 }
+    CanonicalMessageV1:
+      type: object
+      additionalProperties: false
+      required:
+        - messageId
+        - sequence
+        - actorKind
+        - contributionKind
+        - acceptedAt
+        - context
+        - policy
+        - states
+      properties:
+        messageId: { type: string, format: uuid }
+        sequence: { type: integer, format: int64, minimum: 1 }
+        actorKind: { type: string, enum: [CUSTOMER, PROFESSIONAL, SYSTEM] }
+        contributionKind: { type: string, enum: [TEXT, REVIEWED_VOICE, TYPED_CARD, TYPED_COMMAND_OUTCOME] }
+        content: { type: [string, "null"], maxLength: 32000 }
+        dialogueAct:
+          type: [string, "null"]
+          enum:
+            - ACKNOWLEDGE
+            - INFORM
+            - ASK
+            - CONFIRM_INFERENCE
+            - PRESENT_RESEARCH
+            - PRESENT_RECOMMENDATION
+            - PRESENT_OPTIONS
+            - REQUEST_DECISION
+            - WARN
+            - DISCLOSE_LIMITATION
+            - SUMMARIZE
+            - CONCLUDE
+            - ESCALATE
+            - HANDOFF
+            - null
+        acceptedAt: { type: string, format: date-time }
+        context: { $ref: "#/components/schemas/InteractionContextV1" }
+        policy: { $ref: "#/components/schemas/ConversationPolicyReferenceV1" }
+        states: { $ref: "#/components/schemas/ConversationStateDimensionsV1" }
+    CanonicalConversationV1:
+      type: object
+      additionalProperties: false
+      required: [conversationId, relationshipId, currentSequence, currentContext, currentPolicy, messages]
+      properties:
+        conversationId: { type: string, format: uuid }
+        relationshipId: { type: string, format: uuid }
+        currentSequence: { type: integer, format: int64, minimum: 0 }
+        currentContext: { $ref: "#/components/schemas/InteractionContextV1" }
+        currentPolicy: { $ref: "#/components/schemas/ConversationPolicyReferenceV1" }
+        messages:
+          type: array
+          items: { $ref: "#/components/schemas/CanonicalMessageV1" }
+    RegisteredContextHintV1:
+      type: object
+      additionalProperties: false
+      required: [contextKey]
+      properties:
+        contextKey: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        subjectReference: { type: [string, "null"], maxLength: 256 }
+    ConversationContributionRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, contributionKind, payloadDigest, contextVersion]
+      properties:
+        schemaVersion: { type: string, const: "1.0" }
+        contributionKind: { type: string, enum: [TEXT, REVIEWED_VOICE] }
+        text: { type: [string, "null"], minLength: 1, maxLength: 32000 }
+        acceptedVoiceContributionReference: { type: [string, "null"], maxLength: 256 }
+        contextHint: { $ref: "#/components/schemas/RegisteredContextHintV1" }
+        contextVersion: { type: string, minLength: 1, maxLength: 128 }
+        expectedSourceVersion: { type: [string, "null"], maxLength: 128 }
+        payloadDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
+    ConversationCommandRequestV1:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - commandType
+        - subjectReference
+        - contextVersion
+        - expectedSourceVersion
+        - intentDigest
+        - payloadDigest
+      properties:
+        schemaVersion: { type: string, const: "1.0" }
+        commandType: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        subjectReference: { type: string, minLength: 1, maxLength: 256 }
+        contextVersion: { type: string, minLength: 1, maxLength: 128 }
+        expectedSourceVersion: { type: string, minLength: 1, maxLength: 128 }
+        intentDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
+        confirmationReference: { type: [string, "null"], maxLength: 256 }
+        payloadDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
+        parameters:
+          type: object
+          additionalProperties: true
+          maxProperties: 32
+    ConversationOperationReceiptV1:
+      type: object
+      additionalProperties: false
+      required: [operationId, operationType, state, acceptedAt, correlationId]
+      properties:
+        operationId: { type: string, format: uuid }
+        operationType: { type: string, enum: [CONTRIBUTION, COMMAND, CANCELLATION, HANDOFF, DATA_RIGHT] }
+        state: { type: string, enum: [ACCEPTED, RECONCILING] }
+        acceptedAt: { type: string, format: date-time }
+        correlationId: { type: string, format: uuid }
+    ConversationOperationOutcomeV1:
+      type: object
+      additionalProperties: false
+      required: [operationId, operationType, state, correlationId, states]
+      properties:
+        operationId: { type: string, format: uuid }
+        operationType: { type: string, enum: [CONTRIBUTION, COMMAND, CANCELLATION, HANDOFF, DATA_RIGHT] }
+        state:
+          type: string
+          enum: [ACCEPTED, RECONCILING, COMMITTED, DENIED, CONFLICTED, CANCELLED, FAILED, UNAVAILABLE]
+        canonicalMessageId: { type: [string, "null"], format: uuid }
+        canonicalSequence: { type: [integer, "null"], format: int64, minimum: 1 }
+        correlationId: { type: string, format: uuid }
+        states: { $ref: "#/components/schemas/ConversationStateDimensionsV1" }
+        problem: { oneOf: [{ $ref: "#/components/schemas/ConversationProblemV1" }, { type: "null" }] }
+    ConversationStateDimensionsV1:
+      type: object
+      additionalProperties: false
+      required: [delivery, execution, customerDecision, constitutionalEvidence]
+      properties:
+        delivery:
+          type: string
+          enum: [NOT_APPLICABLE, QUEUED, SUBMITTED, PROVIDER_ACCEPTED, DELIVERED, READ, FAILED, EXPIRED, UNKNOWN]
+        execution:
+          type: string
+          enum: [NOT_REQUESTED, QUEUED, RUNNING, SUCCEEDED, FAILED, CANCELLED, STOPPED, UNAVAILABLE]
+        customerDecision:
+          type: string
+          enum: [NOT_REQUIRED, PENDING, CONFIRMED, REJECTED, EXPIRED, SUPERSEDED]
+        constitutionalEvidence:
+          type: string
+          enum: [NOT_APPLICABLE, PENDING, RECORDED, BUFFERED_CE_UNAVAILABLE, FAILED]
+    AvailableInteractionContextV1:
+      type: object
+      additionalProperties: false
+      required: [contextKey, phase, purpose, subjectType, requiredAssurance, available]
+      properties:
+        contextKey: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        phase: { type: string, minLength: 1, maxLength: 64 }
+        purpose: { type: string, minLength: 1, maxLength: 64 }
+        subjectType: { type: string, minLength: 1, maxLength: 64 }
+        requiredAssurance: { type: string, enum: [TIER_1, TIER_2, TIER_3, TIER_4] }
+        available: { type: boolean }
+        unavailableReason: { type: [string, "null"], enum: [STALE, AMBIGUOUS, BLOCKED, ASSURANCE_REQUIRED, null] }
+    ContextProfileItemV1:
+      type: object
+      additionalProperties: false
+      required: [observationId, subjectType, factType, status, sourceType, sourceVersion, observedAt]
+      properties:
+        observationId: { type: string, format: uuid }
+        subjectType: { type: string, minLength: 1, maxLength: 64 }
+        factType: { type: string, minLength: 1, maxLength: 128 }
+        status:
+          type: string
+          enum: [RESEARCHED, INFERRED, CONFIRMED, DISPUTED, STALE, SUPERSEDED, UNAVAILABLE, ERASED]
+        value: {}
+        sourceType: { type: string, minLength: 1, maxLength: 64 }
+        sourceVersion: { type: string, minLength: 1, maxLength: 128 }
+        observedAt: { type: string, format: date-time }
+        validUntil: { type: [string, "null"], format: date-time }
+        predecessorObservationId: { type: [string, "null"], format: uuid }
+    ContextProfileV1:
+      type: object
+      additionalProperties: false
+      required: [profileVersion, relationshipId, items, rebuiltAt]
+      properties:
+        profileVersion: { type: integer, format: int64, minimum: 1 }
+        relationshipId: { type: string, format: uuid }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ContextProfileItemV1" }
+        rebuiltAt: { type: string, format: date-time }
+    ContextCorrectionRequestV1:
+      type: object
+      additionalProperties: false
+      required: [observationId, correctionType, expectedProfileVersion, payloadDigest]
+      properties:
+        observationId: { type: string, format: uuid }
+        correctionType: { type: string, enum: [CORRECT, DISPUTE, ERASE] }
+        correctedValue: {}
+        reason: { type: [string, "null"], maxLength: 1000 }
+        expectedProfileVersion: { type: integer, format: int64, minimum: 1 }
+        payloadDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
+    CancellationRequestV1:
+      type: object
+      additionalProperties: false
+      required: [targetOperationId, reasonCode, expectedSourceVersion, payloadDigest]
+      properties:
+        targetOperationId: { type: string, format: uuid }
+        reasonCode: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        expectedSourceVersion: { type: string, minLength: 1, maxLength: 128 }
+        payloadDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
+    HandoffPrepareRequestV1:
+      type: object
+      additionalProperties: false
+      required: [sourceChannel, targetChannel, currentSequence, contextVersion, payloadDigest]
+      properties:
+        sourceChannel: { $ref: "#/components/schemas/ChannelKind" }
+        targetChannel: { $ref: "#/components/schemas/ChannelKind" }
+        currentSequence: { type: integer, format: int64, minimum: 0 }
+        contextVersion: { type: string, minLength: 1, maxLength: 128 }
+        payloadDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
+    HandoffActivateRequestV1:
+      type: object
+      additionalProperties: false
+      required: [targetAuthenticationReference, checkpointDigest, payloadDigest]
+      properties:
+        targetAuthenticationReference: { type: string, minLength: 1, maxLength: 256 }
+        checkpointDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
+        payloadDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
+    HandoffReceiptV1:
+      type: object
+      additionalProperties: false
+      required: [handoffId, sourceChannel, targetChannel, state, expiresAt]
+      properties:
+        handoffId: { type: string, format: uuid }
+        sourceChannel: { $ref: "#/components/schemas/ChannelKind" }
+        targetChannel: { $ref: "#/components/schemas/ChannelKind" }
+        state: { type: string, enum: [PREPARED, ACTIVE, REVERTED, EXPIRED] }
+        expiresAt: { type: string, format: date-time }
+    DataRightRequestV1:
+      type: object
+      additionalProperties: false
+      required: [rightType, scope, assuranceReference, payloadDigest]
+      properties:
+        rightType: { type: string, enum: [EXPORT, CORRECT, ERASE] }
+        scope: { type: string, enum: [CONVERSATION, CONTEXT_PROFILE, MEDIA, ALL_ELIGIBLE] }
+        assuranceReference: { type: string, minLength: 1, maxLength: 256 }
+        reason: { type: [string, "null"], maxLength: 1000 }
+        payloadDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
+    ConversationProblemV1:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, correlationId, retryable]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        status: { type: integer, minimum: 400, maximum: 599 }
+        code:
+          type: string
+          enum:
+            - invalid_request
+            - not_accessible
+            - assurance_required
+            - source_version_conflict
+            - context_stale
+            - context_ambiguous
+            - idempotency_conflict
+            - stop_active
+            - policy_unavailable
+            - provider_unavailable
+            - template_ineligible
+            - media_quarantined
+            - constitutional_governance_unavailable
+        correlationId: { type: string, format: uuid }
+        retryable: { type: boolean }
+        remediation: { type: [string, "null"], maxLength: 500 }

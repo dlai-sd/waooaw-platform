@@ -122,6 +122,7 @@ Full CCT specs: `tests/constitutional/README.md`
 
 | Need | Document |
 |---|---|
+| Draft channel-neutral Conversation/WhatsApp implementation Work Component and candidate API | `architecture/reference/components/conversation-engine-whatsapp-solution-work-component.md` and `architecture/reference/api-specs/channel-neutral-conversation-business-platform.openapi.yaml` (ADR-052/053 acceptance and implementation authority required) |
 | Fundamental Login/Registration/Logout and Trial/Hire journeys | `architecture/reference/components/fundamental-customer-journeys.md` |
 | SLOs (latency, availability, cost) | `architecture/reference/slo.md` |
 | Graceful degradation / on-call runbook | `architecture/reference/graceful-degradation.md` |
