@@ -1,7 +1,7 @@
 # Capability to Container Map
 
 **Produced by:** Enterprise Architect (Sprint 003)
-**Date:** 2026-07-07
+**Date:** 2026-07-07 (updated 2026-10-12)
 
 Each approved business capability is owned by exactly one authoritative container or institutional
 role. Ownership means that owner holds the authoritative state or decision; supporting containers
@@ -15,9 +15,9 @@ may contribute evidence or execution facts without becoming authoritative.
 | **1.2 Configure Employment Terms** | Business Platform | — |
 | **1.3 Define Decision Space** | Business Platform | Constitutional Engine (validates boundary) |
 | **1.4 Form Employment Contract** | Business Platform | Constitutional Engine (records formation event) |
-| **1.5 Onboard Digital Professional** | Business Platform (relationship induction truth) | Professional Runtime and AI Runtime (professional interpretation); domain adapter (requirements and evidence) |
+| **1.5 Onboard Digital Professional** | Business Platform (relationship induction truth, Interaction Context and Context Profile projection) | Professional Runtime and AI Runtime (professional interpretation, research and analysis); domain adapter (requirements and evidence); web/WhatsApp/future mobile (presentation only) |
 | **1.6 Browse Agent and Skill Catalogue** | Business Platform | Web (presentation) |
-| **1.7 Configure Agent via Conversation** | Business Platform (Conversation Core and relationship governance) | Professional Runtime and AI Runtime (typed candidate patches); Constitutional Engine (governed evidence) |
+| **1.7 Configure Agent via Conversation** | Business Platform (Conversation Core, server-resolved Interaction Context, Conversation Policy reference and relationship governance) | Professional Runtime and AI Runtime (typed candidate patches); Constitutional Engine (governed evidence); Phone Identity Service and channel adapters (authenticated transport only) |
 | **1.8 Enroll in Trial Engagement** | Business Platform | WBE (trial/commercial eligibility); Constitutional Engine (evidence) |
 | **2.1 Review Proposed Actions** | Business Platform | — |
 | **2.2 Approve or Reject Actions** | Business Platform | Constitutional Engine (records approval/rejection) |
@@ -41,7 +41,7 @@ may contribute evidence or execution facts without becoming authoritative.
 | **5.3 Export Customer Evidence** | Business Platform | Constitutional Engine (evidence export) |
 | **5.4 Pause Individual Skill** | Business Platform | WBE (pro-rata consequence); Professional Runtime (execution stop); Constitutional Engine (evidence) |
 | **5.5 Resume Paused Skill** | Business Platform | WBE (pro-rata consequence); Professional Runtime (execution resume); Constitutional Engine (evidence) |
-| **6.1 Authenticate and Authorize Customers** | Keycloak (web/mobile credential authority) | Business Platform (public facade, JWT and current-policy authorization); Phone Identity Service (ADR-023 WhatsApp proof); Identity Edge (proposed ADR-048 public OIDC mediation) |
+| **6.1 Authenticate and Authorize Customers** | Keycloak (web/mobile credential authority) | Business Platform (public facade, JWT and current-policy authorization); Phone Identity Service (ADR-023 WhatsApp proof); Identity Edge (proposed ADR-048 public OIDC mediation); channel continuity (fresh target authentication without authority expansion) |
 | **6.2 Isolate Tenant Data** | PostgreSQL (RLS) | All containers (JWT propagation) |
 | **6.3 Record Constitutional Evidence** | Constitutional Engine | — |
 | **6.4 Observe Platform Health** | All containers (OTel) | Jaeger/Azure Monitor |

@@ -1,8 +1,8 @@
 # Domain Model
 
 **Produced by:** Enterprise Architect (Sprint 003)
-**Date:** 2026-07-07
-**Constitutional Basis:** C-030 (Decision Space as primitive), C-034 (employment lifecycle), C-005 (Three-Ledger), C-028 (evidence state machine), C-036 (Skills as constitutional units), C-037 (business KPIs), C-038 (pro-rata billing), C-039 (conversational configuration)
+**Date:** 2026-07-07 (updated 2026-10-12)
+**Constitutional Basis:** C-030 (Decision Space as primitive), C-034 (employment lifecycle), C-005 (Three-Ledger), C-028 (evidence state machine), C-036 (Skills as constitutional units), C-037 (business KPIs), C-038 (pro-rata billing), C-039 (conversational configuration), proposed ADR-052 and ADR-053
 
 ---
 
@@ -147,6 +147,76 @@ ProfessionalIdentity {
 }
 ```
 
+### Interaction Context And Conversation Policy (proposed ADR-052)
+
+The versioned relationship-scoped projection that binds one professional execution to its semantic
+purpose and communication policy. Business Platform resolves and projects it; it is not a client
+authority token or a model-owned fact.
+
+```
+InteractionContext {
+  id: UUID
+  relationshipId: UUID
+  professionalInstanceId: UUID
+  conversationId: UUID
+  phase: enum
+  purpose: enum
+  subjectType: string
+  subjectReference: string
+  pendingIntentReference: string?
+  decisionSpaceVersion: int
+  planVersion: int?
+  profileVersion: int?
+  policyVersion: string
+  locale: string
+  channel: enum(WEB, WHATSAPP, MOBILE)
+  assuranceLevel: string
+  freshness: enum(CURRENT, STALE, AMBIGUOUS, BLOCKED)
+  resolvedAt: datetime
+}
+
+ConversationPolicyReference {
+  version: string
+  institutionalPolicyVersion: string
+  professionalPolicyVersion: string
+  interactionPolicyVersion: string
+  customerCommunicationProfileVersion: string?
+  vocabularyPolicyVersion: string?
+  channelRenderingPolicyVersion: string
+}
+```
+
+Canonical conversation history remains distinct from bounded execution context. Each execution
+records the exact context and policy references it used.
+
+### Channel Binding And Delivery (proposed ADR-053)
+
+```
+RelationshipChannelBinding {
+  relationshipId: UUID
+  channel: enum(WEB, WHATSAPP, MOBILE)
+  channelParticipantProof: string
+  environment: enum(DEMO, UAT, PRODUCTION)
+  assuranceLevel: string
+  state: enum(PENDING, ACTIVE, REVOKED, EXPIRED)
+  authenticatedAt: datetime
+}
+
+ChannelDeliveryAttempt {
+  id: UUID
+  conversationMessageId: UUID
+  channel: enum(WEB, WHATSAPP, MOBILE)
+  environment: enum(DEMO, UAT, PRODUCTION)
+  providerMessageReference: string?
+  state: enum(QUEUED, SUBMITTED, PROVIDER_ACCEPTED, DELIVERED, READ,
+              FAILED, EXPIRED, UNKNOWN)
+  stateVersion: int
+}
+```
+
+Delivery state never implies professional execution, customer authorization or constitutional
+evidence.
+
 ### Conversational Employment Workspace (ADR-051)
 
 The relationship-scoped composition of conversation, visual workboard and readiness. This is a
@@ -213,7 +283,8 @@ WorkboardItem {
 **Responsibility:** Everything about the employment relationship, including the authoritative
 conversation/workspace identity, induction truth, goal/plan truth and readiness composition.
 **Aggregates:** EmploymentContract (root), DecisionSpace, BusinessGoal, RelationshipPlan,
-ConversationalEmploymentWorkspace, WorkboardItem, ReviewRecord
+ConversationalEmploymentWorkspace, InteractionContext, ConversationPolicyReference,
+RelationshipChannelBinding, ChannelDeliveryAttempt, WorkboardItem, ReviewRecord
 **Domain Events emitted:**
 - `EmploymentContractFormed` — customer signed contract
 - `DecisionSpaceConfigured` — Decision Space set/updated
@@ -269,6 +340,9 @@ ConversationalEmploymentWorkspace, WorkboardItem, ReviewRecord
 | EmploymentContract | DecisionSpace, Goals, ReviewSchedule, relationship workspace identity | EvidenceRecords or WBE commercial truth |
 | RelationshipPlan | Goals, milestones, dependencies, calendar commitments and accepted versions | Execution outcomes, billing actuals or constitutional evidence |
 | ConversationalEmploymentWorkspace | Public phase/readiness composition and available relationship commands | CE, WBE, PR or domain source truth |
+| InteractionContext | Server-resolved semantic purpose, subject and exact source/policy versions for one execution | Tenant authority, canonical source truth or model-generated facts |
+| RelationshipChannelBinding | Authenticated relationship-to-channel continuity and assurance | Employment authority, contract, billing or lifecycle |
+| ChannelDeliveryAttempt | Transport submission and observation state | Professional completion, customer decision or evidence |
 | EvidenceRecord | ConstitutionalAuditEntry, AuthorityLicense | Business schema data |
 | PAASSession | In-memory Decision Space snapshot | The canonical Decision Space (owned by EmploymentContract) |
 | ApprovalGateSession | Approval workflow state | The evidence record (written by Constitutional Engine) |
@@ -336,3 +410,7 @@ Note: PAAS execution skips PROPOSED/AWAITING_APPROVAL — it goes directly to EX
 7. **Operations eligibility requires distinct relationship, induction, plan and continuous-action gates** (ADR-051)
 8. **WBE billing truth and domain outcome truth are composed but never recalculated by the workspace** (ADR-051)
 9. **A mandatory employment-interface version cannot activate with a non-conforming offered agent** (C-094, ADR-051)
+10. **A client context hint cannot override authenticated relationship, pending intent, authority or source versions** (ADR-052)
+11. **Every professional execution binds exact Interaction Context and Conversation Policy versions** (ADR-052)
+12. **Channel delivery state cannot imply professional execution, customer decision or constitutional evidence** (ADR-053)
+13. **Demo, UAT and Production channel bindings never share provider authority or runtime state** (ADR-053)

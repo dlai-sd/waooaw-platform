@@ -2,7 +2,7 @@
 
 **Produced by:** Enterprise Architect (Sprint 003, reconciled for platform v1.44.0 under WC-049)
 **Date:** 2026-07-07 (updated 2026-08-08)
-**ADR References:** ADR-001 (gRPC), ADR-003 (JWT/RLS), ADR-004 (SignalR), ADR-005 (PAAS session), ADR-008 (Keycloak), ADR-009 (OTel), ADR-012 (GHCR), ADR-019 (RAG), ADR-020 (MCP), ADR-021 (oauth-vault), ADR-034 (WBE), ADR-042 (CTG + Provider Registry), ADR-043 (Skill Architecture), ADR-044 (Audit Trail Sink)
+**ADR References:** ADR-001 (gRPC), ADR-003 (JWT/RLS), ADR-004 (SignalR), ADR-005 (PAAS session), ADR-008 (Keycloak), ADR-009 (OTel), ADR-012 (GHCR), ADR-019 (RAG), ADR-020 (MCP), ADR-021 (oauth-vault), ADR-034 (WBE), ADR-042 (CTG + Provider Registry), ADR-043 (Skill Architecture), ADR-044 (Audit Trail Sink), ADR-051, proposed ADR-052 and ADR-053
 
 ---
 
@@ -177,6 +177,24 @@ CTG Call Flow (ADR-042):
 - **Responsibility:** Validate Meta webhook HMAC and timestamp, deduplicate messages, map verified WhatsApp phone identity to organisation, auto-register first contact, and issue a short-lived internal session token.
 - **Communication:** Called through the Business Platform WhatsApp webhook boundary; invokes the logical Business Platform Identity Boundary for account continuation/linking. It never issues or upgrades to a Keycloak web/mobile session.
 - **Hosting:** Container Apps with internal ingress (cloud) / Docker container (dev). It is not an MCP server.
+
+### Channel-Neutral Conversation And WhatsApp Boundary *(proposed ADR-052/053)*
+- **Deployable impact:** No new service. This is a logical composition of Business Platform,
+  Professional Runtime, AI Runtime, Phone Identity Service and existing storage boundaries.
+- **Business Platform responsibility:** Resolve the effective Interaction Context; project the exact
+  Conversation Policy version; own the canonical relationship timeline; normalize WhatsApp provider
+  events; dispatch canonical outbound representations; and keep delivery, execution and evidence
+  states independent.
+- **Channel responsibility:** Web, WhatsApp and future mobile own presentation, local unsent drafts
+  and transport-specific controls only. They never own tenant, relationship, professional reasoning,
+  authority, billing, lifecycle, evidence or a separate durable history.
+- **WhatsApp environment boundary:** Demo, UAT and Production use separate number/provider identity,
+  HTTPS callback hostname, secret authority, deduplication state, media storage, data and telemetry.
+  Static Azure ingress does not replace Meta challenge, raw-body HMAC, replay or schema validation.
+- **Communication:** Ordinary channel commands terminate at Business Platform. Business Platform
+  invokes PR for professional execution; PR invokes AIR for governed inference; BP/PR invoke CE/WBE
+  through their existing authority boundaries. Meta Graph API is reached only through the
+  environment-bound server adapter.
 
 ### oauth-vault *(new — WC-038)*
 - **Technology:** Python 3.12, FastAPI, `azure-identity` (DefaultAzureCredential)
