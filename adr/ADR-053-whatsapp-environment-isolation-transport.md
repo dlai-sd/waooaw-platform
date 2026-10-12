@@ -54,6 +54,12 @@ webhook authentication would also weaken Meta signature controls.
 11. No runtime fallback may cross Demo, UAT, or Production.
 12. Stable outbound egress is added only if an authorized external dependency requires allow-listing;
     it is not implied by static inbound ingress.
+13. Signed inbound success is returned only after atomic durable claim/acceptance or replay of the
+    same durable outcome; deduplication survives every applicable retry/reconciliation horizon.
+14. Provider runtime, media scanner and deployment/configuration use separate environment-bound
+    workload identities and least-privilege secret/operation authority.
+15. An explicit WhatsApp Stop command bypasses model/context execution, latches idempotently and
+    preserves ADR-031 local halt/evidence buffering during CE outage.
 
 ## Alternatives Considered
 

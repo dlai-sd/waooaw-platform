@@ -51,6 +51,11 @@ WAOOAW adopts a server-resolved, versioned **Interaction Context** and a layered
 9. Material source changes stale affected context before further consequential execution.
 10. No new deployable service is created. BP, PR, AIR, CE, WBE, Phone Identity, storage, and channel
     clients retain their existing boundaries.
+11. Every assembled context segment carries provenance and sensitivity; all customer, provider,
+    media, research, retrieval, tool, transcript and summary content is untrusted data structurally
+    separated from accepted policy.
+12. Canonical message append, sequence allocation, idempotency reservation and outbox publication
+    share one BP-owned transaction; facts and summaries retain reproducible lineage.
 
 ## Alternatives Considered
 

@@ -207,15 +207,26 @@ ChannelDeliveryAttempt {
   conversationMessageId: UUID
   channel: enum(WEB, WHATSAPP, MOBILE)
   environment: enum(DEMO, UAT, PRODUCTION)
+  attemptNumber: int
   providerMessageReference: string?
-  state: enum(QUEUED, SUBMITTED, PROVIDER_ACCEPTED, DELIVERED, READ,
-              FAILED, EXPIRED, UNKNOWN)
-  stateVersion: int
+  progress: enum(QUEUED, SUBMITTED, PROVIDER_ACCEPTED, DELIVERED, READ)
+  disposition: enum(OPEN, FAILED, EXPIRED, CANCELLED)
+  reconciliation: enum(CURRENT, UNKNOWN, CONFLICTED)
+}
+
+ChannelDeliveryObservation {
+  id: UUID
+  deliveryAttemptId: UUID
+  providerEventReference: string
+  normalizedStatus: string
+  providerTime: datetime?
+  receivedTime: datetime
+  environment: enum(DEMO, UAT, PRODUCTION)
 }
 ```
 
-Delivery state never implies professional execution, customer authorization or constitutional
-evidence.
+Delivery observations are immutable and idempotent; the attempt is a derived projection. Delivery
+state never implies professional execution, customer authorization or constitutional evidence.
 
 ### Conversational Employment Workspace (ADR-051)
 
@@ -284,7 +295,8 @@ WorkboardItem {
 conversation/workspace identity, induction truth, goal/plan truth and readiness composition.
 **Aggregates:** EmploymentContract (root), DecisionSpace, BusinessGoal, RelationshipPlan,
 ConversationalEmploymentWorkspace, InteractionContext, ConversationPolicyReference,
-RelationshipChannelBinding, ChannelDeliveryAttempt, WorkboardItem, ReviewRecord
+RelationshipChannelBinding, ChannelDeliveryAttempt, ChannelDeliveryObservation, WorkboardItem,
+ReviewRecord
 **Domain Events emitted:**
 - `EmploymentContractFormed` — customer signed contract
 - `DecisionSpaceConfigured` — Decision Space set/updated

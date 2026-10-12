@@ -297,6 +297,20 @@ RESOLVED -> ACTIVE -> CHECKPOINTED -> SUPERSEDED
 Every professional execution binds the exact context and policy versions used. Material relationship,
 plan, Decision Space, identity, or authority changes stale affected contexts and prevent silent reuse.
 
+### 8.6 Trusted Context Assembly
+
+Every assembled segment carries provenance, sensitivity, tenant, relationship, source identity,
+source version, freshness, and permitted-use metadata. Institutional instructions and accepted
+policy are structurally separated from untrusted content. Customer messages, provider metadata,
+media, transcripts, quoted history, retrieved research, tool/MCP output, derived summaries, and
+agent-produced text are always untrusted data, even when previously stored by WAOOAW.
+
+Instruction-like text in an untrusted segment cannot populate policy or authority fields. Every
+model-proposed tool call, command, context change, or customer-state patch is independently
+authorized against the current Interaction Context, source versions, Decision Space, participant
+assurance, and registered operation contract. Indirect prompt injection, quoted-policy imitation,
+cross-segment contamination, and malicious retrieved content are required adversarial cases.
+
 ## 9. Conversation Policy And Style
 
 ### 9.1 Policy Composition
@@ -461,6 +475,40 @@ The public HTTPS callback supports:
 Source IP is not an authentication factor. A static WAOOAW ingress IP does not replace signature,
 replay, schema, or deduplication controls.
 
+GET challenge verification echoes `hub.challenge` only when the request uses the exact expected
+subscribe mode, the supplied token matches the environment-bound verify-token version in
+constant-time, and the callback host resolves to the same environment binding. All other inputs
+receive a non-reflective denial.
+
+POST verification parses the declared signature algorithm, permits only the approved HMAC-SHA256
+form, computes over the exact bounded raw request bytes before decompression, normalization, parsing,
+or middleware transformation, and compares in constant-time. Oversized bodies are rejected before
+buffer amplification. Responses never reflect signatures, tokens, payloads, phone proofs, provider
+identifiers, or parser errors.
+
+The inbound event state machine is:
+
+```text
+RECEIVED -> VERIFIED -> CLAIMED -> DURABLY_ACCEPTED -> OUTCOME_RECORDED
+                 |          |              |
+                 v          v              v
+              REJECTED   CONFLICT       RECONCILING
+```
+
+The compound provider-event identity is environment + provider app/WABA authority + recipient
+phone-number ID + provider event/message/status ID. Claim, canonical payload digest, normalized typed
+acceptance or durable typed rejection, and inbox/outbox handoff are one BP-owned consistency
+boundary. Concurrent first delivery has one winner; same identity/same digest replays the durable
+result; same identity/different digest is a conflict with zero additional mutation.
+
+Success is returned to Meta only after `DURABLY_ACCEPTED`, `OUTCOME_RECORDED`, or retrieval of the
+same previously durable result. Before that point the adapter returns the approved retryable provider
+failure. A previously unseen event is fresh only when its provider timestamp is within ADR-023's
+inclusive five-minute skew of trusted server receipt time. Freshness never discards an authentic
+retry already found in durable deduplication merely because the original provider timestamp is old.
+Deduplication retention is policy-owned and cannot be shorter than provider retry, WAOOAW
+reconciliation, security replay, backup/restore, or unresolved-attempt horizons.
+
 ### 12.2 Inbound Message Normalization
 
 Supported provider inputs are normalized into a channel-neutral envelope:
@@ -506,6 +554,16 @@ constitutional evidence.
 - A rejected, paused, unapproved, or mismatched template fails closed with a customer-safe unresolved
   outcome and an operator-visible reason code.
 
+The service window opens only from a qualifying, verified and durably accepted inbound customer
+message type under the current provider contract. BP receipt time from the trusted server clock is
+the enforcement anchor; provider time remains provenance and freshness evidence. The exact inclusive
+boundary follows the approved provider contract and is tested at both sides of the boundary.
+Window, opt-in, opt-out, purpose, recipient, template approval/version/locale/schema, and relationship
+state are validated both when queued and immediately before provider submission. Opt-out, consent
+revocation, relationship termination, Stop, template revocation, or environment deactivation
+invalidates queued work immediately. A state change between queue and submission produces a typed
+non-dispatched outcome and reconciliation evidence, never fallback to another template or channel.
+
 ### 12.5 Media And Voice
 
 Inbound media uses the provider media ID to obtain a short-lived authenticated retrieval URL
@@ -514,14 +572,26 @@ The media path must:
 
 1. authorize environment and phone-number binding;
 2. retrieve within provider validity;
-3. enforce declared type and hard size ceilings;
-4. quarantine and scan before interpretation;
-5. store payload only in the approved erasable boundary;
-6. preserve immutable evidence metadata separately;
-7. route audio through the existing provider-neutral voice orchestration;
-8. require transcript review/correction when confidence or policy requires it;
-9. prohibit silence, transcription, or upload completion from implying send consent; and
-10. render the accepted contribution into the same canonical conversation sequence.
+3. treat filename, extension and declared MIME as untrusted; verify content signature and sniffed
+   type against a deny-by-default approved format policy;
+4. enforce compressed and expanded size, decompression ratio, page/frame/duration, parser CPU,
+   memory, recursion and timeout ceilings;
+5. deny active content, archives, polyglots and parser-capable formats unless the exact format is
+   separately approved;
+6. quarantine and scan through an isolated scanner identity before interpretation;
+7. record immutable scanner engine/signature/policy versions and verdict lineage;
+8. keep timeout, scanner error, unknown format and inconclusive verdict in quarantine;
+9. store payload only in the approved erasable boundary;
+10. preserve immutable evidence metadata separately;
+11. route audio through the existing provider-neutral voice orchestration;
+12. require transcript review/correction when confidence or policy requires it;
+13. prohibit silence, transcription, or upload completion from implying send consent; and
+14. render the accepted contribution into the same canonical conversation sequence.
+
+Only the isolated scanner workload may move a payload from quarantine to clean state, and it has no
+conversation, provider-dispatch, PR, AIR, CE, WBE, or cross-environment authority. Rejected payload
+retention, deletion, legal hold, and customer-visible explanation follow the lifecycle matrix in
+Section 15; media activation remains blocked until the Section 24 owner decision is recorded.
 
 For WhatsApp audio, an explicit customer send already occurred at the provider channel, but
 consequential interpretation may still require a confirmation turn when transcription confidence,
@@ -536,6 +606,55 @@ risk tier, or detected ambiguity requires it.
 
 Changing channels never upgrades assurance. A web login may establish a stronger target-channel
 session only through the existing continuity activation and evidence path.
+
+### 12.7 Deterministic Phone Resolution And Assurance
+
+The signed event first resolves the environment, provider app/WABA authority, and recipient
+phone-number ID. Only then may Phone Identity derive a protected participant proof from the signed
+sender. Resolution evaluates active channel binding, tenant membership, relationship role, number
+reassignment/revocation state, assurance and freshness.
+
+| Resolution cardinality/state | Required result |
+|---|---|
+| Exactly one active binding with current membership and matching environment/recipient | Continue under that tenant and relationship |
+| No binding but valid first-contact admission policy | Start only a new evaluation/admission flow; never attach an existing relationship |
+| Zero without valid first-contact admission | Normalized unavailable response; zero tenant or relationship mutation |
+| Multiple, conflicting or ambiguous bindings | Normalized unavailable response; security event; zero mutation |
+| Inactive, revoked, reassigned, expired or stale binding | Normalized unavailable/step-up response; zero protected mutation |
+| App/WABA, recipient phone-number ID or environment mismatch | Deny and alert; no fallback |
+
+Provider IDs, phone references, payload hints and message text never independently select tenant or
+relationship data. First-contact admission requires the verified event, bound recipient/environment,
+current admission policy and opt-in evidence; phone possession alone is insufficient.
+
+| Tier | Operation families | Required assurance and freshness |
+|---|---|---|
+| 1 | Information, routine grooming, non-consequential support | Current verified phone binding and active membership/session; no authority expansion |
+| 2 | Exact plan/brief/seasonal or other medium commitment | Tier 1 plus explicit confirmation bound to intent digest, subject, source version and expiry |
+| 3 | Financial/significant authority-bearing commitment | Fresh stronger-factor step-up bound to one intent; invalidated on completion, change, expiry, Stop or session loss |
+| 4 | Contract creation/change, Stop release, payment/bank change, deletion and other critical actions | Fresh portal authentication and exact authoritative command; never WhatsApp completion |
+
+The solution security contribution may further restrict an operation but cannot lower these floors.
+Step-up freshness can never exceed the underlying authenticated session and is rechecked at commit.
+Number reassignment, participant revocation, membership loss, relationship change, or environment
+change invalidates all derived WhatsApp assurance.
+
+### 12.8 WhatsApp Emergency Stop
+
+An explicit typed WhatsApp Stop command is recognized after signature and binding verification but
+before context classification, model execution, ordinary professional queuing, billing, or outbound
+work. It latches idempotently to the resolved Employment Relationship and invokes the existing Stop
+orchestrator. It does not depend on free-text model interpretation.
+
+During CE unavailability, the adapter follows ADR-031: execute the local halt, append the protected
+relationship-scoped Stop event to the bounded local evidence buffer, acknowledge that the halt is
+active and evidence synchronization is pending, flush idempotently after CE recovery, and never
+auto-release. Duplicate delivery, adapter restart, simultaneous channel Stop, timeout, reconnect, or
+operator action cannot create a second Stop or release the latch.
+
+Conversational uses of "stop" that are not the explicit typed Stop command trigger a safe
+clarification with the explicit Stop control immediately available. Ambiguity never suppresses the
+control and never silently converts unrelated text into a release. Release remains Tier 4 portal-only.
 
 ## 13. Environment And Deployment Topology
 
@@ -599,6 +718,47 @@ removing the active revision; revoke temporary provider authority; expire tempor
 erasable payload and deduplication state under approved retention; preserve required privacy-safe
 deployment/evidence records; and prove that UAT/Production bindings were untouched.
 
+Cleanup is prohibited while any provider retry, unresolved inbound event, outbound attempt,
+reconciliation, legal hold, erasure propagation, or retained deduplication/tombstone horizon remains
+capable of causing work. An authorized cleanup either reaches a proven terminal/reconciled state or
+retains an isolated non-routable recovery boundary until the horizon closes.
+
+### 13.6 Provider Workload And Secret Authority
+
+Logical workload identities are environment-specific:
+
+```text
+spiffe://waooaw.<environment>/workload/business-platform/whatsapp-adapter
+spiffe://waooaw.<environment>/workload/business-platform/whatsapp-media-scanner
+spiffe://waooaw.<environment>/deployment/whatsapp-configurator
+```
+
+The runtime audience is `urn:waooaw:service:whatsapp-adapter:<environment>`. Deployment/configuration
+authority has a distinct audience and cannot invoke conversation or provider-message operations.
+
+| Protected authority | Runtime adapter | Media scanner | Deployment/configurator |
+|---|---|---|---|
+| Callback verify token compare | Read current/overlap version | None | Rotate/revoke reference |
+| Webhook HMAC app secret | Read current/overlap version | None | Rotate/revoke reference |
+| Outbound message authority | JIT read/use for exact environment/audience | None | Provision/rotate/revoke reference |
+| Media retrieval authority | JIT read/use for exact environment/media operation | None | Provision/rotate/revoke reference |
+| Quarantine read / clean promotion | None | Exact object only; promote verdict | Configure policy, no payload read |
+| Callback/provider configuration | Read own immutable binding | None | Prepare/apply only under separate authority |
+| DNS/TLS/Azure deployment | None | None | Prepare/apply only under separate authority |
+
+Managed workload identity and Key Vault policy enforce the matrix. A catch-all provider credential is
+prohibited. Secrets remain in process memory only for the shorter of operation need, credential
+validity, cache policy, or approved rotation overlap; they never propagate to PR, AIR, CE, WBE,
+clients, logs, traces, dead letters, or persisted conversation data. Access, rotation, revocation,
+denial and configuration changes are audited with privacy-safe references.
+
+Unknown, unavailable, wrong-workload, wrong-audience, wrong-environment, expired, revoked,
+superseded, leaked or version-mismatched authority fails closed. Rotation permits only the bounded
+provider-supported overlap of current and immediately previous authorized versions. Emergency
+revocation terminates new dispatch/retrieval and reconciles in-flight work without credential
+fallback. Rollback may restore non-secret configuration but can never restore or reactivate a
+revoked, expired, leaked, wrong-environment or superseded credential.
+
 ## 14. Security Architecture
 
 ### 14.1 Trust Boundaries
@@ -641,27 +801,205 @@ deployment/evidence records; and prove that UAT/Production bindings were untouch
 - Research ingestion records purpose, source, freshness, and permitted use.
 - Conversation summaries inherit the highest sensitivity of their source material.
 
+Ordinary logs, metrics, traces, baggage, exception responses, request capture, dead-letter
+diagnostics and scanner diagnostics must not contain payloads, headers, signatures, phone proofs,
+tenant/relationship identifiers, provider references, prompts, transcripts, message/media metadata,
+template variables, context facts, or secret material. High-cardinality customer/provider labels
+are prohibited.
+
+A separately authorized protected diagnostic/evidence path may retain the minimum encrypted payload
+needed for a named purpose. It requires explicit RBAC, purpose, access evidence, retention/deletion
+class, legal-hold behavior, environment boundary and export prohibition. Sampling cannot turn
+prohibited data into permitted telemetry. Automated leakage tests cover successful and exceptional
+paths, framework errors, retry queues, dead letters, scanner failures and trace propagation.
+
 ## 15. Data Architecture Obligations
 
-The Data Architect must define physical ownership and lifecycle for:
+### 15.1 Normative Logical Data Boundary
 
-| Logical record | Authority | Required properties |
-|---|---|---|
-| Canonical Conversation | BP | One per relationship; tenant-bound; versioned |
-| Conversation Message | BP | Ordered; immutable content version; author/channel/provenance |
-| Channel Session/Binding | BP | Independently authenticated; assurance/freshness; revocable |
-| Interaction Context | BP | Versioned resolution inputs/result; source versions |
-| Conversation Policy Reference | BP/AIR contract | Exact effective version and layer references |
-| Context Profile Fact | BP | fact type, status, source, confirmation, freshness, supersession |
-| Context Checkpoint | BP | channel-neutral continuity, signed/hash-bound, replay-safe |
-| Delivery Attempt/Status | BP transport projection | Provider correlation, monotonic state, no outcome inference |
-| Media Payload | Approved erasable payload store | encrypted, bounded retention, scan state, erasure |
-| Transcript/Correction | Voice boundary | lineage, confidence, customer correction, accepted version |
-| Provider Event Dedup | Phone/transport boundary | environment/phone/provider ID, TTL, outcome reference |
-| Evidence Reference | CE | append-only reference; no payload duplication |
+| Record | System of record / durable boundary | Mandatory binding | Write authority | Consistency and handoff | Lifecycle / recovery owner |
+|---|---|---|---|---|---|
+| Canonical Conversation | BP relational relationship boundary | environment, tenant, relationship, conversation | BP relationship service | One per relationship; root for sequence and channel projections | BP/Data |
+| Conversation Message | BP relational metadata + opaque payload-store reference | environment, tenant, relationship, conversation, sequence | BP conversation service | Idempotency reservation, sequence allocation, append and outbox are one transaction | BP/Data |
+| Channel Session/Binding | BP relational identity boundary | environment, tenant, relationship, participant proof, channel | BP identity/continuity service | Fresh authentication and evidence before activation | BP/Data + Identity owner |
+| Interaction Context | BP relational relationship boundary | environment, tenant, relationship, conversation, source versions | BP context resolver | Immutable resolved version; execution receives opaque ID/version | BP/Data |
+| Conversation Policy Reference | BP relational reference; policy bytes in approved policy registry | environment, tenant/relationship scope, exact layer versions | Policy owner publishes; BP selects | Opaque immutable reference to AIR; no policy bytes from client | Policy owner + BP/Data |
+| Context Observation | BP append-only relationship boundary | environment, tenant, relationship, subject, source | BP profiling/context service | Append observation, then update current projection transactionally | BP/Data |
+| Current Context Profile | BP replaceable relationship projection | environment, tenant, relationship, profile version | BP profiling/context service | Derived only from retained observations | BP/Data |
+| Derived Summary | Approved erasable/derived payload boundary + BP metadata | environment, tenant, relationship, explicit source set | BP/AIR derivation under typed contract | Metadata commit only after payload write; invalidation is append-only | BP/Data |
+| Context Checkpoint | BP relational continuity boundary | environment, tenant, relationship, source/target channel | BP continuity service | Signed/hash-bound; prepare/activate/revert with outbox/evidence refs | BP/Data |
+| Inbound Provider Event | BP transport inbox | environment, app/WABA, recipient number ID, provider event ID | BP WhatsApp adapter | Atomic claim with typed acceptance/rejection and outbox | BP/Data |
+| Canonical Command Idempotency | BP relationship boundary | environment, tenant, relationship, actor, operation, key, digest | BP command owner | Atomic with protected mutation or typed rejection | BP/Data |
+| Outbound Logical Message | BP conversation boundary | environment, tenant, relationship, conversation message | BP conversation/transport owner | Created from canonical message only; outbox to attempts | BP/Data |
+| Outbound Delivery Attempt | BP transport boundary | environment, outbound message, attempt number, provider binding | BP WhatsApp adapter | Each retry is a new attempt; provider submission through outbox | BP/Data |
+| Provider Status Observation | BP append-only transport boundary | environment, provider event ID, attempt/correlation | BP WhatsApp adapter | Idempotent append; projection recomputed by precedence contract | BP/Data |
+| Media/Voice Payload | Erasable payload/quarantine boundary | environment, tenant, relationship, opaque payload ID | Retrieval/scanner/voice roles by state | Metadata uses opaque ID; no reconstructive hash outside payload boundary | Payload/Data owner |
+| Transcript/Correction | Erasable voice payload boundary + BP lineage metadata | environment, tenant, relationship, contribution, version | Voice orchestration; customer correction through BP | Versioned append; accepted version alone reaches conversation | Voice/Data owner |
+| Dedup/Erasure Tombstone | BP transport/relationship boundary | complete idempotency namespace; non-reconstructive digest | Owning BP operation | Retained after payload erasure for replay horizon | BP/Data |
+| Evidence Reference | CE append-only evidence boundary | environment, tenant, relationship, evidence ID | CE only | Opaque reference from BP; never payload duplication | CE/Data |
 
-Physical schemas must preserve tenant RLS, append-only evidence, payload erasure, source-version
-conflicts, idempotency uniqueness, monotonic sequence, and environment separation.
+Cross-boundary references are opaque identifiers or keyed non-reconstructive digests. No store
+dereferences another store's internal location. Any operation that must durably accept in one
+boundary and continue in another uses an inbox/outbox or equivalent atomic handoff with explicit
+reconciliation. Retention duration and numeric recovery targets may be configurable; ownership,
+isolation, consistency and fail-closed behavior are fixed here.
+
+### 15.2 Canonical Ordering And Concurrency
+
+There is one monotonically increasing sequence per canonical conversation. BP allocates it in the
+same transaction as idempotency reservation, pending-intent conflict check, canonical message append,
+and outbox publication. `(environment, tenant, relationship, conversation, sequence)` is unique.
+Commit order is canonical order; provider/customer timestamps are provenance only. Sequence gaps are
+permitted only for rolled-back reservations that are never externally visible, or represented by a
+typed tombstone under the physical design; they cannot be silently reused.
+
+Protected-subject commands serialize against the same subject/source version. Independent messages
+may commit concurrently and receive the stable order chosen by the BP transaction boundary. An
+ambiguous client response reconciles by the original idempotency identity and replays the committed
+result; it never allocates another sequence.
+
+### 15.3 Tenant And RLS Invariants
+
+Every tenant-scoped row, uniqueness key, foreign-key path, cursor, payload reference, idempotency
+namespace, provider correlation and outbox/inbox record includes environment and tenant, and includes
+relationship where relationship resolution has occurred. Composite references enforce matching
+environment/tenant/relationship. Provider IDs, phone proofs, message IDs, media IDs and environment
+names never independently select tenant data.
+
+Web derives tenant from the authenticated membership selected under ADR-003. Signed provider
+callbacks first resolve environment/recipient authority, then Phone Identity supplies a protected
+participant proof; BP membership/relationship resolution supplies tenant. Scheduled reconciliation,
+media retrieval, transcription callbacks and recovery jobs consume a signed workload assertion bound
+to exact environment, tenant, relationship, operation and object/attempt. Each DB transaction sets
+and resets tenant context locally. Tenant stores use `ENABLE ROW LEVEL SECURITY`, `FORCE ROW LEVEL
+SECURITY`, composite tenant-consistent references, and non-owner `NOBYPASSRLS` runtime roles.
+Unresolved or mismatched context returns normalized zero-disclosure denial.
+
+### 15.4 Context Observation And Summary Lineage
+
+Observations are append-only; the current Context Profile is replaceable and reproducible. Each
+observation version binds environment, tenant, relationship, subject, fact type, value/payload
+reference, status, accountable source, source identity/version, observed/captured/confirmed times,
+valid-from/to, freshness, sensitivity, permitted use, predecessor, supersession/invalidation reason,
+and evidence reference where applicable.
+
+Allowed states are `RESEARCHED`, `INFERRED`, `CONFIRMED`, `DISPUTED`, `STALE`, `SUPERSEDED`,
+`UNAVAILABLE`, and `ERASED`. Research or inference becomes confirmed only through attributable
+customer confirmation or an approved authoritative source rule. Correction appends a successor and
+supersedes the prior version; dispute never overwrites; expiry stales; erasure removes payload and
+leaves only the permissible non-reconstructive tombstone/evidence metadata.
+
+Each summary records the covered canonical sequence range or explicit source IDs and digests,
+derivation contract/model/policy versions, produced time, sensitivity, predecessor, invalidation
+reason and rebuild state. Correction, erasure, source expiry, policy/model incompatibility or
+relationship change invalidates affected summaries. A summary is never the sole source of a fact.
+
+### 15.5 Idempotency And Deduplication Domains
+
+Separate domains exist for inbound provider events, canonical customer commands, and outbound
+dispatch. Their uniqueness namespaces include:
+
+- inbound: environment + provider app/WABA + recipient phone-number ID + provider event ID + digest;
+- command: environment + tenant + relationship + actor + operation + idempotency key + digest; and
+- outbound: environment + tenant + relationship + outbound logical message + attempt + digest.
+
+Reservation is atomic with canonical acceptance or durable typed rejection. Same namespace/same
+digest replays; same namespace/different digest conflicts. Retention is policy-owned and no shorter
+than all applicable provider retry/reconciliation, security replay, unresolved outcome, backup/restore
+and legal-hold horizons. Payload erasure retains a non-reconstructive tombstone for that horizon.
+Dedup, inbox, outbox and canonical messages share a recovery consistency point. Demo cleanup cannot
+remove protection while a retained attempt/event can retry.
+
+### 15.6 Delivery Observation And Projection
+
+Provider status is immutable observation, not a mutable truth row. Each observation binds provider
+event ID, environment, attempt, provider correlation, normalized raw status, provider time, trusted
+received time, payload digest and predecessor/conflict information. Duplicate observations replay.
+Late, contradictory or regressive observations remain recorded.
+
+Each retry is a distinct attempt under one outbound logical message. A deterministic projection
+combines transport progress (`QUEUED`, `SUBMITTED`, `PROVIDER_ACCEPTED`, `DELIVERED`, `READ`) with
+attempt disposition (`OPEN`, `FAILED`, `EXPIRED`, `CANCELLED`) and reconciliation
+(`CURRENT`, `UNKNOWN`, `CONFLICTED`). Later valid delivery/read evidence may supersede an earlier
+unknown or failure projection without deleting history. No transport observation changes
+professional execution, customer decision or evidence state.
+
+### 15.7 Media, Transcript And Erasure Lineage
+
+The channel-neutral lineage is:
+
+```text
+provider media reference
+  -> quarantined erasable payload
+  -> immutable scan verdict/version
+  -> clean erasable payload
+  -> derived transcript/extraction version
+  -> customer correction/confirmation version
+  -> accepted canonical contribution
+  -> payload-free evidence reference
+```
+
+Raw audio/media, quarantined copies, extracted text, transcripts, corrections, thumbnails,
+embeddings, summaries, caches and temporary provider downloads are payload or payload derivatives.
+Each has an authority, classification, store boundary, retention class, legal-hold behavior and
+erasure path in Section 15.8. Corrections append; they never overwrite. Only the accepted version
+enters professional context. Payload erasure removes resolvable pointers and derivatives and leaves
+only a non-reconstructive tombstone plus permissible minimized evidence metadata. Provider-held
+copies are tracked as an external deletion/expiry obligation and never reported as erased until
+provider outcome is known or honestly unresolved.
+
+### 15.8 Lifecycle, Hold And Erasure Matrix
+
+| Record class | Policy owner / trigger | Legal hold | Erasure/correction result | Backup/cache behavior |
+|---|---|---|---|---|
+| Canonical message metadata | Product/Data/Legal; relationship and statutory trigger | Founder/Legal scoped hold | Preserve permissible metadata; erase payload reference/content under approved right | Age out payload in backups; metadata follows evidence policy |
+| Message/context/profile payload | Data/Legal; purpose end, correction, customer right | Scoped hold blocks deletion and is visible to authorized process | Delete/supersede payload; append tombstone/lineage | Propagate to cache/search/summary; backup crypto/expiry erasure |
+| Context observations/profile | Data/Legal; validity/freshness/correction | Fact/purpose scoped | Append successor, stale, dispute, or erase payload | Rebuild projection after restore |
+| Derived summary/embedding/cache | Data; source/policy invalidation | Inherits source hold/sensitivity | Invalidate and delete/rebuild with source set | Never outlive source retention |
+| Channel binding/assurance | Identity/Data; revocation, membership end, expiry | Security/Legal hold on evidence only | Revoke active use; retain minimized evidence | Restored inactive until revalidated |
+| Provider inbox/dedup/tombstone | Security/Data; retry/replay horizon | Security incident hold | Remove payload, retain non-reconstructive replay tombstone | Same recovery point as canonical append |
+| Delivery/status observations | Data/Legal; provider/accountability horizon | Incident/dispute hold | Retain minimized immutable transport evidence | Recompute projection after restore |
+| Media/transcript derivatives | Data/Legal/Product; purpose, expiry, erasure | Explicit payload hold | Delete payload and derivatives; retain permissible tombstone/evidence | Quarantine/clean/cache/backups all age out |
+| Opt-in/template evidence | Legal/Product/Data; consent and regulatory horizon | Dispute/regulatory hold | Revoke operational use immediately; retain permissible evidence | Restored inactive pending current consent check |
+| Operational telemetry | Security/Operations/Data; diagnostic horizon | Incident hold | Delete/aggregate under telemetry policy | No customer payload; bounded backup |
+| CE evidence reference | Constitutional/Legal | Constitutional hold rules | Never delete through payload erasure; minimize payload linkage | CE recovery policy |
+
+Durations are named configuration classes, not hard-coded defaults. The Data/Legal contribution owns
+class values; Founder accepts material rights/cost consequences. Hold creation and release are
+attributable, scoped, evidenced and cannot silently reactivate operational use. Erasure propagates to
+payload, cache, search, vector, summary, export, retry/dead-letter and backups according to their
+class, with completion or unresolved external-provider status evidenced.
+
+### 15.9 Backup And Recovery
+
+Backups are environment-specific, encrypted with environment-specific key authority, access-audited,
+and isolated from runtime/provider credentials. Data owns backup policy and restore procedure;
+Platform owns infrastructure execution; Founder authority gates UAT/Production recovery activation.
+Data owns RPO/RTO proposals and consistency groups; Founder accepts material cost/risk.
+
+Restore order is schema/watermark -> canonical relationship/conversation -> idempotency/inbox/outbox
+and sequence allocator -> context/profile lineage -> payload references/payloads -> delivery
+observations/projections -> derived summaries/caches. Canonical messages, sequence state,
+idempotency, dedup and outbox restore to the same consistency point.
+
+Every restore first targets an isolated, non-routable environment with separate temporary workload
+and encryption authority and no Meta callback, outbound dispatch, template or provider credential.
+Qualification proves schema watermark, tenant/FORCE-RLS policy, composite references, sequence,
+dedup/outbox consistency, payload linkage, lineage rebuild and reconciliation. Provider traffic
+requires a separate explicit reactivation after current identity, consent, templates, Stop and
+environment bindings are revalidated.
+
+### 15.10 Environment Anti-Collision
+
+Environment is immutable in provider-event, phone-binding, template, delivery, media, dedup,
+tombstone, payload and backup namespaces. Equal provider IDs, phone proofs, idempotency keys or media
+IDs in different environments cannot collide. Runtime principals, encryption keys and storage
+authority are environment-specific.
+
+Cross-environment import/restore is quarantined, non-routable and has no provider authority. It may
+not remap environment, tenant, phone, app/WABA, template or callback identities in place and cannot
+emit callbacks or outbound messages. Any approved migration creates new target identities through a
+separately governed process with lineage and rollback evidence.
 
 ## 16. Failure Modes And Recovery
 
@@ -693,12 +1031,12 @@ conflicts, idempotency uniqueness, monotonic sequence, and environment separatio
 | CE-FIT-06 | Material conversations conclude explicitly | Required conclusion fields present or typed reason indicates continuation |
 | CE-FIT-07 | Delivery, execution, and evidence remain independent | State-transition tests prohibit implication across dimensions |
 | CE-FIT-08 | Concurrent channels cannot double-commit | Same protected intent across web/WhatsApp commits at most once |
-| CE-FIT-09 | Webhook authenticity is fail closed | Challenge, valid/invalid HMAC, modified raw body, stale/replayed event tests |
+| CE-FIT-09 | Webhook authenticity and durable acknowledgement are fail closed | Challenge predicates, valid/invalid HMAC, constant-time raw-byte verification, modified/oversized body, concurrent claim, stale/new and delayed accepted-retry tests |
 | CE-FIT-10 | WhatsApp service-window/template rules are deterministic | Inside/outside window and approved/rejected/version-mismatch scenarios |
-| CE-FIT-11 | Media cannot bypass safety or consent | Oversize/type/malware/expired URL/low confidence/correction scenarios |
+| CE-FIT-11 | Media cannot bypass safety or consent | Signature/MIME mismatch, archive/polyglot/active format, expansion/resource limit, malware, scanner timeout/error, expired URL, low confidence and correction scenarios |
 | CE-FIT-12 | Environment isolation is exact | Demo credential/number/host/state rejected in UAT and Production, and vice versa |
-| CE-FIT-13 | Stop is universal | Stop on any channel blocks all consequential contexts within existing latency budget |
-| CE-FIT-14 | Privacy-safe observability | Automated scan finds no prohibited content/phone/token/media URL in logs/traces |
+| CE-FIT-13 | Stop is universal | Typed Stop under CE outage, duplicate delivery, simultaneous channels, adapter restart and WhatsApp release attempt blocks all consequential contexts within existing latency budget |
+| CE-FIT-14 | Privacy-safe observability | Automated success/failure-path scan finds no prohibited payload/header/signature/identity/provider/prompt/transcript/media/secret data in logs, metrics, traces, baggage, exceptions or dead letters |
 | CE-FIT-15 | Mobile can reuse public semantics | Contract conformance uses a second generated client without server semantic changes |
 | CE-FIT-16 | Demo teardown is bounded | Teardown evidence proves callback disabled, temporary state handled, UAT/Prod unchanged |
 
@@ -750,6 +1088,17 @@ ADR-053 permits an environment to move to a new Azure ingress or hostname by con
 callback rebinding while retaining the same environment identity and proving no cross-environment
 fallback. Number migration requires an explicit provider migration plan, customer communication,
 template/opt-in continuity analysis, rollback, and Founder authority.
+
+Schema and data evolution uses expand -> migrate -> contract. Before traffic, a migration lock binds
+the exact schema/data watermark. Backfill is idempotent and bounded by environment, tenant and
+relationship, records source/provenance, and validates row counts, composite references, sequence,
+lineage, dedup, payload and projection invariants. Mixed releases retain previous-version read
+compatibility during the rollback window.
+
+Cutover records a watermark for sequence allocation, idempotency namespace, context/profile lineage,
+delivery projection, payload/tombstone and summary rebuild. Rollback restores the prior reader/writer
+contract without destructive down-migration and preserves records created under the new version.
+Contract/removal occurs only after rollback expiry and retained-data compatibility evidence.
 
 ## 21. Dependency Impact
 
@@ -861,3 +1210,31 @@ capabilities, drivers, accepted ADRs, and Founder decisions remain authoritative
 - Security and Data reviews are completed once, and valid findings are applied.
 - Author review records no unresolved finding.
 - The PR is prepared for Founder review; it is not self-approved or self-merged.
+
+## 27. Institutional Review Remediation Record
+
+The Founder-requested single-pass reviews were performed against commit `f5bb9e49`.
+
+| Review finding | Resolution in this package |
+|---|---|
+| R-146 HIGH-01 phone identity/assurance | Sections 12.7, 15.3 and CE-FIT-02/08/12 |
+| R-146 HIGH-02 webhook acknowledgement/replay | Sections 12.1, 15.1, 15.5 and CE-FIT-09 |
+| R-146 HIGH-03 secret/workload authority | Section 13.6 and CE-FIT-12/14 |
+| R-146 HIGH-04 WhatsApp Stop | Section 12.8, Section 16 and CE-FIT-13 |
+| R-146 MEDIUM-01 context injection | Section 8.6 and CE-FIT-02/04/14 |
+| R-146 MEDIUM-02 media safety | Sections 12.5, 15.7/15.8 and CE-FIT-11 |
+| R-146 MEDIUM-03 service window/template time | Section 12.4 and CE-FIT-10 |
+| R-146 MEDIUM-04 telemetry privacy | Sections 14.3, 15.8 and CE-FIT-14 |
+| R-147 DA-B1 logical boundary | Section 15.1 |
+| R-147 DA-H1 ordering/concurrency | Section 15.2 |
+| R-147 DA-H2 tenant/RLS | Section 15.3 |
+| R-147 DA-H3 fact/summary lineage | Section 15.4 |
+| R-147 DA-H4 idempotency/dedup lifecycle | Section 15.5 |
+| R-147 DA-H5 delivery observations | Section 15.6 |
+| R-147 DA-H6 media/transcript lineage | Section 15.7 |
+| R-147 DA-H7 lifecycle/recovery | Sections 15.8/15.9 |
+| R-147 DA-M1 environment anti-collision | Section 15.10 |
+| R-147 DA-M2 migration/rollback | Section 20 |
+
+The original review records remain immutable evidence of the single pass. This remediation is author
+repair, not reviewer approval. Founder review remains the acceptance gate.
