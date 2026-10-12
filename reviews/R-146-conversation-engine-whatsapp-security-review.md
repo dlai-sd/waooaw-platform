@@ -1,9 +1,9 @@
 # R-146 — Conversation Engine And WhatsApp Security Architecture Review
 
-**Reviewer:** Security Architect (INST-007)  
-**Review type:** Founder-requested, single-pass institutional architecture review  
-**Date:** 2026-10-12  
-**Package commit:** `f5bb9e49`  
+**Reviewer:** Security Architect (INST-007)
+**Review type:** Founder-requested, single-pass institutional architecture review
+**Date:** 2026-10-12
+**Package commit:** `f5bb9e49`
 **Verdict:** **CHANGES REQUIRED**
 
 ## 1. Scope

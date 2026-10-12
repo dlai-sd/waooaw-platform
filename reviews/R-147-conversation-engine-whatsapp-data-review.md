@@ -1,9 +1,9 @@
 # R-147 — Conversation Engine And WhatsApp Data Architecture Review
 
-**Office:** Data Architect (INST-006)  
-**Review mode:** Founder-requested, single-pass institutional architecture review  
-**Branch:** `architecture/conversation-engine-whatsapp`  
-**Commit reviewed:** `f5bb9e4927a9946a98da78e265abdaad4ff46f91`  
+**Office:** Data Architect (INST-006)
+**Review mode:** Founder-requested, single-pass institutional architecture review
+**Branch:** `architecture/conversation-engine-whatsapp`
+**Commit reviewed:** `f5bb9e4927a9946a98da78e265abdaad4ff46f91`
 **Date:** 2026-10-12  
 **Verdict:** **CHANGES REQUIRED**
 
