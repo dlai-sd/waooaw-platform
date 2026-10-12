@@ -227,18 +227,24 @@ WC-120 is complete only when all of the following are evidenced:
 4. The implementation plan freezes shared contracts before consumers, preserves the
    story dependencies below, defines compatibility windows and feature gates, and assigns
    the smallest repository-native tests to every story.
-5. All 27 stories meet their source-package acceptance criteria; CE-FIT-01 through CE-FIT-16
-   have bidirectional traceability and exact evidence.
+5. All 27 stories meet their source-package acceptance criteria. The
+   `WC-120-fitness-evidence-matrix.yaml` contains CE-FIT-01 through CE-FIT-16, each mapped
+   bidirectionally to stories, direct positive/boundary oracles, exact Test Champion-selected
+   repository test selectors, candidate identity, and evidence location.
 6. API/OpenAPI validation proves the specified 14 paths and schemas, resolves every local
    reference, and covers every correction in the Specification Closure Gate.
 7. Data evolution follows expand -> migrate -> contract; migration, backup, restore, and
    rollback evidence passes before any destructive contraction or environment promotion.
+   Recovery evidence records environment, injected fault, commands, watermark, accepted
+   RPO/RTO and data-loss bounds, invariant/checksum oracle, and provider-egress denial.
 8. Every story's targeted unit, contract, integration, static, security/privacy, migration,
    and compatibility checks pass before final Docker qualification.
 9. Final Docker, image, and containerized end-to-end qualification runs once on the complete
-   exact candidate after all targeted tests and implementation author review pass. Any fix
-   after failure reruns affected targeted tests and the complete final qualification on the
-   new exact candidate.
+   exact candidate after all targeted tests and implementation author review pass. An
+   immutable `test-results/wc120/candidate-manifest.json` binds source commit, image digest,
+   API/solution digests, schema and migration watermark, configuration/feature-flag versions,
+   targeted tests, recovery, CE-FIT results, and final qualification. Any relevant change
+   invalidates affected evidence and reruns impacted targeted tests plus final qualification.
 10. The operational runbook is complete and rehearsed in an authorized non-production
     environment; environment isolation, teardown, recovery, privacy-safe telemetry, and
     Emergency Stop evidence pass.
@@ -251,6 +257,9 @@ WC-120 is complete only when all of the following are evidenced:
 13. The one-pass Data, Security, Platform, AI, Product, and Test Champion review requests
     have scoped dispositions, and the Chief Solution Architect's repairs are recorded without
     misrepresenting any office decision.
+14. The Product Owner accepts the customer-state and accessibility matrix for each
+    implementation-enabled journey. Unsupported locales/media, unresolved consent/template
+    policy, or missing approved customer copy remain explicit stops.
 13. The one-pass Data, Security, Platform, AI, Product, and Test Champion review requests
     have scoped dispositions, and the Chief Solution Architect's repairs are recorded without
     misrepresenting any office decision.
@@ -325,9 +334,9 @@ semantics and acceptance conditions.
 | WC120-R020 | Solution §15; CSA-CEWA-020 | Production readiness is evidence-only and dark; no Production mutation, traffic, or activation occurs under WC-120. |
 | WC120-R021 | Solution §4; CSA-CEWA-021 | Web adopts the shared generated-client contract while preserving existing behavior and rejecting invalid or stale responses safely. |
 | WC120-R022 | Solution §4; CSA-CEWA-022 | Future Mobile compatibility is represented by the shared API contract without server semantic changes or channel-specific authority. |
-| WC120-R023 | Solution §§6, 13; CSA-CEWA-023 | Expand/migrate/contract, migration watermark, backup, restore, rollback, and recovery invariants are tested before destructive contraction. |
-| WC120-R024 | Solution §§19-20; CSA-CEWA-024 | CE-FIT-01 through CE-FIT-16 each map bidirectionally to an implementation story, direct acceptance oracle, and evidence. |
-| WC120-R025 | Solution §19.3; CSA-CEWA-025 | Final Docker/image/end-to-end qualification passes on one exact candidate only after all targeted checks and implementation author review pass. |
+| WC120-R023 | Solution §§6, 13; CSA-CEWA-023 | Expand/migrate/contract, migration watermark, backup, restore, rollback, and recovery invariants are tested before destructive contraction; evidence includes accepted per-environment RPO/RTO and data-loss bounds, injected fault, commands, invariant/checksum, watermark, and provider-egress denial. |
+| WC120-R024 | Solution §§19-20; CSA-CEWA-024; WC-120-fitness-evidence-matrix.yaml | CE-FIT-01 through CE-FIT-16 map bidirectionally to stories, source oracles, exact Test Champion-selected test selectors, exact-candidate manifest, and evidence. |
+| WC120-R025 | Solution §19.3; CSA-CEWA-025 | Final Docker/image/end-to-end qualification binds to an immutable candidate manifest covering source, image, API/solution, schema, migration, configuration, targeted tests, recovery, CE-FIT, and qualification digests. |
 | WC120-R026 | Solution §§14-16, 22; CSA-CEWA-026 | Operational procedures cover alerting, dead letters, Stop, environment setup/teardown, recovery, rollback, privacy, and escalation; rehearsals produce retained evidence. |
 | WC120-R027 | Solution §23; CSA-CEWA-027 | Founder receives the exact candidate, evidence, risks, rollback, and requested decisions; implementation, deployment, activation, PR approval, and merge remain distinct authorities. |
 | WC120-R028 | PR #499 review `R-4248037029`; Solution §§11-12 | Complete telephone identities are absent from current files, fixtures, logs, evidence, and PR text; any shared-history cleanup follows a separate approved plan. |
@@ -337,15 +346,16 @@ semantics and acceptance conditions.
 | WC120-R032 | PR #499 review `R-4248037216`; Solution §§5, 9 | Contribution discriminator variants require exactly one corresponding non-null payload and reject missing, mismatched, or simultaneous variants. |
 | WC120-R033 | PR #499 review `R-4248037259`; Solution §5 | Command types and parameters form a closed typed union of registered command schemas; arbitrary keys and values are rejected by contract validation. |
 | WC120-R034 | PR #499 package test evidence; candidate OpenAPI | OpenAPI validation proves 14 paths, 23 schemas, and resolution of all local references, with generated-client and producer/consumer fixtures passing. |
-| WC120-R035 | Solution §§3, 18-19; all stories | Each story has exact repository-native targeted commands, predicates, evidence references, and failure/rollback result recorded before it starts. |
+| WC120-R035 | Solution §§3, 18-19; all stories; WC-120-fitness-evidence-matrix.yaml | Each story and CE-FIT item has exact repository-native commands/test selectors, predicates, candidate binding, evidence references, and failure/rollback result frozen before implementation starts; the generic ledger validator alone is insufficient. |
 | WC120-R036 | PR #498 §§4, 22; WC-114; WC-115-R005/R006 | WhatsApp remains an additive transport/session adapter over the existing BP Conversation Core and employment workspace; no second timeline, transcript, relationship, API owner, or authority is introduced. |
 | WC120-R037 | Existing Core API; WC-114 BP API; PR #499 review R-4248037076/7125/7174 | Candidate operations are crosswalked to canonical read position, command discovery, employment operations, and handoff/revert contracts; only compatible additive operations remain. |
 | WC120-R038 | ADR-023; WC-115 security profile and R102-R108; PR #498 §§12.7/13.6 | Phone identity, workload assertion, freshness, operation assurance, secret rotation/revocation, and Stop behavior reuse accepted owner profiles and cannot be weakened by channel or candidate API. |
 | WC120-R039 | WC-115 data profile and R077-R084; PR #498 §15 and R-147 | Data ownership, transaction/order, tenant RLS, lineage, deduplication, retention/erasure, backup/restore, and migration are bound to accepted Data-owner controls before persistence work. |
 | WC120-R040 | WC-115 AIR profile and R095-R101; PR #498 §§8, 14, 16, 21 | AIR receives minimized, server-resolved context and untrusted contribution content; provenance and degraded/unknown outcomes remain explicit, with no provider or authority choice delegated to the channel. |
 | WC120-R041 | PR #498 §§13, 17-21, 23-24; Platform Architect contribution | Ingress, DNS/TLS, environment isolation, observability, recovery, teardown, and measurable WhatsApp SLOs have named owners and accepted targets; no infrastructure mutation is implied. |
-| WC120-R042 | PR #498 §§17, 23, 26; Product Owner and Test Champion contributions | Customer journeys, consent/template/service-window behavior, accessibility, voice/correction, and CE-FIT-01..16 acceptance oracles have explicit owners and executable evidence. |
+| WC120-R042 | PR #498 §§17, 23-24, 26; WC-115 §7.4; WC-120-product-acceptance-matrix.yaml | Product-owned journeys specify customer-visible consent/service-window/template outcomes, approved copy, locale/readability/accessibility, voice correction/send consent, Stop reachability, and degraded states; pending choices block the affected journey. |
 | WC120-R043 | PR #498 §27; R-146; R-147; §2.2 | Historical review findings, author repairs, and current office dispositions are represented separately; no author repair is labelled reviewer approval. |
+| WC120-R044 | PR #498 §17; CE-FIT-01..16; Test Champion disposition | The fitness matrix has exactly one row per CE-FIT item, maps each to one or more stories, positive/boundary oracles, exact test selectors, immutable candidate binding, and a planned evidence location. |
 
 ## 7. Validation And Evidence
 
@@ -393,7 +403,24 @@ The behavioral portfolio in Section 19.2 of the solution package is mandatory: c
 continuity; identity and authority denial with zero mutation; ingress signature, freshness,
 atomic claim and replay; outbound idempotency and delivery projections; media/privacy;
 Emergency Stop and recovery; and environment isolation. All CE-FIT-01 through CE-FIT-16
-must map to direct acceptance oracles and evidence.
+must map to direct acceptance oracles and evidence in
+`work-contracts/WC-120-fitness-evidence-matrix.yaml`. The exact repository-native command and
+test-node selectors are intentionally not guessed: the Test Champion must bind them to the
+current owners during CSA-CEWA-001 before any implementation begins. A missing or stale
+selector blocks `READY_FOR_STRATEGIC_PLAN`.
+
+The existing `scripts/validate_requirement_ledger.py` checks ledger shape, IDs, required
+fields, contract digest, and completion evidence; it does not prove CE-FIT completeness,
+test executability, or candidate binding. A passing ledger-validator result is not evidence
+that those obligations pass. The Test Champion must explicitly disposition the matrix and
+its candidate/evidence bindings. Any automation enhancement to the validator is a separate
+code change requiring its own authority; it is not implied by WC-120.
+
+Customer-visible acceptance is separately captured in
+`work-contracts/WC-120-product-acceptance-matrix.yaml`. Product owns approved copy, supported
+locale/readability choices, consent journeys, and user-visible outcomes; BP enforces transport
+eligibility, while Security/Data own their control decisions. Entries marked pending are
+pre-implementation stops, not values for the Platform IT Expert to invent.
 
 Run final Docker, image scans, and full containerized end-to-end validation only after all
 stories, targeted tests, static checks, migration/restore/rollback checks, and implementation
@@ -413,7 +440,9 @@ commands.
   application behavior while retaining safe additive schema. Do not run destructive
   contraction as an ad hoc rollback.
 - Story 023 must prove backup, restore, migration compatibility, and recovery consistency;
-  record exact data-loss and recovery limits for each environment.
+  record the environment, injected fault, exact backup/restore/rollback commands, schema and
+  migration watermark, accepted numeric RPO/RTO and data-loss bounds, invariant/checksum
+  oracle, provider-egress denial, and retained evidence for each environment.
 - Stop and reconcile external provider operations independently. Application rollback does
   not reverse a sent message, provider registration, DNS mutation, or customer-visible effect.
 - Demo teardown, UAT recovery, and Production-dark evidence are separate acceptance
@@ -446,6 +475,13 @@ Stop the affected story and report a blocker when:
 - A provider, environment, DNS, deployment, Production, cost, retention, legal-hold, media,
   RPO/RTO, or activation decision lacks its own named authority.
 - A test, security, privacy, CE-FIT, traceability, rollback, or exact-candidate gate fails.
+- The CE-FIT matrix is incomplete, has no exact Test Champion-selected test command/node,
+  is stale for the candidate, or lacks direct evidence binding.
+- The Product acceptance matrix has unaccepted consent, locale/media, copy, accessibility,
+  service-window/template, voice-correction, or degraded-state decisions for the affected
+  journey.
+- The candidate manifest, recovery limits, or provider-egress denial evidence is missing or
+  does not match the tested source/configuration/image.
 
 Do not resolve a stop by reducing a threshold, weakening a contract, changing a test, or
 assuming approval.
@@ -466,12 +502,14 @@ The implementation handoff package delivered to the Founder must include:
    paths, commands, owners, feature gates, compatibility window, and rollback.
 5. Per-story targeted test evidence, producer/consumer contract evidence, migration /
    backup / restore / rollback evidence, and bidirectional CE-FIT-01..16 traceability.
-6. Privacy, signature, assurance, idempotency, replay, Emergency Stop, environment
+6. The completed Product acceptance matrix, Test Champion-dispositioned CE-FIT matrix,
+   immutable candidate manifest, and exact-candidate evidence references.
+7. Privacy, signature, assurance, idempotency, replay, Emergency Stop, environment
    isolation, sensitive-data non-disclosure, and telemetry-leakage evidence.
-7. Exact-candidate Docker/container qualification, image evidence, rehearsed runbooks,
+8. Exact-candidate Docker/container qualification, image evidence, rehearsed runbooks,
    authorized teardown/recovery proof, and implementation author review bound to the
    exact 40-character commit.
-8. A concise residual-risk and open-decision list, including each ungranted environment
+9. A concise residual-risk and open-decision list, including each ungranted environment
    authority and any separate Founder decision required.
 
 The handoff is complete only as an evidence package for Founder review. It does not authorize

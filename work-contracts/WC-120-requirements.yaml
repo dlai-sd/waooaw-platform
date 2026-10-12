@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-120
 contract_path: work-contracts/WC-120-conversation-engine-whatsapp-implementation.md
-contract_digest: 19e948086eb0ec08d18b7d0537d1f6d01a476542962a0a1e2d5ba5e0d5251af4
+contract_digest: 7213dfc82b9a6c11663951a1f275109552035d9e5323ac2104d4be4adb363990
 solution_path: architecture/reference/components/conversation-engine-whatsapp-solution-work-component.md
 solution_digest: 224d8f43f2a46e810eb5b13aac35570b6f0ebcda
 api_path: architecture/reference/api-specs/channel-neutral-conversation-business-platform.openapi.yaml
@@ -204,26 +204,26 @@ requirements:
   - <<: *defaults
     requirement_id: WC120-R023
     source: Solution Sections 6, 13; CSA-CEWA-023
-    observable_outcome: Additive schema evolution, migration watermark, backup, restore, rollback, and recovery preserve data and compatibility before contraction.
+    observable_outcome: Additive schema evolution, migration watermark, backup, restore, rollback, and recovery preserve data and compatibility before contraction; recovery evidence records accepted per-environment RPO/RTO and data-loss bounds, injected fault, exact commands, invariant/checksum, watermark, and provider-egress denial.
     component_owner: BP data owners
-    test_path_or_plan: Migration up/repeat, old-reader compatibility, backup/restore, rollback, RLS, invariant, and recovery tests.
-    completion_rule: Every destructive contraction is preceded by passing recovery evidence and separate authority.
+    test_path_or_plan: Data-owner accepted recovery profile; migration up/repeat, old-reader compatibility, backup/restore, rollback, RLS, fault injection, provider-egress denial, and invariant/checksum tests.
+    completion_rule: Every destructive contraction is preceded by passing, candidate-bound recovery evidence and separate authority.
 
   - <<: *defaults
     requirement_id: WC120-R024
-    source: Solution Sections 19-20; CSA-CEWA-024
-    observable_outcome: CE-FIT-01 through CE-FIT-16 are mapped bidirectionally to stories, direct predicates, tests, and evidence.
+    source: Solution Sections 19-20; CSA-CEWA-024; work-contracts/WC-120-fitness-evidence-matrix.yaml
+    observable_outcome: Every CE-FIT item maps bidirectionally to stories, source oracles, exact Test Champion-selected test selectors, immutable candidate identity, and evidence.
     component_owner: Cross-owner acceptance
-    test_path_or_plan: Structural traceability check plus the exact positive and negative fitness tests assigned in the solution package.
-    completion_rule: No fitness item is unassigned and no passing claim lacks direct evidence.
+    test_path_or_plan: Review all 16 matrix rows for unique IDs, story mapping, positive/boundary oracle, exact repository-native test command/node, candidate manifest, and evidence location.
+    completion_rule: No fitness item is missing, duplicated, stale, unselected, or claimed PASS without candidate-bound direct evidence and Test Champion disposition.
 
   - <<: *defaults
     requirement_id: WC120-R025
     source: Solution Section 19.3; CSA-CEWA-025
-    observable_outcome: Final Docker, image, and containerized end-to-end qualification runs once on the complete exact candidate after all targeted tests and author review pass.
+    observable_outcome: Final Docker, image, and containerized end-to-end qualification binds to an immutable candidate manifest containing source, image, API/solution, schema, migration, configuration, targeted-test, recovery, CE-FIT, and qualification identities.
     component_owner: Platform IT Expert qualification
-    test_path_or_plan: Repository Docker qualification command, image scans, Compose suites, and full containerized end-to-end checks.
-    completion_rule: Qualification evidence binds to the exact candidate; changes after a defect trigger focused tests and a complete rerun.
+    test_path_or_plan: Verify test-results/wc120/candidate-manifest.json against exact source commit, image/config/schema digests, targeted evidence, recovery, CE-FIT, and final Docker qualification.
+    completion_rule: Any relevant source/configuration/image change invalidates affected evidence and requires targeted reruns plus final exact-candidate qualification.
 
   - <<: *defaults
     requirement_id: WC120-R026
@@ -299,11 +299,11 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC120-R035
-    source: Solution Sections 17-20; all CSA-CEWA stories
-    observable_outcome: Every story has exact commands, test predicates, evidence references, dependencies, failure behavior, and rollback evidence recorded before its START.
+    source: Solution Sections 17-20; all CSA-CEWA stories; WC-120-fitness-evidence-matrix.yaml
+    observable_outcome: Every story and CE-FIT item has exact repository-native commands/test selectors, predicates, candidate binding, evidence references, and failure/rollback result frozen before implementation starts; the generic ledger validator alone is insufficient.
     component_owner: Platform IT Expert delivery control
-    test_path_or_plan: Requirement-ledger validator, per-story evidence-ledger checks, and repository-native targeted suites pinned by the impact analysis.
-    completion_rule: No story starts with an unspecified test oracle, missing evidence destination, or unresolved dependency.
+    test_path_or_plan: Requirement-ledger structural validation plus Test Champion review of exact changed-path-to-command/node selectors, source oracles, candidate manifest, and test-results/wc120 evidence paths.
+    completion_rule: No story starts with a missing or stale test selector, acceptance oracle, evidence destination, candidate binding, or unresolved dependency.
 
   - <<: *defaults
     requirement_id: WC120-R036
@@ -355,11 +355,11 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC120-R042
-    source: PR #498 Sections 17, 23, and 26; Product Owner and Test Champion contributions
-    observable_outcome: Customer journeys, consent/template/service-window behavior, accessibility, voice/correction, and CE-FIT-01..16 acceptance oracles have explicit owners and executable evidence.
+    source: PR #498 Sections 17, 23-24, and 26; WC-115 Section 7.4; WC-120-product-acceptance-matrix.yaml
+    observable_outcome: Product-owned journeys specify customer-visible consent/service-window/template outcomes, approved copy, locale/readability/accessibility, voice correction/send consent, Stop reachability, and degraded states; pending choices block the affected journey.
     component_owner: Product and Test Champion
-    test_path_or_plan: Approved journey/copy acceptance, low-literacy/accessibility checks, consent/template state matrix, voice correction journey, and bidirectional CE-FIT mapping.
-    completion_rule: No required user state or fitness obligation is unowned, untestable, or inferred from transport delivery.
+    test_path_or_plan: Product disposition for every decision/journey row; approved copy and locale/accessibility values; consent/template boundaries; explicit voice correction/send consent; customer-state and accessibility tests.
+    completion_rule: No implementation-enabled journey has pending Product decisions, unapproved copy, missing accessible-state evidence, or inferred policy.
 
   - <<: *defaults
     requirement_id: WC120-R043
@@ -368,3 +368,11 @@ requirements:
     component_owner: Chief Solution Architect review control
     test_path_or_plan: Compare review verdicts and Section 27 remediations with WC-120 review requests and final office dispositions.
     completion_rule: Each review record preserves its original verdict and claims only the decision actually returned by its office.
+
+  - <<: *defaults
+    requirement_id: WC120-R044
+    source: PR #498 Section 17; CE-FIT-01..16; Test Champion disposition; WC-120-fitness-evidence-matrix.yaml
+    observable_outcome: The fitness matrix contains exactly one row per CE-FIT item, maps each to one or more stories and direct oracles, and binds exact test selectors, candidate identity, and planned evidence location.
+    component_owner: Test Champion and WC-120 qualification
+    test_path_or_plan: Test Champion disposition plus structural review of all 16 unique IDs, story links, source predicates, exact selectors, candidate-manifest fields, and evidence paths.
+    completion_rule: No CE-FIT row remains pending at implementation completion; any pre-start selector gap blocks readiness and any candidate change invalidates stale evidence.
