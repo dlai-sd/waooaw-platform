@@ -138,19 +138,37 @@ def validate_changed_ledgers(repository_root: Path, changed_files: list[str]) ->
     )
     violations: list[str] = []
     for contract_id in sorted(contract_ids):
-        contracts = sorted((repository_root / "work-contracts").glob(f"{contract_id}-*.md"))
         ledger_path = repository_root / "work-contracts" / f"{contract_id}-requirements.yaml"
-        if len(contracts) != 1:
-            violations.append(f"CONTRACT_AMBIGUOUS: {contract_id} resolved to {len(contracts)} files")
-            continue
         if not ledger_path.is_file():
             violations.append(f"LEDGER_MISSING: {ledger_path.relative_to(repository_root)}")
             continue
-        contract = contracts[0].read_text(encoding="utf-8")
         loaded = yaml.safe_load(ledger_path.read_text(encoding="utf-8"))
         if not isinstance(loaded, dict):
             violations.append(f"LEDGER_INVALID: {ledger_path.relative_to(repository_root)} root must be a mapping")
             continue
+        configured_contract_path = loaded.get("contract_path")
+        if configured_contract_path is not None:
+            expected_prefix = f"work-contracts/{contract_id}-"
+            if (
+                not isinstance(configured_contract_path, str)
+                or not configured_contract_path.startswith(expected_prefix)
+                or not configured_contract_path.endswith(".md")
+                or Path(configured_contract_path).is_absolute()
+                or ".." in Path(configured_contract_path).parts
+            ):
+                violations.append(f"CONTRACT_PATH_INVALID: {contract_id} ledger contract_path is invalid")
+                continue
+            contract_path = repository_root / configured_contract_path
+            if not contract_path.is_file():
+                violations.append(f"CONTRACT_MISSING: {configured_contract_path}")
+                continue
+        else:
+            contracts = sorted((repository_root / "work-contracts").glob(f"{contract_id}-*.md"))
+            if len(contracts) != 1:
+                violations.append(f"CONTRACT_AMBIGUOUS: {contract_id} resolved to {len(contracts)} files")
+                continue
+            contract_path = contracts[0]
+        contract = contract_path.read_text(encoding="utf-8")
         for violation in validate_ledger(loaded, contract_requirement_ids(contract), file_digest(contract)):
             violations.append(f"{contract_id}: {violation}")
     return violations
