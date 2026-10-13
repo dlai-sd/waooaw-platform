@@ -41,6 +41,7 @@
   --color-text-muted: #b7c3cf;
   --color-border: #344454;
   --color-focus: #79b7ff;
+  --color-error: #ff8585;
   --ink: var(--color-text);
   --muted: var(--color-text-muted);
   --paper: var(--color-surface-subtle);
@@ -848,6 +849,12 @@ h1 {
   background: #e5e7eb;
   box-shadow: none;
   cursor: not-allowed;
+}
+.evidence-window-heading button {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  background: var(--surface);
 }
 button:focus-visible,
 a:focus-visible,
@@ -3635,7 +3642,8 @@ select:focus-visible,
     inset-inline-end: 1rem;
   }
   .app-shell-customer:has(.persistent-conversation[data-open="true"]) .stop-control {
-    visibility: hidden;
+    inset-inline-end: 1rem;
+    z-index: 70;
   }
   .conversation-resizer {
     display: none;
