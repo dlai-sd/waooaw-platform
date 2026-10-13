@@ -178,7 +178,7 @@ run_summary "recovery-tests" "${result_root}/recovery-test-results.json" \
   tests/contract/test_wc120_demo_teardown.py
 run_summary "final-docker-qualification" "${result_root}/final-docker-qualification.json" \
   docker compose --profile test run --rm test-runner sh -lc \
-  "sh scripts/validation_control/run_wc120_dotnet_test.sh && pytest -q tests/contract && rm -rf /tmp/wc120-web && cp -a web /tmp/wc120-web && rm -rf /tmp/wc120-web/node_modules && ln -s /opt/waooaw-web/node_modules /tmp/wc120-web/node_modules && cd /tmp/wc120-web && pnpm test -- --runInBand && pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts"
+  "sh scripts/validation_control/run_wc120_dotnet_test.sh && pytest -q tests/contract && rm -rf /tmp/wc120-web && cp -a web /tmp/wc120-web && rm -rf /tmp/wc120-web/node_modules && ln -s /opt/waooaw-web/node_modules /tmp/wc120-web/node_modules && cd /tmp/wc120-web && pnpm test -- --runInBand && pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts --grep 'CE-FIT-10 presents consent and eligibility states accessibly$' && pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts --grep 'CE-FIT-11 presents voice and media states accessibly$' && pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts --grep 'CE-FIT-13 keeps Stop reachable and truthful in degraded states$'"
 
 docker compose build business-platform
 business_platform_digest="$(service_image_digest "" business-platform)"
