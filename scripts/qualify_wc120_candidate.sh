@@ -152,10 +152,11 @@ for entry in \
   "CE-FIT-13|CE-FIT-13 keeps Stop reachable and truthful in degraded states"
 do
   IFS='|' read -r ce_fit_id node <<<"${entry}"
-  docker compose --profile test run --rm \
-    -e "PLAYWRIGHT_HTML_OUTPUT_DIR=/workspace/test-results/wc120/${ce_fit_id}/playwright-report" \
+  run_selector "${ce_fit_id}" "${browser_runner_digest}" \
+    "tests/e2e/wc120-product-state-accessibility.spec.ts::${node}" \
+    docker compose --profile test run --rm \
     test-runner sh -lc \
-    "cd web && pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts --grep '^${node}$' --reporter=html"
+    "rm -rf /tmp/wc120-web && cp -a web /tmp/wc120-web && rm -rf /tmp/wc120-web/node_modules && ln -s /opt/waooaw-web/node_modules /tmp/wc120-web/node_modules && cd /tmp/wc120-web && PLAYWRIGHT_HTML_OPEN=never PLAYWRIGHT_HTML_OUTPUT_DIR=/workspace/test-results/wc120/${ce_fit_id}/playwright-report pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts --grep '^${node}$' --reporter=html"
 done
 
 run_summary "targeted-tests" "${result_root}/targeted-test-results.json" \
@@ -170,7 +171,7 @@ run_summary "recovery-tests" "${result_root}/recovery-test-results.json" \
   tests/contract/test_wc120_demo_teardown.py
 run_summary "final-docker-qualification" "${result_root}/final-docker-qualification.json" \
   docker compose --profile test run --rm test-runner sh -lc \
-  "sh scripts/validation_control/run_wc120_dotnet_test.sh && pytest -q tests/contract && cd web && pnpm test -- --runInBand && pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts"
+  "sh scripts/validation_control/run_wc120_dotnet_test.sh && pytest -q tests/contract && rm -rf /tmp/wc120-web && cp -a web /tmp/wc120-web && rm -rf /tmp/wc120-web/node_modules && ln -s /opt/waooaw-web/node_modules /tmp/wc120-web/node_modules && cd /tmp/wc120-web && pnpm test -- --runInBand && pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts"
 
 docker compose build business-platform
 business_platform_digest="$(service_image_digest "" business-platform)"
