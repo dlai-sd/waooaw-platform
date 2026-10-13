@@ -1,0 +1,1197 @@
+openapi: 3.1.0
+info:
+  title: WAOOAW Customer Engagement Workspace Business Platform API
+  version: 1.0.0-candidate.4
+  summary: Additive customer-engagement contract for Portal and WhatsApp
+  description: |
+    Candidate additive slice of the canonical Business Platform API. It tightens the
+    existing identity-settings, employment-admission, and relationship-Onboard operations
+    and adds layout, progress, focus-resolution, and channel-session-end surfaces.
+    This document does not authorize implementation, deployment, provider configuration,
+    external traffic, activation, or Production mutation.
+servers:
+  - url: https://{businessPlatformHost}
+    variables:
+      businessPlatformHost:
+        default: business-platform.invalid
+security:
+  - bearerAuth: []
+  - cookieAuth: []
+tags:
+  - name: Identity
+  - name: Employment
+  - name: Workspace
+  - name: Conversation
+
+paths:
+  /api/v1/identity/settings/workspace-layout:
+    get:
+      tags: [Identity]
+      operationId: getWorkspaceLayoutPreferences
+      summary: Read the authenticated customer's cross-device workspace layout
+      responses:
+        "200":
+          description: Current layout preferences
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceLayoutPreferencesV1"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/DependencyUnavailable"
+    put:
+      tags: [Identity]
+      operationId: replaceWorkspaceLayoutPreferences
+      summary: Replace the authenticated customer's cross-device workspace layout
+      description: |
+        Applies optimistic concurrency to presentation preferences only. Layout values never
+        grant relationship access, change business state, or override server-resolved focus.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplaceWorkspaceLayoutPreferencesRequestV1"
+      responses:
+        "200":
+          description: Preferences replaced
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceLayoutPreferencesV1"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/VersionConflict"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/DependencyUnavailable"
+
+  /api/v1/employment/relationships:
+    post:
+      tags: [Employment]
+      operationId: admitEmploymentRelationship
+      summary: Admit or replay one employment relationship
+      description: |
+        Compatibility amendment of the canonical operation. Business Platform authenticates
+        the participant, resolves tenant authority, validates the exact active professional
+        admission and disclosed version, canonicalizes TRIAL or HIRE intent, commits
+        constitutional evidence, and atomically mints the durable relationship, immutable
+        agent instance, canonical conversation, and initial workspace. The Idempotency-Key
+        and semantic clientIntentId both bind replay. A replay returns the original outcome.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdmitCustomerEngagementRelationshipRequestV1"
+      responses:
+        "201":
+          description: Relationship and initial workspace admitted
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerEngagementAdmissionOutcomeV1"
+        "200":
+          description: Original outcome returned for an idempotent replay
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerEngagementAdmissionOutcomeV1"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/AdmissionRejected"
+        "503":
+          $ref: "#/components/responses/DependencyUnavailable"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/v1/employment/relationships/{relationshipId}/workspace/preferences:
+    get:
+      tags: [Workspace]
+      operationId: getRelationshipWorkspacePreferences
+      summary: Read relationship-specific workspace preferences
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      responses:
+        "200":
+          description: Current relationship workspace preferences
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipWorkspacePreferencesV1"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Workspace]
+      operationId: replaceRelationshipWorkspacePreferences
+      summary: Replace relationship-specific workspace preferences
+      description: |
+        Compatibility amendment of relationship Onboard preferences. These preferences choose
+        presentation defaults only; current lifecycle truth and authorization always win.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplaceRelationshipWorkspacePreferencesRequestV1"
+      responses:
+        "200":
+          description: Preferences replaced
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipWorkspacePreferencesV1"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/VersionConflict"
+        "503":
+          $ref: "#/components/responses/DependencyUnavailable"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/v1/employment/relationships/{relationshipId}/workspace/engagement-progress:
+    get:
+      tags: [Workspace]
+      operationId: getCustomerEngagementProgress
+      summary: Read adaptive customer progress for the relationship
+      description: |
+        Returns one BP-owned, evidence-aware projection composed from source-owner facts.
+        UNKNOWN and UNAVAILABLE remain explicit; the projection never fabricates success or
+        lets presentation preferences alter source truth. Every item includes source-relative
+        provenance and freshness. If an owner change, validity expiry, correction, revocation,
+        unsupported contract, or erasure invalidates cached composition, the item is returned
+        STALE or UNAVAILABLE until safely recomposed.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      responses:
+        "200":
+          description: Current adaptive progress projection
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+            ETag:
+              schema:
+                type: string
+              description: Projection version for conditional refresh.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerEngagementProgressV1"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/FocusConflict"
+        "503":
+          $ref: "#/components/responses/DependencyUnavailable"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/v1/employment/relationships/{relationshipId}/workspace/focus-resolutions:
+    post:
+      tags: [Workspace]
+      operationId: resolveWorkspaceFocus
+      summary: Resolve and reauthorize one opaque workspace focus
+      description: |
+        Accepts the token only in a protected request body so it cannot enter URLs, referrers,
+        browser history, access logs, or analytics. Verifies integrity, expiry, token type,
+        tenant, relationship, actor/participant, channel/session, subject and authority versions,
+        assurance, Stop state, and current authority before returning a presentation destination.
+        Tokens are references, never authorization grants. Continuation or command-bearing focus
+        is atomically single-use; every successful projection issues a fresh token identity.
+        Inaccessible or mismatched relationship/object/token bindings use the normalized 404
+        response. Assurance or expiry detail is returned only after resource authorization.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResolveWorkspaceFocusRequestV1"
+      responses:
+        "200":
+          description: Reauthorized focus resolution
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceFocusResolutionV1"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/FocusConflict"
+        "410":
+          $ref: "#/components/responses/FocusExpired"
+        "503":
+          $ref: "#/components/responses/DependencyUnavailable"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/v1/employment/relationships/{relationshipId}/conversation/channel-sessions/{channelSessionId}/end:
+    post:
+      tags: [Conversation]
+      operationId: endConversationChannelSession
+      summary: End one presentation-channel session without ending the relationship
+      description: |
+        Ends only the named WEB or WHATSAPP channel session. It does not sign out another
+        channel, unlink identity, terminate employment, delete data, or revoke the durable
+        conversation. Repeated commands return the original terminal outcome.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - name: channelSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/CsrfToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EndConversationChannelSessionRequestV1"
+      responses:
+        "200":
+          description: Session ended or original ended outcome replayed
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationChannelSessionOutcomeV1"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/VersionConflict"
+        "503":
+          $ref: "#/components/responses/DependencyUnavailable"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Raw customer proof validated at every receiver. Tenant and roles are resolved from current
+        actor-keyed membership; claims do not select tenant or grant relationship/object authority.
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: __Host-waooaw-session
+      description: Identity-owned Secure, HttpOnly, host-only Portal server session.
+
+  headers:
+    NoStore:
+      description: Authenticated CEW responses are never stored by browsers or shared caches.
+      schema:
+        type: string
+        const: no-store
+
+  parameters:
+    RelationshipId:
+      name: relationshipId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 128
+        pattern: "^[A-Za-z0-9_-]+$"
+      description: |
+        At least 128 bits of client entropy, scoped server-side to current actor, tenant and
+        operation purpose. Canonical request digest comparison is mandatory; possession grants no
+        authority. Abuse controls cannot evict committed-effect replay protection.
+    CorrelationId:
+      name: X-Correlation-ID
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CsrfToken:
+      name: X-CSRF-Token
+      in: header
+      required: false
+      schema:
+        type: string
+        minLength: 32
+        maxLength: 256
+        pattern: "^[A-Za-z0-9_-]+$"
+      description: |
+        Required for every cookie-authenticated mutation and bound to the current server session.
+        Bearer-only non-browser clients do not use ambient cookie authority.
+
+  responses:
+    ValidationError:
+      description: Request is structurally or semantically invalid
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemV1"
+    Unauthorized:
+      description: Authentication is missing, expired, or invalid
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemV1"
+    Forbidden:
+      description: |
+        After resource authorization, the authenticated identity lacks required assurance or a
+        safely disclosable entitlement. Inaccessible or absent resources use the normalized
+        NotFound response instead.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemV1"
+    NotFound:
+      description: |
+        Resource is absent or inaccessible. Status, code, shape, headers and timing are
+        privacy-indistinguishable across tenant, relationship, object, session and focus denials.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemV1"
+    Conflict:
+      description: Request conflicts with current relationship or admission truth
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemV1"
+    VersionConflict:
+      description: expectedVersion does not match current version
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemV1"
+    AdmissionRejected:
+      description: Disclosure, professional admission, intent, or constitutional policy rejected admission
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemV1"
+    FocusConflict:
+      description: Focus is valid but stale, superseded, or incompatible with current lifecycle truth
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemV1"
+    FocusExpired:
+      description: |
+        After resource authorization, the focus token expired and must be reacquired from a fresh
+        projection. Inaccessible or mismatched bindings use NotFound instead.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemV1"
+    DependencyUnavailable:
+      description: Authoritative owner or evidence commitment is unavailable; no success is implied
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+        Retry-After:
+          schema:
+            type: integer
+            minimum: 1
+          description: Optional retry delay in seconds.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemV1"
+    PayloadTooLarge:
+      description: Bounded request-body limit exceeded before business processing
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemV1"
+    UnsupportedMediaType:
+      description: Content type or encoding is not accepted for this operation
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemV1"
+    RateLimited:
+      description: Privacy-safe principal, tenant, source, or operation abuse limit reached
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/NoStore"
+        Retry-After:
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemV1"
+
+  schemas:
+    ProblemV1:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, correlationId, retryable]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+          minLength: 1
+          maxLength: 160
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+          maxLength: 1000
+        code:
+          type: string
+          pattern: "^[A-Z][A-Z0-9_]{2,63}$"
+        correlationId:
+          type: string
+          format: uuid
+        retryable:
+          type: boolean
+        fieldErrors:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/FieldErrorV1"
+    FieldErrorV1:
+      type: object
+      additionalProperties: false
+      required: [field, code]
+      properties:
+        field:
+          type: string
+          minLength: 1
+          maxLength: 256
+        code:
+          type: string
+          minLength: 1
+          maxLength: 64
+        message:
+          type: string
+          maxLength: 500
+
+    PaneVisibilityV1:
+      type: string
+      enum: [VISIBLE, COLLAPSED, HIDDEN]
+    WorkspaceLayoutPreferencesV1:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - preferenceVersion
+        - navigationVisibility
+        - progressVisibility
+        - conversationWidthPercent
+        - updatedAt
+      properties:
+        schemaVersion:
+          type: string
+          const: "1"
+        preferenceVersion:
+          type: integer
+          minimum: 1
+        navigationVisibility:
+          $ref: "#/components/schemas/PaneVisibilityV1"
+        progressVisibility:
+          $ref: "#/components/schemas/PaneVisibilityV1"
+        conversationWidthPercent:
+          type: integer
+          minimum: 35
+          maximum: 75
+        reduceMotion:
+          type: boolean
+        updatedAt:
+          type: string
+          format: date-time
+    ReplaceWorkspaceLayoutPreferencesRequestV1:
+      type: object
+      additionalProperties: false
+      required:
+        - expectedVersion
+        - navigationVisibility
+        - progressVisibility
+        - conversationWidthPercent
+      properties:
+        expectedVersion:
+          type: integer
+          minimum: 0
+        navigationVisibility:
+          $ref: "#/components/schemas/PaneVisibilityV1"
+        progressVisibility:
+          $ref: "#/components/schemas/PaneVisibilityV1"
+        conversationWidthPercent:
+          type: integer
+          minimum: 35
+          maximum: 75
+        reduceMotion:
+          type: boolean
+
+    CustomerEngagementIntentV1:
+      type: string
+      enum: [TRIAL, HIRE]
+    AdmitCustomerEngagementRelationshipRequestV1:
+      type: object
+      additionalProperties: false
+      required:
+        - clientIntentId
+        - engagementIntent
+        - professionalType
+        - professionalVersion
+        - professionalAdmissionId
+        - disclosureVersion
+      properties:
+        clientIntentId:
+          type: string
+          format: uuid
+          description: Client-stable semantic intent identifier used with Idempotency-Key.
+        engagementIntent:
+          $ref: "#/components/schemas/CustomerEngagementIntentV1"
+        professionalType:
+          type: string
+          minLength: 1
+          maxLength: 64
+        professionalVersion:
+          type: string
+          minLength: 1
+          maxLength: 64
+        professionalAdmissionId:
+          type: string
+          format: uuid
+        disclosureVersion:
+          type: string
+          minLength: 1
+          maxLength: 128
+        safeReturnTarget:
+          type: string
+          minLength: 32
+          maxLength: 512
+          pattern: "^[A-Za-z0-9_-]+$"
+          description: |
+            Opaque, server-issued, single-use safe-return reference with a maximum 15-minute
+            lifetime. It is session, actor, purpose, intent, and allowed-relative-destination bound;
+            it is never a caller-supplied route or redirect URL and never replays a pending mutation.
+    AdmissionLifecycleStateV1:
+      type: string
+      enum: [DISCOVERED]
+    CustomerEngagementAdmissionOutcomeV1:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - relationshipId
+        - agentInstanceId
+        - conversationId
+        - lifecycleState
+        - engagementIntent
+        - replayed
+        - admittedAt
+        - evidenceRef
+        - resumeFocus
+      properties:
+        schemaVersion:
+          type: string
+          const: "1"
+        relationshipId:
+          type: string
+          format: uuid
+        agentInstanceId:
+          type: string
+          format: uuid
+        conversationId:
+          type: string
+          format: uuid
+        lifecycleState:
+          $ref: "#/components/schemas/AdmissionLifecycleStateV1"
+        engagementIntent:
+          $ref: "#/components/schemas/CustomerEngagementIntentV1"
+        replayed:
+          type: boolean
+        admittedAt:
+          type: string
+          format: date-time
+        evidenceRef:
+          type: string
+          minLength: 1
+          maxLength: 256
+        resumeFocus:
+          $ref: "#/components/schemas/WorkspaceFocusRefV1"
+
+    RelationshipDefaultFocusV1:
+      type: string
+      enum: [LIFECYCLE, INDUCTION, SKILLS_GOALS, OPERATIONS, PERFORMANCE, BUDGET, RIGHTS]
+    RelationshipWorkspacePreferencesV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, preferenceVersion, defaultFocus, updatedAt]
+      properties:
+        schemaVersion:
+          type: string
+          const: "1"
+        preferenceVersion:
+          type: integer
+          minimum: 1
+        defaultFocus:
+          $ref: "#/components/schemas/RelationshipDefaultFocusV1"
+        openProgressOnConversationFocus:
+          type: boolean
+          default: true
+        updatedAt:
+          type: string
+          format: date-time
+    ReplaceRelationshipWorkspacePreferencesRequestV1:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion, defaultFocus, openProgressOnConversationFocus]
+      properties:
+        expectedVersion:
+          type: integer
+          minimum: 0
+        defaultFocus:
+          $ref: "#/components/schemas/RelationshipDefaultFocusV1"
+        openProgressOnConversationFocus:
+          type: boolean
+
+    EngagementLifecycleStageV1:
+      type: string
+      enum:
+        - DISCOVERED
+        - TRIAL_OR_HIRE
+        - INDUCTION
+        - SKILLS_AND_GOALS
+        - OPERATIONS
+        - PERFORMANCE
+        - PAUSED_RENEWAL_OR_EXIT
+    EngagementProgressStateV1:
+      type: string
+      enum:
+        - NOT_STARTED
+        - IN_PROGRESS
+        - WAITING_CUSTOMER
+        - WAITING_PROFESSIONAL
+        - SCHEDULED
+        - WORKING
+        - BLOCKED
+        - COMPLETED
+        - FAILED
+        - UNKNOWN
+        - UNAVAILABLE
+    EngagementProgressOwnerV1:
+      type: string
+      enum: [CUSTOMER, PROFESSIONAL, WAOOAW, EXTERNAL]
+    EngagementTruthDimensionsV1:
+      type: object
+      additionalProperties: false
+      required: [delivery, processing, evidence, commercial, outcome]
+      properties:
+        delivery:
+          $ref: "#/components/schemas/EngagementProgressStateV1"
+        processing:
+          $ref: "#/components/schemas/EngagementProgressStateV1"
+        evidence:
+          $ref: "#/components/schemas/EngagementProgressStateV1"
+        commercial:
+          $ref: "#/components/schemas/EngagementProgressStateV1"
+        outcome:
+          $ref: "#/components/schemas/EngagementProgressStateV1"
+    WorkspaceDestinationV1:
+      type: string
+      enum:
+        - CONVERSATION
+        - MARKETPLACE_DISCLOSURE
+        - LIFECYCLE
+        - INDUCTION
+        - SKILLS_GOALS
+        - OPERATION
+        - PERFORMANCE
+        - BUDGET
+        - ALERT
+        - RIGHTS
+        - BILLING
+    WorkspaceFocusRefV1:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - focusToken
+        - destination
+        - label
+        - accessibleLabel
+        - issuedAt
+        - expiresAt
+      properties:
+        schemaVersion:
+          type: string
+          const: "1"
+        focusToken:
+          type: string
+          minLength: 16
+          maxLength: 2048
+          description: |
+            Opaque, integrity-bound reference; never an authorization grant. It expires no more
+            than 15 minutes after issue, cannot be extended by a client, and is invalidated by
+            binding, authority, Stop, source-version, or data-lifecycle changes.
+        destination:
+          $ref: "#/components/schemas/WorkspaceDestinationV1"
+        label:
+          type: string
+          minLength: 1
+          maxLength: 120
+        accessibleLabel:
+          type: string
+          minLength: 1
+          maxLength: 200
+        issuedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+    EngagementNextActionV1:
+      type: object
+      additionalProperties: false
+      required: [actionType, label, focus]
+      properties:
+        actionType:
+          type: string
+          enum: [OPEN, CONTINUE_CONVERSATION, CONFIRM, CORRECT, RECONCILE, STEP_UP]
+        label:
+          type: string
+          minLength: 1
+          maxLength: 120
+        focus:
+          $ref: "#/components/schemas/WorkspaceFocusRefV1"
+    ProjectionFreshnessV1:
+      type: string
+      enum: [CURRENT, STALE, UNKNOWN, UNAVAILABLE]
+    ProjectionEvidenceStateV1:
+      type: string
+      enum: [PENDING, RECORDED, UNAVAILABLE, DISPUTED, SUPERSEDED]
+    EngagementSourceProvenanceV1:
+      type: object
+      additionalProperties: false
+      allOf:
+        - if:
+            properties:
+              evidenceState:
+                const: RECORDED
+            required: [evidenceState]
+          then:
+            required: [evidenceRef]
+      required:
+        - sourceOwner
+        - sourceSubjectRef
+        - sourceVersion
+        - sourceContractVersion
+        - producedAt
+        - lastAuthoritativeConfirmationAt
+        - freshness
+        - evidenceState
+      properties:
+        sourceOwner:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Accountable owner of the meaning, not the composing presentation.
+        sourceSubjectRef:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: Opaque source-relative subject identity.
+        sourceVersion:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Version meaningful only within this owner and source subject.
+        sourceContractVersion:
+          type: string
+          minLength: 1
+          maxLength: 128
+        producedAt:
+          type: string
+          format: date-time
+        observedAt:
+          type: string
+          format: date-time
+        lastAuthoritativeConfirmationAt:
+          type: string
+          format: date-time
+        validUntil:
+          type: string
+          format: date-time
+        freshness:
+          $ref: "#/components/schemas/ProjectionFreshnessV1"
+        evidenceState:
+          $ref: "#/components/schemas/ProjectionEvidenceStateV1"
+        evidenceRef:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: Opaque authority-owned reference; required when evidenceState is RECORDED.
+    EngagementProgressItemV1:
+      type: object
+      additionalProperties: false
+      required:
+        - itemId
+        - title
+        - state
+        - owner
+        - required
+        - truth
+        - provenance
+        - updatedAt
+      properties:
+        itemId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        title:
+          type: string
+          minLength: 1
+          maxLength: 160
+        summary:
+          type: string
+          maxLength: 1000
+        state:
+          $ref: "#/components/schemas/EngagementProgressStateV1"
+        owner:
+          $ref: "#/components/schemas/EngagementProgressOwnerV1"
+        required:
+          type: boolean
+        truth:
+          $ref: "#/components/schemas/EngagementTruthDimensionsV1"
+        provenance:
+          $ref: "#/components/schemas/EngagementSourceProvenanceV1"
+        blockedEffect:
+          type: string
+          maxLength: 500
+        nextAction:
+          $ref: "#/components/schemas/EngagementNextActionV1"
+        updatedAt:
+          type: string
+          format: date-time
+    CustomerEngagementProgressV1:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - relationshipId
+        - projectionVersion
+        - projectionContractVersion
+        - generatedAt
+        - projectionSources
+        - lifecycleStage
+        - headline
+        - items
+        - availableFocuses
+      properties:
+        schemaVersion:
+          type: string
+          const: "1"
+        relationshipId:
+          type: string
+          format: uuid
+        projectionVersion:
+          type: string
+          minLength: 1
+          maxLength: 128
+        projectionContractVersion:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Semantic composition contract; independent of each source version.
+        generatedAt:
+          type: string
+          format: date-time
+        projectionSources:
+          type: array
+          minItems: 1
+          maxItems: 100
+          description: Exact source-version vector used for this authorized composition.
+          items:
+            $ref: "#/components/schemas/EngagementSourceProvenanceV1"
+        lifecycleStage:
+          $ref: "#/components/schemas/EngagementLifecycleStageV1"
+        headline:
+          type: string
+          minLength: 1
+          maxLength: 200
+        summary:
+          type: string
+          maxLength: 1000
+        selectedFocus:
+          $ref: "#/components/schemas/WorkspaceFocusRefV1"
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/EngagementProgressItemV1"
+        availableFocuses:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/WorkspaceFocusRefV1"
+
+    WorkspaceFocusResolutionV1:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - relationshipId
+        - destination
+        - canonicalRoute
+        - resolvedAt
+        - authorityVersion
+      properties:
+        schemaVersion:
+          type: string
+          const: "1"
+        relationshipId:
+          type: string
+          format: uuid
+        destination:
+          $ref: "#/components/schemas/WorkspaceDestinationV1"
+        canonicalRoute:
+          type: string
+          pattern: "^/"
+          maxLength: 512
+          description: Server-allowlisted relative Portal route or channel rendering key.
+        subjectRef:
+          type: string
+          minLength: 1
+          maxLength: 256
+        subjectVersion:
+          type: string
+          minLength: 1
+          maxLength: 128
+        authorityVersion:
+          type: string
+          minLength: 1
+          maxLength: 128
+        resolvedAt:
+          type: string
+          format: date-time
+
+    ResolveWorkspaceFocusRequestV1:
+      type: object
+      additionalProperties: false
+      required: [focusToken]
+      properties:
+        focusToken:
+          type: string
+          minLength: 32
+          maxLength: 2048
+          pattern: "^[A-Za-z0-9._~-]+$"
+          description: |
+            Body-only opaque reference. It must never be placed in a URL, browser history,
+            referrer, analytics event, log, trace, metric, screenshot, or evidence payload.
+
+    ConversationChannelV1:
+      type: string
+      enum: [WEB, WHATSAPP]
+    EndConversationChannelSessionRequestV1:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion, confirmation]
+      properties:
+        expectedVersion:
+          type: integer
+          minimum: 0
+        confirmation:
+          type: string
+          const: END_CHANNEL_SESSION
+        reason:
+          type: string
+          maxLength: 500
+    ConversationChannelSessionOutcomeV1:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - channelSessionId
+        - channel
+        - state
+        - sessionVersion
+        - endedAt
+        - replayed
+        - relationshipRemainsActive
+        - evidenceRef
+      properties:
+        schemaVersion:
+          type: string
+          const: "1"
+        channelSessionId:
+          type: string
+          format: uuid
+        channel:
+          $ref: "#/components/schemas/ConversationChannelV1"
+        state:
+          type: string
+          const: ENDED
+        sessionVersion:
+          type: integer
+          minimum: 1
+        endedAt:
+          type: string
+          format: date-time
+        replayed:
+          type: boolean
+        relationshipRemainsActive:
+          type: boolean
+          const: true
+        evidenceRef:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: Opaque reference to the committed channel-session-end evidence.

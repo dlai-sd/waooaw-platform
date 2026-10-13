@@ -1,0 +1,276 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-121
+contract_path: work-contracts/WC-121-customer-engagement-workspace-implementation.md
+contract_digest: dae3a687973173aef2d1711be96efc536a4f90b56d80fd09b4072f84c16f41fe
+solution_path: architecture/reference/components/customer-engagement-workspace-solution-contract.md
+solution_digest: ac0f7912037e8395b4f0f1d73b5b56a620ab1950d41ddf4a5a2f496a19f076a8
+api_path: architecture/reference/api-specs/customer-engagement-workspace-business-platform.openapi.yaml
+api_digest: 7fc5ffec6a56f2fc69c75bf80b26c6794b9ac94695a2c5b538d11539c2232fec # gitleaks:allow - public API contract SHA-256
+contract_status: AUTHOR_REVIEW_PASS_SPECIALIST_INTEGRATED_CANDIDATE_FOR_FOUNDER_REVIEW_IMPLEMENTATION_BLOCKED
+implementation_scope: true
+result: PLANNED
+candidate_scope: CUSTOMER_ENGAGEMENT_WORKSPACE_PORTAL_WHATSAPP_DEFAULT_OFF_NO_EXTERNAL_ACTION
+completion_rule: >-
+  Every requirement must pass its direct repository-owned oracle on the exact candidate.
+  Founder acceptance, Docker-only validation, explicit current-session implementation authority,
+  and every applicable protected provider, cloud, deployment, traffic, activation, approval, and
+  merge authority remain mandatory and separate.
+
+requirement_defaults: &defaults
+  evidence_class: Repository-owned contract, implementation, journey, security, privacy, accessibility, operability, migration, or qualification evidence
+  initial_state: expected-fail
+  dependencies: Accepted exact CSA-CEW-001 package and WC-121, Docker-only specification validation, pinned digests, impact analysis, and explicit current-session implementation authorization
+  residual_risk: Passing implementation evidence does not authorize provider changes, cloud mutation, deployment, external traffic, activation, PR approval, or merge.
+  evidence_location: "test-results/wc121/<WC121-RNNN>/ or the repository-standard equivalent frozen by impact analysis"
+  failure_and_rollback: Stop dependent components, preserve owner truth and evidence, reconcile uncertain outcomes by canonical identity, and apply WC-121 Section 14 without claiming external effects were reversed.
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC121-R001
+    source: WC-121 Sections 0, 2, and 3
+    observable_outcome: Work starts only from the exact accepted and validated package with pinned digests, impact analysis, and explicit current-session implementation authority.
+    component_owner: Baseline and authority control
+    test_path_or_plan: Docker preflight validates package paths/digests, acceptance state, impact manifest, dependency gates, and current-session authority evidence.
+    completion_rule: Every entry predicate passes before runnable or generated implementation artifacts are created.
+
+  - <<: *defaults
+    requirement_id: WC121-R002
+    source: WC-121 Sections 5, 6.1, and 7; CSA-CEW-001 Sections 3-4 and 10.4
+    observable_outcome: Canonical BP contains the accepted additive contract and generated clients without a competing facade, schema fork, or incompatible supported-client change.
+    component_owner: Business Platform public API
+    test_path_or_plan: OpenAPI lint/reference/slice, compatibility fixtures, generated-client build, and prohibited-facade/schema scans.
+    completion_rule: Canonical contract and every supported producer/consumer agree on the accepted operations and schemas.
+
+  - <<: *defaults
+    requirement_id: WC121-R003
+    source: WC-121 Sections 6.1, 6.3, and 7; CSA-CEW-001 Sections 3, 8, and 10.1
+    observable_outcome: Exact disclosure, professional admission/version, and Trial/Hire intent admit or replay one DISCOVERED relationship, agent instance, conversation, workspace, focus, and evidence outcome.
+    component_owner: Business Platform employment admission
+    test_path_or_plan: Admission happy path, duplicate, changed-payload key, timeout, crash boundary, cross-channel replay, inactive admission, stale disclosure, cross-tenant, evidence outage, and concurrency tests.
+    completion_rule: Every equivalent replay returns the original complete identifiers and no failure path creates a partial or duplicate owner state.
+
+  - <<: *defaults
+    requirement_id: WC121-R004
+    source: WC-121 Sections 6.1-6.2 and 8; CSA-CEW-001 Sections 3-4, 6.3, and 10
+    observable_outcome: Account layout and relationship preferences persist through accepted owners with concurrency/privacy behavior and no business-authority effect.
+    component_owner: Identity settings and relationship Onboard owners
+    test_path_or_plan: Owner routing, optimistic conflict, retention/deletion, cross-device, inaccessible relationship, and zero-business-mutation tests.
+    completion_rule: Preferences restore allowed presentation only and can never alter lifecycle, access, readiness, or next action.
+
+  - <<: *defaults
+    requirement_id: WC121-R005
+    source: WC-121 Sections 6.1-6.2 and 7; CSA-CEW-001 Sections 3-4 and 10.2-10.3
+    observable_outcome: BP composes evidence-aware progress and reauthorizes opaque focus; clients never join owners, rank action, infer success, or mutate by navigation.
+    component_owner: Business Platform workspace projection and focus resolver
+    test_path_or_plan: Source provenance, missing/unavailable/stale owner, five-dimension, ranking, token tamper/expiry/replay/version, non-enumeration, cross-tenant, and navigation zero-write tests.
+    completion_rule: Projection matches current owner facts and every focus open is reauthorized without client authority or owner mutation.
+
+  - <<: *defaults
+    requirement_id: WC121-R006
+    source: WC-121 Section 6.2; CSA-CEW-001 Sections 6 and 12
+    observable_outcome: Expanded and compact Portal compositions remain conversation-first, configurable, accessible, and preserve Stop, lifecycle, identity, required-action, and recovery reachability.
+    component_owner: Customer Portal shell
+    test_path_or_plan: Portal component and Playwright tests at expanded/compact widths with pane combinations, keyboard, screen reader, zoom, RTL, reduced motion, focus restoration, and Stop reachability.
+    completion_rule: Every supported composition exposes the complete lifecycle and mandatory controls without inaccessible or duplicate state.
+
+  - <<: *defaults
+    requirement_id: WC121-R007
+    source: WC-121 Section 6.3; CSA-CEW-001 Sections 7-8 and 11
+    observable_outcome: Discovery and identity continuation preserve allowlisted safe context without identity/employment conflation, duplicate state, open redirect, or secret transcript content.
+    component_owner: Portal acquisition and Identity Boundary integration
+    test_path_or_plan: Anonymous zero-write, registration/login/step-up/stale-session/switch return, duplicate identity/relationship, open-redirect, secret seeding, and transcript-isolation tests.
+    completion_rule: Identity operations alone create no relationship and the explicit admission resumes the exact safe customer intent.
+
+  - <<: *defaults
+    requirement_id: WC121-R008
+    source: WC-121 Section 6.4; CSA-CEW-001 Sections 6-10
+    observable_outcome: Trial and Hire are explicit, evidenced, idempotent, commercially distinct conversational journeys with disclosure, confirm/cancel, and reconciliation.
+    component_owner: Portal lifecycle experience and existing employment/commercial owners
+    test_path_or_plan: Discovery-to-Trial/Hire journeys, effect/authority/cost/limit snapshots, duplicate confirm, timeout/unknown reconciliation, decline, and commercial distinction tests.
+    completion_rule: Each journey produces only its authorized owner effects and never infers success from delivery or processing.
+
+  - <<: *defaults
+    requirement_id: WC121-R009
+    source: WC-121 Section 6.5; CSA-CEW-001 Sections 6-10
+    observable_outcome: Induction, skills, goals, plan, schedule, budget, and Decision Space are conversationally authored, versioned, visually verified, and conflict-aware.
+    component_owner: Portal configuration and planning experience
+    test_path_or_plan: Known/missing/owner/reason/block/freshness fixtures, optimistic conflict, correction, material change, no-silent-form-write, AD-013 timing, DMA A-E, and non-DMA tests.
+    completion_rule: Owner versions and evidence back every committed configuration and shared platform code contains no professional-specific branch.
+
+  - <<: *defaults
+    requirement_id: WC121-R010
+    source: WC-121 Section 6.6; CSA-CEW-001 Sections 8-10
+    observable_outcome: Operations and performance keep five truth dimensions independent, show adverse states explicitly, and lead with customer business outcomes.
+    component_owner: Portal operations and performance experience
+    test_path_or_plan: Independent delivery/processing/evidence/commercial/outcome matrix, unknown/stale/partial/blocked/unavailable/disputed fixtures, outcome-first snapshots, evidence outage, retry/reconcile, and alert tests.
+    completion_rule: No dimension substitutes for another and technical evidence remains subordinate to customer outcome meaning.
+
+  - <<: *defaults
+    requirement_id: WC121-R011
+    source: WC-121 Section 6.7; CSA-CEW-001 Sections 5, 7, and 8
+    observable_outcome: WhatsApp renders the same lifecycle, identity, terminology, state, evidence, commands, and next action through the approved adapter and shared BP contract.
+    component_owner: WhatsApp adapter and Business Platform conversation facade
+    test_path_or_plan: Portal/WhatsApp scenario replay, webhook verification/replay, content limits, provider delivery separation, institutional-registration isolation, Portal continuation, and terminology snapshots.
+    completion_rule: Both channels produce equivalent owner outcomes and one canonical relationship/conversation without provider-specific business state.
+
+  - <<: *defaults
+    requirement_id: WC121-R012
+    source: WC-121 Sections 5, 6.7, 7, and 9; CSA-CEW-001 Sections 7-9
+    observable_outcome: Logout, channel end-session, account switch, unlink, relationship termination, account deletion, and Stop invoke distinct owners and cannot cross-trigger.
+    component_owner: Identity, conversation, employment, and data-right owners through BP
+    test_path_or_plan: Invoke each command independently under success, replay, denial, stale-version, and failure; assert exact owner calls, evidence, and zero cross-effects.
+    completion_rule: Each operation changes only its declared state and presents its distinct effect and recovery.
+
+  - <<: *defaults
+    requirement_id: WC121-R013
+    source: WC-121 Sections 5, 6.2, 6.6-6.8; CSA-CEW-001 Sections 1 and 9
+    observable_outcome: Emergency Stop is independently reachable, persistent, and cross-channel effective in every supported composition and lifecycle state.
+    component_owner: Constitutional Stop owner and all presentations
+    test_path_or_plan: Enumerate Portal compositions, WhatsApp states, lifecycle stages, channel races, dependency outages, and restart; assert reachability, effect, persistence, and independent release controls.
+    completion_rule: Stop cannot be hidden, bypassed, locally cleared, or made dependent on an ordinary workflow owner.
+
+  - <<: *defaults
+    requirement_id: WC121-R014
+    source: WC-121 Sections 8-9; CSA-CEW-001 Sections 10-11
+    observable_outcome: Authorization, assurance, idempotency, webhook verification, replay controls, limits, redaction, data rights, and protected-value exclusion pass direct tests.
+    component_owner: Business Platform security/privacy boundary
+    test_path_or_plan: WC-121 Section 9 negative suite plus seeded protected-value scans across transcript, URL, persistence, logs, telemetry, evidence, screenshots, and errors.
+    completion_rule: Every denied operation has zero unauthorized mutation and every prohibited protected-value scan returns zero findings.
+
+  - <<: *defaults
+    requirement_id: WC121-R015
+    source: WC-121 Sections 6.2, 6.8, and 10; CSA-CEW-001 Sections 6 and 12
+    observable_outcome: The complete experience passes accessibility, customer-language, one-action, and performance controls.
+    component_owner: Portal and WhatsApp presentation owners
+    test_path_or_plan: Axe, keyboard, screen-reader, 200% zoom, 360px reflow, RTL, reduced-motion, readability/raw-vocabulary, one-primary-action, and p95 performance suites.
+    completion_rule: No serious accessibility failure, raw platform vocabulary, multi-primary-action turn, or accepted performance-budget breach remains.
+
+  - <<: *defaults
+    requirement_id: WC121-R016
+    source: WC-121 Sections 5, 6.8, and 10.5; CSA-CEW-001 Section 13.1
+    observable_outcome: One image exposes identical product manifests across environment-shaped configurations and default-off gates evaluate authority/configuration rather than environment name.
+    component_owner: Build, release qualification, and runtime configuration
+    test_path_or_plan: Record one image digest; compare route/component/command/schema/lifecycle manifests under Demo/UAT/Production-shaped and default-off/enabled configuration; scan for environment-name product branches.
+    completion_rule: Digests/manifests are identical and absent authority produces truthful blocked state rather than missing functionality or success-shaped fallback.
+
+  - <<: *defaults
+    requirement_id: WC121-R017
+    source: WC-121 Sections 6.8 and 13-14; CSA-CEW-001 Sections 8-10 and 13
+    observable_outcome: Channel change, races, retry, timeout, replay, and rollback preserve one canonical identity/effect/conclusion and recoverable owner truth.
+    component_owner: Cross-channel integration and operations
+    test_path_or_plan: Portal-WhatsApp-Portal round trips at every stage; concurrent admission/command/focus/handoff/end-session/logout/Stop fixtures; crash and rollback rehearsal.
+    completion_rule: One logical effect and authoritative conclusion remain, uncertain outcomes reconcile, and rollback preserves read/recovery/Stop/data-right access.
+
+  - <<: *defaults
+    requirement_id: WC121-R018
+    source: WC-121 Sections 2.3, 6.9, and 16; CSA-CEW-001 Sections 11 and 13.4
+    observable_outcome: Live provider and Demo deployment remain blocked until same-number feasibility and all protected authorities are evidenced; protected identities remain runtime references only.
+    component_owner: Founder-reserved provider, cloud, deployment, traffic, and activation authorities
+    test_path_or_plan: Gate attestation, protected-reference scan, provider feasibility evidence, exact image digest match, bounded live acceptance, redacted evidence, health/alert, and rollback rehearsal.
+    initial_state: blocked
+    completion_rule: Every independent gate passes and live evidence proves the qualified image without disclosing protected identity or implying activation beyond authority.
+    residual_risk: Live provider constraints remain unresolved; emulator evidence is insufficient and no provider, cloud, deployment, traffic, activation, approval, or merge action is authorized.
+    result: BLOCKED
+
+  - <<: *defaults
+    requirement_id: WC121-R019
+    source: WC-121 Sections 2.1, 8, 10, and 14; CSA-CEW-001 Sections 10.5-10.12
+    observable_outcome: >-
+      Existing owners persist only their bounded data; admission and mutations are atomic or
+      recoverable and replay-safe; progress carries source provenance and invalidates safely; focus
+      authority expires and revokes correctly; tenant/RLS and data-lifecycle boundaries hold; and
+      mixed-version migration, backup/restore, recovery objectives, reconciliation, and evidence
+      qualification preserve one authoritative outcome.
+    component_owner: Business Platform data boundary with Identity, Conversation, owner, CE evidence, and Platform recovery dependencies
+    test_path_or_plan: >-
+      Persistence-owner inventory and prohibited-store scan; local transaction/outbox and saga
+      crash-boundary tests; concurrent and divergent replay; source-vector provenance,
+      invalidation, stale/unavailable and rebuild tests; focus expiry/revocation/key-rotation tests;
+      forced-RLS cross-tenant reads/writes/maintenance/restore negatives; retention,
+      correction/erasure/hold/purge evidence; expand/backfill/mixed-version/rollback tests;
+      encrypted backup/PITR restore, accepted RPO/RTO rehearsal, and lease-safe reconciliation with
+      orphan/outbox/evidence-gap quarantine.
+    completion_rule: >-
+      All direct data oracles pass on the exact candidate and migration digest; no duplicate effect,
+      stale-success projection, revived authority, cross-tenant visibility, erased-data
+      resurrection, evidence fabrication, or unreconciled owner effect remains.
+    initial_state: blocked
+    residual_risk: >-
+      Numeric RPO/RTO, backup retention, regional copy, and recovery-environment authority require
+      accepted Platform Architecture/Founder decisions. Their absence blocks implementation
+      acceptance but grants no provider, cloud, deployment, traffic, activation, approval, or merge
+      authority.
+    result: BLOCKED
+
+  - <<: *defaults
+    requirement_id: WC121-R020
+    source: WC-121 Sections 2.1, 6.1-6.8, 9, and 14; CSA-CEW-001 Sections 10.3, 10.8, and 11
+    observable_outcome: >-
+      The candidate-specific threat model is enforced at every CEW edge: customer and workload
+      identity are independently verified; current tenant/relationship/object authority and
+      assurance are fail-closed; browser session, CSRF and safe-return controls hold; focus and
+      admission replay/abuse cannot create authority or duplicate effects; WhatsApp raw bytes,
+      replay and media are safely handled; secrets/data are encrypted and redacted; Stop wins
+      races; destructive/session operations remain distinct; and revocation survives rollback.
+    component_owner: >-
+      Business Platform security boundary with Identity, Phone Identity/WhatsApp adapter,
+      Conversation, CE/Stop, employment/commercial owners, workload identity, secret/key,
+      telemetry, and Platform encryption/recovery dependencies
+    test_path_or_plan: >-
+      WC-121 Sections 9.1-9.2 control matrix and direct adversarial suite: forged/stale customer
+      proofs and membership/IDOR/confused-deputy/enumeration negatives; assurance and typed
+      acknowledgement; CSRF/login-CSRF/session fixation/switch/logout and safe-return attacks;
+      body-only focus construction, binding, single-use continuation, revocation and key rotation;
+      admission key flooding/races/limiter failure; exact-raw-byte callback signature,
+      timestamp/deduplication/acknowledgement races and unknown sender; payload/decompression/media
+      type/size/magic/malware/quarantine/retrieval controls; wrong workload/audience/operation and
+      privilege crossover; purpose-separated secret/key rotation/revocation and encryption
+      inspection; seeded protected-value scans at both application and collector boundaries; Stop
+      races/outages/restart/release denial; distinct operation effects; and rollback/restore
+      non-resurrection.
+    completion_rule: >-
+      Every direct security oracle passes on the exact contract, image and configuration; all
+      denials have zero unauthorized mutation and privacy-safe output; no protected value appears
+      in a prohibited surface; Stop cannot be delayed or released by ordinary flow; and rollback,
+      restore, cache, queue or background work cannot revive revoked authority or duplicate an
+      effect.
+    initial_state: blocked
+    residual_risk: >-
+      Exact accepted identity/assurance, provider-signature, Stop/release, workload-identity,
+      key-custody/rotation, encryption, telemetry-retention, media-safety, rate-capacity and
+      recovery controls remain external dependencies. This record does not select provider,
+      Product, Legal, Platform or Founder policy and grants no implementation, provider, cloud,
+      deployment, traffic, activation, approval or merge authority.
+    result: BLOCKED
+
+  - <<: *defaults
+    requirement_id: WC121-R021
+    source: WC-121 Sections 2, 6.8-6.9, 10.5, and 14; CSA-CEW-001 Sections 13.5-13.12
+    observable_outcome: >-
+      CEW remains inside the accepted exact-seven workload and network topology; closed-world
+      configuration, secret references, and capability states fail closed; health/readiness has no
+      external effect; capacity and backpressure are bounded; SLOs, alerts, immutable promotion,
+      migration, deployment, rollback, recovery, activation, and live-provider evidence preserve
+      the qualified tuple and every independent authority gate.
+    component_owner: Platform Architecture with existing Web, Business Platform, Conversation adapter, evidence, release, environment, and recovery owners
+    test_path_or_plan: >-
+      Prohibited-deployable/ingress/store/queue scan and workload map; manifest/catalog/capability
+      schema and digest-binding tests; secret-reference and protected-value scans; liveness,
+      startup, traffic-readiness and optional-feature failure matrices; envelope load, saturation,
+      bounded-queue, retry/quarantine and recovery tests; SLI/alert/runbook route tests; signed
+      exact-seven tuple promotion without rebuild; expand/backfill/verify/cutover and zero-traffic
+      failure tests; previous-tuple rollback; UAT PITR isolated restore/non-resurrection; separate
+      deployment/traffic/activation attestations; and bounded live-provider/deactivation evidence.
+    completion_rule: >-
+      Every direct platform oracle passes against one signed image/configuration/catalog/schema
+      tuple; no topology expansion, mutable promotion, secret disclosure, success-shaped readiness,
+      lost accepted work, unbounded retry, destructive rollback, authority resurrection, or
+      transitive protected-action authorization remains.
+    initial_state: blocked
+    residual_risk: >-
+      Numeric availability/error-budget, alert-window, queue-age, workload-forecast, RPO/RTO,
+      backup-retention, regional-copy, recovery-environment, incident-owner, spend/window/recipient,
+      provider-feasibility, and protected authority decisions remain external. No implementation,
+      provider, cloud, deployment, traffic, activation, approval, or merge authority is granted.
+    result: BLOCKED
