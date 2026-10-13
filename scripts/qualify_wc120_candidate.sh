@@ -156,7 +156,7 @@ do
     "tests/e2e/wc120-product-state-accessibility.spec.ts::${node}" \
     docker compose --profile test run --rm \
     test-runner sh -lc \
-    "rm -rf /tmp/wc120-web && cp -a web /tmp/wc120-web && rm -rf /tmp/wc120-web/node_modules && ln -s /opt/waooaw-web/node_modules /tmp/wc120-web/node_modules && cd /tmp/wc120-web && PLAYWRIGHT_HTML_OPEN=never PLAYWRIGHT_HTML_OUTPUT_DIR=/workspace/test-results/wc120/${ce_fit_id}/playwright-report pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts --grep '^${node}$' --reporter=html"
+    "rm -rf /tmp/wc120-web && cp -a web /tmp/wc120-web && rm -rf /tmp/wc120-web/node_modules && ln -s /opt/waooaw-web/node_modules /tmp/wc120-web/node_modules && cd /tmp/wc120-web && PLAYWRIGHT_HTML_OPEN=never PLAYWRIGHT_HTML_OUTPUT_DIR=/workspace/test-results/wc120/${ce_fit_id}/playwright-report pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts --grep '${node}$' --reporter=html"
 done
 
 run_summary "targeted-tests" "${result_root}/targeted-test-results.json" \
