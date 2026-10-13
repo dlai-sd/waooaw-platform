@@ -11,6 +11,11 @@ if [[ -n "$(git status --porcelain)" ]]; then
   echo "WC-120 qualification requires a clean exact candidate." >&2
   exit 1
 fi
+candidate_commit="$(git rev-parse HEAD)"
+if [[ ! "${candidate_commit}" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "WC-120 qualification requires an exact 40-character candidate commit." >&2
+  exit 1
+fi
 
 ./scripts/generate_wc120_clients.sh
 if [[ -n "$(git status --porcelain)" ]]; then
@@ -66,6 +71,7 @@ run_selector() {
   set -e
   docker compose --profile test-python run --rm test-runner-python \
     python scripts/validation_control/wc120_evidence.py selector \
+    --source-commit "${candidate_commit}" \
     --ce-fit-id "${ce_fit_id}" \
     --command "${command_text}" \
     --node "${node}" \
@@ -93,6 +99,7 @@ run_summary() {
   set -e
   docker compose --profile test-python run --rm test-runner-python \
     python scripts/validation_control/wc120_evidence.py summary \
+    --source-commit "${candidate_commit}" \
     --name "${name}" \
     --command "${command_text}" \
     --started-at "${started_at}" \
@@ -187,6 +194,7 @@ cat >"${result_root}/image-digests.json" <<EOF
 EOF
 docker compose --profile test-python run --rm test-runner-python \
   python scripts/validation_control/wc120_evidence.py candidate \
+  --source-commit "${candidate_commit}" \
   --image-digests /workspace/test-results/wc120/image-digests.json \
   --targeted-results /workspace/test-results/wc120/targeted-test-results.json \
   --recovery-results /workspace/test-results/wc120/recovery-test-results.json \

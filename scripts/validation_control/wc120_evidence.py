@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import subprocess
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -23,10 +23,10 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _git(*arguments: str) -> str:
-    return subprocess.check_output(  # noqa: S603 - arguments come only from internal callers
-        ["/usr/bin/git", "-C", str(ROOT), *arguments], text=True
-    ).strip()
+def _source_commit(value: str) -> str:
+    if re.fullmatch(r"[0-9a-f]{40}", value) is None:
+        raise SystemExit("WC-120 candidate must be an exact 40-character commit.")
+    return value
 
 
 def _utc_now() -> str:
@@ -43,6 +43,7 @@ def _record_selector(arguments: argparse.Namespace) -> None:
         "node": arguments.node,
         "started_at_utc": arguments.started_at,
         "completed_at_utc": _utc_now(),
+        "source_commit": _source_commit(arguments.source_commit),
         "exit_status": arguments.exit_status,
         "pass_fail_skip_counts": {
             "passed": 1 if arguments.exit_status == 0 else 0,
@@ -70,7 +71,7 @@ def _record_summary(arguments: argparse.Namespace) -> None:
         "exit_status": arguments.exit_status,
         "log": str(log_path.relative_to(ROOT)),
         "log_digest": _sha256(log_path),
-        "source_commit": _git("rev-parse", "HEAD"),
+        "source_commit": _source_commit(arguments.source_commit),
     }
     output_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
 
@@ -89,10 +90,7 @@ def _load_result(path_value: str) -> Any:
 
 
 def _candidate(arguments: argparse.Namespace) -> None:
-    source_commit = _git("rev-parse", "HEAD")
-    source_changes = [line for line in _git("status", "--porcelain").splitlines() if "test-results/wc120/" not in line]
-    if len(source_commit) != 40 or source_changes:
-        raise SystemExit("WC-120 candidate must be an exact clean 40-character commit.")
+    source_commit = _source_commit(arguments.source_commit)
 
     result_root = ROOT / "test-results" / "wc120"
     selectors: dict[str, Any] = {}
@@ -162,6 +160,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="operation", required=True)
     selector = subparsers.add_parser("selector")
+    selector.add_argument("--source-commit", required=True)
     selector.add_argument("--ce-fit-id", required=True)
     selector.add_argument("--command", required=True)
     selector.add_argument("--node", required=True)
@@ -172,6 +171,7 @@ def main() -> None:
     selector.set_defaults(handler=_record_selector)
 
     summary = subparsers.add_parser("summary")
+    summary.add_argument("--source-commit", required=True)
     summary.add_argument("--name", required=True)
     summary.add_argument("--command", required=True)
     summary.add_argument("--started-at", required=True)
@@ -181,6 +181,7 @@ def main() -> None:
     summary.set_defaults(handler=_record_summary)
 
     candidate = subparsers.add_parser("candidate")
+    candidate.add_argument("--source-commit", required=True)
     candidate.add_argument("--image-digests", required=True)
     candidate.add_argument("--targeted-results", required=True)
     candidate.add_argument("--recovery-results", required=True)
