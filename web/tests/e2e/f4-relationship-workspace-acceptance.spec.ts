@@ -41,7 +41,7 @@ test('F4 workspace exposes all mandatory views without hiding Stop or overflowin
   }
   await expect(page.getByText('Nothing currently requires your response.')).toBeVisible();
   await expect(page.getByText('No supported business outcome is available yet.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Emergency Stop' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Stop all agent work now' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(
     true
   );
@@ -61,7 +61,7 @@ test('WC059 contract choices remain symmetric, responsive, and accessible', asyn
   const decisions = page.getByRole('group', { name: 'Contract decisions' });
   for (const name of ['Hire and accept exact contract', 'Not now', 'Cancel', 'Exit'])
     await expect(decisions.getByRole(name === 'Exit' ? 'link' : 'button', { name })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Emergency Stop' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Stop all agent work now' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(
     true
   );
@@ -85,7 +85,7 @@ test('WC095 responsive lifecycle keeps review blockers, actions, and Stop reacha
   await expect(performance.getByText(/Attribution limit: No causal guarantee/).first()).toBeVisible();
   await expect(performance.getByText(/affected work remains locked/).first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Record review decision' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Emergency Stop' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Stop all agent work now' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(
     true
   );
@@ -136,7 +136,7 @@ test('WC095 payable checkout fails closed without Razorpay configuration and col
   );
   await expect(page.getByText(/Payment details are entered only on Razorpay/)).toBeVisible();
   await expect(page.locator('.contract-journey input, .contract-journey iframe')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Emergency Stop' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Stop all agent work now' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(
     true
   );

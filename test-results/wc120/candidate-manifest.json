@@ -1,0 +1,191 @@
+{
+  "schema": "waooaw.wc120-candidate-manifest/v1",
+  "source_commit": "46ef8c6897c5ed585e3d5ea7212e4b77213df834",
+  "work_contract_digest": "5f3207af794be87d15822716f9bc249ff5f541e89c7ae4b8184b4a288611454f",
+  "requirements_ledger_digest": "53c55acabc50ca3870c1b858176ab78a8d1f4824f44de3d693dc71645af23fa9",
+  "solution_package_digest": "7fa8a5f3937c0d412eff7d74e037bc612bd0236a6b840fdf6cbfb91ace3becbc",
+  "conversation_contract_digest": "c5b30ab19605d0b82e113a865ee1faf935093c00a5e0eee54116a43233513221",
+  "product_matrix_digest": "1c29f7ad8fcd960f52041c9b6803235d93670b05c50d3a43bff2580715df0a5a",
+  "fitness_matrix_digest": "de2ca6338dd666ba181202b21b896a22374d74bf2bfa2da950d1c0e5c6dc304b",
+  "image_digest": "sha256:ca9b1e788dca98a851b8b7927005d640e542408885b1b143fa27017beff282a5",
+  "test_runner_image_digests": {
+    "dotnet": "sha256:9a9ad5fdc9e19cbf36d07740ffe07da74a18400a95e9132e24de3d5f953f24ed",
+    "python": "sha256:82f4ad2ef610de38473cf199ce9a2ec044fc166e1c8565a39ef7fc6a822677b5",
+    "browser": "sha256:52e6903153284add953b9a8f8baea5b428b09ccb8c66ff8cecd7432984330b8f"
+  },
+  "schema_version_and_migration_watermark": {
+    "schema": "36-wc120-conversation-whatsapp.sql",
+    "schema_digest": "4d02428f124e2503c0b33f9cf35ba4c598de1d49cd9645ba722873e86405e6ac",
+    "backfill": "wc120-conversation-environment-v1"
+  },
+  "configuration_and_feature_flag_versions": {
+    "configuration": "wc120-candidate-1",
+    "feature_flags": "wc120-default-off-1",
+    "environments": [
+      "demo",
+      "uat",
+      "production"
+    ]
+  },
+  "targeted_test_results": {
+    "path": "test-results/wc120/targeted-test-results.json",
+    "digest": "1222e229451bbcbc726b1b7a42ab170e33334564d969166b8e0c84993ac80951",
+    "result": {
+      "name": "targeted-tests",
+      "command": "docker compose --profile test-dotnet run --rm test-runner-dotnet sh scripts/validation_control/run_wc120_dotnet_test.sh --filter FullyQualifiedName~Waooaw.BusinessPlatform.Tests.ConversationWhatsApp ",
+      "started_at_utc": "2026-10-13T13:46:56Z",
+      "completed_at_utc": "2026-10-13T13:47:47.295798Z",
+      "exit_status": 0,
+      "log": "test-results/wc120/targeted-tests.log",
+      "log_digest": "b9e80cb1ab09ac4e73287f813b5daa7a4987f774d9f1cf382999f59adddeab35",
+      "source_commit": "46ef8c6897c5ed585e3d5ea7212e4b77213df834"
+    }
+  },
+  "recovery_test_results": {
+    "path": "test-results/wc120/recovery-test-results.json",
+    "digest": "a5c8c24dc7cc12e52e1539d110762d4f19ddf1c9a5e23c5a22479e5c79b5fe8f",
+    "result": {
+      "name": "recovery-tests",
+      "command": "docker compose --profile test-python run --rm test-runner-python pytest -q tests/contract/test_wc120_contract_and_recovery.py tests/contract/test_wc120_environment_isolation.py tests/contract/test_wc120_second_client.py tests/contract/test_wc120_demo_teardown.py ",
+      "started_at_utc": "2026-10-13T13:47:47Z",
+      "completed_at_utc": "2026-10-13T13:47:54.776729Z",
+      "exit_status": 0,
+      "log": "test-results/wc120/recovery-tests.log",
+      "log_digest": "3e5b2359c1f28b68ca4ff131612f824992be7c5d9ef1f023a543e340da6ac0fb",
+      "source_commit": "46ef8c6897c5ed585e3d5ea7212e4b77213df834"
+    }
+  },
+  "ce_fitness_results": {
+    "CE-FIT-01": {
+      "result": "test-results/wc120/CE-FIT-01/selector-result.json",
+      "exit_status": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "CE-FIT-02": {
+      "result": "test-results/wc120/CE-FIT-02/selector-result.json",
+      "exit_status": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "CE-FIT-03": {
+      "result": "test-results/wc120/CE-FIT-03/selector-result.json",
+      "exit_status": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "CE-FIT-04": {
+      "result": "test-results/wc120/CE-FIT-04/selector-result.json",
+      "exit_status": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "CE-FIT-05": {
+      "result": "test-results/wc120/CE-FIT-05/selector-result.json",
+      "exit_status": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "CE-FIT-06": {
+      "result": "test-results/wc120/CE-FIT-06/selector-result.json",
+      "exit_status": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "CE-FIT-07": {
+      "result": "test-results/wc120/CE-FIT-07/selector-result.json",
+      "exit_status": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "CE-FIT-08": {
+      "result": "test-results/wc120/CE-FIT-08/selector-result.json",
+      "exit_status": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "CE-FIT-09": {
+      "result": "test-results/wc120/CE-FIT-09/selector-result.json",
+      "exit_status": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "CE-FIT-10": {
+      "result": "test-results/wc120/CE-FIT-10/selector-result.json",
+      "exit_status": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "CE-FIT-11": {
+      "result": "test-results/wc120/CE-FIT-11/selector-result.json",
+      "exit_status": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "CE-FIT-12": {
+      "result": "test-results/wc120/CE-FIT-12/selector-result.json",
+      "exit_status": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "CE-FIT-13": {
+      "result": "test-results/wc120/CE-FIT-13/selector-result.json",
+      "exit_status": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "CE-FIT-14": {
+      "result": "test-results/wc120/CE-FIT-14/selector-result.json",
+      "exit_status": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "CE-FIT-15": {
+      "result": "test-results/wc120/CE-FIT-15/selector-result.json",
+      "exit_status": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "CE-FIT-16": {
+      "result": "test-results/wc120/CE-FIT-16/selector-result.json",
+      "exit_status": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "final_docker_qualification": {
+    "path": "test-results/wc120/final-docker-qualification.json",
+    "digest": "05554c3a9a780be9265caba3ba35a2813ce419fea677627c955a9385db9f8812",
+    "result": {
+      "name": "final-docker-qualification",
+      "command": "run_final_docker_qualification ",
+      "started_at_utc": "2026-10-13T13:47:54Z",
+      "completed_at_utc": "2026-10-13T13:55:22.135347Z",
+      "exit_status": 0,
+      "log": "test-results/wc120/final-docker-qualification.log",
+      "log_digest": "246968c468dcb87fe66a04fa83bf10515d8bd67da7eb623c0c05bedf7d5e5339",
+      "source_commit": "46ef8c6897c5ed585e3d5ea7212e4b77213df834"
+    }
+  },
+  "release_qualification": {
+    "state": "OFF_SKIPPED",
+    "authority": "Founder authorization in the current WC-120 implementation session"
+  },
+  "created_at_utc": "2026-10-13T13:55:23.980968Z"
+}

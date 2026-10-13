@@ -15,6 +15,12 @@ public sealed class WhatsAppJourneyOptions
 {
     public string WebhookSecret { get; set; } = string.Empty;
     public string TenantTokenKey { get; set; } = string.Empty;
+    public string VerifyToken { get; set; } = string.Empty;
+    public bool CallbackAcceptanceEnabled { get; set; }
+    public bool DispatchEnabled { get; set; }
+    public int MaxBodyBytes { get; set; } = 1_048_576;
+    public string[] ApprovedTemplates { get; set; } = [];
+    public string CallbackHost { get; set; } = string.Empty;
 }
 
 public sealed record WhatsAppJourneyReceipt(
@@ -52,7 +58,12 @@ public sealed record VerifiedPhoneIdentityProof(
     DateTimeOffset VerifiedAt,
     DateTimeOffset ExpiresAt,
     Guid CorrelationId
-);
+)
+{
+    public string? Environment { get; init; }
+    public string? AppBindingDigest { get; init; }
+    public string? PayloadDigest { get; init; }
+}
 
 public sealed class WhatsAppWebhookException(int statusCode, string code) : Exception(code)
 {
@@ -62,19 +73,32 @@ public sealed class WhatsAppWebhookException(int statusCode, string code) : Exce
 
 public sealed partial class WhatsAppJourneyService
 {
+    private sealed record ProviderClaimAcquisition(Guid LeaseOwner, WhatsAppJourneyReceipt? Replay);
+
+    private static readonly TimeSpan ProviderClaimLeaseDuration = TimeSpan.FromSeconds(60);
     private readonly IDbContextFactory<EmploymentRelationshipDbContext> _dbFactory;
     private readonly IWhatsAppRegistrationEvidenceGateway _evidenceGateway;
     private readonly byte[] _webhookSecret;
     private readonly byte[] _tokenKey;
     private readonly IRelationshipConstitutionalGateway? _relationshipGateway;
     private readonly RelationshipEmergencyStopService? _emergencyStops;
+    private readonly IDbContextFactory<ConversationStoreDbContext>? _conversationDbFactory;
+    private readonly Wc120ConversationOptions? _conversationOptions;
+    private readonly ConversationStopFence? _stopFence;
+    private readonly ConversationService? _conversationService;
+    private readonly WhatsAppOutboxService? _outboxService;
 
     public WhatsAppJourneyService(
         IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
         IWhatsAppRegistrationEvidenceGateway evidenceGateway,
         IOptions<WhatsAppJourneyOptions> options,
         IRelationshipConstitutionalGateway? relationshipGateway = null,
-        RelationshipEmergencyStopService? emergencyStops = null
+        RelationshipEmergencyStopService? emergencyStops = null,
+        IDbContextFactory<ConversationStoreDbContext>? conversationDbFactory = null,
+        IOptions<Wc120ConversationOptions>? conversationOptions = null,
+        ConversationStopFence? stopFence = null,
+        ConversationService? conversationService = null,
+        WhatsAppOutboxService? outboxService = null
     )
     {
         _dbFactory = dbFactory;
@@ -86,16 +110,101 @@ public sealed partial class WhatsAppJourneyService
         _tokenKey = RequireKey(options.Value.TenantTokenKey, nameof(options.Value.TenantTokenKey));
         _relationshipGateway = relationshipGateway;
         _emergencyStops = emergencyStops;
+        _conversationDbFactory = conversationDbFactory;
+        _conversationOptions = conversationOptions?.Value;
+        _stopFence = stopFence;
+        _conversationService = conversationService;
+        _outboxService = outboxService;
     }
 
     public async Task<WhatsAppJourneyReceipt> ReceiveAsync(
-        string rawBody,
+        byte[] rawBody,
         string signatureHeader,
         DateTimeOffset receivedAt,
         CancellationToken cancellationToken
     )
     {
+        if (
+            _conversationOptions is not null
+            && (
+                !_conversationOptions.Enabled
+                || string.IsNullOrWhiteSpace(_conversationOptions.Environment)
+                || !IsLowerHexDigest(_conversationOptions.AppBindingDigest)
+                || !IsLowerHexDigest(_conversationOptions.WabaBindingDigest)
+                || !IsLowerHexDigest(_conversationOptions.RecipientBindingDigest)
+            )
+        )
+            throw new WhatsAppWebhookException(503, "WHATSAPP_BINDING_CONFIGURATION_UNAVAILABLE");
         VerifySignature(rawBody, signatureHeader);
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(rawBody);
+        }
+        catch (JsonException)
+        {
+            throw new WhatsAppWebhookException(400, "WHATSAPP_PAYLOAD_INVALID");
+        }
+        using (document)
+        {
+            var statuses = ParseProviderStatuses(document.RootElement, rawBody);
+            if (statuses.Count > 0)
+            {
+                if (_outboxService is null)
+                    throw new WhatsAppWebhookException(503, "WHATSAPP_STATUS_OWNER_UNAVAILABLE");
+                foreach (var status in statuses)
+                {
+                    ValidateEnvironmentBinding(status.WabaId, status.RecipientId);
+                    await _outboxService.RecordProviderStatusAsync(status.Event, cancellationToken);
+                }
+                return new(
+                    statuses[0].Event.ProviderMessageId,
+                    "ACCEPTED",
+                    "DELIVERY_STATUS",
+                    string.Empty,
+                    false,
+                    string.Empty
+                );
+            }
+            var messages = ParseProviderMessages(document.RootElement);
+            if (messages.Count > 0)
+            {
+                var conversationOptions =
+                    _conversationOptions
+                    ?? throw new WhatsAppWebhookException(
+                        503,
+                        "WHATSAPP_BINDING_CONFIGURATION_UNAVAILABLE"
+                    );
+                WhatsAppJourneyReceipt? firstReceipt = null;
+                foreach (var message in messages)
+                {
+                    ValidateEnvironmentBinding(message.WabaId, message.RecipientId);
+                    var receipt = await ReceiveVerifiedAsync(
+                        new VerifiedPhoneIdentityProof(
+                            message.MessageId,
+                            HmacHex(_webhookSecret, message.From),
+                            message.Text,
+                            null,
+                            "whatsapp-provider-callback",
+                            "AAL1_CHANNEL",
+                            message.SentAt,
+                            receivedAt,
+                            receivedAt.AddMinutes(5),
+                            Guid.NewGuid()
+                        )
+                        {
+                            Environment = conversationOptions.Environment,
+                            AppBindingDigest = conversationOptions.AppBindingDigest,
+                            PayloadDigest = Convert.ToHexStringLower(SHA256.HashData(rawBody)),
+                        },
+                        cancellationToken
+                    );
+                    firstReceipt ??= receipt;
+                }
+                return firstReceipt!;
+            }
+        }
+
         WhatsAppInbound inbound;
         try
         {
@@ -112,10 +221,22 @@ public sealed partial class WhatsAppJourneyService
         if (
             string.IsNullOrWhiteSpace(inbound.MessageId)
             || string.IsNullOrWhiteSpace(inbound.Text)
+            || string.IsNullOrWhiteSpace(inbound.From)
             || !E164().IsMatch(inbound.From)
         )
         {
             throw new WhatsAppWebhookException(400, "WHATSAPP_PAYLOAD_INVALID");
+        }
+        if (_conversationOptions is not null)
+        {
+            if (
+                string.IsNullOrWhiteSpace(inbound.AppId)
+                || string.IsNullOrWhiteSpace(inbound.WabaId)
+                || string.IsNullOrWhiteSpace(inbound.RecipientId)
+                || !FixedDigestEquals(_conversationOptions.AppBindingDigest, Sha256(inbound.AppId))
+            )
+                throw new WhatsAppWebhookException(403, "WHATSAPP_ENVIRONMENT_BINDING_INVALID");
+            ValidateEnvironmentBinding(inbound.WabaId, inbound.RecipientId);
         }
         DateTimeOffset sentAt;
         try
@@ -144,10 +265,28 @@ public sealed partial class WhatsAppJourneyService
                 receivedAt,
                 receivedAt.AddMinutes(5),
                 Guid.NewGuid()
-            ),
+            )
+            {
+                Environment = _conversationOptions?.Environment,
+                AppBindingDigest = _conversationOptions?.AppBindingDigest,
+                PayloadDigest = Convert.ToHexStringLower(SHA256.HashData(rawBody)),
+            },
             cancellationToken
         );
     }
+
+    public Task<WhatsAppJourneyReceipt> ReceiveAsync(
+        string rawBody,
+        string signatureHeader,
+        DateTimeOffset receivedAt,
+        CancellationToken cancellationToken
+    ) =>
+        ReceiveAsync(
+            Encoding.UTF8.GetBytes(rawBody),
+            signatureHeader,
+            receivedAt,
+            cancellationToken
+        );
 
     public async Task<WhatsAppJourneyReceipt> ReceiveVerifiedAsync(
         VerifiedPhoneIdentityProof proof,
@@ -165,25 +304,28 @@ public sealed partial class WhatsAppJourneyService
             throw new WhatsAppWebhookException(403, "PHONE_IDENTITY_PROOF_INVALID");
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        var existingReceipt = await db.WhatsAppMessageReceipts.SingleOrDefaultAsync(
-            item => item.MessageId == proof.MessageId,
-            cancellationToken
-        );
-        if (existingReceipt is not null && existingReceipt.ExpiresAt > receivedAt)
+        if (_conversationDbFactory is null)
         {
-            return new(
-                proof.MessageId,
-                "DUPLICATE",
-                "UNKNOWN",
-                "This message was already received.",
-                true,
-                string.Empty
+            var existingReceipt = await db.WhatsAppMessageReceipts.SingleOrDefaultAsync(
+                item => item.MessageId == proof.MessageId,
+                cancellationToken
             );
-        }
-        if (existingReceipt is not null)
-        {
-            db.WhatsAppMessageReceipts.Remove(existingReceipt);
-            await db.SaveChangesAsync(cancellationToken);
+            if (existingReceipt is not null && existingReceipt.ExpiresAt > receivedAt)
+            {
+                return new(
+                    proof.MessageId,
+                    "DUPLICATE",
+                    "UNKNOWN",
+                    "This message was already received.",
+                    true,
+                    string.Empty
+                );
+            }
+            if (existingReceipt is not null)
+            {
+                db.WhatsAppMessageReceipts.Remove(existingReceipt);
+                await db.SaveChangesAsync(cancellationToken);
+            }
         }
 
         var contact = await db.WhatsAppJourneyContacts.SingleOrDefaultAsync(
@@ -192,6 +334,8 @@ public sealed partial class WhatsAppJourneyService
         );
         if (contact is null)
         {
+            if (_conversationOptions is not null)
+                throw new WhatsAppWebhookException(404, "WHATSAPP_IDENTITY_NOT_BOUND");
             contact = new WhatsAppJourneyContact
             {
                 TenantId = Guid.NewGuid(),
@@ -220,6 +364,8 @@ public sealed partial class WhatsAppJourneyService
             )
             .ToListAsync(cancellationToken);
         var binding = bindings.Count == 1 ? bindings[0] : null;
+        if (_conversationOptions is not null && binding is null)
+            throw new WhatsAppWebhookException(404, "WHATSAPP_IDENTITY_NOT_BOUND");
         var attachedRelationship = binding is null
             ? null
             : await db
@@ -230,6 +376,20 @@ public sealed partial class WhatsAppJourneyService
                         && value.RelationshipId == binding.RelationshipId,
                     cancellationToken
                 );
+        if (_conversationOptions is not null && attachedRelationship is null)
+            throw new WhatsAppWebhookException(404, "WHATSAPP_IDENTITY_NOT_BOUND");
+
+        var claim = await ClaimProviderEventAsync(proof, cancellationToken);
+        if (claim.Replay is not null)
+            return claim.Replay;
+        var locallyStopped =
+            _stopFence is not null
+            && binding is not null
+            && await _stopFence.IsLatchedAsync(
+                contact.TenantId,
+                binding.RelationshipId,
+                cancellationToken
+            );
 
         var riskTier = proof.RiskTier?.Trim().ToUpperInvariant() ?? "TIER_1_LOW_RISK";
         var confirmation =
@@ -237,7 +397,10 @@ public sealed partial class WhatsAppJourneyService
             || proof.Text.Trim().Equals("CONFIRM", StringComparison.OrdinalIgnoreCase);
         string status;
         string reply;
-        if (attachedRelationship?.State == EmploymentRelationshipState.StoppedEmergency)
+        if (
+            attachedRelationship?.State == EmploymentRelationshipState.StoppedEmergency
+            || (locallyStopped && !proof.Text.Contains("STOP", StringComparison.OrdinalIgnoreCase))
+        )
         {
             contact.PendingMediumRiskConfirmation = false;
             contact.JourneyStage = "STOP";
@@ -295,24 +458,451 @@ public sealed partial class WhatsAppJourneyService
             (contact.JourneyStage, reply) = Present(proof.Text);
         }
 
+        if (
+            status == "ACCEPTED"
+            && contact.JourneyStage != "STOP"
+            && _conversationService is not null
+            && binding is not null
+        )
+        {
+            var canonicalIdempotency = DeterministicGuid(
+                $"{proof.Environment}:{proof.AppBindingDigest}:{proof.MessageId}"
+            );
+            await _conversationService.SendAsync(
+                contact.TenantId,
+                binding.ParticipantId,
+                binding.RelationshipId,
+                canonicalIdempotency,
+                new SendConversationMessageRequestV1(
+                    "1.0",
+                    canonicalIdempotency,
+                    "WHATSAPP",
+                    [new ConversationTextBlockV1("1.0", "TEXT", proof.Text.Trim(), "en-IN")],
+                    "en-IN",
+                    PayloadDigest: proof.PayloadDigest,
+                    Channel: "WHATSAPP"
+                ),
+                cancellationToken
+            );
+        }
+
         var (tenantToken, tokenHash, tokenExpiresAt) = IssueTenantToken(
             contact.TenantId,
             proof.PhoneSubjectHash,
             receivedAt
         );
-        db.WhatsAppMessageReceipts.Add(
-            new WhatsAppMessageReceipt
+        if (_conversationDbFactory is null)
+        {
+            db.WhatsAppMessageReceipts.Add(
+                new WhatsAppMessageReceipt
+                {
+                    MessageId = proof.MessageId,
+                    TenantId = contact.TenantId,
+                    SessionTokenHash = tokenHash,
+                    SessionExpiresAt = tokenExpiresAt,
+                    ReceivedAt = receivedAt,
+                    ExpiresAt = receivedAt.AddHours(24),
+                }
+            );
+        }
+        await db.SaveChangesAsync(cancellationToken);
+        var receipt = new WhatsAppJourneyReceipt(
+            proof.MessageId,
+            status,
+            contact.JourneyStage,
+            reply,
+            false,
+            tenantToken
+        );
+        await CompleteProviderEventAsync(proof, claim.LeaseOwner, receipt, cancellationToken);
+        return receipt;
+    }
+
+    private async Task<ProviderClaimAcquisition> ClaimProviderEventAsync(
+        VerifiedPhoneIdentityProof proof,
+        CancellationToken cancellationToken
+    )
+    {
+        if (
+            _conversationDbFactory is null
+            || string.IsNullOrWhiteSpace(proof.Environment)
+            || string.IsNullOrWhiteSpace(proof.AppBindingDigest)
+            || string.IsNullOrWhiteSpace(proof.PayloadDigest)
+        )
+            return new(Guid.Empty, null);
+
+        var leaseOwner = Guid.NewGuid();
+        await using var db = await _conversationDbFactory.CreateDbContextAsync(cancellationToken);
+        var existing = await db.ProviderEventClaims.SingleOrDefaultAsync(
+            value =>
+                value.Environment == proof.Environment
+                && value.Provider == "WHATSAPP"
+                && value.AppBindingDigest == proof.AppBindingDigest
+                && value.EventIdentity == proof.MessageId,
+            cancellationToken
+        );
+        if (existing is not null)
+        {
+            var replay = ResolveProviderReplay(existing, proof.PayloadDigest);
+            if (replay is not null)
+                return new(Guid.Empty, replay);
+            var acquired = await db
+                .ProviderEventClaims.Where(value =>
+                    value.ClaimId == existing.ClaimId
+                    && value.State != "ACCEPTED"
+                    && (value.LeaseExpiresAt == null || value.LeaseExpiresAt <= proof.VerifiedAt)
+                )
+                .ExecuteUpdateAsync(
+                    updates =>
+                        updates
+                            .SetProperty(value => value.LeaseOwner, leaseOwner)
+                            .SetProperty(
+                                value => value.LeaseExpiresAt,
+                                proof.VerifiedAt.Add(ProviderClaimLeaseDuration)
+                            ),
+                    cancellationToken
+                );
+            if (acquired == 0)
+                throw new WhatsAppWebhookException(409, "WHATSAPP_EVENT_IN_PROGRESS");
+            return new(leaseOwner, null);
+        }
+
+        db.ProviderEventClaims.Add(
+            new ProviderEventClaim
             {
-                MessageId = proof.MessageId,
-                TenantId = contact.TenantId,
-                SessionTokenHash = tokenHash,
-                SessionExpiresAt = tokenExpiresAt,
-                ReceivedAt = receivedAt,
-                ExpiresAt = receivedAt.AddHours(24),
+                Environment = proof.Environment,
+                Provider = "WHATSAPP",
+                AppBindingDigest = proof.AppBindingDigest,
+                EventIdentity = proof.MessageId,
+                PayloadDigest = proof.PayloadDigest,
+                State = "CLAIMED",
+                LeaseOwner = leaseOwner,
+                LeaseExpiresAt = proof.VerifiedAt.Add(ProviderClaimLeaseDuration),
+                ReceivedAt = proof.VerifiedAt,
             }
         );
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            return new(leaseOwner, null);
+        }
+        catch (DbUpdateException)
+        {
+            db.ChangeTracker.Clear();
+            existing = await db.ProviderEventClaims.SingleAsync(
+                value =>
+                    value.Environment == proof.Environment
+                    && value.Provider == "WHATSAPP"
+                    && value.AppBindingDigest == proof.AppBindingDigest
+                    && value.EventIdentity == proof.MessageId,
+                cancellationToken
+            );
+            var replay = ResolveProviderReplay(existing, proof.PayloadDigest);
+            if (replay is not null)
+                return new(Guid.Empty, replay);
+            throw new WhatsAppWebhookException(409, "WHATSAPP_EVENT_IN_PROGRESS");
+        }
+    }
+
+    private async Task CompleteProviderEventAsync(
+        VerifiedPhoneIdentityProof proof,
+        Guid leaseOwner,
+        WhatsAppJourneyReceipt receipt,
+        CancellationToken cancellationToken
+    )
+    {
+        if (
+            _conversationDbFactory is null
+            || string.IsNullOrWhiteSpace(proof.Environment)
+            || string.IsNullOrWhiteSpace(proof.AppBindingDigest)
+        )
+            return;
+        await using var db = await _conversationDbFactory.CreateDbContextAsync(cancellationToken);
+        var claim = await db.ProviderEventClaims.SingleAsync(
+            value =>
+                value.Environment == proof.Environment
+                && value.Provider == "WHATSAPP"
+                && value.AppBindingDigest == proof.AppBindingDigest
+                && value.EventIdentity == proof.MessageId
+                && value.LeaseOwner == leaseOwner,
+            cancellationToken
+        );
+        claim.State = "ACCEPTED";
+        claim.ResultJson = JsonSerializer.Serialize(
+            receipt with
+            {
+                InternalTenantToken = string.Empty,
+            }
+        );
+        claim.TerminalAt = DateTimeOffset.UtcNow;
+        claim.ExpiresAt = claim.TerminalAt.Value.AddDays(30);
+        claim.LeaseOwner = null;
+        claim.LeaseExpiresAt = null;
         await db.SaveChangesAsync(cancellationToken);
-        return new(proof.MessageId, status, contact.JourneyStage, reply, false, tenantToken);
+    }
+
+    private static WhatsAppJourneyReceipt? ResolveProviderReplay(
+        ProviderEventClaim claim,
+        string payloadDigest
+    )
+    {
+        if (!string.Equals(claim.PayloadDigest, payloadDigest, StringComparison.Ordinal))
+            throw new ConversationIdempotencyConflictException();
+        if (claim.State == "ACCEPTED")
+        {
+            var receipt =
+                JsonSerializer.Deserialize<WhatsAppJourneyReceipt>(claim.ResultJson)
+                ?? throw new WhatsAppWebhookException(503, "WHATSAPP_REPLAY_RESULT_UNAVAILABLE");
+            return receipt with { Replayed = true, InternalTenantToken = string.Empty };
+        }
+        return null;
+    }
+
+    public async Task SetProviderClaimHoldAsync(
+        string provider,
+        string eventIdentity,
+        bool held,
+        CancellationToken cancellationToken
+    )
+    {
+        if (_conversationDbFactory is null || _conversationOptions is null)
+            throw new InvalidOperationException("Provider claim owner is unavailable.");
+        await using var db = await _conversationDbFactory.CreateDbContextAsync(cancellationToken);
+        var claim =
+            await db.ProviderEventClaims.SingleOrDefaultAsync(
+                value =>
+                    value.Environment == _conversationOptions.Environment
+                    && value.Provider == provider
+                    && value.AppBindingDigest == _conversationOptions.AppBindingDigest
+                    && value.EventIdentity == eventIdentity,
+                cancellationToken
+            ) ?? throw new KeyNotFoundException("Provider claim was not found.");
+        claim.LegalHold = held;
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<int> PurgeExpiredProviderClaimsAsync(
+        DateTimeOffset now,
+        CancellationToken cancellationToken
+    )
+    {
+        if (_conversationDbFactory is null || _conversationOptions is null)
+            return 0;
+        await using var db = await _conversationDbFactory.CreateDbContextAsync(cancellationToken);
+        var claims = await db
+            .ProviderEventClaims.Where(value =>
+                value.Environment == _conversationOptions.Environment
+                && value.TerminalAt != null
+                && value.ExpiresAt != null
+                && value.ExpiresAt <= now
+                && !value.LegalHold
+            )
+            .ToListAsync(cancellationToken);
+        db.ProviderEventClaims.RemoveRange(claims);
+        await db.SaveChangesAsync(cancellationToken);
+        return claims.Count;
+    }
+
+    private sealed record ParsedProviderStatus(
+        string WabaId,
+        string RecipientId,
+        WhatsAppProviderStatusEvent Event
+    );
+
+    private sealed record ParsedProviderMessage(
+        string WabaId,
+        string RecipientId,
+        string MessageId,
+        string From,
+        string Text,
+        DateTimeOffset SentAt
+    );
+
+    private List<ParsedProviderStatus> ParseProviderStatuses(JsonElement root, byte[] rawBody)
+    {
+        var statuses = new List<ParsedProviderStatus>();
+        if (
+            root.TryGetProperty("eventType", out var eventType)
+            && string.Equals(eventType.GetString(), "status", StringComparison.OrdinalIgnoreCase)
+            && TryGetRequiredString(root, "statusEventId", out var eventIdentity)
+            && TryGetRequiredString(root, "messageId", out var providerMessageId)
+            && TryGetRequiredString(root, "status", out var state)
+            && TryGetRequiredString(root, "wabaId", out var wabaId)
+            && TryGetRequiredString(root, "recipientId", out var recipientId)
+            && root.TryGetProperty("timestamp", out var timestamp)
+            && timestamp.TryGetInt64(out var unixTimestamp)
+        )
+        {
+            statuses.Add(
+                new(
+                    wabaId,
+                    recipientId,
+                    new(
+                        eventIdentity,
+                        providerMessageId,
+                        state,
+                        FromProviderTimestamp(unixTimestamp),
+                        Convert.ToHexStringLower(SHA256.HashData(rawBody))
+                    )
+                )
+            );
+            return statuses;
+        }
+
+        if (
+            !root.TryGetProperty("entry", out var entries)
+            || entries.ValueKind != JsonValueKind.Array
+        )
+            return statuses;
+        foreach (var entry in entries.EnumerateArray())
+        {
+            if (
+                !TryGetRequiredString(entry, "id", out wabaId)
+                || !entry.TryGetProperty("changes", out var changes)
+                || changes.ValueKind != JsonValueKind.Array
+            )
+                continue;
+            foreach (var change in changes.EnumerateArray())
+            {
+                if (
+                    !change.TryGetProperty("value", out var value)
+                    || !value.TryGetProperty("metadata", out var metadata)
+                    || !TryGetRequiredString(metadata, "phone_number_id", out recipientId)
+                    || !value.TryGetProperty("statuses", out var providerStatuses)
+                    || providerStatuses.ValueKind != JsonValueKind.Array
+                )
+                    continue;
+                foreach (var providerStatus in providerStatuses.EnumerateArray())
+                {
+                    if (
+                        !TryGetRequiredString(providerStatus, "id", out providerMessageId)
+                        || !TryGetRequiredString(providerStatus, "status", out state)
+                        || !TryGetRequiredString(providerStatus, "timestamp", out var timestampText)
+                        || !long.TryParse(timestampText, out unixTimestamp)
+                    )
+                        throw new WhatsAppWebhookException(400, "WHATSAPP_STATUS_INVALID");
+                    var statusIdentity = Sha256(
+                        string.Join(
+                            ':',
+                            providerMessageId,
+                            state,
+                            timestampText,
+                            providerStatus.GetRawText()
+                        )
+                    );
+                    statuses.Add(
+                        new(
+                            wabaId,
+                            recipientId,
+                            new(
+                                statusIdentity,
+                                providerMessageId,
+                                state,
+                                FromProviderTimestamp(unixTimestamp),
+                                Convert.ToHexStringLower(SHA256.HashData(rawBody))
+                            )
+                        )
+                    );
+                }
+            }
+        }
+        return statuses;
+    }
+
+    private static List<ParsedProviderMessage> ParseProviderMessages(JsonElement root)
+    {
+        var messages = new List<ParsedProviderMessage>();
+        if (
+            !root.TryGetProperty("entry", out var entries)
+            || entries.ValueKind != JsonValueKind.Array
+        )
+            return messages;
+        foreach (var entry in entries.EnumerateArray())
+        {
+            if (
+                !TryGetRequiredString(entry, "id", out var wabaId)
+                || !entry.TryGetProperty("changes", out var changes)
+                || changes.ValueKind != JsonValueKind.Array
+            )
+                continue;
+            foreach (var change in changes.EnumerateArray())
+            {
+                if (
+                    !change.TryGetProperty("value", out var value)
+                    || !value.TryGetProperty("metadata", out var metadata)
+                    || !TryGetRequiredString(metadata, "phone_number_id", out var recipientId)
+                    || !value.TryGetProperty("messages", out var providerMessages)
+                    || providerMessages.ValueKind != JsonValueKind.Array
+                )
+                    continue;
+                foreach (var providerMessage in providerMessages.EnumerateArray())
+                {
+                    if (
+                        !TryGetRequiredString(providerMessage, "id", out var messageId)
+                        || !TryGetRequiredString(providerMessage, "from", out var from)
+                        || !TryGetRequiredString(
+                            providerMessage,
+                            "timestamp",
+                            out var timestampText
+                        )
+                        || !long.TryParse(timestampText, out var timestamp)
+                        || !TryGetRequiredString(providerMessage, "type", out var messageType)
+                        || !string.Equals(messageType, "text", StringComparison.Ordinal)
+                        || !providerMessage.TryGetProperty("text", out var text)
+                        || !TryGetRequiredString(text, "body", out var body)
+                    )
+                        throw new WhatsAppWebhookException(400, "WHATSAPP_MESSAGE_INVALID");
+                    messages.Add(
+                        new(
+                            wabaId,
+                            recipientId,
+                            messageId,
+                            from,
+                            body,
+                            FromProviderTimestamp(timestamp)
+                        )
+                    );
+                }
+            }
+        }
+        return messages;
+    }
+
+    private void ValidateEnvironmentBinding(string wabaId, string recipientId)
+    {
+        if (
+            !FixedDigestEquals(_conversationOptions!.WabaBindingDigest, Sha256(wabaId))
+            || !FixedDigestEquals(_conversationOptions.RecipientBindingDigest, Sha256(recipientId))
+        )
+            throw new WhatsAppWebhookException(403, "WHATSAPP_ENVIRONMENT_BINDING_INVALID");
+    }
+
+    private static DateTimeOffset FromProviderTimestamp(long timestamp)
+    {
+        try
+        {
+            return DateTimeOffset.FromUnixTimeSeconds(timestamp);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            throw new WhatsAppWebhookException(400, "WHATSAPP_TIMESTAMP_INVALID");
+        }
+    }
+
+    private static bool TryGetRequiredString(
+        JsonElement element,
+        string propertyName,
+        out string value
+    )
+    {
+        value = string.Empty;
+        if (
+            !element.TryGetProperty(propertyName, out var property)
+            || property.ValueKind != JsonValueKind.String
+        )
+            return false;
+        value = property.GetString() ?? string.Empty;
+        return !string.IsNullOrWhiteSpace(value);
     }
 
     public async Task EnrolMpinAsync(
@@ -493,9 +1083,9 @@ public sealed partial class WhatsAppJourneyService
         );
     }
 
-    private void VerifySignature(string rawBody, string signatureHeader)
+    private void VerifySignature(byte[] rawBody, string signatureHeader)
     {
-        if (!signatureHeader.StartsWith("sha256=", StringComparison.OrdinalIgnoreCase))
+        if (!signatureHeader.StartsWith("sha256=", StringComparison.Ordinal))
             throw new WhatsAppWebhookException(403, "WHATSAPP_SIGNATURE_INVALID");
         byte[] supplied;
         try
@@ -506,7 +1096,7 @@ public sealed partial class WhatsAppJourneyService
         {
             throw new WhatsAppWebhookException(403, "WHATSAPP_SIGNATURE_INVALID");
         }
-        var expected = HMACSHA256.HashData(_webhookSecret, Encoding.UTF8.GetBytes(rawBody));
+        var expected = HMACSHA256.HashData(_webhookSecret, rawBody);
         if (
             supplied.Length != expected.Length
             || !CryptographicOperations.FixedTimeEquals(supplied, expected)
@@ -620,8 +1210,28 @@ public sealed partial class WhatsAppJourneyService
                 $"WhatsApp:{name} must contain at least 32 characters."
             );
 
+    private static bool IsLowerHexDigest(string value) =>
+        value.Length == 64
+        && value.All(character => character is >= '0' and <= '9' or >= 'a' and <= 'f');
+
     private static string HmacHex(byte[] key, string value) =>
         Convert.ToHexStringLower(HMACSHA256.HashData(key, Encoding.UTF8.GetBytes(value)));
+
+    private static Guid DeterministicGuid(string value)
+    {
+        var digest = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+        return new Guid(digest.AsSpan(0, 16));
+    }
+
+    private static string Sha256(string value) =>
+        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+
+    private static bool FixedDigestEquals(string left, string right) =>
+        left.Length == right.Length
+        && CryptographicOperations.FixedTimeEquals(
+            Encoding.ASCII.GetBytes(left),
+            Encoding.ASCII.GetBytes(right)
+        );
 
     private static string Base64Url(byte[] value) =>
         Convert.ToBase64String(value).TrimEnd('=').Replace('+', '-').Replace('/', '_');
@@ -651,6 +1261,9 @@ public sealed partial class WhatsAppJourneyService
         long Timestamp,
         string From,
         string Text,
-        string? RiskTier
+        string? RiskTier,
+        string AppId,
+        string WabaId,
+        string RecipientId
     );
 }

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://waooaw.com/schemas/conversation-whatsapp-environment-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "environment",
+    "telephoneReference",
+    "callbackHostReference",
+    "providerBindingReference",
+    "secretReferences",
+    "namespace",
+    "configurationVersion",
+    "featureFlagVersion",
+    "policyReferences",
+    "callbackAcceptanceEnabled",
+    "dispatchEnabled",
+    "restoreRoutingEnabled",
+    "providerEgressEnabled",
+    "activationAuthority"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": { "const": "1.0" },
+    "environment": { "enum": ["demo", "uat", "production"] },
+    "telephoneReference": { "type": "string", "pattern": "^[A-Z0-9_]+$" },
+    "callbackHostReference": { "type": "string", "pattern": "^whatsapp(-demo|-uat)?\\.<approved-domain>$" },
+    "providerBindingReference": { "type": "string", "pattern": "^kv://[^/]+/secrets/[^/]+$" },
+    "secretReferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verifyToken", "appSecret", "outboundAuthority", "mediaAuthority"],
+      "properties": {
+        "verifyToken": { "type": "string", "pattern": "^kv://[^/]+/secrets/[^/]+$" },
+        "appSecret": { "type": "string", "pattern": "^kv://[^/]+/secrets/[^/]+$" },
+        "outboundAuthority": { "type": "string", "pattern": "^kv://[^/]+/secrets/[^/]+$" },
+        "mediaAuthority": { "type": "string", "pattern": "^kv://[^/]+/secrets/[^/]+$" }
+      }
+    },
+    "namespace": { "type": "string", "minLength": 1 },
+    "configurationVersion": { "const": "wc120-candidate-1" },
+    "featureFlagVersion": { "const": "wc120-default-off-1" },
+    "policyReferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["institutional", "interaction", "channelRendering"],
+      "properties": {
+        "institutional": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "interaction": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "channelRendering": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+      }
+    },
+    "callbackAcceptanceEnabled": { "const": false },
+    "dispatchEnabled": { "const": false },
+    "restoreRoutingEnabled": { "const": false },
+    "providerEgressEnabled": { "const": false },
+    "activationAuthority": { "const": "SEPARATE_FOUNDER_AUTHORITY_REQUIRED" }
+  }
+}

@@ -221,10 +221,12 @@ public sealed class ConversationController : ControllerBase
     }
 
     [HttpGet("stream")]
+    [HttpGet("events")]
     public async Task StreamAsync(
         Guid relationshipId,
         [FromHeader(Name = "Last-Event-ID")] string? lastEventId,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        [FromQuery] long? afterSequence = null
     )
     {
         if (!TryGetAuthority(out var tenantId, out var participantId))
@@ -236,13 +238,22 @@ public sealed class ConversationController : ControllerBase
         IReadOnlyList<ConversationStreamEventV1> replay;
         try
         {
-            replay = await _service.GetEventReplayAsync(
-                tenantId,
-                participantId,
-                relationshipId,
-                lastEventId,
-                cancellationToken
-            );
+            replay =
+                afterSequence.HasValue && lastEventId is null
+                    ? await _service.GetEventReplayAfterSequenceAsync(
+                        tenantId,
+                        participantId,
+                        relationshipId,
+                        afterSequence.Value,
+                        cancellationToken
+                    )
+                    : await _service.GetEventReplayAsync(
+                        tenantId,
+                        participantId,
+                        relationshipId,
+                        lastEventId,
+                        cancellationToken
+                    );
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -258,7 +269,7 @@ public sealed class ConversationController : ControllerBase
         Response.Headers.CacheControl = "no-store";
         Response.Headers["X-Accel-Buffering"] = "no";
         var cursor = lastEventId;
-        var sequence = 1L;
+        var sequence = afterSequence ?? 0;
         while (!cancellationToken.IsCancellationRequested)
         {
             foreach (var conversationEvent in replay)

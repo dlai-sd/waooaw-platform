@@ -1,9 +1,9 @@
 // Implements: architecture/reference/ux/wc-034-implementation-decomposition.md §F3 Conversation Core
 // Constitutional basis: C-023 (Evidence First), C-026 (Tenant Isolation), C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
-import { type NextRequest, NextResponse } from 'next/server';
-import { conversationProblem, createConversationApi } from '@/lib/api/conversation';
+import { conversationProblem, createCanonicalConversationApi, createConversationApi } from '@/lib/api/conversation';
 import { accessTokenFromRequest } from '@/lib/server-auth';
+import { type NextRequest, NextResponse } from 'next/server';
 
 type CommandBody = Record<string, unknown> & { action?: unknown };
 
@@ -45,6 +45,21 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const limit = requestedLimit ? Number.parseInt(requestedLimit, 10) : undefined;
     if (limit !== undefined && (!Number.isInteger(limit) || limit < 1 || limit > 100)) {
       throw new InvalidConversationRequest();
+    }
+    if (process.env.WC120_CONVERSATION_ENABLED === 'true') {
+      const requestedAfterSequence = optionalQuery(request, 'afterSequence');
+      const afterSequence = requestedAfterSequence ? Number.parseInt(requestedAfterSequence, 10) : undefined;
+      if (afterSequence !== undefined && (!Number.isInteger(afterSequence) || afterSequence < 0)) {
+        throw new InvalidConversationRequest();
+      }
+      const conversation = await createCanonicalConversationApi(accessToken).getCanonicalConversation({
+        relationshipId,
+        afterSequence,
+        pageSize: limit,
+      });
+      return NextResponse.json(conversation, {
+        headers: { 'Cache-Control': 'no-store' },
+      });
     }
     const page = await createConversationApi(accessToken).listConversationMessages({
       relationshipId,

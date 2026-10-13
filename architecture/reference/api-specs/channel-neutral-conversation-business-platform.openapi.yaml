@@ -1,7 +1,7 @@
 openapi: "3.1.0"
 info:
   title: WAOOAW Channel-Neutral Conversation Business Platform Candidate API
-  version: "1.0.0-candidate.1"
+  version: "1.0.0-candidate.2"
   contact:
     name: WAOOAW Architecture
   description: |
@@ -57,6 +57,34 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotAccessible" }
         "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/conversation/read-position:
+    put:
+      tags: [Shared Conversation]
+      operationId: updateConversationReadPosition
+      summary: Monotonically advance the authenticated participant's durable read position
+      description: |
+        Compatible successor of the Conversation Core operation with the same BP owner.
+        The server derives tenant and participant identity, verifies that the referenced
+        message is visible in the supplied authoritative snapshot, never moves the position
+        backward, and replays an identical idempotent result without another mutation.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateConversationReadPositionRequestV1" }
+      responses:
+        "200":
+          description: Read position advanced or the identical outcome replayed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConversationReadPositionV1" }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /api/v1/employment/relationships/{relationshipId}/conversation/contributions:
     post:
       tags: [Shared Conversation]
@@ -102,7 +130,10 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/ConversationCommandRequestV1" }
+            schema:
+              $ref: "./conversational-employment-business-platform.openapi.yaml#/components/schemas/EmploymentCommandRequestV1"
+      x-owner-contract: conversational-employment-business-platform.openapi.yaml
+      x-owner-operation-id: submitEmploymentCommand
       responses:
         "202":
           description: Durable BP responsibility accepted; owner commit is not implied
@@ -271,6 +302,37 @@ paths:
         "404": { $ref: "#/components/responses/NotAccessible" }
         "409": { $ref: "#/components/responses/Conflict" }
         "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/conversation/handoffs/{handoffId}/revert:
+    post:
+      tags: [Channel Handoff]
+      operationId: revertConversationHandoff
+      summary: Idempotently revert a prepared or uncertain handoff to its source binding
+      description: |
+        Revert never creates a new source binding or expands authority. The request must bind
+        the original source channel and checkpoint digest. Same idempotency identity and digest
+        replay the original receipt; divergent reuse conflicts with zero mutation. ACTIVE or
+        EXPIRED handoffs are not silently rewound and require explicit reconciliation.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/HandoffId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/HandoffRevertRequestV1" }
+      responses:
+        "200":
+          description: Source binding preserved and revert completed or identically replayed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HandoffReceiptV1" }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotAccessible" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503": { $ref: "#/components/responses/Unavailable" }
   /api/v1/employment/relationships/{relationshipId}/conversation/messages/{messageId}/states:
     get:
       tags: [Shared Conversation]
@@ -358,8 +420,12 @@ paths:
             pattern: "^sha256=[a-f0-9]{64}$"
       requestBody:
         required: true
+        description: |
+          The wire media type is JSON, but authentication is over the bounded, identity-encoded
+          raw request bytes. Implementations must capture and verify those exact bytes before
+          decompression, middleware transformation, normalization, or JSON deserialization.
         content:
-          application/octet-stream:
+          application/json:
             schema:
               type: string
               format: binary
@@ -594,6 +660,23 @@ components:
         messages:
           type: array
           items: { $ref: "#/components/schemas/CanonicalMessageV1" }
+    UpdateConversationReadPositionRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, lastVisibleMessageId, authoritativeCursor]
+      properties:
+        schemaVersion: { type: string, const: "1.0" }
+        lastVisibleMessageId: { type: string, format: uuid }
+        authoritativeCursor: { type: string, minLength: 16, maxLength: 2048 }
+    ConversationReadPositionV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, relationshipId, lastReadMessageId, updatedAt]
+      properties:
+        schemaVersion: { type: string, const: "1.0" }
+        relationshipId: { type: string, format: uuid }
+        lastReadMessageId: { type: string, format: uuid }
+        updatedAt: { type: string, format: date-time }
     RegisteredContextHintV1:
       type: object
       additionalProperties: false
@@ -602,42 +685,48 @@ components:
         contextKey: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
         subjectReference: { type: [string, "null"], maxLength: 256 }
     ConversationContributionRequestV1:
-      type: object
-      additionalProperties: false
-      required: [schemaVersion, contributionKind, payloadDigest, contextVersion]
-      properties:
-        schemaVersion: { type: string, const: "1.0" }
-        contributionKind: { type: string, enum: [TEXT, REVIEWED_VOICE] }
-        text: { type: [string, "null"], minLength: 1, maxLength: 32000 }
-        acceptedVoiceContributionReference: { type: [string, "null"], maxLength: 256 }
-        contextHint: { $ref: "#/components/schemas/RegisteredContextHintV1" }
-        contextVersion: { type: string, minLength: 1, maxLength: 128 }
-        expectedSourceVersion: { type: [string, "null"], maxLength: 128 }
-        payloadDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
-    ConversationCommandRequestV1:
+      oneOf:
+        - $ref: "#/components/schemas/TextConversationContributionRequestV1"
+        - $ref: "#/components/schemas/ReviewedVoiceConversationContributionRequestV1"
+      discriminator:
+        propertyName: contributionKind
+        mapping:
+          TEXT: "#/components/schemas/TextConversationContributionRequestV1"
+          REVIEWED_VOICE: "#/components/schemas/ReviewedVoiceConversationContributionRequestV1"
+    TextConversationContributionRequestV1:
       type: object
       additionalProperties: false
       required:
         - schemaVersion
-        - commandType
-        - subjectReference
+        - contributionKind
+        - text
         - contextVersion
-        - expectedSourceVersion
-        - intentDigest
         - payloadDigest
       properties:
         schemaVersion: { type: string, const: "1.0" }
-        commandType: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
-        subjectReference: { type: string, minLength: 1, maxLength: 256 }
+        contributionKind: { type: string, const: TEXT }
+        text: { type: string, minLength: 1, maxLength: 32000 }
+        contextHint: { $ref: "#/components/schemas/RegisteredContextHintV1" }
         contextVersion: { type: string, minLength: 1, maxLength: 128 }
-        expectedSourceVersion: { type: string, minLength: 1, maxLength: 128 }
-        intentDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
-        confirmationReference: { type: [string, "null"], maxLength: 256 }
+        expectedSourceVersion: { type: [string, "null"], maxLength: 128 }
         payloadDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
-        parameters:
-          type: object
-          additionalProperties: true
-          maxProperties: 32
+    ReviewedVoiceConversationContributionRequestV1:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - contributionKind
+        - acceptedVoiceContributionReference
+        - contextVersion
+        - payloadDigest
+      properties:
+        schemaVersion: { type: string, const: "1.0" }
+        contributionKind: { type: string, const: REVIEWED_VOICE }
+        acceptedVoiceContributionReference: { type: string, minLength: 1, maxLength: 256 }
+        contextHint: { $ref: "#/components/schemas/RegisteredContextHintV1" }
+        contextVersion: { type: string, minLength: 1, maxLength: 128 }
+        expectedSourceVersion: { type: [string, "null"], maxLength: 128 }
+        payloadDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
     ConversationOperationReceiptV1:
       type: object
       additionalProperties: false
@@ -683,7 +772,7 @@ components:
     AvailableInteractionContextV1:
       type: object
       additionalProperties: false
-      required: [contextKey, phase, purpose, subjectType, requiredAssurance, available]
+      required: [contextKey, phase, purpose, subjectType, requiredAssurance, available, authorizedCommands]
       properties:
         contextKey: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
         phase: { type: string, minLength: 1, maxLength: 64 }
@@ -692,6 +781,31 @@ components:
         requiredAssurance: { type: string, enum: [TIER_1, TIER_2, TIER_3, TIER_4] }
         available: { type: boolean }
         unavailableReason: { type: [string, "null"], enum: [STALE, AMBIGUOUS, BLOCKED, ASSURANCE_REQUIRED, null] }
+        authorizedCommands:
+          type: array
+          items: { $ref: "#/components/schemas/RegisteredCommandDescriptorV1" }
+    RegisteredCommandDescriptorV1:
+      type: object
+      additionalProperties: false
+      required: [kind, subjectReference, operationId, requestSchema]
+      properties:
+        kind:
+          type: string
+          enum:
+            - CONFIRM_INDUCTION_ITEM
+            - DEFER_INDUCTION_ITEM
+            - APPLY_CANDIDATE_PATCH
+            - SUBMIT_PLAN_FOR_REVIEW
+            - ACCEPT_PLAN_VERSION
+            - ACKNOWLEDGE_MATERIAL_CHANGE
+            - RESCHEDULE_WITHIN_TOLERANCE
+            - REQUEST_REASSESSMENT
+            - ACKNOWLEDGE_CORRECTIVE_PROPOSAL
+        subjectReference: { type: string, minLength: 1, maxLength: 128 }
+        operationId: { type: string, const: submitEmploymentCommand }
+        requestSchema:
+          type: string
+          const: conversational-employment-business-platform.openapi.yaml#/components/schemas/EmploymentCommandRequestV1
     ContextProfileItemV1:
       type: object
       additionalProperties: false
@@ -757,6 +871,16 @@ components:
       properties:
         targetAuthenticationReference: { type: string, minLength: 1, maxLength: 256 }
         checkpointDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
+        payloadDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
+    HandoffRevertRequestV1:
+      type: object
+      additionalProperties: false
+      required: [sourceChannel, checkpointDigest, expectedHandoffState, reasonCode, payloadDigest]
+      properties:
+        sourceChannel: { $ref: "#/components/schemas/ChannelKind" }
+        checkpointDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
+        expectedHandoffState: { type: string, enum: [PREPARED, UNKNOWN] }
+        reasonCode: { type: string, enum: [TARGET_AUTHENTICATION_FAILED, TARGET_UNAVAILABLE, CUSTOMER_CANCELLED, OUTCOME_UNKNOWN] }
         payloadDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
     HandoffReceiptV1:
       type: object

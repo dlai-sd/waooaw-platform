@@ -95,7 +95,7 @@ test('WC084-PORTAL-03: relationship lifecycle remains goal-gated with Stop visib
   await page.getByLabel('Agent display name').fill('Mira');
   await page.getByRole('button', { name: 'Save Onboard preferences' }).click();
   await expect(page.getByText('Onboard preferences saved.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Emergency Stop' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Stop all agent work now' })).toBeVisible();
   await expectIntegrity(page);
 });
 

@@ -1,0 +1,10 @@
+{
+  "name": "final-docker-qualification",
+  "command": "run_final_docker_qualification ",
+  "started_at_utc": "2026-10-13T13:47:54Z",
+  "completed_at_utc": "2026-10-13T13:55:22.135347Z",
+  "exit_status": 0,
+  "log": "test-results/wc120/final-docker-qualification.log",
+  "log_digest": "246968c468dcb87fe66a04fa83bf10515d8bd67da7eb623c0c05bedf7d5e5339",
+  "source_commit": "46ef8c6897c5ed585e3d5ea7212e4b77213df834"
+}

@@ -8,6 +8,7 @@ namespace Waooaw.BusinessPlatform.Infrastructure;
 public sealed class ConversationProjection
 {
     public Guid ConversationId { get; init; } = Guid.NewGuid();
+    public string Environment { get; init; } = "legacy";
     public Guid TenantId { get; init; }
     public Guid RelationshipId { get; init; }
     public long NextMessageSequence { get; set; } = 1;
@@ -19,6 +20,7 @@ public sealed class ConversationProjection
 public sealed class ConversationMessage
 {
     public Guid MessageId { get; init; } = Guid.NewGuid();
+    public string Environment { get; init; } = "legacy";
     public Guid TenantId { get; init; }
     public Guid ConversationId { get; init; }
     public Guid RelationshipId { get; init; }
@@ -26,9 +28,14 @@ public sealed class ConversationMessage
     public string SchemaVersion { get; init; } = "1.0";
     public string Actor { get; init; } = "CUSTOMER";
     public string Channel { get; init; } = "WEB";
+    public string ContributionKind { get; init; } = "TEXT";
+    public string? DialogueAct { get; init; }
     public string SkillId { get; init; } = string.Empty;
     public string ContentJson { get; set; } = "[]";
     public string CardsJson { get; set; } = "[]";
+    public string? ConclusionJson { get; init; }
+    public string InteractionContextJson { get; init; } = "{}";
+    public string ConversationPolicyJson { get; init; } = "{}";
     public string DeliveryState { get; set; } = "ACCEPTED";
     public string ProcessingState { get; set; } = "QUEUED";
     public string EvidenceState { get; set; } = "PENDING";
@@ -150,6 +157,22 @@ public sealed class ConversationStoreDbContext : DbContext
         Set<PortalInteractionMessage>();
     public DbSet<PortalInteractionIdempotencyOutcome> PortalInteractionIdempotencyOutcomes =>
         Set<PortalInteractionIdempotencyOutcome>();
+    public DbSet<ConversationOutboxRecord> ConversationOutbox => Set<ConversationOutboxRecord>();
+    public DbSet<ProviderEventClaim> ProviderEventClaims => Set<ProviderEventClaim>();
+    public DbSet<ConversationContextObservation> ContextObservations =>
+        Set<ConversationContextObservation>();
+    public DbSet<ConversationContextSummary> ContextSummaries => Set<ConversationContextSummary>();
+    public DbSet<ConversationDeliveryObservation> DeliveryObservations =>
+        Set<ConversationDeliveryObservation>();
+    public DbSet<ConversationDataRightRequest> DataRightRequests =>
+        Set<ConversationDataRightRequest>();
+    public DbSet<WhatsAppMediaRecord> WhatsAppMedia => Set<WhatsAppMediaRecord>();
+    public DbSet<ConversationMigrationWatermark> MigrationWatermarks =>
+        Set<ConversationMigrationWatermark>();
+    public DbSet<RelationshipEmergencyStopLatch> EmergencyStopLatches =>
+        Set<RelationshipEmergencyStopLatch>();
+    public DbSet<ConversationOperationalSignal> OperationalSignals =>
+        Set<ConversationOperationalSignal>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -162,6 +185,7 @@ public sealed class ConversationStoreDbContext : DbContext
         ConfigurePortalContext(modelBuilder.Entity<PortalInteractionContext>());
         ConfigurePortalMessage(modelBuilder.Entity<PortalInteractionMessage>());
         ConfigurePortalIdempotency(modelBuilder.Entity<PortalInteractionIdempotencyOutcome>());
+        modelBuilder.ConfigureWc120Conversation();
     }
 
     private static void ConfigureConversation(
@@ -170,8 +194,16 @@ public sealed class ConversationStoreDbContext : DbContext
     {
         entity.ToTable("conversations", "business");
         entity.HasKey(value => value.ConversationId);
-        entity.HasIndex(value => new { value.TenantId, value.RelationshipId }).IsUnique();
+        entity
+            .HasIndex(value => new
+            {
+                value.Environment,
+                value.TenantId,
+                value.RelationshipId,
+            })
+            .IsUnique();
         entity.Property(value => value.ConversationId).HasColumnName("conversation_id");
+        entity.Property(value => value.Environment).HasColumnName("environment");
         entity.Property(value => value.TenantId).HasColumnName("tenant_id");
         entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
         entity
@@ -195,6 +227,7 @@ public sealed class ConversationStoreDbContext : DbContext
         entity
             .HasIndex(value => new
             {
+                value.Environment,
                 value.TenantId,
                 value.RelationshipId,
                 value.Sequence,
@@ -209,6 +242,7 @@ public sealed class ConversationStoreDbContext : DbContext
             })
             .IsUnique();
         entity.Property(value => value.MessageId).HasColumnName("message_id");
+        entity.Property(value => value.Environment).HasColumnName("environment");
         entity.Property(value => value.TenantId).HasColumnName("tenant_id");
         entity.Property(value => value.ConversationId).HasColumnName("conversation_id");
         entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
@@ -216,6 +250,8 @@ public sealed class ConversationStoreDbContext : DbContext
         entity.Property(value => value.SchemaVersion).HasColumnName("schema_version");
         entity.Property(value => value.Actor).HasColumnName("actor");
         entity.Property(value => value.Channel).HasColumnName("channel");
+        entity.Property(value => value.ContributionKind).HasColumnName("contribution_kind");
+        entity.Property(value => value.DialogueAct).HasColumnName("dialogue_act");
         entity.Property(value => value.SkillId).HasColumnName("skill_id");
         entity
             .Property(value => value.ContentJson)
@@ -224,6 +260,18 @@ public sealed class ConversationStoreDbContext : DbContext
         entity
             .Property(value => value.CardsJson)
             .HasColumnName("cards_json")
+            .HasColumnType("jsonb");
+        entity
+            .Property(value => value.ConclusionJson)
+            .HasColumnName("conclusion_json")
+            .HasColumnType("jsonb");
+        entity
+            .Property(value => value.InteractionContextJson)
+            .HasColumnName("interaction_context_json")
+            .HasColumnType("jsonb");
+        entity
+            .Property(value => value.ConversationPolicyJson)
+            .HasColumnName("conversation_policy_json")
             .HasColumnType("jsonb");
         entity.Property(value => value.DeliveryState).HasColumnName("delivery_state");
         entity.Property(value => value.ProcessingState).HasColumnName("processing_state");

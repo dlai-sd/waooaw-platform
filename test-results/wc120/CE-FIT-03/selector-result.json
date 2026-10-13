@@ -1,0 +1,18 @@
+{
+  "ce_fit_id": "CE-FIT-03",
+  "command": "run_dotnet_container sh scripts/validation_control/run_wc120_dotnet_test.sh --filter FullyQualifiedName=Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit03ContextStalenessTests.SourceVersionChange_MarksAffectedContextStaleBeforeExecution_AndPreventsCurrentPresentation --logger trx\\;LogFileName=test-results.trx --results-directory /workspace/test-results/wc120/CE-FIT-03 ",
+  "node": "Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit03ContextStalenessTests.SourceVersionChange_MarksAffectedContextStaleBeforeExecution_AndPreventsCurrentPresentation",
+  "started_at_utc": "2026-10-13T13:33:59Z",
+  "completed_at_utc": "2026-10-13T13:34:45.080797Z",
+  "source_commit": "46ef8c6897c5ed585e3d5ea7212e4b77213df834",
+  "exit_status": 0,
+  "pass_fail_skip_counts": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  "candidate_manifest_digest": "2725e42f3a33d71dc79c8740d203e6abf92da8b84b8f37ba4d7ab2d19216b08a",
+  "artifact_digests": {
+    "test-results/wc120/CE-FIT-03/selector.log": "9ed2392eeadcc3d776a9ecef5a571f50363b2f4e046f3edc1d681e717d53480f"
+  }
+}

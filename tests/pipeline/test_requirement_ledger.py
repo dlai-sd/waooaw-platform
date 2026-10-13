@@ -117,3 +117,46 @@ def test_changed_contract_requires_matching_ledger(tmp_path: Path) -> None:
     violations = validate_changed_ledgers(tmp_path, ["work-contracts/WC-200-example.md"])
 
     assert violations == ["LEDGER_MISSING: work-contracts/WC-200-requirements.yaml"]
+
+
+def test_changed_contract_uses_ledger_contract_path_with_companion_documents(tmp_path: Path) -> None:
+    contracts = tmp_path / "work-contracts"
+    contracts.mkdir()
+    contract_path = contracts / "WC-200-example.md"
+    contract = "| WC200-R001 | Section 1 | obligation | test | PLANNED |\n"
+    contract_path.write_text(contract, encoding="utf-8")
+    (contracts / "WC-200-product-matrix.md").write_text("supporting evidence\n", encoding="utf-8")
+    ledger = {
+        "schema": "waooaw.requirement-evidence-ledger/v1",
+        "work_contract": "WC-200",
+        "contract_path": "work-contracts/WC-200-example.md",
+        "contract_digest": file_digest(contract),
+        "implementation_scope": True,
+        "result": "PLANNED",
+        "requirements": [
+            {
+                "requirement_id": "WC200-R001",
+                "source": "Section 1",
+                "observable_outcome": "outcome",
+                "component_owner": "owner",
+                "evidence_class": "test",
+                "test_path_or_plan": "tests/example.py",
+                "initial_state": "new",
+                "dependencies": "none",
+                "completion_rule": "passes",
+                "residual_risk": "none",
+            }
+        ],
+    }
+    (contracts / "WC-200-requirements.yaml").write_text(yaml.safe_dump(ledger), encoding="utf-8")
+
+    violations = validate_changed_ledgers(
+        tmp_path,
+        [
+            "work-contracts/WC-200-example.md",
+            "work-contracts/WC-200-product-matrix.md",
+            "work-contracts/WC-200-requirements.yaml",
+        ],
+    )
+
+    assert violations == []

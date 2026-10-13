@@ -76,6 +76,15 @@ public sealed record VoiceContributionOutcomeV1(
     DateTimeOffset OutcomeAt
 );
 
+public sealed record AcceptedVoiceContributionV1(
+    Guid ContributionId,
+    Guid SessionId,
+    string Text,
+    string Locale,
+    int TranscriptVersion,
+    string TextSha256
+);
+
 public sealed record VoicePayloadErasureRequestV1(string SchemaVersion, string Scope);
 
 public sealed record VoicePayloadErasureReceiptV1(
@@ -236,6 +245,50 @@ public sealed class VoiceUnavailableException : Exception;
 
 public sealed class VoiceContributionService
 {
+    public async Task<AcceptedVoiceContributionV1?> ResolveAcceptedContributionAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid relationshipId,
+        Guid contributionId,
+        CancellationToken cancellationToken
+    )
+    {
+        await EnsureAccessAsync(tenantId, participantId, relationshipId, cancellationToken);
+        await using var db = await _voiceFactory.CreateDbContextAsync(cancellationToken);
+        var session = await db
+            .Sessions.AsNoTracking()
+            .SingleOrDefaultAsync(
+                value =>
+                    value.TenantId == tenantId
+                    && value.RelationshipId == relationshipId
+                    && value.ActorParticipantId == participantId
+                    && value.ContributionId == contributionId
+                    && value.State == "SENT"
+                    && value.AcceptedTranscriptId != null,
+                cancellationToken
+            );
+        if (session is null)
+            return null;
+        var transcript = await db
+            .TranscriptVersions.AsNoTracking()
+            .SingleAsync(
+                value =>
+                    value.TenantId == tenantId
+                    && value.RelationshipId == relationshipId
+                    && value.TranscriptId == session.AcceptedTranscriptId
+                    && value.ErasedAt == null,
+                cancellationToken
+            );
+        return new(
+            contributionId,
+            session.SessionId,
+            _protector.Unprotect(transcript.TextCiphertext),
+            transcript.Locale,
+            transcript.Version,
+            transcript.TextSha256
+        );
+    }
+
     private const string SchemaVersion = "1.0.0";
     private static readonly HashSet<string> SupportedLocales = ["en-IN", "hi-IN", "mr-IN"];
     private static readonly HashSet<string> ErasureScopes =

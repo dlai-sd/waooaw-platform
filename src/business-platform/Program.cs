@@ -513,6 +513,20 @@ builder.Services.AddScoped<IConversationExecutionGateway, HttpConversationExecut
 builder.Services.AddScoped<IOperationalMandateResolver, OperationalMandateResolver>();
 builder.Services.AddScoped<PerformanceReviewService>();
 builder.Services.AddScoped<ConversationService>();
+builder.Services.Configure<Wc120ConversationOptions>(
+    builder.Configuration.GetSection("Wc120Conversation")
+);
+builder.Services.AddScoped<ConversationContextProfileService>();
+builder.Services.AddScoped<IConversationReferenceResolver>(services =>
+    services.GetRequiredService<ConversationContextProfileService>()
+);
+builder.Services.AddScoped<ConversationStopFence>();
+builder.Services.AddScoped<WhatsAppOutboxService>();
+builder.Services.AddSingleton<IWhatsAppProviderAdapter, DisabledWhatsAppProviderAdapter>();
+builder.Services.AddScoped<WhatsAppOutboxWorker>();
+builder.Services.AddScoped<ConversationOutboundContributionService>();
+builder.Services.AddScoped<WhatsAppMediaQuarantineService>();
+builder.Services.AddScoped<ConversationOperationsService>();
 builder.Services.AddScoped<PortalInteractionService>();
 builder.Services.AddSingleton<
     IValidateOptions<EmploymentProtocolOptions>,

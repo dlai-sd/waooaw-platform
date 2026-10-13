@@ -14,7 +14,7 @@ describe('EmergencyStop', () => {
     global.fetch = fetchMock;
     render(<EmergencyStop contractId="contract-1" activeSessionIds={['session-1']} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Emergency Stop' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Stop all agent work now' }));
     expect(screen.getByRole('button', { name: 'Stopping active work…' })).toBeDisabled();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Emergency Stop confirmed' })).toBeDisabled());
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -28,7 +28,7 @@ describe('EmergencyStop', () => {
     global.fetch = fetchMock;
     render(<EmergencyStop contractId="contract-1" activeSessionIds={[]} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Emergency Stop' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Stop all agent work now' }));
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/emergency-stop',
@@ -44,7 +44,7 @@ describe('EmergencyStop', () => {
     global.fetch = fetchMock;
     render(<EmergencyStop contractId="contract-1" activeSessionIds={['session-1']} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Emergency Stop' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Stop all agent work now' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Stop not confirmed. Try again.' })).toBeEnabled());
   });
 });

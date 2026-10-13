@@ -51,7 +51,12 @@ export function EmergencyStop({ contractId, activeSessionIds }: EmergencyStopPro
 
   return (
     <div className="stop-control" aria-live="polite">
-      <button type="button" onClick={stop} disabled={!ready || status === 'stopping' || status === 'confirmed'}>
+      <button
+        type="button"
+        aria-label={ready && status === 'idle' ? 'Stop all agent work now' : message}
+        onClick={stop}
+        disabled={!ready || status === 'stopping' || status === 'confirmed'}
+      >
         <CircleStop aria-hidden="true" size={22} />
         {message}
       </button>

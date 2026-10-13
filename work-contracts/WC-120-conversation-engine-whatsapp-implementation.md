@@ -7,13 +7,12 @@
 | Work Contract ID | WC-120 |
 | Authoring office | Chief Solution Architect (INST-005) |
 | Assigned implementation office | Platform IT Expert (INST-010), only after the gates in this contract pass |
-| Status | WORK CONTRACT RECORDED FOR FOUNDER REVIEW - ADR-051/052/053 FOUNDER-ACCEPTED; ADDITIVE SCOPE; IMPLEMENTATION GATES ACTIVE |
+| Status | READY_FOR_STRATEGIC_PLAN - SPECIFICATION INTEGRATED AND DOCKER-VALIDATED; IMPLEMENTATION UNAUTHORIZED |
 | Current-main baseline | `c2a1baf64cb3b2652ce29ed930ac4a60f14e73bb` |
 | Source PR | PR #499, merged as `c2a1baf64cb3b2652ce29ed930ac4a60f14e73bb` |
-| Candidate solution package | `architecture/reference/components/conversation-engine-whatsapp-solution-work-component.md`, version `1.0.0-candidate.1`, as delivered by PR #499 |
-| Solution package Git blob | `224d8f43f2a46e810eb5b13aac35570b6f0ebcda` |
-| Candidate channel-neutral API | `architecture/reference/api-specs/channel-neutral-conversation-business-platform.openapi.yaml`, as delivered by PR #499 |
-| Candidate API Git blob | `77b7875a0d294be3aba21534bf33cd92c7527e15` |
+| Candidate solution package | `architecture/reference/components/conversation-engine-whatsapp-solution-work-component.md`, repaired WC-120 version `1.0.0-candidate.2`; pinned PR #499 source blob `224d8f43f2a46e810eb5b13aac35570b6f0ebcda` |
+| Candidate channel-neutral API | `architecture/reference/api-specs/channel-neutral-conversation-business-platform.openapi.yaml`, repaired WC-120 version `1.0.0-candidate.2`; pinned PR #499 source blob `77b7875a0d294be3aba21534bf33cd92c7527e15` |
+| Compatibility crosswalk | `work-contracts/WC-120-operation-schema-owner-compatibility-crosswalk.md` |
 | Controlling enterprise input | PR #498 reviewed head `65add4540698116b00be1ec72e6000333d05eac9`, merged as `4a4420af6ee132623d6b87eb3863d700e56c9b86` |
 | Existing Conversation Core | `architecture/reference/components/conversation-core.md`, blob `1004255bbd01e3d10dd53a64a2b115ac059ad631` |
 | Existing WC-114 / WC-115 | `work-contracts/WC-114-conversational-employment-solution-contract.md` blob `11ba639efa43d3288ba1eb39fd2e05308c42e6c0`; `work-contracts/WC-115-conversational-employment-implementation.md` blob `337fcef0a51a4c2ef2ff72423a7afc64969d8914` |
@@ -44,16 +43,17 @@ That authority is limited to recording and preparing the governed implementation
 For the PR #499 solution package, this Work Contract replaces the former status
 `DRAFT - IMPLEMENTATION HANDOFF BLOCKED` with:
 
-> **FORMALLY RECORDED - ADR-051/052/053 FOUNDER-ACCEPTED; SPECIFICATION CLOSURE AND
-> SEPARATE IMPLEMENTATION AUTHORIZATION REQUIRED**
+> **FORMALLY RECORDED - ADR-051/052/053 FOUNDER-ACCEPTED; SPECIFICATION CLOSURE
+> COMPLETE; READY_FOR_STRATEGIC_PLAN; SEPARATE IMPLEMENTATION AUTHORIZATION REQUIRED**
 
 This is the recorded status of the work component, not a claim that its source package was
 rewritten or independently re-approved. ADR-051/052/053 acceptance supersedes the stale
 "Proposed - Founder review required" labels in the PR #499 candidate for this governed scope.
-WC-120 does not override source history or reviewer verdicts. Implementation remains gated:
-the compatibility crosswalk, seven specification corrections, required specialist
-contributions, Founder acceptance of this exact Work Contract, ledger validation, and
-separate explicit current-session implementation authorization must all pass first.
+WC-120 does not override source history or reviewer verdicts. The compatibility crosswalk, seven specification corrections, required specialist contributions,
+and exact Docker-only ledger/OpenAPI validation are complete in this package. The specification is
+`READY_FOR_STRATEGIC_PLAN`. Founder acceptance of this exact integrated Work Contract and separate
+explicit current-session implementation authorization remain required before implementation;
+protected Legal/Founder/provider/platform decisions remain fail-closed at their named later gates.
 
 ## 1. Objective And Authority
 
@@ -172,6 +172,229 @@ Their Section 27 author-remediation mapping is retained as input. Neither the hi
 review verdict nor the existence of the remediation table is represented as post-repair
 reviewer approval.
 
+### 2.3 Data Profile Binding And Protected Decisions
+
+WC120-R004, R006, R007, R010, R012, R014, R015, R023, R029, R036, R037, and
+R039 inherit the accepted WC-115 data profile at blob
+`9c7ccecd64791010f1ba15b69d9b8a128d466d66`; PR #498 §15 and PR #499 §§6,
+12, 13, and 20 specialize it without weakening it. The implementation crosswalk must prove:
+
+- BP remains the sole owner of canonical relationship conversation/message truth. Canonical
+  append atomically reserves idempotency, checks protected-intent conflict, allocates sequence,
+  appends the message, and publishes its outbox record. Consumer effect and inbox commit
+  atomically. Inbound provider events, canonical commands, and outbound attempts use separate,
+  complete idempotency namespaces; same identity and digest replay, while divergent reuse
+  conflicts with zero additional mutation.
+- Every tenant-scoped row, uniqueness key, reference, cursor, payload reference, worker lease,
+  inbox/outbox record, provider correlation, and recovery job is bound to immutable environment
+  and server-derived tenant context, plus relationship after resolution. Tenant stores use
+  transaction-local context, tenant-complete composite references, `ENABLE` and `FORCE RLS`,
+  and non-owner `NOBYPASSRLS` application and worker roles. Migration authority remains
+  bounded to schema work and does not become a runtime bypass.
+- Observations and corrections are append-only, acyclic supersessions using compare-and-swap.
+  Profiles are reproducible projections. Summaries bind their exact source set or canonical
+  sequence range and derivation contract/model/policy versions, and are invalidated by source
+  correction, erasure, expiry, or incompatible policy/model changes.
+- Customer/provider payload bytes and all media/transcript derivatives remain in the approved
+  erasable payload boundary behind opaque references. Only a customer-confirmed transcript or
+  correction may become a canonical contribution. Erasure removes resolvable payload links and
+  derivatives while retaining only owner-permitted non-reconstructive replay tombstones and
+  minimized evidence metadata.
+- Existing WC-115 retention classes remain controlling wherever the record-to-class mapping is
+  exact: constitutional evidence is permanent; plans, commands, and owner facts use relationship
+  closure plus seven years; customer projection content uses relationship closure plus 90 days;
+  idempotency and reconciliation use terminal outcome plus 30 days; AIR transient content is
+  deleted within one hour after terminal state and has a 24-hour absolute maximum. Legal hold
+  suspends erasure without rewriting history, backups inherit source expiry, and erasure
+  verification is required.
+- Backup and restore preserve canonical messages, sequence, idempotency, inbox/outbox, and dedup
+  at one consistency point. Restore first targets an isolated non-routable environment with no
+  provider authority, then proves schema watermark, forced RLS, composite references, sequence,
+  replay protection, payload lineage, projection rebuild, and provider-egress denial.
+- Evolution is forward-only expand -> idempotent backfill -> verify -> cutover -> contract, with
+  resumable deterministic checkpoints, a mixed-version compatibility window, and no destructive
+  down-migration. Rollback restores the prior reader/writer contract while retaining safe additive
+  records, canonical decisions, and evidence.
+
+The Data Architect fixes the following implementation controls for WC-120:
+
+- Canonical sequence uses one BP allocator row per
+  `(environment, tenant, relationship, conversation)`. Compare-and-swap or row locking advances
+  `next_sequence` in the same transaction as idempotency reservation, message append, and outbox
+  append. The database rejects duplicate composite sequence values. Provider time never orders the
+  canonical timeline.
+- Outbox and inbox ordering is
+  `(environment, tenant, relationship, owner, aggregate_id, sequence)`. A lease is 60 seconds with
+  a 20-second heartbeat. Retry delay is exactly
+  `min(2^(attempt_number - 1) seconds, 300 seconds)` with no jitter, for at most 12 delivery
+  attempts. Attempt 12 or a non-retryable schema/contract error enters `BLOCKED` poison disposition
+  with payload-free evidence; silent discard is prohibited. Lease loss, restart, and takeover
+  replay the same identity and digest.
+- Canonical JSON uses RFC 8785 JCS plus SHA-256; provider ingress and binary payloads use SHA-256 of
+  the authenticated exact bytes. Inbound provider event, canonical command, and outbound attempt
+  use the separate identity tuples in PR #499 §6.2. Same identity and digest returns the original
+  durable result; divergent digest returns conflict with zero additional effect. Unresolved
+  identities never expire. Terminal replay tombstones expire 30 days after terminal outcome unless
+  held.
+- Tenant context is set transaction-locally from the authenticated server boundary and reset on
+  transaction end. Every tenant-bearing primary/unique key and reference is environment- and
+  tenant-complete; relationship is included after resolution. Application and worker roles are
+  non-owner `NOBYPASSRLS`; tenant stores use `ENABLE ROW LEVEL SECURITY` and
+  `FORCE ROW LEVEL SECURITY`. Migration credentials are schema-only, time-bounded, audited, and
+  prohibited from runtime traffic.
+- Observation supersession is same-owner, acyclic, append-only, and compare-and-swap guarded.
+  Summary lineage stores the exact source IDs/digests or canonical sequence interval plus
+  derivation-contract, model, and policy versions. Source correction, erasure, expiry, or an
+  incompatible derivation version marks the summary invalid before it can be read as current.
+- Migration backfill uses deterministic ascending owner primary-key order in batches of at most
+  1,000 rows, commits a resumable watermark after each batch, and is safe to repeat. Cutover requires
+  zero invariant violations and a candidate-bound restore qualification. Old readers remain
+  supported for at least seven continuous days after cutover; contraction additionally requires
+  zero old-reader traffic for 24 continuous hours, rollback-window expiry, and explicit authority.
+
+The Data Architect also fixes this record-to-lifecycle mapping:
+
+| WC-120 record | Lifecycle class and exact Data control |
+|---|---|
+| Inbound claim, normalized provider-event metadata, digest, inbox result, and replay tombstone | Existing `idempotency_and_reconciliation`: terminal outcome plus 30 days; unresolved records do not age out |
+| Authenticated raw provider body | New `whatsapp_provider_transient`: encrypted erasable payload boundary; delete within 24 hours after durable normalization/rejection, while retaining only digest and non-reconstructive replay metadata |
+| Delivery/status observation and opt-in/template decision evidence | Existing `plans_commands_owner_facts`: relationship closure plus seven years; append-only and payload-minimized |
+| Accepted customer message, media, confirmed transcript, correction, and derived customer projection | Existing `customer_projection_content`: relationship closure plus 90 days; source erasure propagates to every derivative |
+| Rejected, infected, expired, unknown, or abandoned quarantined media and derivatives | New `whatsapp_quarantine_transient`: delete within 24 hours after terminal verdict; never enters canonical context |
+| Dead letter / poison disposition | No customer/provider payload; bounded reason, digest, opaque record reference, attempt count, and timestamps only; terminal outcome plus 30 days |
+| Generated export artifact | New `customer_export_transient`: encrypted, single-purpose, delete within 24 hours of creation or immediately after verified revocation |
+| Separately authorized protected diagnostic payload | New `protected_diagnostic_transient`: encrypted, purpose-bound, access-evidenced, non-exportable, and deleted within seven days; absent unless separately authorized |
+| CE evidence reference | Existing constitutional evidence class; payload erasure removes reconstructive linkage but cannot rewrite CE evidence |
+
+Legal hold is a scoped immutable record naming environment, tenant, affected record/payload classes,
+legal authority reference, creator, creation time, and release authority reference. Hold suspends
+physical erasure but never restores consent, eligibility, binding, or operational use. After verified
+release, the erasure queue must start within 24 hours, complete all platform-controlled deletion and
+derivative invalidation within 72 hours, and record completion or an honest unresolved
+external-provider outcome. Hold creation/release authority and the legal basis for the four new
+lifecycle classes remain Legal decisions; Founder acceptance is required where the resulting rights,
+cost, or risk is material.
+
+The Data Architect proposes these exact recovery targets for acceptance:
+
+| Environment | RPO / maximum data loss | RTO |
+|---|---:|---:|
+| Demo | 24 hours | 8 hours |
+| UAT | 4 hours | 4 hours |
+| Production | 15 minutes | 2 hours |
+
+Recovery covers one consistency group containing canonical conversation/message state, sequence
+allocator, idempotency, inbox/outbox, dedup/tombstones, lineage, payload references, and immutable
+delivery observations. Qualification restores to a non-routable no-provider-egress environment and
+proves schema watermark, row counts/checksums, forced RLS, composite references, sequence uniqueness,
+replay, lineage rebuild, source expiry, and projection equivalence before any reactivation.
+Founder acceptance of the numeric recovery targets and any material recovery cost remains required.
+
+Data-owned values and controls above are closed and may not be selected by the implementer. The
+exact Core/WC-114/WC-115 operation/schema/store crosswalk, corrected PR #499 candidate, Legal
+acceptance of hold/lifecycle legal basis, Founder acceptance of material lifecycle and recovery
+consequences, and provider deletion capability are named external gates. Until the applicable gate
+is accepted, only the affected persistence, contraction, restore activation, teardown, or external
+erasure claim is stopped.
+
+### 2.4 Security Profile Binding And Denial Invariants
+
+WC120-R008 through WC120-R010, WC120-R012 through WC120-R020, WC120-R026, WC120-R028,
+and WC120-R038 inherit these already accepted controls; this section creates no new policy:
+
+- PR #498 §§12.1/14.2 and PR #499 §10.1 require the approved
+  `X-Hub-Signature-256` HMAC-SHA256 form over bounded exact raw request bytes before
+  decompression, normalization, parsing, or middleware transformation, with constant-time
+  comparison. Invalid, oversized, malformed, or wrong host/app/WABA/recipient/environment
+  input is denied before mutation. A previously unseen event is fresh only inside ADR-023's
+  inclusive five-minute boundary against trusted receipt time. An already claimed authentic
+  delayed retry instead replays its durable same-identity/same-digest result; same
+  identity/different digest conflicts with zero additional mutation.
+- ADR-023 and PR #498 §12.7 bind phone identity to environment, app/WABA, recipient,
+  protected participant proof, current membership, relationship, and reassignment/revocation
+  state. Phone possession never attaches an existing relationship. Tier 1 cannot expand
+  authority; Tier 2 confirmation binds intent digest, subject, source version, and expiry;
+  Tier 3 requires a fresh stronger factor; Tier 4 is portal-only and includes Stop release.
+  Assurance is rechecked at commit and invalidated by completion/change/expiry, Stop/session
+  loss, reassignment, revocation, membership/relationship change, or environment change.
+- Accepted specialist profile blob `9c7ccecd64791010f1ba15b69d9b8a128d466d66`
+  controls its listed employment-service calls through `security_profile.workload_identity`,
+  `security_profile.assurance`, `security_profile.denial`, `freshness_profile`, and
+  `emergency_stop_profile`. PR #498 §13.6 separately controls the WhatsApp adapter,
+  media-scanner, and configurator identities, including runtime audience
+  `urn:waooaw:service:whatsapp-adapter:<environment>`. Neither profile substitutes for the
+  other. Wrong caller/purpose/audience/operation/environment/version/age/replay identity and
+  unknown, unavailable, expired, revoked, superseded, or leaked authority fail closed.
+  Rotation permits only the provider-supported overlap of current and immediately previous
+  authorized versions. Emergency revocation stops new dispatch/retrieval, reconciles
+  in-flight work without credential fallback, and rollback never restores revoked authority.
+- PR #498 §§12.5/12.8/14.2-14.3 and PR #499 §§10.3/12/14 control media, Stop, and
+  telemetry. Media stays quarantined until signature/type and bounded-resource validation
+  plus an isolated clean scan verdict; mismatch, active/archive/polyglot/parser-capable
+  content, expansion, malware, expiry, unknown, error, or timeout cannot enter professional
+  context. Typed Stop is recognized after signature/binding verification but before context,
+  model, queue, billing, or outbound work; it latches through CE outage and cannot be released
+  by WhatsApp, retry, restart, reconnect, or ordinary operator action. Ordinary telemetry,
+  exceptions, baggage, request capture, dead letters, and scanner diagnostics exclude payloads,
+  headers, signatures, phone proofs, tenant/relationship identifiers, provider refs, prompts,
+  transcripts, message/media metadata, template variables, context facts, and secrets.
+
+All denials above use closed, non-enumerating outcomes, make no downstream owner call, and
+create zero relationship, binding, command, conversation, dispatch, payload-promotion, or
+authority mutation. Security evidence may record only accepted privacy-safe reason/reference
+metadata. Tests must assert both state non-mutation and absence of prohibited telemetry.
+Missing proof against the exact candidate is a stop; the implementer may not choose replacement
+thresholds, audiences, operation classes, retention, diagnostic policy, or credential behavior.
+
+#### 2.4.1 Security-Owned Exact Control Profile
+
+INST-007 fixes the following security ceilings and floors for WC-120. Product, Data, Legal, or a
+provider owner may narrow an enabled business subset or require longer retention, but may not weaken
+these controls:
+
+- Webhook POST accepts at most `1 MiB` of wire bytes and only `Content-Encoding: identity`.
+  The limit is enforced while reading the raw stream, before buffering, decompression, middleware,
+  JSON parsing, or owner calls. GET verification accepts only the exact expected parameters; each
+  parameter is at most `1 KiB` and the complete request target is at most `8 KiB`.
+- The unseen-event freshness boundary is inclusive `[-5 minutes, +5 minutes]` against trusted
+  receipt time. A durable replay tombstone containing only compound event identity, canonical
+  digest, and typed outcome is retained for at least `7 days` after the terminal outcome and longer
+  when the provider retry, unresolved reconciliation, backup/restore, hold, or Data-owned lifecycle
+  horizon remains open. Payload is not retained merely to satisfy replay prevention.
+- WhatsApp runtime tokens and secret material are fetched just in time, remain in process memory for
+  at most `5 minutes`, and are never persisted. Planned rotation may accept the current and
+  immediately previous authorized version for at most `15 minutes`, only where the provider
+  supports that overlap. Emergency revocation, leakage, environment mismatch, or supersession has
+  zero overlap. A failed or unavailable live authority check denies new dispatch/retrieval.
+- The WC-120 media security ceiling permits only non-animated JPEG, non-animated PNG, Ogg/Opus
+  audio, and MPEG audio whose declared type, signature, and sniffed type agree exactly. SVG, GIF,
+  PDF, video, archives, office documents, fonts, executables, scripts, HTML/XML, active content,
+  polyglots, and any unknown/parser-capable format are denied. Product may enable a subset only.
+  Downloaded bytes are capped at `25 MiB`; total decoded/expanded material at `100 MiB`; expansion
+  ratio at `10:1`; decoded image size at `40 megapixels`; audio duration at `15 minutes`; parser
+  CPU at `5 seconds`; parser wall time at `10 seconds`; scanner/parser memory at `256 MiB`; and
+  parser recursion at `16`. Archive entries, document pages, video frames, and animation frames
+  have a ceiling of zero. Scanner engine/policy/signature versions are immutable verdict inputs;
+  signatures older than `24 hours`, unavailable version evidence, timeout, error, or inconclusive
+  verdict remain quarantined.
+- Ordinary telemetry uses only environment, service, build version, control/policy version, closed
+  reason code, boolean outcome, minute time bucket, and bounded latency bucket. The closed security
+  reason set is `SIGNATURE_INVALID`, `TOKEN_INVALID`, `REQUEST_TOO_LARGE`, `ENCODING_DENIED`,
+  `FRESHNESS_DENIED`, `REPLAY_CONFLICT`, `BINDING_DENIED`, `ASSURANCE_REQUIRED`,
+  `AUTHORITY_DENIED`, `AUTHORITY_UNAVAILABLE`, `MEDIA_DENIED`, `SCAN_UNAVAILABLE`, and
+  `STOP_LATCHED`. No free text, exception text, request/event/provider/customer reference, raw
+  duration, or high-cardinality label is permitted. A separately authorized protected evidence
+  record may use a random opaque security-event reference, but it may not enter ordinary telemetry.
+- The accepted Emergency Stop profile fixes the primary and fallback routes, excludes CE, BP, WBE,
+  AIR, domain-adapter, and identity-provider dependencies from halt execution, requires the
+  prewarmed authenticated Stop channel when the identity provider is unavailable, and sets
+  end-to-end p99 to `250 ms` with PR halt confirmation target `50 ms`. These are maximums, not
+  monitoring averages, and release still requires separate fresh Tier 4 portal authority.
+
+Anything outside this profile is denied until INST-007 accepts a revised profile. Product media
+locale/copy, Data/Legal payload lifecycle, provider account topology, and deployment values remain
+with their named owners; this security profile does not decide or authorize them.
+
 ## 3. Permitted Surfaces And Delivery Components
 
 ### 3.1 Owner And Surface Boundaries
@@ -194,6 +417,64 @@ components, and must record the exact paths and consumers during CSA-CEWA-001:
 If an exact owner/path is absent, conflicts with a controlling contract, or would create a new
 deployable or persistence owner, stop. Do not substitute a plausible path.
 
+#### 3.1.1 AI Runtime Handoff Control
+
+The BP context resolver remains the authority for context and policy selection. PR may hand AIR
+only the minimum bounded contribution and server-resolved references required for the current
+operation. The handoff binds the exact `InteractionContext`, Decision Space, plan/profile/source
+versions, effective conversation-policy versions, operation family, relationship reference,
+assurance, freshness, and permitted use. It never contains client-supplied instructions or policy,
+raw customer identity, provider credentials, an unbounded transcript, unrelated history, or a
+channel-selected model/provider.
+
+Every assembled segment carries source identity and version, provenance, freshness, sensitivity,
+trust class, and permitted-use metadata. Customer/provider/media/transcript/history/summary,
+research/retrieval, tool/MCP output, and agent-produced content remain structurally separated
+untrusted data. Instruction-like content cannot alter institutional or conversation policy, the
+semantic catalogue, tenant/relationship, operation class, authority, or tool/command eligibility.
+Every proposed tool call, command, patch, or context change is independently authorized against the
+current server-owned context and source versions.
+
+The pinned accepted `ai_profile` in
+`architecture/reference/api-specs/conversational-employment-specialist-profiles.yaml` is mandatory:
+
+- AIR independently canonicalizes RFC 8785/JCS request bytes excluding the digest field and verifies
+  the SHA-256 digest and the accepted PR-workload/relationship/operation/idempotency/digest tuple.
+- The BP-owned semantic catalogue is not caller-selectable and binds
+  `catalogue_ref`, `catalogue_version`, and `catalogue_digest`; its entries bind patch type,
+  operation, pointer template, value schema, and cardinality.
+- Request, receipt, and result preserve `protocol_version`, `patch_type`, prompt-policy
+  reference/digest, model-policy reference/digest, and `model_decision_ref`.
+- AIR result states remain the closed accepted set: `PENDING` has no operations; `PROPOSED` has a
+  non-empty operation set and no reason code; `UNREPRESENTABLE` and `FAILED` have no operations and
+  require a closed reason code. Confidence grants no authority. Material uncertainty requires an
+  unresolved question and prohibits operations.
+- Transient raw content is encrypted, never logged, deleted within one hour after a terminal result,
+  and never retained beyond 24 hours. The immutable digest-bound AI evaluation corpus must pass the
+  WC-115-R101 digest, path, provenance, injection, minimisation, confidence, and
+  unresolved-question oracles at 100%.
+
+Research, inference, recommendation, and confirmed fact remain separate typed states. Research
+retains source, capture time, and expiry; inference retains basis and remains unconfirmed;
+confidence cannot promote either to fact; only the accountable source/owner can confirm. Source
+correction, expiry, policy/model change, or material source-version change invalidates affected
+derived context before consequential reuse.
+
+Provider/model choice remains behind AIR's accepted model-policy boundary and is never delegated to
+the channel or public client. AIR/model unavailability projects an explicit `UNAVAILABLE` outcome
+with no synthetic response, operation, command, patch, or success. An unresolved in-flight outcome
+projects `PENDING` internally and `UNKNOWN` only in the customer-visible reconciliation dimension;
+it is not availability or success and cannot authorize blind retry. Missing/conflicting policy,
+stale source, failed digest/provenance verification, prompt-injection contamination, or unknown
+authority blocks before model invocation or consequential mutation.
+
+Required negative evidence includes direct and indirect prompt injection, quoted-policy imitation,
+hostile transcript/media/retrieval/tool output, cross-segment contamination, policy/catalogue and
+tenant/relationship substitution, stale lineage, raw-identity/unrelated-history leakage,
+channel/provider selection, unavailable model, and unresolved outcome. Any missing accepted
+profile value, exact BP/PR/AIR contract crosswalk, or immutable evaluation-corpus binding is a
+pre-implementation stop; the implementer must not invent a fallback.
+
 ### 3.2 Delivery Components
 
 | Component | Source stories | Required output and exit evidence |
@@ -210,6 +491,94 @@ The source package's per-story inputs, affected-owner analysis, migration/compat
 failure/retry/idempotency behavior, rollout/rollback, targeted tests, acceptance criteria,
 evidence, and dependencies remain normative for every story. The delivery groupings above do
 not replace those story-level contracts.
+
+### 3.3 Accepted Platform Architecture Control Profile
+
+The Platform Architect disposition for WC120-R041 accepts the following values already fixed by
+ADR-053 and the PR #498/#499 architecture. This profile is specification evidence only and grants
+no provider, cloud, DNS, deployment, traffic, activation, teardown, recovery, or Production
+authority.
+
+| Control | Accepted target and owner |
+|---|---|
+| Environment identity | Demo, UAT, and Production have distinct phone/provider identity, app/WABA authority, callback hostname/certificate, secrets, Key Vault/workload access, dedup/replay namespace, data/media, telemetry/alerts, templates, and deployment authority. Platform Architecture owns topology; Security owns credential/workload controls; BP/Data own application state. Cross-environment fallback or mutation target: `0`. |
+| Ingress and callback | Environment-specific HTTPS hostnames are `whatsapp-demo.<approved-domain>`, `whatsapp-uat.<approved-domain>`, and `whatsapp.<approved-domain>`. UAT uses stable Azure ingress plus DNS/TLS hostname; Demo ingress is stable for its authorized lifetime; Production is stable and dark pending separate authority. The approved domain, certificate references, ingress addresses, and callback registrations remain protected configuration and separate Platform/Founder-authorized actions. |
+| DNS/TLS/provider ownership | Platform prepares or applies Azure ingress, DNS, TLS, and callback routing only under environment-specific authority. The provider/configuration operator owns app/WABA and callback registration. Runtime may read its immutable binding but cannot mutate DNS, TLS, provider configuration, or deployment. |
+| Egress | No stable outbound egress is required by default. Platform may specify an environment-specific egress address only when an authorized external dependency proves allow-listing is required; ingress and egress trust remain separate. During isolated restore qualification, provider egress target: `0`. |
+| Protected configuration | Complete telephone identities, provider IDs, host bindings, certificate references, and secret values remain in environment-protected configuration. Adapter, media scanner, and deployment/configurator use separate environment-bound workload identities and audiences. A catch-all credential and cross-environment read are prohibited; rollback never restores revoked authority. |
+| Telemetry and alerting | Environment-specific privacy-safe metrics cover verification denial, claim/replay, durable acceptance latency, context/policy state, outbound state/age, template rejection, media state/latency, handoff, idempotency conflict, Stop, environment denial, dead-letter age, erasure propagation, recovery consistency, and privacy scanning. Alerts classify customer action, provider outage, WAOOAW defect, security denial, stale authority, constitutional-governance unavailability, privacy leak, and recovery inconsistency. Prohibited telemetry/dead-letter disclosure target: `0`. Platform Operations owns routing/runbooks and the numeric alert profile below; emitting component owners own signal correctness; Security/Data own privacy and retention controls. |
+| Recovery and rollback | Data owns backup policy, consistency groups, restore procedure, and RPO/RTO proposals; Platform owns infrastructure execution; Founder gates material cost/risk and UAT/Production recovery activation. Restore first enters an isolated, non-routable environment with separate temporary workload/encryption authority and no callback, outbound dispatch, template, or provider credential. Application rollback preserves additive schema/history/evidence and cannot reverse provider, DNS, or customer-visible effects. |
+| Demo teardown | Disable callback acceptance or expose explicit unavailable response first; reconcile or isolate unresolved work through provider retry/dedup/hold/erasure horizons; revoke temporary authority; expire/erase eligible payloads; retain required tombstones/evidence; and prove UAT/Production bindings changed by `0`. Teardown is a separately authorized Platform/provider/Data action. |
+| Production | Production remains dark. Number purchase, provider/app creation, DNS/provider mutation, deployment, traffic, activation, recovery activation, rollback execution, or cancellation requires separate Founder authority. |
+
+#### Platform-Owned Service Objective And Alert Profile
+
+The following targets are fixed by Platform Architecture for WC120-R041. An **eligible interval**
+is time in which the exact environment is separately authorized, enabled, outside an announced
+maintenance window, and expected to accept traffic. Provider delivery after WAOOAW durable
+acceptance is excluded from ingress availability but remains visible through the outbound and
+reconciliation objectives. Production-dark readiness proves configuration and synthetic
+non-routing checks; it does not start a customer-traffic SLO or authorize activation.
+
+| Objective | Exact target and measurement window |
+|---|---|
+| Callback ingress availability | Demo: `>=99.0%` over each rolling 24 eligible hours. UAT: `>=99.9%` over rolling 30 eligible days. Production, only after separate activation: `>=99.95%` per calendar month. Success is an environment-bound HTTPS callback reaching the healthy BP adapter and producing the correct challenge or authenticated application response; DNS, TLS, ingress, and adapter failures count. |
+| Durable signed-event acceptance | From trusted receipt after bounded body acquisition through atomic durable claim/outcome: `p95 <=1 s`, `p99 <=2 s`, and no eligible request `>5 s`, evaluated over rolling 15 minutes. With fewer than 100 eligible events, the 5-second per-event ceiling and an environment-bound synthetic claim probe apply. Invalid input is excluded from latency percentiles but its fail-closed response and zero mutation remain mandatory. |
+| Outbound queue and reconciliation | Eligible canonical outbound work reaches first provider-attempt state at `p95 <=30 s`, `p99 <=60 s` over rolling 15 minutes; oldest eligible queued item is `<=120 s`. A provider timeout or unknown result reaches a durable reconciled terminal or explicitly `UNRESOLVED` state within `15 min`; retries never create another logical dispatch. |
+| Emergency Stop propagation | From durable, verified Stop receipt: PR halt confirmation target `<=50 ms`; latched fence visible at BP/PR enforcement points `p95 <=100 ms`, `p99 <=250 ms`, hard ceiling `1 s`, rolling 15 minutes. Every consequential operation after receipt is denied; CE or identity-provider outage, duplicate delivery, restart, and simultaneous channels do not relax the ceiling or latch. |
+| Isolation and disclosure | Cross-environment fallback/mutation, provider egress during isolated restore, prohibited telemetry/dead-letter disclosure, and UAT/Production binding changes during Demo teardown each equal `0`. Any occurrence consumes the entire error budget. |
+
+Platform Operations owns the following routing and timing controls:
+
+| Alert | Exact trigger | Required response |
+|---|---|---|
+| Isolation, privacy, Production-dark, or Stop hard-ceiling breach | Any single occurrence | Detect within `1 min`; page delivery within `5 min`; acknowledge within `10 min`; fence the affected path or environment within `30 min`. |
+| Availability error-budget burn | `>=14.4x` burn over 1 hour or `>=6x` over 6 hours against the applicable environment target | Page within `5 min`; acknowledge within `15 min`; begin mitigation within `30 min`. |
+| Durable-acceptance latency | `p99 >2 s` for 5 consecutive minutes or any request `>5 s` | Page within `5 min`; acknowledge within `15 min`. |
+| Outbound queue/reconciliation | Oldest eligible item `>120 s` for 5 minutes, or any unknown outcome remains unreconciled `>15 min` | Page within `5 min`; acknowledge within `15 min`; suspend unsafe retry when outcome identity is uncertain. |
+| Recovery inconsistency or provider egress in isolated restore | Any checksum/invariant mismatch or any provider egress | Fail qualification immediately, page within `5 min`, and keep the restore non-routable. |
+| Dead-letter age | Oldest actionable dead letter `>15 min` | Notify the owning component within `5 min`; page if age reaches `30 min` or growth continues for 15 minutes. |
+
+Every alert uses environment-specific routing, privacy-safe opaque references, a named component
+runbook, and retained delivery/acknowledgement evidence. Missing signal emission or alert delivery
+is itself a failed oracle; silence cannot satisfy an SLO.
+
+Data owns the numeric recovery profile under PR #498 §15.9. WC-120 §2.3 now fixes the proposed
+limits at Demo RPO/data loss 24 hours and RTO 8 hours, UAT RPO/data loss 4 hours and RTO 4 hours,
+and Production RPO/data loss 15 minutes and RTO 2 hours. Founder acceptance of those material
+cost/risk limits and candidate-bound recovery evidence remain required before recovery or promotion.
+That acceptance stop applies to WC120-R023, not the closed Platform-owned WC120-R041 specification.
+Provider, cloud, DNS, deployment, traffic, teardown, recovery, and Production actions remain
+separately authorized.
+
+### 3.4 Accepted Product Control Profile
+
+The INST-011 Product Owner disposition accepts `WC-120-product-acceptance-matrix.yaml` as the
+controlling WC120-R042 profile. Product-owned choices are closed:
+
+- initial supported locale is `en-IN`; unsupported locale is explicit and creates zero
+  consequential action;
+- customer copy targets Flesch-Kincaid grade `<= 8`, sentences `<= 20` words, and one primary
+  action per turn, with only recorded legal/proper-name/provider-text exceptions and an adjacent
+  plain-language explanation;
+- text, card, interactive, and audio renderings preserve the same state, action, authority,
+  consent, limitation, and consequence; audio always has a text alternative and no audio-only
+  confirmation, correction, cancel, or Stop control;
+- exact consent, service-window, template, media, correction, confirmation, cancellation, stale,
+  ambiguous, blocked, and unavailable copy and actions are those in the matrix;
+- initial Product media support is an `en-IN` WhatsApp voice contribution no larger than
+  `5 MiB` or `120 seconds`; all other media is unsupported for the initial release, and a stricter
+  accepted Security, Data, or provider limit controls;
+- accessibility target is WCAG 2.2 Level AA with the matrix's keyboard, focus, live-region,
+  non-color, screen-reader, zoom, and always-reachable Stop controls; and
+- the matrix's direct oracles are normative. Test Champion binds their exact Docker-only selectors
+  during approved implementation; evidence that cannot exist before implementation is expected-fail,
+  not a Product specification blocker.
+
+Legal/Founder retains material consent-rights and purpose policy; Security retains media admission
+and safety; Data retains lifecycle/retention/erasure/legal hold; provider/Platform owners retain
+provider constraints, configuration, deployment, and activation. Those named dependencies fail
+closed for the affected capability and do not reopen a Product-owned value.
 
 ## 4. Definition Of Done
 
@@ -231,7 +600,8 @@ WC-120 is complete only when all of the following are evidenced:
    `WC-120-fitness-evidence-matrix.yaml` contains CE-FIT-01 through CE-FIT-16, each mapped
    bidirectionally to stories, direct positive/boundary oracles, exact Test Champion-selected
    repository test selectors, candidate identity, and evidence location.
-6. API/OpenAPI validation proves the specified 14 paths and schemas, resolves every local
+6. API/OpenAPI validation proves the specified 16 paths, 17 operations, and 28 local schemas,
+   resolves all 156 local references plus the pinned external employment-command schema
    reference, and covers every correction in the Specification Closure Gate.
 7. Data evolution follows expand -> migrate -> contract; migration, backup, restore, and
    rollback evidence passes before any destructive contraction or environment promotion.
@@ -241,10 +611,12 @@ WC-120 is complete only when all of the following are evidenced:
    and compatibility checks pass before final Docker qualification.
 9. Final Docker, image, and containerized end-to-end qualification runs once on the complete
    exact candidate after all targeted tests and implementation author review pass. An
-   immutable `test-results/wc120/candidate-manifest.json` binds source commit, image digest,
-   API/solution digests, schema and migration watermark, configuration/feature-flag versions,
-   targeted tests, recovery, CE-FIT results, and final qualification. Any relevant change
-   invalidates affected evidence and reruns impacted targeted tests plus final qualification.
+   immutable `test-results/wc120/candidate-manifest.json` binds source commit; Work Contract,
+   requirements-ledger, solution, API, Product-matrix, and fitness-matrix digests; application
+   image and test-runner image digests; schema and migration watermark;
+   configuration/feature-flag versions; targeted tests; recovery; CE-FIT results; and final
+   qualification. Any relevant change invalidates affected evidence and reruns impacted targeted
+   tests plus final qualification.
 10. The operational runbook is complete and rehearsed in an authorized non-production
     environment; environment isolation, teardown, recovery, privacy-safe telemetry, and
     Emergency Stop evidence pass.
@@ -258,11 +630,9 @@ WC-120 is complete only when all of the following are evidenced:
     have scoped dispositions, and the Chief Solution Architect's repairs are recorded without
     misrepresenting any office decision.
 14. The Product Owner accepts the customer-state and accessibility matrix for each
-    implementation-enabled journey. Unsupported locales/media, unresolved consent/template
-    policy, or missing approved customer copy remain explicit stops.
-13. The one-pass Data, Security, Platform, AI, Product, and Test Champion review requests
-    have scoped dispositions, and the Chief Solution Architect's repairs are recorded without
-    misrepresenting any office decision.
+    implementation-enabled journey. The accepted Product profile is exact; named external
+    consent-policy, provider/template, media-safety/lifecycle, activation, and implementation-
+    evidence gates remain fail closed for the affected capability.
 
 ## 5. Ordered Stories And Dependencies
 
@@ -319,22 +689,22 @@ semantics and acceptance conditions.
 | WC120-R005 | Solution §§8-9; CSA-CEWA-004/005 | Interaction context is server-resolved and versioned; policy layers and rendering remain bounded, with no client-supplied prompt or policy authority. |
 | WC120-R006 | Solution §6.3; CSA-CEWA-006 | Context observations, profiles, summaries, and lineage preserve source/version, privacy, retention, and correction semantics. |
 | WC120-R007 | Solution §4; CSA-CEWA-007 | Web-to-WhatsApp-to-Web continuity preserves relationship/conversation/message identity and sequence; denial, expiry, replay, or revert cannot grant authority. |
-| WC120-R008 | Solution §7; CSA-CEWA-008 | Identity resolution is deterministic, environment- and recipient-bound, and fails closed for zero, multiple, stale, revoked, reassigned, or mismatched identities. |
-| WC120-R009 | Solution §10.1; CSA-CEWA-009 | WhatsApp webhook declares `application/json`; exact raw bytes are authenticated before parsing, with signature, timestamp, app, recipient, and environment validation. |
-| WC120-R010 | Solution §§10.1, 13; CSA-CEWA-010 | Inbound claim/acknowledgement is atomic, idempotent, deduplicated, replay-safe, and retryable without duplicate mutation. |
+| WC120-R008 | ADR-023; §2.4; PR #498 §§12.7/14.2; Solution §7; CSA-CEWA-008 | Identity binds environment, app/WABA, recipient, protected participant proof, membership, relationship, reassignment/revocation, and accepted Tier 1-4 assurance. Phone possession never attaches an existing relationship; denial is non-enumerating and creates zero protected mutation or disclosure. |
+| WC120-R009 | §2.4; PR #498 §12.1; Solution §10.1; CSA-CEWA-009 | WhatsApp webhook declares `application/json`; bounded exact raw bytes are authenticated before decompression or transformation, with constant-time signature/token comparison, inclusive five-minute new-event freshness, and exact host/app/recipient/environment binding. |
+| WC120-R010 | §2.4; PR #498 §12.1; Solution §§10.1, 13; CSA-CEWA-010 | Compound event claim is atomic: same identity/digest returns the durable result, divergent reuse conflicts with zero additional mutation, and an authentic already-claimed delayed retry is not rejected only because its provider timestamp aged. |
 | WC120-R011 | Solution §§5, 10; CSA-CEWA-011 | Provider events are normalized into the accepted domain contract without trusting provider-controlled tenant, authority, or policy fields. |
 | WC120-R012 | Solution §10.2; CSA-CEWA-012 | Outbound work is queued and dispatched under separate idempotency and provider boundaries; duplicate, timeout, crash, and unknown outcomes reconcile safely. |
 | WC120-R013 | Solution §§10.2, 10.3; CSA-CEWA-013 | Consent, service-window, and template eligibility is checked against current state; ineligible sends fail closed without dispatch. |
 | WC120-R014 | Solution §10; CSA-CEWA-014 | Delivery observations are immutable and project independent delivery dimensions; callbacks may not overwrite unrelated message state. |
-| WC120-R015 | Solution §§10.3, 12; CSA-CEWA-015 | Media retrieval, quarantine, scanning, retention, legal hold, erasure, and cross-environment access obey the approved owner boundary. |
-| WC120-R016 | Solution §§12-13; CSA-CEWA-016 | Emergency Stop fences new work, remains available through dependency failure, and prevents late results from regaining authority. |
-| WC120-R017 | Solution §14; CSA-CEWA-017 | Telemetry, dead letters, and alerts expose only approved reason codes and operational signals; prohibited identity, secret, payload, and content leakage is zero. |
+| WC120-R015 | §2.4; PR #498 §§12.5/14.2; Solution §§10.3, 12; CSA-CEWA-015 | Media stays quarantined until bounded type/signature/resource validation and an isolated clean scan verdict; active/archive/polyglot/parser-capable, expanded, malicious, expired, unknown, error, or timeout outcomes fail safely under approved lifecycle boundaries. |
+| WC120-R016 | §2.4; PR #498 §12.8; Solution §§12-13; CSA-CEWA-016 | After signature/binding verification, typed Stop precedes context/model/queue/billing/outbound work, latches through dependency failure, and prevents retries, restarts, reconnects, simultaneous channels, late results, WhatsApp release, or ordinary operator action from regaining authority. |
+| WC120-R017 | §2.4; PR #498 §14.3; Solution §14; CSA-CEWA-017 | Telemetry, request capture, framework errors, baggage, dead letters, and scanner diagnostics expose only approved bounded reason/reference metadata; prohibited identity, header/signature, secret, payload, prompt, transcript, message/media metadata, template variable, context, and customer-content leakage is zero. |
 | WC120-R018 | Solution §§11, 15-16; CSA-CEWA-018 | Demo provisioning is isolated, default-off, auditable, and completely torn down; Demo activity cannot affect UAT or Production. |
 | WC120-R019 | Solution §§11, 15; CSA-CEWA-019 | UAT readiness uses its stable ingress and exact isolated configuration; UAT activation remains separately authorized. |
 | WC120-R020 | Solution §15; CSA-CEWA-020 | Production readiness is evidence-only and dark; no Production mutation, traffic, or activation occurs under WC-120. |
 | WC120-R021 | Solution §4; CSA-CEWA-021 | Web adopts the shared generated-client contract while preserving existing behavior and rejecting invalid or stale responses safely. |
 | WC120-R022 | Solution §4; CSA-CEWA-022 | Future Mobile compatibility is represented by the shared API contract without server semantic changes or channel-specific authority. |
-| WC120-R023 | Solution §§6, 13; CSA-CEWA-023 | Expand/migrate/contract, migration watermark, backup, restore, rollback, and recovery invariants are tested before destructive contraction; evidence includes accepted per-environment RPO/RTO and data-loss bounds, injected fault, commands, invariant/checksum, watermark, and provider-egress denial. |
+| WC120-R023 | §2.3; Solution §§6, 13; CSA-CEWA-023 | Expand/migrate/contract, migration watermark, backup, restore, rollback, and recovery invariants are tested before contraction; Data proposes Demo 24h/8h, UAT 4h/4h, and Production 15m/2h RPO/RTO targets, with maximum data loss equal to RPO, subject to Founder acceptance and exact-candidate fault/checksum/no-egress evidence. |
 | WC120-R024 | Solution §§19-20; CSA-CEWA-024; WC-120-fitness-evidence-matrix.yaml | CE-FIT-01 through CE-FIT-16 map bidirectionally to stories, source oracles, exact Test Champion-selected test selectors, exact-candidate manifest, and evidence. |
 | WC120-R025 | Solution §19.3; CSA-CEWA-025 | Final Docker/image/end-to-end qualification binds to an immutable candidate manifest covering source, image, API/solution, schema, migration, configuration, targeted tests, recovery, CE-FIT, and qualification digests. |
 | WC120-R026 | Solution §§14-16, 22; CSA-CEWA-026 | Operational procedures cover alerting, dead letters, Stop, environment setup/teardown, recovery, rollback, privacy, and escalation; rehearsals produce retained evidence. |
@@ -345,15 +715,15 @@ semantics and acceptance conditions.
 | WC120-R031 | PR #499 review `R-4248037174`; Solution §§4.1, 17 | Handoff revert is an idempotent operation preserving the source binding through retry, uncertainty, expiry, and denial. |
 | WC120-R032 | PR #499 review `R-4248037216`; Solution §§5, 9 | Contribution discriminator variants require exactly one corresponding non-null payload and reject missing, mismatched, or simultaneous variants. |
 | WC120-R033 | PR #499 review `R-4248037259`; Solution §5 | Command types and parameters form a closed typed union of registered command schemas; arbitrary keys and values are rejected by contract validation. |
-| WC120-R034 | PR #499 package test evidence; candidate OpenAPI | OpenAPI validation proves 14 paths, 23 schemas, and resolution of all local references, with generated-client and producer/consumer fixtures passing. |
+| WC120-R034 | PR #499 package test evidence; repaired candidate OpenAPI | OpenAPI validation proves 16 paths, 17 operations, 28 local schemas, 156 resolved local references, and the pinned external employment-command schema reference, with generated-client and producer/consumer fixtures passing. |
 | WC120-R035 | Solution §§3, 18-19; all stories; WC-120-fitness-evidence-matrix.yaml | Each story and CE-FIT item has exact repository-native commands/test selectors, predicates, candidate binding, evidence references, and failure/rollback result frozen before implementation starts; the generic ledger validator alone is insufficient. |
 | WC120-R036 | PR #498 §§4, 22; WC-114; WC-115-R005/R006 | WhatsApp remains an additive transport/session adapter over the existing BP Conversation Core and employment workspace; no second timeline, transcript, relationship, API owner, or authority is introduced. |
 | WC120-R037 | Existing Core API; WC-114 BP API; PR #499 review R-4248037076/7125/7174 | Candidate operations are crosswalked to canonical read position, command discovery, employment operations, and handoff/revert contracts; only compatible additive operations remain. |
-| WC120-R038 | ADR-023; WC-115 security profile and R102-R108; PR #498 §§12.7/13.6 | Phone identity, workload assertion, freshness, operation assurance, secret rotation/revocation, and Stop behavior reuse accepted owner profiles and cannot be weakened by channel or candidate API. |
-| WC120-R039 | WC-115 data profile and R077-R084; PR #498 §15 and R-147 | Data ownership, transaction/order, tenant RLS, lineage, deduplication, retention/erasure, backup/restore, and migration are bound to accepted Data-owner controls before persistence work. |
-| WC120-R040 | WC-115 AIR profile and R095-R101; PR #498 §§8, 14, 16, 21 | AIR receives minimized, server-resolved context and untrusted contribution content; provenance and degraded/unknown outcomes remain explicit, with no provider or authority choice delegated to the channel. |
+| WC120-R038 | §2.4; ADR-023; accepted profile blob `9c7ccecd64791010f1ba15b69d9b8a128d466d66`; WC-115 R102-R108; PR #498 §§12.7/13.6 | Employment calls use the accepted caller/audience/purpose/age/replay and assurance profiles; WhatsApp workloads use separate exact environment identities and adapter audience. Bounded rotation overlap, emergency revocation, no credential fallback, non-restoration on rollback, closed denial, no downstream owner call, and zero authority/data mutation are mandatory. |
+| WC120-R039 | §2.3; WC-115 data profile and R077-R084; PR #498 §15 and R-147 | Section 2.3 fixes exact Data-owned ownership, sequence/transaction, inbox/outbox lease/retry/poison, digest/idempotency horizon, forced-RLS, lineage, lifecycle, recovery-target, and migration-window values and oracles; only named Legal/Founder/provider acceptances and the owner-contract crosswalk remain external gates. |
+| WC120-R040 | §3.1.1; WC-115 AIR profile and R095-R101; PR #498 §§8, 14, 16, 21 | AIR receives only minimized, server-resolved, source-versioned context and structurally separated untrusted content; accepted digest/catalogue/provenance/result/transient-content controls apply; researched, inferred, confirmed, unavailable, pending, and unknown states remain distinct; prompt injection cannot alter policy or authority; no provider choice or synthetic success is delegated to the channel. |
 | WC120-R041 | PR #498 §§13, 17-21, 23-24; Platform Architect contribution | Ingress, DNS/TLS, environment isolation, observability, recovery, teardown, and measurable WhatsApp SLOs have named owners and accepted targets; no infrastructure mutation is implied. |
-| WC120-R042 | PR #498 §§17, 23-24, 26; WC-115 §7.4; WC-120-product-acceptance-matrix.yaml | Product-owned journeys specify customer-visible consent/service-window/template outcomes, approved copy, locale/readability/accessibility, voice correction/send consent, Stop reachability, and degraded states; pending choices block the affected journey. |
+| WC120-R042 | PR #498 §§17, 23-24, 26; WC-115 §7.4; §3.4; WC-120-product-acceptance-matrix.yaml | Product-owned journeys use the accepted `en-IN` locale, bounded readability/text-audio parity, exact consent/service-window/template/media/degraded copy and actions, voice correction/send consent, WCAG 2.2 AA presentation, and always-reachable Stop; named external gates remain fail closed. |
 | WC120-R043 | PR #498 §27; R-146; R-147; §2.2 | Historical review findings, author repairs, and current office dispositions are represented separately; no author repair is labelled reviewer approval. |
 | WC120-R044 | PR #498 §17; CE-FIT-01..16; Test Champion disposition | The fitness matrix has exactly one row per CE-FIT item, maps each to one or more stories, positive/boundary oracles, exact test selectors, immutable candidate binding, and a planned evidence location. |
 
@@ -361,22 +731,43 @@ semantics and acceptance conditions.
 
 ### 7.1 PR #499 Architecture-Package Evidence
 
-PR #499 records the following passed plan-validation command and results; they validate the
-architecture-only candidate and are not implementation evidence:
+PR #499 recorded the following plan-validation result. WC-120 does not reuse its host-Python
+invocation as qualification evidence: C-080 requires the Docker-only rerun shown here. These
+results validate only the architecture candidate and are not implementation evidence:
 
 ```text
-PYTHONPATH=. pytest -q tests/test_openapi_slice.py tests/validation_control/test_spec_lint_scope.py
+Required WC-120 rerun command (result not yet claimed):
+docker compose --profile test-python run --rm test-runner-python pytest -q tests/test_openapi_slice.py tests/validation_control/test_spec_lint_scope.py
+Historical PR #499 reported results (non-qualifying for WC-120):
 Unit tests: PASS (7/7)
 Integration: N/A - architecture-only package
 CE-FIT: PASS - CE-FIT-01 through CE-FIT-16 assigned to stories, components, tests, and evidence
-OpenAPI: PASS - YAML parsed; 14 paths; 23 schemas; 133/133 local references resolved
+OpenAPI: HISTORICAL PR #499 RESULT ONLY - YAML parsed; 14 paths; 23 schemas; 133/133 local
+references resolved. It does not qualify repaired candidate.2, which requires the Docker-only
+R034 selector and generated-client/producer-consumer evidence before implementation.
 Package structure: PASS - 27 stories x 23 mandatory fields; 24 runbook steps
 Spec lint: PASS - scoped repository lint selected existing BP/PR specs plus the candidate
 Diff check: PASS - git diff --check
 YAML lint: PASS - relaxed profile (line-length warnings only)
 ```
 
-### 7.2 Required Implementation Test Portfolio
+### 7.2 WC-120 Integrated Specification Validation
+
+The restored validators are byte-identical to merged commit
+`846dc2098844b97ccd266048c9557a0886712237`. On the integrated candidate:
+
+```text
+docker compose --profile test-python run --rm test-runner-python python scripts/validate_requirement_ledger.py --ledger work-contracts/WC-120-requirements.yaml --contract work-contracts/WC-120-conversation-engine-whatsapp-implementation.md
+PASS - Requirement ledger validation passed: 44 requirements
+
+docker compose --profile test-python run --rm test-runner-python pytest -q tests/test_openapi_slice.py tests/validation_control/test_spec_lint_scope.py
+PASS - 7 passed
+```
+
+These are specification/contract validation results. They do not represent any implementation,
+story, generated-client, CE-FIT, migration, recovery, deployment, or activation test as passing.
+
+### 7.3 Required Implementation Test Portfolio
 
 For every story, the implementer records and runs the smallest exact repository-native
 commands for the changed surfaces. The impact analysis and strategic plan must pin those
@@ -404,10 +795,28 @@ continuity; identity and authority denial with zero mutation; ingress signature,
 atomic claim and replay; outbound idempotency and delivery projections; media/privacy;
 Emergency Stop and recovery; and environment isolation. All CE-FIT-01 through CE-FIT-16
 must map to direct acceptance oracles and evidence in
-`work-contracts/WC-120-fitness-evidence-matrix.yaml`. The exact repository-native command and
-test-node selectors are intentionally not guessed: the Test Champion must bind them to the
-current owners during CSA-CEWA-001 before any implementation begins. A missing or stale
-selector blocks `READY_FOR_STRATEGIC_PLAN`.
+`work-contracts/WC-120-fitness-evidence-matrix.yaml`. INST-015 has bound every row to an exact
+planned Docker-only command, path, and test node. Pre-implementation absence of those named
+test artifacts is expected and does not block specification readiness; changing or omitting a
+planned selector does. Before its story completes, the exact node must exist, directly prove
+the complete positive and boundary oracle, and pass on the bound candidate.
+
+The Test Champion control profile is normative:
+
+- all test execution uses the repository Compose runners; host Python and virtual environments
+  are prohibited;
+- all `16/16` direct CE-FIT rows pass with `0` skipped, xfailed, quarantined, or flaky-retry
+  allowances;
+- changed services meet at least `90%` line and `80%` branch coverage without lowering an
+  existing stronger threshold;
+- CE-FIT-08 executes `100` coordinated cross-channel race trials on the exact candidate;
+- accessibility selectors execute all five configured Playwright projects, with `0` serious or
+  critical axe violations, `100%` keyboard reachability and non-colour state meaning, `200%`
+  zoom, `360` CSS-pixel compact reflow, deterministic focus, accepted accessible names/roles,
+  and always-reachable Stop;
+- each row retains its native test report plus `selector-result.json`, runner-image digest, and
+  candidate-manifest digest in its assigned evidence directory; and
+- a broad suite, supporting regression, or final Docker run cannot substitute for a direct row.
 
 The existing `scripts/validate_requirement_ledger.py` checks ledger shape, IDs, required
 fields, contract digest, and completion evidence; it does not prove CE-FIT completeness,
@@ -419,8 +828,9 @@ code change requiring its own authority; it is not implied by WC-120.
 Customer-visible acceptance is separately captured in
 `work-contracts/WC-120-product-acceptance-matrix.yaml`. Product owns approved copy, supported
 locale/readability choices, consent journeys, and user-visible outcomes; BP enforces transport
-eligibility, while Security/Data own their control decisions. Entries marked pending are
-pre-implementation stops, not values for the Platform IT Expert to invent.
+eligibility, while Security/Data own their control decisions. The Product values are accepted in
+§3.4. Named Legal/Founder, Security, Data, provider, Platform, and implementation-evidence
+dependencies remain fail-closed gates for the affected capability and are not implementer defaults.
 
 Run final Docker, image scans, and full containerized end-to-end validation only after all
 stories, targeted tests, static checks, migration/restore/rollback checks, and implementation
@@ -475,8 +885,10 @@ Stop the affected story and report a blocker when:
 - A provider, environment, DNS, deployment, Production, cost, retention, legal-hold, media,
   RPO/RTO, or activation decision lacks its own named authority.
 - A test, security, privacy, CE-FIT, traceability, rollback, or exact-candidate gate fails.
-- The CE-FIT matrix is incomplete, has no exact Test Champion-selected test command/node,
-  is stale for the candidate, or lacks direct evidence binding.
+- The CE-FIT matrix is incomplete, lacks an exact Test Champion-selected planned Docker
+  command/path/node, is stale for the candidate, or lacks direct evidence binding. Before a
+  story completes, its planned node being absent, skipped, indirect, or non-passing is also a stop;
+  pre-implementation absence of the named implementation test artifact is expected.
 - The Product acceptance matrix has unaccepted consent, locale/media, copy, accessibility,
   service-window/template, voice-correction, or degraded-state decisions for the affected
   journey.
@@ -534,10 +946,13 @@ sequencing, test oracles, sensitive-data handling, rollback, stops, and handoff 
 | WC-114/WC-115 specialist profiles were not explicitly carried into identity, data, AIR, or platform requirements. | Added WC120-R038 through WC120-R042, pinned the existing profile, and made specialist contributions a hard pre-implementation gate. | RESOLVED |
 | The ledger's required-evidence details did not meet this contract's own Definition of Done. | Added planned evidence destinations and failure/rollback behavior to every ledger row through the shared defaults, and added traceable requirements for cross-contract reuse and office dispositions. | RESOLVED |
 
-**Contract authoring result:** PASS - the additive boundary, source precedence, Founder ADR
-decision, status replacement, review provenance, specialist gates, requirements, and evidence
-ledger are explicitly recorded.
-**Implementation readiness:** BLOCKED pending the compatibility crosswalk, closure of all
-seven PR #499 specification findings, scoped specialist dispositions/repairs, Founder
-acceptance of this exact Work Contract, successful ledger validation, and separate explicit
-current-session implementation authorization.
+**Contract authoring result:** superseded by
+`reviews/WC-120-solution-architect-integration-disposition.md`, which binds the complete integrated
+author review and exact artifact digests.
+**Strategic-plan readiness:** `READY_FOR_STRATEGIC_PLAN` - compatibility, seven findings, all six
+specialist dispositions, Product/CE-FIT matrices, and exact Docker-only specification validation
+are complete.
+**Implementation readiness:** no implementation is authorized. Founder acceptance of the exact
+integrated package and separate explicit current-session implementation authorization remain
+mandatory. Protected Legal/Founder/provider/platform decisions and implementation-phase evidence
+remain fail-closed at their affected implementation, promotion, deployment, or activation gates.

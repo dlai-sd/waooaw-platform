@@ -1,0 +1,8 @@
+{
+  "generator": "openapi-generator-cli",
+  "generatorImage": "openapitools/openapi-generator-cli:v7.17.0",
+  "generationInput": "deterministically-bundled",
+  "compatibilityTransforms": ["command-kind-const-to-single-enum"],
+  "specVersion": "1.0.0-candidate.2",
+  "specSha256": "c5b30ab19605d0b82e113a865ee1faf935093c00a5e0eee54116a43233513221"
+}

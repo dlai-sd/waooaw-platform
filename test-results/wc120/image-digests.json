@@ -1,0 +1,8 @@
+{
+  "business_platform": "sha256:ca9b1e788dca98a851b8b7927005d640e542408885b1b143fa27017beff282a5",
+  "test_runners": {
+    "dotnet": "sha256:9a9ad5fdc9e19cbf36d07740ffe07da74a18400a95e9132e24de3d5f953f24ed",
+    "python": "sha256:82f4ad2ef610de38473cf199ce9a2ec044fc166e1c8565a39ef7fc6a822677b5",
+    "browser": "sha256:52e6903153284add953b9a8f8baea5b428b09ccb8c66ff8cecd7432984330b8f"
+  }
+}

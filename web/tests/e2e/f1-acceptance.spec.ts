@@ -210,7 +210,7 @@ test('CCT-UX-HO-01: active relationship Stop is persistent and keyboard operable
   );
   await addSession(context, false);
   await page.goto('/relationships/relationship-active');
-  const stop = page.getByRole('button', { name: 'Emergency Stop' });
+  const stop = page.getByRole('button', { name: 'Stop all agent work now' });
   await expect(stop).toBeVisible();
   await expect(stop).toBeEnabled();
   const box = await stop.boundingBox();
@@ -229,7 +229,7 @@ test('CCT-UX-HO-01: active relationship Stop is persistent and keyboard operable
   await stop.focus();
   await expect(stop).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('button', { name: 'Emergency Stop confirmed' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Stop all agent work now' })).toBeDisabled();
 });
 
 test('UX-PWA-02 UX-PRIV-01: generated worker caches static assets only', async ({ page }) => {

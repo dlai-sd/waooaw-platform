@@ -1,0 +1,8 @@
+# flake8: noqa
+
+# import apis into api package
+from conversation_compatibility_client.api.channel_handoff_api import ChannelHandoffApi
+from conversation_compatibility_client.api.context_and_profile_api import ContextAndProfileApi
+from conversation_compatibility_client.api.data_rights_api import DataRightsApi
+from conversation_compatibility_client.api.shared_conversation_api import SharedConversationApi
+from conversation_compatibility_client.api.whats_app_provider_callback_api import WhatsAppProviderCallbackApi

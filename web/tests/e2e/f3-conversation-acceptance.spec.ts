@@ -97,7 +97,7 @@ test('UX-CONV-05 UX-CONV-06 CCT-UX-EF-02 CCT-UX-HO-01: typed status UI is access
   await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: 'Send' })).toBeFocused();
   await closeConversation(page);
-  const stop = page.getByRole('button', { name: 'Emergency Stop' });
+  const stop = page.getByRole('button', { name: 'Stop all agent work now' });
   await expect(stop).toBeVisible();
   await expect(stop).toBeEnabled();
   await assertResponsiveAndUnobscured(page);
@@ -237,8 +237,8 @@ test('UX-CONV-04 CCT-UX-HO-02 CCT-UX-HO-03: stream, cancellation, and Stop remai
   expect(ordinaryCommands.some((path) => path === '/api/emergency-stop')).toBe(false);
 
   await closeConversation(page);
-  await page.getByRole('button', { name: 'Emergency Stop' }).click();
-  await expect(page.getByRole('button', { name: 'Emergency Stop confirmed' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Stop all agent work now' }).click();
+  await expect(page.getByRole('button', { name: 'Stop all agent work now' })).toBeDisabled();
   await expect(page.getByText('stopped', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Send' })).toBeDisabled();
   expect(ordinaryCommands.some((path) => path === '/api/emergency-stop')).toBe(true);
@@ -246,7 +246,7 @@ test('UX-CONV-04 CCT-UX-HO-02 CCT-UX-HO-03: stream, cancellation, and Stop remai
 
 test('CCT-UX-HO-03 UX-RES-01: unknown Stop and send outcomes never become success', async ({ page }) => {
   await page.goto('/relationships/relationship-stop-unknown');
-  await page.getByRole('button', { name: 'Emergency Stop' }).click();
+  await page.getByRole('button', { name: 'Stop all agent work now' }).click();
   await expect(page.getByRole('button', { name: 'Stop not confirmed. Try again.' })).toBeEnabled();
 
   await page.goto('/relationships/relationship-unknown');

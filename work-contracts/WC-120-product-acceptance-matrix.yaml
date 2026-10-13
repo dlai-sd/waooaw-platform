@@ -1,88 +1,271 @@
 schema: waooaw.product-acceptance-matrix/v1
 work_contract: WC-120
-status: PENDING_PRODUCT_OWNER_CONFIRMATION
+status: PRODUCT_OWNER_ACCEPTED
+review:
+  office: INST-011 Product Owner
+  disposition: PASS
+  disposition_record: reviews/WC-120-product-owner-disposition.md
+  scope_note: >-
+    Product values are closed. Named Legal/Founder, Security, Data, provider, Platform, and
+    implementation-evidence dependencies remain gates only for the affected capability.
+
 authority:
   product_owner:
     owns:
       - approved customer copy and next actions
       - supported locales and readability profile
-      - customer consent journey
-      - customer-visible service-window/template outcomes
-      - voice correction and send-confirmation journey
-      - accessible presentation of stale, blocked, unavailable, and Stop states
-  business_platform:
-    owns:
-      - eligibility enforcement and zero-dispatch behavior
-      - canonical conversation and customer-visible status projection
-  security_data_platform:
-    owns:
-      - their security, data lifecycle, provider, and infrastructure controls
-      - no product matrix entry grants their authority
+      - consent journey presentation
+      - service-window and template outcome presentation
+      - product-supported media profile and voice correction/send-confirmation journey
+      - accessible state presentation and Stop reachability
+  external_owners:
+    own:
+      - Legal/Founder material consent rights, purpose, withdrawal, and re-consent policy
+      - Security media admission and safety limits
+      - Data media lifecycle, retention, erasure, and legal-hold controls
+      - provider contract limits and approved template configuration
+      - Platform/provider activation
+      - Test Champion implementation-evidence selectors
 closure_rule: >-
-  Product Owner must accept every journey and provide approved copy, supported-locale and
-  accessibility values before the affected journey is implementation-ready. Security,
-  Data, Platform, or Founder decisions remain with those owners; unresolved values block the
-  affected capability rather than becoming implementer defaults.
+  Every Product-owned value is exact and accepted. External dependencies do not reopen the
+  Product decision and are not implementer defaults. Before the affected capability is enabled,
+  the stricter accepted external limit applies and direct implementation evidence must pass.
+
+accepted_product_truth:
+  raw_owner_codes_visible: false
+  colour_only_distinction: false
+  state_copy:
+    PENDING:
+      message: Waiting for an authoritative check.
+      implication: NO_SUCCESS
+    PARTIAL:
+      message: Some required checks are incomplete; work remains paused.
+      implication: NO_SUCCESS
+    STALE:
+      message: Information changed; refresh and review.
+      implication: NO_AUTHORIZATION
+    UNKNOWN:
+      message: The original outcome is being reconciled; do not retry.
+      implication: NO_RETRY
+    BLOCKED:
+      message: Work is paused until the named requirement is resolved.
+      implication: NO_SUCCESS
+    UNAVAILABLE:
+      message: A required service is unavailable; no new work was authorized.
+      implication: NO_AUTHORIZATION
+    READY:
+      message: Required checks passed; your confirmation may still be required.
+      implication: NO_EXECUTION_SUCCESS
+  stop:
+    visible: ALWAYS
+    keyboard_reachable: true
+    screen_reader_label: Stop all agent work now
 
 decision_register:
   - id: PRODUCT-01
-    decision: Supported locales, plain-language/readability expectations, and text/audio parity.
-    owner: Product Owner with Security/Data input where applicable
-    status: PENDING
-    stop: Do not claim supported-language or voice accessibility until accepted.
+    requirement_mappings: [WC120-R005, WC120-R021, WC120-R042]
+    decision: Supported locales, readability, and text/audio parity.
+    disposition: ACCEPTED
+    accepted_values:
+      initial_supported_locale: en-IN
+      unsupported_locale_behavior:
+        copy: This language is not supported yet. No action was taken.
+        next_action: Continue in English (India) or use an already approved supported channel.
+        rules:
+          - no silent locale fallback
+          - no translation presented as authoritative customer fact without confirmation
+      readability:
+        standard: Plain English for customer-facing transactional copy.
+        maximum_flesch_kincaid_grade: 8
+        maximum_sentence_words: 20
+        primary_actions_per_turn: 1
+        exceptions: Immutable legal text, proper names, and provider text may exceed the targets but require an adjacent plain-language explanation.
+      text_audio_parity:
+        rule: State, action, authority, consent request, limitation, and consequence are semantically identical in text, cards, interactive replies, and audio.
+        text_alternative: Every audio presentation has the same customer-visible text.
+        controls: No confirmation, correction, cancel, or Stop control is audio-only.
+    oracle:
+      - Docker-only readability check over all approved en-IN WC-120 copy proves grade <= 8 and sentences <= 20 words, excluding only recorded exceptions.
+      - Cross-render fixture comparison proves identical state, action, authority, consent, limitation, and consequence fields.
+      - Unsupported-locale fixture proves zero consequential action and exact unsupported-locale copy.
+
   - id: PRODUCT-02
-    decision: Consent acquisition, withdrawal, and customer-visible re-consent/alternate-channel journey.
-    owner: Product Owner; BP enforces current consent; Legal/Founder owns material rights decisions.
-    status: PENDING
-    stop: Missing or withdrawn consent always blocks outbound dispatch.
+    requirement_mappings: [WC120-R013, WC120-R042]
+    decision: Consent acquisition, withdrawal, re-consent, and alternate-channel presentation.
+    disposition: ACCEPTED
+    accepted_values:
+      ACTIVE:
+        copy: Consent is confirmed for {purpose}.
+        next_action: Continue
+      MISSING:
+        copy: We need your consent for {purpose} before sending. No message was sent.
+        next_action: Review consent
+      WITHDRAWN:
+        copy: You withdrew consent for {purpose}. No message was sent.
+        next_action: Review consent choices
+      UNKNOWN:
+        copy: The original consent outcome is being reconciled; do not retry.
+        next_action: Wait for the consent check to finish.
+      rules:
+        - Purpose is an owner-supplied approved label, never free-form generated text.
+        - Review consent and Review consent choices appear only when an owner-approved consent route exists.
+        - Missing, withdrawn, stale, or unknown consent produces zero dispatch.
+        - An alternate channel is offered only when current consent and policy explicitly permit that channel.
+        - Channel change never carries or broadens consent.
+    external_dependency:
+      owner: Legal/Founder
+      decision: Accept material opt-in, purpose, withdrawal, re-consent policy, and the consent route before activation.
+    oracle:
+      - ACTIVE, MISSING, WITHDRAWN, UNKNOWN, stale, route-absent, and alternate-channel-denied fixtures assert exact copy/action visibility.
+      - Every non-ACTIVE or policy-denied fixture asserts provider dispatch count equals 0.
+
   - id: PRODUCT-03
-    decision: Supported media types/sizes/locales and customer-visible unsupported-media response.
-    owner: Product, Security, and Data
-    status: PENDING
-    stop: Media activation is blocked until all owners accept their part.
+    requirement_mappings: [WC120-R015, WC120-R042]
+    decision: Product-supported media profile and customer-visible voice/media response.
+    disposition: ACCEPTED
+    accepted_values:
+      initial_supported_media:
+        class: WhatsApp voice contribution
+        locale: en-IN
+        maximum_bytes: 5242880
+        maximum_duration_seconds: 120
+        note: Security, Data, or provider controls may lower these ceilings but cannot raise them without a new Product decision.
+      security_boundary: The initial voice class admits only Ogg/Opus or MPEG audio with exact declared/signature/sniffed type agreement and every WC-120 Section 2.4.1 resource, scanner-freshness, quarantine, lineage, and clean-verdict control. JPEG and PNG remain security-eligible but Product-disabled for the initial release; every other format is security-denied.
+      all_other_media: UNSUPPORTED_FOR_INITIAL_RELEASE
+      copy:
+        UNSUPPORTED_OR_UNSAFE: This media cannot be used. No contribution was submitted.
+        EXPIRED: This media is unavailable. Please resend it if you want it reviewed.
+        SCAN_OR_TRANSCRIPTION_UNAVAILABLE: This media cannot be reviewed right now. You can use text instead or try again when the service is available.
+        LOW_CONFIDENCE: Please review and correct this transcript before deciding whether to submit it.
+        CONFIRM: Submit this reviewed contribution.
+        CANCEL: Cancel; do not submit this contribution.
+      correction_and_consent:
+        - Present the complete transcript as editable en-IN text.
+        - A correction creates a new review version and invalidates prior confirmation.
+        - Confirmation is bound to the exact reviewed transcript digest.
+        - Silence, upload, scan, transcription, correction, and timeout never imply confirmation.
+        - Cancel produces zero consequential submission.
+    external_dependencies:
+      - owner: Data Architect with Legal/Founder where protected
+        decision: Accept media/transcript lifecycle, retention, erasure, and legal-hold controls.
+      - owner: Provider/Platform authority
+        decision: Verify provider constraints and authorize provider media configuration/activation.
+    oracle:
+      - Boundary fixtures cover 5 MiB/5 MiB+1 and 120s/121s, en-IN/unsupported locale, and voice/other media.
+      - CE-FIT-11 proves unsafe, unsupported, unavailable, cancelled, or unconfirmed media creates zero consequential submission.
+      - Correction fixture proves the previous confirmation cannot submit a changed transcript.
+
   - id: PRODUCT-04
-    decision: Approved wording and next action for service-window expiry, template rejection/version mismatch, and retry boundaries.
-    owner: Product Owner; BP enforces eligibility; provider/platform constraints remain external-owner inputs.
-    status: PENDING
-    stop: No template substitution or dispatch while eligibility is unknown or rejected.
+    requirement_mappings: [WC120-R012, WC120-R013, WC120-R014, WC120-R042]
+    decision: Service-window expiry, template rejection/version mismatch, and retry presentation.
+    disposition: ACCEPTED
+    accepted_values:
+      WINDOW_EXPIRED: The service window has closed. No message was sent. An exact approved template is required before this conversation can continue here.
+      TEMPLATE_REJECTED: The required message template is not approved. No message was sent. Wait for an approved template before trying again.
+      TEMPLATE_VERSION_MISMATCH: The approved message template changed. No message was sent. Refresh the current template and review it before trying again.
+      UNKNOWN: The original outcome is being reconciled; do not retry.
+      retry_rule: Never expose retry while eligibility or provider outcome is unknown; reconcile the same outbound identity first.
+      fallback_rule: Never substitute another template, locale, purpose, or channel after an eligibility change.
+    external_dependency:
+      owner: Provider configuration owner with Platform authority
+      decision: Supply the exact accepted service-window boundary and approved versioned template/category/language/schema configuration.
+    oracle:
+      - CE-FIT-10 covers both sides of the owner-supplied boundary, approved/rejected/paused/revoked/version-mismatched templates, and queue-to-submit races.
+      - Every ineligible or unknown case asserts exact copy, no fallback, and provider dispatch count equals 0.
+
   - id: PRODUCT-05
-    decision: Accessible labels, keyboard/focus/screen-reader behavior, non-color state presentation, and Stop reachability.
-    owner: Product Owner with Web/Test Champion
-    status: PENDING
-    stop: Affected customer journey is not accepted without accessible-state evidence.
+    requirement_mappings: [WC120-R016, WC120-R021, WC120-R040, WC120-R042]
+    decision: Accessibility, focus, screen-reader/non-color states, and Stop reachability.
+    disposition: ACCEPTED
+    accepted_values:
+      conformance_target: WCAG 2.2 Level AA
+      state_labels: Use accepted_product_truth.state_copy exactly and keep every state distinct.
+      non_color: Every state has persistent text and programmatic state; color may only reinforce it.
+      keyboard:
+        - Every action is operable with keyboard alone in logical visual order.
+        - No keyboard trap is permitted.
+        - Stop is reachable without opening a menu, modal, or changing channel.
+      focus:
+        - Asynchronous state updates do not steal focus.
+        - After a customer action, focus moves to the resulting status heading or first invalid field.
+        - Closing a dialog returns focus to its invoking control.
+        - Focus remains visible and meets WCAG 2.2 AA focus appearance requirements.
+      screen_reader:
+        - Non-urgent state changes are announced once through a status live region.
+        - Failure, blocked, and Stop-latched outcomes are announced once through an alert live region.
+        - No raw owner code is included in an accessible name or description.
+      stop:
+        visibility: ALWAYS
+        accessible_name: Stop all agent work now
+        behavior: Available in every ordinary and degraded journey; activation acknowledges the latched halt without implying evidence synchronization completed.
+    implementation_evidence:
+      owner: Test Champion
+      timing: Produced during approved implementation; absence before implementation is not a specification blocker.
+      oracle:
+        - Docker-only automated axe scan reports 0 serious or critical violations.
+        - Keyboard journey proves all actions, correction, confirm, cancel, and Stop without pointer input or traps.
+        - Focus tests prove update, validation-error, dialog-return, and degraded-state rules.
+        - Screen-reader semantic tests prove exact names, one announcement per transition, and distinct states.
+        - Visual test proves every state remains distinguishable in monochrome and at 200 percent zoom.
+        - CE-FIT-13 proves Stop remains reachable and effective through each named dependency outage.
 
 journeys:
   - id: consent
-    trigger_states: [MISSING, ACTIVE, WITHDRAWN, UNKNOWN]
-    invariant: Outbound dispatch requires current affirmative consent and approved eligibility.
-    visible_state_and_next_action: Product Owner must approve the opt-in, wait, or alternate-channel outcome for each non-active state.
-    approved_copy: PENDING_PRODUCT_OWNER
-    oracle: CE-FIT-10 consent-positive and consent-denial cases; denied cases produce zero dispatch.
-    status: PENDING_PRODUCT_OWNER_CONFIRMATION
+    requirement_mappings: [WC120-R013, WC120-R042]
+    decision_mappings: [PRODUCT-02]
+    invariant: Outbound dispatch requires current affirmative consent, approved purpose, and current eligibility.
+    accepted_copy_and_actions: PRODUCT-02.accepted_values
+    oracle: PRODUCT-02.oracle
+    external_gate: Legal/Founder material consent policy and approved consent route.
+    status: PRODUCT_ACCEPTED
+
   - id: service_window_and_template
-    trigger_states: [WINDOW_OPEN, WINDOW_EXPIRED, TEMPLATE_APPROVED, TEMPLATE_REJECTED, TEMPLATE_VERSION_MISMATCH, UNKNOWN]
-    invariant: No dispatch occurs outside the approved service-window/template rules.
-    visible_state_and_next_action: Product Owner must approve boundary, rejection, mismatch, and retry messaging and permitted next action.
-    approved_copy: PENDING_PRODUCT_OWNER
-    oracle: CE-FIT-10 inside/outside-window and approved/rejected/version-mismatch matrix; boundary races fail closed.
-    status: PENDING_PRODUCT_OWNER_CONFIRMATION
+    requirement_mappings: [WC120-R012, WC120-R013, WC120-R014, WC120-R042]
+    decision_mappings: [PRODUCT-04]
+    invariant: No dispatch occurs outside current approved service-window, consent, purpose, recipient, template, locale, schema, relationship, and environment rules.
+    accepted_copy_and_actions: PRODUCT-04.accepted_values
+    oracle: PRODUCT-04.oracle
+    external_gate: Provider configuration owner supplies exact boundary and approved template configuration; Platform separately authorizes activation.
+    status: PRODUCT_ACCEPTED
+
   - id: voice_and_media
-    states: [RECEIVED, QUARANTINED, SCANNING, TRANSCRIBING, TRANSCRIPT_FOR_REVIEW, CORRECTED, CONFIRMED_AND_SEND_CONSENTED, SUBMITTED, UNAVAILABLE, CANCELLED]
-    invariant: No unscanned media is reasoned over; no transcript or corrected contribution is submitted before explicit customer confirmation and send consent.
-    visible_state_and_next_action: Product Owner must approve correction, confirm, cancel, low-confidence, scanner-unavailable, transcription-unavailable, and resend outcomes.
-    approved_copy: PENDING_PRODUCT_OWNER
-    oracle: CE-FIT-11 scan/correction/consent cases; failure and cancellation create no consequential submission.
-    status: PENDING_PRODUCT_OWNER_CONFIRMATION
+    requirement_mappings: [WC120-R015, WC120-R042]
+    decision_mappings: [PRODUCT-03]
+    invariant: No unscanned or uncertain media enters reasoning; only the exact confirmed transcript version may become a consequential contribution.
+    accepted_copy_and_actions: PRODUCT-03.accepted_values
+    oracle: PRODUCT-03.oracle
+    external_gate: Security, Data, Legal/Founder where protected, and provider/Platform media controls.
+    status: PRODUCT_ACCEPTED
+
   - id: accessibility_and_low_literacy
-    dimensions: [locale, readability, text_audio_parity, accessible_label, keyboard_focus, screen_reader, non_color_state, stop_reachability]
-    invariant: Unknown, stale, blocked, and unavailable remain distinct; Stop remains reachable and state meaning is not conveyed by color alone.
-    accepted_values_and_evidence: PENDING_PRODUCT_OWNER_AND_TEST_CHAMPION
-    oracle: WC-115 Section 7.4 product-truth controls; Product Owner and Test Champion must add and accept direct accessible-journey test oracles before implementation.
-    status: PENDING_PRODUCT_OWNER_CONFIRMATION
+    requirement_mappings: [WC120-R005, WC120-R016, WC120-R021, WC120-R042]
+    decision_mappings: [PRODUCT-01, PRODUCT-05]
+    invariant: Locale/readability is explicit; states remain distinct; controls have text parity; Stop is always reachable; meaning never depends on color alone.
+    accepted_values: PRODUCT-01.accepted_values and PRODUCT-05.accepted_values
+    oracle: PRODUCT-01.oracle and PRODUCT-05.implementation_evidence.oracle
+    implementation_evidence_timing: Expected-fail until approved implementation creates the UI and Docker-only tests.
+    status: PRODUCT_ACCEPTED
+
   - id: stale_ambiguous_or_degraded_context
+    requirement_mappings: [WC120-R005, WC120-R016, WC120-R021, WC120-R040, WC120-R042]
+    decision_mappings: [PRODUCT-05]
     trigger_states: [STALE, AMBIGUOUS, BLOCKED, AIR_UNAVAILABLE, CE_UNAVAILABLE, PROVIDER_UNAVAILABLE]
-    invariant: No synthetic success, consequential execution, or hidden channel-based downgrade.
-    visible_state_and_next_action: Product Owner must approve customer-safe explanation and next action; owner-defined authority and Stop rules remain controlling.
-    approved_copy: PENDING_PRODUCT_OWNER
-    oracle: CE-FIT-02/03/07/13; state transitions remain truthful and unauthorized work is not dispatched.
-    status: PENDING_PRODUCT_OWNER_CONFIRMATION
+    invariant: No synthetic success, consequential execution, hidden channel downgrade, cross-environment fallback, or automatic Stop release.
+    accepted_copy:
+      STALE: Information changed; refresh and review.
+      AMBIGUOUS: I need one clarification before any consequential action.
+      BLOCKED: Work is paused until the named requirement is resolved.
+      AIR_UNAVAILABLE: A required service is unavailable; no new work was authorized.
+      CE_UNAVAILABLE: Governance evidence is temporarily unavailable. New governed work remains paused; Stop is still available.
+      PROVIDER_UNAVAILABLE: The message outcome is unresolved. Do not retry while it is being reconciled.
+    next_actions:
+      STALE: Refresh current authoritative information and review it before confirmation.
+      AMBIGUOUS: Offer bounded choices or ask one clarifying question.
+      BLOCKED: Name the unresolved requirement without exposing an internal owner code.
+      AIR_UNAVAILABLE: Wait for the service to recover; do not present success.
+      CE_UNAVAILABLE: Permit Stop and only accepted fail-safe behavior; do not present governed success.
+      PROVIDER_UNAVAILABLE: Reconcile the same outbound identity before any retry.
+    oracle:
+      - CE-FIT-02/03/07/13 prove truthful state, zero unauthorized execution, and effective Stop.
+      - Copy fixture asserts the exact message and next action for every trigger state.
+    status: PRODUCT_ACCEPTED
