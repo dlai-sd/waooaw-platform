@@ -111,9 +111,16 @@ run_summary() {
   fi
 }
 
+run_dotnet_container() {
+  local docker_socket="${DOCKER_SOCKET:-/var/run/docker.sock}"
+  scripts/validation_control/run_with_docker_socket.sh \
+    docker compose --profile test-dotnet run --rm \
+    -v "${docker_socket}:/var/run/docker.sock" \
+    test-runner-dotnet "$@"
+}
+
 run_final_docker_qualification() {
-  docker compose --profile test-dotnet run --rm test-runner-dotnet \
-    sh scripts/validation_control/run_wc120_dotnet_test.sh
+  run_dotnet_container sh scripts/validation_control/run_wc120_dotnet_test.sh
   docker compose --profile test-python run --rm test-runner-python pytest -q tests/contract
   docker compose --profile test run --rm test-runner sh -lc \
     "rm -rf /tmp/wc120-web && cp -a web /tmp/wc120-web && rm -rf /tmp/wc120-web/node_modules && ln -s /opt/waooaw-web/node_modules /tmp/wc120-web/node_modules && cd /tmp/wc120-web && pnpm test -- --runInBand && pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts --grep 'CE-FIT-10 presents consent and eligibility states accessibly$' && pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts --grep 'CE-FIT-11 presents voice and media states accessibly$' && pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts --grep 'CE-FIT-13 keeps Stop reachable and truthful in degraded states$'"
@@ -138,7 +145,7 @@ declare -a dotnet_nodes=(
 for entry in "${dotnet_nodes[@]}"; do
   IFS='|' read -r ce_fit_id node <<<"${entry}"
   run_selector "${ce_fit_id}" "${dotnet_runner_digest}" "${node}" \
-    docker compose --profile test-dotnet run --rm test-runner-dotnet \
+    run_dotnet_container \
     sh scripts/validation_control/run_wc120_dotnet_test.sh \
     --filter "FullyQualifiedName=${node}" \
     --logger "trx;LogFileName=test-results.trx" \
