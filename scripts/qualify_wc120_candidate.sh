@@ -44,6 +44,10 @@ dotnet_runner_digest="$(service_image_digest test-dotnet test-runner-dotnet)"
 python_runner_digest="$(service_image_digest test-python test-runner-python)"
 browser_runner_digest="$(service_image_digest test test-runner)"
 
+container_path() {
+  printf '/workspace/%s' "${1#"${repo_root}/"}"
+}
+
 run_selector() {
   local ce_fit_id="$1"
   local runner_digest="$2"
@@ -68,7 +72,7 @@ run_selector() {
     --started-at "${started_at}" \
     --exit-status "${status}" \
     --runner-image-digest "${runner_digest}" \
-    --log "${log}"
+    --log "$(container_path "${log}")"
   if [[ "${status}" -ne 0 ]]; then
     return "${status}"
   fi
@@ -93,8 +97,8 @@ run_summary() {
     --command "${command_text}" \
     --started-at "${started_at}" \
     --exit-status "${status}" \
-    --log "${log}" \
-    --output "${output}"
+    --log "$(container_path "${log}")" \
+    --output "$(container_path "${output}")"
   if [[ "${status}" -ne 0 ]]; then
     return "${status}"
   fi
@@ -182,7 +186,7 @@ cat >"${result_root}/image-digests.json" <<EOF
 EOF
 docker compose --profile test-python run --rm test-runner-python \
   python scripts/validation_control/wc120_evidence.py candidate \
-  --image-digests "${result_root}/image-digests.json" \
-  --targeted-results "${result_root}/targeted-test-results.json" \
-  --recovery-results "${result_root}/recovery-test-results.json" \
-  --final-qualification "${result_root}/final-docker-qualification.json"
+  --image-digests /workspace/test-results/wc120/image-digests.json \
+  --targeted-results /workspace/test-results/wc120/targeted-test-results.json \
+  --recovery-results /workspace/test-results/wc120/recovery-test-results.json \
+  --final-qualification /workspace/test-results/wc120/final-docker-qualification.json
