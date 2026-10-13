@@ -1,24 +1,28 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-120
 contract_path: work-contracts/WC-120-conversation-engine-whatsapp-implementation.md
-contract_digest: 7213dfc82b9a6c11663951a1f275109552035d9e5323ac2104d4be4adb363990
+contract_digest: 5f3207af794be87d15822716f9bc249ff5f541e89c7ae4b8184b4a288611454f
 solution_path: architecture/reference/components/conversation-engine-whatsapp-solution-work-component.md
-solution_digest: 224d8f43f2a46e810eb5b13aac35570b6f0ebcda
+solution_digest: 7fa8a5f3937c0d412eff7d74e037bc612bd0236a6b840fdf6cbfb91ace3becbc
 api_path: architecture/reference/api-specs/channel-neutral-conversation-business-platform.openapi.yaml
-contract_status: FOUNDER_ADR_ACCEPTED_CROSSWALK_SPEC_CLOSURE_AND_SPECIALIST_REVIEWS_PENDING_IMPLEMENTATION_UNAUTHORIZED
+api_digest: c5b30ab19605d0b82e113a865ee1faf935093c00a5e0eee54116a43233513221 # gitleaks:allow
+crosswalk_path: work-contracts/WC-120-operation-schema-owner-compatibility-crosswalk.md
+crosswalk_digest: f27ca1e9d8bd763b2d47ddc0047531ef6736d13a6ce3fdfadd3190fdc918d462
+contract_status: READY_FOR_STRATEGIC_PLAN_SPECIFICATION_VALIDATED_IMPLEMENTATION_UNAUTHORIZED
 implementation_scope: true
 result: PLANNED
 candidate_scope: CHANNEL_NEUTRAL_CONVERSATION_WHATSAPP_DEFAULT_OFF_NO_EXTERNAL_ACTION
 completion_rule: >-
   Every requirement must pass its direct repository-owned oracle on the applicable exact candidate.
-  The Core/WC-114/WC-115 crosswalk, seven PR #499 contract findings, and required specialist
-  dispositions must be closed before implementation; deployment, provider actions, traffic,
-  Production, and activation remain separately authorized decisions.
+  The integrated Core/WC-114/WC-115 crosswalk, seven repaired PR #499 contract findings, and all
+  six specialist dispositions are exact-candidate specification inputs. Founder acceptance,
+  Docker-only validation, separate current-session implementation authorization, and every
+  protected external action remain mandatory before their applicable phase.
 
 requirement_defaults: &defaults
   evidence_class: Repository-owned contract, implementation, journey, security, privacy, migration, or qualification evidence
   initial_state: expected-fail
-  dependencies: Founder acceptance of exact WC-120, completed Core/WC-114/WC-115 crosswalk, closure of the PR #499 specification findings, accepted required specialist dispositions, and separate current-session implementation authorization
+  dependencies: Founder acceptance of exact integrated WC-120, successful Docker-only package validation, required protected Legal/Founder/provider/platform decisions for the affected capability, and separate current-session implementation authorization
   residual_risk: Implementation evidence does not authorize provider actions, deployment, external traffic, Production changes, activation, PR approval, or merge.
   evidence_location: "test-results/wc120/<WC120-RNNN>/; exact repository-native artifact names and commands are frozen in CSA-CEWA-001 before implementation."
   failure_and_rollback: "On oracle failure mark BLOCKED and stop dependent stories; apply the cited source-story recovery and WC-120 Section 8, preserve additive data/evidence, and do not represent external provider effects as reversed."
@@ -51,11 +55,11 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC120-R004
-    source: Solution Sections 6.1-6.2; CSA-CEWA-003
-    observable_outcome: Canonical history, sequence allocation, transaction boundaries, idempotency domains, and transactional outbox prevent duplicate or reordered logical effects.
+    source: WC-120 Section 2.3; Solution Sections 6.1-6.2; CSA-CEWA-003
+    observable_outcome: Canonical history uses one environment/tenant/relationship/conversation allocator; sequence compare-and-swap or row lock, idempotency reservation, message append, and outbox append commit atomically; inbox effect and receipt commit atomically; the database rejects duplicate composite sequences.
     component_owner: BP canonical conversation persistence
-    test_path_or_plan: Concurrent append, sequence ordering, transaction rollback, idempotency replay/conflict, and outbox crash/restart tests.
-    completion_rule: One canonical sequence and one logical effect survive retries and process failure.
+    test_path_or_plan: At least 256 concurrent appends; rollback before and after each transaction boundary; duplicate composite sequence; provider-time reorder; outbox/inbox crash, 60-second lease loss, 20-second heartbeat, takeover, retry, attempt-12 poison, and restart tests.
+    completion_rule: All committed messages have one unique strictly increasing canonical sequence and one logical effect; no provider timestamp, crash, lease takeover, retry, or poison path duplicates or silently discards an effect.
 
   - <<: *defaults
     requirement_id: WC120-R005
@@ -67,11 +71,11 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC120-R006
-    source: Solution Section 6.3; CSA-CEWA-006
-    observable_outcome: Context observations, profiles, summaries, and lineage preserve source/version, correction, privacy, retention, and authorized access semantics.
+    source: WC-120 Section 2.3; Solution Section 6.3; CSA-CEWA-006
+    observable_outcome: Context observations use same-owner acyclic append-only supersession with compare-and-swap; summaries bind exact source IDs/digests or canonical sequence intervals and derivation contract/model/policy versions and become invalid before current reads after source correction, erasure, expiry, or incompatible derivation change.
     component_owner: BP context and data owners
-    test_path_or_plan: Source lineage, stale-version, cross-tenant, retention, correction, and erasure tests.
-    completion_rule: Every derived observation is attributable, bounded, and governed by its owner.
+    test_path_or_plan: Same-owner and cross-owner supersession, cycle, stale compare-and-swap, exact-source rebuild, source correction/erasure/expiry, derivation-version change, cross-tenant, retention, and current-read invalidation tests.
+    completion_rule: Every derived observation is reproducible from exact authorized sources and no invalidated derivative remains readable as current.
 
   - <<: *defaults
     requirement_id: WC120-R007
@@ -83,27 +87,27 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC120-R008
-    source: Solution Section 7; CSA-CEWA-008
-    observable_outcome: Identity resolution binds provider, app, recipient, participant, relationship, and environment deterministically and fails closed on zero, multiple, stale, revoked, reassigned, or mismatched matches.
+    source: ADR-023; WC-120 Section 2.4; PR #498 Sections 12.7 and 14.2; Solution Section 7; CSA-CEWA-008
+    observable_outcome: Identity resolution binds environment, app/WABA, recipient, protected participant proof, current membership, relationship, reassignment/revocation state, and the accepted Tier 1-4 assurance floor; phone possession never attaches an existing relationship.
     component_owner: Phone Identity and BP identity boundary
-    test_path_or_plan: Zero/one/multiple match, replay, cross-tenant, cross-environment, stale-assurance, reassignment, and exact-intent negative matrix.
-    completion_rule: Every denial creates zero relationship, binding, or command mutation.
+    test_path_or_plan: Zero/one/multiple match, first-contact admission, cross-tenant/environment, wrong app/WABA/recipient, stale assurance, reassignment/revocation, Tier 1 authority-expansion, Tier 2 intent binding, Tier 3 step-up, Tier 4 portal-only, commit-time freshness, and non-enumeration tests.
+    completion_rule: Every denial creates zero relationship, binding, command, conversation, dispatch, or authority mutation, makes no downstream owner call, discloses no protected cardinality, and emits only accepted privacy-safe security metadata.
 
   - <<: *defaults
     requirement_id: WC120-R009
-    source: Solution Section 10.1; CSA-CEWA-009; review R-4248036961
-    observable_outcome: WhatsApp webhook declares application/json while exact raw bytes are authenticated before deserialization and signature freshness/app/recipient/environment checks fail closed.
+    source: WC-120 Section 2.4; PR #498 Section 12.1; Solution Section 10.1; CSA-CEWA-009; review R-4248036961
+    observable_outcome: WhatsApp webhook declares application/json; POST accepts at most 1 MiB with identity content encoding and authenticates exact raw bytes using only the approved X-Hub-Signature-256 HMAC-SHA256 form before buffering, decompression, normalization, parsing, or middleware transformation; GET parameters are each at most 1 KiB within an 8 KiB request target; constant-time signature/token comparison, inclusive five-minute new-event freshness, and host/app/WABA/recipient/environment checks fail closed.
     component_owner: BP WhatsApp ingress
-    test_path_or_plan: OpenAPI content-type assertion, raw-byte HMAC tests, boundary timestamp, malformed JSON, replay, wrong app/recipient/environment tests.
-    completion_rule: Genuine provider JSON is accepted only after signature and binding checks; invalid callbacks create no mutation.
+    test_path_or_plan: OpenAPI content-type assertion; valid/modified exact-byte HMAC; wrong algorithm; compressed/normalized/transformed body; oversized body before amplification; inclusive timestamp edges and trusted receipt time; malformed JSON; wrong challenge mode/token/host; replay; and wrong app/WABA/recipient/environment tests.
+    completion_rule: Genuine provider JSON is accepted only after raw-byte authentication and binding checks; denial occurs before parsing or owner calls, reflects no protected input, and creates zero mutation.
 
   - <<: *defaults
     requirement_id: WC120-R010
-    source: Solution Sections 10.1 and 13; CSA-CEWA-010
-    observable_outcome: Inbound claim, acknowledgement, deduplication, and replay handling are atomic, idempotent, retryable, and do not duplicate messages.
+    source: WC-120 Sections 2.3-2.4; PR #498 Section 12.1; Solution Sections 10.1 and 13; CSA-CEWA-010
+    observable_outcome: Inbound compound-identity claim, acknowledgement, deduplication, and replay handling are atomic; exact authenticated bytes use SHA-256; same identity/same digest replays one durable result, same identity/different digest conflicts with zero additional mutation, unresolved claims never expire, and terminal replay tombstones remain for 30 days unless held.
     component_owner: BP inbox and inbound transaction
-    test_path_or_plan: Duplicate, concurrent delivery, crash-before/after-claim, delayed retry, acknowledgement loss, and replay tests.
-    completion_rule: One provider event produces at most one canonical inbound effect while valid retries remain recoverable.
+    test_path_or_plan: Exact-byte digest vectors; duplicate and at least 256 concurrent first deliveries; same/different digest reuse; fresh unseen inclusive boundaries; stale unseen denial; delayed accepted retry; crash before/after claim; acknowledgement loss; unresolved non-expiry; terminal day-30/day-31 and held retention; restore/replay.
+    completion_rule: One provider event produces at most one canonical inbound effect, unresolved outcomes remain recoverable, and replay protection expires only under the exact terminal-plus-30-day lifecycle.
 
   - <<: *defaults
     requirement_id: WC120-R011
@@ -115,11 +119,11 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC120-R012
-    source: Solution Sections 10.2 and 13; CSA-CEWA-012
-    observable_outcome: Outbound work is queued and dispatched under distinct idempotency domains; timeout, crash, duplicate, reorder, and unknown outcomes reconcile safely.
+    source: WC-120 Section 2.3; Solution Sections 10.2 and 13; CSA-CEWA-012
+    observable_outcome: Outbound work uses its distinct identity/digest domain and ordered outbox with a 60-second lease, 20-second heartbeat, exact no-jitter retry delay min(2^(attempt-1) seconds, 300 seconds), and at most 12 attempts; timeout, crash, duplicate, reorder, lease loss, and unknown outcomes reconcile the same logical message.
     component_owner: BP outbound queue and provider adapter
-    test_path_or_plan: Provider-emulator queue/send, duplicate key, conflicting key, timeout, restart, unknown result, and reconciliation tests.
-    completion_rule: Retries cannot create a second logical send or lose a recoverable outcome.
+    test_path_or_plan: Provider-emulator queue/send, same/divergent digest, timeout, crash, restart, lease loss/takeover, heartbeat expiry, backoff boundaries, attempt-12 poison, unknown result, late provider result, and reconciliation tests.
+    completion_rule: Retries cannot create a second logical send or lose a recoverable outcome; attempt exhaustion produces payload-free BLOCKED evidence and never silent discard.
 
   - <<: *defaults
     requirement_id: WC120-R013
@@ -131,35 +135,35 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC120-R014
-    source: Solution Section 10; CSA-CEWA-014
-    observable_outcome: Delivery observations remain immutable and project independent delivery dimensions without overwriting unrelated state on duplicate or reordered callbacks.
+    source: WC-120 Section 2.3; Solution Section 10; CSA-CEWA-014
+    observable_outcome: Delivery observations remain immutable minimized owner facts retained through relationship closure plus seven years and project independent delivery dimensions without overwriting unrelated state on duplicate or reordered callbacks.
     component_owner: BP delivery projection
-    test_path_or_plan: Duplicate, reorder, partial, stale, and contradictory provider-status event tests.
-    completion_rule: Canonical observations are append-only and projections remain deterministic.
+    test_path_or_plan: Duplicate, reorder, partial, stale, contradictory status, payload-minimization, relationship-close plus seven-year retention, hold, restore, and deterministic rebuild tests.
+    completion_rule: Canonical observations remain append-only and minimized, projections rebuild deterministically, and lifecycle execution preserves held evidence without restoring operational use.
 
   - <<: *defaults
     requirement_id: WC120-R015
-    source: Solution Sections 10.3 and 12; CSA-CEWA-015
-    observable_outcome: Media retrieval, quarantine, scanning, retention, legal hold, erasure, and environment access remain isolated and owner-authorized.
+    source: WC-120 Sections 2.3-2.4; PR #498 Sections 12.5 and 14.2; Solution Sections 10.3 and 12; CSA-CEWA-015
+    observable_outcome: Server-retrieved media remains quarantined and unavailable to professional context until exact declared/signature/sniffed type agreement, the Section 2.4.1 deny-by-default format profile, 25 MiB download, 100 MiB expanded, 10:1 ratio, 40-megapixel image, 15-minute audio, 5-second CPU, 10-second wall-time, 256 MiB memory, recursion-16 and zero archive/page/video/animation-frame ceilings, plus an isolated clean scan verdict using immutable engine/policy/signature versions no older than 24 hours; rejected or abandoned quarantine payloads delete within 24 hours of terminal verdict, while accepted media/transcript projection content follows relationship closure plus 90 days and source erasure propagates to every derivative.
     component_owner: BP media and data owners
-    test_path_or_plan: Malicious media, size/type boundary, cross-environment retrieval, scan failure, retention/hold, and erasure tests.
-    completion_rule: Unsafe media is never rendered or retained outside its authorized class.
+    test_path_or_plan: MIME/signature mismatch, active/archive/polyglot/parser-capable formats, compressed expansion and every resource boundary, malware, expired URL, wrong environment/identity, scan unknown/error/timeout, immutable verdict lineage, clean promotion, terminal-plus-24-hour quarantine deletion, relationship-close-plus-90-day accepted content, hold, derivative erasure, and telemetry-leak tests.
+    completion_rule: Unsafe or unproven media is never rendered, interpreted, promoted, or retained beyond 24 hours after terminal verdict; accepted content and every derivative obey the exact projection lifecycle and erasure lineage; every denial creates zero canonical contribution mutation.
 
   - <<: *defaults
     requirement_id: WC120-R016
-    source: Solution Sections 12-13; CSA-CEWA-016
-    observable_outcome: Emergency Stop fences new work and late results, remains effective through dependency failure, and preserves safe reconciliation.
+    source: WC-120 Sections 2.4 and 3.3; PR #498 Section 12.8; accepted emergency_stop_profile; Solution Sections 12-13; CSA-CEWA-016
+    observable_outcome: After signature and binding verification, explicit typed Stop is recognized before context classification, model execution, ordinary queueing, billing, or outbound work; it latches idempotently, remains effective through dependency failure, fences late results, and reaches PR halt confirmation within 50 ms, BP/PR enforcement at p95 <=100 ms and p99 <=250 ms, with a hard 1-second ceiling over the defined rolling window.
     component_owner: PR Emergency Stop and BP enforcement
-    test_path_or_plan: Stop race, queued/in-flight cancellation, CE outage, restart, late result, and tenant/relationship isolation tests.
-    completion_rule: Stop prevents all new authority while allowing only explicitly safe reconciliation.
+    test_path_or_plan: Precedence instrumentation, Stop race, duplicate delivery, simultaneous channels, queued/in-flight cancellation, CE outage and protected-buffer flush, adapter restart, timeout/reconnect, late result, WhatsApp/operator release denial, and tenant/relationship isolation tests against accepted Stop routes and SLOs.
+    completion_rule: Stop prevents all new authority while allowing only explicitly safe reconciliation; no WhatsApp, retry, restart, reconnect, or ordinary operator path releases the latch.
 
   - <<: *defaults
     requirement_id: WC120-R017
-    source: Solution Section 14; CSA-CEWA-017
-    observable_outcome: Logs, traces, metrics, alerts, and dead letters expose only approved operational metadata and never leak identity, secrets, raw payloads, or customer content.
+    source: WC-120 Sections 2.4 and 3.3; PR #498 Section 14.3; Solution Section 14; CSA-CEWA-017
+    observable_outcome: Logs, traces, metrics, baggage, alerts, exceptions, request capture, dead letters, and scanner diagnostics expose only the Section 2.4.1 closed reason-code and bounded-dimension allow-list and never leak payloads, headers, signatures, phone proofs, tenant/relationship identifiers, provider refs, prompts, transcripts, message/media metadata, template variables, context facts, secrets, customer content, free text, exception text, event references, raw durations, or high-cardinality labels.
     component_owner: Observability and operations owners
-    test_path_or_plan: Structured log/trace capture, secret and PII canaries, dead-letter inspection, and alert reason-code tests.
-    completion_rule: Prohibited data is absent from all telemetry and operational evidence.
+    test_path_or_plan: Automated canary scans across success, denial, malformed input, framework errors, retry queues, traces/baggage, alerts, dead letters, scanner failures, exceptions, and protected-diagnostic-disabled paths; reason-code allow-list and high-cardinality-label tests.
+    completion_rule: Prohibited data is absent from all telemetry and operational evidence; sampling never permits it and denials disclose only the accepted closed reason.
 
   - <<: *defaults
     requirement_id: WC120-R018
@@ -203,24 +207,24 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC120-R023
-    source: Solution Sections 6, 13; CSA-CEWA-023
-    observable_outcome: Additive schema evolution, migration watermark, backup, restore, rollback, and recovery preserve data and compatibility before contraction; recovery evidence records accepted per-environment RPO/RTO and data-loss bounds, injected fault, exact commands, invariant/checksum, watermark, and provider-egress denial.
+    source: WC-120 Section 2.3; Solution Sections 6, 13; CSA-CEWA-023
+    observable_outcome: Additive schema evolution, migration watermark, backup, restore, rollback, and recovery preserve the complete consistency group before contraction; proposed limits are Demo RPO/data-loss 24h and RTO 8h, UAT RPO/data-loss 4h and RTO 4h, Production RPO/data-loss 15m and RTO 2h, subject to Founder acceptance.
     component_owner: BP data owners
-    test_path_or_plan: Data-owner accepted recovery profile; migration up/repeat, old-reader compatibility, backup/restore, rollback, RLS, fault injection, provider-egress denial, and invariant/checksum tests.
-    completion_rule: Every destructive contraction is preceded by passing, candidate-bound recovery evidence and separate authority.
+    test_path_or_plan: Fault injection at each proposed limit; exact backup/restore commands; same-consistency-point row counts/checksums; watermark, FORCE-RLS, composite-reference, sequence, replay, lineage, source-expiry, projection-equivalence, and provider-egress-denial tests; migration up/repeat/rollback and old-reader compatibility.
+    completion_rule: Founder accepts the applicable numeric limit and candidate-bound evidence meets it before recovery promotion; every contraction additionally has separate authority and passing restore/compatibility evidence.
 
   - <<: *defaults
     requirement_id: WC120-R024
     source: Solution Sections 19-20; CSA-CEWA-024; work-contracts/WC-120-fitness-evidence-matrix.yaml
     observable_outcome: Every CE-FIT item maps bidirectionally to stories, source oracles, exact Test Champion-selected test selectors, immutable candidate identity, and evidence.
     component_owner: Cross-owner acceptance
-    test_path_or_plan: Review all 16 matrix rows for unique IDs, story mapping, positive/boundary oracle, exact repository-native test command/node, candidate manifest, and evidence location.
-    completion_rule: No fitness item is missing, duplicated, stale, unselected, or claimed PASS without candidate-bound direct evidence and Test Champion disposition.
+    test_path_or_plan: Review all 16 matrix rows for unique IDs, story mapping, positive/boundary oracle, exact Docker-only command/path/node, candidate manifest, native report, selector-result record, runner-image digest, and evidence location.
+    completion_rule: During approved implementation all 16 direct rows pass with zero skip/xfail/quarantine/flaky-retry allowance, affected-service coverage is at least 90% line and 80% branch, and no item is missing, duplicated, stale, indirect, or claimed PASS without candidate-bound evidence.
 
   - <<: *defaults
     requirement_id: WC120-R025
     source: Solution Section 19.3; CSA-CEWA-025
-    observable_outcome: Final Docker, image, and containerized end-to-end qualification binds to an immutable candidate manifest containing source, image, API/solution, schema, migration, configuration, targeted-test, recovery, CE-FIT, and qualification identities.
+    observable_outcome: Final Docker, image, and containerized end-to-end qualification binds to an immutable candidate manifest containing source; Work Contract, ledger, API, solution, Product-matrix, and fitness-matrix digests; application and test-runner image digests; schema, migration, configuration, targeted-test, recovery, CE-FIT, and qualification identities.
     component_owner: Platform IT Expert qualification
     test_path_or_plan: Verify test-results/wc120/candidate-manifest.json against exact source commit, image/config/schema digests, targeted evidence, recovery, CE-FIT, and final Docker qualification.
     completion_rule: Any relevant source/configuration/image change invalidates affected evidence and requires targeted reruns plus final exact-candidate qualification.
@@ -292,9 +296,9 @@ requirements:
   - <<: *defaults
     requirement_id: WC120-R034
     source: PR #499 package test evidence; candidate OpenAPI
-    observable_outcome: Candidate API validates as 14 paths and 23 schemas with every local reference resolved.
+    observable_outcome: Candidate API validates as 16 paths, 17 operations, and 28 local schemas with all 156 local references plus the pinned external employment-command schema reference resolved.
     component_owner: API contract and generator owners
-    test_path_or_plan: "Run `PYTHONPATH=. pytest -q tests/test_openapi_slice.py tests/validation_control/test_spec_lint_scope.py`, OpenAPI parse/reference checks, and generated-client fixtures."
+    test_path_or_plan: "Run `docker compose --profile test-python run --rm test-runner-python pytest -q tests/test_openapi_slice.py tests/validation_control/test_spec_lint_scope.py`, OpenAPI parse/reference checks, and generated-client fixtures; host Python is prohibited."
     completion_rule: All advertised operations and schemas parse, resolve, and agree with producer/consumer fixtures.
 
   - <<: *defaults
@@ -302,8 +306,8 @@ requirements:
     source: Solution Sections 17-20; all CSA-CEWA stories; WC-120-fitness-evidence-matrix.yaml
     observable_outcome: Every story and CE-FIT item has exact repository-native commands/test selectors, predicates, candidate binding, evidence references, and failure/rollback result frozen before implementation starts; the generic ledger validator alone is insufficient.
     component_owner: Platform IT Expert delivery control
-    test_path_or_plan: Requirement-ledger structural validation plus Test Champion review of exact changed-path-to-command/node selectors, source oracles, candidate manifest, and test-results/wc120 evidence paths.
-    completion_rule: No story starts with a missing or stale test selector, acceptance oracle, evidence destination, candidate binding, or unresolved dependency.
+    test_path_or_plan: Requirement-ledger structural validation plus Test Champion review of exact changed-path-to-Docker-command/path/node selectors, source oracles, quality targets, candidate manifest, and test-results/wc120 evidence artifact contracts.
+    completion_rule: No story starts without an exact planned selector, acceptance oracle, evidence destination, candidate binding, or resolved prerequisite; the named test artifact may remain absent until its approved implementation story, but must exist and pass before that story completes.
 
   - <<: *defaults
     requirement_id: WC120-R036
@@ -318,48 +322,48 @@ requirements:
     source: Existing Core API; WC-114 BP API; PR #499 reviews R-4248037076/7125/7174
     observable_outcome: Candidate operations are crosswalked to canonical read position, command discovery, employment operations, and handoff/revert contracts; only compatible additive operations remain.
     component_owner: BP public contract owner
-    test_path_or_plan: Operation/schema-by-operation crosswalk, OpenAPI compatibility assertions, generated-client fixtures, and monotonic read-position/replay/revert tests.
+    test_path_or_plan: WC-120-operation-schema-owner-compatibility-crosswalk.md, OpenAPI compatibility assertions, both generated-client fixtures, and monotonic read-position/replay/revert tests.
     completion_rule: No duplicate or incompatible operation remains and all seven PR #499 wire corrections have direct predicates.
 
   - <<: *defaults
     requirement_id: WC120-R038
-    source: ADR-023; WC-115 security profile and R102-R108; PR #498 Sections 12.7 and 13.6
-    observable_outcome: Phone identity, workload assertion, freshness, operation assurance, secret rotation/revocation, and Stop behavior reuse accepted owner profiles and cannot be weakened by the channel or candidate API.
+    source: WC-120 Section 2.4; ADR-023; accepted specialist profile blob 9c7ccecd64791010f1ba15b69d9b8a128d466d66; WC-115 R102-R108; PR #498 Sections 12.7 and 13.6
+    observable_outcome: Employment calls use the accepted security_profile workload caller/audience/purpose/age/replay tuples, assurance and denial matrix, freshness_profile, and emergency_stop_profile; WhatsApp adapter, media-scanner, and configurator use separate exact environment-bound identities, operation grants, and adapter audience without profile substitution or catch-all credentials. WhatsApp runtime authority is JIT and memory-only for at most five minutes; planned current/immediately-previous overlap is at most fifteen minutes only when provider-supported, while emergency revocation, leakage, mismatch, or supersession has zero overlap.
     component_owner: Phone Identity and Security owners
-    test_path_or_plan: Assurance-profile mapping, signed assertion audience/environment/operation tests, replay/freshness tests, rotation/revocation denial tests, and Stop under dependency failure.
-    completion_rule: Every security-sensitive operation maps to an accepted profile and fails closed on absent, stale, mismatched, revoked, or unknown authority.
+    test_path_or_plan: Accepted-profile digest/crosswalk; every allowed and denied caller/issuer/subject/audience/purpose/delegation/operation/age/replay tuple; exact WhatsApp workload and urn:waooaw:service:whatsapp-adapter:<environment> audience; cross-profile substitution; live revocation unavailable; bounded current/immediately-previous provider overlap; unknown/unavailable/expired/revoked/superseded/leaked/version mismatch; emergency revocation with in-flight reconciliation; credential fallback; and rollback restoration tests.
+    completion_rule: Every security-sensitive operation maps to its accepted controlling profile and fails closed on absent, stale, mismatched, revoked, unknown, or unavailable authority; denial makes no downstream owner call and creates zero data, dispatch, credential, or authority mutation.
 
   - <<: *defaults
     requirement_id: WC120-R039
-    source: WC-115 data profile and R077-R084; PR #498 Section 15 and R-147
-    observable_outcome: Data ownership, transaction/order, tenant RLS, lineage, deduplication, retention/erasure, backup/restore, and migration are bound to accepted Data-owner controls before persistence work.
+    source: WC-120 Section 2.3; WC-115 data profile and R077-R084; PR #498 Section 15 and R-147
+    observable_outcome: WC-120 Section 2.3 fixes the Data-owned BP ownership, atomic producer/outbox and consumer/inbox boundaries, sequence allocator, digest/idempotency domains and horizon, queue lease/retry/poison values, forced-RLS model, lineage invalidation, lifecycle mapping, recovery consistency group and proposed targets, and forward-only migration batch/window controls; only named Legal/Founder/provider acceptances and the owner-contract crosswalk remain external gates.
     component_owner: BP and payload Data owners
-    test_path_or_plan: Accepted profile crosswalk, RLS/composite-reference tests, idempotency and sequence crash/replay tests, erasure/hold lineage checks, and isolated restore/migration qualification.
-    completion_rule: No persistence, retention, recovery, or migration decision is invented by the Platform IT Expert.
+    test_path_or_plan: Accepted-profile record/store/operation crosswalk; exact Section 2.3 value-table assertions; 256-way producer/consumer/sequence races; crash at each commit boundary; digest replay/conflict and lifecycle boundaries; transaction-local FORCE-RLS and tenant-complete references for public/worker paths; lineage/derivative erasure; same-consistency-point isolated restore; deterministic 1,000-row resumable backfill; seven-day mixed-version and 24-hour zero-old-reader contraction gates.
+    completion_rule: Every affected record maps to one accepted owner, store, transaction, digest/key, lifecycle class, recovery group, and migration rule and passes its exact boundary oracle; implementers select no Data value, and each external acceptance is evidenced before its affected behavior proceeds.
 
   - <<: *defaults
     requirement_id: WC120-R040
-    source: WC-115 AIR profile and R095-R101; PR #498 Sections 8, 14, 16, and 21
-    observable_outcome: AIR receives minimized, server-resolved context and untrusted contribution content; provenance and degraded/unknown outcomes remain explicit, with no provider or authority choice delegated to the channel.
+    source: WC-120 Section 3.1.1; accepted WC-115 AIR profile and R095-R101; PR #498 Sections 8, 14, 16, and 21
+    observable_outcome: AIR receives only minimized, server-resolved context and structurally separated untrusted contribution/research/retrieval/tool content. The accepted request digest and idempotency tuple, BP-owned semantic catalogue identity, exact prompt/model policy and model-decision provenance, closed result states, transient-content limits, and immutable evaluation corpus remain mandatory. Research, inference, recommendation, confirmed fact, unavailable service, pending reconciliation, and customer-visible unknown remain distinct; prompt injection cannot alter policy, catalogue, tenant, relationship, operation, authority, or tool eligibility; neither channel nor public client selects a provider/model.
     component_owner: BP context resolver and AIR owners
-    test_path_or_plan: Payload minimization and prompt-injection fixtures, source/version provenance checks, provider-neutral contract tests, and AIR-unavailable/unknown outcome tests.
-    completion_rule: No raw identity, client policy, unbounded history, or synthetic success crosses the AIR boundary.
+    test_path_or_plan: Accepted-profile crosswalk and immutable WC-115-R101 corpus proving RFC 8785/JCS digest vectors; idempotency identity; catalogue identity and allow-list; request/receipt/result provenance; closed result-state constraints; transient-content encryption/expiry/no-log behavior; direct/indirect and tool/retrieval/transcript prompt-injection isolation; minimum-necessary payload; researched/inferred/confirmed lineage and invalidation; provider-neutral contracts; and AIR-unavailable, pending, and unknown no-mutation/no-synthetic-success behavior.
+    completion_rule: The exact BP/PR/AIR handoff and accepted profile are crosswalked and every corpus oracle passes at 100%; no raw identity, client policy, provider selection, unrelated or unbounded history, injected authority, unauthorized operation, blind retry, or synthetic success crosses the AIR boundary. Missing profile values, stale lineage, provenance/digest mismatch, or unavailable/unknown state blocks consequential behavior.
 
   - <<: *defaults
     requirement_id: WC120-R041
-    source: PR #498 Sections 13, 17-21, 23-24; Platform Architect contribution
-    observable_outcome: Ingress, DNS/TLS, environment isolation, observability, recovery, teardown, and measurable WhatsApp SLOs have named owners and accepted targets; no infrastructure mutation is implied.
+    source: PR #498 Sections 13, 17-21, 23-24; ADR-053; WC-120 Section 3.3; Platform Architect disposition
+    observable_outcome: Demo/UAT/Production use distinct environment identities, HTTPS callback hosts, DNS/TLS and protected configuration; UAT ingress is stable, Demo ingress is stable for its authorized lifetime, Production is stable and dark, egress is conditional, restore is non-routable with zero provider egress, prohibited telemetry disclosure and cross-environment mutation are zero, and teardown changes UAT/Production bindings by zero. Callback availability is Demo >=99.0% per rolling 24 eligible hours, UAT >=99.9% per rolling 30 eligible days, and activated Production >=99.95% per calendar month. Durable acceptance is p95 <=1 second, p99 <=2 seconds, maximum 5 seconds; first outbound attempt is p95 <=30 seconds, p99 <=60 seconds, maximum queue age 120 seconds; unknown provider outcomes reconcile within 15 minutes; Stop propagation reaches PR confirmation within 50 ms and BP/PR enforcement at p95 <=100 ms, p99 <=250 ms, maximum 1 second. Exact alert triggers and response clocks are those in WC-120 Section 3.3.
     component_owner: Platform Architecture and Operations
-    test_path_or_plan: Environment topology review, provider-configuration denial tests, SLO/alert evidence, Demo teardown rehearsal, and isolated recovery validation.
-    completion_rule: Each target and action maps to an accepted owner source and separate authority; missing targets block the affected readiness stage.
+    test_path_or_plan: Rendered environment topology and protected-configuration inventory review; hostname/certificate and cross-environment denial tests; zero-provider-egress isolated restore; privacy scanner and alert-routing evidence; Demo teardown diff proving no UAT/Production change; and owner-accepted numeric SLO/threshold profile.
+    completion_rule: Each Platform-owned target and action maps to its source, measurement window, oracle, alert, owner, and separate authority; no provider or infrastructure mutation is implied. WC120-R041 specification closure passes only when the complete profile is preserved without weakening. WC120-R023 fixes the Data recovery values and consistency group; Founder acceptance and candidate-bound recovery evidence remain separate recovery/activation gates.
 
   - <<: *defaults
     requirement_id: WC120-R042
-    source: PR #498 Sections 17, 23-24, and 26; WC-115 Section 7.4; WC-120-product-acceptance-matrix.yaml
-    observable_outcome: Product-owned journeys specify customer-visible consent/service-window/template outcomes, approved copy, locale/readability/accessibility, voice correction/send consent, Stop reachability, and degraded states; pending choices block the affected journey.
+    source: PR #498 Sections 17, 23-24, and 26; WC-115 Section 7.4; WC-120 Section 3.4; WC-120-product-acceptance-matrix.yaml; WC-120 Product Owner disposition
+    observable_outcome: Product-owned journeys use the accepted en-IN locale, bounded readability and text/audio parity, exact consent/service-window/template/media/degraded copy and actions, voice correction/send consent, WCAG 2.2 AA presentation, and always-reachable Stop; external-owner gates remain fail closed.
     component_owner: Product and Test Champion
-    test_path_or_plan: Product disposition for every decision/journey row; approved copy and locale/accessibility values; consent/template boundaries; explicit voice correction/send consent; customer-state and accessibility tests.
-    completion_rule: No implementation-enabled journey has pending Product decisions, unapproved copy, missing accessible-state evidence, or inferred policy.
+    test_path_or_plan: Product matrix oracles for PRODUCT-01..05 and all five journeys; exact planned Docker-only readability, parity, state/copy, zero-dispatch, media-boundary, axe, keyboard, focus, screen-reader, monochrome, 200% zoom, 360px reflow, five-project Playwright, and CE-FIT selectors are bound in the fitness matrix.
+    completion_rule: Product specification has no pending Product value. During approved implementation the direct selectors pass with zero serious/critical axe violations and 100% required-control keyboard/non-colour coverage; before activation, named Legal/Founder, Security, Data, provider, and Platform gates are accepted.
 
   - <<: *defaults
     requirement_id: WC120-R043
@@ -374,5 +378,5 @@ requirements:
     source: PR #498 Section 17; CE-FIT-01..16; Test Champion disposition; WC-120-fitness-evidence-matrix.yaml
     observable_outcome: The fitness matrix contains exactly one row per CE-FIT item, maps each to one or more stories and direct oracles, and binds exact test selectors, candidate identity, and planned evidence location.
     component_owner: Test Champion and WC-120 qualification
-    test_path_or_plan: Test Champion disposition plus structural review of all 16 unique IDs, story links, source predicates, exact selectors, candidate-manifest fields, and evidence paths.
-    completion_rule: No CE-FIT row remains pending at implementation completion; any pre-start selector gap blocks readiness and any candidate change invalidates stale evidence.
+    test_path_or_plan: Test Champion disposition plus structural review of all 16 unique IDs, story links, source predicates, exact planned Docker commands/paths/nodes, quality targets, candidate-manifest fields, native and normalized evidence artifacts, and evidence paths.
+    completion_rule: WC120-R044 specification closure passes when all 16 planned selectors are exact and no Test Champion-owned value remains pending. Pre-implementation node absence is expected; at implementation completion every node exists and passes directly, and any candidate change invalidates affected evidence.

@@ -5,19 +5,48 @@
 | Field | Value |
 |---|---|
 | Authoring office | Chief Solution Architect (INST-005) |
-| Status | DRAFT - IMPLEMENTATION HANDOFF BLOCKED |
-| Version | `1.0.0-candidate.1` |
+| Status | WC-120 INTEGRATION CANDIDATE - SPECIFICATION REPAIRED; IMPLEMENTATION HANDOFF REQUIRES FOUNDER AUTHORIZATION |
+| Version | `1.0.0-candidate.2` |
 | Controlling enterprise package | `conversation-engine-whatsapp-enterprise-architecture.md` |
 | Reviewed enterprise head | `65add4540698116b00be1ec72e6000333d05eac9` |
 | Merged PR | PR #498, merge commit `4a4420af6ee132623d6b87eb3863d700e56c9b86` |
-| Decision package | ADR-052 and ADR-053, both still `Proposed - Founder review required` |
+| Decision package | ADR-051, ADR-052, and ADR-053 Founder-accepted for WC-120 on 2026-10-12; all implementation and external-action gates remain |
 | Implementing office | Platform IT Expert (INST-010), only under a separate Work Contract and explicit current-session implementation authority |
 | Authority boundary | Solution architecture and implementation planning only. No implementation, `src/` change, Meta/Azure/DNS/provider mutation, number purchase, deployment, traffic, activation, PR approval, or merge. |
 
-**Blocking rule:** PR #498 is merged, but merge did not change ADR-052 or ADR-053 to Accepted. This
-candidate may be reviewed, corrected, and accepted as a solution package, but no implementation
-story may start until the Founder accepts the applicable ADRs and separately authorizes an
-implementation Work Contract. ADR-052 also depends on prior or simultaneous acceptance of ADR-051.
+**Blocking rule:** WC-120 records Founder acceptance of ADR-051, ADR-052, and ADR-053. That
+acceptance closes only the decision prerequisite. No implementation story may start until the
+Founder accepts the exact WC-120 integration package and separately authorizes implementation in
+the current session. Provider, cloud, DNS, deployment, traffic, activation, Production, recovery,
+teardown, rollback execution, PR approval, and merge remain separately controlled.
+
+### WC-120 Integration Amendment
+
+WC-120 source precedence controls this candidate: accepted decisions and PR #498; existing
+Conversation Core, BP API, WC-114/WC-115 and their specialist profile for already-owned behavior;
+then this additive component and API. The companion
+`WC-120-operation-schema-owner-compatibility-crosswalk.md` is normative for reuse, compatible
+successors, owner boundaries, and generated-client ownership. This candidate creates no second
+timeline, read-position store, employment command owner, context/profile owner, or Stop authority.
+
+The seven PR #499 findings close only when the candidate and direct contract tests prove all of
+these predicates:
+
+1. WhatsApp POST declares `application/json`, captures bounded identity-encoded request bytes, and
+   verifies HMAC over those exact bytes before decompression, transformation, or deserialization.
+2. Repository and evidence use only `DEMO_SUFFIX_3575`, `UAT_SUFFIX_2344`, and
+   `PRODUCTION_PENDING_PURCHASE`; full telephone identities remain protected configuration.
+3. `updateConversationReadPosition` advances the BP-owned durable position monotonically,
+   rejects unseen/backward movement, and idempotently replays the same outcome.
+4. Every available interaction context contains closed `authorizedCommands` descriptors naming
+   the existing owner operation and closed request schema.
+5. `revertConversationHandoff` binds the original source channel/checkpoint, is idempotent, creates
+   no new binding or authority, and returns conflict with zero mutation for divergent reuse.
+6. `ConversationContributionRequestV1` is an exactly-one discriminated union: `TEXT` requires only
+   non-null `text`; `REVIEWED_VOICE` requires only a non-null accepted voice reference.
+7. Conversation command submission delegates to WC-114's `submitEmploymentCommand` and its closed
+   `EmploymentCommandRequestV1` discriminated union; free-form kinds, maps, and unknown fields are
+   invalid and no parallel command owner is introduced.
 
 ## 1. Executive Implementation Overview
 
@@ -390,7 +419,7 @@ only when confirmed.
 
 | Boundary | Demo | UAT | Production |
 |---|---|---|---|
-| Founder-provided number input | `9822753575` | `8888912344` | Separate purchase; prefer suffix `926629` |
+| Protected telephone input label | `DEMO_SUFFIX_3575` | `UAT_SUFFIX_2344` | `PRODUCTION_PENDING_PURCHASE` |
 | Repository-safe display | suffix `3575` | suffix `2344` | `PENDING_FOUNDER_PURCHASE` |
 | Meta identity | Dedicated app/WABA/number registration or approved equivalent isolation | Dedicated | Dedicated, dark |
 | Provider IDs/secrets | Environment Key Vault only | Environment Key Vault only | Environment Key Vault only |
@@ -401,10 +430,10 @@ only when confirmed.
 | Deployment authority | Ephemeral authorized apply | Fixed authorized apply | Founder-gated, dark default |
 | Backup/recovery | Isolated disposable scope | Isolated durable scope | Isolated durable scope |
 
-The listed telephone values are configuration inputs, not source constants. The operator stores the
-complete E.164 value and Meta IDs only in protected environment configuration. Architecture tests
-use suffixes or injected fixtures. Stable inbound ingress does not imply stable outbound egress; add
-egress only when an authorized dependency requires allow-listing.
+The labels are repository-safe references, not telephone values. The operator stores the complete
+E.164 value and Meta IDs only in protected environment configuration. Architecture tests use
+suffix-only labels or injected fixtures. Stable inbound ingress does not imply stable outbound
+egress; add egress only when an authorized dependency requires allow-listing.
 
 Runtime adapter, media scanner, and deployment/configurator use separate environment-bound workload
 identities and audiences. Verify token, app secret, outbound authority, media authority, and
@@ -510,7 +539,7 @@ means a protected decision that automation cannot make.
 | 1 | Founder/Security | Confirm ADR acceptance, separate Work Contract, environment, spend/provider/DNS/deployment authority, operator roles, and stop conditions. Exit: authority references complete. |
 | 2 | Manual | Prepare verified Meta Business and environment WABA ownership. Exit: privacy-safe ownership/status evidence. |
 | 3 | Manual/Security | Create a dedicated Meta app per environment or document an approved isolation model proving separate authority, callbacks, secrets, templates, telemetry, and revocation. |
-| 4 | Manual/Founder | Register Demo `9822753575`, UAT `8888912344`, or separately purchased Production number as protected configuration input; never commit it. |
+| 4 | Manual/Founder | Resolve `DEMO_SUFFIX_3575`, `UAT_SUFFIX_2344`, or `PRODUCTION_PENDING_PURCHASE` to a separately authorized protected configuration input; never commit or evidence the complete value. |
 | 5 | Manual | Complete provider telephone ownership verification. Exit: provider registration status, no OTP/token in evidence. |
 | 6 | Manual/Config | Capture phone-number ID, WABA ID, app ID, and API version into the environment's protected configuration inventory. |
 | 7 | Manual/Security | Create least-privilege verify token, app secret, outbound authority, and media authority with rotation/revocation owners. |
@@ -1040,7 +1069,7 @@ when all dependencies and its authority gates pass.
 | Controlling references | ADR-053 Decision 1-5,11-14; enterprise §§13.1-13.6, 15.10 |
 | Affected components/directories | Environment config, approved IaC/deploy workflow, Key Vault, ingress/DNS/TLS, runbook/evidence; no change without authority. |
 | Current behavior | Demo platform exists; WhatsApp provider identity/callback is not activated by this package. |
-| Required behavior | Runbook steps 1-22 for Demo using number `9822753575` as protected config input. |
+| Required behavior | Runbook steps 1-22 for Demo using `DEMO_SUFFIX_3575` as a repository-safe reference resolved only in protected configuration. |
 | In scope | Separate app/WABA/IDs/secrets/host/data/media/dedup/telemetry/templates/backup/deployment authority; teardown. |
 | Out of scope | UAT/Production resources, hard-coded number, customer traffic, unauthorized provider/cloud mutation. |
 | Reuse | Existing Demo deploy/verify/cleanup patterns and environment rendering. |
@@ -1069,7 +1098,7 @@ when all dependencies and its authority gates pass.
 | Controlling references | ADR-053 Decision 1-5,11-14; enterprise §§13.1-13.4 |
 | Affected components/directories | UAT config/IaC/workflow/runbook/evidence under separate authority. |
 | Current behavior | UAT platform ingress exists; Meta callback identity is not authorized by this package. |
-| Required behavior | Runbook for UAT using `8888912344` as protected config, hostname callback, separate ingress/egress analysis. |
+| Required behavior | Runbook for UAT using `UAT_SUFFIX_2344` as a repository-safe reference resolved only in protected configuration, hostname callback, and separate ingress/egress analysis. |
 | In scope | Stable inbound address, DNS/TLS, isolated provider/data/telemetry/template/recovery, smoke/rollback. |
 | Out of scope | Raw-IP callback, assumed static egress, Demo identity reuse, Production activation. |
 | Reuse | Existing UAT private runner/deploy/verify and recovery patterns. |
@@ -1525,3 +1554,45 @@ the final push; any later commit invalidates that binding.
 
 **Current result:** PASS for the draft solution package. Implementation handoff remains BLOCKED by
 Section 21 and the Record Control blocking rule.
+
+## 25. Founder-Approved Implementation Strategic Plan
+
+### 25.1 Authority And Sequencing
+
+The Founder accepted the exact integrated WC-120 package and authorized repository implementation
+and testing for the current session on 2026-10-13. Provider access or mutation, cloud or DNS change,
+external traffic, environment activation, deployment, Production action, PR approval, and merge
+remain prohibited. The Founder approved this dependency-ordered plan on 2026-10-13 and directed that
+all implementation and the complete targeted test portfolio be written before any test, build, or
+Docker execution. All eventual execution is Docker-only; host language environments and virtual
+environments are prohibited.
+
+The existing Business Platform Conversation Core remains the only canonical conversation owner.
+The existing BP, PR, AIR, CE, Phone Identity, Web, data, and operations surfaces below are extended
+additively. No Conversation Engine deployable, parallel history/profile store, API owner, or
+authority is introduced.
+
+### 25.2 Dependency-Ordered Chunks
+
+| Chunk | Stories and requirements | Outcome and exact existing surfaces | Dependencies and exclusions | Tests to write before any execution; exact acceptance oracles | Evidence, gates, compatibility, rollback, recovery, and Docker impact | Status |
+|---|---|---|---|---|---|---|
+| WC120-P0 - Baseline and contract freeze | CSA-CEWA-001/002; WC120-R001-R003, R028-R037, R043-R044 | Freeze the repaired channel-neutral OpenAPI and compatibility crosswalk; preserve `ConversationController`, `ConversationService`, `ConversationStoreDbContext`, `ChannelContinuityService`, existing employment APIs/profiles, generated-client ownership, and server-only webhook boundary. | Requires exact accepted package digests and current-session authority. No runtime behavior, generated client, migration, or provider action precedes contract freeze. | Extend OpenAPI slice/reference and producer/consumer fixtures for 16 paths, 17 operations, 28 schemas, 156 local references, the external closed command union, all seven PR #499 predicates, and complete-telephone-value absence. | Evidence: `test-results/wc120/WC120-R001/`, R002, R003, R028-R037, R043-R044. Shared contract remains backward compatible; existing API/client remains rollback path. No image build in this chunk. | COMPLETE - discovery and accepted contract package frozen; executable evidence deferred |
+| WC120-P1 - Shared conversation foundation | CSA-CEWA-003-008; WC120-R004-R008, R029-R033, R036-R040 | Extend `ConversationStoreDbContext` and additive PostgreSQL migrations for environment/tenant/relationship-complete canonical sequence, idempotency, inbox/outbox, context observations, lineage and summaries; extend `ConversationService`, interaction-context/command discovery, `ChannelContinuityService`, identity/assurance and BP-to-PR/AIR handoff without changing owners. Outbox rows commit atomically with owner state; publication occurs only after that transaction commits. | Depends on P0. Freeze persistence and public/private contracts before consumers. Excludes client-supplied tenant/policy/prompt/authority, new stores/services, provider selection, destructive migration, or activation. | Write BP unit/contract/integration tests for 256-way canonical ordering, commit-boundary rollback, digest replay/conflict with digest outside the uniqueness identity key, forced RLS, monotonic read position, typed command discovery, exactly-one contribution, closed command union, server-resolved context, lineage invalidation, handoff activation/revert, identity ambiguity/revocation, AIR digest/provenance/injection corpus, and CE-FIT-01..08 foundations. | Evidence: R004-R008, R029-R033, R036-R040 and CE-FIT-01..08 directories. New behavior is separately default-off; additive readers/writers retain old contract for at least seven days and contraction additionally requires 24 hours of zero old-reader traffic plus authority. Rollback disables new writers/readers and retains additive records. BP, PR, and AIR images are impacted only if their owned sources change. | IMPLEMENTED - EXECUTION DEFERRED |
+| WC120-P2 - WhatsApp ingress, claim, delivery and eligibility | CSA-CEWA-009-014; WC120-R009-R014, R017, R038-R042 | Replace the legacy BP webhook path in `WhatsAppJourneyController`/`WhatsAppJourneyService` with bounded exact-byte `application/json` authentication before parse, environment-bound identity, atomic durable claim/replay whose uniqueness identity excludes the payload digest, normalized canonical inbound, ordered outbound, consent/window/template eligibility, immutable delivery observations with a unique identity for every distinct provider status event, reconciliation and privacy-safe signals. | Depends on P1 and repository-only protected configuration contracts. BP owns raw webhook verification and durable event claiming; downstream owners receive only verified normalized envelopes. Excludes Meta/provider access, callback registration, complete identities, provider credentials, external sends, cloud/DNS/deployment, or service-window/template invention. | Write raw-stream/HMAC/size/encoding/freshness/binding tests; concurrent same/different-digest claim and delayed-retry tests; normalization owner-boundary tests; post-commit outbox lease/heartbeat/no-jitter backoff/attempt-12 poison/crash/takeover tests; eligibility zero-dispatch tests; distinct-status identity and immutable delivery projection/rebuild tests; CE-FIT-07..10 and Product state/accessibility fixtures. | Evidence: R009-R014, R017, R038-R042 and CE-FIT-07..10. Separate default-off callback-acceptance and dispatch gates; unknown provider outcomes never authorize blind retry. Rollback disables callback acceptance/dispatch and reverts to prior compatible BP behavior without deleting claims or observations. BP and Web images are impacted; no provider image or live callback. | IMPLEMENTED - EXECUTION DEFERRED |
+| WC120-P3 - Media, Emergency Stop and operational safety | CSA-CEWA-015-017; WC120-R015-R017, R026, R038-R042 | Extend existing `VoiceContributionService`/`VoiceContributionDbContext`, media gateways, `RelationshipEmergencyStopService`, BP enforcement points, telemetry, dead-letter and alert owners for quarantine, exact media ceilings, clean-scan lineage, correction/send consent, immediate typed Stop precedence, latched fencing, payload-free poison and closed telemetry. Legal remains the accountable owner for retention, hold, erasure and lifecycle decisions; implementation only enforces accepted decisions. | Depends on P1/P2. Excludes Product-disabled media, unaccepted lifecycle/hold activation, protected diagnostics without authority, WhatsApp Stop release, CE/identity dependency in the halt path, or operational activation. | Write complete media boundary/malware/scanner freshness/resource/lifecycle/erasure tests; voice correction/digest/send-consent tests; Stop precedence/outage/duplicate/simultaneous-channel/restart/late-result/release-denial/latency tests; telemetry and dead-letter canary scans; CE-FIT-11, 13 and 14 plus five-project accessibility journeys. | Evidence: R015-R017, R026, R038-R042 and CE-FIT-11/13/14. Media and Stop gates remain default-off except the existing safe Stop path; rollback denies new media promotion and dispatch while retaining the Stop latch, replay identity and minimized evidence. BP, PR, scanner/test-emulator and Web images may be impacted; no external media retrieval. | IMPLEMENTED - EXECUTION DEFERRED |
+| WC120-P4 - Environment readiness, clients, migration and recovery | CSA-CEWA-018-023; WC120-R018-R023, R026, R036-R042 | Add repository-only Demo/UAT/Production-dark rendering and denial controls through existing configuration/deployment owners; regenerate the shared Web client and second-client conformance fixture; add forward-only schema/backfill watermark, backup/restore/rollback scripts and no-provider-egress recovery fixtures using existing PostgreSQL and validation paths. | Depends on P1; environment readiness additionally depends on P2/P3. Excludes provider/cloud/DNS/TLS/deployment/traffic/activation, real teardown, Production action, destructive contraction, or claiming protected recovery acceptance. | Write environment-isolation/profile/credential/audience/rotation/revocation tests; Production-dark and denied-action tests; Web old/new compatibility and accessibility tests; second-client test; migration up/repeat/rollback compatibility, deterministic 1,000-row checkpoints, RLS/invariant/checksum, isolated restore, source-expiry/projection rebuild, recovery-limit and no-egress tests; CE-FIT-01/04/12/15/16. | Evidence: R018-R023, R026, R036-R042 and CE-FIT-01/04/12/15/16. Existing client and readers remain rollback path; callback and dispatch kill switches remain independent; restore stays non-routable. BP/Web/test-runner images and PostgreSQL schema watermark are impacted. Environment actions remain denied. | IMPLEMENTED - EXECUTION DEFERRED |
+| WC120-P5 - Complete portfolio and exact-candidate qualification | CSA-CEWA-024-027; WC120-R024-R027, R035, R041-R044 | After P1-P4 implementation is complete, write any remaining owner-local unit, contract, integration, security/privacy, concurrency, replay, migration, recovery, compatibility, accessibility, journey and CE-FIT tests; then qualify one immutable candidate and prepare Founder handoff. | Depends on all implementation chunks. No tests, builds, Docker, generated build artifacts, or qualification run before all implementation and test sources are complete. Release Qualification is OFF/SKIPPED only under the Founder authority recorded for WC-120; final exact-candidate Docker qualification remains mandatory. | Execute only through repository Docker runners: exact targeted selectors, affected suites, generated-client build, migration/restore/rollback, security/privacy, five Playwright projects, 16/16 CE-FIT with zero skip/xfail/quarantine/retry, >=90% line and >=80% branch coverage, 100 CE-FIT-08 coordinated races, scans, images and final containerized end-to-end qualification. | Before Docker, record bounded filesystem/Docker storage and remove only safe dangling images unused by active containers. Produce `test-results/wc120/candidate-manifest.json` with exact source/config/schema/image/test/recovery/CE-FIT/final qualification identities. Any relevant change invalidates affected evidence and final qualification. Complete exact-commit author review, component prechecks, exact PR body, push and Founder handoff; never approve, merge, deploy or activate. | IMPLEMENTED - EXECUTION DEFERRED |
+
+### 25.3 Completion Tracking Rules
+
+1. Update only the `Status` cell for a chunk after every source and planned test artifact in that
+   chunk exists and its requirements are traceable. Do not mark a chunk PASS before executable
+   evidence exists; use `IMPLEMENTED - EXECUTION DEFERRED` until the final Docker phase.
+2. Do not run tests, builds, Docker, generated-client generation, migrations, or coverage between
+   stories or chunks. During implementation use only read-only inspection and non-build,
+   non-test static checks such as bounded searches and `git diff --check`.
+3. After all implementation and test sources are complete, run Docker-only validation in P5.
+4. A final evidence PASS is valid only for the exact candidate manifest and 40-character commit.
+5. Any architecture ambiguity, owner conflict, missing exact selector/evidence, secret-exposure
+   risk, protected-gate exception, conflicting user change, or two reproducible infrastructure
+   failures stops the affected work without weakening a gate.

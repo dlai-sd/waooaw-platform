@@ -497,6 +497,7 @@ public sealed class WhatsAppJourneyContact
     public Guid TenantId { get; init; }
     public string PhoneHmac { get; init; } = string.Empty;
     public DateTimeOffset OptedInAt { get; init; }
+    public DateTimeOffset? OptedOutAt { get; set; }
     public DateTimeOffset LastInboundAt { get; set; }
     public string JourneyStage { get; set; } = "DISCOVER";
     public bool PendingMediumRiskConfirmation { get; set; }
@@ -525,8 +526,8 @@ public sealed class ChannelBinding
     public Guid ParticipantId { get; init; }
     public string ParticipantRole { get; init; } = string.Empty;
     public string Channel { get; init; } = string.Empty;
-    public string ExternalSubjectHash { get; init; } = string.Empty;
-    public string ConversationId { get; init; } = string.Empty;
+    public string ExternalSubjectHash { get; set; } = string.Empty;
+    public string ConversationId { get; set; } = string.Empty;
     public string AssuranceLevel { get; init; } = string.Empty;
     public string Status { get; set; } = "PREPARED";
     public Guid PreparedEvidenceId { get; init; }
@@ -547,6 +548,13 @@ public sealed class ContinuityCheckpoint
     public string ContinuityEnvelopeHash { get; init; } = string.Empty;
     public string? ContinuityEnvelopeJson { get; init; }
     public string MaterialRequestHash { get; init; } = string.Empty;
+    public string? CandidatePayloadDigest { get; init; }
+    public string? CandidateContextVersion { get; init; }
+    public long? CandidateCurrentSequence { get; init; }
+    public Guid? ActivationIdempotencyKey { get; set; }
+    public string? ActivationPayloadDigest { get; set; }
+    public Guid? RevertIdempotencyKey { get; set; }
+    public string? RevertRequestDigest { get; set; }
     public Guid CausalMarker { get; init; }
     public long SequenceNumber { get; init; }
     public Guid IdempotencyKey { get; init; }
@@ -2017,6 +2025,33 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity
                 .Property(value => value.MaterialRequestHash)
                 .HasColumnName("material_request_hash")
+                .HasMaxLength(64)
+                .IsFixedLength();
+            entity
+                .Property(value => value.CandidatePayloadDigest)
+                .HasColumnName("candidate_payload_digest")
+                .HasMaxLength(64)
+                .IsFixedLength();
+            entity
+                .Property(value => value.CandidateContextVersion)
+                .HasColumnName("candidate_context_version");
+            entity
+                .Property(value => value.CandidateCurrentSequence)
+                .HasColumnName("candidate_current_sequence");
+            entity
+                .Property(value => value.ActivationIdempotencyKey)
+                .HasColumnName("activation_idempotency_key");
+            entity
+                .Property(value => value.ActivationPayloadDigest)
+                .HasColumnName("activation_payload_digest")
+                .HasMaxLength(64)
+                .IsFixedLength();
+            entity
+                .Property(value => value.RevertIdempotencyKey)
+                .HasColumnName("revert_idempotency_key");
+            entity
+                .Property(value => value.RevertRequestDigest)
+                .HasColumnName("revert_request_digest")
                 .HasMaxLength(64)
                 .IsFixedLength();
             entity.Property(value => value.CausalMarker).HasColumnName("causal_marker");

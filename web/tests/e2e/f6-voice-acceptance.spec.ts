@@ -141,7 +141,7 @@ test('UX-VOICE-06 UX-VOICE-12: offline draft and Emergency Stop fail closed with
   await expect(page.getByRole('button', { name: 'Reconcile or retry' })).toBeVisible();
   await context.setOffline(false);
   await page.getByLabel('Message your professional').fill('Preserve this text fallback.');
-  await page.getByRole('button', { name: 'Emergency Stop' }).click();
+  await page.getByRole('button', { name: 'Stop all agent work now' }).click();
   await expect(page.getByText(/Emergency Stop is active. Voice commands are disabled/)).toBeVisible();
   await expect(page.getByLabel('Message your professional')).toHaveValue('Preserve this text fallback.');
   await expect(page.getByLabel('Message your professional')).toBeDisabled();
@@ -157,7 +157,7 @@ test('UX-VOICE-11: RTL, reduced motion, and 200 percent zoom preserve operation'
     document.documentElement.dir = 'rtl';
   });
   await expect(page.getByRole('button', { name: 'Record' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Emergency Stop' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Stop all agent work now' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(
     true
   );

@@ -41,7 +41,12 @@ public sealed record SendConversationMessageRequestV1(
     IReadOnlyList<ConversationTextBlockV1> Content,
     string Locale,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        string? ExpectedCursor = null
+        string? ExpectedCursor = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        string? ContextVersion = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        string? PayloadDigest = null,
+    string Channel = "WEB"
 );
 
 public sealed record UpdateConversationReadPositionRequestV1(
@@ -446,6 +451,9 @@ public sealed class ConversationService
     private readonly IConversationExecutionGateway _executionGateway;
     private readonly IOperationalMandateResolver _mandateResolver;
     private readonly ConversationCursorCodec _cursorCodec;
+    private readonly ConversationStopFence? _stopFence;
+    private readonly IConversationReferenceResolver? _referenceResolver;
+    private readonly string _environment;
 
     public ConversationService(
         IDbContextFactory<ConversationStoreDbContext> conversationFactory,
@@ -453,7 +461,10 @@ public sealed class ConversationService
         IRelationshipConstitutionalGateway constitutionalGateway,
         IConversationExecutionGateway executionGateway,
         IOperationalMandateResolver mandateResolver,
-        ConversationCursorCodec cursorCodec
+        ConversationCursorCodec cursorCodec,
+        ConversationStopFence? stopFence = null,
+        IConversationReferenceResolver? referenceResolver = null,
+        IOptions<Wc120ConversationOptions>? conversationOptions = null
     )
     {
         _conversationFactory = conversationFactory;
@@ -462,6 +473,12 @@ public sealed class ConversationService
         _executionGateway = executionGateway;
         _mandateResolver = mandateResolver;
         _cursorCodec = cursorCodec;
+        _stopFence = stopFence;
+        _referenceResolver = referenceResolver;
+        _environment =
+            conversationOptions?.Value.Enabled == true
+                ? conversationOptions.Value.Environment
+                : "legacy";
     }
 
     public async Task<ConversationTimelinePageV1> ListMessagesAsync(
@@ -579,6 +596,8 @@ public sealed class ConversationService
     {
         using var activity = StartActivity("bp.conversation.send", relationshipId);
         ValidateSendRequest(request);
+        if (_stopFence is not null)
+            await _stopFence.ThrowIfLatchedAsync(tenantId, relationshipId, cancellationToken);
         var relationship = await EnsureAccessAsync(
             tenantId,
             participantId,
@@ -641,14 +660,34 @@ public sealed class ConversationService
             relationshipId,
             cancellationToken
         );
+        var references = _referenceResolver is null
+            ? null
+            : await _referenceResolver.ResolveAsync(
+                tenantId,
+                participantId,
+                relationshipId,
+                conversation.ConversationId,
+                request.SkillId,
+                request.ContextVersion,
+                request.Channel,
+                cancellationToken
+            );
         var message = new ConversationMessage
         {
+            Environment = conversation.Environment,
             TenantId = tenantId,
             ConversationId = conversation.ConversationId,
             RelationshipId = relationshipId,
             Sequence = conversation.NextMessageSequence++,
             SkillId = request.SkillId,
+            Channel = request.Channel,
             ContentJson = JsonSerializer.Serialize(request.Content, JsonOptions),
+            InteractionContextJson = references is null
+                ? "{}"
+                : JsonSerializer.Serialize(references.Context, JsonOptions),
+            ConversationPolicyJson = references is null
+                ? "{}"
+                : JsonSerializer.Serialize(references.Policy, JsonOptions),
             ClientMessageId = request.ClientMessageId,
             EvidenceState = "RECORDED",
             EvidenceRecordId = evidenceId,
@@ -729,6 +768,8 @@ public sealed class ConversationService
 
         try
         {
+            if (_stopFence is not null)
+                await _stopFence.ThrowIfLatchedAsync(tenantId, relationshipId, cancellationToken);
             await _executionGateway.StartAsync(
                 conversation.ConversationId,
                 execution.ExecutionId,
@@ -741,6 +782,41 @@ public sealed class ConversationService
                 cancellationToken
             );
             return new ConversationCommandResult<ConversationSubmissionV1>(submission, false);
+        }
+        catch (ConversationStoppedException)
+        {
+            message.DeliveryState = "BLOCKED";
+            message.ProcessingState = "STOPPED";
+            message.Partial = true;
+            message.CompletionReason = "STOPPED_EMERGENCY";
+            message.CompletedAt = DateTimeOffset.UtcNow;
+            execution.ProcessingState = "STOPPED";
+            execution.Partial = true;
+            execution.CompletionReason = "STOPPED_EMERGENCY";
+            execution.UpdatedAt = message.CompletedAt.Value;
+            idempotency.Outcome = "STOPPED";
+            var stopped = CreateSubmission(
+                tenantId,
+                relationshipId,
+                message,
+                execution,
+                "STOPPED",
+                false
+            );
+            idempotency.ResponseJson = JsonSerializer.Serialize(stopped, JsonOptions);
+            db.Events.Add(
+                CreateEvent(
+                    conversation,
+                    tenantId,
+                    relationshipId,
+                    "message.stopped",
+                    message.MessageId,
+                    execution.ExecutionId,
+                    new { message = ToContract(message) }
+                )
+            );
+            await db.SaveChangesAsync(cancellationToken);
+            throw;
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -1055,7 +1131,8 @@ public sealed class ConversationService
         Guid relationshipId,
         Guid executionId,
         Guid idempotencyKey,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        object? requestBinding = null
     )
     {
         using var activity = StartActivity("bp.conversation.cancel", relationshipId);
@@ -1066,7 +1143,9 @@ public sealed class ConversationService
             cancellationToken
         );
         EnsureRelationshipNotStopped(relationship);
-        var requestHash = HashCanonical(new { executionId });
+        var requestHash = requestBinding is null
+            ? HashCanonical(new { executionId })
+            : HashCanonical(new { executionId, requestBinding });
         await using var db = await _conversationFactory.CreateDbContextAsync(cancellationToken);
         var replay = await FindIdempotencyAsync(
             db,
@@ -1167,6 +1246,28 @@ public sealed class ConversationService
         return new ConversationCommandResult<ConversationExecutionStatusV1>(response, false);
     }
 
+    public async Task<ConversationExecutionStatusV1?> GetExecutionAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid relationshipId,
+        Guid executionId,
+        CancellationToken cancellationToken
+    )
+    {
+        await EnsureAccessAsync(tenantId, participantId, relationshipId, cancellationToken);
+        await using var db = await _conversationFactory.CreateDbContextAsync(cancellationToken);
+        var execution = await db
+            .Executions.AsNoTracking()
+            .SingleOrDefaultAsync(
+                value =>
+                    value.TenantId == tenantId
+                    && value.RelationshipId == relationshipId
+                    && value.ExecutionId == executionId,
+                cancellationToken
+            );
+        return execution is null ? null : ToContract(execution);
+    }
+
     public async Task<IReadOnlyList<ConversationStreamEventV1>> GetEventReplayAsync(
         Guid tenantId,
         Guid participantId,
@@ -1187,6 +1288,43 @@ public sealed class ConversationService
                 value.TenantId == tenantId
                 && value.RelationshipId == relationshipId
                 && value.Sequence > after
+            )
+            .OrderBy(value => value.Sequence)
+            .Take(500)
+            .ToListAsync(cancellationToken);
+        return events
+            .Select(value => new ConversationStreamEventV1(
+                SchemaVersion,
+                _cursorCodec.Encode(tenantId, relationshipId, "event", value.Sequence),
+                value.EventType,
+                relationshipId,
+                value.Sequence,
+                value.MessageId,
+                value.ExecutionId,
+                value.OccurredAt,
+                JsonDocument.Parse(value.DataJson).RootElement.Clone()
+            ))
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<ConversationStreamEventV1>> GetEventReplayAfterSequenceAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid relationshipId,
+        long afterSequence,
+        CancellationToken cancellationToken
+    )
+    {
+        if (afterSequence < 0)
+            throw new ConversationRequestException("afterSequence must not be negative.");
+        await EnsureAccessAsync(tenantId, participantId, relationshipId, cancellationToken);
+        await using var db = await _conversationFactory.CreateDbContextAsync(cancellationToken);
+        var events = await db
+            .Events.AsNoTracking()
+            .Where(value =>
+                value.TenantId == tenantId
+                && value.RelationshipId == relationshipId
+                && value.Sequence > afterSequence
             )
             .OrderBy(value => value.Sequence)
             .Take(500)
@@ -1251,7 +1389,7 @@ public sealed class ConversationService
         }
     }
 
-    private static async Task<ConversationProjection> GetOrCreateConversationAsync(
+    private async Task<ConversationProjection> GetOrCreateConversationAsync(
         ConversationStoreDbContext db,
         Guid tenantId,
         Guid relationshipId,
@@ -1269,6 +1407,7 @@ public sealed class ConversationService
 
         conversation = new ConversationProjection
         {
+            Environment = _environment,
             TenantId = tenantId,
             RelationshipId = relationshipId,
         };
@@ -1420,6 +1559,15 @@ public sealed class ConversationService
             || !ConversationInputContract.IsLanguageTag(request.Locale)
             || request.Content[0].Language is { } language
                 && !ConversationInputContract.IsLanguageTag(language)
+            || request.ContextVersion is { Length: > 128 }
+            || request.PayloadDigest is { } digest
+                && (
+                    digest.Length != 64
+                    || digest.Any(character =>
+                        character is not (>= '0' and <= '9' or >= 'a' and <= 'f')
+                    )
+                    || request.Channel is not ("WEB" or "WHATSAPP" or "MOBILE")
+                )
         )
         {
             throw new ConversationRequestException(

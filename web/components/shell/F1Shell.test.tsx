@@ -131,7 +131,7 @@ describe('F1 shell primitives', () => {
         <p>Active work</p>
       </ProtectedAppShell>
     );
-    expect(screen.getByRole('button', { name: 'Emergency Stop' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Stop all agent work now' })).toBeEnabled();
   });
 
   it('uses authenticated relationship scope when the runtime owns active session discovery', () => {
@@ -141,7 +141,7 @@ describe('F1 shell primitives', () => {
         <p>Relationship</p>
       </ProtectedAppShell>
     );
-    expect(screen.getByRole('button', { name: 'Emergency Stop' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Stop all agent work now' })).toBeEnabled();
   });
 
   it('changes locale and theme through durable preferences', async () => {

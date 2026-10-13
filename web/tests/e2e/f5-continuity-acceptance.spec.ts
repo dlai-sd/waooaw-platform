@@ -91,7 +91,7 @@ test('UX-CONT-01 UX-CONT-02: prepared source remains active and evidenced activa
   expect((await activatedResponse.json()).resolutionEvidenceId).toBe('evidence-handoff-committed');
   await page.goto(`/relationships/${relationshipId}`);
   await expect(page.getByRole('heading', { level: 1, name: 'DIGITAL_MARKETING relationship' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Emergency Stop' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Stop all agent work now' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(
     true
   );

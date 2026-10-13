@@ -24,14 +24,29 @@ public sealed record PrepareChannelHandoff(
     string TargetConversationId,
     string CommandPurpose,
     Guid CorrelationId,
-    Guid IdempotencyKey
+    Guid IdempotencyKey,
+    string? CandidatePayloadDigest = null,
+    string? CandidateContextVersion = null,
+    long? CandidateCurrentSequence = null
 );
 
 public sealed record ActivateChannelHandoff(
     string TargetConversationId,
     Guid CorrelationId,
     Guid IdempotencyKey,
-    NeutralContinuityEnvelope Envelope
+    NeutralContinuityEnvelope Envelope,
+    string? CheckpointDigest = null,
+    string? PayloadDigest = null
+);
+
+public sealed record RevertChannelHandoff(
+    Guid ExpectedSourceBindingId,
+    Guid CorrelationId,
+    Guid IdempotencyKey,
+    string? CheckpointDigest = null,
+    string? ExpectedHandoffState = null,
+    string? ReasonCode = null,
+    string? PayloadDigest = null
 );
 
 public sealed record NeutralContinuityEnvelope(
@@ -154,7 +169,13 @@ public sealed class ChannelContinuityService
         var materialHash = HashMaterial(
             request.TargetChannel,
             request.TargetConversationId,
-            request.CommandPurpose
+            string.Join(
+                ':',
+                request.CommandPurpose,
+                request.CandidatePayloadDigest,
+                request.CandidateContextVersion,
+                request.CandidateCurrentSequence
+            )
         );
         var replay = await db
             .ContinuityCheckpoints.AsNoTracking()
@@ -269,6 +290,9 @@ public sealed class ChannelContinuityService
                 new JsonSerializerOptions(JsonSerializerDefaults.Web)
             ),
             MaterialRequestHash = materialHash,
+            CandidatePayloadDigest = request.CandidatePayloadDigest,
+            CandidateContextVersion = request.CandidateContextVersion,
+            CandidateCurrentSequence = request.CandidateCurrentSequence,
             CausalMarker = causalMarker,
             SequenceNumber = sequenceNumber,
             IdempotencyKey = request.IdempotencyKey,
@@ -328,7 +352,14 @@ public sealed class ChannelContinuityService
             || request.Envelope.ContinuityCheckpointId != handoffId
             || request.Envelope.TenantId != tenantId
             || request.Envelope.RelationshipId != relationshipId
-            || request.Envelope.IdempotencyKey != request.IdempotencyKey
+            || (
+                request.CheckpointDigest is null
+                && request.Envelope.IdempotencyKey != request.IdempotencyKey
+            )
+            || (
+                request.CheckpointDigest is not null
+                && !DigestMatches(checkpoint.ContinuityEnvelopeHash, request.CheckpointDigest)
+            )
             || !CryptographicOperations.FixedTimeEquals(
                 Convert.FromHexString(checkpoint.ContinuityEnvelopeHash),
                 Convert.FromHexString(
@@ -353,10 +384,14 @@ public sealed class ChannelContinuityService
             cancellationToken
         );
         var now = DateTimeOffset.UtcNow;
+        var pendingTarget = targetBinding.ConversationId.StartsWith(
+            "pending:",
+            StringComparison.Ordinal
+        );
         if (
             targetIdentity.ParticipantId != request.Envelope.ParticipantId
             || targetIdentity.ConversationId != request.TargetConversationId
-            || targetIdentity.ConversationId != targetBinding.ConversationId
+            || (!pendingTarget && targetIdentity.ConversationId != targetBinding.ConversationId)
             || targetIdentity.Channel != targetBinding.Channel
             || targetIdentity.AuthenticatedAt > now
             || now - targetIdentity.AuthenticatedAt > FreshAuthenticationWindow
@@ -367,6 +402,21 @@ public sealed class ChannelContinuityService
             throw new ConstitutionalActionDeniedException(
                 "Fresh target-channel authentication does not match the prepared handoff."
             );
+        }
+        if (checkpoint.Status == "COMMITTED")
+        {
+            if (
+                checkpoint.ActivationIdempotencyKey != request.IdempotencyKey
+                || !string.Equals(
+                    checkpoint.ActivationPayloadDigest,
+                    request.PayloadDigest,
+                    StringComparison.Ordinal
+                )
+            )
+                throw new ChannelContinuityConflictException(
+                    "Activation idempotency identity conflicts with the committed handoff."
+                );
+            return await LoadResultAsync(db, checkpoint, true, cancellationToken);
         }
         var hasCurrentRole = await db
             .RelationshipParticipants.AsNoTracking()
@@ -389,11 +439,6 @@ public sealed class ChannelContinuityService
                 "Participant role or relationship authority changed during handoff."
             );
         }
-        if (checkpoint.Status == "COMMITTED")
-        {
-            return await LoadResultAsync(db, checkpoint, true, cancellationToken);
-        }
-
         var evidenceId = await _constitutionalGateway.AuthorizeAndRecordAsync(
             tenantId,
             relationshipId,
@@ -411,10 +456,14 @@ public sealed class ChannelContinuityService
         );
 
         var committedAt = DateTimeOffset.UtcNow;
+        targetBinding.ConversationId = targetIdentity.ConversationId;
+        targetBinding.ExternalSubjectHash = targetIdentity.ExternalSubjectHash;
         targetBinding.Status = "ACTIVE";
         targetBinding.BoundEvidenceId = evidenceId;
         targetBinding.BoundAt = committedAt;
         checkpoint.Status = "COMMITTED";
+        checkpoint.ActivationIdempotencyKey = request.IdempotencyKey;
+        checkpoint.ActivationPayloadDigest = request.PayloadDigest;
         checkpoint.ResolutionEvidenceId = evidenceId;
         checkpoint.ResolvedAt = committedAt;
         await db.SaveChangesAsync(cancellationToken);
@@ -428,6 +477,145 @@ public sealed class ChannelContinuityService
             false,
             evidenceId,
             committedAt
+        );
+    }
+
+    public async Task<ChannelHandoffResult> RevertAsync(
+        Guid tenantId,
+        Guid relationshipId,
+        Guid handoffId,
+        Guid participantId,
+        RevertChannelHandoff request,
+        CancellationToken cancellationToken
+    )
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var relationship =
+            await db.EmploymentRelationships.SingleOrDefaultAsync(
+                value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
+                cancellationToken
+            ) ?? throw new KeyNotFoundException("Employment relationship was not found.");
+        var checkpoint =
+            await db.ContinuityCheckpoints.SingleOrDefaultAsync(
+                value =>
+                    value.TenantId == tenantId
+                    && value.RelationshipId == relationshipId
+                    && value.CheckpointId == handoffId,
+                cancellationToken
+            ) ?? throw new KeyNotFoundException("Channel handoff was not found.");
+        if (checkpoint.SourceBindingId != request.ExpectedSourceBindingId)
+            throw new ChannelContinuityConflictException(
+                "Handoff revert does not match the recorded source binding."
+            );
+        if (
+            request.CheckpointDigest is not null
+            && !DigestMatches(checkpoint.ContinuityEnvelopeHash, request.CheckpointDigest)
+        )
+            throw new ChannelContinuityConflictException(
+                "Handoff revert checkpoint digest conflicts."
+            );
+        if (
+            request.ExpectedHandoffState is not ("PREPARED" or "UNKNOWN")
+            || request.ReasonCode
+                is not (
+                    "TARGET_AUTHENTICATION_FAILED"
+                    or "TARGET_UNAVAILABLE"
+                    or "CUSTOMER_CANCELLED"
+                    or "OUTCOME_UNKNOWN"
+                )
+            || (
+                request.ExpectedHandoffState == "UNKNOWN" && request.ReasonCode != "OUTCOME_UNKNOWN"
+            )
+            || (
+                request.ExpectedHandoffState == "PREPARED"
+                && request.ReasonCode == "OUTCOME_UNKNOWN"
+            )
+        )
+            throw new ChannelContinuityConflictException(
+                "Handoff revert expected state and reason conflict."
+            );
+        var revertRequestDigest = request.PayloadDigest is null
+            ? null
+            : HashMaterial(
+                request.CheckpointDigest ?? string.Empty,
+                request.ExpectedHandoffState ?? string.Empty,
+                request.ReasonCode ?? string.Empty,
+                request.PayloadDigest
+            );
+        var sourceBinding = await db.ChannelBindings.SingleAsync(
+            value =>
+                value.TenantId == tenantId
+                && value.RelationshipId == relationshipId
+                && value.BindingId == checkpoint.SourceBindingId
+                && value.ParticipantId == participantId,
+            cancellationToken
+        );
+        if (checkpoint.Status == "REVERTED")
+        {
+            if (
+                checkpoint.RevertIdempotencyKey != request.IdempotencyKey
+                || !string.Equals(
+                    checkpoint.RevertRequestDigest,
+                    revertRequestDigest,
+                    StringComparison.Ordinal
+                )
+            )
+                throw new ChannelContinuityConflictException(
+                    "Handoff revert idempotency identity conflicts."
+                );
+            return await LoadResultAsync(db, checkpoint, true, cancellationToken);
+        }
+        if (checkpoint.Status != "PREPARED")
+            throw new ChannelContinuityConflictException(
+                "Only a pending or unresolved handoff can be reverted."
+            );
+
+        var targetBinding = await db.ChannelBindings.SingleAsync(
+            value =>
+                value.TenantId == tenantId
+                && value.RelationshipId == relationshipId
+                && value.BindingId == checkpoint.TargetBindingId,
+            cancellationToken
+        );
+        var evidenceId = await _constitutionalGateway.AuthorizeAndRecordAsync(
+            tenantId,
+            relationshipId,
+            relationship.ProfessionalType,
+            "REVERT_CHANNEL_HANDOFF",
+            request.CorrelationId,
+            new
+            {
+                checkpoint_id = checkpoint.CheckpointId,
+                source_binding_id = sourceBinding.BindingId,
+                target_binding_id = targetBinding.BindingId,
+                idempotency_key = request.IdempotencyKey,
+            },
+            cancellationToken
+        );
+        targetBinding.Status = "REVOKED";
+        sourceBinding.Status = "ACTIVE";
+        checkpoint.Status = "REVERTED";
+        checkpoint.RevertIdempotencyKey = request.IdempotencyKey;
+        checkpoint.RevertRequestDigest = revertRequestDigest;
+        checkpoint.ResolutionEvidenceId = evidenceId;
+        checkpoint.ResolvedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+        return new ChannelHandoffResult(
+            checkpoint.CheckpointId,
+            relationshipId,
+            checkpoint.Status,
+            sourceBinding,
+            targetBinding,
+            JsonSerializer.Deserialize<NeutralContinuityEnvelope>(
+                checkpoint.ContinuityEnvelopeJson
+                    ?? throw new InvalidOperationException(
+                        "Persisted continuity envelope is unavailable."
+                    ),
+                new JsonSerializerOptions(JsonSerializerDefaults.Web)
+            ) ?? throw new InvalidOperationException("Persisted continuity envelope is invalid."),
+            false,
+            evidenceId,
+            checkpoint.ResolvedAt
         );
     }
 
@@ -534,12 +722,29 @@ public sealed class ChannelContinuityService
     private static string HashText(string value) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
 
+    private static bool DigestMatches(string trusted, string supplied)
+    {
+        if (trusted.Length != 64 || supplied.Length != 64)
+            return false;
+        try
+        {
+            return CryptographicOperations.FixedTimeEquals(
+                Convert.FromHexString(trusted),
+                Convert.FromHexString(supplied)
+            );
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+    }
+
     private static string Base64Url(byte[] value) =>
         Convert.ToBase64String(value).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
     private static void ValidateChannel(string channel)
     {
-        if (channel is not ("WHATSAPP" or "WEB"))
+        if (channel is not ("WHATSAPP" or "WEB" or "MOBILE"))
             throw new ArgumentException("Unsupported relationship channel.");
     }
 
@@ -564,9 +769,13 @@ public sealed class ChannelContinuityService
         assurance switch
         {
             "TIER_1_PHONE_IDENTITY" => 1,
+            "TIER_1" => 1,
             "TIER_2_EXPLICIT_CONFIRMATION" => 2,
+            "TIER_2" => 2,
             "TIER_3_MPIN" => 3,
+            "TIER_3" => 3,
             "TIER_4_PORTAL_FRESH" => 4,
+            "TIER_4" => 4,
             _ => 0,
         };
 }

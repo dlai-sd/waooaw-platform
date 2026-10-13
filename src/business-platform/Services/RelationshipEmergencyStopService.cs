@@ -4,6 +4,8 @@
 using Grpc.Core;
 using Grpc.Net.Client;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.ConstitutionalEngine.Grpc;
 
@@ -66,9 +68,24 @@ public sealed class GrpcRelationshipEmergencyStopGateway(IConfiguration configur
 public sealed class RelationshipEmergencyStopService(
     IDbContextFactory<ConversationStoreDbContext> conversationFactory,
     EmploymentRelationshipService relationships,
-    IRelationshipEmergencyStopGateway gateway
+    IRelationshipEmergencyStopGateway gateway,
+    IOptions<Wc120ConversationOptions> conversationOptions,
+    ILogger<RelationshipEmergencyStopService> logger
 )
 {
+    public RelationshipEmergencyStopService(
+        IDbContextFactory<ConversationStoreDbContext> conversationFactory,
+        EmploymentRelationshipService relationships,
+        IRelationshipEmergencyStopGateway gateway
+    )
+        : this(
+            conversationFactory,
+            relationships,
+            gateway,
+            Options.Create(new Wc120ConversationOptions { Environment = "legacy" }),
+            NullLogger<RelationshipEmergencyStopService>.Instance
+        ) { }
+
     public async Task<EmploymentRelationship?> StopAsync(
         Guid tenantId,
         Guid relationshipId,
@@ -84,6 +101,44 @@ public sealed class RelationshipEmergencyStopService(
         await using var conversations = await conversationFactory.CreateDbContextAsync(
             cancellationToken
         );
+        var latch = await conversations.EmergencyStopLatches.SingleOrDefaultAsync(
+            value =>
+                value.Environment == conversationOptions.Value.Environment
+                && value.TenantId == tenantId
+                && value.RelationshipId == relationshipId,
+            cancellationToken
+        );
+        if (latch is null)
+        {
+            latch = new RelationshipEmergencyStopLatch
+            {
+                Environment = conversationOptions.Value.Environment,
+                TenantId = tenantId,
+                RelationshipId = relationshipId,
+                StoppedByParticipantId = participantId,
+                CorrelationId = correlationId,
+                LatchedAt = DateTimeOffset.UtcNow,
+            };
+            conversations.EmergencyStopLatches.Add(latch);
+            try
+            {
+                await conversations.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException)
+            {
+                conversations.ChangeTracker.Clear();
+                latch = await conversations.EmergencyStopLatches.SingleAsync(
+                    value =>
+                        value.Environment == conversationOptions.Value.Environment
+                        && value.TenantId == tenantId
+                        && value.RelationshipId == relationshipId,
+                    cancellationToken
+                );
+            }
+        }
+        if (latch.State == "EVIDENCE_CONFIRMED")
+            return existing;
+
         var terminalStates = new[] { "COMPLETED", "FAILED", "CANCELLED", "STOPPED" };
         var executionIds = await conversations
             .Executions.AsNoTracking()
@@ -94,13 +149,45 @@ public sealed class RelationshipEmergencyStopService(
             )
             .Select(value => value.ExecutionId)
             .ToListAsync(cancellationToken);
-        var dispatch = await gateway.StopAsync(
-            tenantId,
-            relationshipId,
-            participantId,
-            executionIds,
-            cancellationToken
-        );
+        RelationshipEmergencyStopDispatch dispatch;
+        try
+        {
+            dispatch = await gateway.StopAsync(
+                tenantId,
+                relationshipId,
+                participantId,
+                executionIds,
+                cancellationToken
+            );
+        }
+        catch (RpcException exception)
+        {
+            conversations.OperationalSignals.Add(
+                PendingEvidenceSignal(conversationOptions.Value.Environment)
+            );
+            await conversations.SaveChangesAsync(cancellationToken);
+            logger.LogWarning(
+                exception,
+                "Emergency Stop latched locally; constitutional evidence reconciliation remains pending."
+            );
+            return existing;
+        }
+        catch (TimeoutException exception)
+        {
+            conversations.OperationalSignals.Add(
+                PendingEvidenceSignal(conversationOptions.Value.Environment)
+            );
+            await conversations.SaveChangesAsync(cancellationToken);
+            logger.LogWarning(
+                exception,
+                "Emergency Stop latched locally; constitutional evidence reconciliation timed out."
+            );
+            return existing;
+        }
+        latch.State = "EVIDENCE_CONFIRMED";
+        latch.EvidenceId = dispatch.EvidenceId;
+        latch.EvidenceConfirmedAt = dispatch.ConfirmedAt;
+        await conversations.SaveChangesAsync(cancellationToken);
         return await relationships.CommitEmergencyStopAsync(
             tenantId,
             relationshipId,
@@ -111,4 +198,13 @@ public sealed class RelationshipEmergencyStopService(
             cancellationToken
         );
     }
+
+    private static ConversationOperationalSignal PendingEvidenceSignal(string environment) =>
+        new()
+        {
+            Environment = environment,
+            Category = "EMERGENCY_STOP",
+            Code = "EVIDENCE_RECONCILIATION_PENDING",
+            OccurredAt = DateTimeOffset.UtcNow,
+        };
 }

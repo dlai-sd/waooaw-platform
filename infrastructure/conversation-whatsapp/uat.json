@@ -1,0 +1,27 @@
+{
+  "$schema": "./environment.schema.json",
+  "schemaVersion": "1.0",
+  "environment": "uat",
+  "telephoneReference": "UAT_SUFFIX_2344",
+  "callbackHostReference": "whatsapp-uat.<approved-domain>",
+  "providerBindingReference": "kv://kv-waooaw-uat/secrets/whatsapp-provider-binding",
+  "secretReferences": {
+    "verifyToken": "kv://kv-waooaw-uat/secrets/whatsapp-verify-token",
+    "appSecret": "kv://kv-waooaw-uat/secrets/whatsapp-app-secret",
+    "outboundAuthority": "kv://kv-waooaw-uat/secrets/whatsapp-outbound-authority",
+    "mediaAuthority": "kv://kv-waooaw-uat/secrets/whatsapp-media-authority"
+  },
+  "namespace": "conversation-whatsapp-uat",
+  "configurationVersion": "wc120-candidate-1",
+  "featureFlagVersion": "wc120-default-off-1",
+  "policyReferences": {
+    "institutional": "sha256:fbeea62b60bd67690d2c75b08a8db052ce9ebe2999405cd6a6c92a52bd62b202",
+    "interaction": "sha256:c5b30ab19605d0b82e113a865ee1faf935093c00a5e0eee54116a43233513221",
+    "channelRendering": "sha256:1c29f7ad8fcd960f52041c9b6803235d93670b05c50d3a43bff2580715df0a5a"
+  },
+  "callbackAcceptanceEnabled": false,
+  "dispatchEnabled": false,
+  "restoreRoutingEnabled": false,
+  "providerEgressEnabled": false,
+  "activationAuthority": "SEPARATE_FOUNDER_AUTHORITY_REQUIRED"
+}

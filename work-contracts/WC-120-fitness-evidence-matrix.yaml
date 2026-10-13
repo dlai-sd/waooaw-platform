@@ -1,123 +1,616 @@
 schema: waooaw.ce-fitness-evidence-matrix/v1
 work_contract: WC-120
-source: PR #498 enterprise architecture Section 17
-status: PENDING_TEST_CHAMPION_SELECTION
+source:
+  enterprise_oracle: PR #498 Section 17
+  solution_oracle:
+    path: architecture/reference/components/conversation-engine-whatsapp-solution-work-component.md
+    git_blob: 224d8f43f2a46e810eb5b13aac35570b6f0ebcda
+    sections: [17, 19.2, 20.1, 20.2]
+  requirements_oracle: work-contracts/WC-120-requirements.yaml
+status: TEST_CHAMPION_ACCEPTED_PLANNED_SELECTORS
+test_champion_disposition: reviews/WC-120-test-champion-disposition.md
+accepted_security_profile:
+  path: architecture/reference/api-specs/conversational-employment-specialist-profiles.yaml
+  git_blob: 9c7ccecd64791010f1ba15b69d9b8a128d466d66
+  applicability: >-
+    Employment service calls use the accepted workload, assurance, denial, freshness, and
+    Emergency Stop profiles. PR #498 Section 13.6 separately controls environment-bound
+    WhatsApp adapter, media-scanner, and configurator identities and audiences; neither
+    profile may be substituted for the other.
+
+data_architect_profile:
+  source: WC-120 Section 2.3
+  status: DATA_OWNER_VALUES_FIXED_EXTERNAL_ACCEPTANCES_EXPLICIT
+  canonical_sequence:
+    scope: [environment, tenant, relationship, conversation]
+    allocator: SAME_TRANSACTION_COMPARE_AND_SWAP_OR_ROW_LOCK
+    unique_key: [environment, tenant, relationship, conversation, sequence]
+    concurrency_oracle: 256
+    provider_time_orders_canonical_history: false
+  inbox_outbox:
+    ordering_key: [environment, tenant, relationship, owner, aggregate_id, sequence]
+    lease: PT60S
+    heartbeat: PT20S
+    retry_initial: PT1S
+    retry_cap: PT5M
+    retry_formula: MIN_2_POWER_ATTEMPT_MINUS_1_SECONDS_300_SECONDS
+    retry_jitter: NONE
+    maximum_attempts: 12
+    poison_disposition: BLOCKED
+    silent_discard: false
+  idempotency:
+    canonical_json: RFC_8785_JCS_SHA_256
+    authenticated_or_binary_payload: SHA_256_EXACT_BYTES
+    unresolved_expiry: NEVER
+    terminal_tombstone: P30D
+    divergent_digest: CONFLICT_ZERO_ADDITIONAL_EFFECT
+  tenant_isolation:
+    context: TRANSACTION_LOCAL_SERVER_DERIVED
+    row_level_security: ENABLE_AND_FORCE
+    runtime_roles: NON_OWNER_NOBYPASSRLS
+    keys_and_references: ENVIRONMENT_AND_TENANT_COMPLETE
+    migration_role: TIME_BOUNDED_AUDITED_SCHEMA_ONLY_NO_RUNTIME_TRAFFIC
+  lineage:
+    correction: SAME_OWNER_ACYCLIC_APPEND_ONLY_COMPARE_AND_SWAP
+    summary_sources: EXACT_SOURCE_IDS_AND_DIGESTS_OR_CANONICAL_SEQUENCE_INTERVAL
+    derivation_versions: [contract, model, policy]
+    invalidation: [source_correction, source_erasure, source_expiry, incompatible_derivation_version]
+    invalid_before_current_read: true
+  lifecycle:
+    inbound_claim_metadata_and_tombstone: TERMINAL_OUTCOME_PLUS_P30D_UNRESOLVED_NEVER_EXPIRES
+    authenticated_raw_provider_body: DELETE_WITHIN_PT24H_AFTER_DURABLE_NORMALIZATION_OR_REJECTION
+    delivery_observation_and_opt_in_template_evidence: RELATIONSHIP_CLOSURE_PLUS_P7Y
+    accepted_customer_projection_and_derivatives: RELATIONSHIP_CLOSURE_PLUS_P90D
+    terminal_quarantine_payload_and_derivatives: DELETE_WITHIN_PT24H
+    dead_letter: PAYLOAD_PROHIBITED_TERMINAL_OUTCOME_PLUS_P30D
+    generated_export: DELETE_WITHIN_PT24H_OR_IMMEDIATELY_AFTER_VERIFIED_REVOCATION
+    protected_diagnostic: ABSENT_UNLESS_AUTHORIZED_DELETE_WITHIN_P7D
+    legal_hold: SUSPEND_ERASURE_NEVER_REACTIVATE_OPERATIONAL_USE
+    release_erasure_queue_start: PT24H
+    local_erasure_completion: PT72H
+  recovery_targets:
+    Demo: {rpo: PT24H, maximum_data_loss: PT24H, rto: PT8H}
+    UAT: {rpo: PT4H, maximum_data_loss: PT4H, rto: PT4H}
+    Production: {rpo: PT15M, maximum_data_loss: PT15M, rto: PT2H}
+    acceptance: FOUNDER_REQUIRED
+  migration:
+    batch_maximum_rows: 1000
+    order: OWNER_PRIMARY_KEY_ASCENDING
+    checkpoint: EACH_BATCH
+    backfill: RESUMABLE_IDEMPOTENT
+    old_reader_minimum_window: P7D
+    zero_old_reader_before_contraction: PT24H
+    destructive_down_migration: PROHIBITED
+  external_acceptances:
+    lifecycle_legal_basis_and_hold_authority: LEGAL
+    material_lifecycle_and_recovery_consequence: FOUNDER
+    provider_deletion_capability: PROVIDER_CONTRACT_OWNER
+    operation_schema_store_crosswalk: work-contracts/WC-120-operation-schema-owner-compatibility-crosswalk.md
+
+selection_rule: >-
+  Every listed planned selector is an expected-fail pre-implementation selector: its named
+  test does not exist in the repository at this review point and no PASS is claimed. A selector
+  becomes qualifying only when the exact node exists, directly proves the complete positive
+  and boundary oracle, passes on the bound candidate, and deposits its result at the row's
+  evidence location. Supporting existing regressions do not independently satisfy a CE-FIT row.
+
 candidate_manifest: test-results/wc120/candidate-manifest.json
-selection_gate: >-
-  The Test Champion must replace every PENDING_TEST_CHAMPION selector with exact
-  repository-native commands and test node IDs, validate the source oracle and evidence
-  destination, and bind the result to CSA-CEWA-001 before implementation starts.
 candidate_binding:
   required_fields:
     - source_commit
+    - work_contract_digest
+    - requirements_ledger_digest
     - solution_package_digest
     - api_contract_digest
+    - product_matrix_digest
+    - fitness_matrix_digest
     - image_digest
+    - test_runner_image_digests
     - schema_version_and_migration_watermark
     - configuration_and_feature_flag_versions
     - targeted_test_results
     - recovery_test_results
     - ce_fitness_results
     - final_docker_qualification
+  evidence_binding_rule: >-
+    Every result reference must identify its command, exact test node, UTC execution time,
+    exit status, artifact digest, and the candidate-manifest digest. Final Docker qualification
+    must follow targeted, recovery, and CE-FIT evidence and use that same immutable candidate.
   invalidation: >-
-    Any relevant source, image, schema, migration, configuration, or feature-flag change
-    invalidates affected tests and qualification evidence; rerun the affected targeted
-    selectors and final candidate qualification.
+    Any relevant source, solution package, API contract, image, schema, migration watermark,
+    configuration, feature flag, test, or evidence-manifest change invalidates every affected
+    result. Rerun the affected exact selectors, recovery qualification, CE-FIT qualification,
+    and final Docker qualification; never carry a PASS across candidate identity changes.
+
+test_champion_control_profile:
+  status: ACCEPTED
+  execution:
+    docker_only: true
+    host_python_or_virtual_environment: PROHIBITED
+    runners:
+      dotnet: docker compose --profile test-dotnet run --rm test-runner-dotnet
+      python: docker compose --profile test-python run --rm test-runner-python
+      browser: docker compose --profile test run --rm test-runner
+  completion_targets:
+    direct_ce_fit_rows_passing: 16
+    skipped_xfailed_or_quarantined_direct_rows: 0
+    flaky_retry_allowance: 0
+    affected_service_line_coverage: ">=90%"
+    affected_service_branch_coverage: ">=80%"
+    cross_channel_race_trials_per_candidate: 100
+    zero_mutation_denial_trials_per_matrix_case: 1
+  accessibility_targets:
+    playwright_projects:
+      - chromium-expanded
+      - firefox-expanded
+      - webkit-expanded
+      - chromium-compact-360
+      - chromium-intermediate
+    axe_serious_or_critical_violations: 0
+    keyboard_reachable_required_controls: "100%"
+    state_meaning_available_without_colour: "100%"
+    zoom: "200%"
+    compact_reflow_width_css_pixels: 360
+    focus_oracle: >-
+      After every state transition focus remains on the initiating control, moves to the
+      announced result/required correction, or returns to the documented fallback; it is
+      never lost, trapped, or moved behind an unavailable control.
+    screen_reader_oracle: >-
+      Every state and control exposes its accepted accessible name, role, value, and live
+      announcement without revealing internal identifiers; Stop is always named
+      "Stop all agent work now".
+  evidence_artifact_contract:
+    every_row:
+      - selector-result.json
+      - candidate-manifest-digest.txt
+      - runner-image-digest.txt
+    dotnet: test-results.trx
+    python: junit.xml
+    browser: playwright-report/
+    selector_result_required_fields:
+      - ce_fit_id
+      - command
+      - node
+      - started_at_utc
+      - completed_at_utc
+      - exit_status
+      - pass_fail_skip_counts
+      - candidate_manifest_digest
+      - artifact_digests
+
+recovery_limits:
+  status: DATA_TARGETS_DEFINED_PENDING_FOUNDER_ACCEPTANCE_AND_IMPLEMENTATION_EVIDENCE
+  controlling_requirement: WC120-R023
+  targets:
+    Demo: {numeric_rpo: PT24H, numeric_rto: PT8H, numeric_data_loss_bound: PT24H}
+    UAT: {numeric_rpo: PT4H, numeric_rto: PT4H, numeric_data_loss_bound: PT4H}
+    Production: {numeric_rpo: PT15M, numeric_rto: PT2H, numeric_data_loss_bound: PT15M}
+  required_evidence_per_environment:
+    - injected_fault
+    - exact_backup_restore_rollback_commands
+    - invariant_or_checksum
+    - schema_and_migration_watermark
+    - provider_egress_denial
+  rule: >-
+    Data-owned numeric targets are fixed above. Founder acceptance is required because the
+    recovery cost/risk is material. No recovery or teardown selector may be reported PASS until
+    its applicable target is Founder-accepted and retained exact-candidate evidence meets it.
+
+platform_slo_profile:
+  source: WC-120 Section 3.3; WC120-R041; Platform Architect disposition
+  status: PLATFORM_OWNER_ACCEPTED_SPECIFICATION_TARGETS
+  eligible_interval: >-
+    The exact environment is separately authorized, enabled, outside an announced maintenance
+    window, and expected to accept traffic. Production-dark readiness uses non-routing synthetic
+    configuration checks and does not authorize traffic or start a customer SLO.
+  targets:
+    callback_ingress_availability:
+      demo: ">=99.0% over rolling 24 eligible hours"
+      uat: ">=99.9% over rolling 30 eligible days"
+      production_after_separate_activation: ">=99.95% per calendar month"
+    durable_signed_event_acceptance:
+      window: rolling 15 minutes
+      target: "p95 <=1s; p99 <=2s; every eligible request <=5s"
+      low_volume_rule: "Below 100 eligible events, apply the 5s per-event ceiling and environment-bound synthetic claim probe."
+    outbound_queue:
+      window: rolling 15 minutes
+      target: "first attempt p95 <=30s; p99 <=60s; oldest eligible queued item <=120s"
+      unknown_outcome_reconciliation: "<=15 minutes to durable terminal or explicit UNRESOLVED"
+    emergency_stop:
+      window: rolling 15 minutes
+      target: "verified durable receipt to BP/PR latch p95 <=1s; p99 <=2s; hard ceiling 5s"
+    zero_tolerance:
+      cross_environment_fallback_or_mutation: 0
+      isolated_restore_provider_egress: 0
+      prohibited_telemetry_or_dead_letter_disclosure: 0
+      demo_teardown_uat_or_production_binding_changes: 0
+  alerts:
+    zero_tolerance_or_stop_hard_ceiling:
+      trigger: any occurrence
+      detect: "<=1 minute"
+      page_delivery: "<=5 minutes"
+      acknowledge: "<=10 minutes"
+      fence: "<=30 minutes"
+    availability_burn:
+      trigger: ">=14.4x over 1 hour or >=6x over 6 hours"
+      page_delivery: "<=5 minutes"
+      acknowledge: "<=15 minutes"
+      mitigation_start: "<=30 minutes"
+    durable_acceptance:
+      trigger: "p99 >2s for 5 consecutive minutes or any request >5s"
+      page_delivery: "<=5 minutes"
+      acknowledge: "<=15 minutes"
+    outbound_reconciliation:
+      trigger: "oldest eligible queue item >120s for 5 minutes or unknown outcome >15 minutes"
+      page_delivery: "<=5 minutes"
+      acknowledge: "<=15 minutes"
+    recovery:
+      trigger: any checksum/invariant mismatch or any provider egress
+      action: "fail qualification immediately; page <=5 minutes; remain non-routable"
+    dead_letter:
+      trigger: "oldest actionable item >15 minutes"
+      notify_owner: "<=5 minutes"
+      page: "at 30 minutes or after 15 minutes continuous growth"
+  owner_boundary: >-
+    Platform Architecture owns these service targets and Platform Operations owns routing and
+    response clocks. Emitting owners own signal correctness. Data-owned numeric RPO/RTO,
+    consistency-group, and data-loss limits remain blocked under recovery_limits. No target grants
+    provider, cloud, DNS, deployment, traffic, recovery, teardown, or Production authority.
+
+product_oracle_gate:
+  status: PRODUCT_OWNER_ACCEPTED_EXTERNAL_ACTIVATION_GATES_EXPLICIT
+  source: work-contracts/WC-120-product-acceptance-matrix.yaml
+  decision_dispositions:
+    PRODUCT-01: ACCEPTED
+    PRODUCT-02: ACCEPTED
+    PRODUCT-03: ACCEPTED
+    PRODUCT-04: ACCEPTED
+    PRODUCT-05: ACCEPTED
+  accepted_values:
+    initial_locale: en-IN
+    maximum_flesch_kincaid_grade: 8
+    maximum_sentence_words: 20
+    primary_actions_per_turn: 1
+    supported_media:
+      class: WhatsApp voice contribution
+      maximum_bytes: 5242880
+      maximum_duration_seconds: 120
+    accessibility: WCAG_2_2_AA
+    stop_screen_reader_label: Stop all agent work now
+  accessibility_dimensions:
+    - locale
+    - readability
+    - text_audio_parity
+    - accessible_label
+    - keyboard_focus
+    - screen_reader
+    - non_color_state
+    - stop_reachability
+  customer_states:
+    - MISSING_CONSENT
+    - WITHDRAWN_CONSENT
+    - WINDOW_EXPIRED
+    - TEMPLATE_REJECTED
+    - TEMPLATE_VERSION_MISMATCH
+    - STALE
+    - AMBIGUOUS
+    - BLOCKED
+    - AIR_UNAVAILABLE
+    - CE_UNAVAILABLE
+    - PROVIDER_UNAVAILABLE
+    - STOPPED
+  rule: >-
+    The affected selectors must assert the Product-approved visible state and next action,
+    preserve distinct stale/blocked/unavailable/Stop meanings, expose no synthetic success,
+    remain keyboard and screen-reader operable, avoid color-only meaning, and keep Stop
+    reachable. The exact copy, locale, readability, media, consent-presentation, and
+    accessibility values are fixed by the Product matrix. Legal/Founder consent policy,
+    Security/Data controls, provider constraints, activation authority, and implementation
+    evidence remain separate fail-closed gates and do not reopen these Product values.
 
 fitness_items:
   - id: CE-FIT-01
     stories: [CSA-CEWA-007, CSA-CEWA-021]
+    requirements: [WC120-R007, WC120-R021, WC120-R024, WC120-R036, WC120-R044]
+    source_oracle: Pinned solution Sections 20.1-20.2, canonical continuity row.
     oracle: Web-to-WhatsApp-to-Web retains relationship, conversation, message, sequence, plan, and authority identity.
     negative_or_boundary_oracle: Handoff or channel resumption cannot create a second canonical conversation or expand authority.
-    test_selectors: PENDING_TEST_CHAMPION
+    planned_test:
+      path: tests/business-platform.Tests/ConversationWhatsAppFitness/CeFit01CanonicalContinuityTests.cs
+      node: Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit01CanonicalContinuityTests.WebWhatsAppWeb_RetainsCanonicalIdentitySequencePlanAndAuthority_WithoutDuplicateConversation
+      command: >-
+        docker compose --profile test-dotnet run --rm test-runner-dotnet dotnet test tests/business-platform.Tests/business-platform.Tests.csproj
+        --filter "FullyQualifiedName=Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit01CanonicalContinuityTests.WebWhatsAppWeb_RetainsCanonicalIdentitySequencePlanAndAuthority_WithoutDuplicateConversation"
+      preimplementation_result: EXPECTED_FAIL_TEST_NODE_ABSENT
     evidence_location: test-results/wc120/CE-FIT-01/
+
   - id: CE-FIT-02
     stories: [CSA-CEWA-004, CSA-CEWA-008]
+    requirements: [WC120-R005, WC120-R008, WC120-R024, WC120-R044]
+    source_oracle: Pinned solution Sections 20.1-20.2, server-resolved context row.
     oracle: Registered context resolves only from authenticated identity and current server-owned state.
     negative_or_boundary_oracle: Forged/unknown context keys and cross-subject references produce zero mutation and no disclosure.
-    test_selectors: PENDING_TEST_CHAMPION
+    customer_state_oracle: Forged, unknown, and ambiguous context remains denied or blocked without disclosing whether another subject exists.
+    planned_test:
+      path: tests/business-platform.Tests/ConversationWhatsAppFitness/CeFit02ServerContextTests.cs
+      node: Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit02ServerContextTests.RegisteredContext_UsesAuthenticatedCurrentServerState_AndRejectsForgedUnknownCrossSubjectReferences
+      command: >-
+        docker compose --profile test-dotnet run --rm test-runner-dotnet dotnet test tests/business-platform.Tests/business-platform.Tests.csproj
+        --filter "FullyQualifiedName=Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit02ServerContextTests.RegisteredContext_UsesAuthenticatedCurrentServerState_AndRejectsForgedUnknownCrossSubjectReferences"
+      preimplementation_result: EXPECTED_FAIL_TEST_NODE_ABSENT
     evidence_location: test-results/wc120/CE-FIT-02/
+
   - id: CE-FIT-03
     stories: [CSA-CEWA-004, CSA-CEWA-006]
+    requirements: [WC120-R005, WC120-R006, WC120-R024, WC120-R044]
+    source_oracle: Pinned solution Sections 20.1-20.2, source-change staleness row.
     oracle: Decision Space, plan, or profile source-version changes stale affected context before the next execution.
     negative_or_boundary_oracle: Stale source versions cannot execute under an apparently current context.
-    test_selectors: PENDING_TEST_CHAMPION
+    customer_state_oracle: STALE is distinct from unavailable or success and exposes only the approved refresh/reconfirm next action.
+    planned_test:
+      path: tests/business-platform.Tests/ConversationWhatsAppFitness/CeFit03ContextStalenessTests.cs
+      node: Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit03ContextStalenessTests.SourceVersionChange_MarksAffectedContextStaleBeforeExecution_AndPreventsCurrentPresentation
+      command: >-
+        docker compose --profile test-dotnet run --rm test-runner-dotnet dotnet test tests/business-platform.Tests/business-platform.Tests.csproj
+        --filter "FullyQualifiedName=Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit03ContextStalenessTests.SourceVersionChange_MarksAffectedContextStaleBeforeExecution_AndPreventsCurrentPresentation"
+      preimplementation_result: EXPECTED_FAIL_TEST_NODE_ABSENT
     evidence_location: test-results/wc120/CE-FIT-03/
+
   - id: CE-FIT-04
     stories: [CSA-CEWA-005, CSA-CEWA-021]
+    requirements: [WC120-R005, WC120-R021, WC120-R024, WC120-R044]
+    source_oracle: Pinned solution Sections 20.1-20.2, semantic-equivalence corpus row.
     oracle: The same confirmed context and policy produce semantically equivalent recommendations across Web and WhatsApp.
     negative_or_boundary_oracle: Channel presentation differences cannot change recommendation authority, policy, or outcome.
-    test_selectors: PENDING_TEST_CHAMPION
+    planned_test:
+      path: tests/business-platform.Tests/ConversationWhatsAppFitness/CeFit04SemanticEquivalenceTests.cs
+      node: Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit04SemanticEquivalenceTests.ConfirmedContextAndPolicy_ProduceEquivalentWebAndWhatsAppRecommendations
+      command: >-
+        docker compose --profile test-dotnet run --rm test-runner-dotnet dotnet test tests/business-platform.Tests/business-platform.Tests.csproj
+        --filter "FullyQualifiedName=Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit04SemanticEquivalenceTests.ConfirmedContextAndPolicy_ProduceEquivalentWebAndWhatsAppRecommendations"
+      preimplementation_result: EXPECTED_FAIL_TEST_NODE_ABSENT
     evidence_location: test-results/wc120/CE-FIT-04/
+
   - id: CE-FIT-05
     stories: [CSA-CEWA-005, CSA-CEWA-006]
+    requirements: [WC120-R005, WC120-R006, WC120-R024, WC120-R044]
+    source_oracle: Pinned solution Sections 20.1-20.2, repeat-question corpus row.
     oracle: The approved corpus detects questions that repeat current confirmed facts and reports each violation.
     negative_or_boundary_oracle: Known confirmed facts are not re-asked as unknown; inference is not treated as confirmation.
-    test_selectors: PENDING_TEST_CHAMPION
+    planned_test:
+      path: tests/business-platform.Tests/ConversationWhatsAppFitness/CeFit05RepeatQuestionCorpusTests.cs
+      node: Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit05RepeatQuestionCorpusTests.ApprovedCorpus_ReportsRepeatedConfirmedFacts_WithoutPromotingInference
+      command: >-
+        docker compose --profile test-dotnet run --rm test-runner-dotnet dotnet test tests/business-platform.Tests/business-platform.Tests.csproj
+        --filter "FullyQualifiedName=Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit05RepeatQuestionCorpusTests.ApprovedCorpus_ReportsRepeatedConfirmedFacts_WithoutPromotingInference"
+      preimplementation_result: EXPECTED_FAIL_TEST_NODE_ABSENT
     evidence_location: test-results/wc120/CE-FIT-05/
+
   - id: CE-FIT-06
     stories: [CSA-CEWA-005]
+    requirements: [WC120-R005, WC120-R024, WC120-R044]
+    source_oracle: Pinned solution Sections 20.1-20.2, material-conclusion row.
     oracle: Material conversations contain required conclusion fields or a typed reason indicating continuation.
     negative_or_boundary_oracle: An incomplete interaction cannot be represented as concluded or successful.
-    test_selectors: PENDING_TEST_CHAMPION
+    planned_test:
+      path: tests/business-platform.Tests/ConversationWhatsAppFitness/CeFit06ConclusionContractTests.cs
+      node: Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit06ConclusionContractTests.MaterialConversation_RequiresConclusionFieldsOrTypedContinuation_AndRejectsFalseSuccess
+      command: >-
+        docker compose --profile test-dotnet run --rm test-runner-dotnet dotnet test tests/business-platform.Tests/business-platform.Tests.csproj
+        --filter "FullyQualifiedName=Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit06ConclusionContractTests.MaterialConversation_RequiresConclusionFieldsOrTypedContinuation_AndRejectsFalseSuccess"
+      preimplementation_result: EXPECTED_FAIL_TEST_NODE_ABSENT
     evidence_location: test-results/wc120/CE-FIT-06/
+
   - id: CE-FIT-07
     stories: [CSA-CEWA-003, CSA-CEWA-010, CSA-CEWA-014]
+    requirements: [WC120-R004, WC120-R010, WC120-R014, WC120-R024, WC120-R039, WC120-R041, WC120-R044]
+    source_oracle: Pinned solution Sections 20.1-20.2, independent-state-dimensions row.
     oracle: Acceptance, provider delivery/read, professional execution, customer decision, and constitutional evidence transition independently.
     negative_or_boundary_oracle: A transport observation cannot imply execution completion, customer decision, or CE evidence.
-    test_selectors: PENDING_TEST_CHAMPION
+    data_control_oracle: Delivery observations are immutable payload-minimized owner facts, deterministically rebuild the projection after duplicate/reordered/contradictory callbacks and restore, and obey relationship-closure-plus-seven-year retention without hold reactivating operational use.
+    platform_slo_oracle: Eligible canonical outbound work reaches first provider-attempt state at p95 <=30 seconds and p99 <=60 seconds over rolling 15 minutes, no eligible queue item exceeds 120 seconds, and every unknown provider outcome becomes durable terminal or explicitly UNRESOLVED within 15 minutes without duplicate dispatch.
+    customer_state_oracle: Accepted, delivered, read, executing, decided, evidenced, blocked, and unavailable remain separately labelled and projected.
+    planned_test:
+      path: tests/business-platform.Tests/ConversationWhatsAppFitness/CeFit07IndependentStateTests.cs
+      node: Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit07IndependentStateTests.TransportExecutionDecisionAndEvidence_TransitionIndependently_WithoutSyntheticSuccess
+      command: >-
+        docker compose --profile test-dotnet run --rm test-runner-dotnet dotnet test tests/business-platform.Tests/business-platform.Tests.csproj
+        --filter "FullyQualifiedName=Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit07IndependentStateTests.TransportExecutionDecisionAndEvidence_TransitionIndependently_WithoutSyntheticSuccess"
+      preimplementation_result: EXPECTED_FAIL_TEST_NODE_ABSENT
     evidence_location: test-results/wc120/CE-FIT-07/
+
   - id: CE-FIT-08
     stories: [CSA-CEWA-003, CSA-CEWA-007, CSA-CEWA-010, CSA-CEWA-012]
+    requirements: [WC120-R004, WC120-R007, WC120-R010, WC120-R012, WC120-R024, WC120-R039, WC120-R044]
+    source_oracle: Pinned solution Sections 20.1-20.2, concurrent protected-intent row.
     oracle: The same protected intent submitted concurrently across Web and WhatsApp commits at most once.
     negative_or_boundary_oracle: Idempotent replay returns the prior outcome; divergent key reuse or a race creates no second mutation.
-    test_selectors: PENDING_TEST_CHAMPION
+    data_control_oracle: A 256-way race yields one logical effect and unique canonical sequences; crash at each inbox/outbox commit boundary, 60-second lease loss, 20-second heartbeat, takeover, and attempt-12 poison preserve replay identity, create no duplicate effect, and never silently discard.
+    planned_test:
+      path: tests/business-platform.Tests/ConversationWhatsAppFitness/CeFit08ConcurrentIntentTests.cs
+      node: Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit08ConcurrentIntentTests.ConcurrentWebAndWhatsAppIntent_CommitsOnce_ReplaysPriorOutcome_AndRejectsDivergentReuse
+      command: >-
+        docker compose --profile test-dotnet run --rm test-runner-dotnet dotnet test tests/business-platform.Tests/business-platform.Tests.csproj
+        --filter "FullyQualifiedName=Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit08ConcurrentIntentTests.ConcurrentWebAndWhatsAppIntent_CommitsOnce_ReplaysPriorOutcome_AndRejectsDivergentReuse"
+      preimplementation_result: EXPECTED_FAIL_TEST_NODE_ABSENT
+    supporting_existing_regression:
+      node: Waooaw.BusinessPlatform.Tests.ConversationServiceTests.Send_ReplaysSameKeyAndHashWithoutDuplicateMutationOrDispatch
+      command: >-
+        docker compose --profile test-dotnet run --rm test-runner-dotnet dotnet test tests/business-platform.Tests/business-platform.Tests.csproj
+        --filter "FullyQualifiedName=Waooaw.BusinessPlatform.Tests.ConversationServiceTests.Send_ReplaysSameKeyAndHashWithoutDuplicateMutationOrDispatch"
+      coverage: Same-channel replay only; it does not prove the concurrent cross-channel oracle.
     evidence_location: test-results/wc120/CE-FIT-08/
+
   - id: CE-FIT-09
     stories: [CSA-CEWA-009, CSA-CEWA-010]
-    oracle: Webhook challenge predicates and raw-byte HMAC validation accept authentic requests and reject modified, oversized, malformed, wrong-recipient, or wrong-environment requests before mutation.
-    negative_or_boundary_oracle: Concurrent claim, stale/fresh delivery, and delayed accepted retry preserve one durable outcome without duplicate effects.
-    test_selectors: PENDING_TEST_CHAMPION
+    requirements: [WC120-R009, WC120-R010, WC120-R024, WC120-R041, WC120-R044]
+    source_oracle: Pinned solution Sections 19.2 and 20.1-20.2, signed-webhook and durable-result row.
+    oracle: Webhook challenge predicates (1 KiB per parameter, 8 KiB request target) and constant-time HMAC-SHA256 over at most 1 MiB of identity-encoded exact raw bytes before buffering, decompression, or transformation accept authentic requests and reject modified, oversized, encoded, malformed, wrong-algorithm, wrong-host/app/WABA/recipient, or wrong-environment requests before parsing, owner calls, or mutation.
+    negative_or_boundary_oracle: Inclusive five-minute unseen-event boundaries, stale unseen denial, concurrent first claim, same-identity divergent digest, and an authentic already-claimed delayed retry preserve one durable outcome with zero additional effects and privacy-safe denial telemetry; unresolved claims never expire and terminal payload-free replay tombstones survive the accepted 30-day Data horizon unless held longer.
+    platform_slo_oracle: Trusted receipt through atomic durable claim/outcome is p95 <=1 second, p99 <=2 seconds, and every eligible request <=5 seconds over the WC-120 Section 3.3 window; low volume uses the per-event ceiling and synthetic claim probe.
+    planned_test:
+      path: tests/business-platform.Tests/ConversationWhatsAppFitness/CeFit09WebhookIngressTests.cs
+      node: Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit09WebhookIngressTests.ChallengeRawHmacLimitsBindingsAndAtomicClaim_FailClosed_AndCommitOneDurableOutcome
+      command: >-
+        docker compose --profile test-dotnet run --rm test-runner-dotnet dotnet test tests/business-platform.Tests/business-platform.Tests.csproj
+        --filter "FullyQualifiedName=Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit09WebhookIngressTests.ChallengeRawHmacLimitsBindingsAndAtomicClaim_FailClosed_AndCommitOneDurableOutcome"
+      preimplementation_result: EXPECTED_FAIL_TEST_NODE_ABSENT
+    supporting_existing_regression:
+      node: Waooaw.BusinessPlatform.Tests.WhatsAppJourneyServiceTests.InvalidOrStaleInboundCreatesNoIdentity
+      command: >-
+        docker compose --profile test-dotnet run --rm test-runner-dotnet dotnet test tests/business-platform.Tests/business-platform.Tests.csproj
+        --filter "FullyQualifiedName=Waooaw.BusinessPlatform.Tests.WhatsAppJourneyServiceTests.InvalidOrStaleInboundCreatesNoIdentity"
+      coverage: Signature/staleness denial only; no challenge, size, raw-byte parse order, binding, claim race, or delayed retry coverage.
     evidence_location: test-results/wc120/CE-FIT-09/
+
   - id: CE-FIT-10
     stories: [CSA-CEWA-013]
+    requirements: [WC120-R013, WC120-R024, WC120-R042, WC120-R044]
+    source_oracle: Pinned solution Sections 20.1-20.2 and Product consent/service-window/template journeys.
     oracle: Inside/outside service-window and approved/rejected/version-mismatched template cases produce deterministic eligibility.
     negative_or_boundary_oracle: Expiry, withdrawal, rejection, or version mismatch causes zero dispatch and the Product-approved next action.
-    test_selectors: PENDING_TEST_CHAMPION
+    customer_state_oracle: Missing/withdrawn consent, expiry, rejection, mismatch, and unknown eligibility are distinct, accessible, and expose only an approved next action.
+    accessibility_oracle: Approved labels and copy are keyboard/focus/screen-reader operable, non-color-only, locale/readability conformant, and retain Stop reachability.
+    planned_test:
+      path: tests/business-platform.Tests/ConversationWhatsAppFitness/CeFit10EligibilityTests.cs
+      node: Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit10EligibilityTests.ConsentWindowAndTemplateMatrix_IsDeterministic_AndIneligibleCasesDispatchZero
+      command: >-
+        docker compose --profile test-dotnet run --rm test-runner-dotnet dotnet test tests/business-platform.Tests/business-platform.Tests.csproj
+        --filter "FullyQualifiedName=Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit10EligibilityTests.ConsentWindowAndTemplateMatrix_IsDeterministic_AndIneligibleCasesDispatchZero"
+      preimplementation_result: EXPECTED_FAIL_TEST_NODE_ABSENT_EXTERNAL_ACTIVATION_GATES_UNRESOLVED
+    planned_accessibility_test:
+      path: web/tests/e2e/wc120-product-state-accessibility.spec.ts
+      node: CE-FIT-10 presents consent and eligibility states accessibly
+      command: >-
+        docker compose --profile test run --rm test-runner sh -lc
+        'cd web && pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts
+        --grep "^CE-FIT-10 presents consent and eligibility states accessibly$"'
+      preimplementation_result: EXPECTED_FAIL_TEST_NODE_ABSENT_EXTERNAL_ACTIVATION_GATES_UNRESOLVED
     evidence_location: test-results/wc120/CE-FIT-10/
+
   - id: CE-FIT-11
     stories: [CSA-CEWA-015]
-    oracle: Supported media is scanned and accepted only after clean verdict and the approved voice correction/send-consent flow.
-    negative_or_boundary_oracle: MIME/signature mismatch, archive/polyglot/active format, resource expansion, malware, scanner timeout/error, expired URL, low confidence, and correction cases fail safely.
-    test_selectors: PENDING_TEST_CHAMPION
+    requirements: [WC120-R015, WC120-R024, WC120-R039, WC120-R042, WC120-R044]
+    source_oracle: Pinned solution Sections 20.1-20.2 and Product voice/media journey.
+    oracle: A Product-enabled subset of non-animated JPEG, non-animated PNG, Ogg/Opus, or MPEG audio is accepted only after exact declared/signature/sniffed type agreement; 25 MiB download, 100 MiB expanded, 10:1 ratio, 40-megapixel image, 15-minute audio, 5-second CPU, 10-second wall-time, 256 MiB memory, recursion-16 and zero archive/page/video/animation-frame ceilings; isolated clean verdict with immutable engine/policy/signature lineage no older than 24 hours; and the approved voice correction/send-consent flow.
+    negative_or_boundary_oracle: MIME/signature mismatch; SVG/GIF/PDF/video/archive/office/font/executable/script/HTML/XML, polyglot, active, unknown, or parser-capable format; each value at, below, and above every resource ceiling; malware; stale scanner signatures; scanner unknown/timeout/error; expired URL; wrong workload/environment; low confidence; and correction cases remain quarantined and create zero canonical contribution.
+    data_control_oracle: Terminal rejected/abandoned quarantine payload and every derivative delete within 24 hours; accepted media, confirmed transcript, correction, and customer projection follow relationship-closure-plus-90-day retention; source erasure removes every derivative and leaves only permissible non-reconstructive evidence.
+    customer_state_oracle: Quarantined, scanning, transcript review, corrected, unavailable, cancelled, and submitted remain distinct; no consequential submission precedes explicit confirmation and send consent.
+    accessibility_oracle: Correction, confirm, cancel, fallback, failure, and Stop controls satisfy accepted label, focus, screen-reader, parity, locale, readability, and non-color requirements.
+    planned_test:
+      path: tests/business-platform.Tests/ConversationWhatsAppFitness/CeFit11MediaVoiceSafetyTests.cs
+      node: Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit11MediaVoiceSafetyTests.MediaCorpus_ScansBeforeReasoning_AndRequiresCorrectedTranscriptConfirmationAndSendConsent
+      command: >-
+        docker compose --profile test-dotnet run --rm test-runner-dotnet dotnet test tests/business-platform.Tests/business-platform.Tests.csproj
+        --filter "FullyQualifiedName=Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit11MediaVoiceSafetyTests.MediaCorpus_ScansBeforeReasoning_AndRequiresCorrectedTranscriptConfirmationAndSendConsent"
+      preimplementation_result: EXPECTED_FAIL_TEST_NODE_ABSENT_EXTERNAL_ACTIVATION_GATES_UNRESOLVED
+    planned_accessibility_test:
+      path: web/tests/e2e/wc120-product-state-accessibility.spec.ts
+      node: CE-FIT-11 presents voice and media states accessibly
+      command: >-
+        docker compose --profile test run --rm test-runner sh -lc
+        'cd web && pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts
+        --grep "^CE-FIT-11 presents voice and media states accessibly$"'
+      preimplementation_result: EXPECTED_FAIL_TEST_NODE_ABSENT_EXTERNAL_ACTIVATION_GATES_UNRESOLVED
+    supporting_existing_regression:
+      node: Waooaw.BusinessPlatform.Tests.Voice.VoiceContributionServiceTests.CctVoiceEf01_ExplicitSendAndCurrentVersionAreMandatory
+      command: >-
+        docker compose --profile test-dotnet run --rm test-runner-dotnet dotnet test tests/business-platform.Tests/business-platform.Tests.csproj
+        --filter "FullyQualifiedName=Waooaw.BusinessPlatform.Tests.Voice.VoiceContributionServiceTests.CctVoiceEf01_ExplicitSendAndCurrentVersionAreMandatory"
+      coverage: Explicit send/version only; it does not prove the media scan corpus or accessible customer journey.
     evidence_location: test-results/wc120/CE-FIT-11/
+
   - id: CE-FIT-12
     stories: [CSA-CEWA-018, CSA-CEWA-019, CSA-CEWA-020]
-    oracle: Demo, UAT, and Production credentials, numbers, hosts, and state remain environment-specific.
-    negative_or_boundary_oracle: Cross-environment identities and credentials are rejected without fallback or mutation.
-    test_selectors: PENDING_TEST_CHAMPION
+    requirements: [WC120-R018, WC120-R019, WC120-R020, WC120-R024, WC120-R041, WC120-R044]
+    source_oracle: Pinned solution Sections 19.2 and 20.1-20.2, environment-isolation row.
+    oracle: Demo, UAT, and Production credentials, numbers, hosts, state, workload identities, purposes, operations, and audiences remain environment-specific and map to the applicable accepted profile.
+    negative_or_boundary_oracle: Wrong-profile/caller/audience/purpose/operation/environment/version and unknown, unavailable, expired, revoked, superseded, or leaked authority are rejected without owner calls, fallback, mutation, or revoked-credential rollback restoration; runtime authority is JIT and memory-only for at most five minutes, planned rotation accepts current/immediately-previous versions for at most fifteen minutes only when provider-supported, and emergency revocation/leakage/mismatch/supersession has zero overlap.
+    platform_slo_oracle: Callback ingress availability is Demo >=99.0% over rolling 24 eligible hours, UAT >=99.9% over rolling 30 eligible days, and Production >=99.95% per calendar month only after separate activation; cross-environment fallback/mutation is zero and Production-dark checks are synthetic and non-routing.
+    planned_test:
+      path: tests/contract/test_wc120_environment_isolation.py
+      node: tests/contract/test_wc120_environment_isolation.py::test_ce_fit_12_rejects_cross_environment_identity_credentials_hosts_state_and_imports
+      command: >-
+        docker compose --profile test-python run --rm test-runner-python pytest -q
+        tests/contract/test_wc120_environment_isolation.py::test_ce_fit_12_rejects_cross_environment_identity_credentials_hosts_state_and_imports
+      preimplementation_result: EXPECTED_FAIL_TEST_NODE_ABSENT
     evidence_location: test-results/wc120/CE-FIT-12/
+
   - id: CE-FIT-13
     stories: [CSA-CEWA-016]
-    oracle: Typed Stop blocks consequential contexts across channels within the accepted existing latency budget.
-    negative_or_boundary_oracle: Stop remains effective during CE outage, duplicate delivery, simultaneous channels, adapter restart, and WhatsApp release attempt.
-    test_selectors: PENDING_TEST_CHAMPION
+    requirements: [WC120-R016, WC120-R024, WC120-R041, WC120-R042, WC120-R044]
+    source_oracle: Pinned solution Sections 19.2 and 20.1-20.2, Stop-before-model row.
+    oracle: After signature and binding verification, typed Stop precedes context/model/queue/billing/outbound work and blocks consequential contexts across channels using accepted emergency_stop_profile routes and dependency independence.
+    negative_or_boundary_oracle: Stop remains latched during CE or identity-provider outage, duplicate delivery, simultaneous channels, adapter restart, timeout/reconnect, late result, and WhatsApp or ordinary-operator release attempt.
+    platform_slo_oracle: Verified durable Stop receipt reaches PR halt confirmation within 50 ms and the BP/PR latch at p95 <=100 ms, p99 <=250 ms, and a hard 1-second ceiling over rolling 15 minutes; any hard-ceiling breach invokes the zero-tolerance alert clock.
+    customer_state_oracle: STOPPED remains truthful and distinct during outages and restart; late release cannot display active or successful state.
+    accessibility_oracle: Stop remains reachable by keyboard and screen reader, has a non-color state, preserves focus, and uses Product-approved labels in every supported locale.
+    planned_test:
+      path: tests/business-platform.Tests/ConversationWhatsAppFitness/CeFit13StopResilienceTests.cs
+      node: Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit13StopResilienceTests.TypedStop_MeetsAcceptedLatency_AndSurvivesOutageDuplicateSimultaneousRestartAndRelease
+      command: >-
+        docker compose --profile test-dotnet run --rm test-runner-dotnet dotnet test tests/business-platform.Tests/business-platform.Tests.csproj
+        --filter "FullyQualifiedName=Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit13StopResilienceTests.TypedStop_MeetsAcceptedLatency_AndSurvivesOutageDuplicateSimultaneousRestartAndRelease"
+      preimplementation_result: EXPECTED_FAIL_TEST_NODE_ABSENT_EXTERNAL_ACTIVATION_GATES_UNRESOLVED
+    planned_accessibility_test:
+      path: web/tests/e2e/wc120-product-state-accessibility.spec.ts
+      node: CE-FIT-13 keeps Stop reachable and truthful in degraded states
+      command: >-
+        docker compose --profile test run --rm test-runner sh -lc
+        'cd web && pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts
+        --grep "^CE-FIT-13 keeps Stop reachable and truthful in degraded states$"'
+      preimplementation_result: EXPECTED_FAIL_TEST_NODE_ABSENT_EXTERNAL_ACTIVATION_GATES_UNRESOLVED
+    supporting_existing_regression:
+      node: Waooaw.BusinessPlatform.Tests.WhatsAppJourneyServiceTests.CctAe01Stop01_AttachedWhatsAppStopsRelationshipAndBlocksLaterCommands
+      command: >-
+        docker compose --profile test-dotnet run --rm test-runner-dotnet dotnet test tests/business-platform.Tests/business-platform.Tests.csproj
+        --filter "FullyQualifiedName=Waooaw.BusinessPlatform.Tests.WhatsAppJourneyServiceTests.CctAe01Stop01_AttachedWhatsAppStopsRelationshipAndBlocksLaterCommands"
+      coverage: Basic WhatsApp stop/fence only; no outage, duplicate, simultaneous-channel, restart, release, accepted latency, or accessibility coverage.
     evidence_location: test-results/wc120/CE-FIT-13/
+
   - id: CE-FIT-14
     stories: [CSA-CEWA-015, CSA-CEWA-017]
-    oracle: Automated success- and failure-path scans find no prohibited identity, payload, header, signature, prompt, transcript, media, or secret data in telemetry and dead letters.
-    negative_or_boundary_oracle: Framework errors, retry queues, scanner failures, and trace propagation cannot leak protected data.
-    test_selectors: PENDING_TEST_CHAMPION
+    requirements: [WC120-R015, WC120-R017, WC120-R024, WC120-R041, WC120-R044]
+    source_oracle: Pinned solution Sections 19.2 and 20.1-20.2, privacy-safe operations row.
+    oracle: Automated success- and failure-path scans find only environment, service, build version, control/policy version, one closed Section 2.4.1 reason code, boolean outcome, minute time bucket, and bounded latency bucket; no prohibited identity, payload, header, signature, phone proof, tenant/relationship identifier, provider ref, prompt, transcript, message/media metadata, template variable, context fact, customer content, secret, free text, exception text, event reference, raw duration, or high-cardinality label appears in logs, metrics, traces, baggage, alerts, exceptions, request capture, dead letters, or scanner diagnostics.
+    negative_or_boundary_oracle: Denials, framework errors, retry queues, scanner failures, exception formatting, sampling, high-cardinality labels, and trace propagation cannot add fields or values outside the ordinary-telemetry allow-list; any opaque security-event reference remains solely in the separately authorized protected evidence record.
+    platform_slo_oracle: Prohibited telemetry or dead-letter disclosure equals zero; any occurrence is detected within 1 minute, pages within 5 minutes, is acknowledged within 10 minutes, and fences the affected path or environment within 30 minutes.
+    planned_test:
+      path: tests/business-platform.Tests/ConversationWhatsAppFitness/CeFit14TelemetryLeakageTests.cs
+      node: Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit14TelemetryLeakageTests.SuccessFailureRetryScannerAndTracePaths_ContainZeroProhibitedTelemetryOrDeadLetterData
+      command: >-
+        docker compose --profile test-dotnet run --rm test-runner-dotnet dotnet test tests/business-platform.Tests/business-platform.Tests.csproj
+        --filter "FullyQualifiedName=Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit14TelemetryLeakageTests.SuccessFailureRetryScannerAndTracePaths_ContainZeroProhibitedTelemetryOrDeadLetterData"
+      preimplementation_result: EXPECTED_FAIL_TEST_NODE_ABSENT
     evidence_location: test-results/wc120/CE-FIT-14/
+
   - id: CE-FIT-15
     stories: [CSA-CEWA-022]
+    requirements: [WC120-R022, WC120-R024, WC120-R044]
+    source_oracle: Pinned solution Sections 20.1-20.2, second-client conformance row.
     oracle: A second generated client consumes the shared public contract without server semantic changes.
     negative_or_boundary_oracle: Mobile presentation cannot introduce channel-specific authority or bypass BP.
-    test_selectors: PENDING_TEST_CHAMPION
+    planned_test:
+      path: tests/contract/test_wc120_second_client.py
+      node: tests/contract/test_wc120_second_client.py::test_ce_fit_15_second_generated_client_preserves_public_semantics_and_bp_authority
+      command: >-
+        docker compose --profile test-python run --rm test-runner-python pytest -q
+        tests/contract/test_wc120_second_client.py::test_ce_fit_15_second_generated_client_preserves_public_semantics_and_bp_authority
+      preimplementation_result: EXPECTED_FAIL_TEST_NODE_ABSENT
     evidence_location: test-results/wc120/CE-FIT-15/
+
   - id: CE-FIT-16
-    stories: [CSA-CEWA-018]
+    stories: [CSA-CEWA-018, CSA-CEWA-023]
+    requirements: [WC120-R018, WC120-R023, WC120-R024, WC120-R026, WC120-R039, WC120-R041, WC120-R044]
+    source_oracle: Pinned solution Sections 20.1-20.2, complete Demo teardown row.
     oracle: Authorized Demo teardown proves callback disabled, temporary state handled, and UAT/Production bindings unchanged.
     negative_or_boundary_oracle: Teardown is denied while unresolved provider work, replay horizon, legal hold, or erasure propagation remains open.
-    test_selectors: PENDING_TEST_CHAMPION
+    data_control_oracle: Demo restore meets RPO/data-loss 24 hours and RTO 8 hours in a no-provider-egress environment, proves the complete consistency group and exact invariants, repeats deterministic at-most-1,000-row backfill from every checkpoint, and denies contraction before the seven-day old-reader window plus 24 hours of zero old-reader traffic.
+    planned_test:
+      path: tests/contract/test_wc120_demo_teardown.py
+      node: tests/contract/test_wc120_demo_teardown.py::test_ce_fit_16_demo_teardown_disables_callback_and_preserves_uat_production_or_denies_open_obligations
+      command: >-
+        docker compose --profile test-python run --rm test-runner-python pytest -q
+        tests/contract/test_wc120_demo_teardown.py::test_ce_fit_16_demo_teardown_disables_callback_and_preserves_uat_production_or_denies_open_obligations
+      preimplementation_result: EXPECTED_FAIL_TEST_NODE_ABSENT_FOUNDER_RECOVERY_ACCEPTANCE_AND_DEMO_AUTHORITY_PENDING
     evidence_location: test-results/wc120/CE-FIT-16/
