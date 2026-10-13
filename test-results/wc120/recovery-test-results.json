@@ -1,0 +1,10 @@
+{
+  "name": "recovery-tests",
+  "command": "docker compose --profile test-python run --rm test-runner-python pytest -q tests/contract/test_wc120_contract_and_recovery.py tests/contract/test_wc120_environment_isolation.py tests/contract/test_wc120_second_client.py tests/contract/test_wc120_demo_teardown.py ",
+  "started_at_utc": "2026-10-13T13:47:47Z",
+  "completed_at_utc": "2026-10-13T13:47:54.776729Z",
+  "exit_status": 0,
+  "log": "test-results/wc120/recovery-tests.log",
+  "log_digest": "3e5b2359c1f28b68ca4ff131612f824992be7c5d9ef1f023a543e340da6ac0fb",
+  "source_commit": "46ef8c6897c5ed585e3d5ea7212e4b77213df834"
+}

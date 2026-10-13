@@ -1,0 +1,18 @@
+{
+  "ce_fit_id": "CE-FIT-16",
+  "command": "docker compose --profile test-python run --rm test-runner-python pytest -q --junitxml test-results/wc120/CE-FIT-16/junit.xml tests/contract/test_wc120_demo_teardown.py::test_ce_fit_16_demo_teardown_disables_callback_and_preserves_uat_production_or_denies_open_obligations ",
+  "node": "tests/contract/test_wc120_demo_teardown.py::test_ce_fit_16_demo_teardown_disables_callback_and_preserves_uat_production_or_denies_open_obligations",
+  "started_at_utc": "2026-10-13T13:42:49Z",
+  "completed_at_utc": "2026-10-13T13:42:55.811617Z",
+  "source_commit": "46ef8c6897c5ed585e3d5ea7212e4b77213df834",
+  "exit_status": 0,
+  "pass_fail_skip_counts": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  "candidate_manifest_digest": "2725e42f3a33d71dc79c8740d203e6abf92da8b84b8f37ba4d7ab2d19216b08a",
+  "artifact_digests": {
+    "test-results/wc120/CE-FIT-16/selector.log": "e43a5a08f86c2c26a460f4a2bc2a45ffcda2ae8f446281e5b45c4f66d57bf3f5"
+  }
+}

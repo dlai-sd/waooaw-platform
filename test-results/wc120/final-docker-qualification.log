@@ -1,0 +1,196 @@
+An issue was encountered verifying workloads. For more information, run "dotnet workload update".
+  Determining projects to restore...
+  Restored /workspace/tests/business-platform.Tests/business-platform.Tests.csproj (in 1.28 sec).
+  Restored /workspace/src/business-platform/business-platform.csproj (in 1.28 sec).
+  Restored /workspace/src/business-platform/Clients/Generated/EmploymentDomainAdapter/src/Waooaw.Generated.DomainEmployment/Waooaw.Generated.DomainEmployment.csproj (in 3 ms).
+  Restored /workspace/src/business-platform/Clients/Generated/EmploymentWbe/src/Waooaw.Generated.WbeEmployment/Waooaw.Generated.WbeEmployment.csproj (in 3 ms).
+  Waooaw.Generated.WbeEmployment -> /tmp/artifacts/wc120-dotnet/bin/Waooaw.Generated.WbeEmployment/debug/Waooaw.Generated.WbeEmployment.dll
+  Waooaw.Generated.DomainEmployment -> /tmp/artifacts/wc120-dotnet/bin/Waooaw.Generated.DomainEmployment/debug/Waooaw.Generated.DomainEmployment.dll
+  business-platform -> /tmp/artifacts/wc120-dotnet/bin/business-platform/debug/BusinessPlatform.dll
+  business-platform.Tests -> /tmp/artifacts/wc120-dotnet/bin/business-platform.Tests/debug/business-platform.Tests.dll
+Test run for /tmp/artifacts/wc120-dotnet/bin/business-platform.Tests/debug/business-platform.Tests.dll (.NETCoreApp,Version=v9.0)
+VSTest version 17.14.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:  1044, Skipped:     0, Total:  1044, Duration: 2 m 22 s - business-platform.Tests.dll (net9.0)
+............................                                             [100%]Running teardown with pytest sessionfinish...
+
+28 passed in 1.82s
+
+> waooaw-web@1.0.0 test /tmp/wc120-web
+> jest --runInBand --runInBand
+
+PASS components/conversation/ConversationExperience.test.tsx
+PASS components/relationships/RelationshipWorkspace.test.tsx
+PASS app/api/wc084-portal-boundaries.test.ts
+PASS components/auth/RegistrationFlow.test.tsx
+PASS components/public/PublicExperience.test.tsx
+PASS components/acquisition/AcquisitionContinuation.test.tsx
+PASS app/api/acquisition/hire-checkout/route.test.ts
+PASS lib/auth.test.ts
+PASS components/relationships/ContractJourney.test.tsx
+PASS components/conversation/VoiceContribution.test.tsx
+PASS components/auth/AuthViews.test.tsx
+PASS app/api/auth/keycloak-logout/route.test.ts
+PASS lib/i18n.test.ts
+PASS components/shell/F1Shell.test.tsx
+PASS tests/contracts/conversation-web-contract.test.ts
+PASS components/acquisition/DisclosureContinuation.test.tsx
+PASS components/auth/ProviderCommands.test.tsx
+PASS components/portal/PortalEditors.test.tsx
+PASS app/api/voice/voice-boundary.test.ts
+PASS __tests__/app/authenticated/professionals/mine/page.test.tsx
+  ● Console
+
+    console.error
+      Portal projection failed. {
+        correlationId: '00000000-0000-4000-8000-000000000000',
+        reasonCode: 'RESPONSE_INVALID',
+        statusClass: 'none',
+        surface: 'MY_AGENTS'
+      }
+
+      40 |   }
+      41 |
+    > 42 |   console.error('Portal projection failed.', { correlationId, reasonCode, statusClass, surface });
+         |           ^
+      43 |   return { correlationId, reasonCode, statusClass };
+      44 | }
+      45 |
+
+      at error (lib/api/portal-failure.ts:42:11)
+      at MyProfessionalsPage (/tmp/wc120-web/app/(application)../../professionals/mine/page.tsx:131:48)
+      at Object.<anonymous> (__tests__/app/authenticated/professionals/mine/page.test.tsx:146:12)
+
+PASS components/conversation/PersistentConversationDock.test.tsx
+PASS components/admin/AzureKeyVaultWriter.test.tsx
+PASS components/auth/SignOutCommand.test.tsx
+PASS app/api/conversations/conversation-boundary.test.ts
+PASS lib/api/identity.test.ts
+PASS app/api/acquisition/continue/route.test.ts
+PASS __tests__/app/application/marketplace/page.test.tsx
+PASS components/relationships/RelationshipPreActivation.test.tsx
+PASS lib/identity-security-events.test.ts
+PASS components/founder/OfferabilityWorkbench.test.tsx
+PASS app/api/admin/azure-key-vault/route.test.ts
+PASS components/conversation/PortalGuideExperience.test.tsx
+PASS app/api/relationship-skill-decisions.test.ts
+PASS components/relationships/ConversationalEmploymentWorkspace.test.tsx
+PASS app/(application)/professionals/mine/selection/route.test.ts
+PASS components/public/AcquisitionController.test.tsx
+  ● Console
+
+    console.error
+      [Error: Not implemented: navigation (except hash changes)] {
+        type: 'not implemented'
+      }
+
+      at VirtualConsole.<anonymous> (../../opt/waooaw-web/node_modules/.pnpm/jest-environment-jsdom@29.7.0/node_modules/jest-environment-jsdom/build/index.js:63:23)
+      at module.exports (../../opt/waooaw-web/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:12:26)
+      at navigateFetch (../../opt/waooaw-web/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/navigation.js:77:3)
+      at exports.navigate (../../opt/waooaw-web/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/navigation.js:55:3)
+      at Timeout._onTimeout (../../opt/waooaw-web/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/nodes/HTMLHyperlinkElementUtils-impl.js:81:7)
+
+    console.error
+      [Error: Not implemented: navigation (except hash changes)] {
+        type: 'not implemented'
+      }
+
+      at VirtualConsole.<anonymous> (../../opt/waooaw-web/node_modules/.pnpm/jest-environment-jsdom@29.7.0/node_modules/jest-environment-jsdom/build/index.js:63:23)
+      at module.exports (../../opt/waooaw-web/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:12:26)
+      at navigateFetch (../../opt/waooaw-web/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/navigation.js:77:3)
+      at exports.navigate (../../opt/waooaw-web/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/navigation.js:55:3)
+      at Timeout._onTimeout (../../opt/waooaw-web/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/nodes/HTMLHyperlinkElementUtils-impl.js:81:7)
+
+PASS __tests__/verify-security-patches.test.js
+PASS app/api/interactions/portal/route.test.ts
+PASS app/api/acquisition/hire-preview/route.test.ts
+PASS app/(application)/professionals/mine/MyAgentsSelection.test.tsx
+PASS app/api/auth/identity-events/route.test.ts
+PASS __tests__/app/application/layout.test.tsx
+PASS lib/marketing-server.test.ts
+PASS lib/key-vault-admin.test.ts
+PASS app/api/relationships/[relationshipId]/contract-journey/route.test.ts
+PASS app/api/relationship-goal-verifications.test.ts
+PASS components/auth/AuthDialog.test.tsx
+PASS app/api/acquisition/events/route.test.ts
+PASS __tests__/app/application/marketplace/detail-page.test.tsx
+PASS components/shell/ProtectedAppShell.test.tsx
+PASS components/auth/AuthJourney.test.tsx
+PASS components/constitutional/EmergencyStop.test.tsx
+PASS components/auth/MobileVerificationFlow.test.tsx
+PASS __tests__/app/public/professionals/detail/page.test.tsx
+PASS components/professionals/ProfessionalComparison.test.tsx
+PASS app/api/relationship-contract-journey.test.ts
+PASS __tests__/app/application/home/page.test.tsx
+PASS components/auth/AuthBoundary.test.tsx
+PASS __tests__/app/authenticated/visitor-pages.test.tsx
+PASS lib/safe-return.test.ts
+PASS config/public-config.test.ts
+PASS lib/acquisition.test.ts
+PASS lib/server-auth.test.ts
+PASS app/api/relationships/[relationshipId]/hire-setup/route.test.ts
+PASS app/api/emergency-stop/route.test.ts
+PASS components/relationships/EvidenceWindow.test.tsx
+PASS components/auth/RegistrationProgress.test.tsx
+PASS components/auth/SessionValidityGuard.test.tsx
+PASS __tests__/app/authenticated/layout.test.tsx
+PASS lib/api/portal-failure.test.ts
+PASS lib/journey-telemetry.test.ts
+PASS lib/preferences.test.ts
+PASS components/public/LegalPage.test.ts
+PASS lib/keycloak-logout.test.ts
+PASS lib/auth-transition.test.ts
+PASS lib/api/identity-cache.test.ts
+PASS lib/consent.test.ts
+PASS lib/api/conversation.test.ts
+PASS config/professionals.test.ts
+PASS lib/api/voice.test.ts
+PASS components/auth/AuthSessionProvider.test.tsx
+PASS components/conversation/OpenConversationCommand.test.tsx
+PASS __tests__/app/middleware.test.ts
+PASS config/marketing.test.ts
+PASS config/blogs.test.ts
+
+Test Suites: 85 passed, 85 total
+Tests:       547 passed, 547 total
+Snapshots:   0 total
+Time:        17.134 s
+Ran all test suites.
+[WebServer] npm notice
+[WebServer] npm notice New major version of npm available! 11.16.0 -> 12.2.0
+[WebServer] npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+[WebServer] npm notice To update run: npm install -g npm@12.2.0
+[WebServer] npm notice
+
+Running 5 tests using 5 workers
+
+  ✓  2 [chromium-compact-360] › tests/e2e/wc120-product-state-accessibility.spec.ts:44:5 › CE-FIT-10 presents consent and eligibility states accessibly (16.8s)
+  ✓  4 [chromium-expanded] › tests/e2e/wc120-product-state-accessibility.spec.ts:44:5 › CE-FIT-10 presents consent and eligibility states accessibly (16.9s)
+  ✓  5 [chromium-intermediate] › tests/e2e/wc120-product-state-accessibility.spec.ts:44:5 › CE-FIT-10 presents consent and eligibility states accessibly (17.2s)
+  ✓  3 [firefox-expanded] › tests/e2e/wc120-product-state-accessibility.spec.ts:44:5 › CE-FIT-10 presents consent and eligibility states accessibly (18.3s)
+  ✓  1 [webkit-expanded] › tests/e2e/wc120-product-state-accessibility.spec.ts:44:5 › CE-FIT-10 presents consent and eligibility states accessibly (18.6s)
+
+  5 passed (1.3m)
+
+Running 5 tests using 5 workers
+
+  ✓  2 [chromium-intermediate] › tests/e2e/wc120-product-state-accessibility.spec.ts:57:5 › CE-FIT-11 presents voice and media states accessibly (18.3s)
+  ✓  3 [chromium-expanded] › tests/e2e/wc120-product-state-accessibility.spec.ts:57:5 › CE-FIT-11 presents voice and media states accessibly (18.3s)
+  ✓  1 [chromium-compact-360] › tests/e2e/wc120-product-state-accessibility.spec.ts:57:5 › CE-FIT-11 presents voice and media states accessibly (18.7s)
+  ✓  5 [webkit-expanded] › tests/e2e/wc120-product-state-accessibility.spec.ts:57:5 › CE-FIT-11 presents voice and media states accessibly (18.7s)
+  ✓  4 [firefox-expanded] › tests/e2e/wc120-product-state-accessibility.spec.ts:57:5 › CE-FIT-11 presents voice and media states accessibly (18.2s)
+
+  5 passed (1.3m)
+
+Running 5 tests using 5 workers
+
+  ✓  3 [chromium-compact-360] › tests/e2e/wc120-product-state-accessibility.spec.ts:70:5 › CE-FIT-13 keeps Stop reachable and truthful in degraded states (18.2s)
+  ✓  4 [chromium-expanded] › tests/e2e/wc120-product-state-accessibility.spec.ts:70:5 › CE-FIT-13 keeps Stop reachable and truthful in degraded states (18.7s)
+  ✓  1 [chromium-intermediate] › tests/e2e/wc120-product-state-accessibility.spec.ts:70:5 › CE-FIT-13 keeps Stop reachable and truthful in degraded states (19.0s)
+  ✓  2 [webkit-expanded] › tests/e2e/wc120-product-state-accessibility.spec.ts:70:5 › CE-FIT-13 keeps Stop reachable and truthful in degraded states (19.2s)
+  ✓  5 [firefox-expanded] › tests/e2e/wc120-product-state-accessibility.spec.ts:70:5 › CE-FIT-13 keeps Stop reachable and truthful in degraded states (18.2s)
+
+  5 passed (1.3m)

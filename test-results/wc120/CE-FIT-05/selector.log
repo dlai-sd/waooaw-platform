@@ -1,0 +1,19 @@
+An issue was encountered verifying workloads. For more information, run "dotnet workload update".
+  Determining projects to restore...
+  Restored /workspace/src/business-platform/Clients/Generated/EmploymentDomainAdapter/src/Waooaw.Generated.DomainEmployment/Waooaw.Generated.DomainEmployment.csproj (in 1.21 sec).
+  Restored /workspace/src/business-platform/Clients/Generated/EmploymentWbe/src/Waooaw.Generated.WbeEmployment/Waooaw.Generated.WbeEmployment.csproj (in 1.21 sec).
+  Restored /workspace/src/business-platform/business-platform.csproj (in 154 ms).
+  Restored /workspace/tests/business-platform.Tests/business-platform.Tests.csproj (in 155 ms).
+  Waooaw.Generated.WbeEmployment -> /tmp/artifacts/wc120-dotnet/bin/Waooaw.Generated.WbeEmployment/debug/Waooaw.Generated.WbeEmployment.dll
+  Waooaw.Generated.DomainEmployment -> /tmp/artifacts/wc120-dotnet/bin/Waooaw.Generated.DomainEmployment/debug/Waooaw.Generated.DomainEmployment.dll
+  business-platform -> /tmp/artifacts/wc120-dotnet/bin/business-platform/debug/BusinessPlatform.dll
+  business-platform.Tests -> /tmp/artifacts/wc120-dotnet/bin/business-platform.Tests/debug/business-platform.Tests.dll
+Test run for /tmp/artifacts/wc120-dotnet/bin/business-platform.Tests/debug/business-platform.Tests.dll (.NETCoreApp,Version=v9.0)
+VSTest version 17.14.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+WARNING: Overwriting results file: /workspace/test-results/wc120/CE-FIT-05/test-results.trx
+Results File: /workspace/test-results/wc120/CE-FIT-05/test-results.trx
+
+Passed!  - Failed:     0, Passed:     1, Skipped:     0, Total:     1, Duration: 1 s - business-platform.Tests.dll (net9.0)

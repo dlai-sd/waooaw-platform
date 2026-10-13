@@ -1,0 +1,18 @@
+{
+  "ce_fit_id": "CE-FIT-13",
+  "command": "docker compose --profile test run --rm test-runner sh -lc rm\\ -rf\\ /tmp/wc120-web\\ \\&\\&\\ cp\\ -a\\ web\\ /tmp/wc120-web\\ \\&\\&\\ rm\\ -rf\\ /tmp/wc120-web/node_modules\\ \\&\\&\\ ln\\ -s\\ /opt/waooaw-web/node_modules\\ /tmp/wc120-web/node_modules\\ \\&\\&\\ cd\\ /tmp/wc120-web\\ \\&\\&\\ PLAYWRIGHT_HTML_OPEN=never\\ PLAYWRIGHT_HTML_OUTPUT_DIR=/workspace/test-results/wc120/CE-FIT-13/playwright-report\\ pnpm\\ exec\\ playwright\\ test\\ tests/e2e/wc120-product-state-accessibility.spec.ts\\ --grep\\ \\'CE-FIT-13\\ keeps\\ Stop\\ reachable\\ and\\ truthful\\ in\\ degraded\\ states\\$\\'\\ --reporter=html ",
+  "node": "tests/e2e/wc120-product-state-accessibility.spec.ts::CE-FIT-13 keeps Stop reachable and truthful in degraded states",
+  "started_at_utc": "2026-10-13T13:45:37Z",
+  "completed_at_utc": "2026-10-13T13:46:56.737902Z",
+  "source_commit": "46ef8c6897c5ed585e3d5ea7212e4b77213df834",
+  "exit_status": 0,
+  "pass_fail_skip_counts": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  "candidate_manifest_digest": "2725e42f3a33d71dc79c8740d203e6abf92da8b84b8f37ba4d7ab2d19216b08a",
+  "artifact_digests": {
+    "test-results/wc120/CE-FIT-13/selector.log": "d60b1c0c14f3cc3e794dc1df62f5b6ad90825af2dbfe0af8b90659a3806fb49a"
+  }
+}
