@@ -21,9 +21,28 @@ fi
 result_root="${repo_root}/test-results/wc120"
 mkdir -p "${result_root}"
 
-dotnet_runner_digest="$(docker image inspect --format='{{.Id}}' "$(docker compose images -q test-runner-dotnet)")"
-python_runner_digest="$(docker image inspect --format='{{.Id}}' "$(docker compose images -q test-runner-python)")"
-browser_runner_digest="$(docker image inspect --format='{{.Id}}' "$(docker compose images -q test-runner)")"
+service_image_digest() {
+  local profile="$1"
+  local service="$2"
+  local compose_config
+  local image
+
+  if [[ -n "${profile}" ]]; then
+    compose_config="$(docker compose --profile "${profile}" config --format json)"
+  else
+    compose_config="$(docker compose config --format json)"
+  fi
+  image="$(
+    jq -r --arg service "${service}" \
+      '.services[$service].image // (.name + "-" + $service)' \
+      <<<"${compose_config}"
+  )"
+  docker image inspect --format='{{.Id}}' "${image}"
+}
+
+dotnet_runner_digest="$(service_image_digest test-dotnet test-runner-dotnet)"
+python_runner_digest="$(service_image_digest test-python test-runner-python)"
+browser_runner_digest="$(service_image_digest test test-runner)"
 
 run_selector() {
   local ce_fit_id="$1"
@@ -149,7 +168,8 @@ run_summary "final-docker-qualification" "${result_root}/final-docker-qualificat
   docker compose --profile test run --rm test-runner sh -lc \
   "sh scripts/validation_control/run_wc120_dotnet_test.sh && pytest -q tests/contract && cd web && pnpm test -- --runInBand && pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts"
 
-business_platform_digest="$(docker image inspect --format='{{.Id}}' "$(docker compose images -q business-platform)")"
+docker compose build business-platform
+business_platform_digest="$(service_image_digest "" business-platform)"
 cat >"${result_root}/image-digests.json" <<EOF
 {
   "business_platform": "${business_platform_digest}",
