@@ -5,7 +5,7 @@ contract_digest: dae3a687973173aef2d1711be96efc536a4f90b56d80fd09b4072f84c16f41f
 solution_path: architecture/reference/components/customer-engagement-workspace-solution-contract.md
 solution_digest: ac0f7912037e8395b4f0f1d73b5b56a620ab1950d41ddf4a5a2f496a19f076a8
 api_path: architecture/reference/api-specs/customer-engagement-workspace-business-platform.openapi.yaml
-api_digest: 7fc5ffec6a56f2fc69c75bf80b26c6794b9ac94695a2c5b538d11539c2232fec
+api_digest: 7fc5ffec6a56f2fc69c75bf80b26c6794b9ac94695a2c5b538d11539c2232fec # gitleaks:allow - public API contract SHA-256
 contract_status: AUTHOR_REVIEW_PASS_SPECIALIST_INTEGRATED_CANDIDATE_FOR_FOUNDER_REVIEW_IMPLEMENTATION_BLOCKED
 implementation_scope: true
 result: PLANNED
