@@ -394,8 +394,7 @@ public sealed class CustomerEngagementWorkspaceService
                 true,
                 binding.RevokedEvidenceId ?? Guid.Empty
             );
-        if (expectedVersion != 0)
-            throw new CustomerEngagementVersionConflictException();
+        ValidateChannelSessionVersion(expectedVersion);
 
         var evidenceId = await _constitutionalGateway.AuthorizeAndRecordAsync(
             tenantId,
@@ -583,6 +582,12 @@ public sealed class CustomerEngagementWorkspaceService
             "PAUSED_RENEWAL_OR_EXIT" => "Review rights and controls",
             _ => "Continue",
         };
+
+    private static void ValidateChannelSessionVersion(int expectedVersion)
+    {
+        if (expectedVersion != 0)
+            throw new CustomerEngagementVersionConflictException();
+    }
 
     private sealed record FocusPayload(
         Guid TokenId,

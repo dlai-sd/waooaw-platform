@@ -1164,6 +1164,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/RelationshipWorkspacePreferencesV1" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
     put:
       tags: [Relationship Workspace]
@@ -1181,6 +1182,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/RelationshipWorkspacePreferencesV1" }
         "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
         "409": { $ref: "#/components/responses/Conflict" }
 
@@ -1197,6 +1199,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CustomerEngagementProgressV1" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
 
   /api/v1/employment/relationships/{relationshipId}/workspace/focus-resolutions:
@@ -1218,6 +1221,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/WorkspaceFocusResolutionV1" }
         "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
         "409": { $ref: "#/components/responses/Conflict" }
         "410": { description: Focus reference expired }
