@@ -16,7 +16,7 @@ export function SignInCommand({ callbackUrl = '/home', label }: { callbackUrl?: 
       type="button"
       onClick={() => {
         setPending(true);
-        void signIn('keycloak', { callbackUrl });
+        void signIn('keycloak', { callbackUrl, waooawIntent: 'LOGIN' });
       }}
     >
       {label} <ArrowRight aria-hidden="true" size={18} />

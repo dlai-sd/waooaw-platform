@@ -13,7 +13,7 @@ namespace Waooaw.BusinessPlatform.Services;
 public sealed class CustomerIdentityJourneyService(
     IdentityService identity,
     IDbContextFactory<IdentityDbContext> factory,
-    GoogleWorkspaceProofAdapter proofAdapter,
+    VerifiedIdentityProofAdapter proofAdapter,
     IdentityProviderProjectionService providers
 )
 {
@@ -150,13 +150,42 @@ public sealed class CustomerIdentityJourneyService(
 
     public Task<CustomerWorkspaceMembership> ResolveAsync(
         ClaimsPrincipal principal,
+        Guid? selectedMembershipId,
         CancellationToken ct
     )
     {
         if (!proofAdapter.HasVerifiedEmail(principal))
             throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
         return Provisioning(proofAdapter.TrustFor(principal))
-            .ResolveAsync(ValidateActor(principal), ct);
+            .ResolveAsync(ValidateActor(principal), selectedMembershipId, ct);
+    }
+
+    public Task<CustomerWorkspaceMembership> ResolveAsync(
+        ClaimsPrincipal principal,
+        CancellationToken ct
+    ) => ResolveAsync(principal, null, ct);
+
+    public Task<IReadOnlyList<CustomerWorkspaceMembershipProjection>> ListMembershipsAsync(
+        ClaimsPrincipal principal,
+        CancellationToken ct
+    )
+    {
+        if (!proofAdapter.HasVerifiedEmail(principal))
+            throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
+        return Provisioning(proofAdapter.TrustFor(principal))
+            .ListAsync(ValidateActor(principal), ct);
+    }
+
+    public Task<CustomerWorkspaceMembership> ValidateMembershipSelectionAsync(
+        ClaimsPrincipal principal,
+        Guid membershipId,
+        CancellationToken ct
+    )
+    {
+        if (!proofAdapter.HasVerifiedEmail(principal))
+            throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
+        return Provisioning(proofAdapter.TrustFor(principal))
+            .ValidateSelectionAsync(ValidateActor(principal), membershipId, ct);
     }
 
     private CustomerWorkspaceProvisioningService Provisioning(CustomerWorkspaceTrust trust) =>

@@ -79,7 +79,7 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
     expect(generated.match(/token\("BearerAuth", \[\]\)/g)).toHaveLength(9);
     expect(identity).toContain('token("BearerAuth", [])');
     expect(identity).toContain('token("PreAccountBearerAuth", [])');
-    expect(generated).toContain('The version of the OpenAPI document: 1.10.0');
+    expect(generated).toContain('The version of the OpenAPI document: 1.11.0');
     expect(billing).toContain('async getBillingPortalSummary(');
     for (const operation of ['getRelationshipConfiguration', 'updateRelationshipOnboard']) {
       expect(configuration).toContain(`async ${operation}(`);
@@ -112,7 +112,7 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
       'getRelationshipEvidenceExport',
     ])
       expect(workspace).toContain(`async ${operation}(`);
-    expect(workspace).toContain('The version of the OpenAPI document: 1.10.0');
+    expect(workspace).toContain('The version of the OpenAPI document: 1.11.0');
     expect(relationshipPayload).not.toMatch(/\b(instanceOfVerifyGoalPayloadV1|VerifyGoalPayloadV1FromJSON),/);
     expect(verifyGoalPayload).not.toContain('import { mapValues } from "../runtime";');
     for (const operation of [

@@ -2,7 +2,6 @@
 // constitutional_basis: C-023, C-026, C-059
 
 using System.Security.Claims;
-using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.EntityFrameworkCore;
@@ -26,8 +25,8 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
 {
     public const string JourneyItem = "waooaw:customer-identity-journey";
     public const string MembershipItem = "waooaw:customer-membership";
-    public const string SessionIdItem = "waooaw:customer-session-id";
     public const string AuthenticationTimeItem = "waooaw:customer-authentication-time";
+    public const string MembershipSelectionHeader = "x-waooaw-membership-reference";
 
     public async Task InvokeAsync(HttpContext context)
     {
@@ -106,27 +105,31 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
             journey.ValidateActor(context.User);
             if (route.RequiresMembership)
             {
-                var membership = await journey.ResolveAsync(context.User, context.RequestAborted);
-                CheckHeader(context, "x-tenant-id", membership.TenantId);
-                CheckHeader(context, "x-account-id", membership.AccountId);
-                var sessions = context.RequestServices.GetRequiredService<IdentitySessionService>();
-                var sourceSessionId =
-                    context.User.FindFirstValue("sid")
-                    ?? context.User.FindFirstValue("jti")
-                    ?? $"{journey.ValidateActor(context.User).Subject}\u001f{TokenTime(context, "auth_time"):O}";
-                var authenticatedAt = TokenTime(context, "auth_time");
-                var sessionId = await sessions.ObserveAsync(
-                    membership.AccountId,
-                    $"{journey.ValidateActor(context.User).Issuer}\u001f{journey.ValidateActor(context.User).Subject}",
-                    sourceSessionId,
-                    authenticatedAt,
-                    TokenTime(context, "exp"),
-                    AssuranceClass(context),
-                    ProviderClass(context),
+                Guid? selectedMembershipId = null;
+                if (
+                    context.Request.Headers.TryGetValue(
+                        MembershipSelectionHeader,
+                        out var selectedMembership
+                    )
+                )
+                {
+                    if (
+                        selectedMembership.Count != 1
+                        || !Guid.TryParse(selectedMembership[0], out var parsedMembershipId)
+                        || parsedMembershipId == Guid.Empty
+                    )
+                        throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
+                    selectedMembershipId = parsedMembershipId;
+                }
+                var membership = await journey.ResolveAsync(
+                    context.User,
+                    selectedMembershipId,
                     context.RequestAborted
                 );
+                CheckHeader(context, "x-tenant-id", membership.TenantId);
+                CheckHeader(context, "x-account-id", membership.AccountId);
+                var authenticatedAt = TokenTime(context, "auth_time");
                 context.Items[MembershipItem] = membership;
-                context.Items[SessionIdItem] = sessionId;
                 context.Items[AuthenticationTimeItem] = authenticatedAt;
                 context.Items[TenantIsolationMiddleware.TenantIdItemKey] =
                     membership.TenantId.ToString();
@@ -134,6 +137,7 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
             else if (
                 context.Request.Headers.ContainsKey("x-tenant-id")
                 || context.Request.Headers.ContainsKey("x-account-id")
+                || context.Request.Headers.ContainsKey(MembershipSelectionHeader)
             )
                 throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
             context.Items[JourneyItem] = true;
@@ -183,7 +187,6 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
         {
             context.Items.Remove(JourneyItem);
             context.Items.Remove(MembershipItem);
-            context.Items.Remove(SessionIdItem);
             context.Items.Remove(AuthenticationTimeItem);
             context.Items.Remove(TenantIsolationMiddleware.TenantIdItemKey);
         }
@@ -217,23 +220,6 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
             : throw new IdentityActionDeniedException("IDENTITY_SESSION_REQUIRED");
     }
 
-    private static string AssuranceClass(HttpContext context) =>
-        DateTimeOffset.UtcNow - TokenTime(context, "auth_time") <= TimeSpan.FromMinutes(5)
-            ? "AAL3"
-            : "AAL2";
-
-    private static string ProviderClass(HttpContext context) =>
-        (
-            context.User.FindFirstValue("identity_provider") ?? context.User.FindFirstValue("idp")
-        )?.ToLowerInvariant() switch
-        {
-            "google" => "GOOGLE",
-            "facebook" => "FACEBOOK",
-            "apple" => "APPLE",
-            "email" => "EMAIL",
-            _ => "UNKNOWN",
-        };
-
     private static void CheckHeader(HttpContext context, string name, Guid expected)
     {
         if (
@@ -249,32 +235,9 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
     {
         if (principal.HasClaim("client_type", "service"))
             return false;
-        if (
-            principal.HasClaim("azp", "waooaw-web")
+        return principal.HasClaim("azp", "waooaw-web")
             || principal.HasClaim("azp", "waooaw-mobile")
-            || principal.HasClaim("idp", "google")
-            || principal.IsInRole("customer")
-        )
-            return true;
-        try
-        {
-            return principal
-                .FindAll("realm_access")
-                .Select(claim =>
-                {
-                    using var realm = JsonDocument.Parse(claim.Value);
-                    return realm
-                        .RootElement.GetProperty("roles")
-                        .EnumerateArray()
-                        .Any(role => role.GetString() == "customer");
-                })
-                .Any(isCustomer => isCustomer);
-        }
-        catch (Exception exception)
-            when (exception is JsonException or KeyNotFoundException or InvalidOperationException)
-        {
-            return true;
-        }
+            || principal.HasClaim("azp", "waooaw-web-preview");
     }
 
     private static Task ProblemAsync(HttpContext context, int status, string code)

@@ -2,7 +2,7 @@
 
 **Contract ID:** CSA-AUTH-001
 **Work Contract:** WC-122
-**Version:** 1.1.0-candidate.9
+**Version:** 1.1.0-candidate.10
 **Owning office:** Chief Solution Architect, Office 05
 **Status:** AUTHOR REVIEW PASS - AUTHZ-GATE-01 RESOLVED - IMPLEMENTATION AUTHORITY REQUIRED
 **Implementation authority:** None
@@ -717,6 +717,70 @@ qualification must prove all of the following at the configured Web maximum repl
 Demo and UAT sizing must be qualified independently. Scale-to-zero, cold start, database reset,
 Redis restart, and dependency recovery are load scenarios, not exemptions from the SLOs.
 
+### 12.8 Web PostgreSQL protocol-client amendment
+
+For AUTH-WC-03, Web may add exactly one direct runtime dependency:
+`postgres@3.4.9` (`https://registry.npmjs.org/postgres/-/postgres-3.4.9.tgz`,
+SRI `sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw==`).
+This is a PostgreSQL wire-protocol client with bundled TypeScript declarations and no declared
+runtime dependencies. It is accepted only as a transport from the existing Web BFF to the existing
+application PostgreSQL boundary. This amendment does not accept an Auth.js adapter, ORM, query
+builder, generic database-session schema, new workload/service/database/cache, BP token custody,
+public route, or topology change. Existing NextAuth/Auth.js `4.24.11` protocol hooks remain pinned
+and retain only the Section 25 `AUTHZ-SD-11` boundary.
+
+Web owns one process-level client/pool per Web replica. Request handlers may borrow capacity but do
+not construct, own, or close pools. Graceful termination stops admission, drains bounded in-flight
+calls inside the lifecycle budget, then closes the pool; forced termination abandons no new
+authority because every mutation remains an atomic database function. Configuration is exactly
+`wc123-auth-capacity-v1`: pool maximum `5` per replica, a `1,000 ms` acquisition/admission deadline,
+`5,000 ms` statement timeout, `1,500 ms` refresh-lock deadline, and calling budgets of `10,000 ms`
+for request/refresh and `15,000 ms` for callback/lifecycle. Connect establishment is bounded by the
+remaining acquisition deadline, idle connections may be retired without exceeding pool `5`, and
+no client queue may outlive the accepted bounded request/refresh/callback/lifecycle queue. Timeout,
+disconnect, cancellation, serialization failure, and unknown commit use the existing typed
+fail-closed reconciliation rules; they never trigger an unbounded retry or a second authority.
+
+The client connects only through the accepted private-TLS PgBouncer route using the dedicated
+`web_session_app` login and environment-local secret reference. Certificate and hostname
+verification are mandatory against the accepted trust bundle; plaintext, public DNS/IP fallback,
+redirect, caller-selected connection strings, and direct database-server bypass are prohibited.
+PgBouncer remains in transaction-pooling mode. Therefore `postgres` server-side statement caching
+is disabled (`prepare: false`); every invocation still uses the library's tagged-template/extended
+protocol parameter binding and a statically enumerated, schema-qualified approved function name.
+No identifier, SQL fragment, relation, function name, role, or connection target is interpolated
+from request data. Multi-step atomicity belongs inside the approved SECURITY DEFINER functions,
+not in Web-held cross-request transactions.
+
+`web_session_app` receives only schema `USAGE` and `EXECUTE` on the approved functions. Web must not
+query a `web_session` relation, change role/search path, invoke maintenance-only functions, or use a
+BP/application role. Logs, traces, metrics, errors, pool labels, query annotations, and evidence
+may contain only normalized operation/result class, timing, saturation, and privacy-safe
+correlation ID. They must not contain SQL parameter values, raw opaque handles or their digests,
+tokens/envelopes, protocol material, connection secrets, identity subjects, or personal data.
+
+Internal readiness must acquire within `1,000 ms` and call
+`web_session.schema_ready(expected_schema_version, expected_deploy_version)` through the restricted
+role, while separately proving the configured private target, TLS verification, pool bound, role,
+function grants, current key/catalog/config digests, and telemetry route. Failure keeps
+authentication/session traffic unready without exposing detail publicly; liveness remains process
+only. Rollback may select only the retained qualified application/dependency tuple whose lockfile,
+schema/functions, grants, key versions, and current additive database watermark are compatible.
+It closes/drains the new pool and never removes the additive schema, restores browser-JWT session
+authority, revives invalidated sessions, grants table access, or falls back to a direct/public
+database route.
+
+The lockfile and signed dependency manifest must record exact package name/version, registry
+tarball URL, SRI above, resolved package bytes/digest, source repository, license, Node
+compatibility, and the complete resolved transitive graph (which is empty for this package
+revision). Qualification must verify clean immutable install/frozen lockfile, registry signature,
+tarball/SRI equality, no unexpected install scripts or dependency graph, SBOM inclusion, provenance
+availability, license policy, malware/secret scan, vulnerability review with explicit disposition,
+maintainer/repository release identity, and Web build/test compatibility. Missing provenance or
+attestation is recorded as a review input, never silently treated as present. Any package identity,
+version, integrity, tarball, dependency graph, install-script, ownership, license, or material
+vulnerability change stops for a new accepted amendment.
+
 ## 13. Error and Recovery Contract
 
 Minimum typed outcomes:
@@ -1127,6 +1191,10 @@ Decision closure:
   exact `manage-users` grant, four-operation closed adapter, operation-bound proof, read-back,
   compensation, audit, revocation, and rollback boundary resolves `AUTHZ-GATE-01`; the WC-085 reader
   remains unchanged.
+- `AUTHZ-SD-14`: AUTH-WC-03 may add only `postgres@3.4.9` at the exact registry/SRI identity in
+  Section 12.8 as the Web-to-`web_session` wire client. The bounded exception preserves
+  NextAuth/Auth.js `4.24.11`, PgBouncer transaction pooling, restricted function-only access, and
+  the existing topology; every other dependency or database abstraction still requires amendment.
 - ADR-003 conflict: resolved by its 2026-09-09 controlling customer-membership amendment; the
   historical claim-only text is not implementation authority for customer operations.
 - Managed CIAM: rejected for this Work Contract. ADR-008's accepted stock-Keycloak decision controls
@@ -1162,6 +1230,7 @@ standard, specialist repairs, and protected-action boundaries.
 | AR-04 - Managed CIAM was rejected for WC-123 while Section 16 still required an absent comparison. | Medium | Added the bounded weighted comparison above and retained Keycloak without claiming vendor procurement evidence. |
 | AR-05 - Stock Keycloak link/unlink/recovery mutation authority was not accepted. | Resolved by bounded EA amendment | ADR-008 Amendment 4 and Section 10.1 accept the separate pinned Admin REST writer, exact role/endpoint boundary, proof, read-back/compensation, customer, audit, upgrade, stop, and rollback contract while preserving the WC-085 reader. |
 | AR-06 - Qualification could falsely pass on missing selectors, lower evidence classes, aggregate status, or incomplete negative tests. | High | Added Section 23.1 and `WC123-R048` false-PASS controls. |
+| AR-07 - AUTH-WC-03 had no accepted PostgreSQL protocol client although Web must call the approved `web_session` functions. | Resolved by bounded Founder amendment | Section 12.8 and `AUTHZ-SD-14` accept only exact `postgres@3.4.9`, freeze ownership/connectivity/pooling/timeouts/role/call/redaction/readiness/rollback/supply-chain controls, and prohibit adapter/ORM/schema/topology expansion. |
 
 **Author-review result:** PASS FOR AMENDED CANDIDATE SUBMISSION. The Founder-authorized Office 04
 repair resolves `AUTHZ-GATE-01`; current-session implementation authorization and protected

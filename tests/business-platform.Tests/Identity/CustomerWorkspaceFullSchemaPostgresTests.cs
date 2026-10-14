@@ -13,7 +13,8 @@ public sealed class CustomerWorkspaceFullSchemaPostgresTests
     public async Task FullInitChain_AppliesCustomerWorkspaceMigrationAndResolver()
     {
         var initDirectory = Path.GetDirectoryName(
-            RepositoryPaths.Resolve("infrastructure/postgres/init/01-schemas.sql"))!;
+            RepositoryPaths.Resolve("infrastructure/postgres/init/01-schemas.sql")
+        )!;
         await using var postgres = new PostgreSqlBuilder("pgvector/pgvector:pg16")
             .WithDatabase("waooaw")
             .WithUsername("waooaw")
@@ -25,14 +26,17 @@ public sealed class CustomerWorkspaceFullSchemaPostgresTests
 
         await using var connection = new NpgsqlConnection(postgres.GetConnectionString());
         await connection.OpenAsync();
-        await using var command = new NpgsqlCommand("""
+        await using var command = new NpgsqlCommand(
+            """
             SELECT
                 to_regclass('identity.accounts') IS NOT NULL,
                 to_regclass('identity.login_methods') IS NOT NULL,
                 to_regclass('identity.actor_bindings') IS NOT NULL,
                 to_regclass('identity.memberships') IS NOT NULL,
                 to_regprocedure('identity.resolve_customer_membership()') IS NOT NULL
-            """, connection);
+            """,
+            connection
+        );
         await using var reader = await command.ExecuteReaderAsync();
 
         Assert.True(await reader.ReadAsync());
@@ -43,7 +47,13 @@ public sealed class CustomerWorkspaceFullSchemaPostgresTests
         Assert.True(reader.GetBoolean(4));
         await reader.DisposeAsync();
 
-        await using var seedCommand = new NpgsqlCommand("""
+        await using var seedCommand = new NpgsqlCommand(
+            """
+            INSERT INTO business.organisations (tenant_id, name)
+            VALUES (
+                '20000000-0000-0000-0000-000000000001',
+                'Synthetic full-schema organisation'
+            );
             ALTER TABLE identity.accounts DISABLE TRIGGER ALL;
             INSERT INTO identity.accounts (
                 account_id, initial_tenant_id, origin_registration_id, status
@@ -72,7 +82,9 @@ public sealed class CustomerWorkspaceFullSchemaPostgresTests
             WHERE tenant_id = '20000000-0000-0000-0000-000000000001'
               AND professional_type_id = 'DIGITAL_MARKETING_LOCAL_SERVICE'
               AND professional_version = '1.0.0';
-            """, connection);
+            """,
+            connection
+        );
         await using var seedReader = await seedCommand.ExecuteReaderAsync();
 
         Assert.True(await seedReader.ReadAsync());

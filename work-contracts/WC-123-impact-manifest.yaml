@@ -6,20 +6,21 @@ status: READY_FOR_AUTH_WC_02
 
 accepted_sources:
   architecture/reference/components/authentication-authorization-enterprise-requirements.md: 94f8c120d450319d7b3d7d3532018b3824b8a13b39f77218fa9e385e39cb229b
-  architecture/reference/components/authentication-authorization-simplification-solution-contract.md: ddab5720b4eae6de0a0093a939234f90d8c3e189a98ee805c9657bfd8ad56063
+  architecture/reference/components/authentication-authorization-simplification-solution-contract.md: bb9b4d59289e255bb2b3cbc219330091056ef892cb0630b042f4468e9d46730c
+  architecture/reference/pipeline/identity-dependency-manifest.md: c0b2d6d596eb9fdbb9266bab128d8783b9a3aaa9f1fb7d2f4506abad2661f606
   work-contracts/WC-122-authentication-authorization-simplification.md: 8a73e196a90201238729bdcc678452ea06933d3355c751707c93383226357d21
-  work-contracts/WC-123-authentication-authorization-implementation.md: eee8d86f6589ded0fdcd16dd0050762aeca9114ae9f1f33f4051697aa61ab3db
-  work-contracts/WC-123-requirements.yaml: f86144e751582ab8a157859ef204e8fbcfe6cbf369fb8776dbf97127af443ace
+  work-contracts/WC-123-authentication-authorization-implementation.md: 3573e8c57454a54e4158a7c4aff9585429f450a6dd825501d5f8fac2fd308870
+  work-contracts/WC-123-requirements.yaml: a2b8c0a0654d7cc3cdd53f645ab0018aefc401076f7f4ce2573f72e05e654837
   adr/ADR-003-jwt-claims-multi-tenancy.md: f8c46224671a85269c246e742ee110036af36ffe2e02f229590894c796d2e2f2
   adr/ADR-008-keycloak-identity-broker.md: 63605ab58a568c3f3746247f0a8b661487a3dfd468938e18cdeb828959483593
   adr/ADR-017-web-application-framework.md: 96bb405194dca4c4e17f8b9255b507b2ac6ee0e82d935cdae6e369648e1fd4ab
-  architecture/reference/api-specs/business-platform.openapi.yaml: 7d8f719f3a194fd0fe2fd5ffaf1859ffd4082caed906cae9a5a7839db64740d1 # gitleaks:allow - public API contract SHA-256
-  architecture/reference/components/authentication-authorization-capacity-profile.v1.yaml: b6f3b984b56fac40a4f3dee2678995eb8f67537be92605726ded96dc066b416f
-  infrastructure/environment-readiness/environment-manifest.schema.json: 906c48104b890b8aee9902e57d9b6db59fbbd03037ef57bb3ed912b90ee73a5f
-  infrastructure/identity-config/environments/demo.json: cef88be7fa5f43553326ec25d7f0d495651860d93f42c1ee261ddbc632f4e5b0
-  infrastructure/identity-config/environments/uat.json: ecec8c53235456656802d1fbb1f12775bf30a6a6dcb51a587a7cebc4e290345f
+  architecture/reference/api-specs/business-platform.openapi.yaml: 2c612884b15d5fb5a6b1c9dee6c88d20848512fbb87aa14f38640ec5d535e2a7 # gitleaks:allow - public API contract SHA-256
+  architecture/reference/components/authentication-authorization-capacity-profile.v1.yaml: 71e103de28dd94708f07afcd1b8b802f76c3a8566c4f78a8b953f659fcc3163d
+  infrastructure/environment-readiness/environment-manifest.schema.json: e608ba71aa90d021b50903e1811c7f87876bc3b235b8bf0a4b0d1b4f2c986fb6
+  infrastructure/identity-config/environments/demo.json: 9e2d4dfacf5f1e6c2a542299a942b0f8355afe6ed90d403c546fff4025b95f0d
+  infrastructure/identity-config/environments/uat.json: a5f45f6d25972d3667023d2ee9355ff110adebf0e209c0507489b812512cb3c3
   infrastructure/container-apps/scaling-rules.yaml: 333aae7882b1a4ed04a7ee7b6f917e09585571f68a81ed41b97bf0bacaaf2b11
-  infrastructure/environment-readiness/secret-catalog.schema.json: ba4748795681cf61b6eab66e99cd1a0f18e1f2eb031dd8c8f6a0bd1889906cd4 # gitleaks:allow - public schema SHA-256
+  infrastructure/environment-readiness/secret-catalog.schema.json: c757945ffcdb4251d4c242e571085d9309edc54f0dc0a78fead30c0389079ccb # gitleaks:allow - public schema SHA-256
 
 requirement_binding:
   ledger: work-contracts/WC-123-requirements.yaml
@@ -91,6 +92,8 @@ planned_change_surfaces:
     - web/lib/auth.ts
     - web/lib/server-auth.ts
     - web/app/api/auth/session/**
+    - web/package.json
+    - web/package-lock.json
     - web/lib/api/generated/**
     - web/**/*.test.ts
     - web/**/*.test.tsx
@@ -168,6 +171,14 @@ deployment_and_rollback:
     - key-vault
     - keycloak
     - azure-monitor
+  web_runtime_packages:
+    - name: postgres
+      version: 3.4.9
+      tarball: https://registry.npmjs.org/postgres/-/postgres-3.4.9.tgz
+      integrity: sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw==
+      declared_runtime_dependencies: []
+      purpose: Web-to-approved-web_session-function PostgreSQL wire protocol only
+      amendment: CSA-AUTH-001 Section 12.8 and AUTHZ-SD-14
   migration: expand/verify/cutover/contract with pre-traffic additive migration
   cutover: disabled/shadow/enforced with one announced forced sign-out
   rollback:

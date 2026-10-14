@@ -86,7 +86,7 @@ export function ProviderCommands({
     try {
       if (resetSessionBeforeLaunch) {
         recordAuthTransition('ACCOUNT_SWITCH_REQUESTED', 'SESSION_RECOVERY', provider.id);
-        const logoutPath = await requestKeycloakLogout();
+        const logoutPath = await requestKeycloakLogout('ACCOUNT_SWITCH');
         clearProtectedClientState();
         if (navigate) navigate(logoutPath);
         else window.location.assign(logoutPath);
@@ -95,7 +95,10 @@ export function ProviderCommands({
       recordAuthTransition('BROKER_REDIRECT_REQUESTED', 'OK', provider.id);
       await signIn(
         nextAuthProvider[provider.id],
-        { callbackUrl },
+        {
+          callbackUrl,
+          waooawIntent: intent === 'login' ? 'LOGIN' : 'REGISTER',
+        },
         provider.id === 'GOOGLE' ? { max_age: '0', prompt: 'select_account' } : undefined
       );
     } catch {

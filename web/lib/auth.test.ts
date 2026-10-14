@@ -12,15 +12,34 @@ import {
   projectSession,
 } from './auth';
 import { persistWebIdentitySecurityEvent, recordWebIdentitySecurityEvent } from './identity-security-events';
+import { acquireRefreshLease, completeRefresh, createSession, loadSession } from './web-session-store';
 
+jest.mock('next-auth/jwt', () => ({
+  encode: jest.fn(),
+  decode: jest.fn(),
+}));
 jest.mock('./identity-security-events', () => ({
   persistWebIdentitySecurityEvent: jest.fn(),
   recordWebIdentitySecurityEvent: jest.fn(),
+}));
+jest.mock('./web-session-store', () => ({
+  acquireRefreshLease: jest.fn(),
+  completeRefresh: jest.fn(),
+  createSession: jest.fn(),
+  loadSession: jest.fn(),
+  revokeSession: jest.fn(),
 }));
 
 beforeEach(() => {
   jest.mocked(persistWebIdentitySecurityEvent).mockReset().mockResolvedValue(true);
   jest.mocked(recordWebIdentitySecurityEvent).mockReset().mockResolvedValue();
+  jest.mocked(acquireRefreshLease).mockReset().mockResolvedValue('00000000-0000-4000-8000-000000000001');
+  jest.mocked(completeRefresh).mockReset().mockResolvedValue(true);
+  jest.mocked(loadSession).mockReset();
+  jest
+    .mocked(createSession)
+    .mockReset()
+    .mockImplementation(async (token) => ({ ...token, sessionHandle: 'h'.repeat(43) }));
 });
 
 describe('Founder claim parsing', () => {
@@ -48,6 +67,26 @@ describe('Browser session projection', () => {
     expect(session.authenticated).toBe(true);
     expect(session).not.toHaveProperty('accessToken');
     expect(JSON.stringify(session)).not.toContain('secret-bearer-token');
+  });
+
+  it('encodes only the opaque random handle into the browser cookie', async () => {
+    const handle = 'h'.repeat(43);
+    const encoded = await authOptions.jwt?.encode?.({
+      token: {
+        sessionHandle: handle,
+        accessToken: 'secret-bearer-token',
+        refreshToken: 'secret-refresh-token',
+      },
+      secret: 'test-secret',
+      maxAge: 3600,
+    });
+    expect(encoded).toBe(handle);
+    expect(encoded).not.toContain('secret');
+
+    jest.mocked(loadSession).mockResolvedValueOnce({ sessionHandle: handle });
+    await expect(authOptions.jwt?.decode?.({ token: handle, secret: 'test-secret' })).resolves.toEqual({
+      sessionHandle: handle,
+    });
   });
 
   it('uses a bounded one-hour lifetime for deployment-bound preview sessions', () => {
@@ -112,7 +151,11 @@ describe('Browser session projection', () => {
         refresh_token: 'server-held-refresh-token',
         id_token: 'server-held-id-token',
       },
-      profile: { realm_access: { roles: ['founder'] } },
+      profile: {
+        iss: 'https://identity.example/realms/waooaw',
+        sub: 'customer-subject',
+        realm_access: { roles: ['founder'] },
+      },
     } as never);
 
     expect(token).toMatchObject({
@@ -187,6 +230,72 @@ describe('Browser session projection', () => {
     const session = projectSession({ expires: '2099-01-01', user: {} } as Session, token, 100);
     expect(session.authenticated).toBe(true);
     expect(JSON.stringify(session)).not.toContain('rotated-refresh-token');
+  });
+
+  it('makes refresh contenders consume the committed winner without another provider call', async () => {
+    jest.mocked(acquireRefreshLease).mockResolvedValueOnce(null);
+    jest.mocked(loadSession).mockResolvedValueOnce({
+      sessionHandle: 'h'.repeat(43),
+      accessToken: 'winner-access-token',
+      accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 300,
+      refreshVersion: 4,
+    });
+    const providerCall = jest.fn();
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      value: providerCall,
+    });
+    const jwt = authOptions.callbacks?.jwt;
+    if (!jwt) throw new Error('JWT callback is required');
+
+    const token = await jwt({
+      token: {
+        sessionHandle: 'h'.repeat(43),
+        accessToken: 'expired',
+        accessTokenExpiresAt: 1,
+        refreshToken: 'loser-refresh-token',
+      },
+      account: null,
+    } as never);
+
+    expect(token).toMatchObject({
+      accessToken: 'winner-access-token',
+      refreshVersion: 4,
+    });
+    expect(providerCall).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the session store cannot arbitrate refresh', async () => {
+    jest.mocked(acquireRefreshLease).mockRejectedValueOnce(new Error('session database unavailable'));
+    const providerCall = jest.fn();
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      value: providerCall,
+    });
+    const jwt = authOptions.callbacks?.jwt;
+    if (!jwt) throw new Error('JWT callback is required');
+
+    const token = await jwt({
+      token: {
+        sessionHandle: 'h'.repeat(43),
+        accessToken: 'expired',
+        accessTokenExpiresAt: 1,
+        refreshToken: 'server-held-refresh-token',
+        founder: true,
+      },
+      account: null,
+    } as never);
+
+    expect(token).not.toHaveProperty('accessToken');
+    expect(token).not.toHaveProperty('refreshToken');
+    expect(token.founder).toBe(false);
+    expect(providerCall).not.toHaveBeenCalled();
+    expect(recordWebIdentitySecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'REFRESH_FAILURE',
+        reasonCode: 'SESSION_STORE_UNAVAILABLE',
+      })
+    );
   });
 
   it('purges refreshed authority when the required success event cannot be persisted', async () => {
@@ -308,5 +417,21 @@ describe('Keycloak broker configuration', () => {
       issuer: 'https://demo.example/realms/waooaw',
       client: { token_endpoint_auth_method: 'none' },
     });
+  });
+
+  it('rejects unpinned or insecure production issuers', () => {
+    expect(() =>
+      keycloakClientConfig({
+        NODE_ENV: 'production',
+        KEYCLOAK_ISSUER: 'http://identity.example/realms/waooaw',
+      })
+    ).toThrow('Pinned Keycloak issuer configuration is invalid');
+    expect(() =>
+      keycloakClientConfig({
+        NODE_ENV: 'production',
+        KEYCLOAK_ISSUER: 'https://identity.example/realms/other',
+        KEYCLOAK_EXPECTED_ISSUER: 'https://identity.example/realms/waooaw',
+      })
+    ).toThrow('Pinned Keycloak issuer configuration is invalid');
   });
 });

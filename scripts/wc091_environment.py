@@ -61,7 +61,17 @@ def validate_and_render(environment: str) -> dict[str, Any]:
         raise ContractError("catalog IDs and vault secret names must be unique")
 
     applicable = [entry for entry in catalog["entries"] if environment in entry["environments"]]
+    applicable_ids = {entry["id"] for entry in applicable}
     references = {f"kv://kv-waooaw-{environment}/secrets/{entry['vaultSecretName']}" for entry in applicable}
+    session_authority = manifest.get("sessionAuthority")
+    if session_authority:
+        missing_session_secrets = set(session_authority["requiredSecretIds"]) - applicable_ids
+        if missing_session_secrets:
+            missing = ", ".join(sorted(missing_session_secrets))
+            raise ContractError(f"session authority has no declared environment secret: {missing}")
+        expected_mode = "DISPOSABLE_RESET" if environment == "demo" else "PERSISTENT_SANITIZED_RESTORE"
+        if session_authority["mode"] != expected_mode:
+            raise ContractError(f"{environment} session authority mode must be {expected_mode}")
     aliases: set[str] = set()
     for provider in manifest["providers"]:
         alias = provider.get("brokerAlias")

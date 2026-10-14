@@ -1,5 +1,5 @@
 {
-  "catalogDigest": "sha256:78b49173e23adb2ba6bf88e3dbda8f03d3b76e41884f893bf3d762b50a752c90",
+  "catalogDigest": "sha256:1dc75cbeab301a51113645482fa6c16b8451e3635762f7db10476abd25c01435",
   "configuration": {
     "capacityProfile": {
       "environment": "demo",
@@ -129,11 +129,51 @@
         "unavailableReason": "NOT_CONFIGURED"
       }
     ],
-    "schemaVersion": "1.0"
+    "schemaVersion": "1.0",
+    "sessionAuthority": {
+      "absoluteLifetimeHours": 8,
+      "backupRetentionDays": 35,
+      "compatibleDeployVersions": [
+        "wc123-auth-session-v1"
+      ],
+      "contractVersion": "1.0.0",
+      "cookieName": "__Host-waooaw-session",
+      "databasePoolSize": 5,
+      "globalConcurrency": 30,
+      "idleTimeoutMinutes": 30,
+      "keyVersions": {
+        "handleDigestWrite": "v1",
+        "protocolDigestWrite": "v1",
+        "tokenEnvelopeWrite": "v1"
+      },
+      "mode": "DISPOSABLE_RESET",
+      "operationalRetentionDays": 30,
+      "protocolRetentionHours": 24,
+      "refreshLeaseSeconds": 15,
+      "requiredSecretIds": [
+        "web-session-handle-digest",
+        "web-session-protocol-digest",
+        "web-session-token-envelope",
+        "web-session-database",
+        "web-oidc-client",
+        "keycloak-lifecycle-writer-client"
+      ],
+      "rpoMinutes": 5,
+      "rtoMinutes": 30,
+      "schemaVersion": 1,
+      "timeoutsMs": {
+        "businessPlatformMembership": 3000,
+        "identityProvider": 5000,
+        "poolAcquisition": 1000,
+        "redis": 500,
+        "refreshLock": 1500,
+        "statement": 5000
+      }
+    }
   },
   "environment": "demo",
-  "manifestDigest": "sha256:363a833ac65b5210a259b631223f3cae7605ceecbc94af04e7eb96eee7da69d7",
-  "renderDigest": "sha256:6e51050b51550cf77007e5a74f74a5d304a56ca3f0a211b212b0815263580e17",
+  "manifestDigest": "sha256:228720c90c3decd509268cdb980a768391916798d2f08317cc93cceb7247246c",
+  "renderDigest": "sha256:47d949052436f692bd94ffee79d269deb132006427275bde04605aea2f304236",
   "schemaVersion": "1.0",
   "secretBindings": [
     {
@@ -197,12 +237,67 @@
         "get"
       ],
       "consumers": [
+        "web:SESSION_HANDLE_DIGEST_KEYS"
+      ],
+      "id": "web-session-handle-digest",
+      "principal": "web",
+      "reference": "kv://kv-waooaw-demo/secrets/web-session-handle-digest"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "web:SESSION_PROTOCOL_DIGEST_KEYS"
+      ],
+      "id": "web-session-protocol-digest",
+      "principal": "web",
+      "reference": "kv://kv-waooaw-demo/secrets/web-session-protocol-digest"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "web:SESSION_TOKEN_ENVELOPE_KEYS"
+      ],
+      "id": "web-session-token-envelope",
+      "principal": "web",
+      "reference": "kv://kv-waooaw-demo/secrets/web-session-token-envelope"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "web:WEB_SESSION_DATABASE_URL"
+      ],
+      "id": "web-session-database",
+      "principal": "web",
+      "reference": "kv://kv-waooaw-demo/secrets/web-session-database-password"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
         "web:KEYCLOAK_CLIENT_SECRET",
         "keycloak:KEYCLOAK_CLIENT_SECRET"
       ],
       "id": "web-oidc-client",
       "principal": "web",
       "reference": "kv://kv-waooaw-demo/secrets/keycloak-client-secret"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "business-platform:IdentityLifecycleWriter__ClientSecret"
+      ],
+      "id": "keycloak-lifecycle-writer-client",
+      "principal": "business-platform-lifecycle-writer",
+      "reference": "kv://kv-waooaw-demo/secrets/keycloak-lifecycle-writer-client-secret"
     },
     {
       "allowedOperations": [

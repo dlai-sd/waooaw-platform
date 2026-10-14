@@ -5,9 +5,9 @@
 
 import { MonitorSmartphone, ShieldX } from 'lucide-react';
 import { useState } from 'react';
-import type { IdentityManagedSession } from '@/lib/api/generated/models/IdentityManagedSession';
+import type { WebManagedSession } from '@/lib/web-managed-session';
 
-export function SessionManager({ initialSessions }: { initialSessions: IdentityManagedSession[] }) {
+export function SessionManager({ initialSessions }: { initialSessions: WebManagedSession[] }) {
   const [sessions, setSessions] = useState(initialSessions);
   const [status, setStatus] = useState<string>('');
 

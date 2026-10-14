@@ -26,12 +26,12 @@ public sealed record VerifiedCustomerActor
 }
 
 /// <summary>
-/// Server-only result of eligible Google web/email validation and exact-subject stock Keycloak Admin reads.
+/// Server-only result of eligible verified-identity validation and exact-subject stock Keycloak Admin reads.
 /// Construction is restricted to the BP assembly. No browser proof or Boolean trust assertion is accepted.
 /// </summary>
-public sealed record VerifiedGoogleWorkspaceProof
+public sealed record VerifiedIdentityProof
 {
-    internal VerifiedGoogleWorkspaceProof(
+    internal VerifiedIdentityProof(
         VerifiedCustomerActor actor,
         string providerIssuer,
         string brokerAlias,
@@ -74,6 +74,14 @@ public sealed record CustomerWorkspaceMembership(
     Guid TenantId,
     Guid MembershipId,
     string[] Roles
+);
+
+public sealed record CustomerWorkspaceMembershipProjection(
+    Guid AccountId,
+    Guid TenantId,
+    Guid MembershipId,
+    string[] Roles,
+    string Status
 );
 
 public sealed record CustomerWorkspaceCompletion(
@@ -163,7 +171,7 @@ public sealed class CustomerWorkspaceProvisioningService
     }
 
     public async Task<CustomerWorkspaceCompletion> CompleteAsync(
-        VerifiedGoogleWorkspaceProof proof,
+        VerifiedIdentityProof proof,
         Guid registrationId,
         Guid idempotencyKey,
         string canonicalHash,
@@ -241,6 +249,7 @@ public sealed class CustomerWorkspaceProvisioningService
 
     public async Task<CustomerWorkspaceMembership> ResolveAsync(
         VerifiedCustomerActor actor,
+        Guid? selectedMembershipId,
         CancellationToken ct = default
     )
     {
@@ -255,7 +264,12 @@ public sealed class CustomerWorkspaceProvisioningService
                 timeout.Token
             );
             await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY", timeout.Token);
-            var membership = await ResolveInTransactionAsync(db, actor, timeout.Token);
+            var membership = await ResolveInTransactionAsync(
+                db,
+                actor,
+                selectedMembershipId,
+                timeout.Token
+            );
             await transaction.CommitAsync(timeout.Token);
             return membership;
         }
@@ -275,10 +289,16 @@ public sealed class CustomerWorkspaceProvisioningService
         }
     }
 
+    public Task<CustomerWorkspaceMembership> ResolveAsync(
+        VerifiedCustomerActor actor,
+        CancellationToken ct = default
+    ) => ResolveAsync(actor, null, ct);
+
     /// <summary>Re-resolves in the caller's existing transaction and sets both tenant GUCs; caller still authorizes the resource/action.</summary>
     public async Task<CustomerWorkspaceMembership> ResolveInTransactionAsync(
         IdentityDbContext db,
         VerifiedCustomerActor actor,
+        Guid? selectedMembershipId,
         CancellationToken ct = default
     )
     {
@@ -289,7 +309,7 @@ public sealed class CustomerWorkspaceProvisioningService
             );
         try
         {
-            await SetContextAsync(db, actor, ct);
+            await SetContextAsync(db, actor, selectedMembershipId, ct);
             var membership = await ReadMembershipAsync(db, ct);
             if (membership is null)
             {
@@ -327,8 +347,62 @@ public sealed class CustomerWorkspaceProvisioningService
         }
     }
 
+    public Task<CustomerWorkspaceMembership> ResolveInTransactionAsync(
+        IdentityDbContext db,
+        VerifiedCustomerActor actor,
+        CancellationToken ct = default
+    ) => ResolveInTransactionAsync(db, actor, null, ct);
+
+    public async Task<IReadOnlyList<CustomerWorkspaceMembershipProjection>> ListAsync(
+        VerifiedCustomerActor actor,
+        CancellationToken ct = default
+    )
+    {
+        ValidateActor(actor);
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(TimeSpan.FromSeconds(15));
+        await using var transaction = await db.Database.BeginTransactionAsync(
+            IsolationLevel.ReadCommitted,
+            timeout.Token
+        );
+        await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY", timeout.Token);
+        await SetContextAsync(db, actor, null, timeout.Token);
+        var memberships = new List<CustomerWorkspaceMembershipProjection>();
+        await using var command = db.Database.GetDbConnection().CreateCommand();
+        command.Transaction = db.Database.CurrentTransaction!.GetDbTransaction();
+        command.CommandText =
+            "SELECT account_id, tenant_id, membership_id, roles, membership_status "
+            + "FROM identity.list_customer_memberships()";
+        await using var reader = await command.ExecuteReaderAsync(timeout.Token);
+        while (await reader.ReadAsync(timeout.Token))
+            memberships.Add(
+                new CustomerWorkspaceMembershipProjection(
+                    reader.GetGuid(0),
+                    reader.GetGuid(1),
+                    reader.GetGuid(2),
+                    reader.GetFieldValue<string[]>(3),
+                    reader.GetString(4)
+                )
+            );
+        await reader.DisposeAsync();
+        await transaction.CommitAsync(timeout.Token);
+        return memberships;
+    }
+
+    public Task<CustomerWorkspaceMembership> ValidateSelectionAsync(
+        VerifiedCustomerActor actor,
+        Guid membershipId,
+        CancellationToken ct = default
+    )
+    {
+        if (membershipId == Guid.Empty)
+            throw new CustomerWorkspaceException(CustomerWorkspaceError.InvalidInput);
+        return ResolveAsync(actor, membershipId, ct);
+    }
+
     private async Task<CustomerWorkspaceCompletion> CompleteAttemptAsync(
-        VerifiedGoogleWorkspaceProof proof,
+        VerifiedIdentityProof proof,
         Guid registrationId,
         Guid idempotencyKey,
         string canonicalHash,
@@ -344,7 +418,7 @@ public sealed class CustomerWorkspaceProvisioningService
             IsolationLevel.ReadCommitted,
             ct
         );
-        await SetContextAsync(db, proof.Actor, ct);
+        await SetContextAsync(db, proof.Actor, null, ct);
         var locks = new[]
         {
             LockKey(["wc085-actor", proof.Actor.Issuer, proof.Actor.Subject]),
@@ -517,7 +591,7 @@ public sealed class CustomerWorkspaceProvisioningService
 
     private async Task<IdentityActorBindingRecord> CreateCohortAsync(
         IdentityDbContext db,
-        VerifiedGoogleWorkspaceProof proof,
+        VerifiedIdentityProof proof,
         IdentityRegistrationRecord registration,
         CancellationToken ct
     )
@@ -620,6 +694,7 @@ public sealed class CustomerWorkspaceProvisioningService
     private static async Task SetContextAsync(
         IdentityDbContext db,
         VerifiedCustomerActor actor,
+        Guid? selectedMembershipId,
         CancellationToken ct
     )
     {
@@ -634,6 +709,9 @@ public sealed class CustomerWorkspaceProvisioningService
             $"""
             SELECT pg_catalog.set_config('app.identity_issuer', {actor.Issuer}, true),
                    pg_catalog.set_config('app.identity_subject', {actor.Subject}, true),
+                   pg_catalog.set_config('app.current_membership_id', {selectedMembershipId?.ToString(
+                    "D"
+                ) ?? ""}, true),
                    pg_catalog.set_config('app.tenant_id', '', true),
                    pg_catalog.set_config('app.current_tenant_id', '', true),
                    pg_catalog.set_config('lock_timeout', '3s', true),
@@ -665,7 +743,8 @@ public sealed class CustomerWorkspaceProvisioningService
         if (
             await reader.ReadAsync(ct)
             || result.AccountId == result.TenantId
-            || !result.Roles.SequenceEqual(["OWNER"])
+            || result.Roles.Length != 1
+            || result.Roles[0] is not ("OWNER" or "MANAGER" or "VIEWER")
         )
             throw new CustomerWorkspaceException(CustomerWorkspaceError.InvariantViolation);
         return result;
@@ -682,7 +761,7 @@ public sealed class CustomerWorkspaceProvisioningService
             throw new CustomerWorkspaceException(CustomerWorkspaceError.ProofRequired);
     }
 
-    private void ValidateProof(VerifiedGoogleWorkspaceProof proof)
+    private void ValidateProof(VerifiedIdentityProof proof)
     {
         if (proof is null)
             throw new CustomerWorkspaceException(CustomerWorkspaceError.ProofRequired);

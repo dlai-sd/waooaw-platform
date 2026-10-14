@@ -1,7 +1,18 @@
 import type { Session, NextAuthOptions } from 'next-auth';
 import type { JWT } from 'next-auth/jwt';
+import { decode as decodeLegacyJwt, encode as encodeLegacyJwt } from 'next-auth/jwt';
 import KeycloakProvider from 'next-auth/providers/keycloak';
+import { createHash } from 'node:crypto';
 import { persistWebIdentitySecurityEvent, recordWebIdentitySecurityEvent } from '@/lib/identity-security-events';
+import { hasFounderClaim } from '@/lib/identity-claims';
+import {
+  acquireRefreshLease,
+  completeRefresh,
+  createSession,
+  loadSession,
+  revokeSession,
+} from '@/lib/web-session-store';
+import { isApprovedShadowSubject, serverSessionMode } from '@/lib/server-session-mode';
 
 // Implements: architecture/reference/ux/hybrid-application-shell.md §Authentication Boundaries
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
@@ -11,6 +22,8 @@ interface KeycloakEnvironment {
   KEYCLOAK_CLIENT_ID?: string;
   KEYCLOAK_CLIENT_SECRET?: string;
   KEYCLOAK_ISSUER?: string;
+  KEYCLOAK_EXPECTED_ISSUER?: string;
+  NODE_ENV?: string;
 }
 
 interface PreviewSessionEnvironment {
@@ -20,10 +33,23 @@ interface PreviewSessionEnvironment {
 
 export function keycloakClientConfig(environment: KeycloakEnvironment = process.env as KeycloakEnvironment) {
   const publicClient = environment.KEYCLOAK_PUBLIC_CLIENT === 'true';
+  const issuerValue = environment.KEYCLOAK_ISSUER ?? 'http://localhost:8080/realms/waooaw';
+  const issuer = new URL(issuerValue);
+  if (
+    issuer.username ||
+    issuer.password ||
+    issuer.search ||
+    issuer.hash ||
+    !/^\/realms\/[A-Za-z0-9._-]+$/.test(issuer.pathname) ||
+    (environment.NODE_ENV === 'production' && issuer.protocol !== 'https:') ||
+    (environment.KEYCLOAK_EXPECTED_ISSUER &&
+      issuer.toString().replace(/\/$/, '') !== environment.KEYCLOAK_EXPECTED_ISSUER.replace(/\/$/, ''))
+  )
+    throw new Error('Pinned Keycloak issuer configuration is invalid');
   return {
     clientId: environment.KEYCLOAK_CLIENT_ID ?? 'waooaw-web',
     clientSecret: publicClient ? '' : (environment.KEYCLOAK_CLIENT_SECRET ?? 'local-development-only'),
-    issuer: environment.KEYCLOAK_ISSUER ?? 'http://localhost:8080/realms/waooaw',
+    issuer: issuer.toString().replace(/\/$/, ''),
     ...(publicClient ? { client: { token_endpoint_auth_method: 'none' as const } } : {}),
   };
 }
@@ -44,15 +70,7 @@ function brokeredKeycloakProvider(
   };
 }
 
-export function hasFounderClaim(profile: unknown): boolean {
-  if (!profile || typeof profile !== 'object') return false;
-  const claims = profile as Record<string, unknown>;
-  if (claims.founder === true) return true;
-  const realmAccess = claims.realm_access;
-  if (!realmAccess || typeof realmAccess !== 'object') return false;
-  const roles = (realmAccess as Record<string, unknown>).roles;
-  return Array.isArray(roles) && roles.includes('founder');
-}
+export { hasFounderClaim } from '@/lib/identity-claims';
 
 export function activeAccessToken(token: JWT, nowSeconds = Math.floor(Date.now() / 1000)): string | undefined {
   return typeof token.accessToken === 'string' &&
@@ -70,6 +88,17 @@ function accessTokenClaims(accessToken: string): unknown {
   } catch {
     return undefined;
   }
+}
+
+function globalUserReference(profile: Record<string, unknown>): string {
+  const issuer = typeof profile.iss === 'string' ? profile.iss : '';
+  const subject = typeof profile.sub === 'string' ? profile.sub : '';
+  if (!issuer || !subject) throw new Error('Validated issuer and subject are required');
+  const bytes = createHash('sha256').update(`${issuer}\u001f${subject}`, 'utf8').digest().subarray(0, 16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x50;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString('hex');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 function purgeAuthentication(token: JWT): JWT {
@@ -117,6 +146,37 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
     });
     return purgeAuthentication(token);
   }
+  let leaseOwner: string | null;
+  try {
+    leaseOwner = await acquireRefreshLease(token);
+    if (!leaseOwner) {
+      if (typeof token.sessionHandle !== 'string') return purgeAuthentication(token);
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        const refreshed = await loadSession(token.sessionHandle);
+        if (refreshed && activeAccessToken(refreshed)) return refreshed;
+      }
+      await recordWebIdentitySecurityEvent({
+        correlationId,
+        eventType: 'REFRESH_FAILURE',
+        providerClass: 'INTERNAL',
+        outcome: 'FAILED',
+        reasonCode: 'REFRESH_RESULT_UNAVAILABLE',
+        assuranceClass: 'UNKNOWN',
+      });
+      return purgeAuthentication(token);
+    }
+  } catch {
+    await recordWebIdentitySecurityEvent({
+      correlationId,
+      eventType: 'REFRESH_FAILURE',
+      providerClass: 'INTERNAL',
+      outcome: 'FAILED',
+      reasonCode: 'SESSION_STORE_UNAVAILABLE',
+      assuranceClass: 'UNKNOWN',
+    });
+    return purgeAuthentication(token);
+  }
   const body = new URLSearchParams({
     grant_type: 'refresh_token',
     refresh_token: token.refreshToken,
@@ -132,6 +192,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       cache: 'no-store',
     });
     if (!response.ok) {
+      await revokeSession(token, 'REFRESH_REJECTED');
       await recordWebIdentitySecurityEvent({
         correlationId,
         eventType: 'REFRESH_FAILURE',
@@ -155,6 +216,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       !Number.isFinite(refreshed.expires_in) ||
       refreshed.expires_in <= 0
     ) {
+      await revokeSession(token, 'REFRESH_RESPONSE_INVALID');
       await recordWebIdentitySecurityEvent({
         correlationId,
         eventType: 'REFRESH_FAILURE',
@@ -173,6 +235,11 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
     }
     if (typeof refreshed.id_token === 'string' && refreshed.id_token.trim()) token.idToken = refreshed.id_token;
     token.founder = hasFounderClaim(accessTokenClaims(refreshed.access_token));
+    if (!(await completeRefresh(token, leaseOwner))) {
+      await revokeSession(token, 'REFRESH_COMMIT_FAILED');
+      return purgeAuthentication(token);
+    }
+    token.refreshVersion = (token.refreshVersion ?? 0) + 1;
     try {
       await persistWebIdentitySecurityEvent({
         correlationId,
@@ -221,6 +288,7 @@ export function projectSession(session: Session, token: JWT, nowSeconds?: number
 }
 
 const sessionMaxAge = previewSessionMaxAge();
+const sessionMode = serverSessionMode();
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -233,7 +301,29 @@ export const authOptions: NextAuthOptions = {
     brokeredKeycloakProvider('keycloak-apple', 'Apple', process.env.KEYCLOAK_APPLE_BROKER_ALIAS ?? 'apple'),
   ],
   session: { strategy: 'jwt', ...(sessionMaxAge ? { maxAge: sessionMaxAge } : {}) },
-  jwt: { ...(sessionMaxAge ? { maxAge: sessionMaxAge } : {}) },
+  jwt: {
+    ...(sessionMaxAge ? { maxAge: sessionMaxAge } : {}),
+    encode:
+      sessionMode === 'enforced'
+        ? async ({ token }) => (typeof token?.sessionHandle === 'string' ? token.sessionHandle : '')
+        : encodeLegacyJwt,
+    decode: sessionMode === 'enforced' ? async ({ token }) => (token ? loadSession(token) : null) : decodeLegacyJwt,
+  },
+  ...(sessionMode === 'enforced'
+    ? {
+        cookies: {
+          sessionToken: {
+            name: '__Host-waooaw-session',
+            options: {
+              httpOnly: true,
+              sameSite: 'lax' as const,
+              path: '/',
+              secure: true,
+            },
+          },
+        },
+      }
+    : {}),
   callbacks: {
     async jwt({ token, account, profile }) {
       if (account?.access_token) {
@@ -244,10 +334,36 @@ export const authOptions: NextAuthOptions = {
       if (account?.id_token) token.idToken = account.id_token;
       if (account) token.founder = hasFounderClaim(profile);
       token = bindPreviewDeployment(token, Boolean(account));
+      if (account) {
+        const idTokenClaims = typeof account.id_token === 'string' ? accessTokenClaims(account.id_token) : undefined;
+        const validatedProfile = {
+          ...(profile && typeof profile === 'object' ? profile : {}),
+          ...(idTokenClaims && typeof idTokenClaims === 'object' ? idTokenClaims : {}),
+        } as Record<string, unknown>;
+        if (!activeAccessToken(token)) return purgeAuthentication(token);
+        const globalUserId = globalUserReference(validatedProfile);
+        if (sessionMode === 'enforced') return createSession(token, validatedProfile, globalUserId);
+        if (sessionMode === 'shadow' && isApprovedShadowSubject(String(validatedProfile.sub ?? ''))) {
+          try {
+            const shadow = await createSession(token, validatedProfile, globalUserId);
+            await revokeSession(shadow, 'SHADOW_COMPARISON');
+          } catch (error) {
+            console.error('Server-session shadow comparison failed', {
+              cause: error instanceof Error ? error.name : 'UnknownError',
+            });
+          }
+        }
+        return token;
+      }
       return activeAccessToken(token) ? token : refreshAccessToken(token);
     },
     session({ session, token }) {
       return projectSession(session, token);
+    },
+  },
+  events: {
+    async signOut({ token }) {
+      if (sessionMode === 'enforced') await revokeSession(token, 'LOCAL_LOGOUT');
     },
   },
   pages: { signIn: '/login', error: '/auth/error' },

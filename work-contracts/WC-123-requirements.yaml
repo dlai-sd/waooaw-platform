@@ -1,10 +1,10 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-123
 contract_path: work-contracts/WC-123-authentication-authorization-implementation.md
-contract_digest: eee8d86f6589ded0fdcd16dd0050762aeca9114ae9f1f33f4051697aa61ab3db
+contract_digest: 3573e8c57454a54e4158a7c4aff9585429f450a6dd825501d5f8fac2fd308870
 enterprise_path: architecture/reference/components/authentication-authorization-enterprise-requirements.md
 solution_path: architecture/reference/components/authentication-authorization-simplification-solution-contract.md
-solution_digest: ddab5720b4eae6de0a0093a939234f90d8c3e189a98ee805c9657bfd8ad56063
+solution_digest: bb9b4d59289e255bb2b3cbc219330091056ef892cb0630b042f4468e9d46730c
 contract_status: AUTHOR_REVIEW_PASS_AUTHZ_GATE_01_RESOLVED_IMPLEMENTATION_AUTHORITY_REQUIRED
 implementation_scope: true
 result: PLANNED
@@ -53,11 +53,11 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC123-R003
-    source_requirements: ER-AUTH-003, ER-SESSION-001 through ER-SESSION-012
+    source_requirements: ER-AUTH-003, ER-SESSION-001 through ER-SESSION-012, CSA-AUTH-001 Section 12.8 and AUTHZ-SD-14
     component: AUTH-WC-02, AUTH-WC-03
-    observable_outcome: The Web BFF owns one server-side application-session authority and the browser holds only one opaque nonrecoverable handle.
+    observable_outcome: The Web BFF owns one server-side application-session authority, the browser holds only one opaque nonrecoverable handle, and exact postgres@3.4.9 transports parameterized calls only to the approved web_session functions through the restricted private-TLS pool.
     owner: Platform IT Expert - Web session boundary
-    oracle: Browser/bundle/storage scans plus atomic create/rotate/refresh/revoke/expire, outage, backup/restore, multi-tab, and compatibility tests.
+    oracle: Browser/bundle/storage scans plus atomic create/rotate/refresh/revoke/expire, actual-role function-only and direct-table denial, private-TLS/PgBouncer, pool/timeout, redaction, outage, backup/restore, multi-tab, and compatibility tests.
 
   - <<: *defaults
     requirement_id: WC123-R004
@@ -303,11 +303,11 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC123-R034
-    source_requirements: ER-SESSION-006, ER-SESSION-008, ER-COMPAT-001 through ER-COMPAT-007, CSA-AUTH-001 Sections 12.7 and 24
+    source_requirements: ER-SESSION-006, ER-SESSION-008, ER-COMPAT-001 through ER-COMPAT-007, CSA-AUTH-001 Sections 12.7, 12.8, and 24
     component: AUTH-WC-01, AUTH-WC-02, AUTH-WC-07
     observable_outcome: WC-123 fits the separately indexed application-image and dependency manifests using the existing Web workload, application PostgreSQL, Redis, Key Vault, private network, telemetry, migration, readiness, and blue-green boundaries without a new workload or infrastructure product.
     owner: Platform IT Expert and Platform Operations - platform topology
-    oracle: Exact-seven inventory, dependency graph, private-route/RBAC denial, application-database placement, migration-job, no-new-resource, environment-isolation, and topology contract tests.
+    oracle: Architecture-indexed inventory, exact postgres@3.4.9 package identity/empty runtime graph, private-route/RBAC denial, application-database placement, migration-job, no-new-resource, environment-isolation, and topology contract tests.
 
   - <<: *defaults
     requirement_id: WC123-R035
@@ -327,11 +327,11 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC123-R037
-    source_requirements: ER-COMPAT-003, ER-COMPAT-007, ER-OBS-002, CSA-AUTH-001 Sections 12.7 and 23
+    source_requirements: ER-COMPAT-003, ER-COMPAT-007, ER-OBS-002, CSA-AUTH-001 Sections 12.7, 12.8, and 23
     component: AUTH-WC-01, AUTH-WC-03, AUTH-WC-07
     observable_outcome: Reviewed replica, connection, queue, concurrency, timeout, retry, telemetry, and cost budgets prevent overload invention and keep protected traffic fail closed.
     owner: Platform IT Expert and Platform Operations - capacity and backpressure
-    oracle: Maximum-replica 80-percent database connection calculation, bounded queues, single-family refresh, global/principal limits, timeout hierarchy, 429/503 retry guidance, retry-storm denial, saturation metrics, recovery, ingestion, and cost tests.
+    oracle: Maximum-replica 80-percent database connection calculation, one pool per replica capped at five, 1000/1500/5000 ms database deadlines, bounded queues, single-family refresh, global/principal limits, timeout hierarchy, 429/503 retry guidance, retry-storm denial, saturation metrics, recovery, ingestion, and cost tests.
 
   - <<: *defaults
     requirement_id: WC123-R038

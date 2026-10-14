@@ -26,14 +26,22 @@ public sealed class IdentitySchemaHealthCheck(IDbContextFactory<IdentityDbContex
                     AND to_regclass('identity.login_methods') IS NOT NULL
                     AND to_regclass('identity.actor_bindings') IS NOT NULL
                     AND to_regclass('identity.memberships') IS NOT NULL
+                    AND to_regclass('identity.lifecycle_operations') IS NOT NULL
+                    AND to_regclass('identity.provider_link_projections') IS NOT NULL
                     AND EXISTS (
                         SELECT 1
                         FROM pg_catalog.pg_class AS relation
                         JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = relation.relnamespace
                         WHERE namespace.nspname = 'identity'
-                          AND relation.relname = 'memberships'
+                          AND relation.relname IN (
+                              'memberships',
+                              'lifecycle_operations',
+                              'provider_link_projections'
+                          )
                           AND relation.relrowsecurity
                           AND relation.relforcerowsecurity
+                        GROUP BY namespace.nspname
+                        HAVING count(*) = 3
                     )
                 """;
             await db.Database.OpenConnectionAsync(cancellationToken);

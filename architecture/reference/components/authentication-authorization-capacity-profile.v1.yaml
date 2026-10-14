@@ -63,6 +63,16 @@ shared:
     callbacks: 2
     lifecycle: 2
     refreshes_per_session_family: 1
+  abuse_limits:
+    AUTH_START: { limit: 20, window_seconds: 600 }
+    AUTH_CALLBACK: { limit: 30, window_seconds: 600 }
+    RECOVERY: { limit: 5, window_seconds: 3600 }
+    PROVIDER_LINK: { limit: 10, window_seconds: 3600 }
+    PROVIDER_UNLINK: { limit: 10, window_seconds: 3600 }
+    RESEND: { limit: 5, window_seconds: 900 }
+    CREDENTIAL: { limit: 10, window_seconds: 3600 }
+    restart_hold_seconds: 3600
+    storage: existing Redis, keyed digest counters only
     rationale: >-
       A principal cannot occupy an environment queue, and a session family has exactly one refresh
       lease holder; contending refreshes receive the accepted typed retry response.

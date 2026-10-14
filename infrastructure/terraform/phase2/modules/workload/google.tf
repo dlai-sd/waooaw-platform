@@ -24,6 +24,12 @@ locals {
   identity_reader_secret_resource_ids = var.google_login_enabled || var.facebook_login_enabled ? {
     bp-identity-reader-client-secret = "${trimsuffix(var.key_vault_secret_resource_ids["business-platform"], "/business-platform")}/bp-identity-reader-client-secret"
   } : {}
+  identity_lifecycle_writer_secret_uris = var.google_login_enabled || var.facebook_login_enabled ? {
+    keycloak-lifecycle-writer-client-secret = "${trimsuffix(var.key_vault_secret_uris["business-platform"], "/business-platform")}/keycloak-lifecycle-writer-client-secret"
+  } : {}
+  identity_lifecycle_writer_secret_resource_ids = var.google_login_enabled || var.facebook_login_enabled ? {
+    keycloak-lifecycle-writer-client-secret = "${trimsuffix(var.key_vault_secret_resource_ids["business-platform"], "/business-platform")}/keycloak-lifecycle-writer-client-secret"
+  } : {}
   google_identity_providers = var.google_login_enabled ? [{
     alias                     = "google"
     providerId                = "google"

@@ -188,7 +188,10 @@ describe('F1 shell primitives', () => {
   it('uses only the Keycloak sign-in command', () => {
     render(<SignInCommand label={messages.en.signInSecurely} />);
     fireEvent.click(screen.getByRole('button', { name: messages.en.signInSecurely }));
-    expect(signIn).toHaveBeenCalledWith('keycloak', { callbackUrl: '/home' });
+    expect(signIn).toHaveBeenCalledWith('keycloak', {
+      callbackUrl: '/home',
+      waooawIntent: 'LOGIN',
+    });
   });
 
   it('keeps unavailable Apple authentication local and recommends active alternatives', () => {

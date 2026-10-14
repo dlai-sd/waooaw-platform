@@ -19,14 +19,18 @@ namespace Waooaw.BusinessPlatform.Tests.Identity;
 
 // ── In-memory factory for IdentityDbContext (tests only) ─────────────────────
 
-internal sealed class InMemoryIdentityDbContextFactory(string dbName, params IInterceptor[] interceptors)
-    : IDbContextFactory<IdentityDbContext>
+internal sealed class InMemoryIdentityDbContextFactory(
+    string dbName,
+    params IInterceptor[] interceptors
+) : IDbContextFactory<IdentityDbContext>
 {
     public IdentityDbContext CreateDbContext() =>
-        new(new DbContextOptionsBuilder<IdentityDbContext>()
-            .UseInMemoryDatabase(dbName)
-            .AddInterceptors(interceptors)
-            .Options);
+        new(
+            new DbContextOptionsBuilder<IdentityDbContext>()
+                .UseInMemoryDatabase(dbName)
+                .AddInterceptors(interceptors)
+                .Options
+        );
 }
 
 internal sealed class CapturingVerificationDispatcher : IIdentityVerificationDispatcher
@@ -37,7 +41,8 @@ internal sealed class CapturingVerificationDispatcher : IIdentityVerificationDis
         IdentityVerificationPurpose purpose,
         string destination,
         string code,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         LatestCode = code;
         return Task.CompletedTask;
@@ -70,8 +75,8 @@ internal sealed class FailingVerificationDispatcher : IIdentityVerificationDispa
         IdentityVerificationPurpose purpose,
         string destination,
         string code,
-        CancellationToken ct) =>
-        throw new InvalidOperationException("provider unavailable");
+        CancellationToken ct
+    ) => throw new InvalidOperationException("provider unavailable");
 }
 
 // ── Test helpers ─────────────────────────────────────────────────────────────
@@ -87,10 +92,46 @@ internal static class IdentityTestHelpers
         Environment = "local",
         Providers =
         [
-            new() { Id = "GOOGLE", DisplayName = "Google", AuthenticationPath = "GOOGLE", Enabled = true, BrokerAlias = "google", Scopes = ["openid", "profile", "email"], SecretReference = "kv://google-client", ReadinessEvidenceReference = "TEST-GOOGLE" },
-            new() { Id = "FACEBOOK", DisplayName = "Facebook", AuthenticationPath = "META", Enabled = false, UnavailableReason = "NOT_CONFIGURED", BrokerAlias = "facebook", Scopes = ["email", "public_profile"] },
-            new() { Id = "APPLE", DisplayName = "Apple", AuthenticationPath = "APPLE", Enabled = false, UnavailableReason = "NOT_CONFIGURED", BrokerAlias = "apple", Scopes = ["openid", "name", "email"] },
-            new() { Id = "EMAIL", DisplayName = "Email", AuthenticationPath = "CREDENTIAL", Enabled = true, Scopes = [], ReadinessEvidenceReference = "TEST-EMAIL" },
+            new()
+            {
+                Id = "GOOGLE",
+                DisplayName = "Google",
+                AuthenticationPath = "GOOGLE",
+                Enabled = true,
+                BrokerAlias = "google",
+                Scopes = ["openid", "profile", "email"],
+                SecretReference = "kv://google-client",
+                ReadinessEvidenceReference = "TEST-GOOGLE",
+            },
+            new()
+            {
+                Id = "FACEBOOK",
+                DisplayName = "Facebook",
+                AuthenticationPath = "META",
+                Enabled = false,
+                UnavailableReason = "NOT_CONFIGURED",
+                BrokerAlias = "facebook",
+                Scopes = ["email", "public_profile"],
+            },
+            new()
+            {
+                Id = "APPLE",
+                DisplayName = "Apple",
+                AuthenticationPath = "APPLE",
+                Enabled = false,
+                UnavailableReason = "NOT_CONFIGURED",
+                BrokerAlias = "apple",
+                Scopes = ["openid", "name", "email"],
+            },
+            new()
+            {
+                Id = "EMAIL",
+                DisplayName = "Email",
+                AuthenticationPath = "CREDENTIAL",
+                Enabled = true,
+                Scopes = [],
+                ReadinessEvidenceReference = "TEST-EMAIL",
+            },
         ],
     };
 
@@ -105,22 +146,37 @@ internal static class IdentityTestHelpers
         long? authTimestamp = null,
         string[]? customerRoles = null,
         CapturingVerificationDispatcher? dispatcher = null,
-        IIdentityConstitutionalGateway? constitutionalGateway = null)
+        IIdentityConstitutionalGateway? constitutionalGateway = null,
+        IdentitySecurityEventService? securityEvents = null,
+        IdentityLifecycleService? lifecycleService = null,
+        CustomerIdentityJourneyService? customerJourney = null
+    )
     {
         var service = CreateService(factory, dispatcher, constitutionalGateway);
+        var providers = new IdentityProviderProjectionService(
+            Options.Create(TestEnvironment),
+            EmptyConfiguration
+        );
 
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, subject),
-        };
-        if (email is not null) claims.Add(new Claim("email", email));
-        if (emailVerified) claims.Add(new Claim("email_verified", "true"));
-        if (identityProvider is not null) claims.Add(new Claim("identity_provider", identityProvider));
-        if (providerIssuer is not null) claims.Add(new Claim("iss", providerIssuer));
-        if (authTimestamp.HasValue) claims.Add(new Claim("auth_time", authTimestamp.Value.ToString()));
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, subject) };
+        if (email is not null)
+            claims.Add(new Claim("email", email));
+        if (emailVerified)
+            claims.Add(new Claim("email_verified", "true"));
+        if (identityProvider is not null)
+            claims.Add(new Claim("identity_provider", identityProvider));
+        if (providerIssuer is not null)
+            claims.Add(new Claim("iss", providerIssuer));
+        if (authTimestamp.HasValue)
+            claims.Add(new Claim("auth_time", authTimestamp.Value.ToString()));
         if (tenantId is not null)
         {
-            claims.Add(new Claim("exp", DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeSeconds().ToString()));
+            claims.Add(
+                new Claim(
+                    "exp",
+                    DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeSeconds().ToString()
+                )
+            );
             foreach (var role in customerRoles ?? ["OWNER"])
                 claims.Add(new Claim("waooaw_roles", role));
         }
@@ -130,12 +186,19 @@ internal static class IdentityTestHelpers
         var httpContext = new DefaultHttpContext { User = user };
         httpContext.Request.Headers["Idempotency-Key"] = Guid.NewGuid().ToString();
         if (tenantId is not null)
-            httpContext.Items[TenantIsolationMiddleware.TenantIdItemKey] = tenantId;
+            SetCurrentMembership(httpContext, tenantId, customerRoles ?? ["OWNER"]);
+        if (authTimestamp.HasValue)
+            httpContext.Items[CustomerMembershipMiddleware.AuthenticationTimeItem] =
+                DateTimeOffset.FromUnixTimeSeconds(authTimestamp.Value);
 
         return new IdentityController(
             service,
-            new IdentityProviderProjectionService(Options.Create(TestEnvironment), EmptyConfiguration),
-            NullLogger<IdentityController>.Instance)
+            providers,
+            NullLogger<IdentityController>.Instance,
+            customerJourney: customerJourney,
+            securityEvents: securityEvents,
+            lifecycleService: lifecycleService
+        )
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext },
         };
@@ -144,12 +207,26 @@ internal static class IdentityTestHelpers
     public static IdentityService CreateService(
         IDbContextFactory<IdentityDbContext> factory,
         CapturingVerificationDispatcher? dispatcher = null,
-        IIdentityConstitutionalGateway? constitutionalGateway = null) =>
+        IIdentityConstitutionalGateway? constitutionalGateway = null
+    ) =>
         new(
             factory,
             Options.Create(new IdentityHmacOptions { Key = TestHmacKey }),
             dispatcher ?? new CapturingVerificationDispatcher(),
-            constitutionalGateway ?? new TestIdentityConstitutionalGateway());
+            constitutionalGateway ?? new TestIdentityConstitutionalGateway()
+        );
+
+    private static void SetCurrentMembership(
+        HttpContext httpContext,
+        string tenantId,
+        string[] roles
+    )
+    {
+        var parsedTenantId = Guid.Parse(tenantId);
+        httpContext.Items[CustomerMembershipMiddleware.MembershipItem] =
+            new CustomerWorkspaceMembership(Guid.NewGuid(), parsedTenantId, Guid.NewGuid(), roles);
+        httpContext.Items[TenantIsolationMiddleware.TenantIdItemKey] = tenantId;
+    }
 
     // Sets a fresh idempotency key for each call
     public static void RefreshIdempotencyKey(ControllerBase controller) =>
@@ -163,19 +240,28 @@ internal static class IdentityTestHelpers
         string? tenantId = null,
         string? identityProvider = null,
         long? authTimestamp = null,
-        string[]? customerRoles = null)
+        string[]? customerRoles = null
+    )
     {
         var service = new IdentityService(
             factory,
             Options.Create(new IdentityHmacOptions { Key = TestHmacKey }),
-            dispatcher);
+            dispatcher
+        );
 
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, subject) };
-        if (identityProvider is not null) claims.Add(new Claim("identity_provider", identityProvider));
-        if (authTimestamp.HasValue) claims.Add(new Claim("auth_time", authTimestamp.Value.ToString()));
+        if (identityProvider is not null)
+            claims.Add(new Claim("identity_provider", identityProvider));
+        if (authTimestamp.HasValue)
+            claims.Add(new Claim("auth_time", authTimestamp.Value.ToString()));
         if (tenantId is not null)
         {
-            claims.Add(new Claim("exp", DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeSeconds().ToString()));
+            claims.Add(
+                new Claim(
+                    "exp",
+                    DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeSeconds().ToString()
+                )
+            );
             foreach (var role in customerRoles ?? ["OWNER"])
                 claims.Add(new Claim("waooaw_roles", role));
         }
@@ -184,12 +270,16 @@ internal static class IdentityTestHelpers
         var httpContext = new DefaultHttpContext { User = user };
         httpContext.Request.Headers["Idempotency-Key"] = Guid.NewGuid().ToString();
         if (tenantId is not null)
-            httpContext.Items[TenantIsolationMiddleware.TenantIdItemKey] = tenantId;
+            SetCurrentMembership(httpContext, tenantId, customerRoles ?? ["OWNER"]);
 
         return new IdentityController(
             service,
-            new IdentityProviderProjectionService(Options.Create(TestEnvironment), EmptyConfiguration),
-            NullLogger<IdentityController>.Instance)
+            new IdentityProviderProjectionService(
+                Options.Create(TestEnvironment),
+                EmptyConfiguration
+            ),
+            NullLogger<IdentityController>.Instance
+        )
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext },
         };
@@ -207,11 +297,14 @@ public sealed class IdentityProviderProjectionTests
         var controller = new IdentityProvidersController(
             new IdentityProviderProjectionService(
                 Options.Create(IdentityTestHelpers.TestEnvironment),
-                IdentityTestHelpers.EmptyConfiguration),
-            new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["IdentityBrokerRead:Enabled"] = "true",
-            }).Build())
+                IdentityTestHelpers.EmptyConfiguration
+            ),
+            new ConfigurationBuilder()
+                .AddInMemoryCollection(
+                    new Dictionary<string, string?> { ["IdentityBrokerRead:Enabled"] = "true" }
+                )
+                .Build()
+        )
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
         };
@@ -221,8 +314,10 @@ public sealed class IdentityProviderProjectionTests
         var projection = JsonSerializer.SerializeToElement(result.Value);
         var providers = projection.GetProperty("Providers").EnumerateArray().ToArray();
 
-        Assert.Equal(["GOOGLE", "FACEBOOK", "APPLE", "EMAIL"],
-            providers.Select(provider => provider.GetProperty("Id").GetString()!).ToArray());
+        Assert.Equal(
+            ["GOOGLE", "FACEBOOK", "APPLE", "EMAIL"],
+            providers.Select(provider => provider.GetProperty("Id").GetString()!).ToArray()
+        );
         Assert.Equal("AVAILABLE", providers[0].GetProperty("Availability").GetString());
         Assert.Equal("UNAVAILABLE", providers[1].GetProperty("Availability").GetString());
         Assert.Equal("NOT_CONFIGURED", providers[1].GetProperty("UnavailableReason").GetString());
@@ -235,21 +330,38 @@ public sealed class IdentityProviderProjectionTests
     public void F2_GetProviders_UnconfiguredGoogleJourneyDoesNotDisableOtherProviders()
     {
         var projection = new IdentityProviderProjectionService(
-            Options.Create(new IdentityEnvironmentOptions
-            {
-                Providers =
-                [
-                    new() { Id = "GOOGLE", DisplayName = "Google", AuthenticationPath = "GOOGLE", Enabled = true },
-                    new() { Id = "EMAIL", DisplayName = "Email", AuthenticationPath = "CREDENTIAL", Enabled = true },
-                ],
-            }),
-            IdentityTestHelpers.EmptyConfiguration);
+            Options.Create(
+                new IdentityEnvironmentOptions
+                {
+                    Providers =
+                    [
+                        new()
+                        {
+                            Id = "GOOGLE",
+                            DisplayName = "Google",
+                            AuthenticationPath = "GOOGLE",
+                            Enabled = true,
+                        },
+                        new()
+                        {
+                            Id = "EMAIL",
+                            DisplayName = "Email",
+                            AuthenticationPath = "CREDENTIAL",
+                            Enabled = true,
+                        },
+                    ],
+                }
+            ),
+            IdentityTestHelpers.EmptyConfiguration
+        );
         var controller = new IdentityProvidersController(
             projection,
-            new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["IdentityBrokerRead:Enabled"] = "false",
-            }).Build())
+            new ConfigurationBuilder()
+                .AddInMemoryCollection(
+                    new Dictionary<string, string?> { ["IdentityBrokerRead:Enabled"] = "false" }
+                )
+                .Build()
+        )
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
         };
@@ -257,8 +369,14 @@ public sealed class IdentityProviderProjectionTests
         var result = Assert.IsType<OkObjectResult>(controller.GetProviders());
         var providers = Assert.IsType<IdentityProviderCollectionResponse>(result.Value).Providers;
 
-        Assert.Equal("UNAVAILABLE", providers.Single(provider => provider.Id == "GOOGLE").Availability);
-        Assert.Equal("AVAILABLE", providers.Single(provider => provider.Id == "EMAIL").Availability);
+        Assert.Equal(
+            "UNAVAILABLE",
+            providers.Single(provider => provider.Id == "GOOGLE").Availability
+        );
+        Assert.Equal(
+            "AVAILABLE",
+            providers.Single(provider => provider.Id == "EMAIL").Availability
+        );
     }
 
     [Fact]
@@ -269,31 +387,56 @@ public sealed class IdentityProviderProjectionTests
             Environment = "local",
             Providers =
             [
-                new() { Id = "GOOGLE", DisplayName = "Google", AuthenticationPath = "GOOGLE", Enabled = false, UnavailableReason = "NOT_CONFIGURED" },
-                new() { Id = "FACEBOOK", DisplayName = "Facebook", AuthenticationPath = "META", Enabled = false, UnavailableReason = "NOT_CONFIGURED" },
+                new()
+                {
+                    Id = "GOOGLE",
+                    DisplayName = "Google",
+                    AuthenticationPath = "GOOGLE",
+                    Enabled = false,
+                    UnavailableReason = "NOT_CONFIGURED",
+                },
+                new()
+                {
+                    Id = "FACEBOOK",
+                    DisplayName = "Facebook",
+                    AuthenticationPath = "META",
+                    Enabled = false,
+                    UnavailableReason = "NOT_CONFIGURED",
+                },
             ],
         };
         var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["IdentityProviderPreview:EnabledProviders:0"] = "GOOGLE",
-                ["IdentityProviderPreview:EnabledProviders:1"] = "FACEBOOK",
-            })
+            .AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["IdentityProviderPreview:EnabledProviders:0"] = "GOOGLE",
+                    ["IdentityProviderPreview:EnabledProviders:1"] = "FACEBOOK",
+                }
+            )
             .Build();
 
-        var projection = new IdentityProviderProjectionService(Options.Create(options), configuration);
-        var controller = new IdentityProvidersController(projection, IdentityTestHelpers.EmptyConfiguration)
+        var projection = new IdentityProviderProjectionService(
+            Options.Create(options),
+            configuration
+        );
+        var controller = new IdentityProvidersController(
+            projection,
+            IdentityTestHelpers.EmptyConfiguration
+        )
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
         };
 
         var result = Assert.IsType<OkObjectResult>(controller.GetProviders());
         var providers = Assert.IsType<IdentityProviderCollectionResponse>(result.Value).Providers;
-        Assert.All(providers, provider =>
-        {
-            Assert.Equal("AVAILABLE", provider.Availability);
-            Assert.Null(provider.UnavailableReason);
-        });
+        Assert.All(
+            providers,
+            provider =>
+            {
+                Assert.Equal("AVAILABLE", provider.Availability);
+                Assert.Null(provider.UnavailableReason);
+            }
+        );
     }
 
     [Fact]
@@ -305,17 +448,48 @@ public sealed class IdentityProviderProjectionTests
             Environment = "demo",
             Providers =
             [
-                new() { Id = "GOOGLE", DisplayName = "Google", AuthenticationPath = "GOOGLE", Enabled = true, BrokerAlias = "google", SecretReference = "kv://google-client" },
-                new() { Id = "FACEBOOK", DisplayName = "Facebook", AuthenticationPath = "META", Enabled = false, UnavailableReason = "NOT_CONFIGURED" },
-                new() { Id = "APPLE", DisplayName = "Apple", AuthenticationPath = "APPLE", Enabled = false, UnavailableReason = "NOT_CONFIGURED" },
-                new() { Id = "EMAIL", DisplayName = "Email", AuthenticationPath = "CREDENTIAL", Enabled = true },
+                new()
+                {
+                    Id = "GOOGLE",
+                    DisplayName = "Google",
+                    AuthenticationPath = "GOOGLE",
+                    Enabled = true,
+                    BrokerAlias = "google",
+                    SecretReference = "kv://google-client",
+                },
+                new()
+                {
+                    Id = "FACEBOOK",
+                    DisplayName = "Facebook",
+                    AuthenticationPath = "META",
+                    Enabled = false,
+                    UnavailableReason = "NOT_CONFIGURED",
+                },
+                new()
+                {
+                    Id = "APPLE",
+                    DisplayName = "Apple",
+                    AuthenticationPath = "APPLE",
+                    Enabled = false,
+                    UnavailableReason = "NOT_CONFIGURED",
+                },
+                new()
+                {
+                    Id = "EMAIL",
+                    DisplayName = "Email",
+                    AuthenticationPath = "CREDENTIAL",
+                    Enabled = true,
+                },
             ],
         };
 
         var result = new IdentityEnvironmentOptionsValidator().Validate(null, options);
 
         Assert.True(result.Failed);
-        Assert.Contains(result.Failures, failure => failure.Contains("readiness evidence", StringComparison.Ordinal));
+        Assert.Contains(
+            result.Failures,
+            failure => failure.Contains("readiness evidence", StringComparison.Ordinal)
+        );
     }
 
     [Theory]
@@ -325,15 +499,21 @@ public sealed class IdentityProviderProjectionTests
     public void F2_IdentityEnvironmentManifest_IsStrictAndValid(string environment)
     {
         var json = File.ReadAllText(EnvironmentManifestPath(environment));
-        var options = JsonSerializer.Deserialize<IdentityEnvironmentOptions>(json,
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        var options = JsonSerializer.Deserialize<IdentityEnvironmentOptions>(
+            json,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+        );
 
         Assert.NotNull(options);
         var result = new IdentityEnvironmentOptionsValidator().Validate(null, options);
-        Assert.True(result.Succeeded,
-            result.Failed ? string.Join(Environment.NewLine, result.Failures) : string.Empty);
-        Assert.All(options.Providers.Where(provider => provider.Enabled), provider =>
-            Assert.False(string.IsNullOrWhiteSpace(provider.ReadinessEvidenceReference)));
+        Assert.True(
+            result.Succeeded,
+            result.Failed ? string.Join(Environment.NewLine, result.Failures) : string.Empty
+        );
+        Assert.All(
+            options.Providers.Where(provider => provider.Enabled),
+            provider => Assert.False(string.IsNullOrWhiteSpace(provider.ReadinessEvidenceReference))
+        );
         Assert.DoesNotContain("clientSecret", json, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -341,20 +521,27 @@ public sealed class IdentityProviderProjectionTests
     public void F2_IdentityEnvironmentValidator_RejectsWildcardProductionRedirect()
     {
         var json = File.ReadAllText(EnvironmentManifestPath("prod"));
-        var options = JsonSerializer.Deserialize<IdentityEnvironmentOptions>(json,
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+        var options = JsonSerializer.Deserialize<IdentityEnvironmentOptions>(
+            json,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+        )!;
         options.Clients[0].RedirectUris = ["https://app.waooaw.com/*"];
 
         var result = new IdentityEnvironmentOptionsValidator().Validate(null, options);
 
         Assert.True(result.Failed);
-        Assert.Contains(result.Failures, failure => failure.Contains("wildcard", StringComparison.Ordinal));
+        Assert.Contains(
+            result.Failures,
+            failure => failure.Contains("wildcard", StringComparison.Ordinal)
+        );
     }
 
     [Theory]
     [InlineData("ca-uat-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io")]
     [InlineData("ca-demo-web.other.centralindia.azurecontainerapps.io")]
-    [InlineData("ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io.example.com")]
+    [InlineData(
+        "ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io.example.com"
+    )]
     public void F2_IdentityEnvironmentValidator_RejectsUnapprovedDemoCloudHost(string host)
     {
         var options = ReadManifest("demo");
@@ -363,7 +550,10 @@ public sealed class IdentityProviderProjectionTests
         var result = new IdentityEnvironmentOptionsValidator().Validate(null, options);
 
         Assert.True(result.Failed);
-        Assert.Contains(result.Failures, failure => failure.Contains("does not belong to demo", StringComparison.Ordinal));
+        Assert.Contains(
+            result.Failures,
+            failure => failure.Contains("does not belong to demo", StringComparison.Ordinal)
+        );
     }
 
     [Fact]
@@ -395,20 +585,25 @@ public sealed class IdentityProviderProjectionTests
         for (var index = 0; index < 4; index++)
         {
             configuration[$"IdentityEnvironment:providers:{index}:enabled"] = "false";
-            configuration[$"IdentityEnvironment:providers:{index}:unavailableReason"] = "NOT_CONFIGURED";
+            configuration[$"IdentityEnvironment:providers:{index}:unavailableReason"] =
+                "NOT_CONFIGURED";
             configuration[$"IdentityEnvironment:providers:{index}:readinessEvidenceReference"] = "";
         }
-        var options = configuration.GetSection(IdentityEnvironmentOptions.SectionName)
+        var options = configuration
+            .GetSection(IdentityEnvironmentOptions.SectionName)
             .Get<IdentityEnvironmentOptions>()!;
 
         var result = new IdentityEnvironmentOptionsValidator().Validate(null, options);
 
         Assert.True(result.Succeeded, result.Failed ? string.Join("; ", result.Failures) : "");
         Assert.Equal("demo", options.Environment);
-        Assert.All(new IdentityProviderProjectionService(
-            Options.Create(options),
-            IdentityTestHelpers.EmptyConfiguration).GetProviders(),
-            provider => Assert.Equal("UNAVAILABLE", provider.Availability));
+        Assert.All(
+            new IdentityProviderProjectionService(
+                Options.Create(options),
+                IdentityTestHelpers.EmptyConfiguration
+            ).GetProviders(),
+            provider => Assert.Equal("UNAVAILABLE", provider.Availability)
+        );
         Assert.Equal("", options.Providers[3].ReadinessEvidenceReference);
     }
 
@@ -421,7 +616,10 @@ public sealed class IdentityProviderProjectionTests
         var result = new IdentityEnvironmentOptionsValidator().Validate(null, options);
 
         Assert.True(result.Failed);
-        Assert.Contains(result.Failures, failure => failure.Contains("does not belong to prod", StringComparison.Ordinal));
+        Assert.Contains(
+            result.Failures,
+            failure => failure.Contains("does not belong to prod", StringComparison.Ordinal)
+        );
     }
 
     [Fact]
@@ -433,7 +631,10 @@ public sealed class IdentityProviderProjectionTests
         var result = new IdentityEnvironmentOptionsValidator().Validate(null, options);
 
         Assert.True(result.Failed);
-        Assert.Contains(result.Failures, failure => failure.Contains("broker aliases must be unique", StringComparison.Ordinal));
+        Assert.Contains(
+            result.Failures,
+            failure => failure.Contains("broker aliases must be unique", StringComparison.Ordinal)
+        );
     }
 
     [Fact]
@@ -445,7 +646,10 @@ public sealed class IdentityProviderProjectionTests
         var result = new IdentityEnvironmentOptionsValidator().Validate(null, options);
 
         Assert.True(result.Failed);
-        Assert.Contains(result.Failures, failure => failure.Contains("scopes must be exactly", StringComparison.Ordinal));
+        Assert.Contains(
+            result.Failures,
+            failure => failure.Contains("scopes must be exactly", StringComparison.Ordinal)
+        );
     }
 
     [Fact]
@@ -465,9 +669,14 @@ public sealed class IdentityProviderProjectionTests
             options => options.Keycloak.ClockSkewSeconds = 61,
             options => options.Keycloak.Issuer = "relative",
             options => options.Keycloak.JwksUri = "relative",
-            options => options.Keycloak.JwksUri = "http://identity.waooaw.com/realms/waooaw/protocol/openid-connect/certs",
-            options => options.Keycloak.JwksUri = "https://other.waooaw.com/realms/waooaw/protocol/openid-connect/certs",
-            options => options.Keycloak.JwksUri = "https://identity.waooaw.com/not-the-issuer/certs",
+            options =>
+                options.Keycloak.JwksUri =
+                    "http://identity.waooaw.com/realms/waooaw/protocol/openid-connect/certs",
+            options =>
+                options.Keycloak.JwksUri =
+                    "https://other.waooaw.com/realms/waooaw/protocol/openid-connect/certs",
+            options =>
+                options.Keycloak.JwksUri = "https://identity.waooaw.com/not-the-issuer/certs",
             options => options.Clients.RemoveAt(0),
             options => options.Clients[0].Channel = "OTHER",
             options => options.Clients[0].Id = "",
@@ -505,21 +714,25 @@ public sealed class IdentityProviderProjectionTests
             var options = ReadManifest("prod");
             mutations[mutationIndex](options);
 
-            Assert.True(new IdentityEnvironmentOptionsValidator().Validate(null, options).Failed,
-                $"Mutation {mutationIndex} must fail validation.");
+            Assert.True(
+                new IdentityEnvironmentOptionsValidator().Validate(null, options).Failed,
+                $"Mutation {mutationIndex} must fail validation."
+            );
         }
     }
 
     private static IdentityEnvironmentOptions ReadManifest(string environment) =>
         JsonSerializer.Deserialize<IdentityEnvironmentOptions>(
             File.ReadAllText(EnvironmentManifestPath(environment)),
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+        )!;
 
     private static void EnableGoogle(
         IdentityEnvironmentOptions options,
         string brokerAlias = "google",
         string secretReference = "kv://google-client",
-        string readinessEvidenceReference = "TEST-GOOGLE")
+        string readinessEvidenceReference = "TEST-GOOGLE"
+    )
     {
         var provider = options.Providers[0];
         provider.Enabled = true;
@@ -527,6 +740,316 @@ public sealed class IdentityProviderProjectionTests
         provider.BrokerAlias = brokerAlias;
         provider.SecretReference = secretReference;
         provider.ReadinessEvidenceReference = readinessEvidenceReference;
+    }
+}
+
+public sealed class IdentityAuthorityContractRecordTests
+{
+    [Fact]
+    public async Task ProviderLink_RejectsEveryInvalidRequestBranch()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var lifecycle = new IdentityLifecycleService(
+            factory,
+            Options.Create(
+                new IdentityHmacOptions
+                {
+                    Key = new string('k', IdentityHmacOptions.MinKeyLength),
+                    ActiveVersion = "v1",
+                }
+            )
+        );
+        var providers = new IdentityProviderProjectionService(
+            Options.Create(IdentityTestHelpers.TestEnvironment),
+            IdentityTestHelpers.EmptyConfiguration
+        );
+        var journey = new CustomerIdentityJourneyService(
+            IdentityTestHelpers.CreateService(factory),
+            factory,
+            new VerifiedIdentityProofAdapter(
+                new HttpClient(),
+                Options.Create(GoogleWorkspaceProofAdapterTests.Configuration())
+            ),
+            providers
+        );
+        var controller = IdentityTestHelpers.CreateController(
+            factory,
+            tenantId: Guid.NewGuid().ToString("D"),
+            authTimestamp: DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            lifecycleService: lifecycle,
+            customerJourney: journey
+        );
+        var identity = (ClaimsIdentity)controller.User.Identity!;
+        identity.AddClaim(new Claim("acr", "2"));
+        identity.AddClaim(new Claim("amr", "mfa"));
+        IdentityProviderLinkRequest[] invalidRequests =
+        [
+            new("2.0", "GOOGLE", Guid.NewGuid()),
+            new("1.0", "UNKNOWN", Guid.NewGuid()),
+        ];
+
+        foreach (var request in invalidRequests)
+            Assert.Equal(
+                400,
+                Assert
+                    .IsType<ObjectResult>(await controller.StartProviderLinkAsync(request, default))
+                    .StatusCode
+            );
+    }
+
+    [Fact]
+    public async Task RevocationReceipt_RejectsEveryInvalidContractBranch()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var securityEvents = new IdentitySecurityEventService(
+            factory,
+            Options.Create(
+                new IdentityHmacOptions
+                {
+                    Key = new string('k', IdentityHmacOptions.MinKeyLength),
+                    ActiveVersion = "v1",
+                }
+            ),
+            Options.Create(new IdentityEnvironmentOptions { Environment = "local" })
+        );
+        var controller = IdentityTestHelpers.CreateController(
+            factory,
+            tenantId: Guid.NewGuid().ToString("D"),
+            securityEvents: securityEvents
+        );
+        IdentitySessionRevocationIntentRequest[] invalidRequests =
+        [
+            new("2.0", "ALL", null, "LOGOUT_ALL", Guid.NewGuid()),
+            new("1.0", "ALL", null, "LOGOUT_ALL", Guid.Empty),
+            new("1.0", "ALL", null, "UNKNOWN", Guid.NewGuid()),
+            new("1.0", "UNKNOWN", null, "LOGOUT_ALL", Guid.NewGuid()),
+            new("1.0", "FAMILY", null, "LOGOUT", Guid.NewGuid()),
+            new("1.0", "ALL", Guid.NewGuid(), "LOGOUT_ALL", Guid.NewGuid()),
+        ];
+
+        foreach (var request in invalidRequests)
+            Assert.Equal(
+                400,
+                Assert
+                    .IsType<ObjectResult>(
+                        await controller.RecordSessionRevocationAsync(request, default)
+                    )
+                    .StatusCode
+            );
+
+        controller.Request.Headers["Idempotency-Key"] = "invalid";
+        Assert.Equal(
+            400,
+            Assert
+                .IsType<ObjectResult>(
+                    await controller.RecordSessionRevocationAsync(
+                        new IdentitySessionRevocationIntentRequest(
+                            "1.0",
+                            "ALL",
+                            null,
+                            "LOGOUT_ALL",
+                            Guid.NewGuid()
+                        ),
+                        default
+                    )
+                )
+                .StatusCode
+        );
+    }
+
+    [Fact]
+    public async Task Wc123Endpoints_FailClosedWhenAuthorityDependenciesAreUnavailable()
+    {
+        var controller = IdentityTestHelpers.CreateController(
+            new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N")),
+            tenantId: Guid.NewGuid().ToString("D")
+        );
+
+        Assert.Equal(
+            503,
+            Assert
+                .IsType<ObjectResult>(await controller.ListMembershipsAsync(ct: default))
+                .StatusCode
+        );
+        Assert.Equal(
+            503,
+            Assert
+                .IsType<ObjectResult>(
+                    await controller.ValidateMembershipSelectionAsync(
+                        new IdentityMembershipSelectionRequest("1.0", Guid.NewGuid()),
+                        default
+                    )
+                )
+                .StatusCode
+        );
+        Assert.Equal(
+            503,
+            Assert
+                .IsType<ObjectResult>(
+                    await controller.RecordSessionRevocationAsync(
+                        new IdentitySessionRevocationIntentRequest(
+                            "1.0",
+                            "ALL",
+                            null,
+                            "LOGOUT_ALL",
+                            Guid.NewGuid()
+                        ),
+                        default
+                    )
+                )
+                .StatusCode
+        );
+        Assert.Equal(
+            503,
+            Assert
+                .IsType<ObjectResult>(
+                    await controller.StartProviderLinkAsync(
+                        new IdentityProviderLinkRequest("1.0", "GOOGLE", Guid.NewGuid()),
+                        default
+                    )
+                )
+                .StatusCode
+        );
+        Assert.Equal(
+            503,
+            Assert
+                .IsType<ObjectResult>(
+                    await controller.StartProviderUnlinkAsync(Guid.NewGuid(), default)
+                )
+                .StatusCode
+        );
+    }
+
+    [Fact]
+    public void Wc123Contracts_PreserveValueSemanticsAndSerializableShape()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var membership = new IdentityMembershipResponse(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "OWNER",
+            "ACTIVE",
+            true
+        );
+        IdentityMembershipResponse[] memberships = [membership];
+        (object Left, object Right)[] contracts =
+        [
+            (
+                membership,
+                new IdentityMembershipResponse(
+                    membership.MembershipReference,
+                    membership.TenantReference,
+                    membership.Role,
+                    membership.State,
+                    membership.SelectionEligible
+                )
+            ),
+            (
+                new IdentityMembershipCollectionResponse("1.0", memberships, "ONE"),
+                new IdentityMembershipCollectionResponse("1.0", memberships, "ONE")
+            ),
+            (
+                new IdentityMembershipSelectionRequest("1.0", membership.MembershipReference),
+                new IdentityMembershipSelectionRequest("1.0", membership.MembershipReference)
+            ),
+            (
+                new IdentityMembershipSelectionResponse("1.0", membership, now),
+                new IdentityMembershipSelectionResponse("1.0", membership, now)
+            ),
+            (
+                new IdentityProviderLinkRequest("1.0", "GOOGLE", Guid.Empty),
+                new IdentityProviderLinkRequest("1.0", "GOOGLE", Guid.Empty)
+            ),
+            (
+                new IdentityProviderLinkOperationResponse(
+                    "1.0",
+                    Guid.Empty,
+                    null,
+                    "LINK",
+                    "GOOGLE",
+                    "PROOF_REQUIRED",
+                    now,
+                    false
+                ),
+                new IdentityProviderLinkOperationResponse(
+                    "1.0",
+                    Guid.Empty,
+                    null,
+                    "LINK",
+                    "GOOGLE",
+                    "PROOF_REQUIRED",
+                    now,
+                    false
+                )
+            ),
+            (
+                new IdentitySessionRevocationIntentRequest(
+                    "1.0",
+                    "ALL",
+                    null,
+                    "LOGOUT_ALL",
+                    Guid.Empty
+                ),
+                new IdentitySessionRevocationIntentRequest(
+                    "1.0",
+                    "ALL",
+                    null,
+                    "LOGOUT_ALL",
+                    Guid.Empty
+                )
+            ),
+            (
+                new IdentitySessionRevocationReceiptResponse(
+                    "1.0",
+                    Guid.Empty,
+                    "ALL",
+                    "RECORDED",
+                    now,
+                    false
+                ),
+                new IdentitySessionRevocationReceiptResponse(
+                    "1.0",
+                    Guid.Empty,
+                    "ALL",
+                    "RECORDED",
+                    now,
+                    false
+                )
+            ),
+            (
+                new IdentityLifecycleOperation(
+                    Guid.Empty,
+                    Guid.Empty,
+                    IdentityLifecycleCommand.Link,
+                    IdentityLifecycleProvider.Google,
+                    "PROOF_REQUIRED",
+                    now,
+                    false
+                ),
+                new IdentityLifecycleOperation(
+                    Guid.Empty,
+                    Guid.Empty,
+                    IdentityLifecycleCommand.Link,
+                    IdentityLifecycleProvider.Google,
+                    "PROOF_REQUIRED",
+                    now,
+                    false
+                )
+            ),
+            (
+                new KeycloakFederatedBinding("google", "provider-id", "provider-user"),
+                new KeycloakFederatedBinding("google", "provider-id", "provider-user")
+            ),
+        ];
+
+        foreach (var (left, right) in contracts)
+        {
+            Assert.Equal(left, right);
+            Assert.False(left.Equals(new object()));
+            Assert.NotEmpty(left.ToString()!);
+            Assert.NotEmpty(JsonSerializer.Serialize(left));
+            Assert.Equal(left.GetHashCode(), right.GetHashCode());
+        }
     }
 }
 
@@ -543,25 +1066,39 @@ public sealed class IdentitySessionProjectionTests
             identityProvider: "google",
             email: "owner@example.com",
             emailVerified: true,
-            authTimestamp: DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            authTimestamp: DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+        );
 
-        var created = Assert.IsType<ObjectResult>(await controller.StartRegistrationAsync(
-            new StartRegistrationRequest("en"), CancellationToken.None));
-        var registrationId = JsonSerializer.SerializeToElement(created.Value)
-            .GetProperty("RegistrationId").GetGuid();
+        var created = Assert.IsType<ObjectResult>(
+            await controller.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var registrationId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
         IdentityTestHelpers.RefreshIdempotencyKey(controller);
-        await controller.UpdateProfileAsync(registrationId,
+        await controller.UpdateProfileAsync(
+            registrationId,
             new UpdateRegistrationProfileRequest("Owner", "Acme", "Retail", "en"),
-            CancellationToken.None);
+            CancellationToken.None
+        );
         IdentityTestHelpers.RefreshIdempotencyKey(controller);
         await controller.CompleteRegistrationAsync(registrationId, CancellationToken.None);
 
-        var result = Assert.IsType<OkObjectResult>(await controller.GetSessionAsync(CancellationToken.None));
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.GetSessionAsync(CancellationToken.None)
+        );
         var json = JsonSerializer.SerializeToElement(result.Value);
 
         Assert.Equal("AAL2_ACCOUNT", json.GetProperty("AssuranceLevel").GetString());
-        Assert.Contains("OWNER", json.GetProperty("Roles").EnumerateArray().Select(value => value.GetString()));
-        Assert.Contains("LINK_WHATSAPP", json.GetProperty("Capabilities").EnumerateArray().Select(value => value.GetString()));
+        Assert.Contains(
+            "OWNER",
+            json.GetProperty("Roles").EnumerateArray().Select(value => value.GetString())
+        );
+        Assert.Empty(json.GetProperty("Capabilities").EnumerateArray());
         Assert.False(json.TryGetProperty("TenantId", out _));
     }
 
@@ -573,10 +1110,15 @@ public sealed class IdentitySessionProjectionTests
             factory,
             tenantId: Guid.NewGuid().ToString(),
             authTimestamp: DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-            customerRoles: ["VIEWER"]);
+            customerRoles: ["VIEWER"]
+        );
 
-        var result = Assert.IsType<ObjectResult>(await controller.StartAccountLinkAsync(
-            new StartAccountLinkRequest(Guid.NewGuid()), CancellationToken.None));
+        var result = Assert.IsType<ObjectResult>(
+            await controller.StartAccountLinkAsync(
+                new StartAccountLinkRequest(Guid.NewGuid()),
+                CancellationToken.None
+            )
+        );
 
         Assert.Equal(403, result.StatusCode);
         Assert.Empty(factory.CreateDbContext().AccountLinks);
@@ -589,17 +1131,34 @@ public sealed class CustomerPortalIdentityTests
         InMemoryIdentityDbContextFactory factory,
         string subject = "portal-owner",
         string? tenantId = null,
-        string[]? roles = null)
+        string[]? roles = null
+    )
     {
-        var controller = IdentityTestHelpers.CreateController(factory, subject,
-            tenantId ?? Guid.NewGuid().ToString(), "google", email: "owner@example.com",
-            emailVerified: true, customerRoles: roles ?? ["OWNER"]);
-        var created = Assert.IsType<ObjectResult>(await controller.StartRegistrationAsync(
-            new StartRegistrationRequest("en"), CancellationToken.None));
-        var registrationId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+        var controller = IdentityTestHelpers.CreateController(
+            factory,
+            subject,
+            tenantId ?? Guid.NewGuid().ToString(),
+            "google",
+            email: "owner@example.com",
+            emailVerified: true,
+            customerRoles: roles ?? ["OWNER"]
+        );
+        var created = Assert.IsType<ObjectResult>(
+            await controller.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var registrationId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
         IdentityTestHelpers.RefreshIdempotencyKey(controller);
-        await controller.UpdateProfileAsync(registrationId,
-            new UpdateRegistrationProfileRequest("Original", "Original Org", "Retail", "en"), CancellationToken.None);
+        await controller.UpdateProfileAsync(
+            registrationId,
+            new UpdateRegistrationProfileRequest("Original", "Original Org", "Retail", "en"),
+            CancellationToken.None
+        );
         IdentityTestHelpers.RefreshIdempotencyKey(controller);
         await controller.CompleteRegistrationAsync(registrationId, CancellationToken.None);
         IdentityTestHelpers.RefreshIdempotencyKey(controller);
@@ -614,13 +1173,24 @@ public sealed class CustomerPortalIdentityTests
         var request = new UpdateCustomerProfileRequest("1.0.0", "Ada", "Analytical Engines");
 
         var updated = Assert.IsType<OkObjectResult>(
-            await controller.UpdateCustomerProfileAsync(request, CancellationToken.None));
-        Assert.Equal("Ada", JsonSerializer.SerializeToElement(updated.Value).GetProperty("DisplayName").GetString());
+            await controller.UpdateCustomerProfileAsync(request, CancellationToken.None)
+        );
+        Assert.Equal(
+            "Ada",
+            JsonSerializer.SerializeToElement(updated.Value).GetProperty("DisplayName").GetString()
+        );
 
         var replay = await controller.UpdateCustomerProfileAsync(request, CancellationToken.None);
         Assert.IsType<OkObjectResult>(replay);
-        var conflict = Assert.IsType<ObjectResult>(await controller.UpdateCustomerProfileAsync(
-            request with { DisplayName = "Grace" }, CancellationToken.None));
+        var conflict = Assert.IsType<ObjectResult>(
+            await controller.UpdateCustomerProfileAsync(
+                request with
+                {
+                    DisplayName = "Grace",
+                },
+                CancellationToken.None
+            )
+        );
         Assert.Equal(409, conflict.StatusCode);
     }
 
@@ -631,17 +1201,42 @@ public sealed class CustomerPortalIdentityTests
         var tenantA = Guid.NewGuid().ToString();
         var controller = await CompletedControllerAsync(factory, tenantId: tenantA);
         await controller.UpdateCustomerProfileAsync(
-            new UpdateCustomerProfileRequest("1.0.0", "Tenant A", "Org A"), CancellationToken.None);
+            new UpdateCustomerProfileRequest("1.0.0", "Tenant A", "Org A"),
+            CancellationToken.None
+        );
 
-        var tenantB = IdentityTestHelpers.CreateController(factory, "portal-owner", Guid.NewGuid().ToString(),
-            "google", email: "owner@example.com", emailVerified: true, customerRoles: ["OWNER"]);
-        var other = Assert.IsType<OkObjectResult>(await tenantB.GetCustomerProfileAsync(CancellationToken.None));
-        Assert.Equal("Original", JsonSerializer.SerializeToElement(other.Value).GetProperty("DisplayName").GetString());
+        var tenantB = IdentityTestHelpers.CreateController(
+            factory,
+            "portal-owner",
+            Guid.NewGuid().ToString(),
+            "google",
+            email: "owner@example.com",
+            emailVerified: true,
+            customerRoles: ["OWNER"]
+        );
+        var other = Assert.IsType<OkObjectResult>(
+            await tenantB.GetCustomerProfileAsync(CancellationToken.None)
+        );
+        Assert.Equal(
+            "Original",
+            JsonSerializer.SerializeToElement(other.Value).GetProperty("DisplayName").GetString()
+        );
 
-        var viewer = IdentityTestHelpers.CreateController(factory, "portal-owner", tenantA,
-            "google", email: "owner@example.com", emailVerified: true, customerRoles: ["VIEWER"]);
-        var denied = Assert.IsType<ObjectResult>(await viewer.UpdateCustomerProfileAsync(
-            new UpdateCustomerProfileRequest("1.0.0", "No", "No"), CancellationToken.None));
+        var viewer = IdentityTestHelpers.CreateController(
+            factory,
+            "portal-owner",
+            tenantA,
+            "google",
+            email: "owner@example.com",
+            emailVerified: true,
+            customerRoles: ["VIEWER"]
+        );
+        var denied = Assert.IsType<ObjectResult>(
+            await viewer.UpdateCustomerProfileAsync(
+                new UpdateCustomerProfileRequest("1.0.0", "No", "No"),
+                CancellationToken.None
+            )
+        );
         Assert.Equal(403, denied.StatusCode);
     }
 
@@ -650,17 +1245,36 @@ public sealed class CustomerPortalIdentityTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var controller = await CompletedControllerAsync(factory);
-        var request = new UpdateCustomerSettingsRequest("1.0.0", "fr-FR", "DARK", "ABSOLUTE",
-            new NotificationPreferencesRequest(["IN_APP", "EMAIL"], ["EMAIL"], ["IN_APP"], ["WHATSAPP"]));
+        var request = new UpdateCustomerSettingsRequest(
+            "1.0.0",
+            "fr-FR",
+            "DARK",
+            "ABSOLUTE",
+            new NotificationPreferencesRequest(
+                ["IN_APP", "EMAIL"],
+                ["EMAIL"],
+                ["IN_APP"],
+                ["WHATSAPP"]
+            )
+        );
 
         var result = Assert.IsType<OkObjectResult>(
-            await controller.UpdateCustomerSettingsAsync(request, CancellationToken.None));
+            await controller.UpdateCustomerSettingsAsync(request, CancellationToken.None)
+        );
         var json = JsonSerializer.SerializeToElement(result.Value);
         Assert.Equal("fr-FR", json.GetProperty("Locale").GetString());
         Assert.Equal("DARK", json.GetProperty("Theme").GetString());
 
-        var read = Assert.IsType<OkObjectResult>(await controller.GetCustomerSettingsAsync(CancellationToken.None));
-        Assert.Equal("ABSOLUTE", JsonSerializer.SerializeToElement(read.Value).GetProperty("TimestampVisibility").GetString());
+        var read = Assert.IsType<OkObjectResult>(
+            await controller.GetCustomerSettingsAsync(CancellationToken.None)
+        );
+        Assert.Equal(
+            "ABSOLUTE",
+            JsonSerializer
+                .SerializeToElement(read.Value)
+                .GetProperty("TimestampVisibility")
+                .GetString()
+        );
     }
 
     [Fact]
@@ -671,7 +1285,9 @@ public sealed class CustomerPortalIdentityTests
 
         var result = Assert.IsType<OkObjectResult>(controller.ListCustomerLoginMethods());
         var json = JsonSerializer.SerializeToElement(result.Value);
-        var google = json.GetProperty("Items").EnumerateArray().Single(item => item.GetProperty("Provider").GetString() == "GOOGLE");
+        var google = json.GetProperty("Items")
+            .EnumerateArray()
+            .Single(item => item.GetProperty("Provider").GetString() == "GOOGLE");
         Assert.Equal("ACTIVE", google.GetProperty("State").GetString());
         Assert.Equal("o***@example.com", google.GetProperty("MaskedIdentifier").GetString());
         Assert.DoesNotContain("subject", json.ToString(), StringComparison.OrdinalIgnoreCase);
@@ -682,11 +1298,19 @@ public sealed class CustomerPortalIdentityTests
     public async Task Profile_ReportsHighestAuthorityRole()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var controller = await CompletedControllerAsync(factory, roles: ["VIEWER", "OWNER", "MANAGER"]);
+        var controller = await CompletedControllerAsync(
+            factory,
+            roles: ["VIEWER", "OWNER", "MANAGER"]
+        );
 
-        var result = Assert.IsType<OkObjectResult>(await controller.GetCustomerProfileAsync(CancellationToken.None));
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.GetCustomerProfileAsync(CancellationToken.None)
+        );
 
-        Assert.Equal("OWNER", JsonSerializer.SerializeToElement(result.Value).GetProperty("ActiveRole").GetString());
+        Assert.Equal(
+            "OWNER",
+            JsonSerializer.SerializeToElement(result.Value).GetProperty("ActiveRole").GetString()
+        );
     }
 
     [Fact]
@@ -695,24 +1319,51 @@ public sealed class CustomerPortalIdentityTests
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var missingTenant = IdentityTestHelpers.CreateController(factory, customerRoles: ["OWNER"]);
         var missingRoles = IdentityTestHelpers.CreateController(
-            factory, tenantId: Guid.NewGuid().ToString("D"), customerRoles: []);
+            factory,
+            tenantId: Guid.NewGuid().ToString("D"),
+            customerRoles: []
+        );
         var invalidExpiry = IdentityTestHelpers.CreateController(
-            factory, tenantId: Guid.NewGuid().ToString("D"), customerRoles: ["OWNER"]);
+            factory,
+            tenantId: Guid.NewGuid().ToString("D"),
+            customerRoles: ["OWNER"]
+        );
         var expiryIdentity = (ClaimsIdentity)invalidExpiry.User.Identity!;
         expiryIdentity.RemoveClaim(expiryIdentity.FindFirst("exp")!);
         expiryIdentity.AddClaim(new Claim("exp", "invalid"));
 
-        Assert.Equal(401, Assert.IsType<ObjectResult>(
-            await missingTenant.GetSessionAsync(CancellationToken.None)).StatusCode);
-        Assert.Equal(401, Assert.IsType<ObjectResult>(
-            await missingRoles.GetSessionAsync(CancellationToken.None)).StatusCode);
-        Assert.Equal(401, Assert.IsType<ObjectResult>(
-            await invalidExpiry.GetSessionAsync(CancellationToken.None)).StatusCode);
-        Assert.Equal(401, Assert.IsType<ObjectResult>(
-            await missingTenant.GetCustomerProfileAsync(CancellationToken.None)).StatusCode);
-        Assert.Equal(401, Assert.IsType<ObjectResult>(
-            await missingRoles.GetCustomerSettingsAsync(CancellationToken.None)).StatusCode);
-        Assert.Equal(401, Assert.IsType<ObjectResult>(missingTenant.ListCustomerLoginMethods()).StatusCode);
+        Assert.Equal(
+            401,
+            Assert
+                .IsType<ObjectResult>(await missingRoles.GetSessionAsync(CancellationToken.None))
+                .StatusCode
+        );
+        Assert.Equal(
+            401,
+            Assert
+                .IsType<ObjectResult>(await invalidExpiry.GetSessionAsync(CancellationToken.None))
+                .StatusCode
+        );
+        Assert.Equal(
+            401,
+            Assert
+                .IsType<ObjectResult>(
+                    await missingTenant.GetCustomerProfileAsync(CancellationToken.None)
+                )
+                .StatusCode
+        );
+        Assert.Equal(
+            401,
+            Assert
+                .IsType<ObjectResult>(
+                    await missingRoles.GetCustomerSettingsAsync(CancellationToken.None)
+                )
+                .StatusCode
+        );
+        Assert.Equal(
+            401,
+            Assert.IsType<ObjectResult>(missingTenant.ListCustomerLoginMethods()).StatusCode
+        );
     }
 
     [Fact]
@@ -729,7 +1380,11 @@ public sealed class CustomerPortalIdentityTests
             new("1.0.0", "Ada", new string('x', 201)),
         ];
         var validPreferences = new NotificationPreferencesRequest(
-            ["IN_APP"], ["EMAIL"], ["IN_APP"], ["WHATSAPP"]);
+            ["IN_APP"],
+            ["EMAIL"],
+            ["IN_APP"],
+            ["WHATSAPP"]
+        );
         UpdateCustomerSettingsRequest[] invalidSettings =
         [
             new("2.0.0", "en", "SYSTEM", "RELATIVE", validPreferences),
@@ -737,43 +1392,106 @@ public sealed class CustomerPortalIdentityTests
             new("1.0.0", "en", "OTHER", "RELATIVE", validPreferences),
             new("1.0.0", "en", "SYSTEM", "OTHER", validPreferences),
             new("1.0.0", "en", "SYSTEM", "RELATIVE", null!),
-            new("1.0.0", "en", "SYSTEM", "RELATIVE", validPreferences with { ApprovalRequests = null! }),
-            new("1.0.0", "en", "SYSTEM", "RELATIVE", validPreferences with { MaturityReports = ["SMS"] }),
-            new("1.0.0", "en", "SYSTEM", "RELATIVE", validPreferences with { MonthlyNarratives = null! }),
-            new("1.0.0", "en", "SYSTEM", "RELATIVE", validPreferences with { SelfGovernanceAlerts = ["SMS"] }),
+            new(
+                "1.0.0",
+                "en",
+                "SYSTEM",
+                "RELATIVE",
+                validPreferences with
+                {
+                    ApprovalRequests = null!,
+                }
+            ),
+            new(
+                "1.0.0",
+                "en",
+                "SYSTEM",
+                "RELATIVE",
+                validPreferences with
+                {
+                    MaturityReports = ["SMS"],
+                }
+            ),
+            new(
+                "1.0.0",
+                "en",
+                "SYSTEM",
+                "RELATIVE",
+                validPreferences with
+                {
+                    MonthlyNarratives = null!,
+                }
+            ),
+            new(
+                "1.0.0",
+                "en",
+                "SYSTEM",
+                "RELATIVE",
+                validPreferences with
+                {
+                    SelfGovernanceAlerts = ["SMS"],
+                }
+            ),
         ];
 
         foreach (var request in invalidProfiles)
-            Assert.Equal(400, Assert.IsType<ObjectResult>(
-                await controller.UpdateCustomerProfileAsync(request, CancellationToken.None)).StatusCode);
+            Assert.Equal(
+                400,
+                Assert
+                    .IsType<ObjectResult>(
+                        await controller.UpdateCustomerProfileAsync(request, CancellationToken.None)
+                    )
+                    .StatusCode
+            );
         foreach (var request in invalidSettings)
-            Assert.Equal(400, Assert.IsType<ObjectResult>(
-                await controller.UpdateCustomerSettingsAsync(request, CancellationToken.None)).StatusCode);
+            Assert.Equal(
+                400,
+                Assert
+                    .IsType<ObjectResult>(
+                        await controller.UpdateCustomerSettingsAsync(
+                            request,
+                            CancellationToken.None
+                        )
+                    )
+                    .StatusCode
+            );
     }
 
     [Fact]
     public async Task PortalProjectsFallbackRolesAndLoginProviders()
     {
-        foreach (var (roles, expectedRole) in new[]
-        {
-            (new[] { "MANAGER" }, "MANAGER"),
-            (new[] { "VIEWER" }, "VIEWER"),
-        })
+        foreach (
+            var (roles, expectedRole) in new[]
+            {
+                (new[] { "MANAGER" }, "MANAGER"),
+                (new[] { "VIEWER" }, "VIEWER"),
+            }
+        )
         {
             var controller = await CompletedControllerAsync(
-                new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N")), roles: roles);
+                new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N")),
+                roles: roles
+            );
             var result = Assert.IsType<OkObjectResult>(
-                await controller.GetCustomerProfileAsync(CancellationToken.None));
-            Assert.Equal(expectedRole,
-                JsonSerializer.SerializeToElement(result.Value).GetProperty("ActiveRole").GetString());
+                await controller.GetCustomerProfileAsync(CancellationToken.None)
+            );
+            Assert.Equal(
+                expectedRole,
+                JsonSerializer
+                    .SerializeToElement(result.Value)
+                    .GetProperty("ActiveRole")
+                    .GetString()
+            );
         }
 
         foreach (var provider in new[] { "meta", "apple", "credential" })
         {
             var controller = IdentityTestHelpers.CreateController(
                 new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N")),
-                tenantId: Guid.NewGuid().ToString("D"), identityProvider: provider,
-                customerRoles: ["OWNER"]);
+                tenantId: Guid.NewGuid().ToString("D"),
+                identityProvider: provider,
+                customerRoles: ["OWNER"]
+            );
             Assert.IsType<OkObjectResult>(controller.ListCustomerLoginMethods());
         }
     }
@@ -792,24 +1510,38 @@ public sealed class IdentityRegistrationTests
         identity.RemoveClaim(identity.FindFirst(ClaimTypes.NameIdentifier)!);
         identity.AddClaim(new Claim("sub", "fallback-subject"));
 
-        Assert.IsType<ObjectResult>(await controller.StartRegistrationAsync(
-            new StartRegistrationRequest("en"), CancellationToken.None));
+        Assert.IsType<ObjectResult>(
+            await controller.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
 
         identity.RemoveClaim(identity.FindFirst("sub")!);
         IdentityTestHelpers.RefreshIdempotencyKey(controller);
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => controller.StartRegistrationAsync(
-            new StartRegistrationRequest("en"), CancellationToken.None));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            controller.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
     }
 
     [Fact]
     public async Task F2_StartRegistration_Google_Returns201WithRegistrationId()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory,
-            identityProvider: "google", email: "test@example.com", emailVerified: true);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            identityProvider: "google",
+            email: "test@example.com",
+            emailVerified: true
+        );
 
         var result = await ctrl.StartRegistrationAsync(
-            new StartRegistrationRequest("en"), CancellationToken.None);
+            new StartRegistrationRequest("en"),
+            CancellationToken.None
+        );
 
         var created = Assert.IsType<ObjectResult>(result);
         Assert.Equal(201, created.StatusCode);
@@ -826,13 +1558,21 @@ public sealed class IdentityRegistrationTests
         var ctrl = IdentityTestHelpers.CreateController(factory, identityProvider: "google");
 
         var first = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
         var firstJson = JsonSerializer.SerializeToElement(first.Value);
         var regId = firstJson.GetProperty("RegistrationId").GetGuid();
 
         // Same Idempotency-Key → replay
         var replay = Assert.IsType<OkObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
         var replayJson = JsonSerializer.SerializeToElement(replay.Value);
         Assert.Equal(regId, replayJson.GetProperty("RegistrationId").GetGuid());
     }
@@ -844,7 +1584,9 @@ public sealed class IdentityRegistrationTests
         var ctrl = IdentityTestHelpers.CreateController(factory, identityProvider: "facebook");
 
         var result = await ctrl.StartRegistrationAsync(
-            new StartRegistrationRequest("en"), CancellationToken.None);
+            new StartRegistrationRequest("en"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(403, obj.StatusCode);
@@ -859,7 +1601,9 @@ public sealed class IdentityRegistrationTests
         var ctrl = IdentityTestHelpers.CreateController(factory, identityProvider: "apple");
 
         var result = await ctrl.StartRegistrationAsync(
-            new StartRegistrationRequest("en"), CancellationToken.None);
+            new StartRegistrationRequest("en"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(403, obj.StatusCode);
@@ -871,15 +1615,27 @@ public sealed class IdentityRegistrationTests
     public async Task F2_GetRegistration_CrossTenant_Returns404NotAccessible()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "subject-a", identityProvider: "google");
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "subject-a",
+            identityProvider: "google"
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
         var json = JsonSerializer.SerializeToElement(created.Value);
         var regId = json.GetProperty("RegistrationId").GetGuid();
 
         // Different subject tries to read the registration
-        var ctrl2 = IdentityTestHelpers.CreateController(factory, subject: "subject-b", identityProvider: "google");
+        var ctrl2 = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "subject-b",
+            identityProvider: "google"
+        );
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl2);
 
         var result = await ctrl2.GetRegistrationAsync(regId, CancellationToken.None);
@@ -893,10 +1649,18 @@ public sealed class IdentityRegistrationTests
     public async Task F2_GetRegistration_SameSubject_Returns200()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "same-sub", identityProvider: "google");
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "same-sub",
+            identityProvider: "google"
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
         var json = JsonSerializer.SerializeToElement(created.Value);
         var regId = json.GetProperty("RegistrationId").GetGuid();
 
@@ -908,16 +1672,31 @@ public sealed class IdentityRegistrationTests
     public async Task F2_UpdateProfile_SetsMinimumFields_StateAdvances()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "profile-sub",
-            identityProvider: "google", email: "p@example.com", emailVerified: true);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "profile-sub",
+            identityProvider: "google",
+            email: "p@example.com",
+            emailVerified: true
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var update = await ctrl.UpdateProfileAsync(regId, new UpdateRegistrationProfileRequest(
-            "Test User", "Acme", "Retail", "en"), CancellationToken.None);
+        var update = await ctrl.UpdateProfileAsync(
+            regId,
+            new UpdateRegistrationProfileRequest("Test User", "Acme", "Retail", "en"),
+            CancellationToken.None
+        );
 
         var ok = Assert.IsType<OkObjectResult>(update);
         var updJson = JsonSerializer.SerializeToElement(ok.Value);
@@ -929,12 +1708,22 @@ public sealed class IdentityRegistrationTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         // emailVerified = false
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "incomplete-sub",
-            identityProvider: "google");
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "incomplete-sub",
+            identityProvider: "google"
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var result = await ctrl.CompleteRegistrationAsync(regId, CancellationToken.None);
@@ -951,16 +1740,31 @@ public sealed class IdentityRegistrationTests
     public async Task F2_CompleteRegistration_WithEmail_Returns200AccountCreated()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "complete-sub",
-            identityProvider: "google", email: "c@example.com", emailVerified: true);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "complete-sub",
+            identityProvider: "google",
+            email: "c@example.com",
+            emailVerified: true
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        await ctrl.UpdateProfileAsync(regId, new UpdateRegistrationProfileRequest(
-            "Full Name", "Corp", "Consulting", "en"), CancellationToken.None);
+        await ctrl.UpdateProfileAsync(
+            regId,
+            new UpdateRegistrationProfileRequest("Full Name", "Corp", "Consulting", "en"),
+            CancellationToken.None
+        );
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var result = await ctrl.CompleteRegistrationAsync(regId, CancellationToken.None);
@@ -1012,11 +1816,13 @@ public sealed class IdentityRegistrationTests
         var service = IdentityTestHelpers.CreateService(factory);
         await Assert.ThrowsAsync<IdentityDuplicateResolutionRequiredException>(() =>
             service.CompleteRegistrationAsync(
-            pending.RegistrationId,
-            pending.ActorSubject,
-            Guid.NewGuid(),
-            "duplicate-mobile-request",
-            CancellationToken.None));
+                pending.RegistrationId,
+                pending.ActorSubject,
+                Guid.NewGuid(),
+                "duplicate-mobile-request",
+                CancellationToken.None
+            )
+        );
         await using var persisted = factory.CreateDbContext();
         Assert.Equal(
             IdentityRegistrationState.DuplicateResolutionRequired,
@@ -1028,26 +1834,49 @@ public sealed class IdentityRegistrationTests
     public async Task F2_CompleteRegistration_Replay_ReturnsSameOutcome()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "replay-comp",
-            identityProvider: "google", email: "r@example.com", emailVerified: true);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "replay-comp",
+            identityProvider: "google",
+            email: "r@example.com",
+            emailVerified: true
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        await ctrl.UpdateProfileAsync(regId, new UpdateRegistrationProfileRequest(
-            "Name", "Co", "Domain", "en"), CancellationToken.None);
+        await ctrl.UpdateProfileAsync(
+            regId,
+            new UpdateRegistrationProfileRequest("Name", "Co", "Domain", "en"),
+            CancellationToken.None
+        );
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var first = Assert.IsType<OkObjectResult>(
-            await ctrl.CompleteRegistrationAsync(regId, CancellationToken.None));
-        var firstRef = JsonSerializer.SerializeToElement(first.Value).GetProperty("AccountReference").GetGuid();
+            await ctrl.CompleteRegistrationAsync(regId, CancellationToken.None)
+        );
+        var firstRef = JsonSerializer
+            .SerializeToElement(first.Value)
+            .GetProperty("AccountReference")
+            .GetGuid();
 
         // Same idempotency key → replay
         var replay = Assert.IsType<OkObjectResult>(
-            await ctrl.CompleteRegistrationAsync(regId, CancellationToken.None));
-        var replayRef = JsonSerializer.SerializeToElement(replay.Value).GetProperty("AccountReference").GetGuid();
+            await ctrl.CompleteRegistrationAsync(regId, CancellationToken.None)
+        );
+        var replayRef = JsonSerializer
+            .SerializeToElement(replay.Value)
+            .GetProperty("AccountReference")
+            .GetGuid();
 
         Assert.Equal(firstRef, replayRef);
     }
@@ -1056,7 +1885,10 @@ public sealed class IdentityRegistrationTests
     public async Task F2_CompleteRegistration_SaveFailure_PreservesIncompleteStateAndAllowsRetry()
     {
         var interceptor = new FailCompletionSaveOnceInterceptor();
-        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"), interceptor);
+        var factory = new InMemoryIdentityDbContextFactory(
+            Guid.NewGuid().ToString("N"),
+            interceptor
+        );
         var registration = new IdentityRegistrationRecord
         {
             ActorSubject = "completion-save-failure",
@@ -1076,9 +1908,15 @@ public sealed class IdentityRegistrationTests
         var idempotencyKey = Guid.NewGuid();
         const string canonicalHash = "completion-save-failure-hash";
 
-        await Assert.ThrowsAsync<DbUpdateException>(() => service.CompleteRegistrationAsync(
-            registration.RegistrationId, registration.ActorSubject, idempotencyKey,
-            canonicalHash, CancellationToken.None));
+        await Assert.ThrowsAsync<DbUpdateException>(() =>
+            service.CompleteRegistrationAsync(
+                registration.RegistrationId,
+                registration.ActorSubject,
+                idempotencyKey,
+                canonicalHash,
+                CancellationToken.None
+            )
+        );
 
         await using (var persisted = factory.CreateDbContext())
         {
@@ -1090,11 +1928,19 @@ public sealed class IdentityRegistrationTests
         }
 
         var (completed, isNew) = await service.CompleteRegistrationAsync(
-            registration.RegistrationId, registration.ActorSubject, idempotencyKey,
-            canonicalHash, CancellationToken.None);
+            registration.RegistrationId,
+            registration.ActorSubject,
+            idempotencyKey,
+            canonicalHash,
+            CancellationToken.None
+        );
         var (replayed, replayIsNew) = await service.CompleteRegistrationAsync(
-            registration.RegistrationId, registration.ActorSubject, idempotencyKey,
-            canonicalHash, CancellationToken.None);
+            registration.RegistrationId,
+            registration.ActorSubject,
+            idempotencyKey,
+            canonicalHash,
+            CancellationToken.None
+        );
 
         Assert.True(isNew);
         Assert.Equal("ACCOUNT_CREATED", completed.Outcome);
@@ -1115,11 +1961,18 @@ public sealed class IdentityRegistrationTests
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
             DbContextEventData eventData,
             InterceptionResult<int> result,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default
+        )
         {
-            if (!_failed && eventData.Context!.ChangeTracker.Entries<IdentityIdempotencyEntry>()
-                .Any(entry => entry.State == EntityState.Added
-                    && entry.Entity.OperationFamily == "CompleteRegistration"))
+            if (
+                !_failed
+                && eventData
+                    .Context!.ChangeTracker.Entries<IdentityIdempotencyEntry>()
+                    .Any(entry =>
+                        entry.State == EntityState.Added
+                        && entry.Entity.OperationFamily == "CompleteRegistration"
+                    )
+            )
             {
                 _failed = true;
                 throw new DbUpdateException("Synthetic completion persistence failure.");
@@ -1138,15 +1991,29 @@ public sealed class IdentityEmailVerificationTests
     public async Task F2_StartEmailVerification_Returns202Challenge()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "ev-sub", identityProvider: "google");
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "ev-sub",
+            identityProvider: "google"
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var result = await ctrl.StartEmailVerificationAsync(regId,
-            new StartEmailVerificationRequest("test@example.com"), CancellationToken.None);
+        var result = await ctrl.StartEmailVerificationAsync(
+            regId,
+            new StartEmailVerificationRequest("test@example.com"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(202, obj.StatusCode);
@@ -1162,15 +2029,24 @@ public sealed class IdentityEmailVerificationTests
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var ctrl = IdentityTestHelpers.CreateController(factory, subject: "invalid-email-sub");
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var registrationId = JsonSerializer.SerializeToElement(created.Value)
-            .GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var registrationId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var result = Assert.IsType<ObjectResult>(await ctrl.StartEmailVerificationAsync(
-            registrationId,
-            new StartEmailVerificationRequest("\ud800@example.com"),
-            CancellationToken.None));
+        var result = Assert.IsType<ObjectResult>(
+            await ctrl.StartEmailVerificationAsync(
+                registrationId,
+                new StartEmailVerificationRequest("\ud800@example.com"),
+                CancellationToken.None
+            )
+        );
 
         Assert.Equal(400, result.StatusCode);
 
@@ -1190,19 +2066,40 @@ public sealed class IdentityEmailVerificationTests
     {
         // Both known and unknown emails must return the same 202 shape
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "ae-sub", identityProvider: "google");
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "ae-sub",
+            identityProvider: "google"
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var r1 = Assert.IsType<ObjectResult>(
-            await ctrl.StartEmailVerificationAsync(regId, new("known@example.com"), CancellationToken.None));
+            await ctrl.StartEmailVerificationAsync(
+                regId,
+                new("known@example.com"),
+                CancellationToken.None
+            )
+        );
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var r2 = Assert.IsType<ObjectResult>(
-            await ctrl.StartEmailVerificationAsync(regId, new("unknown@example.com"), CancellationToken.None));
+            await ctrl.StartEmailVerificationAsync(
+                regId,
+                new("unknown@example.com"),
+                CancellationToken.None
+            )
+        );
 
         // Both must be 202
         Assert.Equal(202, r1.StatusCode);
@@ -1213,16 +2110,35 @@ public sealed class IdentityEmailVerificationTests
     public async Task F2_ConfirmEmailVerification_ExpiredChallenge_Returns410()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "exp-sub", identityProvider: "google");
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "exp-sub",
+            identityProvider: "google"
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var chResp = Assert.IsType<ObjectResult>(
-            await ctrl.StartEmailVerificationAsync(regId, new("test@example.com"), CancellationToken.None));
-        var challengeId = JsonSerializer.SerializeToElement(chResp.Value).GetProperty("ChallengeId").GetGuid();
+            await ctrl.StartEmailVerificationAsync(
+                regId,
+                new("test@example.com"),
+                CancellationToken.None
+            )
+        );
+        var challengeId = JsonSerializer
+            .SerializeToElement(chResp.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
 
         // Manually expire the challenge
         await using var db = factory.CreateDbContext();
@@ -1231,8 +2147,11 @@ public sealed class IdentityEmailVerificationTests
         await db.SaveChangesAsync();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var result = await ctrl.ConfirmEmailVerificationAsync(regId,
-            new ConfirmVerificationRequest(challengeId, "123456"), CancellationToken.None);
+        var result = await ctrl.ConfirmEmailVerificationAsync(
+            regId,
+            new ConfirmVerificationRequest(challengeId, "123456"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(410, obj.StatusCode);
@@ -1245,19 +2164,40 @@ public sealed class IdentityEmailVerificationTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var dispatcher = new CapturingVerificationDispatcher();
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "wrong-email-code", dispatcher: dispatcher);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "wrong-email-code",
+            dispatcher: dispatcher
+        );
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(new("en"), CancellationToken.None)
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var started = Assert.IsType<ObjectResult>(await ctrl.StartEmailVerificationAsync(
-            regId, new("person@example.com"), CancellationToken.None));
-        var challengeId = JsonSerializer.SerializeToElement(started.Value).GetProperty("ChallengeId").GetGuid();
+        var started = Assert.IsType<ObjectResult>(
+            await ctrl.StartEmailVerificationAsync(
+                regId,
+                new("person@example.com"),
+                CancellationToken.None
+            )
+        );
+        var challengeId = JsonSerializer
+            .SerializeToElement(started.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var denied = Assert.IsType<ObjectResult>(await ctrl.ConfirmEmailVerificationAsync(
-            regId, new(challengeId, "000000"), CancellationToken.None));
+        var denied = Assert.IsType<ObjectResult>(
+            await ctrl.ConfirmEmailVerificationAsync(
+                regId,
+                new(challengeId, "000000"),
+                CancellationToken.None
+            )
+        );
         Assert.Equal(403, denied.StatusCode);
         Assert.NotEqual("000000", dispatcher.LatestCode);
 
@@ -1272,16 +2212,32 @@ public sealed class IdentityEmailVerificationTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var dispatcher = new CapturingVerificationDispatcher();
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "valid-email-code", dispatcher: dispatcher);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "valid-email-code",
+            dispatcher: dispatcher
+        );
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(new("en"), CancellationToken.None)
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var started = Assert.IsType<ObjectResult>(await ctrl.StartEmailVerificationAsync(
-            regId, new("person@example.com"), CancellationToken.None));
+        var started = Assert.IsType<ObjectResult>(
+            await ctrl.StartEmailVerificationAsync(
+                regId,
+                new("person@example.com"),
+                CancellationToken.None
+            )
+        );
         var responseJson = JsonSerializer.Serialize(started.Value);
-        var challengeId = JsonSerializer.SerializeToElement(started.Value).GetProperty("ChallengeId").GetGuid();
+        var challengeId = JsonSerializer
+            .SerializeToElement(started.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
         Assert.NotNull(dispatcher.LatestCode);
         Assert.DoesNotContain(dispatcher.LatestCode!, responseJson);
 
@@ -1292,9 +2248,19 @@ public sealed class IdentityEmailVerificationTests
         }
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var confirmed = Assert.IsType<OkObjectResult>(await ctrl.ConfirmEmailVerificationAsync(
-            regId, new(challengeId, dispatcher.LatestCode!), CancellationToken.None));
-        Assert.True(JsonSerializer.SerializeToElement(confirmed.Value).GetProperty("EmailVerified").GetBoolean());
+        var confirmed = Assert.IsType<OkObjectResult>(
+            await ctrl.ConfirmEmailVerificationAsync(
+                regId,
+                new(challengeId, dispatcher.LatestCode!),
+                CancellationToken.None
+            )
+        );
+        Assert.True(
+            JsonSerializer
+                .SerializeToElement(confirmed.Value)
+                .GetProperty("EmailVerified")
+                .GetBoolean()
+        );
     }
 }
 
@@ -1306,13 +2272,23 @@ public sealed class IdentityIdempotencyTests
     public async Task F2_DivergentIdempotencyKey_Returns409Conflict()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "idem-sub", identityProvider: "google");
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "idem-sub",
+            identityProvider: "google"
+        );
 
         // First call
-        await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None);
+        await ctrl.StartRegistrationAsync(
+            new StartRegistrationRequest("en"),
+            CancellationToken.None
+        );
 
         // Same Idempotency-Key but different body (different canonical hash)
-        var result = await ctrl.StartRegistrationAsync(new StartRegistrationRequest("fr"), CancellationToken.None);
+        var result = await ctrl.StartRegistrationAsync(
+            new StartRegistrationRequest("fr"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(409, obj.StatusCode);
@@ -1324,14 +2300,26 @@ public sealed class IdentityIdempotencyTests
     public async Task F2_SameKeyAndHash_Replays_WithoutDoubleWrite()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "replay-sub", identityProvider: "google");
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "replay-sub",
+            identityProvider: "google"
+        );
 
         var r1 = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
         Assert.Equal(201, r1.StatusCode);
 
         var r2 = Assert.IsType<OkObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
         Assert.Equal(200, r2.StatusCode);
 
         // Registration count must stay at 1
@@ -1348,14 +2336,18 @@ public sealed class IdentityAccountLinkTests
     public async Task F2_StartAccountLink_WithFreshAal3_Returns201()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var authTs = DateTimeOffset.UtcNow.AddMinutes(-1);  // within 5-minute window
-        var ctrl = IdentityTestHelpers.CreateController(factory,
+        var authTs = DateTimeOffset.UtcNow.AddMinutes(-1); // within 5-minute window
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
             subject: "link-sub",
             tenantId: Guid.NewGuid().ToString(),
-            authTimestamp: authTs.ToUnixTimeSeconds());
+            authTimestamp: authTs.ToUnixTimeSeconds()
+        );
 
         var result = await ctrl.StartAccountLinkAsync(
-            new StartAccountLinkRequest(Guid.NewGuid()), CancellationToken.None);
+            new StartAccountLinkRequest(Guid.NewGuid()),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(201, obj.StatusCode);
@@ -1389,7 +2381,10 @@ public sealed class IdentityAccountLinkTests
         Assert.Equal(tenantId, call.TenantId);
         Assert.Equal("IDENTITY_ACCOUNT_LINK_START", call.ActionType);
         await using var db = factory.CreateDbContext();
-        Assert.NotEqual(Guid.Empty, Assert.Single(await db.AccountLinks.ToListAsync()).StartEvidenceId);
+        Assert.NotEqual(
+            Guid.Empty,
+            Assert.Single(await db.AccountLinks.ToListAsync()).StartEvidenceId
+        );
     }
 
     [Fact]
@@ -1422,14 +2417,18 @@ public sealed class IdentityAccountLinkTests
     public async Task F2_StartAccountLink_StaleSession_Returns403StepUpRequired()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var authTs = DateTimeOffset.UtcNow.AddMinutes(-10);  // outside 5-minute window
-        var ctrl = IdentityTestHelpers.CreateController(factory,
+        var authTs = DateTimeOffset.UtcNow.AddMinutes(-10); // outside 5-minute window
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
             subject: "stale-sub",
             tenantId: Guid.NewGuid().ToString(),
-            authTimestamp: authTs.ToUnixTimeSeconds());
+            authTimestamp: authTs.ToUnixTimeSeconds()
+        );
 
         var result = await ctrl.StartAccountLinkAsync(
-            new StartAccountLinkRequest(Guid.NewGuid()), CancellationToken.None);
+            new StartAccountLinkRequest(Guid.NewGuid()),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(403, obj.StatusCode);
@@ -1445,17 +2444,30 @@ public sealed class IdentityAccountLinkTests
         var tenantB = Guid.NewGuid().ToString();
         var authTs = DateTimeOffset.UtcNow.AddMinutes(-1);
 
-        var ctrlA = IdentityTestHelpers.CreateController(factory,
-            subject: "ct-sub-a", tenantId: tenantA,
-            authTimestamp: authTs.ToUnixTimeSeconds());
+        var ctrlA = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "ct-sub-a",
+            tenantId: tenantA,
+            authTimestamp: authTs.ToUnixTimeSeconds()
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrlA.StartAccountLinkAsync(new StartAccountLinkRequest(Guid.NewGuid()), CancellationToken.None));
-        var linkId = JsonSerializer.SerializeToElement(created.Value).GetProperty("LinkId").GetGuid();
+            await ctrlA.StartAccountLinkAsync(
+                new StartAccountLinkRequest(Guid.NewGuid()),
+                CancellationToken.None
+            )
+        );
+        var linkId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("LinkId")
+            .GetGuid();
 
         // Different tenant tries to read the link
-        var ctrlB = IdentityTestHelpers.CreateController(factory,
-            subject: "ct-sub-a", tenantId: tenantB);
+        var ctrlB = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "ct-sub-a",
+            tenantId: tenantB
+        );
 
         var result = await ctrlB.GetAccountLinkAsync(linkId, CancellationToken.None);
         var obj = Assert.IsType<ObjectResult>(result);
@@ -1487,11 +2499,16 @@ public sealed class IdentityProgressiveMobileTests
     public async Task F2_StartAccountMobileVerification_Returns202Challenge()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "mob-sub",
-            tenantId: Guid.NewGuid().ToString());
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "mob-sub",
+            tenantId: Guid.NewGuid().ToString()
+        );
 
         var result = await ctrl.StartAccountMobileVerificationAsync(
-            new StartMobileVerificationRequest("+911234567890"), CancellationToken.None);
+            new StartMobileVerificationRequest("+911234567890"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(202, obj.StatusCode);
@@ -1511,10 +2528,16 @@ public sealed class IdentityProgressiveMobileTests
         // Both existing and non-existing mobiles must return the same 202 shape
         var r1 = Assert.IsType<ObjectResult>(
             await ctrl1.StartAccountMobileVerificationAsync(
-                new StartMobileVerificationRequest("+919999999999"), CancellationToken.None));
+                new StartMobileVerificationRequest("+919999999999"),
+                CancellationToken.None
+            )
+        );
         var r2 = Assert.IsType<ObjectResult>(
             await ctrl2.StartAccountMobileVerificationAsync(
-                new StartMobileVerificationRequest("+911111111111"), CancellationToken.None));
+                new StartMobileVerificationRequest("+911111111111"),
+                CancellationToken.None
+            )
+        );
 
         Assert.Equal(202, r1.StatusCode);
         Assert.Equal(202, r2.StatusCode);
@@ -1525,25 +2548,50 @@ public sealed class IdentityProgressiveMobileTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var dispatcher = new CapturingVerificationDispatcher();
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "progressive-mobile", dispatcher: dispatcher);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "progressive-mobile",
+            dispatcher: dispatcher
+        );
 
-        var started = Assert.IsType<ObjectResult>(await ctrl.StartAccountMobileVerificationAsync(
-            new("+911234567890"), CancellationToken.None));
-        var challengeId = JsonSerializer.SerializeToElement(started.Value).GetProperty("ChallengeId").GetGuid();
+        var started = Assert.IsType<ObjectResult>(
+            await ctrl.StartAccountMobileVerificationAsync(
+                new("+911234567890"),
+                CancellationToken.None
+            )
+        );
+        var challengeId = JsonSerializer
+            .SerializeToElement(started.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var key = ctrl.Request.Headers["Idempotency-Key"].ToString();
 
-        var first = Assert.IsType<OkObjectResult>(await ctrl.ConfirmAccountMobileVerificationAsync(
-            new(challengeId, dispatcher.LatestCode!), CancellationToken.None));
+        var first = Assert.IsType<OkObjectResult>(
+            await ctrl.ConfirmAccountMobileVerificationAsync(
+                new(challengeId, dispatcher.LatestCode!),
+                CancellationToken.None
+            )
+        );
         var firstJson = JsonSerializer.SerializeToElement(first.Value);
         Assert.NotEqual("***", firstJson.GetProperty("MaskedMobile").GetString());
 
         ctrl.Request.Headers["Idempotency-Key"] = key;
-        var replay = Assert.IsType<OkObjectResult>(await ctrl.ConfirmAccountMobileVerificationAsync(
-            new(challengeId, dispatcher.LatestCode!), CancellationToken.None));
+        var replay = Assert.IsType<OkObjectResult>(
+            await ctrl.ConfirmAccountMobileVerificationAsync(
+                new(challengeId, dispatcher.LatestCode!),
+                CancellationToken.None
+            )
+        );
         var replayJson = JsonSerializer.SerializeToElement(replay.Value);
-        Assert.Equal(firstJson.GetProperty("MaskedMobile").GetString(), replayJson.GetProperty("MaskedMobile").GetString());
-        Assert.Equal(firstJson.GetProperty("VerifiedAt").GetDateTimeOffset(), replayJson.GetProperty("VerifiedAt").GetDateTimeOffset());
+        Assert.Equal(
+            firstJson.GetProperty("MaskedMobile").GetString(),
+            replayJson.GetProperty("MaskedMobile").GetString()
+        );
+        Assert.Equal(
+            firstJson.GetProperty("VerifiedAt").GetDateTimeOffset(),
+            replayJson.GetProperty("VerifiedAt").GetDateTimeOffset()
+        );
     }
 
     [Fact]
@@ -1551,17 +2599,39 @@ public sealed class IdentityProgressiveMobileTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var dispatcher = new CapturingVerificationDispatcher();
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "mobile-registration", dispatcher: dispatcher);
-        var first = Assert.IsType<ObjectResult>(await ctrl.StartRegistrationAsync(new("en"), CancellationToken.None));
-        var reg1 = JsonSerializer.SerializeToElement(first.Value).GetProperty("RegistrationId").GetGuid();
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "mobile-registration",
+            dispatcher: dispatcher
+        );
+        var first = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationAsync(new("en"), CancellationToken.None)
+        );
+        var reg1 = JsonSerializer
+            .SerializeToElement(first.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var second = Assert.IsType<ObjectResult>(await ctrl.StartRegistrationAsync(new("fr"), CancellationToken.None));
-        var reg2 = JsonSerializer.SerializeToElement(second.Value).GetProperty("RegistrationId").GetGuid();
+        var second = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationAsync(new("fr"), CancellationToken.None)
+        );
+        var reg2 = JsonSerializer
+            .SerializeToElement(second.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var started = Assert.IsType<ObjectResult>(await ctrl.StartRegistrationMobileVerificationAsync(
-            reg1, new("+911234567890"), CancellationToken.None));
-        var challengeId = JsonSerializer.SerializeToElement(started.Value).GetProperty("ChallengeId").GetGuid();
+        var started = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationMobileVerificationAsync(
+                reg1,
+                new("+911234567890"),
+                CancellationToken.None
+            )
+        );
+        var challengeId = JsonSerializer
+            .SerializeToElement(started.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
 
         await using (var db = factory.CreateDbContext())
         {
@@ -1571,8 +2641,13 @@ public sealed class IdentityProgressiveMobileTests
         }
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var inaccessible = Assert.IsType<ObjectResult>(await ctrl.ConfirmRegistrationMobileVerificationAsync(
-            reg2, new(challengeId, dispatcher.LatestCode!), CancellationToken.None));
+        var inaccessible = Assert.IsType<ObjectResult>(
+            await ctrl.ConfirmRegistrationMobileVerificationAsync(
+                reg2,
+                new(challengeId, dispatcher.LatestCode!),
+                CancellationToken.None
+            )
+        );
         Assert.Equal(404, inaccessible.StatusCode);
     }
 
@@ -1581,19 +2656,36 @@ public sealed class IdentityProgressiveMobileTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var dispatcher = new CapturingVerificationDispatcher();
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "wrong-mobile-code", dispatcher: dispatcher);
-        var started = Assert.IsType<ObjectResult>(await ctrl.StartAccountMobileVerificationAsync(
-            new("+911234567890"), CancellationToken.None));
-        var challengeId = JsonSerializer.SerializeToElement(started.Value).GetProperty("ChallengeId").GetGuid();
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "wrong-mobile-code",
+            dispatcher: dispatcher
+        );
+        var started = Assert.IsType<ObjectResult>(
+            await ctrl.StartAccountMobileVerificationAsync(
+                new("+911234567890"),
+                CancellationToken.None
+            )
+        );
+        var challengeId = JsonSerializer
+            .SerializeToElement(started.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var denied = Assert.IsType<ObjectResult>(await ctrl.ConfirmAccountMobileVerificationAsync(
-            new(challengeId, "000000"), CancellationToken.None));
+        var denied = Assert.IsType<ObjectResult>(
+            await ctrl.ConfirmAccountMobileVerificationAsync(
+                new(challengeId, "000000"),
+                CancellationToken.None
+            )
+        );
         Assert.Equal(403, denied.StatusCode);
 
         await using var db = factory.CreateDbContext();
-        Assert.Equal(IdentityVerificationState.Pending,
-            (await db.VerificationChallenges.FindAsync(challengeId))!.State);
+        Assert.Equal(
+            IdentityVerificationState.Pending,
+            (await db.VerificationChallenges.FindAsync(challengeId))!.State
+        );
     }
 }
 
@@ -1605,12 +2697,20 @@ public sealed class IdentityProviderSubjectBindingTests
     public async Task F2_GoogleRegistration_BindsProviderLabel()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory,
-            subject: "google-sub", identityProvider: "google",
-            email: "g@example.com", emailVerified: true);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "google-sub",
+            identityProvider: "google",
+            email: "g@example.com",
+            emailVerified: true
+        );
 
         var result = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
         var json = JsonSerializer.SerializeToElement(result.Value);
 
         Assert.Equal("GOOGLE", json.GetProperty("AuthenticationPath").GetString());
@@ -1625,7 +2725,11 @@ public sealed class IdentityProviderSubjectBindingTests
         var ctrl = IdentityTestHelpers.CreateController(factory, subject: "cred-sub");
 
         var result = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
         var json = JsonSerializer.SerializeToElement(result.Value);
 
         Assert.Equal("CREDENTIAL", json.GetProperty("AuthenticationPath").GetString());
@@ -1636,10 +2740,18 @@ public sealed class IdentityProviderSubjectBindingTests
     {
         // The registration request body must not contain tenantId
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "tenant-sub", identityProvider: "google");
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "tenant-sub",
+            identityProvider: "google"
+        );
 
         var result = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
         var json = result.Value!.GetType().GetProperties();
 
         // Ensure no tenant_id property exists in the registration response
@@ -1651,16 +2763,40 @@ public sealed class IdentityProviderSubjectBindingTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var idempotencyKey = Guid.NewGuid().ToString();
-        var first = IdentityTestHelpers.CreateController(factory, subject: "shared-subject", providerIssuer: "issuer-a");
+        var first = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "shared-subject",
+            providerIssuer: "issuer-a"
+        );
         first.Request.Headers["Idempotency-Key"] = idempotencyKey;
-        var second = IdentityTestHelpers.CreateController(factory, subject: "shared-subject", providerIssuer: "issuer-b");
+        var second = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "shared-subject",
+            providerIssuer: "issuer-b"
+        );
         second.Request.Headers["Idempotency-Key"] = idempotencyKey;
 
-        Assert.Equal(201, Assert.IsType<ObjectResult>(await first.StartRegistrationAsync(new("en"), CancellationToken.None)).StatusCode);
-        Assert.Equal(201, Assert.IsType<ObjectResult>(await second.StartRegistrationAsync(new("en"), CancellationToken.None)).StatusCode);
+        Assert.Equal(
+            201,
+            Assert
+                .IsType<ObjectResult>(
+                    await first.StartRegistrationAsync(new("en"), CancellationToken.None)
+                )
+                .StatusCode
+        );
+        Assert.Equal(
+            201,
+            Assert
+                .IsType<ObjectResult>(
+                    await second.StartRegistrationAsync(new("en"), CancellationToken.None)
+                )
+                .StatusCode
+        );
 
         await using var db = factory.CreateDbContext();
-        var registrations = await db.Registrations.OrderBy(value => value.ProviderIssuer).ToListAsync();
+        var registrations = await db
+            .Registrations.OrderBy(value => value.ProviderIssuer)
+            .ToListAsync();
         Assert.Equal(["issuer-a", "issuer-b"], registrations.Select(value => value.ProviderIssuer));
         Assert.NotEqual(registrations[0].ActorSubject, registrations[1].ActorSubject);
     }
@@ -1669,9 +2805,18 @@ public sealed class IdentityProviderSubjectBindingTests
     public async Task F2_GoogleVerifiedEmail_NextActionIsCompleteProfile()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, identityProvider: "google", emailVerified: true);
-        var result = Assert.IsType<ObjectResult>(await ctrl.StartRegistrationAsync(new("en"), CancellationToken.None));
-        Assert.Equal("COMPLETE_PROFILE", JsonSerializer.SerializeToElement(result.Value).GetProperty("NextAction").GetString());
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            identityProvider: "google",
+            emailVerified: true
+        );
+        var result = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationAsync(new("en"), CancellationToken.None)
+        );
+        Assert.Equal(
+            "COMPLETE_PROFILE",
+            JsonSerializer.SerializeToElement(result.Value).GetProperty("NextAction").GetString()
+        );
     }
 }
 
@@ -1699,30 +2844,56 @@ public sealed class IdentityPrivacyTests
     public async Task F2_StartEmailVerification_NeverExposesRawEmail()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "priv-sub", identityProvider: "google");
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "priv-sub",
+            identityProvider: "google"
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var result = await ctrl.StartEmailVerificationAsync(regId,
-            new StartEmailVerificationRequest("secret@example.com"), CancellationToken.None);
+        var result = await ctrl.StartEmailVerificationAsync(
+            regId,
+            new StartEmailVerificationRequest("secret@example.com"),
+            CancellationToken.None
+        );
 
         var responseBody = JsonSerializer.Serialize(result);
         Assert.DoesNotContain("secret@example.com", responseBody);
-        Assert.DoesNotContain("secret", responseBody.ToLowerInvariant().Replace("emailverified", ""));
+        Assert.DoesNotContain(
+            "secret",
+            responseBody.ToLowerInvariant().Replace("emailverified", "")
+        );
     }
 
     [Fact]
     public async Task F2_Registration_ResponseNeverContainsHmacKeys()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "hmac-sub",
-            identityProvider: "google", email: "h@example.com", emailVerified: true);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "hmac-sub",
+            identityProvider: "google",
+            email: "h@example.com",
+            emailVerified: true
+        );
 
         var result = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
         var json = JsonSerializer.Serialize(result.Value);
 
         Assert.DoesNotContain("hmac", json.ToLowerInvariant());
@@ -1748,10 +2919,19 @@ public sealed class IdentityWhatsAppBoundaryTests
         var service = IdentityTestHelpers.CreateService(factory);
         var ex = await Assert.ThrowsAsync<IdentityActionDeniedException>(() =>
             service.StartRegistrationAsync(
-                "wa-sub", Guid.NewGuid(), "hash", "en",
+                "wa-sub",
+                Guid.NewGuid(),
+                "hash",
+                "en",
                 IdentityAuthenticationPath.WhatsApp,
-            null, null, false, null, null,
-                CancellationToken.None));
+                null,
+                null,
+                false,
+                null,
+                null,
+                CancellationToken.None
+            )
+        );
         Assert.Contains("WhatsApp", ex.Message);
     }
 }
@@ -1763,16 +2943,47 @@ public sealed class IdentityInputAndConfigurationTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var ctrl = IdentityTestHelpers.CreateController(factory);
-        Assert.Equal(400, Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new("english"), CancellationToken.None)).StatusCode);
+        Assert.Equal(
+            400,
+            Assert
+                .IsType<ObjectResult>(
+                    await ctrl.StartRegistrationAsync(new("english"), CancellationToken.None)
+                )
+                .StatusCode
+        );
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var created = Assert.IsType<ObjectResult>(await ctrl.StartRegistrationAsync(new("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
-        Assert.Equal(400, Assert.IsType<ObjectResult>(await ctrl.StartEmailVerificationAsync(
-            regId, new("not-an-email"), CancellationToken.None)).StatusCode);
-        Assert.Equal(400, Assert.IsType<ObjectResult>(await ctrl.StartRegistrationMobileVerificationAsync(
-            regId, new("12345"), CancellationToken.None)).StatusCode);
+        var created = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationAsync(new("en"), CancellationToken.None)
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
+        Assert.Equal(
+            400,
+            Assert
+                .IsType<ObjectResult>(
+                    await ctrl.StartEmailVerificationAsync(
+                        regId,
+                        new("not-an-email"),
+                        CancellationToken.None
+                    )
+                )
+                .StatusCode
+        );
+        Assert.Equal(
+            400,
+            Assert
+                .IsType<ObjectResult>(
+                    await ctrl.StartRegistrationMobileVerificationAsync(
+                        regId,
+                        new("12345"),
+                        CancellationToken.None
+                    )
+                )
+                .StatusCode
+        );
     }
 
     [Theory]
@@ -1781,10 +2992,13 @@ public sealed class IdentityInputAndConfigurationTests
     public void F2_MissingOrShortHmacSecret_FailsClosed(string key)
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        Assert.Throws<InvalidOperationException>(() => new IdentityService(
-            factory,
-            Options.Create(new IdentityHmacOptions { Key = key }),
-            new CapturingVerificationDispatcher()));
+        Assert.Throws<InvalidOperationException>(() =>
+            new IdentityService(
+                factory,
+                Options.Create(new IdentityHmacOptions { Key = key }),
+                new CapturingVerificationDispatcher()
+            )
+        );
     }
 
     [Fact]
@@ -1793,16 +3007,19 @@ public sealed class IdentityInputAndConfigurationTests
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var service = new IdentityService(
             factory,
-            Options.Create(new IdentityHmacOptions
-            {
-                Key = "synthetic-active-key-material-at-least-32-characters",
-                ActiveVersion = "v2",
-                ReadOnlyVersions = new Dictionary<string, string>
+            Options.Create(
+                new IdentityHmacOptions
                 {
-                    ["v1"] = "synthetic-retained-key-material-at-least-32-characters",
-                },
-            }),
-            new CapturingVerificationDispatcher());
+                    Key = "synthetic-active-key-material-at-least-32-characters",
+                    ActiveVersion = "v2",
+                    ReadOnlyVersions = new Dictionary<string, string>
+                    {
+                        ["v1"] = "synthetic-retained-key-material-at-least-32-characters",
+                    },
+                }
+            ),
+            new CapturingVerificationDispatcher()
+        );
 
         var email = service.ComputeMatchCandidates("email", "person@example.com");
         var mobile = service.ComputeMatchCandidates("mobile", "person@example.com");
@@ -1816,18 +3033,23 @@ public sealed class IdentityInputAndConfigurationTests
     public void WC091_HmacKeyRing_RejectsActiveVersionInReadSet()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        Assert.Throws<InvalidOperationException>(() => new IdentityService(
-            factory,
-            Options.Create(new IdentityHmacOptions
-            {
-                Key = "synthetic-active-key-material-at-least-32-characters",
-                ActiveVersion = "v1",
-                ReadOnlyVersions = new Dictionary<string, string>
-                {
-                    ["v1"] = "synthetic-retained-key-material-at-least-32-characters",
-                },
-            }),
-            new CapturingVerificationDispatcher()));
+        Assert.Throws<InvalidOperationException>(() =>
+            new IdentityService(
+                factory,
+                Options.Create(
+                    new IdentityHmacOptions
+                    {
+                        Key = "synthetic-active-key-material-at-least-32-characters",
+                        ActiveVersion = "v1",
+                        ReadOnlyVersions = new Dictionary<string, string>
+                        {
+                            ["v1"] = "synthetic-retained-key-material-at-least-32-characters",
+                        },
+                    }
+                ),
+                new CapturingVerificationDispatcher()
+            )
+        );
     }
 
     [Theory]
@@ -1837,14 +3059,19 @@ public sealed class IdentityInputAndConfigurationTests
     public void WC091_HmacKeyRing_RejectsInvalidActiveVersion(string activeVersion)
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        Assert.Throws<InvalidOperationException>(() => new IdentityService(
-            factory,
-            Options.Create(new IdentityHmacOptions
-            {
-                Key = "synthetic-active-key-material-at-least-32-characters",
-                ActiveVersion = activeVersion,
-            }),
-            new CapturingVerificationDispatcher()));
+        Assert.Throws<InvalidOperationException>(() =>
+            new IdentityService(
+                factory,
+                Options.Create(
+                    new IdentityHmacOptions
+                    {
+                        Key = "synthetic-active-key-material-at-least-32-characters",
+                        ActiveVersion = activeVersion,
+                    }
+                ),
+                new CapturingVerificationDispatcher()
+            )
+        );
     }
 
     [Fact]
@@ -1853,14 +3080,20 @@ public sealed class IdentityInputAndConfigurationTests
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var service = new IdentityService(
             factory,
-            Options.Create(new IdentityHmacOptions
-            {
-                Key = "synthetic-active-key-material-at-least-32-characters",
-                ActiveVersion = "release-2_stable",
-            }),
-            new CapturingVerificationDispatcher());
+            Options.Create(
+                new IdentityHmacOptions
+                {
+                    Key = "synthetic-active-key-material-at-least-32-characters",
+                    ActiveVersion = "release-2_stable",
+                }
+            ),
+            new CapturingVerificationDispatcher()
+        );
 
-        Assert.Contains("release-2_stable", service.ComputeMatchCandidates("email", "person@example.com"));
+        Assert.Contains(
+            "release-2_stable",
+            service.ComputeMatchCandidates("email", "person@example.com")
+        );
     }
 
     [Theory]
@@ -1869,15 +3102,20 @@ public sealed class IdentityInputAndConfigurationTests
     public void WC091_HmacKeyRing_RejectsInvalidReadVersion(string version, string key)
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        Assert.Throws<InvalidOperationException>(() => new IdentityService(
-            factory,
-            Options.Create(new IdentityHmacOptions
-            {
-                Key = "synthetic-active-key-material-at-least-32-characters",
-                ActiveVersion = "v2",
-                ReadOnlyVersions = new Dictionary<string, string> { [version] = key },
-            }),
-            new CapturingVerificationDispatcher()));
+        Assert.Throws<InvalidOperationException>(() =>
+            new IdentityService(
+                factory,
+                Options.Create(
+                    new IdentityHmacOptions
+                    {
+                        Key = "synthetic-active-key-material-at-least-32-characters",
+                        ActiveVersion = "v2",
+                        ReadOnlyVersions = new Dictionary<string, string> { [version] = key },
+                    }
+                ),
+                new CapturingVerificationDispatcher()
+            )
+        );
     }
 
     [Fact]
@@ -1885,20 +3123,38 @@ public sealed class IdentityInputAndConfigurationTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var ctrl = IdentityTestHelpers.CreateControllerWithDispatcher(
-            factory, new FailingVerificationDispatcher(), subject: "delivery-failure");
-        var created = Assert.IsType<ObjectResult>(await ctrl.StartRegistrationAsync(new("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            factory,
+            new FailingVerificationDispatcher(),
+            subject: "delivery-failure"
+        );
+        var created = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationAsync(new("en"), CancellationToken.None)
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var result = Assert.IsType<ObjectResult>(await ctrl.StartEmailVerificationAsync(
-            regId, new("person@example.com"), CancellationToken.None));
+        var result = Assert.IsType<ObjectResult>(
+            await ctrl.StartEmailVerificationAsync(
+                regId,
+                new("person@example.com"),
+                CancellationToken.None
+            )
+        );
         Assert.Equal(503, result.StatusCode);
 
         await using var db = factory.CreateDbContext();
-        Assert.Empty(await db.IdempotencyLedger.Where(value =>
-            value.OperationFamily == "StartEmailVerification").ToListAsync());
-        Assert.Equal(IdentityVerificationState.Expired,
-            (await db.VerificationChallenges.SingleAsync()).State);
+        Assert.Empty(
+            await db
+                .IdempotencyLedger.Where(value => value.OperationFamily == "StartEmailVerification")
+                .ToListAsync()
+        );
+        Assert.Equal(
+            IdentityVerificationState.Expired,
+            (await db.VerificationChallenges.SingleAsync()).State
+        );
     }
 }
 
@@ -1912,19 +3168,32 @@ public sealed class IdentityUpdateProfileErrorTests
     [InlineData("Name", "Business", "", "en")]
     [InlineData("Name", "Business", "Retail", "EN_us")]
     public async Task F2_UpdateProfile_InvalidFields_Return400(
-        string displayName, string businessName, string businessDomain, string languagePreference)
+        string displayName,
+        string businessName,
+        string businessDomain,
+        string languagePreference
+    )
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var ctrl = IdentityTestHelpers.CreateController(factory, subject: "upd-invalid");
 
-        var result = await ctrl.UpdateProfileAsync(Guid.NewGuid(),
-            new UpdateRegistrationProfileRequest(displayName, businessName, businessDomain, languagePreference),
-            CancellationToken.None);
+        var result = await ctrl.UpdateProfileAsync(
+            Guid.NewGuid(),
+            new UpdateRegistrationProfileRequest(
+                displayName,
+                businessName,
+                businessDomain,
+                languagePreference
+            ),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(400, obj.StatusCode);
-        Assert.Equal("IDENTITY_REQUEST_INVALID",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_REQUEST_INVALID",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -1933,57 +3202,97 @@ public sealed class IdentityUpdateProfileErrorTests
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var ctrl = IdentityTestHelpers.CreateController(factory, subject: "upd-notfound");
 
-        var result = await ctrl.UpdateProfileAsync(Guid.NewGuid(),
-            new UpdateRegistrationProfileRequest("N", "B", "D", "en"), CancellationToken.None);
+        var result = await ctrl.UpdateProfileAsync(
+            Guid.NewGuid(),
+            new UpdateRegistrationProfileRequest("N", "B", "D", "en"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(404, obj.StatusCode);
-        Assert.Equal("IDENTITY_RESOURCE_NOT_ACCESSIBLE",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
     public async Task F2_UpdateProfile_IdempotencyConflict_Returns409()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "upd-idem", identityProvider: "google");
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "upd-idem",
+            identityProvider: "google"
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         // First call with BodyA
-        await ctrl.UpdateProfileAsync(regId,
-            new UpdateRegistrationProfileRequest("Alice", "AcmeA", "RetailA", "en"), CancellationToken.None);
+        await ctrl.UpdateProfileAsync(
+            regId,
+            new UpdateRegistrationProfileRequest("Alice", "AcmeA", "RetailA", "en"),
+            CancellationToken.None
+        );
 
         // Same idempotency key, different body → conflict
-        var conflict = await ctrl.UpdateProfileAsync(regId,
-            new UpdateRegistrationProfileRequest("Bob", "AcmeB", "RetailB", "fr"), CancellationToken.None);
+        var conflict = await ctrl.UpdateProfileAsync(
+            regId,
+            new UpdateRegistrationProfileRequest("Bob", "AcmeB", "RetailB", "fr"),
+            CancellationToken.None
+        );
         var obj = Assert.IsType<ObjectResult>(conflict);
         Assert.Equal(409, obj.StatusCode);
-        Assert.Equal("IDENTITY_IDEMPOTENCY_CONFLICT",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_IDEMPOTENCY_CONFLICT",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
     public async Task F2_UpdateProfile_BadIdempotencyKey_Returns400()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "upd-badkey", identityProvider: "google");
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "upd-badkey",
+            identityProvider: "google"
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         ctrl.Request.Headers["Idempotency-Key"] = "not-a-guid";
-        var result = await ctrl.UpdateProfileAsync(regId,
-            new UpdateRegistrationProfileRequest("N", "B", "D", "en"), CancellationToken.None);
+        var result = await ctrl.UpdateProfileAsync(
+            regId,
+            new UpdateRegistrationProfileRequest("N", "B", "D", "en"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(400, obj.StatusCode);
-        Assert.Equal("IDENTITY_REQUEST_INVALID",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_REQUEST_INVALID",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 }
 
@@ -1997,56 +3306,109 @@ public sealed class IdentityEmailVerificationAdditionalTests
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var ctrl = IdentityTestHelpers.CreateController(factory, subject: "ev-notfound");
 
-        var result = await ctrl.StartEmailVerificationAsync(Guid.NewGuid(),
-            new StartEmailVerificationRequest("test@example.com"), CancellationToken.None);
+        var result = await ctrl.StartEmailVerificationAsync(
+            Guid.NewGuid(),
+            new StartEmailVerificationRequest("test@example.com"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(404, obj.StatusCode);
-        Assert.Equal("IDENTITY_RESOURCE_NOT_ACCESSIBLE",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
     public async Task F2_StartEmailVerification_IdempotencyConflict_Returns409()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "ev-idem", identityProvider: "google");
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "ev-idem",
+            identityProvider: "google"
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         // First call with one email
-        await ctrl.StartEmailVerificationAsync(regId, new("first@example.com"), CancellationToken.None);
+        await ctrl.StartEmailVerificationAsync(
+            regId,
+            new("first@example.com"),
+            CancellationToken.None
+        );
 
         // Same key, different email → conflict
-        var conflict = await ctrl.StartEmailVerificationAsync(regId, new("second@example.com"), CancellationToken.None);
+        var conflict = await ctrl.StartEmailVerificationAsync(
+            regId,
+            new("second@example.com"),
+            CancellationToken.None
+        );
         var obj = Assert.IsType<ObjectResult>(conflict);
         Assert.Equal(409, obj.StatusCode);
-        Assert.Equal("IDENTITY_IDEMPOTENCY_CONFLICT",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_IDEMPOTENCY_CONFLICT",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
     public async Task F2_StartEmailVerification_Replay_ReturnsSameChallenge()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "ev-replay", identityProvider: "google");
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "ev-replay",
+            identityProvider: "google"
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var first = Assert.IsType<ObjectResult>(
-            await ctrl.StartEmailVerificationAsync(regId, new("replay@example.com"), CancellationToken.None));
-        var firstId = JsonSerializer.SerializeToElement(first.Value).GetProperty("ChallengeId").GetGuid();
+            await ctrl.StartEmailVerificationAsync(
+                regId,
+                new("replay@example.com"),
+                CancellationToken.None
+            )
+        );
+        var firstId = JsonSerializer
+            .SerializeToElement(first.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
 
         // Same idempotency key + same email → replay (same challenge id)
         var replay = Assert.IsType<ObjectResult>(
-            await ctrl.StartEmailVerificationAsync(regId, new("replay@example.com"), CancellationToken.None));
-        var replayId = JsonSerializer.SerializeToElement(replay.Value).GetProperty("ChallengeId").GetGuid();
+            await ctrl.StartEmailVerificationAsync(
+                regId,
+                new("replay@example.com"),
+                CancellationToken.None
+            )
+        );
+        var replayId = JsonSerializer
+            .SerializeToElement(replay.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
 
         Assert.Equal(firstId, replayId);
         Assert.Equal(202, replay.StatusCode);
@@ -2056,61 +3418,110 @@ public sealed class IdentityEmailVerificationAdditionalTests
     public async Task F2_StartEmailVerification_BadIdempotencyKey_Returns400()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "ev-badkey", identityProvider: "google");
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "ev-badkey",
+            identityProvider: "google"
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         ctrl.Request.Headers["Idempotency-Key"] = "not-a-guid";
-        var result = await ctrl.StartEmailVerificationAsync(regId, new("t@example.com"), CancellationToken.None);
+        var result = await ctrl.StartEmailVerificationAsync(
+            regId,
+            new("t@example.com"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(400, obj.StatusCode);
-        Assert.Equal("IDENTITY_REQUEST_INVALID",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_REQUEST_INVALID",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
     public async Task F2_ConfirmEmailVerification_InvalidCodeFormat_Returns400()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "cev-badcode", identityProvider: "google");
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "cev-badcode",
+            identityProvider: "google"
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         // 5-digit code fails the 6-digit regex check
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var result = await ctrl.ConfirmEmailVerificationAsync(regId,
-            new ConfirmVerificationRequest(Guid.NewGuid(), "12345"), CancellationToken.None);
+        var result = await ctrl.ConfirmEmailVerificationAsync(
+            regId,
+            new ConfirmVerificationRequest(Guid.NewGuid(), "12345"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(400, obj.StatusCode);
-        Assert.Equal("IDENTITY_REQUEST_INVALID",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_REQUEST_INVALID",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
     public async Task F2_ConfirmEmailVerification_UnknownChallenge_Returns404()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "cev-nochal", identityProvider: "google");
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "cev-nochal",
+            identityProvider: "google"
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         // Unknown challengeId (not in DB)
-        var result = await ctrl.ConfirmEmailVerificationAsync(regId,
-            new ConfirmVerificationRequest(Guid.NewGuid(), "123456"), CancellationToken.None);
+        var result = await ctrl.ConfirmEmailVerificationAsync(
+            regId,
+            new ConfirmVerificationRequest(Guid.NewGuid(), "123456"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(404, obj.StatusCode);
-        Assert.Equal("IDENTITY_RESOURCE_NOT_ACCESSIBLE",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -2118,67 +3529,123 @@ public sealed class IdentityEmailVerificationAdditionalTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var dispatcher = new CapturingVerificationDispatcher();
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "cev-idem", identityProvider: "google",
-            dispatcher: dispatcher);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "cev-idem",
+            identityProvider: "google",
+            dispatcher: dispatcher
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var started = Assert.IsType<ObjectResult>(
-            await ctrl.StartEmailVerificationAsync(regId, new("cev@example.com"), CancellationToken.None));
-        var challengeId = JsonSerializer.SerializeToElement(started.Value).GetProperty("ChallengeId").GetGuid();
+            await ctrl.StartEmailVerificationAsync(
+                regId,
+                new("cev@example.com"),
+                CancellationToken.None
+            )
+        );
+        var challengeId = JsonSerializer
+            .SerializeToElement(started.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         // First confirm succeeds
-        await ctrl.ConfirmEmailVerificationAsync(regId, new(challengeId, dispatcher.LatestCode!), CancellationToken.None);
+        await ctrl.ConfirmEmailVerificationAsync(
+            regId,
+            new(challengeId, dispatcher.LatestCode!),
+            CancellationToken.None
+        );
 
         // Same idempotency key, different code → conflict
-        var conflict = await ctrl.ConfirmEmailVerificationAsync(regId,
-            new(challengeId, "999999"), CancellationToken.None);
+        var conflict = await ctrl.ConfirmEmailVerificationAsync(
+            regId,
+            new(challengeId, "999999"),
+            CancellationToken.None
+        );
         var obj = Assert.IsType<ObjectResult>(conflict);
         Assert.Equal(409, obj.StatusCode);
-        Assert.Equal("IDENTITY_IDEMPOTENCY_CONFLICT",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_IDEMPOTENCY_CONFLICT",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
     public async Task F2_ConfirmEmailVerification_TimeBasedExpiry_Returns410()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "cev-texp", identityProvider: "google");
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "cev-texp",
+            identityProvider: "google"
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var started = Assert.IsType<ObjectResult>(
-            await ctrl.StartEmailVerificationAsync(regId, new("texp@example.com"), CancellationToken.None));
-        var challengeId = JsonSerializer.SerializeToElement(started.Value).GetProperty("ChallengeId").GetGuid();
+            await ctrl.StartEmailVerificationAsync(
+                regId,
+                new("texp@example.com"),
+                CancellationToken.None
+            )
+        );
+        var challengeId = JsonSerializer
+            .SerializeToElement(started.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
 
         // Set ExpiresAt to past while leaving State = Pending (different from the state-based expiry test)
         await using (var db = factory.CreateDbContext())
         {
             var ch = await db.VerificationChallenges.FindAsync(challengeId);
-            db.Entry(ch!).Property(c => c.ExpiresAt).CurrentValue = DateTimeOffset.UtcNow.AddHours(-1);
+            db.Entry(ch!).Property(c => c.ExpiresAt).CurrentValue = DateTimeOffset.UtcNow.AddHours(
+                -1
+            );
             await db.SaveChangesAsync();
         }
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var result = await ctrl.ConfirmEmailVerificationAsync(regId,
-            new ConfirmVerificationRequest(challengeId, "123456"), CancellationToken.None);
+        var result = await ctrl.ConfirmEmailVerificationAsync(
+            regId,
+            new ConfirmVerificationRequest(challengeId, "123456"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(410, obj.StatusCode);
-        Assert.Equal("IDENTITY_CHALLENGE_EXPIRED",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_CHALLENGE_EXPIRED",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
 
         // Challenge state must have been set to Expired by the time-check branch
         await using var db2 = factory.CreateDbContext();
-        Assert.Equal(IdentityVerificationState.Expired,
-            (await db2.VerificationChallenges.FindAsync(challengeId))!.State);
+        Assert.Equal(
+            IdentityVerificationState.Expired,
+            (await db2.VerificationChallenges.FindAsync(challengeId))!.State
+        );
     }
 }
 
@@ -2189,13 +3656,25 @@ public sealed class IdentityRegistrationMobileVerificationTests
     private static async Task<(IdentityController ctrl, Guid regId)> CreateRegistrationAsync(
         InMemoryIdentityDbContextFactory factory,
         string subject,
-        CapturingVerificationDispatcher? dispatcher = null)
+        CapturingVerificationDispatcher? dispatcher = null
+    )
     {
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: subject,
-            identityProvider: "google", dispatcher: dispatcher);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: subject,
+            identityProvider: "google",
+            dispatcher: dispatcher
+        );
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         return (ctrl, regId);
     }
@@ -2206,13 +3685,18 @@ public sealed class IdentityRegistrationMobileVerificationTests
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var ctrl = IdentityTestHelpers.CreateController(factory, subject: "rmv-notfound");
 
-        var result = await ctrl.StartRegistrationMobileVerificationAsync(Guid.NewGuid(),
-            new StartMobileVerificationRequest("+911234567890"), CancellationToken.None);
+        var result = await ctrl.StartRegistrationMobileVerificationAsync(
+            Guid.NewGuid(),
+            new StartMobileVerificationRequest("+911234567890"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(404, obj.StatusCode);
-        Assert.Equal("IDENTITY_RESOURCE_NOT_ACCESSIBLE",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -2222,16 +3706,24 @@ public sealed class IdentityRegistrationMobileVerificationTests
         var (ctrl, regId) = await CreateRegistrationAsync(factory, "rmv-idem");
 
         // First call with +91 number
-        await ctrl.StartRegistrationMobileVerificationAsync(regId,
-            new StartMobileVerificationRequest("+911234567890"), CancellationToken.None);
+        await ctrl.StartRegistrationMobileVerificationAsync(
+            regId,
+            new StartMobileVerificationRequest("+911234567890"),
+            CancellationToken.None
+        );
 
         // Same key, different mobile → conflict
-        var conflict = await ctrl.StartRegistrationMobileVerificationAsync(regId,
-            new StartMobileVerificationRequest("+911234567891"), CancellationToken.None);
+        var conflict = await ctrl.StartRegistrationMobileVerificationAsync(
+            regId,
+            new StartMobileVerificationRequest("+911234567891"),
+            CancellationToken.None
+        );
         var obj = Assert.IsType<ObjectResult>(conflict);
         Assert.Equal(409, obj.StatusCode);
-        Assert.Equal("IDENTITY_IDEMPOTENCY_CONFLICT",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_IDEMPOTENCY_CONFLICT",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -2241,14 +3733,30 @@ public sealed class IdentityRegistrationMobileVerificationTests
         var (ctrl, regId) = await CreateRegistrationAsync(factory, "rmv-replay");
 
         // First call
-        var first = Assert.IsType<ObjectResult>(await ctrl.StartRegistrationMobileVerificationAsync(
-            regId, new("+911234567890"), CancellationToken.None));
-        var firstId = JsonSerializer.SerializeToElement(first.Value).GetProperty("ChallengeId").GetGuid();
+        var first = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationMobileVerificationAsync(
+                regId,
+                new("+911234567890"),
+                CancellationToken.None
+            )
+        );
+        var firstId = JsonSerializer
+            .SerializeToElement(first.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
 
         // Same key + same mobile → replay
-        var replay = Assert.IsType<ObjectResult>(await ctrl.StartRegistrationMobileVerificationAsync(
-            regId, new("+911234567890"), CancellationToken.None));
-        Assert.Equal(firstId, JsonSerializer.SerializeToElement(replay.Value).GetProperty("ChallengeId").GetGuid());
+        var replay = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationMobileVerificationAsync(
+                regId,
+                new("+911234567890"),
+                CancellationToken.None
+            )
+        );
+        Assert.Equal(
+            firstId,
+            JsonSerializer.SerializeToElement(replay.Value).GetProperty("ChallengeId").GetGuid()
+        );
         Assert.Equal(202, replay.StatusCode);
     }
 
@@ -2257,20 +3765,36 @@ public sealed class IdentityRegistrationMobileVerificationTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         // Registration itself never dispatches, so FailingVerificationDispatcher is safe here
-        var ctrl = IdentityTestHelpers.CreateControllerWithDispatcher(factory,
-            new FailingVerificationDispatcher(), subject: "rmv-delivery", identityProvider: "google");
+        var ctrl = IdentityTestHelpers.CreateControllerWithDispatcher(
+            factory,
+            new FailingVerificationDispatcher(),
+            subject: "rmv-delivery",
+            identityProvider: "google"
+        );
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var result = await ctrl.StartRegistrationMobileVerificationAsync(regId,
-            new StartMobileVerificationRequest("+911234567890"), CancellationToken.None);
+        var result = await ctrl.StartRegistrationMobileVerificationAsync(
+            regId,
+            new StartMobileVerificationRequest("+911234567890"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(503, obj.StatusCode);
-        Assert.Equal("IDENTITY_DEPENDENCY_UNAVAILABLE",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_DEPENDENCY_UNAVAILABLE",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -2280,13 +3804,18 @@ public sealed class IdentityRegistrationMobileVerificationTests
         var ctrl = IdentityTestHelpers.CreateController(factory, subject: "crmv-badcode");
 
         // 5-digit code is invalid
-        var result = await ctrl.ConfirmRegistrationMobileVerificationAsync(Guid.NewGuid(),
-            new ConfirmVerificationRequest(Guid.NewGuid(), "12345"), CancellationToken.None);
+        var result = await ctrl.ConfirmRegistrationMobileVerificationAsync(
+            Guid.NewGuid(),
+            new ConfirmVerificationRequest(Guid.NewGuid(), "12345"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(400, obj.StatusCode);
-        Assert.Equal("IDENTITY_REQUEST_INVALID",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_REQUEST_INVALID",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -2296,13 +3825,26 @@ public sealed class IdentityRegistrationMobileVerificationTests
         var dispatcher = new CapturingVerificationDispatcher();
         var (ctrl, regId) = await CreateRegistrationAsync(factory, "crmv-success", dispatcher);
 
-        var started = Assert.IsType<ObjectResult>(await ctrl.StartRegistrationMobileVerificationAsync(
-            regId, new("+911234567890"), CancellationToken.None));
-        var challengeId = JsonSerializer.SerializeToElement(started.Value).GetProperty("ChallengeId").GetGuid();
+        var started = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationMobileVerificationAsync(
+                regId,
+                new("+911234567890"),
+                CancellationToken.None
+            )
+        );
+        var challengeId = JsonSerializer
+            .SerializeToElement(started.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var confirmed = Assert.IsType<OkObjectResult>(await ctrl.ConfirmRegistrationMobileVerificationAsync(
-            regId, new(challengeId, dispatcher.LatestCode!), CancellationToken.None));
+        var confirmed = Assert.IsType<OkObjectResult>(
+            await ctrl.ConfirmRegistrationMobileVerificationAsync(
+                regId,
+                new(challengeId, dispatcher.LatestCode!),
+                CancellationToken.None
+            )
+        );
 
         // The response must be IdentityRegistrationResponse shape (has RegistrationId, MobileVerified, etc.)
         var json = JsonSerializer.SerializeToElement(confirmed.Value);
@@ -2318,23 +3860,47 @@ public sealed class IdentityRegistrationMobileVerificationTests
         var dispatcher = new CapturingVerificationDispatcher();
         var (ctrl, regId) = await CreateRegistrationAsync(factory, "crmv-replay", dispatcher);
 
-        var started = Assert.IsType<ObjectResult>(await ctrl.StartRegistrationMobileVerificationAsync(
-            regId, new("+911234567890"), CancellationToken.None));
-        var challengeId = JsonSerializer.SerializeToElement(started.Value).GetProperty("ChallengeId").GetGuid();
+        var started = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationMobileVerificationAsync(
+                regId,
+                new("+911234567890"),
+                CancellationToken.None
+            )
+        );
+        var challengeId = JsonSerializer
+            .SerializeToElement(started.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var idemKey = ctrl.Request.Headers["Idempotency-Key"].ToString();
 
         // First confirm
-        var first = Assert.IsType<OkObjectResult>(await ctrl.ConfirmRegistrationMobileVerificationAsync(
-            regId, new(challengeId, dispatcher.LatestCode!), CancellationToken.None));
-        var firstReg = JsonSerializer.SerializeToElement(first.Value).GetProperty("RegistrationId").GetGuid();
+        var first = Assert.IsType<OkObjectResult>(
+            await ctrl.ConfirmRegistrationMobileVerificationAsync(
+                regId,
+                new(challengeId, dispatcher.LatestCode!),
+                CancellationToken.None
+            )
+        );
+        var firstReg = JsonSerializer
+            .SerializeToElement(first.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         // Replay with same idempotency key
         ctrl.Request.Headers["Idempotency-Key"] = idemKey;
-        var replay = Assert.IsType<OkObjectResult>(await ctrl.ConfirmRegistrationMobileVerificationAsync(
-            regId, new(challengeId, dispatcher.LatestCode!), CancellationToken.None));
-        var replayReg = JsonSerializer.SerializeToElement(replay.Value).GetProperty("RegistrationId").GetGuid();
+        var replay = Assert.IsType<OkObjectResult>(
+            await ctrl.ConfirmRegistrationMobileVerificationAsync(
+                regId,
+                new(challengeId, dispatcher.LatestCode!),
+                CancellationToken.None
+            )
+        );
+        var replayReg = JsonSerializer
+            .SerializeToElement(replay.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         Assert.Equal(firstReg, replayReg);
     }
@@ -2346,22 +3912,38 @@ public sealed class IdentityRegistrationMobileVerificationTests
         var dispatcher = new CapturingVerificationDispatcher();
         var (ctrl, regId) = await CreateRegistrationAsync(factory, "crmv-idem", dispatcher);
 
-        var started = Assert.IsType<ObjectResult>(await ctrl.StartRegistrationMobileVerificationAsync(
-            regId, new("+911234567890"), CancellationToken.None));
-        var challengeId = JsonSerializer.SerializeToElement(started.Value).GetProperty("ChallengeId").GetGuid();
+        var started = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationMobileVerificationAsync(
+                regId,
+                new("+911234567890"),
+                CancellationToken.None
+            )
+        );
+        var challengeId = JsonSerializer
+            .SerializeToElement(started.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         // First confirm with correct code
         await ctrl.ConfirmRegistrationMobileVerificationAsync(
-            regId, new(challengeId, dispatcher.LatestCode!), CancellationToken.None);
+            regId,
+            new(challengeId, dispatcher.LatestCode!),
+            CancellationToken.None
+        );
 
         // Same key, different code → hash differs → conflict
         var conflict = await ctrl.ConfirmRegistrationMobileVerificationAsync(
-            regId, new(challengeId, "999999"), CancellationToken.None);
+            regId,
+            new(challengeId, "999999"),
+            CancellationToken.None
+        );
         var obj = Assert.IsType<ObjectResult>(conflict);
         Assert.Equal(409, obj.StatusCode);
-        Assert.Equal("IDENTITY_IDEMPOTENCY_CONFLICT",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_IDEMPOTENCY_CONFLICT",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -2370,9 +3952,17 @@ public sealed class IdentityRegistrationMobileVerificationTests
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var (ctrl, regId) = await CreateRegistrationAsync(factory, "crmv-stateexp");
 
-        var started = Assert.IsType<ObjectResult>(await ctrl.StartRegistrationMobileVerificationAsync(
-            regId, new("+911234567890"), CancellationToken.None));
-        var challengeId = JsonSerializer.SerializeToElement(started.Value).GetProperty("ChallengeId").GetGuid();
+        var started = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationMobileVerificationAsync(
+                regId,
+                new("+911234567890"),
+                CancellationToken.None
+            )
+        );
+        var challengeId = JsonSerializer
+            .SerializeToElement(started.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
 
         await using (var db = factory.CreateDbContext())
         {
@@ -2383,12 +3973,17 @@ public sealed class IdentityRegistrationMobileVerificationTests
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var result = await ctrl.ConfirmRegistrationMobileVerificationAsync(
-            regId, new(challengeId, "123456"), CancellationToken.None);
+            regId,
+            new(challengeId, "123456"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(410, obj.StatusCode);
-        Assert.Equal("IDENTITY_CHALLENGE_EXPIRED",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_CHALLENGE_EXPIRED",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -2397,26 +3992,41 @@ public sealed class IdentityRegistrationMobileVerificationTests
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var (ctrl, regId) = await CreateRegistrationAsync(factory, "crmv-timeexp");
 
-        var started = Assert.IsType<ObjectResult>(await ctrl.StartRegistrationMobileVerificationAsync(
-            regId, new("+911234567890"), CancellationToken.None));
-        var challengeId = JsonSerializer.SerializeToElement(started.Value).GetProperty("ChallengeId").GetGuid();
+        var started = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationMobileVerificationAsync(
+                regId,
+                new("+911234567890"),
+                CancellationToken.None
+            )
+        );
+        var challengeId = JsonSerializer
+            .SerializeToElement(started.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
 
         // Keep State = Pending but put ExpiresAt in the past
         await using (var db = factory.CreateDbContext())
         {
             var ch = await db.VerificationChallenges.FindAsync(challengeId);
-            db.Entry(ch!).Property(c => c.ExpiresAt).CurrentValue = DateTimeOffset.UtcNow.AddHours(-1);
+            db.Entry(ch!).Property(c => c.ExpiresAt).CurrentValue = DateTimeOffset.UtcNow.AddHours(
+                -1
+            );
             await db.SaveChangesAsync();
         }
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var result = await ctrl.ConfirmRegistrationMobileVerificationAsync(
-            regId, new(challengeId, "123456"), CancellationToken.None);
+            regId,
+            new(challengeId, "123456"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(410, obj.StatusCode);
-        Assert.Equal("IDENTITY_CHALLENGE_EXPIRED",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_CHALLENGE_EXPIRED",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -2426,13 +4036,26 @@ public sealed class IdentityRegistrationMobileVerificationTests
         var dispatcher = new CapturingVerificationDispatcher();
         var (ctrl, regId) = await CreateRegistrationAsync(factory, "crmv-wrongcode", dispatcher);
 
-        var started = Assert.IsType<ObjectResult>(await ctrl.StartRegistrationMobileVerificationAsync(
-            regId, new("+911234567890"), CancellationToken.None));
-        var challengeId = JsonSerializer.SerializeToElement(started.Value).GetProperty("ChallengeId").GetGuid();
+        var started = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationMobileVerificationAsync(
+                regId,
+                new("+911234567890"),
+                CancellationToken.None
+            )
+        );
+        var challengeId = JsonSerializer
+            .SerializeToElement(started.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var denied = Assert.IsType<ObjectResult>(await ctrl.ConfirmRegistrationMobileVerificationAsync(
-            regId, new(challengeId, "000000"), CancellationToken.None));
+        var denied = Assert.IsType<ObjectResult>(
+            await ctrl.ConfirmRegistrationMobileVerificationAsync(
+                regId,
+                new(challengeId, "000000"),
+                CancellationToken.None
+            )
+        );
 
         Assert.Equal(403, denied.StatusCode);
         Assert.NotEqual("000000", dispatcher.LatestCode);
@@ -2447,12 +4070,17 @@ public sealed class IdentityRegistrationMobileVerificationTests
         // Unknown challengeId (not in DB)
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var result = await ctrl.ConfirmRegistrationMobileVerificationAsync(
-            regId, new(Guid.NewGuid(), "123456"), CancellationToken.None);
+            regId,
+            new(Guid.NewGuid(), "123456"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(404, obj.StatusCode);
-        Assert.Equal("IDENTITY_RESOURCE_NOT_ACCESSIBLE",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 }
 
@@ -2468,12 +4096,16 @@ public sealed class IdentityAccountMobileErrorTests
 
         // Missing + prefix → invalid E.164
         var result = await ctrl.StartAccountMobileVerificationAsync(
-            new StartMobileVerificationRequest("12345"), CancellationToken.None);
+            new StartMobileVerificationRequest("12345"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(400, obj.StatusCode);
-        Assert.Equal("IDENTITY_REQUEST_INVALID",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_REQUEST_INVALID",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -2484,32 +4116,45 @@ public sealed class IdentityAccountMobileErrorTests
 
         // First call
         await ctrl.StartAccountMobileVerificationAsync(
-            new StartMobileVerificationRequest("+911234567890"), CancellationToken.None);
+            new StartMobileVerificationRequest("+911234567890"),
+            CancellationToken.None
+        );
 
         // Same key, different mobile → conflict
         var conflict = await ctrl.StartAccountMobileVerificationAsync(
-            new StartMobileVerificationRequest("+911234567891"), CancellationToken.None);
+            new StartMobileVerificationRequest("+911234567891"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(conflict);
         Assert.Equal(409, obj.StatusCode);
-        Assert.Equal("IDENTITY_IDEMPOTENCY_CONFLICT",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_IDEMPOTENCY_CONFLICT",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
     public async Task F2_StartAccountMobileVerification_DeliveryFailure_Returns503()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateControllerWithDispatcher(factory,
-            new FailingVerificationDispatcher(), subject: "amv-delivery");
+        var ctrl = IdentityTestHelpers.CreateControllerWithDispatcher(
+            factory,
+            new FailingVerificationDispatcher(),
+            subject: "amv-delivery"
+        );
 
         var result = await ctrl.StartAccountMobileVerificationAsync(
-            new StartMobileVerificationRequest("+911234567890"), CancellationToken.None);
+            new StartMobileVerificationRequest("+911234567890"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(503, obj.StatusCode);
-        Assert.Equal("IDENTITY_DEPENDENCY_UNAVAILABLE",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_DEPENDENCY_UNAVAILABLE",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -2520,12 +4165,16 @@ public sealed class IdentityAccountMobileErrorTests
 
         // 5-digit code is invalid format
         var result = await ctrl.ConfirmAccountMobileVerificationAsync(
-            new ConfirmVerificationRequest(Guid.NewGuid(), "12345"), CancellationToken.None);
+            new ConfirmVerificationRequest(Guid.NewGuid(), "12345"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(400, obj.StatusCode);
-        Assert.Equal("IDENTITY_REQUEST_INVALID",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_REQUEST_INVALID",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -2533,25 +4182,42 @@ public sealed class IdentityAccountMobileErrorTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var dispatcher = new CapturingVerificationDispatcher();
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "camv-idem", dispatcher: dispatcher);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "camv-idem",
+            dispatcher: dispatcher
+        );
 
-        var started = Assert.IsType<ObjectResult>(await ctrl.StartAccountMobileVerificationAsync(
-            new("+911234567890"), CancellationToken.None));
-        var challengeId = JsonSerializer.SerializeToElement(started.Value).GetProperty("ChallengeId").GetGuid();
+        var started = Assert.IsType<ObjectResult>(
+            await ctrl.StartAccountMobileVerificationAsync(
+                new("+911234567890"),
+                CancellationToken.None
+            )
+        );
+        var challengeId = JsonSerializer
+            .SerializeToElement(started.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         // First confirm succeeds
         await ctrl.ConfirmAccountMobileVerificationAsync(
-            new(challengeId, dispatcher.LatestCode!), CancellationToken.None);
+            new(challengeId, dispatcher.LatestCode!),
+            CancellationToken.None
+        );
 
         // Same key, different code → conflict
         var conflict = await ctrl.ConfirmAccountMobileVerificationAsync(
-            new(challengeId, "999999"), CancellationToken.None);
+            new(challengeId, "999999"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(conflict);
         Assert.Equal(409, obj.StatusCode);
-        Assert.Equal("IDENTITY_IDEMPOTENCY_CONFLICT",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_IDEMPOTENCY_CONFLICT",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -2560,9 +4226,16 @@ public sealed class IdentityAccountMobileErrorTests
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var ctrl = IdentityTestHelpers.CreateController(factory, subject: "camv-stateexp");
 
-        var started = Assert.IsType<ObjectResult>(await ctrl.StartAccountMobileVerificationAsync(
-            new("+911234567890"), CancellationToken.None));
-        var challengeId = JsonSerializer.SerializeToElement(started.Value).GetProperty("ChallengeId").GetGuid();
+        var started = Assert.IsType<ObjectResult>(
+            await ctrl.StartAccountMobileVerificationAsync(
+                new("+911234567890"),
+                CancellationToken.None
+            )
+        );
+        var challengeId = JsonSerializer
+            .SerializeToElement(started.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
 
         await using (var db = factory.CreateDbContext())
         {
@@ -2573,12 +4246,16 @@ public sealed class IdentityAccountMobileErrorTests
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var result = await ctrl.ConfirmAccountMobileVerificationAsync(
-            new(challengeId, "123456"), CancellationToken.None);
+            new(challengeId, "123456"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(410, obj.StatusCode);
-        Assert.Equal("IDENTITY_CHALLENGE_EXPIRED",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_CHALLENGE_EXPIRED",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -2587,26 +4264,39 @@ public sealed class IdentityAccountMobileErrorTests
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var ctrl = IdentityTestHelpers.CreateController(factory, subject: "camv-timeexp");
 
-        var started = Assert.IsType<ObjectResult>(await ctrl.StartAccountMobileVerificationAsync(
-            new("+911234567890"), CancellationToken.None));
-        var challengeId = JsonSerializer.SerializeToElement(started.Value).GetProperty("ChallengeId").GetGuid();
+        var started = Assert.IsType<ObjectResult>(
+            await ctrl.StartAccountMobileVerificationAsync(
+                new("+911234567890"),
+                CancellationToken.None
+            )
+        );
+        var challengeId = JsonSerializer
+            .SerializeToElement(started.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
 
         // State stays Pending, ExpiresAt set to past
         await using (var db = factory.CreateDbContext())
         {
             var ch = await db.VerificationChallenges.FindAsync(challengeId);
-            db.Entry(ch!).Property(c => c.ExpiresAt).CurrentValue = DateTimeOffset.UtcNow.AddHours(-1);
+            db.Entry(ch!).Property(c => c.ExpiresAt).CurrentValue = DateTimeOffset.UtcNow.AddHours(
+                -1
+            );
             await db.SaveChangesAsync();
         }
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var result = await ctrl.ConfirmAccountMobileVerificationAsync(
-            new(challengeId, "123456"), CancellationToken.None);
+            new(challengeId, "123456"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(410, obj.StatusCode);
-        Assert.Equal("IDENTITY_CHALLENGE_EXPIRED",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_CHALLENGE_EXPIRED",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -2618,12 +4308,16 @@ public sealed class IdentityAccountMobileErrorTests
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         // Unknown challengeId (not in DB)
         var result = await ctrl.ConfirmAccountMobileVerificationAsync(
-            new(Guid.NewGuid(), "123456"), CancellationToken.None);
+            new(Guid.NewGuid(), "123456"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(404, obj.StatusCode);
-        Assert.Equal("IDENTITY_RESOURCE_NOT_ACCESSIBLE",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 }
 
@@ -2641,34 +4335,61 @@ public sealed class IdentityCompleteRegistrationErrorTests
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(404, obj.StatusCode);
-        Assert.Equal("IDENTITY_RESOURCE_NOT_ACCESSIBLE",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
     public async Task F2_CompleteRegistration_IdempotencyConflict_Returns409()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "comp-idem",
-            identityProvider: "google", email: "comp@example.com", emailVerified: true);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "comp-idem",
+            identityProvider: "google",
+            email: "comp@example.com",
+            emailVerified: true
+        );
 
         // Create two registrations for the same subject (different idempotency keys)
         var created1 = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var reg1Id = JsonSerializer.SerializeToElement(created1.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var reg1Id = JsonSerializer
+            .SerializeToElement(created1.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var created2 = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("fr"), CancellationToken.None));
-        var reg2Id = JsonSerializer.SerializeToElement(created2.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("fr"),
+                CancellationToken.None
+            )
+        );
+        var reg2Id = JsonSerializer
+            .SerializeToElement(created2.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        await ctrl.UpdateProfileAsync(reg1Id,
-            new UpdateRegistrationProfileRequest("Name", "Co", "Domain", "en"), CancellationToken.None);
+        await ctrl.UpdateProfileAsync(
+            reg1Id,
+            new UpdateRegistrationProfileRequest("Name", "Co", "Domain", "en"),
+            CancellationToken.None
+        );
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        await ctrl.UpdateProfileAsync(reg2Id,
-            new UpdateRegistrationProfileRequest("Name", "Co", "Domain", "en"), CancellationToken.None);
+        await ctrl.UpdateProfileAsync(
+            reg2Id,
+            new UpdateRegistrationProfileRequest("Name", "Co", "Domain", "en"),
+            CancellationToken.None
+        );
 
         // Complete reg1 with idempotency key K → records hash(reg1Id)
         var completeKey = Guid.NewGuid().ToString();
@@ -2680,8 +4401,10 @@ public sealed class IdentityCompleteRegistrationErrorTests
         var conflict = await ctrl.CompleteRegistrationAsync(reg2Id, CancellationToken.None);
         var obj = Assert.IsType<ObjectResult>(conflict);
         Assert.Equal(409, obj.StatusCode);
-        Assert.Equal("IDENTITY_IDEMPOTENCY_CONFLICT",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_IDEMPOTENCY_CONFLICT",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -2689,12 +4412,24 @@ public sealed class IdentityCompleteRegistrationErrorTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         // Email is verified by claim but profile fields (DisplayName etc.) not set
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "comp-noprofile",
-            identityProvider: "google", email: "np@example.com", emailVerified: true);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "comp-noprofile",
+            identityProvider: "google",
+            email: "np@example.com",
+            emailVerified: true
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         // Skip UpdateProfile — DisplayName/BusinessName/BusinessDomain are null
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
@@ -2721,51 +4456,89 @@ public sealed class IdentityAccountLinkFullFlowTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         // No tenantId in context
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "link-notenant",
-            authTimestamp: FreshAuthTs);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "link-notenant",
+            authTimestamp: FreshAuthTs
+        );
 
-        var result = await ctrl.StartAccountLinkAsync(new StartAccountLinkRequest(Guid.NewGuid()), CancellationToken.None);
+        var result = await ctrl.StartAccountLinkAsync(
+            new StartAccountLinkRequest(Guid.NewGuid()),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(401, obj.StatusCode);
-        Assert.Equal("IDENTITY_SESSION_REQUIRED",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_SESSION_REQUIRED",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
     public async Task F2_StartAccountLink_IdempotencyConflict_Returns409()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "link-idem",
-            tenantId: Guid.NewGuid().ToString(), authTimestamp: FreshAuthTs);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "link-idem",
+            tenantId: Guid.NewGuid().ToString(),
+            authTimestamp: FreshAuthTs
+        );
 
         // First call with proofId A
-        await ctrl.StartAccountLinkAsync(new StartAccountLinkRequest(Guid.NewGuid()), CancellationToken.None);
+        await ctrl.StartAccountLinkAsync(
+            new StartAccountLinkRequest(Guid.NewGuid()),
+            CancellationToken.None
+        );
 
         // Same key, different proofId → conflict
-        var conflict = await ctrl.StartAccountLinkAsync(new StartAccountLinkRequest(Guid.NewGuid()), CancellationToken.None);
+        var conflict = await ctrl.StartAccountLinkAsync(
+            new StartAccountLinkRequest(Guid.NewGuid()),
+            CancellationToken.None
+        );
         var obj = Assert.IsType<ObjectResult>(conflict);
         Assert.Equal(409, obj.StatusCode);
-        Assert.Equal("IDENTITY_IDEMPOTENCY_CONFLICT",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_IDEMPOTENCY_CONFLICT",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
     public async Task F2_StartAccountLink_Replay_ReturnsSameLink()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "link-replay",
-            tenantId: Guid.NewGuid().ToString(), authTimestamp: FreshAuthTs);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "link-replay",
+            tenantId: Guid.NewGuid().ToString(),
+            authTimestamp: FreshAuthTs
+        );
 
         var proofId = Guid.NewGuid();
         var first = Assert.IsType<ObjectResult>(
-            await ctrl.StartAccountLinkAsync(new StartAccountLinkRequest(proofId), CancellationToken.None));
-        var firstLinkId = JsonSerializer.SerializeToElement(first.Value).GetProperty("LinkId").GetGuid();
+            await ctrl.StartAccountLinkAsync(
+                new StartAccountLinkRequest(proofId),
+                CancellationToken.None
+            )
+        );
+        var firstLinkId = JsonSerializer
+            .SerializeToElement(first.Value)
+            .GetProperty("LinkId")
+            .GetGuid();
 
         // Same key + same proofId → replay
         var replay = Assert.IsType<OkObjectResult>(
-            await ctrl.StartAccountLinkAsync(new StartAccountLinkRequest(proofId), CancellationToken.None));
-        var replayLinkId = JsonSerializer.SerializeToElement(replay.Value).GetProperty("LinkId").GetGuid();
+            await ctrl.StartAccountLinkAsync(
+                new StartAccountLinkRequest(proofId),
+                CancellationToken.None
+            )
+        );
+        var replayLinkId = JsonSerializer
+            .SerializeToElement(replay.Value)
+            .GetProperty("LinkId")
+            .GetGuid();
 
         Assert.Equal(firstLinkId, replayLinkId);
     }
@@ -2775,15 +4548,20 @@ public sealed class IdentityAccountLinkFullFlowTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         // No tenantId
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "approve-notenant",
-            authTimestamp: FreshAuthTs);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "approve-notenant",
+            authTimestamp: FreshAuthTs
+        );
 
         var result = await ctrl.ApproveAccountLinkAsync(Guid.NewGuid(), CancellationToken.None);
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(401, obj.StatusCode);
-        Assert.Equal("IDENTITY_SESSION_REQUIRED",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_SESSION_REQUIRED",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -2791,16 +4569,28 @@ public sealed class IdentityAccountLinkFullFlowTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var tenantId = Guid.NewGuid().ToString();
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "approve-ok",
-            tenantId: tenantId, authTimestamp: FreshAuthTs);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "approve-ok",
+            tenantId: tenantId,
+            authTimestamp: FreshAuthTs
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartAccountLinkAsync(new StartAccountLinkRequest(Guid.NewGuid()), CancellationToken.None));
-        var linkId = JsonSerializer.SerializeToElement(created.Value).GetProperty("LinkId").GetGuid();
+            await ctrl.StartAccountLinkAsync(
+                new StartAccountLinkRequest(Guid.NewGuid()),
+                CancellationToken.None
+            )
+        );
+        var linkId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("LinkId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var approved = Assert.IsType<OkObjectResult>(
-            await ctrl.ApproveAccountLinkAsync(linkId, CancellationToken.None));
+            await ctrl.ApproveAccountLinkAsync(linkId, CancellationToken.None)
+        );
 
         var json = JsonSerializer.SerializeToElement(approved.Value);
         Assert.Equal("PENDING_WHATSAPP_CONFIRMATION", json.GetProperty("State").GetString());
@@ -2813,22 +4603,39 @@ public sealed class IdentityAccountLinkFullFlowTests
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var tenantId = Guid.NewGuid().ToString();
         // Create link with fresh session
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "approve-stale",
-            tenantId: tenantId, authTimestamp: FreshAuthTs);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "approve-stale",
+            tenantId: tenantId,
+            authTimestamp: FreshAuthTs
+        );
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartAccountLinkAsync(new StartAccountLinkRequest(Guid.NewGuid()), CancellationToken.None));
-        var linkId = JsonSerializer.SerializeToElement(created.Value).GetProperty("LinkId").GetGuid();
+            await ctrl.StartAccountLinkAsync(
+                new StartAccountLinkRequest(Guid.NewGuid()),
+                CancellationToken.None
+            )
+        );
+        var linkId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("LinkId")
+            .GetGuid();
 
         // Approve with stale session (different controller, same subject/tenant but stale auth_time)
-        var staleCtrl = IdentityTestHelpers.CreateController(factory, subject: "approve-stale",
-            tenantId: tenantId, authTimestamp: StaleAuthTs);
+        var staleCtrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "approve-stale",
+            tenantId: tenantId,
+            authTimestamp: StaleAuthTs
+        );
 
         var result = await staleCtrl.ApproveAccountLinkAsync(linkId, CancellationToken.None);
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(403, obj.StatusCode);
-        Assert.Equal("IDENTITY_STEP_UP_REQUIRED",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_STEP_UP_REQUIRED",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -2836,18 +4643,36 @@ public sealed class IdentityAccountLinkFullFlowTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var tenantId = Guid.NewGuid().ToString();
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "approve-idem",
-            tenantId: tenantId, authTimestamp: FreshAuthTs);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "approve-idem",
+            tenantId: tenantId,
+            authTimestamp: FreshAuthTs
+        );
 
         // Create two links
         var link1 = Assert.IsType<ObjectResult>(
-            await ctrl.StartAccountLinkAsync(new StartAccountLinkRequest(Guid.NewGuid()), CancellationToken.None));
-        var link1Id = JsonSerializer.SerializeToElement(link1.Value).GetProperty("LinkId").GetGuid();
+            await ctrl.StartAccountLinkAsync(
+                new StartAccountLinkRequest(Guid.NewGuid()),
+                CancellationToken.None
+            )
+        );
+        var link1Id = JsonSerializer
+            .SerializeToElement(link1.Value)
+            .GetProperty("LinkId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var link2 = Assert.IsType<ObjectResult>(
-            await ctrl.StartAccountLinkAsync(new StartAccountLinkRequest(Guid.NewGuid()), CancellationToken.None));
-        var link2Id = JsonSerializer.SerializeToElement(link2.Value).GetProperty("LinkId").GetGuid();
+            await ctrl.StartAccountLinkAsync(
+                new StartAccountLinkRequest(Guid.NewGuid()),
+                CancellationToken.None
+            )
+        );
+        var link2Id = JsonSerializer
+            .SerializeToElement(link2.Value)
+            .GetProperty("LinkId")
+            .GetGuid();
 
         // Approve link1 with key K
         var approveKey = Guid.NewGuid().ToString();
@@ -2860,8 +4685,10 @@ public sealed class IdentityAccountLinkFullFlowTests
 
         var obj = Assert.IsType<ObjectResult>(conflict);
         Assert.Equal(409, obj.StatusCode);
-        Assert.Equal("IDENTITY_IDEMPOTENCY_CONFLICT",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_IDEMPOTENCY_CONFLICT",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -2871,22 +4698,39 @@ public sealed class IdentityAccountLinkFullFlowTests
         var tenantA = Guid.NewGuid().ToString();
         var tenantB = Guid.NewGuid().ToString();
 
-        var ctrlA = IdentityTestHelpers.CreateController(factory, subject: "approve-ct",
-            tenantId: tenantA, authTimestamp: FreshAuthTs);
+        var ctrlA = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "approve-ct",
+            tenantId: tenantA,
+            authTimestamp: FreshAuthTs
+        );
         var created = Assert.IsType<ObjectResult>(
-            await ctrlA.StartAccountLinkAsync(new StartAccountLinkRequest(Guid.NewGuid()), CancellationToken.None));
-        var linkId = JsonSerializer.SerializeToElement(created.Value).GetProperty("LinkId").GetGuid();
+            await ctrlA.StartAccountLinkAsync(
+                new StartAccountLinkRequest(Guid.NewGuid()),
+                CancellationToken.None
+            )
+        );
+        var linkId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("LinkId")
+            .GetGuid();
 
         // Try to approve with tenantB context
-        var ctrlB = IdentityTestHelpers.CreateController(factory, subject: "approve-ct",
-            tenantId: tenantB, authTimestamp: FreshAuthTs);
+        var ctrlB = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "approve-ct",
+            tenantId: tenantB,
+            authTimestamp: FreshAuthTs
+        );
 
         var result = await ctrlB.ApproveAccountLinkAsync(linkId, CancellationToken.None);
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(404, obj.StatusCode);
-        Assert.Equal("IDENTITY_RESOURCE_NOT_ACCESSIBLE",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -2894,18 +4738,30 @@ public sealed class IdentityAccountLinkFullFlowTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var tenantId = Guid.NewGuid().ToString();
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "approve-exp",
-            tenantId: tenantId, authTimestamp: FreshAuthTs);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "approve-exp",
+            tenantId: tenantId,
+            authTimestamp: FreshAuthTs
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartAccountLinkAsync(new StartAccountLinkRequest(Guid.NewGuid()), CancellationToken.None));
-        var linkId = JsonSerializer.SerializeToElement(created.Value).GetProperty("LinkId").GetGuid();
+            await ctrl.StartAccountLinkAsync(
+                new StartAccountLinkRequest(Guid.NewGuid()),
+                CancellationToken.None
+            )
+        );
+        var linkId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("LinkId")
+            .GetGuid();
 
         // Expire the link directly
         await using (var db = factory.CreateDbContext())
         {
             var link = await db.AccountLinks.FindAsync(linkId);
-            db.Entry(link!).Property(l => l.ExpiresAt).CurrentValue = DateTimeOffset.UtcNow.AddHours(-1);
+            db.Entry(link!).Property(l => l.ExpiresAt).CurrentValue =
+                DateTimeOffset.UtcNow.AddHours(-1);
             await db.SaveChangesAsync();
         }
 
@@ -2914,12 +4770,17 @@ public sealed class IdentityAccountLinkFullFlowTests
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(410, obj.StatusCode);
-        Assert.Equal("IDENTITY_CHALLENGE_EXPIRED",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_CHALLENGE_EXPIRED",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
 
         // State must have been set to Expired
         await using var db2 = factory.CreateDbContext();
-        Assert.Equal(IdentityAccountLinkState.Expired, (await db2.AccountLinks.FindAsync(linkId))!.State);
+        Assert.Equal(
+            IdentityAccountLinkState.Expired,
+            (await db2.AccountLinks.FindAsync(linkId))!.State
+        );
     }
 
     [Fact]
@@ -2927,12 +4788,23 @@ public sealed class IdentityAccountLinkFullFlowTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var tenantId = Guid.NewGuid().ToString();
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "getlink-ok",
-            tenantId: tenantId, authTimestamp: FreshAuthTs);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "getlink-ok",
+            tenantId: tenantId,
+            authTimestamp: FreshAuthTs
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartAccountLinkAsync(new StartAccountLinkRequest(Guid.NewGuid()), CancellationToken.None));
-        var linkId = JsonSerializer.SerializeToElement(created.Value).GetProperty("LinkId").GetGuid();
+            await ctrl.StartAccountLinkAsync(
+                new StartAccountLinkRequest(Guid.NewGuid()),
+                CancellationToken.None
+            )
+        );
+        var linkId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("LinkId")
+            .GetGuid();
 
         var result = await ctrl.GetAccountLinkAsync(linkId, CancellationToken.None);
 
@@ -2951,22 +4823,39 @@ public sealed class IdentityRegistrationStateAdditionalTests
     public async Task F2_CompletedRegistration_GetRegistration_NextActionIsContinueToDefaultTarget()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "state-comp",
-            identityProvider: "google", email: "sc@example.com", emailVerified: true);
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "state-comp",
+            identityProvider: "google",
+            email: "sc@example.com",
+            emailVerified: true
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        await ctrl.UpdateProfileAsync(regId,
-            new UpdateRegistrationProfileRequest("Name", "Co", "Domain", "en"), CancellationToken.None);
+        await ctrl.UpdateProfileAsync(
+            regId,
+            new UpdateRegistrationProfileRequest("Name", "Co", "Domain", "en"),
+            CancellationToken.None
+        );
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         await ctrl.CompleteRegistrationAsync(regId, CancellationToken.None);
 
         // GetRegistration should now show Completed state and CONTINUE_TO_DEFAULT_TARGET
-        var reg = Assert.IsType<OkObjectResult>(await ctrl.GetRegistrationAsync(regId, CancellationToken.None));
+        var reg = Assert.IsType<OkObjectResult>(
+            await ctrl.GetRegistrationAsync(regId, CancellationToken.None)
+        );
         var json = JsonSerializer.SerializeToElement(reg.Value);
         Assert.Equal("COMPLETED", json.GetProperty("State").GetString());
         Assert.Equal("CONTINUE_TO_DEFAULT_TARGET", json.GetProperty("NextAction").GetString());
@@ -2976,12 +4865,22 @@ public sealed class IdentityRegistrationStateAdditionalTests
     public async Task F2_NonMappedRegistrationState_NextActionIsNone()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "state-none",
-            identityProvider: "google");
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "state-none",
+            identityProvider: "google"
+        );
 
         var created = Assert.IsType<ObjectResult>(
-            await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None));
-        var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var regId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
 
         // Directly set state to a value not covered by ComputeNextAction (e.g. Cancelled)
         await using (var db = factory.CreateDbContext())
@@ -2991,8 +4890,13 @@ public sealed class IdentityRegistrationStateAdditionalTests
             await db.SaveChangesAsync();
         }
 
-        var result = Assert.IsType<OkObjectResult>(await ctrl.GetRegistrationAsync(regId, CancellationToken.None));
-        Assert.Equal("NONE", JsonSerializer.SerializeToElement(result.Value).GetProperty("NextAction").GetString());
+        var result = Assert.IsType<OkObjectResult>(
+            await ctrl.GetRegistrationAsync(regId, CancellationToken.None)
+        );
+        Assert.Equal(
+            "NONE",
+            JsonSerializer.SerializeToElement(result.Value).GetProperty("NextAction").GetString()
+        );
     }
 }
 
@@ -3005,16 +4909,23 @@ public sealed class IdentityEdgeCaseTests
     {
         // UnconfiguredVerificationDispatcher is the fail-closed stand-in shipped with the service
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var ctrl = IdentityTestHelpers.CreateControllerWithDispatcher(factory,
-            new UnconfiguredVerificationDispatcher(), subject: "unconf-mob");
+        var ctrl = IdentityTestHelpers.CreateControllerWithDispatcher(
+            factory,
+            new UnconfiguredVerificationDispatcher(),
+            subject: "unconf-mob"
+        );
 
         var result = await ctrl.StartAccountMobileVerificationAsync(
-            new StartMobileVerificationRequest("+911234567890"), CancellationToken.None);
+            new StartMobileVerificationRequest("+911234567890"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(503, obj.StatusCode);
-        Assert.Equal("IDENTITY_DEPENDENCY_UNAVAILABLE",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_DEPENDENCY_UNAVAILABLE",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -3024,9 +4935,16 @@ public sealed class IdentityEdgeCaseTests
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var ctrl = IdentityTestHelpers.CreateController(factory, subject: "malformed-hmac");
 
-        var started = Assert.IsType<ObjectResult>(await ctrl.StartAccountMobileVerificationAsync(
-            new("+911234567890"), CancellationToken.None));
-        var challengeId = JsonSerializer.SerializeToElement(started.Value).GetProperty("ChallengeId").GetGuid();
+        var started = Assert.IsType<ObjectResult>(
+            await ctrl.StartAccountMobileVerificationAsync(
+                new("+911234567890"),
+                CancellationToken.None
+            )
+        );
+        var challengeId = JsonSerializer
+            .SerializeToElement(started.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
 
         // Corrupt the stored HMAC to a non-hex string
         await using (var db = factory.CreateDbContext())
@@ -3038,13 +4956,17 @@ public sealed class IdentityEdgeCaseTests
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var result = await ctrl.ConfirmAccountMobileVerificationAsync(
-            new(challengeId, "123456"), CancellationToken.None);
+            new(challengeId, "123456"),
+            CancellationToken.None
+        );
 
         // Must return 403, NOT an unhandled exception
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(403, obj.StatusCode);
-        Assert.Equal("IDENTITY_ACTION_DENIED",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_ACTION_DENIED",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -3054,11 +4976,16 @@ public sealed class IdentityEdgeCaseTests
         var ctrl = IdentityTestHelpers.CreateController(factory, subject: "reg-badkey");
 
         ctrl.Request.Headers["Idempotency-Key"] = "not-a-guid";
-        var result = await ctrl.StartRegistrationAsync(new StartRegistrationRequest("en"), CancellationToken.None);
+        var result = await ctrl.StartRegistrationAsync(
+            new StartRegistrationRequest("en"),
+            CancellationToken.None
+        );
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(400, obj.StatusCode);
-        Assert.Equal("IDENTITY_REQUEST_INVALID",
-            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_REQUEST_INVALID",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
+        );
     }
 }

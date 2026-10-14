@@ -5,7 +5,7 @@
 | Field | Value |
 |---|---|
 | Work Contract | WC-123 |
-| Version | 1.0.0-candidate.9 |
+| Version | 1.0.0-candidate.10 |
 | Status | AUTHOR REVIEW PASS - AUTHZ-GATE-01 RESOLVED - IMPLEMENTATION AUTHORITY REQUIRED |
 | Authorizing authority | Founder acceptance of the exact candidate plus explicit current-session implementation authorization |
 | Specification office | Chief Solution Architect, Office 05 |
@@ -313,8 +313,10 @@ the first implementation commit. A required path outside these roots stops for a
 1. Replace token projection in `web/lib/auth.ts` and related server helpers with opaque-handle
    lookup. Reuse the existing reviewed NextAuth/Auth.js OIDC client hooks only for protocol
    integration; do not use their JWT strategy, generic database-session authority, generated
-   session schema, or browser token projection. A replacement/major upgrade or dependency-manifest
-   change stops for an accepted amendment.
+   session schema, or browser token projection. The sole dependency-manifest exception is exact
+   `postgres@3.4.9` at the registry tarball and SRI accepted by CSA-AUTH-001 Section 12.8, used only
+   as the Web-to-approved-`web_session`-function protocol client. A replacement/major upgrade or any
+   other dependency-manifest change stops for an accepted amendment.
 2. Validate OIDC code+PKCE, exact issuer/audience/azp/redirect, state, nonce, signature, algorithm,
    time, authentication time, JWKS rotation, and callback one-time use.
 3. Implement single-flight refresh, token rotation/reuse handling, session-family revocation, typed
@@ -334,6 +336,26 @@ the first implementation commit. A required path outside these roots stops for a
    mismatch without exposing details publicly.
 9. Enforce bounded queues, pool acquisition, dependency timeouts, per-family/global concurrency,
    overload responses, retry jitter/caps, and saturation metrics from the reviewed manifest.
+10. Own one process-level PostgreSQL pool per Web replica and configure it only from
+    `wc123-auth-capacity-v1`: maximum `5`, `1,000 ms` acquisition/admission, `5,000 ms` statement,
+    `1,500 ms` refresh-lock, and `10,000/15,000 ms` caller budgets. Drain/close on graceful
+    termination; do not create request-local pools or permit a client queue beyond the accepted
+    bounded queues.
+11. Connect as `web_session_app` only through the private-TLS PgBouncer transaction-pooling route
+    with hostname/certificate verification and no direct/public fallback. Set `prepare: false` for
+    PgBouncer compatibility, but use only tagged-template/extended-protocol parameter binding and a
+    static allowlist of schema-qualified SECURITY DEFINER functions. Never interpolate identifiers,
+    SQL fragments, function names, connection targets, handles, or tokens.
+12. Keep raw handles/digests, tokens/envelopes, OIDC material, subjects, PII, SQL parameters, and
+    connection secrets out of logs, traces, metrics, errors, query annotations, and evidence. Prove
+    readiness with the restricted role and `web_session.schema_ready(...)`; dependency failure is
+    private, typed, fail closed, and distinct from process liveness.
+13. Record `postgres@3.4.9`, its exact tarball/SRI, resolved bytes, source/license/Node identity, and
+    empty transitive runtime graph in the frozen lockfile, SBOM, and signed dependency manifest.
+    Verify immutable install, registry signature, integrity, no unexpected scripts/graph, provenance
+    status, license, malware/secrets, vulnerabilities, maintainer/repository identity, and Web
+    compatibility. Identity, integrity, ownership, license, graph, script, or material-vulnerability
+    drift stops for amendment.
 
 **Completion**
 
@@ -341,6 +363,10 @@ the first implementation commit. A required path outside these roots stops for a
 - Fixation, replay, mix-up, refresh race/reuse, JWKS rotation, invalid callback, multi-tab,
   back-button, cache, and outage tests pass.
 - No invalid session remains apparently authenticated or enters a loop.
+- Restricted-role integration proves every Web call reaches only the approved functions through the
+  private-TLS pool with the accepted bounds; relation/direct-route/BP-role access is denied.
+- Frozen-lockfile/SBOM/dependency-manifest evidence proves exact `postgres@3.4.9` identity and SRI;
+  logs/traces/errors prove no raw handle, token, protocol, parameter, secret, subject, or PII leakage.
 - New/returning/completed/incomplete customers prove the Login-versus-Register intent rules,
   safe-target behavior, cancel/close no-mutation behavior, and non-secret interrupted resume.
 - Cold start, scale-to-zero, saturation, limiter restart/loss, database pool exhaustion, BP/identity
@@ -782,6 +808,12 @@ Stop the applicable component when:
 15. a customer-visible change lacks its exact accepted behavior/copy/localization/accessibility
     contract or Section 2.3 authority; a provider readiness state would silently enable or alter a
     control; or Login would create registration/onboarding without explicit customer intent.
+16. Web uses any PostgreSQL package other than exact `postgres@3.4.9`, the tarball/SRI or resolved
+    graph differs, supply-chain evidence is absent or materially adverse, the client bypasses
+    private-TLS PgBouncer/`web_session_app`, pooling/timeouts exceed `wc123-auth-capacity-v1`,
+    statement preparation is enabled against transaction pooling, a call is not parameterized and
+    statically function-allowlisted, table/direct-role access exists, or observability contains raw
+    session/protocol/database material.
 
 ## 16. Definition Of Done
 
@@ -834,6 +866,9 @@ and implementation discretion.
    mutation client, role, endpoints, proof, read-back/compensation, customer, audit, upgrade, stop,
    and rollback contract. `WC123-R029` and `WC123-R047` are planned implementation requirements,
    not architecture-blocked rows.
+6. CSA-AUTH-001 Section 12.8 and `AUTHZ-SD-14` repair AUTH-WC-03's missing database client decision
+   by accepting only exact `postgres@3.4.9` with function-only restricted-role access, private TLS,
+   capacity-profile bounds, redaction, readiness/rollback, and supply-chain evidence.
 
 **Author-review result:** PASS FOR AMENDED CANDIDATE SUBMISSION. `AUTHZ-GATE-01` is resolved.
 Explicit current-session implementation authority and the protected provider, cloud, deployment,

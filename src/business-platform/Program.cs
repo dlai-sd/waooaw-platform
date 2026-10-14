@@ -425,8 +425,27 @@ builder
     )
     .ValidateOnStart();
 builder
-    .Services.AddHttpClient<GoogleWorkspaceProofAdapter>(client =>
+    .Services.AddHttpClient<VerifiedIdentityProofAdapter>(client =>
         client.Timeout = TimeSpan.FromSeconds(10)
+    )
+    .ConfigurePrimaryHttpMessageHandler(() =>
+        new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }
+    )
+    .RemoveAllLoggers();
+builder
+    .Services.AddOptions<IdentityLifecycleWriterOptions>()
+    .Bind(
+        builder.Configuration.GetSection(IdentityLifecycleWriterOptions.SectionName),
+        options => options.ErrorOnUnknownConfiguration = true
+    )
+    .Validate(
+        options => !options.Enabled || options.IsConfigured,
+        "Enabled identity lifecycle writer requires the accepted private Keycloak writer configuration."
+    )
+    .ValidateOnStart();
+builder
+    .Services.AddHttpClient<IKeycloakIdentityLifecycleWriter, KeycloakIdentityLifecycleWriter>(
+        client => client.Timeout = TimeSpan.FromSeconds(10)
     )
     .ConfigurePrimaryHttpMessageHandler(() =>
         new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }
@@ -466,12 +485,12 @@ else
         Waooaw.BusinessPlatform.Services.UnconfiguredVerificationDispatcher
     >();
 builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.IdentityService>();
+builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.IdentityLifecycleService>();
 builder.Services.AddScoped<
     Waooaw.BusinessPlatform.Services.IIdentityConstitutionalGateway,
     Waooaw.BusinessPlatform.Services.GrpcIdentityConstitutionalGateway
 >();
 builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.IdentitySecurityEventService>();
-builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.IdentitySessionService>();
 builder.Services.Configure<Waooaw.BusinessPlatform.Controllers.IdentitySecurityEventIngestOptions>(
     builder.Configuration.GetSection(
         Waooaw.BusinessPlatform.Controllers.IdentitySecurityEventIngestOptions.SectionName

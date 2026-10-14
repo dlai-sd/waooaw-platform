@@ -12,6 +12,13 @@
         "required": ["environment"]
       },
       "then": { "required": ["capacityProfile"] }
+    },
+    {
+      "if": {
+        "properties": { "environment": { "enum": ["demo", "uat"] } },
+        "required": ["environment"]
+      },
+      "then": { "required": ["sessionAuthority"] }
     }
   ],
   "properties": {
@@ -86,6 +93,71 @@
         "version": { "const": "1.0.0" },
         "source": { "const": "architecture/reference/components/authentication-authorization-capacity-profile.v1.yaml" },
         "environment": { "enum": ["demo", "uat"] }
+      }
+    },
+    "sessionAuthority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractVersion", "mode", "schemaVersion", "compatibleDeployVersions", "cookieName", "idleTimeoutMinutes", "absoluteLifetimeHours", "refreshLeaseSeconds", "operationalRetentionDays", "protocolRetentionHours", "backupRetentionDays", "rpoMinutes", "rtoMinutes", "databasePoolSize", "globalConcurrency", "timeoutsMs", "keyVersions", "requiredSecretIds"],
+      "properties": {
+        "contractVersion": { "const": "1.0.0" },
+        "mode": { "enum": ["DISPOSABLE_RESET", "PERSISTENT_SANITIZED_RESTORE"] },
+        "schemaVersion": { "const": 1 },
+        "compatibleDeployVersions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^wc123-[a-z0-9-]+-v[0-9]+$" }
+        },
+        "cookieName": { "const": "__Host-waooaw-session" },
+        "idleTimeoutMinutes": { "const": 30 },
+        "absoluteLifetimeHours": { "const": 8 },
+        "refreshLeaseSeconds": { "type": "integer", "minimum": 1, "maximum": 15 },
+        "operationalRetentionDays": { "const": 30 },
+        "protocolRetentionHours": { "const": 24 },
+        "backupRetentionDays": { "const": 35 },
+        "rpoMinutes": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "rtoMinutes": { "type": "integer", "minimum": 1, "maximum": 30 },
+        "databasePoolSize": { "const": 5 },
+        "globalConcurrency": { "type": "integer", "minimum": 1, "maximum": 300 },
+        "timeoutsMs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["poolAcquisition", "refreshLock", "statement", "businessPlatformMembership", "redis", "identityProvider"],
+          "properties": {
+            "poolAcquisition": { "const": 1000 },
+            "refreshLock": { "const": 1500 },
+            "statement": { "const": 5000 },
+            "businessPlatformMembership": { "const": 3000 },
+            "redis": { "const": 500 },
+            "identityProvider": { "const": 5000 }
+          }
+        },
+        "keyVersions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["handleDigestWrite", "protocolDigestWrite", "tokenEnvelopeWrite"],
+          "properties": {
+            "handleDigestWrite": { "type": "string", "pattern": "^v[1-9][0-9]*$" },
+            "protocolDigestWrite": { "type": "string", "pattern": "^v[1-9][0-9]*$" },
+            "tokenEnvelopeWrite": { "type": "string", "pattern": "^v[1-9][0-9]*$" }
+          }
+        },
+        "requiredSecretIds": {
+          "type": "array",
+          "minItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "web-session-handle-digest",
+              "web-session-protocol-digest",
+              "web-session-token-envelope",
+              "web-session-database",
+              "web-oidc-client",
+              "keycloak-lifecycle-writer-client"
+            ]
+          }
+        }
       }
     },
     "providers": {

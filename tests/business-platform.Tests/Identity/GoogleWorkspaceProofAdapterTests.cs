@@ -16,6 +16,7 @@ using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
 using Xunit;
+using GoogleWorkspaceProofAdapter = Waooaw.BusinessPlatform.Services.VerifiedIdentityProofAdapter;
 
 namespace Waooaw.BusinessPlatform.Tests.Identity;
 
@@ -140,7 +141,9 @@ public sealed class GoogleWorkspaceProofAdapterTests
         var previewPrincipal = Principal(authorizedParty: "waooaw-web-preview");
 
         var defaultAdapter = new GoogleWorkspaceProofAdapter(client, Options.Create(configuration));
-        Assert.Throws<IdentityActionDeniedException>(() => defaultAdapter.ValidateActor(previewPrincipal));
+        Assert.Throws<IdentityActionDeniedException>(() =>
+            defaultAdapter.ValidateActor(previewPrincipal)
+        );
 
         configuration.AllowedAuthorizedParties = ["waooaw-web", "waooaw-web-preview"];
         var previewAdapter = new GoogleWorkspaceProofAdapter(client, Options.Create(configuration));
@@ -153,10 +156,12 @@ public sealed class GoogleWorkspaceProofAdapterTests
         var handler = new SyntheticKeycloakHandler();
         using var client = new HttpClient(handler);
         var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["IdentityProviderPreview:ClaimsProofEnabled"] = "true",
-            })
+            .AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["IdentityProviderPreview:ClaimsProofEnabled"] = "true",
+                }
+            )
             .Build();
         var principal = Principal(
             issuer: "https://preview.invalid/realms/waooaw",
@@ -192,10 +197,12 @@ public sealed class GoogleWorkspaceProofAdapterTests
     {
         using var client = new HttpClient(new SyntheticKeycloakHandler());
         var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["IdentityProviderPreview:ClaimsProofEnabled"] = "true",
-            })
+            .AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["IdentityProviderPreview:ClaimsProofEnabled"] = "true",
+                }
+            )
             .Build();
         var adapter = new GoogleWorkspaceProofAdapter(
             client,
@@ -240,10 +247,12 @@ public sealed class GoogleWorkspaceProofAdapterTests
     {
         using var client = new HttpClient(new SyntheticKeycloakHandler());
         var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["IdentityProviderPreview:ClaimsProofEnabled"] = "true",
-            })
+            .AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["IdentityProviderPreview:ClaimsProofEnabled"] = "true",
+                }
+            )
             .Build();
         var adapter = new GoogleWorkspaceProofAdapter(
             client,
@@ -305,8 +314,10 @@ public sealed class GoogleWorkspaceProofAdapterTests
 
         var proof = await adapter.ReadAsync(Principal(provider: "apple"), default);
 
-        Assert.Equal(Waooaw.BusinessPlatform.Infrastructure.IdentityAuthenticationPath.Apple,
-            adapter.AuthenticationPath(Principal(provider: "apple")));
+        Assert.Equal(
+            Waooaw.BusinessPlatform.Infrastructure.IdentityAuthenticationPath.Apple,
+            adapter.AuthenticationPath(Principal(provider: "apple"))
+        );
         Assert.Equal("apple", proof.BrokerAlias);
         Assert.Equal(configuration.Providers["apple"].ProviderNamespace, proof.ProviderIssuer);
     }
@@ -369,7 +380,6 @@ public sealed class GoogleWorkspaceProofAdapterTests
     [InlineData("aud", "other")]
     [InlineData("idp", "password")]
     [InlineData("auth_time", "1")]
-    [InlineData("realm_access", "{\"roles\":[\"customer\",\"waooaw-operator\"]}")]
     [InlineData("sub", "..")]
     public async Task Read_InvalidPrincipal_DeniesBeforeNetwork(string claimType, string value)
     {
@@ -382,6 +392,21 @@ public sealed class GoogleWorkspaceProofAdapterTests
         var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(Configuration()));
         await Assert.ThrowsAnyAsync<Exception>(() => adapter.ReadAsync(principal, default));
         Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
+    public void ValidateActor_DoesNotUseRealmRolesAsCustomerAuthority()
+    {
+        var principal = Principal();
+        var identity = (ClaimsIdentity)principal.Identity!;
+        identity.RemoveClaim(identity.FindFirst("realm_access"));
+        identity.AddClaim(
+            new Claim("realm_access", "{\"roles\":[\"customer\",\"waooaw-operator\"]}")
+        );
+        using var client = new HttpClient(new SyntheticKeycloakHandler());
+        var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(Configuration()));
+
+        Assert.Equal("synthetic-actor", adapter.ValidateActor(principal).Subject);
     }
 
     [Fact]
@@ -454,14 +479,17 @@ public sealed class GoogleWorkspaceProofAdapterTests
         var principal = Principal();
         var identity = (ClaimsIdentity)principal.Identity!;
         identity.RemoveClaim(identity.FindFirst("email_verified"));
-        if (emailVerified is not null) identity.AddClaim(new Claim("email_verified", emailVerified));
+        if (emailVerified is not null)
+            identity.AddClaim(new Claim("email_verified", emailVerified));
         var handler = new SyntheticKeycloakHandler();
         using var client = new HttpClient(handler);
         var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(Configuration()));
 
         Assert.False(adapter.HasVerifiedEmail(principal));
         adapter.ValidateActor(principal);
-        await Assert.ThrowsAsync<IdentityActionDeniedException>(() => adapter.ReadAsync(principal, default));
+        await Assert.ThrowsAsync<IdentityActionDeniedException>(() =>
+            adapter.ReadAsync(principal, default)
+        );
         Assert.Empty(handler.Requests);
     }
 
@@ -470,7 +498,9 @@ public sealed class GoogleWorkspaceProofAdapterTests
     {
         var principal = Principal();
         var adapter = new GoogleWorkspaceProofAdapter(
-            new HttpClient(new SyntheticKeycloakHandler()), Options.Create(Configuration()));
+            new HttpClient(new SyntheticKeycloakHandler()),
+            Options.Create(Configuration())
+        );
         Assert.Equal("customer@example.com", adapter.VerifiedEmail(principal));
 
         var identity = (ClaimsIdentity)principal.Identity!;
@@ -632,14 +662,94 @@ public sealed class GoogleWorkspaceProofAdapterTests
     }
 
     [Theory]
-    [InlineData("StartRegistrationAsync", "object", 201, "google", 0, false, "sid", "REGISTRATION_START", "SUCCEEDED")]
-    [InlineData("StartRegistrationAsync", "status", 500, "facebook", 10, true, "jti", "REGISTRATION_FAILURE", "FAILED")]
-    [InlineData("CompleteRegistrationAsync", "exception", 500, "apple", null, false, "none", "REGISTRATION_FAILURE", "FAILED")]
-    [InlineData("CompleteRegistrationAsync", "default", 200, "email", 10, false, "sid", "REGISTRATION_COMPLETION", "SUCCEEDED")]
-    [InlineData("GetSessionAsync", "object-default", 200, null, 0, false, "sid", "SESSION_ESTABLISHMENT", "SUCCEEDED")]
-    [InlineData("GetSessionAsync", "status", 401, "google", 10, false, "sid", "AUTHORIZATION_DENIAL", "DENIED")]
-    [InlineData("StartAccountLinkAsync", "status", 403, "facebook", 0, false, "sid", "AUTHORIZATION_DENIAL", "DENIED")]
-    [InlineData("ApproveAccountLinkAsync", "status", 503, "apple", 0, false, "sid", "AUTHORIZATION_DENIAL", "FAILED")]
+    [InlineData(
+        "StartRegistrationAsync",
+        "object",
+        201,
+        "google",
+        0,
+        false,
+        "sid",
+        "REGISTRATION_START",
+        "SUCCEEDED"
+    )]
+    [InlineData(
+        "StartRegistrationAsync",
+        "status",
+        500,
+        "facebook",
+        10,
+        true,
+        "jti",
+        "REGISTRATION_FAILURE",
+        "FAILED"
+    )]
+    [InlineData(
+        "CompleteRegistrationAsync",
+        "exception",
+        500,
+        "apple",
+        null,
+        false,
+        "none",
+        "REGISTRATION_FAILURE",
+        "FAILED"
+    )]
+    [InlineData(
+        "CompleteRegistrationAsync",
+        "default",
+        200,
+        "email",
+        10,
+        false,
+        "sid",
+        "REGISTRATION_COMPLETION",
+        "SUCCEEDED"
+    )]
+    [InlineData(
+        "GetSessionAsync",
+        "object-default",
+        200,
+        null,
+        0,
+        false,
+        "sid",
+        "SESSION_ESTABLISHMENT",
+        "SUCCEEDED"
+    )]
+    [InlineData(
+        "GetSessionAsync",
+        "status",
+        401,
+        "google",
+        10,
+        false,
+        "sid",
+        "AUTHORIZATION_DENIAL",
+        "DENIED"
+    )]
+    [InlineData(
+        "StartAccountLinkAsync",
+        "status",
+        403,
+        "facebook",
+        0,
+        false,
+        "sid",
+        "AUTHORIZATION_DENIAL",
+        "DENIED"
+    )]
+    [InlineData(
+        "ApproveAccountLinkAsync",
+        "status",
+        503,
+        "apple",
+        0,
+        false,
+        "sid",
+        "AUTHORIZATION_DENIAL",
+        "FAILED"
+    )]
     public async Task MvcFilter_RecordsPrivacySafeObservedEvent(
         string actionName,
         string resultKind,
@@ -649,24 +759,27 @@ public sealed class GoogleWorkspaceProofAdapterTests
         bool useSubClaim,
         string sessionClaim,
         string expectedEvent,
-        string expectedOutcome)
+        string expectedOutcome
+    )
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var identity = IdentityTestHelpers.CreateService(factory);
         var adapter = new GoogleWorkspaceProofAdapter(
             new HttpClient(),
-            Options.Create(Configuration()));
+            Options.Create(Configuration())
+        );
         var providers = new IdentityProviderProjectionService(
             Options.Create(IdentityTestHelpers.TestEnvironment),
-            IdentityTestHelpers.EmptyConfiguration);
+            IdentityTestHelpers.EmptyConfiguration
+        );
         var journey = new CustomerIdentityJourneyService(identity, factory, adapter, providers);
         var securityEvents = new IdentitySecurityEventService(
             factory,
-            Options.Create(new IdentityHmacOptions
-            {
-                Key = "test-only-identity-security-event-key-32-bytes",
-            }),
-            Options.Create(new IdentityEnvironmentOptions { Environment = "local" }));
+            Options.Create(
+                new IdentityHmacOptions { Key = "test-only-identity-security-event-key-32-bytes" }
+            ),
+            Options.Create(new IdentityEnvironmentOptions { Environment = "local" })
+        );
         var claims = new List<Claim>
         {
             new(useSubClaim ? "sub" : ClaimTypes.NameIdentifier, "observed-actor"),
@@ -674,9 +787,15 @@ public sealed class GoogleWorkspaceProofAdapterTests
         if (provider is not null)
             claims.Add(new Claim(provider == "facebook" ? "idp" : "identity_provider", provider));
         if (authAgeMinutes.HasValue)
-            claims.Add(new Claim(
-                "auth_time",
-                DateTimeOffset.UtcNow.AddMinutes(-authAgeMinutes.Value).ToUnixTimeSeconds().ToString()));
+            claims.Add(
+                new Claim(
+                    "auth_time",
+                    DateTimeOffset
+                        .UtcNow.AddMinutes(-authAgeMinutes.Value)
+                        .ToUnixTimeSeconds()
+                        .ToString()
+                )
+            );
         if (sessionClaim != "none")
             claims.Add(new Claim(sessionClaim, "observed-session"));
         var httpContext = new DefaultHttpContext
@@ -689,32 +808,42 @@ public sealed class GoogleWorkspaceProofAdapterTests
             providers,
             NullLogger<IdentityController>.Instance,
             journey,
-            securityEvents)
+            securityEvents
+        )
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext },
         };
         var action = new ActionContext(
             httpContext,
             new RouteData(),
-            new ActionDescriptor { RouteValues = { ["action"] = actionName } });
-        var context = new ActionExecutingContext(action, [], new Dictionary<string, object?>(), controller);
+            new ActionDescriptor { RouteValues = { ["action"] = actionName } }
+        );
+        var context = new ActionExecutingContext(
+            action,
+            [],
+            new Dictionary<string, object?>(),
+            controller
+        );
 
-        await controller.OnActionExecutionAsync(context, () =>
-        {
-            var executed = new ActionExecutedContext(action, [], controller)
+        await controller.OnActionExecutionAsync(
+            context,
+            () =>
             {
-                Result = resultKind switch
+                var executed = new ActionExecutedContext(action, [], controller)
                 {
-                    "object" => new ObjectResult(new { }) { StatusCode = status },
-                    "object-default" => new ObjectResult(new { }),
-                    "status" => new StatusCodeResult(status),
-                    _ => new EmptyResult(),
-                },
-            };
-            if (resultKind == "exception")
-                executed.Exception = new InvalidOperationException("synthetic action failure");
-            return Task.FromResult(executed);
-        });
+                    Result = resultKind switch
+                    {
+                        "object" => new ObjectResult(new { }) { StatusCode = status },
+                        "object-default" => new ObjectResult(new { }),
+                        "status" => new StatusCodeResult(status),
+                        _ => new EmptyResult(),
+                    },
+                };
+                if (resultKind == "exception")
+                    executed.Exception = new InvalidOperationException("synthetic action failure");
+                return Task.FromResult(executed);
+            }
+        );
 
         await using var db = factory.CreateDbContext();
         var record = Assert.Single(db.SecurityEvents);
@@ -729,33 +858,52 @@ public sealed class GoogleWorkspaceProofAdapterTests
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var identity = IdentityTestHelpers.CreateService(factory);
-        var adapter = new GoogleWorkspaceProofAdapter(new HttpClient(), Options.Create(Configuration()));
+        var adapter = new GoogleWorkspaceProofAdapter(
+            new HttpClient(),
+            Options.Create(Configuration())
+        );
         var providers = new IdentityProviderProjectionService(
             Options.Create(IdentityTestHelpers.TestEnvironment),
-            IdentityTestHelpers.EmptyConfiguration);
+            IdentityTestHelpers.EmptyConfiguration
+        );
         var journey = new CustomerIdentityJourneyService(identity, factory, adapter, providers);
         var securityEvents = new IdentitySecurityEventService(
             factory,
-            Options.Create(new IdentityHmacOptions { Key = "test-only-identity-security-event-key-32-bytes" }),
-            Options.Create(new IdentityEnvironmentOptions { Environment = "local" }));
+            Options.Create(
+                new IdentityHmacOptions { Key = "test-only-identity-security-event-key-32-bytes" }
+            ),
+            Options.Create(new IdentityEnvironmentOptions { Environment = "local" })
+        );
         var httpContext = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "observed-actor")], "Test")),
+            User = new ClaimsPrincipal(
+                new ClaimsIdentity([new Claim("sub", "observed-actor")], "Test")
+            ),
         };
         httpContext.Items[CustomerMembershipMiddleware.JourneyItem] = true;
         var controller = new IdentityController(
-            identity, providers, NullLogger<IdentityController>.Instance, journey, securityEvents)
+            identity,
+            providers,
+            NullLogger<IdentityController>.Instance,
+            journey,
+            securityEvents
+        )
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext },
         };
         var action = new ActionContext(
             httpContext,
             new RouteData(),
-            new ActionDescriptor { RouteValues = { ["action"] = "GetProfileAsync" } });
+            new ActionDescriptor { RouteValues = { ["action"] = "GetProfileAsync" } }
+        );
 
         await controller.OnActionExecutionAsync(
             new ActionExecutingContext(action, [], new Dictionary<string, object?>(), controller),
-            () => Task.FromResult(new ActionExecutedContext(action, [], controller) { Result = new OkResult() }));
+            () =>
+                Task.FromResult(
+                    new ActionExecutedContext(action, [], controller) { Result = new OkResult() }
+                )
+        );
 
         await using var db = factory.CreateDbContext();
         Assert.Empty(db.SecurityEvents);

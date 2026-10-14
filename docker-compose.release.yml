@@ -248,9 +248,16 @@ services:
       WAOOAW_API_URL: http://business-platform:5001
       WAOOAW_KEYCLOAK_URL: http://keycloak:8080
       BUSINESS_PLATFORM_URL: http://business-platform:5001
+      REDIS_URL: redis://redis:6379/0
+      WAOOAW_ENVIRONMENT: ${WAOOAW_ENVIRONMENT:?WAOOAW_ENVIRONMENT is required}
+      WAOOAW_SERVER_SESSION_MODE: ${WAOOAW_SERVER_SESSION_MODE:?WAOOAW_SERVER_SESSION_MODE is required}
+      WAOOAW_SERVER_SESSION_SHADOW_SUBJECTS: ${WAOOAW_SERVER_SESSION_SHADOW_SUBJECTS:-}
+      AUTH_ABUSE_LIMITS_JSON: ${AUTH_ABUSE_LIMITS_JSON:?AUTH_ABUSE_LIMITS_JSON is required}
       IDENTITY_EVENT_SIGNING_KEY: ${IDENTITY_EVENT_SIGNING_KEY:?IDENTITY_EVENT_SIGNING_KEY is required}
     depends_on:
       business-platform:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000"]

@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { hasFounderClaim } from '@/lib/auth';
+import { hasFounderClaim } from '@/lib/identity-claims';
 
 const DEFAULT_ADMIN_EMAIL = 'yogesh.khandge@dlaisd.com';
 const DEFAULT_TENANT_ID = '0471534c-1bbe-40ab-ae65-3f721b62582c';

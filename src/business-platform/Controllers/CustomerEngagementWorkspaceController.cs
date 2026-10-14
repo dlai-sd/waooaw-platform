@@ -266,22 +266,16 @@ public sealed class CustomerEngagementWorkspaceController(
     {
         tenantId = default;
         participantId = default;
-        var tenant =
-            HttpContext.Items[TenantIsolationMiddleware.TenantIdItemKey]?.ToString()
-            ?? User.FindFirstValue("tenant_id");
-        if (!Guid.TryParse(tenant, out tenantId))
-            return false;
         if (
             HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]
             is CustomerWorkspaceMembership membership
         )
         {
+            tenantId = membership.TenantId;
             participantId = membership.AccountId;
             return true;
         }
-        var participant =
-            User.FindFirstValue("participant_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return Guid.TryParse(participant, out participantId);
+        return false;
     }
 
     private ObjectResult NotFoundProblem() =>

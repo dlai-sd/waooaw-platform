@@ -25,7 +25,9 @@ def test_environment_manifests_are_isolated_strict_and_secret_free() -> None:
         manifest = load_json(f"infrastructure/identity-config/environments/{environment}.json")
         serialized = json.dumps(manifest)
 
-        expected_keys = base_keys | ({"capacityProfile"} if environment in {"demo", "uat"} else set())
+        expected_keys = base_keys | (
+            {"capacityProfile", "sessionAuthority"} if environment in {"demo", "uat"} else set()
+        )
         assert set(manifest) == expected_keys
         assert manifest["schemaVersion"] == "1.0"
         assert manifest["environment"] == environment

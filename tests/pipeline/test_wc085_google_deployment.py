@@ -108,6 +108,18 @@ def test_business_platform_uses_dedicated_stock_identity_reader() -> None:
     assert "IdentityBrokerRead__AllowedPrivateHosts__0" in workload
     assert "IdentityBrokerRead__Providers__google__ProviderNamespace" in workload
     assert "IdentityBrokerRead__Providers__google__TrustConfigDigest" in workload
+    assert 'clientId                  = "waooaw-bp-identity-lifecycle-writer"' in workload
+    assert '"role" = "realm-management.manage-users"' in workload
+    assert 'realm-management = ["manage-users"]' in workload
+    assert "IdentityLifecycleWriter__Enabled" in workload
+    assert "IdentityLifecycleWriter__PrivateOrigin" in workload
+    assert "IdentityLifecycleWriter__AllowedPrivateHosts__0" in workload
+    assert "IdentityLifecycleWriter__ClientId" in workload
+    assert "IdentityLifecycleWriter__ClientSecret" in workload
+    assert "BP_IDENTITY_LIFECYCLE_WRITER_CLIENT_SECRET" in workload
+    assert "keycloak-lifecycle-writer-client-secret" in (
+        MODULE / "google.tf"
+    ).read_text()
 
 
 def test_demo_seeder_provisions_dedicated_identity_reader_secret_at_runtime() -> None:

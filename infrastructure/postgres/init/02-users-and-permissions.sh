@@ -35,6 +35,9 @@ CREATE USER wbe_app WITH PASSWORD '${POSTGRES_PASSWORD}';
 -- Generic domain-adapter runtime: grants are applied by WC-115 migrations
 CREATE USER domain_adapter_app WITH PASSWORD '${POSTGRES_PASSWORD}';
 
+-- Web BFF application-session runtime: function execution only, granted by WC-123 migration
+CREATE USER web_session_app WITH PASSWORD '${POSTGRES_PASSWORD}' NOBYPASSRLS;
+
 -- Temporal workflow server
 CREATE USER temporal WITH PASSWORD '${TEMPORAL_PASS}';
 

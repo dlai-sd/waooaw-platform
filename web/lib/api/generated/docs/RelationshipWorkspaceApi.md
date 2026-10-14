@@ -172,6 +172,7 @@ example().catch(console.error);
 | Status code | Description                                                                  | Response headers |
 | ----------- | ---------------------------------------------------------------------------- | ---------------- |
 | **200**     | Current progress with truth dimensions, provenance, and server-ranked action | -                |
+| **403**     | Identity action is not available to the authenticated actor                  | -                |
 | **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant      | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
@@ -1425,6 +1426,7 @@ example().catch(console.error);
 | Status code | Description                                                             | Response headers |
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
 | **200**     | Current relationship workspace preferences                              | -                |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
 | **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
@@ -1574,6 +1576,7 @@ example().catch(console.error);
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
 | **200**     | Preferences replaced without changing relationship authority            | -                |
 | **400**     | Request body failed validation                                          | -                |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
 | **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
 | **409**     | Operation not valid in current state                                    | -                |
 
@@ -1731,6 +1734,7 @@ example().catch(console.error);
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
 | **200**     | Current authorized canonical destination                                | -                |
 | **400**     | Request body failed validation                                          | -                |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
 | **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
 | **409**     | Operation not valid in current state                                    | -                |
 | **410**     | Focus reference expired                                                 | -                |
