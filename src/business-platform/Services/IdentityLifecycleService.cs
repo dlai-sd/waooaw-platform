@@ -1,3 +1,6 @@
+// Implements: architecture/reference/components/authentication-authorization-simplification-solution-contract.md §10, §12.5
+// constitutional_basis: C-023, C-026, C-059, C-063
+
 using System.Buffers.Binary;
 using System.Data;
 using System.Security.Cryptography;
