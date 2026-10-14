@@ -62,7 +62,6 @@ def configuration() -> dict[str, Any]:
         "planned_incremental_monthly_cost_inr": 1000,
         "cumulative_one_time_cost_inr": 1000,
         "dma_admission_content_digest": "sha256:" + "f" * 64,
-        "founder_ipv4_cidr": "203.0.113.8/32",
     }
     values.update({field: f"accepted-{field}" for field in LEASE_FIELDS})
     values["lease_state"] = "ACTIVE"
@@ -171,12 +170,7 @@ def test_runtime_secret_uri_rejects_versioned_or_nested_paths() -> None:
         create_inputs("demo", manifest(), values, True)
 
 
-@pytest.mark.parametrize("cidr", ["0.0.0.0/32", "203.0.113.0/24", "2001:db8::1/128", "invalid"])
-def test_demo_requires_one_nonzero_founder_ipv4_host(cidr: str) -> None:
-    values = configuration()
-    values["founder_ipv4_cidr"] = cidr
-    with pytest.raises(ValueError, match="one nonzero IPv4 /32"):
-        create_inputs("demo", manifest(), values, True)
+def test_invalid_secret_resource_ids_are_rejected() -> None:
     values = configuration()
     values["key_vault_secret_resource_ids"] = values["key_vault_secret_uris"]
     with pytest.raises(ValueError, match="secret resource ID"):

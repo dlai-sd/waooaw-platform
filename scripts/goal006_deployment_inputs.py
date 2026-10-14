@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import ipaddress
 import json
 import re
 from collections.abc import Mapping
@@ -125,15 +124,6 @@ def create_inputs(
         validate_active_lease(configuration, current_time or datetime.now(timezone.utc))
         inputs.update({field: configuration[field] for field in LEASE_FIELDS})
         inputs["lease_revoked_at"] = configuration.get("lease_revoked_at")
-        if environment == "demo":
-            founder_ipv4_cidr = configuration.get("founder_ipv4_cidr")
-            try:
-                founder_network = ipaddress.ip_network(founder_ipv4_cidr, strict=True)
-            except (TypeError, ValueError) as error:
-                raise ValueError("founder_ipv4_cidr must be one nonzero IPv4 /32") from error
-            if founder_network.version != 4 or founder_network.prefixlen != 32 or founder_network.network_address.is_unspecified:
-                raise ValueError("founder_ipv4_cidr must be one nonzero IPv4 /32")
-            inputs["founder_ipv4_cidr"] = founder_ipv4_cidr
     else:
         for field in ("ce_min_replicas", "pr_min_replicas"):
             value = configuration.get(field)

@@ -37,13 +37,12 @@ def test_neutral_entry_delegates_deployment_and_verification() -> None:
     assert "az " not in deploy
 
 
-def test_demo_apply_accepts_and_bounds_current_public_ipv4() -> None:
+def test_demo_apply_no_longer_depends_on_founder_source_ip() -> None:
     deploy = _workflow("deploy.yaml")
 
-    assert re.search(r"https://api\.ipify\.org(?:['\"\s]|$)", deploy)
     assert "scripts/goal006_dispatch_inputs.py" in deploy
-    assert 'ACCESS_IPV4: ${{ inputs.access_ipv4 }}' in deploy
-    assert "needs.authorize.outputs.access_cidr" in deploy
+    assert "access_ipv4" not in deploy
+    assert "access_cidr" not in deploy
 
 
 def test_runner_delivery_supports_each_protected_environment() -> None:

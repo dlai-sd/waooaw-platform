@@ -66,6 +66,13 @@ export const publicPages = {
 } as const;
 
 export const legalPages = {
+  dataDeletion: {
+    path: '/data-deletion',
+    title: 'User Data Deletion Instructions',
+    sourceFile: 'data-deletion-instructions.md',
+    effectiveDate: '14 October 2026',
+    summary: 'Request deletion of personal data associated with a WAOOAW account or external authentication provider.',
+  },
   privacy: {
     path: '/privacy',
     title: 'Privacy Policy',

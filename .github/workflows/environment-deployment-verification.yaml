@@ -18,10 +18,6 @@ on:
       web_url:
         required: true
         type: string
-      expected_access_cidr:
-        required: false
-        type: string
-
 permissions:
   contents: read
   actions: read
@@ -91,8 +87,7 @@ jobs:
             '${{ inputs.environment }}' \
             registry-release-manifest.json \
             '${{ inputs.release_sha }}' \
-            '${{ inputs.web_url }}' \
-            '${{ inputs.expected_access_cidr }}'
+            '${{ inputs.web_url }}'
 
       - name: Upload independent evidence
         if: always()

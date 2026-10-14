@@ -34,6 +34,42 @@ variable "container_app_environment_default_domain" {
   default = "unconfigured.invalid"
 }
 
+variable "web_custom_hostname" {
+  type        = string
+  default     = null
+  nullable    = true
+  description = "Optional public custom hostname for the customer web application."
+
+  validation {
+    condition     = var.web_custom_hostname == null || can(regex("^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])$", var.web_custom_hostname))
+    error_message = "Web custom hostname must be a lowercase DNS hostname without a scheme or path."
+  }
+}
+
+variable "identity_custom_hostname" {
+  type        = string
+  default     = null
+  nullable    = true
+  description = "Optional public custom hostname for the identity edge."
+
+  validation {
+    condition     = var.identity_custom_hostname == null || can(regex("^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])$", var.identity_custom_hostname))
+    error_message = "Identity custom hostname must be a lowercase DNS hostname without a scheme or path."
+  }
+}
+
+variable "api_custom_hostname" {
+  type        = string
+  default     = null
+  nullable    = true
+  description = "Optional public custom hostname for the Business Platform API."
+
+  validation {
+    condition     = var.api_custom_hostname == null || can(regex("^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])$", var.api_custom_hostname))
+    error_message = "API custom hostname must be a lowercase DNS hostname without a scheme or path."
+  }
+}
+
 variable "verification_principal_id" {
   type        = string
   description = "Independent verification identity permitted only to execute the scoped internal probe job."
@@ -80,19 +116,6 @@ variable "key_vault_secret_resource_ids" {
       alltrue([for id in values(var.key_vault_secret_resource_ids) : can(regex("^/subscriptions/.+/secrets/[^/]+$", id))])
     )
     error_message = "Every release member requires one Key Vault secret RBAC resource ID."
-  }
-}
-
-variable "founder_ipv4_cidr" {
-  type        = string
-  description = "Single Founder IPv4 /32 permitted to reach public Demo applications."
-  default     = null
-  nullable    = true
-  validation {
-    condition = var.environment != "demo" ? var.founder_ipv4_cidr == null : (
-      can(regex("^(?:[0-9]{1,3}[.]){3}[0-9]{1,3}/32$", var.founder_ipv4_cidr)) && var.founder_ipv4_cidr != "0.0.0.0/32"
-    )
-    error_message = "Founder review access requires one nonzero IPv4 /32."
   }
 }
 

@@ -211,8 +211,7 @@ def test_internal_verification_uses_the_identity_edge() -> None:
 
     assert re.search(r'web\s*=\s*"http://ca-\$\{var\.environment\}-web"', contract)
     assert re.search(
-        r'identity_edge\s*=\s*"https://ca-\$\{var\.environment\}-identity-edge\.'
-        r'\$\{var\.container_app_environment_default_domain\}"',
+        r'identity_edge\s*=\s*"https://\$\{coalesce\(var\.identity_custom_hostname,',
         contract,
     )
     assert 'probe web "${local.verification_urls.web}/"' in verification_job
@@ -236,13 +235,13 @@ def test_verification_url_consumers_have_defined_keys() -> None:
     assert referenced_keys <= defined_keys
 
 
-def test_internal_verification_bypasses_public_business_platform_restriction() -> None:
+def test_internal_verification_bypasses_public_business_platform_ingress() -> None:
     contract = read_contract("modules/workload/main.tf")
     parsed_contract = hcl2.loads(contract)
     locals_contract = parsed_contract["locals"][0]
 
     assert locals_contract["public_ingress"]['"business-platform"'] is True
-    assert 'name             = "founder-review"' in contract
+    assert "ip_security_restriction" not in contract
     assert locals_contract["verification_urls"]["business_platform"] == (
         "${local.service_urls.business_platform}"
     )
@@ -356,7 +355,7 @@ def test_identity_edge_exposes_only_customer_authentication_paths() -> None:
 def test_runtime_uses_public_identity_edge_while_keycloak_stays_internal() -> None:
     contract = read_contract("modules/workload/main.tf")
 
-    assert 'identity_edge         = "https://ca-${var.environment}-identity-edge.' in contract
+    assert 'identity_edge         = "https://${coalesce(var.identity_custom_hostname,' in contract
     assert 'keycloak              = "http://ca-${var.environment}-keycloak"' in contract
     for setting in (
         "Keycloak__Authority",
@@ -448,16 +447,15 @@ def test_enabled_workloads_require_verified_public_ghcr_packages() -> None:
         )
 
 
-def test_founder_ipv4_cidr_is_required_only_for_demo() -> None:
+def test_founder_ipv4_cidr_is_not_part_of_public_demo_contract() -> None:
     module_variables = read_contract("modules/workload/variables.tf")
     demo_root = read_contract("environments/demo/workload/main.tf")
     demo_variables = read_contract("environments/demo/workload/variables.tf")
 
-    assert re.search(r'variable "founder_ipv4_cidr"\s*{[^}]*default\s*=\s*null', module_variables, re.DOTALL)
-    assert 'var.environment != "demo"' in module_variables
-    assert 'var.environment == "demo" && local.public_ingress[each.key]' in read_contract("modules/workload/main.tf")
-    assert "founder_ipv4_cidr                        = var.founder_ipv4_cidr" in demo_root
-    assert 'variable "founder_ipv4_cidr"' in demo_variables
+    assert "founder_ipv4_cidr" not in module_variables
+    assert "ip_security_restriction" not in read_contract("modules/workload/main.tf")
+    assert "founder_ipv4_cidr" not in demo_root
+    assert 'variable "founder_ipv4_cidr"' not in demo_variables
 
     for environment in ("uat", "prod"):
         root = read_contract(f"environments/{environment}/workload/main.tf")
@@ -602,7 +600,7 @@ def test_post_deploy_functional_verification_fails_fast_and_retains_job_contract
     assert "functional-job.json" in artifact_paths
 
 
-def test_all_environments_are_public_but_only_demo_is_founder_restricted() -> None:
+def test_all_environments_are_public_and_demo_uses_application_authorization() -> None:
     demo = read_contract("environments/demo/foundation/main.tf")
     uat = read_contract("environments/uat/foundation/main.tf")
     prod = read_contract("environments/prod/foundation/main.tf")
@@ -612,10 +610,9 @@ def test_all_environments_are_public_but_only_demo_is_founder_restricted() -> No
     assert re.search(r"external_environment\s*=\s*true", demo)
     assert re.search(r"external_environment\s*=\s*true", uat)
     assert re.search(r"external_environment\s*=\s*true", prod)
-    assert 'name             = "founder-review"' in workload
-    assert 'var.environment == "demo" && local.public_ingress[each.key]' in workload
-    assert "ip_address_range = ip_security_restriction.value" in workload
-    assert re.search(r"founder_ipv4_cidr\s*=\s*var\.founder_ipv4_cidr", demo_workload)
+    assert "ip_security_restriction" not in workload
+    assert "founder_ipv4_cidr" not in demo_workload
+    assert 'web_custom_hostname                      = "cp.demo.waooaw.com"' in demo_workload
     assert re.search(r"max_replicas\s*=\s*1", demo_workload)
     assert 'output "web_url"' in demo_workload
 
@@ -941,15 +938,25 @@ def test_deployment_identities_verify_the_active_subscription() -> None:
     assert verification.count(subscription_check) == 1
 
 
-def test_founder_web_url_uses_stable_app_ingress() -> None:
+def test_demo_web_url_uses_managed_custom_domain() -> None:
     workload = (PHASE2_ROOT / "modules/workload/main.tf").read_text(encoding="utf-8")
+    demo = (PHASE2_ROOT / "environments/demo/workload/main.tf").read_text(encoding="utf-8")
     verification = (REPO_ROOT / ".github/workflows/environment-deployment-verification.yaml").read_text(encoding="utf-8")
     verifier = (REPO_ROOT / "scripts/goal006_verify_deployment.sh").read_text(encoding="utf-8")
 
-    assert 'azurerm_container_app.member["web"].ingress[0].fqdn' in workload
+    assert 'resource "azurerm_container_app_custom_domain" "public_member"' in workload
+    assert 'resource "azurerm_container_app_custom_domain" "identity_edge"' in workload
+    assert "ignore_changes = [certificate_binding_type, container_app_environment_certificate_id]" in workload
+    assert 'web_custom_hostname                      = "cp.demo.waooaw.com"' in demo
+    assert 'identity_custom_hostname                 = "auth.demo.waooaw.com"' in demo
+    assert 'api_custom_hostname                      = "api.demo.waooaw.com"' in demo
+    assert "founder_ipv4_cidr" not in demo
+    assert "ip_security_restriction" not in workload
     assert "latest_revision_fqdn" not in workload
     assert "bash scripts/goal006_verify_deployment.sh" in verification
     assert "properties.configuration.ingress.fqdn" in verifier
+    assert "properties.configuration.ingress.customDomains" in verifier
+    assert "https://cp.demo.waooaw.com" in verifier
     assert "properties.latestRevisionFqdn" not in verifier
     assert '.properties.runningState == "ScaledToZero"' in verifier
 

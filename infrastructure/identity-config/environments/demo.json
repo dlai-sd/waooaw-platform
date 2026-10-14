@@ -2,14 +2,14 @@
   "schemaVersion": "1.0",
   "environment": "demo",
   "origins": {
-    "web": "https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io",
-    "api": "https://ca-demo-business-platform.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io",
-    "identity": "https://ca-demo-identity-edge.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io"
+    "web": "https://cp.demo.waooaw.com",
+    "api": "https://api.demo.waooaw.com",
+    "identity": "https://auth.demo.waooaw.com"
   },
   "keycloak": {
-    "issuer": "https://ca-demo-identity-edge.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/realms/waooaw",
+    "issuer": "https://auth.demo.waooaw.com/realms/waooaw",
     "audience": "waooaw-platform",
-    "jwksUri": "https://ca-demo-identity-edge.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/realms/waooaw/protocol/openid-connect/certs",
+    "jwksUri": "https://auth.demo.waooaw.com/realms/waooaw/protocol/openid-connect/certs",
     "realm": "waooaw",
     "accessTokenMinutes": 15,
     "refreshSessionHours": 8,
@@ -21,12 +21,12 @@
       "channel": "WEB",
       "pkceRequired": true,
       "redirectUris": [
-        "https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/api/auth/callback/keycloak",
-        "https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/api/auth/callback/keycloak-google",
-        "https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/api/auth/callback/keycloak-facebook"
+        "https://cp.demo.waooaw.com/api/auth/callback/keycloak",
+        "https://cp.demo.waooaw.com/api/auth/callback/keycloak-google",
+        "https://cp.demo.waooaw.com/api/auth/callback/keycloak-facebook"
       ],
-      "postLogoutRedirectUris": ["https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/login"],
-      "allowedOrigins": ["https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io"],
+      "postLogoutRedirectUris": ["https://cp.demo.waooaw.com/login"],
+      "allowedOrigins": ["https://cp.demo.waooaw.com"],
       "scopes": ["openid", "profile", "email"]
     },
     {
