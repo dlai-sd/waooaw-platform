@@ -1,0 +1,153 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-122
+contract_path: work-contracts/WC-122-authentication-authorization-simplification.md
+contract_digest: 8a73e196a90201238729bdcc678452ea06933d3355c751707c93383226357d21
+solution_path: architecture/reference/components/authentication-authorization-simplification-solution-contract.md
+solution_digest: 16afccde6187626f8e12769348b7bb4ad0f8bd2447f05ab781864eed5449ada7
+contract_status: AUTHOR_REVIEW_PASS_CANDIDATE_IMPLEMENTATION_BLOCKED
+implementation_scope: true
+result: PLANNED
+candidate_scope: AUTHENTICATION_AUTHORIZATION_SIMPLIFICATION_SPECIFICATION_ONLY
+completion_rule: >-
+  Every requirement must be closed by the accepted Chief Solution Architect contract and its
+  repository-owned oracle plan. Acceptance does not authorize runnable implementation, generated
+  artifacts, provider or cloud mutation, deployment, external traffic, activation, approval, or
+  merge.
+
+requirement_defaults: &defaults
+  evidence_class: Repository-owned architecture, security, privacy, operability, migration, or acceptance-contract evidence
+  initial_state: expected-fail
+  dependencies: Founder acceptance of the exact WC-122 and CSA-AUTH-001 candidate plus any required ADR amendment
+  residual_risk: Passing specification evidence does not establish implementation or real-provider readiness.
+  evidence_location: "architecture/reference/components/authentication-authorization-simplification-solution-contract.md"
+  failure_and_rollback: Stop implementation planning; preserve current accepted authority; resolve the conflicting decision without silently weakening identity or tenant controls.
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC122-R001
+    source: WC-122 Sections 1-6; CSA-AUTH-001 Sections 1-5
+    observable_outcome: The target has exactly one identity authority, one browser application-session authority, and explicit application authorization owners.
+    component_owner: Chief Solution Architect
+    test_path_or_plan: Architecture ownership matrix and prohibited dual-authority scan.
+    completion_rule: Every credential, token, cookie, session, identity, membership, revocation, and authorization fact has one owner.
+
+  - <<: *defaults
+    requirement_id: WC122-R002
+    source: WC-122 Section 6.1; CSA-AUTH-001 Sections 4, 6.4, 8, and 12
+    observable_outcome: The browser holds only an opaque secure application-session handle while all provider and OIDC tokens remain server-side.
+    component_owner: Web BFF session boundary
+    test_path_or_plan: Browser storage/cookie inspection, response scan, bundle scan, and token-custody architecture tests.
+    completion_rule: No access, refresh, ID, provider, code, or PKCE material is browser-readable or browser-persisted.
+
+  - <<: *defaults
+    requirement_id: WC122-R003
+    source: WC-122 Sections 6.2 and 7; CSA-AUTH-001 Sections 6, 9, and 10
+    observable_outcome: Global identity is keyed by exact issuer and subject, and linking never silently relies on matching email.
+    component_owner: Identity authority and Business Platform identity boundary
+    test_path_or_plan: Provider identity, email-change, Apple relay, collision, link/unlink, and concurrency contract tests.
+    completion_rule: Every provider identity resolves, links, collides, or recovers without account enumeration, silent merge, or duplication.
+
+  - <<: *defaults
+    requirement_id: WC122-R004
+    source: WC-122 Sections 2 and 6.2; CSA-AUTH-001 Sections 7.1-7.2
+    observable_outcome: Login and registration use one authentication ceremony and one post-authentication router.
+    component_owner: Web BFF and Business Platform onboarding
+    test_path_or_plan: Returning/new/incomplete user journey matrix across all enabled providers.
+    completion_rule: Authentication deterministically returns READY, ONBOARDING_REQUIRED, TENANT_SELECTION_REQUIRED, or a typed recovery state.
+
+  - <<: *defaults
+    requirement_id: WC122-R005
+    source: WC-122 Section 6.3; CSA-AUTH-001 Sections 6.3 and 11
+    observable_outcome: Global user, profile, tenant membership, role, active tenant, and institutional identity remain separate authorities.
+    component_owner: Business Platform authorization boundary
+    test_path_or_plan: Zero/one/many membership, role change, inactive membership, cross-tenant, and institutional-isolation tests.
+    completion_rule: Authentication alone grants no tenant or business authority and every protected operation resolves current membership.
+
+  - <<: *defaults
+    requirement_id: WC122-R006
+    source: WC-122 Section 6.4; CSA-AUTH-001 Sections 7.3-7.6
+    observable_outcome: Local logout, global logout, account switch, tenant switch, and security revocation are distinct deterministic commands.
+    component_owner: Web BFF, identity authority, and Business Platform
+    test_path_or_plan: Outage, race, stale-cookie, history, multi-tab, same/different-account, and tenant-switch journey tests.
+    completion_rule: Each command changes only its owned state and converges on the most restrictive valid result.
+
+  - <<: *defaults
+    requirement_id: WC122-R007
+    source: WC-122 Sections 6.1 and 6.4; CSA-AUTH-001 Sections 8 and 13
+    observable_outcome: Expired, revoked, rotated-key, legacy, deployment-invalidated, and downstream-rejected sessions converge on one recoverable unauthenticated state.
+    component_owner: Web BFF session boundary
+    test_path_or_plan: Refresh rejection, JWKS rotation, API 401, deployment cutover, legacy cookie, and retry-loop tests.
+    completion_rule: No invalid session remains apparently authenticated or enters a refresh/recovery loop.
+
+  - <<: *defaults
+    requirement_id: WC122-R008
+    source: WC-122 Section 7; CSA-AUTH-001 Section 9
+    observable_outcome: Google, Apple, Facebook, and Email have provider-specific proof and operations while exposing provider-independent application behavior.
+    component_owner: Identity authority
+    test_path_or_plan: Synthetic provider contracts plus separately authorized real-provider Demo qualification.
+    completion_rule: A provider failure cannot corrupt another provider, an existing session, or application identity.
+
+  - <<: *defaults
+    requirement_id: WC122-R009
+    source: WC-122 Section 6.3; CSA-AUTH-001 Section 11
+    observable_outcome: APIs enforce exact token validation, current membership, assurance, resource ownership, and action policy independently of UI and browser tenant input.
+    component_owner: Business Platform and enabled resource owners
+    test_path_or_plan: Issuer, signature, lifetime, audience, azp, assurance, membership, RLS, resource, and cross-tenant negative tests.
+    completion_rule: No callback, cookie, header, JWT tenant claim, or UI state is sufficient business authority.
+
+  - <<: *defaults
+    requirement_id: WC122-R010
+    source: WC-122 Section 6.5; CSA-AUTH-001 Section 12
+    observable_outcome: Identity configuration, keys, provider links, and test users remain durable wherever repeatable authentication is claimed.
+    component_owner: Identity persistence and platform operations
+    test_path_or_plan: Deployment, restart, key rotation, backup/restore, environment reset, and forced-reauthentication drills.
+    completion_rule: An environment either preserves identity continuity or truthfully executes a complete bounded reset without stale authority.
+
+  - <<: *defaults
+    requirement_id: WC122-R011
+    source: WC-122 Sections 6.5 and 10; CSA-AUTH-001 Sections 13-14
+    observable_outcome: Every authentication and authorization transition emits privacy-safe typed telemetry and one customer recovery action.
+    component_owner: Cross-boundary observability
+    test_path_or_plan: Event schema, redaction, correlation, SLO, alert, cancellation, and dependency-failure tests.
+    completion_rule: Operations can distinguish provider, callback, session, onboarding, membership, and dependency failures without secret or PII leakage.
+
+  - <<: *defaults
+    requirement_id: WC122-R012
+    source: WC-122 Sections 6.5 and 9; CSA-AUTH-001 Section 15
+    observable_outcome: Migration invalidates legacy sessions once, activates one replacement authority, and cannot leave mixed session acceptance.
+    component_owner: Migration and release control
+    test_path_or_plan: Dual-version rollout, legacy cookie, forced logout, rollback, and session-format compatibility tests.
+    completion_rule: No steady state or rollback accepts both legacy and replacement application-session authority.
+
+  - <<: *defaults
+    requirement_id: WC122-R013
+    source: WC-122 Section 8; CSA-AUTH-001 Section 16
+    observable_outcome: Durable Keycloak and managed CIAM are compared using capability, governance, data, cost, operations, migration, and exit criteria.
+    component_owner: Chief Solution Architect
+    test_path_or_plan: Scored decision matrix with explicit assumptions, evidence dates, sensitivity, and unresolved authority.
+    completion_rule: The Founder can accept one identity-platform direction without hidden cost, ownership, or portability assumptions.
+
+  - <<: *defaults
+    requirement_id: WC122-R014
+    source: WC-122 Sections 3, 10, and 12; CSA-AUTH-001 Sections 17-19
+    observable_outcome: The solution identifies every accepted-contract conflict, downstream decision, prohibited design, and implementation gate.
+    component_owner: Architecture governance
+    test_path_or_plan: Contract crosswalk and ADR conflict scan.
+    completion_rule: No accepted ADR or constitutional boundary is silently overridden and no specification artifact claims implementation authority.
+
+  - <<: *defaults
+    requirement_id: WC122-R015
+    source: WC-122 Section 10; CSA-AUTH-001 Section 17
+    observable_outcome: The acceptance matrix covers protocol, browser, identity, onboarding, session, logout, switching, tenants, authorization, providers, accessibility, and operations.
+    component_owner: Solution acceptance design
+    test_path_or_plan: Requirement-to-oracle completeness scan with success, denial, outage, race, rollback, and real-provider classes.
+    completion_rule: Every requirement has a direct measurable oracle and every high-risk failure class has a negative test.
+
+  - <<: *defaults
+    requirement_id: WC122-R016
+    source: WC-122 Sections 11-13
+    observable_outcome: The author-reviewed specification is submitted as a separate exact-head branch while implementation and protected actions remain blocked.
+    component_owner: Work Contract control
+    test_path_or_plan: Repository validation, author-review checklist, exact-head status, and changed-file boundary.
+    completion_rule: Only the three authorized specification artifacts change and no implementation or environment mutation occurs.
