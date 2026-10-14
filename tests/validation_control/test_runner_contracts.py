@@ -62,6 +62,19 @@ def test_qualification_uses_canonical_docker_socket_authority() -> None:
     assert "stat -c '%g'" not in qualification
 
 
+def test_local_catalog_gate_uses_full_runner_and_canonical_socket_authority() -> None:
+    launcher = (ROOT / "scripts/validation_control/run_local_catalog_gate.sh").read_text(encoding="utf-8")
+
+    assert "run_with_docker_socket.sh" in launcher
+    assert "--profile test run --rm --no-deps" in launcher
+    assert "test-runner \"$@\"" in launcher
+    assert "test-runner-python" not in launcher
+    assert '"$repository:$repository:ro"' in launcher
+    assert '"$git_common_dir:$git_common_dir:ro"' in launcher
+    assert '"$repository/test-results:$repository/test-results"' in launcher
+    assert '"$docker_socket:$docker_socket"' in launcher
+
+
 def test_precommit_runs_catalog_selected_checks_for_exact_staged_tree() -> None:
     hook = (ROOT / ".githooks/pre-commit").read_text(encoding="utf-8")
     runner = (ROOT / "scripts/validation_control/run_staged_prechecks.py").read_text(encoding="utf-8")

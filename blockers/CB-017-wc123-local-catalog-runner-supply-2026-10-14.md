@@ -6,7 +6,7 @@
 | `record_id` | `CB-017` |
 | `record_type` | Constitutional Blocker |
 | `produced_at` | `2026-10-14` |
-| Status | **OPEN** |
+| Status | **RESOLVED - 2026-10-14** |
 | Raised by | INST-010 - Platform IT Expert |
 | Affected work | WC-123 AUTH-WC-01 baseline and all dependent implementation components |
 | Constitutional basis | C-023, C-059, C-080; WC-123 Sections 2.1, 7.1, 11, and 15 |
@@ -54,3 +54,21 @@ Provide one repository-owned Docker launcher or supplied runner that:
 
 After repair, rerun the exact `spec-lint` focused gate once. Do not bypass the executor, weaken the
 preflight, install host tooling, or treat a direct test command as authoritative evidence.
+
+## Resolution
+
+Platform IT added `scripts/validation_control/run_local_catalog_gate.sh`, a Docker-only focused-gate
+launcher that reuses the full supplied runner and canonical Docker-socket authority. It mounts the
+selected linked worktree, Git common directory, Docker socket, and host-visible evidence paths at
+their original absolute locations and forwards explicit catalog arguments without host Python.
+
+The repaired path produced catalog-controlled PASS evidence for:
+
+- `spec-lint` in namespace `wc109-bb72c1f28481638b`, using full-runner digest
+  `sha256:e4aad45450c3a0b0b4735e130227943e73cc34ea707fb800c576fecbcede7701`;
+- `quality:scripts` in namespace `wc109-02e83e626f00e727`, using Python-runner digest
+  `sha256:942f28d0b9073920c8e0d63c0a6c094c63599c76b6828799ec6672b3b4290d49`.
+
+Both executions report `first_cause: none`; the static gate recorded zero product-image builds. The
+runner contract test prevents regression to the lean Python runner for orchestration. CB-017 is
+closed without bypassing the catalog or weakening preflight.
