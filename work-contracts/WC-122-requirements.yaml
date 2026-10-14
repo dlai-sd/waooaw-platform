@@ -3,7 +3,7 @@ work_contract: WC-122
 contract_path: work-contracts/WC-122-authentication-authorization-simplification.md
 contract_digest: 8a73e196a90201238729bdcc678452ea06933d3355c751707c93383226357d21
 solution_path: architecture/reference/components/authentication-authorization-simplification-solution-contract.md
-solution_digest: 82ae712c242efee1a99056b163301dfae7393cd6e6010976f4feb4d8ad48572f
+solution_digest: 16afccde6187626f8e12769348b7bb4ad0f8bd2447f05ab781864eed5449ada7
 contract_status: AUTHOR_REVIEW_PASS_CANDIDATE_IMPLEMENTATION_BLOCKED
 implementation_scope: true
 result: PLANNED

@@ -2,9 +2,9 @@
 
 **Contract ID:** CSA-AUTH-001
 **Work Contract:** WC-122
-**Version:** 1.0.0-candidate.2
+**Version:** 1.1.0-candidate.8
 **Owning office:** Chief Solution Architect, Office 05
-**Status:** AUTHOR CANDIDATE FOR CHIEF SOLUTION ARCHITECT AND FOUNDER REVIEW - IMPLEMENTATION BLOCKED
+**Status:** AUTHOR REVIEW PASS - KEYCLOAK LIFECYCLE INTEGRATION DECISION REQUIRED - IMPLEMENTATION BLOCKED
 **Implementation authority:** None
 
 ## 1. Purpose
@@ -42,6 +42,10 @@ The planes exchange typed evidence but do not share ownership.
    revocation are distinct commands.
 9. Every transition is idempotent, race-defined, privacy-safe, and observable.
 10. No migration may leave two application-session authorities active as a steady state.
+11. The validated WAOOAW application principal and an upstream provider identity are distinct:
+    Keycloak `(issuer, subject)` authenticates the application principal; Keycloak alone verifies and
+    owns an upstream provider `(issuer, subject)` binding. Neither identifier may be substituted for
+    the other.
 
 ## 3. Normative Standards and Supersession Boundary
 
@@ -72,8 +76,13 @@ close these known conflicts:
 | Identity Session Security Contract | Social login requests account selection after logout. | Narrow forced account selection to explicit account switch and bounded recovery; normal login uses ordinary SSO. |
 | WC-105 | Login and Registration are separate dedicated entry experiences. | They may remain separate presentation routes, but they invoke one authentication ceremony and one post-authentication router. |
 | WC-105 and WC-119 | Typed denial and stale-session recovery trigger custom retry/logout behavior. | Preserve as interim compatibility only; replacement sessions converge through the canonical state machines in Section 7. |
+| Fundamental Customer Journeys and WC-105 | The later customer-journey baseline makes Login authenticate without creating an account or registration; Register and Trial/Hire are explicit intents. WC-105 remains the accepted modal, provider-control, copy, cancellation, focus, and recovery presentation baseline. | Apply the later journey rule to post-authentication routing while preserving WC-105 presentation. One broker ceremony does not merge Login and Register intent, auto-start onboarding, enable a provider, or authorize new routes, controls, copy, layout, or interaction behavior. |
 | WC-034 | Keycloak is the only web credential authority and BP owns membership/authorization. | Preserve. The Web BFF owns only the application session and token custody, not credentials or tenant authority. |
+| Identity Security Data Contract | Proposes active sessions in `business.identity_sessions`. | Preserve its event separation, minimisation, revocation-generation, retention, and race requirements. For this candidate, Founder acceptance replaces only that proposed physical session placement with the Web-owned `web_session` objects in Section 12; BP receives no token custody or session-table access. |
 | ADR-017 | Web Application owns server-side identity integration. | Preserve while replacing browser-carried token custody with an accepted server-side session owner. |
+| ADR-017 and existing NextAuth/Auth.js use | The Web framework and existing OIDC library are adopted integration machinery, not an application-session authority. | Retain the accepted Next.js boundary. Reuse the existing reviewed NextAuth/Auth.js OIDC client hooks only for protocol exchange/validation; build the WAOOAW `web_session` authority and lifecycle primitives because the required generation, rotation, revocation, retention, and restore semantics are application-owned. Any library replacement, major upgrade, browser-token fallback, library database-session authority, or generated schema outside Section 12 requires a new accepted decision. |
+| ADR-008 Amendment 3 | WC-085 adopts stock Keycloak and a read-only BP identity client; it expressly selects no runtime Keycloak writer or persistent-Keycloak mutation. | Preserve the WC-085 reader boundary. WC-123 link, unlink, recovery, and principal-rebinding cannot infer mutation authority from that reader or from generic Keycloak ownership. Before those commands are implemented, accept one exact stock-Keycloak proof/mutation interface, least-privilege credential and owner, supported-version evidence, compensation boundary, and UI consequence. A custom provider, derived image, broad realm-management writer, or managed-CIAM substitution requires explicit architecture and Founder acceptance. |
+| Compact capability/container indexes | Capability 6.1 condenses credential authentication under Keycloak and customer authorization under BP; the container index distinguishes the application image set from dependency-manifest members. | Read the condensed map as credential/session/business layers, not as transfer of Web-session or resource-authorization ownership. Bind release evidence to the architecture-indexed application and dependency manifests by identity and digest; do not invent a combined image count. |
 | Demo public-domain delivery | Stable origins and callbacks are environment prerequisites. | Preserve as an entry gate; domain publication does not establish provider or authentication readiness. |
 
 No implementation Work Contract may proceed while a conflict above lacks an accepted disposition.
@@ -160,15 +169,21 @@ Minimum logical fields:
 
 `ExternalIdentity` binds:
 
-- exact issuer;
-- exact subject;
+- exact upstream provider issuer;
+- exact upstream provider subject, retained only by Keycloak and exposed to no browser or ordinary
+  application API;
 - provider class;
 - global user ID;
 - verification/provenance class;
 - linked, last-authenticated, and retired timestamps; and
 - privacy-safe recovery state.
 
-The unique key is `(issuer, subject)`. Provider email is mutable profile evidence, not the key.
+The upstream unique key is `(provider issuer, provider subject)`. The application principal is the
+separate exact Keycloak `(issuer, subject)` from the validated WAOOAW token. BP may retain only a
+Keycloak-principal-to-global-user binding and an opaque, purpose-limited provider-link reference
+needed for lifecycle/evidence; it must not recreate Keycloak's provider-link table or infer the
+upstream subject from email, alias, token claims, or browser input. Provider email is mutable profile
+evidence, not either key.
 
 ### 6.3 Tenant membership
 
@@ -194,12 +209,17 @@ The server-side `ApplicationSession` contains:
 The browser cookie contains only an opaque, integrity-protected session handle and required cookie
 metadata.
 
+Each session also binds the validated Keycloak issuer, subject, client, `sid` when issued,
+authentication transaction, assurance method/class, and authentication time. An upstream provider
+alias is descriptive routing evidence only; it is not a principal or authorization key.
+
 ## 7. Canonical State Machines
 
 ### 7.1 Authentication
 
 ```text
 ANONYMOUS
+  -> ENTRY_INTENT_CAPTURED (LOGIN | REGISTER | TRIAL | HIRE)
   -> AUTH_STARTING
   -> PROVIDER_REDIRECTED
   -> CALLBACK_VALIDATING
@@ -207,6 +227,7 @@ ANONYMOUS
   -> SESSION_ESTABLISHED
   -> ROUTING
        -> READY
+       -> AUTHENTICATED_VISITOR
        -> ONBOARDING_REQUIRED
        -> TENANT_SELECTION_REQUIRED
        -> RECOVERY_REQUIRED
@@ -214,6 +235,14 @@ ANONYMOUS
 
 Any validation, provider, collision, revocation, or dependency failure transitions to one typed
 recoverable or terminal state. No failure returns an apparently authenticated session.
+
+Entry intent is server-held, integrity protected, and consumed once. `LOGIN` never starts
+registration or creates an account, tenant, membership, Trial, Hire, payment, or relationship. A
+Login with no active account ends as `AUTHENTICATED_VISITOR` at the accepted safe Marketplace
+target. `ONBOARDING_REQUIRED` is reachable only from an explicit `REGISTER`, `TRIAL`, or `HIRE`
+intent; the exact server-validated Trial/Hire continuation resumes only after durable account
+completion. A completed account selecting Register routes safely to `READY` rather than starting
+another registration.
 
 ### 7.2 Onboarding
 
@@ -227,6 +256,9 @@ NOT_STARTED
 
 Provider authentication may create or resolve a provisional global user but does not silently
 create an organization, employment relationship, payment authority, or consequential entitlement.
+Cancel or close before durable completion creates no account, tenant, membership, Trial, Hire,
+payment, or authority mutation. It clears transient launch/registration authority, preserves only
+accepted non-secret draft fields, and returns to the validated public or originating journey.
 
 ### 7.3 Local logout
 
@@ -263,6 +295,11 @@ ACTIVE_OR_CONFLICTED
 ```
 
 Normal login does not force provider account selection. Explicit switching does.
+Because the current session is revoked before selection, cancellation or provider failure ends
+truthfully unauthenticated at the validated public return with a restart action; it never restores,
+implies, or displays the prior account as active. The customer-visible confirmation for this
+consequence is required before dispatch but its exact copy and composition remain Product-approved
+presentation scope.
 
 ### 7.6 Tenant switch
 
@@ -275,12 +312,21 @@ ACTIVE_SESSION
 ```
 
 No provider redirect occurs unless current assurance is insufficient for the requested operation.
+Cancellation, stale selection, or dependency failure leaves the existing tenant selection
+unchanged. The selector may display only server-authorized memberships and customer-safe labels;
+route, query, local-storage, or browser-invented tenant identifiers never become options or
+authority.
 
 ## 8. OIDC and Token Contract
 
 1. Authorization Code with PKCE `S256` is mandatory.
-2. Callback processing validates exact issuer, state, nonce, code verifier, redirect URI, client,
-   signature, time, and required provider evidence.
+2. Callback processing validates exact configured Keycloak issuer, state, nonce, code verifier,
+   redirect URI, client, signature, algorithm, audience, authorized party, time, authentication
+   time, and required broker evidence. Discovery, authorization, token, JWKS, user-info, logout, and
+   broker endpoints come only from version-controlled exact HTTPS configuration for the accepted
+   issuer; no callback, token claim, request header, or user input may select a host, scheme, realm,
+   path, redirect target, or key source. Redirect targets are server-owned relative route identifiers,
+   never absolute, scheme-relative, encoded-host, or caller-supplied URLs.
 3. Redirect and post-logout URIs are exact registered HTTPS values outside local development.
 4. Access tokens are audience-restricted to their resource server and contain only required claims.
 5. Refresh tokens never enter browser-visible state, logs, traces, exceptions, or test artifacts.
@@ -292,8 +338,22 @@ No provider redirect occurs unless current assurance is insufficient for the req
    is returned.
 10. Back-channel or explicit revocation events invalidate affected application sessions when
     supported; otherwise bounded expiry and current-membership checks remain mandatory.
+11. Front-channel or back-channel logout messages are not trusted as ordinary browser commands.
+    Back-channel logout validates exact issuer, audience/authorized party, signature, algorithm,
+    event claim, `iat`, unique token identity, and `sid` or subject; rejects replay; and atomically
+    revokes all mapped application-session families before acknowledging. Subject-wide events may
+    revoke only the exact Keycloak principal in the exact environment/client.
 
 ## 9. Provider Contract
+
+Provider readiness has two distinct meanings. Operational readiness is a default-disabled,
+environment-specific server decision backed by accepted evidence. Customer-visible readiness is
+the existing WC-105 four-control projection: Google, Facebook, Apple, and Email remain mounted;
+each is disabled until its own operational readiness is `AVAILABLE`, and an unqualified method is
+truthfully unavailable. Adding Apple or passkey configuration, synthetic evidence, or a server
+readiness state does not enable a control or authorize a label, order, route, layout, or copy
+change. Such presentation changes require an exact accepted Product/UX amendment and separate
+current-session implementation authorization.
 
 ### 9.1 Google
 
@@ -325,13 +385,22 @@ No provider redirect occurs unless current assurance is insufficient for the req
 
 ### 9.4 Email
 
-The identity authority owns the email mechanism. The final solution must select and specify:
+The selected target is **Keycloak-owned passkey authentication with verified-email recovery**.
+WAOOAW Web only starts the broker ceremony and renders normalized outcomes. It does not issue or
+verify passkeys, email proofs, OTPs, magic-link secrets, or recovery credentials.
 
-- passkey and/or magic-link as the preferred passwordless path; or
-- password plus verification, recovery, MFA, breached-password, throttling, and lockout controls.
+Email remains disabled in every shared environment until the pinned stock Keycloak version proves:
 
-Email start, completion, recovery, and resend responses are anti-enumerating. WAOOAW Web does not
-store or verify passwords or OTPs.
+1. resident-key WebAuthn registration and authentication with accepted attestation policy;
+2. verified-email bootstrap and recovery without an account-enumeration oracle;
+3. recovery cannot remove the last usable method or bypass required step-up;
+4. throttling, lockout, resend, expiry, replay, device-loss, and credential-revocation behavior;
+5. accessibility and supported-browser behavior; and
+6. backup/recovery preserves credential and account continuity.
+
+Password and magic-link authentication are not part of this implementation contract. Enabling
+either requires an accepted amendment with its own credential, breach, delivery, abuse, and
+recovery controls.
 
 ## 10. Linking and Collision Resolution
 
@@ -344,6 +413,19 @@ store or verify passwords or OTPs.
 6. Concurrent link/unlink operations serialize on both identities and the global user.
 7. Every outcome is idempotent and emits privacy-safe security evidence.
 8. Administrative recovery requires a separately approved, dual-controlled contract.
+9. Keycloak is the binding authority. BP records only an operation state and opaque projection.
+   Link, unlink, and recovery use a durable idempotent saga: `REQUESTED -> PROOF_VERIFIED ->
+   IDP_COMMITTED -> PROJECTION_CONFIRMED -> COMPLETED`, with explicit compensating or
+   `RECOVERY_REQUIRED` states. No customer success is returned before the Keycloak binding and BP
+   projection are read back and agree. Timeout or ambiguous IdP outcome is reconciled by operation
+   identity and read-back; it is never blindly retried, merged, or treated as failure/success.
+10. Successful link, unlink, credential recovery, or principal rebinding rotates the current handle
+    and revokes every older affected session family. A new Keycloak subject is never silently rebound
+    to a historical global user.
+11. This state model is the required target, not authority to mutate Keycloak. Provider-link
+    mutation remains blocked by the accepted-contract gate in Section 3.2. No implementer may
+    promote the WC-085 read-only client, use a broad realm-management credential, call an
+    unsupported broker endpoint, or add a custom provider/image to close this gap.
 
 ## 11. Authorization and Multi-Tenancy
 
@@ -353,7 +435,9 @@ store or verify passwords or OTPs.
    tenant input is never proof.
 3. The active tenant in the application session is a convenience context only. Every protected
    operation revalidates membership and local resource/action policy.
-4. Tenant selection and role changes rotate the application session where risk policy requires it.
+4. Authentication completion, tenant selection, membership/role or authority change, step-up,
+   account recovery, link/unlink, and principal rebinding always rotate the application-session
+   handle; the previous handle is invalid in the same transaction.
 5. Step-up authentication is required for sensitive account, provider, membership, payment,
    hiring, recovery, credential, and consequential authority changes.
 6. Customer and institutional identities remain isolated. No role or token is silently translated
@@ -361,30 +445,223 @@ store or verify passwords or OTPs.
 7. RLS, tenant transaction context, idempotency, evidence-first behavior, and Emergency Stop remain
    independently enforced.
 8. Authorization denial is typed, privacy-safe, and does not disclose another tenant or account.
+9. Step-up is a fresh Keycloak ceremony, not a client claim. The server requires `auth_time` no more
+   than five minutes old, an accepted `acr`/`amr` for the exact operation risk, and a one-time
+   server-held transaction bound to session family, principal, operation, resource, safe return
+   route, and expiry. Passwordless credential, recovery, provider-link, and authority-changing
+   operations require phishing-resistant authentication when the accepted Keycloak/provider
+   capability supports it; if the required method is unavailable, the operation remains disabled.
+   Completion rotates the session and the proof cannot authorize another command.
 
 ## 12. Session Persistence and Continuity
 
-The Chief Solution Architect must select one existing or explicitly approved persistence owner for
-server-side Web sessions. The choice must not create an ungoverned database or make browser state
-authoritative.
+### 12.1 Selected owner and physical placement
 
-Required properties:
+The **Web BFF is the sole application-session lifecycle owner**. Session records use a new
+Web-owned `web_session` schema in the existing environment PostgreSQL service. This is a logical
+ownership boundary, not a new database, deployable, public API, or Business Platform authority.
 
-1. encryption at rest and in transit;
-2. hashed or otherwise nonrecoverable browser session handles;
-3. atomic rotate, revoke-one, revoke-family, and revoke-all;
-4. idle and absolute expiry;
-5. schema/version compatibility during rollout;
-6. bounded cleanup and retention;
-7. fail-closed outage behavior;
-8. environment isolation;
-9. backup/RPO/RTO classification; and
-10. no raw token or personal data in indexes, logs, metrics, or traces.
+The Web BFF receives a dedicated non-owner, `NOBYPASSRLS` database role restricted to the
+`web_session` schema. Business Platform roles receive no token-material or session-row access.
+Database administration, backup, recovery, encryption-at-rest, and schema migration remain
+Platform-owned infrastructure responsibilities. Web owns record semantics, session commands,
+retention requests, and application-session evidence.
+
+Each browser cookie contains a uniformly random 256-bit handle. The database stores only a
+versioned keyed digest of that handle. Provider and Keycloak tokens are envelope-encrypted before
+persistence with an environment-specific key reference; the data-encryption key, plaintext tokens,
+and cookie handle are never stored in indexes, logs, metrics, traces, evidence, or migration output.
+
+### 12.2 Rejected alternatives
+
+| Alternative | Disposition |
+|---|---|
+| Browser-carried encrypted JWT with tokens | Rejected: weak centralized revocation, refresh races, and excessive compromise blast radius. |
+| Business Platform session API/store | Rejected: would make BP a browser-session/token custodian and conflict with the three-plane boundary. |
+| New Redis or managed session product | Rejected for this slice: adds a new durable dependency, cost, recovery owner, and rollback surface without a demonstrated requirement. |
+| Keycloak session as the WAOOAW application session | Rejected: cannot own WAOOAW tenant selection, local outage-safe logout, or application-specific revocation semantics. |
+
+### 12.3 Required storage semantics
+
+The schema must provide atomic create, identifier rotation, compare-and-swap refresh lease,
+revoke-one, revoke-family, revoke-all-for-user, expire, and cleanup operations. Rotation commits the
+new handle digest and invalidates the old digest in one transaction. Refresh uses one bounded lease
+per session; a second contender waits for or observes the committed result and never reuses a
+rotated refresh token. Detected reuse revokes the complete session family.
+
+Required time bounds:
+
+- idle timeout: 30 minutes;
+- absolute application-session lifetime: 8 hours;
+- refresh lease: at most 15 seconds;
+- revoked-handle denial: immediate at the Web boundary;
+- expired/revoked row operational retention: 30 days;
+- privacy-safe security-event retention: 365 days unless a later accepted policy shortens it;
+- backup retention: 35 days;
+- application-session store RPO: at most 5 minutes;
+- application-session store RTO: at most 30 minutes.
+
+An unavailable session store fails closed for protected traffic. Local logout still expires the
+browser cookie and records a deferred server-revocation alert if the store is unavailable; it never
+returns an authenticated state. Recovery must not resurrect expired, revoked, superseded, erased,
+or legacy sessions.
+
+Token envelopes and upstream-session material are destroyed immediately on revoke, logout, expiry,
+supersession, unlink, recovery, or account deletion; the 30-day operational row may retain only
+non-sensitive state needed for replay denial, reconciliation, and audit correlation. Key retirement
+or deletion is not allowed to strand live ciphertext: rotate through versioned read-old/write-new
+keys, re-encrypt before retirement, and revoke all affected sessions on suspected digest/encryption
+key compromise. Backups follow the same logical erasure and non-resurrection rules.
 
 Keycloak realm configuration, signing keys, provider links, and test identities must be durable in
 every environment used for repeatable login testing. If Demo or UAT intentionally resets
 application data, identity continuity must be independently preserved or the environment must
 truthfully declare and enforce a complete forced-session/user reset.
+
+### 12.4 Binding physical session contract
+
+The migration creates exactly these Web-owned relations; physical names and ownership are not left
+to implementation:
+
+| Relation | Required keys and facts |
+|---|---|
+| `web_session.user_generations` | `global_user_id uuid PRIMARY KEY` (the canonical BP account/global-user reference), `generation bigint NOT NULL CHECK (generation > 0)`, `updated_at timestamptz NOT NULL`, and last revocation reason/correlation. This row is the serialization point for create and revoke-all. |
+| `web_session.session_families` | `family_id uuid PRIMARY KEY`; exact Keycloak `issuer` and `subject` as `varchar(256) COLLATE "C"` and `client_id varchar(256) COLLATE "C"`; `global_user_id` FK to `user_generations`; captured `generation`; assurance/authentication time; keyed 32-byte `sid_digest` plus digest-key version when supplied; nullable encrypted token envelope plus key/version; created, last-seen, idle-expiry, absolute-expiry, revoked and erased times; refresh version; nullable lease owner/expiry; state in ACTIVE/REVOKED/EXPIRED/ERASED; and schema/deploy version. CHECK constraints make ACTIVE require unexpired envelope/key metadata and make every terminal state require a NULL envelope and lease. |
+| `web_session.session_handles` | `handle_id uuid PRIMARY KEY`, `family_id` FK, digest-key version, fixed 32-byte keyed `handle_digest`, state in ACTIVE/SUPERSEDED/REVOKED/EXPIRED, and created/expiry/superseded/revoked times consistent with state. UNIQUE `(digest_key_version, handle_digest)` across all retained history and a partial UNIQUE active handle per family prevent handle reuse and dual current handles. Raw handles are never persisted. |
+| `web_session.oidc_transactions` | `transaction_id uuid PRIMARY KEY`, unique versioned keyed state digest, encrypted nonce/PKCE/intent/safe-route bundle, initiating-browser digest, provider class, created/expiry/consumed times and schema version. A consumed/expired transaction cannot be updated back to usable state. |
+| `web_session.logout_replays` | Exact issuer/client plus a versioned keyed digest of logout-token `jti`, received and expiry times, with UNIQUE `(issuer, client_id, jti_digest)`. It contains no token or subject payload and exists only for the accepted replay window. |
+
+All text identity keys are nonempty, bounded, `COLLATE "C"`, and never trimmed, folded, or inferred.
+Every FK is `ON DELETE RESTRICT`; referencing columns are indexed. `active_membership_id`, when
+stored on a family, is an opaque nullable UUID without a cross-schema FK and is never an RLS or
+authorization key. No tenant ID is persisted in these relations.
+
+The migration administrator owns the schema/tables. A dedicated NOLOGIN, NOSUPERUSER,
+NOBYPASSRLS, NOCREATEDB, NOCREATEROLE operation owner receives only the columns needed by
+fixed-search-path, static-SQL session functions. The Web runtime receives schema USAGE and EXECUTE
+only on those functions: no direct table DML, no schema CREATE, no owner membership, and no access
+to BP/identity tables. PUBLIC, BP, CE, PR, AIR, WBE, migration jobs, and evidence readers receive no
+session relation or token-envelope privilege. These are account/session records, not tenant business
+rows; selected membership must therefore never become their tenant-RLS discriminator. Tenant
+resource RLS remains independently mandatory exactly as ADR-003's controlling amendment specifies:
+fresh validated issuer/subject, current membership, both transaction-local tenant settings, ENABLE
+and FORCE RLS, restrictive USING/WITH CHECK, nonowner/NOBYPASSRLS roles, and context overwrite/reset.
+
+The functions lock in this order: `user_generations`, affected `session_families` in UUID order,
+then their handle/transaction rows. Create captures the locked current generation. Lookup succeeds
+only for an active, unexpired handle and family whose captured generation still equals the locked
+user generation. Rotate inserts the new digest and supersedes the old digest atomically. Refresh
+acquires the family row and compare-and-swap lease/version; no network call occurs while a database
+lock is held. Revoke-family nulls token material, ends the lease, revokes every active handle and
+advances state in one transaction. Revoke-all first increments the generation and then erases and
+revokes known families in the same transaction; generation mismatch denies any family missed by a
+concurrent scan. Callback completion locks and consumes its OIDC transaction before creating a
+family. Database serialization/deadlock retries restart the whole transaction with bounded attempts;
+unknown commit outcomes reconcile by original transaction/family identity and never mint another
+authority.
+
+### 12.5 Identity lifecycle persistence and locking
+
+Keycloak remains provider-binding authority. BP owns only `identity.lifecycle_operations` and
+`identity.provider_link_projections` in its existing database. The operation relation has an
+operation UUID primary key, exact Keycloak issuer/subject, command type, versioned keyed
+idempotency digest, opaque target-link reference, state, attempt/version, correlation, created,
+updated and terminal timestamps, with UNIQUE `(issuer, subject, command_type, idempotency_digest)`.
+The projection has opaque `link_id` primary key, `global_user_id`, provider class, opaque Keycloak
+binding reference, ACTIVE/RETIRED state, created/retired times, and uniqueness that reserves the
+opaque binding reference across retained history. It contains no upstream provider subject, token,
+email, phone, or credential.
+
+Lifecycle mutations run in one BP transaction for operation/projection/evidence state, use current
+actor-scoped FORCE RLS, and acquire deterministic transaction advisory locks for the exact
+application principal and opaque target reference in sorted signed-bigint order before row locks.
+Network proof and Keycloak calls occur outside that transaction. `IDP_COMMITTED` is recorded only
+after read-back; ambiguous outcomes remain reconcilable and never return success. Runtime roles
+cannot delete operation history, reactivate a retired projection, or retarget either key. This
+extends WC-085 only for the separately accepted WC-123 lifecycle scope; it does not reinterpret or
+mutate WC-085's initial-account keys, OWNER membership, resolver, or ledger boundaries.
+
+### 12.6 Retention, erasure, backup, and restore protocol
+
+OIDC transactions are erased at consumption and deleted no later than 24 hours after expiry.
+Logout replay rows live only for the maximum accepted logout-token/retry window plus clock skew,
+capped at 24 hours. Revoked/expired family and handle rows retain only digests, state, timestamps,
+reason and correlation for 30 days; envelopes, nonce, PKCE, upstream-session material, device data,
+and active membership selection are erased immediately when authority ends. Lifecycle operation
+and provider-link key history remains only while required to prevent replay/reassignment and meet
+the approved legal purpose; raw personal/contact/provider-subject data is never retained there.
+Security events use their separately owned append-only relation and 365-day maximum unless legal
+hold or a shorter accepted policy applies.
+
+Account erasure immediately revokes all generations/families and cryptographically erases every
+session/protocol envelope. The minimum nonreassignable keyed digest and reason may remain through
+the 30-day anti-replay period; after dependent family/handle cleanup, the `user_generations` row is
+deleted unless a documented legal hold applies. Legal hold suspends only the specifically held
+record class and never restores authority. Backup copies expire within 35 days and are inaccessible
+to runtime roles.
+Every restore occurs into a traffic-isolated database and, before Web credentials or traffic are
+enabled, runs a mandatory restore epoch that increments all user generations, marks every restored
+family/handle revoked, nulls every token/protocol envelope and lease, deletes expired protocol
+rows, and records the restore manifest and counts. Thus a restore always forces reauthentication;
+it never trusts a backed-up ACTIVE state. If sanitization, access to required cryptographic material, database constraint/grant/RLS
+validation, or manifest reconciliation fails, the store remains offline. RPO <= 5 minutes and
+RTO <= 30 minutes measure recovery to this sanitized fail-closed state, not resurrection of sessions.
+
+### 12.7 Binding platform placement, configuration, and secret lifecycle
+
+`web_session` is deployed inside the existing environment application PostgreSQL boundary, not the
+Keycloak database and not a new server. Demo uses the accepted disposable PostgreSQL dependency and
+therefore makes no session-continuity claim: every database or revision reset invalidates every
+application session and forces reauthentication. UAT uses its persistent application database and
+must pass PITR plus the sanitized restore epoch in Section 12.6. Production placement, HA, sizing,
+backup, and activation remain plan-only until separately authorized. Web receives private database
+connectivity and only the function-execute runtime role in Section 12.4; Keycloak, BP, and other
+workloads receive no route or privilege to session token material.
+
+The accepted environment manifest and closed-world secret catalog are extended, not replaced. The
+manifest owns session mode, schema/deploy compatibility versions, cookie policy, exact identity
+endpoints, timeout/lease values, pool and concurrency bounds, provider readiness, and non-secret key
+version identifiers. The catalog owns separate environment-local entries for handle-digest,
+`sid`/state/logout-replay digests, token-envelope encryption, Web OIDC client authentication, and
+each enabled provider dependency. Each entry names one purpose, owner, Web managed identity,
+rotation class, overlap, expiry, compromise action, and exact Key Vault reference. Secret values
+never enter images, manifests, Terraform state, environment-variable literals, workflow
+inputs/outputs, logs, or evidence.
+
+Digest and envelope keys use versioned read-old/write-new rotation. At most one version writes and
+at most two versions read during a bounded overlap of 24 hours. Rotation first publishes the new
+catalog/reference version, proves dual-read and new-write behavior, re-digests or re-encrypts live
+records where required, then retires the old version. Missing, disabled, expired, unknown, or
+unauthorized key references keep authentication/session routes unready. Suspected digest-key
+compromise revokes all families indexed by that version; suspected envelope-key compromise revokes
+and erases affected families. Retirement is blocked while live ciphertext or retained replay state
+still requires the old version. Platform Operations owns Key Vault lifecycle and alerting; Platform
+IT Expert owns application compatibility and the rotation/compromise rehearsal.
+
+The existing environment Redis dependency may hold only short-lived, non-authoritative,
+environment-scoped abuse counters; it is never a session, identity, membership, revocation, or
+evidence store. Keys use keyed digests and bounded TTLs, never raw identity/contact/network values.
+Authentication start, callback, recovery, link/unlink, resend, and credential operations fail closed
+when the shared limiter is unavailable or its restart epoch is uncertain. A Redis restart imposes a
+hold for the longest applicable quota window rather than resetting callers to an unlimited state.
+Currently valid protected sessions may only use an explicitly qualified bounded degradation policy.
+Production cannot activate until the existing topology's Redis/HA decision satisfies this contract.
+
+Capacity is a reviewed environment-manifest input, not an implementation constant. Before traffic,
+qualification must prove all of the following at the configured Web maximum replica count:
+
+- `max replicas * per-replica session DB pool + migration/operations reserve` is no more than 80% of
+  the application database connection limit;
+- request, refresh, callback, and lifecycle queues are bounded and expose saturation metrics;
+- exactly one refresh runs per family, with global and per-principal concurrency bounds;
+- database pool acquisition, lock, statement, BP membership, Redis, and identity-provider calls have
+  explicit timeouts no longer than the calling request budget; and
+- overload rejects new authentication/lifecycle work with typed `429` or `503` plus bounded retry
+  guidance, while protected traffic fails closed and no unbounded in-memory queue or retry storm is
+  possible.
+
+Demo and UAT sizing must be qualified independently. Scale-to-zero, cold start, database reset,
+Redis restart, and dependency recovery are load scenarios, not exemptions from the SLOs.
 
 ## 13. Error and Recovery Contract
 
@@ -409,6 +686,21 @@ Customer messages do not expose provider subject, email existence, account exist
 membership, token, callback parameter, internal route, or stack detail. Every server outcome has a
 privacy-safe correlation ID and one deterministic customer action.
 
+The Web maps each typed outcome to a stable semantic presentation key, not raw server/provider
+text. Every mapped state must provide: a truthful plain-language summary, whether any prior session
+or selection remains active, one safe next action or an explicit support path, and a copyable
+privacy-safe correlation reference when support is required. Cancellation is neutral rather than
+an error; retryable, denied, unavailable, expired, and unknown outcomes remain distinguishable and
+must not imply that an account, registration, switch, recovery, or logout succeeded.
+
+Existing WC-105 approved English copy and interaction remain the baseline. New or changed
+customer-visible strings, routes, controls, ordering, modal geometry, or interaction require an
+accepted Product/UX copy map with localization fallback, plural/direction handling, screen-reader
+announcement behavior, and separate current-session implementation authority. Missing translation
+falls back to reviewed English without exposing provider text or an internal code; it never renders
+an empty action. Focus moves to the recovery heading or action, errors are associated with the
+affected control, and status/alert announcements do not repeat or trap focus.
+
 ## 14. Observability and Operations
 
 Required structured transitions:
@@ -428,9 +720,8 @@ Required structured transitions:
 Events contain no authorization code, token, PKCE material, raw cookie, password, OTP, provider
 subject, raw email/phone, tenant ID, callback query, or unbounded user agent.
 
-The implementation contract must define SLOs for authentication completion, callback errors,
-session-store availability, refresh failures, provider failures, and authorization latency, with
-alert owner, threshold, error budget, and runbook.
+Section 23 is the binding SLO, alert, ownership, and runbook contract. The implementation may make
+targets stricter but may not invent weaker values or leave an alert without a receiving route.
 
 ## 15. Migration and Rollback
 
@@ -455,9 +746,27 @@ authority restoration is a new Founder decision, not an automatic operational st
 
 ## 16. Managed CIAM Alternative
 
-Before implementation authorization, the Chief Solution Architect must append a scored comparison
-of durable Keycloak and managed CIAM using the criteria in WC-122 Section 8. Until accepted
-otherwise, durable Keycloak is the compatible target.
+The following 1-5 planning score closes the WC-122 comparison for this implementation boundary.
+Five is the strongest fit for the accepted requirement. The managed-CIAM column represents a
+product class, not a selected vendor or a procurement claim; any future proposal must replace these
+class assumptions with dated vendor evidence, pricing, residency, processor, exit, and contract
+terms.
+
+| Criterion | Weight | Durable stock Keycloak | Managed CIAM class | Controlling rationale |
+|---|---:|---:|---:|---|
+| Compatibility with ADR-008 and current broker/realm | 20 | 5 | 2 | Keycloak is accepted and deployed; substitution requires a new decision and migration. |
+| Google, Apple, Facebook, passkey, MFA, linking | 15 | 4 | 4 | Both classes can be viable, but exact pinned-version/vendor proof remains required. |
+| BP-owned tenant/membership authority | 15 | 5 | 4 | Keycloak already preserves the boundary; a managed organization model must remain non-authoritative. |
+| Data control, export, deletion, audit, residency | 15 | 4 | 3 | Self-hosting preserves direct control; managed terms and export/exit evidence are not selected. |
+| Availability, upgrades, staffing, incident ownership | 10 | 2 | 4 | Managed service can reduce operations, while Keycloak keeps upgrade/recovery ownership in WAOOAW. |
+| Cost boundedness and procurement certainty | 10 | 4 | 2 | Existing infrastructure is bounded; no accepted managed vendor, tariff, support, or MAU assumption exists. |
+| Migration and rollback safety | 10 | 5 | 2 | Keycloak avoids identity migration; managed substitution risks duplicate/dual authority until separately designed. |
+| Lock-in and reversibility | 5 | 5 | 2 | Self-hosted standards-based operation is the accepted lower-lock-in baseline. |
+| **Weighted score / 5** | **100** | **4.35** | **2.95** | Durable stock Keycloak remains the compatible selection for WC-123. |
+
+This comparison selects Keycloak only for the bounded WC-123 target. It does not certify current
+provider configuration, resolve `AUTHZ-GATE-01`, or prohibit a later evidence-backed managed-CIAM
+proposal.
 
 Managed CIAM may replace Keycloak only if:
 
@@ -485,6 +794,13 @@ Managed CIAM may replace Keycloak only if:
 | Providers | real Demo Google, Apple, Facebook, and Email qualification separated from synthetic tests |
 | Accessibility | keyboard, focus, screen reader, zoom, reduced motion, locale, RTL, mobile and desktop |
 | Operations | structured telemetry, redaction, SLO alerts, key rotation, secret rotation, rollback and incident drill |
+
+Browser acceptance covers current supported Chromium, Firefox, and WebKit at the accepted
+360x800, 768x1024, and 1440x900 viewports, plus touch and keyboard-only operation. Authentication,
+registration, cancellation, recovery, account switch, and tenant switch must also pass at 200%
+text zoom, reduced motion, LTR, RTL, reviewed English, one long-label locale, and one locale-fallback
+case. Responsive or accessibility repair may reflow accepted presentation but is not authority to
+invent a route, command, provider, label, or customer promise.
 
 ## 18. Prohibited Designs
 
@@ -519,3 +835,279 @@ The accepted candidate must hand off:
   execution.
 
 No handoff authorizes another office, implementation, or external mutation by itself.
+
+## 20. Exact Interface Contract
+
+### 20.1 Web BFF application-session commands
+
+These same-origin server routes are owned by Web. They require origin and CSRF validation, reject
+cross-site ambient-cookie use, return `Cache-Control: no-store`, and never accept a session handle,
+identity subject, account ID, or tenant ID from the body as authority.
+
+| Operation | Required semantics |
+|---|---|
+| `POST /api/auth/session/logout` | Idempotently revoke the current application session, expire the cookie, and succeed locally without an IdP round trip. |
+| `POST /api/auth/session/logout-all` | Revoke every WAOOAW application session for the current global user, expire the current cookie, then request Keycloak RP logout as a separately reported outcome. |
+| `POST /api/auth/session/switch-account` | Revoke the current session family, expire the cookie, end the Keycloak SSO session, and start one fresh broker ceremony with explicit account selection. |
+| `POST /api/auth/session/switch-tenant` | Require current session and recent membership list, revalidate the target membership through BP, rotate the application-session identifier, and store only the selected membership reference. |
+| `GET /api/auth/session/status` | Return only normalized application state, assurance, active-tenant selection, expiry class, and one typed next action; no token or provider subject. |
+
+Callback and refresh are internal NextAuth/Auth.js server hooks, not browser-callable token APIs.
+They acquire the session refresh lease, rotate tokens and handles atomically, and converge on a typed
+unauthenticated state after one bounded failure.
+
+### 20.2 Business Platform operations
+
+The canonical Business Platform OpenAPI owns these provider-neutral operations:
+
+| Operation | Required semantics |
+|---|---|
+| `GET /api/v1/identity/session` | Resolve exact validated identity and current memberships; return global account reference, assurance, zero/one/many membership projections, and typed next action. |
+| `GET /api/v1/identity/memberships` | Return only current memberships visible to the actor, with opaque membership/tenant references, role, state, and selection eligibility. |
+| `POST /api/v1/identity/membership-selections/validate` | Revalidate one opaque target membership for session selection; no mutation of membership or business authority. |
+| `POST /api/v1/identity/session-revocations` | Record a security revocation intent and privacy-safe evidence for one session family or all application sessions; it does not directly manipulate browser cookies. |
+| `POST /api/v1/identity/provider-links` | Start proof-of-control linking under recent step-up. |
+| `DELETE /api/v1/identity/provider-links/{linkId}` | Unlink one method only after current proof and proof that another usable method remains. |
+
+Every operation uses exact issuer/subject identity, stable schema versioning, correlation, explicit
+limits, deterministic RFC 9457 errors, no-store responses, and current-membership authorization.
+The canonical OpenAPI is amended before implementation and generated consumers are regenerated.
+
+### 20.3 Delegated resource authorization
+
+BP, CE, PR, WBE, and other enabled resource owners retain their existing accepted public/private
+interfaces. A customer-delegated call carries the original exact bearer only across an allowlisted,
+authenticated service channel. Each receiver independently validates the token, resolves current
+membership under ADR-003's controlling amendment, sets fresh transaction-local tenant context, and
+enforces its resource/action policy. No new general identity facade, tenant assertion header, or BP
+authorization oracle is introduced.
+
+## 21. Complete State And Failure Matrix
+
+| Command or flow | Success terminal | Race winner | Dependency outage | Security terminal |
+|---|---|---|---|---|
+| Callback | `READY`, `AUTHENTICATED_VISITOR`, intent-eligible `ONBOARDING_REQUIRED`, or `TENANT_SELECTION_REQUIRED` | First valid callback consumes transaction; replay denies | No session created; typed retry or restart | Invalid state/nonce/code/issuer/audience denies and burns transaction |
+| Refresh | Rotated tokens and session handle | Single refresh lease; contenders consume committed result | Existing session becomes unavailable, never stale-authorized | Reuse or invalid rotation revokes family |
+| Local logout | Cookie expired and current session revoked | Revocation dominates refresh/rotation | Cookie still expires; server-revocation alert remains unresolved | Never restores session |
+| Global logout | All WAOOAW sessions revoked; upstream result separately reported | Revocation dominates every in-flight command | Current cookie expires; return `REVOCATION_DEPENDENCY_UNAVAILABLE`; never claim other sessions revoked | Provider logout failure cannot restore WAOOAW authority |
+| Account switch | Fresh subject-bound application session | Old-family revocation dominates old callbacks | Ends unauthenticated with restart action | Subject mismatch cannot reuse prior continuation |
+| Tenant switch | Rotated session with revalidated selection | Membership removal/revocation dominates selection | Selection unchanged; protected action denies if freshness unavailable | Forged/stale membership denies without tenant disclosure |
+| Link provider | One new exact issuer/subject binding | Identity-key lock serializes link/unlink | No partial link; status remains unresolved | Collision enters non-enumerating recovery |
+| Unlink provider | Binding retired with another usable method preserved | Revocation/unlink dominates login continuation | No partial unlink | Last-method removal denies |
+| Security revocation | Family/all-session revocation committed | Revocation dominates refresh, callback completion, and switch | Resource authorization still revalidates membership; session boundary fails closed | Revoked authority cannot return through rollback/restore |
+| Recovery | Freshly proved identity resumes same eligible account | Recovery serialization on old/new identity keys | No rebinding | Email equality or incomplete proof never links |
+
+For `logout-all`, store outage expires and disables the current browser session but returns
+`REVOCATION_DEPENDENCY_UNAVAILABLE`; it must not claim that other sessions were revoked. During the
+outage protected sessions already fail closed. After recovery, other sessions remain denied only if
+the revoke-all generation committed; otherwise the customer receives a deterministic retry/support
+action. Security-initiated revocation is not acknowledged until its durable revocation generation
+commits. No deferred alert or telemetry event is authority.
+
+## 22. Security, Privacy, Data, And Abuse Controls
+
+1. Cookie name uses the `__Host-` prefix outside local development, with `Secure`, `HttpOnly`,
+   `Path=/`, no `Domain`, and `SameSite=Lax`; state-changing session commands also require exact
+   same-origin and CSRF proof.
+2. Callback transactions are one-time, short-lived, server-bound, and bind provider, intent,
+   state, nonce, PKCE verifier, safe target, and initiating browser.
+3. Session handles, authorization codes, refresh/access/ID tokens, provider subjects, raw email,
+   raw phone, and callback queries are prohibited in URLs, logs, traces, metrics, analytics,
+   screenshots, evidence, and test snapshots.
+4. Per-IP, per-browser, per-identity-keyed, and per-operation controls bound callback, recovery,
+   resend, refresh, link, unlink, and switching abuse without creating an enumeration oracle.
+5. Authorization checks precede existence detail. Inaccessible and absent identity/tenant resources
+   share normalized status, body, timing class, and telemetry class.
+6. Database migrations use expand/verify/cutover/contract. The Web role cannot read BP business
+   schemas; BP and service roles cannot read Web token material.
+7. Backup and restore tests prove revoked handles, retired identities, erased personal data,
+   superseded keys, and legacy sessions are not resurrected.
+8. Key and secret rotation supports bounded overlap, exact purpose separation, versioned ciphertext,
+   re-encryption, revocation, and fail-closed unknown-key handling.
+9. Abuse controls use atomic, environment-shared counters and server-derived keys. Client network
+   identity is accepted only through the configured trusted-proxy chain; IPv4/IPv6 normalization,
+   proxy-hop limits, privacy rotation, burst/sustained quotas, retry bounds, and expiry are explicit.
+   Existing and non-existing identities receive the same public status/body/timing class. Limiter
+   outage fails closed for recovery, linking, credential, callback, and authentication-start abuse
+   surfaces and may only degrade a currently valid session through a separately bounded policy.
+   CAPTCHA or provider challenge, if later selected, is defense in depth and never replaces quotas.
+
+## 23. Operability Contract
+
+| SLI | Objective / error budget | Alert threshold | Accountable owner / runbook |
+|---|---|---|---|
+| Authentication ceremony completion after a valid callback, excluding provider/user time | >= 99.5% over 30 days; 0.5% budget | < 99% for 15 min or 25% monthly budget remaining | Platform IT Expert / `docs/runbooks/authentication-completion.md` |
+| Callback-to-router latency, excluding provider/user time | p95 <= 2 s, p99 <= 5 s | p95 > 3 s for 15 min | Platform IT Expert / `docs/runbooks/authentication-callback.md` |
+| WAOOAW callback server-error rate; invalid/replayed caller input is reported separately | <= 0.5% over 30 days; 0.5% budget | > 1% for 10 min | Platform IT Expert / `docs/runbooks/authentication-callback.md` |
+| Application-session store availability | >= 99.95% monthly; 21.6 min budget | < 99.9% over 30 min or readiness loss for 5 min | Platform Operations / `docs/runbooks/session-store.md` |
+| Session lookup latency | p95 <= 50 ms, p99 <= 150 ms | p95 > 75 ms for 15 min or pool saturation > 80% for 10 min | Platform Operations / `docs/runbooks/session-store.md` |
+| Refresh success for eligible sessions | >= 99.5% over 30 days; 0.5% budget | < 99% for 15 min or refresh-lease saturation > 80% for 10 min | Platform IT Expert / `docs/runbooks/session-refresh.md` |
+| Provider availability and failure rate, one series per provider/environment | No WAOOAW availability budget is consumed by provider failure; provider is truthful/unavailable | > 5% failure for 10 min or readiness disagreement once | Platform Operations / `docs/runbooks/provider-disable.md` |
+| Membership resolution availability and latency | >= 99.9% monthly; p95 <= 100 ms, p99 <= 250 ms | < 99.5% or p95 > 150 ms for 15 min | Business Platform owner / `docs/runbooks/membership-resolution.md` |
+| Protected-operation authorization overhead | p95 <= 150 ms, p99 <= 350 ms | p95 > 225 ms for 15 min | Owning resource service / `docs/runbooks/authorization-dependency.md` |
+| Security revocation propagation | <= 30 s to all Web sessions; current membership denies on the next protected operation | Any sample > 30 s or generation disagreement once | Security owner with Platform Operations / `docs/runbooks/session-revocation.md` |
+| Cross-tenant false allow | Exactly 0; zero error budget | Any occurrence pages immediately and is an Emergency Stop candidate | Security owner / `docs/runbooks/cross-tenant-incident.md` |
+| Provider failure isolation | 0 corruptions of another provider or existing session | Any corruption once | Platform IT Expert / `docs/runbooks/provider-disable.md` |
+| Abuse limiter and bounded backpressure | >= 99.95% availability; zero unbounded queues; saturation recovers within 5 min | limiter unavailable, queue > 80% for 5 min, or any dropped security revocation | Platform Operations / `docs/runbooks/authentication-overload.md` |
+| Recoverable-point currency and sanitized restore | latest recoverable point lag <= 5 min; sanitized recovery <= 30 min | recoverable-point lag > 5 min, restore drill > 30 min, or sanitization failure once | Platform Operations / `docs/runbooks/session-restore.md` |
+
+All metrics are bounded-cardinality, carry environment/release/config/schema versions, and exclude
+raw identity, tenant, handle, token, callback, or network values. Azure Monitor owns cloud alert
+routing; repository fixtures prove every route and threshold before activation. Platform Operations
+is the first receiver for dependency, capacity, readiness, backup, and provider pages; the named
+accountable owner is always included. The existing platform error-budget rule applies: below 25%
+remaining blocks feature promotion until recovery above 50%; a zero-budget security signal blocks
+traffic immediately. Dashboard queries, safe synthetic probes, and a completed rehearsal are required
+for every runbook. Synthetic, fixture, sandbox, Demo, UAT, and Production evidence remain explicitly
+labeled.
+
+### 23.1 Qualification Evidence And False-PASS Controls
+
+Qualification follows the accepted Docker-only validation strategy and may report `PASS` only when
+all of the following are true:
+
+1. Every requirement is bound to a catalogued command ID, an existing selector, an immutable runner
+   digest, the exact candidate/source identity, and a direct result artifact. A missing selector,
+   collection error, zero collected tests, stale digest, untrusted runner, or unproved selection is
+   `BLOCKED` or `FAIL`, never `PASS`.
+2. The result envelope records evidence tier and class (`unit`, `contract`, `integration`,
+   `browser`, `security`, `privacy`, `migration`, `recovery`, `operability`; and `fixture`,
+   `synthetic`, `emulator`, `sandbox/tester`, `Demo`, `UAT`, or `Production`). Evidence may satisfy
+   only the requirement and environment it directly exercises. Mock, fixture, synthetic, local, or
+   sandbox evidence cannot establish provider, cloud, deployment, UAT, Production, or traffic
+   readiness.
+3. Skips, expected failures, quarantines, retries, flaky-pass results, and not-applicable decisions
+   are enumerated by requirement and accepted authority. An unexpected pass of an expected-fail
+   test, a retry-only pass, or a test with an untriggered fault/precondition cannot satisfy an
+   oracle. No aggregate green status may hide a failing or missing required selector.
+4. Negative tests assert both the public denial and the absence of protected state change,
+   authority, evidence, disclosure, and side effect. Race tests use deterministic barriers and
+   assert the committed winner, loser outcome, durable state, and post-race recovery. Outage tests
+   prove the dependency fault was injected and observed, then assert bounded fail-closed behavior
+   and recovery. Migration, restore, and rollback tests inspect schema, grants, generations,
+   ciphertext/key compatibility, image/config digests, traffic state, and non-resurrection before
+   and after the transition.
+5. Accessibility evidence includes automated WCAG scans plus keyboard-only traversal, focus order
+   and restoration, accessible names, status/alert live-region behavior, 200-percent zoom/reflow,
+   reduced motion, touch, LTR/RTL, long-label and fallback locale checks on each required browser
+   and viewport. Screenshot or axe-only evidence is insufficient.
+6. The requirement index is checked for one-to-one coverage and duplicate/conflicting authority.
+   Every oracle has a measurable expected result and fails when its protected behavior is
+   deliberately perturbed. `NOT_APPLICABLE` requires a recorded owner decision and cannot be
+   inferred from an absent test or path.
+
+## 24. Migration, Release, And Rollback Detail
+
+1. Extend the accepted environment manifest and secret catalog, then add the `web_session` schema,
+   restricted role, versioned Key Vault references, operations, cleanup job, capacity bounds, and
+   metrics with the replacement path disabled. This uses the existing application PostgreSQL,
+   Redis, Key Vault, private network, Log Analytics/OpenTelemetry, migration job, and Web member of
+   the architecture-indexed application and dependency topology; it creates no new workload or
+   infrastructure product.
+2. Add canonical BP membership-list/selection/revocation/link contracts and generated clients
+   without changing the active JWT-session path.
+3. Implement server-side sessions and all command/state-machine tests behind
+   `WAOOAW_SERVER_SESSION_MODE=disabled|shadow|enforced`.
+4. In `shadow`, create no second customer authority: compare only privacy-safe decisions using
+   synthetic/approved test actors, and never authorize from the shadow result.
+5. Qualify protocol, browser, storage, identity, authorization, migration, outage, concurrency,
+   privacy, accessibility, and rollback oracles in local and environment-shaped Docker runners.
+6. Build and attest the complete architecture-indexed application/dependency tuple once. Under
+   separate deployment authority,
+   promote those same image digests with a reviewed environment-specific configuration/catalog
+   digest. The digest-pinned one-shot migration completes before the new Web revision becomes ready;
+   liveness proves only process health, while readiness proves configuration/catalog equality,
+   schema/functions/grants, current key versions, database/Redis/BP/identity-edge dependencies, and
+   required observability. A failed check leaves the new revision at zero traffic.
+7. Under separate activation authority, switch directly from `disabled` to `enforced` during an
+   announced forced sign-out. Legacy cookies are recognized only to expire and reject them.
+8. Remove legacy JWT-session creation, token projection, refresh mutation, claim-based customer
+   tenant/role authority, and routine BP browser-session orchestration.
+9. Prove no mixed session, tenant, or role authority is accepted before later environment promotion.
+10. Demo reset/revision replacement truthfully forces all sessions out. UAT qualification proves
+    restart continuity, additive-schema previous-revision compatibility, isolated PITR, the mandatory
+    sanitized restore epoch, blue-green switching, and rollback before any later promotion.
+
+Rollback after enforcement may disable new login starts and restore the prior image only if that
+image is part of the immediately previous qualified architecture-indexed tuple, is compatible with the current
+additive schema/configuration/key versions, has been patched to reject every invalidated legacy
+session, and cannot create a browser token session. Rollback is an audited ACA traffic switch with
+no rebuild, retag, secret rollback, destructive down-migration, or restore of backed-up ACTIVE
+sessions. Keep the previous qualified revision at zero traffic for at least 24 hours and through the
+active Demo/UAT lease. Database rollback is non-destructive; the session schema remains readable for
+revocation, cleanup, forensics, and forward recovery. Any rollback that would restore browser-carried
+tokens, JWT tenant/role authority, mixed sessions, retired keys, or revoked authority stops for a new
+Founder decision.
+
+## 25. Implementation Decomposition And Decision Closure
+
+| Work Component | Outcome | Depends on |
+|---|---|---|
+| AUTH-WC-01 | Freeze accepted source digests; produce exact source/data/API/test/owner impact manifest and baseline negative tests. | Accepted candidate, ADR-003/008/017 |
+| AUTH-WC-02 | Add canonical OpenAPI deltas, generated clients, session schema, restricted grants, encryption model, migrations, and storage tests. | 01 |
+| AUTH-WC-03 | Replace browser token custody with Web-owned opaque server sessions, atomic refresh, typed callback/router, and failure handling. | 02 |
+| AUTH-WC-04 | Generalize current-membership authorization, multi-membership selection, RLS context, revocation, and enabled receiver enforcement. | 02 |
+| AUTH-WC-05 | Implement distinct logout, logout-all, account switch, tenant switch, and security-revocation commands. Implement link, unlink, recovery, and principal rebinding only after `AUTHZ-GATE-01` accepts the exact stock-Keycloak lifecycle interface and authority. | 03-04; `AUTHZ-GATE-01` for identity mutation |
+| AUTH-WC-06 | Configure provider-neutral Google/Facebook/Apple/passkey adapters and truthful readiness projection; no provider activation. | 03, 05 |
+| AUTH-WC-07 | Eliminate legacy/mixed authority, complete forced-sign-out migration, adversarial qualification, same-image evidence, runbooks, and rollback rehearsal. | 01-06 |
+| AUTH-WC-08 | Real-provider Demo deployment and acceptance. **BLOCKED** pending separate provider, cloud, deployment, traffic, and activation authority. | 07 and protected gates |
+
+Decision closure:
+
+- `AUTHZ-SD-01`: durable stock Keycloak selected.
+- `AUTHZ-SD-02`: Web BFF plus `web_session` schema in existing PostgreSQL selected.
+- `AUTHZ-SD-03`: BP owns membership/authorization/evidence, not browser sessions or token custody.
+- `AUTHZ-SD-04`: exact `(issuer, subject)` identity key selected.
+- `AUTHZ-SD-05` and `AUTHZ-SD-06`: one ceremony and typed post-authentication router selected.
+- `AUTHZ-SD-07` and `AUTHZ-SD-08`: distinct commands and proof-of-control linking selected.
+- `AUTHZ-SD-09`: durable Keycloak configuration/key/provider-link continuity required.
+- `AUTHZ-SD-10`: one-way forced-sign-out cutover with no legacy-session rollback selected.
+- `AUTHZ-SD-11`: adopt the existing reviewed NextAuth/Auth.js OIDC client hooks inside the ADR-017
+  Web boundary, but do not adopt their browser-JWT or generic database-session authority; build only
+  the WAOOAW-owned `web_session` primitives and commands specified here.
+- `AUTHZ-SD-12`: release qualification binds the application-image manifest and dependency manifest
+  separately by named member and digest. No combined `exact-seven` count is an architecture invariant.
+- ADR-003 conflict: resolved by its 2026-09-09 controlling customer-membership amendment; the
+  historical claim-only text is not implementation authority for customer operations.
+- Managed CIAM: rejected for this Work Contract. ADR-008's accepted stock-Keycloak decision controls
+  over the compact 100K index's historical `Keycloak ... or Azure AD B2C` alternative; that index
+  wording is not substitution authority. Reconsider only through a separately accepted enterprise
+  decision and Founder acceptance.
+
+## 26. Requirement Trace And Implementation Readiness
+
+WC-123 is the executable Work Contract for `AUTH-WC-01` through `AUTH-WC-07`. Its requirement ledger
+maps every `ER-*` requirement and every solution decision to a component, direct oracle, evidence
+class, owner, and stop condition. `AUTH-WC-08` remains blocked and cannot be claimed by repository
+implementation evidence.
+
+**Implementation-readiness result:** BLOCKED ON `AUTHZ-GATE-01`. No implementer is required to
+choose an identity authority, session owner/store, Email method, API ownership, state-machine
+result, migration mode, SLO, RPO/RTO, rollout, rollback, or prohibited fallback. The remaining
+decision is the exact supported stock-Keycloak proof/mutation interface and least-privilege
+authority for link, unlink, recovery, and principal rebinding. Founder acceptance is required if
+the selected option expands the accepted WC-085 reader credential, adds a writer/custom provider
+or image, changes customer presentation, or defers those required capabilities. Source
+implementation also remains blocked until the exact candidate is accepted and the current
+implementation session receives explicit Founder authorization.
+
+## 27. Chief Solution Architect Author Review
+
+The author re-read the complete enterprise requirements, solution contract, WC-123, and requirement
+ledger against the authorized scope, office Decision Space, accepted ADRs, implementation-readiness
+standard, specialist repairs, and protected-action boundaries.
+
+| Finding | Severity | Resolution |
+|---|---|---|
+| AR-01 - The initial candidate selected no application-session persistence owner. | Critical | Selected the Web BFF with exact `web_session` relations, restricted operations, existing PostgreSQL placement, lifecycle, recovery, and non-resurrection semantics. |
+| AR-02 - The initial candidate left Email, API ownership, state/failure behavior, SLOs, RPO/RTO, migration, and rollback to implementation discretion. | High | Sections 9, 12, 20-24 now freeze those decisions and measurable oracles. |
+| AR-03 - Security, data, platform, product, enterprise, and test concerns were incomplete. | High | Founder-authorized single-pass specialist repairs were integrated into the controlling package and ledger. |
+| AR-04 - Managed CIAM was rejected for WC-123 while Section 16 still required an absent comparison. | Medium | Added the bounded weighted comparison above and retained Keycloak without claiming vendor procurement evidence. |
+| AR-05 - Stock Keycloak link/unlink/recovery mutation authority is not accepted. | Critical blocker | Added `AUTHZ-GATE-01`, blocked the exact dependent requirements and tasks, and prohibited privilege/component invention. This is an explicit Founder decision, not an author-review PASS claim. |
+| AR-06 - Qualification could falsely pass on missing selectors, lower evidence classes, aggregate status, or incomplete negative tests. | High | Added Section 23.1 and `WC123-R048` false-PASS controls. |
+
+**Author-review result:** PASS FOR CANDIDATE SUBMISSION. All defects within Chief Solution Architect
+authority are repaired. `AUTHZ-GATE-01`, Founder acceptance, current-session implementation
+authorization, and protected provider/cloud/deployment/traffic/activation decisions remain explicit
+external gates. This review is self-verification, not independent assurance, approval,
+implementation authorization, or merge authority.

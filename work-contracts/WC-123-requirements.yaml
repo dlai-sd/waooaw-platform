@@ -1,0 +1,445 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-123
+contract_path: work-contracts/WC-123-authentication-authorization-implementation.md
+contract_digest: f1ded2acc5093395bbae1ddb1df2775e32a6b9c1c4abe9e2861c3e827cc69f99
+enterprise_path: architecture/reference/components/authentication-authorization-enterprise-requirements.md
+solution_path: architecture/reference/components/authentication-authorization-simplification-solution-contract.md
+solution_digest: 16afccde6187626f8e12769348b7bb4ad0f8bd2447f05ab781864eed5449ada7
+contract_status: AUTHOR_REVIEW_PASS_AUTHZ_GATE_01_AND_FOUNDER_ACCEPTANCE_REQUIRED_IMPLEMENTATION_BLOCKED
+implementation_scope: true
+result: PLANNED
+row_extension_contract: >-
+  For WC-123 rows, source_requirements is the exact source field, owner is the exact
+  component-owner field, component is the AUTH-WC work component, and oracle is the exact
+  test-path-or-plan field. The normalized schema fields inherited below deliberately direct
+  consumers to those richer row-local values; they are not substitutes for them.
+completion_rule: >-
+  AUTH-WC-01 through AUTH-WC-07 must pass on one exact candidate with direct redacted evidence.
+  AUTH-WC-08 remains blocked unless separately authorized. Specification acceptance does not grant
+  current-session implementation, provider, cloud, deployment, traffic, activation, approval, or
+  merge authority.
+
+requirement_defaults: &defaults
+  evidence_class: Repository-owned executable contract, unit, integration, security, privacy, browser, migration, recovery, or operability evidence
+  source: Exact row-local source_requirements field
+  component_owner: Exact row-local owner field
+  test_path_or_plan: Exact row-local oracle field
+  completion_rule: >-
+    The direct oracle must prove the complete observable outcome on the exact candidate with
+    accepted evidence classification and no false-PASS condition.
+  initial_state: expected-fail
+  dependencies: Founder acceptance of the exact enterprise, solution, WC-122, WC-123, specialist dispositions, and explicit current-session implementation authority
+  residual_risk: Passing repository evidence does not establish real-provider, cloud, UAT, Production, activation, or customer-traffic acceptance.
+  evidence_location: "test-results/wc123/<requirement_id>/ or the repository-standard equivalent frozen by AUTH-WC-01"
+  failure_and_rollback: Stop the owning component; preserve the last accepted authority model without enabling legacy or mixed authority; resolve the named owner decision.
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC123-R001
+    source_requirements: ER-AUTH-001, ER-AUTH-008, ER-PROVIDER-GOOGLE-001, ER-PROVIDER-APPLE-001, ER-PROVIDER-FACEBOOK-001, ER-PROVIDER-EMAIL-001
+    component: AUTH-WC-06
+    observable_outcome: Stock Keycloak remains the sole credential and provider authority while every enabled provider exposes one normalized application contract.
+    owner: Platform IT Expert - identity configuration
+    oracle: Provider-adapter contract and readiness tests prove no direct provider call or provider-specific authorization exists in Web or Business Platform.
+
+  - <<: *defaults
+    requirement_id: WC123-R002
+    source_requirements: ER-AUTH-002
+    component: AUTH-WC-05
+    observable_outcome: Identity and provider links use exact issuer and subject; email equality never links, merges, or discloses an account.
+    owner: Platform IT Expert - identity boundary
+    oracle: Collision, changed-email, Apple-relay, link/unlink race, recovery, and anti-enumeration tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R003
+    source_requirements: ER-AUTH-003, ER-SESSION-001 through ER-SESSION-012
+    component: AUTH-WC-02, AUTH-WC-03
+    observable_outcome: The Web BFF owns one server-side application-session authority and the browser holds only one opaque nonrecoverable handle.
+    owner: Platform IT Expert - Web session boundary
+    oracle: Browser/bundle/storage scans plus atomic create/rotate/refresh/revoke/expire, outage, backup/restore, multi-tab, and compatibility tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R004
+    source_requirements: ER-AUTH-004, ER-AUTH-005, ER-TENANT-001 through ER-TENANT-005, ER-TENANT-009
+    component: AUTH-WC-04
+    observable_outcome: Authentication grants no business authority and every enabled customer operation authorizes against current membership and local resource policy.
+    owner: Platform IT Expert - Business Platform and enabled receivers
+    oracle: Zero/one/many membership, stale/removed/role-reduced membership, forged input, resource ownership, and privacy-indistinguishable denial tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R005
+    source_requirements: ER-AUTH-006, ER-TENANT-008, ER-TENANT-011
+    component: AUTH-WC-04
+    observable_outcome: RLS tenant context derives only from validated identity plus current membership and remains independent from application filtering.
+    owner: Platform IT Expert - database authorization
+    oracle: Restricted-role FORCE RLS, swapped-tenant/resource, pooled-context, transaction reset, write/check, and maintenance-path tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R006
+    source_requirements: ER-AUTH-007
+    component: AUTH-WC-03
+    observable_outcome: Login and registration use one ceremony while preserving explicit intent; Login never creates registration/account authority, and only Register or Trial/Hire may route to onboarding.
+    owner: Platform IT Expert - Web authentication router
+    oracle: Login/Register/Trial/Hire intent, new/returning/completed/incomplete, safe-target, zero-one-many-membership, cancellation, and interrupted-resume journey matrix.
+
+  - <<: *defaults
+    requirement_id: WC123-R007
+    source_requirements: ER-AUTH-009
+    component: AUTH-WC-05
+    observable_outcome: Logout, logout-all, account switch, tenant switch, revoke, link, unlink, and security revocation are separate idempotent commands.
+    owner: Platform IT Expert - lifecycle commands
+    oracle: Scope, race, outage, replay, stale-cookie, history/cache, and cross-command non-interference tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R008
+    source_requirements: ER-AUTH-010
+    component: AUTH-WC-03, AUTH-WC-05
+    observable_outcome: Every validation, provider, refresh, membership, assurance, collision, revocation, and dependency failure is typed and fail closed.
+    owner: Platform IT Expert - cross-boundary failure contract
+    oracle: Direct negative tests prove no failure returns authenticated/authorized success, leaks protected detail, or loops.
+
+  - <<: *defaults
+    requirement_id: WC123-R009
+    source_requirements: ER-PROTO-001 through ER-PROTO-005
+    component: AUTH-WC-03
+    observable_outcome: Code plus PKCE and exact OIDC validation protect callback and no sensitive protocol material reaches browser or observability.
+    owner: Platform IT Expert - Web callback
+    oracle: PKCE/state/nonce/issuer/signature/algorithm/audience/azp/redirect/time/auth-time/mix-up/replay and seeded-secret scans.
+
+  - <<: *defaults
+    requirement_id: WC123-R010
+    source_requirements: ER-PROTO-006 through ER-PROTO-008
+    component: AUTH-WC-03, AUTH-WC-05
+    observable_outcome: Refresh is single-flight, reuse revokes the family, rollover is bounded, and no refresh/callback/logout/recovery loop exists.
+    owner: Platform IT Expert - session lifecycle
+    oracle: Concurrent refresh, rotated-token reuse, unknown-key rollover, dependency failure, retry-bound, and redirect-loop tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R011
+    source_requirements: ER-TENANT-006, ER-TENANT-007
+    component: AUTH-WC-04, AUTH-WC-05
+    observable_outcome: Sensitive actions require recent step-up and customer/institutional identities remain cryptographically and operationally separate.
+    owner: Platform IT Expert - assurance and identity separation
+    oracle: Stale assurance, step-up non-execution, wrong realm/client/key/audience/role, and cross-identity tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R012
+    source_requirements: ER-TENANT-010
+    component: AUTH-WC-04
+    observable_outcome: Delegated calls carry bounded original authority across authenticated allowlisted service channels and each receiver authorizes independently.
+    owner: Platform IT Expert - enabled resource receivers
+    oracle: Wrong workload/audience/operation/purpose/channel, customer-context substitution, confused-deputy, and disabled-operation tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R013
+    source_requirements: ER-OBS-001
+    component: AUTH-WC-02 through AUTH-WC-07
+    observable_outcome: Every material identity, session, authorization, switching, linking, revocation, and migration transition emits privacy-safe correlated evidence.
+    owner: Platform IT Expert - observability
+    oracle: Event-schema, correlation, cardinality, redaction, retention, access, and seeded-canary tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R014
+    source_requirements: ER-OBS-002
+    component: AUTH-WC-07
+    observable_outcome: Every Section 23 signal has its numeric SLO, error budget, threshold, bounded metric/query, first-response and accountable owners, Azure Monitor route, exact runbook, safe probe, and rehearsed budget action.
+    owner: Platform IT Expert and Platform Operations
+    oracle: Operability-manifest completeness, SLI query fixtures, alert receiver tests, synthetic probes, threshold and budget breaches, dashboard validation, and every exact runbook rehearsal.
+
+  - <<: *defaults
+    requirement_id: WC123-R015
+    source_requirements: ER-OBS-003
+    component: AUTH-WC-07, AUTH-WC-08
+    observable_outcome: Synthetic, local, provider sandbox/tester, Demo, UAT, and Production evidence classes cannot be confused.
+    owner: Platform IT Expert - evidence control
+    oracle: Evidence metadata validation rejects missing class, environment, source digest, image digest, or authority.
+
+  - <<: *defaults
+    requirement_id: WC123-R016
+    source_requirements: ER-COMPAT-001 through ER-COMPAT-003
+    component: AUTH-WC-04, AUTH-WC-07
+    observable_outcome: Provider/session dependencies stay out of unrelated hot paths and membership freshness meets accepted latency, availability, and fail-closed objectives.
+    owner: Platform IT Expert - component integration
+    oracle: Dependency graph, network-call denial, load, outage, latency, and stale-projection tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R017
+    source_requirements: ER-COMPAT-004
+    component: AUTH-WC-01, AUTH-WC-02
+    observable_outcome: Every API change is spec-first, versioned, consumer-mapped, generated, and migrated without an unbounded flag day.
+    owner: Platform IT Expert - API contracts
+    oracle: OpenAPI lint/reference/compatibility, generated-client, old/new consumer, and mixed-version tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R018
+    source_requirements: ER-COMPAT-005, ER-COMPAT-006
+    component: AUTH-WC-04, AUTH-WC-07
+    observable_outcome: RLS, workload identity, mTLS, idempotency, evidence, Stop, and service authorization remain effective and no request is decided by conflicting authority.
+    owner: Platform IT Expert - authorization integration
+    oracle: Control-independence tests and scans prove one accepted customer authority path and no weakening of adjacent controls.
+
+  - <<: *defaults
+    requirement_id: WC123-R019
+    source_requirements: ER-COMPAT-007
+    component: AUTH-WC-07
+    observable_outcome: Session and membership dependencies remain within accepted latency, availability, connection, queue, concurrency, telemetry, cost, and rollback budgets under load and outage.
+    owner: Platform IT Expert - qualification
+    oracle: Maximum-replica connection-budget proof, concurrency/load, queue/pool saturation, bounded 429/503 backpressure, dependency degradation, retry-storm denial, recovery, telemetry-ingestion, cost, and rollback tests against Sections 12.7 and 23.
+
+  - <<: *defaults
+    requirement_id: WC123-R020
+    source_requirements: ER-COMPAT-008
+    component: AUTH-WC-01 through AUTH-WC-07
+    observable_outcome: Customer-visible changes stay within exact accepted WC-105/customer-journey behavior and separately authorized paths; backend state or provider configuration never silently expands UI authority.
+    owner: Platform IT Expert - Web implementation
+    oracle: Exact-path authority map plus route, copy-key, provider-control/order, cancellation, interaction, screenshot, localization, and accessibility diff review; any unmapped visible delta fails.
+
+  - <<: *defaults
+    requirement_id: WC123-R021
+    source_requirements: ER-MIG-001 through ER-MIG-005
+    component: AUTH-WC-01 through AUTH-WC-07
+    observable_outcome: Accepted contracts and persistence owner are frozen; prerequisites exist; replacement sessions are default-disabled and fully qualified before activation.
+    owner: Platform IT Expert - migration
+    oracle: Digest gate, environment prerequisite validation, disabled/shadow behavior, and complete pre-activation qualification.
+
+  - <<: *defaults
+    requirement_id: WC123-R022
+    source_requirements: ER-MIG-006 through ER-MIG-010
+    component: AUTH-WC-07
+    observable_outcome: Legacy sessions are only invalidated, Demo cutover forces one sign-out, legacy creation and claim authority are removed, and one immutable architecture-indexed application/dependency image tuple promotes without rebuild or retag.
+    owner: Platform IT Expert - release control
+    oracle: Legacy-cookie, mixed-authority scan, forced-sign-out, signed application-image and dependency manifests, pre-traffic migration, blue-green, previous-schema/key compatibility, no-rebuild, rollback, and promotion tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R023
+    source_requirements: Enterprise Requirements Section 11 mandatory acceptance evidence
+    component: AUTH-WC-07
+    observable_outcome: Protocol, browser, identity, providers, onboarding, session, logout, switch, tenant, authorization, privacy, operations, migration, and accessibility evidence all pass.
+    owner: Platform IT Expert - integrated qualification
+    oracle: Requirement-index completeness validator plus direct named Docker test selectors and redacted evidence digests.
+
+  - <<: *defaults
+    requirement_id: WC123-R024
+    source_requirements: Enterprise Requirements Sections 12 through 15
+    component: AUTH-WC-01 through AUTH-WC-08
+    observable_outcome: All required deliverables, prohibited-design checks, owner decisions, authority gates, and implementation stops remain explicit and enforceable.
+    owner: Chief Solution Architect and Platform IT Expert
+    oracle: Contract crosswalk, prohibited-pattern scan, gate validation, author review, and exact-head PR precheck.
+
+  - <<: *defaults
+    requirement_id: WC123-R025
+    source_requirements: ER-AUTH-001, ER-AUTH-002, CSA-AUTH-001 Sections 6.2, 6.4, 10, and 20.2
+    component: AUTH-WC-02, AUTH-WC-05
+    observable_outcome: The validated Keycloak principal and Keycloak-owned upstream provider binding remain distinct; no upstream subject is exposed or duplicated as application authority.
+    owner: Platform IT Expert - identity boundary
+    oracle: Brokered-identity, changed-email, alias-confusion, subject-recreation, projection-disagreement, API/schema scan, and no-upstream-subject disclosure tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R026
+    source_requirements: ER-PROTO-002, ER-PROTO-003, ER-PROTO-007, CSA-AUTH-001 Sections 8 and 22
+    component: AUTH-WC-03
+    observable_outcome: Only exact configured HTTPS identity endpoints, issuers, realms, keys, proxy origins, and server-owned relative return routes can participate in authentication.
+    owner: Platform IT Expert - Web callback and identity egress
+    oracle: Dynamic discovery/JWKS/logout injection, hostile forwarded-host/proto, encoded redirect, DNS/redirect rebinding, wrong realm, and unsafe-return tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R027
+    source_requirements: ER-SESSION-003, ER-SESSION-012, ER-AUTH-009, CSA-AUTH-001 Sections 8, 21, and 22
+    component: AUTH-WC-03, AUTH-WC-05
+    observable_outcome: Validated replay-safe back-channel logout and durable revocation generations revoke only exact mapped families; logout-all never claims global completion during store outage.
+    owner: Platform IT Expert - session revocation
+    oracle: Forged/replayed/wrong-issuer/audience/client/sid logout, subject-wide scope, revoke race, store-outage, retry, and truthful-outcome tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R028
+    source_requirements: ER-TENANT-006, ER-PROTO-004, CSA-AUTH-001 Sections 10 and 11
+    component: AUTH-WC-03, AUTH-WC-05
+    observable_outcome: Sensitive commands use one-time operation-bound step-up with accepted acr/amr and auth_time no older than five minutes, and every identity, tenant, assurance, membership, role, or authority transition rotates/revokes old sessions.
+    owner: Platform IT Expert - assurance and session lifecycle
+    oracle: Stale/wrong/replayed/cross-command step-up, unsupported-method disablement, fixation, and old-handle reuse tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R029
+    source_requirements: ER-AUTH-002, ER-AUTH-009, ER-AUTH-010, CSA-AUTH-001 Sections 10 and 21
+    component: AUTH-WC-05
+    observable_outcome: Link, unlink, and recovery are Keycloak-authoritative idempotent sagas whose ambiguous or partial outcomes never become success or a usable divergent binding.
+    owner: Platform IT Expert - identity lifecycle
+    oracle: Timeout-after-commit, timeout-before-commit, read-back disagreement, blind-retry, compensation, collision, concurrent mutation, and old-session denial tests.
+    initial_state: blocked
+    dependencies: AUTHZ-GATE-01 acceptance of the exact stock-Keycloak lifecycle interface and authority, plus the default dependencies
+    blocker: ADR-008 Amendment 3 authorizes only the WC-085 read-only identity client; no accepted proof/mutation interface or least-privilege writer authority exists for WC-123 lifecycle mutation.
+
+  - <<: *defaults
+    requirement_id: WC123-R030
+    source_requirements: ER-SESSION-002, ER-SESSION-009, ER-PROTO-005, CSA-AUTH-001 Sections 12 and 22
+    component: AUTH-WC-02, AUTH-WC-05
+    observable_outcome: Token envelopes and upstream-session material are erased immediately when authority ends, key rotation preserves live ciphertext, and key compromise revokes affected families without backup resurrection.
+    owner: Platform IT Expert - session data protection
+    oracle: Revoke/logout/expiry/unlink/recovery/deletion erasure, read-old/write-new rotation, unknown/compromised key, backup/restore, and retained-row minimization tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R031
+    source_requirements: ER-AUTH-010, CSA-AUTH-001 Section 22
+    component: AUTH-WC-03, AUTH-WC-05, AUTH-WC-07
+    observable_outcome: Atomic shared abuse controls resist spray, enumeration, quota bypass, proxy/IP manipulation, resend amplification, and limiter outage without turning protected failures into success.
+    owner: Platform IT Expert and Platform Operations - identity abuse controls
+    oracle: Distributed concurrency, IPv4/IPv6 normalization, trusted-proxy, burst/sustained quota, timing-shape, recovery amplification, and fail-closed limiter-outage tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R032
+    source_requirements: ER-AUTH-003, ER-SESSION-001 through ER-SESSION-012, CSA-AUTH-001 Sections 12.4 and 12.5
+    component: AUTH-WC-02, AUTH-WC-05
+    observable_outcome: Session and identity-lifecycle persistence uses the exact named ownership, keys, uniqueness, immutable history, restricted grants, transaction boundaries, and deterministic lock order without tenant or provider identity invention.
+    owner: Platform IT Expert - session and identity persistence
+    oracle: Schema introspection, actual-role privilege/FORCE-RLS tests, duplicate-key and key-reservation tests, lock-order concurrency, whole-transaction rollback, and unknown-commit reconciliation.
+
+  - <<: *defaults
+    requirement_id: WC123-R033
+    source_requirements: ER-SESSION-009, ER-SESSION-012, ER-OBS-001, ER-MIG-001 through ER-MIG-010, CSA-AUTH-001 Section 12.6
+    component: AUTH-WC-02, AUTH-WC-07
+    observable_outcome: Retention and erasure are record-class bounded, backups age out within policy, and every isolated restore invalidates and sanitizes all restored session authority before traffic so revoked, expired, erased, superseded, or legacy authority cannot resurrect.
+    owner: Platform IT Expert and Platform Operations - retention and recovery
+    oracle: Retention-boundary, legal-hold scope, immediate crypto-erasure, backup-age, isolated restore-epoch, generation mismatch, envelope/lease nulling, grant/RLS revalidation, failed-sanitization offline, RPO, and RTO tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R034
+    source_requirements: ER-SESSION-006, ER-SESSION-008, ER-COMPAT-001 through ER-COMPAT-007, CSA-AUTH-001 Sections 12.7 and 24
+    component: AUTH-WC-01, AUTH-WC-02, AUTH-WC-07
+    observable_outcome: WC-123 fits the separately indexed application-image and dependency manifests using the existing Web workload, application PostgreSQL, Redis, Key Vault, private network, telemetry, migration, readiness, and blue-green boundaries without a new workload or infrastructure product.
+    owner: Platform IT Expert and Platform Operations - platform topology
+    oracle: Exact-seven inventory, dependency graph, private-route/RBAC denial, application-database placement, migration-job, no-new-resource, environment-isolation, and topology contract tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R035
+    source_requirements: ER-PROTO-007, ER-SESSION-002, ER-SESSION-008, CSA-AUTH-001 Sections 12.7 and 22
+    component: AUTH-WC-01, AUTH-WC-02, AUTH-WC-07
+    observable_outcome: One closed-world environment secret catalog owns every session, replay, envelope, OIDC-client, and provider dependency with environment/purpose separation, Web-only Key Vault access, bounded overlap, blocked retirement, compromise response, and no plaintext-bearing delivery surface.
+    owner: Platform Operations - secret lifecycle; Platform IT Expert - application compatibility
+    oracle: Catalog projection/digest, Key Vault RBAC denial, image/Terraform/workflow/log scan, one-writer/two-reader 24-hour rotation, live-dependency retirement denial, missing/expired-key readiness, and compromise-revocation tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R036
+    source_requirements: ER-SESSION-006, ER-SESSION-007, ER-COMPAT-003, CSA-AUTH-001 Sections 12.7 and 24
+    component: AUTH-WC-02, AUTH-WC-03, AUTH-WC-07
+    observable_outcome: Process liveness is separate from internal traffic readiness, which proves exact config/catalog digests, schema/functions/grants, current keys, mandatory database/Redis/BP/identity-edge dependencies, and alert routing without public detail.
+    owner: Platform IT Expert and Platform Operations - runtime readiness
+    oracle: Startup, cold-start, scale-to-zero, schema/version/grant/key/dependency mismatch, readiness-flap, public-detail-redaction, pre-traffic probe, and zero-traffic-on-failure tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R037
+    source_requirements: ER-COMPAT-003, ER-COMPAT-007, ER-OBS-002, CSA-AUTH-001 Sections 12.7 and 23
+    component: AUTH-WC-01, AUTH-WC-03, AUTH-WC-07
+    observable_outcome: Reviewed replica, connection, queue, concurrency, timeout, retry, telemetry, and cost budgets prevent overload invention and keep protected traffic fail closed.
+    owner: Platform IT Expert and Platform Operations - capacity and backpressure
+    oracle: Maximum-replica 80-percent database connection calculation, bounded queues, single-family refresh, global/principal limits, timeout hierarchy, 429/503 retry guidance, retry-storm denial, saturation metrics, recovery, ingestion, and cost tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R038
+    source_requirements: ER-AUTH-010, ER-OBS-002, CSA-AUTH-001 Sections 12.7, 22, and 23
+    component: AUTH-WC-03, AUTH-WC-06, AUTH-WC-07
+    observable_outcome: Existing Redis holds only keyed TTL abuse counters; limiter loss or restart creates a longest-window hold for high-risk identity routes and never becomes session/revocation authority or an unlimited reset.
+    owner: Platform Operations - Redis; Platform IT Expert - abuse-control integration
+    oracle: Raw-key/redaction scan, TTL and atomic-counter tests, cross-replica concurrency, restart-epoch hold, unavailable-limiter fail-closed, existing-session bounded-degradation, and session/revocation independence tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R039
+    source_requirements: ER-SESSION-006, ER-SESSION-009, ER-MIG-003, ER-MIG-010, CSA-AUTH-001 Sections 12.7 and 24
+    component: AUTH-WC-02, AUTH-WC-07
+    observable_outcome: Demo truthfully loses and revokes all sessions on disposable database/revision reset, while UAT preserves restart continuity and proves additive migration, PITR, sanitized restore, prior-revision compatibility, and non-resurrection before promotion.
+    owner: Platform IT Expert and Platform Operations - environment continuity
+    oracle: Two Demo reset/reseed cycles with forced reauthentication; UAT restart, backup-age, isolated PITR, restore epoch, schema/key compatibility, failed-sanitization offline, RPO, RTO, and cross-environment denial tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R040
+    source_requirements: ER-MIG-004 through ER-MIG-010, ER-COMPAT-004, ER-COMPAT-007, CSA-AUTH-001 Section 24
+    component: AUTH-WC-07, AUTH-WC-08
+    observable_outcome: The architecture-indexed application/dependency tuple is built once and promoted by digest with reviewed environment configuration/catalog digests; migration and readiness precede traffic, and rollback is an audited switch to a retained compatible tuple without rebuild, retag, secret rollback, down-migration, or restored ACTIVE sessions.
+    owner: Platform IT Expert and Platform Operations - immutable release
+    oracle: Signed application-image and dependency manifests, member/digest equality, config/catalog binding, pre-traffic migration/readiness, blue-green zero-traffic failure, 24-hour/lease previous-revision hold, additive schema/key compatibility, traffic-switch rollback, and prohibited rebuild/retag/down-migration/ACTIVE-restore tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R041
+    source_requirements: ER-AUTH-007, ER-COMPAT-008, CSA-AUTH-001 Sections 7 and 13, Fundamental Customer Journeys Section 4
+    component: AUTH-WC-03, AUTH-WC-07
+    observable_outcome: Login, Register, Trial, and Hire retain distinct explicit intent; Login without an active account becomes an authenticated visitor, completed accounts do not re-register, and cancel/close before completion performs no authority mutation.
+    owner: Platform IT Expert - authentication journey
+    oracle: Direct/intercepted Login/Register plus Trial/Hire continuation tests cover new, returning, completed, incomplete, cancellation, stale/late response, safe return, non-secret draft resume, and zero duplicate account/membership outcomes.
+
+  - <<: *defaults
+    requirement_id: WC123-R042
+    source_requirements: ER-AUTH-009, ER-AUTH-010, CSA-AUTH-001 Sections 7, 13, 20, and 21
+    component: AUTH-WC-03, AUTH-WC-05, AUTH-WC-07
+    observable_outcome: Cancellation and every typed failure state truthfully disclose whether prior session/tenant authority remains, distinguish denied/unavailable/expired/unknown outcomes, and provide one safe next action or support path without success implication.
+    owner: Platform IT Expert - lifecycle and recovery presentation
+    oracle: Local/global logout, account/tenant switch, provider cancel/outage, recovery, ambiguous outcome, stale selection, and dependency outage assertions verify authority state, semantic key, action, focus/live-region behavior, safe correlation reference, and no stale protected rendering.
+
+  - <<: *defaults
+    requirement_id: WC123-R043
+    source_requirements: ER-PROVIDER-GOOGLE-001, ER-PROVIDER-APPLE-001, ER-PROVIDER-FACEBOOK-001, ER-PROVIDER-EMAIL-001, ER-COMPAT-008, WC-105 AUTH-UI-02
+    component: AUTH-WC-06, AUTH-WC-07
+    observable_outcome: Environment-specific operational readiness remains separate from the accepted four-control customer projection; pending, unavailable, failed, synthetic, or unapproved provider states cannot enable or visibly alter a control.
+    owner: Platform IT Expert - provider readiness
+    oracle: Per-provider pending/available/unavailable/failure/isolation matrix plus UI authority snapshot proves approved control identity/order/copy, default-disabled behavior, no cross-provider damage, and no readiness claim above its evidence class.
+
+  - <<: *defaults
+    requirement_id: WC123-R044
+    source_requirements: ER-COMPAT-008, CSA-AUTH-001 Sections 13 and 17, WC-105 Sections 6 through 10, Hybrid UI Acceptance Contract
+    component: AUTH-WC-03, AUTH-WC-05, AUTH-WC-06, AUTH-WC-07
+    observable_outcome: Accepted authentication, registration, cancellation, recovery, account/tenant switching, and provider-readiness journeys remain operable and truthful across supported browsers, viewports, input modes, accessibility settings, and localization modes without presentation invention.
+    owner: Platform IT Expert - Web qualification
+    oracle: Chromium/Firefox/WebKit at 360x800, 768x1024, and 1440x900 cover touch, keyboard-only, focus, names, status/alert semantics, 200-percent zoom, reduced motion, LTR, RTL, one long-label locale, and reviewed-English fallback with no clipping, inaccessible action, or unapproved visible delta.
+
+  - <<: *defaults
+    requirement_id: WC123-R045
+    source_requirements: ER-AUTH-010, ER-COMPAT-008, CSA-AUTH-001 Section 13
+    component: AUTH-WC-03, AUTH-WC-05, AUTH-WC-07
+    observable_outcome: Customer-visible failures use accepted localized semantic keys rather than raw provider/server text; missing translation safely falls back to reviewed English and never exposes identity, tenant, protocol, or internal-route detail.
+    owner: Platform IT Expert - error semantics and localization
+    oracle: Complete typed-outcome-to-copy-key contract, translation completeness/fallback, RTL/plural/direction, provider-text injection, enumeration, correlation-reference, screen-reader announcement, and empty-action tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R046
+    source_requirements: ER-AUTH-003, ADR-017, CSA-AUTH-001 Sections 3.2, 12.4, 20.1, and decision AUTHZ-SD-11
+    component: AUTH-WC-01, AUTH-WC-02, AUTH-WC-03
+    observable_outcome: Existing reviewed NextAuth/Auth.js hooks are adopted only as Web-boundary OIDC protocol machinery, while the WAOOAW web_session schema and commands are the sole application-session authority; no library JWT/database-session fallback or unaccepted dependency change exists.
+    owner: Platform IT Expert - Web identity integration
+    oracle: Dependency/version manifest, hook-boundary tests, schema and cookie scans, authority-path inventory, browser-token denial, generic-adapter denial, and upgrade/replacement stop-gate tests.
+
+  - <<: *defaults
+    requirement_id: WC123-R047
+    source_requirements: ER-AUTH-002, ER-AUTH-009, ADR-008 Amendment 3, CSA-AUTH-001 Sections 3.2, 10, 12.5, 20.2, and AUTHZ-GATE-01
+    component: AUTH-WC-01, AUTH-WC-05
+    observable_outcome: Provider-link lifecycle mutation uses only an explicitly accepted, supported stock-Keycloak proof/mutation interface with least privilege, private routing, deterministic read-back/compensation, and no implicit expansion of the WC-085 reader boundary.
+    owner: Chief Solution Architect - option contract; Chief Enterprise Architect and Founder - boundary acceptance; Platform IT Expert - implementation after acceptance
+    oracle: Accepted option record plus actual-client privilege denial, exact-endpoint, proof-of-control, idempotency, ambiguous-outcome, read-back, upgrade, route, audit, and no-custom-provider/image tests.
+    initial_state: blocked
+    dependencies: AUTHZ-GATE-01 and explicit Founder acceptance where the option expands privilege, component, provider image, presentation, or scope; plus the default dependencies
+    blocker: No accepted stock-Keycloak lifecycle proof/mutation interface or least-privilege authority is named.
+
+  - <<: *defaults
+    requirement_id: WC123-R048
+    source: CSA-AUTH-001 Section 23.1; WC-123 Sections 10 through 12.1 and 16
+    source_requirements: ER-OBS-003, ER-COMPAT-007, Enterprise Requirements Sections 11 and 13
+    component: AUTH-WC-01, AUTH-WC-07
+    observable_outcome: >-
+      Qualification cannot report PASS from an absent or zero-test selector, stale or wrong
+      candidate, aggregate green status, mock or lower evidence class, unexpected skip/xpass,
+      quarantine, retry-only pass, untriggered fault, axe/screenshot-only accessibility result,
+      or an oracle that checks output without protected durable side effects.
+    owner: Platform IT Expert - validation catalog and evidence; Test Champion - oracle integrity
+    component_owner: Platform IT Expert - validation catalog and evidence; Test Champion - oracle integrity
+    oracle: >-
+      Requirement-index and catalog contract tests inject missing selectors, zero collection,
+      stale digests, wrong evidence classes, skips/xpasses, quarantine, retry-only success,
+      untriggered faults, hidden child failures, and deliberately broken negative/race/outage/
+      migration/restore/rollback/accessibility behavior; every mutation must produce FAIL or
+      BLOCKED with a structured redacted result envelope.
+    test_path_or_plan: >-
+      Docker-owned validation-control tests for requirement-index completeness, command
+      feasibility, structured evidence classification, false-PASS mutation fixtures, and direct
+      protected-state oracle strength.
+    completion_rule: >-
+      Every mandatory selector exists and collects tests; the exact candidate and evidence class
+      are bound; all required native artifacts and result envelopes agree; every seeded
+      false-PASS condition is rejected; and no lower-class evidence satisfies a higher-class gate.
