@@ -1,5 +1,6 @@
 // Implements: work-contracts/WC-078-public-acquisition-experience-plan.md §Content Rules
 // Constitutional basis: C-023 (Evidence First), C-059 (Implementation Traceability), C-063 (Data Minimisation)
+import { legalPages } from '@/config/public-pages';
 import { projectPublicLegalSource } from '@/lib/public-legal';
 
 describe('public legal projection', () => {
@@ -20,5 +21,11 @@ describe('public legal projection', () => {
     expect(projected).toContain('`waooaw-locale` and `waooaw_consent`');
     expect(projected).toContain('analytics choice, advertising choice');
     expect(projected).toContain('at most 30 minutes');
+  });
+
+  it('publishes complete public data-deletion instructions', () => {
+    expect(legalPages.dataDeletion.path).toBe('/data-deletion');
+    expect(legalPages.dataDeletion.sourceFile).toBe('data-deletion-instructions.md');
+    expect(legalPages.dataDeletion.summary).toContain('external authentication provider');
   });
 });

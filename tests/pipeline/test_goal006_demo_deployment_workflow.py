@@ -176,13 +176,11 @@ def test_expired_lease_fails_before_foundation_plan_and_apply_renewal_is_etag_bo
     assert configuration.count("properties.etag") == 3
     assert 'test "$etag_before" = "$etag_after"' in configuration
     assert "REQUESTED_LEASE_EXPIRES_AT" in configuration
-    assert "REQUESTED_ACCESS_CIDR" in configuration
     assert "TARGET_ENVIRONMENT" in configuration
     assert 'if test "$TARGET_ENVIRONMENT" = prod' in configuration
     assert 'test -z "$REQUESTED_LEASE_EXPIRES_AT"' in configuration
-    assert 'test -z "$REQUESTED_ACCESS_CIDR"' in configuration
-    assert 'if test "$TARGET_ENVIRONMENT" = demo' in configuration
-    assert '.founder_ipv4_cidr = $access_cidr' in configuration
+    assert "REQUESTED_ACCESS_CIDR" not in configuration
+    assert ".founder_ipv4_cidr = $access_cidr" not in configuration
     assert "--expires-at \"$REQUESTED_LEASE_EXPIRES_AT\"" in configuration
     assert "--expires-at '${{ inputs.lease_expires_at }}'" not in configuration
     assert "scripts/goal006_lease.py" in configuration

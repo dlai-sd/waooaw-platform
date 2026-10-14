@@ -50,7 +50,7 @@ resource "azurerm_user_assigned_identity" "google_broker" {
 
   lifecycle {
     precondition {
-      condition     = local.service_urls.identity_edge == "https://ca-demo-identity-edge.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io"
+      condition     = local.service_urls.identity_edge == "https://auth.demo.waooaw.com"
       error_message = "Demo Google login requires the identity origin already registered in Google Console; foundation domain replacement requires renewed callback approval."
     }
     precondition {

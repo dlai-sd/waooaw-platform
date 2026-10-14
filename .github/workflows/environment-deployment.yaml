@@ -22,9 +22,6 @@ on:
       lease_expires_at:
         required: false
         type: string
-      access_cidr:
-        required: false
-        type: string
       initialize_configuration:
         required: false
         type: boolean
@@ -459,7 +456,6 @@ jobs:
         id: configuration
         env:
           REQUESTED_LEASE_EXPIRES_AT: ${{ inputs.lease_expires_at }}
-          REQUESTED_ACCESS_CIDR: ${{ inputs.access_cidr }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           etag_before=$(az storage blob show \
@@ -483,18 +479,8 @@ jobs:
           test "$etag_before" = "$etag_after"
           if test "$TARGET_ENVIRONMENT" = prod; then
             test -z "$REQUESTED_LEASE_EXPIRES_AT"
-            test -z "$REQUESTED_ACCESS_CIDR"
           else
             if test '${{ inputs.apply }}' = true; then
-              if test "$TARGET_ENVIRONMENT" = demo; then
-                test -n "$REQUESTED_ACCESS_CIDR"
-                jq --arg access_cidr "$REQUESTED_ACCESS_CIDR" \
-                  '.founder_ipv4_cidr = $access_cidr' \
-                  workload-configuration.json > workload-configuration.access.json
-                mv workload-configuration.access.json workload-configuration.json
-              else
-                test -z "$REQUESTED_ACCESS_CIDR"
-              fi
               issued_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
               python3 scripts/goal006_lease.py \
                 --configuration workload-configuration.json \
@@ -550,10 +536,6 @@ jobs:
           mv workload-configuration.bound.json workload-configuration.json
           jq -e '.planned_incremental_monthly_cost_inr != null and .cumulative_one_time_cost_inr != null' \
             workload-configuration.json >/dev/null
-          if test "$TARGET_ENVIRONMENT" = demo; then
-            jq -e '.founder_ipv4_cidr' workload-configuration.json >/dev/null
-          fi
-
       - name: Capture configuration storage diagnostics
         if: failure() && steps.configuration.outcome == 'failure'
         run: |

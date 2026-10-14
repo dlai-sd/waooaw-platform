@@ -4,7 +4,7 @@
 export const siteConfig = {
   name: 'WAOOAW',
   company: 'DLAI Satellite Data (OPC) Pvt Ltd',
-  canonicalOrigin: process.env.NEXT_PUBLIC_CANONICAL_ORIGIN ?? 'https://waooaw.com',
+  canonicalOrigin: process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_CANONICAL_ORIGIN ?? 'https://waooaw.com',
   contactEmail: 'customersupport@dlaisd.com',
   environment: process.env.NEXT_PUBLIC_WAOOAW_ENVIRONMENT ?? 'demo',
   locales: ['en', 'hi', 'mr', 'ta', 'te', 'kn', 'gu', 'bn', 'ml', 'pa', 'ur'],
@@ -23,7 +23,12 @@ export const siteConfig = {
     registeredAddress: 'C8, Everest Heights, Park Road, Viman Nagar, Pune 411014, Maharashtra, India',
     grievanceOfficer: 'Yogesh Khandge',
   },
-  sectionSwitches: { professionalPreview: true, trustJourney: true, finalAction: true, platformDna: true },
+  sectionSwitches: {
+    professionalPreview: true,
+    trustJourney: true,
+    finalAction: true,
+    platformDna: true,
+  },
   socialLinks: [],
   publicNavigation: [
     { href: '/', label: 'Home' },
@@ -53,6 +58,7 @@ export const siteConfig = {
       label: 'Legal',
       links: [
         { href: '/privacy', label: 'Privacy' },
+        { href: '/data-deletion', label: 'Data deletion' },
         { href: '/terms', label: 'Terms' },
         { href: '/cookies', label: 'Cookies' },
         { href: '/refund', label: 'Refunds' },

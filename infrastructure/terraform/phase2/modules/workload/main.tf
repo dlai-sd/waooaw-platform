@@ -56,14 +56,15 @@ locals {
   service_urls = {
     constitutional_engine = "http://ca-${var.environment}-constitutional-engine"
     business_platform     = "http://ca-${var.environment}-business-platform"
+    public_api            = "https://${coalesce(var.api_custom_hostname, "ca-${var.environment}-business-platform.${var.container_app_environment_default_domain}")}"
     professional_runtime  = "http://ca-${var.environment}-professional-runtime"
     ai_runtime            = "http://ca-${var.environment}-ai-runtime"
     billing_engine        = "http://ca-${var.environment}-billing-engine"
     dma_adapter           = "http://ca-${var.environment}-dma"
-    identity_edge         = "https://ca-${var.environment}-identity-edge.${var.container_app_environment_default_domain}"
+    identity_edge         = "https://${coalesce(var.identity_custom_hostname, "ca-${var.environment}-identity-edge.${var.container_app_environment_default_domain}")}"
     keycloak              = "http://ca-${var.environment}-keycloak"
     keycloak_private      = "https://ca-${var.environment}-keycloak.internal.${var.container_app_environment_default_domain}"
-    web                   = "https://ca-${var.environment}-web.${var.container_app_environment_default_domain}"
+    web                   = "https://${coalesce(var.web_custom_hostname, "ca-${var.environment}-web.${var.container_app_environment_default_domain}")}"
   }
   verification_urls = {
     business_platform    = local.service_urls.business_platform
@@ -862,15 +863,6 @@ resource "azurerm_container_app" "member" {
       percentage      = 100
     }
 
-    dynamic "ip_security_restriction" {
-      for_each = var.environment == "demo" && local.public_ingress[each.key] ? [var.founder_ipv4_cidr] : []
-      content {
-        name             = "founder-review"
-        ip_address_range = ip_security_restriction.value
-        action           = "Allow"
-        description      = "Founder-only Demo review"
-      }
-    }
   }
 
   lifecycle {
@@ -878,7 +870,7 @@ resource "azurerm_container_app" "member" {
       condition = var.environment != "demo" || (
         local.demo_identity_manifest.origins.web == local.service_urls.web &&
         local.demo_identity_manifest.origins.identity == local.service_urls.identity_edge &&
-        local.demo_identity_manifest.origins.api == "https://ca-demo-business-platform.${var.container_app_environment_default_domain}"
+        local.demo_identity_manifest.origins.api == local.service_urls.public_api
       )
       error_message = "Demo deployment origins must match the reviewed identity manifest; domain changes require manifest and callback approval."
     }
@@ -904,6 +896,22 @@ resource "azurerm_container_app" "member" {
     azurerm_role_assignment.razorpay_secret,
     azurerm_container_app.temporal,
   ]
+}
+
+resource "azurerm_container_app_custom_domain" "public_member" {
+  for_each = var.workload_enabled ? {
+    for member, hostname in {
+      web               = var.web_custom_hostname
+      business-platform = var.api_custom_hostname
+    } : member => hostname if hostname != null
+  } : {}
+
+  name             = each.value
+  container_app_id = azurerm_container_app.member[each.key].id
+
+  lifecycle {
+    ignore_changes = [certificate_binding_type, container_app_environment_certificate_id]
+  }
 }
 
 resource "azurerm_user_assigned_identity" "temporal" {
@@ -1247,6 +1255,17 @@ resource "azurerm_container_app" "identity_edge" {
   depends_on = [azurerm_container_app.keycloak]
 }
 
+resource "azurerm_container_app_custom_domain" "identity_edge" {
+  count = var.workload_enabled && var.identity_custom_hostname != null ? 1 : 0
+
+  name             = var.identity_custom_hostname
+  container_app_id = azurerm_container_app.identity_edge[0].id
+
+  lifecycle {
+    ignore_changes = [certificate_binding_type, container_app_environment_certificate_id]
+  }
+}
+
 resource "azurerm_container_app_job" "verification" {
   count = var.workload_enabled && var.verification_principal_id != null ? 1 : 0
 
@@ -1347,5 +1366,5 @@ resource "azurerm_role_assignment" "verification_job_operator" {
 }
 
 output "web_url" {
-  value = try("https://${azurerm_container_app.member["web"].ingress[0].fqdn}", null)
+  value = var.workload_enabled ? "https://${coalesce(var.web_custom_hostname, "ca-${var.environment}-web.${var.container_app_environment_default_domain}")}" : null
 }

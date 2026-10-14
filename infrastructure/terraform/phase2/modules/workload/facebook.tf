@@ -43,7 +43,7 @@ resource "azurerm_user_assigned_identity" "facebook_broker" {
 
   lifecycle {
     precondition {
-      condition     = local.service_urls.identity_edge == "https://ca-demo-identity-edge.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io"
+      condition     = local.service_urls.identity_edge == "https://auth.demo.waooaw.com"
       error_message = "Demo Facebook login requires the reviewed identity origin registered in Meta; foundation domain replacement requires renewed callback approval."
     }
     precondition {

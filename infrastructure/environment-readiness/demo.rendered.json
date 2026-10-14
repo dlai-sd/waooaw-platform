@@ -9,18 +9,18 @@
     "clients": [
       {
         "allowedOrigins": [
-          "https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io"
+          "https://cp.demo.waooaw.com"
         ],
         "channel": "WEB",
         "id": "waooaw-web",
         "pkceRequired": true,
         "postLogoutRedirectUris": [
-          "https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/login"
+          "https://cp.demo.waooaw.com/login"
         ],
         "redirectUris": [
-          "https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/api/auth/callback/keycloak",
-          "https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/api/auth/callback/keycloak-google",
-          "https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/api/auth/callback/keycloak-facebook"
+          "https://cp.demo.waooaw.com/api/auth/callback/keycloak",
+          "https://cp.demo.waooaw.com/api/auth/callback/keycloak-google",
+          "https://cp.demo.waooaw.com/api/auth/callback/keycloak-facebook"
         ],
         "scopes": [
           "openid",
@@ -60,15 +60,15 @@
       "accessTokenMinutes": 15,
       "audience": "waooaw-platform",
       "clockSkewSeconds": 30,
-      "issuer": "https://ca-demo-identity-edge.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/realms/waooaw",
-      "jwksUri": "https://ca-demo-identity-edge.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/realms/waooaw/protocol/openid-connect/certs",
+      "issuer": "https://auth.demo.waooaw.com/realms/waooaw",
+      "jwksUri": "https://auth.demo.waooaw.com/realms/waooaw/protocol/openid-connect/certs",
       "realm": "waooaw",
       "refreshSessionHours": 8
     },
     "origins": {
-      "api": "https://ca-demo-business-platform.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io",
-      "identity": "https://ca-demo-identity-edge.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io",
-      "web": "https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io"
+      "api": "https://api.demo.waooaw.com",
+      "identity": "https://auth.demo.waooaw.com",
+      "web": "https://cp.demo.waooaw.com"
     },
     "phoneIdentity": {
       "internalAudience": "waooaw-phone-identity-demo"
@@ -126,8 +126,8 @@
     "schemaVersion": "1.0"
   },
   "environment": "demo",
-  "manifestDigest": "sha256:1acff7076972dc785dd6ad23ff077c8ab635ae62e1a643c377edabe5baef1028",
-  "renderDigest": "sha256:fae07df5da689cc1cf1532c76f77d3aa648fcf4e8ee3aecc6b2c2b8764305d84",
+  "manifestDigest": "sha256:a7abf9f47a94d7f1084509fd470dd07719200f86daa50563ca4eed141191dd9d",
+  "renderDigest": "sha256:50e9f1cdb71d4852e2c2bb126860e0c4937a11166fae17de36219dfd1132d02c",
   "schemaVersion": "1.0",
   "secretBindings": [
     {

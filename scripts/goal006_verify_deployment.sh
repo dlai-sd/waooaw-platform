@@ -2,16 +2,15 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: $0 <environment> <manifest> <release-sha> <web-url> [expected-access-cidr]" >&2
+  echo "usage: $0 <environment> <manifest> <release-sha> <web-url>" >&2
   exit 2
 }
 
-test "$#" -ge 4 && test "$#" -le 5 || usage
+test "$#" -eq 4 || usage
 TARGET_ENVIRONMENT=$1
 MANIFEST=$2
 RELEASE_SHA=$3
 EXPECTED_WEB_URL=$4
-EXPECTED_ACCESS_CIDR=${5:-}
 RESOURCE_GROUP="waooaw-$TARGET_ENVIRONMENT-rg"
 REVISION_READY_ATTEMPTS=${GOAL006_REVISION_READY_ATTEMPTS:-30}
 REVISION_READY_INTERVAL_SECONDS=${GOAL006_REVISION_READY_INTERVAL_SECONDS:-10}
@@ -140,28 +139,48 @@ done
 
 live_fqdn=$(az containerapp show --resource-group "$RESOURCE_GROUP" \
   --name "ca-$TARGET_ENVIRONMENT-web" --query properties.configuration.ingress.fqdn -o tsv)
-test "$EXPECTED_WEB_URL" = "https://$live_fqdn"
-if test -n "$EXPECTED_ACCESS_CIDR"; then
-  live_access_cidr=$(az containerapp show --resource-group "$RESOURCE_GROUP" \
-    --name "ca-$TARGET_ENVIRONMENT-web" \
-    --query "properties.configuration.ingress.ipSecurityRestrictions[?name=='founder-review'].ipAddressRange | [0]" \
-    -o tsv)
-  test "$live_access_cidr" = "$EXPECTED_ACCESS_CIDR"
-fi
 if [[ "$TARGET_ENVIRONMENT" == "demo" ]]; then
-  identity_fqdn=$(az containerapp show --resource-group "$RESOURCE_GROUP" \
-    --name "ca-demo-identity-edge" --query properties.configuration.ingress.fqdn -o tsv)
+  test "$EXPECTED_WEB_URL" = "https://cp.demo.waooaw.com"
+  declare -A custom_domains=(
+    [ca-demo-web]=cp.demo.waooaw.com
+    [ca-demo-identity-edge]=auth.demo.waooaw.com
+    [ca-demo-business-platform]=api.demo.waooaw.com
+  )
+  for app_name in "${!custom_domains[@]}"; do
+    hostname=${custom_domains[$app_name]}
+    az containerapp show --resource-group "$RESOURCE_GROUP" --name "$app_name" \
+      --query properties.configuration.ingress.customDomains -o json \
+      | jq -e --arg hostname "$hostname" \
+        'any(.[]; .name == $hostname and .bindingType == "SniEnabled")' >/dev/null
+  done
+  for attempt in $(seq 1 60); do
+    if curl --fail --silent --show-error --max-time 20 \
+      "$EXPECTED_WEB_URL/privacy" \
+      "$EXPECTED_WEB_URL/terms" \
+      "$EXPECTED_WEB_URL/data-deletion" \
+      "https://auth.demo.waooaw.com/realms/waooaw/.well-known/openid-configuration" \
+      "https://api.demo.waooaw.com/health/ready" >/dev/null; then
+      break
+    fi
+    test "$attempt" != 60 || {
+      echo "Demo custom domains did not become HTTPS-ready" >&2
+      exit 1
+    }
+    sleep 10
+  done
   keycloak_revision=$(jq -r '.latestReadyRevision' revision-evidence/keycloak-app.json)
   python3 "$(dirname "$0")/verify_google_deployment.py" \
-    --issuer "https://$identity_fqdn/realms/waooaw" \
+    --issuer "https://auth.demo.waooaw.com/realms/waooaw" \
     --web-url "$EXPECTED_WEB_URL" \
     --release-sha "$RELEASE_SHA" --keycloak-revision "$keycloak_revision" \
     --output google-deployment-verification.json
   python3 "$(dirname "$0")/verify_facebook_deployment.py" \
-    --issuer "https://$identity_fqdn/realms/waooaw" \
+    --issuer "https://auth.demo.waooaw.com/realms/waooaw" \
     --web-url "$EXPECTED_WEB_URL" \
     --release-sha "$RELEASE_SHA" --keycloak-revision "$keycloak_revision" \
     --output facebook-deployment-verification.json
+else
+  test "$EXPECTED_WEB_URL" = "https://$live_fqdn"
 fi
 jq -n \
   --arg environment "$TARGET_ENVIRONMENT" \

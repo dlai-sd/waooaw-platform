@@ -15,13 +15,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/press',
     '/constitution',
     '/privacy',
+    '/data-deletion',
     '/terms',
     '/cookies',
     '/refund',
     '/grievance',
   ];
   return [
-    ...fixed.map((path) => ({ url: absoluteUrl(path || '/'), lastModified: '2026-08-30' })),
+    ...fixed.map((path) => ({
+      url: absoluteUrl(path || '/'),
+      lastModified: '2026-08-30',
+    })),
     ...listPublicProfessionals().map(({ slug, modifiedAt }) => ({
       url: absoluteUrl(`/professionals/${slug}`),
       lastModified: modifiedAt,

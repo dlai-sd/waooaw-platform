@@ -21,10 +21,6 @@ variable "key_vault_secret_resource_ids" {
 }
 
 
-variable "founder_ipv4_cidr" {
-  type = string
-}
-
 variable "ghcr_packages_public" {
   type        = bool
   description = "Administrator attestation that all exact-seven GHCR packages allow anonymous digest pulls."

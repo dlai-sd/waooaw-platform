@@ -20,11 +20,6 @@ on:
         options:
           - plan
           - apply
-      access_ipv4:
-        description: "Demo only: IPv4 from https://api.ipify.org in the Founder review browser, never Codespace/runner egress"
-        required: false
-        type: string
-
 permissions:
   contents: read
   actions: read
@@ -41,7 +36,6 @@ jobs:
       release_run_id: ${{ steps.release.outputs.release_run_id }}
       release_sha: ${{ steps.release.outputs.release_sha }}
       lease_expires_at: ${{ steps.dispatch.outputs.lease_expires_at }}
-      access_cidr: ${{ steps.dispatch.outputs.access_cidr }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -50,15 +44,12 @@ jobs:
         env:
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
           EXECUTION_MODE: ${{ inputs.execution }}
-          ACCESS_IPV4: ${{ inputs.access_ipv4 }}
         run: |
           normalized=$(python3 scripts/goal006_dispatch_inputs.py \
             --environment "$TARGET_ENVIRONMENT" \
-            --execution "$EXECUTION_MODE" \
-            --access-ipv4 "$ACCESS_IPV4")
+            --execution "$EXECUTION_MODE")
           jq -e . >/dev/null <<< "$normalized"
           echo "lease_expires_at=$(jq -r '.lease_expires_at' <<< "$normalized")" >> "$GITHUB_OUTPUT"
-          echo "access_cidr=$(jq -r '.access_cidr' <<< "$normalized")" >> "$GITHUB_OUTPUT"
 
       - name: Select trusted current-main release
         id: release
@@ -104,7 +95,6 @@ jobs:
       release_sha: ${{ needs.authorize.outputs.release_sha }}
       apply: ${{ inputs.execution == 'apply' }}
       lease_expires_at: ${{ needs.authorize.outputs.lease_expires_at }}
-      access_cidr: ${{ needs.authorize.outputs.access_cidr }}
     secrets: inherit
 
   verify:
@@ -117,7 +107,6 @@ jobs:
       release_sha: ${{ needs.authorize.outputs.release_sha }}
       verification_client_id: ${{ needs.deploy.outputs.verification_client_id }}
       web_url: ${{ needs.deploy.outputs.web_url }}
-      expected_access_cidr: ${{ needs.authorize.outputs.access_cidr }}
     secrets: inherit
 
   publish-url:
@@ -131,7 +120,6 @@ jobs:
           RELEASE_RUN_ID: ${{ needs.authorize.outputs.release_run_id }}
           RELEASE_SHA: ${{ needs.authorize.outputs.release_sha }}
           WEB_URL: ${{ needs.deploy.outputs.web_url }}
-          ACCESS_CIDR: ${{ needs.authorize.outputs.access_cidr }}
         run: |
           test -n "$WEB_URL"
           {
@@ -140,7 +128,4 @@ jobs:
             echo "- URL: $WEB_URL"
             echo "- Release run: $RELEASE_RUN_ID"
             echo "- Release SHA: $RELEASE_SHA"
-            if test -n "$ACCESS_CIDR"; then
-              echo "- Access boundary: $ACCESS_CIDR"
-            fi
           } >> "$GITHUB_STEP_SUMMARY"

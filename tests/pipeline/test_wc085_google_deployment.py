@@ -75,7 +75,7 @@ def test_google_access_is_separate_and_secret_scoped() -> None:
     assert "scope                = each.value" in google
     assert 'role_definition_name = "Key Vault Secrets User"' in google
     assert (
-        'condition     = local.service_urls.identity_edge == "https://ca-demo-identity-edge.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io"'
+        'condition     = local.service_urls.identity_edge == "https://auth.demo.waooaw.com"'
         in google
     )
     assert "principal_id         = azurerm_user_assigned_identity.google_broker[0].principal_id" in google
