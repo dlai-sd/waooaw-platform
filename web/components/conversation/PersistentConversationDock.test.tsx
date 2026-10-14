@@ -15,6 +15,7 @@ describe('PersistentConversationDock', () => {
     localStorage.clear();
     mockUsePathname.mockReturnValue('/marketplace');
     Object.defineProperty(window, 'PointerEvent', { configurable: true, value: MouseEvent });
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1000 });
     window.matchMedia = jest.fn().mockReturnValue({ matches: false });
   });
 
@@ -68,7 +69,7 @@ describe('PersistentConversationDock', () => {
     expect(separator).toHaveAttribute('aria-valuenow', '560');
     fireEvent.keyDown(separator, { key: 'Home' });
     expect(separator).toHaveAttribute('aria-valuenow', '320');
-    expect(localStorage.getItem('waooaw:conversation-width')).toBe('320');
+    expect(localStorage.getItem('waooaw:conversation-width')).toBeNull();
   });
 
   it('resizes the desktop Guide by pointer movement', () => {
@@ -81,7 +82,7 @@ describe('PersistentConversationDock', () => {
     fireEvent.pointerMove(separator, { clientX: 620, pointerId: 1 });
 
     expect(separator).toHaveAttribute('aria-valuenow', '480');
-    expect(localStorage.getItem('waooaw:conversation-width')).toBe('480');
+    expect(localStorage.getItem('waooaw:conversation-width')).toBeNull();
   });
 
   it('covers portal route labels and mouse resizing in both directions', () => {

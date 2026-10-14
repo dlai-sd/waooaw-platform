@@ -513,6 +513,8 @@ builder.Services.AddScoped<IConversationExecutionGateway, HttpConversationExecut
 builder.Services.AddScoped<IOperationalMandateResolver, OperationalMandateResolver>();
 builder.Services.AddScoped<PerformanceReviewService>();
 builder.Services.AddScoped<ConversationService>();
+builder.Services.AddScoped<CustomerEngagementWorkspaceService>();
+builder.Services.AddScoped<CustomerEngagementAdmissionService>();
 builder.Services.Configure<Wc120ConversationOptions>(
     builder.Configuration.GetSection("Wc120Conversation")
 );

@@ -23,6 +23,7 @@ import { AccountSwitchCommand, SignOutCommand } from '@/components/auth/SignOutC
 import { SessionValidityGuard } from '@/components/auth/SessionValidityGuard';
 import { PersistentConversationDock } from '@/components/conversation/PersistentConversationDock';
 import type { IdentitySession } from '@/lib/api/generated/models/IdentitySession';
+import type { WorkspaceLayoutPreferencesV1 } from '@/lib/api/generated/models/WorkspaceLayoutPreferencesV1';
 import type { Messages } from '@/lib/i18n';
 import { portalMessages } from '@/lib/portal-i18n';
 import type { SupportedLocale } from '@/lib/preferences';
@@ -47,6 +48,7 @@ export function ProtectedAppShell({
   showKeyVaultAdmin = false,
   stopContext,
   variant,
+  workspaceLayout,
 }: {
   children: ReactNode;
   identitySession?: IdentitySession;
@@ -55,9 +57,10 @@ export function ProtectedAppShell({
   showKeyVaultAdmin?: boolean;
   stopContext?: StopContext;
   variant: ProtectedVariant;
+  workspaceLayout?: WorkspaceLayoutPreferencesV1;
 }) {
   const pathname = usePathname();
-  const [navigationExpanded, setNavigationExpanded] = useState(false);
+  const [navigationExpanded, setNavigationExpanded] = useState(workspaceLayout?.navigationVisibility === 'VISIBLE');
   const navigationToggle = useRef<HTMLButtonElement>(null);
   const accountDrawer = useRef<HTMLDetailsElement>(null);
   const accountToggle = useRef<HTMLElement>(null);
@@ -72,9 +75,6 @@ export function ProtectedAppShell({
   ];
   const links =
     variant === 'founder' ? [{ href: '/founder', label: messages.founderHome, icon: ShieldCheck }] : customerLinks;
-  useEffect(() => {
-    setNavigationExpanded(localStorage.getItem('waooaw:navigation-expanded') === 'true');
-  }, []);
   useEffect(() => {
     if (identitySession) recordAuthTransition('SESSION_RESOLVED');
   }, [identitySession]);
@@ -230,7 +230,13 @@ export function ProtectedAppShell({
         }
         bottomNavigation={bottomNavigation}
         conversationWorkspace={
-          variant === 'customer' && registeredCustomer ? <PersistentConversationDock locale={locale} /> : null
+          variant === 'customer' && registeredCustomer ? (
+            <PersistentConversationDock
+              conversationWidthPercent={workspaceLayout?.conversationWidthPercent}
+              locale={locale}
+              reduceMotion={workspaceLayout?.reduceMotion}
+            />
+          ) : null
         }
         messages={messages}
         sideNavigation={sideNavigation}

@@ -17,7 +17,11 @@ public sealed record AdmitEmploymentRelationshipRequest(
     string ProfessionalType,
     Guid ProfessionalAdmissionId,
     string ProfessionalVersion,
-    Guid? CorrelationId = null
+    Guid? CorrelationId = null,
+    Guid? ClientIntentId = null,
+    string? EngagementIntent = null,
+    string? DisclosureVersion = null,
+    string? SafeReturnTarget = null
 );
 
 public sealed record TransitionEmploymentRelationshipRequest(
@@ -267,6 +271,7 @@ public sealed record RelationshipTimelineEntryResponse(
 public sealed class EmploymentRelationshipsController : ControllerBase
 {
     private readonly EmploymentRelationshipService _service;
+    private readonly CustomerEngagementAdmissionService? _customerEngagementAdmission;
     private readonly RelationshipTrialService? _trials;
     private readonly EmploymentContractService? _contracts;
     private readonly EmploymentContractAcceptanceService? _contractAcceptances;
@@ -288,10 +293,12 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         RelationshipEmergencyStopService? emergencyStops = null,
         RelationshipConfigurationService? configuration = null,
         IProfessionalCatalog? professionalCatalog = null,
-        MyAgentsSelectionService? selections = null
+        MyAgentsSelectionService? selections = null,
+        CustomerEngagementAdmissionService? customerEngagementAdmission = null
     )
     {
         _service = service;
+        _customerEngagementAdmission = customerEngagementAdmission;
         _trials = trials;
         _contracts = contracts;
         _contractAcceptances = contractAcceptances;
@@ -469,6 +476,60 @@ public sealed class EmploymentRelationshipsController : ControllerBase
 
         try
         {
+            if (request.ClientIntentId.HasValue)
+            {
+                if (
+                    _customerEngagementAdmission is null
+                    || request.EvaluationIntentId != request.ClientIntentId.Value
+                    || request.EngagementIntent is not ("TRIAL" or "HIRE")
+                    || string.IsNullOrWhiteSpace(request.DisclosureVersion)
+                    || request.DisclosureVersion.Length > 128
+                    || request.SafeReturnTarget?.Length > 512
+                    || !Request.Headers.TryGetValue("Idempotency-Key", out var idempotencyKey)
+                    || idempotencyKey.ToString().Length is < 16 or > 128
+                )
+                    return ValidationProblem("Customer engagement admission fields are invalid.");
+                var canonicalHash = Convert.ToHexStringLower(
+                    System.Security.Cryptography.SHA256.HashData(
+                        System.Text.Encoding.UTF8.GetBytes(
+                            JsonSerializer.Serialize(
+                                new
+                                {
+                                    request.ClientIntentId,
+                                    request.EngagementIntent,
+                                    request.ProfessionalType,
+                                    request.ProfessionalAdmissionId,
+                                    request.ProfessionalVersion,
+                                    request.DisclosureVersion,
+                                    request.SafeReturnTarget,
+                                }
+                            )
+                        )
+                    )
+                );
+                Response.Headers.CacheControl = "no-store";
+                var outcome = await _customerEngagementAdmission.AdmitAsync(
+                    tenantId,
+                    participantId,
+                    request.ClientIntentId.Value,
+                    idempotencyKey.ToString(),
+                    canonicalHash,
+                    request.EngagementIntent,
+                    request.ProfessionalType,
+                    request.ProfessionalAdmissionId,
+                    request.ProfessionalVersion,
+                    request.DisclosureVersion,
+                    request.CorrelationId ?? Guid.NewGuid(),
+                    cancellationToken
+                );
+                return outcome.Replayed
+                    ? Ok(outcome)
+                    : CreatedAtAction(
+                        nameof(GetAsync),
+                        new { relationshipId = outcome.RelationshipId },
+                        outcome
+                    );
+            }
             var result = await _service.AdmitAsync(
                 tenantId,
                 participantId,
@@ -496,6 +557,16 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         {
             return Conflict(
                 new { error = "PROFESSIONAL_ADMISSION_BINDING_INVALID", detail = exception.Message }
+            );
+        }
+        catch (CustomerEngagementAdmissionConflictException)
+        {
+            return Conflict(
+                new
+                {
+                    error = "CUSTOMER_ENGAGEMENT_ADMISSION_CONFLICT",
+                    detail = "The replay identifiers were already used with different admission material.",
+                }
             );
         }
         catch (ConstitutionalActionDeniedException exception)

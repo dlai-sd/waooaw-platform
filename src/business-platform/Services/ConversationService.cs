@@ -481,6 +481,38 @@ public sealed class ConversationService
                 : "legacy";
     }
 
+    public async Task<ConversationProjection> EnsureConversationAsync(
+        Guid tenantId,
+        Guid relationshipId,
+        CancellationToken cancellationToken,
+        Guid? preparedConversationId = null
+    )
+    {
+        await using var db = await _conversationFactory.CreateDbContextAsync(cancellationToken);
+        var conversation = await GetOrCreateConversationAsync(
+            db,
+            tenantId,
+            relationshipId,
+            cancellationToken,
+            preparedConversationId
+        );
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            return conversation;
+        }
+        catch (DbUpdateException)
+        {
+            await using var replayDb = await _conversationFactory.CreateDbContextAsync(
+                cancellationToken
+            );
+            return await replayDb.Conversations.SingleAsync(
+                value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
+                cancellationToken
+            );
+        }
+    }
+
     public async Task<ConversationTimelinePageV1> ListMessagesAsync(
         Guid tenantId,
         Guid participantId,
@@ -1393,7 +1425,8 @@ public sealed class ConversationService
         ConversationStoreDbContext db,
         Guid tenantId,
         Guid relationshipId,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        Guid? preparedConversationId = null
     )
     {
         var conversation = await db.Conversations.SingleOrDefaultAsync(
@@ -1407,6 +1440,7 @@ public sealed class ConversationService
 
         conversation = new ConversationProjection
         {
+            ConversationId = preparedConversationId ?? Guid.NewGuid(),
             Environment = _environment,
             TenantId = tenantId,
             RelationshipId = relationshipId,

@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -739,6 +740,115 @@ public sealed class WhatsAppJourneyServiceTests
         );
     }
 
+    [Fact]
+    public async Task Wc121_StatusUsesSharedTruthAndEndSessionLeavesRelationshipActive()
+    {
+        var relationshipGateway = new RecordingRelationshipConstitutionalGateway();
+        var (service, factory, _) = Create(
+            relationshipGateway: relationshipGateway,
+            enableEngagementWorkspace: true
+        );
+        var now = DateTimeOffset.UtcNow;
+        var phone = "+919876543211";
+        var register = Body("wamid-cew-register", now, phone, "Show skills", "TIER_1_LOW_RISK");
+        await service.ReceiveAsync(register, Sign(register), now, CancellationToken.None);
+        await using var db = factory.CreateDbContext();
+        var tenantId = (await db.WhatsAppJourneyContacts.SingleAsync()).TenantId;
+        var relationshipId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        var evidenceId = Guid.NewGuid();
+        db.EmploymentRelationships.Add(
+            new EmploymentRelationship
+            {
+                TenantId = tenantId,
+                RelationshipId = relationshipId,
+                AgentInstanceId = Guid.NewGuid(),
+                ProfessionalType = "DMA",
+                ProfessionalVersion = "1.0.0",
+                EvaluationIntentId = Guid.NewGuid(),
+                InitiatingParticipantId = participantId,
+                State = EmploymentRelationshipState.Active,
+                StateVersion = 3,
+            }
+        );
+        db.RelationshipParticipants.Add(
+            new RelationshipParticipant
+            {
+                TenantId = tenantId,
+                RelationshipId = relationshipId,
+                ParticipantId = participantId,
+                Role = RelationshipParticipantRole.Employer,
+                BoundEvidenceId = evidenceId,
+            }
+        );
+        db.RelationshipStateHistory.Add(
+            new RelationshipStateHistory
+            {
+                TenantId = tenantId,
+                RelationshipId = relationshipId,
+                StateVersion = 3,
+                ToState = EmploymentRelationshipState.Active,
+                ActorParticipantId = participantId,
+                ActorRole = RelationshipParticipantRole.Employer,
+                CorrelationId = Guid.NewGuid(),
+                EvidenceId = evidenceId,
+            }
+        );
+        await db.SaveChangesAsync();
+        await service.AttachPhoneAsync(
+            tenantId,
+            relationshipId,
+            phone,
+            "conversation",
+            new PortalPhoneAttachProof(participantId, "TIER_4_PORTAL_FRESH", now, Guid.NewGuid()),
+            CancellationToken.None
+        );
+
+        var statusBody = Body(
+            "wamid-cew-status",
+            now.AddSeconds(1),
+            phone,
+            "STATUS",
+            "TIER_1_LOW_RISK"
+        );
+        var progress = await service.ReceiveAsync(
+            statusBody,
+            Sign(statusBody),
+            now.AddSeconds(1),
+            CancellationToken.None
+        );
+        Assert.Contains("DMA · Track work and customer outcomes", progress.Reply);
+        Assert.Contains("Delivery: UNKNOWN", progress.Reply);
+        Assert.Contains("Processing: WORKING", progress.Reply);
+        Assert.Contains("Evidence: COMPLETED", progress.Reply);
+        Assert.Contains("Commercial: UNKNOWN", progress.Reply);
+        Assert.Contains("Outcome: UNKNOWN", progress.Reply);
+        Assert.Contains("Next action: Review current work", progress.Reply);
+
+        var endBody = Body(
+            "wamid-cew-end-session",
+            now.AddSeconds(2),
+            phone,
+            "END SESSION",
+            "TIER_1_LOW_RISK"
+        );
+        var ended = await service.ReceiveAsync(
+            endBody,
+            Sign(endBody),
+            now.AddSeconds(2),
+            CancellationToken.None
+        );
+        Assert.Equal("END_SESSION", ended.JourneyStage);
+        Assert.Contains("employment relationship", ended.Reply, StringComparison.OrdinalIgnoreCase);
+        await using var verificationDb = factory.CreateDbContext();
+        Assert.Equal("ENDED", (await verificationDb.ChannelBindings.SingleAsync()).Status);
+        Assert.Equal(
+            EmploymentRelationshipState.Active,
+            (await verificationDb.EmploymentRelationships.SingleAsync()).State
+        );
+        Assert.Equal("END_CONVERSATION_CHANNEL_SESSION", relationshipGateway.LastActionType);
+    }
+
     private static (
         WhatsAppJourneyService Service,
         InMemoryEmploymentRelationshipFactory Factory,
@@ -746,7 +856,8 @@ public sealed class WhatsAppJourneyServiceTests
     ) Create(
         bool evidenceFails = false,
         IRelationshipConstitutionalGateway? relationshipGateway = null,
-        IRelationshipEmergencyStopGateway? stopGateway = null
+        IRelationshipEmergencyStopGateway? stopGateway = null,
+        bool enableEngagementWorkspace = false
     )
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
@@ -768,13 +879,21 @@ public sealed class WhatsAppJourneyServiceTests
                 stopGateway
             );
         }
+        var engagementWorkspace = enableEngagementWorkspace
+            ? new CustomerEngagementWorkspaceService(
+                factory,
+                new EphemeralDataProtectionProvider(),
+                relationshipGateway ?? new RecordingRelationshipConstitutionalGateway()
+            )
+            : null;
         return (
             new WhatsAppJourneyService(
                 factory,
                 evidence,
                 options,
                 relationshipGateway,
-                emergencyStops
+                emergencyStops,
+                engagementWorkspace: engagementWorkspace
             ),
             factory,
             evidence

@@ -29,12 +29,15 @@ import type {
   IdentitySession,
   IdentitySessionRevocation,
   IdentityVerificationChallenge,
+  ProblemDetail,
+  ReplaceWorkspaceLayoutPreferencesRequestV1,
   StartEmailVerificationRequest,
   StartIdentityAccountLinkRequest,
   StartIdentityRegistrationRequest,
   StartMobileVerificationRequest,
   UpdateCustomerProfileRequestV1,
   UpdateCustomerSettingsRequestV1,
+  WorkspaceLayoutPreferencesV1,
 } from "../models/index";
 import {
   ConfirmIdentityVerificationRequestFromJSON,
@@ -67,6 +70,10 @@ import {
   IdentitySessionRevocationToJSON,
   IdentityVerificationChallengeFromJSON,
   IdentityVerificationChallengeToJSON,
+  ProblemDetailFromJSON,
+  ProblemDetailToJSON,
+  ReplaceWorkspaceLayoutPreferencesRequestV1FromJSON,
+  ReplaceWorkspaceLayoutPreferencesRequestV1ToJSON,
   StartEmailVerificationRequestFromJSON,
   StartEmailVerificationRequestToJSON,
   StartIdentityAccountLinkRequestFromJSON,
@@ -79,6 +86,8 @@ import {
   UpdateCustomerProfileRequestV1ToJSON,
   UpdateCustomerSettingsRequestV1FromJSON,
   UpdateCustomerSettingsRequestV1ToJSON,
+  WorkspaceLayoutPreferencesV1FromJSON,
+  WorkspaceLayoutPreferencesV1ToJSON,
 } from "../models/index";
 
 export interface ApproveIdentityAccountLinkRequest {
@@ -88,7 +97,7 @@ export interface ApproveIdentityAccountLinkRequest {
 
 export interface CompleteIdentityRegistrationRequest {
   registrationId: string;
-  idempotencyKey: string;
+  idempotencyKey?: string;
 }
 
 export interface ConfirmAccountMobileVerificationRequest {
@@ -114,6 +123,11 @@ export interface GetIdentityAccountLinkRequest {
 
 export interface GetIdentityRegistrationRequest {
   registrationId: string;
+}
+
+export interface ReplaceWorkspaceLayoutPreferencesRequest {
+  idempotencyKey: string;
+  replaceWorkspaceLayoutPreferencesRequestV1: ReplaceWorkspaceLayoutPreferencesRequestV1;
 }
 
 export interface RevokeAllIdentitySessionsRequest {
@@ -259,13 +273,6 @@ export class IdentityApi extends runtime.BaseAPI {
       throw new runtime.RequiredError(
         "registrationId",
         'Required parameter "registrationId" was null or undefined when calling completeIdentityRegistration().',
-      );
-    }
-
-    if (requestParameters["idempotencyKey"] == null) {
-      throw new runtime.RequiredError(
-        "idempotencyKey",
-        'Required parameter "idempotencyKey" was null or undefined when calling completeIdentityRegistration().',
       );
     }
 
@@ -843,6 +850,52 @@ export class IdentityApi extends runtime.BaseAPI {
   }
 
   /**
+   * Get account-wide customer engagement workspace layout
+   */
+  async getWorkspaceLayoutPreferencesRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<WorkspaceLayoutPreferencesV1>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("BearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/identity/settings/workspace-layout`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      WorkspaceLayoutPreferencesV1FromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * Get account-wide customer engagement workspace layout
+   */
+  async getWorkspaceLayoutPreferences(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<WorkspaceLayoutPreferencesV1> {
+    const response = await this.getWorkspaceLayoutPreferencesRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
    * Returns provider aliases, usability state, and masked identifiers only. Business Platform never exposes provider subjects, tokens, or another account\'s existence.
    * List minimised login-method summaries for the authenticated customer
    */
@@ -972,6 +1025,84 @@ export class IdentityApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<IdentityManagedSessionCollection> {
     const response = await this.listIdentitySessionsRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Replace account-wide customer engagement workspace layout
+   */
+  async replaceWorkspaceLayoutPreferencesRaw(
+    requestParameters: ReplaceWorkspaceLayoutPreferencesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<WorkspaceLayoutPreferencesV1>> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling replaceWorkspaceLayoutPreferences().',
+      );
+    }
+
+    if (
+      requestParameters["replaceWorkspaceLayoutPreferencesRequestV1"] == null
+    ) {
+      throw new runtime.RequiredError(
+        "replaceWorkspaceLayoutPreferencesRequestV1",
+        'Required parameter "replaceWorkspaceLayoutPreferencesRequestV1" was null or undefined when calling replaceWorkspaceLayoutPreferences().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(
+        requestParameters["idempotencyKey"],
+      );
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("BearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/identity/settings/workspace-layout`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "PUT",
+        headers: headerParameters,
+        query: queryParameters,
+        body: ReplaceWorkspaceLayoutPreferencesRequestV1ToJSON(
+          requestParameters["replaceWorkspaceLayoutPreferencesRequestV1"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      WorkspaceLayoutPreferencesV1FromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * Replace account-wide customer engagement workspace layout
+   */
+  async replaceWorkspaceLayoutPreferences(
+    requestParameters: ReplaceWorkspaceLayoutPreferencesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<WorkspaceLayoutPreferencesV1> {
+    const response = await this.replaceWorkspaceLayoutPreferencesRaw(
+      requestParameters,
+      initOverrides,
+    );
     return await response.value();
   }
 

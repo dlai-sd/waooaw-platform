@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { ProtectedAppShell } from '@/components/shell/ProtectedAppShell';
 import { StateView } from '@/components/system/StateView';
-import { getIdentitySession } from '@/lib/api/identity';
+import { getIdentitySession, getWorkspaceLayoutPreferences } from '@/lib/api/identity';
 import { getRequestI18n } from '@/lib/i18n-server';
 import { isKeyVaultPortalAdministrator, keyVaultTarget } from '@/lib/key-vault-admin';
 import { getServerAccessToken } from '@/lib/server-auth';
@@ -43,11 +43,13 @@ export default async function ApplicationLayout({ children }: { children: ReactN
       </ProtectedAppShell>
     );
   }
+  const workspaceLayout = identity.kind === 'ready' ? await getWorkspaceLayoutPreferences(accessToken) : undefined;
   return (
     <ProtectedAppShell
       identitySession={identity.kind === 'ready' ? identity.session : undefined}
       locale={locale}
       messages={messages}
+      workspaceLayout={workspaceLayout}
       showKeyVaultAdmin={isKeyVaultPortalAdministrator(accessToken) && keyVaultTarget() !== undefined}
       variant="customer"
     >

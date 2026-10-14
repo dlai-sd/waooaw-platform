@@ -73,9 +73,10 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
       'updateConversationReadPosition',
       'streamConversation',
       'cancelConversationExecution',
+      'endConversationChannelSession',
     ])
       expect(generated).toContain(`async ${operation}(`);
-    expect(generated.match(/token\("BearerAuth", \[\]\)/g)).toHaveLength(8);
+    expect(generated.match(/token\("BearerAuth", \[\]\)/g)).toHaveLength(9);
     expect(identity).toContain('token("BearerAuth", [])');
     expect(identity).toContain('token("PreAccountBearerAuth", [])');
     expect(generated).toContain('The version of the OpenAPI document: 1.10.0');

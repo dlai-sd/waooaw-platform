@@ -87,6 +87,7 @@ public sealed partial class WhatsAppJourneyService
     private readonly ConversationStopFence? _stopFence;
     private readonly ConversationService? _conversationService;
     private readonly WhatsAppOutboxService? _outboxService;
+    private readonly CustomerEngagementWorkspaceService? _engagementWorkspace;
 
     public WhatsAppJourneyService(
         IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
@@ -98,7 +99,8 @@ public sealed partial class WhatsAppJourneyService
         IOptions<Wc120ConversationOptions>? conversationOptions = null,
         ConversationStopFence? stopFence = null,
         ConversationService? conversationService = null,
-        WhatsAppOutboxService? outboxService = null
+        WhatsAppOutboxService? outboxService = null,
+        CustomerEngagementWorkspaceService? engagementWorkspace = null
     )
     {
         _dbFactory = dbFactory;
@@ -115,6 +117,7 @@ public sealed partial class WhatsAppJourneyService
         _stopFence = stopFence;
         _conversationService = conversationService;
         _outboxService = outboxService;
+        _engagementWorkspace = engagementWorkspace;
     }
 
     public async Task<WhatsAppJourneyReceipt> ReceiveAsync(
@@ -429,6 +432,47 @@ public sealed partial class WhatsAppJourneyService
             reply =
                 "Emergency Stop confirmed for the relationship. All known evaluation and trial sessions were halted; later consequential commands remain blocked.";
         }
+        else if (
+            binding is not null
+            && _engagementWorkspace is not null
+            && IsEndSessionRequest(proof.Text)
+        )
+        {
+            var ended = await _engagementWorkspace.EndChannelSessionAsync(
+                contact.TenantId,
+                binding.ParticipantId,
+                binding.RelationshipId,
+                binding.BindingId,
+                proof.MessageId,
+                proof.PayloadDigest ?? HmacHex(_webhookSecret, proof.MessageId),
+                0,
+                proof.CorrelationId,
+                cancellationToken
+            );
+            contact.PendingMediumRiskConfirmation = false;
+            contact.JourneyStage = "END_SESSION";
+            status = "ACCEPTED";
+            reply =
+                $"WhatsApp session ended at {ended.EndedAt:O}. Your employment relationship and secure portal conversation remain active.";
+        }
+        else if (
+            binding is not null
+            && attachedRelationship is not null
+            && _engagementWorkspace is not null
+            && IsProgressRequest(proof.Text)
+        )
+        {
+            var progress = await _engagementWorkspace.GetProgressAsync(
+                contact.TenantId,
+                binding.ParticipantId,
+                binding.RelationshipId,
+                cancellationToken
+            );
+            contact.PendingMediumRiskConfirmation = false;
+            contact.JourneyStage = progress.LifecycleStage;
+            status = "ACCEPTED";
+            reply = PresentProgress(attachedRelationship, progress);
+        }
         else if (riskTier == "TIER_4_CONSEQUENTIAL")
         {
             contact.PendingMediumRiskConfirmation = false;
@@ -461,6 +505,7 @@ public sealed partial class WhatsAppJourneyService
         if (
             status == "ACCEPTED"
             && contact.JourneyStage != "STOP"
+            && contact.JourneyStage != "END_SESSION"
             && _conversationService is not null
             && binding is not null
         )
@@ -1200,6 +1245,44 @@ public sealed partial class WhatsAppJourneyService
         return (
             "DISCOVER",
             "Tell me the business outcome you need. I will compare lawful suitable professionals and explain why they fit."
+        );
+    }
+
+    private static bool IsProgressRequest(string text)
+    {
+        var normalized = text.Trim().ToUpperInvariant();
+        return normalized.Contains("STATUS", StringComparison.Ordinal)
+            || normalized.Contains("PROGRESS", StringComparison.Ordinal)
+            || normalized.Contains("NEXT ACTION", StringComparison.Ordinal);
+    }
+
+    private static bool IsEndSessionRequest(string text)
+    {
+        var normalized = text.Trim().ToUpperInvariant();
+        return normalized is "END SESSION" or "END WHATSAPP SESSION" or "LOG OUT WHATSAPP";
+    }
+
+    private static string PresentProgress(
+        EmploymentRelationship relationship,
+        CustomerEngagementProgress progress
+    )
+    {
+        var item = progress.Items.FirstOrDefault();
+        if (item is null)
+            return "Current progress is unavailable. No success or completion is inferred. Try again or open the secure portal.";
+        var nextAction = item.NextAction?.Label ?? "Wait for owner-confirmed progress.";
+        return string.Join(
+            "\n",
+            $"{relationship.ProfessionalType} · {progress.Headline}",
+            $"Lifecycle: {progress.LifecycleStage}",
+            $"State: {item.State}",
+            $"Delivery: {item.Truth.Delivery}",
+            $"Processing: {item.Truth.Processing}",
+            $"Evidence: {item.Truth.Evidence}",
+            $"Commercial: {item.Truth.Commercial}",
+            $"Outcome: {item.Truth.Outcome}",
+            $"Next action: {nextAction}",
+            $"Open the secure portal for {item.NextAction?.Focus.Label ?? "the current relationship workspace"}."
         );
     }
 
