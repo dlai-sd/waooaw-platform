@@ -5,8 +5,8 @@
 | Field | Value |
 |---|---|
 | Work Contract | WC-123 |
-| Version | 1.0.0-candidate.8 |
-| Status | AUTHOR REVIEW PASS - AUTHZ-GATE-01 AND FOUNDER ACCEPTANCE REQUIRED - IMPLEMENTATION BLOCKED |
+| Version | 1.0.0-candidate.9 |
+| Status | AUTHOR REVIEW PASS - AUTHZ-GATE-01 RESOLVED - IMPLEMENTATION AUTHORITY REQUIRED |
 | Authorizing authority | Founder acceptance of the exact candidate plus explicit current-session implementation authorization |
 | Specification office | Chief Solution Architect, Office 05 |
 | Implementation office | Platform IT Expert, Office 10 |
@@ -113,19 +113,20 @@ accounts, observability, rollback, incident owner, and spend boundary.
 
 ### 2.6 AUTHZ-GATE-01 before Keycloak lifecycle mutation
 
-ADR-008 Amendment 3 authorizes only the stock broker and the WC-085 read-only BP identity client.
-Before link, unlink, recovery, or principal rebinding is implemented, the accepted package must
-name and prove one exact stock-Keycloak proof/mutation interface, supported pinned-version behavior,
-least-privilege credential and accountable owner, private route, idempotency/read-back semantics,
-ambiguous-outcome compensation, upgrade test, and customer-visible consequence. The interface must
-not broaden the WC-085 reader implicitly.
+**Resolved by ADR-008 Amendment 4 and CSA-AUTH-001 Section 10.1.** Link, unlink, recovery, and
+principal rebinding use only the separate `waooaw-bp-identity-lifecycle-writer`, stock Keycloak
+25.0.6 Admin REST GET/list/POST/DELETE federated-identity surface, exact
+`realm-management/manage-users` service-account grant, Platform Operations credential ownership,
+separate Key Vault secret, private no-redirect route, operation-bound proof, durable idempotency,
+mandatory read-back, ambiguous-outcome reconciliation/compensation, audit redaction, upgrade
+qualification, revocation/emergency stop, and rollback contract accepted there.
 
-The Chief Solution Architect must return the option to Enterprise Architecture and the Founder when
-it requires a writer/admin privilege, custom provider or image, new deployable, managed CIAM,
-unsupported endpoint, or customer route/control/copy change. The Founder must also decide whether
-to defer the required lifecycle capability if no acceptable stock interface exists. Until accepted,
-the identity-mutation tasks in AUTH-WC-05 and all dependent completion claims remain `BLOCKED`;
-logout, switching, revocation, and non-mutating design evidence do not satisfy that gate.
+The WC-085 `waooaw-bp-identity-reader` remains unchanged and read-only. The implementation must
+acknowledge that `manage-users` is realm-wide user-management authority; it must not claim
+endpoint-scoped Keycloak enforcement or use unsupported Preview fine-grained permissions. The
+closed adapter authorizes only the four operations in CSA-AUTH-001 Section 10.1 and exposes no
+generic Admin REST proxy. Any other endpoint, role, client reuse, custom provider/image, managed
+CIAM, new route/control/copy, or scope expansion stops for a new accepted amendment.
 
 ## 3. Constitutional And Architectural Basis
 
@@ -371,8 +372,7 @@ the first implementation commit. A required path outside these roots stops for a
 
 ### 7.5 AUTH-WC-05 - Lifecycle Commands, Linking, And Recovery
 
-**Depends on:** 03-04; `AUTHZ-GATE-01` additionally gates provider link, unlink, recovery, and
-principal-rebinding mutation.
+**Depends on:** 03-04 and accepted ADR-008 Amendment 4 / CSA-AUTH-001 Section 10.1.
 
 **Outcome:** every lifecycle command has distinct scope, state transition, race behavior, and evidence.
 
@@ -400,9 +400,11 @@ principal-rebinding mutation.
    session revocation, with no stale account content. Make tenant-switch cancellation, stale
    selection, and dependency failure preserve the existing selection and expose no unauthorized
    membership option.
-10. For provider link, unlink, recovery, or principal rebinding, first satisfy `AUTHZ-GATE-01`.
-    Never reuse or broaden the WC-085 read-only Keycloak client, invent a writer, or add a custom
-    provider/image as an implementation detail.
+10. For provider link, unlink, recovery, or principal rebinding, use only the accepted separate
+    `waooaw-bp-identity-lifecycle-writer` and exact four-operation contract in ADR-008 Amendment 4
+    and CSA-AUTH-001 Section 10.1. Never reuse or broaden the WC-085 reader, add another endpoint or
+    role, expose a generic proxy, claim unsupported endpoint-scoped enforcement, or add a custom
+    provider/image.
 
 **Completion**
 
@@ -828,10 +830,12 @@ and implementation discretion.
 3. Customer-visible changes are separately gated; backend/provider state cannot silently authorize
    presentation.
 4. Managed CIAM comparison is closed for this bounded contract with stock Keycloak retained.
-5. The exact stock-Keycloak lifecycle mutation interface remains outside accepted authority.
-   `AUTHZ-GATE-01`, `WC123-R029`, and `WC123-R047` correctly block identity mutation and dependent
-   completion rather than permitting implementation invention.
+5. ADR-008 Amendment 4 and CSA-AUTH-001 Section 10.1 now bind the exact stock-Keycloak lifecycle
+   mutation client, role, endpoints, proof, read-back/compensation, customer, audit, upgrade, stop,
+   and rollback contract. `WC123-R029` and `WC123-R047` are planned implementation requirements,
+   not architecture-blocked rows.
 
-**Author-review result:** PASS FOR CANDIDATE SUBMISSION. No unresolved defect remains within Chief
-Solution Architect authority. The named external decision and authorization gates remain blocking.
-This is self-verification, not approval, implementation authority, or independent assurance.
+**Author-review result:** PASS FOR AMENDED CANDIDATE SUBMISSION. `AUTHZ-GATE-01` is resolved.
+Explicit current-session implementation authority and the protected provider, cloud, deployment,
+traffic, activation, approval, and merge gates remain blocking. This is self-verification, not
+implementation authorization, approval, or independent assurance.

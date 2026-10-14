@@ -1,11 +1,11 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-123
 contract_path: work-contracts/WC-123-authentication-authorization-implementation.md
-contract_digest: f1ded2acc5093395bbae1ddb1df2775e32a6b9c1c4abe9e2861c3e827cc69f99
+contract_digest: eee8d86f6589ded0fdcd16dd0050762aeca9114ae9f1f33f4051697aa61ab3db
 enterprise_path: architecture/reference/components/authentication-authorization-enterprise-requirements.md
 solution_path: architecture/reference/components/authentication-authorization-simplification-solution-contract.md
-solution_digest: 16afccde6187626f8e12769348b7bb4ad0f8bd2447f05ab781864eed5449ada7
-contract_status: AUTHOR_REVIEW_PASS_AUTHZ_GATE_01_AND_FOUNDER_ACCEPTANCE_REQUIRED_IMPLEMENTATION_BLOCKED
+solution_digest: ddab5720b4eae6de0a0093a939234f90d8c3e189a98ee805c9657bfd8ad56063
+contract_status: AUTHOR_REVIEW_PASS_AUTHZ_GATE_01_RESOLVED_IMPLEMENTATION_AUTHORITY_REQUIRED
 implementation_scope: true
 result: PLANNED
 row_extension_contract: >-
@@ -261,14 +261,13 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC123-R029
-    source_requirements: ER-AUTH-002, ER-AUTH-009, ER-AUTH-010, CSA-AUTH-001 Sections 10 and 21
+    source_requirements: ER-AUTH-002, ER-AUTH-009, ER-AUTH-010, ADR-008 Amendment 4, CSA-AUTH-001 Sections 10, 10.1, and 21
     component: AUTH-WC-05
     observable_outcome: Link, unlink, and recovery are Keycloak-authoritative idempotent sagas whose ambiguous or partial outcomes never become success or a usable divergent binding.
     owner: Platform IT Expert - identity lifecycle
     oracle: Timeout-after-commit, timeout-before-commit, read-back disagreement, blind-retry, compensation, collision, concurrent mutation, and old-session denial tests.
-    initial_state: blocked
-    dependencies: AUTHZ-GATE-01 acceptance of the exact stock-Keycloak lifecycle interface and authority, plus the default dependencies
-    blocker: ADR-008 Amendment 3 authorizes only the WC-085 read-only identity client; no accepted proof/mutation interface or least-privilege writer authority exists for WC-123 lifecycle mutation.
+    dependencies: Accepted ADR-008 Amendment 4 and CSA-AUTH-001 Section 10.1, plus the default dependencies
+    residual_risk: The supported manage-users role is realm-wide user-management authority; separation, private routing, the closed adapter, audit, revocation, and upgrade tests reduce but do not misrepresent that accepted risk.
 
   - <<: *defaults
     requirement_id: WC123-R030
@@ -408,14 +407,13 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC123-R047
-    source_requirements: ER-AUTH-002, ER-AUTH-009, ADR-008 Amendment 3, CSA-AUTH-001 Sections 3.2, 10, 12.5, 20.2, and AUTHZ-GATE-01
+    source_requirements: ER-AUTH-002, ER-AUTH-009, ADR-008 Amendments 3 and 4, CSA-AUTH-001 Sections 3.2, 10, 10.1, 12.5, and 20.2
     component: AUTH-WC-01, AUTH-WC-05
     observable_outcome: Provider-link lifecycle mutation uses only an explicitly accepted, supported stock-Keycloak proof/mutation interface with least privilege, private routing, deterministic read-back/compensation, and no implicit expansion of the WC-085 reader boundary.
     owner: Chief Solution Architect - option contract; Chief Enterprise Architect and Founder - boundary acceptance; Platform IT Expert - implementation after acceptance
     oracle: Accepted option record plus actual-client privilege denial, exact-endpoint, proof-of-control, idempotency, ambiguous-outcome, read-back, upgrade, route, audit, and no-custom-provider/image tests.
-    initial_state: blocked
-    dependencies: AUTHZ-GATE-01 and explicit Founder acceptance where the option expands privilege, component, provider image, presentation, or scope; plus the default dependencies
-    blocker: No accepted stock-Keycloak lifecycle proof/mutation interface or least-privilege authority is named.
+    dependencies: Accepted ADR-008 Amendment 4 and CSA-AUTH-001 Section 10.1; plus the default dependencies
+    residual_risk: Stock Keycloak 25.0.6 requires realm-wide manage-users for the accepted writes; the oracle must verify the exact role and closed adapter without claiming unsupported endpoint-scoped enforcement.
 
   - <<: *defaults
     requirement_id: WC123-R048

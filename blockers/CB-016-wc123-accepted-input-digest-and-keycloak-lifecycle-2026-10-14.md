@@ -6,18 +6,19 @@
 | `record_id` | `CB-016` |
 | `record_type` | Constitutional Blocker |
 | `produced_at` | `2026-10-14` |
-| Status | **OPEN** |
+| Status | **CLOSED — 2026-10-14** |
 | Raised by | INST-010 - Platform IT Expert |
 | Affected work | WC-123 implementation intake and AUTH-WC-05 through AUTH-WC-07 |
 | Constitutional basis | C-023, C-059, C-065, C-080; WC-123 Sections 2.1, 2.6, 4, 15, and 16 |
-| Resolution authority | Chief Solution Architect and Founder for AUTHZ-GATE-01; Founder for accepted-input amendment |
+| Resolution authority | Chief Enterprise Architect and Founder under the bounded 2026-10-14 repair authorization |
 
 ## Blocking Facts
 
-The Founder authorized bootstrap and WC-123 implementation in the current session. The selected
-worktree is clean on `ib/123/authentication-authorization-runtime` at
-`787c428841743ab2c8c112e65397e6937b35a772`, with `origin/main` as an ancestor. Process-control
-version `wc100-r033-v1` and all three declared process-source digests pass.
+At intake, the selected worktree was clean on
+`ib/123/authentication-authorization-runtime` at
+`b7507501939072c6dd589e18c6fa5a7332860e3e`, with `origin/main` as an ancestor. Process-control
+version `wc100-r033-v1` and all three declared process-source digests passed. The Founder then
+authorized only the bounded Office 04 architecture repair recorded below, not implementation.
 
 The repository Docker runner validates all 48 WC-123 requirement rows and the complete Work Contract
 digest. The accepted input package is nevertheless internally stale:
@@ -56,3 +57,45 @@ ambiguous-outcome compensation, upgrade test, or customer-visible consequence.
 Silently rewriting the digest, broadening the WC-085 read-only client, inventing a writer or custom
 provider, weakening the gate, or implementing only the unblocked subset while claiming WC-123
 completion is prohibited.
+
+## Resolution And Closure Evidence
+
+The Founder-authorized Chief Enterprise Architect repair accepted ADR-008 Amendment 4 and integrated
+its binding decision into CSA-AUTH-001 candidate 9, WC-123 candidate 9, and the requirement ledger.
+`AUTHZ-GATE-01` is resolved by:
+
+- the separate confidential client `waooaw-bp-identity-lifecycle-writer`;
+- stock Keycloak 25.0.6 Admin REST exact-user/federated-identity GET plus provider POST/DELETE;
+- only `realm-management/manage-users`, with its realm-wide user-management residual risk stated
+  rather than misrepresented as endpoint-scoped enforcement;
+- Platform Operations credential ownership, a separate Key Vault secret, private TLS/no redirects,
+  no browser/provider selection or token exposure, and no generic Admin REST proxy;
+- operation-bound proof, persisted idempotency, mandatory read-back, ambiguous-outcome
+  reconciliation/compensation/quarantine, session revocation, and provider-neutral customer
+  outcomes;
+- pinned-version/upgrade tests, audit redaction, client/role/secret revocation, emergency stop, and
+  rollback; and
+- strict preservation of Amendment 3's `waooaw-bp-identity-reader`, secret, `view-users` grant, and
+  read-only runtime.
+
+The ledger now binds:
+
+| Input | Final SHA-256 |
+|---|---|
+| `work-contracts/WC-123-authentication-authorization-implementation.md` | `eee8d86f6589ded0fdcd16dd0050762aeca9114ae9f1f33f4051697aa61ab3db` |
+| `architecture/reference/components/authentication-authorization-simplification-solution-contract.md` | `ddab5720b4eae6de0a0093a939234f90d8c3e189a98ee805c9657bfd8ad56063` |
+
+Repository Docker validation passed:
+
+```text
+python scripts/validate_requirement_ledger.py --ledger work-contracts/WC-123-requirements.yaml --contract work-contracts/WC-123-authentication-authorization-implementation.md
+Requirement ledger validation passed: 48 requirements
+
+pytest -q tests/pipeline/test_requirement_ledger.py tests/pipeline/test_validation_policy.py tests/pipeline/test_agent_operating_policy.py
+38 passed
+```
+
+Both blocking conditions are therefore resolved and CB-016 is closed. Closure does not declare
+`AUTH-WC-01 START`: the exact amended candidate still requires its normal acceptance/freeze and a
+separate explicit Founder implementation authorization for a Platform IT Expert session. It does
+not authorize provider/cloud mutation, deployment, traffic, activation, approval, or merge.
