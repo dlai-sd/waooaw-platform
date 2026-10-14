@@ -58,6 +58,7 @@ commands:
   requirement-ledger: {shell: "python scripts/validate_requirement_ledger.py --repository-root /workspace --changed-file-list test-results/wc102/changed-files.txt"}
   author-review-gate: {shell: "sh scripts/validation_control/run_c065_gate.sh"}
   authorization-tier-check: {shell: "sh scripts/validation_control/run_c066_gate.sh"}
+  wc123-impact-manifest: {shell: "pytest tests/pipeline/test_wc123_impact_manifest.py -q"}
   quality-scripts: {shell: "ruff check scripts/ --config pyproject.toml && ruff format --check scripts/ && pytest tests/validation_control/test_unified_execution_contract.py tests/validation_control/test_wc104_rollback.py -q && pytest tests/validation_control/test_pilot.py tests/validation_control/test_wc109_value_pilot.py -q && python scripts/seed-prompts.py --dry-run"}
   quality-commitlint: {shell: "sh scripts/validation_control/run_commitlint_quality_gate.sh"}
   quality-dotnet-constitutional-engine: {shell: "sh scripts/validation_control/run_dotnet_quality_gate.sh src/constitutional-engine constitutional-engine"}
@@ -151,6 +152,7 @@ gates:
   requirement-ledger: {<<: *python_static, gate_id: requirement-ledger, command_id: requirement-ledger, evidence_class: contract, global_trigger: true}
   author-review-gate: {<<: *python_static, gate_id: author-review-gate, command_id: author-review-gate, evidence_class: contract, global_trigger: true}
   authorization-tier-check: {<<: *python_static, gate_id: authorization-tier-check, command_id: authorization-tier-check, evidence_class: CCT, global_trigger: true}
+  wc123:impact-manifest: {<<: *python_static, gate_id: "wc123:impact-manifest", command_id: wc123-impact-manifest, evidence_class: contract, cost_class: FOCUSED}
   quality:scripts: {<<: *python_static, gate_id: "quality:scripts", command_id: quality-scripts, evidence_class: static, global_trigger: true}
   quality:commitlint: {<<: *python_static, gate_id: "quality:commitlint", runner_id: typescript, command_id: quality-commitlint, evidence_class: contract, resources: *typescript_resources, global_trigger: true}
   quality:dotnet:constitutional-engine: {<<: *python_static, gate_id: "quality:dotnet:constitutional-engine", runner_id: dotnet, command_id: quality-dotnet-constitutional-engine, resources: *dotnet_resources, global_trigger: true}
