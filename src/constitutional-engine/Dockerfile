@@ -20,7 +20,7 @@ RUN apk add --no-cache git \
     && go get "golang.org/x/net@${GOLANG_X_NET_VERSION}" \
     && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /grpc_health_probe .
 
-FROM mcr.microsoft.com/dotnet/aspnet:9.0@sha256:2680706c9656fafe34876446d694fd25077fd0b5da478f38d56073ac6c21d37e
+FROM mcr.microsoft.com/dotnet/aspnet:9.0.21@sha256:4d94cf3204df98d321e8dbf8d6d06e0b34fd136aa75c945abf4390ee07eb30dd
 ARG SECURITY_REFRESH=local
 RUN test -n "$SECURITY_REFRESH" \
     && apt-get update \

@@ -141,11 +141,20 @@ def test_release_images_pin_fixed_security_dependencies() -> None:
     constitutional_engine = (
         REPO_ROOT / "src/constitutional-engine/Dockerfile"
     ).read_text(encoding="utf-8")
+    business_platform = (REPO_ROOT / "src/business-platform/Dockerfile").read_text(
+        encoding="utf-8"
+    )
     ai_requirements = (REPO_ROOT / "src/ai-runtime/requirements.txt").read_text(
         encoding="utf-8"
     )
 
     assert "GRPC_GO_VERSION=v1.83.2" in constitutional_engine
+    fixed_aspnet_runtime = (
+        "mcr.microsoft.com/dotnet/aspnet:9.0.21"
+        "@sha256:4d94cf3204df98d321e8dbf8d6d06e0b34fd136aa75c945abf4390ee07eb30dd"
+    )
+    assert fixed_aspnet_runtime in constitutional_engine
+    assert fixed_aspnet_runtime in business_platform
     assert "transformers==5.10.0" in ai_requirements
 
 
@@ -153,6 +162,18 @@ def test_web_configuration_is_runtime_external() -> None:
     content = (REPO_ROOT / "web/Dockerfile").read_text(encoding="utf-8")
     assert "ARG NEXT_PUBLIC_" not in content
     assert "'libcrypto3>=3.5.8-r0' 'libssl3>=3.5.8-r0'" in content
+
+
+def test_web_build_uses_non_secret_authentication_configuration() -> None:
+    content = (REPO_ROOT / "web/Dockerfile").read_text(encoding="utf-8")
+    build_stages, final_stage = content.rsplit("\nFROM node:", maxsplit=1)
+
+    assert "KEYCLOAK_ISSUER=https://build.invalid/realms/waooaw" in build_stages
+    assert "KEYCLOAK_EXPECTED_ISSUER=https://build.invalid/realms/waooaw" in build_stages
+    assert "WAOOAW_SERVER_SESSION_MODE=enforced" in build_stages
+    assert "KEYCLOAK_ISSUER=" not in final_stage
+    assert "KEYCLOAK_EXPECTED_ISSUER=" not in final_stage
+    assert "WAOOAW_SERVER_SESSION_MODE=" not in final_stage
 
 
 def test_web_dependency_stage_copies_pnpm_patches_before_install() -> None:
