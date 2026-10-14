@@ -1,0 +1,136 @@
+schema: waooaw.authentication-authorization-capacity-profile/v1
+profile_id: wc123-auth-capacity-v1
+version: 1.0.0
+status: ACCEPTED
+accepted_by: Chief Platform Architect
+accepted_at: 2026-10-14
+scope:
+  environments:
+    - demo
+    - uat
+  workload: web
+  production_authorized: false
+
+shared:
+  database:
+    architecture: PgBouncer transaction pooling between Web and application PostgreSQL
+    application_connection_limit: 100
+    migration_and_operations_reserve: 20
+    per_replica_web_session_pool: 5
+    connection_ceiling_percent: 80
+    sources:
+      - adr/ADR-027-cloud-architecture-optimization.md#o-05-pgbouncer-connection-pooling
+      - infrastructure/postgres/pgbouncer/pgbouncer.ini
+      - architecture/reference/components/authentication-authorization-simplification-solution-contract.md#127-capacity-and-timeout-budget
+    rationale: >-
+      PostgreSQL max_connections remains 100 and Web uses the accepted PgBouncer transaction-pooling
+      architecture. Twenty connections remain unavailable to Web replica pools for additive migration,
+      operations, recovery, and non-Web application activity. Five client connections per Web replica
+      matches ADR-027's accepted per-service replica sizing and keeps UAT below the 80-percent ceiling.
+  aca:
+    concurrent_requests_per_replica: 30
+    source: infrastructure/container-apps/scaling-rules.yaml#web
+    rationale: The existing Web ACA HTTP scaling threshold is retained rather than replaced.
+  request_budgets_ms:
+    request: 10000
+    refresh: 10000
+    callback: 15000
+    lifecycle: 15000
+  timeouts:
+    pool_acquisition:
+      milliseconds: 1000
+      callers: [request, refresh, callback, lifecycle]
+    refresh_lock:
+      milliseconds: 1500
+      callers: [refresh]
+    statement:
+      milliseconds: 5000
+      callers: [request, refresh, callback, lifecycle]
+    bp_membership:
+      milliseconds: 3000
+      callers: [request, callback, lifecycle]
+    redis:
+      milliseconds: 500
+      callers: [request, refresh, callback, lifecycle]
+    identity_provider:
+      milliseconds: 5000
+      callers: [refresh, callback, lifecycle]
+    rationale: >-
+      Every dependency timeout is finite and no longer than any calling request budget. The remaining
+      request time is reserved for local validation, response serialization, and typed overload handling.
+  per_principal_concurrency:
+    requests: 4
+    callbacks: 2
+    lifecycle: 2
+    refreshes_per_session_family: 1
+    rationale: >-
+      A principal cannot occupy an environment queue, and a session family has exactly one refresh
+      lease holder; contending refreshes receive the accepted typed retry response.
+  overload_and_retry:
+    request_queue_overflow_status: 429
+    dependency_or_lifecycle_overload_status: 503
+    retry_after_seconds_max: 10
+    retry_attempts_max: 3
+    retry_backoff_initial_ms: 250
+    retry_backoff_max_ms: 2000
+    jitter_required: true
+    queue_admission: reject_before_work
+    rationale: >-
+      Queues never grow without bound. Retry-After and client retries are capped, exponential backoff
+      remains inside the shortest request budget, and overload is rejected before database or provider work.
+  cost:
+    currency: INR
+    period: month
+    ceiling_per_environment: 10000
+    constitutional_source: C-067
+    rationale: Capacity acceptance changes no deployed SKU and remains inside the existing Demo/UAT ceiling.
+
+environments:
+  demo:
+    web:
+      minimum_replicas: 1
+      maximum_replicas: 1
+      source: infrastructure/terraform/phase2/environments/demo/workload/main.tf
+    queues:
+      request: 30
+      refresh: 10
+      callback: 10
+      lifecycle: 10
+    concurrency:
+      global_requests: 30
+      derivation: 1 maximum replica * 30 ACA concurrent requests per replica
+    database_equation:
+      expression: 1 * 5 + 20 = 25 <= 80% * 100 = 80
+      web_pool_connections: 5
+      reserved_connections: 20
+      permitted_connections: 80
+      headroom_connections: 55
+    cost:
+      ceiling: 10000
+      source: infrastructure/deployment-stacks/goal006-runner/demo.prerequisites.parameters.json
+    rationale: Demo retains its phase2 single-replica bound and uses small bounded auxiliary queues.
+  uat:
+    web:
+      minimum_replicas: 0
+      maximum_replicas: 10
+      source: infrastructure/terraform/phase2/modules/workload/variables.tf
+    queues:
+      request: 300
+      refresh: 100
+      callback: 100
+      lifecycle: 100
+    concurrency:
+      global_requests: 300
+      derivation: 10 maximum replicas * 30 ACA concurrent requests per replica
+    database_equation:
+      expression: 10 * 5 + 20 = 70 <= 80% * 100 = 80
+      web_pool_connections: 50
+      reserved_connections: 20
+      permitted_connections: 80
+      headroom_connections: 10
+    cost:
+      ceiling: 10000
+      source: infrastructure/deployment-stacks/goal006-runner/uat.prerequisites.parameters.json
+    rationale: >-
+      UAT explicitly accepts the workload module's existing maximum of 10; no narrower override is
+      introduced. Queue and global concurrency bounds scale linearly from the retained ACA threshold.

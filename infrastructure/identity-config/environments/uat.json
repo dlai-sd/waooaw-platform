@@ -41,6 +41,12 @@
     "image": "docker.io/library/nginx@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10",
     "routePolicy": "infrastructure/identity-edge/nginx.conf.template"
   },
+  "capacityProfile": {
+    "id": "wc123-auth-capacity-v1",
+    "version": "1.0.0",
+    "source": "architecture/reference/components/authentication-authorization-capacity-profile.v1.yaml",
+    "environment": "uat"
+  },
   "phoneIdentity": { "internalAudience": "waooaw-phone-identity-uat" },
   "providers": [
     { "id": "GOOGLE", "displayName": "Google", "authenticationPath": "GOOGLE", "enabled": false, "unavailableReason": "NOT_CONFIGURED", "brokerAlias": "google", "scopes": ["openid", "profile", "email"] },

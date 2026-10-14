@@ -5,6 +5,15 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "environment", "origins", "keycloak", "clients", "channels", "cookie", "identityEdge", "phoneIdentity", "providers"],
+  "allOf": [
+    {
+      "if": {
+        "properties": { "environment": { "enum": ["demo", "uat"] } },
+        "required": ["environment"]
+      },
+      "then": { "required": ["capacityProfile"] }
+    }
+  ],
   "properties": {
     "schemaVersion": { "const": "1.0" },
     "environment": { "enum": ["demo", "uat", "prod"] },
@@ -67,6 +76,17 @@
       "additionalProperties": false,
       "required": ["internalAudience"],
       "properties": { "internalAudience": { "type": "string", "minLength": 1 } }
+    },
+    "capacityProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "source", "environment"],
+      "properties": {
+        "id": { "const": "wc123-auth-capacity-v1" },
+        "version": { "const": "1.0.0" },
+        "source": { "const": "architecture/reference/components/authentication-authorization-capacity-profile.v1.yaml" },
+        "environment": { "enum": ["demo", "uat"] }
+      }
     },
     "providers": {
       "type": "array",

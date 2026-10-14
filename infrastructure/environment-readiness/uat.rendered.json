@@ -1,0 +1,259 @@
+{
+  "catalogDigest": "sha256:78b49173e23adb2ba6bf88e3dbda8f03d3b76e41884f893bf3d762b50a752c90",
+  "configuration": {
+    "capacityProfile": {
+      "environment": "uat",
+      "id": "wc123-auth-capacity-v1",
+      "source": "architecture/reference/components/authentication-authorization-capacity-profile.v1.yaml",
+      "version": "1.0.0"
+    },
+    "channels": {
+      "mobile": false,
+      "web": true,
+      "whatsApp": true
+    },
+    "clients": [
+      {
+        "allowedOrigins": [
+          "https://app.uat.waooaw.com"
+        ],
+        "channel": "WEB",
+        "id": "waooaw-web-uat",
+        "pkceRequired": true,
+        "postLogoutRedirectUris": [
+          "https://app.uat.waooaw.com/login"
+        ],
+        "redirectUris": [
+          "https://app.uat.waooaw.com/api/auth/callback/keycloak"
+        ],
+        "scopes": [
+          "openid",
+          "profile",
+          "email"
+        ]
+      },
+      {
+        "allowedOrigins": [],
+        "channel": "MOBILE",
+        "id": "waooaw-mobile-uat",
+        "pkceRequired": true,
+        "postLogoutRedirectUris": [
+          "https://mobile.uat.waooaw.com/logout"
+        ],
+        "redirectUris": [
+          "https://mobile.uat.waooaw.com/oidc/callback"
+        ],
+        "scopes": [
+          "openid",
+          "profile",
+          "email"
+        ]
+      }
+    ],
+    "cookie": {
+      "name": "waooaw.uat.session",
+      "sameSite": "Lax",
+      "secure": true
+    },
+    "environment": "uat",
+    "identityEdge": {
+      "image": "docker.io/library/nginx@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10",
+      "routePolicy": "infrastructure/identity-edge/nginx.conf.template"
+    },
+    "keycloak": {
+      "accessTokenMinutes": 15,
+      "audience": "waooaw-platform",
+      "clockSkewSeconds": 30,
+      "issuer": "https://identity.uat.waooaw.com/realms/waooaw",
+      "jwksUri": "https://identity.uat.waooaw.com/realms/waooaw/protocol/openid-connect/certs",
+      "realm": "waooaw",
+      "refreshSessionHours": 8
+    },
+    "origins": {
+      "api": "https://api.uat.waooaw.com",
+      "identity": "https://identity.uat.waooaw.com",
+      "web": "https://app.uat.waooaw.com"
+    },
+    "phoneIdentity": {
+      "internalAudience": "waooaw-phone-identity-uat"
+    },
+    "providers": [
+      {
+        "authenticationPath": "GOOGLE",
+        "brokerAlias": "google",
+        "displayName": "Google",
+        "enabled": false,
+        "id": "GOOGLE",
+        "scopes": [
+          "openid",
+          "profile",
+          "email"
+        ],
+        "unavailableReason": "NOT_CONFIGURED"
+      },
+      {
+        "authenticationPath": "META",
+        "brokerAlias": "facebook",
+        "displayName": "Facebook",
+        "enabled": false,
+        "id": "FACEBOOK",
+        "scopes": [
+          "email",
+          "public_profile"
+        ],
+        "unavailableReason": "NOT_CONFIGURED"
+      },
+      {
+        "authenticationPath": "APPLE",
+        "brokerAlias": "apple",
+        "displayName": "Apple",
+        "enabled": false,
+        "id": "APPLE",
+        "scopes": [
+          "openid",
+          "name",
+          "email"
+        ],
+        "unavailableReason": "NOT_CONFIGURED"
+      },
+      {
+        "authenticationPath": "CREDENTIAL",
+        "displayName": "Email",
+        "enabled": true,
+        "id": "EMAIL",
+        "readinessEvidenceReference": "UAT-EMAIL-READY",
+        "scopes": []
+      }
+    ],
+    "schemaVersion": "1.0"
+  },
+  "environment": "uat",
+  "manifestDigest": "sha256:281da814e4c077c4f018d15cd6dc4e0432ec9979b5545812e863a3fec2409605",
+  "renderDigest": "sha256:69dda225a3fc7371947bd66ac62e44c93071431443eda5676219a518c951c3f1",
+  "schemaVersion": "1.0",
+  "secretBindings": [
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "business-platform:Identity__Hmac__Key"
+      ],
+      "id": "identity-hmac-active",
+      "principal": "business-platform",
+      "reference": "kv://kv-waooaw-uat/secrets/identity-hmac-active"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "web:IDENTITY_EVENT_SIGNING_KEY",
+        "business-platform:IdentitySecurityEvents__Ingest__SigningKey"
+      ],
+      "id": "identity-event-ingest-hmac",
+      "principal": "web,business-platform",
+      "reference": "kv://kv-waooaw-uat/secrets/identity-event-ingest-hmac"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "business-platform:ChannelContinuity__EnvelopeHmacKey"
+      ],
+      "id": "continuity-envelope-hmac",
+      "principal": "business-platform",
+      "reference": "kv://kv-waooaw-uat/secrets/continuity-envelope-hmac"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "business-platform:Conversation__CursorHmacKey"
+      ],
+      "id": "conversation-cursor-hmac",
+      "principal": "business-platform",
+      "reference": "kv://kv-waooaw-uat/secrets/conversation-cursor-hmac"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "keycloak:KC_BOOTSTRAP_ADMIN_PASSWORD"
+      ],
+      "id": "keycloak-admin",
+      "principal": "keycloak",
+      "reference": "kv://kv-waooaw-uat/secrets/keycloak-admin-password"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "web:KEYCLOAK_CLIENT_SECRET",
+        "keycloak:KEYCLOAK_CLIENT_SECRET"
+      ],
+      "id": "web-oidc-client",
+      "principal": "web",
+      "reference": "kv://kv-waooaw-uat/secrets/keycloak-client-secret"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "business-platform:IdentityBrokerRead__ClientSecret"
+      ],
+      "id": "google-login-client",
+      "principal": "business-platform",
+      "reference": "kv://kv-waooaw-uat/secrets/bp-identity-reader-client-secret"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "keycloak:FACEBOOK_CLIENT_SECRET"
+      ],
+      "id": "facebook-login-client",
+      "principal": "keycloak",
+      "reference": "kv://kv-waooaw-uat/secrets/meta-login-client-secret"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "billing-engine:RAZORPAY_KEY_ID"
+      ],
+      "id": "razorpay-test-key-id",
+      "principal": "billing-engine",
+      "reference": "kv://kv-waooaw-uat/secrets/razorpay-test-key-id"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "billing-engine:RAZORPAY_KEY_SECRET"
+      ],
+      "id": "razorpay-test-key-secret",
+      "principal": "billing-engine",
+      "reference": "kv://kv-waooaw-uat/secrets/razorpay-test-key-secret"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "billing-engine:RAZORPAY_WEBHOOK_SECRET"
+      ],
+      "id": "razorpay-test-webhook-secret",
+      "principal": "billing-engine",
+      "reference": "kv://kv-waooaw-uat/secrets/razorpay-test-webhook-secret"
+    }
+  ]
+}

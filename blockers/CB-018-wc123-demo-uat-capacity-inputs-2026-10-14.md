@@ -6,32 +6,28 @@
 | `record_id` | `CB-018` |
 | `record_type` | Constitutional Blocker |
 | `produced_at` | `2026-10-14` |
-| Status | **OPEN** |
+| Status | **CLOSED** |
 | Raised by | INST-010 - Platform IT Expert |
 | Affected work | WC-123 AUTH-WC-01 completion and AUTH-WC-02 entry |
 | Constitutional basis | C-023, C-059, C-080; CSA-AUTH-001 Section 12.7; WC-123 Sections 2.2, 7.1, and 15 |
 | Resolution authority | Chief Platform Architect for accepted capacity inputs; Platform IT Expert for implementation and proof |
 
-## Blocking Fact
+## Resolution
 
-AUTH-WC-01 has bound all 48 requirements, accepted source digests, current authority paths, exact
-planned change surfaces, generated consumers, data/secret ownership, migration/rollback boundaries,
-and catalog-controlled baseline evidence in `work-contracts/WC-123-impact-manifest.yaml`.
+The Chief Platform Architect accepted versioned profile `wc123-auth-capacity-v1` at
+`architecture/reference/components/authentication-authorization-capacity-profile.v1.yaml`.
+Demo and UAT reference that exact profile from their source environment manifests, and their
+rendered manifests carry the same reference.
 
-The repository supplies the accepted 80-percent database-connection ceiling and Demo Web maximum of
-one replica. It does not supply accepted Demo and UAT values for:
+The accepted database inputs are `max_connections=100`, migration/operations reserve `20`, and
+per-replica Web session pool `5`. Demo retains its phase2 maximum of `1`, producing
+`1 * 5 + 20 = 25 <= 80`. UAT accepts the workload module default maximum of `10`, producing
+`10 * 5 + 20 = 70 <= 80`. PgBouncer transaction pooling remains the accepted ADR-027 architecture.
 
-- application database connection limit;
-- migration and operations connection reserve;
-- per-replica Web session pool;
-- request, refresh, callback, and lifecycle queue limits;
-- global and per-principal concurrency limits;
-- pool-acquisition, lock, statement, BP membership, Redis, and identity-provider timeouts; or
-- the corresponding environment cost input.
-
-UAT does not currently bind a Web maximum replica value in the environment source either. Therefore
-`max_replicas * per_replica_pool + reserve <= 80% * connection_limit` cannot be calculated or
-qualified without inventing architecture and operating values.
+The same profile now binds all request, refresh, callback, and lifecycle queue limits; global and
+per-principal concurrency including exactly one refresh per family; all six dependency timeouts;
+the retained ACA threshold of 30 concurrent requests per replica; typed overload and retry bounds;
+and the existing INR 10,000 monthly ceiling independently for Demo and UAT.
 
 ## Evidence
 
@@ -40,26 +36,30 @@ qualified without inventing architecture and operating values.
 - Catalog `test-dotnet:business-platform`: PASS, 1,086 tests at 90.00% line and 80.37% branch,
   namespace `wc109-0cfe5b9ea458c91d`.
 - Catalog `wc123:impact-manifest`: PASS, 5 tests, namespace `wc109-378dbdb6b584f904`.
+- Repaired catalog `wc123:impact-manifest`: PASS, 9 tests, namespace
+  `wc109-213699c8b0447fe4`.
 
-These baselines establish current behavior and manifest integrity. They do not prove the missing
-capacity equation or authorize placeholder defaults.
+The repair adds deterministic profile, manifest, equation, timeout, queue/concurrency, ACA, and cost
+tests to `tests/pipeline/test_wc123_impact_manifest.py`. The final catalog result is recorded below.
 
 ## Gate Effect
 
-- AUTH-WC-01 remains incomplete.
-- AUTH-WC-02 and every dependent component remain blocked.
+- AUTH-WC-01 capacity acceptance is complete.
+- The capacity blocker to AUTH-WC-02 is removed. Separate Founder authorization is still required
+  before implementation begins.
 - No Web, Business Platform, OpenAPI, migration, generated, provider, cloud, deployment, traffic,
   activation, Production, approval, or merge change has started.
 
-## Required Resolution
+## Durable Evidence
 
-The Chief Platform Architect must accept exact Demo and UAT values for every missing input above,
-including the cost envelope and source-of-truth environment fields. Platform IT Expert will then:
+Future agents do not need to infer or copy these values from WC-123 prose:
 
-1. bind them in the accepted environment-manifest contract;
-2. calculate and test the 80-percent database-connection ceiling;
-3. add bounded overload, queue, timeout, cold-start, reset, restart, and recovery selectors; and
-4. rerun `wc123:impact-manifest` before declaring AUTH-WC-01 complete.
+1. the architecture value set is named and versioned in one accepted profile;
+2. Demo and UAT environment contracts reference that profile explicitly;
+3. rendered consumers are checked against their source manifests;
+4. the impact manifest records exact sources and both calculated equations; and
+5. focused tests fail on profile incompleteness, source drift, equation failure, timeout inversion,
+   unbounded queues/concurrency/retries, ACA mismatch, or cost-ceiling mismatch.
 
-Inventing values, relying on PostgreSQL defaults, copying unrelated workload limits, or postponing
-the capacity proof until deployment is prohibited.
+No provider or cloud mutation, deployment, traffic, activation, Production action, approval, merge,
+AUTH-WC-02 implementation, or `src/` change was performed.

@@ -1,6 +1,12 @@
 {
   "catalogDigest": "sha256:78b49173e23adb2ba6bf88e3dbda8f03d3b76e41884f893bf3d762b50a752c90",
   "configuration": {
+    "capacityProfile": {
+      "environment": "demo",
+      "id": "wc123-auth-capacity-v1",
+      "source": "architecture/reference/components/authentication-authorization-capacity-profile.v1.yaml",
+      "version": "1.0.0"
+    },
     "channels": {
       "mobile": false,
       "web": true,
@@ -126,8 +132,8 @@
     "schemaVersion": "1.0"
   },
   "environment": "demo",
-  "manifestDigest": "sha256:a7abf9f47a94d7f1084509fd470dd07719200f86daa50563ca4eed141191dd9d",
-  "renderDigest": "sha256:50e9f1cdb71d4852e2c2bb126860e0c4937a11166fae17de36219dfd1132d02c",
+  "manifestDigest": "sha256:363a833ac65b5210a259b631223f3cae7605ceecbc94af04e7eb96eee7da69d7",
+  "renderDigest": "sha256:6e51050b51550cf77007e5a74f74a5d304a56ca3f0a211b212b0815263580e17",
   "schemaVersion": "1.0",
   "secretBindings": [
     {

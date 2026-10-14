@@ -131,13 +131,15 @@ signal-watch-worker:
 
 # ─── Web (Next.js) ───────────────────────────────────────────────────────────
 web:
+  # WC-123 profile binds Demo to 1 and accepts the workload-module UAT ceiling of 10.
+  # This shared ceiling must not narrow the environment contract.
   resource_limits:
     cpu: 0.25
     memory: 512Mi
   
   scaling:
     min_replicas: 0  # Static assets served via CDN (O-02); server-side only scales on demand
-    max_replicas: 5
+    max_replicas: 10
     
     rules:
       - name: http-requests

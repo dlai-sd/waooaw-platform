@@ -1,8 +1,8 @@
 schema: waooaw.wc123-impact-manifest/v1
 work_contract: WC-123
 component: AUTH-WC-01
-candidate_head: 104eef4c85dd2c64ac41a24eb36558ddb446cae6
-status: BLOCKED_CAPACITY_INPUTS
+candidate_head: 8ff4b474e19e3735551aec6d813252af8b0bc405
+status: READY_FOR_AUTH_WC_02
 
 accepted_sources:
   architecture/reference/components/authentication-authorization-enterprise-requirements.md: 94f8c120d450319d7b3d7d3532018b3824b8a13b39f77218fa9e385e39cb229b
@@ -14,7 +14,11 @@ accepted_sources:
   adr/ADR-008-keycloak-identity-broker.md: 63605ab58a568c3f3746247f0a8b661487a3dfd468938e18cdeb828959483593
   adr/ADR-017-web-application-framework.md: 96bb405194dca4c4e17f8b9255b507b2ac6ee0e82d935cdae6e369648e1fd4ab
   architecture/reference/api-specs/business-platform.openapi.yaml: 7d8f719f3a194fd0fe2fd5ffaf1859ffd4082caed906cae9a5a7839db64740d1 # gitleaks:allow - public API contract SHA-256
-  infrastructure/environment-readiness/environment-manifest.schema.json: 16766fd9754c97fc918906bfe22f9c7c8b8be3723f582e980f5e9781cd783656
+  architecture/reference/components/authentication-authorization-capacity-profile.v1.yaml: b6f3b984b56fac40a4f3dee2678995eb8f67537be92605726ded96dc066b416f
+  infrastructure/environment-readiness/environment-manifest.schema.json: 906c48104b890b8aee9902e57d9b6db59fbbd03037ef57bb3ed912b90ee73a5f
+  infrastructure/identity-config/environments/demo.json: cef88be7fa5f43553326ec25d7f0d495651860d93f42c1ee261ddbc632f4e5b0
+  infrastructure/identity-config/environments/uat.json: ecec8c53235456656802d1fbb1f12775bf30a6a6dcb51a587a7cebc4e290345f
+  infrastructure/container-apps/scaling-rules.yaml: 333aae7882b1a4ed04a7ee7b6f917e09585571f68a81ed41b97bf0bacaaf2b11
   infrastructure/environment-readiness/secret-catalog.schema.json: ba4748795681cf61b6eab66e99cd1a0f18e1f2eb031dd8c8f6a0bd1889906cd4 # gitleaks:allow - public schema SHA-256
 
 requirement_binding:
@@ -198,6 +202,13 @@ baseline_evidence:
     branch_coverage_percent: 80.37
 
 capacity_and_timeout_budget:
+  profile:
+    id: wc123-auth-capacity-v1
+    version: 1.0.0
+    source: architecture/reference/components/authentication-authorization-capacity-profile.v1.yaml
+    environment_contracts:
+      demo: infrastructure/identity-config/environments/demo.json
+      uat: infrastructure/identity-config/environments/uat.json
   accepted_constraints:
     database_connection_ceiling_percent: 80
     session_idle_minutes: 30
@@ -209,25 +220,62 @@ capacity_and_timeout_budget:
     typed_overload_responses:
       - 429
       - 503
-  known_environment_inputs:
+  accepted_environment_inputs:
     demo:
       web_min_replicas: 1
       web_max_replicas: 1
-      source: infrastructure/terraform/phase2/environments/demo/workload/main.tf
-  missing_accepted_inputs:
-    - demo application database connection limit
-    - demo migration and operations connection reserve
-    - demo per-replica Web session pool
-    - demo request, refresh, callback, and lifecycle queue limits
-    - demo global and per-principal concurrency limits
-    - demo pool, lock, statement, membership, Redis, and identity-provider timeouts
-    - UAT Web maximum replicas
-    - UAT application database connection limit
-    - UAT migration and operations connection reserve
-    - UAT per-replica Web session pool
-    - UAT queue, concurrency, and timeout limits
-  disposition: BLOCKED
-  unblocking_rule: >-
-    Accepted Demo and UAT values must prove max_replicas * per_replica_pool plus reserve is no more
-    than 80 percent of the application database connection limit and must bind every queue,
-    concurrency, timeout, overload, and cost input before AUTH-WC-02 starts.
+      application_database_connection_limit: 100
+      migration_and_operations_reserve: 20
+      per_replica_web_session_pool: 5
+      equation: 1 * 5 + 20 = 25 <= 80% * 100 = 80
+      result_connections: 25
+      permitted_connections: 80
+      source_references:
+        - infrastructure/terraform/phase2/environments/demo/workload/main.tf
+        - adr/ADR-027-cloud-architecture-optimization.md
+        - infrastructure/postgres/pgbouncer/pgbouncer.ini
+        - infrastructure/deployment-stacks/goal006-runner/demo.prerequisites.parameters.json
+    uat:
+      web_min_replicas: 0
+      web_max_replicas: 10
+      application_database_connection_limit: 100
+      migration_and_operations_reserve: 20
+      per_replica_web_session_pool: 5
+      equation: 10 * 5 + 20 = 70 <= 80% * 100 = 80
+      result_connections: 70
+      permitted_connections: 80
+      source_references:
+        - infrastructure/terraform/phase2/modules/workload/variables.tf
+        - adr/ADR-027-cloud-architecture-optimization.md
+        - infrastructure/postgres/pgbouncer/pgbouncer.ini
+        - infrastructure/deployment-stacks/goal006-runner/uat.prerequisites.parameters.json
+  accepted_shared_inputs:
+    aca_concurrent_requests_per_replica: 30
+    queue_limits:
+      demo: {request: 30, refresh: 10, callback: 10, lifecycle: 10}
+      uat: {request: 300, refresh: 100, callback: 100, lifecycle: 100}
+    global_request_concurrency: {demo: 30, uat: 300}
+    per_principal_concurrency:
+      requests: 4
+      callbacks: 2
+      lifecycle: 2
+      refreshes_per_session_family: 1
+    timeouts_ms:
+      pool_acquisition: 1000
+      refresh_lock: 1500
+      statement: 5000
+      bp_membership: 3000
+      redis: 500
+      identity_provider: 5000
+    cost_ceiling_inr_per_month: {demo: 10000, uat: 10000}
+    overload_and_retry:
+      statuses: [429, 503]
+      retry_after_seconds_max: 10
+      retry_attempts_max: 3
+      retry_backoff_initial_ms: 250
+      retry_backoff_max_ms: 2000
+  disposition: ACCEPTED
+  readiness_rule: >-
+    The versioned profile and both environment manifests bind every capacity, queue, concurrency,
+    timeout, overload, retry, and cost input. AUTH-WC-02 may start only under separate Founder
+    implementation authorization; this readiness state does not itself authorize implementation.
