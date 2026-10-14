@@ -17,7 +17,7 @@
 WC-123 implementation was explicitly authorized for the current session. Process-control version
 `wc100-r033-v1`, all declared process-source digests, branch ancestry, Docker readiness, and the
 48-row WC-123 requirement ledger pass at accepted head
-`2cae98c98821e687f643e436872f18013ed65ca2`.
+`e51e4efde96a521f9b26dac378ffc25cb58882b2`.
 
 AUTH-WC-01 then invoked the repository-owned `spec-lint` gate through
 `scripts/validation_control/local_catalog_gate.py` inside `test-runner-python`. The gate stopped
