@@ -956,9 +956,17 @@ def test_demo_web_url_uses_managed_custom_domain() -> None:
     assert "bash scripts/goal006_verify_deployment.sh" in verification
     assert "properties.configuration.ingress.fqdn" in verifier
     assert "properties.configuration.ingress.customDomains" in verifier
-    assert "https://cp.demo.waooaw.com" in verifier
+    assert '  test "$EXPECTED_WEB_URL" = "https://cp.demo.waooaw.com"' in verifier.splitlines()
+    verifier_lines = {line.strip() for line in verifier.splitlines()}
+    assert '--issuer "https://auth.demo.waooaw.com/realms/waooaw" \\' in verifier_lines
     assert "properties.latestRevisionFqdn" not in verifier
     assert '.properties.runningState == "ScaledToZero"' in verifier
+
+    rehearsal = (REPO_ROOT / "scripts/run_goal006_local_azure_verification.sh").read_text(
+        encoding="utf-8"
+    )
+    assert rehearsal.count("https://cp.demo.waooaw.com") == 2
+    assert "203.0.113.10/32" not in rehearsal
 
 
 def test_release_attestation_has_one_bounded_fail_closed_retry() -> None:

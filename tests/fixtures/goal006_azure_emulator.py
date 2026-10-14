@@ -152,6 +152,15 @@ class AzureHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         path = urlparse(self.path).path.rstrip("/")
+        if path in {
+            "/privacy",
+            "/terms",
+            "/data-deletion",
+            "/health/ready",
+            "/realms/waooaw/.well-known/openid-configuration",
+        }:
+            self.send_json(200, {"status": "ready"})
+            return
         if path == "/realms/waooaw/protocol/openid-connect/auth":
             query = parse_qs(urlparse(self.path).query)
             assert query["client_id"] == ["waooaw-web"]
@@ -160,18 +169,18 @@ class AzureHandler(BaseHTTPRequestHandler):
             provider = query["kc_idp_hint"][0]
             assert provider in {"google", "facebook"}
             assert query["redirect_uri"] == [
-                f"https://ca-demo-web.local.waooaw.test/api/auth/callback/keycloak-{provider}"
+                f"https://cp.demo.waooaw.com/api/auth/callback/keycloak-{provider}"
             ]
             if provider == "facebook":
                 location = "https://graph.facebook.com/oauth/authorize?" + urlencode({
                     "client_id": "2590813568086235",
-                    "redirect_uri": "https://ca-demo-identity-edge.local.waooaw.test/realms/waooaw/broker/facebook/endpoint",
+                    "redirect_uri": "https://auth.demo.waooaw.com/realms/waooaw/broker/facebook/endpoint",
                     "scope": "email public_profile", "response_type": "code", "state": "synthetic-state",
                 })
             else:
                 location = "https://accounts.google.com/o/oauth2/auth?" + urlencode({
                     "client_id": "synthetic.apps.googleusercontent.com",
-                    "redirect_uri": "https://ca-demo-identity-edge.local.waooaw.test/realms/waooaw/broker/google/endpoint",
+                    "redirect_uri": "https://auth.demo.waooaw.com/realms/waooaw/broker/google/endpoint",
                     "scope": "openid email profile", "response_type": "code", "state": "synthetic-state",
                 })
             self.send_response(302)
@@ -233,7 +242,20 @@ class AzureHandler(BaseHTTPRequestHandler):
                     "configuration": {
                         "ingress": {
                             "fqdn": f"{name}.local.waooaw.test",
-                            "ipSecurityRestrictions": [{"name": "founder-review", "ipAddressRange": "203.0.113.10/32"}],
+                            "customDomains": (
+                                [{"name": {
+                                    "ca-demo-web": "cp.demo.waooaw.com",
+                                    "ca-demo-identity-edge": "auth.demo.waooaw.com",
+                                    "ca-demo-business-platform": "api.demo.waooaw.com",
+                                }[name], "bindingType": "SniEnabled"}]
+                                if name in {
+                                    "ca-demo-web",
+                                    "ca-demo-identity-edge",
+                                    "ca-demo-business-platform",
+                                }
+                                else []
+                            ),
+                            "ipSecurityRestrictions": None,
                         }
                     },
                 }

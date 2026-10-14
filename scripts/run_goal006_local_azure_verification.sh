@@ -28,15 +28,17 @@ trap cleanup EXIT
 mkdir -p "$EVIDENCE_DIR" "$AZURE_CONFIG_DIR"
 docker run --rm --user "$(id -u):$(id -g)" -v "$EVIDENCE_DIR:/evidence" \
   "$AZURE_CLI_IMAGE" openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
-  -subj /CN=ca-demo-identity-edge.local.waooaw.test \
-  -addext subjectAltName=DNS:ca-demo-identity-edge.local.waooaw.test \
+  -subj /CN=auth.demo.waooaw.com \
+  -addext subjectAltName=DNS:auth.demo.waooaw.com,DNS:cp.demo.waooaw.com,DNS:api.demo.waooaw.com \
   -keyout /evidence/fixture.key -out /evidence/fixture.crt >/dev/null 2>&1
 docker network create "$NETWORK" >/dev/null
 docker run -d --rm \
   --name "$EMULATOR" \
   --network "$NETWORK" \
   --network-alias goal006-azure-emulator \
-  --network-alias ca-demo-identity-edge.local.waooaw.test \
+  --network-alias auth.demo.waooaw.com \
+  --network-alias cp.demo.waooaw.com \
+  --network-alias api.demo.waooaw.com \
   -e GOOGLE_FIXTURE_TLS=true \
   -e PYTHONPATH=/repo/scripts \
   -e EVIDENCE_DIR=/evidence \
@@ -134,8 +136,7 @@ docker run --rm \
     demo \
     /evidence/registry-release-manifest.json \
     aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
-    https://ca-demo-web.local.waooaw.test \
-    203.0.113.10/32
+    https://cp.demo.waooaw.com
 
 test "$(jq -r '.functional_verification' "$EVIDENCE_DIR/deployment-verification.json")" = true
 jq -e '.redirect_verified == true and .real_user_sign_in_verified == false and
@@ -173,8 +174,7 @@ docker run --rm \
     demo \
     /evidence/unhealthy-revision/registry-release-manifest.json \
     aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
-    https://ca-demo-web.local.waooaw.test \
-    203.0.113.10/32 > "$EVIDENCE_DIR/unhealthy-revision/verifier.log" 2>&1
+    https://cp.demo.waooaw.com > "$EVIDENCE_DIR/unhealthy-revision/verifier.log" 2>&1
 unhealthy_status=$?
 set -e
 rm "$EVIDENCE_DIR/force-professional-runtime-unready"
