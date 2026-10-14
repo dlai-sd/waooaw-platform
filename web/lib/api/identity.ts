@@ -13,6 +13,7 @@ import type { IdentitySession } from '@/lib/api/generated/models/IdentitySession
 import type { CustomerLoginMethodCollectionV1 } from '@/lib/api/generated/models/CustomerLoginMethodCollectionV1';
 import type { CustomerProfileV1 } from '@/lib/api/generated/models/CustomerProfileV1';
 import type { CustomerSettingsV1 } from '@/lib/api/generated/models/CustomerSettingsV1';
+import type { WorkspaceLayoutPreferencesV1 } from '@/lib/api/generated/models/WorkspaceLayoutPreferencesV1';
 import { Configuration, ResponseError } from '@/lib/api/generated/runtime';
 
 const businessPlatformUrl = process.env.BUSINESS_PLATFORM_URL ?? 'http://localhost:5001';
@@ -76,6 +77,10 @@ export async function getCustomerProfile(accessToken: string): Promise<CustomerP
 
 export async function getCustomerSettings(accessToken: string): Promise<CustomerSettingsV1> {
   return createIdentityApi(accessToken).getCustomerSettings({ cache: 'no-store' });
+}
+
+export async function getWorkspaceLayoutPreferences(accessToken: string): Promise<WorkspaceLayoutPreferencesV1> {
+  return createIdentityApi(accessToken).getWorkspaceLayoutPreferences({ cache: 'no-store' });
 }
 
 export async function listCustomerLoginMethods(accessToken: string): Promise<CustomerLoginMethodCollectionV1> {

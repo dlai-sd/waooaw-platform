@@ -54,6 +54,14 @@ public sealed record UpdateCustomerSettingsRequest(
     NotificationPreferencesRequest NotificationPreferences
 );
 
+public sealed record ReplaceWorkspaceLayoutPreferencesRequest(
+    int ExpectedVersion,
+    string NavigationVisibility,
+    string ProgressVisibility,
+    int ConversationWidthPercent,
+    bool ReduceMotion = false
+);
+
 // ── Response models (exactly matching OpenAPI schemas) ───────────────────────
 
 public sealed record IdentityRegistrationResponse(
@@ -169,6 +177,16 @@ public sealed record CustomerSettingsResponse(
     string TimestampVisibility,
     NotificationPreferencesResponse NotificationPreferences,
     IReadOnlyList<string> AvailableSecurityActions,
+    DateTimeOffset UpdatedAt
+);
+
+public sealed record WorkspaceLayoutPreferencesResponse(
+    string SchemaVersion,
+    int PreferenceVersion,
+    string NavigationVisibility,
+    string ProgressVisibility,
+    int ConversationWidthPercent,
+    bool ReduceMotion,
     DateTimeOffset UpdatedAt
 );
 
@@ -550,6 +568,19 @@ public sealed class IdentityController(
                 state.SelfGovernanceAlerts
             ),
             ["STEP_UP", "CHANGE_PASSWORDLESS_METHODS", "LINK_WHATSAPP", "REMOVE_LOGIN_METHOD"],
+            state.UpdatedAt
+        );
+
+    private static WorkspaceLayoutPreferencesResponse ToWorkspaceLayoutResponse(
+        WorkspaceLayoutPreferenceState state
+    ) =>
+        new(
+            "1",
+            state.PreferenceVersion,
+            state.NavigationVisibility,
+            state.ProgressVisibility,
+            state.ConversationWidthPercent,
+            state.ReduceMotion,
             state.UpdatedAt
         );
 
@@ -947,6 +978,91 @@ public sealed class IdentityController(
                 400,
                 "IDENTITY_REQUEST_INVALID",
                 "Invalid or missing Idempotency-Key header."
+            );
+        }
+    }
+
+    [HttpGet("settings/workspace-layout")]
+    [CustomerIdentityRoute(requiresMembership: true)]
+    public async Task<IActionResult> GetWorkspaceLayoutPreferencesAsync(CancellationToken ct)
+    {
+        if (ValidatePortalSession(out var tenantId) is { } error)
+            return error;
+        try
+        {
+            return Ok(
+                ToWorkspaceLayoutResponse(
+                    await identityService.GetWorkspaceLayoutPreferencesAsync(
+                        ActorSubject,
+                        tenantId,
+                        ct
+                    )
+                )
+            );
+        }
+        catch (IdentityResourceNotFoundException)
+        {
+            return IdentityProblem(
+                404,
+                "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
+                "Workspace layout settings are not accessible."
+            );
+        }
+    }
+
+    [HttpPut("settings/workspace-layout")]
+    [CustomerIdentityRoute(requiresMembership: true)]
+    public async Task<IActionResult> ReplaceWorkspaceLayoutPreferencesAsync(
+        [FromBody] ReplaceWorkspaceLayoutPreferencesRequest request,
+        CancellationToken ct
+    )
+    {
+        if (ValidatePortalSession(out var tenantId) is { } error)
+            return error;
+        if (
+            request.ExpectedVersion < 0
+            || request.NavigationVisibility is not ("VISIBLE" or "COLLAPSED" or "HIDDEN")
+            || request.ProgressVisibility is not ("VISIBLE" or "COLLAPSED" or "HIDDEN")
+            || request.ConversationWidthPercent is < 35 or > 75
+        )
+            return IdentityProblem(
+                400,
+                "IDENTITY_REQUEST_INVALID",
+                "Workspace layout fields are invalid."
+            );
+        try
+        {
+            return Ok(
+                ToWorkspaceLayoutResponse(
+                    await identityService.ReplaceWorkspaceLayoutPreferencesAsync(
+                        ActorSubject,
+                        tenantId,
+                        IdempotencyKey,
+                        ComputeHash(request),
+                        request.ExpectedVersion,
+                        request.NavigationVisibility,
+                        request.ProgressVisibility,
+                        request.ConversationWidthPercent,
+                        request.ReduceMotion,
+                        ct
+                    )
+                )
+            );
+        }
+        catch (IdentityPreferenceVersionConflictException)
+        {
+            return IdentityProblem(
+                409,
+                "IDENTITY_VERSION_CONFLICT",
+                "Workspace layout settings changed. Refresh before trying again."
+            );
+        }
+        catch (IdentityIdempotencyConflict)
+        {
+            return IdentityProblem(
+                409,
+                "IDENTITY_IDEMPOTENCY_CONFLICT",
+                "The idempotency key was already used with a different request."
             );
         }
     }

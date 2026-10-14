@@ -276,6 +276,40 @@ paths:
         "409": { $ref: "#/components/responses/IdentityConflict" }
         "503": { $ref: "#/components/responses/IdentityUnavailable" }
 
+  /api/v1/identity/settings/workspace-layout:
+    get:
+      tags: [Identity]
+      summary: Get account-wide customer engagement workspace layout
+      operationId: getWorkspaceLayoutPreferences
+      responses:
+        "200":
+          description: Current presentation-only workspace layout
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceLayoutPreferencesV1" }
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Identity]
+      summary: Replace account-wide customer engagement workspace layout
+      operationId: replaceWorkspaceLayoutPreferences
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReplaceWorkspaceLayoutPreferencesRequestV1" }
+      responses:
+        "200":
+          description: Layout replaced or replayed without changing business authority
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceLayoutPreferencesV1" }
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+
   /api/v1/identity/login-methods:
     get:
       tags: [Identity]
@@ -1067,7 +1101,7 @@ paths:
         "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
         "414": { description: Request target exceeds server limits }
     post:
-      tags: [Employment]
+      tags: [Employment, Relationship Workspace]
       summary: Admit or replay an employment relationship
       description: |
         Mints the tenant's durable employment relationship for the authenticated
@@ -1076,6 +1110,12 @@ paths:
         returns the existing relationship and immutable agent instance.
         Constitutional validation and evidence commitment complete before persistence.
       operationId: admitEmploymentRelationship
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: Required for the customer-engagement admission shape; omitted only by legacy callers.
+          schema: { type: string, minLength: 16, maxLength: 128 }
       requestBody:
         required: true
         content:
@@ -1089,13 +1129,17 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/EmploymentRelationship"
+                oneOf:
+                  - $ref: "#/components/schemas/EmploymentRelationship"
+                  - $ref: "#/components/schemas/CustomerEngagementAdmissionOutcomeV1"
         "200":
           description: Existing relationship returned for an idempotent replay
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/EmploymentRelationship"
+                oneOf:
+                  - $ref: "#/components/schemas/EmploymentRelationship"
+                  - $ref: "#/components/schemas/CustomerEngagementAdmissionOutcomeV1"
         "400":
           $ref: "#/components/responses/ValidationError"
         "401":
@@ -1106,6 +1150,112 @@ paths:
           description: Professional admission is inactive, mismatched, or conflicts with the existing relationship binding
         "503":
           description: Constitutional validation or evidence commitment is unavailable
+
+  /api/v1/employment/relationships/{relationshipId}/workspace/preferences:
+    parameters:
+      - $ref: "#/components/parameters/RelationshipId"
+    get:
+      tags: [Relationship Workspace]
+      summary: Get relationship-specific presentation preferences
+      operationId: getRelationshipWorkspacePreferences
+      responses:
+        "200":
+          description: Current relationship workspace preferences
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RelationshipWorkspacePreferencesV1" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
+        "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
+    put:
+      tags: [Relationship Workspace]
+      summary: Replace relationship-specific presentation preferences
+      operationId: replaceRelationshipWorkspacePreferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReplaceRelationshipWorkspacePreferencesRequestV1" }
+      responses:
+        "200":
+          description: Preferences replaced without changing relationship authority
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RelationshipWorkspacePreferencesV1" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
+        "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/employment/relationships/{relationshipId}/workspace/engagement-progress:
+    get:
+      tags: [Relationship Workspace]
+      summary: Get owner-composed customer engagement progress
+      operationId: getCustomerEngagementProgress
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      responses:
+        "200":
+          description: Current progress with truth dimensions, provenance, and server-ranked action
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerEngagementProgressV1" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
+        "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
+
+  /api/v1/employment/relationships/{relationshipId}/workspace/focus-resolutions:
+    post:
+      tags: [Relationship Workspace]
+      summary: Resolve a protected short-lived workspace focus reference
+      operationId: resolveWorkspaceFocus
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResolveWorkspaceFocusRequestV1" }
+      responses:
+        "200":
+          description: Current authorized canonical destination
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceFocusResolutionV1" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
+        "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "410": { description: Focus reference expired }
+
+  /api/v1/employment/relationships/{relationshipId}/conversation/channel-sessions/{channelSessionId}/end:
+    post:
+      tags: [Conversation]
+      summary: End one conversation channel session without ending the relationship
+      operationId: endConversationChannelSession
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - name: channelSessionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, minLength: 16, maxLength: 128 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EndConversationChannelSessionRequestV1" }
+      responses:
+        "200":
+          description: Channel session ended or original outcome replayed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConversationChannelSessionEndOutcomeV1" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
+        "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   /api/v1/employment/relationships/{relationshipId}:
     get:
@@ -5590,6 +5740,238 @@ components:
           type: string
           format: uuid
           nullable: true
+        clientIntentId:
+          type: string
+          format: uuid
+          nullable: true
+        engagementIntent:
+          type: string
+          enum: [TRIAL, HIRE]
+          nullable: true
+        disclosureVersion:
+          type: string
+          minLength: 1
+          maxLength: 128
+          nullable: true
+        safeReturnTarget:
+          type: string
+          minLength: 32
+          maxLength: 512
+          pattern: '^[A-Za-z0-9_-]+$'
+          nullable: true
+
+    PaneVisibilityV1:
+      type: string
+      enum: [VISIBLE, COLLAPSED, HIDDEN]
+
+    WorkspaceLayoutPreferencesV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, preferenceVersion, navigationVisibility, progressVisibility, conversationWidthPercent, reduceMotion, updatedAt]
+      properties:
+        schemaVersion: { type: string, const: "1" }
+        preferenceVersion: { type: integer, minimum: 0 }
+        navigationVisibility: { $ref: "#/components/schemas/PaneVisibilityV1" }
+        progressVisibility: { $ref: "#/components/schemas/PaneVisibilityV1" }
+        conversationWidthPercent: { type: integer, minimum: 35, maximum: 75 }
+        reduceMotion: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+
+    ReplaceWorkspaceLayoutPreferencesRequestV1:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion, navigationVisibility, progressVisibility, conversationWidthPercent]
+      properties:
+        expectedVersion: { type: integer, minimum: 0 }
+        navigationVisibility: { $ref: "#/components/schemas/PaneVisibilityV1" }
+        progressVisibility: { $ref: "#/components/schemas/PaneVisibilityV1" }
+        conversationWidthPercent: { type: integer, minimum: 35, maximum: 75 }
+        reduceMotion: { type: boolean, default: false }
+
+    RelationshipWorkspacePreferencesV1:
+      type: object
+      additionalProperties: false
+      required: [preferenceVersion, defaultFocus, openProgressOnConversationFocus, updatedAt]
+      properties:
+        preferenceVersion: { type: integer, minimum: 0 }
+        defaultFocus:
+          type: string
+          enum: [LIFECYCLE, INDUCTION, SKILLS_GOALS, OPERATIONS, PERFORMANCE, BUDGET, RIGHTS]
+        openProgressOnConversationFocus: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+
+    ReplaceRelationshipWorkspacePreferencesRequestV1:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion, defaultFocus, openProgressOnConversationFocus]
+      properties:
+        expectedVersion: { type: integer, minimum: 0 }
+        defaultFocus:
+          type: string
+          enum: [LIFECYCLE, INDUCTION, SKILLS_GOALS, OPERATIONS, PERFORMANCE, BUDGET, RIGHTS]
+        openProgressOnConversationFocus: { type: boolean }
+
+    WorkspaceFocusRefV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, focusToken, destination, label, accessibleLabel, issuedAt, expiresAt]
+      properties:
+        schemaVersion: { type: string, const: "1" }
+        focusToken: { type: string, minLength: 16, maxLength: 2048, writeOnly: true }
+        destination:
+          type: string
+          enum: [LIFECYCLE, CONVERSATION, INDUCTION, SKILLS_GOALS, OPERATION, PERFORMANCE, BUDGET, RIGHTS]
+        label: { type: string }
+        accessibleLabel: { type: string }
+        issuedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+
+    EngagementTruthDimensionsV1:
+      type: object
+      additionalProperties: false
+      required: [delivery, processing, evidence, commercial, outcome]
+      properties:
+        delivery: { type: string }
+        processing: { type: string }
+        evidence: { type: string }
+        commercial: { type: string }
+        outcome: { type: string }
+
+    EngagementSourceProvenanceV1:
+      type: object
+      additionalProperties: false
+      required: [sourceOwner, sourceSubjectRef, sourceVersion, sourceContractVersion, producedAt, lastAuthoritativeConfirmationAt, freshness, evidenceState]
+      properties:
+        sourceOwner: { type: string }
+        sourceSubjectRef: { type: string }
+        sourceVersion: { type: string }
+        sourceContractVersion: { type: string }
+        producedAt: { type: string, format: date-time }
+        lastAuthoritativeConfirmationAt: { type: string, format: date-time }
+        freshness: { type: string }
+        evidenceState: { type: string }
+        evidenceRef: { type: string, nullable: true }
+        observedAt: { type: string, format: date-time, nullable: true }
+        validUntil: { type: string, format: date-time, nullable: true }
+
+    EngagementNextActionV1:
+      type: object
+      additionalProperties: false
+      required: [actionType, label, focus]
+      properties:
+        actionType: { type: string }
+        label: { type: string }
+        focus: { $ref: "#/components/schemas/WorkspaceFocusRefV1" }
+
+    EngagementProgressItemV1:
+      type: object
+      additionalProperties: false
+      required: [itemId, title, state, owner, required, truth, provenance, updatedAt]
+      properties:
+        itemId: { type: string }
+        title: { type: string }
+        state: { type: string }
+        owner: { type: string }
+        required: { type: boolean }
+        truth: { $ref: "#/components/schemas/EngagementTruthDimensionsV1" }
+        provenance: { $ref: "#/components/schemas/EngagementSourceProvenanceV1" }
+        updatedAt: { type: string, format: date-time }
+        summary: { type: string, nullable: true }
+        blockedEffect: { type: string, nullable: true }
+        nextAction:
+          oneOf:
+            - $ref: "#/components/schemas/EngagementNextActionV1"
+            - type: "null"
+
+    CustomerEngagementProgressV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, relationshipId, projectionVersion, projectionContractVersion, generatedAt, projectionSources, lifecycleStage, headline, items, availableFocuses]
+      properties:
+        schemaVersion: { type: string, const: "1" }
+        relationshipId: { type: string, format: uuid }
+        projectionVersion: { type: string }
+        projectionContractVersion: { type: string }
+        generatedAt: { type: string, format: date-time }
+        projectionSources:
+          type: array
+          items: { $ref: "#/components/schemas/EngagementSourceProvenanceV1" }
+        lifecycleStage:
+          type: string
+          enum: [DISCOVERED, TRIAL_OR_HIRE, INDUCTION, SKILLS_AND_GOALS, OPERATIONS, PERFORMANCE, PAUSED_RENEWAL_OR_EXIT]
+        headline: { type: string }
+        summary: { type: string, nullable: true }
+        selectedFocus:
+          oneOf:
+            - $ref: "#/components/schemas/WorkspaceFocusRefV1"
+            - type: "null"
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/EngagementProgressItemV1" }
+        availableFocuses:
+          type: array
+          items: { $ref: "#/components/schemas/WorkspaceFocusRefV1" }
+
+    ResolveWorkspaceFocusRequestV1:
+      type: object
+      additionalProperties: false
+      required: [focusToken]
+      properties:
+        focusToken: { type: string, minLength: 16, maxLength: 2048 }
+
+    WorkspaceFocusResolutionV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, relationshipId, destination, canonicalRoute, resolvedAt, authorityVersion]
+      properties:
+        schemaVersion: { type: string, const: "1" }
+        relationshipId: { type: string, format: uuid }
+        destination: { type: string }
+        canonicalRoute: { type: string }
+        resolvedAt: { type: string, format: date-time }
+        authorityVersion: { type: string }
+        subjectRef: { type: string, nullable: true }
+        subjectVersion: { type: string, nullable: true }
+
+    CustomerEngagementAdmissionOutcomeV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, relationshipId, agentInstanceId, conversationId, lifecycleState, engagementIntent, replayed, admittedAt, evidenceRef, resumeFocus]
+      properties:
+        schemaVersion: { type: string, const: "1" }
+        relationshipId: { type: string, format: uuid }
+        agentInstanceId: { type: string, format: uuid }
+        conversationId: { type: string, format: uuid }
+        lifecycleState: { type: string, const: DISCOVERED }
+        engagementIntent: { type: string, enum: [TRIAL, HIRE] }
+        replayed: { type: boolean }
+        admittedAt: { type: string, format: date-time }
+        evidenceRef: { type: string }
+        resumeFocus: { $ref: "#/components/schemas/WorkspaceFocusRefV1" }
+
+    EndConversationChannelSessionRequestV1:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion, confirmation]
+      properties:
+        expectedVersion: { type: integer, minimum: 0 }
+        confirmation: { type: string, const: END_CHANNEL_SESSION }
+        reason: { type: string, maxLength: 500, nullable: true }
+
+    ConversationChannelSessionEndOutcomeV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, channelSessionId, channel, state, sessionVersion, endedAt, replayed, relationshipRemainsActive, evidenceRef]
+      properties:
+        schemaVersion: { type: string, const: "1" }
+        channelSessionId: { type: string, format: uuid }
+        channel: { type: string }
+        state: { type: string, const: ENDED }
+        sessionVersion: { type: integer, minimum: 1 }
+        endedAt: { type: string, format: date-time }
+        replayed: { type: boolean }
+        relationshipRemainsActive: { type: boolean, const: true }
+        evidenceRef: { type: string }
 
     TransitionEmploymentRelationshipRequest:
       type: object

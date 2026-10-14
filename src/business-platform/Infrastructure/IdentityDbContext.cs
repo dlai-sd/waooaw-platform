@@ -157,6 +157,11 @@ public sealed class CustomerPortalPreferenceRecord
     public string MaturityReportChannels { get; set; } = "[\"IN_APP\"]";
     public string MonthlyNarrativeChannels { get; set; } = "[\"IN_APP\"]";
     public string SelfGovernanceAlertChannels { get; set; } = "[\"IN_APP\"]";
+    public int WorkspaceLayoutVersion { get; set; }
+    public string NavigationVisibility { get; set; } = "VISIBLE";
+    public string ProgressVisibility { get; set; } = "VISIBLE";
+    public int ConversationWidthPercent { get; set; } = 50;
+    public bool ReduceMotion { get; set; }
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
@@ -461,6 +466,17 @@ public sealed class IdentityDbContext : DbContext
             e.Property(p => p.SelfGovernanceAlertChannels)
                 .HasColumnName("self_governance_alert_channels")
                 .HasColumnType("jsonb");
+            e.Property(p => p.WorkspaceLayoutVersion)
+                .HasColumnName("workspace_layout_version")
+                .IsConcurrencyToken();
+            e.Property(p => p.NavigationVisibility)
+                .HasColumnName("navigation_visibility")
+                .HasMaxLength(16);
+            e.Property(p => p.ProgressVisibility)
+                .HasColumnName("progress_visibility")
+                .HasMaxLength(16);
+            e.Property(p => p.ConversationWidthPercent).HasColumnName("conversation_width_percent");
+            e.Property(p => p.ReduceMotion).HasColumnName("reduce_motion");
             e.Property(p => p.UpdatedAt).HasColumnName("updated_at");
             e.HasIndex(p => new { p.ActorSubject, p.TenantId }).IsUnique();
         });

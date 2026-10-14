@@ -14,9 +14,11 @@ All URIs are relative to _http://localhost:5001_
 | [**getIdentityAccountLink**](IdentityApi.md#getidentityaccountlink)                       | **GET** /api/v1/identity/account-links/{linkId}                                       | Get caller-bound account-link status                                 |
 | [**getIdentityRegistration**](IdentityApi.md#getidentityregistration)                     | **GET** /api/v1/identity/registrations/{registrationId}                               | Get the caller-bound registration state                              |
 | [**getIdentitySession**](IdentityApi.md#getidentitysession)                               | **GET** /api/v1/identity/session                                                      | Get the current customer identity session projection                 |
+| [**getWorkspaceLayoutPreferences**](IdentityApi.md#getworkspacelayoutpreferences)         | **GET** /api/v1/identity/settings/workspace-layout                                    | Get account-wide customer engagement workspace layout                |
 | [**listCustomerLoginMethods**](IdentityApi.md#listcustomerloginmethods)                   | **GET** /api/v1/identity/login-methods                                                | List minimised login-method summaries for the authenticated customer |
 | [**listIdentityProviders**](IdentityApi.md#listidentityproviders)                         | **GET** /api/v1/identity/providers                                                    | List customer authentication choices for this environment            |
 | [**listIdentitySessions**](IdentityApi.md#listidentitysessions)                           | **GET** /api/v1/identity/sessions                                                     | List active sessions for the authenticated customer account          |
+| [**replaceWorkspaceLayoutPreferences**](IdentityApi.md#replaceworkspacelayoutpreferences) | **PUT** /api/v1/identity/settings/workspace-layout                                    | Replace account-wide customer engagement workspace layout            |
 | [**revokeAllIdentitySessions**](IdentityApi.md#revokeallidentitysessions)                 | **DELETE** /api/v1/identity/sessions                                                  | Revoke every active session for the authenticated customer account   |
 | [**revokeIdentitySession**](IdentityApi.md#revokeidentitysession)                         | **DELETE** /api/v1/identity/sessions/{sessionId}                                      | Revoke one session owned by the authenticated customer account       |
 | [**startAccountMobileVerification**](IdentityApi.md#startaccountmobileverification)       | **POST** /api/v1/identity/mobile-verifications                                        | Start or replay progressive mobile verification                      |
@@ -132,7 +134,7 @@ async function example() {
   const body = {
     // string | Opaque registration identifier bound to the authenticated pre-account actor
     registrationId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-    // string | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts.
+    // string | A valid key is required to complete registration; omission produces an identity state conflict. (optional)
     idempotencyKey: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
   } satisfies CompleteIdentityRegistrationRequest;
 
@@ -150,10 +152,10 @@ example().catch(console.error);
 
 ### Parameters
 
-| Name               | Type     | Description                                                                              | Notes                     |
-| ------------------ | -------- | ---------------------------------------------------------------------------------------- | ------------------------- |
-| **registrationId** | `string` | Opaque registration identifier bound to the authenticated pre-account actor              | [Defaults to `undefined`] |
-| **idempotencyKey** | `string` | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts. | [Defaults to `undefined`] |
+| Name               | Type     | Description                                                                                     | Notes                                |
+| ------------------ | -------- | ----------------------------------------------------------------------------------------------- | ------------------------------------ |
+| **registrationId** | `string` | Opaque registration identifier bound to the authenticated pre-account actor                     | [Defaults to `undefined`]            |
+| **idempotencyKey** | `string` | A valid key is required to complete registration; omission produces an identity state conflict. | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 
@@ -175,9 +177,9 @@ example().catch(console.error);
 | **200**     | Account created, reused, or replayed                                                                                            | -                |
 | **400**     | Identity request is malformed or unsupported; no submitted secret is echoed                                                     | -                |
 | **401**     | Identity session is missing, invalid, or expired                                                                                | -                |
+| **403**     | Fresh or stronger Keycloak assurance is required before the command can run                                                     | -                |
 | **404**     | Identity resource is absent, inaccessible, or cross-tenant; one normalized shape and timing class prevents existence disclosure | -                |
 | **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path                                                      | -                |
-| **422**     | Mandatory identity verification or minimum profile completion remains outstanding                                               | -                |
 | **503**     | Identity dependency is unavailable and the outcome remains unresolved                                                           | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
@@ -242,18 +244,21 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
-| Status code | Description                                                                 | Response headers      |
-| ----------- | --------------------------------------------------------------------------- | --------------------- |
-| **200**     | Mobile proof accepted or replayed                                           | -                     |
-| **400**     | Identity request is malformed or unsupported; no submitted secret is echoed | -                     |
-| **401**     | Identity session is missing, invalid, or expired                            | -                     |
-| **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path  | -                     |
-| **410**     | Verification or link challenge is no longer usable                          | -                     |
-| **429**     | Identity operation is rate limited without disclosing account existence     | \* Retry-After - <br> |
+| Status code | Description                                                                                                                     | Response headers      |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| **415**     | Request content type is not supported                                                                                           | -                     |
+| **200**     | Mobile proof accepted or replayed                                                                                               | -                     |
+| **400**     | Identity request is malformed or unsupported; no submitted secret is echoed                                                     | -                     |
+| **401**     | Identity session is missing, invalid, or expired                                                                                | -                     |
+| **403**     | Identity action is not available to the authenticated actor                                                                     | -                     |
+| **404**     | Identity resource is absent, inaccessible, or cross-tenant; one normalized shape and timing class prevents existence disclosure | -                     |
+| **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path                                                      | -                     |
+| **410**     | Verification or link challenge is no longer usable                                                                              | -                     |
+| **429**     | Identity operation is rate limited without disclosing account existence                                                         | \* Retry-After - <br> |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
@@ -320,12 +325,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                                                                                     | Response headers      |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| **415**     | Request content type is not supported                                                                                           | -                     |
 | **200**     | Email proof accepted or replayed                                                                                                | -                     |
 | **400**     | Identity request is malformed or unsupported; no submitted secret is echoed                                                     | -                     |
 | **401**     | Identity session is missing, invalid, or expired                                                                                | -                     |
@@ -399,12 +405,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                                                                                     | Response headers      |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| **415**     | Request content type is not supported                                                                                           | -                     |
 | **200**     | Mobile proof accepted or replayed                                                                                               | -                     |
 | **400**     | Identity request is malformed or unsupported; no submitted secret is echoed                                                     | -                     |
 | **401**     | Identity session is missing, invalid, or expired                                                                                | -                     |
@@ -605,6 +612,7 @@ example().catch(console.error);
 | **200**     | Privacy-safe link status                                                                                                        | -                |
 | **400**     | Identity request is malformed or unsupported; no submitted secret is echoed                                                     | -                |
 | **401**     | Identity session is missing, invalid, or expired                                                                                | -                |
+| **403**     | Identity action is not available to the authenticated actor                                                                     | -                |
 | **404**     | Identity resource is absent, inaccessible, or cross-tenant; one normalized shape and timing class prevents existence disclosure | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
@@ -739,6 +747,65 @@ This endpoint does not need any parameter.
 | **403**     | Fresh or stronger Keycloak assurance is required before the command can run                                  | -                |
 | **409**     | The authenticated broker identity has no active customer account; registration requires explicit user intent | -                |
 | **503**     | Identity dependency is unavailable and the outcome remains unresolved                                        | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## getWorkspaceLayoutPreferences
+
+> WorkspaceLayoutPreferencesV1 getWorkspaceLayoutPreferences()
+
+Get account-wide customer engagement workspace layout
+
+### Example
+
+```ts
+import { Configuration, IdentityApi } from "";
+import type { GetWorkspaceLayoutPreferencesRequest } from "";
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new IdentityApi(config);
+
+  try {
+    const data = await api.getWorkspaceLayoutPreferences();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**WorkspaceLayoutPreferencesV1**](WorkspaceLayoutPreferencesV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                           | Response headers |
+| ----------- | ----------------------------------------------------- | ---------------- |
+| **200**     | Current presentation-only workspace layout            | -                |
+| **401**     | Identity session is missing, invalid, or expired      | -                |
+| **404**     | Resource not found (or not accessible to this tenant) | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
@@ -920,6 +987,79 @@ This endpoint does not need any parameter.
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
+## replaceWorkspaceLayoutPreferences
+
+> WorkspaceLayoutPreferencesV1 replaceWorkspaceLayoutPreferences(idempotencyKey, replaceWorkspaceLayoutPreferencesRequestV1)
+
+Replace account-wide customer engagement workspace layout
+
+### Example
+
+```ts
+import {
+  Configuration,
+  IdentityApi,
+} from '';
+import type { ReplaceWorkspaceLayoutPreferencesRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new IdentityApi(config);
+
+  const body = {
+    // string | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts.
+    idempotencyKey: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // ReplaceWorkspaceLayoutPreferencesRequestV1
+    replaceWorkspaceLayoutPreferencesRequestV1: ...,
+  } satisfies ReplaceWorkspaceLayoutPreferencesRequest;
+
+  try {
+    const data = await api.replaceWorkspaceLayoutPreferences(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name                                           | Type                                                                                        | Description                                                                              | Notes                     |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------- |
+| **idempotencyKey**                             | `string`                                                                                    | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts. | [Defaults to `undefined`] |
+| **replaceWorkspaceLayoutPreferencesRequestV1** | [ReplaceWorkspaceLayoutPreferencesRequestV1](ReplaceWorkspaceLayoutPreferencesRequestV1.md) |                                                                                          |                           |
+
+### Return type
+
+[**WorkspaceLayoutPreferencesV1**](WorkspaceLayoutPreferencesV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                                 | Response headers |
+| ----------- | --------------------------------------------------------------------------- | ---------------- |
+| **200**     | Layout replaced or replayed without changing business authority             | -                |
+| **400**     | Identity request is malformed or unsupported; no submitted secret is echoed | -                |
+| **401**     | Identity session is missing, invalid, or expired                            | -                |
+| **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path  | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
 ## revokeAllIdentitySessions
 
 > IdentitySessionRevocation revokeAllIdentitySessions(idempotencyKey)
@@ -984,6 +1124,7 @@ example().catch(console.error);
 | Status code | Description                                                                 | Response headers |
 | ----------- | --------------------------------------------------------------------------- | ---------------- |
 | **200**     | All sessions were already revoked or are now revoked                        | -                |
+| **400**     | Identity request is malformed or unsupported; no submitted secret is echoed | -                |
 | **401**     | Identity session is missing, invalid, or expired                            | -                |
 | **403**     | Fresh or stronger Keycloak assurance is required before the command can run | -                |
 | **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path  | -                |
@@ -1058,6 +1199,7 @@ example().catch(console.error);
 | Status code | Description                                                                                                                     | Response headers |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
 | **200**     | The selected session was already revoked or is now revoked                                                                      | -                |
+| **400**     | Identity request is malformed or unsupported; no submitted secret is echoed                                                     | -                |
 | **401**     | Identity session is missing, invalid, or expired                                                                                | -                |
 | **403**     | Fresh or stronger Keycloak assurance is required before the command can run                                                     | -                |
 | **404**     | Identity resource is absent, inaccessible, or cross-tenant; one normalized shape and timing class prevents existence disclosure | -                |
@@ -1128,15 +1270,17 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                                 | Response headers      |
 | ----------- | --------------------------------------------------------------------------- | --------------------- |
+| **415**     | Request content type is not supported                                       | -                     |
 | **202**     | Challenge accepted or replayed without identity-existence disclosure        | -                     |
 | **400**     | Identity request is malformed or unsupported; no submitted secret is echoed | -                     |
 | **401**     | Identity session is missing, invalid, or expired                            | -                     |
+| **403**     | Identity action is not available to the authenticated actor                 | -                     |
 | **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path  | -                     |
 | **429**     | Identity operation is rate limited without disclosing account existence     | \* Retry-After - <br> |
 | **503**     | Identity dependency is unavailable and the outcome remains unresolved       | -                     |
@@ -1205,12 +1349,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                                 | Response headers      |
 | ----------- | --------------------------------------------------------------------------- | --------------------- |
+| **415**     | Request content type is not supported                                       | -                     |
 | **201**     | Link challenge started                                                      | -                     |
 | **200**     | Prior identical link outcome replayed                                       | -                     |
 | **400**     | Identity request is malformed or unsupported; no submitted secret is echoed | -                     |
@@ -1286,15 +1431,17 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                                                                                     | Response headers      |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| **415**     | Request content type is not supported                                                                                           | -                     |
 | **202**     | Challenge accepted or replayed without identity-existence disclosure                                                            | -                     |
 | **400**     | Identity request is malformed or unsupported; no submitted secret is echoed                                                     | -                     |
 | **401**     | Identity session is missing, invalid, or expired                                                                                | -                     |
+| **403**     | Identity action is not available to the authenticated actor                                                                     | -                     |
 | **404**     | Identity resource is absent, inaccessible, or cross-tenant; one normalized shape and timing class prevents existence disclosure | -                     |
 | **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path                                                      | -                     |
 | **429**     | Identity operation is rate limited without disclosing account existence                                                         | \* Retry-After - <br> |
@@ -1367,12 +1514,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                                                                                     | Response headers      |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| **415**     | Request content type is not supported                                                                                           | -                     |
 | **202**     | Challenge accepted or replayed without identity-existence disclosure                                                            | -                     |
 | **400**     | Identity request is malformed or unsupported; no submitted secret is echoed                                                     | -                     |
 | **401**     | Identity session is missing, invalid, or expired                                                                                | -                     |
@@ -1455,7 +1603,9 @@ example().catch(console.error);
 | **200**     | Prior identical outcome replayed                                            | -                     |
 | **400**     | Identity request is malformed or unsupported; no submitted secret is echoed | -                     |
 | **401**     | Identity session is missing, invalid, or expired                            | -                     |
+| **403**     | Fresh or stronger Keycloak assurance is required before the command can run | -                     |
 | **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path  | -                     |
+| **415**     | Request content type is not supported                                       | -                     |
 | **429**     | Identity operation is rate limited without disclosing account existence     | \* Retry-After - <br> |
 | **503**     | Identity dependency is unavailable and the outcome remains unresolved       | -                     |
 
@@ -1521,12 +1671,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                                 | Response headers |
 | ----------- | --------------------------------------------------------------------------- | ---------------- |
+| **415**     | Request content type is not supported                                       | -                |
 | **200**     | Profile updated or replayed                                                 | -                |
 | **400**     | Identity request is malformed or unsupported; no submitted secret is echoed | -                |
 | **401**     | Identity session is missing, invalid, or expired                            | -                |
@@ -1596,12 +1747,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                                 | Response headers |
 | ----------- | --------------------------------------------------------------------------- | ---------------- |
+| **415**     | Request content type is not supported                                       | -                |
 | **200**     | Settings updated or replayed                                                | -                |
 | **400**     | Identity request is malformed or unsupported; no submitted secret is echoed | -                |
 | **401**     | Identity session is missing, invalid, or expired                            | -                |
@@ -1676,15 +1828,17 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                                                                                     | Response headers |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| **415**     | Request content type is not supported                                                                                           | -                |
 | **200**     | Registration profile accepted or replayed                                                                                       | -                |
 | **400**     | Identity request is malformed or unsupported; no submitted secret is echoed                                                     | -                |
 | **401**     | Identity session is missing, invalid, or expired                                                                                | -                |
+| **403**     | Identity action is not available to the authenticated actor                                                                     | -                |
 | **404**     | Identity resource is absent, inaccessible, or cross-tenant; one normalized shape and timing class prevents existence disclosure | -                |
 | **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path                                                      | -                |
 | **422**     | Mandatory identity verification or minimum profile completion remains outstanding                                               | -                |

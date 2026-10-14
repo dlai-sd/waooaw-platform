@@ -100,12 +100,24 @@ public sealed record CustomerPortalSettingsState(
     DateTimeOffset UpdatedAt
 );
 
+public sealed record WorkspaceLayoutPreferenceState(
+    int PreferenceVersion,
+    string NavigationVisibility,
+    string ProgressVisibility,
+    int ConversationWidthPercent,
+    bool ReduceMotion,
+    DateTimeOffset UpdatedAt
+);
+
 public sealed class IdentityIdempotencyConflict(string idempotencyKey)
     : Exception(
         $"Idempotency-Key {idempotencyKey} was reused with a different canonical request hash."
     );
 
 public sealed class IdentityActionDeniedException(string reason) : Exception(reason);
+
+public sealed class IdentityPreferenceVersionConflictException()
+    : Exception("The workspace layout preference version is stale.");
 
 public sealed class IdentityResourceNotFoundException(string reason) : Exception(reason);
 
@@ -1413,6 +1425,72 @@ public sealed class IdentityService
         );
     }
 
+    public async Task<WorkspaceLayoutPreferenceState> GetWorkspaceLayoutPreferencesAsync(
+        string actorSubject,
+        Guid tenantId,
+        CancellationToken ct
+    )
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+        await GetCompletedRegistrationAsync(db, actorSubject, ct);
+        var preference = await GetOrCreatePortalPreferenceAsync(db, actorSubject, tenantId, ct);
+        return ToWorkspaceLayout(preference);
+    }
+
+    public async Task<WorkspaceLayoutPreferenceState> ReplaceWorkspaceLayoutPreferencesAsync(
+        string actorSubject,
+        Guid tenantId,
+        Guid idempotencyKey,
+        string canonicalHash,
+        int expectedVersion,
+        string navigationVisibility,
+        string progressVisibility,
+        int conversationWidthPercent,
+        bool reduceMotion,
+        CancellationToken ct
+    )
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+        await GetCompletedRegistrationAsync(db, actorSubject, ct);
+        var operation = $"ReplaceWorkspaceLayoutPreferences:{tenantId}";
+        var (replay, conflict) = await CheckIdempotencyAsync(
+            db,
+            actorSubject,
+            idempotencyKey,
+            operation,
+            canonicalHash,
+            ct
+        );
+        if (conflict)
+            throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
+
+        var preference = await GetOrCreatePortalPreferenceAsync(db, actorSubject, tenantId, ct);
+        if (replay is null)
+        {
+            if (preference.WorkspaceLayoutVersion != expectedVersion)
+                throw new IdentityPreferenceVersionConflictException();
+            preference.NavigationVisibility = navigationVisibility;
+            preference.ProgressVisibility = progressVisibility;
+            preference.ConversationWidthPercent = conversationWidthPercent;
+            preference.ReduceMotion = reduceMotion;
+            preference.WorkspaceLayoutVersion += 1;
+            preference.UpdatedAt = DateTimeOffset.UtcNow;
+            db.IdempotencyLedger.Add(
+                new IdentityIdempotencyEntry
+                {
+                    ActorSubject = actorSubject,
+                    IdempotencyKey = idempotencyKey.ToString(),
+                    OperationFamily = operation,
+                    CanonicalHash = canonicalHash,
+                    StatusCode = StatusCodes.Status200OK,
+                    ResponseBody = preference.PreferenceId.ToString(),
+                }
+            );
+            await db.SaveChangesAsync(ct);
+        }
+        return ToWorkspaceLayout(preference);
+    }
+
     public async Task<CustomerPortalSettingsState> UpdateCustomerSettingsAsync(
         string actorSubject,
         Guid tenantId,
@@ -1541,6 +1619,18 @@ public sealed class IdentityService
             DeserializeChannels(preference?.MonthlyNarrativeChannels ?? "[\"IN_APP\"]"),
             DeserializeChannels(preference?.SelfGovernanceAlertChannels ?? "[\"IN_APP\"]"),
             preference?.UpdatedAt ?? defaultUpdatedAt
+        );
+
+    private static WorkspaceLayoutPreferenceState ToWorkspaceLayout(
+        CustomerPortalPreferenceRecord preference
+    ) =>
+        new(
+            preference.WorkspaceLayoutVersion,
+            preference.NavigationVisibility,
+            preference.ProgressVisibility,
+            preference.ConversationWidthPercent,
+            preference.ReduceMotion,
+            preference.UpdatedAt
         );
 
     // ── Account Links (WhatsApp-to-web) ──────────────────────────────────────

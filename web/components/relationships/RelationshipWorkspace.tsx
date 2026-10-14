@@ -16,6 +16,8 @@ import type { EmploymentRelationshipSummaryV1 } from '@/lib/api/generated/models
 import { OpenConversationCommand } from '@/components/conversation/OpenConversationCommand';
 import type { EmploymentWorkspaceLoad } from '@/lib/api/employment-workspace';
 import { ConversationalEmploymentWorkspace } from './ConversationalEmploymentWorkspace';
+import type { CustomerEngagementProgressV1 } from '@/lib/api/generated/models/CustomerEngagementProgressV1';
+import { CustomerEngagementWorkspace } from './CustomerEngagementWorkspace';
 
 interface RelationshipWorkspaceProps {
   relationship: EmploymentRelationship;
@@ -25,6 +27,7 @@ interface RelationshipWorkspaceProps {
   evaluation: RelationshipEvaluationProjection;
   contractJourney?: ContractJourneyProjection | null;
   employment?: EmploymentWorkspaceLoad;
+  engagementProgress?: CustomerEngagementProgressV1;
 }
 
 const stateLabel = (state: string) => state.replaceAll('_', ' ').toLowerCase();
@@ -37,6 +40,7 @@ export function RelationshipWorkspace({
   evaluation,
   contractJourney = null,
   employment = { state: 'unavailable', reason: 'not-established' },
+  engagementProgress,
 }: RelationshipWorkspaceProps) {
   const live = relationship.state === 'ACTIVE';
   const performance = views.performance.current;
@@ -80,6 +84,8 @@ export function RelationshipWorkspace({
           )}
         </nav>
       </aside>
+
+      {engagementProgress ? <CustomerEngagementWorkspace progress={engagementProgress} /> : null}
 
       <section className="relationship-summary" aria-labelledby="relationship-summary-title">
         <div>

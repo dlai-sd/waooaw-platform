@@ -14,19 +14,26 @@
 
 import * as runtime from "../runtime";
 import type {
+  ConversationChannelSessionEndOutcomeV1,
   ConversationExecutionStatusV1,
   ConversationProblemDetail,
   ConversationReadPositionV1,
   ConversationStreamEventV1,
   ConversationSubmissionV1,
   ConversationTimelinePageV1,
+  EndConversationChannelSessionRequestV1,
+  IdentityProblemDetail,
   PortalInteractionSubmissionV1,
   PortalInteractionTimelinePageV1,
+  ProblemDetail,
+  RelationshipWorkspaceProblemDetailV1,
   SendConversationMessageRequestV1,
   SendPortalInteractionMessageRequestV1,
   UpdateConversationReadPositionRequestV1,
 } from "../models/index";
 import {
+  ConversationChannelSessionEndOutcomeV1FromJSON,
+  ConversationChannelSessionEndOutcomeV1ToJSON,
   ConversationExecutionStatusV1FromJSON,
   ConversationExecutionStatusV1ToJSON,
   ConversationProblemDetailFromJSON,
@@ -39,10 +46,18 @@ import {
   ConversationSubmissionV1ToJSON,
   ConversationTimelinePageV1FromJSON,
   ConversationTimelinePageV1ToJSON,
+  EndConversationChannelSessionRequestV1FromJSON,
+  EndConversationChannelSessionRequestV1ToJSON,
+  IdentityProblemDetailFromJSON,
+  IdentityProblemDetailToJSON,
   PortalInteractionSubmissionV1FromJSON,
   PortalInteractionSubmissionV1ToJSON,
   PortalInteractionTimelinePageV1FromJSON,
   PortalInteractionTimelinePageV1ToJSON,
+  ProblemDetailFromJSON,
+  ProblemDetailToJSON,
+  RelationshipWorkspaceProblemDetailV1FromJSON,
+  RelationshipWorkspaceProblemDetailV1ToJSON,
   SendConversationMessageRequestV1FromJSON,
   SendConversationMessageRequestV1ToJSON,
   SendPortalInteractionMessageRequestV1FromJSON,
@@ -55,6 +70,13 @@ export interface CancelConversationExecutionRequest {
   relationshipId: string;
   executionId: string;
   idempotencyKey: string;
+}
+
+export interface EndConversationChannelSessionRequest {
+  relationshipId: string;
+  channelSessionId: string;
+  idempotencyKey: string;
+  endConversationChannelSessionRequestV1: EndConversationChannelSessionRequestV1;
 }
 
 export interface ListConversationMessagesRequest {
@@ -190,7 +212,105 @@ export class ConversationApi extends runtime.BaseAPI {
   }
 
   /**
-   * Returns tenant- and relationship-authorized messages in ascending canonical sequence. `cursor` pages backward and `afterCursor` reconciles forward; they are mutually exclusive. Cursors are opaque and relationship-bound. This read does not advance the unread position.
+   * End one conversation channel session without ending the relationship
+   */
+  async endConversationChannelSessionRaw(
+    requestParameters: EndConversationChannelSessionRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<ConversationChannelSessionEndOutcomeV1>> {
+    if (requestParameters["relationshipId"] == null) {
+      throw new runtime.RequiredError(
+        "relationshipId",
+        'Required parameter "relationshipId" was null or undefined when calling endConversationChannelSession().',
+      );
+    }
+
+    if (requestParameters["channelSessionId"] == null) {
+      throw new runtime.RequiredError(
+        "channelSessionId",
+        'Required parameter "channelSessionId" was null or undefined when calling endConversationChannelSession().',
+      );
+    }
+
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling endConversationChannelSession().',
+      );
+    }
+
+    if (requestParameters["endConversationChannelSessionRequestV1"] == null) {
+      throw new runtime.RequiredError(
+        "endConversationChannelSessionRequestV1",
+        'Required parameter "endConversationChannelSessionRequestV1" was null or undefined when calling endConversationChannelSession().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(
+        requestParameters["idempotencyKey"],
+      );
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("BearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/employment/relationships/{relationshipId}/conversation/channel-sessions/{channelSessionId}/end`;
+    urlPath = urlPath.replace(
+      `{${"relationshipId"}}`,
+      encodeURIComponent(String(requestParameters["relationshipId"])),
+    );
+    urlPath = urlPath.replace(
+      `{${"channelSessionId"}}`,
+      encodeURIComponent(String(requestParameters["channelSessionId"])),
+    );
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "POST",
+        headers: headerParameters,
+        query: queryParameters,
+        body: EndConversationChannelSessionRequestV1ToJSON(
+          requestParameters["endConversationChannelSessionRequestV1"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      ConversationChannelSessionEndOutcomeV1FromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * End one conversation channel session without ending the relationship
+   */
+  async endConversationChannelSession(
+    requestParameters: EndConversationChannelSessionRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<ConversationChannelSessionEndOutcomeV1> {
+    const response = await this.endConversationChannelSessionRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   * Returns tenant- and relationship-authorized messages in ascending canonical sequence. `cursor` pages backward and takes precedence when present; otherwise `afterCursor` reconciles forward. Cursors are opaque and relationship-bound. This read does not advance the unread position.
    * Read the authoritative durable conversation timeline
    */
   async listConversationMessagesRaw(
@@ -251,7 +371,7 @@ export class ConversationApi extends runtime.BaseAPI {
   }
 
   /**
-   * Returns tenant- and relationship-authorized messages in ascending canonical sequence. `cursor` pages backward and `afterCursor` reconciles forward; they are mutually exclusive. Cursors are opaque and relationship-bound. This read does not advance the unread position.
+   * Returns tenant- and relationship-authorized messages in ascending canonical sequence. `cursor` pages backward and takes precedence when present; otherwise `afterCursor` reconciles forward. Cursors are opaque and relationship-bound. This read does not advance the unread position.
    * Read the authoritative durable conversation timeline
    */
   async listConversationMessages(

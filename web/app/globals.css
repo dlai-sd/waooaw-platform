@@ -5843,3 +5843,92 @@ html[data-header-scrolled="true"] .app-shell-public .top-bar {
     transition: none !important;
   }
 }
+.customer-engagement-workspace {
+  display: grid;
+  gap: 1rem;
+  grid-column: minmax(0, 1fr);
+  padding: clamp(1rem, 2vw, 1.5rem);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--surface, #fff);
+}
+
+.customer-engagement-workspace > header,
+.customer-engagement-workspace > header > div,
+.engagement-progress-list > li > div:first-child {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.customer-engagement-workspace > header > div {
+  display: block;
+}
+
+.engagement-focus-navigation,
+.engagement-truth {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.engagement-focus-navigation button,
+.engagement-progress-list button,
+.customer-engagement-workspace > header button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.engagement-progress-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.engagement-progress-list > li {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-inline-start: 0.3rem solid var(--border);
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--surface, #fff) 92%, var(--accent, #2563eb));
+}
+
+.engagement-progress-list > li[data-state="blocked"] {
+  border-inline-start-color: #b42318;
+}
+
+.engagement-truth-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+}
+
+.engagement-truth-state[data-state="unknown"],
+.engagement-blocked-effect,
+.engagement-problem {
+  color: #b42318;
+}
+
+.persistent-conversation[data-reduce-motion="true"],
+.persistent-conversation[data-reduce-motion="true"] * {
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+  animation-duration: 0.01ms !important;
+}
+
+@media (max-width: 899px) {
+  .customer-engagement-workspace {
+    grid-column: 1 / -1;
+  }
+
+  .customer-engagement-workspace > header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

@@ -49,7 +49,41 @@ export interface AdmitEmploymentRelationshipRequest {
    * @memberof AdmitEmploymentRelationshipRequest
    */
   correlationId?: string;
+  /**
+   *
+   * @type {string}
+   * @memberof AdmitEmploymentRelationshipRequest
+   */
+  clientIntentId?: string;
+  /**
+   *
+   * @type {string}
+   * @memberof AdmitEmploymentRelationshipRequest
+   */
+  engagementIntent?: AdmitEmploymentRelationshipRequestEngagementIntentEnum;
+  /**
+   *
+   * @type {string}
+   * @memberof AdmitEmploymentRelationshipRequest
+   */
+  disclosureVersion?: string;
+  /**
+   *
+   * @type {string}
+   * @memberof AdmitEmploymentRelationshipRequest
+   */
+  safeReturnTarget?: string;
 }
+
+/**
+ * @export
+ */
+export const AdmitEmploymentRelationshipRequestEngagementIntentEnum = {
+  Trial: "TRIAL",
+  Hire: "HIRE",
+} as const;
+export type AdmitEmploymentRelationshipRequestEngagementIntentEnum =
+  (typeof AdmitEmploymentRelationshipRequestEngagementIntentEnum)[keyof typeof AdmitEmploymentRelationshipRequestEngagementIntentEnum];
 
 /**
  * Check if a given object implements the AdmitEmploymentRelationshipRequest interface.
@@ -97,6 +131,14 @@ export function AdmitEmploymentRelationshipRequestFromJSONTyped(
     professionalVersion: json["professionalVersion"],
     correlationId:
       json["correlationId"] == null ? undefined : json["correlationId"],
+    clientIntentId:
+      json["clientIntentId"] == null ? undefined : json["clientIntentId"],
+    engagementIntent:
+      json["engagementIntent"] == null ? undefined : json["engagementIntent"],
+    disclosureVersion:
+      json["disclosureVersion"] == null ? undefined : json["disclosureVersion"],
+    safeReturnTarget:
+      json["safeReturnTarget"] == null ? undefined : json["safeReturnTarget"],
   };
 }
 
@@ -120,5 +162,9 @@ export function AdmitEmploymentRelationshipRequestToJSONTyped(
     professionalAdmissionId: value["professionalAdmissionId"],
     professionalVersion: value["professionalVersion"],
     correlationId: value["correlationId"],
+    clientIntentId: value["clientIntentId"],
+    engagementIntent: value["engagementIntent"],
+    disclosureVersion: value["disclosureVersion"],
+    safeReturnTarget: value["safeReturnTarget"],
   };
 }

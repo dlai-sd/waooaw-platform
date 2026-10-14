@@ -2,27 +2,179 @@
 
 All URIs are relative to _http://localhost:5001_
 
-| Method                                                                                                 | HTTP request                                                                                    | Description                                                            |
-| ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| [**getRelationshipAttention**](RelationshipWorkspaceApi.md#getrelationshipattention)                   | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/attention                   | Read authoritative needs-your-attention items in BP-owned order        |
-| [**getRelationshipBusinessOutcomes**](RelationshipWorkspaceApi.md#getrelationshipbusinessoutcomes)     | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/business-outcomes           | Read relationship business outcomes with explicit traceability         |
-| [**getRelationshipCommand**](RelationshipWorkspaceApi.md#getrelationshipcommand)                       | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/commands/{commandId}        | Reconcile one command to an authoritative outcome                      |
-| [**getRelationshipEvaluation**](RelationshipWorkspaceApi.md#getrelationshipevaluation)                 | **GET** /api/v1/employment/relationships/{relationshipId}/evaluation                            | Read the authoritative relationship evaluation and skill configuration |
-| [**getRelationshipEvidence**](RelationshipWorkspaceApi.md#getrelationshipevidence)                     | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/evidence/{evidenceId}       | Read one relationship-authorized evidence detail projection            |
-| [**getRelationshipEvidenceExport**](RelationshipWorkspaceApi.md#getrelationshipevidenceexport)         | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/evidence-exports/{exportId} | Reconcile one relationship evidence export request                     |
-| [**getRelationshipGoals**](RelationshipWorkspaceApi.md#getrelationshipgoals)                           | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/goals                       | Read active and historical relationship goals                          |
-| [**getRelationshipOperations**](RelationshipWorkspaceApi.md#getrelationshipoperations)                 | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/operations                  | Read Operations eligibility and reassessment state                     |
-| [**getRelationshipPerformance**](RelationshipWorkspaceApi.md#getrelationshipperformance)               | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/performance                 | Read immutable relationship performance reviews                        |
-| [**getRelationshipPlan**](RelationshipWorkspaceApi.md#getrelationshipplan)                             | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/plan                        | Read relationship plan, goals, and available typed commands            |
-| [**getRelationshipResults**](RelationshipWorkspaceApi.md#getrelationshipresults)                       | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/results                     | Read relationship business outcomes and attribution context            |
-| [**getRelationshipRightsControls**](RelationshipWorkspaceApi.md#getrelationshiprightscontrols)         | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/rights-controls             | Read relationship rights, scope, authority, and lifecycle controls     |
-| [**getRelationshipUsageBudget**](RelationshipWorkspaceApi.md#getrelationshipusagebudget)               | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/usage-budget                | Read WBE-authoritative usage and budget projection relayed by BP       |
-| [**getRelationshipWork**](RelationshipWorkspaceApi.md#getrelationshipwork)                             | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/work                        | Read relationship work and deliverable status                          |
-| [**getRelationshipWorkspace**](RelationshipWorkspaceApi.md#getrelationshipworkspace)                   | **GET** /api/v1/employment/relationships/{relationshipId}/workspace                             | Read the complete relationship workspace projection                    |
-| [**getRelationshipWorkspaceChanges**](RelationshipWorkspaceApi.md#getrelationshipworkspacechanges)     | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/changes                     | Read incremental workspace changes after an authoritative cursor       |
-| [**listRelationshipEvidence**](RelationshipWorkspaceApi.md#listrelationshipevidence)                   | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/evidence                    | List relationship-authorized evidence summaries                        |
-| [**requestRelationshipEvidenceExport**](RelationshipWorkspaceApi.md#requestrelationshipevidenceexport) | **POST** /api/v1/employment/relationships/{relationshipId}/workspace/evidence-exports           | Request or replay one relationship evidence export                     |
-| [**submitRelationshipCommand**](RelationshipWorkspaceApi.md#submitrelationshipcommand)                 | **POST** /api/v1/employment/relationships/{relationshipId}/workspace/commands                   | Submit or replay a typed relationship command                          |
+| Method                                                                                                             | HTTP request                                                                                    | Description                                                            |
+| ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| [**admitEmploymentRelationship**](RelationshipWorkspaceApi.md#admitemploymentrelationshipoperation)                | **POST** /api/v1/employment/relationships                                                       | Admit or replay an employment relationship                             |
+| [**getCustomerEngagementProgress**](RelationshipWorkspaceApi.md#getcustomerengagementprogress)                     | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/engagement-progress         | Get owner-composed customer engagement progress                        |
+| [**getRelationshipAttention**](RelationshipWorkspaceApi.md#getrelationshipattention)                               | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/attention                   | Read authoritative needs-your-attention items in BP-owned order        |
+| [**getRelationshipBusinessOutcomes**](RelationshipWorkspaceApi.md#getrelationshipbusinessoutcomes)                 | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/business-outcomes           | Read relationship business outcomes with explicit traceability         |
+| [**getRelationshipCommand**](RelationshipWorkspaceApi.md#getrelationshipcommand)                                   | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/commands/{commandId}        | Reconcile one command to an authoritative outcome                      |
+| [**getRelationshipEvaluation**](RelationshipWorkspaceApi.md#getrelationshipevaluation)                             | **GET** /api/v1/employment/relationships/{relationshipId}/evaluation                            | Read the authoritative relationship evaluation and skill configuration |
+| [**getRelationshipEvidence**](RelationshipWorkspaceApi.md#getrelationshipevidence)                                 | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/evidence/{evidenceId}       | Read one relationship-authorized evidence detail projection            |
+| [**getRelationshipEvidenceExport**](RelationshipWorkspaceApi.md#getrelationshipevidenceexport)                     | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/evidence-exports/{exportId} | Reconcile one relationship evidence export request                     |
+| [**getRelationshipGoals**](RelationshipWorkspaceApi.md#getrelationshipgoals)                                       | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/goals                       | Read active and historical relationship goals                          |
+| [**getRelationshipOperations**](RelationshipWorkspaceApi.md#getrelationshipoperations)                             | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/operations                  | Read Operations eligibility and reassessment state                     |
+| [**getRelationshipPerformance**](RelationshipWorkspaceApi.md#getrelationshipperformance)                           | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/performance                 | Read immutable relationship performance reviews                        |
+| [**getRelationshipPlan**](RelationshipWorkspaceApi.md#getrelationshipplan)                                         | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/plan                        | Read relationship plan, goals, and available typed commands            |
+| [**getRelationshipResults**](RelationshipWorkspaceApi.md#getrelationshipresults)                                   | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/results                     | Read relationship business outcomes and attribution context            |
+| [**getRelationshipRightsControls**](RelationshipWorkspaceApi.md#getrelationshiprightscontrols)                     | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/rights-controls             | Read relationship rights, scope, authority, and lifecycle controls     |
+| [**getRelationshipUsageBudget**](RelationshipWorkspaceApi.md#getrelationshipusagebudget)                           | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/usage-budget                | Read WBE-authoritative usage and budget projection relayed by BP       |
+| [**getRelationshipWork**](RelationshipWorkspaceApi.md#getrelationshipwork)                                         | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/work                        | Read relationship work and deliverable status                          |
+| [**getRelationshipWorkspace**](RelationshipWorkspaceApi.md#getrelationshipworkspace)                               | **GET** /api/v1/employment/relationships/{relationshipId}/workspace                             | Read the complete relationship workspace projection                    |
+| [**getRelationshipWorkspaceChanges**](RelationshipWorkspaceApi.md#getrelationshipworkspacechanges)                 | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/changes                     | Read incremental workspace changes after an authoritative cursor       |
+| [**getRelationshipWorkspacePreferences**](RelationshipWorkspaceApi.md#getrelationshipworkspacepreferences)         | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/preferences                 | Get relationship-specific presentation preferences                     |
+| [**listRelationshipEvidence**](RelationshipWorkspaceApi.md#listrelationshipevidence)                               | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/evidence                    | List relationship-authorized evidence summaries                        |
+| [**replaceRelationshipWorkspacePreferences**](RelationshipWorkspaceApi.md#replacerelationshipworkspacepreferences) | **PUT** /api/v1/employment/relationships/{relationshipId}/workspace/preferences                 | Replace relationship-specific presentation preferences                 |
+| [**requestRelationshipEvidenceExport**](RelationshipWorkspaceApi.md#requestrelationshipevidenceexport)             | **POST** /api/v1/employment/relationships/{relationshipId}/workspace/evidence-exports           | Request or replay one relationship evidence export                     |
+| [**resolveWorkspaceFocus**](RelationshipWorkspaceApi.md#resolveworkspacefocus)                                     | **POST** /api/v1/employment/relationships/{relationshipId}/workspace/focus-resolutions          | Resolve a protected short-lived workspace focus reference              |
+| [**submitRelationshipCommand**](RelationshipWorkspaceApi.md#submitrelationshipcommand)                             | **POST** /api/v1/employment/relationships/{relationshipId}/workspace/commands                   | Submit or replay a typed relationship command                          |
+
+## admitEmploymentRelationship
+
+> AdmitEmploymentRelationship201Response admitEmploymentRelationship(admitEmploymentRelationshipRequest, idempotencyKey)
+
+Admit or replay an employment relationship
+
+Mints the tenant\&#39;s durable employment relationship for the authenticated participant, canonical evaluation intent, and exact active professional admission. Replaying the same participant, professional type, version, and evaluation intent returns the existing relationship and immutable agent instance. Constitutional validation and evidence commitment complete before persistence.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  RelationshipWorkspaceApi,
+} from '';
+import type { AdmitEmploymentRelationshipOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new RelationshipWorkspaceApi(config);
+
+  const body = {
+    // AdmitEmploymentRelationshipRequest
+    admitEmploymentRelationshipRequest: ...,
+    // string | Required for the customer-engagement admission shape; omitted only by legacy callers. (optional)
+    idempotencyKey: idempotencyKey_example,
+  } satisfies AdmitEmploymentRelationshipOperationRequest;
+
+  try {
+    const data = await api.admitEmploymentRelationship(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name                                   | Type                                                                        | Description                                                                           | Notes                                |
+| -------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------ |
+| **admitEmploymentRelationshipRequest** | [AdmitEmploymentRelationshipRequest](AdmitEmploymentRelationshipRequest.md) |                                                                                       |                                      |
+| **idempotencyKey**                     | `string`                                                                    | Required for the customer-engagement admission shape; omitted only by legacy callers. | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+[**AdmitEmploymentRelationship201Response**](AdmitEmploymentRelationship201Response.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/problem+json`, `application/json`
+
+### HTTP response details
+
+| Status code | Description                                                                                         | Response headers |
+| ----------- | --------------------------------------------------------------------------------------------------- | ---------------- |
+| **415**     | Request content type is not supported                                                               | -                |
+| **201**     | Relationship admitted                                                                               | -                |
+| **200**     | Existing relationship returned for an idempotent replay                                             | -                |
+| **400**     | Request body failed validation                                                                      | -                |
+| **401**     | JWT missing, expired, or invalid                                                                    | -                |
+| **403**     | Authenticated identity lacks tenant or participant authority                                        | -                |
+| **409**     | Professional admission is inactive, mismatched, or conflicts with the existing relationship binding | -                |
+| **503**     | Constitutional validation or evidence commitment is unavailable                                     | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## getCustomerEngagementProgress
+
+> CustomerEngagementProgressV1 getCustomerEngagementProgress(relationshipId)
+
+Get owner-composed customer engagement progress
+
+### Example
+
+```ts
+import {
+  Configuration,
+  RelationshipWorkspaceApi,
+} from '';
+import type { GetCustomerEngagementProgressRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new RelationshipWorkspaceApi(config);
+
+  const body = {
+    // string | Tenant-scoped durable employment relationship UUID
+    relationshipId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetCustomerEngagementProgressRequest;
+
+  try {
+    const data = await api.getCustomerEngagementProgress(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name               | Type     | Description                                        | Notes                     |
+| ------------------ | -------- | -------------------------------------------------- | ------------------------- |
+| **relationshipId** | `string` | Tenant-scoped durable employment relationship UUID | [Defaults to `undefined`] |
+
+### Return type
+
+[**CustomerEngagementProgressV1**](CustomerEngagementProgressV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                                  | Response headers |
+| ----------- | ---------------------------------------------------------------------------- | ---------------- |
+| **200**     | Current progress with truth dimensions, provenance, and server-ranked action | -                |
+| **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant      | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 ## getRelationshipAttention
 
@@ -84,12 +236,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                             | Response headers |
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
 | **200**     | Attention items in exact authoritative order                            | -                |
 | **400**     | Workspace request is malformed or unsupported                           | -                |
 | **401**     | Workspace session is missing, invalid, or expired                       | -                |
@@ -157,12 +310,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                             | Response headers |
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
 | **200**     | Relationship business outcomes                                          | -                |
 | **401**     | Workspace session is missing, invalid, or expired                       | -                |
 | **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
@@ -232,12 +386,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                             | Response headers |
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
 | **200**     | Command outcome                                                         | -                |
 | **400**     | Workspace request is malformed or unsupported                           | -                |
 | **401**     | Workspace session is missing, invalid, or expired                       | -                |
@@ -303,12 +458,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                             | Response headers |
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
 | **200**     | Relationship-local evaluation projection                                | -                |
 | **401**     | Workspace session is missing, invalid, or expired                       | -                |
 | **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
@@ -377,12 +533,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                             | Response headers |
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
 | **200**     | Evidence detail                                                         | -                |
 | **400**     | Workspace request is malformed or unsupported                           | -                |
 | **401**     | Workspace session is missing, invalid, or expired                       | -                |
@@ -453,12 +610,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                             | Response headers |
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
 | **200**     | Export outcome                                                          | -                |
 | **400**     | Workspace request is malformed or unsupported                           | -                |
 | **401**     | Workspace session is missing, invalid, or expired                       | -                |
@@ -526,12 +684,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                             | Response headers |
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
 | **200**     | Relationship goals and history                                          | -                |
 | **401**     | Workspace session is missing, invalid, or expired                       | -                |
 | **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
@@ -600,12 +759,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                             | Response headers |
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
 | **200**     | Relationship Operations state                                           | -                |
 | **401**     | Workspace session is missing, invalid, or expired                       | -                |
 | **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
@@ -674,12 +834,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                             | Response headers |
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
 | **200**     | Relationship performance review projection                              | -                |
 | **401**     | Workspace session is missing, invalid, or expired                       | -                |
 | **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
@@ -744,12 +905,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                             | Response headers |
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
 | **200**     | Relationship plan section                                               | -                |
 | **400**     | Workspace request is malformed or unsupported                           | -                |
 | **401**     | Workspace session is missing, invalid, or expired                       | -                |
@@ -815,12 +977,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                             | Response headers |
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
 | **200**     | Relationship results section                                            | -                |
 | **400**     | Workspace request is malformed or unsupported                           | -                |
 | **401**     | Workspace session is missing, invalid, or expired                       | -                |
@@ -886,12 +1049,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                             | Response headers |
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
 | **200**     | Relationship rights and controls section                                | -                |
 | **400**     | Workspace request is malformed or unsupported                           | -                |
 | **401**     | Workspace session is missing, invalid, or expired                       | -                |
@@ -957,12 +1121,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                             | Response headers |
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
 | **200**     | Relationship usage and budget section                                   | -                |
 | **400**     | Workspace request is malformed or unsupported                           | -                |
 | **401**     | Workspace session is missing, invalid, or expired                       | -                |
@@ -1028,12 +1193,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                             | Response headers |
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
 | **200**     | Relationship work section                                               | -                |
 | **400**     | Workspace request is malformed or unsupported                           | -                |
 | **401**     | Workspace session is missing, invalid, or expired                       | -                |
@@ -1101,12 +1267,13 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                             | Response headers |
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
 | **200**     | Workspace projection snapshot                                           | -                |
 | **400**     | Workspace request is malformed or unsupported                           | -                |
 | **401**     | Workspace session is missing, invalid, or expired                       | -                |
@@ -1178,18 +1345,87 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                             | Response headers |
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
 | **200**     | Workspace change page                                                   | -                |
 | **400**     | Workspace request is malformed or unsupported                           | -                |
 | **401**     | Workspace session is missing, invalid, or expired                       | -                |
 | **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
 | **410**     | Workspace cursor expired and a fresh snapshot is required               | -                |
 | **503**     | Required owner projection or constitutional dependency is unavailable   | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## getRelationshipWorkspacePreferences
+
+> RelationshipWorkspacePreferencesV1 getRelationshipWorkspacePreferences(relationshipId)
+
+Get relationship-specific presentation preferences
+
+### Example
+
+```ts
+import {
+  Configuration,
+  RelationshipWorkspaceApi,
+} from '';
+import type { GetRelationshipWorkspacePreferencesRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new RelationshipWorkspaceApi(config);
+
+  const body = {
+    // string | Tenant-scoped durable employment relationship UUID
+    relationshipId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetRelationshipWorkspacePreferencesRequest;
+
+  try {
+    const data = await api.getRelationshipWorkspacePreferences(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name               | Type     | Description                                        | Notes                     |
+| ------------------ | -------- | -------------------------------------------------- | ------------------------- |
+| **relationshipId** | `string` | Tenant-scoped durable employment relationship UUID | [Defaults to `undefined`] |
+
+### Return type
+
+[**RelationshipWorkspacePreferencesV1**](RelationshipWorkspacePreferencesV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                             | Response headers |
+| ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **200**     | Current relationship workspace preferences                              | -                |
+| **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
@@ -1255,17 +1491,91 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: `application/problem+json`, `application/json`
+
+### HTTP response details
+
+| Status code | Description                                                             | Response headers |
+| ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
+| **200**     | Evidence summary page                                                   | -                |
+| **400**     | Workspace request is malformed or unsupported                           | -                |
+| **401**     | Workspace session is missing, invalid, or expired                       | -                |
+| **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
+| **503**     | Required owner projection or constitutional dependency is unavailable   | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## replaceRelationshipWorkspacePreferences
+
+> RelationshipWorkspacePreferencesV1 replaceRelationshipWorkspacePreferences(relationshipId, replaceRelationshipWorkspacePreferencesRequestV1)
+
+Replace relationship-specific presentation preferences
+
+### Example
+
+```ts
+import {
+  Configuration,
+  RelationshipWorkspaceApi,
+} from '';
+import type { ReplaceRelationshipWorkspacePreferencesRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new RelationshipWorkspaceApi(config);
+
+  const body = {
+    // string | Tenant-scoped durable employment relationship UUID
+    relationshipId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // ReplaceRelationshipWorkspacePreferencesRequestV1
+    replaceRelationshipWorkspacePreferencesRequestV1: ...,
+  } satisfies ReplaceRelationshipWorkspacePreferencesRequest;
+
+  try {
+    const data = await api.replaceRelationshipWorkspacePreferences(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name                                                 | Type                                                                                                    | Description                                        | Notes                     |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------- | ------------------------- |
+| **relationshipId**                                   | `string`                                                                                                | Tenant-scoped durable employment relationship UUID | [Defaults to `undefined`] |
+| **replaceRelationshipWorkspacePreferencesRequestV1** | [ReplaceRelationshipWorkspacePreferencesRequestV1](ReplaceRelationshipWorkspacePreferencesRequestV1.md) |                                                    |                           |
+
+### Return type
+
+[**RelationshipWorkspacePreferencesV1**](RelationshipWorkspacePreferencesV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
 - **Accept**: `application/json`, `application/problem+json`
 
 ### HTTP response details
 
 | Status code | Description                                                             | Response headers |
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
-| **200**     | Evidence summary page                                                   | -                |
-| **400**     | Workspace request is malformed or unsupported                           | -                |
-| **401**     | Workspace session is missing, invalid, or expired                       | -                |
+| **200**     | Preferences replaced without changing relationship authority            | -                |
+| **400**     | Request body failed validation                                          | -                |
 | **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
-| **503**     | Required owner projection or constitutional dependency is unavailable   | -                |
+| **409**     | Operation not valid in current state                                    | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
@@ -1334,12 +1644,14 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                             | Response headers |
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
+| **415**     | Request content type is not supported                                   | -                |
 | **202**     | Export request accepted                                                 | -                |
 | **200**     | Prior identical export request replayed                                 | -                |
 | **400**     | Workspace request is malformed or unsupported                           | -                |
@@ -1348,6 +1660,80 @@ example().catch(console.error);
 | **409**     | Idempotency or expected-version conflict requires reconciliation        | -                |
 | **423**     | Command is blocked by policy, assurance, authority, or owner dependency | -                |
 | **503**     | Required owner projection or constitutional dependency is unavailable   | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## resolveWorkspaceFocus
+
+> WorkspaceFocusResolutionV1 resolveWorkspaceFocus(relationshipId, resolveWorkspaceFocusRequestV1)
+
+Resolve a protected short-lived workspace focus reference
+
+### Example
+
+```ts
+import {
+  Configuration,
+  RelationshipWorkspaceApi,
+} from '';
+import type { ResolveWorkspaceFocusRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new RelationshipWorkspaceApi(config);
+
+  const body = {
+    // string | Tenant-scoped durable employment relationship UUID
+    relationshipId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // ResolveWorkspaceFocusRequestV1
+    resolveWorkspaceFocusRequestV1: ...,
+  } satisfies ResolveWorkspaceFocusRequest;
+
+  try {
+    const data = await api.resolveWorkspaceFocus(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name                               | Type                                                                | Description                                        | Notes                     |
+| ---------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------- | ------------------------- |
+| **relationshipId**                 | `string`                                                            | Tenant-scoped durable employment relationship UUID | [Defaults to `undefined`] |
+| **resolveWorkspaceFocusRequestV1** | [ResolveWorkspaceFocusRequestV1](ResolveWorkspaceFocusRequestV1.md) |                                                    |                           |
+
+### Return type
+
+[**WorkspaceFocusResolutionV1**](WorkspaceFocusResolutionV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                             | Response headers |
+| ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **200**     | Current authorized canonical destination                                | -                |
+| **400**     | Request body failed validation                                          | -                |
+| **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
+| **409**     | Operation not valid in current state                                    | -                |
+| **410**     | Focus reference expired                                                 | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
@@ -1416,12 +1802,14 @@ example().catch(console.error);
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
-- **Accept**: `application/json`, `application/problem+json`
+- **Accept**: `application/problem+json`, `application/json`
 
 ### HTTP response details
 
 | Status code | Description                                                             | Response headers |
 | ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
+| **415**     | Request content type is not supported                                   | -                |
 | **202**     | Command accepted with durable reconciliation responsibility             | -                |
 | **200**     | Prior identical command outcome replayed                                | -                |
 | **400**     | Workspace request is malformed or unsupported                           | -                |

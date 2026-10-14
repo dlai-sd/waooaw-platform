@@ -181,7 +181,30 @@ public sealed class RelationshipOnboardPreference
     public string? ChatAppearance { get; set; }
     public string? TimestampVisibility { get; set; }
     public string? ThemePreference { get; set; }
+    public int WorkspacePreferenceVersion { get; set; }
+    public string DefaultFocus { get; set; } = "LIFECYCLE";
+    public bool OpenProgressOnConversationFocus { get; set; } = true;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class CustomerEngagementAdmissionOperation
+{
+    public Guid OperationId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid ParticipantId { get; init; }
+    public string IdempotencyKey { get; init; } = string.Empty;
+    public Guid ClientIntentId { get; init; }
+    public string MaterialRequestHash { get; init; } = string.Empty;
+    public string State { get; set; } = "RESERVED";
+    public Guid RelationshipId { get; init; }
+    public Guid AgentInstanceId { get; init; }
+    public Guid ConversationId { get; init; }
+    public string EngagementIntent { get; init; } = string.Empty;
+    public Guid? EvidenceId { get; set; }
+    public string? OutcomeJson { get; set; }
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? CompletedAt { get; set; }
 }
 
 public sealed class CustomerAlert
@@ -632,6 +655,8 @@ public sealed class EmploymentRelationshipDbContext : DbContext
         Set<RelationshipGoalDecision>();
     public DbSet<RelationshipOnboardPreference> RelationshipOnboardPreferences =>
         Set<RelationshipOnboardPreference>();
+    public DbSet<CustomerEngagementAdmissionOperation> CustomerEngagementAdmissionOperations =>
+        Set<CustomerEngagementAdmissionOperation>();
     public DbSet<CustomerAlert> CustomerAlerts => Set<CustomerAlert>();
     public DbSet<CustomerAlertIdempotency> CustomerAlertIdempotency =>
         Set<CustomerAlertIdempotency>();
@@ -1097,12 +1122,63 @@ public sealed class EmploymentRelationshipDbContext : DbContext
                 .Property(value => value.ThemePreference)
                 .HasColumnName("theme_preference")
                 .HasMaxLength(16);
+            entity
+                .Property(value => value.WorkspacePreferenceVersion)
+                .HasColumnName("workspace_preference_version")
+                .IsConcurrencyToken();
+            entity
+                .Property(value => value.DefaultFocus)
+                .HasColumnName("default_focus")
+                .HasMaxLength(32);
+            entity
+                .Property(value => value.OpenProgressOnConversationFocus)
+                .HasColumnName("open_progress_on_conversation_focus");
             entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
             entity
                 .HasOne<EmploymentRelationship>()
                 .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
+        modelBuilder.Entity<CustomerEngagementAdmissionOperation>(entity =>
+        {
+            entity.ToTable("customer_engagement_admission_operations", "business");
+            entity.HasKey(value => value.OperationId);
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.ParticipantId,
+                    value.IdempotencyKey,
+                })
+                .IsUnique();
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.ParticipantId,
+                    value.ClientIntentId,
+                })
+                .IsUnique();
+            entity.Property(value => value.OperationId).HasColumnName("operation_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.ParticipantId).HasColumnName("participant_id");
+            entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
+            entity.Property(value => value.ClientIntentId).HasColumnName("client_intent_id");
+            entity
+                .Property(value => value.MaterialRequestHash)
+                .HasColumnName("material_request_hash");
+            entity.Property(value => value.State).HasColumnName("state").HasMaxLength(32);
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.AgentInstanceId).HasColumnName("agent_instance_id");
+            entity.Property(value => value.ConversationId).HasColumnName("conversation_id");
+            entity.Property(value => value.EngagementIntent).HasColumnName("engagement_intent");
+            entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
+            entity.Property(value => value.OutcomeJson).HasColumnName("outcome_json");
+            entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+            entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
+            entity.Property(value => value.CompletedAt).HasColumnName("completed_at");
         });
 
         modelBuilder.Entity<CustomerAlert>(entity =>

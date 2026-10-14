@@ -46,7 +46,15 @@ export function routeContext(pathname: string): {
   return { surface: 'MY_AGENTS', label: 'Customer portal', action: 'Ask WAOOAW Guide' };
 }
 
-export function PersistentConversationDock({ locale = 'en-IN' }: { locale?: string }) {
+export function PersistentConversationDock({
+  conversationWidthPercent = 40,
+  locale = 'en-IN',
+  reduceMotion = false,
+}: {
+  conversationWidthPercent?: number;
+  locale?: string;
+  reduceMotion?: boolean;
+}) {
   const pathname = usePathname();
   const context = routeContext(pathname);
   const [open, setOpen] = useState(false);
@@ -59,9 +67,8 @@ export function PersistentConversationDock({ locale = 'en-IN' }: { locale?: stri
 
   useEffect(() => {
     setOpen(localStorage.getItem('waooaw:conversation-open') === 'true');
-    const storedWidth = Number(localStorage.getItem('waooaw:conversation-width'));
-    if (Number.isFinite(storedWidth) && storedWidth >= 320 && storedWidth <= 560) setWidth(storedWidth);
-  }, []);
+    setWidth(Math.min(560, Math.max(320, (window.innerWidth * conversationWidthPercent) / 100)));
+  }, [conversationWidthPercent]);
   useEffect(() => {
     if (!open) return;
     const handleSheetKey = (event: KeyboardEvent) => {
@@ -151,7 +158,6 @@ export function PersistentConversationDock({ locale = 'en-IN' }: { locale?: stri
   function setBoundedWidth(nextWidth: number) {
     const boundedWidth = Math.min(560, Math.max(320, nextWidth));
     setWidth(boundedWidth);
-    localStorage.setItem('waooaw:conversation-width', String(boundedWidth));
   }
 
   function startResize(event: ReactPointerEvent<HTMLDivElement>) {
@@ -191,6 +197,7 @@ export function PersistentConversationDock({ locale = 'en-IN' }: { locale?: stri
         aria-label={context.relationshipId ? 'Professional conversation' : 'WAOOAW Guide'}
         className="persistent-conversation"
         data-open={open}
+        data-reduce-motion={reduceMotion}
         id="persistent-conversation"
         ref={dock}
         style={{ '--guide-width': `${width}px` } as CSSProperties}

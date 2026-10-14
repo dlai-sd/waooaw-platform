@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-121
 contract_path: work-contracts/WC-121-customer-engagement-workspace-implementation.md
-contract_digest: dae3a687973173aef2d1711be96efc536a4f90b56d80fd09b4072f84c16f41fe
+contract_digest: 943d2fb2b9272147b4c616ea63e3eb3b115f83f7f744b84a89ba08b37ad03f43
 solution_path: architecture/reference/components/customer-engagement-workspace-solution-contract.md
 solution_digest: ac0f7912037e8395b4f0f1d73b5b56a620ab1950d41ddf4a5a2f496a19f076a8
 api_path: architecture/reference/api-specs/customer-engagement-workspace-business-platform.openapi.yaml

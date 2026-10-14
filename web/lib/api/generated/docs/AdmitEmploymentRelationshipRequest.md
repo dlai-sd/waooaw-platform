@@ -9,6 +9,10 @@
 | `professionalAdmissionId` | string |
 | `professionalVersion`     | string |
 | `correlationId`           | string |
+| `clientIntentId`          | string |
+| `engagementIntent`        | string |
+| `disclosureVersion`       | string |
+| `safeReturnTarget`        | string |
 
 ## Example
 
@@ -22,6 +26,10 @@ const example = {
   professionalAdmissionId: null,
   professionalVersion: null,
   correlationId: null,
+  clientIntentId: null,
+  engagementIntent: null,
+  disclosureVersion: null,
+  safeReturnTarget: null,
 } satisfies AdmitEmploymentRelationshipRequest;
 
 console.log(example);

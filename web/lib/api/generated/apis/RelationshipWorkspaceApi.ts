@@ -14,6 +14,11 @@
 
 import * as runtime from "../runtime";
 import type {
+  AdmitEmploymentRelationship201Response,
+  AdmitEmploymentRelationshipRequest,
+  CustomerEngagementProgressV1,
+  IdentityProblemDetail,
+  ProblemDetail,
   RelationshipAttentionPageV1,
   RelationshipBusinessOutcomesV1,
   RelationshipCommandOutcomeV1,
@@ -32,12 +37,26 @@ import type {
   RelationshipUsageBudgetV1,
   RelationshipWorkPageV1,
   RelationshipWorkspaceChangePageV1,
+  RelationshipWorkspacePreferencesV1,
   RelationshipWorkspaceProblemDetailV1,
   RelationshipWorkspaceV1,
+  ReplaceRelationshipWorkspacePreferencesRequestV1,
   RequestRelationshipEvidenceExportV1,
+  ResolveWorkspaceFocusRequestV1,
   SubmitRelationshipCommandRequestV1,
+  WorkspaceFocusResolutionV1,
 } from "../models/index";
 import {
+  AdmitEmploymentRelationship201ResponseFromJSON,
+  AdmitEmploymentRelationship201ResponseToJSON,
+  AdmitEmploymentRelationshipRequestFromJSON,
+  AdmitEmploymentRelationshipRequestToJSON,
+  CustomerEngagementProgressV1FromJSON,
+  CustomerEngagementProgressV1ToJSON,
+  IdentityProblemDetailFromJSON,
+  IdentityProblemDetailToJSON,
+  ProblemDetailFromJSON,
+  ProblemDetailToJSON,
   RelationshipAttentionPageV1FromJSON,
   RelationshipAttentionPageV1ToJSON,
   RelationshipBusinessOutcomesV1FromJSON,
@@ -74,15 +93,32 @@ import {
   RelationshipWorkPageV1ToJSON,
   RelationshipWorkspaceChangePageV1FromJSON,
   RelationshipWorkspaceChangePageV1ToJSON,
+  RelationshipWorkspacePreferencesV1FromJSON,
+  RelationshipWorkspacePreferencesV1ToJSON,
   RelationshipWorkspaceProblemDetailV1FromJSON,
   RelationshipWorkspaceProblemDetailV1ToJSON,
   RelationshipWorkspaceV1FromJSON,
   RelationshipWorkspaceV1ToJSON,
+  ReplaceRelationshipWorkspacePreferencesRequestV1FromJSON,
+  ReplaceRelationshipWorkspacePreferencesRequestV1ToJSON,
   RequestRelationshipEvidenceExportV1FromJSON,
   RequestRelationshipEvidenceExportV1ToJSON,
+  ResolveWorkspaceFocusRequestV1FromJSON,
+  ResolveWorkspaceFocusRequestV1ToJSON,
   SubmitRelationshipCommandRequestV1FromJSON,
   SubmitRelationshipCommandRequestV1ToJSON,
+  WorkspaceFocusResolutionV1FromJSON,
+  WorkspaceFocusResolutionV1ToJSON,
 } from "../models/index";
+
+export interface AdmitCustomerEngagementRelationshipOperationRequest {
+  admitEmploymentRelationshipRequest: AdmitEmploymentRelationshipRequest;
+  idempotencyKey?: string;
+}
+
+export interface GetCustomerEngagementProgressRequest {
+  relationshipId: string;
+}
 
 export interface GetRelationshipAttentionRequest {
   relationshipId: string;
@@ -154,15 +190,29 @@ export interface GetRelationshipWorkspaceChangesRequest {
   limit?: number;
 }
 
+export interface GetRelationshipWorkspacePreferencesRequest {
+  relationshipId: string;
+}
+
 export interface ListRelationshipEvidenceRequest {
   relationshipId: string;
   limit?: number;
+}
+
+export interface ReplaceRelationshipWorkspacePreferencesRequest {
+  relationshipId: string;
+  replaceRelationshipWorkspacePreferencesRequestV1: ReplaceRelationshipWorkspacePreferencesRequestV1;
 }
 
 export interface RequestRelationshipEvidenceExportRequest {
   relationshipId: string;
   idempotencyKey: string;
   requestRelationshipEvidenceExportV1: RequestRelationshipEvidenceExportV1;
+}
+
+export interface ResolveWorkspaceFocusRequest {
+  relationshipId: string;
+  resolveWorkspaceFocusRequestV1: ResolveWorkspaceFocusRequestV1;
 }
 
 export interface SubmitRelationshipCommandRequest {
@@ -175,6 +225,139 @@ export interface SubmitRelationshipCommandRequest {
  *
  */
 export class RelationshipWorkspaceApi extends runtime.BaseAPI {
+  /**
+   * Mints the tenant\'s durable employment relationship for the authenticated participant, canonical evaluation intent, and exact active professional admission. Replaying the same participant, professional type, version, and evaluation intent returns the existing relationship and immutable agent instance. Constitutional validation and evidence commitment complete before persistence.
+   * Admit or replay an employment relationship
+   */
+  async admitEmploymentRelationshipRaw(
+    requestParameters: AdmitCustomerEngagementRelationshipOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AdmitEmploymentRelationship201Response>> {
+    if (requestParameters["admitEmploymentRelationshipRequest"] == null) {
+      throw new runtime.RequiredError(
+        "admitEmploymentRelationshipRequest",
+        'Required parameter "admitEmploymentRelationshipRequest" was null or undefined when calling admitEmploymentRelationship().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(
+        requestParameters["idempotencyKey"],
+      );
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("BearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/employment/relationships`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "POST",
+        headers: headerParameters,
+        query: queryParameters,
+        body: AdmitEmploymentRelationshipRequestToJSON(
+          requestParameters["admitEmploymentRelationshipRequest"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AdmitEmploymentRelationship201ResponseFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * Mints the tenant\'s durable employment relationship for the authenticated participant, canonical evaluation intent, and exact active professional admission. Replaying the same participant, professional type, version, and evaluation intent returns the existing relationship and immutable agent instance. Constitutional validation and evidence commitment complete before persistence.
+   * Admit or replay an employment relationship
+   */
+  async admitEmploymentRelationship(
+    requestParameters: AdmitCustomerEngagementRelationshipOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AdmitEmploymentRelationship201Response> {
+    const response = await this.admitEmploymentRelationshipRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   * Get owner-composed customer engagement progress
+   */
+  async getCustomerEngagementProgressRaw(
+    requestParameters: GetCustomerEngagementProgressRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<CustomerEngagementProgressV1>> {
+    if (requestParameters["relationshipId"] == null) {
+      throw new runtime.RequiredError(
+        "relationshipId",
+        'Required parameter "relationshipId" was null or undefined when calling getCustomerEngagementProgress().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("BearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/employment/relationships/{relationshipId}/workspace/engagement-progress`;
+    urlPath = urlPath.replace(
+      `{${"relationshipId"}}`,
+      encodeURIComponent(String(requestParameters["relationshipId"])),
+    );
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      CustomerEngagementProgressV1FromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * Get owner-composed customer engagement progress
+   */
+  async getCustomerEngagementProgress(
+    requestParameters: GetCustomerEngagementProgressRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<CustomerEngagementProgressV1> {
+    const response = await this.getCustomerEngagementProgressRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
   /**
    * Read authoritative needs-your-attention items in BP-owned order
    */
@@ -1234,6 +1417,68 @@ export class RelationshipWorkspaceApi extends runtime.BaseAPI {
   }
 
   /**
+   * Get relationship-specific presentation preferences
+   */
+  async getRelationshipWorkspacePreferencesRaw(
+    requestParameters: GetRelationshipWorkspacePreferencesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<RelationshipWorkspacePreferencesV1>> {
+    if (requestParameters["relationshipId"] == null) {
+      throw new runtime.RequiredError(
+        "relationshipId",
+        'Required parameter "relationshipId" was null or undefined when calling getRelationshipWorkspacePreferences().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("BearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/employment/relationships/{relationshipId}/workspace/preferences`;
+    urlPath = urlPath.replace(
+      `{${"relationshipId"}}`,
+      encodeURIComponent(String(requestParameters["relationshipId"])),
+    );
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      RelationshipWorkspacePreferencesV1FromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * Get relationship-specific presentation preferences
+   */
+  async getRelationshipWorkspacePreferences(
+    requestParameters: GetRelationshipWorkspacePreferencesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<RelationshipWorkspacePreferencesV1> {
+    const response = await this.getRelationshipWorkspacePreferencesRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
    * Returns only BP-authorized, customer-visible proof metadata for the selected relationship. EVALUATOR receives own disclosures, trial/configuration evidence, limitations, and Stop evidence. EMPLOYER receives the full customer-visible timeline, including contract, payment, activation, charges, handoffs, Stop, and release. RELATIONSHIP_MANAGER excludes restricted payment and personal payload references unless separately authorized. Other tenant or relationship scope returns no existence disclosure. Erased payload content, credentials, prompts, policy internals, and storage coordinates are never returned.
    * List relationship-authorized evidence summaries
    */
@@ -1295,6 +1540,83 @@ export class RelationshipWorkspaceApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<RelationshipEvidencePageV1> {
     const response = await this.listRelationshipEvidenceRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   * Replace relationship-specific presentation preferences
+   */
+  async replaceRelationshipWorkspacePreferencesRaw(
+    requestParameters: ReplaceRelationshipWorkspacePreferencesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<RelationshipWorkspacePreferencesV1>> {
+    if (requestParameters["relationshipId"] == null) {
+      throw new runtime.RequiredError(
+        "relationshipId",
+        'Required parameter "relationshipId" was null or undefined when calling replaceRelationshipWorkspacePreferences().',
+      );
+    }
+
+    if (
+      requestParameters["replaceRelationshipWorkspacePreferencesRequestV1"] ==
+      null
+    ) {
+      throw new runtime.RequiredError(
+        "replaceRelationshipWorkspacePreferencesRequestV1",
+        'Required parameter "replaceRelationshipWorkspacePreferencesRequestV1" was null or undefined when calling replaceRelationshipWorkspacePreferences().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("BearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/employment/relationships/{relationshipId}/workspace/preferences`;
+    urlPath = urlPath.replace(
+      `{${"relationshipId"}}`,
+      encodeURIComponent(String(requestParameters["relationshipId"])),
+    );
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "PUT",
+        headers: headerParameters,
+        query: queryParameters,
+        body: ReplaceRelationshipWorkspacePreferencesRequestV1ToJSON(
+          requestParameters["replaceRelationshipWorkspacePreferencesRequestV1"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      RelationshipWorkspacePreferencesV1FromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * Replace relationship-specific presentation preferences
+   */
+  async replaceRelationshipWorkspacePreferences(
+    requestParameters: ReplaceRelationshipWorkspacePreferencesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<RelationshipWorkspacePreferencesV1> {
+    const response = await this.replaceRelationshipWorkspacePreferencesRaw(
       requestParameters,
       initOverrides,
     );
@@ -1384,6 +1706,80 @@ export class RelationshipWorkspaceApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<RelationshipEvidenceExportReceiptV1> {
     const response = await this.requestRelationshipEvidenceExportRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   * Resolve a protected short-lived workspace focus reference
+   */
+  async resolveWorkspaceFocusRaw(
+    requestParameters: ResolveWorkspaceFocusRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<WorkspaceFocusResolutionV1>> {
+    if (requestParameters["relationshipId"] == null) {
+      throw new runtime.RequiredError(
+        "relationshipId",
+        'Required parameter "relationshipId" was null or undefined when calling resolveWorkspaceFocus().',
+      );
+    }
+
+    if (requestParameters["resolveWorkspaceFocusRequestV1"] == null) {
+      throw new runtime.RequiredError(
+        "resolveWorkspaceFocusRequestV1",
+        'Required parameter "resolveWorkspaceFocusRequestV1" was null or undefined when calling resolveWorkspaceFocus().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("BearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/employment/relationships/{relationshipId}/workspace/focus-resolutions`;
+    urlPath = urlPath.replace(
+      `{${"relationshipId"}}`,
+      encodeURIComponent(String(requestParameters["relationshipId"])),
+    );
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "POST",
+        headers: headerParameters,
+        query: queryParameters,
+        body: ResolveWorkspaceFocusRequestV1ToJSON(
+          requestParameters["resolveWorkspaceFocusRequestV1"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      WorkspaceFocusResolutionV1FromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * Resolve a protected short-lived workspace focus reference
+   */
+  async resolveWorkspaceFocus(
+    requestParameters: ResolveWorkspaceFocusRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<WorkspaceFocusResolutionV1> {
+    const response = await this.resolveWorkspaceFocusRaw(
       requestParameters,
       initOverrides,
     );
