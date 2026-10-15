@@ -1,0 +1,20 @@
+{
+  "types": [
+    "feat",
+    "fix",
+    "constitutional",
+    "cct",
+    "security",
+    "docs",
+    "refactor",
+    "perf",
+    "test",
+    "chore",
+    "ci",
+    "revert"
+  ],
+  "blocking_trace_types": ["feat", "fix", "constitutional", "cct"],
+  "subject_max_length": 100,
+  "body_max_line_length": 100,
+  "footer_max_line_length": 100
+}

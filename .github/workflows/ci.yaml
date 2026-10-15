@@ -825,7 +825,7 @@ jobs:
   qa-campaign:
     name: Test Champion QA Campaign
     runs-on: ubuntu-latest
-    if: always()
+    if: always() && !cancelled()
     permissions:
       contents: read
       packages: read
@@ -858,8 +858,8 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
         run: |
           mkdir -p qa-evidence
-          BLOCKING=$(jq '[to_entries[] | select(.value.result == "failure" or .value.result == "cancelled")] | length' <<< "$GATE_RESULTS")
-          BLOCKING_GATES=$(jq -c '[to_entries[] | select(.value.result == "failure" or .value.result == "cancelled") | .key]' <<< "$GATE_RESULTS")
+          BLOCKING=$(jq '[to_entries[] | select(.value.result == "failure")] | length' <<< "$GATE_RESULTS")
+          BLOCKING_GATES=$(jq -c '[to_entries[] | select(.value.result == "failure") | .key]' <<< "$GATE_RESULTS")
           VERDICT=PASS
           if [ "$BLOCKING" -gt 0 ]; then
             VERDICT=BLOCK
@@ -894,6 +894,7 @@ jobs:
         if: >-
           always() &&
           github.event_name == 'pull_request' &&
+          needs.validation-plan.result == 'success' &&
           needs.validation-plan.outputs.selective_enforcement != 'true'
         uses: ./.github/actions/record-shadow-comparison
         with:

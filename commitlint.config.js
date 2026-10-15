@@ -6,26 +6,15 @@
 // Install: npm install --save-dev @commitlint/cli @commitlint/config-conventional
 // Git hook: npx husky add .husky/commit-msg 'npx --no -- commitlint --edit ${1}'
 
+const commitPolicy = require('./validation/commit-message-policy.json');
+
 module.exports = {
   extends: ['@commitlint/config-conventional'],
 
   rules: {
     // Standard types + WAOOAW-specific types
     'type-enum': [
-      2, 'always', [
-        'feat',           // new feature
-        'fix',            // bug fix
-        'constitutional', // implements a constitutional principle (C-NNN or AD-NNN)
-        'cct',            // adds or fixes a Constitutional Compliance Test
-        'security',       // security fix or improvement
-        'docs',           // documentation only
-        'refactor',       // code change without feature or fix
-        'perf',           // performance improvement
-        'test',           // adding or correcting tests
-        'chore',          // maintenance (deps, config, tooling)
-        'ci',             // CI/CD pipeline changes
-        'revert',         // reverts a previous commit
-      ]
+      2, 'always', commitPolicy.types
     ],
 
     // Scope must be one of the known service/domain scopes
@@ -50,13 +39,15 @@ module.exports = {
     // Subject: reject title/sentence casing while permitting stable acronyms.
     'subject-case': [2, 'never', ['sentence-case', 'start-case', 'pascal-case', 'upper-case']],
     'subject-full-stop': [2, 'never', '.'],
-    'subject-max-length': [2, 'always', 100],
+    'subject-max-length': [2, 'always', commitPolicy.subject_max_length],
 
     // Body: optional but if present must have blank line before it
     'body-leading-blank': [2, 'always'],
+    'body-max-line-length': [2, 'always', commitPolicy.body_max_line_length],
 
     // Footer: optional but if present must have blank line before it
     'footer-leading-blank': [2, 'always'],
+    'footer-max-line-length': [2, 'always', commitPolicy.footer_max_line_length],
   },
 
   // Custom prompt for commitlint interactive mode

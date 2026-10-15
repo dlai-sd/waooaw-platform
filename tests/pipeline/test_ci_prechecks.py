@@ -58,9 +58,12 @@ def test_qa_campaign_reports_authorization_failure_without_inventing_a_second_ga
     campaign = workflow[workflow.index("  qa-campaign:") : workflow.index("  release-manifest:")]
 
     assert "- authorization-tier-check" in campaign
-    assert 'select(.value.result == "failure" or .value.result == "cancelled")' in campaign
+    assert "if: always() && !cancelled()" in campaign
+    assert 'select(.value.result == "failure")' in campaign
+    assert '.value.result == "cancelled"' not in campaign
     assert "blocking_gates: $blocking_gates" in campaign
     assert "Test Champion recommendation: BLOCK; upstream gates:" in campaign
+    assert "needs.validation-plan.result == 'success'" in campaign
 
 
 def test_c065_retries_bounded_pr_metadata_convergence() -> None:

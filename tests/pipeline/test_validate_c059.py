@@ -52,6 +52,18 @@ def test_blocking_commit_without_trace_fails() -> None:
     ]
 
 
+def test_commit_message_policy_matches_hosted_length_and_type_rules() -> None:
+    long_line = "x" * 101
+
+    assert validate_commit("ci(infra): align local and hosted commit validation", "") == []
+    assert validate_commit("agent(infra): unsupported local-only type", "") == [
+        "COMMIT_FORMAT_INVALID: agent(infra): unsupported local-only type"
+    ]
+    assert validate_commit("fix(infra): reject overlong body", f"WC-121\n\n{long_line}") == [
+        "COMMIT_BODY_LINE_TOO_LONG: line 3 exceeds 100 characters"
+    ]
+
+
 def test_commit_message_reader_ignores_git_comments(tmp_path: Path) -> None:
     message = tmp_path / "COMMIT_EDITMSG"
     message.write_text(
@@ -73,6 +85,15 @@ def test_repository_commit_hook_uses_containerized_c059_validator() -> None:
     assert "scripts/validate_c059.py" in hook
     assert "--commit-message-file /tmp/commit-message" in hook
     assert 'git config core.hooksPath "$repository/.githooks"' in installer
+
+
+def test_commitlint_and_c059_share_the_repository_policy() -> None:
+    commitlint = (ROOT / "commitlint.config.js").read_text(encoding="utf-8")
+    policy = (ROOT / "validation/commit-message-policy.json").read_text(encoding="utf-8")
+
+    assert "commit-message-policy.json" in commitlint
+    assert "body-max-line-length" in commitlint
+    assert '"body_max_line_length": 100' in policy
 
 
 def test_git_reader_preserves_empty_commit_body(monkeypatch: pytest.MonkeyPatch) -> None:

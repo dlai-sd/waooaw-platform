@@ -4,13 +4,21 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import subprocess
 import sys
 from pathlib import Path
 
-CONVENTIONAL_COMMIT = re.compile(r"^(feat|fix|constitutional|cct|chore|refactor|security|docs|agent)\([^)]+\):\s+.+")
-BLOCKING_TRACE_TYPES = {"feat", "fix", "constitutional", "cct"}
+COMMIT_POLICY = json.loads(
+    (Path(__file__).resolve().parents[1] / "validation/commit-message-policy.json").read_text(encoding="utf-8")
+)
+COMMIT_TYPES = tuple(COMMIT_POLICY["types"])
+CONVENTIONAL_COMMIT = re.compile(rf"^({'|'.join(re.escape(commit_type) for commit_type in COMMIT_TYPES)})\([^)]+\):\s+.+")
+BLOCKING_TRACE_TYPES = set(COMMIT_POLICY["blocking_trace_types"])
+SUBJECT_MAX_LENGTH = int(COMMIT_POLICY["subject_max_length"])
+BODY_MAX_LINE_LENGTH = int(COMMIT_POLICY["body_max_line_length"])
+FOOTER_MAX_LINE_LENGTH = int(COMMIT_POLICY["footer_max_line_length"])
 TRACE_REFERENCE = re.compile(
     r"(?:IB:\s*IB-\d+|WC-\d+|FIX:\s*#?\d+|Constitutional:\s*(?:C|ADR|DP)-\d+)",
     re.IGNORECASE,
@@ -39,13 +47,20 @@ def validate_pr_body(body: str) -> list[str]:
 def validate_commit(subject: str, body: str) -> list[str]:
     if subject.startswith("Merge "):
         return []
+    violations: list[str] = []
     match = CONVENTIONAL_COMMIT.match(subject)
     if not match:
         return [f"COMMIT_FORMAT_INVALID: {subject}"]
+    if len(subject) > SUBJECT_MAX_LENGTH:
+        violations.append(f"COMMIT_SUBJECT_TOO_LONG: maximum {SUBJECT_MAX_LENGTH} characters")
+    maximum_body_line_length = min(BODY_MAX_LINE_LENGTH, FOOTER_MAX_LINE_LENGTH)
+    for line_number, line in enumerate(body.splitlines(), start=1):
+        if len(line) > maximum_body_line_length:
+            violations.append(f"COMMIT_BODY_LINE_TOO_LONG: line {line_number} exceeds {maximum_body_line_length} characters")
     commit_type = match.group(1)
     if commit_type in BLOCKING_TRACE_TYPES and not TRACE_REFERENCE.search(f"{subject}\n{body}"):
-        return [f"COMMIT_TRACE_MISSING: {subject} (add IB, WC, FIX, or Constitutional reference to subject or body)"]
-    return []
+        violations.append(f"COMMIT_TRACE_MISSING: {subject} (add IB, WC, FIX, or Constitutional reference to subject or body)")
+    return violations
 
 
 def read_commit_message(path: Path) -> tuple[str, str]:
