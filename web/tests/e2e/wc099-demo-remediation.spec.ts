@@ -119,23 +119,29 @@ test.beforeEach(async ({ context }) => {
   ]);
 });
 
-test('R-001 R-002 R-003: disclosure precedes provider handoff and cancel is inert', async ({ page }, testInfo) => {
-  const providerRequests: string[] = [];
-  page.on('request', (request) => {
-    if (/\/api\/auth\/(signin|callback)|accounts\.google/i.test(request.url())) providerRequests.push(request.url());
+for (const provider of ['Google', 'Facebook'] as const) {
+  test(`R-001 R-002 R-003: ${provider} disclosure precedes provider handoff and cancel is inert`, async ({
+    page,
+  }, testInfo) => {
+    const providerRequests: string[] = [];
+    page.on('request', (request) => {
+      if (/\/api\/auth\/(signin|callback)|accounts\.google|facebook\.com/i.test(request.url())) {
+        providerRequests.push(request.url());
+      }
+    });
+    await page.goto('/login');
+    await expect(page.getByRole('button', { name: `Log in with ${provider}` })).toBeVisible();
+    await page.getByRole('button', { name: `Log in with ${provider}` }).click();
+    const dialog = page.getByRole('dialog', { name: `Continue to ${provider}` });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText(`name, email address, profile information and ${provider} account identifier`);
+    await expect(dialog).toContainText(`WAOOAW does not receive your ${provider} password`);
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await expect(dialog).toBeHidden();
+    expect(providerRequests).toEqual([]);
+    await attachScreenshot(page, testInfo, `login-${provider.toLowerCase()}-after-disclosure-cancel`);
   });
-  await page.goto('/login');
-  await expect(page.getByRole('button', { name: 'Log in with Google' })).toBeVisible();
-  await page.getByRole('button', { name: 'Log in with Google' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Continue to Google' });
-  await expect(dialog).toBeVisible();
-  await expect(dialog).toContainText('name, email address, profile information and Google account identifier');
-  await expect(dialog).toContainText('WAOOAW does not receive your Google password');
-  await page.getByRole('button', { name: 'Cancel' }).click();
-  await expect(dialog).toBeHidden();
-  expect(providerRequests).toEqual([]);
-  await attachScreenshot(page, testInfo, 'login-after-disclosure-cancel');
-});
+}
 
 test('R-003: logout and second login request explicit Google account selection', async ({
   context,

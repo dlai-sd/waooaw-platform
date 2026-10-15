@@ -35,10 +35,16 @@ describe('ProviderCommands', () => {
     jest.mocked(signIn).mockReset();
   });
 
-  it('starts Google account selection directly', async () => {
+  it('requires disclosure before starting Google account selection', async () => {
     render(<ProviderCommands callbackUrl="/home" intent="login" providers={providers} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
+
+    expect(signIn).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'Continue to Google' })).toHaveTextContent(
+      'WAOOAW does not receive your Google password.'
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Google' }));
 
     await waitFor(() =>
       expect(signIn).toHaveBeenCalledWith(
@@ -48,6 +54,18 @@ describe('ProviderCommands', () => {
       )
     );
     expect(screen.getByRole('button', { name: 'Log in with Facebook (Unavailable)' })).toBeDisabled();
+  });
+
+  it('cancels provider disclosure without starting broker handoff', () => {
+    render(<ProviderCommands callbackUrl="/home" intent="login" providers={providers} />);
+
+    const googleCommand = screen.getByRole('button', { name: 'Log in with Google' });
+    fireEvent.click(googleCommand);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('dialog', { name: 'Continue to Google' })).not.toBeInTheDocument();
+    expect(googleCommand).toHaveFocus();
+    expect(signIn).not.toHaveBeenCalled();
   });
 
   it('clears a denied session through Keycloak logout before retrying a provider', async () => {
@@ -69,6 +87,7 @@ describe('ProviderCommands', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Google' }));
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/api/auth/keycloak-logout?nonce=recovery'));
     expect(fetchMock).toHaveBeenCalledWith('/api/auth/keycloak-logout', {
@@ -100,6 +119,7 @@ describe('ProviderCommands', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Google' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Google sign-in could not start.');
     expect(navigate).not.toHaveBeenCalled();
@@ -149,6 +169,7 @@ describe('ProviderCommands', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Google' }));
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Log in with Google' })).toBeEnabled());
     expect(screen.getByRole('alert')).toHaveAttribute('data-reason-code', 'BROKER_LAUNCH_FAILED');
@@ -166,6 +187,7 @@ describe('ProviderCommands', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Log in with Facebook' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Facebook' }));
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Facebook sign-in could not start.'));
     expect(screen.getByRole('alert')).toHaveAttribute('data-reason-code', 'BROKER_LAUNCH_FAILED');
@@ -181,6 +203,8 @@ describe('ProviderCommands', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Log in with Facebook' }));
+    expect(signIn).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Facebook' }));
 
     await waitFor(() =>
       expect(signIn).toHaveBeenCalledWith(
