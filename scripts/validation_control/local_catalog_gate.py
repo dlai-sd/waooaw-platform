@@ -291,7 +291,15 @@ def gate_execution_identity(repository: Path, gate_id: str, head_sha: str) -> di
             raise ValueError(f"host-only gate has no immutable tool digest: {gate_id}")
     environment = {name: os.environ.get(name) for name in node.get("environment", [])}
     service_identities = required_service_identities(repository, node)
-    implementation = {key: value for key, value in node.items() if key not in {"runner_manifest"}}
+    implementation = {
+        key: value for key, value in node.items() if key not in {"compose_project", "output_directory", "runner_manifest"}
+    }
+    inputs = implementation.get("inputs")
+    if isinstance(inputs, dict):
+        implementation["inputs"] = {key: value for key, value in inputs.items() if key != "head_sha"}
+    expected_evidence = implementation.get("expected_evidence")
+    if isinstance(expected_evidence, dict):
+        implementation["expected_evidence"] = {key: value for key, value in expected_evidence.items() if key != "directory"}
     return {
         "catalog_version": str(plan["catalog_version"]),
         "gate_id": gate_id,

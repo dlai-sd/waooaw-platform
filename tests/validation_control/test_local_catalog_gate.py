@@ -361,6 +361,7 @@ def test_gate_identity_hashes_only_declared_environment(monkeypatch, tmp_path: P
     monkeypatch.setenv("DECLARED", "first")
     monkeypatch.setenv("UNDECLARED", "first")
     original = local_catalog_gate.gate_execution_identity(tmp_path, "host", "a" * 40)
+    rewritten = local_catalog_gate.gate_execution_identity(tmp_path, "host", "b" * 40)
 
     monkeypatch.setenv("UNDECLARED", "second")
     undeclared_changed = local_catalog_gate.gate_execution_identity(tmp_path, "host", "a" * 40)
@@ -368,6 +369,7 @@ def test_gate_identity_hashes_only_declared_environment(monkeypatch, tmp_path: P
     declared_changed = local_catalog_gate.gate_execution_identity(tmp_path, "host", "a" * 40)
 
     assert original["runner_digest"] == tool_digest
+    assert rewritten["gate_implementation_digest"] == original["gate_implementation_digest"]
     assert undeclared_changed["environment_digest"] == original["environment_digest"]
     assert declared_changed["environment_digest"] != original["environment_digest"]
     assert original["service_digest"] == local_catalog_gate.hashlib.sha256(b"{}").hexdigest()
