@@ -19,6 +19,7 @@ using Testcontainers.PostgreSql;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
 using Xunit;
+using GoogleWorkspaceProofAdapter = Waooaw.BusinessPlatform.Services.VerifiedIdentityProofAdapter;
 
 namespace Waooaw.BusinessPlatform.Tests.Identity;
 
@@ -105,6 +106,13 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
             await File.ReadAllTextAsync(
                 RepositoryPaths.Resolve(
                     "infrastructure/postgres/init/29-customer-workspace-provisioning.sql"
+                )
+            )
+        );
+        await OwnerAsync(
+            await File.ReadAllTextAsync(
+                RepositoryPaths.Resolve(
+                    "infrastructure/postgres/init/57-wc123-identity-lifecycle.sql"
                 )
             )
         );

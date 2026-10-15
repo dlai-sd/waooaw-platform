@@ -10,7 +10,10 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY web/ .
-ENV BUILD_STANDALONE=true
+ENV BUILD_STANDALONE=true \
+	KEYCLOAK_ISSUER=https://build.invalid/realms/waooaw \
+	KEYCLOAK_EXPECTED_ISSUER=https://build.invalid/realms/waooaw \
+	WAOOAW_SERVER_SESSION_MODE=enforced
 RUN pnpm build
 
 FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293

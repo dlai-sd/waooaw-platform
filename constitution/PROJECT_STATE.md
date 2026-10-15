@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 **State Schema:** 2.0.0
-**State Revision:** 259
-**Last Updated:** 2026-10-14 (WC-121 IMPLEMENTATION CHECKPOINT)
+**State Revision:** 261
+**Last Updated:** 2026-10-14 (WC-123 PRECHECK REPAIR CHECKPOINT)
 **Purpose:** Current operational snapshot for bootstrap, recovery, and automated sprint controls; keep it below 200 lines, update checkpoints in place, and retain durable detail in the owning Work Contract, Goal, review, evidence artifact, Git history, or archive index.
 ---
 ## Institutional Snapshot
@@ -13,7 +13,7 @@
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-102 - Docker-Only Validation Control Plane |
 | Latest merge | PR #472 merged to `main` as `b50cb36b` |
-| Active delivery | WC-121 Components 01-08 are implemented on `ib/121/customer-engagement-workspace-implementation` at `e0b9b4ea`: canonical admission/persistence, conversation-first Portal, discovery continuity, trial/hire lifecycle, induction/goals, operations/performance, WhatsApp parity/end-session and cross-channel qualification are code-complete. Docker gates pass 1,086 BP tests at 90.00% line / 80.37% branch, 554 Web tests with global thresholds, TypeScript quality/build, canonical OpenAPI and slicing validation. Release Qualification is OFF by Founder direction; Component 09, deployment, provider activation, external traffic, approval and merge remain blocked or Founder-reserved. |
+| Active delivery | WC-123 AUTH-WC-01 through AUTH-WC-07 are ENGINEERING QUALIFIED on `ib/123/authentication-authorization-runtime` at implementation milestone `76346d07`: five-relation PostgreSQL Web session authority, opaque encrypted OIDC sessions, durable current membership and tenant switching, lifecycle reconciliation/compensation, provider-neutral proof and Redis abuse controls, and legacy BP session removal are code-complete. The candidate passed all commit checks plus catalogued impact-manifest 9/9, identity-contract 4/4, session-readiness 10/10 and PostgreSQL session-contract gates; hosted precheck repair refreshes Web build configuration and CE/BP ASP.NET 9.0.21 runtime pins. Release Qualification is OFF by Founder direction; deployment, provider activation, external traffic, approval and merge remain blocked or Founder-reserved. |
 | Active architecture delivery | WC-115 Conversational Employment is ENGINEERING QUALIFIED on `ib/115/conversational-employment-implementation`: BP, PR, AIR, WBE, web, generic adapter, owner persistence, security, cross-owner and final Docker qualification pass. WC115-R024-R026 remain Founder-reserved for a separate admitted-agent PR. The candidate is disabled by default; activation, deployment, customer traffic, Founder PR approval and merge remain open. |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
@@ -115,6 +115,10 @@ WC-085 full-schema rehearsal, stock reader/private TLS, recreated identity conti
 downstream membership and browser account-switch qualification remain open; CB-009 tracks delivery.
 
 ## Next Authorized Action
+
+Submit the engineering-qualified WC-123 authentication and authorization implementation as an
+unmerged PR for Founder review. Do not infer deployment, provider activation, Azure, UAT,
+Production, customer-traffic, approval or merge authority from repository qualification.
 
 Submit the WC-105 Codespaces preview and session-defect follow-up as one unmerged PR for Founder
 review. Do not infer real-provider, Azure, UAT, Production, customer-traffic, approval or merge

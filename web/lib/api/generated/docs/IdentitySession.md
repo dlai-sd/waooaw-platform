@@ -2,18 +2,21 @@
 
 ## Properties
 
-| Name                 | Type                                                                      |
-| -------------------- | ------------------------------------------------------------------------- |
-| `accountReference`   | string                                                                    |
-| `roles`              | Set&lt;string&gt;                                                         |
-| `capabilities`       | Set&lt;string&gt;                                                         |
-| `assuranceLevel`     | [IdentityAssuranceLevel](IdentityAssuranceLevel.md)                       |
-| `authenticationPath` | [IdentitySessionAuthenticationPath](IdentitySessionAuthenticationPath.md) |
-| `emailVerified`      | boolean                                                                   |
-| `mobileVerified`     | boolean                                                                   |
-| `authenticatedAt`    | Date                                                                      |
-| `expiresAt`          | Date                                                                      |
-| `nextAction`         | string                                                                    |
+| Name                    | Type                                                                      |
+| ----------------------- | ------------------------------------------------------------------------- |
+| `schemaVersion`         | string                                                                    |
+| `accountReference`      | string                                                                    |
+| `roles`                 | Set&lt;string&gt;                                                         |
+| `capabilities`          | Set&lt;string&gt;                                                         |
+| `assuranceLevel`        | [IdentityAssuranceLevel](IdentityAssuranceLevel.md)                       |
+| `authenticationPath`    | [IdentitySessionAuthenticationPath](IdentitySessionAuthenticationPath.md) |
+| `emailVerified`         | boolean                                                                   |
+| `mobileVerified`        | boolean                                                                   |
+| `authenticatedAt`       | Date                                                                      |
+| `expiresAt`             | Date                                                                      |
+| `memberships`           | [Array&lt;IdentityMembershipV1&gt;](IdentityMembershipV1.md)              |
+| `membershipCardinality` | string                                                                    |
+| `nextAction`            | string                                                                    |
 
 ## Example
 
@@ -22,6 +25,7 @@ import type { IdentitySession } from "";
 
 // TODO: Update the object below with actual values
 const example = {
+  schemaVersion: null,
   accountReference: null,
   roles: null,
   capabilities: null,
@@ -31,6 +35,8 @@ const example = {
   mobileVerified: null,
   authenticatedAt: null,
   expiresAt: null,
+  memberships: null,
+  membershipCardinality: null,
   nextAction: null,
 } satisfies IdentitySession;
 

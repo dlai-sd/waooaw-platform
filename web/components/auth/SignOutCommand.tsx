@@ -88,7 +88,7 @@ export function AccountSwitchCommand({
     beginAuthTransition();
     recordAuthTransition('ACCOUNT_SWITCH_REQUESTED', 'CUSTOMER_REQUESTED', 'UNKNOWN');
     try {
-      navigate(await requestKeycloakLogout());
+      navigate(await requestKeycloakLogout('ACCOUNT_SWITCH'));
     } catch {
       recordAuthTransition('ACCOUNT_SWITCH_FAILED', 'SESSION_REVOCATION_UNCONFIRMED', 'UNKNOWN');
       setSwitching(false);

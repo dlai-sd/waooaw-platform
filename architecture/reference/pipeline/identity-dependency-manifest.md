@@ -4,7 +4,7 @@
 **Owning office:** INST-005 - Solution Architect
 **Enterprise decision:** ADR-048, Proposed - Founder acceptance required for Identity Edge entries
 **Work Contract:** WC-077 focused architecture remediation
-**Status:** FOUNDER REVIEW CANDIDATE; NOT IMPLEMENTATION OR DEPLOYMENT AUTHORITY
+**Status:** FOUNDER REVIEW CANDIDATE; WC-123 BOUNDED PACKAGE ENTRY ACCEPTED; NOT DEPLOYMENT AUTHORITY
 
 ## 1. Purpose
 
@@ -20,7 +20,7 @@ Its schema requires these fields and rejects unknown fields:
 
 ```json
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "manifest_id": "idm-<uuid>",
   "release_manifest_digest": "sha256:<64-hex>",
   "source_commit": "<40-hex>",
@@ -42,6 +42,24 @@ Its schema requires these fields and rejects unknown fields:
       "route_policy_digest": "sha256:<64-hex>",
       "sbom_digest": "sha256:<64-hex>",
       "provenance_digest": "sha256:<64-hex>"
+    },
+    "web_runtime_packages": {
+      "postgres": {
+        "name": "postgres",
+        "version": "3.4.9",
+        "registry": "https://registry.npmjs.org",
+        "tarball": "https://registry.npmjs.org/postgres/-/postgres-3.4.9.tgz",
+        "integrity": "sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw==",
+        "resolved_bytes_digest": "sha512:<lockfile-equal-base64>",
+        "source_repository": "https://github.com/porsager/postgres.git",
+        "license": "Unlicense",
+        "node_engine": ">=12",
+        "declared_runtime_dependencies": [],
+        "lockfile_digest": "sha256:<64-hex>",
+        "sbom_digest": "sha256:<64-hex>",
+        "provenance_status": "<verified|unavailable-with-reviewed-disposition>",
+        "vulnerability_evidence_digest": "sha256:<64-hex>"
+      }
     }
   },
   "identity_configuration": {
@@ -75,6 +93,14 @@ Once present in a qualified release, it cannot be omitted during promotion. Secr
 provider tokens, secret values, environment state coordinates, mutable tags, and unsigned URLs are
 prohibited from the payload.
 
+For WC-123, `web_runtime_packages.postgres` is the sole accepted new Web runtime-package entry and
+is required before AUTH-WC-03 qualification. Its exact identity is governed by CSA-AUTH-001 Section
+12.8 and `AUTHZ-SD-14`. It is a package artifact inside the existing Web image, not a seventh
+application image or infrastructure dependency. A different version, tarball, integrity, resolved
+graph, install-script behavior, owner, license, or material vulnerability requires a new accepted
+amendment. No Auth.js adapter, ORM, query builder, generic database-session schema, or second
+PostgreSQL package is implied.
+
 ## 3. Identity configuration projection
 
 The environment projection is separately canonicalized and digest-bound. It contains only reviewed
@@ -93,6 +119,10 @@ resolved in the target environment and are never promoted as manifest content.
 1. Build the exact-six application images once and produce the existing signed release manifest.
 2. Resolve every dependency by immutable OCI digest. Verify provenance, SBOM, license, vulnerability,
    and platform compatibility; never build or retag a third-party dependency as a promotion step.
+   For an npm package entry, use a frozen lockfile and verify exact registry tarball, SRI/resolved
+   bytes, registry signature, complete graph and install scripts, source/release/maintainer identity,
+   SBOM inclusion, provenance availability, license, malware/secrets, vulnerabilities, and Node/Web
+   compatibility. Missing provenance is an explicit reviewed disposition, not an inferred PASS.
 3. Normalize the Keycloak realm and Identity Edge route policy from reviewed source, then record their
    content digests. Generated timestamps, exported secrets, and environment-only values are excluded
    from normalized realm content.

@@ -305,6 +305,32 @@ locals {
           }
         }]
       },
+      {
+        clientId                  = "waooaw-bp-identity-lifecycle-writer"
+        name                      = "WAOOAW Business Platform Identity Lifecycle Writer"
+        enabled                   = true
+        publicClient              = false
+        serviceAccountsEnabled    = true
+        standardFlowEnabled       = false
+        implicitFlowEnabled       = false
+        directAccessGrantsEnabled = false
+        fullScopeAllowed          = false
+        clientAuthenticatorType   = "client-secret"
+        secret                    = "$${BP_IDENTITY_LIFECYCLE_WRITER_CLIENT_SECRET}"
+        defaultClientScopes       = ["roles"]
+        optionalClientScopes      = []
+        attributes = {
+          "access.token.lifespan" = "60"
+        }
+        protocolMappers = [{
+          name           = "realm-management-manage-users"
+          protocol       = "openid-connect"
+          protocolMapper = "oidc-hardcoded-role-mapper"
+          config = {
+            "role" = "realm-management.manage-users"
+          }
+        }]
+      },
     ] : [])
     roles = {
       realm = [
@@ -337,7 +363,16 @@ locals {
         clientRoles = {
           realm-management = ["view-users"]
         }
-    }] : [])
+      },
+      {
+        username               = "service-account-waooaw-bp-identity-lifecycle-writer"
+        enabled                = true
+        serviceAccountClientId = "waooaw-bp-identity-lifecycle-writer"
+        clientRoles = {
+          realm-management = ["manage-users"]
+        }
+      }
+    ] : [])
   }
   keycloak_realm_base64 = base64encode(jsonencode(local.keycloak_realm))
   identity_edge_config = templatefile("${path.module}/identity-edge.conf.tftpl", {
@@ -365,6 +400,10 @@ locals {
       IdentityBrokerRead__AllowedPrivateHosts__0      = "ca-${var.environment}-keycloak.internal.${var.container_app_environment_default_domain}"
       IdentityBrokerRead__AllowedAuthorizedParties__0 = "waooaw-web"
       IdentityBrokerRead__ClientId                    = "waooaw-bp-identity-reader"
+      IdentityLifecycleWriter__Enabled                = tostring(var.google_login_enabled || var.facebook_login_enabled)
+      IdentityLifecycleWriter__PrivateOrigin          = local.service_urls.keycloak_private
+      IdentityLifecycleWriter__AllowedPrivateHosts__0 = "ca-${var.environment}-keycloak.internal.${var.container_app_environment_default_domain}"
+      IdentityLifecycleWriter__ClientId               = "waooaw-bp-identity-lifecycle-writer"
       }, var.environment == "demo" ? {
       WAOOAW_DEMO_DATABASE_BOOTSTRAP = "true"
       DMA_ADMISSION_CONTENT_DIGEST   = var.dma_admission_content_digest
@@ -526,6 +565,13 @@ resource "azurerm_role_assignment" "identity_hmac_secret" {
   principal_id         = azurerm_user_assigned_identity.member["business-platform"].principal_id
 }
 
+resource "azurerm_role_assignment" "identity_lifecycle_writer_secret" {
+  for_each             = var.workload_enabled ? local.identity_lifecycle_writer_secret_resource_ids : {}
+  scope                = each.value
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.member["business-platform"].principal_id
+}
+
 resource "azurerm_role_assignment" "identity_event_secret" {
   for_each = var.workload_enabled ? {
     for pair in setproduct(["business-platform", "web"], keys(local.identity_event_secret_resource_ids)) :
@@ -591,6 +637,15 @@ resource "azurerm_container_app" "member" {
 
   dynamic "secret" {
     for_each = each.key == "business-platform" ? local.identity_hmac_secret_uris : {}
+    content {
+      name                = secret.key
+      identity            = azurerm_user_assigned_identity.member[each.key].id
+      key_vault_secret_id = secret.value
+    }
+  }
+
+  dynamic "secret" {
+    for_each = each.key == "business-platform" ? local.identity_lifecycle_writer_secret_uris : {}
     content {
       name                = secret.key
       identity            = azurerm_user_assigned_identity.member[each.key].id
@@ -694,6 +749,14 @@ resource "azurerm_container_app" "member" {
         for_each = each.key == "business-platform" ? local.identity_hmac_secret_uris : {}
         content {
           name        = "Identity__Hmac__Key"
+          secret_name = env.key
+        }
+      }
+
+      dynamic "env" {
+        for_each = each.key == "business-platform" ? local.identity_lifecycle_writer_secret_uris : {}
+        content {
+          name        = "IdentityLifecycleWriter__ClientSecret"
           secret_name = env.key
         }
       }
@@ -1057,7 +1120,7 @@ resource "azurerm_container_app" "keycloak" {
       [azurerm_user_assigned_identity.member["web"].id],
       azurerm_user_assigned_identity.google_broker[*].id,
       azurerm_user_assigned_identity.facebook_broker[*].id,
-      var.google_login_enabled ? [azurerm_user_assigned_identity.member["business-platform"].id] : [],
+      var.google_login_enabled || var.facebook_login_enabled ? [azurerm_user_assigned_identity.member["business-platform"].id] : [],
     )
   }
 
@@ -1087,6 +1150,15 @@ resource "azurerm_container_app" "keycloak" {
 
   dynamic "secret" {
     for_each = local.identity_reader_secret_uris
+    content {
+      name                = secret.key
+      identity            = azurerm_user_assigned_identity.member["business-platform"].id
+      key_vault_secret_id = secret.value
+    }
+  }
+
+  dynamic "secret" {
+    for_each = local.identity_lifecycle_writer_secret_uris
     content {
       name                = secret.key
       identity            = azurerm_user_assigned_identity.member["business-platform"].id
@@ -1180,6 +1252,14 @@ resource "azurerm_container_app" "keycloak" {
         for_each = local.identity_reader_secret_uris
         content {
           name        = "BP_IDENTITY_READER_CLIENT_SECRET"
+          secret_name = env.key
+        }
+      }
+
+      dynamic "env" {
+        for_each = local.identity_lifecycle_writer_secret_uris
+        content {
+          name        = "BP_IDENTITY_LIFECYCLE_WRITER_CLIENT_SECRET"
           secret_name = env.key
         }
       }

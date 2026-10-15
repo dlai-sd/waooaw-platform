@@ -2,7 +2,7 @@ openapi: "3.1.0"
 
 info:
   title: WAOOAW Business Platform API
-  version: "1.10.0"
+  version: "1.11.0"
   description: |
     External customer-facing API for the WAOOAW Business Platform.
     Manages the employment lifecycle, approval workflows, evidence reading,
@@ -12,13 +12,14 @@ info:
     - C-034 (Employment lifecycle)
     - C-023 (Evidence First — every approval action calls Constitutional Engine before returning success)
     - C-003 (Authority licensed — authority changes require evidence justification)
-    - AD-004 (Multi-tenant isolation — all resources scoped to JWT tenant_id)
+    - ADR-003 controlling amendment (current durable membership and resource authority)
 
     **Authentication:**
     All endpoints require a valid Keycloak-issued JWT Bearer token unless an
     operation declares the pre-account authentication scheme explicitly.
-    The `tenant_id` claim in the JWT is the authoritative tenant identifier.
-    Never provide `tenant_id` in request bodies — it is always sourced from the JWT.
+    Customer authorization resolves the exact validated issuer and subject against current durable
+    membership and local resource authority. JWT tenant or role claims, request headers, and
+    request bodies are never authoritative.
 
     **Constitutional Compliance:**
     Any response that represents a governance event (approval, authority change, etc.)
@@ -127,63 +128,151 @@ paths:
         "409": { $ref: "#/components/responses/IdentityRegistrationRequired" }
         "503": { $ref: "#/components/responses/IdentityUnavailable" }
 
-  /api/v1/identity/sessions:
+  /api/v1/identity/memberships:
     get:
       tags: [Identity]
-      summary: List active sessions for the authenticated customer account
-      operationId: listIdentitySessions
+      summary: List current customer memberships visible to the validated actor
+      description: |
+        Resolves the exact validated issuer and subject against durable current membership.
+        Returned membership and tenant references are opaque; token tenant and role claims are
+        never used as authority. The response is bounded and contains no provider identity data.
+      operationId: listIdentityMemberships
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 100 }
       responses:
         "200":
-          description: Privacy-safe active session projection
+          description: Current provider-neutral membership projection
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/IdentityManagedSessionCollection"
+                $ref: "#/components/schemas/IdentityMembershipCollectionV1"
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
-        "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "503": { $ref: "#/components/responses/IdentityUnavailable" }
-    delete:
+
+  /api/v1/identity/membership-selections/validate:
+    post:
       tags: [Identity]
-      summary: Revoke every active session for the authenticated customer account
-      operationId: revokeAllIdentitySessions
+      summary: Validate one current membership for application-session selection
+      description: |
+        Revalidates one opaque membership reference for the exact validated actor without
+        mutating membership, tenant, role, or business authority.
+      operationId: validateIdentityMembershipSelection
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IdentityMembershipSelectionRequestV1"
       responses:
         "200":
-          description: All sessions were already revoked or are now revoked
+          description: The membership is currently eligible for selection
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/IdentitySessionRevocation"
+                $ref: "#/components/schemas/IdentityMembershipSelectionV1"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
+        "404": { $ref: "#/components/responses/IdentityNotFound" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+
+  /api/v1/identity/session-revocations:
+    post:
+      tags: [Identity]
+      summary: Record a provider-neutral application-session revocation intent
+      description: |
+        Records privacy-safe revocation evidence for one opaque session family or all application
+        sessions. Business Platform never receives browser handles or token envelopes and does not
+        manipulate Web cookies.
+      operationId: createIdentitySessionRevocation
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IdentitySessionRevocationRequestV1"
+      responses:
+        "202":
+          description: Revocation intent was already recorded or is now durably recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentitySessionRevocationReceiptV1"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+
+  /api/v1/identity/provider-links:
+    post:
+      tags: [Identity]
+      summary: Start provider-neutral proof-of-control linking
+      description: |
+        Requires accepted recent step-up and starts one bounded lifecycle operation. Provider
+        subjects, credentials, and tokens are never accepted from or returned to the browser.
+      operationId: createIdentityProviderLink
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IdentityProviderLinkRequestV1"
+      responses:
+        "202":
+          description: Link proof operation started or replayed idempotently
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityProviderLinkOperationV1"
         "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
+        "429": { $ref: "#/components/responses/IdentityRateLimited" }
         "503": { $ref: "#/components/responses/IdentityUnavailable" }
 
-  /api/v1/identity/sessions/{sessionId}:
+  /api/v1/identity/provider-links/{linkId}:
     delete:
       tags: [Identity]
-      summary: Revoke one session owned by the authenticated customer account
-      operationId: revokeIdentitySession
+      summary: Unlink one provider-neutral authentication method
+      description: |
+        Requires current proof, recent step-up, and proof that another usable authentication
+        method remains. Retired opaque link references are never reassigned.
+      operationId: deleteIdentityProviderLink
       parameters:
-        - name: sessionId
+        - name: linkId
           in: path
           required: true
           schema: { type: string, format: uuid }
         - $ref: "#/components/parameters/IdempotencyKey"
       responses:
-        "200":
-          description: The selected session was already revoked or is now revoked
+        "202":
+          description: Unlink operation started or replayed idempotently
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/IdentitySessionRevocation"
+                $ref: "#/components/schemas/IdentityProviderLinkOperationV1"
         "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
         "404": { $ref: "#/components/responses/IdentityNotFound" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
+        "429": { $ref: "#/components/responses/IdentityRateLimited" }
         "503": { $ref: "#/components/responses/IdentityUnavailable" }
 
   /api/v1/identity/profile:
@@ -4347,7 +4436,10 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Keycloak-issued JWT. Must contain `tenant_id` claim (UUID).
+      description: |
+        Keycloak-issued JWT whose exact issuer and subject are validated. Customer tenant and role
+        authority are reloaded from durable current membership; token tenant and role claims are
+        not authoritative.
     PreAccountBearerAuth:
       type: http
       scheme: bearer
@@ -5497,10 +5589,14 @@ components:
       additionalProperties: false
       required: [accountReference, roles, capabilities, assuranceLevel, authenticationPath, emailVerified, mobileVerified, authenticatedAt, expiresAt, nextAction]
       properties:
+        schemaVersion:
+          type: string
+          const: "1.1"
+          description: Present after the WC-123 provider-neutral session projection is enabled
         accountReference:
           type: string
           format: uuid
-          description: Opaque account reference; tenant identity is never returned
+          description: Opaque canonical global-account reference; tenant identity is never returned
         roles:
           type: array
           minItems: 1
@@ -5523,50 +5619,192 @@ components:
         mobileVerified: { type: boolean }
         authenticatedAt: { type: string, format: date-time }
         expiresAt: { type: string, format: date-time }
+        memberships:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/IdentityMembershipV1"
+          description: Omitted only during the bounded pre-WC-123 mixed-version expansion
+        membershipCardinality:
+          type: string
+          enum: [ZERO, ONE, MANY]
+          description: Omitted only during the bounded pre-WC-123 mixed-version expansion
         nextAction:
           type: string
-          enum: [NONE, VERIFY_EMAIL, VERIFY_MOBILE, REAUTHENTICATE, CONTINUE_TO_DEFAULT_TARGET]
+          enum: [NONE, VERIFY_EMAIL, VERIFY_MOBILE, CONTINUE_TO_DEFAULT_TARGET, READY, ONBOARDING_REQUIRED, TENANT_SELECTION_REQUIRED, RECOVERY_REQUIRED, REAUTHENTICATE]
 
-    IdentityManagedSessionCollection:
+    IdentityMembershipStateV1:
+      type: string
+      enum: [ACTIVE, SUSPENDED, REMOVED]
+
+    IdentityMembershipV1:
       type: object
       additionalProperties: false
-      required: [sessions]
+      required: [membershipReference, tenantReference, role, state, selectionEligible]
       properties:
-        sessions:
+        membershipReference:
+          type: string
+          format: uuid
+          description: Opaque membership reference; never a bearer of authority by itself
+        tenantReference:
+          type: string
+          format: uuid
+          description: Opaque tenant display reference; never accepted from a token claim
+        role:
+          type: string
+          enum: [OWNER, MANAGER, VIEWER]
+        state:
+          $ref: "#/components/schemas/IdentityMembershipStateV1"
+        selectionEligible:
+          type: boolean
+
+    IdentityMembershipCollectionV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, memberships, cardinality]
+      properties:
+        schemaVersion:
+          type: string
+          const: "1.0"
+        memberships:
           type: array
+          maxItems: 100
           items:
-            $ref: "#/components/schemas/IdentityManagedSession"
+            $ref: "#/components/schemas/IdentityMembershipV1"
+        cardinality:
+          type: string
+          enum: [ZERO, ONE, MANY]
 
-    IdentityManagedSession:
+    IdentityMembershipSelectionRequestV1:
       type: object
       additionalProperties: false
-      required: [sessionId, issuedAt, lastSeenAt, expiresAt, assuranceLevel, provider, deviceLabel, current]
+      required: [schemaVersion, membershipReference]
       properties:
-        sessionId: { type: string, format: uuid }
-        issuedAt: { type: string, format: date-time }
-        lastSeenAt: { type: string, format: date-time }
-        expiresAt: { type: string, format: date-time }
-        assuranceLevel: { $ref: "#/components/schemas/IdentityAssuranceLevel" }
-        provider:
+        schemaVersion:
           type: string
-          enum: [GOOGLE, FACEBOOK, APPLE, EMAIL, UNKNOWN]
-        deviceLabel:
+          const: "1.0"
+        membershipReference:
           type: string
-          minLength: 1
-          maxLength: 40
-        current: { type: boolean }
+          format: uuid
 
-    IdentitySessionRevocation:
+    IdentityMembershipSelectionV1:
       type: object
       additionalProperties: false
-      required: [scope, revokedCount]
+      required: [schemaVersion, membership, validatedAt]
       properties:
+        schemaVersion:
+          type: string
+          const: "1.0"
+        membership:
+          $ref: "#/components/schemas/IdentityMembershipV1"
+        validatedAt:
+          type: string
+          format: date-time
+
+    IdentitySessionRevocationRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, scope, reason, correlationId]
+      properties:
+        schemaVersion:
+          type: string
+          const: "1.0"
         scope:
           type: string
-          enum: [ONE, ALL]
-        revokedCount:
-          type: integer
-          minimum: 0
+          enum: [FAMILY, ALL]
+        sessionFamilyReference:
+          type: string
+          format: uuid
+          description: Required only for FAMILY scope; this is not a browser handle
+        reason:
+          type: string
+          enum: [LOGOUT, LOGOUT_ALL, SWITCH_ACCOUNT, SECURITY_EVENT, ACCOUNT_RECOVERY, ACCOUNT_ERASURE]
+        correlationId:
+          type: string
+          format: uuid
+      allOf:
+        - if:
+            properties:
+              scope: { const: FAMILY }
+            required: [scope]
+          then:
+            required: [sessionFamilyReference]
+        - if:
+            properties:
+              scope: { const: ALL }
+            required: [scope]
+          then:
+            not:
+              required: [sessionFamilyReference]
+
+    IdentitySessionRevocationReceiptV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, revocationReference, scope, state, recordedAt, replayed]
+      properties:
+        schemaVersion:
+          type: string
+          const: "1.0"
+        revocationReference:
+          type: string
+          format: uuid
+        scope:
+          type: string
+          enum: [FAMILY, ALL]
+        state:
+          type: string
+          enum: [RECORDED]
+        recordedAt:
+          type: string
+          format: date-time
+        replayed:
+          type: boolean
+
+    IdentityProviderClassV1:
+      type: string
+      enum: [GOOGLE, FACEBOOK, APPLE, EMAIL]
+
+    IdentityProviderLinkRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, provider, stepUpTransactionReference]
+      properties:
+        schemaVersion:
+          type: string
+          const: "1.0"
+        provider:
+          $ref: "#/components/schemas/IdentityProviderClassV1"
+        stepUpTransactionReference:
+          type: string
+          format: uuid
+
+    IdentityProviderLinkOperationV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, operationReference, command, provider, state, expiresAt, replayed]
+      properties:
+        schemaVersion:
+          type: string
+          const: "1.0"
+        operationReference:
+          type: string
+          format: uuid
+        linkReference:
+          type: string
+          format: uuid
+        command:
+          type: string
+          enum: [LINK, UNLINK]
+        provider:
+          $ref: "#/components/schemas/IdentityProviderClassV1"
+        state:
+          type: string
+          enum: [PROOF_REQUIRED, IDP_PENDING, IDP_COMMITTED, COMPLETED, FAILED, EXPIRED]
+        expiresAt:
+          type: string
+          format: date-time
+        replayed:
+          type: boolean
 
     IdentityRegistration:
       type: object

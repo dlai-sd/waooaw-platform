@@ -16,7 +16,6 @@ public sealed class JourneyTelemetryMiddleware(RequestDelegate next)
         ["api/v1/identity/registrations"] = "identity.registration.start",
         ["api/v1/identity/registrations/{registrationId:guid}/complete"] =
             "identity.registration.complete",
-        ["api/v1/identity/sessions"] = "identity.sessions",
         ["api/v1/acquisition/continuations"] = "acquisition.continue",
         ["api/v1/employment/relationships"] = "relationships.list",
         ["api/v1/employment/relationships/{relationshipId:guid}/selection-flash"] =

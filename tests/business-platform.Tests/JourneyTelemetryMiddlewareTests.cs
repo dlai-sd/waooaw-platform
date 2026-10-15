@@ -106,7 +106,7 @@ public sealed class JourneyTelemetryMiddlewareTests
         200,
         "REGISTRATION_COMPLETED"
     )]
-    [InlineData("api/v1/identity/sessions", 200, "SESSION_COMMAND_COMPLETED")]
+    [InlineData("api/v1/identity/sessions", 200, null)]
     [InlineData("api/v1/acquisition/continuations", 200, "ACQUISITION_CONTINUED")]
     [InlineData("api/v1/employment/relationships", 200, "AUTHORIZED_PROJECTION_RETURNED")]
     [InlineData(
@@ -126,7 +126,11 @@ public sealed class JourneyTelemetryMiddlewareTests
     [InlineData("api/v1/identity/session", 400, "REJECTED")]
     [InlineData("api/v1/identity/session", 100, "REJECTED")]
     [InlineData("api/v1/identity/session", 599, "REJECTED")]
-    public async Task JourneyRoute_RecordsTypedOutcome(string template, int status, string expected)
+    public async Task JourneyRoute_RecordsTypedOutcome(
+        string template,
+        int status,
+        string? expected
+    )
     {
         using var listener = new ActivityListener
         {
@@ -158,6 +162,12 @@ public sealed class JourneyTelemetryMiddlewareTests
 
         await middleware.InvokeAsync(context);
 
+        if (expected is null)
+        {
+            Assert.Null(activity!.GetTagItem("waooaw.journey.outcome"));
+            Assert.Null(activity.GetTagItem("waooaw.journey.status_class"));
+            return;
+        }
         Assert.Equal(expected, activity!.GetTagItem("waooaw.journey.outcome"));
         Assert.Equal($"{status / 100}xx", activity.GetTagItem("waooaw.journey.status_class"));
     }

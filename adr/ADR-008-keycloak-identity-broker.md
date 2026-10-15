@@ -1,7 +1,7 @@
 # ADR-008: Identity — Keycloak as OAuth Federation Broker
 
-**Status:** Accepted - v5 (2026-09-09: stock Keycloak and BP membership; Amendment 3 controls WC-085)
-**Date:** 2026-07-07 | **Last Updated:** 2026-09-09
+**Status:** Accepted - v6 (2026-10-14: bounded WC-123 lifecycle writer; Amendment 4)
+**Date:** 2026-07-07 | **Last Updated:** 2026-10-14
 **Roles Applied:** Security Architect (identity management) + Solution Architect (integration patterns)
 **Constitutional Basis:** GENESIS Design Principles — Configuration over Code; Constitution Article IX (Customer Rights — right to identity continuity)
 
@@ -411,3 +411,132 @@ Physical Data translation is the one small follow-on authorship item specified i
 note; no new general review or Founder option selection. Implementation/real-PG/Google evidence
 remains pending; CB-009 is not closed. This call is docs-only and does not authorize deployment.
 
+## Amendment 4 - WC-123 Stock Lifecycle Writer (v6 - 2026-10-14)
+
+**Author/authority:** Chief Enterprise Architect, Office 04, under the Founder-authorized bounded
+WC-123 architecture repair. This amendment resolves `AUTHZ-GATE-01` at the architecture boundary.
+It does not authorize implementation, provider or cloud mutation, deployment, traffic, activation,
+approval, or merge.
+
+### Decision And Supported Surface
+
+Authorize one separate confidential service-account client,
+`waooaw-bp-identity-lifecycle-writer`, for the WC-123 identity-lifecycle saga. It uses the stock
+Keycloak **25.0.6 Admin REST API** and only these realm-fixed, subject-fixed operations:
+
+| Purpose | Exact operation | Pinned behavior used |
+|---|---|---|
+| Precondition/read-back | `GET /admin/realms/waooaw/users/{user-id}` | `200` returns the exact user representation; absence or mismatch fails closed. |
+| Binding read-back | `GET /admin/realms/waooaw/users/{user-id}/federated-identity` | `200` returns the user's federated identity representations. |
+| Link or compensating restore | `POST /admin/realms/waooaw/users/{user-id}/federated-identity/{provider}` | Adds the supplied social-login identity; documented success is `200`. |
+| Unlink or rebinding source retirement | `DELETE /admin/realms/waooaw/users/{user-id}/federated-identity/{provider}` | Removes that social-login identity; documented success is `204`. |
+
+The pinned REST reference is
+`https://www.keycloak.org/docs-api/25.0.6/rest-api/index.html`. The pinned `UserResource` applies
+`requireView(user)` to the list/read operation and `requireManage(user)` to both provider mutation
+operations. Keycloak 25.0.6 documents fine-grained admin permissions as Preview, disabled by
+default, and not fully supported. Therefore this accepted production design does not claim
+method-level or per-user authorization that stock supported Keycloak does not provide.
+
+The exact assigned client role is only `realm-management/manage-users`. Do not assign
+`realm-admin`, `manage-realm`, `manage-identity-providers`, `view-identity-providers`,
+`impersonation`, `query-users`, `view-users`, or any other realm-management role or composite.
+`manage-users` also satisfies the required user reads in the pinned permission evaluator. This is
+the smallest supported stock role for the two required writes, but it remains a realm-wide user
+management capability. That irreducible blast radius is explicitly accepted only with the
+identity, routing, endpoint, proof, audit, and revocation controls below; it must never be described
+as endpoint-scoped Keycloak enforcement.
+
+No other Admin REST operation is authorized, including user create/delete/update, password or
+credential reset, required-action mutation, session impersonation, role/group mutation, provider
+configuration, realm configuration, client mutation, or arbitrary user search/listing. No custom
+provider, SPI, derived Keycloak image, browser-facing admin facade, or managed-CIAM substitution is
+authorized.
+
+### Identity, Credential, And Network Boundary
+
+- Amendment 3's `waooaw-bp-identity-reader` remains unchanged, read-only, separately credentialed,
+  and assigned only `view-users`. Its secret, token, configuration, and call path may not be reused
+  or broadened.
+- The lifecycle writer uses `client_credentials`, no interactive/direct/offline grants, no refresh
+  token, and an access-token lifetime of at most 60 seconds. The token is minted only for the
+  lifecycle operation and is never persisted.
+- Platform Operations is the accountable credential owner; Business Platform is the sole runtime
+  consumer. The environment-local secret is a distinct Key Vault reference named
+  `bp-identity-lifecycle-writer-client-secret`, injected only into Business Platform. It never
+  enters Web, a browser, evidence, provider configuration, source control, or the reader client.
+- Calls use the configured private-TLS Keycloak route, exact `waooaw` realm and configured host,
+  with redirects prohibited. The caller accepts no browser/provider-supplied host, realm, user ID,
+  provider alias, endpoint, representation, or token. Provider aliases are a closed configuration
+  allowlist.
+- Business Platform exposes no generic Admin REST proxy. Its adapter contains the four operations
+  above as a closed method/path allowlist and rejects every other method or path before acquiring a
+  writer token.
+
+### Operation-Bound Proof And Saga Contract
+
+Every link, unlink, recovery, or principal-rebinding mutation requires the accepted WC-123
+operation-bound step-up: an active exact WAOOAW principal, `auth_time` no older than five minutes,
+accepted `acr`/`amr`, a one-time server-held proof transaction bound to operation ID, session
+family, current principal, intended provider, target principal, safe return route, and expiry.
+Provider proof comes only from a fresh Keycloak broker ceremony and exact Keycloak read-back.
+Email, phone, display name, browser input, BP history alone, or a provider token delivered to
+WAOOAW is never proof.
+
+The operation ID and immutable expected before-state are persisted before mutation. The saga:
+
+1. reads the exact target user and target binding set;
+2. for rebinding, reads the freshly proved source principal and binding before retiring the source;
+3. performs at most one intended POST or DELETE per recorded transition;
+4. reads both affected binding sets after every response, timeout, disconnect, or unknown outcome;
+5. advances only when the read-back equals the exact expected after-state; and
+6. confirms the BP opaque projection before returning success.
+
+An identical completed operation ID returns its recorded terminal result. A replay with different
+inputs is denied. HTTP status alone is never commit proof. An ambiguous result is not blindly
+retried: read-back determines whether to continue, compensate with the inverse operation using the
+recorded representation, or enter `RECOVERY_REQUIRED`. Compensation is itself idempotent and
+read back. If either binding is duplicated, absent contrary to expectation, owned by another
+principal, or cannot be restored exactly, both affected BP projections are quarantined, affected
+session families are revoked, and no customer success or usable divergent binding is returned.
+Administrative recovery remains separately dual-controlled and is not authorized here.
+
+### Customer, Audit, Upgrade, Stop, And Rollback Consequences
+
+- The existing provider-neutral WC-123 outcomes control: success rotates the current application
+  handle and revokes older affected families; pending/ambiguous outcomes return no success;
+  collision is non-enumerating; irreconcilable state returns `RECOVERY_REQUIRED` with the existing
+  safe support/restart action. This amendment authorizes no new route, control, copy, or provider
+  activation.
+- Local logout remains independent of Keycloak. A lifecycle outage disables lifecycle mutation
+  without weakening current authentication, membership checks, RLS, or revocation.
+- Emit one local privacy-safe audit transition per saga step with operation/correlation ID,
+  operation class, provider class, before/after state class, response class, compensation class,
+  and actor/service identity. Never emit tokens, secrets, request representations, provider
+  subjects, raw Keycloak user IDs, email/phone, callback data, or identity keys.
+- Enable Keycloak admin-event recording with representation capture disabled; the dedicated
+  service-account identity provides attribution. Raw Keycloak admin events remain restricted
+  operational records and are redacted before evidence export; repository evidence uses operation
+  ID and normalized endpoint/result class only.
+- The pinned-version qualification starts Keycloak 25.0.6 and proves the four operations, documented
+  `200`/`204` results, read-back, timeout-before/after-commit reconciliation, compensation,
+  concurrency, collision, last-method protection, old-session denial, private-route/no-redirect
+  behavior, closed adapter allowlist, reader denied writes, and the writer's exact single role.
+  It must also prove the writer lacks non-user realm/client/provider/role administration. Because
+  `manage-users` is realm-wide, tests and evidence must not claim Keycloak denies other user-write
+  endpoints; the closed adapter and audit controls contain that residual capability.
+- Any Keycloak upgrade repeats those tests against the proposed pinned image and reviews REST,
+  `UserResource`, permission-evaluator, response, and admin-event behavior before changing the pin.
+  Drift or use of Preview fine-grained permissions stops the upgrade.
+- Emergency stop disables new lifecycle starts and token acquisition, removes the service-account
+  role mapping or disables the client, and rotates/revokes its secret. In-flight ambiguous
+  operations remain denied and may run only bounded read-back/compensation under incident control.
+- Rollback first disables lifecycle starts, reconciles or quarantines every nonterminal operation,
+  revokes the writer grant/client secret, and restores the last accepted application tuple without
+  restoring retired bindings or old sessions. Amendment 3's reader remains unchanged throughout.
+
+**Residual risk accepted:** the supported stock role is broader than the four authorized
+operations. Separation, private routing, short-lived tokens, Key Vault custody, a closed adapter,
+audit, immediate revocation, and upgrade qualification reduce but do not misrepresent that risk.
+If that residual risk becomes unacceptable, lifecycle mutation stops pending a separately accepted
+supported control or identity-authority decision.

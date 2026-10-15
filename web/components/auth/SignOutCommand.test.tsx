@@ -39,7 +39,11 @@ it('clears WAOOAW protected state before ending the session', () => {
   expect(localStorage.getItem('other-app-preference')).toBe('preserve');
   expect(fetchMock).toHaveBeenCalledWith('/api/auth/keycloak-logout', {
     method: 'POST',
-    headers: { Accept: 'application/json' },
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ command: 'LOCAL_LOGOUT' }),
   });
 });
 
@@ -61,7 +65,11 @@ it('revokes prior server sessions before requesting a different Keycloak account
   expect(localStorage.getItem('unrelated-preference')).toBe('retain');
   expect(fetchMock).toHaveBeenCalledWith('/api/auth/keycloak-logout', {
     method: 'POST',
-    headers: { Accept: 'application/json' },
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ command: 'ACCOUNT_SWITCH' }),
   });
   await waitFor(() => expect(navigate).toHaveBeenCalledWith('/api/auth/keycloak-logout?nonce=switch'));
   expect(signOut).not.toHaveBeenCalled();

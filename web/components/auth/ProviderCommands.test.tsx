@@ -43,7 +43,7 @@ describe('ProviderCommands', () => {
     await waitFor(() =>
       expect(signIn).toHaveBeenCalledWith(
         'keycloak-google',
-        { callbackUrl: '/home' },
+        { callbackUrl: '/home', waooawIntent: 'LOGIN' },
         { max_age: '0', prompt: 'select_account' }
       )
     );
@@ -73,7 +73,11 @@ describe('ProviderCommands', () => {
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/api/auth/keycloak-logout?nonce=recovery'));
     expect(fetchMock).toHaveBeenCalledWith('/api/auth/keycloak-logout', {
       method: 'POST',
-      headers: { Accept: 'application/json' },
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ command: 'ACCOUNT_SWITCH' }),
     });
     expect(sessionStorage.getItem('waooaw:identity:registration-draft')).toBeNull();
     expect(signIn).not.toHaveBeenCalled();
@@ -178,7 +182,13 @@ describe('ProviderCommands', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Log in with Facebook' }));
 
-    await waitFor(() => expect(signIn).toHaveBeenCalledWith('keycloak-facebook', { callbackUrl: '/home' }, undefined));
+    await waitFor(() =>
+      expect(signIn).toHaveBeenCalledWith(
+        'keycloak-facebook',
+        { callbackUrl: '/home', waooawIntent: 'LOGIN' },
+        undefined
+      )
+    );
   });
 
   it('offers an actionable retry when provider readiness is temporarily unavailable', () => {

@@ -409,7 +409,7 @@ public sealed class CustomerEngagementWorkspaceControllerTests
         EmploymentRelationshipState state = EmploymentRelationshipState.Active,
         string channelStatus = "ACTIVE",
         IRelationshipConstitutionalGateway? gateway = null,
-        bool useMembershipContext = false
+        bool useMembershipContext = true
     )
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));

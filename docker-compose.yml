@@ -1350,6 +1350,11 @@ services:
       NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: waooaw-web
       BUSINESS_PLATFORM_URL: http://business-platform:5001
       BILLING_ENGINE_URL: http://billing-engine:8140
+      REDIS_URL: redis://redis:6379/0
+      WAOOAW_ENVIRONMENT: demo
+      WAOOAW_SERVER_SESSION_MODE: ${WAOOAW_SERVER_SESSION_MODE:-enforced}
+      WAOOAW_SERVER_SESSION_SHADOW_SUBJECTS: ${WAOOAW_SERVER_SESSION_SHADOW_SUBJECTS:-}
+      AUTH_ABUSE_LIMITS_JSON: '{"AUTH_START":{"limit":20,"windowSeconds":600},"AUTH_CALLBACK":{"limit":30,"windowSeconds":600},"RECOVERY":{"limit":5,"windowSeconds":3600},"PROVIDER_LINK":{"limit":10,"windowSeconds":3600},"PROVIDER_UNLINK":{"limit":10,"windowSeconds":3600},"RESEND":{"limit":5,"windowSeconds":900},"CREDENTIAL":{"limit":10,"windowSeconds":3600}}'
       IDENTITY_EVENT_SIGNING_KEY: ${IDENTITY_EVENT_SIGNING_KEY:-waooaw-identity-event-local-dev-only-32chars}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
@@ -1359,6 +1364,8 @@ services:
       business-platform:
         condition: service_healthy
       billing-engine:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000 > /dev/null 2>&1 || exit 1"]

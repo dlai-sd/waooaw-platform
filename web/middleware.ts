@@ -1,13 +1,12 @@
 // Implements: architecture/reference/ux/hybrid-application-shell.md §Route and Layout Ownership
 // Implements: work-contracts/WC-078-public-acquisition-experience-plan.md §Public Information Architecture
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
-import { withAuth, type NextRequestWithAuth } from 'next-auth/middleware';
-import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { listPublishedArticles } from '@/config/blogs';
 import { listPublicProfessionals } from '@/config/professionals';
 import { contentSecurityPolicy } from '@/lib/content-security-policy';
+import { serverSessionMode } from '@/lib/server-session-mode';
 
-const protectedMiddleware = withAuth({});
 const professionalSlugs = new Set(listPublicProfessionals().map(({ slug }) => slug));
 const articleSlugs = new Set(listPublishedArticles().map(({ slug }) => slug));
 const protectedFamilies = new Set([
@@ -29,12 +28,24 @@ function publicResponse(request: NextRequest, nonce: string): NextResponse {
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
-function secure(response: NextResponse, nonce: string): NextResponse {
+function secure(response: NextResponse, nonce: string, request: NextRequest): NextResponse {
   response.headers.set('Content-Security-Policy', contentSecurityPolicy(nonce));
+  if (serverSessionMode() === 'enforced') {
+    for (const name of ['next-auth.session-token', '__Secure-next-auth.session-token']) {
+      if (request.cookies.has(name))
+        response.cookies.set(name, '', {
+          expires: new Date(0),
+          httpOnly: true,
+          path: '/',
+          sameSite: 'lax',
+          secure: name.startsWith('__Secure-'),
+        });
+    }
+  }
   return response;
 }
 
-export default async function middleware(request: NextRequest, event: NextFetchEvent) {
+export default async function middleware(request: NextRequest) {
   const nonce = crypto.randomUUID();
   const [, family, slug, extra] = request.nextUrl.pathname.split('/');
   if (family === 'professionals' && slug !== 'mine') {
@@ -44,9 +55,10 @@ export default async function middleware(request: NextRequest, event: NextFetchE
           status: 404,
           headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Robots-Tag': 'noindex, nofollow' },
         }),
-        nonce
+        nonce,
+        request
       );
-    return secure(publicResponse(request, nonce), nonce);
+    return secure(publicResponse(request, nonce), nonce, request);
   }
   if (family === 'blogs') {
     if (extra || (slug && !articleSlugs.has(slug)))
@@ -55,15 +67,21 @@ export default async function middleware(request: NextRequest, event: NextFetchE
           status: 404,
           headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Robots-Tag': 'noindex, nofollow' },
         }),
-        nonce
+        nonce,
+        request
       );
-    return secure(publicResponse(request, nonce), nonce);
+    return secure(publicResponse(request, nonce), nonce, request);
   }
   if (protectedFamilies.has(family)) {
-    const authResponse = await protectedMiddleware(request as NextRequestWithAuth, event);
-    return secure(authResponse instanceof NextResponse ? authResponse : publicResponse(request, nonce), nonce);
+    const mode = serverSessionMode();
+    const hasSession =
+      mode === 'enforced'
+        ? request.cookies.has('__Host-waooaw-session')
+        : request.cookies.has('next-auth.session-token') || request.cookies.has('__Secure-next-auth.session-token');
+    if (!hasSession) return secure(NextResponse.redirect(new URL('/login', request.url)), nonce, request);
+    return secure(publicResponse(request, nonce), nonce, request);
   }
-  return secure(publicResponse(request, nonce), nonce);
+  return secure(publicResponse(request, nonce), nonce, request);
 }
 
 export const config = {

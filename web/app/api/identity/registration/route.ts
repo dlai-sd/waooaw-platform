@@ -6,6 +6,7 @@ import { createIdentityApi } from '@/lib/api/identity';
 import { ResponseError } from '@/lib/api/generated/runtime';
 import { withJourneyTrace } from '@/lib/journey-telemetry';
 import { accessTokenFromRequest } from '@/lib/server-auth';
+import { enforceAuthAbuse } from '@/lib/auth-abuse-limiter';
 
 type CommandBody = Record<string, unknown> & { action?: unknown };
 
@@ -66,6 +67,10 @@ async function registrationPost(request: NextRequest) {
     const api = createIdentityApi(accessToken);
     const action = requiredString(body, 'action');
     const idempotencyKey = requiredString(body, 'idempotencyKey');
+    if (action === 'email-start' || action === 'mobile-start') {
+      const limited = await enforceAuthAbuse(request, 'RESEND');
+      if (limited) return limited;
+    }
 
     switch (action) {
       case 'start': {

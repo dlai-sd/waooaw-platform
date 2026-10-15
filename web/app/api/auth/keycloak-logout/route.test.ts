@@ -4,8 +4,13 @@ jest.mock('next-auth/jwt', () => ({ getToken: jest.fn() }));
 jest.mock('@/lib/identity-security-events', () => ({
   recordWebIdentitySecurityEvent: jest.fn(),
 }));
+jest.mock('@/lib/web-session-store', () => ({
+  loadSession: jest.fn(),
+  revokeSession: jest.fn(),
+}));
 
 import { recordWebIdentitySecurityEvent } from '@/lib/identity-security-events';
+import { revokeSession } from '@/lib/web-session-store';
 import { getToken } from 'next-auth/jwt';
 import { NextRequest } from 'next/server';
 import { GET, POST } from './route';
@@ -77,7 +82,36 @@ describe('Keycloak logout route', () => {
     expect(getToken).toHaveBeenCalledTimes(1);
   });
 
-  it('revokes all WAOOAW sessions before returning the logout continuation', async () => {
+  it('revokes before an account-switch continuation and returns to explicit selection', async () => {
+    const post = await POST(
+      new NextRequest('https://app.example/api/auth/keycloak-logout', {
+        method: 'POST',
+        body: JSON.stringify({ command: 'ACCOUNT_SWITCH' }),
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          origin: 'https://app.example',
+        },
+      })
+    );
+    const result = await post.json();
+    const nonce = new URL(result.logoutPath, 'https://app.example').searchParams.get('nonce');
+
+    expect(revokeSession).toHaveBeenCalledWith(expect.anything(), 'ACCOUNT_SWITCH');
+    const response = await GET(
+      new NextRequest(`https://app.example/api/auth/keycloak-logout?nonce=${nonce}`, {
+        headers: {
+          cookie: `waooaw.logout-continuation=${nonce}; waooaw.logout-command=ACCOUNT_SWITCH`,
+        },
+      })
+    );
+    const location = new URL(requiredHeader(response, 'location'));
+
+    expect(location.searchParams.get('post_logout_redirect_uri')).toBe('https://app.example/login?accountSwitch=1');
+    expect(response.headers.get('set-cookie')).toContain('waooaw.logout-command=;');
+  });
+
+  it('revokes the Web-owned opaque session before returning the logout continuation', async () => {
     jest.mocked(getToken).mockResolvedValue({
       accessToken: 'server-held-access-token',
       accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 300,
@@ -87,35 +121,37 @@ describe('Keycloak logout route', () => {
     const response = await POST(
       new NextRequest('https://app.example/api/auth/keycloak-logout', {
         method: 'POST',
-        headers: { accept: 'application/json', origin: 'https://app.example' },
+        headers: {
+          accept: 'application/json',
+          origin: 'https://app.example',
+          cookie: '__Host-waooaw-session=opaque-session',
+        },
       })
     );
 
     expect(response.status).toBe(200);
-    expect(fetch).toHaveBeenCalledWith(
-      'http://localhost:5001/api/v1/identity/sessions',
-      expect.objectContaining({
-        method: 'DELETE',
-        cache: 'no-store',
-        headers: expect.objectContaining({
-          Authorization: 'Bearer server-held-access-token',
-        }),
-      })
+    expect(revokeSession).toHaveBeenCalledWith(
+      expect.objectContaining({ accessToken: 'server-held-access-token' }),
+      'CUSTOMER_LOGOUT'
     );
   });
 
-  it('does not issue a logout continuation when WAOOAW revocation returns an upstream error', async () => {
+  it('does not issue a logout continuation when Web revocation fails', async () => {
     jest.mocked(getToken).mockResolvedValue({
       accessToken: 'server-held-access-token',
       accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 300,
       idToken: 'server-held-id-token',
     });
-    jest.mocked(fetch).mockResolvedValueOnce(new Response('{}', { status: 503 }));
+    jest.mocked(revokeSession).mockRejectedValueOnce(new Error('session store unavailable'));
 
     const response = await POST(
       new NextRequest('https://app.example/api/auth/keycloak-logout', {
         method: 'POST',
-        headers: { accept: 'application/json', origin: 'https://app.example' },
+        headers: {
+          accept: 'application/json',
+          origin: 'https://app.example',
+          cookie: '__Host-waooaw-session=opaque-session',
+        },
       })
     );
 
@@ -124,7 +160,7 @@ describe('Keycloak logout route', () => {
       code: 'SESSION_REVOCATION_UNCONFIRMED',
       title: 'Sign out could not be completed.',
     });
-    expect(response.headers.get('set-cookie')).toBeNull();
+    expect(response.headers.get('set-cookie')).toContain('__Host-waooaw-session=;');
     expect(response.headers.get('cache-control')).toBe('no-store');
     expect(recordWebIdentitySecurityEvent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -134,23 +170,27 @@ describe('Keycloak logout route', () => {
     );
   });
 
-  it('does not issue a logout continuation when WAOOAW revocation cannot be reached', async () => {
+  it('does not issue a logout continuation when Web revocation is unconfirmed', async () => {
     jest.mocked(getToken).mockResolvedValue({
       accessToken: 'server-held-access-token',
       accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 300,
       idToken: 'server-held-id-token',
     });
-    jest.mocked(fetch).mockRejectedValueOnce(new TypeError('fetch failed'));
+    jest.mocked(revokeSession).mockRejectedValueOnce(new TypeError('session store unavailable'));
 
     const response = await POST(
       new NextRequest('https://app.example/api/auth/keycloak-logout', {
         method: 'POST',
-        headers: { accept: 'application/json', origin: 'https://app.example' },
+        headers: {
+          accept: 'application/json',
+          origin: 'https://app.example',
+          cookie: '__Host-waooaw-session=opaque-session',
+        },
       })
     );
 
     expect(response.status).toBe(503);
-    expect(response.headers.get('set-cookie')).toBeNull();
+    expect(response.headers.get('set-cookie')).toContain('__Host-waooaw-session=;');
     expect(recordWebIdentitySecurityEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: 'LOGOUT_FAILURE',

@@ -45,6 +45,50 @@
     "image": "nginxinc/nginx-unprivileged@sha256:62a904036bfc0e4a4f2b556e34cbf17bc136b47fde8cdb4628762725f48c5782",
     "routePolicy": "infrastructure/terraform/phase2/modules/workload/identity-edge.conf.tftpl"
   },
+  "capacityProfile": {
+    "id": "wc123-auth-capacity-v1",
+    "version": "1.0.0",
+    "source": "architecture/reference/components/authentication-authorization-capacity-profile.v1.yaml",
+    "environment": "demo"
+  },
+  "sessionAuthority": {
+    "contractVersion": "1.0.0",
+    "mode": "DISPOSABLE_RESET",
+    "schemaVersion": 1,
+    "compatibleDeployVersions": ["wc123-auth-session-v1"],
+    "cookieName": "__Host-waooaw-session",
+    "idleTimeoutMinutes": 30,
+    "absoluteLifetimeHours": 8,
+    "refreshLeaseSeconds": 15,
+    "operationalRetentionDays": 30,
+    "protocolRetentionHours": 24,
+    "backupRetentionDays": 35,
+    "rpoMinutes": 5,
+    "rtoMinutes": 30,
+    "databasePoolSize": 5,
+    "globalConcurrency": 30,
+    "timeoutsMs": {
+      "poolAcquisition": 1000,
+      "refreshLock": 1500,
+      "statement": 5000,
+      "businessPlatformMembership": 3000,
+      "redis": 500,
+      "identityProvider": 5000
+    },
+    "keyVersions": {
+      "handleDigestWrite": "v1",
+      "protocolDigestWrite": "v1",
+      "tokenEnvelopeWrite": "v1"
+    },
+    "requiredSecretIds": [
+      "web-session-handle-digest",
+      "web-session-protocol-digest",
+      "web-session-token-envelope",
+      "web-session-database",
+      "web-oidc-client",
+      "keycloak-lifecycle-writer-client"
+    ]
+  },
   "phoneIdentity": { "internalAudience": "waooaw-phone-identity-demo" },
   "providers": [
     { "id": "GOOGLE", "displayName": "Google", "authenticationPath": "GOOGLE", "enabled": true, "secretReference": "kv://kv-waooaw-demo/secrets/bp-identity-reader-client-secret", "readinessEvidenceReference": "WC-088-DEMO-GOOGLE-ACTIVATION-AUTHORIZED-2026-09-10", "brokerAlias": "google", "scopes": ["openid", "profile", "email"] },

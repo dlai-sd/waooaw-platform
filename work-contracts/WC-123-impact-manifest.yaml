@@ -1,0 +1,292 @@
+schema: waooaw.wc123-impact-manifest/v1
+work_contract: WC-123
+component: AUTH-WC-01
+candidate_head: 8ff4b474e19e3735551aec6d813252af8b0bc405
+status: READY_FOR_AUTH_WC_02
+
+accepted_sources:
+  architecture/reference/components/authentication-authorization-enterprise-requirements.md: 94f8c120d450319d7b3d7d3532018b3824b8a13b39f77218fa9e385e39cb229b
+  architecture/reference/components/authentication-authorization-simplification-solution-contract.md: bb9b4d59289e255bb2b3cbc219330091056ef892cb0630b042f4468e9d46730c
+  architecture/reference/pipeline/identity-dependency-manifest.md: c0b2d6d596eb9fdbb9266bab128d8783b9a3aaa9f1fb7d2f4506abad2661f606
+  work-contracts/WC-122-authentication-authorization-simplification.md: 8a73e196a90201238729bdcc678452ea06933d3355c751707c93383226357d21
+  work-contracts/WC-123-authentication-authorization-implementation.md: 3573e8c57454a54e4158a7c4aff9585429f450a6dd825501d5f8fac2fd308870
+  work-contracts/WC-123-requirements.yaml: a2b8c0a0654d7cc3cdd53f645ab0018aefc401076f7f4ce2573f72e05e654837
+  adr/ADR-003-jwt-claims-multi-tenancy.md: f8c46224671a85269c246e742ee110036af36ffe2e02f229590894c796d2e2f2
+  adr/ADR-008-keycloak-identity-broker.md: 63605ab58a568c3f3746247f0a8b661487a3dfd468938e18cdeb828959483593
+  adr/ADR-017-web-application-framework.md: 96bb405194dca4c4e17f8b9255b507b2ac6ee0e82d935cdae6e369648e1fd4ab
+  architecture/reference/api-specs/business-platform.openapi.yaml: 2c612884b15d5fb5a6b1c9dee6c88d20848512fbb87aa14f38640ec5d535e2a7 # gitleaks:allow - public API contract SHA-256
+  architecture/reference/components/authentication-authorization-capacity-profile.v1.yaml: 71e103de28dd94708f07afcd1b8b802f76c3a8566c4f78a8b953f659fcc3163d
+  infrastructure/environment-readiness/environment-manifest.schema.json: e608ba71aa90d021b50903e1811c7f87876bc3b235b8bf0a4b0d1b4f2c986fb6
+  infrastructure/identity-config/environments/demo.json: 9e2d4dfacf5f1e6c2a542299a942b0f8355afe6ed90d403c546fff4025b95f0d
+  infrastructure/identity-config/environments/uat.json: a5f45f6d25972d3667023d2ee9355ff110adebf0e209c0507489b812512cb3c3
+  infrastructure/container-apps/scaling-rules.yaml: 333aae7882b1a4ed04a7ee7b6f917e09585571f68a81ed41b97bf0bacaaf2b11
+  infrastructure/environment-readiness/secret-catalog.schema.json: c757945ffcdb4251d4c242e571085d9309edc54f0dc0a78fead30c0389079ccb # gitleaks:allow - public schema SHA-256
+
+requirement_binding:
+  ledger: work-contracts/WC-123-requirements.yaml
+  first: WC123-R001
+  last: WC123-R048
+  count: 48
+  components:
+    - AUTH-WC-01
+    - AUTH-WC-02
+    - AUTH-WC-03
+    - AUTH-WC-04
+    - AUTH-WC-05
+    - AUTH-WC-06
+    - AUTH-WC-07
+
+current_authority_paths:
+  browser_session:
+    owner: Web
+    paths:
+      - web/lib/auth.ts
+      - web/lib/server-auth.ts
+      - web/app/api/auth/keycloak-logout/route.ts
+    legacy_creation:
+      - NextAuth JWT callback copies Keycloak access, refresh, and ID tokens into browser-carried session state.
+      - JWT callback refreshes and mutates browser-carried token state.
+    removal_or_replacement:
+      - Replace browser token custody with one random opaque __Host- cookie handle.
+      - Move refresh, rotation, revocation, and token envelopes to Web-owned server persistence.
+  customer_membership:
+    owner: Business Platform
+    paths:
+      - src/business-platform/Infrastructure/CustomerMembershipMiddleware.cs
+      - src/business-platform/Services/CustomerIdentityJourneyService.cs
+      - src/business-platform/Controllers/IdentityController.cs
+      - src/business-platform/Infrastructure/IdentityDbContext.cs
+      - infrastructure/postgres/init/20-identity-boundary.sql
+      - infrastructure/postgres/init/39-identity-sessions.sql
+    retained_authority:
+      - Exact Keycloak issuer and subject identify the application principal.
+      - Current durable membership owns customer account, tenant, and role authority.
+  tenant_and_rls:
+    owner: Business Platform and each enabled resource owner
+    paths:
+      - src/business-platform/Infrastructure/TenantIsolationMiddleware.cs
+      - src/business-platform/Infrastructure/CustomerMembershipMiddleware.cs
+      - infrastructure/postgres/init/04-rls-policies.sql
+      - infrastructure/postgres/init/20-identity-boundary.sql
+    legacy_acceptance:
+      - TenantIsolationMiddleware accepts tenant_id from JWT claims outside adapted customer routes.
+      - Identity fallback paths can accept waooaw_roles claims.
+    removal_or_replacement:
+      - Resolve current membership from validated issuer and subject.
+      - Set fresh transaction-local tenant context and retain independent FORCE RLS.
+  identity_provider:
+    owner: Stock Keycloak
+    paths:
+      - infrastructure/keycloak/waooaw-realm.json
+      - adr/ADR-008-keycloak-identity-broker.md
+    lifecycle_writer:
+      client: waooaw-identity-lifecycle-writer
+      pinned_version: 25.0.6
+      role: realm-management/manage-users
+      separation: WC-085 read-only client remains unchanged.
+
+planned_change_surfaces:
+  canonical_contract:
+    - architecture/reference/api-specs/business-platform.openapi.yaml
+  web:
+    - web/lib/auth.ts
+    - web/lib/server-auth.ts
+    - web/app/api/auth/session/**
+    - web/package.json
+    - web/package-lock.json
+    - web/lib/api/generated/**
+    - web/**/*.test.ts
+    - web/**/*.test.tsx
+  business_platform:
+    - src/business-platform/Controllers/IdentityController.cs
+    - src/business-platform/Infrastructure/CustomerMembershipMiddleware.cs
+    - src/business-platform/Infrastructure/TenantIsolationMiddleware.cs
+    - src/business-platform/Infrastructure/IdentityDbContext.cs
+    - src/business-platform/Services/CustomerIdentityJourneyService.cs
+    - src/business-platform/Clients/Generated/**
+    - tests/business-platform.Tests/Identity/**
+  persistence:
+    - infrastructure/postgres/init/55-wc123-web-session.sql
+    - infrastructure/postgres/init/56-wc123-identity-lifecycle.sql
+  configuration:
+    - infrastructure/environment-readiness/environment-manifest.schema.json
+    - infrastructure/environment-readiness/secret-catalog.schema.json
+    - infrastructure/keycloak/waooaw-realm.json
+  validation:
+    - tests/wc123/**
+    - tests/pipeline/test_wc123_impact_manifest.py
+    - validation/engineering-validation.yaml
+  runbooks:
+    - docs/runbooks/authentication-completion.md
+    - docs/runbooks/authentication-callback.md
+    - docs/runbooks/session-store.md
+    - docs/runbooks/session-refresh.md
+    - docs/runbooks/provider-disable.md
+    - docs/runbooks/membership-resolution.md
+    - docs/runbooks/authorization-dependency.md
+    - docs/runbooks/session-revocation.md
+    - docs/runbooks/cross-tenant-incident.md
+    - docs/runbooks/authentication-overload.md
+    - docs/runbooks/session-restore.md
+
+generated_consumers:
+  inputs:
+    - architecture/reference/api-specs/business-platform.openapi.yaml
+  outputs:
+    - web/lib/api/generated/**
+    - src/business-platform/Clients/Generated/**
+  policy:
+    - Canonical OpenAPI changes precede handlers.
+    - Generation, compatibility, reference, and consumer gates are independently required.
+
+data_and_secret_ownership:
+  web_session:
+    logical_owner: Web
+    physical_service: existing application PostgreSQL
+    new_product: false
+    runtime_access: fixed-function EXECUTE through a dedicated NOBYPASSRLS role
+  identity_lifecycle:
+    logical_owner: Business Platform
+    physical_service: existing application PostgreSQL
+  redis:
+    use: keyed TTL-bounded abuse counters only
+    prohibited: session, identity, membership, revocation, or evidence authority
+  secret_catalog_extensions:
+    - handle-digest key
+    - sid digest key
+    - OIDC state digest key
+    - logout-replay digest key
+    - token-envelope encryption key
+    - Web OIDC client authentication
+    - Keycloak lifecycle-writer client authentication
+    - independently enabled provider dependencies
+
+deployment_and_rollback:
+  application_manifest_members:
+    - web
+    - business-platform
+  dependency_manifest_members:
+    - application-postgresql
+    - redis
+    - key-vault
+    - keycloak
+    - azure-monitor
+  web_runtime_packages:
+    - name: postgres
+      version: 3.4.9
+      tarball: https://registry.npmjs.org/postgres/-/postgres-3.4.9.tgz
+      integrity: sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw==
+      declared_runtime_dependencies: []
+      purpose: Web-to-approved-web_session-function PostgreSQL wire protocol only
+      amendment: CSA-AUTH-001 Section 12.8 and AUTHZ-SD-14
+  migration: expand/verify/cutover/contract with pre-traffic additive migration
+  cutover: disabled/shadow/enforced with one announced forced sign-out
+  rollback:
+    - immediately previous qualified architecture-indexed image tuple only
+    - compatible reviewed configuration and key versions only
+    - no rebuild, retag, destructive down-migration, or restored ACTIVE sessions
+    - legacy browser tokens and claim authority remain rejected
+  protected_actions:
+    - provider mutation
+    - cloud mutation
+    - deployment
+    - external traffic
+    - activation
+    - Production action
+    - approval
+    - merge
+
+baseline_evidence:
+  spec_lint:
+    namespace: wc109-9fad5065774e6d4a
+    result: PASS
+    evidence_class: contract
+  web:
+    namespace: wc109-2f71af4330590d7f
+    result: PASS
+    tests: 555
+  business_platform:
+    namespace: wc109-0cfe5b9ea458c91d
+    result: PASS
+    tests: 1086
+    line_coverage_percent: 90.00
+    branch_coverage_percent: 80.37
+
+capacity_and_timeout_budget:
+  profile:
+    id: wc123-auth-capacity-v1
+    version: 1.0.0
+    source: architecture/reference/components/authentication-authorization-capacity-profile.v1.yaml
+    environment_contracts:
+      demo: infrastructure/identity-config/environments/demo.json
+      uat: infrastructure/identity-config/environments/uat.json
+  accepted_constraints:
+    database_connection_ceiling_percent: 80
+    session_idle_minutes: 30
+    session_absolute_hours: 8
+    refresh_lease_seconds_max: 15
+    rpo_minutes_max: 5
+    rto_minutes_max: 30
+    queues_must_be_bounded: true
+    typed_overload_responses:
+      - 429
+      - 503
+  accepted_environment_inputs:
+    demo:
+      web_min_replicas: 1
+      web_max_replicas: 1
+      application_database_connection_limit: 100
+      migration_and_operations_reserve: 20
+      per_replica_web_session_pool: 5
+      equation: 1 * 5 + 20 = 25 <= 80% * 100 = 80
+      result_connections: 25
+      permitted_connections: 80
+      source_references:
+        - infrastructure/terraform/phase2/environments/demo/workload/main.tf
+        - adr/ADR-027-cloud-architecture-optimization.md
+        - infrastructure/postgres/pgbouncer/pgbouncer.ini
+        - infrastructure/deployment-stacks/goal006-runner/demo.prerequisites.parameters.json
+    uat:
+      web_min_replicas: 0
+      web_max_replicas: 10
+      application_database_connection_limit: 100
+      migration_and_operations_reserve: 20
+      per_replica_web_session_pool: 5
+      equation: 10 * 5 + 20 = 70 <= 80% * 100 = 80
+      result_connections: 70
+      permitted_connections: 80
+      source_references:
+        - infrastructure/terraform/phase2/modules/workload/variables.tf
+        - adr/ADR-027-cloud-architecture-optimization.md
+        - infrastructure/postgres/pgbouncer/pgbouncer.ini
+        - infrastructure/deployment-stacks/goal006-runner/uat.prerequisites.parameters.json
+  accepted_shared_inputs:
+    aca_concurrent_requests_per_replica: 30
+    queue_limits:
+      demo: {request: 30, refresh: 10, callback: 10, lifecycle: 10}
+      uat: {request: 300, refresh: 100, callback: 100, lifecycle: 100}
+    global_request_concurrency: {demo: 30, uat: 300}
+    per_principal_concurrency:
+      requests: 4
+      callbacks: 2
+      lifecycle: 2
+      refreshes_per_session_family: 1
+    timeouts_ms:
+      pool_acquisition: 1000
+      refresh_lock: 1500
+      statement: 5000
+      bp_membership: 3000
+      redis: 500
+      identity_provider: 5000
+    cost_ceiling_inr_per_month: {demo: 10000, uat: 10000}
+    overload_and_retry:
+      statuses: [429, 503]
+      retry_after_seconds_max: 10
+      retry_attempts_max: 3
+      retry_backoff_initial_ms: 250
+      retry_backoff_max_ms: 2000
+  disposition: ACCEPTED
+  readiness_rule: >-
+    The versioned profile and both environment manifests bind every capacity, queue, concurrency,
+    timeout, overload, retry, and cost input. AUTH-WC-02 may start only under separate Founder
+    implementation authorization; this readiness state does not itself authorize implementation.

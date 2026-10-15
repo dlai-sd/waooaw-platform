@@ -47,11 +47,11 @@ public sealed class IdentityBrokerReadOptions
         && AllowedAuthorizedParties.Length > 0
         && AllowedAuthorizedParties.Distinct(StringComparer.Ordinal).Count()
             == AllowedAuthorizedParties.Length
-        && AllowedAuthorizedParties.All(GoogleWorkspaceProofAdapter.ValidKey)
+        && AllowedAuthorizedParties.All(VerifiedIdentityProofAdapter.ValidKey)
         && Providers.Count > 0
         && Providers.All(provider =>
             provider.Key is "google" or "facebook" or "apple"
-            && GoogleWorkspaceProofAdapter.ValidKey(provider.Value.ProviderNamespace)
+            && VerifiedIdentityProofAdapter.ValidKey(provider.Value.ProviderNamespace)
             && Regex.IsMatch(
                 provider.Value.TrustConfigDigest,
                 "\\A[0-9a-f]{64}\\z",
@@ -70,10 +70,10 @@ public sealed class IdentityBrokerProviderOptions
     public string TrustConfigDigest { get; set; } = "";
 }
 
-public sealed class GoogleWorkspaceProofAdapter(
+public sealed class VerifiedIdentityProofAdapter(
     HttpClient client,
     IOptions<IdentityBrokerReadOptions> options,
-    ILogger<GoogleWorkspaceProofAdapter>? logger = null,
+    ILogger<VerifiedIdentityProofAdapter>? logger = null,
     IOptions<IdentityEnvironmentOptions>? environment = null,
     IConfiguration? configuration = null
 )
@@ -152,8 +152,6 @@ public sealed class GoogleWorkspaceProofAdapter(
             return Denied<VerifiedCustomerActor>("actor_audience");
         if (principal.HasClaim("client_type", "service"))
             return Denied<VerifiedCustomerActor>("actor_service_client");
-        if (!CustomerRolesOnly(principal))
-            return Denied<VerifiedCustomerActor>("actor_roles");
         if (!Timestamp(principal, "iat", out var issued) || issued > now + 30)
             return Denied<VerifiedCustomerActor>("actor_issued_at");
         if (!Timestamp(principal, "exp", out var expires) || expires <= now - 30)
@@ -176,7 +174,7 @@ public sealed class GoogleWorkspaceProofAdapter(
         return new VerifiedCustomerActor(issuer!, subject!);
     }
 
-    public async Task<VerifiedGoogleWorkspaceProof> ReadAsync(
+    public async Task<VerifiedIdentityProof> ReadAsync(
         ClaimsPrincipal principal,
         CancellationToken ct
     )
@@ -189,7 +187,7 @@ public sealed class GoogleWorkspaceProofAdapter(
                 throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
             if (!PreviewAuthenticationTime(principal, out var authenticated))
                 throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
-            return new VerifiedGoogleWorkspaceProof(
+            return new VerifiedIdentityProof(
                 previewActor,
                 previewProvider.ProviderNamespace,
                 previewBrokerAlias,
@@ -269,7 +267,7 @@ public sealed class GoogleWorkspaceProofAdapter(
             )
                 throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
             ValidateActor(principal, requireFresh: true);
-            return new VerifiedGoogleWorkspaceProof(
+            return new VerifiedIdentityProof(
                 actor,
                 provider.ProviderNamespace,
                 brokerAlias,
@@ -464,42 +462,4 @@ public sealed class GoogleWorkspaceProofAdapter(
         principal.HasClaim(claim => claim.Type == "auth_time")
             ? Timestamp(principal, "auth_time", out value)
             : Timestamp(principal, "iat", out value);
-
-    private static bool CustomerRolesOnly(ClaimsPrincipal principal)
-    {
-        try
-        {
-            using var realm = JsonDocument.Parse(SingleClaim(principal, "realm_access") ?? "{}");
-            var roles = realm
-                .RootElement.GetProperty("roles")
-                .EnumerateArray()
-                .Select(role => role.GetString())
-                .ToArray();
-            return roles.Contains("customer", StringComparer.Ordinal)
-                && roles.All(role =>
-                    role
-                        is "customer"
-                            or "offline_access"
-                            or "uma_authorization"
-                            or "default-roles-waooaw"
-                )
-                && !principal
-                    .FindAll(ClaimTypes.Role)
-                    .Concat(principal.FindAll("role"))
-                    .Any(role =>
-                        role.Value
-                            is not (
-                                "customer"
-                                or "offline_access"
-                                or "uma_authorization"
-                                or "default-roles-waooaw"
-                            )
-                    );
-        }
-        catch (Exception exception)
-            when (exception is JsonException or KeyNotFoundException or InvalidOperationException)
-        {
-            return false;
-        }
-    }
 }

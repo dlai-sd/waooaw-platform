@@ -134,22 +134,64 @@ public sealed record IdentitySessionResponse(
     string NextAction
 );
 
-public sealed record IdentityManagedSessionResponse(
-    Guid SessionId,
-    DateTimeOffset IssuedAt,
-    DateTimeOffset LastSeenAt,
-    DateTimeOffset ExpiresAt,
-    string AssuranceLevel,
+public sealed record IdentityMembershipResponse(
+    Guid MembershipReference,
+    Guid TenantReference,
+    string Role,
+    string State,
+    bool SelectionEligible
+);
+
+public sealed record IdentityMembershipCollectionResponse(
+    string SchemaVersion,
+    IReadOnlyList<IdentityMembershipResponse> Memberships,
+    string Cardinality
+);
+
+public sealed record IdentityMembershipSelectionRequest(
+    string SchemaVersion,
+    Guid MembershipReference
+);
+
+public sealed record IdentityMembershipSelectionResponse(
+    string SchemaVersion,
+    IdentityMembershipResponse Membership,
+    DateTimeOffset ValidatedAt
+);
+
+public sealed record IdentityProviderLinkRequest(
+    string SchemaVersion,
     string Provider,
-    string DeviceLabel,
-    bool Current
+    Guid StepUpTransactionReference
 );
 
-public sealed record IdentityManagedSessionCollectionResponse(
-    IReadOnlyList<IdentityManagedSessionResponse> Sessions
+public sealed record IdentityProviderLinkOperationResponse(
+    string SchemaVersion,
+    Guid OperationReference,
+    Guid? LinkReference,
+    string Command,
+    string Provider,
+    string State,
+    DateTimeOffset ExpiresAt,
+    bool Replayed
 );
 
-public sealed record IdentitySessionRevocationResponse(string Scope, int RevokedCount);
+public sealed record IdentitySessionRevocationIntentRequest(
+    string SchemaVersion,
+    string Scope,
+    Guid? SessionFamilyReference,
+    string Reason,
+    Guid CorrelationId
+);
+
+public sealed record IdentitySessionRevocationReceiptResponse(
+    string SchemaVersion,
+    Guid RevocationReference,
+    string Scope,
+    string State,
+    DateTimeOffset RecordedAt,
+    bool Replayed
+);
 
 public sealed record CustomerProfileResponse(
     string SchemaVersion,
@@ -210,7 +252,7 @@ public sealed class IdentityController(
     ILogger<IdentityController> logger,
     CustomerIdentityJourneyService? customerJourney = null,
     IdentitySecurityEventService? securityEvents = null,
-    IdentitySessionService? sessionService = null
+    IdentityLifecycleService? lifecycleService = null
 ) : ControllerBase, IAsyncActionFilter
 {
     [NonAction]
@@ -356,12 +398,11 @@ public sealed class IdentityController(
 
     private const string CustomerPortalSchemaVersion = "1.0.0";
 
-    private Guid? TenantIdFromContext =>
-        HttpContext.Items.TryGetValue(TenantIsolationMiddleware.TenantIdItemKey, out var v)
-        && v is string s
-        && Guid.TryParse(s, out var g)
-            ? g
-            : null;
+    private CustomerWorkspaceMembership? CurrentMembership =>
+        HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]
+        as CustomerWorkspaceMembership;
+
+    private Guid? TenantIdFromContext => CurrentMembership?.TenantId;
 
     private static string ComputeHash(object? body)
     {
@@ -407,28 +448,20 @@ public sealed class IdentityController(
             ? DateTimeOffset.FromUnixTimeSeconds(ts)
             : DateTimeOffset.UtcNow;
 
-    private IReadOnlyList<string> CustomerRoles
-    {
-        get
-        {
-            var roles = User.FindAll("waooaw_roles")
-                .SelectMany(claim =>
-                    claim.Value.TrimStart().StartsWith('[')
-                        ? JsonSerializer.Deserialize<string[]>(claim.Value) ?? []
-                        : claim.Value.Split(
-                            ',',
-                            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
-                        )
-                )
-                .Where(role => role is "OWNER" or "MANAGER" or "VIEWER")
-                .Distinct(StringComparer.Ordinal)
-                .OrderBy(role => role, StringComparer.Ordinal)
-                .ToArray();
-            return roles;
-        }
-    }
+    private IReadOnlyList<string> CustomerRoles => CurrentMembership?.Roles ?? [];
 
     private bool IsOwner => CustomerRoles.Contains("OWNER", StringComparer.Ordinal);
+
+    private bool HasLifecycleStepUp =>
+        User.FindFirstValue("auth_time") is string authTime
+        && long.TryParse(authTime, out var authenticatedAt)
+        && DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds(authenticatedAt) is var age
+        && age >= TimeSpan.FromSeconds(-30)
+        && age <= TimeSpan.FromMinutes(5)
+        && User.FindFirstValue("acr") is "2" or "3" or "urn:waooaw:aal2" or "urn:waooaw:aal3"
+        && User.FindAll("amr")
+            .SelectMany(claim => claim.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .Any(method => method is "mfa" or "otp" or "webauthn");
 
     private Guid IdempotencyKey
     {
@@ -496,6 +529,32 @@ public sealed class IdentityController(
             IdentityRegistrationState.Completed => "CONTINUE_TO_DEFAULT_TARGET",
             _ => "NONE",
         };
+
+    private static IdentityProviderLinkOperationResponse ToResponse(
+        IdentityLifecycleOperation operation
+    ) =>
+        new(
+            "1.0",
+            operation.OperationReference,
+            operation.LinkReference,
+            operation.Command.ToString().ToUpperInvariant(),
+            operation.Provider.ToString().ToUpperInvariant(),
+            operation.State,
+            operation.ExpiresAt,
+            operation.Replayed
+        );
+
+    private static readonly IReadOnlySet<string> SessionRevocationReasons = new HashSet<string>(
+        [
+            "LOGOUT",
+            "LOGOUT_ALL",
+            "SWITCH_ACCOUNT",
+            "SECURITY_EVENT",
+            "ACCOUNT_RECOVERY",
+            "ACCOUNT_ERASURE",
+        ],
+        StringComparer.Ordinal
+    );
 
     private static IdentityVerificationChallengeResponse ToResponse(
         IdentityVerificationChallengeRecord c
@@ -584,160 +643,61 @@ public sealed class IdentityController(
             state.UpdatedAt
         );
 
-    [HttpGet("session")]
-    [CustomerIdentityRoute(requiresMembership: true, registrationRequiredWhenMissing: true)]
-    public async Task<IActionResult> GetSessionAsync(CancellationToken ct)
+    [HttpGet("memberships")]
+    [CustomerIdentityRoute]
+    public async Task<IActionResult> ListMembershipsAsync(
+        [FromQuery] int limit = 100,
+        CancellationToken ct = default
+    )
     {
-        if (customerJourney is not null)
-        {
-            var membership =
-                HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]
-                    as CustomerWorkspaceMembership
-                ?? await customerJourney.ResolveAsync(User, ct);
-            if (
-                HttpContext.Items[CustomerMembershipMiddleware.AuthenticationTimeItem]
-                is not DateTimeOffset authenticatedAt
-            )
-                return Problem(
-                    statusCode: StatusCodes.Status401Unauthorized,
-                    title: "Identity session is unavailable"
-                );
-            return Ok(
-                new IdentitySessionResponse(
-                    membership.AccountId,
-                    membership.Roles,
-                    [],
-                    "AAL2_ACCOUNT",
-                    "PORTAL",
-                    true,
-                    false,
-                    authenticatedAt,
-                    DateTimeOffset.FromUnixTimeSeconds(
-                        long.Parse(GoogleWorkspaceProofAdapter.SingleClaim(User, "exp")!)
-                    ),
-                    "CONTINUE_TO_DEFAULT_TARGET"
-                )
-            );
-        }
-        var tenantId = TenantIdFromContext;
-        var roles = CustomerRoles;
-        var expiresAtValue = User.FindFirstValue("exp");
-        if (
-            tenantId is null
-            || roles.Count == 0
-            || expiresAtValue is null
-            || !long.TryParse(expiresAtValue, out var expiresAtSeconds)
-        )
-        {
-            return IdentityProblem(
-                401,
-                "IDENTITY_SESSION_REQUIRED",
-                "A complete customer session is required."
-            );
-        }
-
-        try
-        {
-            var state = await identityService.GetSessionStateAsync(ActorSubject, ct);
-            var capabilities = CapabilitiesFor(roles);
-            var authenticationPath =
-                User.FindFirstValue("auth_path") == "MOBILE" ? "MOBILE" : "PORTAL";
-            var assurance = state.EmailVerified ? "AAL2_ACCOUNT" : "AAL1_CHANNEL";
-            if (state.MobileVerified && DateTimeOffset.UtcNow - AuthTime <= TimeSpan.FromMinutes(5))
-                assurance = "AAL3_FRESH";
-
-            var nextAction =
-                !state.EmailVerified ? "VERIFY_EMAIL"
-                : !state.MobileVerified ? "VERIFY_MOBILE"
-                : "NONE";
-
-            return Ok(
-                new IdentitySessionResponse(
-                    state.AccountReference,
-                    roles,
-                    capabilities,
-                    assurance,
-                    authenticationPath,
-                    state.EmailVerified,
-                    state.MobileVerified,
-                    AuthTime,
-                    DateTimeOffset.FromUnixTimeSeconds(expiresAtSeconds),
-                    nextAction
-                )
-            );
-        }
-        catch (IdentityResourceNotFoundException)
-        {
-            return IdentityProblem(
-                404,
-                "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
-                "Account session not found or not accessible."
-            );
-        }
-    }
-
-    [HttpGet("sessions")]
-    [CustomerIdentityRoute(requiresMembership: true)]
-    public async Task<IActionResult> ListIdentitySessionsAsync(CancellationToken ct)
-    {
-        if (customerJourney is null || sessionService is null)
+        if (customerJourney is null)
             return IdentityProblem(
                 503,
                 "IDENTITY_DEPENDENCY_UNAVAILABLE",
-                "Session management is unavailable."
+                "Membership authority is unavailable."
             );
-        var membership = (CustomerWorkspaceMembership)
-            HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]!;
-        var currentSessionId = (Guid)HttpContext.Items[CustomerMembershipMiddleware.SessionIdItem]!;
-        var sessions = await sessionService.ListAsync(membership.AccountId, currentSessionId, ct);
+        if (limit is < 1 or > 100)
+            return IdentityProblem(400, "IDENTITY_REQUEST_INVALID", "Invalid membership limit.");
+        var memberships = (await customerJourney.ListMembershipsAsync(User, ct))
+            .Take(limit)
+            .Select(ToMembershipResponse)
+            .ToArray();
         return Ok(
-            new IdentityManagedSessionCollectionResponse(
-                sessions
-                    .Select(value => new IdentityManagedSessionResponse(
-                        value.SessionId,
-                        value.IssuedAt,
-                        value.LastSeenAt,
-                        value.ExpiresAt,
-                        value.AssuranceLevel switch
-                        {
-                            "AAL3" => "AAL3_FRESH",
-                            "AAL2" => "AAL2_ACCOUNT",
-                            _ => "AAL1_CHANNEL",
-                        },
-                        value.Provider,
-                        value.DeviceLabel,
-                        value.Current
-                    ))
-                    .ToArray()
+            new IdentityMembershipCollectionResponse(
+                "1.0",
+                memberships,
+                memberships.Length switch
+                {
+                    0 => "ZERO",
+                    1 => "ONE",
+                    _ => "MANY",
+                }
             )
         );
     }
 
-    [HttpDelete("sessions/{sessionId:guid}")]
-    [CustomerIdentityRoute(requiresMembership: true)]
-    public async Task<IActionResult> RevokeIdentitySessionAsync(
-        Guid sessionId,
+    [HttpPost("membership-selections/validate")]
+    [CustomerIdentityRoute]
+    public async Task<IActionResult> ValidateMembershipSelectionAsync(
+        [FromBody] IdentityMembershipSelectionRequest request,
         CancellationToken ct
     )
     {
-        if (sessionService is null)
+        if (
+            customerJourney is null
+            || request.SchemaVersion != "1.0"
+            || request.MembershipReference == Guid.Empty
+        )
             return IdentityProblem(
-                503,
-                "IDENTITY_DEPENDENCY_UNAVAILABLE",
-                "Session management is unavailable."
+                customerJourney is null ? 503 : 400,
+                customerJourney is null
+                    ? "IDENTITY_DEPENDENCY_UNAVAILABLE"
+                    : "IDENTITY_REQUEST_INVALID",
+                "Membership selection could not be validated."
             );
         try
         {
-            var membership = (CustomerWorkspaceMembership)
-                HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]!;
-            var count = await sessionService.RevokeOneAsync(
-                membership.AccountId,
-                ActorSubject,
-                sessionId,
-                $"revoke-one:{IdempotencyKey:D}",
-                ct
-            );
-            return Ok(new IdentitySessionRevocationResponse("ONE", count));
+            _ = IdempotencyKey;
         }
         catch (ArgumentException)
         {
@@ -747,38 +707,77 @@ public sealed class IdentityController(
                 "Invalid or missing Idempotency-Key header."
             );
         }
+        var membership = await customerJourney.ValidateMembershipSelectionAsync(
+            User,
+            request.MembershipReference,
+            ct
+        );
+        return Ok(
+            new IdentityMembershipSelectionResponse(
+                "1.0",
+                ToMembershipResponse(
+                    new CustomerWorkspaceMembershipProjection(
+                        membership.AccountId,
+                        membership.TenantId,
+                        membership.MembershipId,
+                        membership.Roles,
+                        "ACTIVE"
+                    )
+                ),
+                DateTimeOffset.UtcNow
+            )
+        );
     }
 
-    [HttpDelete("sessions")]
-    [CustomerIdentityRoute(requiresMembership: true)]
-    public async Task<IActionResult> RevokeAllIdentitySessionsAsync(CancellationToken ct)
+    private static IdentityMembershipResponse ToMembershipResponse(
+        CustomerWorkspaceMembershipProjection membership
+    ) =>
+        new(
+            membership.MembershipId,
+            membership.TenantId,
+            membership.Roles.Single(),
+            membership.Status,
+            membership.Status == "ACTIVE"
+        );
+
+    [HttpGet("session")]
+    [CustomerIdentityRoute(requiresMembership: true, registrationRequiredWhenMissing: true)]
+    public async Task<IActionResult> GetSessionAsync(CancellationToken ct)
     {
-        if (sessionService is null)
+        var membership =
+            HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]
+            as CustomerWorkspaceMembership;
+        if (membership is null && customerJourney is null)
             return IdentityProblem(
                 503,
                 "IDENTITY_DEPENDENCY_UNAVAILABLE",
-                "Session management is unavailable."
+                "Current membership authority is unavailable."
             );
-        try
-        {
-            var membership = (CustomerWorkspaceMembership)
-                HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]!;
-            var count = await sessionService.RevokeAllAsync(
+        membership ??= await customerJourney!.ResolveAsync(User, ct);
+        if (
+            HttpContext.Items[CustomerMembershipMiddleware.AuthenticationTimeItem]
+            is not DateTimeOffset authenticatedAt
+        )
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Identity session is unavailable"
+            );
+        return Ok(
+            new IdentitySessionResponse(
                 membership.AccountId,
-                ActorSubject,
-                $"revoke-all:{IdempotencyKey:D}",
-                ct
-            );
-            return Ok(new IdentitySessionRevocationResponse("ALL", count));
-        }
-        catch (ArgumentException)
-        {
-            return IdentityProblem(
-                400,
-                "IDENTITY_REQUEST_INVALID",
-                "Invalid or missing Idempotency-Key header."
-            );
-        }
+                membership.Roles,
+                [],
+                "AAL2_ACCOUNT",
+                "PORTAL",
+                true,
+                false,
+                authenticatedAt,
+                DateTimeOffset.FromUnixTimeSeconds(
+                    long.Parse(VerifiedIdentityProofAdapter.SingleClaim(User, "exp")!)
+                ),
+                "CONTINUE_TO_DEFAULT_TARGET"
+            )
+        );
     }
 
     [HttpGet("profile")]
@@ -1880,6 +1879,195 @@ public sealed class IdentityController(
                 "Invalid or missing Idempotency-Key header."
             );
         }
+    }
+
+    // ── POST /api/v1/identity/session-revocations ─────────────────────────────
+
+    [HttpPost("session-revocations")]
+    [CustomerIdentityRoute(requiresMembership: true)]
+    public async Task<IActionResult> RecordSessionRevocationAsync(
+        [FromBody] IdentitySessionRevocationIntentRequest request,
+        CancellationToken ct
+    )
+    {
+        if (securityEvents is null || CurrentMembership is null)
+            return IdentityProblem(
+                503,
+                "IDENTITY_DEPENDENCY_UNAVAILABLE",
+                "Session revocation evidence is unavailable."
+            );
+        if (
+            request.SchemaVersion != "1.0"
+            || request.CorrelationId == Guid.Empty
+            || !SessionRevocationReasons.Contains(request.Reason)
+            || request.Scope is not ("FAMILY" or "ALL")
+            || (request.Scope == "FAMILY" && request.SessionFamilyReference is null)
+            || (request.Scope == "ALL" && request.SessionFamilyReference is not null)
+        )
+            return IdentityProblem(
+                400,
+                "IDENTITY_REQUEST_INVALID",
+                "The session revocation receipt is invalid."
+            );
+        try
+        {
+            var idempotencyKey = IdempotencyKey;
+            var inserted = await securityEvents.RecordAsync(
+                new IdentitySecurityEventInput(
+                    request.CorrelationId,
+                    $"web-revocation:{idempotencyKey:D}",
+                    request.Scope == "ALL" ? "SESSION_REVOCATION_ALL" : "SESSION_REVOCATION_ONE",
+                    "INTERNAL",
+                    "SUCCEEDED",
+                    request.Reason,
+                    AssuranceClass,
+                    "BUSINESS_PLATFORM",
+                    ActorSubject,
+                    request.SessionFamilyReference?.ToString("D")
+                ),
+                ct
+            );
+            return Accepted(
+                new IdentitySessionRevocationReceiptResponse(
+                    "1.0",
+                    idempotencyKey,
+                    request.Scope,
+                    "RECORDED",
+                    DateTimeOffset.UtcNow,
+                    !inserted
+                )
+            );
+        }
+        catch (ArgumentException)
+        {
+            return IdentityProblem(
+                400,
+                "IDENTITY_REQUEST_INVALID",
+                "A valid Idempotency-Key is required."
+            );
+        }
+    }
+
+    // ── POST /api/v1/identity/provider-links ──────────────────────────────────
+
+    [HttpPost("provider-links")]
+    [CustomerIdentityRoute(requiresMembership: true)]
+    public async Task<IActionResult> StartProviderLinkAsync(
+        [FromBody] IdentityProviderLinkRequest request,
+        CancellationToken ct
+    )
+    {
+        if (lifecycleService is null || customerJourney is null || CurrentMembership is null)
+            return IdentityProblem(
+                503,
+                "IDENTITY_DEPENDENCY_UNAVAILABLE",
+                "The identity lifecycle boundary is unavailable."
+            );
+        if (!HasLifecycleStepUp)
+            return IdentityProblem(
+                403,
+                "IDENTITY_STEP_UP_REQUIRED",
+                "A recent operation-bound step-up is required.",
+                request.StepUpTransactionReference
+            );
+        if (
+            request.SchemaVersion != "1.0"
+            || !Enum.TryParse<IdentityLifecycleProvider>(request.Provider, true, out var provider)
+        )
+            return IdentityProblem(
+                400,
+                "IDENTITY_REQUEST_INVALID",
+                "The provider-link request is invalid."
+            );
+        try
+        {
+            var operation = await lifecycleService.BeginLinkAsync(
+                customerJourney.ValidateActor(User),
+                provider,
+                request.StepUpTransactionReference,
+                IdempotencyKey,
+                RequestCorrelationId(),
+                ct
+            );
+            return Accepted(ToResponse(operation));
+        }
+        catch (IdentityLifecycleConflictException)
+        {
+            return IdentityProblem(
+                409,
+                "IDENTITY_IDEMPOTENCY_CONFLICT",
+                "The idempotency key was already used with different input."
+            );
+        }
+        catch (ArgumentException)
+        {
+            return IdentityProblem(
+                400,
+                "IDENTITY_REQUEST_INVALID",
+                "A valid Idempotency-Key is required."
+            );
+        }
+    }
+
+    [HttpDelete("provider-links/{linkId:guid}")]
+    [CustomerIdentityRoute(requiresMembership: true)]
+    public async Task<IActionResult> StartProviderUnlinkAsync(Guid linkId, CancellationToken ct)
+    {
+        if (lifecycleService is null || customerJourney is null || CurrentMembership is null)
+            return IdentityProblem(
+                503,
+                "IDENTITY_DEPENDENCY_UNAVAILABLE",
+                "The identity lifecycle boundary is unavailable."
+            );
+        if (!HasLifecycleStepUp)
+            return IdentityProblem(
+                403,
+                "IDENTITY_STEP_UP_REQUIRED",
+                "A recent operation-bound step-up is required."
+            );
+        try
+        {
+            var operation = await lifecycleService.BeginUnlinkAsync(
+                customerJourney.ValidateActor(User),
+                linkId,
+                IdempotencyKey,
+                RequestCorrelationId(),
+                ct
+            );
+            return Accepted(ToResponse(operation));
+        }
+        catch (IdentityActionDeniedException)
+        {
+            return IdentityProblem(
+                404,
+                "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
+                "Provider link not found or not accessible."
+            );
+        }
+        catch (IdentityLifecycleConflictException)
+        {
+            return IdentityProblem(
+                409,
+                "IDENTITY_IDEMPOTENCY_CONFLICT",
+                "The idempotency key was already used with different input."
+            );
+        }
+        catch (ArgumentException)
+        {
+            return IdentityProblem(
+                400,
+                "IDENTITY_REQUEST_INVALID",
+                "A valid Idempotency-Key is required."
+            );
+        }
+    }
+
+    private Guid RequestCorrelationId()
+    {
+        var bytes = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes($"wc123:lifecycle:{HttpContext.TraceIdentifier}")
+        );
+        return new Guid(bytes.AsSpan(0, 16));
     }
 
     // ── POST /api/v1/identity/account-links ───────────────────────────────────

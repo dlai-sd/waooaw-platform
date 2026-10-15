@@ -41,6 +41,50 @@
     "image": "docker.io/library/nginx@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10",
     "routePolicy": "infrastructure/identity-edge/nginx.conf.template"
   },
+  "capacityProfile": {
+    "id": "wc123-auth-capacity-v1",
+    "version": "1.0.0",
+    "source": "architecture/reference/components/authentication-authorization-capacity-profile.v1.yaml",
+    "environment": "uat"
+  },
+  "sessionAuthority": {
+    "contractVersion": "1.0.0",
+    "mode": "PERSISTENT_SANITIZED_RESTORE",
+    "schemaVersion": 1,
+    "compatibleDeployVersions": ["wc123-auth-session-v1"],
+    "cookieName": "__Host-waooaw-session",
+    "idleTimeoutMinutes": 30,
+    "absoluteLifetimeHours": 8,
+    "refreshLeaseSeconds": 15,
+    "operationalRetentionDays": 30,
+    "protocolRetentionHours": 24,
+    "backupRetentionDays": 35,
+    "rpoMinutes": 5,
+    "rtoMinutes": 30,
+    "databasePoolSize": 5,
+    "globalConcurrency": 300,
+    "timeoutsMs": {
+      "poolAcquisition": 1000,
+      "refreshLock": 1500,
+      "statement": 5000,
+      "businessPlatformMembership": 3000,
+      "redis": 500,
+      "identityProvider": 5000
+    },
+    "keyVersions": {
+      "handleDigestWrite": "v1",
+      "protocolDigestWrite": "v1",
+      "tokenEnvelopeWrite": "v1"
+    },
+    "requiredSecretIds": [
+      "web-session-handle-digest",
+      "web-session-protocol-digest",
+      "web-session-token-envelope",
+      "web-session-database",
+      "web-oidc-client",
+      "keycloak-lifecycle-writer-client"
+    ]
+  },
   "phoneIdentity": { "internalAudience": "waooaw-phone-identity-uat" },
   "providers": [
     { "id": "GOOGLE", "displayName": "Google", "authenticationPath": "GOOGLE", "enabled": false, "unavailableReason": "NOT_CONFIGURED", "brokerAlias": "google", "scopes": ["openid", "profile", "email"] },

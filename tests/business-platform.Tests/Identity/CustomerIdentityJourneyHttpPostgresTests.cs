@@ -23,91 +23,166 @@ using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
 using Xunit;
+using GoogleWorkspaceProofAdapter = Waooaw.BusinessPlatform.Services.VerifiedIdentityProofAdapter;
 
 namespace Waooaw.BusinessPlatform.Tests.Identity;
 
 public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresServerFixture fixture)
-    : IClassFixture<IdentityPostgresServerFixture>, IAsyncLifetime
+    : IClassFixture<IdentityPostgresServerFixture>,
+        IAsyncLifetime
 {
     private readonly RSA _signer = RSA.Create(2048);
     private readonly GoogleWorkspaceProofAdapterTests.SyntheticKeycloakHandler _broker = new();
-    private readonly IdentityBrokerReadOptions _configuration = GoogleWorkspaceProofAdapterTests.Configuration();
+    private readonly IdentityBrokerReadOptions _configuration =
+        GoogleWorkspaceProofAdapterTests.Configuration();
     private WebApplication _app = null!;
     private HttpClient _client = null!;
     private HttpClient _brokerClient = null!;
     private string _ownerConnectionString = string.Empty;
-    private string AppConnection => new NpgsqlConnectionStringBuilder(_ownerConnectionString)
-    {
-        Username = "business_app", Password = "synthetic-app-password", MaxPoolSize = 1,
-    }.ConnectionString;
+    private string AppConnection =>
+        new NpgsqlConnectionStringBuilder(_ownerConnectionString)
+        {
+            Username = "business_app",
+            Password = "synthetic-app-password",
+            MaxPoolSize = 1,
+        }.ConnectionString;
 
     public async Task InitializeAsync()
     {
         _ownerConnectionString = await fixture.CreateDatabaseAsync("synthetic_http_journey");
-        await OwnerAsync("""
+        await OwnerAsync(
+            """
             CREATE SCHEMA business AUTHORIZATION business_app;
-            """);
-        var canonical = await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/03-enums-and-tables.sql"));
+            """
+        );
+        var canonical = await File.ReadAllTextAsync(
+            RepositoryPaths.Resolve("infrastructure/postgres/init/03-enums-and-tables.sql")
+        );
         foreach (var table in new[] { "organisations", "business_domain_taxonomy" })
         {
-            var start = canonical.IndexOf($"CREATE TABLE business.{table} (", StringComparison.Ordinal);
+            var start = canonical.IndexOf(
+                $"CREATE TABLE business.{table} (",
+                StringComparison.Ordinal
+            );
             var end = canonical.IndexOf(");", start, StringComparison.Ordinal) + 2;
             await OwnerAsync(canonical[start..end]);
         }
-        await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/20-identity-boundary.sql")));
-        await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/38-identity-security-events.sql")));
-        await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/39-identity-sessions.sql")));
-        await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/40-identity-account-link-evidence.sql")));
-        await OwnerAsync("""
+        await OwnerAsync(
+            await File.ReadAllTextAsync(
+                RepositoryPaths.Resolve("infrastructure/postgres/init/20-identity-boundary.sql")
+            )
+        );
+        await OwnerAsync(
+            await File.ReadAllTextAsync(
+                RepositoryPaths.Resolve(
+                    "infrastructure/postgres/init/38-identity-security-events.sql"
+                )
+            )
+        );
+        await OwnerAsync(
+            await File.ReadAllTextAsync(
+                RepositoryPaths.Resolve("infrastructure/postgres/init/39-identity-sessions.sql")
+            )
+        );
+        await OwnerAsync(
+            await File.ReadAllTextAsync(
+                RepositoryPaths.Resolve(
+                    "infrastructure/postgres/init/40-identity-account-link-evidence.sql"
+                )
+            )
+        );
+        await OwnerAsync(
+            """
             GRANT ALL ON ALL TABLES IN SCHEMA business, identity TO business_app;
             GRANT SELECT ON ALL TABLES IN SCHEMA business TO constitutional_app, runtime_app, wbe_app;
             CREATE POLICY tenant_isolation ON business.organisations USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
-            """);
-        await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/29-customer-workspace-provisioning.sql")));
+            """
+        );
+        await OwnerAsync(
+            await File.ReadAllTextAsync(
+                RepositoryPaths.Resolve(
+                    "infrastructure/postgres/init/29-customer-workspace-provisioning.sql"
+                )
+            )
+        );
 
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
         builder.Logging.ClearProviders();
         builder.Services.AddControllers().AddApplicationPart(typeof(IdentityController).Assembly);
-        builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
-        {
-            options.MapInboundClaims = true;
-            options.TokenValidationParameters = new TokenValidationParameters
+        builder
+            .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
             {
-                ValidIssuer = _configuration.ActorIssuer, ValidAudience = "waooaw-platform",
-                IssuerSigningKey = new RsaSecurityKey(_signer), ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
-                ValidateIssuer = true, ValidateAudience = true, ValidateLifetime = true,
-                ValidateIssuerSigningKey = true, ClockSkew = TimeSpan.FromSeconds(30),
-            };
-        });
+                options.MapInboundClaims = true;
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidIssuer = _configuration.ActorIssuer,
+                    ValidAudience = "waooaw-platform",
+                    IssuerSigningKey = new RsaSecurityKey(_signer),
+                    ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ClockSkew = TimeSpan.FromSeconds(30),
+                };
+            });
         builder.Services.AddAuthorization();
-        builder.Services.AddDbContextFactory<IdentityDbContext>(options => options.UseNpgsql(AppConnection));
-        builder.Services.Configure<IdentityHmacOptions>(options => options.Key = "synthetic-http-test-hmac-key-at-least-32-characters");
-        builder.Services.AddSingleton<IIdentityVerificationDispatcher, UnconfiguredVerificationDispatcher>();
+        builder.Services.AddDbContextFactory<IdentityDbContext>(options =>
+            options.UseNpgsql(AppConnection)
+        );
+        builder.Services.Configure<IdentityHmacOptions>(options =>
+            options.Key = "synthetic-http-test-hmac-key-at-least-32-characters"
+        );
+        builder.Services.AddSingleton<
+            IIdentityVerificationDispatcher,
+            UnconfiguredVerificationDispatcher
+        >();
         builder.Services.AddScoped<IdentityService>();
         builder.Services.AddScoped<IdentitySecurityEventService>();
-        builder.Services.AddScoped<IdentitySessionService>();
-        builder.Services.AddSingleton(Options.Create(new IdentityEnvironmentOptions
-        {
-            Environment = "local",
-            Providers = [
-                new() { Id = "GOOGLE", DisplayName = "Google", AuthenticationPath = "GOOGLE",
-                    Enabled = true, ReadinessEvidenceReference = "SYNTHETIC-TEST-ONLY" },
-                new() { Id = "FACEBOOK", DisplayName = "Facebook", AuthenticationPath = "META",
-                    Enabled = true, ReadinessEvidenceReference = "SYNTHETIC-TEST-ONLY" },
-            ],
-        }));
+        builder.Services.AddSingleton(
+            Options.Create(
+                new IdentityEnvironmentOptions
+                {
+                    Environment = "local",
+                    Providers =
+                    [
+                        new()
+                        {
+                            Id = "GOOGLE",
+                            DisplayName = "Google",
+                            AuthenticationPath = "GOOGLE",
+                            Enabled = true,
+                            ReadinessEvidenceReference = "SYNTHETIC-TEST-ONLY",
+                        },
+                        new()
+                        {
+                            Id = "FACEBOOK",
+                            DisplayName = "Facebook",
+                            AuthenticationPath = "META",
+                            Enabled = true,
+                            ReadinessEvidenceReference = "SYNTHETIC-TEST-ONLY",
+                        },
+                    ],
+                }
+            )
+        );
         builder.Services.AddSingleton<IdentityProviderProjectionService>();
         _brokerClient = new HttpClient(_broker);
-        builder.Services.AddSingleton(new GoogleWorkspaceProofAdapter(_brokerClient, Options.Create(_configuration)));
+        builder.Services.AddSingleton(
+            new GoogleWorkspaceProofAdapter(_brokerClient, Options.Create(_configuration))
+        );
         builder.Services.AddScoped<CustomerIdentityJourneyService>();
         _app = builder.Build();
         _app.UseRouting();
         _app.UseAuthentication();
         _app.UseAuthorization();
         _app.UseMiddleware<CustomerMembershipMiddleware>();
-        _app.UseWhen(context => !context.Items.ContainsKey(CustomerMembershipMiddleware.JourneyItem),
-            branch => branch.UseTenantIsolation());
+        _app.UseWhen(
+            context => !context.Items.ContainsKey(CustomerMembershipMiddleware.JourneyItem),
+            branch => branch.UseTenantIsolation()
+        );
         _app.MapControllers();
         await _app.StartAsync();
         _client = _app.GetTestClient();
@@ -116,7 +191,8 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
     public async Task DisposeAsync()
     {
         _client?.Dispose();
-        if (_app is not null) await _app.DisposeAsync();
+        if (_app is not null)
+            await _app.DisposeAsync();
         _brokerClient?.Dispose();
         _signer.Dispose();
         await fixture.DropDatabaseAsync(_ownerConnectionString);
@@ -145,14 +221,49 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
             Assert.Empty(session.GetProperty("capabilities").EnumerateArray());
             Assert.True(response.Headers.CacheControl!.NoStore);
         }
-        Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(HttpMethod.Get,
-            $"/api/v1/identity/registrations/{firstRegistration}", second)).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(HttpMethod.Put,
-            $"/api/v1/identity/registrations/{firstRegistration}/profile", second, Profile())).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(HttpMethod.Post,
-            $"/api/v1/identity/registrations/{firstRegistration}/complete", second)).StatusCode);
-        Assert.Equal(2L, await OwnerScalarAsync("SELECT count(*) FROM business.organisations WHERE identity_managed AND id = tenant_id"));
-        Assert.Equal(2L, await OwnerScalarAsync("SELECT count(DISTINCT tenant_id) FROM identity.memberships WHERE roles = ARRAY['OWNER']::text[]"));
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            (
+                await SendAsync(
+                    HttpMethod.Get,
+                    $"/api/v1/identity/registrations/{firstRegistration}",
+                    second
+                )
+            ).StatusCode
+        );
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            (
+                await SendAsync(
+                    HttpMethod.Put,
+                    $"/api/v1/identity/registrations/{firstRegistration}/profile",
+                    second,
+                    Profile()
+                )
+            ).StatusCode
+        );
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            (
+                await SendAsync(
+                    HttpMethod.Post,
+                    $"/api/v1/identity/registrations/{firstRegistration}/complete",
+                    second
+                )
+            ).StatusCode
+        );
+        Assert.Equal(
+            2L,
+            await OwnerScalarAsync(
+                "SELECT count(*) FROM business.organisations WHERE identity_managed AND id = tenant_id"
+            )
+        );
+        Assert.Equal(
+            2L,
+            await OwnerScalarAsync(
+                "SELECT count(DISTINCT tenant_id) FROM identity.memberships WHERE roles = ARRAY['OWNER']::text[]"
+            )
+        );
         await AssertEmptyPoolAsync();
     }
 
@@ -167,20 +278,34 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
         var session = await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token);
 
         Assert.Equal(HttpStatusCode.OK, session.StatusCode);
-        Assert.Equal(completion.GetProperty("accountReference").GetGuid(),
-            (await JsonAsync(session)).GetProperty("accountReference").GetGuid());
-        Assert.Equal(1L, await OwnerScalarAsync(
-            "SELECT count(*) FROM identity.login_methods WHERE broker_alias = 'facebook'"));
-        Assert.Equal(1L, await OwnerScalarAsync(
-            "SELECT count(*) FROM identity.registrations WHERE provider_label = 'facebook'"));
+        Assert.Equal(
+            completion.GetProperty("accountReference").GetGuid(),
+            (await JsonAsync(session)).GetProperty("accountReference").GetGuid()
+        );
+        Assert.Equal(
+            1L,
+            await OwnerScalarAsync(
+                "SELECT count(*) FROM identity.login_methods WHERE broker_alias = 'facebook'"
+            )
+        );
+        Assert.Equal(
+            1L,
+            await OwnerScalarAsync(
+                "SELECT count(*) FROM identity.registrations WHERE provider_label = 'facebook'"
+            )
+        );
         await AssertEmptyPoolAsync();
     }
 
     [Fact]
     public async Task Http_VerifiedBrokerEmail_IsProjectedReadOnlyAsMaskedIdentity()
     {
-        var response = await SendAsync(HttpMethod.Post, "/api/v1/identity/registrations",
-            Token("verified-email"), new { languagePreference = "en" });
+        var response = await SendAsync(
+            HttpMethod.Post,
+            "/api/v1/identity/registrations",
+            Token("verified-email"),
+            new { languagePreference = "en" }
+        );
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var registration = await JsonAsync(response);
@@ -193,25 +318,40 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
     [Theory]
     [InlineData(null)]
     [InlineData("false")]
-    public async Task Http_FacebookWithoutVerifiedEmail_RequiresEmailVerification(string? emailVerified)
+    public async Task Http_FacebookWithoutVerifiedEmail_RequiresEmailVerification(
+        string? emailVerified
+    )
     {
         _broker.Provider = "facebook";
-        var token = Token("facebook-incomplete", provider: "facebook", emailVerified: emailVerified);
+        var token = Token(
+            "facebook-incomplete",
+            provider: "facebook",
+            emailVerified: emailVerified
+        );
 
-        var response = await SendAsync(HttpMethod.Post, "/api/v1/identity/registrations", token,
-            new { languagePreference = "en" });
+        var response = await SendAsync(
+            HttpMethod.Post,
+            "/api/v1/identity/registrations",
+            token,
+            new { languagePreference = "en" }
+        );
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var registration = await JsonAsync(response);
         Assert.Equal("EMAIL_VERIFICATION_REQUIRED", registration.GetProperty("state").GetString());
         Assert.Equal("VERIFY_EMAIL", registration.GetProperty("nextAction").GetString());
         Assert.False(registration.GetProperty("emailVerified").GetBoolean());
-        var challenge = await SendAsync(HttpMethod.Post,
+        var challenge = await SendAsync(
+            HttpMethod.Post,
             $"/api/v1/identity/registrations/{registration.GetProperty("registrationId").GetGuid()}/email-verifications",
-            token, new { email = "customer@example.com" });
+            token,
+            new { email = "customer@example.com" }
+        );
         Assert.Equal(HttpStatusCode.ServiceUnavailable, challenge.StatusCode);
-        Assert.Equal("IDENTITY_DEPENDENCY_UNAVAILABLE",
-            (await JsonAsync(challenge)).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_DEPENDENCY_UNAVAILABLE",
+            (await JsonAsync(challenge)).GetProperty("code").GetString()
+        );
         Assert.Empty(_broker.Requests);
         Assert.Equal(1L, await OwnerScalarAsync("SELECT count(*) FROM identity.registrations"));
         await AssertEmptyPoolAsync();
@@ -223,17 +363,29 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
         var owner = Token("mobile-owner");
         var registration = await RegisterAsync(owner);
 
-        var own = await SendAsync(HttpMethod.Post,
+        var own = await SendAsync(
+            HttpMethod.Post,
             $"/api/v1/identity/registrations/{registration}/mobile-verifications",
-            owner, new { mobile = "+911234567890" });
+            owner,
+            new { mobile = "+911234567890" }
+        );
         Assert.Equal(HttpStatusCode.ServiceUnavailable, own.StatusCode);
-        Assert.Equal("IDENTITY_DEPENDENCY_UNAVAILABLE", (await JsonAsync(own)).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_DEPENDENCY_UNAVAILABLE",
+            (await JsonAsync(own)).GetProperty("code").GetString()
+        );
 
-        var foreign = await SendAsync(HttpMethod.Post,
+        var foreign = await SendAsync(
+            HttpMethod.Post,
             $"/api/v1/identity/registrations/{registration}/mobile-verifications",
-            Token("mobile-foreign"), new { mobile = "+911234567890" });
+            Token("mobile-foreign"),
+            new { mobile = "+911234567890" }
+        );
         Assert.Equal(HttpStatusCode.NotFound, foreign.StatusCode);
-        Assert.Equal("IDENTITY_RESOURCE_NOT_ACCESSIBLE", (await JsonAsync(foreign)).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
+            (await JsonAsync(foreign)).GetProperty("code").GetString()
+        );
         await AssertEmptyPoolAsync();
     }
 
@@ -243,18 +395,50 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
         var token = Token("actor-one");
         var registration = await RegisterAsync(token);
         var completed = await CompleteAsync(token, registration);
-        var forged = Token("actor-one", extra: [new Claim("tenant_id", Guid.NewGuid().ToString()),
-            new Claim("waooaw_roles", "[\"OWNER\",\"MANAGER\"]")]);
+        var forged = Token(
+            "actor-one",
+            extra:
+            [
+                new Claim("tenant_id", Guid.NewGuid().ToString()),
+                new Claim("waooaw_roles", "[\"OWNER\",\"MANAGER\"]"),
+            ]
+        );
         var own = await SendAsync(HttpMethod.Get, "/api/v1/identity/session", forged);
         Assert.Equal(HttpStatusCode.OK, own.StatusCode);
-        Assert.Equal(completed.GetProperty("accountReference").GetGuid(), (await JsonAsync(own)).GetProperty("accountReference").GetGuid());
-        var foreign = await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token,
-            header: ("x-tenant-id", Guid.NewGuid().ToString()));
+        Assert.Equal(
+            completed.GetProperty("accountReference").GetGuid(),
+            (await JsonAsync(own)).GetProperty("accountReference").GetGuid()
+        );
+        var foreign = await SendAsync(
+            HttpMethod.Get,
+            "/api/v1/identity/session",
+            token,
+            header: ("x-tenant-id", Guid.NewGuid().ToString())
+        );
         Assert.Equal(HttpStatusCode.Forbidden, foreign.StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token,
-            header: ("x-account-id", Guid.NewGuid().ToString()))).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(HttpMethod.Post, "/api/v1/identity/registrations", token,
-            new { languagePreference = "en" }, header: ("x-tenant-id", Guid.NewGuid().ToString()))).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (
+                await SendAsync(
+                    HttpMethod.Get,
+                    "/api/v1/identity/session",
+                    token,
+                    header: ("x-account-id", Guid.NewGuid().ToString())
+                )
+            ).StatusCode
+        );
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (
+                await SendAsync(
+                    HttpMethod.Post,
+                    "/api/v1/identity/registrations",
+                    token,
+                    new { languagePreference = "en" },
+                    header: ("x-tenant-id", Guid.NewGuid().ToString())
+                )
+            ).StatusCode
+        );
         await AssertEmptyPoolAsync();
     }
 
@@ -267,10 +451,26 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
         var forged = Token("same-subject", signer: otherSigner);
         foreach (var token in new[] { wrongIssuer, forged, "not-a-jwt" })
         {
-            Assert.Equal(HttpStatusCode.Unauthorized, (await SendAsync(HttpMethod.Get,
-                $"/api/v1/identity/registrations/{registration}", token)).StatusCode);
-            Assert.Equal(HttpStatusCode.Unauthorized, (await SendAsync(HttpMethod.Post,
-                $"/api/v1/identity/registrations/{registration}/complete", token)).StatusCode);
+            Assert.Equal(
+                HttpStatusCode.Unauthorized,
+                (
+                    await SendAsync(
+                        HttpMethod.Get,
+                        $"/api/v1/identity/registrations/{registration}",
+                        token
+                    )
+                ).StatusCode
+            );
+            Assert.Equal(
+                HttpStatusCode.Unauthorized,
+                (
+                    await SendAsync(
+                        HttpMethod.Post,
+                        $"/api/v1/identity/registrations/{registration}/complete",
+                        token
+                    )
+                ).StatusCode
+            );
         }
         Assert.Empty(_broker.Requests);
         Assert.Equal(0L, await OwnerScalarAsync("SELECT count(*) FROM identity.accounts"));
@@ -280,16 +480,39 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
     public async Task Http_AbsentConfiguration_DoesNotFallBackToLegacyCompletion()
     {
         _configuration.Enabled = false;
-        var readiness = await SendAsync(HttpMethod.Get, "/api/v1/identity/providers", Token("actor"));
+        var readiness = await SendAsync(
+            HttpMethod.Get,
+            "/api/v1/identity/providers",
+            Token("actor")
+        );
         Assert.Equal(HttpStatusCode.OK, readiness.StatusCode);
-        Assert.Equal("UNAVAILABLE", (await JsonAsync(readiness)).GetProperty("providers")[0].GetProperty("availability").GetString());
-        foreach (var request in new[] { (HttpMethod.Get, "/api/v1/identity/session"),
-            (HttpMethod.Post, $"/api/v1/identity/registrations/{Guid.NewGuid()}/complete"),
-            (HttpMethod.Post, "/api/v1/identity/registrations") })
+        Assert.Equal(
+            "UNAVAILABLE",
+            (await JsonAsync(readiness))
+                .GetProperty("providers")[0]
+                .GetProperty("availability")
+                .GetString()
+        );
+        foreach (
+            var request in new[]
+            {
+                (HttpMethod.Get, "/api/v1/identity/session"),
+                (HttpMethod.Post, $"/api/v1/identity/registrations/{Guid.NewGuid()}/complete"),
+                (HttpMethod.Post, "/api/v1/identity/registrations"),
+            }
+        )
         {
-            var response = await SendAsync(request.Item1, request.Item2, Token("actor"), new { languagePreference = "en" });
+            var response = await SendAsync(
+                request.Item1,
+                request.Item2,
+                Token("actor"),
+                new { languagePreference = "en" }
+            );
             Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-            Assert.Equal("IDENTITY_DEPENDENCY_UNAVAILABLE", (await JsonAsync(response)).GetProperty("code").GetString());
+            Assert.Equal(
+                "IDENTITY_DEPENDENCY_UNAVAILABLE",
+                (await JsonAsync(response)).GetProperty("code").GetString()
+            );
         }
         Assert.Empty(_broker.Requests);
         Assert.Equal(0L, await OwnerScalarAsync("SELECT count(*) FROM identity.registrations"));
@@ -298,10 +521,25 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
     [Fact]
     public async Task Http_UnadaptedProtectedRoutes_DenyEvenWithForgedOwnerTenant()
     {
-        var token = Token("actor", extra: [new Claim("tenant_id", Guid.NewGuid().ToString()), new Claim("waooaw_roles", "OWNER")]);
-        foreach (var path in new[] { "/api/v1/identity/profile", "/api/v1/identity/settings",
-            "/api/v1/identity/login-methods", "/api/v1/identity/mobile-verifications",
-            "/api/v1/identity/account-links", "/api/v1/subscriptions" })
+        var token = Token(
+            "actor",
+            extra:
+            [
+                new Claim("tenant_id", Guid.NewGuid().ToString()),
+                new Claim("waooaw_roles", "OWNER"),
+            ]
+        );
+        foreach (
+            var path in new[]
+            {
+                "/api/v1/identity/profile",
+                "/api/v1/identity/settings",
+                "/api/v1/identity/login-methods",
+                "/api/v1/identity/mobile-verifications",
+                "/api/v1/identity/account-links",
+                "/api/v1/subscriptions",
+            }
+        )
         {
             foreach (var method in new[] { HttpMethod.Get, HttpMethod.Put, HttpMethod.Post })
             {
@@ -319,27 +557,54 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
         var registration = await RegisterAsync(token);
         var key = Guid.NewGuid();
         var path = $"/api/v1/identity/registrations/{registration}/complete";
-        await OwnerAsync("ALTER TABLE identity.idempotency_ledger ADD CONSTRAINT synthetic_commit_failure CHECK (operation_family <> 'CompleteRegistration')");
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, (await SendAsync(HttpMethod.Post, path, token, key: key)).StatusCode);
+        await OwnerAsync(
+            "ALTER TABLE identity.idempotency_ledger ADD CONSTRAINT synthetic_commit_failure CHECK (operation_family <> 'CompleteRegistration')"
+        );
+        Assert.Equal(
+            HttpStatusCode.ServiceUnavailable,
+            (await SendAsync(HttpMethod.Post, path, token, key: key)).StatusCode
+        );
         Assert.Equal(0L, await OwnerScalarAsync("SELECT count(*) FROM identity.accounts"));
-        Assert.Equal(0L, await OwnerScalarAsync("SELECT count(*) FROM identity.registration_events WHERE event_type = 'RegistrationCompleted'"));
+        Assert.Equal(
+            0L,
+            await OwnerScalarAsync(
+                "SELECT count(*) FROM identity.registration_events WHERE event_type = 'RegistrationCompleted'"
+            )
+        );
         await AssertEmptyPoolAsync();
-        await OwnerAsync("ALTER TABLE identity.idempotency_ledger DROP CONSTRAINT synthetic_commit_failure");
+        await OwnerAsync(
+            "ALTER TABLE identity.idempotency_ledger DROP CONSTRAINT synthetic_commit_failure"
+        );
         var completed = await SendAsync(HttpMethod.Post, path, token, key: key);
         Assert.Equal(HttpStatusCode.OK, completed.StatusCode);
         var body = await completed.Content.ReadAsStringAsync();
-        var retries = await Task.WhenAll(Enumerable.Range(0, 3).Select(_ => SendAsync(HttpMethod.Post, path, token, key: key)));
+        var retries = await Task.WhenAll(
+            Enumerable.Range(0, 3).Select(_ => SendAsync(HttpMethod.Post, path, token, key: key))
+        );
         foreach (var retry in retries)
         {
             Assert.Equal(HttpStatusCode.OK, retry.StatusCode);
             Assert.Equal(body, await retry.Content.ReadAsStringAsync());
         }
         var anotherRegistration = await RegisterAsync(token);
-        var conflict = await SendAsync(HttpMethod.Post, $"/api/v1/identity/registrations/{anotherRegistration}/complete", token, key: key);
+        var conflict = await SendAsync(
+            HttpMethod.Post,
+            $"/api/v1/identity/registrations/{anotherRegistration}/complete",
+            token,
+            key: key
+        );
         Assert.Equal(HttpStatusCode.Conflict, conflict.StatusCode);
-        Assert.Equal("IDENTITY_IDEMPOTENCY_CONFLICT", (await JsonAsync(conflict)).GetProperty("code").GetString());
+        Assert.Equal(
+            "IDENTITY_IDEMPOTENCY_CONFLICT",
+            (await JsonAsync(conflict)).GetProperty("code").GetString()
+        );
         Assert.Equal(1L, await OwnerScalarAsync("SELECT count(*) FROM identity.accounts"));
-        Assert.Equal(1L, await OwnerScalarAsync("SELECT count(*) FROM identity.idempotency_ledger WHERE operation_family = 'CompleteRegistration' AND length(canonical_hash) = 64"));
+        Assert.Equal(
+            1L,
+            await OwnerScalarAsync(
+                "SELECT count(*) FROM identity.idempotency_ledger WHERE operation_family = 'CompleteRegistration' AND length(canonical_hash) = 64"
+            )
+        );
     }
 
     [Fact]
@@ -348,41 +613,68 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
         var token = Token("actor");
         var registration = await RegisterAsync(token);
         _broker.Status = HttpStatusCode.Forbidden;
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, (await SendAsync(HttpMethod.Post,
-            $"/api/v1/identity/registrations/{registration}/complete", token)).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.ServiceUnavailable,
+            (
+                await SendAsync(
+                    HttpMethod.Post,
+                    $"/api/v1/identity/registrations/{registration}/complete",
+                    token
+                )
+            ).StatusCode
+        );
         Assert.Equal(0L, await OwnerScalarAsync("SELECT count(*) FROM identity.accounts"));
         _broker.Status = HttpStatusCode.OK;
         await CompleteAsync(token, registration);
         await OwnerAsync("UPDATE identity.memberships SET status = 'INACTIVE'");
-        Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token)).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(HttpMethod.Post,
-            $"/api/v1/identity/registrations/{registration}/complete", token)).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token)).StatusCode
+        );
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (
+                await SendAsync(
+                    HttpMethod.Post,
+                    $"/api/v1/identity/registrations/{registration}/complete",
+                    token
+                )
+            ).StatusCode
+        );
         await AssertEmptyPoolAsync();
     }
 
     [Fact]
-    public async Task Http_RevokeAllDeniesTheSameBearerOnEveryMembershipProtectedRoute()
+    public async Task Http_RevocationIntentRecordsEvidenceWithoutOwningSessionEnforcement()
     {
         var token = Token("revoked-actor");
         var completion = await CompleteAsync(token, await RegisterAsync(token));
         var accountReference = completion.GetProperty("accountReference").GetGuid();
-        Assert.Equal(HttpStatusCode.OK,
-            (await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token)).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token)).StatusCode
+        );
 
         var revoked = await SendAsync(
-            HttpMethod.Delete,
-            "/api/v1/identity/sessions",
+            HttpMethod.Post,
+            "/api/v1/identity/session-revocations",
             token,
+            new
+            {
+                schemaVersion = "1.0",
+                scope = "ALL",
+                sessionFamilyReference = (Guid?)null,
+                reason = "LOGOUT_ALL",
+                correlationId = Guid.NewGuid(),
+            },
             key: Guid.NewGuid()
         );
 
-        Assert.Equal(HttpStatusCode.OK, revoked.StatusCode);
+        Assert.Equal(HttpStatusCode.Accepted, revoked.StatusCode);
         Assert.Equal(
-            HttpStatusCode.Forbidden,
-            (await SendAsync(HttpMethod.Get, "/api/v1/identity/profile", token)).StatusCode
+            HttpStatusCode.OK,
+            (await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token)).StatusCode
         );
-        Assert.Equal(HttpStatusCode.Forbidden,
-            (await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token)).StatusCode);
 
         var freshToken = Token(
             "revoked-actor",
@@ -391,23 +683,44 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
         );
         var restored = await SendAsync(HttpMethod.Get, "/api/v1/identity/session", freshToken);
         Assert.Equal(HttpStatusCode.OK, restored.StatusCode);
-        Assert.Equal(accountReference,
-            (await JsonAsync(restored)).GetProperty("accountReference").GetGuid());
+        Assert.Equal(
+            accountReference,
+            (await JsonAsync(restored)).GetProperty("accountReference").GetGuid()
+        );
         Assert.Equal(1L, await OwnerScalarAsync("SELECT count(*) FROM identity.accounts"));
-        Assert.Equal(1L, await OwnerScalarAsync("SELECT count(*) FROM identity.memberships WHERE status = 'ACTIVE'"));
-        Assert.Equal(1L, await OwnerScalarAsync(
-            "SELECT count(*) FROM institutional.identity_security_events WHERE event_type = 'SESSION_REVOCATION_ALL'"
-        ));
+        Assert.Equal(
+            1L,
+            await OwnerScalarAsync(
+                "SELECT count(*) FROM identity.memberships WHERE status = 'ACTIVE'"
+            )
+        );
+        Assert.Equal(
+            1L,
+            await OwnerScalarAsync(
+                "SELECT count(*) FROM institutional.identity_security_events WHERE event_type = 'SESSION_REVOCATION_ALL'"
+            )
+        );
         await AssertEmptyPoolAsync();
     }
 
     [Fact]
     public async Task Http_ProviderReadinessDisabled_DeniesDespiteConfiguredReader()
     {
-        var environment = _app.Services.GetRequiredService<IOptions<IdentityEnvironmentOptions>>().Value;
+        var environment = _app
+            .Services.GetRequiredService<IOptions<IdentityEnvironmentOptions>>()
+            .Value;
         environment.Providers[0].Enabled = false;
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, (await SendAsync(HttpMethod.Post,
-            "/api/v1/identity/registrations", Token("actor"), new { languagePreference = "en" })).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.ServiceUnavailable,
+            (
+                await SendAsync(
+                    HttpMethod.Post,
+                    "/api/v1/identity/registrations",
+                    Token("actor"),
+                    new { languagePreference = "en" }
+                )
+            ).StatusCode
+        );
         Assert.Empty(_broker.Requests);
         Assert.Equal(0L, await OwnerScalarAsync("SELECT count(*) FROM identity.registrations"));
     }
@@ -417,25 +730,67 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
     {
         var token = Token("actor");
         var key = Guid.NewGuid();
-        var first = await SendAsync(HttpMethod.Post, "/api/v1/identity/registrations", token,
-            new { languagePreference = "en" }, key);
+        var first = await SendAsync(
+            HttpMethod.Post,
+            "/api/v1/identity/registrations",
+            token,
+            new { languagePreference = "en" },
+            key
+        );
         Assert.Equal(HttpStatusCode.Created, first.StatusCode);
         var registration = (await JsonAsync(first)).GetProperty("registrationId").GetGuid();
-        var replay = await SendAsync(HttpMethod.Post, "/api/v1/identity/registrations", token,
-            new { languagePreference = "en" }, key);
+        var replay = await SendAsync(
+            HttpMethod.Post,
+            "/api/v1/identity/registrations",
+            token,
+            new { languagePreference = "en" },
+            key
+        );
         Assert.Equal(HttpStatusCode.OK, replay.StatusCode);
-        Assert.Equal(registration, (await JsonAsync(replay)).GetProperty("registrationId").GetGuid());
-        Assert.Equal(HttpStatusCode.Conflict, (await SendAsync(HttpMethod.Post, "/api/v1/identity/registrations", token,
-            new { languagePreference = "hi" }, key)).StatusCode);
+        Assert.Equal(
+            registration,
+            (await JsonAsync(replay)).GetProperty("registrationId").GetGuid()
+        );
+        Assert.Equal(
+            HttpStatusCode.Conflict,
+            (
+                await SendAsync(
+                    HttpMethod.Post,
+                    "/api/v1/identity/registrations",
+                    token,
+                    new { languagePreference = "hi" },
+                    key
+                )
+            ).StatusCode
+        );
         var profileKey = Guid.NewGuid();
         var path = $"/api/v1/identity/registrations/{registration}/profile";
-        Assert.Equal(HttpStatusCode.OK, (await SendAsync(HttpMethod.Put, path, token, Profile(), profileKey)).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await SendAsync(HttpMethod.Put, path, token, Profile(), profileKey)).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await SendAsync(HttpMethod.Put, path, token, Profile(), profileKey)).StatusCode
+        );
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await SendAsync(HttpMethod.Put, path, token, Profile(), profileKey)).StatusCode
+        );
         var otherRegistration = await RegisterAsync(token);
-        Assert.Equal(HttpStatusCode.Conflict, (await SendAsync(HttpMethod.Put,
-            $"/api/v1/identity/registrations/{otherRegistration}/profile", token, Profile(), profileKey)).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Conflict,
+            (
+                await SendAsync(
+                    HttpMethod.Put,
+                    $"/api/v1/identity/registrations/{otherRegistration}/profile",
+                    token,
+                    Profile(),
+                    profileKey
+                )
+            ).StatusCode
+        );
         await CompleteAsync(token, registration);
-        Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(HttpMethod.Put, path, token, Profile())).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await SendAsync(HttpMethod.Put, path, token, Profile())).StatusCode
+        );
         await AssertEmptyPoolAsync();
     }
 
@@ -444,58 +799,114 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
     {
         var token = Token("actor");
         await CompleteAsync(token, await RegisterAsync(token));
-        await OwnerAsync("REVOKE EXECUTE ON FUNCTION identity.resolve_customer_membership() FROM business_app");
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, (await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token)).StatusCode);
+        await OwnerAsync(
+            "REVOKE EXECUTE ON FUNCTION identity.resolve_customer_membership() FROM business_app"
+        );
+        Assert.Equal(
+            HttpStatusCode.ServiceUnavailable,
+            (await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token)).StatusCode
+        );
         await AssertEmptyPoolAsync();
     }
 
-    private string Token(string subject, string? issuer = null, RSA? signer = null, Claim[]? extra = null,
-        string provider = "google", string? emailVerified = "true", DateTimeOffset? authenticatedAt = null,
-        string? sessionId = null)
+    private string Token(
+        string subject,
+        string? issuer = null,
+        RSA? signer = null,
+        Claim[]? extra = null,
+        string provider = "google",
+        string? emailVerified = "true",
+        DateTimeOffset? authenticatedAt = null,
+        string? sessionId = null
+    )
     {
         var authenticated = authenticatedAt ?? DateTimeOffset.UtcNow;
-        var claims = GoogleWorkspaceProofAdapterTests.Principal(subject, provider: provider).Claims
-            .Where(claim => claim.Type is not ("iss" or "aud" or "iat" or "exp" or "auth_time" or "email_verified"))
+        var claims = GoogleWorkspaceProofAdapterTests
+            .Principal(subject, provider: provider)
+            .Claims.Where(claim =>
+                claim.Type
+                    is not ("iss" or "aud" or "iat" or "exp" or "auth_time" or "email_verified")
+            )
             .Concat(emailVerified is null ? [] : [new Claim("email_verified", emailVerified)])
             .Concat([new Claim("auth_time", authenticated.ToUnixTimeSeconds().ToString())])
             .Concat(sessionId is null ? [] : [new Claim("sid", sessionId)])
             .Concat(extra ?? []);
         var now = DateTime.UtcNow;
-        var token = new JwtSecurityToken(issuer ?? _configuration.ActorIssuer, "waooaw-platform", claims,
-            now.AddSeconds(-1), now.AddMinutes(10), new SigningCredentials(new RsaSecurityKey(signer ?? _signer), SecurityAlgorithms.RsaSha256));
+        var token = new JwtSecurityToken(
+            issuer ?? _configuration.ActorIssuer,
+            "waooaw-platform",
+            claims,
+            now.AddSeconds(-1),
+            now.AddMinutes(10),
+            new SigningCredentials(
+                new RsaSecurityKey(signer ?? _signer),
+                SecurityAlgorithms.RsaSha256
+            )
+        );
         token.Payload["iat"] = authenticated.ToUnixTimeSeconds();
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
     private async Task<Guid> RegisterAsync(string token)
     {
-        var started = await SendAsync(HttpMethod.Post, "/api/v1/identity/registrations", token, new { languagePreference = "en" });
+        var started = await SendAsync(
+            HttpMethod.Post,
+            "/api/v1/identity/registrations",
+            token,
+            new { languagePreference = "en" }
+        );
         Assert.Equal(HttpStatusCode.Created, started.StatusCode);
         var registrationId = (await JsonAsync(started)).GetProperty("registrationId").GetGuid();
-        var profile = await SendAsync(HttpMethod.Put, $"/api/v1/identity/registrations/{registrationId}/profile", token, Profile());
+        var profile = await SendAsync(
+            HttpMethod.Put,
+            $"/api/v1/identity/registrations/{registrationId}/profile",
+            token,
+            Profile()
+        );
         Assert.Equal(HttpStatusCode.OK, profile.StatusCode);
-        Assert.Equal("READY_TO_COMPLETE", (await JsonAsync(profile)).GetProperty("state").GetString());
+        Assert.Equal(
+            "READY_TO_COMPLETE",
+            (await JsonAsync(profile)).GetProperty("state").GetString()
+        );
         return registrationId;
     }
 
     private async Task<JsonElement> CompleteAsync(string token, Guid registrationId)
     {
-        var response = await SendAsync(HttpMethod.Post, $"/api/v1/identity/registrations/{registrationId}/complete", token);
+        var response = await SendAsync(
+            HttpMethod.Post,
+            $"/api/v1/identity/registrations/{registrationId}/complete",
+            token
+        );
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return await JsonAsync(response);
     }
 
-    private static object Profile() => new { displayName = "Synthetic Customer", businessName = "Synthetic Business",
-        businessDomain = "Synthetic testing", languagePreference = "en" };
+    private static object Profile() =>
+        new
+        {
+            displayName = "Synthetic Customer",
+            businessName = "Synthetic Business",
+            businessDomain = "Synthetic testing",
+            languagePreference = "en",
+        };
 
-    private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, string token,
-        object? body = null, Guid? key = null, (string Name, string Value)? header = null)
+    private async Task<HttpResponseMessage> SendAsync(
+        HttpMethod method,
+        string path,
+        string token,
+        object? body = null,
+        Guid? key = null,
+        (string Name, string Value)? header = null
+    )
     {
         using var request = new HttpRequestMessage(method, path);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         request.Headers.Add("Idempotency-Key", (key ?? Guid.NewGuid()).ToString());
-        if (header.HasValue) request.Headers.Add(header.Value.Name, header.Value.Value);
-        if (body is not null) request.Content = JsonContent.Create(body);
+        if (header.HasValue)
+            request.Headers.Add(header.Value.Name, header.Value.Value);
+        if (body is not null)
+            request.Content = JsonContent.Create(body);
         return await _client.SendAsync(request);
     }
 
@@ -522,14 +933,18 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
     {
         await using var connection = new NpgsqlConnection(AppConnection);
         await connection.OpenAsync();
-        await using var command = new NpgsqlCommand("""
+        await using var command = new NpgsqlCommand(
+            """
             SELECT COALESCE(NULLIF(current_setting('app.identity_issuer', true), ''), 'EMPTY'),
                 COALESCE(NULLIF(current_setting('app.identity_subject', true), ''), 'EMPTY'),
                 COALESCE(NULLIF(current_setting('app.tenant_id', true), ''), 'EMPTY'),
                 COALESCE(NULLIF(current_setting('app.current_tenant_id', true), ''), 'EMPTY')
-            """, connection);
+            """,
+            connection
+        );
         await using var reader = await command.ExecuteReaderAsync();
         Assert.True(await reader.ReadAsync());
-        for (var index = 0; index < 4; index++) Assert.Equal("EMPTY", reader.GetString(index));
+        for (var index = 0; index < 4; index++)
+            Assert.Equal("EMPTY", reader.GetString(index));
     }
 }

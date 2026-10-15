@@ -6,8 +6,9 @@ import { SessionManager } from '@/components/auth/SessionManager';
 import { SettingsEditor } from '@/components/portal/SettingsEditor';
 import { StateView } from '@/components/system/StateView';
 import { getRequestI18n } from '@/lib/i18n-server';
-import { getCustomerSettings, getIdentitySession, listIdentitySessions } from '@/lib/api/identity';
-import { getServerAccessToken } from '@/lib/server-auth';
+import { getCustomerSettings, getIdentitySession } from '@/lib/api/identity';
+import { getServerAccessToken, getServerSessionToken } from '@/lib/server-auth';
+import { listSessions } from '@/lib/web-session-store';
 
 export default async function SettingsPage() {
   const [{ messages }, accessToken] = await Promise.all([getRequestI18n(), getServerAccessToken()]);
@@ -37,10 +38,9 @@ export default async function SettingsPage() {
       );
     }
     if (identity.kind !== 'ready') throw new Error('Customer identity is unavailable.');
-    const [settings, sessions] = await Promise.all([
-      getCustomerSettings(accessToken),
-      listIdentitySessions(accessToken),
-    ]);
+    const sessionToken = await getServerSessionToken();
+    if (!sessionToken) throw new Error('Customer session is unavailable.');
+    const [settings, sessions] = await Promise.all([getCustomerSettings(accessToken), listSessions(sessionToken)]);
     const notificationRows = [
       ['Approval requests', settings.notificationPreferences.approvalRequests],
       ['Maturity reports', settings.notificationPreferences.maturityReports],
