@@ -17,21 +17,23 @@ concurrency:
 
 jobs:
 
-  runner-supply:
-    uses: ./.github/workflows/validation-runner-supply.yaml
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
-      attestations: write
-
   validation-plan:
-    needs: runner-supply
     uses: ./.github/workflows/validation-plan.yaml
     permissions:
       contents: read
       packages: read
       attestations: read
+
+  runner-supply:
+    needs: validation-plan
+    uses: ./.github/workflows/validation-runner-supply.yaml
+    with:
+      runners: ${{ needs.validation-plan.outputs.required_runners }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
 
   # ─── Multi-tenant isolation adversarial suite (C-005, ADR-003) ──────────────
   multi-tenant-isolation:

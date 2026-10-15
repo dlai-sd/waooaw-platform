@@ -927,3 +927,27 @@ candidate.
   affected evidence.
 - Exact-head and commit-dependent controls run on every candidate.
 - Hosted selective execution remains blocked while its activation evidence is incomplete.
+
+### 9.5 Hosted Runner Selection Before Supply
+
+The authoritative validation plan must resolve the required runner identities before runner supply
+begins. The plan executes in a lightweight control plane with a pinned Python version and
+hash-pinned dependency manifest. It records the exact base, head, interpreter, and dependency
+manifest digest used for selection.
+
+Each consuming workflow passes only `required_runners` from the authoritative plan to the reusable
+runner-supply workflow. Full-inventory behavior remains fail-closed for global, normative, unknown,
+main-push, and scheduled changes.
+
+Acceptance:
+
+- A documentation-only candidate does not resolve or publish an unselected runner.
+- A full-inventory candidate still supplies all four validation runners.
+- No validation gate starts until every runner selected for that candidate has trusted immutable
+  manifest evidence.
+- The validation plan does not download or start the multi-language full runner merely to compute
+  selection.
+- Static preflight renders Compose and checks Dockerfiles only when their graph inputs change;
+  workflow lint remains scoped to changed workflow files.
+- Static workflow validation proves the plan-to-supply dependency direction in CI, Code Quality,
+  Integration, and E2E workflows.

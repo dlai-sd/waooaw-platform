@@ -23,21 +23,23 @@ env:
 
 jobs:
 
-  runner-supply:
-    uses: ./.github/workflows/validation-runner-supply.yaml
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
-      attestations: write
-
   validation-plan:
-    needs: runner-supply
     uses: ./.github/workflows/validation-plan.yaml
     permissions:
       contents: read
       packages: read
       attestations: read
+
+  runner-supply:
+    needs: validation-plan
+    uses: ./.github/workflows/validation-runner-supply.yaml
+    with:
+      runners: ${{ needs.validation-plan.outputs.required_runners }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
 
   # ─── Accessibility tests (WCAG 2.1 AA — C-042 constitutional UX standard) ──
   accessibility:
