@@ -476,7 +476,7 @@ def test_precheck_evidence_must_match_base_and_head() -> None:
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": digest,
-        "graph_version": "wc109-prechecks-v12",
+        "graph_version": "wc109-prechecks-v13",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -527,7 +527,7 @@ def test_precheck_evidence_rejects_configuration_or_runner_mismatch() -> None:
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": "d" * 64,
-        "graph_version": "wc109-prechecks-v12",
+        "graph_version": "wc109-prechecks-v13",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -646,6 +646,7 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
         "test-web",
         "test-dotnet:business-platform",
     ]
+    assert nodes[0].reusable is False
     assert nodes[1].heavy is False
     assert nodes[2].heavy is False
     assert nodes[2].reusable is False
@@ -656,7 +657,7 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
     assert all("docker compose" not in " ".join(node.command) for node in nodes)
     assert all("run_release_qualification.sh" not in " ".join(node.command) for node in nodes)
     assert all(node.command[node.command.index("--base") + 1] == "b" * 40 for node in nodes)
-    assert captured["graph_version"] == "wc109-prechecks-v12"
+    assert captured["graph_version"] == "wc109-prechecks-v13"
     assert captured["configuration_digest"] == configuration_digest()
     assert captured["runner_digest"] == runner_digest(nodes)
     assert nodes[0].runner_digest == "r" * 64

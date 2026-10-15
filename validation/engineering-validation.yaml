@@ -362,7 +362,7 @@ documentation_only:
   - blockers/**
   - constitution/PROJECT_STATE.md
 prechecks:
-  gitleaks: {always: true, inputs: ["**"], gate: "precheck:gitleaks"}
+  gitleaks: {always: true, reusable: false, inputs: ["**"], gate: "precheck:gitleaks"}
   scripts_quality:
     paths:
       - scripts/**
