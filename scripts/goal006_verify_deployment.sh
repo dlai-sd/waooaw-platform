@@ -39,31 +39,39 @@ capture_revision_failure_evidence() {
   local app=$2
   local revision=$3
   local system_log="revision-evidence/$app-system.log"
+  local containers
 
   if ! az containerapp logs show \
     --resource-group "$RESOURCE_GROUP" \
     --name "$app_name" \
     --type system \
     --tail 200 \
-    --format text 2>&1 | redact_revision_log > "$system_log"; then
+    --format json 2>&1 | redact_revision_log > "$system_log"; then
     echo "System log capture failed for $app_name" >> "$system_log"
   fi
 
   test -n "$revision" || return
-  jq -er '.properties.template.containers[].name' "revision-evidence/$app-revision.json" |
-    while IFS= read -r container; do
-      console_log="revision-evidence/$app-$container-console.log"
-      if ! az containerapp logs show \
-        --resource-group "$RESOURCE_GROUP" \
-        --name "$app_name" \
-        --revision "$revision" \
-        --container "$container" \
-        --type console \
-        --tail 200 \
-        --format text 2>&1 | redact_revision_log > "$console_log"; then
-        echo "Console log capture failed for $app_name/$container" >> "$console_log"
-      fi
-    done
+  containers=$(jq -r '.properties.template.containers[]?.name // empty' \
+    "revision-evidence/$app-revision.json")
+  if test -z "$containers"; then
+    echo "Console log capture skipped: revision container metadata unavailable for $app_name" \
+      > "revision-evidence/$app-console.log"
+    return
+  fi
+
+  while IFS= read -r container; do
+    console_log="revision-evidence/$app-$container-console.log"
+    if ! az containerapp logs show \
+      --resource-group "$RESOURCE_GROUP" \
+      --name "$app_name" \
+      --revision "$revision" \
+      --container "$container" \
+      --type console \
+      --tail 200 \
+      --format text 2>&1 | redact_revision_log > "$console_log"; then
+      echo "Console log capture failed for $app_name/$container" >> "$console_log"
+    fi
+  done <<< "$containers"
 }
 
 temporal_app="ca-$TARGET_ENVIRONMENT-temporal"

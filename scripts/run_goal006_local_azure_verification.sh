@@ -181,6 +181,17 @@ rm "$EVIDENCE_DIR/force-professional-runtime-unready"
 test "$unhealthy_status" -ne 0
 grep -F 'Revision readiness timed out: app=ca-demo-professional-runtime' \
   "$EVIDENCE_DIR/unhealthy-revision/verifier.log" >/dev/null
+if grep -F 'jq: error' "$EVIDENCE_DIR/unhealthy-revision/verifier.log" >/dev/null; then
+  echo "Unhealthy-revision diagnostics crashed before timeout evidence" >&2
+  exit 1
+fi
+if grep -F 'only json logs supported for system logs' \
+  "$EVIDENCE_DIR/unhealthy-revision/revision-evidence/professional-runtime-system.log" >/dev/null; then
+  echo "Unhealthy-revision diagnostics used an unsupported system-log format" >&2
+  exit 1
+fi
+grep -F 'Console log capture skipped: revision container metadata unavailable' \
+  "$EVIDENCE_DIR/unhealthy-revision/revision-evidence/professional-runtime-console.log" >/dev/null
 test "$(jq -r '.properties.healthState' \
   "$EVIDENCE_DIR/unhealthy-revision/revision-evidence/professional-runtime-revision.json")" = Unhealthy
 
