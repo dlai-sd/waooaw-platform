@@ -35,7 +35,7 @@ ACTIVE_PROCESSES_LOCK = threading.Lock()
 DEFAULT_PROGRESS_INTERVAL_SECONDS = 30.0
 EVIDENCE_FILE_NAME = "precheck-manifest.json"
 EVIDENCE_SCHEMA = "waooaw.pr-prechecks/v4"
-CARRY_FORWARD_SELECTOR_VERSION = "wc104-gate-inputs-v4"
+CARRY_FORWARD_SELECTOR_VERSION = "wc104-gate-inputs-v5"
 
 
 @dataclass(frozen=True)
@@ -126,10 +126,12 @@ def _sha256_file(path: Path) -> str:
 def _node_identity(node: PrecheckNode, identity_inputs: dict[str, str]) -> str:
     normalized_command: list[str] = []
     candidate_argument = False
-    for argument in node.command:
+    for index, argument in enumerate(node.command):
         if candidate_argument:
             normalized_command.append("<candidate>")
             candidate_argument = False
+        elif index == 0 and Path(argument).name in {"python", "python3"}:
+            normalized_command.append("<python>")
         else:
             normalized_command.append(argument)
             candidate_argument = argument in {"--base", "--head", "--git-common-dir"}

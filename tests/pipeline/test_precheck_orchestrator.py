@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 import precheck_orchestrator
-from precheck_orchestrator import PrecheckNode, git_carry_forward_verifier, run_prechecks
+from precheck_orchestrator import PrecheckNode, _node_identity, git_carry_forward_verifier, run_prechecks
 
 
 def python_node(name: str, source: str, *, dependencies: tuple[str, ...] = (), retries: int = 0) -> PrecheckNode:
@@ -99,7 +99,7 @@ def test_manifest_binds_inputs_and_node_results(tmp_path: Path) -> None:
         "environment_digest": "e" * 64,
         "service_digest": "s" * 64,
         "input_digest": "",
-        "selector_version": "wc104-gate-inputs-v4",
+        "selector_version": "wc104-gate-inputs-v5",
         "evidence_schema": "waooaw.pr-prechecks/v4",
     }
     assert manifest["nodes"][0]["reuse"]["provenance"] == "executed"
@@ -274,6 +274,22 @@ def test_identical_tree_reuse_records_non_ancestral_proof(tmp_path: Path) -> Non
     assert reuse["identical_tree"]["tree_identity_proven"] is True
     assert "intervening_commit_range" not in reuse["identical_tree"]
     assert marker.read_text() == "x"
+
+
+def test_node_identity_canonicalizes_python_launcher_path() -> None:
+    container = python_node("gate", "print('ok')")
+    container = replace(container, command=("/usr/local/bin/python3", *container.command[1:]))
+    host = replace(container, command=("/home/codespace/.python/current/bin/python3", *container.command[1:]))
+    identity_inputs = {
+        "base_sha": "b" * 40,
+        "head_sha": "a" * 40,
+        "changed_file_digest": "d" * 64,
+        "graph_version": "test-v1",
+        "configuration_digest": "c" * 64,
+        "runner_digest": "r" * 64,
+    }
+
+    assert _node_identity(container, identity_inputs) == _node_identity(host, identity_inputs)
 
 
 def test_unchanged_node_rebinds_prior_configuration_without_execution(tmp_path: Path) -> None:

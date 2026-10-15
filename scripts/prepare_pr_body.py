@@ -59,7 +59,7 @@ CANDIDATE_EVIDENCE_STATUS_SECTION = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 VALIDATION_POLICY_PATH = Path(__file__).resolve().parents[1] / "validation/engineering-validation.yaml"
-PRECHECK_GRAPH_VERSION = "wc109-prechecks-v10"
+PRECHECK_GRAPH_VERSION = "wc109-prechecks-v11"
 PRECHECK_ORDER = (
     "gitleaks",
     "scripts_quality",
