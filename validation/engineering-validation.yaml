@@ -1,11 +1,13 @@
 schema: waooaw.validation-catalog/v1
-version: wc109-candidate-identity-v1
-mode: shadow
+version: wc121-selective-validation-v1
+mode: enforced
 runner_supply: validation/runner-supply.json
 enforced_activation:
-  founder_approved: false
+  founder_approved: true
   minimum_shadow_samples: 20
-  unresolved_false_negatives: null
+  verified_shadow_samples: 20
+  unresolved_false_negatives: 0
+  evidence: validation/evidence/wc121-selective-validation-activation.json
 
 runners:
   python:
@@ -337,7 +339,6 @@ global_triggers:
   - infrastructure/terraform/**
   - infrastructure/recovery/**
   - infrastructure/environment-readiness/**
-  - work-contracts/**
 scoped_paths:
   openapi-contracts:
     paths:
@@ -352,7 +353,14 @@ scoped_paths:
       - .github/workflows/workload-lease-reconciliation.yaml
       - tests/pipeline/test_goal006_*.py
     gates: [release-qualification]
-documentation_only: [README.md, CHANGELOG.md, docs/**]
+documentation_only:
+  - README.md
+  - CHANGELOG.md
+  - docs/**
+  - work-contracts/**
+  - reviews/**
+  - blockers/**
+  - constitution/PROJECT_STATE.md
 prechecks:
   gitleaks: {always: true, inputs: ["**"], gate: "precheck:gitleaks"}
   scripts_quality:

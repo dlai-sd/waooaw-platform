@@ -59,7 +59,7 @@ CANDIDATE_EVIDENCE_STATUS_SECTION = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 VALIDATION_POLICY_PATH = Path(__file__).resolve().parents[1] / "validation/engineering-validation.yaml"
-PRECHECK_GRAPH_VERSION = "wc109-prechecks-v9"
+PRECHECK_GRAPH_VERSION = "wc109-prechecks-v10"
 PRECHECK_ORDER = (
     "gitleaks",
     "scripts_quality",
@@ -443,6 +443,14 @@ def runner_digest(nodes: list[PrecheckNode]) -> str:
     return hashlib.sha256(json.dumps(graph, sort_keys=True).encode()).hexdigest()
 
 
+def precheck_cache_root(git_common_dir: Path) -> Path:
+    return git_common_dir / "waooaw" / "prechecks"
+
+
+def reusable_precheck_evidence(cache_root: Path, artifact_dir: Path) -> list[Path]:
+    return sorted(path for path in cache_root.glob(f"*/{EVIDENCE_FILE_NAME}") if path.parent != artifact_dir)
+
+
 def gate_input_digest(head: str, patterns: tuple[str, ...]) -> str:
     entries: list[tuple[str, str]] = []
     for line in git("ls-tree", "-r", "--full-tree", head).splitlines():
@@ -549,8 +557,9 @@ def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str
     git_common_dir = Path(git("rev-parse", "--path-format=absolute", "--git-common-dir"))
     base_sha = git("rev-parse", base)
     nodes = precheck_nodes(repository_root, git_common_dir, base_sha, head, changed_files)
-    artifact_dir = repository_root / "test-results/wc100/prechecks" / head
-    prior_evidence = sorted(path for path in artifact_dir.parent.glob(f"*/{EVIDENCE_FILE_NAME}") if path.parent != artifact_dir)
+    cache_root = precheck_cache_root(git_common_dir)
+    artifact_dir = cache_root / head
+    prior_evidence = reusable_precheck_evidence(cache_root, artifact_dir)
     return run_prechecks(
         nodes,
         base_sha=base_sha,
@@ -712,7 +721,7 @@ def main() -> int:
                 raise ValueError(
                     "prechecks failed; first causal gate: "
                     f"{evidence.get('first_causal_failure')}; "
-                    f"artifacts: test-results/wc100/prechecks/{head}"
+                    "artifacts: shared Git precheck cache"
                 )
         if arguments.allow_unpushed_head:
             if arguments.update_pr is None:

@@ -1,0 +1,69 @@
+{
+  "schema": "waooaw.selective-validation-activation/v1",
+  "work_component": "WC121-C09",
+  "verified_at": "2026-10-15T16:12:00Z",
+  "authority": "Founder current-session implementation authorization",
+  "minimum_shadow_samples": 20,
+  "unresolved_false_negatives": 0,
+  "code_quality": {
+    "verified_successful_samples": 20,
+    "workflow": "code-quality.yaml",
+    "comparison_job": "Hosted Shadow comparison",
+    "run_ids": [
+      38763188483,
+      38760415926,
+      38718661916,
+      38708677506,
+      38698754082,
+      38694406100,
+      38692980904,
+      38613749849,
+      38607662508,
+      38555639894,
+      38549845930,
+      38547927486,
+      38544912555,
+      38541242819,
+      38516257728,
+      38514971791,
+      38512062418,
+      38428678641,
+      38410796188,
+      38272924909
+    ]
+  },
+  "full_ci": {
+    "verified_successful_samples": 20,
+    "workflow": "ci.yaml",
+    "comparison_job": "Test Champion QA Campaign",
+    "run_ids": [
+      38763188802,
+      38760416114,
+      38718661909,
+      38708677515,
+      38698754066,
+      38694406153,
+      38692980924,
+      38613749836,
+      38555639729,
+      38549845884,
+      38547927621,
+      38544912511,
+      38516257750,
+      38428678679,
+      38410796150,
+      38272924819,
+      38251213958,
+      38244970929,
+      38237485155,
+      37965196586
+    ]
+  },
+  "activation": {
+    "catalog_mode": "enforced",
+    "pull_request_execution": "focused",
+    "push_and_release_execution": "full-inventory",
+    "commit_dependent_gates": "always-on",
+    "shadow_comparison": "disabled while focused enforcement is active"
+  }
+}

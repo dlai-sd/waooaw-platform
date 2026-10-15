@@ -35,7 +35,7 @@ ACTIVE_PROCESSES_LOCK = threading.Lock()
 DEFAULT_PROGRESS_INTERVAL_SECONDS = 30.0
 EVIDENCE_FILE_NAME = "precheck-manifest.json"
 EVIDENCE_SCHEMA = "waooaw.pr-prechecks/v4"
-CARRY_FORWARD_SELECTOR_VERSION = "wc104-gate-inputs-v3"
+CARRY_FORWARD_SELECTOR_VERSION = "wc104-gate-inputs-v4"
 
 
 @dataclass(frozen=True)
@@ -209,7 +209,7 @@ def _load_reusable_results(
                 identity_inputs["head_sha"],
                 (),
             )
-            if not verified or distance_value is None or distance_value < 1:
+            if not verified or distance_value is None or distance_value < 0:
                 continue
             distance = distance_value
         candidates.append((distance, source_head, evidence_path, evidence_bytes, evidence, changed_paths))
@@ -265,7 +265,21 @@ def _load_reusable_results(
                 "invalidation_reason": None,
                 "configuration_rebound": configuration_rebound,
             }
-            if source_head != identity_inputs["head_sha"]:
+            if source_head != identity_inputs["head_sha"] and distance == 0:
+                reuse = {
+                    **reuse,
+                    "provenance": "identical-tree",
+                    "trust_source": "local-verified-identical-tree",
+                    "configuration_rebound": configuration_rebound,
+                    "identical_tree": {
+                        "current_head_sha": identity_inputs["head_sha"],
+                        "source_execution_head": source_head,
+                        "source_evidence_digest": hashlib.sha256(evidence_bytes).hexdigest(),
+                        "selector_version": CARRY_FORWARD_SELECTOR_VERSION,
+                        "tree_identity_proven": True,
+                    },
+                }
+            elif source_head != identity_inputs["head_sha"]:
                 reuse = {
                     **reuse,
                     "provenance": "carry-forward",
@@ -312,6 +326,20 @@ def git_carry_forward_verifier(
     git = shutil.which("git")
     if git is None:
         return False, [], None
+    source_tree = subprocess.run(  # noqa: S603
+        [git, "rev-parse", f"{source_head}^{{tree}}"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    current_tree = subprocess.run(  # noqa: S603
+        [git, "rev-parse", f"{current_head}^{{tree}}"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if source_tree.returncode == 0 and current_tree.returncode == 0 and source_tree.stdout.strip() == current_tree.stdout.strip():
+        return True, [], 0
     ancestor = subprocess.run(  # noqa: S603
         [git, "merge-base", "--is-ancestor", source_head, current_head],
         check=False,

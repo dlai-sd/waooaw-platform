@@ -891,7 +891,10 @@ jobs:
           echo "Test Champion recommendation: PASS"
 
       - name: Record non-authoritative hosted Shadow comparison
-        if: always() && github.event_name == 'pull_request'
+        if: >-
+          always() &&
+          github.event_name == 'pull_request' &&
+          needs.validation-plan.outputs.selective_enforcement != 'true'
         uses: ./.github/actions/record-shadow-comparison
         with:
           change-class: ci

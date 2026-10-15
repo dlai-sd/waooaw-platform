@@ -1,5 +1,6 @@
 import json
 from dataclasses import replace
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -7,7 +8,7 @@ from pathlib import Path
 import pytest
 
 import precheck_orchestrator
-from precheck_orchestrator import PrecheckNode, run_prechecks
+from precheck_orchestrator import PrecheckNode, git_carry_forward_verifier, run_prechecks
 
 
 def python_node(name: str, source: str, *, dependencies: tuple[str, ...] = (), retries: int = 0) -> PrecheckNode:
@@ -98,7 +99,7 @@ def test_manifest_binds_inputs_and_node_results(tmp_path: Path) -> None:
         "environment_digest": "e" * 64,
         "service_digest": "s" * 64,
         "input_digest": "",
-        "selector_version": "wc104-gate-inputs-v3",
+        "selector_version": "wc104-gate-inputs-v4",
         "evidence_schema": "waooaw.pr-prechecks/v4",
     }
     assert manifest["nodes"][0]["reuse"]["provenance"] == "executed"
@@ -197,6 +198,81 @@ def test_unaffected_success_is_carried_forward_with_current_head_proof(tmp_path:
     assert carry["current_head_sha"] == "c" * 40
     assert carry["non_intersection_proven"] is True
     assert manifest["nodes"][0]["reuse"]["provenance"] == "carry-forward"
+    assert marker.read_text() == "x"
+
+
+def test_identical_tree_is_reused_across_non_ancestor_commits(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=repository, check=True)
+    subprocess.run(["git", "config", "user.name", "Validation Test"], cwd=repository, check=True)
+    subprocess.run(["git", "config", "user.email", "validation@example.invalid"], cwd=repository, check=True)
+    (repository / "evidence.txt").write_text("same tree\n", encoding="utf-8")
+    subprocess.run(["git", "add", "evidence.txt"], cwd=repository, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "first"], cwd=repository, check=True)
+    source_head = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repository,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    subprocess.run(["git", "commit", "--amend", "-q", "-m", "rewritten"], cwd=repository, check=True)
+    current_head = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repository,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    monkeypatch.chdir(repository)
+
+    verified, changed_paths, distance = git_carry_forward_verifier(
+        source_head,
+        current_head,
+        ("src/**",),
+    )
+
+    assert verified is True
+    assert changed_paths == []
+    assert distance == 0
+
+
+def test_identical_tree_reuse_records_non_ancestral_proof(tmp_path: Path) -> None:
+    source_dir = tmp_path / "source"
+    current_dir = tmp_path / "current"
+    marker = tmp_path / "executions"
+    node = replace(
+        python_node(
+            "gate",
+            f"from pathlib import Path; p=Path({str(marker)!r}); p.write_text(p.read_text() + 'x' if p.exists() else 'x')",
+        ),
+        input_digest="i" * 64,
+        input_patterns=("src/business-platform/**",),
+    )
+    run([node], source_dir, preflight=lambda: (True, []))
+
+    manifest = run_prechecks(
+        [node],
+        base_sha="b" * 40,
+        head_sha="c" * 40,
+        changed_file_digest="e" * 64,
+        graph_version="test-v1",
+        configuration_digest="c" * 64,
+        runner_digest="r" * 64,
+        artifact_dir=current_dir,
+        reuse_evidence_paths=[source_dir / "precheck-manifest.json"],
+        carry_forward_verifier=lambda source, current, patterns: (True, [], 0),
+        preflight=lambda: (True, []),
+    )
+
+    reuse = manifest["nodes"][0]["reuse"]
+    assert manifest["executed_count"] == 0
+    assert manifest["reused_count"] == 1
+    assert reuse["provenance"] == "identical-tree"
+    assert reuse["trust_source"] == "local-verified-identical-tree"
+    assert reuse["identical_tree"]["tree_identity_proven"] is True
+    assert "intervening_commit_range" not in reuse["identical_tree"]
     assert marker.read_text() == "x"
 
 

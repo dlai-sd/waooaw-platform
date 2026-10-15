@@ -40,7 +40,7 @@
     ],
     "main_full_inventory": true,
     "release_full_inventory": true,
-    "selective_hosted_validation_founder_approved": false
+    "selective_hosted_validation_founder_approved": true
   },
   "runner_availability": {
     "python": {

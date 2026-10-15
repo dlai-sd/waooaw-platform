@@ -66,7 +66,7 @@ def test_changed_file_scope() -> None:
     )
     scope = (ROOT / "validation/engineering-validation.yaml").read_text(encoding="utf-8")
 
-    assert "mode: shadow" in scope
+    assert "mode: enforced" in scope
     assert all(
         path.startswith(allowed)
         for path in (

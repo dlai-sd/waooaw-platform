@@ -253,7 +253,10 @@ jobs:
   shadow-comparison:
     name: Hosted Shadow comparison
     runs-on: ubuntu-latest
-    if: always() && github.event_name == 'pull_request'
+    if: >-
+      always() &&
+      github.event_name == 'pull_request' &&
+      needs.validation-plan.outputs.selective_enforcement != 'true'
     permissions:
       contents: read
       packages: read

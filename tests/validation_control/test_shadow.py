@@ -20,6 +20,17 @@ def load_catalog() -> dict[str, object]:
     return yaml.safe_load((ROOT / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
 
 
+def load_shadow_catalog() -> dict[str, object]:
+    catalog = load_catalog()
+    catalog["mode"] = "shadow"
+    catalog["enforced_activation"] = {
+        "founder_approved": False,
+        "minimum_shadow_samples": 20,
+        "unresolved_false_negatives": None,
+    }
+    return catalog
+
+
 def test_shadow_cli_resolves_scripts_without_pythonpath() -> None:
     environment = os.environ.copy()
     environment.pop("PYTHONPATH", None)
@@ -47,7 +58,7 @@ def test_shadow_cli_resolves_scripts_without_pythonpath() -> None:
     ],
 )
 def test_shadow_comparison_covers_representative_change_classes(change_class: str, path: str, expected_gate: str) -> None:
-    catalog = load_catalog()
+    catalog = load_shadow_catalog()
     selection = classify_paths(catalog, [path], base_sha="b" * 40, head_sha="c" * 40)
     full_results = {gate: "PASS" for gate in catalog["full_gates"]}
     full_results[expected_gate] = "FAIL"
@@ -62,7 +73,7 @@ def test_shadow_comparison_covers_representative_change_classes(change_class: st
 
 
 def test_shadow_comparison_records_omitted_full_ci_failure() -> None:
-    catalog = load_catalog()
+    catalog = load_shadow_catalog()
     selection = classify_paths(catalog, ["web/app/page.tsx"], base_sha="b" * 40, head_sha="c" * 40)
 
     record = build_shadow_record("web-only", selection, {"test-web": "PASS", "test-dotnet": "FAIL"})
@@ -72,7 +83,7 @@ def test_shadow_comparison_records_omitted_full_ci_failure() -> None:
 
 
 def test_shadow_comparison_rejects_authoritative_selection() -> None:
-    catalog = load_catalog()
+    catalog = load_shadow_catalog()
     selection = classify_paths(catalog, ["web/app/page.tsx"])
     selection["authoritative"] = True
 
@@ -81,7 +92,7 @@ def test_shadow_comparison_rejects_authoritative_selection() -> None:
 
 
 def test_hosted_shadow_preserves_focused_observation_but_executes_full_inventory() -> None:
-    catalog = load_catalog()
+    catalog = load_shadow_catalog()
     selection = classify_paths(catalog, ["web/app/page.tsx"], base_sha="b" * 40, head_sha="c" * 40)
 
     plan = build_hosted_execution_plan(catalog, selection)
@@ -99,12 +110,29 @@ def test_hosted_shadow_preserves_focused_observation_but_executes_full_inventory
 
 
 def test_hosted_shadow_rejects_authoritative_selection() -> None:
-    catalog = load_catalog()
+    catalog = load_shadow_catalog()
     selection = classify_paths(catalog, ["web/app/page.tsx"])
     selection["authoritative"] = True
 
     with pytest.raises(ValueError, match="non-authoritative Shadow"):
         build_hosted_execution_plan(catalog, selection)
+
+
+def test_enforced_hosted_plan_executes_only_authoritative_selection() -> None:
+    catalog = load_catalog()
+    selection = classify_paths(
+        catalog,
+        ["web/app/page.tsx"],
+        base_sha="b" * 40,
+        head_sha="c" * 40,
+    )
+
+    plan = build_hosted_execution_plan(catalog, selection)
+
+    assert selection["authoritative"] is True
+    assert set(plan["execution_gates"]) == set(selection["selected_gates"])
+    assert len(plan["service_build_matrix"]) < len(catalog["components"])
+    assert plan["selective_enforcement"] is True
 
 
 def test_hosted_workflows_execute_plan_instead_of_shadow_selection() -> None:
@@ -193,7 +221,7 @@ def test_shadow_comparison_action_executes_analysis_inside_immutable_runner() ->
 
 
 def test_hosted_shadow_collects_exact_gate_results_and_external_jobs(tmp_path: Path) -> None:
-    catalog = load_catalog()
+    catalog = load_shadow_catalog()
     selection = classify_paths(catalog, ["web/app/page.tsx"], base_sha="b" * 40, head_sha="c" * 40)
     gate_directory = tmp_path / "gate"
     gate_directory.mkdir()
@@ -217,7 +245,7 @@ def test_hosted_shadow_collects_exact_gate_results_and_external_jobs(tmp_path: P
 
 
 def test_hosted_shadow_fails_closed_for_missing_result(tmp_path: Path) -> None:
-    catalog = load_catalog()
+    catalog = load_shadow_catalog()
     selection = classify_paths(catalog, ["web/app/page.tsx"], base_sha="b" * 40, head_sha="c" * 40)
 
     record = build_hosted_shadow_record("ci", selection, tmp_path, {}, ["test-web"], "c" * 40)
@@ -227,7 +255,7 @@ def test_hosted_shadow_fails_closed_for_missing_result(tmp_path: Path) -> None:
 
 
 def test_hosted_shadow_records_unselected_exact_head_failure(tmp_path: Path) -> None:
-    catalog = load_catalog()
+    catalog = load_shadow_catalog()
     selection = classify_paths(catalog, ["web/app/page.tsx"], base_sha="b" * 40, head_sha="c" * 40)
     gate_directory = tmp_path / "gate"
     gate_directory.mkdir()
