@@ -1,10 +1,10 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-123
 contract_path: work-contracts/WC-123-authentication-authorization-implementation.md
-contract_digest: 3573e8c57454a54e4158a7c4aff9585429f450a6dd825501d5f8fac2fd308870
+contract_digest: ea59430ba8c966d497bd86df6726b9ec10f1ced39afad089c3550ba737ee80ae
 enterprise_path: architecture/reference/components/authentication-authorization-enterprise-requirements.md
 solution_path: architecture/reference/components/authentication-authorization-simplification-solution-contract.md
-solution_digest: bb9b4d59289e255bb2b3cbc219330091056ef892cb0630b042f4468e9d46730c
+solution_digest: c77df265ec67a2bc88aa74681b73bba9eeca571050ff7e229bd6e30626aa11d4
 contract_status: AUTHOR_REVIEW_PASS_AUTHZ_GATE_01_RESOLVED_IMPLEMENTATION_AUTHORITY_REQUIRED
 implementation_scope: true
 result: PLANNED
