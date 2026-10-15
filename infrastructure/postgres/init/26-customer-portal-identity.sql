@@ -24,3 +24,5 @@ DROP POLICY IF EXISTS customer_portal_preferences_tenant_isolation ON identity.c
 CREATE POLICY customer_portal_preferences_tenant_isolation ON identity.customer_portal_preferences
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+
+GRANT SELECT, INSERT, UPDATE ON identity.customer_portal_preferences TO business_app;

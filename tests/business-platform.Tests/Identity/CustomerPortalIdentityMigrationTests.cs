@@ -10,6 +10,8 @@ public sealed class CustomerPortalIdentityMigrationTests
 {
     private static readonly string Migration = RepositoryPaths.Resolve(
         "infrastructure/postgres/init/26-customer-portal-identity.sql");
+    private static readonly string PermissionRepair = RepositoryPaths.Resolve(
+        "infrastructure/postgres/init/58-wc123-portal-preference-permissions.sql");
 
     [Fact]
     public void Migration_DefinesTenantBoundPreferencesWithForcedRls()
@@ -21,6 +23,9 @@ public sealed class CustomerPortalIdentityMigrationTests
         sql.Should().Contain("ENABLE ROW LEVEL SECURITY");
         sql.Should().Contain("FORCE ROW LEVEL SECURITY");
         sql.Should().Contain("app.current_tenant_id");
+        sql.Should().Contain(
+            "GRANT SELECT, INSERT, UPDATE ON identity.customer_portal_preferences TO business_app");
+        sql.Should().NotContain("GRANT DELETE");
         sql.Should().NotContain("BYPASSRLS");
     }
 
@@ -32,5 +37,17 @@ public sealed class CustomerPortalIdentityMigrationTests
         sql.Should().Contain("'SYSTEM', 'LIGHT', 'DARK'");
         sql.Should().Contain("'RELATIVE', 'ABSOLUTE'");
         sql.Should().Contain("JSONB");
+    }
+
+    [Fact]
+    public void PermissionRepair_GrantsExistingEnvironmentsOnlyRequiredPortalAccess()
+    {
+        var sql = File.ReadAllText(PermissionRepair);
+
+        sql.Should().Contain(
+            "GRANT SELECT, INSERT, UPDATE ON identity.customer_portal_preferences TO business_app");
+        sql.Should().NotContain("GRANT DELETE");
+        sql.Should().NotContain("GRANT ALL");
+        sql.Should().NotContain("BYPASSRLS");
     }
 }

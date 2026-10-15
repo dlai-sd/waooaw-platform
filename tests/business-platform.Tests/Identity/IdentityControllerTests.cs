@@ -1179,6 +1179,11 @@ public sealed class CustomerPortalIdentityTests
             "Ada",
             JsonSerializer.SerializeToElement(updated.Value).GetProperty("DisplayName").GetString()
         );
+        await using (var db = factory.CreateDbContext())
+        {
+            var preference = Assert.Single(await db.CustomerPortalPreferences.ToListAsync());
+            Assert.Equal("keycloak-local\u001fportal-owner", preference.ActorSubject);
+        }
 
         var replay = await controller.UpdateCustomerProfileAsync(request, CancellationToken.None);
         Assert.IsType<OkObjectResult>(replay);
@@ -1238,6 +1243,30 @@ public sealed class CustomerPortalIdentityTests
             )
         );
         Assert.Equal(403, denied.StatusCode);
+    }
+
+    [Fact]
+    public async Task Profile_LegacyIssuerQualifiedSubjectRejectsDifferentIssuer()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var tenantId = Guid.NewGuid().ToString();
+        await CompletedControllerAsync(factory, tenantId: tenantId);
+        var wrongIssuer = IdentityTestHelpers.CreateController(
+            factory,
+            "portal-owner",
+            tenantId,
+            "google",
+            providerIssuer: "https://different-issuer.invalid",
+            email: "owner@example.com",
+            emailVerified: true,
+            customerRoles: ["OWNER"]
+        );
+
+        var denied = Assert.IsType<ObjectResult>(
+            await wrongIssuer.GetCustomerProfileAsync(CancellationToken.None)
+        );
+
+        Assert.Equal(404, denied.StatusCode);
     }
 
     [Fact]

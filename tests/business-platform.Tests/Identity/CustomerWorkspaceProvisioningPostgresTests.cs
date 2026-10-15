@@ -56,6 +56,30 @@ public sealed class CustomerWorkspaceProvisioningPostgresTests(
             )
         );
         await ExecuteOwnerAsync(
+            await File.ReadAllTextAsync(
+                RepositoryPaths.Resolve(
+                    "infrastructure/postgres/init/26-customer-portal-identity.sql"
+                )
+            )
+        );
+        await ExecuteOwnerAsync(
+            """
+            ALTER TABLE identity.customer_portal_preferences
+                ADD COLUMN workspace_layout_version integer NOT NULL DEFAULT 0,
+                ADD COLUMN navigation_visibility varchar(16) NOT NULL DEFAULT 'VISIBLE',
+                ADD COLUMN progress_visibility varchar(16) NOT NULL DEFAULT 'VISIBLE',
+                ADD COLUMN conversation_width_percent integer NOT NULL DEFAULT 50,
+                ADD COLUMN reduce_motion boolean NOT NULL DEFAULT false;
+            ALTER TABLE identity.customer_portal_preferences
+                ADD CONSTRAINT ck_customer_portal_workspace_layout CHECK (
+                    workspace_layout_version >= 0
+                    AND navigation_visibility IN ('VISIBLE', 'COLLAPSED', 'HIDDEN')
+                    AND progress_visibility IN ('VISIBLE', 'COLLAPSED', 'HIDDEN')
+                    AND conversation_width_percent BETWEEN 35 AND 75
+                );
+            """
+        );
+        await ExecuteOwnerAsync(
             """
             GRANT ALL ON ALL TABLES IN SCHEMA business, identity TO business_app;
             GRANT SELECT ON ALL TABLES IN SCHEMA business TO constitutional_app, runtime_app, wbe_app;
@@ -137,6 +161,66 @@ public sealed class CustomerWorkspaceProvisioningPostgresTests(
         Assert.NotEqual(firstMembership.TenantId, secondMembership.TenantId);
         Assert.Equal(new[] { "OWNER" }, firstMembership.Roles);
         Assert.Equal(new[] { "OWNER" }, secondMembership.Roles);
+    }
+
+    [Fact]
+    public async Task CompletedRegistration_FirstPortalReadPersistsTenantIsolatedDefaults()
+    {
+        var proof = SyntheticProof("portal-layout-owner", "portal-layout-google");
+        var registration = await SeedAsync(proof);
+        var provisioning = Service();
+        await provisioning.CompleteAsync(proof, registration, Guid.NewGuid(), Hash);
+        var membership = await provisioning.ResolveAsync(proof.Actor);
+        var identity = IdentityTestHelpers.CreateService(
+            new WorkspaceDbContextFactory(AppConnectionString())
+        );
+
+        var layout = await identity.GetWorkspaceLayoutPreferencesAsync(
+            proof.Actor.Issuer,
+            proof.Actor.Subject,
+            membership,
+            CancellationToken.None
+        );
+
+        Assert.Equal(0, layout.PreferenceVersion);
+        await using (var owner = new WorkspaceDbContextFactory(
+            _ownerConnectionString
+        ).CreateDbContext())
+        {
+            var preference = await owner.CustomerPortalPreferences.SingleAsync(value =>
+                value.ActorSubject == proof.Actor.Subject
+                && value.TenantId == membership.TenantId
+            );
+            Assert.Equal(0, preference.WorkspaceLayoutVersion);
+        }
+
+        var otherProof = SyntheticProof("other-portal-owner", "other-portal-google");
+        var otherRegistration = await SeedAsync(otherProof);
+        await provisioning.CompleteAsync(
+            otherProof,
+            otherRegistration,
+            Guid.NewGuid(),
+            Hash
+        );
+        var otherMembership = await provisioning.ResolveAsync(otherProof.Actor);
+
+        await Assert.ThrowsAsync<IdentityResourceNotFoundException>(() =>
+            identity.GetWorkspaceLayoutPreferencesAsync(
+                proof.Actor.Issuer,
+                proof.Actor.Subject,
+                otherMembership,
+                CancellationToken.None
+            )
+        );
+        await using var persisted = new WorkspaceDbContextFactory(
+            _ownerConnectionString
+        ).CreateDbContext();
+        Assert.DoesNotContain(
+            await persisted.CustomerPortalPreferences.ToListAsync(),
+            value =>
+                value.ActorSubject == proof.Actor.Subject
+                && value.TenantId == otherMembership.TenantId
+        );
     }
 
     [Fact]

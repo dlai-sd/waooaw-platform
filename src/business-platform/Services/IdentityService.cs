@@ -5,6 +5,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
 using Npgsql;
 using Waooaw.BusinessPlatform.Infrastructure;
@@ -555,6 +556,36 @@ public sealed class IdentityService
             """,
             ct
         );
+
+    private static async Task<IDbContextTransaction?> BeginPortalContextAsync(
+        IdentityDbContext db,
+        string actorIssuer,
+        string actorSubject,
+        CustomerWorkspaceMembership membership,
+        CancellationToken ct
+    )
+    {
+        if (!db.Database.IsRelational())
+            return null;
+        var transaction = await db.Database.BeginTransactionAsync(ct);
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            SELECT pg_catalog.set_config('app.identity_issuer', {actorIssuer}, true),
+                   pg_catalog.set_config('app.identity_subject', {actorSubject}, true),
+                   pg_catalog.set_config('app.current_membership_id', {membership.MembershipId.ToString(
+                "D"
+            )}, true),
+                   pg_catalog.set_config('app.tenant_id', {membership.TenantId.ToString(
+                "D"
+            )}, true),
+                   pg_catalog.set_config('app.current_tenant_id', {membership.TenantId.ToString(
+                "D"
+            )}, true)
+            """,
+            ct
+        );
+        return transaction;
+    }
 
     public async Task<IdentityRegistrationRecord> GetRegistrationAsync(
         Guid registrationId,
@@ -1332,31 +1363,51 @@ public sealed class IdentityService
     }
 
     public async Task<CustomerPortalProfileState> GetCustomerProfileAsync(
+        string actorIssuer,
         string actorSubject,
-        Guid tenantId,
+        CustomerWorkspaceMembership membership,
         CancellationToken ct
     )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
-        var registration = await GetCompletedRegistrationAsync(db, actorSubject, ct);
+        await using var transaction = await BeginPortalContextAsync(
+            db,
+            actorIssuer,
+            actorSubject,
+            membership,
+            ct
+        );
+        var tenantId = membership.TenantId;
+        var registration = await GetPortalRegistrationAsync(
+            db,
+            actorIssuer,
+            actorSubject,
+            membership,
+            ct
+        );
+        var portalActorSubject = registration.ActorSubject;
         var preference = await db.CustomerPortalPreferences.SingleOrDefaultAsync(
-            value => value.ActorSubject == actorSubject && value.TenantId == tenantId,
+            value => value.ActorSubject == portalActorSubject && value.TenantId == tenantId,
             ct
         );
 
-        return new CustomerPortalProfileState(
+        var result = new CustomerPortalProfileState(
             registration.AccountId!.Value,
             preference?.DisplayName ?? registration.DisplayName!,
             preference?.OrganizationDisplayName ?? registration.BusinessName!,
             registration.EmailVerified,
-            registration.MobileVerified || await HasVerifiedMobileAsync(db, actorSubject, ct),
+            registration.MobileVerified || await HasVerifiedMobileAsync(db, portalActorSubject, ct),
             preference?.UpdatedAt ?? registration.UpdatedAt
         );
+        if (transaction is not null)
+            await transaction.CommitAsync(ct);
+        return result;
     }
 
     public async Task<CustomerPortalProfileState> UpdateCustomerProfileAsync(
+        string actorIssuer,
         string actorSubject,
-        Guid tenantId,
+        CustomerWorkspaceMembership membership,
         Guid idempotencyKey,
         string canonicalHash,
         string displayName,
@@ -1365,10 +1416,25 @@ public sealed class IdentityService
     )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
-        var registration = await GetCompletedRegistrationAsync(db, actorSubject, ct);
+        await using var transaction = await BeginPortalContextAsync(
+            db,
+            actorIssuer,
+            actorSubject,
+            membership,
+            ct
+        );
+        var tenantId = membership.TenantId;
+        var registration = await GetPortalRegistrationAsync(
+            db,
+            actorIssuer,
+            actorSubject,
+            membership,
+            ct
+        );
+        var portalActorSubject = registration.ActorSubject;
         var (replay, conflict) = await CheckIdempotencyAsync(
             db,
-            actorSubject,
+            portalActorSubject,
             idempotencyKey,
             $"UpdateCustomerProfile:{tenantId}",
             canonicalHash,
@@ -1377,7 +1443,12 @@ public sealed class IdentityService
         if (conflict)
             throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
 
-        var preference = await GetOrCreatePortalPreferenceAsync(db, actorSubject, tenantId, ct);
+        var preference = await GetOrCreatePortalPreferenceAsync(
+            db,
+            portalActorSubject,
+            tenantId,
+            ct
+        );
         if (replay is null)
         {
             preference.DisplayName = displayName;
@@ -1386,7 +1457,7 @@ public sealed class IdentityService
             await db.SaveChangesAsync(ct);
             await RecordIdempotencyAsync(
                 db,
-                actorSubject,
+                portalActorSubject,
                 idempotencyKey,
                 $"UpdateCustomerProfile:{tenantId}",
                 canonicalHash,
@@ -1396,50 +1467,97 @@ public sealed class IdentityService
             );
         }
 
-        return new CustomerPortalProfileState(
+        var result = new CustomerPortalProfileState(
             registration.AccountId!.Value,
             preference.DisplayName ?? registration.DisplayName!,
             preference.OrganizationDisplayName ?? registration.BusinessName!,
             registration.EmailVerified,
-            registration.MobileVerified || await HasVerifiedMobileAsync(db, actorSubject, ct),
+            registration.MobileVerified || await HasVerifiedMobileAsync(db, portalActorSubject, ct),
             preference.UpdatedAt
         );
+        if (transaction is not null)
+            await transaction.CommitAsync(ct);
+        return result;
     }
 
     public async Task<CustomerPortalSettingsState> GetCustomerSettingsAsync(
+        string actorIssuer,
         string actorSubject,
-        Guid tenantId,
+        CustomerWorkspaceMembership membership,
         CancellationToken ct
     )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
-        var registration = await GetCompletedRegistrationAsync(db, actorSubject, ct);
-        var preference = await db.CustomerPortalPreferences.SingleOrDefaultAsync(
-            value => value.ActorSubject == actorSubject && value.TenantId == tenantId,
+        await using var transaction = await BeginPortalContextAsync(
+            db,
+            actorIssuer,
+            actorSubject,
+            membership,
             ct
         );
-        return ToSettings(
+        var tenantId = membership.TenantId;
+        var registration = await GetPortalRegistrationAsync(
+            db,
+            actorIssuer,
+            actorSubject,
+            membership,
+            ct
+        );
+        var portalActorSubject = registration.ActorSubject;
+        var preference = await db.CustomerPortalPreferences.SingleOrDefaultAsync(
+            value => value.ActorSubject == portalActorSubject && value.TenantId == tenantId,
+            ct
+        );
+        var result = ToSettings(
             preference,
             registration.LanguagePreference ?? "en",
             registration.UpdatedAt
         );
+        if (transaction is not null)
+            await transaction.CommitAsync(ct);
+        return result;
     }
 
     public async Task<WorkspaceLayoutPreferenceState> GetWorkspaceLayoutPreferencesAsync(
+        string actorIssuer,
         string actorSubject,
-        Guid tenantId,
+        CustomerWorkspaceMembership membership,
         CancellationToken ct
     )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
-        await GetCompletedRegistrationAsync(db, actorSubject, ct);
-        var preference = await GetOrCreatePortalPreferenceAsync(db, actorSubject, tenantId, ct);
-        return ToWorkspaceLayout(preference);
+        await using var transaction = await BeginPortalContextAsync(
+            db,
+            actorIssuer,
+            actorSubject,
+            membership,
+            ct
+        );
+        var tenantId = membership.TenantId;
+        var registration = await GetPortalRegistrationAsync(
+            db,
+            actorIssuer,
+            actorSubject,
+            membership,
+            ct
+        );
+        var preference = await GetOrCreatePortalPreferenceAsync(
+            db,
+            registration.ActorSubject,
+            tenantId,
+            ct
+        );
+        await db.SaveChangesAsync(ct);
+        var result = ToWorkspaceLayout(preference);
+        if (transaction is not null)
+            await transaction.CommitAsync(ct);
+        return result;
     }
 
     public async Task<WorkspaceLayoutPreferenceState> ReplaceWorkspaceLayoutPreferencesAsync(
+        string actorIssuer,
         string actorSubject,
-        Guid tenantId,
+        CustomerWorkspaceMembership membership,
         Guid idempotencyKey,
         string canonicalHash,
         int expectedVersion,
@@ -1451,11 +1569,26 @@ public sealed class IdentityService
     )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
-        await GetCompletedRegistrationAsync(db, actorSubject, ct);
+        await using var transaction = await BeginPortalContextAsync(
+            db,
+            actorIssuer,
+            actorSubject,
+            membership,
+            ct
+        );
+        var tenantId = membership.TenantId;
+        var registration = await GetPortalRegistrationAsync(
+            db,
+            actorIssuer,
+            actorSubject,
+            membership,
+            ct
+        );
+        var portalActorSubject = registration.ActorSubject;
         var operation = $"ReplaceWorkspaceLayoutPreferences:{tenantId}";
         var (replay, conflict) = await CheckIdempotencyAsync(
             db,
-            actorSubject,
+            portalActorSubject,
             idempotencyKey,
             operation,
             canonicalHash,
@@ -1464,7 +1597,12 @@ public sealed class IdentityService
         if (conflict)
             throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
 
-        var preference = await GetOrCreatePortalPreferenceAsync(db, actorSubject, tenantId, ct);
+        var preference = await GetOrCreatePortalPreferenceAsync(
+            db,
+            portalActorSubject,
+            tenantId,
+            ct
+        );
         if (replay is null)
         {
             if (preference.WorkspaceLayoutVersion != expectedVersion)
@@ -1478,7 +1616,7 @@ public sealed class IdentityService
             db.IdempotencyLedger.Add(
                 new IdentityIdempotencyEntry
                 {
-                    ActorSubject = actorSubject,
+                    ActorSubject = portalActorSubject,
                     IdempotencyKey = idempotencyKey.ToString(),
                     OperationFamily = operation,
                     CanonicalHash = canonicalHash,
@@ -1488,12 +1626,16 @@ public sealed class IdentityService
             );
             await db.SaveChangesAsync(ct);
         }
-        return ToWorkspaceLayout(preference);
+        var result = ToWorkspaceLayout(preference);
+        if (transaction is not null)
+            await transaction.CommitAsync(ct);
+        return result;
     }
 
     public async Task<CustomerPortalSettingsState> UpdateCustomerSettingsAsync(
+        string actorIssuer,
         string actorSubject,
-        Guid tenantId,
+        CustomerWorkspaceMembership membership,
         Guid idempotencyKey,
         string canonicalHash,
         string locale,
@@ -1507,11 +1649,26 @@ public sealed class IdentityService
     )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
-        await GetCompletedRegistrationAsync(db, actorSubject, ct);
+        await using var transaction = await BeginPortalContextAsync(
+            db,
+            actorIssuer,
+            actorSubject,
+            membership,
+            ct
+        );
+        var tenantId = membership.TenantId;
+        var registration = await GetPortalRegistrationAsync(
+            db,
+            actorIssuer,
+            actorSubject,
+            membership,
+            ct
+        );
+        var portalActorSubject = registration.ActorSubject;
         var operation = $"UpdateCustomerSettings:{tenantId}";
         var (replay, conflict) = await CheckIdempotencyAsync(
             db,
-            actorSubject,
+            portalActorSubject,
             idempotencyKey,
             operation,
             canonicalHash,
@@ -1520,7 +1677,12 @@ public sealed class IdentityService
         if (conflict)
             throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
 
-        var preference = await GetOrCreatePortalPreferenceAsync(db, actorSubject, tenantId, ct);
+        var preference = await GetOrCreatePortalPreferenceAsync(
+            db,
+            portalActorSubject,
+            tenantId,
+            ct
+        );
         if (replay is null)
         {
             preference.Locale = locale;
@@ -1534,7 +1696,7 @@ public sealed class IdentityService
             await db.SaveChangesAsync(ct);
             await RecordIdempotencyAsync(
                 db,
-                actorSubject,
+                portalActorSubject,
                 idempotencyKey,
                 operation,
                 canonicalHash,
@@ -1543,18 +1705,34 @@ public sealed class IdentityService
                 ct
             );
         }
-        return ToSettings(preference, locale, preference.UpdatedAt);
+        var result = ToSettings(preference, locale, preference.UpdatedAt);
+        if (transaction is not null)
+            await transaction.CommitAsync(ct);
+        return result;
     }
 
     private static async Task<IdentityRegistrationRecord> GetCompletedRegistrationAsync(
         IdentityDbContext db,
+        string actorIssuer,
         string actorSubject,
         CancellationToken ct
     )
     {
+        var issuerQualifiedSubject = $"{actorIssuer}\u001f{actorSubject}";
         var registration = await db
             .Registrations.Where(value =>
-                value.ActorSubject == actorSubject
+                (
+                    (value.ActorIssuer == actorIssuer && value.ActorSubject == actorSubject)
+                    || (
+                        value.ProviderIssuer == actorIssuer
+                        && value.ActorSubject == issuerQualifiedSubject
+                    )
+                    || (
+                        (value.ActorIssuer == null || value.ActorIssuer == "")
+                        && value.ProviderIssuer == null
+                        && value.ActorSubject == actorSubject
+                    )
+                )
                 && value.State == IdentityRegistrationState.Completed
                 && value.AccountId != null
             )
@@ -1562,6 +1740,32 @@ public sealed class IdentityService
             .FirstOrDefaultAsync(ct);
         return registration
             ?? throw new IdentityResourceNotFoundException("Completed account not found.");
+    }
+
+    private static async Task<IdentityRegistrationRecord> GetPortalRegistrationAsync(
+        IdentityDbContext db,
+        string actorIssuer,
+        string actorSubject,
+        CustomerWorkspaceMembership membership,
+        CancellationToken ct
+    )
+    {
+        var registration = await GetCompletedRegistrationAsync(db, actorIssuer, actorSubject, ct);
+        if (!db.Database.IsRelational())
+            return registration;
+        var hasActiveMembership =
+            registration.AccountId == membership.AccountId
+            && await db.Memberships.AnyAsync(
+                value =>
+                    value.MembershipId == membership.MembershipId
+                    && value.AccountId == membership.AccountId
+                    && value.TenantId == membership.TenantId
+                    && value.Status == "ACTIVE",
+                ct
+            );
+        return hasActiveMembership
+            ? registration
+            : throw new IdentityResourceNotFoundException("Active account membership not found.");
     }
 
     private static Task<bool> HasVerifiedMobileAsync(
