@@ -6,7 +6,7 @@
 |---|---|
 | Pull request | #513 |
 | Office | Platform IT Expert |
-| Substantive reviewed head | `a08224c91e7f197b7afc3d9dce1ce647fc9c7872` |
+| Substantive reviewed head | `cf732d8febb2a23ddc95a3742be6e9574b8f27a6` |
 | Stacked base | `main` after #512 squash merge |
 | Review result | CHANGES REQUIRED |
 
@@ -15,7 +15,7 @@
 | ID | Severity | Finding | Disposition |
 |---|---|---|---|
 | PIT-513-01 | BLOCKER | Code Quality, CI, validation-plan, and qualification did not run because both primary workflows accept pull requests only when the base is `main`; the stacked base is not protected by those checks. GitHub's `CLEAN` merge state therefore did not represent validation readiness. | PR marked draft. After #512 merges, retarget #513 to `main` and require successful exact-head hosted checks before Founder review or merge. |
-| PIT-513-02 | HIGH | Gitleaks was eligible for identical-tree reuse even though it scans `BASE_SHA..HEAD_SHA`, contradicting WC-121's requirement that secret detection execute for every candidate. | Resolved in `a08224c91e7f197b7afc3d9dce1ce647fc9c7872` by setting the gate `reusable: false` and adding a regression assertion. |
+| PIT-513-02 | HIGH | Gitleaks was eligible for identical-tree reuse even though it scans `BASE_SHA..HEAD_SHA`, contradicting WC-121's requirement that secret detection execute for every candidate. | Resolved by the reviewed candidate through `cf732d8febb2a23ddc95a3742be6e9574b8f27a6` by setting the gate `reusable: false` and adding a regression assertion. |
 
 ## Evidence
 
