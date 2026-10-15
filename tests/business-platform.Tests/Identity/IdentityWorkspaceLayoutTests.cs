@@ -18,7 +18,7 @@ public sealed class IdentityWorkspaceLayoutTests
         const string actorSubject = "workspace-layout-controller";
         var tenantId = Guid.NewGuid();
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        await SeedCompletedAccountAsync(factory, $"keycloak-local\u001f{actorSubject}");
+        await SeedCompletedAccountAsync(factory, actorSubject);
         var controller = IdentityTestHelpers.CreateController(
             factory,
             subject: actorSubject,
@@ -123,10 +123,17 @@ public sealed class IdentityWorkspaceLayoutTests
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         await SeedCompletedAccountAsync(factory, actorSubject);
         var service = IdentityTestHelpers.CreateService(factory);
+        var membership = new CustomerWorkspaceMembership(
+            Guid.NewGuid(),
+            tenantId,
+            Guid.NewGuid(),
+            ["OWNER"]
+        );
 
         var updated = await service.ReplaceWorkspaceLayoutPreferencesAsync(
+            "https://issuer.example",
             actorSubject,
-            tenantId,
+            membership,
             idempotencyKey,
             "workspace-layout-request-hash",
             0,
@@ -137,8 +144,9 @@ public sealed class IdentityWorkspaceLayoutTests
             CancellationToken.None
         );
         var replay = await service.ReplaceWorkspaceLayoutPreferencesAsync(
+            "https://issuer.example",
             actorSubject,
-            tenantId,
+            membership,
             idempotencyKey,
             "workspace-layout-request-hash",
             0,
@@ -156,7 +164,8 @@ public sealed class IdentityWorkspaceLayoutTests
         Assert.Equal(55, replay.ConversationWidthPercent);
         Assert.True(replay.ReduceMotion);
         await using var db = factory.CreateDbContext();
-        Assert.Single(await db.CustomerPortalPreferences.ToListAsync());
+        var preference = Assert.Single(await db.CustomerPortalPreferences.ToListAsync());
+        Assert.Equal(actorSubject, preference.ActorSubject);
         Assert.Single(await db.IdempotencyLedger.ToListAsync());
         Assert.Single(await db.Registrations.ToListAsync());
     }
@@ -170,10 +179,17 @@ public sealed class IdentityWorkspaceLayoutTests
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         await SeedCompletedAccountAsync(factory, actorSubject);
         var service = IdentityTestHelpers.CreateService(factory);
+        var membership = new CustomerWorkspaceMembership(
+            Guid.NewGuid(),
+            tenantId,
+            Guid.NewGuid(),
+            ["OWNER"]
+        );
 
         await service.ReplaceWorkspaceLayoutPreferencesAsync(
+            "https://issuer.example",
             actorSubject,
-            tenantId,
+            membership,
             idempotencyKey,
             "workspace-layout-request-hash",
             0,
@@ -186,8 +202,9 @@ public sealed class IdentityWorkspaceLayoutTests
 
         await Assert.ThrowsAsync<IdentityIdempotencyConflict>(() =>
             service.ReplaceWorkspaceLayoutPreferencesAsync(
+                "https://issuer.example",
                 actorSubject,
-                tenantId,
+                membership,
                 idempotencyKey,
                 "different-request-hash",
                 1,
@@ -200,8 +217,9 @@ public sealed class IdentityWorkspaceLayoutTests
         );
         await Assert.ThrowsAsync<IdentityPreferenceVersionConflictException>(() =>
             service.ReplaceWorkspaceLayoutPreferencesAsync(
+                "https://issuer.example",
                 actorSubject,
-                tenantId,
+                membership,
                 Guid.NewGuid(),
                 "new-request-hash",
                 0,

@@ -92,6 +92,8 @@ describe('NextAuth OIDC transaction boundary', () => {
       protocolCookies,
     });
     expect(response.headers.get('set-cookie')).toContain('__Host-waooaw-oidc-browser=');
+    expect(response.headers.get('set-cookie')).toContain('Path=/;');
+    expect(response.headers.get('set-cookie')).toContain('Secure');
   });
 
   it('returns no provider redirect when durable reservation is unavailable', async () => {
@@ -143,6 +145,7 @@ describe('NextAuth OIDC transaction boundary', () => {
     expect(mockNextAuthHandler).toHaveBeenCalledTimes(1);
     expect(response.headers.get('location')).toBe('https://app.example/login?returnTo=%2Fsettings');
     expect(response.headers.get('set-cookie')).toContain('__Host-waooaw-oidc-browser=;');
+    expect(response.headers.get('set-cookie')).toContain('Path=/;');
   });
 
   it('denies a consumed or mismatched callback before NextAuth creates a session', async () => {

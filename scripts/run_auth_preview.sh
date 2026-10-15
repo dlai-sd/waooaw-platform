@@ -85,6 +85,8 @@ source_tree_digest=$(
     } | sha256sum | cut -d ' ' -f 1
   )
 )
+web_session_config_digest="sha256:$source_tree_digest"
+web_session_telemetry_route_digest="sha256:$(printf '%s' 'auth-preview-local-telemetry-route-v1' | sha256sum | cut -d ' ' -f 1)"
 auth_preview_deployment_id=$(openssl rand -hex 16)
 generated_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
@@ -103,6 +105,9 @@ whatsapp_webhook_secret=$(secret_value WHATSAPP_WEBHOOK_SECRET 32)
 whatsapp_tenant_token_key=$(secret_value WHATSAPP_TENANT_TOKEN_KEY 32)
 conversation_cursor_hmac_key=$(secret_value CONVERSATION_CURSOR_HMAC_KEY 32)
 channel_continuity_hmac_key=$(base64_secret_value CHANNEL_CONTINUITY_HMAC_KEY 32)
+session_protocol_digest_key=$(base64_secret_value SESSION_PROTOCOL_DIGEST_KEY 32)
+session_handle_digest_key=$(base64_secret_value SESSION_HANDLE_DIGEST_KEY 32)
+session_token_envelope_key=$(base64_secret_value SESSION_TOKEN_ENVELOPE_KEY 32)
 wbe_ops_auth_token=$(secret_value WBE_OPS_AUTH_TOKEN 32)
 data_protection_certificate_password=$(secret_value DATA_PROTECTION_CERTIFICATE_PASSWORD 24)
 razorpay_key_id=$(optional_value RAZORPAY_KEY_ID "${RAZORPAY_KEY_ID:-}")
@@ -142,6 +147,8 @@ AUTH_PREVIEW_DEPLOYMENT_ID=$auth_preview_deployment_id
 WAOOAW_WEB_IMAGE=${WAOOAW_WEB_IMAGE:-}
 NEXTAUTH_SECRET=$nextauth_secret
 AUTH_PREVIEW_SESSION_MAX_AGE_SECONDS=3600
+WEB_SESSION_CONFIG_DIGEST=$web_session_config_digest
+WEB_SESSION_TELEMETRY_ROUTE_DIGEST=$web_session_telemetry_route_digest
 KEYCLOAK_ISSUER=$keycloak_issuer
 POSTGRES_PASSWORD=$postgres_password
 IDENTITY_HMAC_KEY=$identity_hmac_key
@@ -151,6 +158,9 @@ WHATSAPP_WEBHOOK_SECRET=$whatsapp_webhook_secret
 WHATSAPP_TENANT_TOKEN_KEY=$whatsapp_tenant_token_key
 CONVERSATION_CURSOR_HMAC_KEY=$conversation_cursor_hmac_key
 CHANNEL_CONTINUITY_HMAC_KEY=$channel_continuity_hmac_key
+SESSION_PROTOCOL_DIGEST_KEY=$session_protocol_digest_key
+SESSION_HANDLE_DIGEST_KEY=$session_handle_digest_key
+SESSION_TOKEN_ENVELOPE_KEY=$session_token_envelope_key
 WBE_OPS_AUTH_TOKEN=$wbe_ops_auth_token
 DATA_PROTECTION_CERTIFICATE_PASSWORD=$data_protection_certificate_password
 RAZORPAY_KEY_ID=$razorpay_key_id
@@ -179,6 +189,7 @@ if [ "$action" = start ]; then
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /docker-entrypoint-initdb.d/45-pre-hire-checkout-orders.sql
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /docker-entrypoint-initdb.d/41-relationship-acquisition-mode.sql
   $compose exec -T postgres bash /docker-entrypoint-initdb.d/42-demo-marketplace-admission.sh
+  $compose exec -T redis redis-cli SET waooaw:auth-preview:auth-abuse:v1:epoch 0 >/dev/null
 fi
 
 web_image=${WAOOAW_WEB_IMAGE:-waooaw/auth-preview-web:$source_tag}

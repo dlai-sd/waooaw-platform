@@ -164,14 +164,32 @@ services:
       KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER:?KEYCLOAK_ISSUER is required}
       KEYCLOAK_CLIENT_ID: waooaw-web-preview
       KEYCLOAK_PUBLIC_CLIENT: "true"
+      WAOOAW_SERVER_SESSION_MODE: enforced
+      WAOOAW_ENVIRONMENT: auth-preview
+      REDIS_URL: redis://redis:6379/0
+      AUTH_ABUSE_LIMITS_JSON: '{"AUTH_START":{"limit":20,"windowSeconds":600},"AUTH_CALLBACK":{"limit":30,"windowSeconds":600},"RECOVERY":{"limit":5,"windowSeconds":3600},"PROVIDER_LINK":{"limit":10,"windowSeconds":3600},"PROVIDER_UNLINK":{"limit":10,"windowSeconds":3600},"RESEND":{"limit":5,"windowSeconds":900},"CREDENTIAL":{"limit":10,"windowSeconds":3600}}'
+      SESSION_PROTOCOL_DIGEST_KEYS: '{"v1":"${SESSION_PROTOCOL_DIGEST_KEY:?SESSION_PROTOCOL_DIGEST_KEY is required}"}'
+      SESSION_PROTOCOL_DIGEST_WRITE_VERSION: v1
+      SESSION_HANDLE_DIGEST_KEYS: '{"v1":"${SESSION_HANDLE_DIGEST_KEY:?SESSION_HANDLE_DIGEST_KEY is required}"}'
+      SESSION_HANDLE_DIGEST_WRITE_VERSION: v1
+      SESSION_TOKEN_ENVELOPE_KEYS: '{"v1":"${SESSION_TOKEN_ENVELOPE_KEY:?SESSION_TOKEN_ENVELOPE_KEY is required}"}'
+      SESSION_TOKEN_ENVELOPE_WRITE_VERSION: v1
+      WEB_SESSION_DATABASE_URL: postgresql://web_session_app:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/waooaw
+      WEB_SESSION_DATABASE_SSL_MODE: disable
+      WEB_SESSION_CONFIG_DIGEST: ${WEB_SESSION_CONFIG_DIGEST:?WEB_SESSION_CONFIG_DIGEST is required}
+      WEB_SESSION_EXPECTED_CONFIG_DIGEST: ${WEB_SESSION_CONFIG_DIGEST:?WEB_SESSION_CONFIG_DIGEST is required}
+      WEB_SESSION_TELEMETRY_ROUTE_DIGEST: ${WEB_SESSION_TELEMETRY_ROUTE_DIGEST:?WEB_SESSION_TELEMETRY_ROUTE_DIGEST is required}
+      WEB_SESSION_EXPECTED_TELEMETRY_ROUTE_DIGEST: ${WEB_SESSION_TELEMETRY_ROUTE_DIGEST:?WEB_SESSION_TELEMETRY_ROUTE_DIGEST is required}
       BUSINESS_PLATFORM_URL: http://business-platform:5001
       BILLING_ENGINE_URL: http://billing-engine:8140
       IDENTITY_EVENT_SIGNING_KEY: ${IDENTITY_EVENT_SIGNING_KEY:?IDENTITY_EVENT_SIGNING_KEY is required}
     depends_on:
       business-platform:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/login"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health/ready"]
       interval: 10s
       timeout: 3s
       retries: 12

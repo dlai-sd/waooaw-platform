@@ -2,12 +2,13 @@
 // Constitutional basis: C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
 import { AlertTriangle, ArrowLeft, Inbox, LoaderCircle } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 type StateKind = 'empty' | 'error' | 'forbidden' | 'loading' | 'not-found';
 type StateViewProps = {
   actionHref?: string;
   correlationId?: string;
-  description: string;
+  description: ReactNode;
   reasonCode?: string;
   title: string;
 } & ({ actionLabel?: never; kind: 'loading' } | { actionLabel: string; kind: Exclude<StateKind, 'loading'> });

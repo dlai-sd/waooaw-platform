@@ -1,9 +1,9 @@
 import 'server-only';
 
 import { createCipheriv, createDecipheriv, createHmac, randomBytes, randomUUID } from 'node:crypto';
-import postgres from 'postgres';
-import type { JWT } from 'next-auth/jwt';
 import type { WebManagedSession, WebSessionAssuranceLevel } from '@/lib/web-managed-session';
+import type { JWT } from 'next-auth/jwt';
+import postgres from 'postgres';
 
 const IDLE_SECONDS = 30 * 60;
 const ABSOLUTE_SECONDS = 8 * 60 * 60;
@@ -119,13 +119,21 @@ const databaseWaiters: Array<{
 function database() {
   const url = process.env.WEB_SESSION_DATABASE_URL;
   if (!url) throw new Error('WEB_SESSION_DATABASE_URL is required');
+  const sslMode = process.env.WEB_SESSION_DATABASE_SSL_MODE;
+  if (sslMode && sslMode !== 'disable' && sslMode !== 'require')
+    throw new Error('WEB_SESSION_DATABASE_SSL_MODE must be disable or require');
   client ??= postgres(url, {
     max: SESSION_POOL_SIZE,
     connect_timeout: 3,
     idle_timeout: 30,
     max_lifetime: 300,
     prepare: false,
-    ssl: process.env.NODE_ENV === 'production' ? 'require' : false,
+    ssl:
+      sslMode === 'disable'
+        ? false
+        : sslMode === 'require' || process.env.NODE_ENV === 'production'
+          ? 'require'
+          : false,
     onnotice: () => {},
   });
   return client;

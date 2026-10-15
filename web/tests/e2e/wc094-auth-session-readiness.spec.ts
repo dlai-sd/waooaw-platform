@@ -2,11 +2,13 @@
 // Implements: work-contracts/WC-107-requirements.yaml WC107-R004, WC107-R005
 // Constitutional basis: C-049 (Honest Limitation), C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
-import { type BrowserContext, expect, test } from '@playwright/test';
+import { type BrowserContext, type Page, expect, test } from '@playwright/test';
 import { encode } from 'next-auth/jwt';
 
 const baseURL = process.env.BASE_URL ?? 'http://127.0.0.1:3000';
 const nextAuthSecret = 'playwright-only-not-a-runtime-secret';
+
+test.use({ serviceWorkers: 'block' });
 
 async function addSession(context: BrowserContext) {
   const value = await encode({
@@ -26,6 +28,24 @@ async function addSession(context: BrowserContext) {
   ]);
 }
 
+async function routeKeycloakLogout(page: Page, state?: string) {
+  await page.route(
+    (url) => url.pathname === '/api/auth/keycloak-logout' && url.searchParams.has('nonce'),
+    async (route) => {
+      const destination = new URL('/login', baseURL);
+      if (state) destination.searchParams.set('state', state);
+      const response = await route.fetch({ maxRedirects: 0 });
+      await route.fulfill({
+        response,
+        headers: {
+          ...response.headers(),
+          location: destination.toString(),
+        },
+      });
+    }
+  );
+}
+
 test.beforeEach(async ({ context }) => {
   await context.clearCookies();
   await context.addCookies([{ name: 'waooaw-locale', value: 'en', sameSite: 'Lax', url: baseURL }]);
@@ -41,8 +61,12 @@ test('WC094-A03: Login and Register project the same available brokers', async (
   await expect(page.getByRole('button', { name: 'Sign up with Facebook' })).toBeEnabled();
 });
 
-test('WC094-A01: logout clears WAOOAW state and returns through Keycloak to login', async ({ context, page }) => {
+test('WC094-A01: logout clears WAOOAW state and returns through Keycloak to the homepage', async ({
+  context,
+  page,
+}) => {
   await addSession(context);
+  await routeKeycloakLogout(page, 'waooaw-home-after-logout');
   let logoutContinuationStatus: number | undefined;
   page.on('response', (response) => {
     const url = new URL(response.url());
@@ -62,8 +86,8 @@ test('WC094-A01: logout clears WAOOAW state and returns through Keycloak to logi
   await page.getByRole('button', { name: 'Sign out' }).click();
 
   await expect.poll(() => logoutContinuationStatus).toBe(303);
-  await expect(page).toHaveURL(`${baseURL}/login`);
-  await expect(page.getByRole('heading', { name: 'Log in to WAOOAW' })).toBeVisible();
+  await expect(page).toHaveURL(`${baseURL}/`);
+  await expect(page.getByRole('heading', { name: 'Grow your business with WAOOAW AI professionals' })).toBeVisible();
   await expect
     .poll(async () => context.cookies())
     .toEqual(
@@ -88,6 +112,7 @@ test('WC107-AUTH-03: account switch revokes prior state and requires explicit br
   page,
 }) => {
   await addSession(context);
+  await routeKeycloakLogout(page);
   await page.goto('/home');
   await page.waitForURL('**/professionals/mine');
   await page.evaluate(() => {
@@ -118,4 +143,45 @@ test('WC107-AUTH-03: account switch revokes prior state and requires explicit br
   await expect
     .poll(async () => context.cookies())
     .toEqual(expect.not.arrayContaining([expect.objectContaining({ name: 'next-auth.session-token' })]));
+});
+
+test('WC123-AUTH-PROXY-01: reverse-proxy origin rewriting preserves same-origin auth commands', async ({ request }) => {
+  const publicOrigin = new URL(baseURL);
+  const proxyHeaders = {
+    origin: 'http://localhost:3100',
+    'sec-fetch-site': 'same-origin',
+    'x-forwarded-host': publicOrigin.host,
+    'x-forwarded-proto': publicOrigin.protocol.slice(0, -1),
+  };
+
+  const identityEvent = await request.post('/api/auth/identity-events', {
+    headers: proxyHeaders,
+    data: {
+      correlationId: crypto.randomUUID(),
+      stage: 'ACCOUNT_SWITCH_REQUESTED',
+      providerClass: 'UNKNOWN',
+    },
+  });
+  expect(identityEvent.status()).toBe(204);
+
+  const accountSwitch = await request.post('/api/auth/keycloak-logout', {
+    headers: { ...proxyHeaders, accept: 'application/json', referer: `${baseURL}/home` },
+    data: { command: 'ACCOUNT_SWITCH' },
+  });
+  expect(accountSwitch.status()).toBe(200);
+  expect(await accountSwitch.json()).toEqual({
+    logoutPath: expect.stringMatching(/^\/api\/auth\/keycloak-logout\?nonce=[0-9a-f-]+$/),
+  });
+
+  const crossSite = await request.post('/api/auth/keycloak-logout', {
+    headers: {
+      accept: 'application/json',
+      origin: 'https://attacker.example',
+      'sec-fetch-site': 'cross-site',
+      'x-forwarded-host': publicOrigin.host,
+      'x-forwarded-proto': publicOrigin.protocol.slice(0, -1),
+    },
+    data: { command: 'ACCOUNT_SWITCH' },
+  });
+  expect(crossSite.status()).toBe(403);
 });

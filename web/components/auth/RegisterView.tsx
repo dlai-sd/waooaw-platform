@@ -2,25 +2,36 @@
 // Implements: work-contracts/WC-107-requirements.yaml WC107-R002, WC107-R006, WC107-R008
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
-import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { AuthBrand } from '@/components/auth/AuthBrand';
 import { ProviderCommands } from '@/components/auth/ProviderCommands';
 import { RegistrationFlow } from '@/components/auth/RegistrationFlow';
 import { getIdentitySession, listIdentityProviders } from '@/lib/api/identity';
-import { getIdentityMessages } from '@/lib/identity-messages';
 import { getRequestI18n } from '@/lib/i18n-server';
+import { getIdentityMessages } from '@/lib/identity-messages';
 import { safeReturnTarget } from '@/lib/safe-return';
 import { getServerAccessToken } from '@/lib/server-auth';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
 
 export async function RegisterView({
   searchParams,
-}: { searchParams?: Promise<{ returnTo?: string | string[] }> } = {}) {
+}: {
+  searchParams?: Promise<{
+    provider?: string | string[];
+    returnTo?: string | string[];
+    sessionReset?: string | string[];
+  }>;
+} = {}) {
   const accessToken = await getServerAccessToken();
   const resolvedSearchParams = await searchParams;
   const { locale } = await getRequestI18n();
   const messages = getIdentityMessages(locale);
   const returnTo = safeReturnTarget(resolvedSearchParams?.returnTo);
+  const resumeProvider =
+    resolvedSearchParams?.sessionReset === '1' &&
+    (resolvedSearchParams.provider === 'GOOGLE' || resolvedSearchParams.provider === 'FACEBOOK')
+      ? resolvedSearchParams.provider
+      : undefined;
   if (accessToken) {
     const identity = await getIdentitySession(accessToken);
     if (identity.kind === 'ready') redirect(returnTo);
@@ -44,6 +55,7 @@ export async function RegisterView({
         callbackUrl={`/register?returnTo=${encodeURIComponent(returnTo)}`}
         intent="register"
         providers={providers}
+        resumeProvider={resumeProvider}
       />
       <p className="auth-legal">
         {messages.legalPrefix} <Link href="/terms">{messages.terms}</Link> {messages.legalAnd}{' '}

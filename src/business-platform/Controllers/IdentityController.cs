@@ -788,7 +788,12 @@ public sealed class IdentityController(
             return error;
         try
         {
-            var profile = await identityService.GetCustomerProfileAsync(ActorSubject, tenantId, ct);
+            var profile = await identityService.GetCustomerProfileAsync(
+                ProviderIssuer,
+                SubjectClaim,
+                CurrentMembership!,
+                ct
+            );
             return Ok(ToProfileResponse(profile));
         }
         catch (IdentityResourceNotFoundException)
@@ -827,8 +832,9 @@ public sealed class IdentityController(
         try
         {
             var profile = await identityService.UpdateCustomerProfileAsync(
-                ActorSubject,
-                tenantId,
+                ProviderIssuer,
+                SubjectClaim,
+                CurrentMembership!,
                 IdempotencyKey,
                 ComputeHash(req),
                 req.DisplayName.Trim(),
@@ -889,7 +895,12 @@ public sealed class IdentityController(
         {
             return Ok(
                 ToSettingsResponse(
-                    await identityService.GetCustomerSettingsAsync(ActorSubject, tenantId, ct)
+                    await identityService.GetCustomerSettingsAsync(
+                        ProviderIssuer,
+                        SubjectClaim,
+                        CurrentMembership!,
+                        ct
+                    )
                 )
             );
         }
@@ -924,8 +935,9 @@ public sealed class IdentityController(
         {
             var preferences = req.NotificationPreferences;
             var settings = await identityService.UpdateCustomerSettingsAsync(
-                ActorSubject,
-                tenantId,
+                ProviderIssuer,
+                SubjectClaim,
+                CurrentMembership!,
                 IdempotencyKey,
                 ComputeHash(req),
                 req.Locale,
@@ -992,8 +1004,9 @@ public sealed class IdentityController(
             return Ok(
                 ToWorkspaceLayoutResponse(
                     await identityService.GetWorkspaceLayoutPreferencesAsync(
-                        ActorSubject,
-                        tenantId,
+                        ProviderIssuer,
+                        SubjectClaim,
+                        CurrentMembership!,
                         ct
                     )
                 )
@@ -1034,8 +1047,9 @@ public sealed class IdentityController(
             return Ok(
                 ToWorkspaceLayoutResponse(
                     await identityService.ReplaceWorkspaceLayoutPreferencesAsync(
-                        ActorSubject,
-                        tenantId,
+                        ProviderIssuer,
+                        SubjectClaim,
+                        CurrentMembership!,
                         IdempotencyKey,
                         ComputeHash(request),
                         request.ExpectedVersion,

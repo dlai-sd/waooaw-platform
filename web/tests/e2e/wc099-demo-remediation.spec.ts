@@ -7,6 +7,7 @@ import { encode } from 'next-auth/jwt';
 import { supportedLocales } from '../../lib/preferences';
 
 const secret = 'playwright-only-not-a-runtime-secret';
+const baseURL = process.env.BASE_URL ?? 'http://127.0.0.1:3000';
 
 async function addSession(context: BrowserContext, projectName: string, accessToken?: string) {
   const value = await encode({
@@ -120,64 +121,78 @@ test.beforeEach(async ({ context }) => {
 });
 
 for (const provider of ['Google', 'Facebook'] as const) {
-  test(`R-001 R-002 R-003: ${provider} disclosure precedes provider handoff and cancel is inert`, async ({
-    page,
-  }, testInfo) => {
-    const providerRequests: string[] = [];
-    page.on('request', (request) => {
-      if (/\/api\/auth\/(signin|callback)|accounts\.google|facebook\.com/i.test(request.url())) {
-        providerRequests.push(request.url());
-      }
-    });
+  test(`R-001 R-002 R-003: ${provider} starts provider handoff immediately`, async ({ page }) => {
     await page.goto('/login');
-    await expect(page.getByRole('button', { name: `Log in with ${provider}` })).toBeVisible();
-    await page.getByRole('button', { name: `Log in with ${provider}` }).click();
-    const dialog = page.getByRole('dialog', { name: `Continue to ${provider}` });
-    await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText(`name, email address, profile information and ${provider} account identifier`);
-    await expect(dialog).toContainText(`WAOOAW does not receive your ${provider} password`);
-    await page.getByRole('button', { name: 'Cancel' }).click();
-    await expect(dialog).toBeHidden();
-    expect(providerRequests).toEqual([]);
-    await attachScreenshot(page, testInfo, `login-${provider.toLowerCase()}-after-disclosure-cancel`);
+    const providerCommand = page.getByRole('button', { name: `Log in with ${provider}` });
+    await expect(providerCommand).toBeVisible();
+    await expect(page.getByRole('button', { name: `Continue to ${provider}` })).toHaveCount(0);
+
+    const providerId = provider.toLowerCase();
+    const handoffRequest = page.waitForRequest((request) =>
+      request.url().includes(`/api/auth/signin/keycloak-${providerId}`)
+    );
+    await providerCommand.click();
+    const request = await handoffRequest;
+
+    expect(request.method()).toBe('POST');
+    expect(request.postData()).toContain('waooawIntent=LOGIN');
   });
 }
 
-test('R-003: logout and second login request explicit Google account selection', async ({
-  context,
-  page,
-}, testInfo) => {
-  test.skip(
-    testInfo.project.name !== 'chromium-expanded',
-    'One clean Chromium broker-boundary journey proves the account switch contract.'
-  );
-  await addSession(context, testInfo.project.name);
-  await page.goto('/home');
-  await page.waitForURL('**/professionals/mine');
-  await page.locator('summary[aria-label="Account"]').first().click();
-  await page.getByRole('button', { name: 'Sign out' }).click();
-  await expect(page).toHaveURL('http://127.0.0.1:3000/login');
-  await expect
-    .poll(async () => context.cookies())
-    .toEqual(expect.not.arrayContaining([expect.objectContaining({ name: 'next-auth.session-token' })]));
+test.describe('logout followed by fresh login', () => {
+  test.use({ serviceWorkers: 'block' });
 
-  await page.route('**/api/auth/signin/keycloak-google?**', async (route) => {
-    await route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({
-        url: 'http://localhost:8080/realms/waooaw/protocol/openid-connect/auth?prompt=select_account',
-      }),
+  test('R-003: logout and second login request explicit Google account selection', async ({
+    context,
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== 'chromium-expanded',
+      'One clean Chromium broker-boundary journey proves the account switch contract.'
+    );
+    await addSession(context, testInfo.project.name);
+    await page.route(
+      (url) => url.pathname === '/api/auth/keycloak-logout' && url.searchParams.has('nonce'),
+      async (route) => {
+        const response = await route.fetch({ maxRedirects: 0 });
+        await route.fulfill({
+          response,
+          headers: {
+            ...response.headers(),
+            location: `${baseURL}/login?state=waooaw-home-after-logout`,
+          },
+        });
+      }
+    );
+    await page.goto('/home');
+    await page.waitForURL('**/professionals/mine');
+    await page.locator('summary[aria-label="Account"]').first().click();
+    await page.getByRole('button', { name: 'Sign out' }).click();
+    await expect(page).toHaveURL(`${baseURL}/`);
+    await expect
+      .poll(async () => context.cookies())
+      .toEqual(expect.not.arrayContaining([expect.objectContaining({ name: 'next-auth.session-token' })]));
+
+    await page.route('**/api/auth/signin/keycloak-google?**', async (route) => {
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          url: 'http://localhost:8080/realms/waooaw/protocol/openid-connect/auth?prompt=select_account',
+        }),
+      });
     });
-  });
-  await page.route('http://localhost:8080/realms/waooaw/protocol/openid-connect/auth?**', async (route) => {
-    await route.fulfill({ contentType: 'text/html', body: '<title>Test identity provider</title>' });
-  });
-  await page.goto('/login');
-  const brokerRequest = page.waitForRequest((request) => request.url().includes('/api/auth/signin/keycloak-google'));
-  await page.getByRole('button', { name: 'Log in with Google' }).click();
+    await page.route('http://localhost:8080/realms/waooaw/protocol/openid-connect/auth?**', async (route) => {
+      await route.fulfill({ contentType: 'text/html', body: '<title>Test identity provider</title>' });
+    });
+    await page.goto('/login');
+    const brokerRequest = page.waitForRequest((request) => request.url().includes('/api/auth/signin/keycloak-google'));
+    await page.getByRole('button', { name: 'Log in with Google' }).click();
 
-  expect(new URL((await brokerRequest).url()).searchParams.get('prompt')).toBe('select_account');
-  await expect(page).toHaveURL(/localhost:8080\/realms\/waooaw\/protocol\/openid-connect\/auth\?prompt=select_account/);
+    expect(new URL((await brokerRequest).url()).searchParams.get('prompt')).toBe('select_account');
+    await expect(page).toHaveURL(
+      /localhost:8080\/realms\/waooaw\/protocol\/openid-connect\/auth\?prompt=select_account/
+    );
+  });
 });
 
 for (const intent of ['trial', 'hire'] as const) {
