@@ -39,6 +39,15 @@ PROHIBITED_COMMANDS = {
         re.IGNORECASE,
     ),
 }
+CONTROL_PLANE_INSTALL = "python -m pip install --require-hashes --no-deps -r requirements-validation-plan.txt"
+
+
+def _allowed_control_plane_install(relative: str, policy_id: str, command: str) -> bool:
+    return (
+        relative == ".github/workflows/validation-plan.yaml"
+        and policy_id == "host-package-install"
+        and command.strip() == CONTROL_PLANE_INSTALL
+    )
 
 
 def _run_commands(value: Any) -> list[str]:
@@ -71,7 +80,7 @@ def validate_hosted_policy(repository: Path, governed_paths: tuple[str, ...] = G
             continue
         for command in _run_commands(document):
             for policy_id, pattern in PROHIBITED_COMMANDS.items():
-                if pattern.search(command):
+                if pattern.search(command) and not _allowed_control_plane_install(relative, policy_id, command):
                     violations.append(f"HOSTED_COMMAND_PROHIBITED:{relative}:{policy_id}")
 
     if governed_paths == GOVERNED_PATHS:

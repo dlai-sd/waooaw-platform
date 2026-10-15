@@ -5,6 +5,12 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 CI_PATH = ROOT / ".github/workflows/ci.yaml"
+CODE_QUALITY_PATH = ROOT / ".github/workflows/code-quality.yaml"
+INTEGRATION_PATH = ROOT / ".github/workflows/integration-tests.yaml"
+E2E_PATH = ROOT / ".github/workflows/e2e-acceptance-tests.yaml"
+VALIDATION_PLAN_PATH = ROOT / ".github/workflows/validation-plan.yaml"
+RUNNER_SUPPLY_PATH = ROOT / ".github/workflows/validation-runner-supply.yaml"
+VALIDATION_PLAN_REQUIREMENTS_PATH = ROOT / "requirements-validation-plan.txt"
 RELEASE_QUALIFICATION_PATH = ROOT / "scripts/run_release_qualification.sh"
 TEST_RUNNER_PATH = ROOT / "architecture/reference/dockerfiles/Dockerfile.test-runner"
 CATALOG_PATH = ROOT / "validation/engineering-validation.yaml"
@@ -125,7 +131,8 @@ def test_static_preflight_blocks_runner_supply_and_compiles_docker_graphs() -> N
     ci = load_ci()
     source = STATIC_PREFLIGHT_PATH.read_text(encoding="utf-8")
 
-    assert ci["jobs"]["runner-supply"]["needs"] == "static-preflight"
+    assert ci["jobs"]["validation-plan"]["needs"] == "static-preflight"
+    assert ci["jobs"]["runner-supply"]["needs"] == "validation-plan"
     assert "static-preflight" in ci["jobs"]["qa-campaign"]["needs"]
     checkout = ci["jobs"]["static-preflight"]["steps"][0]
     assert checkout["with"]["fetch-depth"] == 0
@@ -133,13 +140,50 @@ def test_static_preflight_blocks_runner_supply_and_compiles_docker_graphs() -> N
     assert "github.event.pull_request.base.sha" in preflight["env"]["BASE_SHA"]
     assert "github.event.pull_request.head.sha" in preflight["env"]["HEAD_SHA"]
     assert "rhysd/actionlint:1.7.7" in source
-    assert "git diff --name-only --diff-filter=ACMR" in source
-    assert "git diff --cached --name-only" in source
+    assert "mapfile -t changed_files" in source
+    assert 'changed_lookup["$path"]=1' in source
     assert "docker compose config --quiet" in source
     assert source.count("docker buildx build --check") == 1
+    assert "no Compose graph inputs changed" in source
+    assert "no Dockerfile graph inputs changed" in source
+    assert 'changed_lookup["$dockerfile"]' in source
     assert "src/constitutional-engine/Dockerfile" in source
     assert "src/digital-marketing-agent/Dockerfile" in source
     assert "--push" not in source
+
+
+def test_validation_plan_selects_runners_before_supply() -> None:
+    workflows = [
+        load_ci(),
+        yaml.safe_load(CODE_QUALITY_PATH.read_text(encoding="utf-8")),
+        yaml.safe_load(INTEGRATION_PATH.read_text(encoding="utf-8")),
+        yaml.safe_load(E2E_PATH.read_text(encoding="utf-8")),
+    ]
+    supply = yaml.safe_load(RUNNER_SUPPLY_PATH.read_text(encoding="utf-8"))
+
+    for workflow in workflows:
+        assert workflow["jobs"]["runner-supply"]["needs"] == "validation-plan"
+        assert workflow["jobs"]["runner-supply"]["with"]["runners"] == ("${{ needs.validation-plan.outputs.required_runners }}")
+
+    supply_source = RUNNER_SUPPLY_PATH.read_text(encoding="utf-8")
+    assert "runners:" in supply_source
+    assert "type: string" in supply_source
+    assert supply["jobs"]["supply"]["strategy"]["matrix"]["runner"] == "${{ fromJSON(inputs.runners) }}"
+
+
+def test_validation_plan_uses_lightweight_hash_pinned_control_plane() -> None:
+    workflow = VALIDATION_PLAN_PATH.read_text(encoding="utf-8")
+    requirements = VALIDATION_PLAN_REQUIREMENTS_PATH.read_text(encoding="utf-8")
+
+    assert "actions/setup-python@v5" in workflow
+    assert 'python-version: "3.12"' in workflow
+    assert "pip install --require-hashes --no-deps -r requirements-validation-plan.txt" in workflow
+    assert workflow.count("> /dev/null") >= 5
+    assert "Resolve immutable validation runner" not in workflow
+    assert "./.github/actions/use-validation-runner" not in workflow
+    assert "waooaw.validation-control-plane/v1" in workflow
+    assert "PyYAML==6.0.3" in requirements
+    assert "--hash=sha256:" in requirements
 
 
 def test_candidate_image_is_built_once_and_consumed_by_image_id() -> None:
@@ -296,8 +340,8 @@ def test_shadow_mode_keeps_full_main_publication_authoritative() -> None:
     plan_workflow = (CI_PATH.parent / "validation-plan.yaml").read_text(encoding="utf-8")
 
     assert "validation/engineering-validation.yaml" in plan_workflow
-    assert "WC-102 validation plan (Shadow)" in plan_workflow
-    assert "chmod 0777 test-results/wc102" in plan_workflow
+    assert "WC-102 validation plan" in plan_workflow
+    assert "python scripts/validation_policy.py" in plan_workflow
     assert ci["jobs"]["validation-plan"]["uses"] == "./.github/workflows/validation-plan.yaml"
     assert "needs.validation-plan.outputs.has_service_builds == 'true'" in ci["jobs"]["build"]["if"]
     assert ci["jobs"]["publish"]["if"] == "github.event_name == 'push' && github.ref == 'refs/heads/main'"
