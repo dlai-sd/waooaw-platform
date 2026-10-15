@@ -35,7 +35,7 @@ ACTIVE_PROCESSES_LOCK = threading.Lock()
 DEFAULT_PROGRESS_INTERVAL_SECONDS = 30.0
 EVIDENCE_FILE_NAME = "precheck-manifest.json"
 EVIDENCE_SCHEMA = "waooaw.pr-prechecks/v4"
-CARRY_FORWARD_SELECTOR_VERSION = "wc104-gate-inputs-v5"
+CARRY_FORWARD_SELECTOR_VERSION = "wc104-gate-inputs-v6"
 
 
 @dataclass(frozen=True)

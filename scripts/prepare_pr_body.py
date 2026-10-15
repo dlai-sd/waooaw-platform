@@ -59,7 +59,7 @@ CANDIDATE_EVIDENCE_STATUS_SECTION = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 VALIDATION_POLICY_PATH = Path(__file__).resolve().parents[1] / "validation/engineering-validation.yaml"
-PRECHECK_GRAPH_VERSION = "wc109-prechecks-v11"
+PRECHECK_GRAPH_VERSION = "wc109-prechecks-v12"
 PRECHECK_ORDER = (
     "gitleaks",
     "scripts_quality",
@@ -522,7 +522,7 @@ def precheck_nodes(
         ):
             raise ValueError(f"validation catalog precheck {name} has no declared inputs")
         input_patterns = tuple(input_patterns_value)
-        identity = gate_execution_identity(repository_root, gate_id, head)
+        identity = gate_execution_identity(repository_root, gate_id, head, git_common_dir)
         dependencies: tuple[str, ...] = ()
         if name == "test_web" and "typescript_quality" in applicable_prechecks:
             dependencies = ("typescript_quality",)

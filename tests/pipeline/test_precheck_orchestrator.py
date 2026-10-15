@@ -99,7 +99,7 @@ def test_manifest_binds_inputs_and_node_results(tmp_path: Path) -> None:
         "environment_digest": "e" * 64,
         "service_digest": "s" * 64,
         "input_digest": "",
-        "selector_version": "wc104-gate-inputs-v5",
+        "selector_version": "wc104-gate-inputs-v6",
         "evidence_schema": "waooaw.pr-prechecks/v4",
     }
     assert manifest["nodes"][0]["reuse"]["provenance"] == "executed"

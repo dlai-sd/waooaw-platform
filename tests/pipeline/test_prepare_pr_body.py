@@ -476,7 +476,7 @@ def test_precheck_evidence_must_match_base_and_head() -> None:
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": digest,
-        "graph_version": "wc109-prechecks-v11",
+        "graph_version": "wc109-prechecks-v12",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -527,7 +527,7 @@ def test_precheck_evidence_rejects_configuration_or_runner_mismatch() -> None:
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": "d" * 64,
-        "graph_version": "wc109-prechecks-v11",
+        "graph_version": "wc109-prechecks-v12",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -552,7 +552,7 @@ def test_precheck_graph_canonicalizes_symbolic_base_before_digesting(monkeypatch
     monkeypatch.setattr("prepare_pr_body.gate_input_digest", lambda head, patterns: "p" * 64)
     monkeypatch.setattr(
         "prepare_pr_body.gate_execution_identity",
-        lambda repository, gate, head: {
+        lambda repository, gate, head, git_common_dir: {
             "catalog_version": "test",
             "gate_id": gate,
             "command_id": gate,
@@ -605,7 +605,7 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
     monkeypatch.setattr("prepare_pr_body.shutil.which", lambda executable: f"/usr/bin/{executable}")
     monkeypatch.setattr(
         "prepare_pr_body.gate_execution_identity",
-        lambda repository, gate, head: {
+        lambda repository, gate, head, git_common_dir: {
             "catalog_version": "test",
             "gate_id": gate,
             "command_id": gate,
@@ -656,7 +656,7 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
     assert all("docker compose" not in " ".join(node.command) for node in nodes)
     assert all("run_release_qualification.sh" not in " ".join(node.command) for node in nodes)
     assert all(node.command[node.command.index("--base") + 1] == "b" * 40 for node in nodes)
-    assert captured["graph_version"] == "wc109-prechecks-v11"
+    assert captured["graph_version"] == "wc109-prechecks-v12"
     assert captured["configuration_digest"] == configuration_digest()
     assert captured["runner_digest"] == runner_digest(nodes)
     assert nodes[0].runner_digest == "r" * 64

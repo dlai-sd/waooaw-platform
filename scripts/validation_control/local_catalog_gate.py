@@ -144,12 +144,13 @@ def trusted_runner(
 
 def local_fallback_runner(
     repository: Path,
+    git_common_dir: Path,
     runner_id: str,
     specification: dict[str, Any],
 ) -> tuple[str, str, str, int]:
     identity = specification["identity"]
     image = f"waooaw-validation-runner-{runner_id}:local-{identity.removeprefix('sha256:')}"
-    evidence_root = repository / "test-results/wc104"
+    evidence_root = git_common_dir / "waooaw/runners"
     lock_root = evidence_root / "local-runner-locks"
     lock_root.mkdir(parents=True, exist_ok=True)
     lock_path = lock_root / f"{runner_id}-{identity.removeprefix('sha256:')}.lock"
@@ -200,7 +201,7 @@ def local_fallback_runner(
             raise ValueError(f"local runner build did not produce immutable identities: {runner_id}")
         build_count = 1
         write_local_evidence(
-            repository,
+            git_common_dir,
             runner_id,
             specification,
             image,
@@ -213,7 +214,7 @@ def local_fallback_runner(
 
 
 def write_local_evidence(
-    repository: Path,
+    git_common_dir: Path,
     runner_id: str,
     specification: dict[str, Any],
     image: str,
@@ -222,7 +223,7 @@ def write_local_evidence(
     build_count: int,
     trust_source: str,
 ) -> None:
-    output = repository / "test-results/wc104/local-runner-manifests" / f"{runner_id}.json"
+    output = git_common_dir / "waooaw/runners/local-runner-manifests" / f"{runner_id}.json"
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         json.dumps(
@@ -245,19 +246,21 @@ def write_local_evidence(
     )
 
 
-def resolve_runner(repository: Path, runner_id: str) -> dict[str, Any]:
+def resolve_runner(repository: Path, git_common_dir: Path, runner_id: str) -> dict[str, Any]:
     supply = load_supply_config(repository / "validation/runner-supply.json")
     specification = runner_specification(supply, repository, runner_id)
     trusted = trusted_runner(repository, runner_id, specification)
     if trusted is None:
-        image, resolved_id, runner_digest, build_count = local_fallback_runner(repository, runner_id, specification)
+        image, resolved_id, runner_digest, build_count = local_fallback_runner(
+            repository, git_common_dir, runner_id, specification
+        )
         trust_source = "local-identity-build"
     else:
         image, resolved_id, runner_digest = trusted
         build_count = 0
         trust_source = "trusted-attested-digest"
         write_local_evidence(
-            repository,
+            git_common_dir,
             runner_id,
             specification,
             image,
@@ -277,14 +280,14 @@ def resolve_runner(repository: Path, runner_id: str) -> dict[str, Any]:
     }
 
 
-def gate_execution_identity(repository: Path, gate_id: str, head_sha: str) -> dict[str, str]:
+def gate_execution_identity(repository: Path, gate_id: str, head_sha: str, git_common_dir: Path) -> dict[str, str]:
     catalog = yaml.safe_load((repository / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
     if not isinstance(catalog, dict):
         raise ValueError("validation catalog root must be a mapping")
     plan = build_execution_plan(catalog, [gate_id], mode="qualification", head_sha=head_sha, run_id=f"identity-{gate_id}")
     node = plan["nodes"][0]
     if node.get("runner_required", True):
-        runner_digest = resolve_runner(repository, node["runner_id"])["runner_digest"]
+        runner_digest = resolve_runner(repository, git_common_dir, node["runner_id"])["runner_digest"]
     else:
         runner_digest = node.get("tool_digest")
         if not isinstance(runner_digest, str) or not SHA256.fullmatch(runner_digest):
@@ -450,7 +453,7 @@ def execute_gate(
     resolution: dict[str, Any] | None = None
     if node.get("runner_required", True):
         runner_id = node["runner_id"]
-        resolution = runner_resolution if runner_resolution is not None else resolve_runner(repository, runner_id)
+        resolution = runner_resolution if runner_resolution is not None else resolve_runner(repository, git_common_dir, runner_id)
         if resolution.get("runner_id") != runner_id:
             raise ValueError(f"runner resolution does not match gate runner: {runner_id}")
         environment[f"WAOOAW_RUNNER_{runner_id.upper()}_IMAGE"] = resolution["image"]
