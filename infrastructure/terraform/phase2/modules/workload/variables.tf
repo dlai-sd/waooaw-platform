@@ -199,3 +199,105 @@ variable "ghcr_packages_public" {
   description = "Administrator attestation that all exact-seven GHCR packages allow anonymous digest pulls."
   default     = false
 }
+
+variable "web_session_mode" {
+  type        = string
+  description = "Server-side session migration state. Enabling shadow or enforced requires the complete WC-123 runtime contract."
+
+  validation {
+    condition     = contains(["disabled", "shadow", "enforced"], var.web_session_mode)
+    error_message = "Web session mode must be disabled, shadow, or enforced."
+  }
+}
+
+variable "web_session_config_digest" {
+  type        = string
+  default     = null
+  nullable    = true
+  description = "Accepted WC-123 Web session configuration digest."
+
+  validation {
+    condition     = var.web_session_mode == "disabled" || can(regex("^sha256:[0-9a-f]{64}$", var.web_session_config_digest))
+    error_message = "Enabled Web session authority requires an immutable configuration digest."
+  }
+}
+
+variable "web_session_expected_config_digest" {
+  type        = string
+  default     = null
+  nullable    = true
+  description = "Independently accepted WC-123 Web session configuration digest."
+
+  validation {
+    condition     = var.web_session_mode == "disabled" || can(regex("^sha256:[0-9a-f]{64}$", var.web_session_expected_config_digest))
+    error_message = "Enabled Web session authority requires an independently accepted configuration digest."
+  }
+}
+
+variable "web_session_telemetry_route_digest" {
+  type        = string
+  default     = null
+  nullable    = true
+  description = "Accepted WC-123 telemetry route digest."
+
+  validation {
+    condition     = var.web_session_mode == "disabled" || can(regex("^sha256:[0-9a-f]{64}$", var.web_session_telemetry_route_digest))
+    error_message = "Enabled Web session authority requires an immutable telemetry route digest."
+  }
+}
+
+variable "web_session_expected_telemetry_route_digest" {
+  type        = string
+  default     = null
+  nullable    = true
+  description = "Independently accepted WC-123 telemetry route digest."
+
+  validation {
+    condition     = var.web_session_mode == "disabled" || can(regex("^sha256:[0-9a-f]{64}$", var.web_session_expected_telemetry_route_digest))
+    error_message = "Enabled Web session authority requires an independently accepted telemetry route digest."
+  }
+}
+
+variable "web_session_deploy_version" {
+  type        = string
+  default     = "wc123-auth-session-v1"
+  description = "Schema-compatible WC-123 Web session deploy version."
+
+  validation {
+    condition     = can(regex("^wc123-auth-session-v[0-9]+$", var.web_session_deploy_version))
+    error_message = "Web session deploy version must use the accepted wc123-auth-session-vN form."
+  }
+}
+
+variable "web_session_handle_digest_write_version" {
+  type        = string
+  default     = "v1"
+  description = "Active write version for the WC-123 session-handle digest keyring."
+
+  validation {
+    condition     = can(regex("^v[1-9][0-9]*$", var.web_session_handle_digest_write_version))
+    error_message = "Session-handle digest write version must use the accepted vN form."
+  }
+}
+
+variable "web_session_protocol_digest_write_version" {
+  type        = string
+  default     = "v1"
+  description = "Active write version for the WC-123 protocol digest keyring."
+
+  validation {
+    condition     = can(regex("^v[1-9][0-9]*$", var.web_session_protocol_digest_write_version))
+    error_message = "Protocol digest write version must use the accepted vN form."
+  }
+}
+
+variable "web_session_token_envelope_write_version" {
+  type        = string
+  default     = "v1"
+  description = "Active write version for the WC-123 token-envelope keyring."
+
+  validation {
+    condition     = can(regex("^v[1-9][0-9]*$", var.web_session_token_envelope_write_version))
+    error_message = "Token-envelope write version must use the accepted vN form."
+  }
+}

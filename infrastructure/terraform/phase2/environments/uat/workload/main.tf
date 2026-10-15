@@ -63,6 +63,7 @@ module "workload" {
   ce_min_replicas                          = 0
   pr_min_replicas                          = 0
   workload_enabled                         = module.lease.workload_enabled
+  web_session_mode                         = "disabled"
 }
 
 output "lease_reconciliation_inputs" {

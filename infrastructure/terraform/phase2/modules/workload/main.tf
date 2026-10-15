@@ -29,9 +29,11 @@ locals {
     "professional-runtime"                    = true
     "agent-runtime-adapter-digital-marketing" = false
   }
+
   member_names = {
     for member in local.release_members : member => member == "agent-runtime-adapter-digital-marketing" ? "ca-${var.environment}-dma" : "ca-${var.environment}-${member}"
   }
+
   container_names = {
     for member in local.release_members : member => member == "agent-runtime-adapter-digital-marketing" ? "dma" : member
   }
@@ -79,7 +81,7 @@ locals {
     business-platform                       = "/health/ready"
     professional-runtime                    = "/health"
     ai-runtime                              = "/health"
-    web                                     = "/"
+    web                                     = "/api/health/ready"
     billing-engine                          = "/health"
     agent-runtime-adapter-digital-marketing = "/health/live"
   }
@@ -443,7 +445,7 @@ locals {
       CONSTITUTIONAL_ENGINE_ADDRESS = "ca-${var.environment}-constitutional-engine:80"
       PLATFORM_PHASE                = "IMPLEMENTATION"
     }
-    "web" = {
+    "web" = merge({
       AZURE_KEY_VAULT_URL              = trimsuffix(var.key_vault_secret_uris["web"], "/secrets/web")
       AZURE_KEY_VAULT_WRITER_CLIENT_ID = "710af8d6-8e2c-4f9d-9b1c-2230de9de1f8"
       AZURE_TENANT_ID                  = "0471534c-1bbe-40ab-ae65-3f721b62582c"
@@ -453,7 +455,17 @@ locals {
       NEXTAUTH_URL                     = local.service_urls.web
       NODE_ENV                         = "production"
       WAOOAW_ENVIRONMENT               = var.environment
-    }
+      WAOOAW_SERVER_SESSION_MODE       = var.web_session_mode
+      }, var.web_session_mode == "disabled" ? {} : {
+      SESSION_HANDLE_DIGEST_WRITE_VERSION         = var.web_session_handle_digest_write_version
+      SESSION_PROTOCOL_DIGEST_WRITE_VERSION       = var.web_session_protocol_digest_write_version
+      SESSION_TOKEN_ENVELOPE_WRITE_VERSION        = var.web_session_token_envelope_write_version
+      WEB_SESSION_CONFIG_DIGEST                   = var.web_session_config_digest
+      WEB_SESSION_DEPLOY_VERSION                  = var.web_session_deploy_version
+      WEB_SESSION_EXPECTED_CONFIG_DIGEST          = var.web_session_expected_config_digest
+      WEB_SESSION_EXPECTED_TELEMETRY_ROUTE_DIGEST = var.web_session_expected_telemetry_route_digest
+      WEB_SESSION_TELEMETRY_ROUTE_DIGEST          = var.web_session_telemetry_route_digest
+    })
     "billing-engine" = {
       BILLING_CONTRACT_ID            = "goal006-demo"
       BILLING_DECISION_SPACE_VERSION = "1"
@@ -512,6 +524,21 @@ locals {
   }
   conversation_cursor_secret_resource_ids = {
     conversation-cursor-hmac = "${trimsuffix(var.key_vault_secret_resource_ids["business-platform"], "/business-platform")}/conversation-cursor-hmac"
+  }
+  web_session_secret_environment = {
+    web-session-database-url    = "WEB_SESSION_DATABASE_URL"
+    web-session-handle-digest   = "SESSION_HANDLE_DIGEST_KEYS"
+    web-session-protocol-digest = "SESSION_PROTOCOL_DIGEST_KEYS"
+    web-session-token-envelope  = "SESSION_TOKEN_ENVELOPE_KEYS"
+  }
+  active_web_session_secret_environment = var.web_session_mode == "disabled" ? {} : local.web_session_secret_environment
+  web_session_secret_uris = var.web_session_mode == "disabled" ? {} : {
+    for name in keys(local.web_session_secret_environment) :
+    name => "${trimsuffix(var.key_vault_secret_uris["web"], "/web")}/${name}"
+  }
+  web_session_secret_resource_ids = var.web_session_mode == "disabled" ? {} : {
+    for name in keys(local.web_session_secret_environment) :
+    name => "${trimsuffix(var.key_vault_secret_resource_ids["web"], "/web")}/${name}"
   }
   razorpay_secret_uris = contains(["demo", "uat"], var.environment) ? {
     razorpay-test-key-id         = "${trimsuffix(var.key_vault_secret_uris["billing-engine"], "/billing-engine")}/razorpay-test-key-id"
@@ -599,6 +626,14 @@ resource "azurerm_role_assignment" "conversation_cursor_secret" {
   principal_id         = azurerm_user_assigned_identity.member["business-platform"].principal_id
 }
 
+resource "azurerm_role_assignment" "web_session_secret" {
+  for_each = var.workload_enabled ? local.web_session_secret_resource_ids : {}
+
+  scope                = each.value
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.member["web"].principal_id
+}
+
 resource "azurerm_role_assignment" "razorpay_secret" {
   for_each = var.workload_enabled ? local.razorpay_secret_resource_ids : {}
 
@@ -673,6 +708,15 @@ resource "azurerm_container_app" "member" {
 
   dynamic "secret" {
     for_each = each.key == "business-platform" ? local.conversation_cursor_secret_uris : {}
+    content {
+      name                = secret.key
+      identity            = azurerm_user_assigned_identity.member[each.key].id
+      key_vault_secret_id = secret.value
+    }
+  }
+
+  dynamic "secret" {
+    for_each = each.key == "web" ? local.web_session_secret_uris : {}
     content {
       name                = secret.key
       identity            = azurerm_user_assigned_identity.member[each.key].id
@@ -786,6 +830,14 @@ resource "azurerm_container_app" "member" {
       }
 
       dynamic "env" {
+        for_each = each.key == "web" ? local.active_web_session_secret_environment : {}
+        content {
+          name        = env.value
+          secret_name = env.key
+        }
+      }
+
+      dynamic "env" {
         for_each = each.key == "billing-engine" ? {
           RAZORPAY_KEY_ID         = "razorpay-test-key-id"
           RAZORPAY_KEY_SECRET     = "razorpay-test-key-secret"
@@ -819,6 +871,18 @@ resource "azurerm_container_app" "member" {
         interval_seconds        = 5
         timeout                 = 3
         failure_count_threshold = 30
+      }
+
+      dynamic "liveness_probe" {
+        for_each = each.key == "web" ? [1] : []
+        content {
+          transport               = "HTTP"
+          port                    = local.target_ports[each.key]
+          path                    = "/api/health/live"
+          interval_seconds        = 10
+          timeout                 = 3
+          failure_count_threshold = 3
+        }
       }
 
       dynamic "readiness_probe" {
