@@ -26,6 +26,46 @@ python3 "$(dirname "$0")/goal006_live_inventory.py" \
   --inventory live-inventory.json
 
 mkdir -p revision-evidence
+
+redact_revision_log() {
+  sed -E \
+    -e 's#(postgres(ql)?://[^:/[:space:]]+):[^@[:space:]]+@#\1:[REDACTED]@#g' \
+    -e 's#([Bb]earer[[:space:]]+)[A-Za-z0-9._~+/-]+=*#\1[REDACTED]#g' \
+    -e 's#((password|secret|token|authorization)[=:][[:space:]]*)[^,[:space:]]+#\1[REDACTED]#Ig'
+}
+
+capture_revision_failure_evidence() {
+  local app_name=$1
+  local app=$2
+  local revision=$3
+  local system_log="revision-evidence/$app-system.log"
+
+  if ! az containerapp logs show \
+    --resource-group "$RESOURCE_GROUP" \
+    --name "$app_name" \
+    --type system \
+    --tail 200 \
+    --format text 2>&1 | redact_revision_log > "$system_log"; then
+    echo "System log capture failed for $app_name" >> "$system_log"
+  fi
+
+  test -n "$revision" || return
+  jq -er '.properties.template.containers[].name' "revision-evidence/$app-revision.json" |
+    while IFS= read -r container; do
+      console_log="revision-evidence/$app-$container-console.log"
+      if ! az containerapp logs show \
+        --resource-group "$RESOURCE_GROUP" \
+        --name "$app_name" \
+        --revision "$revision" \
+        --container "$container" \
+        --type console \
+        --tail 200 \
+        --format text 2>&1 | redact_revision_log > "$console_log"; then
+        echo "Console log capture failed for $app_name/$container" >> "$console_log"
+      fi
+    done
+}
+
 temporal_app="ca-$TARGET_ENVIRONMENT-temporal"
 jq -er --arg temporal "$temporal_app" \
   'sort_by(if .name == $temporal then 0 else 1 end) | .[].name' live-inventory.json |
@@ -62,6 +102,7 @@ jq -er --arg temporal "$temporal_app" \
     fi
     echo "Revision not ready: app=$app_name attempt=$attempt/$REVISION_READY_ATTEMPTS latest=$latest_revision latest_ready=$latest_ready_revision" >&2
     if test "$attempt" = "$REVISION_READY_ATTEMPTS"; then
+      capture_revision_failure_evidence "$app_name" "$app" "$latest_revision"
       cat "revision-evidence/$app-app.json" >&2
       test ! -f "revision-evidence/$app-revision.json" || cat "revision-evidence/$app-revision.json" >&2
       echo "Revision readiness timed out: app=$app_name" >&2

@@ -213,6 +213,31 @@ def test_demo_deployment_requires_external_razorpay_credentials_before_apply() -
     assert "azurerm_role_assignment.razorpay_secret" in member
 
 
+def test_wc123_credentials_are_never_created_by_the_generic_seeder() -> None:
+    root = wc091_environment.ROOT
+    catalog = json.loads((root / "infrastructure/environment-readiness/secret-catalog.json").read_text())
+    session_entries = {
+        entry["id"]: entry
+        for entry in catalog["entries"]
+        if entry["id"].startswith("web-session-")
+    }
+    expected = {
+        "web-session-database-url",
+        "web-session-handle-digest",
+        "web-session-protocol-digest",
+        "web-session-token-envelope",
+    }
+
+    assert {entry["vaultSecretName"] for entry in session_entries.values()} == expected
+    assert all(entry["source"] == "external-operator" for entry in session_entries.values())
+    assert all(entry["provisioner"] == "wc123-no-echo-provisioner" for entry in session_entries.values())
+    assert expected.isdisjoint(goal006_deployment_credentials.deployment_credentials(catalog, "demo"))
+    assert expected.isdisjoint(
+        goal006_deployment_credentials.required_external_credentials(catalog, "demo", "disabled")
+    )
+    assert set(goal006_deployment_credentials.required_external_credentials(catalog, "demo", "enforced")) >= expected
+
+
 def test_private_deployment_seeder_creates_missing_hmac_secret(tmp_path) -> None:
     workflow = (wc091_environment.ROOT / ".github/workflows/environment-deployment.yaml").read_text()
     seeder = re.search(r"^\s*seeder_script='(.*)'$", workflow, re.MULTILINE)

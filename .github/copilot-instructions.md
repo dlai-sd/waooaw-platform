@@ -17,6 +17,12 @@ Do not start the BOOTSTRAP sequence automatically. Run it only when the Founder 
   STOP. Ask explicitly: "This would begin writing implementation code. Do you authorize this for the current session?"
   Wait for explicit Founder confirmation. No exceptions.
 
+**⛔ DOCKER-ONLY EXECUTION — ABSOLUTE:**
+- Never create, select, configure, activate, or invoke a host Python environment or virtual environment.
+- Never run host `python`, `python3`, `pip`, `pytest`, or equivalent Python tooling.
+- Run Python checks and all other executable validation only through the repository's approved Docker runners.
+- If an accepted Docker runner is missing or fails before executing the check, stop and report the blocker; do not fall back to host tooling.
+
 When explicitly authorized, the bootstrap sequence is:
 1. Read `constitution/BOOTSTRAP.md` (this file instructs you)
 2. Read `README.md` → extract Epoch, Gate, Authorized Office, Engineering Status

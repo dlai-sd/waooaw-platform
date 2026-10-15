@@ -31,6 +31,33 @@ persistent PostgreSQL and recovery qualification. This approval changes architec
 acceptance of this exact amendment and separate current-session implementation authorization remain
 mandatory before WC091-I1 implementation.
 
+### CB-019 Web Session Database Route - Founder Direction Incorporated 2026-10-15
+
+The Founder binds Demo to a PostgreSQL container image, not a standalone managed instance, and
+accepts that every Demo deployment wipes Demo data. The proposed amendment in CSA-AUTH-001 Section
+12.7.1 places that container in one
+`ca-demo-application-database` dependency with replica-local `EmptyDir` and pinned PgBouncer; only
+PgBouncer has internal TCP ingress at `pgbouncer.db.demo.waooaw.internal:6432`.
+
+For UAT, the amendment selects persistent Flexible Server `psql-uat-application`, database
+`waooaw_application`, and dedicated infrastructure Container App `ca-uat-pgbouncer`. Web reaches
+only `pgbouncer.db.uat.waooaw.internal:6432` over private TLS. PgBouncer alone resolves and reaches
+the Flexible Server over a separate private network/TLS hop; subnet routing, NSGs, and DNS links
+deny Web a direct server path. UAT retains 35 days of backup/PITR and must prove an isolated
+sanitized restore at RPO <= 5 minutes and RTO <= 30 minutes. The active phase-2 UAT roots implement
+none of these resources or route.
+
+The Founder also binds Production to a separate highly available PostgreSQL instance. It shares no
+data, route, DNS, credential, or trust boundary with Demo or UAT; detailed HA design and activation
+remain separately gated.
+
+The Founder accepted this bounded architecture amendment on 2026-10-15. Acceptance closes the
+CB-019 architecture-input condition but does not authorize cloud mutation, qualification, traffic,
+or Production activation. The phase-2 foundation/workload split, dependency manifest, environment
+projections, secret provisioning, qualification, and WC-123 impact manifest must follow this
+amendment. The legacy `infrastructure/terraform/modules/core` PgBouncer remains non-active evidence
+and is not an implementation source.
+
 ### WC-089 Exact-Seven Amendment - Founder Directed 2026-09-15
 
 DMA Release 1 is the seventh permanent first-party release workload. It uses the private
@@ -82,7 +109,7 @@ flowchart TB
     DDNS[www.demo / api.demo / auth.demo]
     DING[ACA managed ingress and L7 load balancer\nFounder IPv4 allowlist]
     DAPP[ACA revisions\nWeb, BP, PR, CE, AIR, Billing, DMA, identity edge, Keycloak, self-hosted Temporal, Redis]
-    DDB[Digest-pinned PostgreSQL in ACA\nreplica-scoped EmptyDir, reset and reseed]
+    DDB[Application database dependency ACA\nPostgreSQL EmptyDir + private-TLS PgBouncer\nreset and reseed]
     DKV[Key Vault private endpoint]
     DMON[Log Analytics]
     DDNS --> DING --> DAPP
@@ -95,11 +122,12 @@ flowchart TB
     UDNS[www.uat / api.uat / auth.uat]
     UING[ACA managed ingress and L7 load balancer\napproved tester allowlist]
     UAPP[Same digests and revision process\nidentity edge keeps Keycloak private\nTemporal Cloud per ADR-015]
+    UPGB[Dedicated infrastructure dependency ACA\nprivate-TLS PgBouncer]
     UDB[PostgreSQL Flexible Server\nPITR and restore qualification]
     UKV[Key Vault private endpoint]
     UMON[Log Analytics]
     UDNS --> UING --> UAPP
-    UAPP --> UDB
+    UAPP --> UPGB --> UDB
     UAPP --> UKV
     UAPP --> UMON
   end
@@ -108,7 +136,7 @@ flowchart TB
     EDGE[Azure Front Door plus WAF\nintroduced only with approved cost and origin lock]
     PING[Private or origin-locked ACA ingress]
     PAPP[Blue-green ACA revisions]
-    PDB[Production PostgreSQL\naccepted HA, PITR, RPO and RTO]
+    PDB[Separate highly available Production PostgreSQL\nPITR, RPO and RTO separately qualified]
     PKV[Production Key Vault]
     PMON[Production telemetry and alerts]
     EDGE --> PING --> PAPP
@@ -128,7 +156,7 @@ Azure Container Apps ingress is the environment load balancer. Demo and UAT do n
 | Access | Founder `/32` | Approved tester CIDRs | No customer traffic |
 | TLS | ACA managed certificates; monitored renewal | ACA managed certificates; monitored renewal | Front Door managed TLS after activation decision |
 | Application compute | ACA min replicas `0`, max `1` | ACA min replicas `0`, bounded test max | Accepted production minima; no apply under WC-076 |
-| Data | Synthetic only; disposable PostgreSQL in ACA on replica-scoped `EmptyDir`; destructive reset and reseed on every database start or revision replacement | Synthetic representative; isolated persistent PostgreSQL and PITR test | Separate persistent production data boundary |
+| Data | Synthetic only; disposable `ca-demo-application-database` dependency with PostgreSQL container on replica-scoped `EmptyDir` and internal private-TLS PgBouncer; destructive reset and reseed on every Demo deployment | Synthetic representative; persistent `psql-uat-application` Flexible Server plus dedicated `ca-uat-pgbouncer`; private TLS on both hops, 35-day backup/PITR, isolated sanitized restore, RPO <= 5 minutes and RTO <= 30 minutes; absent from active phase-2 code | Separate highly available PostgreSQL instance; detailed HA design remains plan-only |
 | Redis | Transient ACA dependency; no backup | Transient ACA dependency; no backup | Managed or HA decision before activation |
 | Temporal | Self-hosted ACA dependency using the disposable Demo PostgreSQL boundary | Temporal Cloud namespace and mTLS per ADR-015 | Temporal Cloud namespace; activation remains reserved |
 | Expiry | Scale all workloads to zero; retain no database state; keep vault, DNS and evidence | Scale all workloads to zero; stop PostgreSQL; keep state, vault, DNS, backups and evidence | Not leased |
@@ -145,6 +173,13 @@ UAT PostgreSQL Flexible Server cannot remain stopped indefinitely: Azure automat
 - Private endpoint addresses are environment-local private IPs, not public ingress addresses. One `privatelink.blob.core.windows.net` private DNS zone may be centrally managed and linked to the isolated runner VNets; VNet links do not grant cross-environment data or identity access.
 - Terraform state and reviewed deployment configuration use Storage private endpoints. Public network access is disabled after private-path qualification. No load balancer, public IP, application DNS record, or TLS certificate is introduced by the Storage private endpoint path.
 - Key Vault and PostgreSQL use private networking and private DNS.
+- Subject to Founder acceptance of the CB-019 amendment, Demo Web reaches application PostgreSQL
+  only through `pgbouncer.db.demo.waooaw.internal:6432`; its private DNS record targets only the
+  dependency ACA internal ingress. UAT Web reaches only
+  `pgbouncer.db.uat.waooaw.internal:6432` on dedicated `ca-uat-pgbouncer`. The UAT Flexible Server
+  DNS zone is linked only to the PgBouncer VNet, and its delegated-subnet NSG allows `5432` only
+  from the PgBouncer subnet while denying application and runner subnets. Neither environment may
+  route to a public address, direct database-server fallback, or another environment.
 - Only Web, Business Platform API, and a pinned identity-edge proxy receive public hostnames. Keycloak itself remains internal. The identity edge allowlists required OIDC discovery, realm, token, login, callback, and static-resource paths; it denies admin, management, metrics, and arbitrary proxying. CE, AIR, Billing, Redis, Temporal, database, direct Keycloak endpoints, and verification jobs remain private.
 - ACA egress is default-deny with explicit HTTPS, Azure DNS, private network, GHCR, Azure control-plane, and approved provider destinations.
 - Deployment and independent verification use distinct environment-scoped OIDC identities. Workloads use per-service managed identities and least-privilege Key Vault references.
@@ -211,16 +246,50 @@ ADR-046 governs workload-to-service authentication and does not create a new run
 
 ## Data And Migration Contract
 
-- Demo uses one digest-pinned PostgreSQL container in ACA with replica-scoped ephemeral `EmptyDir` storage. It has no Azure Files, managed disk, Flexible Server, backup, export, replica-external endpoint, or retained volume. Every database process start and revision replacement performs a generation-fenced destructive initialize-and-seed before traffic; a reset failure or generation/fixture mismatch keeps affected routes unready.
-- UAT and Production remove PostgreSQL sidecars from CE, BP, and Billing. Their persistent PostgreSQL boundary hosts separate databases/roles for application state, Keycloak, and approved dependencies.
+- Demo uses one digest-pinned PostgreSQL container and one separately digest-pinned PgBouncer
+  container in `ca-demo-application-database`, fixed at one replica while leased, with
+  replica-scoped ephemeral `EmptyDir` storage. PostgreSQL has no ingress; only PgBouncer exposes
+  private TCP `6432`. Demo has no Azure Files, managed disk, Flexible Server, backup, export, or
+  retained volume. Every Demo deployment destroys/replaces the volume and performs a
+  generation-fenced destructive initialize-and-seed before traffic; a reset failure or
+  generation/fixture mismatch keeps affected routes unready.
+- UAT removes PostgreSQL sidecars from CE, BP, and Billing. Persistent Flexible Server
+  `psql-uat-application` hosts separate databases/roles for application state, Keycloak, and
+  approved dependencies. Dedicated `ca-uat-pgbouncer` is its only application gateway and only
+  accepted network source; it is not a database authority.
 - For UAT and Production, Terraform first creates PostgreSQL with Entra authentication enabled, password authentication disabled, and no administrator password. The environment deployment identity is the bounded Entra database administrator.
-- A private, digest-pinned bootstrap job connects with an Entra token, creates separate databases and least-privilege roles, and writes generated dependency credentials directly to Key Vault. Values never pass through Terraform inputs, state, plans, outputs, workflow logs, or artifacts.
-- Application services MUST use managed-identity token refresh where their runtime supports it. Password authentication is enabled only in a second reviewed foundation plan when a pinned dependency such as Keycloak or self-hosted Demo Temporal cannot use Entra tokens; only its generated non-admin role may use that path.
+- A private, digest-pinned bootstrap job connects with an Entra token, creates separate databases
+  and least-privilege roles, and writes generated dependency credentials directly through the Key
+  Vault data plane. `WEB_SESSION_DATABASE_URL` is stored only as the environment-local
+  `web-session-database-url` secret; its password and the three structured keyrings are generated
+  in memory. Values never pass through Terraform inputs, locals, state, plans, outputs, workflow
+  inputs/outputs, command arguments, logs, artifacts, or retained evidence.
+- Application services MUST use managed-identity token refresh where their runtime supports it.
+  UAT password authentication is enabled only in a second reviewed foundation plan after Entra
+  bootstrap, solely for generated non-admin roles that cannot use Entra tokens, including
+  `web_session_app` through PgBouncer and an accepted pinned dependency such as Keycloak. No
+  password administrator exists, each role has a distinct Key Vault-delivered credential, and the
+  network still denies every direct Web-to-server path.
 - UAT and Production use Temporal Cloud under ADR-015, with environment-specific mTLS material held in Key Vault. They do not deploy a self-hosted Temporal server.
 - Redis remains reconstructible and transient in Demo/UAT.
 - Migration is a digest-pinned, one-shot pre-traffic job. Migrations are expand-only and bind release/config/schema compatibility.
 - A successful compute health check does not prove data recovery. UAT MUST prove isolated restore/PITR before Production readiness.
 - Rollback never runs destructive down-migrations. The previous qualified digest must read the current additive schema.
+- UAT backup/PITR retention is 35 days. Its isolated private restore runs the mandatory sanitized
+  restore epoch before credentials or traffic and must prove RPO <= 5 minutes and RTO <= 30
+  minutes. Demo makes no recovery claim.
+- Demo Web is capped at one replica and UAT Web at two, with five session connections per replica.
+  The session route reserves 5/10 runtime slots plus 5 migration/operations slots; PostgreSQL
+  limits are 40/100 and PgBouncer client limits 40/80 for Demo/UAT. Qualification rejects total
+  planned server use above 80% and any unreviewed increase.
+- The exact-seven manifest contains only first-party application images. PostgreSQL and PgBouncer
+  images are signed, digest-pinned members of the separate dependency manifest; Flexible Server is
+  a managed infrastructure resource. Promotion never recounts any of them as an eighth
+  first-party image and never copies data, credentials, certificates, DNS, or Key Vault versions.
+- The Chief Platform Architect owns the topology. Platform IT Expert implements the accepted
+  phase-2 graph; Platform Operations owns Key Vault, rotation, lease, and alerting; the Data
+  Architect owns schema/recovery criteria; independent verification owns route-denial, restore,
+  rollback, capacity, and redaction evidence.
 
 ## Implementation Interface Gates
 
@@ -230,7 +299,7 @@ ADR-046 governs workload-to-service authentication and does not create a new run
 | State isolation | Environment backend key, resource scope, OIDC subject, naming and tags | Separate environment plan/state with no cross-environment reference | Wrong subscription, scope, backend or existing-resource ownership stops plan | INST-009 with INST-007 |
 | Release and dependencies | Signed exact-seven manifest, signed pinned-dependency manifest, reviewed config digest, schema compatibility | One immutable deployment tuple | Missing member, digest/signature mismatch, mutable dependency or incompatible schema stops before cloud mutation | INST-009 with INST-006/007 |
 | Runtime configuration | Versioned non-secret schema, Key Vault references, per-service identity matrix | Validated startup configuration with no image-baked environment values | Missing/unknown config, secret fallback or identity failure keeps revision unready | INST-005/007 with INST-009 |
-| Database bootstrap | Demo: pinned database digest, generation ID and approved synthetic fixture digest. UAT/Production: Entra-only server, database/role/RLS contract and bounded bootstrap identity | Demo: clean seeded generation with no prior generation reachable. UAT/Production: separate databases/roles and Key Vault references with no value in Terraform or workflow evidence | Demo reset/seed mismatch or retained prior generation keeps routes unready; persistent-tier partial bootstrap, Key Vault write failure or unexpected password authority blocks application plan | INST-006/007 with INST-009 |
+| Database bootstrap | Demo: pinned PostgreSQL/PgBouncer dependency digests, generation ID and approved synthetic fixture digest. UAT: `psql-uat-application`, `waooaw_application`, dedicated `ca-uat-pgbouncer`, Entra bootstrap identity, exact DNS/TLS/NSG contract, role/RLS contract, 35-day PITR and sanitized-restore objectives. Production: separately authorized HA plan. | Demo: clean seeded generation with no prior generation reachable. UAT: separate databases/roles, private-TLS gateway-only route, Key Vault references with no value in Terraform/workflow evidence, and recovery-qualified persistent state | Demo reset/seed mismatch or retained prior generation keeps routes unready; UAT partial bootstrap, direct/public route, TLS mismatch, Key Vault write failure, recovery-objective failure, or unexpected password authority blocks application plan | INST-006/007 with INST-009 |
 | Dependency handoff | Pinned identity-edge, Keycloak, Demo Temporal and Redis digests; Temporal Cloud endpoint/mTLS for UAT | Healthy private dependencies and approved public identity paths | Version, TLS, health or path-policy failure keeps application traffic at zero | INST-005/007 with INST-009 |
 | Pre-traffic qualification | Migration result, readiness/dependency probes, required CCT set, public journey probes | Signed traffic-switch decision | Any required internal or public probe, CCT, migration or evidence failure leaves old revision active | INST-015 with INST-005/009 |
 | Rollback | Previous qualified tuple, current schema compatibility, approval and hold state | Audited ACA traffic switch with no rebuild or migration | Missing tuple, expired hold, incompatible schema or approval failure blocks rollback | INST-009 with INST-006 |
@@ -267,7 +336,12 @@ Demo may shift directly from zero to 100% after verification. UAT proves the sam
 1. **Runner control plane:** bootstrap the Demo ephemeral self-hosted runner subnet, managed identity, Storage private endpoint and shared private DNS without depending on the protected remote backend; prove exact-blob and Terraform backend access, teardown, and cost evidence before changing workflow runner labels.
 2. **Control plane:** after the complete qualification matrix passes, INST-009 records the result and the Founder authorizes Demo activation. One reviewed commit/PR must switch Demo plan jobs to the environment-scoped runner label and remove temporary public-IP firewall mutation, with an automated assertion that both deltas are present. Disable Storage public network access only after the private job proves exact backend operations. Repeat for UAT only after Founder Demo acceptance; keep Production plan-only and zero-capacity. Reintroducing public mutation or a GitHub-hosted deploy label requires a new reviewed architecture decision.
 3. **Foundation:** VNet/subnets, Log Analytics, Key Vault, PostgreSQL Flexible Server, private DNS, environment identities, DNS prerequisites.
-4. **Runtime dependencies:** database roles/config references, Keycloak, Temporal, transient Redis; remove sidecar databases.
+4. **Runtime dependencies:** subject to CB-019 acceptance, create the Demo application-database
+   dependency and the selected UAT Flexible Server plus dedicated PgBouncer dependency; create the
+   applicable private DNS/trust and network-denial rules, restricted `web_session_app` role,
+   no-echo credential/keyring handoff, Keycloak, Temporal and transient Redis, and remove
+   application sidecar databases. Stop before mutation unless the Founder has accepted the exact
+   amendment and separately authorized implementation.
 5. **Application plane:** exact-seven ACA revisions, private/public boundaries, custom domains, managed TLS, managed identities.
 6. **Release mechanics:** migration job, pre-traffic verification, blue-green traffic switch, rollback, lease expiry and scale-to-zero reconciliation.
 7. **Promotion:** Founder Demo acceptance gate, same-tuple UAT deployment/qualification, dark-Production plan only.

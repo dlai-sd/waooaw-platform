@@ -754,10 +754,12 @@ jobs:
           set -euo pipefail
           credential_names=$(python3 scripts/goal006_deployment_credentials.py \
             --catalog infrastructure/environment-readiness/secret-catalog.json \
-            --environment "$TARGET_ENVIRONMENT")
+            --environment "$TARGET_ENVIRONMENT" \
+            --web-session-mode disabled)
           external_credential_names=$(python3 scripts/goal006_deployment_credentials.py \
             --catalog infrastructure/environment-readiness/secret-catalog.json \
             --environment "$TARGET_ENVIRONMENT" \
+            --web-session-mode disabled \
             --kind required-external)
           credential_schema=$(printf '%s\n%s\n' "$SEEDER_IMAGE" "$credential_names" | sha256sum | cut -d' ' -f1)
           seeding_required=false

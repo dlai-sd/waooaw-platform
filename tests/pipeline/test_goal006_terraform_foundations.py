@@ -572,6 +572,15 @@ def test_post_deploy_verification_requires_the_exact_latest_revision() -> None:
     assert "Revision not ready: app=$app_name" in workflow
     assert "Revision readiness timed out: app=$app_name" in workflow
     assert 'cat "revision-evidence/$app-revision.json" >&2' in workflow
+    assert "capture_revision_failure_evidence()" in workflow
+    assert 'capture_revision_failure_evidence "$app_name" "$app" "$latest_revision"' in workflow
+    assert '--type system' in workflow
+    assert '--type console' in workflow
+    assert '--tail 200' in workflow
+    assert '--revision "$revision"' in workflow
+    assert "redact_revision_log" in workflow
+    assert "[REDACTED]" in workflow
+    assert "--follow" not in workflow
 
     rehearsal = (REPO_ROOT / "scripts/run_goal006_local_azure_verification.sh").read_text(
         encoding="utf-8"
@@ -1100,3 +1109,56 @@ def test_phase2_surface_contains_no_provider_execution_or_secret_values() -> Non
     combined = "\n".join(path.read_text(encoding="utf-8") for path in contracts)
     for token in forbidden:
         assert token.lower() not in combined.lower()
+
+
+def test_web_session_runtime_contract_is_external_and_fail_closed() -> None:
+    contract = read_contract("modules/workload/main.tf")
+    variables = read_contract("modules/workload/variables.tf")
+
+    for environment in ENVIRONMENTS:
+        root = read_contract(f"environments/{environment}/workload/main.tf")
+        assert re.search(r'web_session_mode\s*=\s*"disabled"', root)
+
+    assert 'contains(["disabled", "shadow", "enforced"], var.web_session_mode)' in variables
+    assert 'var.web_session_mode == "disabled" || can(regex("^sha256:' in variables
+    assert re.search(r"WAOOAW_SERVER_SESSION_MODE\s*=\s*var\.web_session_mode", contract)
+    assert 'active_web_session_secret_environment = var.web_session_mode == "disabled" ? {}' in contract
+    assert 'web_session_secret_uris = var.web_session_mode == "disabled" ? {}' in contract
+    assert 'web_session_secret_resource_ids = var.web_session_mode == "disabled" ? {}' in contract
+    assert re.search(
+        r"WEB_SESSION_EXPECTED_CONFIG_DIGEST\s*=\s*var\.web_session_expected_config_digest",
+        contract,
+    )
+    assert re.search(
+        r"WEB_SESSION_EXPECTED_TELEMETRY_ROUTE_DIGEST\s*=\s*var\.web_session_expected_telemetry_route_digest",
+        contract,
+    )
+    for variable in (
+        "web_session_handle_digest_write_version",
+        "web_session_protocol_digest_write_version",
+        "web_session_token_envelope_write_version",
+    ):
+        assert f'variable "{variable}"' in variables
+
+    deployment_workflow = (REPO_ROOT / ".github/workflows/environment-deployment.yaml").read_text(
+        encoding="utf-8"
+    )
+    assert deployment_workflow.count("--web-session-mode disabled") == 2
+
+    for secret_name, environment_name in {
+        "web-session-database-url": "WEB_SESSION_DATABASE_URL",
+        "web-session-handle-digest": "SESSION_HANDLE_DIGEST_KEYS",
+        "web-session-protocol-digest": "SESSION_PROTOCOL_DIGEST_KEYS",
+        "web-session-token-envelope": "SESSION_TOKEN_ENVELOPE_KEYS",
+    }.items():
+        assert secret_name in contract
+        assert environment_name in contract
+
+
+def test_web_uses_dedicated_health_probes() -> None:
+    contract = read_contract("modules/workload/main.tf")
+
+    assert 'web                                     = "/api/health/ready"' in contract
+    assert 'path                    = "/api/health/live"' in contract
+    assert 'for_each = each.key == "web" ? [1] : []' in contract
+    assert re.search(r'dynamic "liveness_probe"', contract)

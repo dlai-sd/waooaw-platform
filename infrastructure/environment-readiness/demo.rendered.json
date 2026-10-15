@@ -1,5 +1,5 @@
 {
-  "catalogDigest": "sha256:1dc75cbeab301a51113645482fa6c16b8451e3635762f7db10476abd25c01435",
+  "catalogDigest": "sha256:5f49991590528267c88491172ef7a24ec0f575e755f2590c0acd9704d4a4928c",
   "configuration": {
     "capacityProfile": {
       "environment": "demo",
@@ -173,7 +173,7 @@
   },
   "environment": "demo",
   "manifestDigest": "sha256:228720c90c3decd509268cdb980a768391916798d2f08317cc93cceb7247246c",
-  "renderDigest": "sha256:47d949052436f692bd94ffee79d269deb132006427275bde04605aea2f304236",
+  "renderDigest": "sha256:7f4f90df664599834759ac45e5f7f6de685ee69c430ca92c652644abe54ce3e9",
   "schemaVersion": "1.0",
   "secretBindings": [
     {
@@ -274,7 +274,7 @@
       ],
       "id": "web-session-database",
       "principal": "web",
-      "reference": "kv://kv-waooaw-demo/secrets/web-session-database-password"
+      "reference": "kv://kv-waooaw-demo/secrets/web-session-database-url"
     },
     {
       "allowedOperations": [

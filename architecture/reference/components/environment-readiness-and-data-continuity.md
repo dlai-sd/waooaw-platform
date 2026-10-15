@@ -192,12 +192,20 @@ truthfully unavailable without making unrelated public reads fail.
 
 Subject to the Section 3 amendment gate, Demo uses a digest-pinned PostgreSQL container in ACA with
 replica-scoped ephemeral `EmptyDir` storage only: no Azure Files, managed disk, Flexible Server,
-backup, export, replica-external database endpoint, or retained database volume. The database is a
-pinned dependency, not a seventh first-party release member. A deployment/revision replacement and
-every database process start run a generation-fenced destructive initialize-and-seed operation
-before traffic; application readiness requires the current generation ID and fixture digest. This
-explicit startup reset closes the platform ambiguity that an ephemeral volume can survive a
-container-only restart within one replica.
+backup, export, public endpoint, or retained database volume. For application state, the accepted
+CB-019 amendment places that container with its pinned PgBouncer gateway in the single
+`ca-demo-application-database` dependency Container App defined by CSA-AUTH-001 Section 12.7.1.
+It replaces replica-local application PostgreSQL sidecars so Web and the approved application
+consumers have one environment-local private-TLS route. PostgreSQL itself has no ingress and
+PgBouncer exposes only private `6432`. The dependency is not an eighth first-party release member,
+new product, or second database authority.
+
+Every phase-2 Demo application deployment replaces or explicitly resets the database dependency,
+destroys its `EmptyDir`, and runs a generation-fenced initialize-and-seed operation before traffic;
+application readiness requires the current generation ID and fixture digest. This implements the
+Founder's binding decision that Demo data is wiped on every deployment and closes the platform
+ambiguity that an ephemeral volume can survive a container-only restart within one replica. Lease
+expiry also scales both Web and the dependency to zero and retains no database state.
 
 The approved synthetic fixture generation is one dependency set spanning application, Keycloak,
 and self-hosted Temporal state. Partial preservation is prohibited: a reset failure or generation
@@ -212,7 +220,15 @@ constitutional evidence requiring retention enters this database.
 UAT introduces one isolated PostgreSQL boundary with separate databases and least-privilege roles for
 application state, Keycloak, and approved dependencies. The implementation follows the accepted
 Entra-first database bootstrap, Key Vault handoff, private networking, and additive migration rules.
-It removes local PostgreSQL sidecars and proves:
+It removes local PostgreSQL sidecars. The canonical topology names Azure Database for PostgreSQL
+Flexible Server `psql-uat-application` and database `waooaw_application`. CSA-AUTH-001 Section
+12.7.1 fixes the only Web route as the dedicated infrastructure dependency
+`ca-uat-pgbouncer` at `pgbouncer.db.uat.waooaw.internal:6432`. Its separate ACA/VNet boundary is the
+only source allowed to reach the Flexible Server private address; Web cannot resolve or route to
+the direct server. PgBouncer verifies the server hostname and chain, and Web independently verifies
+the environment-local PgBouncer hostname and chain. The active phase-2 UAT roots create none of
+these resources, so session-authority activation remains disabled until they are implemented and
+qualified. Once implemented, UAT proves:
 
 - restart and revision continuity;
 - schema migration before traffic;
@@ -252,6 +268,46 @@ restore drill, monitoring, incident response, isolation, and cost. It does not c
 GitHub environments, OIDC bindings, runners, state, Key Vault, DNS, PostgreSQL, or any other
 Production resource, and it does not execute an apply, recovery drill, provider check, or traffic.
 Those actions and Production acceptance require separate Founder authorization outside WC-091.
+
+### 8.4 CB-019 secret and route handoff
+
+For Demo and UAT, the environment projection
+contains only non-secret route facts: canonical PgBouncer hostname and port, physical application-
+database name, required role `web_session_app`, private-DNS zone, TLS trust-bundle digest, and
+credential/keyring Key Vault version identifiers. CSA-AUTH-001 Section 12.7.1 fixes separate values
+for both environments; no value may be inherited or copied between them. The
+closed-world catalog remains the source for `web-session-database-url`,
+`web-session-handle-digest`, `web-session-protocol-digest`, and
+`web-session-token-envelope`.
+
+Terraform may create networking, DNS, role assignments, and value-less Key Vault bindings, but may
+not construct, read, carry, or output the database URL, password, private key, or keyring payload.
+An environment-private no-echo provisioner performs the exact database credential and structured
+keyring algorithms in CSA-AUTH-001 Section 12.7.1 through database and Key Vault data planes. Its
+evidence is metadata-only. Generic random-string seeding is invalid for the three JSON keyrings and
+cannot satisfy preflight.
+
+Preflight and independent verification must prove, without exposing values: environment-local DNS
+resolution; no public resolution/fallback; TLS chain and hostname verification; PgBouncer
+transaction mode; direct database-server denial from Web; exact role and function-only grants;
+catalog, manifest, trust-bundle, credential-version, and keyring-version digest agreement;
+malformed-keyring rejection; and a successful restricted `schema_ready` call. Any failure keeps Web
+authentication and session routes unready.
+
+The Chief Platform Architect owns this topology contract. Platform IT Expert owns its phase-2
+implementation and immutable dependency-manifest binding; Platform Operations owns environment
+Key Vault certificates, credential/keyring lifecycle, lease reconciliation, and alerts; the Data
+Architect owns schema, grants, backup/PITR, sanitized-restore, and RPO/RTO acceptance criteria; the
+independent verifier owns route, denial, recovery, rollback, and redaction evidence. No owner may
+approve its own acceptance evidence. PostgreSQL and PgBouncer are infrastructure dependencies and
+do not enter the exact-seven first-party application-image count.
+
+### 8.5 Production separation
+
+Production uses a separate highly available PostgreSQL instance with independently isolated data,
+network, private DNS, credentials, trust, backup, and recovery boundaries. It is not a promoted,
+shared, restored, or renamed Demo/UAT database. Detailed HA topology, capacity, RPO/RTO proof, and
+activation remain plan-only and require separate authority.
 
 ## 9. Deployment Gates
 
@@ -363,7 +419,10 @@ later office pass.
 
 **Overall status:** `CONDITIONAL PASS - EA AMENDMENT APPROVED - FOUNDER ACCEPTANCE REQUIRED - IMPLEMENTATION UNAUTHORIZED`.
 All small/manageable owner findings identified in this combined call are repaired above. The sole
-unresolved prerequisite is Founder acceptance of the exact Enterprise Architecture amendment.
+unresolved prerequisite for that 2026-09-11 WC-091 disposition is Founder acceptance of the exact
+Enterprise Architecture amendment. The later CB-019 route in Section 8.4 is a Chief Platform
+Architect proposal that separately requires Founder acceptance and current-session implementation
+authorization; this historical owner-review table does not accept it or close `CB-019`.
 This table is a combined owner disposition, not independent assurance, implementation, cloud
 evidence, Production approval, or Founder acceptance.
 

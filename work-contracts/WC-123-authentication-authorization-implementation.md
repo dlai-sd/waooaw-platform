@@ -874,3 +874,34 @@ and implementation discretion.
 Explicit current-session implementation authority and the protected provider, cloud, deployment,
 traffic, activation, approval, and merge gates remain blocking. This is self-verification, not
 implementation authorization, approval, or independent assurance.
+
+## 19. Runtime Configuration Repair Tracker
+
+This tracker records the Founder-authorized 2026-10-15 repair of the failed Demo Web revision.
+It does not authorize Azure apply, DNS, secret values, traffic, activation, Production action,
+approval, or merge. `CB-019` is closed by the accepted database-route amendment, but session
+authority remains disabled until that route and the no-echo credential contract are implemented
+and qualified; no placeholder credential, second database, direct database fallback, or public
+route may substitute for them.
+
+| ID | Outcome | Primary surfaces | Acceptance evidence | Status |
+|---|---|---|---|---|
+| R1 | Web session runtime contract is explicit and externally controlled per environment | Phase-2 Terraform workload module, environment inputs, closed-world secret bindings | Demo, UAT, and Production explicitly select `disabled`; `shadow`/`enforced` require all independent digests, write versions, and Key Vault references; no value is baked into the final image | **DONE** |
+| R2 | Azure uses distinct Web liveness and readiness endpoints | Container App probes and Web health routes | `/api/health/live` is liveness; `/api/health/ready` is readiness; disabled mode omits inactive store checks; enabled modes fail closed on missing/mismatched digests or store readiness | **DONE — 7 Web tests pass** |
+| R3 | Cross-artifact gates prevent another configuration handoff escape | Pipeline, Terraform, catalog, workflow, and final-image environment-contract tests | Mode equality, conditional secret bindings, no-echo credential ownership, immutable-image neutrality, and omission failure are executable contracts | **DONE — 123 pipeline tests pass** |
+| R4 | Failed revisions retain actionable Azure diagnostics | Deployment verifier and independent-verification artifact | On timeout, bounded 200-line redacted system and per-container console logs are written to `revision-evidence/`; no follow stream is used | **DONE** |
+| R5 | Focused Docker validation passes | Repository Docker test runners for pipeline, Terraform, shell, and TypeScript checks | Python 123 passed; Web 7 passed; TypeScript and ESLint passed; four Terraform validations passed; Actionlint and Bash syntax passed; no qualification run | **DONE** |
+| R6 | Exact-head author review and Founder-ready PR are complete | WC-123 tracker, commits, and PR template | Author review found and corrected independent digest/write-version and Terraform placement defects; the unmerged PR is pending preparation | **IN PROGRESS** |
+
+All R1-R6 validation must run through the repository Docker runners. Creating, selecting,
+configuring, activating, or invoking a host Python environment or virtual environment is
+prohibited.
+
+### CB-019 Resolution
+
+WC-123 Sections 7.2, 7.3, 12.7, and 12.8 require Web to connect as `web_session_app` only through
+the accepted private-TLS PgBouncer route to the existing environment application PostgreSQL
+boundary. The Founder accepted the exact Demo, UAT, and Production placement amendment on
+2026-10-15. Current roots remain explicitly `disabled`; selecting `shadow` or `enforced` before the
+accepted environment-local database/PgBouncer resources, no-echo credential/keyring provisioner,
+and qualification evidence exist fails closed.
