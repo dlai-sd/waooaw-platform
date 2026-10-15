@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -892,7 +894,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "secret-seeder-job.json" in workflow
     assert "secret-seeder-console.log" in workflow
     assert workflow.index("capture_seeder_evidence()") < workflow.index("Delete private credential seeder")
-    assert workflow.count("if: inputs.apply") == 10
+    assert workflow.count("if: inputs.apply") == 11
     assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
     assert '--context "external_environment=$external_environment"' in workflow
     assert "if: steps.foundation-cache.outputs.cache_hit != 'true'" in workflow
@@ -957,8 +959,10 @@ def test_deployment_identities_verify_the_active_subscription() -> None:
 def test_demo_web_url_uses_managed_custom_domain() -> None:
     workload = (PHASE2_ROOT / "modules/workload/main.tf").read_text(encoding="utf-8")
     demo = (PHASE2_ROOT / "environments/demo/workload/main.tf").read_text(encoding="utf-8")
+    deployment = (REPO_ROOT / ".github/workflows/environment-deployment.yaml").read_text(encoding="utf-8")
     verification = (REPO_ROOT / ".github/workflows/environment-deployment-verification.yaml").read_text(encoding="utf-8")
     verifier = (REPO_ROOT / "scripts/goal006_verify_deployment.sh").read_text(encoding="utf-8")
+    managed_tls = (REPO_ROOT / "scripts/goal006_bind_demo_managed_certificates.sh").read_text(encoding="utf-8")
 
     assert 'resource "azurerm_container_app_custom_domain" "public_member"' in workload
     assert 'resource "azurerm_container_app_custom_domain" "identity_edge"' in workload
@@ -966,6 +970,21 @@ def test_demo_web_url_uses_managed_custom_domain() -> None:
     assert 'web_custom_hostname                      = "cp.demo.waooaw.com"' in demo
     assert 'identity_custom_hostname                 = "auth.demo.waooaw.com"' in demo
     assert 'api_custom_hostname                      = "api.demo.waooaw.com"' in demo
+    assert "Bind Demo Azure-managed TLS certificates" in deployment
+    assert "bash scripts/goal006_bind_demo_managed_certificates.sh" in deployment
+    assert deployment.index("Terraform workload apply") < deployment.index(
+        "Bind Demo Azure-managed TLS certificates"
+    )
+    assert "az containerapp hostname bind" in managed_tls
+    assert "--validation-method CNAME" in managed_tls
+    assert "--managed-certificates-only" in managed_tls
+    assert "certificate upload" not in managed_tls
+    for app_name, hostname in (
+        ("ca-demo-web", "cp.demo.waooaw.com"),
+        ("ca-demo-business-platform", "api.demo.waooaw.com"),
+        ("ca-demo-identity-edge", "auth.demo.waooaw.com"),
+    ):
+        assert f"{app_name}|{hostname}" in managed_tls
     assert "founder_ipv4_cidr" not in demo
     assert "ip_security_restriction" not in workload
     assert "latest_revision_fqdn" not in workload
@@ -983,6 +1002,73 @@ def test_demo_web_url_uses_managed_custom_domain() -> None:
     )
     assert rehearsal.count("https://cp.demo.waooaw.com") == 2
     assert "203.0.113.10/32" not in rehearsal
+
+
+def test_demo_managed_certificate_binding_is_idempotent(tmp_path: Path) -> None:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_az = fake_bin / "az"
+    fake_az.write_text(
+        """#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\\n' "$*" >> "$AZ_CALL_LOG"
+if [[ "$*" == *"containerapp show"* ]]; then
+  for hostname in cp.demo.waooaw.com api.demo.waooaw.com auth.demo.waooaw.com; do
+    if [[ "$*" == *"$hostname"* ]]; then
+      if grep -qxF "$hostname" "$AZ_BOUND_DOMAINS" 2>/dev/null; then
+        printf 'SniEnabled\\n'
+      else
+        printf 'Disabled\\n'
+      fi
+      exit 0
+    fi
+  done
+fi
+if [[ "$*" == *"containerapp hostname bind"* ]]; then
+  while (($#)); do
+    if [[ "$1" == "--hostname" ]]; then
+      printf '%s\\n' "$2" >> "$AZ_BOUND_DOMAINS"
+      exit 0
+    fi
+    shift
+  done
+fi
+if [[ "$*" == *"containerapp env certificate list"* ]]; then
+  printf '[]\\n'
+  exit 0
+fi
+exit 1
+""",
+        encoding="utf-8",
+    )
+    fake_az.chmod(0o755)
+    call_log = tmp_path / "az-calls.log"
+    bound_domains = tmp_path / "bound-domains"
+    env = os.environ | {
+        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+        "AZ_CALL_LOG": str(call_log),
+        "AZ_BOUND_DOMAINS": str(bound_domains),
+        "MANAGED_CERTIFICATE_MAX_ATTEMPTS": "1",
+        "MANAGED_CERTIFICATE_RETRY_INTERVAL_SECONDS": "0",
+    }
+    command = [
+        "bash",
+        str(REPO_ROOT / "scripts/goal006_bind_demo_managed_certificates.sh"),
+        "demo",
+        "waooaw-demo-rg",
+        "cae-waooaw-demo",
+    ]
+
+    subprocess.run(command, check=True, env=env)
+    subprocess.run(command, check=True, env=env)
+
+    bind_calls = [
+        line
+        for line in call_log.read_text(encoding="utf-8").splitlines()
+        if "containerapp hostname bind" in line
+    ]
+    assert len(bind_calls) == 3
+    assert all("--validation-method CNAME" in call for call in bind_calls)
 
 
 def test_release_attestation_has_one_bounded_fail_closed_retry() -> None:
