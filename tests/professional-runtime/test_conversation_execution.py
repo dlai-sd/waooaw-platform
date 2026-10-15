@@ -1009,7 +1009,8 @@ async def test_non_conversation_validation_uses_problem_contract() -> None:
 
 
 async def test_lifespan_registers_conversation_worker(monkeypatch: pytest.MonkeyPatch) -> None:
-    temporal = MagicMock()
+    temporal = MagicMock(namespace="default")
+    temporal.workflow_service.describe_namespace = AsyncMock()
     connected = AsyncMock(return_value=temporal)
     gateway = MagicMock(close=AsyncMock())
     gateway_factory = MagicMock(return_value=gateway)
@@ -1061,7 +1062,8 @@ async def test_lifespan_connection_failure_is_fail_safe(monkeypatch: pytest.Monk
 
 
 async def test_lifespan_retries_transient_temporal_startup_failure(monkeypatch: pytest.MonkeyPatch) -> None:
-    temporal = MagicMock()
+    temporal = MagicMock(namespace="default")
+    temporal.workflow_service.describe_namespace = AsyncMock()
     connected = AsyncMock(side_effect=[ValueError("starting"), temporal])
     worker_stopped = asyncio.Event()
     worker = MagicMock()
@@ -1088,6 +1090,40 @@ async def test_lifespan_retries_transient_temporal_startup_failure(monkeypatch: 
         assert app.state.temporal_worker is worker
 
     assert connected.await_count == 2
+
+
+async def test_lifespan_retries_until_temporal_namespace_is_ready(monkeypatch: pytest.MonkeyPatch) -> None:
+    temporal = MagicMock(namespace="default")
+    temporal.workflow_service.describe_namespace = AsyncMock(
+        side_effect=[ValueError("namespace unavailable"), None],
+    )
+    worker_stopped = asyncio.Event()
+    worker = MagicMock()
+
+    async def run_worker() -> None:
+        await worker_stopped.wait()
+
+    async def stop_worker() -> None:
+        worker_stopped.set()
+
+    worker.run = run_worker
+    worker.shutdown = stop_worker
+    connect = AsyncMock(return_value=temporal)
+    monkeypatch.setattr(main_module, "connect_temporal_client", connect)
+    monkeypatch.setattr(main_module, "Worker", MagicMock(return_value=worker))
+    monkeypatch.setenv("TEMPORAL_STARTUP_ATTEMPTS", "2")
+    monkeypatch.setenv("TEMPORAL_STARTUP_INTERVAL_SECONDS", "0")
+
+    async with lifespan(app):
+        for _attempt in range(10):
+            if app.state.temporal_client is not None:
+                break
+            await asyncio.sleep(0)
+        assert app.state.temporal_client is temporal
+        assert app.state.temporal_worker is worker
+
+    assert connect.await_count == 2
+    assert temporal.workflow_service.describe_namespace.await_count == 2
 
 
 async def test_temporal_cloud_configuration_names_are_supported(

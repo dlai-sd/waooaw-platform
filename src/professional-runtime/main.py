@@ -17,6 +17,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from temporalio.api.workflowservice.v1 import DescribeNamespaceRequest
 from temporalio.client import Client as TemporalClient
 from temporalio.client import TLSConfig
 from temporalio.service import RPCError
@@ -86,6 +87,9 @@ async def recover_temporal_worker(application: FastAPI, stop: asyncio.Event) -> 
             return
         try:
             temporal = await connect_temporal_client()
+            await temporal.workflow_service.describe_namespace(
+                DescribeNamespaceRequest(namespace=temporal.namespace),
+            )
             worker = Worker(
                 temporal,
                 task_queue=TEMPORAL_TASK_QUEUE,
