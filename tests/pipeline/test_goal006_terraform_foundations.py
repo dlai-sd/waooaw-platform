@@ -575,9 +575,13 @@ def test_post_deploy_verification_requires_the_exact_latest_revision() -> None:
     assert "capture_revision_failure_evidence()" in workflow
     assert 'capture_revision_failure_evidence "$app_name" "$app" "$latest_revision"' in workflow
     assert '--type system' in workflow
+    assert '--type system \\\n    --tail 200 \\\n    --format json' in workflow
     assert '--type console' in workflow
     assert '--tail 200' in workflow
     assert '--revision "$revision"' in workflow
+    assert ".properties.template.containers[]?.name // empty" in workflow
+    assert 'if test -z "$containers"; then' in workflow
+    assert "Console log capture skipped: revision container metadata unavailable" in workflow
     assert "redact_revision_log" in workflow
     assert "[REDACTED]" in workflow
     assert "--follow" not in workflow
@@ -587,6 +591,9 @@ def test_post_deploy_verification_requires_the_exact_latest_revision() -> None:
     )
     assert "force-professional-runtime-unready" in rehearsal
     assert "unhealthy_revision_failure_proved: true" in rehearsal
+    assert "Unhealthy-revision diagnostics crashed before timeout evidence" in rehearsal
+    assert "Unhealthy-revision diagnostics used an unsupported system-log format" in rehearsal
+    assert "professional-runtime-console.log" in rehearsal
     assert 'mktemp -d "$REPO_ROOT/test-results/goal006-local-azure.XXXXXX"' in rehearsal
     assert 'RUN_ID=${WORK_DIR##*.}' in rehearsal
     assert 'goal006-azure-verification-$$' not in rehearsal
