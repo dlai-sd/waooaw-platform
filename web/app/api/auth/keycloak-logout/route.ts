@@ -4,6 +4,7 @@
 
 import { recordWebIdentitySecurityEvent } from '@/lib/identity-security-events';
 import { withJourneyTrace } from '@/lib/journey-telemetry';
+import { isSameOriginRequest } from '@/lib/same-origin-request';
 import { loadSession, revokeSession } from '@/lib/web-session-store';
 import { getToken } from 'next-auth/jwt';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -12,20 +13,29 @@ const sessionCookie = /^(?:__Host-waooaw-session|(?:(?:__Secure-|__Host-)?next-a
 const logoutContinuationCookie = 'waooaw.logout-continuation';
 const logoutCorrelationCookie = 'waooaw.logout-correlation';
 const logoutCommandCookie = 'waooaw.logout-command';
-type LogoutCommand = 'LOCAL_LOGOUT' | 'ACCOUNT_SWITCH';
+const logoutProviderCookie = 'waooaw.logout-provider';
+const normalLogoutState = 'waooaw-home-after-logout';
+const registrationLogoutState = 'waooaw-register-after-logout';
+type LogoutCommand = 'LOCAL_LOGOUT' | 'ACCOUNT_SWITCH' | 'REGISTRATION';
+type RegistrationProvider = 'GOOGLE' | 'FACEBOOK';
 
-function isSameOriginSubmission(request: NextRequest, applicationOrigin: string) {
-  const origin = request.headers.get('origin');
-  if (origin) return origin === applicationOrigin;
-  if (request.headers.get('sec-fetch-site') === 'same-origin') return true;
-
+function reportOriginDenial(request: NextRequest, applicationOrigin: string) {
   const referer = request.headers.get('referer');
-  if (!referer) return false;
+  let refererOrigin: string | undefined;
   try {
-    return new URL(referer).origin === applicationOrigin;
+    refererOrigin = referer ? new URL(referer).origin : undefined;
   } catch {
-    return false;
+    refererOrigin = 'invalid';
   }
+  console.warn('Identity action origin denied', {
+    applicationOrigin,
+    forwardedHost: request.headers.get('x-forwarded-host'),
+    forwardedProto: request.headers.get('x-forwarded-proto'),
+    origin: request.headers.get('origin'),
+    refererOrigin,
+    requestOrigin: request.nextUrl.origin,
+    secFetchSite: request.headers.get('sec-fetch-site'),
+  });
 }
 
 async function sessionToken(request: NextRequest) {
@@ -37,27 +47,35 @@ async function sessionToken(request: NextRequest) {
   });
 }
 
-async function keycloakLogoutUrl(request: NextRequest, applicationOrigin: string, command: LogoutCommand) {
+async function keycloakLogoutUrl(
+  request: NextRequest,
+  applicationOrigin: string,
+  command: LogoutCommand,
+  provider?: RegistrationProvider
+) {
   const token = await sessionToken(request);
   const issuer = new URL(process.env.KEYCLOAK_ISSUER ?? 'http://localhost:8080/realms/waooaw');
   const logout = new URL(`${issuer.toString().replace(/\/$/, '')}/protocol/openid-connect/logout`);
   logout.searchParams.set('client_id', process.env.KEYCLOAK_CLIENT_ID ?? 'waooaw-web');
-  logout.searchParams.set(
-    'post_logout_redirect_uri',
-    new URL(command === 'ACCOUNT_SWITCH' ? '/login?accountSwitch=1' : '/login', applicationOrigin).toString()
-  );
+  logout.searchParams.set('post_logout_redirect_uri', new URL('/login', applicationOrigin).toString());
+  if (command === 'LOCAL_LOGOUT') logout.searchParams.set('state', normalLogoutState);
+  if (command === 'REGISTRATION' && provider)
+    logout.searchParams.set('state', `${registrationLogoutState}:${provider}`);
   if (typeof token?.idToken === 'string') logout.searchParams.set('id_token_hint', token.idToken);
   return logout;
 }
 
 async function revokeOwnedSession(request: NextRequest, command: LogoutCommand) {
-  const token = await sessionToken(request);
-  if (!token) return 'not-applicable' as const;
-
   try {
+    const token = await sessionToken(request);
+    if (!token) return 'not-applicable' as const;
     await revokeSession(token, command === 'ACCOUNT_SWITCH' ? 'ACCOUNT_SWITCH' : 'CUSTOMER_LOGOUT');
     return 'confirmed' as const;
-  } catch {
+  } catch (error) {
+    console.error('Web session revocation failed', {
+      cause: error instanceof Error ? error.name : 'UnknownError',
+      command,
+    });
     return 'unconfirmed' as const;
   }
 }
@@ -68,7 +86,8 @@ function clearSessionCookies(response: NextResponse, request: NextRequest) {
     if (
       cookie.name === logoutContinuationCookie ||
       cookie.name === logoutCorrelationCookie ||
-      cookie.name === logoutCommandCookie
+      cookie.name === logoutCommandCookie ||
+      cookie.name === logoutProviderCookie
     ) {
       response.cookies.set(cookie.name, '', {
         expires: new Date(0),
@@ -105,11 +124,13 @@ async function revocationFailure(request: NextRequest, correlationId: string) {
 
 async function logoutPost(request: NextRequest) {
   const applicationOrigin = new URL(process.env.NEXTAUTH_URL ?? request.nextUrl.origin).origin;
-  if (!isSameOriginSubmission(request, applicationOrigin))
+  if (!isSameOriginRequest(request, applicationOrigin)) {
+    reportOriginDenial(request, applicationOrigin);
     return NextResponse.json(
       { code: 'IDENTITY_ACTION_DENIED', title: 'Sign out request was denied.' },
       { status: 403 }
     );
+  }
 
   if (!request.headers.get('accept')?.includes('application/json')) {
     const logout = await keycloakLogoutUrl(request, applicationOrigin, 'LOCAL_LOGOUT');
@@ -117,8 +138,16 @@ async function logoutPost(request: NextRequest) {
     return clearSessionCookies(NextResponse.redirect(logout, 303), request);
   }
 
-  const input = (await request.json().catch(() => null)) as { command?: unknown } | null;
-  const command: LogoutCommand = input?.command === 'ACCOUNT_SWITCH' ? 'ACCOUNT_SWITCH' : 'LOCAL_LOGOUT';
+  const input = (await request.json().catch(() => null)) as { command?: unknown; provider?: unknown } | null;
+  const command: LogoutCommand =
+    input?.command === 'ACCOUNT_SWITCH' || input?.command === 'REGISTRATION' ? input.command : 'LOCAL_LOGOUT';
+  const provider: RegistrationProvider | undefined =
+    input?.provider === 'GOOGLE' || input?.provider === 'FACEBOOK' ? input.provider : undefined;
+  if (command === 'REGISTRATION' && !provider)
+    return NextResponse.json(
+      { code: 'IDENTITY_ACTION_DENIED', title: 'Registration session reset was denied.' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } }
+    );
   const correlationId = crypto.randomUUID();
   await recordWebIdentitySecurityEvent({
     correlationId,
@@ -134,11 +163,13 @@ async function logoutPost(request: NextRequest) {
   const response = NextResponse.json({
     logoutPath: `/api/auth/keycloak-logout?nonce=${encodeURIComponent(nonce)}`,
   });
-  for (const [name, value] of [
+  const continuationCookies = [
     [logoutContinuationCookie, nonce],
     [logoutCorrelationCookie, correlationId],
     [logoutCommandCookie, command],
-  ]) {
+    ...(provider ? [[logoutProviderCookie, provider]] : []),
+  ];
+  for (const [name, value] of continuationCookies) {
     response.cookies.set(name, value, {
       httpOnly: true,
       maxAge: 60,
@@ -161,7 +192,21 @@ async function logoutGet(request: NextRequest) {
 
   const applicationOrigin = new URL(process.env.NEXTAUTH_URL ?? request.nextUrl.origin).origin;
   const command =
-    request.cookies.get(logoutCommandCookie)?.value === 'ACCOUNT_SWITCH' ? 'ACCOUNT_SWITCH' : 'LOCAL_LOGOUT';
+    request.cookies.get(logoutCommandCookie)?.value === 'ACCOUNT_SWITCH' ||
+    request.cookies.get(logoutCommandCookie)?.value === 'REGISTRATION'
+      ? (request.cookies.get(logoutCommandCookie)?.value as LogoutCommand)
+      : 'LOCAL_LOGOUT';
+  const providerValue = request.cookies.get(logoutProviderCookie)?.value;
+  const provider: RegistrationProvider | undefined =
+    providerValue === 'GOOGLE' || providerValue === 'FACEBOOK' ? providerValue : undefined;
+  if (command === 'REGISTRATION' && !provider)
+    return clearSessionCookies(
+      NextResponse.json(
+        { code: 'IDENTITY_ACTION_DENIED', title: 'Registration session reset was denied.' },
+        { status: 403 }
+      ),
+      request
+    );
   const correlationId = request.cookies.get(logoutCorrelationCookie)?.value;
   if (correlationId)
     await recordWebIdentitySecurityEvent({
@@ -173,7 +218,7 @@ async function logoutGet(request: NextRequest) {
       assuranceClass: 'ANONYMOUS',
     });
 
-  const logout = await keycloakLogoutUrl(request, applicationOrigin, command);
+  const logout = await keycloakLogoutUrl(request, applicationOrigin, command, provider);
   return clearSessionCookies(NextResponse.redirect(logout, 303), request);
 }
 

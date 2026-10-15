@@ -1935,38 +1935,6 @@ select:focus-visible,
 .provider-command small {
   color: var(--muted);
 }
-.provider-disclosure {
-  position: fixed;
-  z-index: 100;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  background: rgb(15 31 48 / 58%);
-}
-.provider-disclosure-content {
-  width: min(100%, 34rem);
-  max-height: calc(100dvh - 2rem);
-  display: grid;
-  gap: 1rem;
-  padding: 1.5rem;
-  overflow-y: auto;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  color: var(--ink);
-  background: var(--surface);
-  box-shadow: 0 24px 72px rgb(15 31 48 / 30%);
-}
-.provider-disclosure-content h2,
-.provider-disclosure-content p {
-  margin: 0;
-}
-.provider-disclosure-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: .75rem;
-}
 .provider-status {
   display: flex;
   flex-wrap: wrap;

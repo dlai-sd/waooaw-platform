@@ -1,11 +1,11 @@
+import type { IdentityProvider } from '@/lib/api/generated/models/IdentityProvider';
+import { getIdentitySession, listIdentityProviders } from '@/lib/api/identity';
+import { getRequestI18n } from '@/lib/i18n-server';
+import { getServerAccessToken } from '@/lib/server-auth';
 import { render, screen } from '@testing-library/react';
 import { redirect } from 'next/navigation';
 import { LoginView } from './LoginView';
 import { RegisterView } from './RegisterView';
-import { getIdentitySession, listIdentityProviders } from '@/lib/api/identity';
-import { getRequestI18n } from '@/lib/i18n-server';
-import { getServerAccessToken } from '@/lib/server-auth';
-import type { IdentityProvider } from '@/lib/api/generated/models/IdentityProvider';
 
 jest.mock('next/navigation', () => ({ redirect: jest.fn() }));
 jest.mock('@/lib/api/identity', () => ({ getIdentitySession: jest.fn(), listIdentityProviders: jest.fn() }));
@@ -17,17 +17,20 @@ jest.mock('./ProviderCommands', () => ({
     intent,
     providers,
     resetSessionBeforeLaunch,
+    resumeProvider,
   }: {
     callbackUrl: string;
     intent: string;
     providers: IdentityProvider[];
     resetSessionBeforeLaunch?: boolean;
+    resumeProvider?: IdentityProvider['id'];
   }) => (
     <div
       data-testid="provider-commands"
       data-callback-url={callbackUrl}
       data-intent={intent}
       data-reset-session={String(resetSessionBeforeLaunch === true)}
+      data-resume-provider={resumeProvider}
     >
       {providers.length} providers
     </div>
@@ -168,6 +171,30 @@ describe('authentication views', () => {
     expect(screen.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute('href', '/terms');
     expect(screen.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
     expect(listIdentityProviders).toHaveBeenCalledTimes(1);
+  });
+
+  it('resumes the selected provider only after a completed registration session reset', async () => {
+    render(
+      await RegisterView({
+        searchParams: Promise.resolve({ provider: 'GOOGLE', returnTo: '/settings', sessionReset: '1' }),
+      })
+    );
+
+    expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-resume-provider', 'GOOGLE');
+    expect(screen.getByTestId('provider-commands')).toHaveAttribute(
+      'data-callback-url',
+      '/register?returnTo=%2Fsettings'
+    );
+  });
+
+  it('does not resume an untrusted registration provider parameter', async () => {
+    render(
+      await RegisterView({
+        searchParams: Promise.resolve({ provider: 'EMAIL', sessionReset: '1' }),
+      })
+    );
+
+    expect(screen.getByTestId('provider-commands')).not.toHaveAttribute('data-resume-provider');
   });
 
   it('reuses the registration flow for an authenticated session', async () => {

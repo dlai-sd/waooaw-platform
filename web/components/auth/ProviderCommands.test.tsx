@@ -1,7 +1,7 @@
+import type { IdentityProvider } from '@/lib/api/generated/models/IdentityProvider';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { signIn } from 'next-auth/react';
 import { ProviderCommands } from './ProviderCommands';
-import type { IdentityProvider } from '@/lib/api/generated/models/IdentityProvider';
 
 jest.mock('next-auth/react', () => ({ signIn: jest.fn() }));
 
@@ -35,16 +35,10 @@ describe('ProviderCommands', () => {
     jest.mocked(signIn).mockReset();
   });
 
-  it('requires disclosure before starting Google account selection', async () => {
+  it('starts Google account selection immediately', async () => {
     render(<ProviderCommands callbackUrl="/home" intent="login" providers={providers} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
-
-    expect(signIn).not.toHaveBeenCalled();
-    expect(screen.getByRole('dialog', { name: 'Continue to Google' })).toHaveTextContent(
-      'WAOOAW does not receive your Google password.'
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to Google' }));
 
     await waitFor(() =>
       expect(signIn).toHaveBeenCalledWith(
@@ -56,16 +50,51 @@ describe('ProviderCommands', () => {
     expect(screen.getByRole('button', { name: 'Log in with Facebook (Unavailable)' })).toBeDisabled();
   });
 
-  it('cancels provider disclosure without starting broker handoff', () => {
-    render(<ProviderCommands callbackUrl="/home" intent="login" providers={providers} />);
+  it('clears a stale Keycloak session before registration and resumes the chosen provider', async () => {
+    const navigate = jest.fn();
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ logoutPath: '/api/auth/keycloak-logout?nonce=registration' }),
+    });
+    Object.defineProperty(globalThis, 'fetch', { configurable: true, value: fetchMock });
+    const { rerender } = render(
+      <ProviderCommands
+        callbackUrl="/register?returnTo=%2Fhome"
+        intent="register"
+        navigate={navigate}
+        providers={providers}
+      />
+    );
 
-    const googleCommand = screen.getByRole('button', { name: 'Log in with Google' });
-    fireEvent.click(googleCommand);
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sign up with Google' }));
 
-    expect(screen.queryByRole('dialog', { name: 'Continue to Google' })).not.toBeInTheDocument();
-    expect(googleCommand).toHaveFocus();
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/api/auth/keycloak-logout?nonce=registration'));
+    expect(fetchMock).toHaveBeenCalledWith('/api/auth/keycloak-logout', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ command: 'REGISTRATION', provider: 'GOOGLE' }),
+    });
     expect(signIn).not.toHaveBeenCalled();
+
+    rerender(
+      <ProviderCommands
+        callbackUrl="/register?returnTo=%2Fhome"
+        intent="register"
+        providers={providers}
+        resumeProvider="GOOGLE"
+      />
+    );
+
+    await waitFor(() =>
+      expect(signIn).toHaveBeenCalledWith(
+        'keycloak-google',
+        { callbackUrl: '/register?returnTo=%2Fhome', waooawIntent: 'REGISTER' },
+        { max_age: '0', prompt: 'select_account' }
+      )
+    );
   });
 
   it('clears a denied session through Keycloak logout before retrying a provider', async () => {
@@ -85,9 +114,8 @@ describe('ProviderCommands', () => {
         resetSessionBeforeLaunch
       />
     );
-
     fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to Google' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/api/auth/keycloak-logout?nonce=recovery'));
     expect(fetchMock).toHaveBeenCalledWith('/api/auth/keycloak-logout', {
@@ -117,9 +145,8 @@ describe('ProviderCommands', () => {
         resetSessionBeforeLaunch
       />
     );
-
     fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to Google' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Google sign-in could not start.');
     expect(navigate).not.toHaveBeenCalled();
@@ -167,9 +194,8 @@ describe('ProviderCommands', () => {
         providers={[providers[0], { ...providers[1], availability: 'AVAILABLE', unavailableReason: undefined }]}
       />
     );
-
     fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to Google' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Log in with Google' })).toBeEnabled());
     expect(screen.getByRole('alert')).toHaveAttribute('data-reason-code', 'BROKER_LAUNCH_FAILED');
@@ -185,9 +211,8 @@ describe('ProviderCommands', () => {
         providers={[providers[0], { ...providers[1], availability: 'AVAILABLE', unavailableReason: undefined }]}
       />
     );
-
     fireEvent.click(screen.getByRole('button', { name: 'Log in with Facebook' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to Facebook' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Log in with Facebook' }));
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Facebook sign-in could not start.'));
     expect(screen.getByRole('alert')).toHaveAttribute('data-reason-code', 'BROKER_LAUNCH_FAILED');
@@ -203,8 +228,6 @@ describe('ProviderCommands', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Log in with Facebook' }));
-    expect(signIn).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to Facebook' }));
 
     await waitFor(() =>
       expect(signIn).toHaveBeenCalledWith(

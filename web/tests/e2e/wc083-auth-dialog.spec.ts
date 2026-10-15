@@ -3,11 +3,34 @@
 // Constitutional basis: C-023 (Evidence First), C-049 (Honest Limitation), C-071 (Accessible interaction)
 
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { type Page, expect, test } from '@playwright/test';
 import { encode } from 'next-auth/jwt';
 
 const baseURL = process.env.BASE_URL ?? 'http://127.0.0.1:3000';
 const nextAuthSecret = 'playwright-only-not-a-runtime-secret';
+
+async function expectRegistrationSessionReset(page: Page, provider: 'GOOGLE' | 'FACEBOOK') {
+  const providerId = provider.toLowerCase();
+  await page.route(
+    (url) => url.pathname === '/api/auth/keycloak-logout' && url.searchParams.has('nonce'),
+    async (route) => {
+      await route.fulfill({
+        status: 303,
+        headers: {
+          location: `${baseURL}/login?state=waooaw-register-after-logout:${provider}`,
+        },
+      });
+    }
+  );
+  const resetRequest = page.waitForRequest(
+    (request) => new URL(request.url()).pathname === '/api/auth/keycloak-logout' && request.method() === 'POST'
+  );
+  const handoffRequest = page.waitForRequest((request) =>
+    request.url().includes(`/api/auth/signin/keycloak-${providerId}`)
+  );
+
+  return { handoffRequest, resetRequest };
+}
 
 test.beforeEach(async ({ context }) => {
   await context.clearCookies();
@@ -38,6 +61,65 @@ test('WC083-AUTH-01: a public auth command opens a route-backed dialog and Escap
   await expect(page).toHaveURL(/\/$/);
   await expect(dialog).toHaveCount(0);
   await expect(trigger).toBeFocused();
+});
+
+test('WC123-AUTH-UI-01: intercepted Login starts provider handoff immediately', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Log in' }).click();
+
+  const authDialog = page.getByRole('dialog', { name: 'Log in to WAOOAW' });
+  await expect(authDialog).toBeVisible();
+  await expect(authDialog.getByRole('button', { name: 'Continue to Google' })).toHaveCount(0);
+
+  const handoffRequest = page.waitForRequest((request) => request.url().includes('/api/auth/signin/keycloak-google'));
+  await authDialog.getByRole('button', { name: 'Log in with Google' }).click();
+
+  expect((await handoffRequest).postData()).toContain('waooawIntent=LOGIN');
+});
+
+test.describe('registration broker session reset', () => {
+  test.use({ serviceWorkers: 'block' });
+
+  test('WC123-AUTH-UI-02: direct Register clears stale SSO before provider handoff', async ({ page }) => {
+    await page.goto('/register');
+
+    const authDialog = page.getByRole('dialog', { name: 'Create your WAOOAW account' });
+    await expect(authDialog.getByRole('button', { name: 'Continue to Google' })).toHaveCount(0);
+
+    const { handoffRequest, resetRequest } = await expectRegistrationSessionReset(page, 'GOOGLE');
+    await authDialog.getByRole('button', { name: 'Sign up with Google' }).click();
+
+    expect((await resetRequest).postDataJSON()).toEqual({ command: 'REGISTRATION', provider: 'GOOGLE' });
+    expect((await handoffRequest).postData()).toContain('waooawIntent=REGISTER');
+  });
+
+  test('WC123-AUTH-UI-03: intercepted Register clears stale SSO before provider handoff', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('a.secondary-link[href="/register"]').first().click();
+
+    const authDialog = page.getByRole('dialog', { name: 'Create your WAOOAW account' });
+    await expect(authDialog).toBeVisible();
+    await expect(authDialog.getByRole('button', { name: 'Continue to Facebook' })).toHaveCount(0);
+
+    const { handoffRequest, resetRequest } = await expectRegistrationSessionReset(page, 'FACEBOOK');
+    await authDialog.getByRole('button', { name: 'Sign up with Facebook' }).click();
+
+    expect((await resetRequest).postDataJSON()).toEqual({ command: 'REGISTRATION', provider: 'FACEBOOK' });
+    expect((await handoffRequest).postData()).toContain('waooawIntent=REGISTER');
+  });
+});
+
+test('WC123-AUTH-UI-04: authentication failure offers safe retry and support contact', async ({ page }) => {
+  await page.goto('/auth/error?error=OAuthCallback');
+
+  await expect(page.getByRole('heading', { name: 'Sign in could not be completed' })).toBeVisible();
+  await expect(page.getByText('No account or relationship change was made.', { exact: false })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'customersupport@dlaisd.com' })).toHaveAttribute(
+    'href',
+    'mailto:customersupport@dlaisd.com'
+  );
+  await expect(page.getByRole('link', { name: 'Try secure sign in again' })).toHaveAttribute('href', '/login');
+  await expect(page.locator('body')).not.toContainText('OAuthCallback');
 });
 
 test('WC092-AUTH-01: login uses no preliminary dialog before the auth route resolves', async ({ page }) => {

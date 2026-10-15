@@ -1,5 +1,6 @@
-import NextAuth from 'next-auth';
+import { randomUUID } from 'node:crypto';
 import { authOptions } from '@/lib/auth';
+import { enforceAuthAbuse } from '@/lib/auth-abuse-limiter';
 import { withJourneyTrace } from '@/lib/journey-telemetry';
 import {
   normalizeOidcCallback,
@@ -7,10 +8,9 @@ import {
   protocolCookiesMatch,
   providerClassFromPath,
 } from '@/lib/oidc-transaction';
-import { consumeOidcTransaction, createOidcTransaction, type OidcTransactionEnvelope } from '@/lib/web-session-store';
-import { randomUUID } from 'node:crypto';
+import { type OidcTransactionEnvelope, consumeOidcTransaction, createOidcTransaction } from '@/lib/web-session-store';
+import NextAuth from 'next-auth';
 import { NextRequest, NextResponse } from 'next/server';
-import { enforceAuthAbuse } from '@/lib/auth-abuse-limiter';
 
 const handler = NextAuth(authOptions);
 const browserBindingCookie = '__Host-waooaw-oidc-browser';
@@ -115,7 +115,7 @@ async function authenticatedResponse(...args: Parameters<typeof handler>) {
     secured.cookies.set(browserBindingCookie, browserBinding, {
       httpOnly: true,
       maxAge: 10 * 60,
-      path: '/api/auth',
+      path: '/',
       sameSite: 'lax',
       secure: applicationOrigin.startsWith('https://'),
     });
@@ -140,7 +140,7 @@ async function authenticatedResponse(...args: Parameters<typeof handler>) {
         });
         routed.cookies.set(browserBindingCookie, '', {
           expires: new Date(0),
-          path: '/api/auth',
+          path: '/',
         });
         routed.headers.set('Cache-Control', 'no-store, max-age=0');
         routed.headers.set('Pragma', 'no-cache');

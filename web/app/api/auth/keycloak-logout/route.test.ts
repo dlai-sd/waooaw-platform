@@ -51,6 +51,7 @@ describe('Keycloak logout route', () => {
     expect(location.searchParams.get('id_token_hint')).toBe('server-held-id-token');
     expect(location.searchParams.get('client_id')).toBe('waooaw-web');
     expect(location.searchParams.get('post_logout_redirect_uri')).toBe('https://app.example/login');
+    expect(location.searchParams.get('state')).toBe('waooaw-home-after-logout');
     expect(response.headers.get('set-cookie')).toContain('next-auth.session-token=;');
     expect(response.headers.get('set-cookie')).toContain('__Host-next-auth.csrf-token=;');
     expect(response.headers.get('set-cookie')).toContain('next-auth.callback-url=;');
@@ -107,8 +108,62 @@ describe('Keycloak logout route', () => {
     );
     const location = new URL(requiredHeader(response, 'location'));
 
-    expect(location.searchParams.get('post_logout_redirect_uri')).toBe('https://app.example/login?accountSwitch=1');
+    expect(location.searchParams.get('post_logout_redirect_uri')).toBe('https://app.example/login');
+    expect(location.searchParams.has('state')).toBe(false);
     expect(response.headers.get('set-cookie')).toContain('waooaw.logout-command=;');
+  });
+
+  it('clears a stale Keycloak session before resuming an allowlisted registration provider', async () => {
+    const post = await POST(
+      new NextRequest('https://app.example/api/auth/keycloak-logout', {
+        method: 'POST',
+        body: JSON.stringify({ command: 'REGISTRATION', provider: 'GOOGLE' }),
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          origin: 'https://app.example',
+        },
+      })
+    );
+    const result = await post.json();
+    const nonce = new URL(result.logoutPath, 'https://app.example').searchParams.get('nonce');
+    const setCookie = requiredHeader(post, 'set-cookie');
+
+    expect(setCookie).toContain('waooaw.logout-command=REGISTRATION');
+    expect(setCookie).toContain('waooaw.logout-provider=GOOGLE');
+
+    const response = await GET(
+      new NextRequest(`https://app.example/api/auth/keycloak-logout?nonce=${nonce}`, {
+        headers: {
+          cookie: `waooaw.logout-continuation=${nonce}; waooaw.logout-command=REGISTRATION; waooaw.logout-provider=GOOGLE`,
+        },
+      })
+    );
+    const location = new URL(requiredHeader(response, 'location'));
+
+    expect(location.searchParams.get('post_logout_redirect_uri')).toBe('https://app.example/login');
+    expect(location.searchParams.get('state')).toBe('waooaw-register-after-logout:GOOGLE');
+    expect(response.headers.get('set-cookie')).toContain('waooaw.logout-provider=;');
+  });
+
+  it('rejects a registration reset without an allowlisted provider', async () => {
+    const response = await POST(
+      new NextRequest('https://app.example/api/auth/keycloak-logout', {
+        method: 'POST',
+        body: JSON.stringify({ command: 'REGISTRATION', provider: 'EMAIL' }),
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          origin: 'https://app.example',
+        },
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      code: 'IDENTITY_ACTION_DENIED',
+      title: 'Registration session reset was denied.',
+    });
   });
 
   it('revokes the Web-owned opaque session before returning the logout continuation', async () => {
@@ -168,6 +223,36 @@ describe('Keycloak logout route', () => {
         reasonCode: 'SESSION_REVOCATION_UNCONFIRMED',
       })
     );
+  });
+
+  it('contains Web session decode failures inside the revocation boundary', async () => {
+    jest.mocked(getToken).mockRejectedValueOnce(new Error('session envelope key unavailable'));
+
+    const response = await POST(
+      new NextRequest('https://app.example/api/auth/keycloak-logout', {
+        method: 'POST',
+        body: JSON.stringify({ command: 'ACCOUNT_SWITCH' }),
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          origin: 'https://app.example',
+          cookie: '__Host-waooaw-session=opaque-session',
+        },
+      })
+    );
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      code: 'SESSION_REVOCATION_UNCONFIRMED',
+      title: 'Sign out could not be completed.',
+    });
+    expect(recordWebIdentitySecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'LOGOUT_FAILURE',
+        reasonCode: 'SESSION_REVOCATION_UNCONFIRMED',
+      })
+    );
+    expect(revokeSession).not.toHaveBeenCalled();
   });
 
   it('does not issue a logout continuation when Web revocation is unconfirmed', async () => {
@@ -267,6 +352,26 @@ describe('Keycloak logout route', () => {
     expect(response.status).toBe(303);
     expect(response.headers.get('set-cookie')).toContain('__Secure-next-auth.session-token.0=;');
     expect(response.headers.get('set-cookie')).toContain('__Secure-next-auth.session-token.1=;');
+  });
+
+  it('accepts a same-origin logout through a trusted reverse proxy', async () => {
+    const response = await POST(
+      new NextRequest('https://0.0.0.0:3000/api/auth/keycloak-logout', {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          origin: 'http://localhost:3100',
+          referer: 'https://app.example/home',
+          'sec-fetch-site': 'same-origin',
+          'x-forwarded-host': 'app.example',
+          'x-forwarded-proto': 'https',
+        },
+        body: JSON.stringify({ command: 'ACCOUNT_SWITCH' }),
+      })
+    );
+
+    expect(response.status).toBe(200);
   });
 
   it('rejects a logout submission without same-origin provenance', async () => {

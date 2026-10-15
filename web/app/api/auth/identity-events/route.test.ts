@@ -2,8 +2,8 @@
 
 jest.mock('@/lib/identity-security-events', () => ({ persistWebIdentitySecurityEvent: jest.fn() }));
 
-import { NextRequest } from 'next/server';
 import { persistWebIdentitySecurityEvent } from '@/lib/identity-security-events';
+import { NextRequest } from 'next/server';
 import { POST } from './route';
 
 describe('identity security event BFF', () => {
@@ -37,6 +37,28 @@ describe('identity security event BFF', () => {
         outcome: 'ATTEMPTED',
       })
     );
+  });
+
+  it('accepts same-origin browser metadata through a trusted reverse proxy', async () => {
+    const response = await POST(
+      new NextRequest('https://0.0.0.0:3000/api/auth/identity-events', {
+        method: 'POST',
+        headers: {
+          origin: 'http://localhost:3100',
+          'sec-fetch-site': 'same-origin',
+          'x-forwarded-host': 'app.example',
+          'x-forwarded-proto': 'https',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          correlationId: crypto.randomUUID(),
+          stage: 'ACCOUNT_SWITCH_REQUESTED',
+          providerClass: 'UNKNOWN',
+        }),
+      })
+    );
+
+    expect(response.status).toBe(204);
   });
 
   it('rejects cross-origin, malformed, and unsupported transitions', async () => {

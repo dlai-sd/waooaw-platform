@@ -1,12 +1,13 @@
 // Implements: work-contracts/WC-103-multitenant-authentication-journeys.md §AUTH-S12
 // Constitutional basis: C-002, C-005, C-059, C-063
 
-import { type NextRequest, NextResponse } from 'next/server';
 import {
-  persistWebIdentitySecurityEvent,
   type WebIdentityProviderClass,
   type WebIdentitySecurityEvent,
+  persistWebIdentitySecurityEvent,
 } from '@/lib/identity-security-events';
+import { isSameOriginRequest } from '@/lib/same-origin-request';
+import { type NextRequest, NextResponse } from 'next/server';
 
 const providerClasses = new Set<WebIdentityProviderClass>(['GOOGLE', 'FACEBOOK', 'APPLE', 'EMAIL', 'UNKNOWN']);
 const transitionEvents = {
@@ -21,15 +22,19 @@ const transitionEvents = {
   ACCOUNT_SWITCH_FAILED: ['ACCOUNT_SWITCH', 'FAILED', 'SESSION_REVOCATION_UNCONFIRMED'],
 } as const;
 
-function isSameOrigin(request: NextRequest) {
-  const applicationOrigin = new URL(process.env.NEXTAUTH_URL ?? request.nextUrl.origin).origin;
-  const origin = request.headers.get('origin');
-  if (origin) return origin === applicationOrigin;
-  return request.headers.get('sec-fetch-site') === 'same-origin';
-}
-
 export async function POST(request: NextRequest) {
-  if (!isSameOrigin(request)) return NextResponse.json({ code: 'IDENTITY_ACTION_DENIED' }, { status: 403 });
+  const applicationOrigin = new URL(process.env.NEXTAUTH_URL ?? request.nextUrl.origin).origin;
+  if (!isSameOriginRequest(request, applicationOrigin)) {
+    console.warn('Identity event origin denied', {
+      applicationOrigin,
+      forwardedHost: request.headers.get('x-forwarded-host'),
+      forwardedProto: request.headers.get('x-forwarded-proto'),
+      origin: request.headers.get('origin'),
+      requestOrigin: request.nextUrl.origin,
+      secFetchSite: request.headers.get('sec-fetch-site'),
+    });
+    return NextResponse.json({ code: 'IDENTITY_ACTION_DENIED' }, { status: 403 });
+  }
 
   let input: { correlationId?: unknown; stage?: unknown; providerClass?: unknown };
   try {

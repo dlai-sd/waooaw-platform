@@ -24,6 +24,12 @@ def test_demo_preview_client_is_public_pkce_and_exact_origin_only() -> None:
     assert '"pkce.code.challenge.method" = "S256"' in workload
     assert '"${var.auth_preview_origin}/api/auth/callback/keycloak-google"' in workload
     assert '"${var.auth_preview_origin}/api/auth/callback/keycloak-facebook"' in workload
+    assert (
+        '"post.logout.redirect.uris"  = "${var.auth_preview_origin}/login"'
+    ) in workload
+    assert (
+        '"post.logout.redirect.uris"  = "${local.service_urls.web}/login"'
+    ) in workload
     assert "*" not in demo_variables
     assert "var.environment == \"demo\"" in variables
     assert "auth_preview_origin" in demo_main
@@ -40,6 +46,7 @@ def test_preview_package_runs_current_source_with_real_local_services() -> None:
         "postgres:",
         "temporal:",
         "jaeger:",
+        "redis:",
         "constitutional-engine:",
         "business-platform:",
         "auth-preview:",
@@ -56,8 +63,26 @@ def test_preview_package_runs_current_source_with_real_local_services() -> None:
     assert 'openssl rand -hex "$2"' in launcher
     assert "secret_value NEXTAUTH_SECRET 32" in launcher
     assert "base64_secret_value CHANNEL_CONTINUITY_HMAC_KEY 32" in launcher
+    assert "base64_secret_value SESSION_PROTOCOL_DIGEST_KEY 32" in launcher
+    assert "base64_secret_value SESSION_HANDLE_DIGEST_KEY 32" in launcher
+    assert "base64_secret_value SESSION_TOKEN_ENVELOPE_KEY 32" in launcher
     assert "AUTH_PREVIEW_DEPLOYMENT_ID=$auth_preview_deployment_id" in launcher
     assert "AUTH_PREVIEW_SESSION_MAX_AGE_SECONDS=3600" in launcher
+    assert "REDIS_URL: redis://redis:6379/0" in compose
+    assert "AUTH_ABUSE_LIMITS_JSON:" in compose
+    assert "SESSION_PROTOCOL_DIGEST_KEYS:" in compose
+    assert "SESSION_HANDLE_DIGEST_KEYS:" in compose
+    assert "SESSION_TOKEN_ENVELOPE_KEYS:" in compose
+    assert "WEB_SESSION_DATABASE_URL:" in compose
+    assert "WEB_SESSION_DATABASE_SSL_MODE: disable" in compose
+    assert "WEB_SESSION_CONFIG_DIGEST:" in compose
+    assert "WEB_SESSION_EXPECTED_CONFIG_DIGEST:" in compose
+    assert "WEB_SESSION_TELEMETRY_ROUTE_DIGEST:" in compose
+    assert "WEB_SESSION_EXPECTED_TELEMETRY_ROUTE_DIGEST:" in compose
+    assert "http://127.0.0.1:3000/api/health/ready" in compose
+    assert "WEB_SESSION_CONFIG_DIGEST=$web_session_config_digest" in launcher
+    assert "WEB_SESSION_TELEMETRY_ROUTE_DIGEST=$web_session_telemetry_route_digest" in launcher
+    assert "redis-cli SET waooaw:auth-preview:auth-abuse:v1:epoch 0" in launcher
     assert "ChannelContinuity__EnvelopeHmacKey" in compose
     assert "AUTH_PREVIEW_DEPLOYMENT_ID" in compose
     assert "ensure-ce-audit-role.sql:/auth-preview/ensure-ce-audit-role.sql:ro" in compose
@@ -79,6 +104,17 @@ def test_preview_package_runs_current_source_with_real_local_services() -> None:
     assert '"sourceTreeDigest"' in launcher
     assert '"webImage"' in launcher
     assert '"webImageId"' in launcher
+
+
+def test_oidc_browser_binding_cookie_is_accepted_by_real_browsers() -> None:
+    route = (ROOT / "web/app/api/auth/[...nextauth]/route.ts").read_text()
+    route_test = (ROOT / "web/app/api/auth/[...nextauth]/route.test.ts").read_text()
+
+    assert "const browserBindingCookie = '__Host-waooaw-oidc-browser';" in route
+    assert "path: '/api/auth'" not in route
+    assert route.count("path: '/'") >= 2
+    assert "expect(response.headers.get('set-cookie')).toContain('Path=/;');" in route_test
+    assert "expect(response.headers.get('set-cookie')).toContain('Secure');" in route_test
 
 
 def test_preview_launcher_documents_exact_codespaces_origin_and_routes() -> None:

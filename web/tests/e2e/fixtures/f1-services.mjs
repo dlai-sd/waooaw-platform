@@ -11,6 +11,15 @@ const acquisitionStates = new Map();
 const selectionFlashes = new Map();
 const goalVerificationStates = new Map();
 const identityProviderDelayMs = Number.parseInt(process.env.IDENTITY_PROVIDER_DELAY_MS ?? '0', 10) || 0;
+let workspaceLayout = {
+  schemaVersion: '1',
+  preferenceVersion: 1,
+  navigationVisibility: 'COLLAPSED',
+  progressVisibility: 'VISIBLE',
+  conversationWidthPercent: 36,
+  reduceMotion: false,
+  updatedAt: '2026-08-12T09:00:00Z',
+};
 
 const governedCards = [
   {
@@ -319,6 +328,13 @@ const server = createServer(async (request, response) => {
     /^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/cancel$/
   );
 
+  if (request.method === 'POST' && url.pathname === '/internal/identity/security-events') {
+    request.resume();
+    response.writeHead(201);
+    response.end();
+    return;
+  }
+
   if (request.method === 'GET' && url.pathname === '/api/v1/customer-portal/interactions/portal/messages') {
     const items = portalMessagesFor(scope);
     json(response, {
@@ -406,6 +422,24 @@ const server = createServer(async (request, response) => {
       ],
     });
     return;
+  }
+
+  if (url.pathname === '/api/v1/identity/settings/workspace-layout') {
+    if (request.method === 'GET') {
+      json(response, workspaceLayout);
+      return;
+    }
+    if (request.method === 'PUT') {
+      const update = await readBody(request);
+      workspaceLayout = {
+        ...workspaceLayout,
+        ...update,
+        preferenceVersion: workspaceLayout.preferenceVersion + 1,
+        updatedAt: '2026-08-12T09:05:00Z',
+      };
+      json(response, workspaceLayout);
+      return;
+    }
   }
 
   if (request.method === 'GET' && url.pathname === '/api/v1/identity/session') {

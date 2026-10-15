@@ -9,9 +9,8 @@
 import type { IdentityProvider } from '@/lib/api/generated/models/IdentityProvider';
 import { recordAuthTransition } from '@/lib/auth-transition';
 import { requestKeycloakLogout } from '@/lib/keycloak-logout';
-import Link from 'next/link';
 import { signIn } from 'next-auth/react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FaApple, FaEnvelope, FaFacebookF, FaGoogle } from 'react-icons/fa6';
 import { clearProtectedClientState } from './SignOutCommand';
 
@@ -55,6 +54,7 @@ export function ProviderCommands({
   readinessPending = false,
   reload = () => window.location.reload(),
   resetSessionBeforeLaunch = false,
+  resumeProvider,
   navigate,
 }: {
   callbackUrl: string;
@@ -63,43 +63,16 @@ export function ProviderCommands({
   readinessPending?: boolean;
   reload?: () => void;
   resetSessionBeforeLaunch?: boolean;
+  resumeProvider?: IdentityProvider['id'];
   navigate?: (path: string) => void;
 }) {
   const [pendingProvider, setPendingProvider] = useState<string>();
-  const [disclosureProvider, setDisclosureProvider] = useState<IdentityProvider>();
   const [launchFailure, setLaunchFailure] = useState<string>();
-  const providerCommand = useRef<HTMLButtonElement | null>(null);
-  const disclosure = useRef<HTMLDialogElement>(null);
-  const continueCommand = useRef<HTMLButtonElement>(null);
-  const orderedProviders = [...providers].sort(
-    (left, right) => providerOrder.indexOf(left.id) - providerOrder.indexOf(right.id)
+  const resumedProvider = useRef(false);
+  const orderedProviders = useMemo(
+    () => [...providers].sort((left, right) => providerOrder.indexOf(left.id) - providerOrder.indexOf(right.id)),
+    [providers]
   );
-
-  useEffect(() => {
-    if (!disclosureProvider) return;
-    continueCommand.current?.focus();
-    function handleDisclosureKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setDisclosureProvider(undefined);
-        providerCommand.current?.focus();
-        return;
-      }
-      if (event.key !== 'Tab') return;
-      const commands = disclosure.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])');
-      if (!commands?.length) return;
-      const first = commands[0];
-      const last = commands[commands.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        last.focus();
-        event.preventDefault();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        first.focus();
-        event.preventDefault();
-      }
-    }
-    window.addEventListener('keydown', handleDisclosureKey);
-    return () => window.removeEventListener('keydown', handleDisclosureKey);
-  }, [disclosureProvider]);
 
   useEffect(() => {
     recordAuthTransition('PROVIDER_PROJECTION_READY');
@@ -110,40 +83,54 @@ export function ProviderCommands({
     return `${action} with ${provider.displayName}`;
   }
 
-  async function begin(provider: IdentityProvider) {
-    if (!isActionable(provider) || !supportsNextAuth(provider.id)) return;
-    setLaunchFailure(undefined);
-    setPendingProvider(provider.id);
-    try {
-      if (resetSessionBeforeLaunch) {
-        recordAuthTransition('ACCOUNT_SWITCH_REQUESTED', 'SESSION_RECOVERY', provider.id);
-        const logoutPath = await requestKeycloakLogout('ACCOUNT_SWITCH');
-        clearProtectedClientState();
-        if (navigate) navigate(logoutPath);
-        else window.location.assign(logoutPath);
-        return;
+  const begin = useCallback(
+    async (provider: IdentityProvider, registrationSessionReset = false) => {
+      if (!isActionable(provider) || !supportsNextAuth(provider.id)) return;
+      setLaunchFailure(undefined);
+      setPendingProvider(provider.id);
+      try {
+        if (resetSessionBeforeLaunch || (intent === 'register' && !registrationSessionReset)) {
+          recordAuthTransition('ACCOUNT_SWITCH_REQUESTED', 'SESSION_RECOVERY', provider.id);
+          const logoutPath = await requestKeycloakLogout(
+            intent === 'register' ? 'REGISTRATION' : 'ACCOUNT_SWITCH',
+            intent === 'register' && (provider.id === 'GOOGLE' || provider.id === 'FACEBOOK') ? provider.id : undefined
+          );
+          clearProtectedClientState();
+          if (navigate) navigate(logoutPath);
+          else window.location.assign(logoutPath);
+          return;
+        }
+        recordAuthTransition('BROKER_REDIRECT_REQUESTED', 'OK', provider.id);
+        await signIn(
+          nextAuthProvider[provider.id],
+          {
+            callbackUrl,
+            waooawIntent: intent === 'login' ? 'LOGIN' : 'REGISTER',
+          },
+          provider.id === 'GOOGLE' ? { max_age: '0', prompt: 'select_account' } : undefined
+        );
+      } catch {
+        setPendingProvider(undefined);
+        setLaunchFailure(provider.displayName);
+        recordAuthTransition('BROKER_LAUNCH_FAILED', 'BROKER_LAUNCH_FAILED', provider.id);
       }
-      recordAuthTransition('BROKER_REDIRECT_REQUESTED', 'OK', provider.id);
-      await signIn(
-        nextAuthProvider[provider.id],
-        {
-          callbackUrl,
-          waooawIntent: intent === 'login' ? 'LOGIN' : 'REGISTER',
-        },
-        provider.id === 'GOOGLE' ? { max_age: '0', prompt: 'select_account' } : undefined
-      );
-    } catch {
-      setPendingProvider(undefined);
-      setLaunchFailure(provider.displayName);
-      recordAuthTransition('BROKER_LAUNCH_FAILED', 'BROKER_LAUNCH_FAILED', provider.id);
-    }
-  }
+    },
+    [callbackUrl, intent, navigate, resetSessionBeforeLaunch]
+  );
 
-  function cancelDisclosure() {
-    setDisclosureProvider(undefined);
-    providerCommand.current?.focus();
-    recordAuthTransition('PROVIDER_CANCELLED', 'CUSTOMER_CANCELLED', disclosureProvider?.id);
-  }
+  useEffect(() => {
+    if (resumedProvider.current) return;
+    const currentParameters = new URLSearchParams(window.location.search);
+    const currentProvider =
+      currentParameters.get('sessionReset') === '1' &&
+      (currentParameters.get('provider') === 'GOOGLE' || currentParameters.get('provider') === 'FACEBOOK')
+        ? (currentParameters.get('provider') as 'GOOGLE' | 'FACEBOOK')
+        : undefined;
+    const provider = orderedProviders.find((candidate) => candidate.id === (resumeProvider ?? currentProvider));
+    if (!provider) return;
+    resumedProvider.current = true;
+    void begin(provider, true);
+  }, [begin, orderedProviders, resumeProvider]);
 
   const readinessUnavailable = providers.some((provider) => provider.unavailableReason === 'TEMPORARILY_UNAVAILABLE');
 
@@ -160,10 +147,7 @@ export function ProviderCommands({
               className={`provider-icon-command provider-command-${provider.id.toLowerCase()}`}
               disabled={unavailable || pendingProvider !== undefined}
               key={provider.id}
-              onClick={(event) => {
-                providerCommand.current = event.currentTarget;
-                setDisclosureProvider(provider);
-              }}
+              onClick={() => void begin(provider)}
               title={unavailable ? `${provider.displayName} is unavailable` : label}
               type="button"
             >
@@ -188,39 +172,6 @@ export function ProviderCommands({
             Try again
           </button>
         </div>
-      ) : null}
-      {disclosureProvider ? (
-        <dialog aria-labelledby="provider-disclosure-title" className="provider-disclosure" open ref={disclosure}>
-          <div className="provider-disclosure-content">
-            <h2 id="provider-disclosure-title">Continue to {disclosureProvider.displayName}</h2>
-            <p>
-              WAOOAW will receive your name, email address, profile information and {disclosureProvider.displayName}{' '}
-              account identifier to sign you in, identify your WAOOAW account, and support registration only when you
-              explicitly choose it. WAOOAW does not receive your {disclosureProvider.displayName} password.
-            </p>
-            <p>
-              {disclosureProvider.displayName} manages its own consent screen. Read the WAOOAW{' '}
-              <Link href="/privacy">Privacy Notice</Link> before continuing.
-            </p>
-            <div className="provider-disclosure-actions">
-              <button className="text-command" onClick={cancelDisclosure} type="button">
-                Cancel
-              </button>
-              <button
-                className="primary-command"
-                onClick={() => {
-                  const provider = disclosureProvider;
-                  setDisclosureProvider(undefined);
-                  void begin(provider);
-                }}
-                ref={continueCommand}
-                type="button"
-              >
-                Continue to {disclosureProvider.displayName}
-              </button>
-            </div>
-          </div>
-        </dialog>
       ) : null}
     </div>
   );
