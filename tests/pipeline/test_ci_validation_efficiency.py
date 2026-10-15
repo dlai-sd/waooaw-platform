@@ -178,6 +178,7 @@ def test_validation_plan_uses_lightweight_hash_pinned_control_plane() -> None:
     assert "actions/setup-python@v5" in workflow
     assert 'python-version: "3.12"' in workflow
     assert "pip install --require-hashes --no-deps -r requirements-validation-plan.txt" in workflow
+    assert workflow.count("> /dev/null") >= 5
     assert "Resolve immutable validation runner" not in workflow
     assert "./.github/actions/use-validation-runner" not in workflow
     assert "waooaw.validation-control-plane/v1" in workflow

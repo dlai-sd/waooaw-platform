@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from validation_control.hosted_policy import GOVERNED_PATHS, validate_hosted_policy
+from validation_control.hosted_policy import CONTROL_PLANE_INSTALL, GOVERNED_PATHS, validate_hosted_policy
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -54,6 +54,29 @@ def test_hosted_policy_does_not_treat_catalog_metadata_as_host_test_execution(tm
     )
 
     assert validate_hosted_policy(tmp_path, (relative,)) == []
+
+
+def test_hosted_policy_allows_only_hash_pinned_validation_plan_install(tmp_path: Path) -> None:
+    relative = ".github/workflows/validation-plan.yaml"
+    path = tmp_path / relative
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        "name: Plan\non: workflow_dispatch\njobs:\n  plan:\n    runs-on: ubuntu-latest\n"
+        f"    steps:\n      - run: {CONTROL_PLANE_INSTALL}\n",
+        encoding="utf-8",
+    )
+
+    assert validate_hosted_policy(tmp_path, (relative,)) == []
+
+    path.write_text(
+        "name: Plan\non: workflow_dispatch\njobs:\n  plan:\n    runs-on: ubuntu-latest\n"
+        "    steps:\n      - run: python -m pip install -r requirements-validation-plan.txt\n",
+        encoding="utf-8",
+    )
+
+    assert validate_hosted_policy(tmp_path, (relative,)) == [
+        "HOSTED_COMMAND_PROHIBITED:.github/workflows/validation-plan.yaml:host-package-install"
+    ]
 
 
 def test_hosted_policy_inventory_covers_validation_workflows_and_actions() -> None:
