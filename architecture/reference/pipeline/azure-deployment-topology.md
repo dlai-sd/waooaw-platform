@@ -154,7 +154,7 @@ Azure Container Apps ingress is the environment load balancer. Demo and UAT do n
 |---|---|---|---|
 | Public names | `www.demo.waooaw.com`, `api.demo.waooaw.com`, `auth.demo.waooaw.com` | `www.uat.waooaw.com`, `api.uat.waooaw.com`, `auth.uat.waooaw.com` | `www.waooaw.com`, `api.waooaw.com`, `auth.waooaw.com` reserved |
 | Access | Founder `/32` | Approved tester CIDRs | No customer traffic |
-| TLS | ACA managed certificates; monitored renewal | ACA managed certificates; monitored renewal | Front Door managed TLS after activation decision |
+| TLS | Deployment idempotently creates and binds ACA-managed certificates for `cp.demo`, `api.demo`, and `auth.demo`; Azure owns private keys and automatic renewal, and the Founder imports no certificate | ACA managed certificates; monitored renewal | Front Door managed TLS after activation decision |
 | Application compute | ACA min replicas `0`, max `1` | ACA min replicas `0`, bounded test max | Accepted production minima; no apply under WC-076 |
 | Data | Synthetic only; disposable `ca-demo-application-database` dependency with PostgreSQL container on replica-scoped `EmptyDir` and internal private-TLS PgBouncer; destructive reset and reseed on every Demo deployment | Synthetic representative; persistent `psql-uat-application` Flexible Server plus dedicated `ca-uat-pgbouncer`; private TLS on both hops, 35-day backup/PITR, isolated sanitized restore, RPO <= 5 minutes and RTO <= 30 minutes; absent from active phase-2 code | Separate highly available PostgreSQL instance; detailed HA design remains plan-only |
 | Redis | Transient ACA dependency; no backup | Transient ACA dependency; no backup | Managed or HA decision before activation |

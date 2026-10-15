@@ -1063,6 +1063,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+      - name: Bind Demo Azure-managed TLS certificates
+        if: inputs.apply && inputs.environment == 'demo'
+        env:
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          CONTAINER_APP_ENVIRONMENT: ${{ steps.foundation.outputs.container_app_environment_name }}
+        run: |
+          bash scripts/goal006_bind_demo_managed_certificates.sh \
+            demo \
+            "$RESOURCE_GROUP" \
+            "$CONTAINER_APP_ENVIRONMENT"
+
       - name: Preserve workload state after apply failure
         if: failure() && steps.workload.outcome == 'failure'
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload
