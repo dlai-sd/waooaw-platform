@@ -30,6 +30,11 @@ runners:
     profile: test
     dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner
     docker_socket: true
+  azure:
+    compose_service: test-runner-azure
+    profile: test-azure
+    dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner-azure
+    docker_socket: true
 
 commands:
   build-constitutional-engine: {shell: "dotnet restore src/constitutional-engine --artifacts-path /tmp/artifacts/constitutional-engine && dotnet build src/constitutional-engine --artifacts-path /tmp/artifacts/constitutional-engine --no-restore"}
@@ -152,7 +157,7 @@ gates:
   dep-scan:typescript: {<<: *security_gate, gate_id: "dep-scan:typescript", runner_id: typescript, command_id: dependency-scan-typescript, resources: *typescript_resources, reusable: false}
   secrets: {<<: *security_gate, gate_id: secrets, command_id: secrets, global_trigger: true}
   license-check: {<<: *security_gate, gate_id: license-check, command_id: license-check, global_trigger: true, environment: [WAOOAW_CHANGED_FILES_FILE]}
-  release-qualification: {<<: *python_static, gate_id: release-qualification, runner_id: full, command_id: release-qualification, evidence_class: release, cost_class: QUALIFICATION, resources: {cpus: 2, memory_mb: 6144, disk_mb: 2048, timeout_seconds: 3600, docker_socket: true, socket_classification: host-orchestration, concurrency_class: qualification}, environment: [WAOOAW_CHANGED_FILES_FILE, WAOOAW_HOST_CHANGED_FILES_FILE], global_trigger: true}
+  release-qualification: {<<: *python_static, gate_id: release-qualification, runner_id: python, auxiliary_runners: [full, azure], command_id: release-qualification, evidence_class: release, cost_class: QUALIFICATION, resources: {cpus: 2, memory_mb: 6144, disk_mb: 2048, timeout_seconds: 3600, docker_socket: true, socket_classification: host-orchestration, concurrency_class: qualification}, environment: [WAOOAW_CHANGED_FILES_FILE, WAOOAW_HOST_CHANGED_FILES_FILE], global_trigger: true}
   constitutional-commit-gate: {<<: *python_static, gate_id: constitutional-commit-gate, command_id: constitutional-commit-gate, evidence_class: CCT, global_trigger: true}
   requirement-ledger: {<<: *python_static, gate_id: requirement-ledger, command_id: requirement-ledger, evidence_class: contract, global_trigger: true}
   author-review-gate: {<<: *python_static, gate_id: author-review-gate, command_id: author-review-gate, evidence_class: contract, global_trigger: true}

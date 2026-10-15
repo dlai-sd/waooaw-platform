@@ -450,6 +450,7 @@ jobs:
     needs: [runner-supply, validation-plan, qualification-control]
     if: >-
       needs.validation-plan.outputs.release_required == 'true' &&
+      needs.validation-plan.outputs.release_lanes != '[]' &&
       needs.qualification-control.outputs.enabled == 'true'
     permissions:
       contents: read
@@ -460,8 +461,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Resolve full release runner
+        if: needs.validation-plan.outputs.release_full_runner_required == 'true'
+        uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: full
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve prebuilt Azure verification runner
+        if: needs.validation-plan.outputs.release_azure_runner_required == 'true'
+        uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: azure
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Execute catalog release qualification
-        if: needs.validation-plan.outputs.release_required == 'true'
         uses: ./.github/actions/run-validation-gate
         id: runner-build
         continue-on-error: true
@@ -488,7 +502,7 @@ jobs:
           retention-days: 90
 
       - name: Retain WC-091 Demo data evidence
-        if: always() && needs.validation-plan.outputs.release_required == 'true'
+        if: always() && contains(fromJSON(needs.validation-plan.outputs.release_lanes), 'demo-data')
         uses: actions/upload-artifact@v4
         with:
           name: wc091-i1-demo-data-${{ github.run_id }}
@@ -497,7 +511,7 @@ jobs:
           retention-days: 90
 
       - name: Retain Docker Azure CLI runtime evidence
-        if: always() && needs.validation-plan.outputs.release_required == 'true'
+        if: always() && contains(fromJSON(needs.validation-plan.outputs.release_lanes), 'azure')
         uses: actions/upload-artifact@v4
         with:
           name: goal006-local-azure-runtime-${{ github.run_id }}
@@ -582,8 +596,8 @@ jobs:
       - uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
+          build-mode: none
           queries: security-and-quality
-      - uses: github/codeql-action/autobuild@v4
       - uses: github/codeql-action/analyze@v4
         with:
           category: /language:${{ matrix.language }}

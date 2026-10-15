@@ -42,11 +42,11 @@ def fixture_repository(tmp_path: Path) -> tuple[Path, dict[str, object]]:
     return tmp_path, config
 
 
-def test_repository_supply_config_resolves_all_four_narrow_contexts() -> None:
+def test_repository_supply_config_resolves_all_five_narrow_contexts() -> None:
     root = Path(__file__).resolve().parents[2]
     config = load_supply_config(root / "validation/runner-supply.json")
 
-    assert set(config["runners"]) == {"python", "dotnet", "typescript", "full"}
+    assert set(config["runners"]) == {"python", "dotnet", "typescript", "full", "azure"}
     for runner_id in config["runners"]:
         specification = runner_specification(config, root, runner_id)
         assert specification["identity"].startswith("sha256:")
@@ -368,7 +368,7 @@ def test_supply_workflow_serializes_producers_and_consumers_verify_digests() -> 
     consumer = (root / ".github/actions/use-validation-runner/action.yml").read_text(encoding="utf-8")
 
     assert "group: wc104-runner-supply-${{ matrix.runner }}" in supply
-    assert "matrix:\n        runner: [python, dotnet, typescript, full]" in supply
+    assert 'default: \'["python","dotnet","typescript","full","azure"]\'' in supply
     assert "cache-from: type=gha,scope=wc104-${{ matrix.runner }}-${{ steps.identity.outputs.identity }}" in supply
     assert "cache-to: type=gha,mode=max,scope=wc104-${{ matrix.runner }}-${{ steps.identity.outputs.identity }}" in supply
     assert 'resolution_tag="candidate-${candidate_sha}-${identity#sha256:}"' in supply
@@ -442,10 +442,13 @@ def test_release_ci_executes_catalog_gate_without_duplicate_command_or_runner_ma
     job = workflow["jobs"]["release-qualification"]
     rendered = json.dumps(job)
 
-    assert set(job["needs"]) == {"runner-supply", "validation-plan"}
+    assert set(job["needs"]) == {"runner-supply", "validation-plan", "qualification-control"}
     assert "./.github/actions/run-validation-gate" in rendered
     assert '"gate-id": "release-qualification"' in rendered
-    assert '"runner-id": "full"' not in rendered
+    assert '"runner-id": "full"' in rendered
+    assert '"runner-id": "azure"' in rendered
+    assert "release_full_runner_required" in rendered
+    assert "release_azure_runner_required" in rendered
     assert "scripts/run_release_qualification.sh" not in rendered
 
 

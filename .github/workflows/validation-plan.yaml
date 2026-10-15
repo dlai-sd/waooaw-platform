@@ -6,6 +6,15 @@ on:
       release_required:
         description: Whether the selected change requires release qualification
         value: ${{ jobs.plan.outputs.release_required }}
+      release_lanes:
+        description: JSON array of applicable release qualification lanes
+        value: ${{ jobs.plan.outputs.release_lanes }}
+      release_full_runner_required:
+        description: Whether release qualification needs the full multi-stack runner
+        value: ${{ jobs.plan.outputs.release_full_runner_required }}
+      release_azure_runner_required:
+        description: Whether release qualification needs the prebuilt Azure verifier
+        value: ${{ jobs.plan.outputs.release_azure_runner_required }}
       selected_gates:
         description: JSON array of observational Shadow-selected validation gates
         value: ${{ jobs.plan.outputs.selected_gates }}
@@ -43,6 +52,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_required: ${{ steps.plan.outputs.release_required }}
+      release_lanes: ${{ steps.plan.outputs.release_lanes }}
+      release_full_runner_required: ${{ steps.plan.outputs.release_full_runner_required }}
+      release_azure_runner_required: ${{ steps.plan.outputs.release_azure_runner_required }}
       selected_gates: ${{ steps.plan.outputs.selected_gates }}
       execution_gates: ${{ steps.plan.outputs.execution_gates }}
       selective_enforcement: ${{ steps.plan.outputs.selective_enforcement }}
@@ -141,13 +153,64 @@ jobs:
           python scripts/validate_requirement_ledger.py \
             --repository-root "$GITHUB_WORKSPACE" \
             --changed-file-list test-results/wc102/changed-files.txt
+          release_scope="$RUNNER_TEMP/release-scope.env"
+          python scripts/validation_control/qualification_change_scope.py \
+            --gate release-qualification \
+            --changed-files test-results/wc102/changed-files.txt \
+            > "$release_scope"
+          RELEASE_RUN_TESTS=
+          RELEASE_RUN_POSTGRES=
+          RELEASE_RUN_DEMO_DATA=
+          RELEASE_RUN_SIMULATOR=
+          RELEASE_RUN_AZURE=
+          while IFS='=' read -r key value; do
+            case "$key" in
+              RELEASE_RUN_TESTS) RELEASE_RUN_TESTS=$value ;;
+              RELEASE_RUN_POSTGRES) RELEASE_RUN_POSTGRES=$value ;;
+              RELEASE_RUN_DEMO_DATA) RELEASE_RUN_DEMO_DATA=$value ;;
+              RELEASE_RUN_SIMULATOR) RELEASE_RUN_SIMULATOR=$value ;;
+              RELEASE_RUN_AZURE) RELEASE_RUN_AZURE=$value ;;
+            esac
+          done < "$release_scope"
+          for lane_selected in \
+            "$RELEASE_RUN_TESTS" "$RELEASE_RUN_POSTGRES" "$RELEASE_RUN_DEMO_DATA" \
+            "$RELEASE_RUN_SIMULATOR" "$RELEASE_RUN_AZURE"; do
+            [[ "$lane_selected" == true || "$lane_selected" == false ]]
+          done
+          release_lanes=$(jq -cn \
+            --argjson tests "$RELEASE_RUN_TESTS" \
+            --argjson postgres "$RELEASE_RUN_POSTGRES" \
+            --argjson demo_data "$RELEASE_RUN_DEMO_DATA" \
+            --argjson simulator "$RELEASE_RUN_SIMULATOR" \
+            --argjson azure "$RELEASE_RUN_AZURE" \
+            '[
+              {name:"tests", enabled:$tests},
+              {name:"postgres", enabled:$postgres},
+              {name:"demo-data", enabled:$demo_data},
+              {name:"simulator", enabled:$simulator},
+              {name:"azure", enabled:$azure}
+            ] | map(select(.enabled) | .name)')
+          release_full_runner_required=false
+          if [[ "$RELEASE_RUN_TESTS" == true || "$RELEASE_RUN_POSTGRES" == true || "$RELEASE_RUN_SIMULATOR" == true ]]; then
+            release_full_runner_required=true
+          fi
+          required_runners=$(jq -c '.required_runners' test-results/wc102/hosted-execution-plan.json)
+          if [[ "$release_full_runner_required" == true ]]; then
+            required_runners=$(jq -c '. + ["full"] | unique' <<< "$required_runners")
+          fi
+          if [[ "$RELEASE_RUN_AZURE" == true ]]; then
+            required_runners=$(jq -c '. + ["azure"] | unique' <<< "$required_runners")
+          fi
           release_required=$(jq -r '.release_required' test-results/wc102/hosted-execution-plan.json)
           {
             echo "release_required=$release_required"
+            echo "release_lanes=$release_lanes"
+            echo "release_full_runner_required=$release_full_runner_required"
+            echo "release_azure_runner_required=$RELEASE_RUN_AZURE"
             echo "selected_gates=$(jq -c '.selected_gates' test-results/wc102/change-impact.json)"
             echo "execution_gates=$(jq -c '.execution_gates' test-results/wc102/hosted-execution-plan.json)"
             echo "selective_enforcement=$(jq -r '.selective_enforcement' test-results/wc102/hosted-execution-plan.json)"
-            echo "required_runners=$(jq -c '.required_runners' test-results/wc102/hosted-execution-plan.json)"
+            echo "required_runners=$required_runners"
             echo "service_build_matrix=$(jq -c '.service_build_matrix' test-results/wc102/hosted-execution-plan.json)"
             echo "has_service_builds=$(jq -r '.service_build_matrix | length > 0' test-results/wc102/hosted-execution-plan.json)"
             echo "dotnet_test_matrix=$(jq -c '.dotnet_test_matrix' test-results/wc102/hosted-execution-plan.json)"

@@ -942,7 +942,7 @@ main-push, and scheduled changes.
 Acceptance:
 
 - A documentation-only candidate does not resolve or publish an unselected runner.
-- A full-inventory candidate still supplies all four validation runners.
+- A full-inventory candidate still supplies all five validation runners.
 - No validation gate starts until every runner selected for that candidate has trusted immutable
   manifest evidence.
 - The validation plan does not download or start the multi-language full runner merely to compute
@@ -951,3 +951,30 @@ Acceptance:
   workflow lint remains scoped to changed workflow files.
 - Static workflow validation proves the plan-to-supply dependency direction in CI, Code Quality,
   Integration, and E2E workflows.
+
+### 9.6 Long-Running Gate Optimization
+
+Release qualification selects its exact lanes before runner supply. Planning-only dependency and
+hosted-policy changes do not select deployment rehearsal, while unknown paths and changes to the
+qualification selector, catalog, runner supply, or shared release execution remain fail-closed.
+The lean Python runner provides the fixed host-orchestration identity; the full multi-stack runner
+is supplied only for test, PostgreSQL, or simulator lanes, and the Azure runner only for the Azure
+lane.
+
+The Azure runner is an immutable digest-pinned Azure CLI image with Container Apps extension
+`1.3.0b4` installed at build time. Runtime verification checks the installed extension version and
+records durations for image/emulator readiness, extension readiness, positive deployment,
+negative deployment, and cleanup evidence.
+
+C# CodeQL uses supported buildless analysis while retaining the `security-and-quality` query
+suite. Python and JavaScript CodeQL coverage remains unchanged.
+
+Acceptance:
+
+- `requirements-validation-plan.txt` and `scripts/validation_control/hosted_policy.py` do not
+  select any release lane.
+- Azure-only qualification does not supply or pull the full multi-stack runner.
+- Mixed qualification consumes the independently attested full and Azure runner images.
+- The prebuilt Azure image proves Container Apps extension `1.3.0b4` under the runtime user.
+- C# CodeQL has `build-mode: none`, no autobuild step, and unchanged query coverage.
+- Release evidence uploads are conditional on the lane that produces each artifact.

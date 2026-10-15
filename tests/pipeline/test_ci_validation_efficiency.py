@@ -24,6 +24,8 @@ PYTHON_QUALITY_GATE_PATH = ROOT / "scripts/validation_control/run_python_quality
 DEPENDENCY_GATE_PATH = ROOT / "scripts/validation_control/run_dependency_scan_gate.sh"
 DOTNET_RUNNER_PATH = ROOT / "architecture/reference/dockerfiles/Dockerfile.test-runner-dotnet"
 STATIC_PREFLIGHT_PATH = ROOT / "scripts/run_static_validation_preflight.sh"
+AZURE_RUNNER_PATH = ROOT / "architecture/reference/dockerfiles/Dockerfile.test-runner-azure"
+AZURE_VERIFICATION_PATH = ROOT / "scripts/run_goal006_local_azure_verification.sh"
 IDENTITY_TEST_PATH = ROOT / "tests/business-platform.Tests/Identity"
 WC115_GENERATOR_PATH = ROOT / "scripts/generate_wc115_clients.sh"
 AIR_PROPOSAL_OPERATION_PATH = (
@@ -236,7 +238,8 @@ def test_full_runner_avoids_post_copy_metadata_mutation() -> None:
 def test_release_qualification_accepts_exact_runner_without_hidden_rebuild() -> None:
     source = RELEASE_QUALIFICATION_PATH.read_text(encoding="utf-8")
 
-    assert 'if [ -z "${WAOOAW_TEST_RUNNER_IMAGE_ID:-}" ]; then' in source
+    assert 'if [ -n "${WAOOAW_RUNNER_FULL_IMAGE:-}" ]; then' in source
+    assert 'docker image inspect "$WAOOAW_RUNNER_FULL_IMAGE"' in source
     assert 'scripts/verify_runner_image.sh test test-runner "$WAOOAW_TEST_RUNNER_IMAGE_ID"' in source
 
 
@@ -294,12 +297,54 @@ def test_costly_ci_jobs_are_guarded_by_the_validation_plan() -> None:
             [ci["jobs"][job_id]["needs"]] if isinstance(ci["jobs"][job_id]["needs"], str) else ci["jobs"][job_id]["needs"]
         ), job_id
     assert "needs.validation-plan.outputs.release_required == 'true'" in ci["jobs"]["release-qualification"]["if"]
+    assert "needs.validation-plan.outputs.release_lanes != '[]'" in ci["jobs"]["release-qualification"]["if"]
     assert "needs.qualification-control.outputs.enabled == 'true'" in ci["jobs"]["release-qualification"]["if"]
     assert set(ci["jobs"]["release-qualification"]["needs"]) == {
         "runner-supply",
         "validation-plan",
         "qualification-control",
     }
+
+
+def test_csharp_codeql_is_buildless_without_reducing_query_coverage() -> None:
+    sast = load_ci()["jobs"]["sast"]
+    rendered = yaml.safe_dump(sast)
+
+    assert sast["strategy"]["matrix"]["language"] == ["csharp", "python", "javascript"]
+    init = next(step for step in sast["steps"] if step.get("uses") == "github/codeql-action/init@v4")
+    assert init["with"]["build-mode"] == "none"
+    assert init["with"]["queries"] == "security-and-quality"
+    assert "github/codeql-action/autobuild" not in rendered
+
+
+def test_release_plan_supplies_only_lane_specific_auxiliary_runners() -> None:
+    workflow = VALIDATION_PLAN_PATH.read_text(encoding="utf-8")
+    release_job = load_ci()["jobs"]["release-qualification"]
+
+    assert 'required_runners=$(jq -c \'. + ["full"] | unique\'' in workflow
+    assert 'required_runners=$(jq -c \'. + ["azure"] | unique\'' in workflow
+    assert "release_full_runner_required == 'true'" in yaml.safe_dump(release_job)
+    assert "release_azure_runner_required == 'true'" in yaml.safe_dump(release_job)
+
+
+def test_azure_verification_uses_prebuilt_extension_and_records_phase_timings() -> None:
+    dockerfile = AZURE_RUNNER_PATH.read_text(encoding="utf-8")
+    verification = AZURE_VERIFICATION_PATH.read_text(encoding="utf-8")
+
+    assert "CONTAINERAPP_EXTENSION_VERSION=1.3.0b4" in dockerfile
+    assert "AZURE_EXTENSION_DIR=/opt/az-extensions" in dockerfile
+    assert "WAOOAW_RUNNER_AZURE_IMAGE" in verification
+    assert 'if [ -z "${WAOOAW_RUNNER_AZURE_IMAGE:-}" ]; then' in verification
+    assert "extension show --name containerapp --query version" in verification
+    for phase in (
+        "image-and-emulator",
+        "extension-readiness",
+        "positive-deployment",
+        "negative-deployment",
+        "cleanup-broker",
+    ):
+        assert phase in verification
+    assert "phase_timings_seconds" in verification
 
 
 def test_release_qualification_control_is_founder_bound_and_push_fail_closed() -> None:

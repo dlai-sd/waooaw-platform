@@ -147,6 +147,11 @@
           "items": {"type": "string", "pattern": "^[A-Z_][A-Z0-9_]*$"},
           "uniqueItems": true
         },
+        "auxiliary_runners": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "uniqueItems": true
+        },
         "required_services": {
           "type": "array",
           "items": {"type": "string", "minLength": 1},

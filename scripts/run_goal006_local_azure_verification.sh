@@ -2,10 +2,22 @@
 set -euo pipefail
 
 REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-AZURE_CLI_IMAGE="mcr.microsoft.com/azure-cli@sha256:4faeb3c955086c3842d4f8cf0ff1d900ce3a1c68c6e6c6430c5e8a3cb882c5aa"
+AZURE_CLI_IMAGE=${WAOOAW_RUNNER_AZURE_IMAGE:-mcr.microsoft.com/azure-cli@sha256:4faeb3c955086c3842d4f8cf0ff1d900ce3a1c68c6e6c6430c5e8a3cb882c5aa}
 PYTHON_IMAGE="python@sha256:b64631e04e4920160c50fbe8d8df828f7f35f06f425cb44aa09bca53e708a35a"
 CURL_IMAGE="curlimages/curl@sha256:94e9e444bcba979c2ea12e27ae39bee4cd10bc7041a472c4727a558e213744e6"
 CONTAINERAPP_EXTENSION_VERSION="1.3.0b4"
+
+phase_started=
+start_phase() {
+  phase_started=$(date +%s)
+  echo "[azure-verification] phase=$1 event=STARTED"
+}
+complete_phase() {
+  local duration
+  duration=$(($(date +%s) - phase_started))
+  printf -v "$2" '%s' "$duration"
+  echo "[azure-verification] phase=$1 event=COMPLETED duration_seconds=$duration"
+}
 mkdir -p "$REPO_ROOT/test-results"
 WORK_DIR=$(mktemp -d "$REPO_ROOT/test-results/goal006-local-azure.XXXXXX")
 RUN_ID=${WORK_DIR##*.}
@@ -25,6 +37,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
+start_phase image-and-emulator
 mkdir -p "$EVIDENCE_DIR" "$AZURE_CONFIG_DIR"
 docker run --rm --user "$(id -u):$(id -g)" -v "$EVIDENCE_DIR:/evidence" \
   "$AZURE_CLI_IMAGE" openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
@@ -110,12 +123,19 @@ run_az() {
     "$AZURE_CLI_IMAGE" az "$@"
 }
 
-run_az extension add \
-  --name containerapp \
-  --version "$CONTAINERAPP_EXTENSION_VERSION" \
-  --allow-preview true \
-  --only-show-errors
+complete_phase image-and-emulator image_and_emulator_seconds
+start_phase extension-readiness
+if [ -z "${WAOOAW_RUNNER_AZURE_IMAGE:-}" ]; then
+  run_az extension add \
+    --name containerapp \
+    --version "$CONTAINERAPP_EXTENSION_VERSION" \
+    --allow-preview true \
+    --only-show-errors
+fi
+test "$(run_az extension show --name containerapp --query version -o tsv)" = "$CONTAINERAPP_EXTENSION_VERSION"
 test "$(run_az account show --query id -o tsv)" = "00000000-0000-0000-0000-000000000006"
+complete_phase extension-readiness extension_readiness_seconds
+start_phase positive-deployment
 docker run --rm \
   --user "$(id -u):$(id -g)" \
   --network "$NETWORK" \
@@ -149,7 +169,9 @@ test "$(find "$EVIDENCE_DIR/revision-evidence" -name '*-revision.json' | wc -l)"
 grep -F 'http-probes: all required runtime probes passed' "$EVIDENCE_DIR/functional-http-probes.log" >/dev/null
 grep -F 'constitutional-health: all required runtime probes passed' \
   "$EVIDENCE_DIR/functional-constitutional-health.log" >/dev/null
+complete_phase positive-deployment positive_deployment_seconds
 
+start_phase negative-deployment
 mkdir -p "$EVIDENCE_DIR/unhealthy-revision"
 cp "$EVIDENCE_DIR/registry-release-manifest.json" \
   "$EVIDENCE_DIR/unhealthy-revision/registry-release-manifest.json"
@@ -194,7 +216,9 @@ grep -F 'Console log capture skipped: revision container metadata unavailable' \
   "$EVIDENCE_DIR/unhealthy-revision/revision-evidence/professional-runtime-console.log" >/dev/null
 test "$(jq -r '.properties.healthState' \
   "$EVIDENCE_DIR/unhealthy-revision/revision-evidence/professional-runtime-revision.json")" = Unhealthy
+complete_phase negative-deployment negative_deployment_seconds
 
+start_phase cleanup-broker
 RUNNER_IMAGE="ghcr.io/dlai-sd/goal006-private-runner@sha256:$(printf 'f%.0s' $(seq 1 64))"
 run_az containerapp job show \
   --resource-group waooaw-demo-runner-rg \
@@ -245,12 +269,18 @@ test "$(run_az containerapp job execution list \
   -o tsv)" = 0
 test "$(jq -r '.containers[0].args[0]' "$EVIDENCE_DIR/cleanup-start-request.json")" != "stale deployed lifecycle source"
 grep -F 'def write_cleanup_evidence(' "$EVIDENCE_DIR/cleanup-start-request.json" >/dev/null
+complete_phase cleanup-broker cleanup_broker_seconds
 
 azure_cli_version=$(run_az version --query '"azure-cli"' -o tsv)
 jq -n \
   --arg azure_cli_version "$azure_cli_version" \
   --arg azure_cli_image "$AZURE_CLI_IMAGE" \
   --arg containerapp_extension_version "$CONTAINERAPP_EXTENSION_VERSION" \
+  --argjson image_and_emulator_seconds "$image_and_emulator_seconds" \
+  --argjson extension_readiness_seconds "$extension_readiness_seconds" \
+  --argjson positive_deployment_seconds "$positive_deployment_seconds" \
+  --argjson negative_deployment_seconds "$negative_deployment_seconds" \
+  --argjson cleanup_broker_seconds "$cleanup_broker_seconds" \
   --arg cleanup_request_sha256 "$(sha256sum "$EVIDENCE_DIR/cleanup-start-request.json" | cut -d' ' -f1)" \
   --argjson azure_requests "$(wc -l < "$EVIDENCE_DIR/azure-request-log.jsonl")" \
   --argjson revision_evidence "$(find "$EVIDENCE_DIR/revision-evidence" -name '*-revision.json' | wc -l)" \
@@ -259,6 +289,13 @@ jq -n \
     azure_cli_version: $azure_cli_version,
     azure_cli_image: $azure_cli_image,
     containerapp_extension_version: $containerapp_extension_version,
+    phase_timings_seconds: {
+      image_and_emulator: $image_and_emulator_seconds,
+      extension_readiness: $extension_readiness_seconds,
+      positive_deployment: $positive_deployment_seconds,
+      negative_deployment: $negative_deployment_seconds,
+      cleanup_broker: $cleanup_broker_seconds
+    },
     azure_requests: $azure_requests,
     revision_evidence: $revision_evidence,
     functional_verification: true,

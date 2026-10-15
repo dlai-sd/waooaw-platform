@@ -54,6 +54,8 @@ def test_catalog_matches_schema_and_defines_every_referenced_gate() -> None:
         referenced.update(component["gates"])
 
     assert referenced <= defined
+    for gate in catalog["gates"].values():
+        assert set(gate.get("auxiliary_runners", [])) <= set(catalog["runners"])
 
 
 def test_catalog_defines_complete_immutable_candidate_build_inputs() -> None:
@@ -469,7 +471,6 @@ def test_full_runner_is_limited_to_cross_stack_orchestration_gates() -> None:
 
     assert full_runner_gates == {
         "contract:rest",
-        "release-qualification",
         "spec-lint",
         "e2e:accessibility",
         "e2e:emergency-stop",
@@ -932,7 +933,8 @@ def test_release_qualification_is_explicit_host_orchestration() -> None:
     )
     node = select_plan_node(plan, "release-qualification")
 
-    assert node["runner_id"] == "full"
+    assert node["runner_id"] == "python"
+    assert node["auxiliary_runners"] == ["full", "azure"]
     assert node["execution"] == "host"
     assert execution_command(node, "/usr/bin/docker") == [
         "sh",

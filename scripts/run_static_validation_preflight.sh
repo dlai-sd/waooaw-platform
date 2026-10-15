@@ -62,6 +62,7 @@ done <<'TARGETS'
 .	architecture/reference/dockerfiles/Dockerfile.test-runner-dotnet
 .	architecture/reference/dockerfiles/Dockerfile.test-runner-ts
 .	architecture/reference/dockerfiles/Dockerfile.test-runner
+.	architecture/reference/dockerfiles/Dockerfile.test-runner-azure
 .	src/constitutional-engine/Dockerfile
 .	src/business-platform/Dockerfile
 .	src/professional-runtime/Dockerfile

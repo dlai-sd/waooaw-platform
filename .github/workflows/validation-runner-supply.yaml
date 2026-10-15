@@ -7,7 +7,7 @@ on:
         description: JSON array of runner identities required by the authoritative validation plan
         required: false
         type: string
-        default: '["python","dotnet","typescript","full"]'
+        default: '["python","dotnet","typescript","full","azure"]'
 
 jobs:
   supply:
