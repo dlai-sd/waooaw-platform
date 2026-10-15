@@ -42,7 +42,7 @@ def test_wc109_baseline_binds_authority_inventory_and_all_requirements_once() ->
     assert inventory["full_gate_count"] == len(catalog["full_gates"])
     assert inventory["main_full_inventory"] is catalog["main_full_inventory"] is True
     assert inventory["release_full_inventory"] is catalog["release_full_inventory"] is True
-    assert inventory["selective_hosted_validation_founder_approved"] is False
+    assert inventory["selective_hosted_validation_founder_approved"] is True
 
     selected = [
         requirement

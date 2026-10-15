@@ -18,6 +18,8 @@ from prepare_pr_body import (
     changed_files_digest,
     configuration_digest,
     precheck_nodes,
+    precheck_cache_root,
+    reusable_precheck_evidence,
     runner_digest,
 )
 
@@ -64,7 +66,8 @@ def main() -> int:
         for node in precheck_nodes(repository, git_common_dir, base, candidate, changed_files)
         if node.name != "release_qualification"
     ]
-    artifact_dir = repository / "test-results/wc109/precommit" / git("rev-parse", f"{candidate}^{{tree}}")
+    cache_root = precheck_cache_root(git_common_dir)
+    artifact_dir = cache_root / candidate
     evidence = run_prechecks(
         nodes,
         base_sha=base,
@@ -74,7 +77,7 @@ def main() -> int:
         configuration_digest=configuration_digest(),
         runner_digest=runner_digest(nodes),
         artifact_dir=artifact_dir,
-        reuse_evidence_paths=sorted(artifact_dir.parent.glob(f"*/{EVIDENCE_FILE_NAME}")),
+        reuse_evidence_paths=reusable_precheck_evidence(cache_root, artifact_dir),
     )
     print(
         json.dumps(

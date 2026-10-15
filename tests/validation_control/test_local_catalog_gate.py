@@ -24,6 +24,7 @@ def specification() -> dict[str, object]:
 
 
 def test_local_fallback_builds_once_then_reuses_identity_image(monkeypatch, tmp_path: Path) -> None:
+    git_common_dir = tmp_path / ".git"
     inspected = iter((None, IMAGE_ID, IMAGE_ID))
     builds: list[list[str]] = []
     runner_digest = "sha256:" + "c" * 64
@@ -44,8 +45,8 @@ def test_local_fallback_builds_once_then_reuses_identity_image(monkeypatch, tmp_
         build,
     )
 
-    first = local_catalog_gate.local_fallback_runner(tmp_path, "python", specification())
-    second = local_catalog_gate.local_fallback_runner(tmp_path, "python", specification())
+    first = local_catalog_gate.local_fallback_runner(tmp_path, git_common_dir, "python", specification())
+    second = local_catalog_gate.local_fallback_runner(tmp_path, git_common_dir, "python", specification())
 
     assert first[1:] == (IMAGE_ID, runner_digest, 1)
     assert second[1:] == (IMAGE_ID, runner_digest, 0)
@@ -53,6 +54,77 @@ def test_local_fallback_builds_once_then_reuses_identity_image(monkeypatch, tmp_
     assert builds[0][0].endswith("docker")
     assert builds[0][1:3] == ["buildx", "build"]
     assert builds[0][builds[0].index("--platform") + 1] == "linux/amd64"
+    assert (git_common_dir / "waooaw/runners/local-runner-manifests/python.json").is_file()
+
+
+def test_linked_worktrees_share_exact_local_runner_digest(monkeypatch, tmp_path: Path) -> None:
+    first_worktree = tmp_path / "first"
+    second_worktree = tmp_path / "second"
+    git_common_dir = tmp_path / "common"
+    first_worktree.mkdir()
+    second_worktree.mkdir()
+    inspected = iter((None, IMAGE_ID, IMAGE_ID))
+    runner_digest = "sha256:" + "c" * 64
+    builds: list[list[str]] = []
+    monkeypatch.setattr(local_catalog_gate, "image_id", lambda image, repository: next(inspected))
+    monkeypatch.setattr(local_catalog_gate, "docker_executable", lambda: "/usr/bin/docker")
+    monkeypatch.setattr(local_catalog_gate, "create_context", lambda repository, context, spec: context.mkdir(parents=True))
+    monkeypatch.setattr(local_catalog_gate, "cleanup_before_docker_build", lambda repository: None)
+
+    def build(command: list[str], **unused: object) -> SimpleNamespace:
+        builds.append(command)
+        metadata = Path(command[command.index("--metadata-file") + 1])
+        metadata.write_text(json.dumps({"containerimage.digest": runner_digest}), encoding="utf-8")
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(local_catalog_gate.subprocess, "run", build)
+
+    first = local_catalog_gate.local_fallback_runner(first_worktree, git_common_dir, "python", specification())
+    second = local_catalog_gate.local_fallback_runner(second_worktree, git_common_dir, "python", specification())
+
+    assert first[2:] == (runner_digest, 1)
+    assert second[2:] == (runner_digest, 0)
+    assert len(builds) == 1
+
+
+def test_changed_runner_identity_invalidates_shared_local_manifest(monkeypatch, tmp_path: Path) -> None:
+    git_common_dir = tmp_path / "common"
+    manifest = git_common_dir / "waooaw/runners/local-runner-manifests/python.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text(
+        json.dumps(
+            {
+                "runner_identity": IDENTITY,
+                "image": f"waooaw-validation-runner-python:local-{IDENTITY.removeprefix('sha256:')}",
+                "image_id": IMAGE_ID,
+                "runner_digest": "sha256:" + "c" * 64,
+            }
+        ),
+        encoding="utf-8",
+    )
+    changed = specification()
+    changed["identity"] = "sha256:" + "d" * 64
+    changed_image_id = "sha256:" + "e" * 64
+    changed_runner_digest = "sha256:" + "f" * 64
+    inspected = iter((IMAGE_ID, changed_image_id))
+    builds: list[list[str]] = []
+    monkeypatch.setattr(local_catalog_gate, "image_id", lambda image, repository: next(inspected))
+    monkeypatch.setattr(local_catalog_gate, "docker_executable", lambda: "/usr/bin/docker")
+    monkeypatch.setattr(local_catalog_gate, "create_context", lambda repository, context, spec: context.mkdir(parents=True))
+    monkeypatch.setattr(local_catalog_gate, "cleanup_before_docker_build", lambda repository: None)
+
+    def build(command: list[str], **unused: object) -> SimpleNamespace:
+        builds.append(command)
+        metadata = Path(command[command.index("--metadata-file") + 1])
+        metadata.write_text(json.dumps({"containerimage.digest": changed_runner_digest}), encoding="utf-8")
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(local_catalog_gate.subprocess, "run", build)
+
+    result = local_catalog_gate.local_fallback_runner(tmp_path, git_common_dir, "python", changed)
+
+    assert result[1:] == (changed_image_id, changed_runner_digest, 1)
+    assert len(builds) == 1
 
 
 def test_untrusted_manifest_is_a_miss_without_pull(monkeypatch, tmp_path: Path) -> None:
@@ -146,7 +218,7 @@ def test_rollback_bypasses_trusted_manifest_and_existing_local_image(monkeypatch
 
     monkeypatch.setattr(local_catalog_gate.subprocess, "run", build)
 
-    result = local_catalog_gate.local_fallback_runner(tmp_path, "python", specification())
+    result = local_catalog_gate.local_fallback_runner(tmp_path, tmp_path / ".git", "python", specification())
 
     assert result[1:] == (IMAGE_ID, runner_digest, 1)
     assert len(builds) == 1
@@ -360,14 +432,16 @@ def test_gate_identity_hashes_only_declared_environment(monkeypatch, tmp_path: P
     (validation / "engineering-validation.yaml").write_text(yaml.safe_dump(catalog), encoding="utf-8")
     monkeypatch.setenv("DECLARED", "first")
     monkeypatch.setenv("UNDECLARED", "first")
-    original = local_catalog_gate.gate_execution_identity(tmp_path, "host", "a" * 40)
+    original = local_catalog_gate.gate_execution_identity(tmp_path, "host", "a" * 40, tmp_path / ".git")
+    rewritten = local_catalog_gate.gate_execution_identity(tmp_path, "host", "b" * 40, tmp_path / ".git")
 
     monkeypatch.setenv("UNDECLARED", "second")
-    undeclared_changed = local_catalog_gate.gate_execution_identity(tmp_path, "host", "a" * 40)
+    undeclared_changed = local_catalog_gate.gate_execution_identity(tmp_path, "host", "a" * 40, tmp_path / ".git")
     monkeypatch.setenv("DECLARED", "second")
-    declared_changed = local_catalog_gate.gate_execution_identity(tmp_path, "host", "a" * 40)
+    declared_changed = local_catalog_gate.gate_execution_identity(tmp_path, "host", "a" * 40, tmp_path / ".git")
 
     assert original["runner_digest"] == tool_digest
+    assert rewritten["gate_implementation_digest"] == original["gate_implementation_digest"]
     assert undeclared_changed["environment_digest"] == original["environment_digest"]
     assert declared_changed["environment_digest"] != original["environment_digest"]
     assert original["service_digest"] == local_catalog_gate.hashlib.sha256(b"{}").hexdigest()
@@ -398,12 +472,12 @@ def test_gate_identity_changes_with_required_service_image(monkeypatch, tmp_path
     monkeypatch.setattr(
         local_catalog_gate,
         "resolve_runner",
-        lambda repository, runner_id: {"runner_digest": "sha256:" + "d" * 64},
+        lambda repository, git_common_dir, runner_id: {"runner_digest": "sha256:" + "d" * 64},
     )
     service_identity = {"postgres": "sha256:" + "e" * 64}
     monkeypatch.setattr(local_catalog_gate, "required_service_identities", lambda repository, node: service_identity)
 
-    identity = local_catalog_gate.gate_execution_identity(tmp_path, "integration", "a" * 40)
+    identity = local_catalog_gate.gate_execution_identity(tmp_path, "integration", "a" * 40, tmp_path / ".git")
 
     assert (
         identity["service_digest"]

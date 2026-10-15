@@ -12,6 +12,9 @@ on:
       execution_gates:
         description: JSON array of gates executed by hosted CI; full inventory in Shadow mode
         value: ${{ jobs.plan.outputs.execution_gates }}
+      selective_enforcement:
+        description: Whether focused hosted validation is authoritative
+        value: ${{ jobs.plan.outputs.selective_enforcement }}
       required_runners:
         description: JSON array of required validation runners
         value: ${{ jobs.plan.outputs.required_runners }}
@@ -42,6 +45,7 @@ jobs:
       release_required: ${{ steps.plan.outputs.release_required }}
       selected_gates: ${{ steps.plan.outputs.selected_gates }}
       execution_gates: ${{ steps.plan.outputs.execution_gates }}
+      selective_enforcement: ${{ steps.plan.outputs.selective_enforcement }}
       required_runners: ${{ steps.plan.outputs.required_runners }}
       service_build_matrix: ${{ steps.plan.outputs.service_build_matrix }}
       has_service_builds: ${{ steps.plan.outputs.has_service_builds }}
@@ -136,6 +140,7 @@ jobs:
             echo "release_required=$release_required"
             echo "selected_gates=$(jq -c '.selected_gates' test-results/wc102/change-impact.json)"
             echo "execution_gates=$(jq -c '.execution_gates' test-results/wc102/hosted-execution-plan.json)"
+            echo "selective_enforcement=$(jq -r '.selective_enforcement' test-results/wc102/hosted-execution-plan.json)"
             echo "required_runners=$(jq -c '.required_runners' test-results/wc102/hosted-execution-plan.json)"
             echo "service_build_matrix=$(jq -c '.service_build_matrix' test-results/wc102/hosted-execution-plan.json)"
             echo "has_service_builds=$(jq -r '.service_build_matrix | length > 0' test-results/wc102/hosted-execution-plan.json)"

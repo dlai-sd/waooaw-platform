@@ -8,6 +8,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from validation_policy import validate_policy
+
 
 def catalog_digest(catalog_bytes: bytes) -> str:
     return "sha256:" + hashlib.sha256(catalog_bytes).hexdigest()
@@ -23,8 +25,11 @@ def build_qualification_manifest(
         raise ValueError("QUALIFICATION_HEAD_MOVED")
     if not clean:
         raise ValueError("QUALIFICATION_WORKTREE_DIRTY")
-    if catalog.get("mode") != "shadow":
+    mode = catalog.get("mode")
+    if mode == "enforced" and validate_policy(catalog):
         raise ValueError("SELECTIVE_ENFORCEMENT_NOT_AUTHORIZED")
+    if mode not in {"shadow", "enforced"}:
+        raise ValueError("VALIDATION_MODE_INVALID")
 
     full_gates = catalog.get("full_gates")
     if not isinstance(full_gates, list) or not all(isinstance(gate, str) for gate in full_gates):

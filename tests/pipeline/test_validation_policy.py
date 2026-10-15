@@ -33,6 +33,22 @@ def test_classifier_direct_reverse_and_unknown_paths() -> None:
     assert unknown["reasons"] == ["unknown path: unexpected/new-system/file.txt"]
 
 
+def test_documentation_and_checkpoint_paths_select_only_always_on_gates() -> None:
+    policy = load_policy()
+
+    for path in (
+        "work-contracts/WC-121-demo-whatsapp-provider-enablement-work-component.md",
+        "reviews/R-999-author-review.md",
+        "blockers/CB-999-example.md",
+        "constitution/PROJECT_STATE.md",
+    ):
+        result = classify_paths(policy, [path])
+        assert result["authoritative"] is True
+        assert result["full"] is False
+        assert result["selected_components"] == []
+        assert set(result["selected_gates"]) == set(policy["always_on_gates"])
+
+
 def test_story_scope_stays_direct_while_milestone_includes_reverse_dependencies() -> None:
     policy = load_policy()
 
@@ -103,7 +119,6 @@ def test_global_and_normative_changes_select_full() -> None:
         "tests/pipeline/test_platform_it_process_intake.py",
         "tests/pipeline/test_platform_it_story_commentary.py",
         "validation/process-control.yaml",
-        "work-contracts/WC-100-example.md",
     ):
         result = classify_paths(policy, [path])
         assert result["full"] is True
@@ -187,7 +202,8 @@ def test_local_prechecks_are_scoped_independently_from_full_hosted_inventory() -
     release = classify_paths(policy, ["infrastructure/terraform/phase2/main.tf"])
     hosted = classify_paths(policy, ["README.md"], event="push")
 
-    assert evidence_only["full"] is True
+    assert evidence_only["full"] is False
+    assert set(evidence_only["selected_gates"]) == set(policy["always_on_gates"])
     assert evidence_only["selected_prechecks"] == ["gitleaks", "typescript_dependency_scan"]
     assert business["selected_prechecks"] == [
         "business_platform",
@@ -211,11 +227,20 @@ def test_name_status_parser_keeps_deleted_and_renamed_paths() -> None:
 def test_enforced_mode_requires_founder_activation() -> None:
     policy = load_policy()
     policy["mode"] = "enforced"
+    policy["enforced_activation"] = {
+        "founder_approved": False,
+        "minimum_shadow_samples": 20,
+        "verified_shadow_samples": 19,
+        "unresolved_false_negatives": None,
+        "evidence": "",
+    }
 
     violations = validate_policy(policy)
 
     assert "ENFORCED_WITHOUT_FOUNDER_APPROVAL" in violations
+    assert "ENFORCED_WITHOUT_MINIMUM_SHADOW_SAMPLES" in violations
     assert "ENFORCED_WITHOUT_SHADOW_EVIDENCE" in violations
+    assert "ENFORCED_WITHOUT_ACTIVATION_EVIDENCE" in violations
 
 
 def test_prechecks_require_declared_gate_inputs() -> None:

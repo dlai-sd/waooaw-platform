@@ -5,8 +5,8 @@
 | Field | Value |
 |---|---|
 | Work component | WC121-C09 - Demo WhatsApp Provider Enablement |
-| Version | 0.1.0-candidate.2 |
-| Status | EXECUTION PLAN - S16 COMPLETE - PROTECTED ACTIONS UNAUTHORIZED |
+| Version | 0.1.0-candidate.3 |
+| Status | EXECUTION PLAN - S16 COMPLETE - SELECTIVE VALIDATION ACTIVATED - PROTECTED ACTIONS UNAUTHORIZED |
 | Parent Work Contract | `work-contracts/WC-121-customer-engagement-workspace-implementation.md` |
 | Controlling component | WC-121 Section 6.9, CEW-WC-09 - Live Demo Provider and Deployment |
 | Upstream transport Work Contract | `work-contracts/WC-120-conversation-engine-whatsapp-implementation.md` |
@@ -873,3 +873,57 @@ This candidate does not authorize:
 10. merge.
 
 Each action begins only after its exact current authority and prerequisites are recorded.
+
+## 9. PR Validation Efficiency Extension
+
+This extension governs delivery efficiency for this component and later work that uses the same
+validation controls. It does not weaken exact-head traceability, hosted independence, security
+checks, author review, Founder review, or merge authority.
+
+### 9.1 Practical Target
+
+| Change class | Current approximate delay | Target | Saving |
+|---|---:|---:|---:|
+| Message-only rewrite, identical tree | **~13m 50s** | **~2 min** | **~11-12 min** |
+| Documentation/checkpoint-only update | Often **7-10 min** hosted | **~2-3 min** | **~5-8 min** |
+| Already-prechecked source tree | **~14 min** local and hosted | **~6-8 min** | **~6-8 min** |
+| New Business Platform or Web runtime change | **~14 min** | **~9-11 min** | **~3-5 min** |
+
+### 9.2 Evidence-Reuse Boundary
+
+Content-dependent executable evidence may be reused only when all of the following remain exact:
+
+1. Git tree identity or a verified non-intersecting input path set;
+2. gate, command, and validation-catalog identity;
+3. gate implementation, runner, environment, and service digests;
+4. declared gate input digest and artifact digests; and
+5. a successful, machine-readable source evidence record.
+
+Commit-dependent controls are never carried by tree identity. C-059 commit and PR-body
+traceability, C-065 exact-head author review, C-066 authorization, requirement-ledger validity,
+secret detection, remote-head binding, and PR metadata attestation execute for the current
+candidate.
+
+### 9.3 Delivery Sequence
+
+1. Persist local pre-commit and PR-preparation evidence in the shared Git common directory so all
+   worktrees use one durable candidate cache.
+2. Reuse identical-tree gate results across a staged synthetic commit, its resulting commit, and a
+   message-only history rewrite.
+3. Preserve per-gate invalidation so one changed input reruns only its affected gate and dependants.
+4. Collect the required hosted Shadow samples and prove zero unresolved false negatives. Complete:
+   20 successful Code Quality comparisons and 20 successful full-CI Test Champion campaigns were
+   verified on 2026-10-15.
+5. Activate focused hosted selection only after its catalog activation conditions and Founder
+   authority are recorded. Authorized in the current session and bound to
+   `validation/evidence/wc121-selective-validation-activation.json`.
+6. Keep periodic and main-branch full-inventory qualification independent from PR fast paths.
+
+### 9.4 Acceptance
+
+- An identical-tree second candidate executes zero reusable content-dependent local gates.
+- Corrupt, missing, mismatched, or non-verifiable evidence causes execution rather than reuse.
+- A runtime, validation-control, runner, environment, or declared-input change invalidates its
+  affected evidence.
+- Exact-head and commit-dependent controls run on every candidate.
+- Hosted selective execution remains blocked while its activation evidence is incomplete.

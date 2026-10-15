@@ -117,12 +117,23 @@ def validate_policy(policy: dict[str, object]) -> list[str]:
         activation = policy.get("enforced_activation")
         if not isinstance(activation, dict) or activation.get("founder_approved") is not True:
             violations.append("ENFORCED_WITHOUT_FOUNDER_APPROVAL")
+        minimum_samples = activation.get("minimum_shadow_samples") if isinstance(activation, dict) else None
+        verified_samples = activation.get("verified_shadow_samples") if isinstance(activation, dict) else None
+        if (
+            not isinstance(minimum_samples, int)
+            or minimum_samples < 1
+            or not isinstance(verified_samples, int)
+            or verified_samples < minimum_samples
+        ):
+            violations.append("ENFORCED_WITHOUT_MINIMUM_SHADOW_SAMPLES")
         if (
             not isinstance(activation, dict)
             or not isinstance(activation.get("unresolved_false_negatives"), int)
             or activation["unresolved_false_negatives"] != 0
         ):
             violations.append("ENFORCED_WITHOUT_SHADOW_EVIDENCE")
+        if not isinstance(activation, dict) or not isinstance(activation.get("evidence"), str) or not activation["evidence"]:
+            violations.append("ENFORCED_WITHOUT_ACTIVATION_EVIDENCE")
     return violations
 
 

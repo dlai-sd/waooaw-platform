@@ -22,12 +22,14 @@ from prepare_pr_body import (  # noqa: E402
     load_runtime_evidence,
     main,
     precheck_nodes,
+    precheck_cache_root,
     preparation_head,
     prepare_body,
     pull_request_body,
     release_qualification_enabled,
     release_qualification_gate_required,
     run_ci_prechecks,
+    reusable_precheck_evidence,
     runner_digest,
     selected_prechecks,
     update_pull_request,
@@ -180,6 +182,21 @@ def test_execution_preflight_rejects_inactive_repository_hooks(monkeypatch, tmp_
 
     with pytest.raises(ValueError, match="install_git_hooks"):
         execution_preflight(tmp_path, body_file, tmp_path, HEAD, HEAD, require_docker=False)
+
+
+def test_precheck_cache_is_shared_through_git_common_directory(tmp_path: Path) -> None:
+    git_common_dir = tmp_path / ".git"
+    cache_root = precheck_cache_root(git_common_dir)
+    current = cache_root / ("a" * 40)
+    prior = cache_root / ("b" * 40)
+    current.mkdir(parents=True)
+    prior.mkdir()
+    (current / "precheck-manifest.json").write_text("{}\n", encoding="utf-8")
+    prior_manifest = prior / "precheck-manifest.json"
+    prior_manifest.write_text("{}\n", encoding="utf-8")
+
+    assert cache_root == git_common_dir / "waooaw" / "prechecks"
+    assert reusable_precheck_evidence(cache_root, current) == [prior_manifest]
 
 
 def test_pull_request_body_reads_live_issue_body(monkeypatch) -> None:
@@ -459,7 +476,7 @@ def test_precheck_evidence_must_match_base_and_head() -> None:
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": digest,
-        "graph_version": "wc109-prechecks-v9",
+        "graph_version": "wc109-prechecks-v13",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -510,7 +527,7 @@ def test_precheck_evidence_rejects_configuration_or_runner_mismatch() -> None:
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": "d" * 64,
-        "graph_version": "wc109-prechecks-v9",
+        "graph_version": "wc109-prechecks-v13",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -535,7 +552,7 @@ def test_precheck_graph_canonicalizes_symbolic_base_before_digesting(monkeypatch
     monkeypatch.setattr("prepare_pr_body.gate_input_digest", lambda head, patterns: "p" * 64)
     monkeypatch.setattr(
         "prepare_pr_body.gate_execution_identity",
-        lambda repository, gate, head: {
+        lambda repository, gate, head, git_common_dir: {
             "catalog_version": "test",
             "gate_id": gate,
             "command_id": gate,
@@ -588,7 +605,7 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
     monkeypatch.setattr("prepare_pr_body.shutil.which", lambda executable: f"/usr/bin/{executable}")
     monkeypatch.setattr(
         "prepare_pr_body.gate_execution_identity",
-        lambda repository, gate, head: {
+        lambda repository, gate, head, git_common_dir: {
             "catalog_version": "test",
             "gate_id": gate,
             "command_id": gate,
@@ -629,6 +646,7 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
         "test-web",
         "test-dotnet:business-platform",
     ]
+    assert nodes[0].reusable is False
     assert nodes[1].heavy is False
     assert nodes[2].heavy is False
     assert nodes[2].reusable is False
@@ -639,7 +657,7 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
     assert all("docker compose" not in " ".join(node.command) for node in nodes)
     assert all("run_release_qualification.sh" not in " ".join(node.command) for node in nodes)
     assert all(node.command[node.command.index("--base") + 1] == "b" * 40 for node in nodes)
-    assert captured["graph_version"] == "wc109-prechecks-v9"
+    assert captured["graph_version"] == "wc109-prechecks-v13"
     assert captured["configuration_digest"] == configuration_digest()
     assert captured["runner_digest"] == runner_digest(nodes)
     assert nodes[0].runner_digest == "r" * 64
