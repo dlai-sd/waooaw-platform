@@ -469,14 +469,14 @@ locals {
       NEXTAUTH_URL                     = local.service_urls.web
       NODE_ENV                         = "production"
       REDIS_URL                        = local.auth_redis_url
+      SESSION_PROTOCOL_DIGEST_WRITE_VERSION = var.web_session_protocol_digest_write_version
+      SESSION_TOKEN_ENVELOPE_WRITE_VERSION  = var.web_session_token_envelope_write_version
       WAOOAW_ENVIRONMENT               = var.environment
       WAOOAW_SERVER_SESSION_MODE       = var.web_session_mode
+      WEB_SESSION_DEPLOY_VERSION       = var.web_session_deploy_version
       }, var.web_session_mode == "disabled" ? {} : {
       SESSION_HANDLE_DIGEST_WRITE_VERSION         = var.web_session_handle_digest_write_version
-      SESSION_PROTOCOL_DIGEST_WRITE_VERSION       = var.web_session_protocol_digest_write_version
-      SESSION_TOKEN_ENVELOPE_WRITE_VERSION        = var.web_session_token_envelope_write_version
       WEB_SESSION_CONFIG_DIGEST                   = var.web_session_config_digest
-      WEB_SESSION_DEPLOY_VERSION                  = var.web_session_deploy_version
       WEB_SESSION_EXPECTED_CONFIG_DIGEST          = var.web_session_expected_config_digest
       WEB_SESSION_EXPECTED_TELEMETRY_ROUTE_DIGEST = var.web_session_expected_telemetry_route_digest
       WEB_SESSION_TELEMETRY_ROUTE_DIGEST          = var.web_session_telemetry_route_digest
@@ -552,19 +552,26 @@ locals {
     for name in keys(local.auth_abuse_secret_environment) :
     name => "${trimsuffix(var.key_vault_secret_resource_ids["web"], "/web")}/${name}"
   }
-  web_session_secret_environment = {
+  oidc_transaction_secret_environment = {
     web-session-database-url    = "WEB_SESSION_DATABASE_URL"
-    web-session-handle-digest   = "SESSION_HANDLE_DIGEST_KEYS"
     web-session-protocol-digest = "SESSION_PROTOCOL_DIGEST_KEYS"
     web-session-token-envelope  = "SESSION_TOKEN_ENVELOPE_KEYS"
   }
-  active_web_session_secret_environment = var.web_session_mode == "disabled" ? {} : local.web_session_secret_environment
-  web_session_secret_uris = var.web_session_mode == "disabled" ? {} : {
-    for name in keys(local.web_session_secret_environment) :
+  web_session_secret_environment = merge(local.oidc_transaction_secret_environment, {
+    web-session-handle-digest = "SESSION_HANDLE_DIGEST_KEYS"
+  })
+  active_web_session_secret_environment = merge(
+    local.oidc_transaction_secret_environment,
+    var.web_session_mode == "disabled" ? {} : {
+      web-session-handle-digest = "SESSION_HANDLE_DIGEST_KEYS"
+    }
+  )
+  web_session_secret_uris = {
+    for name in keys(local.active_web_session_secret_environment) :
     name => "${trimsuffix(var.key_vault_secret_uris["web"], "/web")}/${name}"
   }
-  web_session_secret_resource_ids = var.web_session_mode == "disabled" ? {} : {
-    for name in keys(local.web_session_secret_environment) :
+  web_session_secret_resource_ids = {
+    for name in keys(local.active_web_session_secret_environment) :
     name => "${trimsuffix(var.key_vault_secret_resource_ids["web"], "/web")}/${name}"
   }
   razorpay_secret_uris = contains(["demo", "uat"], var.environment) ? {
@@ -725,14 +732,30 @@ resource "azurerm_container_app" "auth_redis" {
       args = [<<-EOT
         umask 077
         printf 'bind 0.0.0.0\nprotected-mode yes\nport 6379\nsave ""\nappendonly no\nrequirepass %s\n' "$REDIS_PASSWORD" > /tmp/redis.conf
-        unset REDIS_PASSWORD
-        exec redis-server /tmp/redis.conf
+        redis-server /tmp/redis.conf &
+        redis_pid=$!
+        trap 'kill "$redis_pid"; wait "$redis_pid"' TERM INT
+        for attempt in $(seq 1 30); do
+          REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli ping >/dev/null 2>&1 && break
+          test "$attempt" != 30 || exit 1
+          sleep 1
+        done
+        epoch_ms="$(date +%s)000"
+        REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli SET \
+          "waooaw:$WAOOAW_ENVIRONMENT:auth-abuse:v1:epoch" "$epoch_ms" NX >/dev/null
+        unset REDIS_PASSWORD REDISCLI_AUTH
+        wait "$redis_pid"
       EOT
       ]
 
       env {
         name        = "REDIS_PASSWORD"
         secret_name = "auth-abuse-redis-password"
+      }
+
+      env {
+        name  = "WAOOAW_ENVIRONMENT"
+        value = var.environment
       }
 
       startup_probe {
@@ -780,6 +803,10 @@ resource "azurerm_container_app" "auth_redis" {
       error_message = "Production authentication limiting requires the separately approved private HA Redis foundation dependency."
     }
   }
+
+  depends_on = [
+    azurerm_role_assignment.auth_abuse_redis_secret,
+  ]
 }
 
 resource "azurerm_container_app" "member" {
@@ -1177,6 +1204,7 @@ resource "azurerm_container_app" "member" {
     azurerm_role_assignment.identity_event_secret,
     azurerm_role_assignment.continuity_hmac_secret,
     azurerm_role_assignment.conversation_cursor_secret,
+    azurerm_role_assignment.auth_abuse_web_secret,
     azurerm_role_assignment.razorpay_secret,
     azurerm_container_app.auth_redis,
     azurerm_container_app.temporal,

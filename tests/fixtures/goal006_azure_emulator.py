@@ -13,7 +13,13 @@ from pathlib import Path
 from typing import ClassVar
 from urllib.parse import parse_qs, urlencode, urlparse
 
-from goal006_live_inventory import DEMO_TEMPORAL_IMAGE, IDENTITY_EDGE_IMAGE, KEYCLOAK_IMAGE, release_app_name
+from goal006_live_inventory import (
+    AUTH_REDIS_IMAGE,
+    DEMO_TEMPORAL_IMAGE,
+    IDENTITY_EDGE_IMAGE,
+    KEYCLOAK_IMAGE,
+    release_app_name,
+)
 from goal006_registry_manifest import RELEASE_MEMBERS
 from goal006_runner_execution import CLEANUP_ARGS, CLEANUP_COMMAND, CLEANUP_REQUIRED_ENVIRONMENT, REQUIRED_ENVIRONMENT
 
@@ -64,6 +70,7 @@ def container_apps(manifest: dict[str, object]) -> list[dict[str, object]]:
         "keycloak": KEYCLOAK_IMAGE,
         "identity-edge": IDENTITY_EDGE_IMAGE,
         "temporal": DEMO_TEMPORAL_IMAGE,
+        "auth-redis": AUTH_REDIS_IMAGE,
     }
     release_apps = [
         {
@@ -160,6 +167,9 @@ class AzureHandler(BaseHTTPRequestHandler):
             "/realms/waooaw/.well-known/openid-configuration",
         }:
             self.send_json(200, {"status": "ready"})
+            return
+        if path == "/api/auth/csrf":
+            self.send_json(200, {"csrfToken": "local-csrf-token"})
             return
         if path == "/realms/waooaw/protocol/openid-connect/auth":
             query = parse_qs(urlparse(self.path).query)
@@ -299,6 +309,33 @@ class AzureHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path.rstrip("/")
+        if path.startswith("/api/auth/signin/keycloak-"):
+            provider = path.rsplit("keycloak-", 1)[1]
+            if provider not in {"google", "facebook"}:
+                self.send_json(404, {"error": "ProviderNotFound"})
+                return
+            length = int(self.headers.get("Content-Length", "0"))
+            form = parse_qs(self.rfile.read(length).decode())
+            if form.get("csrfToken") != ["local-csrf-token"]:
+                self.send_json(403, {"error": "InvalidCsrf"})
+                return
+            authorization = (
+                "https://auth.demo.waooaw.com/realms/waooaw/protocol/openid-connect/auth?"
+                + urlencode(
+                    {
+                        "client_id": "waooaw-web",
+                        "redirect_uri": f"https://cp.demo.waooaw.com/api/auth/callback/keycloak-{provider}",
+                        "kc_idp_hint": provider,
+                        "response_type": "code",
+                        "state": f"{provider}-state",
+                        "nonce": f"{provider}-nonce",
+                        "code_challenge": f"{provider}-challenge",
+                        "code_challenge_method": "S256",
+                    }
+                )
+            )
+            self.send_json(200, {"url": authorization})
+            return
         if "/providers/Microsoft.App/jobs/" in path and path.endswith("/getAuthToken"):
             self.send_json(200, {"properties": {"token": "local-log-stream-token"}})
             return

@@ -165,7 +165,12 @@ jq -e '.redirect_verified == true and .real_user_sign_in_verified == false and
 jq -e '.redirect_verified == true and .real_user_sign_in_verified == false and
   .keycloak_revision == "ca-demo-keycloak--0000002" and .release_sha == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' \
   "$EVIDENCE_DIR/facebook-deployment-verification.json" >/dev/null
-test "$(find "$EVIDENCE_DIR/revision-evidence" -name '*-revision.json' | wc -l)" = 10
+test "$(find "$EVIDENCE_DIR/revision-evidence" -name '*-revision.json' | wc -l)" = 11
+for provider in google facebook; do
+  jq -e '.provider_start_verified == true and
+    .release_sha == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' \
+    "$EVIDENCE_DIR/revision-evidence/$provider-web-provider-start.json" >/dev/null
+done
 grep -F 'http-probes: all required runtime probes passed' "$EVIDENCE_DIR/functional-http-probes.log" >/dev/null
 grep -F 'constitutional-health: all required runtime probes passed' \
   "$EVIDENCE_DIR/functional-constitutional-health.log" >/dev/null

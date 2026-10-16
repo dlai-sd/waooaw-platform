@@ -70,6 +70,13 @@ def test_live_inventory_requires_pinned_identity_dependencies(monkeypatch: pytes
             "provisioningState": "Succeeded",
         }
     )
+    inventory.append(
+        {
+            "name": "ca-demo-auth-redis",
+            "image": goal006_live_inventory.AUTH_REDIS_IMAGE,
+            "provisioningState": "Succeeded",
+        }
+    )
 
     assert goal006_live_inventory.validate_inventory("demo", {"images": images}, inventory) == []
     assert "LIVE_MEMBERSHIP_INVALID" in goal006_live_inventory.validate_inventory(
@@ -1219,9 +1226,12 @@ def test_web_session_runtime_contract_is_external_and_fail_closed() -> None:
     assert 'contains(["disabled", "shadow", "enforced"], var.web_session_mode)' in variables
     assert 'var.web_session_mode == "disabled" || can(regex("^sha256:' in variables
     assert re.search(r"WAOOAW_SERVER_SESSION_MODE\s*=\s*var\.web_session_mode", contract)
-    assert 'active_web_session_secret_environment = var.web_session_mode == "disabled" ? {}' in contract
-    assert 'web_session_secret_uris = var.web_session_mode == "disabled" ? {}' in contract
-    assert 'web_session_secret_resource_ids = var.web_session_mode == "disabled" ? {}' in contract
+    assert "oidc_transaction_secret_environment" in contract
+    assert "active_web_session_secret_environment = merge(" in contract
+    assert "web_session_secret_uris = {" in contract
+    assert "web_session_secret_resource_ids = {" in contract
+    assert "SESSION_PROTOCOL_DIGEST_WRITE_VERSION" in contract
+    assert "SESSION_TOKEN_ENVELOPE_WRITE_VERSION" in contract
     assert re.search(
         r"WEB_SESSION_EXPECTED_CONFIG_DIGEST\s*=\s*var\.web_session_expected_config_digest",
         contract,
@@ -1254,6 +1264,7 @@ def test_web_session_runtime_contract_is_external_and_fail_closed() -> None:
 
 def test_authentication_limiter_is_environment_scoped_and_independent_of_session_mode() -> None:
     contract = read_contract("modules/workload/main.tf")
+    prod_workload = read_contract("environments/prod/workload/main.tf")
 
     assert 'auth_redis_container_enabled = var.workload_enabled && contains(["demo", "uat"], var.environment)' in contract
     assert 'name                         = "ca-${var.environment}-auth-redis"' in contract
@@ -1268,15 +1279,19 @@ def test_authentication_limiter_is_environment_scoped_and_independent_of_session
     assert '"auth-abuse-redis-managed-key" : "auth-abuse-redis-password"' in contract
     assert "(local.auth_redis_password_secret)" in contract
     assert "azurerm_container_app.auth_redis," in contract
+    assert "azurerm_role_assignment.auth_abuse_redis_secret," in contract
+    assert "azurerm_role_assignment.auth_abuse_web_secret," in contract
+    assert 'name  = "WAOOAW_ENVIRONMENT"' in contract
+    assert "auth-abuse:v1:epoch" in contract
     assert 'var.environment == "prod" ? var.auth_abuse_redis_url' in contract
     assert 'Production authentication limiting requires the separately approved private HA Redis' in contract
     assert 'each.key == "billing-engine" ? [1] : []' in contract
     assert 'AUTH_ABUSE_LIMITS_JSON = each.key == "web"' not in contract
+    assert "try(data.terraform_remote_state.foundation.outputs.auth_abuse_redis_url, null)" in prod_workload
 
     foundation = read_contract("modules/foundation/main.tf")
     foundation_variables = read_contract("modules/foundation/variables.tf")
     prod_foundation = read_contract("environments/prod/foundation/main.tf")
-    prod_workload = read_contract("environments/prod/workload/main.tf")
     assert 'resource "azurerm_redis_cache" "auth_abuse"' in foundation
     assert 'public_network_access_enabled = false' in foundation
     assert 'sku_name                      = "Premium"' in foundation
@@ -1288,7 +1303,10 @@ def test_authentication_limiter_is_environment_scoped_and_independent_of_session
         r"auth_redis_ha_enabled\s*=\s*var\.auth_redis_ha_enabled",
         prod_foundation,
     )
-    assert "auth_abuse_redis_url                     = data.terraform_remote_state.foundation.outputs.auth_abuse_redis_url" in prod_workload
+    assert (
+        "auth_abuse_redis_url                     = "
+        "try(data.terraform_remote_state.foundation.outputs.auth_abuse_redis_url, null)"
+    ) in prod_workload
 
 
 def test_web_uses_dedicated_health_probes() -> None:

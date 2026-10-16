@@ -507,6 +507,18 @@ export async function sessionStoreReady(): Promise<boolean> {
   return rows[0]?.ready === true;
 }
 
+export async function oidcTransactionStoreReady(): Promise<boolean> {
+  keyring('SESSION_PROTOCOL_DIGEST_KEYS');
+  keyring('SESSION_TOKEN_ENVELOPE_KEYS');
+  const deployVersion = process.env.WEB_SESSION_DEPLOY_VERSION ?? 'wc123-auth-session-v1';
+  const rows = await withDatabaseSlot(
+    () => database()<[{ ready: boolean }]>`
+    SELECT web_session.schema_ready(1, ${deployVersion}) AS ready
+  `
+  );
+  return rows[0]?.ready === true;
+}
+
 export async function applyBackchannelLogout(input: {
   issuer: string;
   clientId: string;

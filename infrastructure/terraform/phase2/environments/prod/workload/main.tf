@@ -44,7 +44,7 @@ module "workload" {
   key_vault_secret_uris                    = var.key_vault_secret_uris
   key_vault_secret_resource_ids            = var.key_vault_secret_resource_ids
   ghcr_packages_public                     = var.ghcr_packages_public
-  auth_abuse_redis_url                     = data.terraform_remote_state.foundation.outputs.auth_abuse_redis_url
+  auth_abuse_redis_url                     = try(data.terraform_remote_state.foundation.outputs.auth_abuse_redis_url, null)
   web_session_mode                         = "disabled"
   ce_min_replicas                          = var.ce_min_replicas
   pr_min_replicas                          = var.pr_min_replicas

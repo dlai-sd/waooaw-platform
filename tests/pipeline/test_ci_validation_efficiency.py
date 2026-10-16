@@ -249,9 +249,17 @@ def test_release_qualification_scopes_and_parallelizes_independent_lanes() -> No
     assert "qualification_change_scope.py" in source
     assert "WAOOAW_HOST_CHANGED_FILES_FILE" in source
     assert source.index("qualification_change_scope.py") < source.index("run_docker_build.sh")
-    assert 'RELEASE_RUN_TESTS" = true || test "$RELEASE_RUN_POSTGRES" = true || test "$RELEASE_RUN_SIMULATOR" = true' in source
+    assert '|| test "$RELEASE_RUN_AZURE" = true' in source
     for lane in ("TESTS", "POSTGRES", "DEMO_DATA", "SIMULATOR", "AZURE"):
         assert f'RELEASE_RUN_{lane}" = true' in source
+    assert source.index("run_release_lane preflight") < source.index("run_release_lane tests")
+    assert source.index("run_release_lane preflight") < source.index("run_release_lane azure")
+    for test_file in (
+        "test_goal006_live_inventory.py",
+        "test_goal006_terraform_foundations.py",
+        "test_verify_web_provider_start.py",
+    ):
+        assert source.count(test_file) == 1
     assert source.count("_pid=$!") == 5
     assert source.index("azure_pid=$!") < source.index('for lane_pid in "$tests_pid"')
 
