@@ -1,14 +1,14 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-124
 contract_path: work-contracts/WC-124-demo-uat-persistent-state-lifecycle-implementation.md
-contract_digest: 77d1c14bc35cf17b0fe5a725794288dc32ae2ad9db21dcf3a30675da0172766f
+contract_digest: 11fff15beb8ccb8ae0da93b9f5bc56cc26c32a095ce21bdc0301a9cd1fd513dd
 input_package_path: work-contracts/WC-124-persistent-state-inputs.yaml
 input_package_digest: 210b18e540c60dc7a0b530b7ca7220e5c5468067a4fa3cebccfece1b9232604c
 implementation_may_begin: true
 input_blocker: CB-020
 input_blocker_status: CLOSED
 implementation_scope: true
-result: LOCAL_QUALIFICATION_PASS_PR_PREPARATION_PENDING
+result: QUALIFIED
 
 qualification_evidence:
   qualified_at: "2026-10-16"
@@ -29,6 +29,8 @@ requirement_defaults: &defaults
   completion_rule: The direct oracle passes on the exact candidate with no skipped, advisory, TODO, or success-shaped fallback.
   residual_risk: Passing local and emulated evidence does not establish Azure provider, deployment, restore, traffic, activation, approval, or merge acceptance.
   result: PASS
+  evidence_refs:
+    - "Implementation milestone 817500a6; Docker qualification: WC-124 244/244, Billing 450 passed, GOAL-006 503/503, TypeScript/web PASS, static preflight PASS, and six Terraform roots valid."
 
 requirements:
   - <<: *defaults
@@ -54,6 +56,8 @@ requirements:
     test_path_or_plan: tests/infra and tests/pipeline ADR-047 runner/state contract selectors
     dependencies: WC124-R001
     result: FOUNDER_RESERVED
+    evidence_refs:
+      - "tests/pipeline/test_wc124_runner_state_prerequisites.py PASS; live ADR-047 runner/backend ownership evidence remains separately Founder authorized."
 
   - <<: *defaults
     requirement_id: WC124-R004
@@ -231,6 +235,8 @@ requirements:
     initial_state: Founder-reserved
     dependencies: WC124-R001, WC124-R021
     result: FOUNDER_RESERVED
+    evidence_refs:
+      - "Workflow denial contracts and local Azure emulator rehearsal PASS; no real Azure, restore, deployment, or traffic action was authorized or performed."
 
   - <<: *defaults
     requirement_id: WC124-R029
@@ -273,4 +279,4 @@ requirements:
     observable_outcome: Exact-head author review and mandatory candidate gates pass; PR body is prepared and handed to the Founder without approval, merge, deployment, activation, or traffic claims.
     test_path_or_plan: Engineering candidate qualification, C-059, C-065, PR prechecks, exact-head checks, hosted CI status, and Founder handoff
     dependencies: WC124-R022, WC124-R023, WC124-R027, WC124-R028, WC124-R029, WC124-R030, WC124-R031, WC124-R032, WC124-R033
-    result: IN_PROGRESS
+    result: PLANNED
