@@ -40,6 +40,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--dir", "/tmp"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -167,6 +168,7 @@ services:
       WAOOAW_SERVER_SESSION_MODE: enforced
       WAOOAW_ENVIRONMENT: auth-preview
       REDIS_URL: redis://redis:6379/0
+      AUTH_ABUSE_DIGEST_KEY: ${AUTH_ABUSE_DIGEST_KEY:?AUTH_ABUSE_DIGEST_KEY is required}
       AUTH_ABUSE_LIMITS_JSON: '{"AUTH_START":{"limit":20,"windowSeconds":600},"AUTH_CALLBACK":{"limit":30,"windowSeconds":600},"RECOVERY":{"limit":5,"windowSeconds":3600},"PROVIDER_LINK":{"limit":10,"windowSeconds":3600},"PROVIDER_UNLINK":{"limit":10,"windowSeconds":3600},"RESEND":{"limit":5,"windowSeconds":900},"CREDENTIAL":{"limit":10,"windowSeconds":3600}}'
       SESSION_PROTOCOL_DIGEST_KEYS: '{"v1":"${SESSION_PROTOCOL_DIGEST_KEY:?SESSION_PROTOCOL_DIGEST_KEY is required}"}'
       SESSION_PROTOCOL_DIGEST_WRITE_VERSION: v1

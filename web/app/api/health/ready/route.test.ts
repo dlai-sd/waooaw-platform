@@ -1,8 +1,10 @@
 /** @jest-environment node */
 
+import { authAbuseLimiterReady } from '@/lib/auth-abuse-limiter';
 import { sessionStoreReady } from '@/lib/web-session-store';
 import { GET } from './route';
 
+jest.mock('@/lib/auth-abuse-limiter', () => ({ authAbuseLimiterReady: jest.fn() }));
 jest.mock('@/lib/web-session-store', () => ({ sessionStoreReady: jest.fn() }));
 
 const readinessEnvironment = {
@@ -16,6 +18,7 @@ const readinessEnvironment = {
 
 beforeEach(() => {
   Object.assign(process.env, readinessEnvironment);
+  jest.mocked(authAbuseLimiterReady).mockReset().mockResolvedValue(true);
   jest.mocked(sessionStoreReady).mockReset().mockResolvedValue(true);
   jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 204 }));
 });

@@ -65,7 +65,7 @@ fi
 printf '%s' "$preview_origin" | grep -Eq '^https://[a-z0-9-]+-[0-9]+[.]app[.]github[.]dev$' \
   || fail "preview origin must be one exact Codespaces HTTPS origin"
 
-keycloak_issuer=${KEYCLOAK_ISSUER:-https://ca-demo-identity-edge.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/realms/waooaw}
+keycloak_issuer=${KEYCLOAK_ISSUER:-https://auth.demo.waooaw.com/realms/waooaw}
 printf '%s' "$keycloak_issuer" | grep -Eq '^https://[A-Za-z0-9.-]+/realms/waooaw$' \
   || fail "KEYCLOAK_ISSUER must be an HTTPS waooaw realm URL"
 
@@ -106,6 +106,7 @@ whatsapp_tenant_token_key=$(secret_value WHATSAPP_TENANT_TOKEN_KEY 32)
 conversation_cursor_hmac_key=$(secret_value CONVERSATION_CURSOR_HMAC_KEY 32)
 channel_continuity_hmac_key=$(base64_secret_value CHANNEL_CONTINUITY_HMAC_KEY 32)
 session_protocol_digest_key=$(base64_secret_value SESSION_PROTOCOL_DIGEST_KEY 32)
+auth_abuse_digest_key=$(secret_value AUTH_ABUSE_DIGEST_KEY 32)
 session_handle_digest_key=$(base64_secret_value SESSION_HANDLE_DIGEST_KEY 32)
 session_token_envelope_key=$(base64_secret_value SESSION_TOKEN_ENVELOPE_KEY 32)
 wbe_ops_auth_token=$(secret_value WBE_OPS_AUTH_TOKEN 32)
@@ -159,6 +160,7 @@ WHATSAPP_TENANT_TOKEN_KEY=$whatsapp_tenant_token_key
 CONVERSATION_CURSOR_HMAC_KEY=$conversation_cursor_hmac_key
 CHANNEL_CONTINUITY_HMAC_KEY=$channel_continuity_hmac_key
 SESSION_PROTOCOL_DIGEST_KEY=$session_protocol_digest_key
+AUTH_ABUSE_DIGEST_KEY=$auth_abuse_digest_key
 SESSION_HANDLE_DIGEST_KEY=$session_handle_digest_key
 SESSION_TOKEN_ENVELOPE_KEY=$session_token_envelope_key
 WBE_OPS_AUTH_TOKEN=$wbe_ops_auth_token
@@ -177,10 +179,13 @@ if [ "$action" = start ]; then
   if [ -n "${WAOOAW_WEB_IMAGE:-}" ]; then
     $compose pull auth-preview
     $compose up -d --build --wait --wait-timeout 600 postgres temporal jaeger constitutional-engine business-platform
-    $compose up -d --no-build --wait --wait-timeout 180 auth-preview
   else
-    $compose up -d --build --wait --wait-timeout 900
+    $compose build
+    $compose up -d --no-build --wait --wait-timeout 900 postgres temporal jaeger redis billing-engine constitutional-engine business-platform
   fi
+  auth_abuse_epoch_ms=$(($(date -u +%s) * 1000 - 3600001))
+  $compose exec -T redis redis-cli SET waooaw:auth-preview:auth-abuse:v1:epoch "$auth_abuse_epoch_ms" NX >/dev/null
+  $compose up -d --no-build --wait --wait-timeout 180 auth-preview
   $compose exec -T postgres sh /auth-preview/ensure-wbe-runtime-role.sh
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /auth-preview/ensure-ce-audit-role.sql
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /auth-preview/ensure-business-runtime-grants.sql
@@ -189,7 +194,6 @@ if [ "$action" = start ]; then
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /docker-entrypoint-initdb.d/45-pre-hire-checkout-orders.sql
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /docker-entrypoint-initdb.d/41-relationship-acquisition-mode.sql
   $compose exec -T postgres bash /docker-entrypoint-initdb.d/42-demo-marketplace-admission.sh
-  $compose exec -T redis redis-cli SET waooaw:auth-preview:auth-abuse:v1:epoch 0 >/dev/null
 fi
 
 web_image=${WAOOAW_WEB_IMAGE:-waooaw/auth-preview-web:$source_tag}

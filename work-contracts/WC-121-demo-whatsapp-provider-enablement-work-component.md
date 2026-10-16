@@ -6,7 +6,7 @@
 |---|---|
 | Work component | WC121-C09 - Demo WhatsApp Provider Enablement |
 | Version | 0.1.0-candidate.3 |
-| Status | EXECUTION PLAN - S16 COMPLETE - SELECTIVE VALIDATION ACTIVATED - PROTECTED ACTIONS UNAUTHORIZED |
+| Status | EXECUTION PLAN - S16 REOPENED - SELECTIVE VALIDATION ACTIVATED - PROTECTED ACTIONS UNAUTHORIZED |
 | Parent Work Contract | `work-contracts/WC-121-customer-engagement-workspace-implementation.md` |
 | Controlling component | WC-121 Section 6.9, CEW-WC-09 - Live Demo Provider and Deployment |
 | Upstream transport Work Contract | `work-contracts/WC-120-conversation-engine-whatsapp-implementation.md` |
@@ -16,7 +16,7 @@
 | Environment schema | `infrastructure/conversation-whatsapp/environment.schema.json` |
 | Implementation office | Platform IT Expert |
 | Source baseline | `origin/main` at `6166da3fb516c78143207ac6d4bc9af7c1652c2c` |
-| Result | S16 COMPLETE; S01-S15 PLANNED OR BLOCKED |
+| Result | S16 BLOCKED; S01-S15 PLANNED OR BLOCKED |
 
 This work component decomposes already accepted WC-120 and WC-121 boundaries into executable
 Platform IT stories. It makes no new architecture decision and does not authorize source changes,
@@ -588,7 +588,10 @@ dependencies, observability, and rollback readiness without provider effects.
 provider-neutral authentication ceremony, application session, current-membership authorization,
 or customer-visible provider disclosure is broken or unqualified on the exact Web candidate.
 
-**Status:** COMPLETE for the exact candidate at `cf48eea4b199da29da4b9c9490da229fa82b15ad`.
+**Status:** BLOCKED. The previously recorded candidate `cf48eea4b199da29da4b9c9490da229fa82b15ad`
+is not an ancestor of PR #512's final head `d15bc4df72f1df7a3a32b4f8857216bfa84646d3`.
+The deployed candidate also returned `ABUSE_LIMITER_UNAVAILABLE` before broker handoff because its
+always-on authentication limiter runtime contract was absent from Demo.
 
 **Completion evidence**
 
@@ -602,8 +605,8 @@ or customer-visible provider disclosure is broken or unqualified on the exact We
 - Focused authentication units pass `49/49`; WC-083, WC-094, and WC-099 browser journeys pass
   `24/24`; preview contracts pass `9/9`; the full Business Platform gate passes `1119/1119`;
   production builds, forced-RLS/grant checks, repository pre-commit, and C-059 pass.
-- The Codespace preview returns readiness HTTP `204`, and Founder acceptance confirms Google
-  registration completes and opens the tenant-bound customer portal.
+- The Codespace preview evidence is retained as local evidence only. It does not satisfy Task 15,
+  exact-head qualification, or deployed-environment readiness.
 
 This status satisfies only S16. It does not authorize or claim S01-S15, Meta account inspection or
 mutation, protected credential use, Azure/DNS/TLS mutation, deployment, callback subscription,

@@ -101,6 +101,13 @@ graph, install-script behavior, owner, license, or material vulnerability requir
 amendment. No Auth.js adapter, ORM, query builder, generic database-session schema, or second
 PostgreSQL package is implied.
 
+WC-123 also binds `auth_abuse_redis` as an infrastructure dependency without adding an application
+release member. The entry records the immutable Redis image or managed-product identity, limiter
+script digest, policy digest, protocol/TLS capability, SBOM/provenance evidence, and the accepted
+environment lifecycle. Codespaces, Demo, UAT, and Production vary only by reviewed environment
+projection and secret reference; application code and limiter semantics do not vary. Web promotion
+or rollback never recreates or flushes this dependency.
+
 ## 3. Identity configuration projection
 
 The environment projection is separately canonicalized and digest-bound. It contains only reviewed

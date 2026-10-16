@@ -19,7 +19,20 @@ locals {
     "billing-engine",
     "agent-runtime-adapter-digital-marketing",
   ])
-  active_members = var.workload_enabled ? local.release_members : toset([])
+  active_members               = var.workload_enabled ? local.release_members : toset([])
+  auth_redis_container_enabled = var.workload_enabled && contains(["demo", "uat"], var.environment)
+  auth_redis_host              = "ca-${var.environment}-auth-redis.internal.${var.container_app_environment_default_domain}"
+  auth_redis_url               = var.environment == "prod" ? var.auth_abuse_redis_url : "redis://${local.auth_redis_host}:6379/0"
+  auth_redis_password_secret   = var.environment == "prod" ? "auth-abuse-redis-managed-key" : "auth-abuse-redis-password"
+  auth_abuse_limits = {
+    AUTH_START      = { limit = 20, windowSeconds = 600 }
+    AUTH_CALLBACK   = { limit = 30, windowSeconds = 600 }
+    RECOVERY        = { limit = 5, windowSeconds = 3600 }
+    PROVIDER_LINK   = { limit = 10, windowSeconds = 3600 }
+    PROVIDER_UNLINK = { limit = 10, windowSeconds = 3600 }
+    RESEND          = { limit = 5, windowSeconds = 900 }
+    CREDENTIAL      = { limit = 10, windowSeconds = 3600 }
+  }
   public_ingress = {
     "constitutional-engine"                   = false
     "ai-runtime"                              = false
@@ -446,6 +459,7 @@ locals {
       PLATFORM_PHASE                = "IMPLEMENTATION"
     }
     "web" = merge({
+      AUTH_ABUSE_LIMITS_JSON           = jsonencode(local.auth_abuse_limits)
       AZURE_KEY_VAULT_URL              = trimsuffix(var.key_vault_secret_uris["web"], "/secrets/web")
       AZURE_KEY_VAULT_WRITER_CLIENT_ID = "710af8d6-8e2c-4f9d-9b1c-2230de9de1f8"
       AZURE_TENANT_ID                  = "0471534c-1bbe-40ab-ae65-3f721b62582c"
@@ -454,6 +468,7 @@ locals {
       KEYCLOAK_ISSUER                  = "${local.service_urls.identity_edge}/realms/waooaw"
       NEXTAUTH_URL                     = local.service_urls.web
       NODE_ENV                         = "production"
+      REDIS_URL                        = local.auth_redis_url
       WAOOAW_ENVIRONMENT               = var.environment
       WAOOAW_SERVER_SESSION_MODE       = var.web_session_mode
       }, var.web_session_mode == "disabled" ? {} : {
@@ -525,6 +540,18 @@ locals {
   conversation_cursor_secret_resource_ids = {
     conversation-cursor-hmac = "${trimsuffix(var.key_vault_secret_resource_ids["business-platform"], "/business-platform")}/conversation-cursor-hmac"
   }
+  auth_abuse_secret_environment = {
+    auth-abuse-digest-key              = "AUTH_ABUSE_DIGEST_KEY"
+    (local.auth_redis_password_secret) = "REDIS_PASSWORD"
+  }
+  auth_abuse_secret_uris = {
+    for name in keys(local.auth_abuse_secret_environment) :
+    name => "${trimsuffix(var.key_vault_secret_uris["web"], "/web")}/${name}"
+  }
+  auth_abuse_secret_resource_ids = {
+    for name in keys(local.auth_abuse_secret_environment) :
+    name => "${trimsuffix(var.key_vault_secret_resource_ids["web"], "/web")}/${name}"
+  }
   web_session_secret_environment = {
     web-session-database-url    = "WEB_SESSION_DATABASE_URL"
     web-session-handle-digest   = "SESSION_HANDLE_DIGEST_KEYS"
@@ -565,6 +592,14 @@ resource "azurerm_user_assigned_identity" "member" {
   for_each = local.active_members
 
   name                = "id-${var.environment}-${each.key}"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+}
+
+resource "azurerm_user_assigned_identity" "auth_redis" {
+  count = local.auth_redis_container_enabled ? 1 : 0
+
+  name                = "id-${var.environment}-auth-redis"
   location            = var.location
   resource_group_name = var.resource_group_name
 }
@@ -634,12 +669,117 @@ resource "azurerm_role_assignment" "web_session_secret" {
   principal_id         = azurerm_user_assigned_identity.member["web"].principal_id
 }
 
+resource "azurerm_role_assignment" "auth_abuse_web_secret" {
+  for_each = var.workload_enabled ? local.auth_abuse_secret_resource_ids : {}
+
+  scope                = each.value
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.member["web"].principal_id
+}
+
+resource "azurerm_role_assignment" "auth_abuse_redis_secret" {
+  count = local.auth_redis_container_enabled ? 1 : 0
+
+  scope                = local.auth_abuse_secret_resource_ids["auth-abuse-redis-password"]
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.auth_redis[0].principal_id
+}
+
 resource "azurerm_role_assignment" "razorpay_secret" {
   for_each = var.workload_enabled ? local.razorpay_secret_resource_ids : {}
 
   scope                = each.value
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_user_assigned_identity.member["billing-engine"].principal_id
+}
+
+resource "azurerm_container_app" "auth_redis" {
+  count = local.auth_redis_container_enabled ? 1 : 0
+
+  name                         = "ca-${var.environment}-auth-redis"
+  container_app_environment_id = var.container_app_environment_id
+  resource_group_name          = var.resource_group_name
+  revision_mode                = "Single"
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.auth_redis[0].id]
+  }
+
+  secret {
+    name                = "auth-abuse-redis-password"
+    identity            = azurerm_user_assigned_identity.auth_redis[0].id
+    key_vault_secret_id = local.auth_abuse_secret_uris["auth-abuse-redis-password"]
+  }
+
+  template {
+    min_replicas = 1
+    max_replicas = 1
+
+    container {
+      name    = "auth-redis"
+      image   = "redis@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2"
+      cpu     = 0.25
+      memory  = "0.5Gi"
+      command = ["/bin/sh", "-ec"]
+      args = [<<-EOT
+        umask 077
+        printf 'bind 0.0.0.0\nprotected-mode yes\nport 6379\nsave ""\nappendonly no\nrequirepass %s\n' "$REDIS_PASSWORD" > /tmp/redis.conf
+        unset REDIS_PASSWORD
+        exec redis-server /tmp/redis.conf
+      EOT
+      ]
+
+      env {
+        name        = "REDIS_PASSWORD"
+        secret_name = "auth-abuse-redis-password"
+      }
+
+      startup_probe {
+        transport               = "TCP"
+        port                    = 6379
+        interval_seconds        = 5
+        timeout                 = 3
+        failure_count_threshold = 30
+      }
+
+      liveness_probe {
+        transport               = "TCP"
+        port                    = 6379
+        interval_seconds        = 10
+        timeout                 = 3
+        failure_count_threshold = 3
+      }
+
+      readiness_probe {
+        transport               = "TCP"
+        port                    = 6379
+        interval_seconds        = 10
+        timeout                 = 3
+        failure_count_threshold = 3
+        success_count_threshold = 1
+      }
+    }
+  }
+
+  ingress {
+    external_enabled = false
+    exposed_port     = 6379
+    target_port      = 6379
+    transport        = "tcp"
+
+    traffic_weight {
+      latest_revision = true
+      percentage      = 100
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition     = var.environment != "prod"
+      error_message = "Production authentication limiting requires the separately approved private HA Redis foundation dependency."
+    }
+  }
 }
 
 resource "azurerm_container_app" "member" {
@@ -708,6 +848,15 @@ resource "azurerm_container_app" "member" {
 
   dynamic "secret" {
     for_each = each.key == "business-platform" ? local.conversation_cursor_secret_uris : {}
+    content {
+      name                = secret.key
+      identity            = azurerm_user_assigned_identity.member[each.key].id
+      key_vault_secret_id = secret.value
+    }
+  }
+
+  dynamic "secret" {
+    for_each = each.key == "web" ? local.auth_abuse_secret_uris : {}
     content {
       name                = secret.key
       identity            = azurerm_user_assigned_identity.member[each.key].id
@@ -825,6 +974,14 @@ resource "azurerm_container_app" "member" {
         for_each = each.key == "business-platform" ? local.conversation_cursor_secret_uris : {}
         content {
           name        = "Conversation__CursorHmacKey"
+          secret_name = env.key
+        }
+      }
+
+      dynamic "env" {
+        for_each = each.key == "web" ? local.auth_abuse_secret_environment : {}
+        content {
+          name        = env.value
           secret_name = env.key
         }
       }
@@ -1021,6 +1178,7 @@ resource "azurerm_container_app" "member" {
     azurerm_role_assignment.continuity_hmac_secret,
     azurerm_role_assignment.conversation_cursor_secret,
     azurerm_role_assignment.razorpay_secret,
+    azurerm_container_app.auth_redis,
     azurerm_container_app.temporal,
   ]
 }

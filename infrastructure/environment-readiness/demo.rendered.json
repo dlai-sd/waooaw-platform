@@ -1,5 +1,5 @@
 {
-  "catalogDigest": "sha256:5f49991590528267c88491172ef7a24ec0f575e755f2590c0acd9704d4a4928c",
+  "catalogDigest": "sha256:8959723677c5e671d2294ba203c3b7b586fa3f554d7505ae96341b71b2eb91e8",
   "configuration": {
     "capacityProfile": {
       "environment": "demo",
@@ -173,7 +173,7 @@
   },
   "environment": "demo",
   "manifestDigest": "sha256:228720c90c3decd509268cdb980a768391916798d2f08317cc93cceb7247246c",
-  "renderDigest": "sha256:7f4f90df664599834759ac45e5f7f6de685ee69c430ca92c652644abe54ce3e9",
+  "renderDigest": "sha256:c649536155a94fa17a34050aa8c4ff7b3b628a051f40857fe1c17c9e7751ddb5",
   "schemaVersion": "1.0",
   "secretBindings": [
     {
@@ -231,6 +231,29 @@
       "id": "keycloak-admin",
       "principal": "keycloak",
       "reference": "kv://kv-waooaw-demo/secrets/keycloak-admin-password"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "web:AUTH_ABUSE_DIGEST_KEY"
+      ],
+      "id": "auth-abuse-digest-key",
+      "principal": "web",
+      "reference": "kv://kv-waooaw-demo/secrets/auth-abuse-digest-key"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "web:REDIS_PASSWORD",
+        "auth-redis:REDIS_PASSWORD"
+      ],
+      "id": "auth-abuse-redis-password",
+      "principal": "web",
+      "reference": "kv://kv-waooaw-demo/secrets/auth-abuse-redis-password"
     },
     {
       "allowedOperations": [

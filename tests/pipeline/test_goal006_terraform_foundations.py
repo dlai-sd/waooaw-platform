@@ -126,6 +126,7 @@ def test_all_foundation_roots_publish_the_same_workload_contract() -> None:
         "deployment_identity_id",
         "verification_client_id",
         "verification_principal_id",
+        "auth_abuse_redis_url",
     }
 
     for environment in ENVIRONMENTS:
@@ -425,7 +426,10 @@ def test_environment_foundation_roots_expose_identity_client_ids(environment: st
 def test_disabled_lease_removes_all_disposable_workload_resources() -> None:
     contract = read_contract("modules/workload/main.tf")
 
-    assert "active_members = var.workload_enabled ? local.release_members : toset([])" in contract
+    assert re.search(
+        r"active_members\s*=\s*var\.workload_enabled\s*\?\s*local\.release_members\s*:\s*toset\(\[\]\)",
+        contract,
+    )
     assert contract.count("for_each = local.active_members") == 3
     assert "var.workload_enabled ? local.minimum_replicas" not in contract
 
@@ -1246,6 +1250,45 @@ def test_web_session_runtime_contract_is_external_and_fail_closed() -> None:
     }.items():
         assert secret_name in contract
         assert environment_name in contract
+
+
+def test_authentication_limiter_is_environment_scoped_and_independent_of_session_mode() -> None:
+    contract = read_contract("modules/workload/main.tf")
+
+    assert 'auth_redis_container_enabled = var.workload_enabled && contains(["demo", "uat"], var.environment)' in contract
+    assert 'name                         = "ca-${var.environment}-auth-redis"' in contract
+    assert 'external_enabled = false' in contract
+    assert 'image   = "redis@sha256:' in contract
+    assert 'REDIS_URL                        = local.auth_redis_url' in contract
+    assert re.search(
+        r"AUTH_ABUSE_LIMITS_JSON\s*=\s*jsonencode\(local\.auth_abuse_limits\)",
+        contract,
+    )
+    assert "auth_redis_password_secret" in contract
+    assert '"auth-abuse-redis-managed-key" : "auth-abuse-redis-password"' in contract
+    assert "(local.auth_redis_password_secret)" in contract
+    assert "azurerm_container_app.auth_redis," in contract
+    assert 'var.environment == "prod" ? var.auth_abuse_redis_url' in contract
+    assert 'Production authentication limiting requires the separately approved private HA Redis' in contract
+    assert 'each.key == "billing-engine" ? [1] : []' in contract
+    assert 'AUTH_ABUSE_LIMITS_JSON = each.key == "web"' not in contract
+
+    foundation = read_contract("modules/foundation/main.tf")
+    foundation_variables = read_contract("modules/foundation/variables.tf")
+    prod_foundation = read_contract("environments/prod/foundation/main.tf")
+    prod_workload = read_contract("environments/prod/workload/main.tf")
+    assert 'resource "azurerm_redis_cache" "auth_abuse"' in foundation
+    assert 'public_network_access_enabled = false' in foundation
+    assert 'sku_name                      = "Premium"' in foundation
+    assert 'replicas_per_master           = 1' in foundation
+    assert 'zones                         = ["1", "2"]' in foundation
+    assert 'resource "azurerm_private_endpoint" "auth_redis"' in foundation
+    assert 'variable "auth_redis_ha_enabled"' in foundation_variables
+    assert re.search(
+        r"auth_redis_ha_enabled\s*=\s*var\.auth_redis_ha_enabled",
+        prod_foundation,
+    )
+    assert "auth_abuse_redis_url                     = data.terraform_remote_state.foundation.outputs.auth_abuse_redis_url" in prod_workload
 
 
 def test_web_uses_dedicated_health_probes() -> None:

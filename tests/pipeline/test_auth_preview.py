@@ -64,11 +64,16 @@ def test_preview_package_runs_current_source_with_real_local_services() -> None:
     assert "secret_value NEXTAUTH_SECRET 32" in launcher
     assert "base64_secret_value CHANNEL_CONTINUITY_HMAC_KEY 32" in launcher
     assert "base64_secret_value SESSION_PROTOCOL_DIGEST_KEY 32" in launcher
+    assert "secret_value AUTH_ABUSE_DIGEST_KEY 32" in launcher
+    assert "waooaw:auth-preview:auth-abuse:v1:epoch" in launcher
+    assert "$compose up -d --no-build --wait --wait-timeout 180 auth-preview" in launcher
+    assert 'command: ["redis-server", "--save", "", "--appendonly", "no", "--dir", "/tmp"]' in compose
     assert "base64_secret_value SESSION_HANDLE_DIGEST_KEY 32" in launcher
     assert "base64_secret_value SESSION_TOKEN_ENVELOPE_KEY 32" in launcher
     assert "AUTH_PREVIEW_DEPLOYMENT_ID=$auth_preview_deployment_id" in launcher
     assert "AUTH_PREVIEW_SESSION_MAX_AGE_SECONDS=3600" in launcher
     assert "REDIS_URL: redis://redis:6379/0" in compose
+    assert "AUTH_ABUSE_DIGEST_KEY:" in compose
     assert "AUTH_ABUSE_LIMITS_JSON:" in compose
     assert "SESSION_PROTOCOL_DIGEST_KEYS:" in compose
     assert "SESSION_HANDLE_DIGEST_KEYS:" in compose
@@ -82,7 +87,7 @@ def test_preview_package_runs_current_source_with_real_local_services() -> None:
     assert "http://127.0.0.1:3000/api/health/ready" in compose
     assert "WEB_SESSION_CONFIG_DIGEST=$web_session_config_digest" in launcher
     assert "WEB_SESSION_TELEMETRY_ROUTE_DIGEST=$web_session_telemetry_route_digest" in launcher
-    assert "redis-cli SET waooaw:auth-preview:auth-abuse:v1:epoch 0" in launcher
+    assert "redis-cli SET waooaw:auth-preview:auth-abuse:v1:epoch 0" not in launcher
     assert "ChannelContinuity__EnvelopeHmacKey" in compose
     assert "AUTH_PREVIEW_DEPLOYMENT_ID" in compose
     assert "ensure-ce-audit-role.sql:/auth-preview/ensure-ce-audit-role.sql:ro" in compose

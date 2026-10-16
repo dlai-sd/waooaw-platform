@@ -42,6 +42,17 @@ variable "runner_private_endpoints_subnet_id" {
   }
 }
 
+variable "auth_redis_ha_enabled" {
+  type        = bool
+  default     = false
+  description = "Create the separately authorized private Production HA authentication limiter dependency."
+
+  validation {
+    condition     = !var.auth_redis_ha_enabled || var.environment == "prod"
+    error_message = "Managed HA authentication Redis is reserved for Production."
+  }
+}
+
 variable "external_environment" {
   type        = bool
   description = "Expose the Container Apps environment load balancer for an explicitly authorized lower environment."

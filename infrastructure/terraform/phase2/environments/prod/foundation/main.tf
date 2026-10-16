@@ -28,6 +28,7 @@ module "foundation" {
   runner_private_endpoints_subnet_id = var.runner_private_endpoints_subnet_id
   tfstate_storage_account_id         = var.tfstate_storage_account_id
   external_environment               = true
+  auth_redis_ha_enabled              = var.auth_redis_ha_enabled
 }
 
 output "resource_group_name" {
@@ -84,4 +85,9 @@ output "verification_client_id" {
 
 output "verification_principal_id" {
   value = module.foundation.verification_principal_id
+}
+
+output "auth_abuse_redis_url" {
+  value     = module.foundation.auth_abuse_redis_url
+  sensitive = true
 }

@@ -1359,6 +1359,7 @@ services:
       BUSINESS_PLATFORM_URL: http://business-platform:5001
       BILLING_ENGINE_URL: http://billing-engine:8140
       REDIS_URL: redis://redis:6379/0
+      AUTH_ABUSE_DIGEST_KEY: ${AUTH_ABUSE_DIGEST_KEY:-local-auth-abuse-digest-key-32-bytes}
       WAOOAW_ENVIRONMENT: demo
       WAOOAW_SERVER_SESSION_MODE: ${WAOOAW_SERVER_SESSION_MODE:-enforced}
       WAOOAW_SERVER_SESSION_SHADOW_SUBJECTS: ${WAOOAW_SERVER_SESSION_SHADOW_SUBJECTS:-}

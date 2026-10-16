@@ -257,6 +257,73 @@ resource "azurerm_private_dns_zone_virtual_network_link" "key_vault" {
   tags                  = local.tags
 }
 
+resource "azurerm_redis_cache" "auth_abuse" {
+  count = var.auth_redis_ha_enabled ? 1 : 0
+
+  name                          = "redis-${local.name}-auth"
+  location                      = azurerm_resource_group.environment.location
+  resource_group_name           = azurerm_resource_group.environment.name
+  capacity                      = 1
+  family                        = "P"
+  sku_name                      = "Premium"
+  non_ssl_port_enabled          = false
+  minimum_tls_version           = "1.2"
+  public_network_access_enabled = false
+  redis_version                 = "6"
+  replicas_per_master           = 1
+  zones                         = ["1", "2"]
+  tags                          = local.tags
+
+  redis_configuration {}
+
+  lifecycle {
+    precondition {
+      condition     = var.environment == "prod"
+      error_message = "Managed HA authentication Redis is a Production foundation dependency."
+    }
+  }
+}
+
+resource "azurerm_private_dns_zone" "redis" {
+  count = var.auth_redis_ha_enabled ? 1 : 0
+
+  name                = "privatelink.redis.cache.windows.net"
+  resource_group_name = azurerm_resource_group.environment.name
+  tags                = local.tags
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "redis" {
+  count = var.auth_redis_ha_enabled ? 1 : 0
+
+  name                  = "link-${local.name}-redis"
+  resource_group_name   = azurerm_resource_group.environment.name
+  private_dns_zone_name = azurerm_private_dns_zone.redis[0].name
+  virtual_network_id    = azurerm_virtual_network.environment.id
+  tags                  = local.tags
+}
+
+resource "azurerm_private_endpoint" "auth_redis" {
+  count = var.auth_redis_ha_enabled ? 1 : 0
+
+  name                = "pe-${local.name}-auth-redis"
+  location            = azurerm_resource_group.environment.location
+  resource_group_name = azurerm_resource_group.environment.name
+  subnet_id           = azurerm_subnet.private_endpoints.id
+  tags                = local.tags
+
+  private_service_connection {
+    name                           = "psc-${local.name}-auth-redis"
+    private_connection_resource_id = azurerm_redis_cache.auth_abuse[0].id
+    subresource_names              = ["redisCache"]
+    is_manual_connection           = false
+  }
+
+  private_dns_zone_group {
+    name                 = "zone-${local.name}-auth-redis"
+    private_dns_zone_ids = [azurerm_private_dns_zone.redis[0].id]
+  }
+}
+
 resource "azurerm_private_endpoint" "key_vault_runner" {
   name                = "pe-${local.name}-vault-runner"
   location            = azurerm_resource_group.environment.location
@@ -361,4 +428,9 @@ output "verification_client_id" {
 
 output "verification_principal_id" {
   value = azurerm_user_assigned_identity.verification.principal_id
+}
+
+output "auth_abuse_redis_url" {
+  value     = var.auth_redis_ha_enabled ? "rediss://${azurerm_redis_cache.auth_abuse[0].hostname}:${azurerm_redis_cache.auth_abuse[0].ssl_port}/0" : null
+  sensitive = true
 }
