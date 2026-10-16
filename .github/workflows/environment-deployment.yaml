@@ -1039,7 +1039,8 @@ jobs:
             fi
             if ! python3 "$GITHUB_WORKSPACE/scripts/goal006_keyvault_retry.py" \
               --apply-log "$apply_log" \
-              --inventory credential-inventory.json; then
+              --inventory credential-inventory.json \
+              --plan workload-plan.json; then
               echo "Workload apply failed outside the bounded Key Vault propagation retry" >&2
               exit 1
             fi
