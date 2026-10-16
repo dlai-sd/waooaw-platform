@@ -402,11 +402,39 @@ Demo may shift directly from zero to 100% after verification. UAT proves the sam
 - Private runner networking is budgeted independently from application infrastructure: approximately one Private Link endpoint-hour charge per active environment plus low-volume data processing and one shared private DNS zone. VNet/subnet creation, private IP allocation, load balancers, and certificates add no runner-path charge because the design does not provision public ingress. The combined plan remains fail-closed above FA-052's INR 15,000 one-time or INR 10,000 monthly ceiling.
 - Runner compute is ephemeral and starts at zero capacity. Demo is activated and cost-qualified first; UAT remains unprovisioned until Founder Demo acceptance; Production runner capacity remains zero and its private path is plan-only until separately authorized.
 - The target state boundary is one Storage account per environment. During incremental migration, multiple environment-specific private endpoints may reach the existing account, but backend keys, identities, subnets, and evidence remain isolated; account separation must complete before UAT qualification.
-- Use one small PostgreSQL Flexible Server for UAT; stop it on lease expiry and reconcile the stopped state. Demo uses only its replica-scoped disposable PostgreSQL dependency.
+- Use one independently sized low-cost PostgreSQL Flexible Server for each of Demo and UAT. Stop
+  compute on lease expiry after the accepted drain/evidence sequence and reconcile Azure automatic
+  restart or maintenance back to the safe inactive state. Persistent storage and backups remain;
+  routine lifecycle automation never deletes the server to claim zero cost.
 - Keep ACA workloads at min replicas zero outside active leases.
+- Keep PgBouncer and transient Redis at zero outside active leases after applications drain. Their
+  loss cannot change durable authority; activation restarts and verifies them before applications.
 - Use short non-Production log retention and bounded ingestion.
 - Do not provision Front Door Premium, Application Gateway, managed Redis, production HA, or a second region under the Demo recovery sprint.
 - Every plan records current cost, forecast, incremental monthly estimate, lease expiry, and tagged resource delta. Forecast above the FA-052 INR 15,000 one-time or INR 10,000 monthly envelope blocks apply.
+
+### Demo/UAT sleep, reactivation and deletion boundary
+
+`deploy.yaml` remains the only manual environment entry. Its reusable deployment engine implements
+three explicit actions without creating a parallel workflow:
+
+| Action | Required progression | Result |
+|---|---|---|
+| `plan` | trusted current-main release -> environment/state/cost resolution -> foundation/dependency/workload plans -> policy and destruction checks | No mutation; immutable reviewed evidence |
+| `activate` | authority -> PostgreSQL start/readiness -> PgBouncer -> bootstrap/migration compatibility -> dependencies -> exact-seven applications -> private/CCT/public verification -> URL publication | Traffic remains closed until complete PASS |
+| `sleep` | authority -> ingress closure -> drain/reconciliation -> watermark/backup proof -> application zero -> dependency zero -> PostgreSQL stop -> stopped-state/cost evidence | Durable data retained; compute near zero |
+
+Deletion is not an accepted `deploy.yaml` action. A future destructive teardown requires a separate
+Work Contract, explicit Founder authority, immutable restore source, retention decision, restore
+rehearsal, customer/evidence disposition and exact deletion inventory. Deleting storage and backups
+means permanent data loss; retaining a backup means nonzero storage cost and a restore rather than a
+normal activation.
+
+The lifecycle controller must be idempotent and restart-safe. Repeating `sleep` against an already
+inactive environment succeeds only after evidence proves the accepted state. Repeating `activate`
+reconciles the original activation identity and cannot create a second database, PgBouncer or
+migration execution. Timeout, partial start, uncertain migration, stale billing authority, cost
+breach or destructive plan fails closed with traffic at zero.
 
 ## Implementation Order
 
