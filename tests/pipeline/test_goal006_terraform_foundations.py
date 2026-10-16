@@ -922,7 +922,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "secret-seeder-job.json" in workflow
     assert "secret-seeder-console.log" in workflow
     assert workflow.index("capture_seeder_evidence()") < workflow.index("Delete private credential seeder")
-    assert workflow.count("if: inputs.apply") == 14
+    assert workflow.count("if: inputs.apply") == 15
     assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
     assert '--context "external_environment=$external_environment"' in workflow
     assert "if: steps.foundation-cache.outputs.cache_hit != 'true'" in workflow
@@ -1166,15 +1166,24 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
         assert f"          - {environment}" in deploy
     assert "default: plan" in deploy
     assert "- plan" in deploy
-    assert "- activate" in deploy
-    assert "- sleep" in deploy
-    assert "- apply" not in deploy
-    assert "case \"$EXECUTION_MODE\" in plan|activate|sleep)" in deploy
-    assert "apply: ${{ inputs.execution == 'activate' }}" in deploy
-    assert "lifecycle_action: ${{ inputs.execution }}" in deploy
+    assert "- apply" in deploy
+    assert "- activate" not in deploy
+    assert "- sleep" not in deploy
+    assert "case \"$EXECUTION_MODE\" in plan|apply)" in deploy
+    assert "apply: ${{ inputs.execution == 'apply' }}" in deploy
+    assert "lifecycle_action: ${{ inputs.execution == 'apply' && 'activate' || 'plan' }}" in deploy
     assert "cost_controls:" not in deploy
     assert "enforce_cost_controls:" not in deploy
-    assert deploy.count("if: inputs.execution == 'activate'") == 3
+    assert deploy.count("if: inputs.execution == 'apply'") == 2
+    for internal_input in (
+        "lifecycle_evidence:",
+        "founder_action_authority:",
+        "plan_digest:",
+        "secret_catalog_digest:",
+        "lease_id:",
+        "release_tuple:",
+    ):
+        assert internal_input not in deploy
     assert "verification_client_id: ${{ needs.deploy.outputs.verification_client_id }}" in deploy
     assert "web_url: ${{ needs.deploy.outputs.web_url }}" in deploy
     assert not (REPO_ROOT / ".github/workflows/promote.yaml").exists()

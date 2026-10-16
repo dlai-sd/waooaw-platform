@@ -140,13 +140,13 @@ gaps:
   - id: PST-011
     state: locally-qualified
     source: .github/workflows/deploy.yaml
-    owning_surface: persistent-data deployment lifecycle
+    owning_surface: two-field deployment dispatch with internal persistent-data lifecycle
     baseline:
-      contains_all: ["- plan", "- apply"]
-      contains_none: ["- activate", "- sleep"]
-    target:
       contains_all: ["- plan", "- activate", "- sleep"]
       contains_none: ["- apply"]
+    target:
+      contains_all: ["- plan", "- apply"]
+      contains_none: ["- activate", "- sleep"]
     direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-011]
 
   - id: PST-012

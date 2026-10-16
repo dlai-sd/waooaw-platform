@@ -1055,6 +1055,48 @@ jobs:
             --scope workload \
             --plan workload-plan.json
 
+      - name: Generate internal WC-124 activation bundle
+        if: inputs.apply
+        env:
+          LEASE_EXPIRY: ${{ inputs.lease_expires_at }}
+          RELEASE_RUN_ID: ${{ inputs.release_run_id }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          schema_arguments=()
+          for schema_file in infrastructure/postgres/init/*.sql; do
+            schema_arguments+=(--schema-file "$schema_file")
+          done
+          python3 scripts/wc124_deployment_bundle.py \
+            --environment "$TARGET_ENVIRONMENT" \
+            --release-sha "$RELEASE_SHA" \
+            --release-run-id "$RELEASE_RUN_ID" \
+            --actor "$GITHUB_ACTOR" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --lease-expiry "$LEASE_EXPIRY" \
+            --foundation-plan "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/foundation/foundation-plan.json" \
+            --workload-plan "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload/workload-plan.json" \
+            --secret-catalog infrastructure/environment-readiness/secret-catalog.json \
+            --configuration workload-configuration.json \
+            --dependency-file registry-release-manifest.json \
+            --dependency-file infrastructure/terraform/phase2/modules/workload/main.tf \
+            --migration-file src/billing-engine/migrate.py \
+            --migration-file infrastructure/postgres/init/59-wc124-billing-authority.sql \
+            "${schema_arguments[@]}" \
+            --output wc124-deployment-activation-bundle.json
+          jq '.authorization' wc124-deployment-activation-bundle.json > wc124-lifecycle-authorization.json
+          jq '.tuple_digests' wc124-deployment-activation-bundle.json > wc124-lifecycle-tuple-digests.json
+          python3 scripts/wc124_persistent_state_lifecycle.py \
+            --operation-id "wc124-${TARGET_ENVIRONMENT}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            --action activate \
+            --environment "$TARGET_ENVIRONMENT" \
+            --current-state SLEEPING \
+            --authorization wc124-lifecycle-authorization.json \
+            --tuple-digests wc124-lifecycle-tuple-digests.json \
+            --output wc124-lifecycle-authorization-record.json
+
       - name: Terraform dormant workload and migration dependency apply
         if: inputs.apply
         id: dormant-workload
@@ -1193,6 +1235,10 @@ jobs:
         with:
           name: wc124-lifecycle-execution-${{ inputs.environment }}-${{ github.run_id }}
           path: |
+            wc124-deployment-activation-bundle.json
+            wc124-lifecycle-authorization.json
+            wc124-lifecycle-authorization-record.json
+            wc124-lifecycle-tuple-digests.json
             wc124-lifecycle-execution.json
             wc124-sleep-evidence.json
           if-no-files-found: error

@@ -20,9 +20,18 @@ def test_neutral_deploy_entry_is_the_only_manual_application_entry() -> None:
     assert all(f"          - {environment}" in deploy for environment in ("demo", "uat", "prod"))
     assert "      execution:" in deploy
     assert "          - plan" in deploy
-    assert "          - activate" in deploy
-    assert "          - sleep" in deploy
-    assert "          - apply" not in deploy
+    assert "          - apply" in deploy
+    assert "          - activate" not in deploy
+    assert "          - sleep" not in deploy
+    for internal_input in (
+        "lifecycle_evidence:",
+        "founder_action_authority:",
+        "plan_digest:",
+        "secret_catalog_digest:",
+        "lease_id:",
+        "release_tuple:",
+    ):
+        assert internal_input not in deploy
     assert not (WORKFLOWS / "deploy-demo.yaml").exists()
 
     engine = _workflow("environment-deployment.yaml")
