@@ -30,7 +30,7 @@ requirement_defaults: &defaults
   residual_risk: Passing local and emulated evidence does not establish Azure provider, deployment, restore, traffic, activation, approval, or merge acceptance.
   result: PASS
   evidence_refs:
-    - "Implementation milestone 817500a6; Docker qualification: WC-124 244/244, Billing 450 passed, GOAL-006 503/503, TypeScript/web PASS, static preflight PASS, and six Terraform roots valid."
+    - "Implementation milestone c86c1761; Docker qualification: WC-124 244/244, Billing 450 passed, GOAL-006 503/503, TypeScript/web PASS, static preflight PASS, and six Terraform roots valid."
 
 requirements:
   - <<: *defaults
