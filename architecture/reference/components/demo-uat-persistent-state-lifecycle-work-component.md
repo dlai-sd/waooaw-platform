@@ -6,12 +6,12 @@
 |---|---|
 | Authoring office | Chief Solution Architect (INST-005) |
 | Status | FOUNDER ACCEPTED UNDER FA-055 - INSTITUTIONAL REVIEW REPAIR CANDIDATE - IMPLEMENTATION REQUIRES SEPARATE WORK CONTRACT AND CURRENT-SESSION AUTHORITY |
-| Version | `1.1.0-candidate.1` |
+| Version | `1.1.0-candidate.2` |
 | Founder decision | FA-055, 2026-10-16 |
 | Architecture inputs | PR #518 merge `a6bceb310585a2370cb593a32f684381d6ca94c6`; PR #519 architecture commit `7d18239c569d1bc97d6afd3d91981657ecaf052a`; `environment-readiness-and-data-continuity.md`; `azure-deployment-topology.md` |
 | Constitutional basis | C-023, C-027, C-059, C-063, C-065, C-071, C-076 and C-080 |
 | Applicable ADRs | ADR-010, ADR-011, ADR-013, ADR-014, ADR-015, ADR-034 and ADR-047 |
-| Institutional review | Enterprise, Data, Security and Platform reviews of v1.0.0 returned CHANGES_REQUIRED; v1.1.0-candidate.1 repairs every finding and requires same-office re-review |
+| Institutional review | Enterprise, Data, Security and Platform reviews of v1.0.0 returned CHANGES_REQUIRED; Data passed candidate 1; candidate 2 closes the remaining Security and Platform findings and requires exact-head author verification |
 | Implementing office | Platform IT Expert (INST-010), Skill 17 |
 | Target environments | Demo and UAT only |
 | Authority boundary | Specification and implementation handoff. No `src/` implementation in the authoring session; no provider query/mutation, Terraform apply, deployment, traffic, Production, approval or merge. |
@@ -144,16 +144,17 @@ The Work Contract must pin:
 10. sleep lease, automatic-restart reconciliation interval and activation timeout;
 11. backup/PITR and sanitized-restore fixture;
 12. exact Demo/UAT apply authority, if any;
-13. immutable authorization tuple: environment, GitHub protected environment, OIDC subject/audience,
+13. immutable per-environment authorization tuple: environment, GitHub protected environment, OIDC subject/audience,
     Azure tenant/subscription/resource group, Terraform backend key, runner identity, release SHA,
-    plan digest, lease ID and expiry;
-14. canonical secret-catalog digest and separate bootstrap, migration, workload, deployment and
+    plan digest, secret-catalog digest, lease ID and expiry;
+14. canonical secret catalog and separate bootstrap, migration, workload, deployment and
     verification principals;
 15. dataset-level sidecar cutover ledger and any explicit synthetic-data discard authority;
 16. existing ADR-047 runner/state evidence or the prerequisite delivery that closes it;
 17. lifecycle-control record location, signing identities, scheduled reconciliation authority and
     alert owner; and
-18. same-tuple Demo acceptance evidence required before UAT activation.
+18. promotion evidence binding Founder-accepted Demo application digests and schema/migration
+    digest to an independently authorized UAT configuration/dependency manifest.
 
 Missing input is a stop. Skill 17 does not permit the Platform IT Expert to choose it.
 
@@ -391,8 +392,8 @@ Lifecycle truth is stored outside the stoppable application database in the exis
 environment lifecycle-evidence storage. It contains no customer data and is hash-chained and signed
 by the deployment writer; an independent verification identity signs admission/sleep disposition.
 The record binds operation ID, requested action, current/target state, environment, authorization
-tuple, release/config/dependency/schema digests, lease, step watermark, attempts, timestamps,
-evidence digests and failure/hold reason.
+tuple, secret-catalog digest, release/configuration/dependency/schema/migration digests, lease, step
+watermark, attempts, timestamps, evidence digests and failure/hold reason.
 
 The existing `deploy.yaml` is the only mutation entry. It gains the lifecycle action and scheduled
 reconciliation trigger rather than creating a new workflow or service. The scheduled path uses a
@@ -462,16 +463,21 @@ state. Failure never proceeds to deletion.
 Activation target is 5-20 minutes. Timeout, cost breach, partial dependency, uncertain migration,
 stale billing state or failed probe leaves traffic at zero with retained evidence.
 
-UAT activation is prohibited until the Founder accepted Demo for the exact same release,
-configuration, dependency, schema and migration tuple. UAT cannot select an independent
-current-main release or rebuild any member.
+UAT activation is prohibited until the Founder accepts Demo application digests and the exact
+schema/migration digest being promoted. UAT must use those immutable application and migration
+identities without rebuild or reselection. Because Demo and UAT intentionally have different
+Temporal and environment dependencies, UAT uses its own separately reviewed configuration and
+dependency manifest. Promotion evidence cryptographically binds both environment manifests to the
+same accepted application/schema/migration identity and proves each manifest against its own
+environment-specific acceptance criteria.
 
 ### 11.1 Immutable Provider Authorization Tuple
 
-Every plan, activate, sleep, restore and rollback step verifies the exact tuple from Section 5.13.
-The tuple is included in the signed reviewed-plan digest and lifecycle record. A mismatch in
-environment, protected GitHub environment, OIDC subject/audience, Azure tenant/subscription/resource
-group, backend key, runner identity, release SHA, plan digest, lease or expiry fails before provider
+Every plan, activate, sleep, restore and rollback step verifies the exact per-environment tuple from
+Section 5.13. Demo authorization is never reused for UAT or vice versa. The tuple is included in the
+signed reviewed-plan digest and lifecycle record. A mismatch in environment, protected GitHub
+environment, OIDC subject/audience, Azure tenant/subscription/resource group, backend key, runner
+identity, release SHA, plan digest, secret-catalog digest, lease or expiry fails before provider
 access. Negative workflow tests mutate each field independently and require denial.
 
 ## 12. `ci.yaml` Changes
@@ -491,8 +497,8 @@ Extend the existing change-planned CI graph; do not create a parallel CI workflo
 | Sleep | drain/watermark/order/idempotency and protected-resource assertions |
 | Activation | database-to-traffic order, timeout and fail-closed matrix |
 | Recovery | backup/PITR fixture, sanitized restore and prior-release compatibility |
-| Security evidence | hash-chain/signature validation, writer/verifier separation, CCT-SEC-04/05 and forged-replacement rejection |
-| Authorization | every provider tuple field mismatch denied before provider access |
+| Security evidence | hash-chain/signature validation, writer/verifier separation, `PST-SEC-EVIDENCE-01`, `PST-SEC-EMERGENCY-01` and forged-replacement rejection |
+| Authorization | every provider tuple and secret-catalog digest mismatch denied before provider access |
 | Network | full Demo/UAT source-denial matrix including public/foreign/direct paths |
 | Release | exact-seven unchanged; dependency manifest separately pinned/signed |
 | Constitutional | C-023, C-059, C-065, C-071, C-076 and Test Champion gates |
@@ -525,7 +531,9 @@ Keep `.github/workflows/deploy.yaml` as the only manual entry and add a closed a
 - call the reusable engine in the exact Section 11 order;
 - bind every step to environment, release SHA, run identity and reviewed plan;
 - publish URL only after independent verification.
-- block UAT unless the same immutable tuple has recorded Founder Demo acceptance.
+- block UAT unless its environment-specific authorization/configuration/dependency tuple is valid
+  and promotion evidence binds it to the exact Founder-accepted Demo application/schema/migration
+  identity.
 
 ### Sleep
 
@@ -570,8 +578,13 @@ Live Azure plan/apply or deployment evidence requires separate authority.
 ### 14.1 Security Holds And Independent Evidence
 
 Lifecycle evidence is hash-chained, content-addressed and signed by distinct deployment-writer and
-verification identities. CCT-SEC-04 and CCT-SEC-05 are blocking. A forged, replaced, truncated,
-wrong-environment or writer-self-accepted chain is rejected. Security, C-001 emergency-stop,
+verification identities. `PST-SEC-EVIDENCE-01` is the executable direct-UPDATE rejection criterion
+named **Evidence immutability** in
+`architecture/reference/security/security-architecture.md`; `PST-SEC-EMERGENCY-01` is the
+executable **Emergency Stop path reachability under Business Platform rate limiting** criterion
+from the same record. Both are blocking. The unrelated tests currently labelled `CCT-SEC-04` and
+`CCT-SEC-05` in `tests/constitutional/README.md` cannot satisfy these criteria. A forged, replaced,
+truncated, wrong-environment or writer-self-accepted chain is rejected. Security, C-001 emergency-stop,
 recovery, approval, legal/evidence-retention and destructive-plan holds block activation, rollback,
 sleep mutation and traffic admission as applicable. Failed-attempt evidence is retained.
 
@@ -642,7 +655,7 @@ deployment, data, secret or hold-release authority.
 | PST-WC05 | WC04 | Two-plan bootstrap, PgBouncer and role/RLS contract | INST-010 | INST-006/007/009 | INST-015 | Private route, secret and tenant-isolation matrices PASS |
 | PST-WC06 | WC03, WC05 | Dataset cutover, sidecar removal and connection rewiring | INST-010 | Component/data owners | INST-015 | Cutover ledger, topology and service integration PASS |
 | PST-WC07 | WC06 | Durable lifecycle controller and sleep path | INST-010 | INST-009; hold owners retain release authority | INST-015 | State-transition, evidence and retained-data sleep rehearsal PASS |
-| PST-WC08 | WC07 | Activation and same-tuple UAT promotion | INST-010 | Founder Demo acceptance; INST-009 activation | INST-015 | Database-to-traffic, same-tuple and fail-closed rehearsal PASS |
+| PST-WC08 | WC07 | Activation and environment-bound UAT promotion | INST-010 | Founder Demo acceptance; INST-009 activation | INST-015 | Database-to-traffic, promoted application/migration identity, environment tuple and fail-closed rehearsal PASS |
 | PST-WC09 | WC02-WC08 | `ci.yaml` complete blocking gates | INST-010 | Existing CI/quality policy | INST-015/Test Champion | Change planner and every applicable gate PASS |
 | PST-WC09A | WC00 | ADR-047 runner and isolated Terraform state prerequisites | INST-010 | INST-009/007 and existing authority records | INST-015 | Runner, backend, lock, denial, drift and rollback evidence PASS |
 | PST-WC10 | WC07-WC09 | `deploy.yaml` lifecycle orchestration | INST-010 | INST-009; Founder retains provider action | INST-015 | Authorization tuple, emulator, holds and rollback matrix PASS |
@@ -671,7 +684,8 @@ The delivery is implementation-ready and complete only when:
 - Entra-only Plan A and reviewed Plan B pass all password/secret/principal negative tests;
 - tenant context, FORCE RLS, NOBYPASSRLS and PgBouncer reset denial tests pass before and after restore;
 - each sidecar dataset has a reconciled cutover/disposition row;
-- UAT uses Temporal Cloud and the exact Founder-accepted Demo tuple;
+- UAT uses Temporal Cloud, its own valid environment authorization/configuration/dependency tuple,
+  and the exact Founder-accepted Demo application/schema/migration identity;
 - automatic database restart is detected and safely reconciled;
 - migration is additive, idempotent and readable by the previous qualified release;
 - restore meets accepted RPO/RTO with sanitized evidence;
@@ -686,7 +700,8 @@ The delivery is implementation-ready and complete only when:
 ## 19. Rollback
 
 Rollback binds the prior complete immutable tuple: exact-seven application digests, configuration
-digest, dependency/PgBouncer manifest, schema compatibility, environment and evidence identity.
+digest, dependency/PgBouncer manifest, schema compatibility, migration digest/watermark,
+secret-catalog digest, environment authorization tuple and evidence identity.
 The prior qualified revision remains retained at zero traffic for at least 24 hours and through the
 active Demo/UAT lease, whichever is later. Rollback never rebuilds, retags or destructively migrates.
 Additive schema rolls forward; the prior release must already prove readability.

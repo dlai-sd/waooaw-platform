@@ -8,8 +8,8 @@
 | Office | Enterprise Architect (INST-005) |
 | Initial reviewed head | `93ba109fae10b674ee8088622a521d187645767f` |
 | Initial disposition | `CHANGES_REQUIRED` |
-| Re-review candidate | Work Component `1.1.0-candidate.1` |
-| Final disposition | `PENDING SAME-OFFICE RE-REVIEW` |
+| Repair candidate | Work Component `1.1.0-candidate.2` |
+| Repair verification | `EXACT-HEAD CHIEF SOLUTION ARCHITECT AUTHOR REVIEW REQUIRED` |
 
 ## Scope
 
@@ -32,8 +32,9 @@ for enterprise coherence, ADR compliance, reversibility and institutional author
 - The Founder retains acceptance, provider-action and merge authority where the Work Component says
   so.
 
-## Re-review Requirement
+## Repair Verification
 
-The Enterprise Architect must verify that every initial finding is closed without introducing a
-new service, provider or unapproved institutional authority. Only that same-office re-review may
-replace the pending final disposition.
+Candidate 2 retains the complete ADR-010 matrix, exact two-plan bootstrap and explicit
+author/acceptance/independent-evidence columns. The exact-head Chief Solution Architect author
+review must verify that these repairs remain closed without introducing a new provider or
+institutional authority.
