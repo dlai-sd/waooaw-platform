@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
+import { authAbuseLimiterReady } from '@/lib/auth-abuse-limiter';
 import { serverSessionMode } from '@/lib/server-session-mode';
-import { sessionStoreReady } from '@/lib/web-session-store';
+import { oidcTransactionStoreReady, sessionStoreReady } from '@/lib/web-session-store';
 
 async function dependencyReady(url: string, timeoutMs: number): Promise<boolean> {
   const response = await fetch(url, {
@@ -33,12 +34,15 @@ export async function GET() {
       }
     }
 
-    const [identity, membership, store] = await Promise.all([
+    const [identity, membership, limiter, transactionStore, sessionStore] = await Promise.all([
       dependencyReady(`${issuer.replace(/\/$/, '')}/.well-known/openid-configuration`, 5_000),
       dependencyReady(`${businessPlatform.replace(/\/$/, '')}/health/ready`, 3_000),
+      authAbuseLimiterReady(),
+      mode === 'disabled' ? oidcTransactionStoreReady() : Promise.resolve(true),
       mode === 'disabled' ? Promise.resolve(true) : sessionStoreReady(),
     ]);
-    if (!store || !identity || !membership) throw new Error('A mandatory dependency is unready');
+    if (!sessionStore || !transactionStore || !limiter || !identity || !membership)
+      throw new Error('A mandatory dependency is unready');
     return new NextResponse(null, {
       status: 204,
       headers: { 'Cache-Control': 'no-store' },

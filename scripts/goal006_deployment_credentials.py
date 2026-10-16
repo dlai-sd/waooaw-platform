@@ -47,8 +47,10 @@ def required_external_credentials(catalog: object, environment: str, web_session
         if not isinstance(entry, dict):
             raise ValueError("secret catalog entries must be objects")
         provisioner = entry.get("provisioner")
-        required_provisioner = provisioner == FOUNDER_PROVISIONER or (
-            web_session_mode != "disabled" and provisioner == WC123_PROVISIONER
+        required_provisioner = (
+            provisioner == FOUNDER_PROVISIONER
+            or entry.get("id") == "auth-abuse-redis-managed-key"
+            or (web_session_mode != "disabled" and provisioner == WC123_PROVISIONER)
         )
         if entry.get("source") == "external-operator" and required_provisioner and environment in entry.get("environments", []):
             credentials.append(entry["vaultSecretName"])

@@ -15,13 +15,20 @@ jest.mock('next/server', () => {
 });
 
 jest.mock('@/lib/web-session-store', () => ({
+  oidcTransactionStoreReady: jest.fn(),
   sessionStoreReady: jest.fn(),
+}));
+jest.mock('@/lib/auth-abuse-limiter', () => ({
+  authAbuseLimiterReady: jest.fn(),
 }));
 
 import { GET } from '@/app/api/health/ready/route';
-import { sessionStoreReady } from '@/lib/web-session-store';
+import { authAbuseLimiterReady } from '@/lib/auth-abuse-limiter';
+import { oidcTransactionStoreReady, sessionStoreReady } from '@/lib/web-session-store';
 
+const mockedOidcTransactionStoreReady = jest.mocked(oidcTransactionStoreReady);
 const mockedSessionStoreReady = jest.mocked(sessionStoreReady);
+const mockedAuthAbuseLimiterReady = jest.mocked(authAbuseLimiterReady);
 const originalEnvironment = { ...process.env };
 
 describe('revision readiness', () => {
@@ -38,20 +45,44 @@ describe('revision readiness', () => {
       value: jest.fn(() => new AbortController().signal),
     });
     mockedSessionStoreReady.mockReset();
+    mockedOidcTransactionStoreReady.mockReset().mockResolvedValue(true);
+    mockedAuthAbuseLimiterReady.mockReset().mockResolvedValue(true);
   });
 
   afterAll(() => {
     process.env = originalEnvironment;
   });
 
-  it('does not require inactive session dependencies in disabled mode', async () => {
+  it('requires only OIDC transaction persistence in disabled session mode', async () => {
     process.env.WAOOAW_SERVER_SESSION_MODE = 'disabled';
 
     const response = await GET();
 
     expect(response.status).toBe(204);
+    expect(mockedAuthAbuseLimiterReady).toHaveBeenCalledTimes(1);
+    expect(mockedOidcTransactionStoreReady).toHaveBeenCalledTimes(1);
     expect(mockedSessionStoreReady).not.toHaveBeenCalled();
     expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('fails closed when the authentication limiter is unavailable in disabled session mode', async () => {
+    process.env.WAOOAW_SERVER_SESSION_MODE = 'disabled';
+    mockedAuthAbuseLimiterReady.mockResolvedValue(false);
+
+    const response = await GET();
+
+    expect(response.status).toBe(503);
+    expect(mockedSessionStoreReady).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when OIDC transaction persistence is unavailable in disabled session mode', async () => {
+    process.env.WAOOAW_SERVER_SESSION_MODE = 'disabled';
+    mockedOidcTransactionStoreReady.mockResolvedValue(false);
+
+    const response = await GET();
+
+    expect(response.status).toBe(503);
+    expect(mockedSessionStoreReady).not.toHaveBeenCalled();
   });
 
   it('fails closed when an enabled session mode lacks accepted digests', async () => {

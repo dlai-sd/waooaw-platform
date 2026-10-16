@@ -162,6 +162,39 @@ def test_demo_deployment_provisions_and_orders_every_hmac_secret_dependency() ->
     assert 'scripts/goal006_keyvault_retry.py"' in workflow
 
 
+def test_authentication_limiter_secrets_are_managed_for_every_environment() -> None:
+    catalog = json.loads((wc091_environment.ROOT / "infrastructure/environment-readiness/secret-catalog.json").read_text())
+    entries = {entry["id"]: entry for entry in catalog["entries"]}
+    expected = {
+        "auth-abuse-digest-key",
+        "auth-abuse-redis-password",
+        "auth-abuse-redis-managed-key",
+    }
+
+    assert expected <= set(entries)
+    for secret_id in ("auth-abuse-digest-key", "auth-abuse-redis-password"):
+        entry = entries[secret_id]
+        assert entry["source"] == "platform-generated"
+        assert entry["provisioner"] == "environment-deployment"
+        assert entry["allowedOperations"] == ["get"]
+    assert entries["auth-abuse-digest-key"]["environments"] == ["demo", "uat", "prod"]
+    assert entries["auth-abuse-redis-password"]["environments"] == ["demo", "uat"]
+    assert entries["auth-abuse-redis-managed-key"]["source"] == "external-operator"
+    assert entries["auth-abuse-redis-managed-key"]["provisioner"] == "wc123-no-echo-provisioner"
+    assert entries["auth-abuse-redis-managed-key"]["environments"] == ["prod"]
+
+    for environment in ("demo", "uat"):
+        managed = set(goal006_deployment_credentials.deployment_credentials(catalog, environment))
+        assert {"auth-abuse-digest-key", "auth-abuse-redis-password"} <= managed
+    prod_managed = set(goal006_deployment_credentials.deployment_credentials(catalog, "prod"))
+    prod_external = set(
+        goal006_deployment_credentials.required_external_credentials(catalog, "prod", "disabled")
+    )
+    assert "auth-abuse-digest-key" in prod_managed
+    assert "auth-abuse-redis-password" not in prod_managed
+    assert "auth-abuse-redis-managed-key" in prod_external
+
+
 def test_external_razorpay_credentials_are_validated_but_not_seeded() -> None:
     catalog = {
         "entries": [

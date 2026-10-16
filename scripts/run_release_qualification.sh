@@ -22,7 +22,10 @@ if test "$RELEASE_RUN_TESTS" = false \
   exit 0
 fi
 
-if test "$RELEASE_RUN_TESTS" = true || test "$RELEASE_RUN_POSTGRES" = true || test "$RELEASE_RUN_SIMULATOR" = true; then
+if test "$RELEASE_RUN_TESTS" = true \
+  || test "$RELEASE_RUN_POSTGRES" = true \
+  || test "$RELEASE_RUN_SIMULATOR" = true \
+  || test "$RELEASE_RUN_AZURE" = true; then
   if [ -n "${WAOOAW_RUNNER_FULL_IMAGE:-}" ]; then
     WAOOAW_TEST_RUNNER_IMAGE_ID=$(docker image inspect "$WAOOAW_RUNNER_FULL_IMAGE" --format '{{.Id}}')
   elif [ -z "${WAOOAW_TEST_RUNNER_IMAGE_ID:-}" ]; then
@@ -52,6 +55,13 @@ run_release_lane() {
   return "$lane_status"
 }
 
+if test "$RELEASE_RUN_TESTS" = true || test "$RELEASE_RUN_AZURE" = true; then
+  run_release_lane preflight docker compose run --rm test-runner pytest -q \
+    tests/pipeline/test_goal006_live_inventory.py \
+    tests/pipeline/test_goal006_terraform_foundations.py \
+    tests/pipeline/test_verify_web_provider_start.py -rA
+fi
+
 if test "$RELEASE_RUN_TESTS" = true; then
   run_release_lane tests docker compose run --rm test-runner pytest -q \
     tests/test_wc012_dry_run.py \
@@ -60,7 +70,6 @@ if test "$RELEASE_RUN_TESTS" = true; then
     tests/pipeline/test_goal006_release_manifest.py \
     tests/pipeline/test_goal006_release_simulator.py \
     tests/pipeline/test_goal006_six_member_packaging.py \
-    tests/pipeline/test_goal006_terraform_foundations.py \
     tests/pipeline/test_billing_ce_validator.py \
     tests/pipeline/test_wc091_environment_readiness.py -rA &
   tests_pid=$!

@@ -347,3 +347,30 @@ Demo may shift directly from zero to 100% after verification. UAT proves the sam
 7. **Promotion:** Founder Demo acceptance gate, same-tuple UAT deployment/qualification, dark-Production plan only.
 
 A full Demo apply is prohibited until slices 1 through 5 pass a real OIDC plan and independent review. Documentation updates are limited to this contract, WC-076 execution references, and PROJECT_STATE checkpoints; executable code and cloud evidence remain primary.
+
+### Authentication abuse-limiter dependency lifecycle
+
+The authentication abuse limiter is a shared environment runtime dependency, not an application
+release member and not a Web revision sidecar. It follows the same dependency-first lifecycle used
+for Temporal, Keycloak, PostgreSQL, and PgBouncer:
+
+| Environment | Runtime | Lifecycle |
+|---|---|---|
+| Codespaces | Digest-pinned Redis Compose service | Disposable with the local stack |
+| Demo | Private `ca-demo-auth-redis` Container App | Created before Web, retained across Web revisions and rollback, removed only by Demo lease teardown/reset |
+| UAT | Private `ca-uat-auth-redis` dependency | Retained across Web revisions and rollback; start/restart requires hold and readiness requalification |
+| Production | Private regional HA managed Redis | Foundation-owned and retained independently of workload deployment; activation remains separately authorized |
+
+All Web replicas and overlapping blue/green revisions use the same environment-local endpoint.
+Application deployment and rollback must not recreate, flush, retag, or replace Redis. Redis stores
+only keyed, TTL-bounded abuse counters plus restart-epoch metadata; it is never session, identity,
+membership, revocation, recovery, or evidence authority. The current longest quota window and
+mandatory restart hold are 3,600 seconds. Missing configuration, credentials, connectivity,
+unexpected epoch, active hold, or failed synthetic validation keeps Web unready and blocks traffic.
+
+Demo/UAT Redis uses private Container Apps TCP ingress, a digest-pinned image, no public ingress,
+no persistent volume, and a Key Vault-backed credential. Production may not fall back to this
+single-replica topology: it requires the separately costed private HA foundation dependency. Its
+managed-service access key is handed to the `auth-abuse-redis-managed-key` Key Vault secret through
+the no-echo provisioner before activation; it is never generated independently by the deployment
+workflow or written to workflow output.

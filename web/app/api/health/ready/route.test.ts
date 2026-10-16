@@ -1,9 +1,14 @@
 /** @jest-environment node */
 
-import { sessionStoreReady } from '@/lib/web-session-store';
+import { authAbuseLimiterReady } from '@/lib/auth-abuse-limiter';
+import { oidcTransactionStoreReady, sessionStoreReady } from '@/lib/web-session-store';
 import { GET } from './route';
 
-jest.mock('@/lib/web-session-store', () => ({ sessionStoreReady: jest.fn() }));
+jest.mock('@/lib/auth-abuse-limiter', () => ({ authAbuseLimiterReady: jest.fn() }));
+jest.mock('@/lib/web-session-store', () => ({
+  oidcTransactionStoreReady: jest.fn(),
+  sessionStoreReady: jest.fn(),
+}));
 
 const readinessEnvironment = {
   KEYCLOAK_ISSUER: 'https://identity.example/realms/waooaw',
@@ -16,6 +21,8 @@ const readinessEnvironment = {
 
 beforeEach(() => {
   Object.assign(process.env, readinessEnvironment);
+  jest.mocked(authAbuseLimiterReady).mockReset().mockResolvedValue(true);
+  jest.mocked(oidcTransactionStoreReady).mockReset().mockResolvedValue(true);
   jest.mocked(sessionStoreReady).mockReset().mockResolvedValue(true);
   jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 204 }));
 });
@@ -29,6 +36,8 @@ it('reports ready only when configuration, schema, grants, and dependencies pass
   const response = await GET();
   expect(response.status).toBe(204);
   expect(fetch).toHaveBeenCalledTimes(2);
+  expect(oidcTransactionStoreReady).not.toHaveBeenCalled();
+  expect(sessionStoreReady).toHaveBeenCalledTimes(1);
 });
 
 it('fails closed without exposing dependency detail', async () => {

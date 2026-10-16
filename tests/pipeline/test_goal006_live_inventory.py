@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from goal006_live_inventory import (
+    AUTH_REDIS_IMAGE,
     DEMO_TEMPORAL_IMAGE,
     IDENTITY_EDGE_IMAGE,
     KEYCLOAK_IMAGE,
@@ -79,6 +80,14 @@ def inventory(environment: str, release: dict[str, Any]) -> list[dict[str, str]]
                 "provisioningState": "Succeeded",
             }
         )
+    if environment in {"demo", "uat"}:
+        live.append(
+            {
+                "name": f"ca-{environment}-auth-redis",
+                "image": AUTH_REDIS_IMAGE,
+                "provisioningState": "Succeeded",
+            }
+        )
     return live
 
 
@@ -100,6 +109,20 @@ def test_demo_temporal_is_required_and_digest_pinned() -> None:
 
     live.pop()
     assert "LIVE_MEMBERSHIP_INVALID" in validate_inventory("demo", release, live)
+
+
+def test_environment_scoped_auth_redis_is_a_pinned_dependency_not_a_release_member() -> None:
+    release = manifest()
+    for environment in ("demo", "uat"):
+        live = inventory(environment, release)
+        redis = next(item for item in live if item["name"] == f"ca-{environment}-auth-redis")
+        redis["image"] = "redis:latest"
+        assert f"ca-{environment}-auth-redis:DIGEST_MISMATCH" in validate_inventory(
+            environment, release, live
+        )
+
+    assert all(item["name"] != "ca-prod-auth-redis" for item in inventory("prod", release))
+    assert "auth-redis" not in release["images"]
 
 
 def test_missing_extra_or_digest_mismatched_member_fails() -> None:

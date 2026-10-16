@@ -88,6 +88,23 @@ def test_session_secrets_are_closed_world_versioned_and_retirement_guarded() -> 
     assert entries["web-session-database"]["consumers"] == ["web:WEB_SESSION_DATABASE_URL"]
 
 
+def test_authentication_limiter_secrets_are_not_session_mode_gated() -> None:
+    entries = {
+        entry["id"]: entry
+        for entry in load_json("infrastructure/environment-readiness/secret-catalog.json")["entries"]
+    }
+
+    assert entries["auth-abuse-digest-key"]["requiredWhen"] == "web authentication enabled"
+    assert entries["auth-abuse-redis-password"]["requiredWhen"] == "web authentication enabled"
+    assert entries["auth-abuse-digest-key"]["consumers"] == ["web:AUTH_ABUSE_DIGEST_KEY"]
+    assert entries["auth-abuse-redis-password"]["consumers"] == [
+        "web:REDIS_PASSWORD",
+        "auth-redis:REDIS_PASSWORD",
+    ]
+    assert entries["auth-abuse-redis-managed-key"]["consumers"] == ["web:REDIS_PASSWORD"]
+    assert entries["auth-abuse-redis-managed-key"]["environments"] == ["prod"]
+
+
 def test_checked_in_demo_and_uat_renders_are_current_and_secret_free() -> None:
     for environment in ("demo", "uat"):
         rendered = load_json(f"infrastructure/environment-readiness/{environment}.rendered.json")

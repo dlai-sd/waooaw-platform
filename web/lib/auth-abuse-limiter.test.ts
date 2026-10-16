@@ -1,7 +1,7 @@
 /** @jest-environment node */
 
 import { NextRequest } from 'next/server';
-import { checkAuthAbuse } from '@/lib/auth-abuse-limiter';
+import { authAbuseLimiterReady, checkAuthAbuse } from '@/lib/auth-abuse-limiter';
 import { redisCommand } from '@/lib/redis-command';
 
 jest.mock('@/lib/redis-command', () => ({ redisCommand: jest.fn() }));
@@ -23,8 +23,7 @@ describe('authentication abuse limiter', () => {
     process.env.REDIS_URL = 'redis://redis:6379/0';
     process.env.WAOOAW_ENVIRONMENT = 'demo';
     process.env.AUTH_ABUSE_LIMITS_JSON = JSON.stringify(limits);
-    process.env.SESSION_PROTOCOL_DIGEST_KEYS = JSON.stringify({ v1: key });
-    process.env.SESSION_PROTOCOL_DIGEST_WRITE_VERSION = 'v1';
+    process.env.AUTH_ABUSE_DIGEST_KEY = key;
   });
 
   it('uses only an environment-scoped keyed digest with a bounded TTL', async () => {
@@ -67,5 +66,12 @@ describe('authentication abuse limiter', () => {
       allowed: false,
       reason: 'LIMITER_UNAVAILABLE',
     });
+  });
+
+  it('reports ready only after the restart hold expires', async () => {
+    jest.mocked(redisCommand).mockResolvedValueOnce([-2, 3_600_000]).mockResolvedValueOnce([1, 0]);
+
+    await expect(authAbuseLimiterReady()).resolves.toBe(false);
+    await expect(authAbuseLimiterReady()).resolves.toBe(true);
   });
 });

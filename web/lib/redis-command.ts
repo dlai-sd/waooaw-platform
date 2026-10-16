@@ -55,12 +55,11 @@ export async function redisCommand(parts: readonly string[]): Promise<RedisValue
   if (database && !/^\d+$/.test(database)) throw new Error('REDIS_URL database is invalid');
 
   const commands: string[][] = [];
-  if (url.password) {
-    commands.push(
-      url.username
-        ? ['AUTH', decodeURIComponent(url.username), decodeURIComponent(url.password)]
-        : ['AUTH', decodeURIComponent(url.password)]
-    );
+  const configuredPassword = process.env.REDIS_PASSWORD;
+  if (url.password || configuredPassword) {
+    const password = url.password ? decodeURIComponent(url.password) : configuredPassword;
+    if (!password) throw new Error('Redis password configuration is invalid');
+    commands.push(url.username ? ['AUTH', decodeURIComponent(url.username), password] : ['AUTH', password]);
   }
   if (database && database !== '0') commands.push(['SELECT', database]);
   commands.push([...parts]);

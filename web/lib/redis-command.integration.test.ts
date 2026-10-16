@@ -23,6 +23,7 @@ describe('Redis command transport', () => {
     process.env.SESSION_PROTOCOL_DIGEST_KEYS = JSON.stringify({
       v1: Buffer.alloc(32, 9).toString('base64'),
     });
+    process.env.AUTH_ABUSE_DIGEST_KEY = Buffer.alloc(32, 10).toString('base64');
     process.env.SESSION_PROTOCOL_DIGEST_WRITE_VERSION = 'v1';
     process.env.AUTH_ABUSE_LIMITS_JSON = JSON.stringify({
       AUTH_START: { limit: 1, windowSeconds: 10 },

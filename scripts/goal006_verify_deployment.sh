@@ -12,7 +12,7 @@ MANIFEST=$2
 RELEASE_SHA=$3
 EXPECTED_WEB_URL=$4
 RESOURCE_GROUP="waooaw-$TARGET_ENVIRONMENT-rg"
-REVISION_READY_ATTEMPTS=${GOAL006_REVISION_READY_ATTEMPTS:-30}
+REVISION_READY_ATTEMPTS=${GOAL006_REVISION_READY_ATTEMPTS:-390}
 REVISION_READY_INTERVAL_SECONDS=${GOAL006_REVISION_READY_INTERVAL_SECONDS:-10}
 
 case "$TARGET_ENVIRONMENT" in demo|uat|prod) ;; *) usage ;; esac
@@ -218,6 +218,14 @@ if [[ "$TARGET_ENVIRONMENT" == "demo" ]]; then
     sleep 10
   done
   keycloak_revision=$(jq -r '.latestReadyRevision' revision-evidence/keycloak-app.json)
+  for provider in google facebook; do
+    python3 "$(dirname "$0")/verify_web_provider_start.py" \
+      --issuer "https://auth.demo.waooaw.com/realms/waooaw" \
+      --web-url "$EXPECTED_WEB_URL" \
+      --provider "$provider" \
+      --release-sha "$RELEASE_SHA" \
+      --output "revision-evidence/$provider-web-provider-start.json"
+  done
   python3 "$(dirname "$0")/verify_google_deployment.py" \
     --issuer "https://auth.demo.waooaw.com/realms/waooaw" \
     --web-url "$EXPECTED_WEB_URL" \

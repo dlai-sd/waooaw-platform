@@ -210,6 +210,23 @@ variable "web_session_mode" {
   }
 }
 
+variable "auth_abuse_redis_url" {
+  type        = string
+  default     = null
+  nullable    = true
+  sensitive   = true
+  description = "Environment-local authentication limiter endpoint. Production receives the private HA foundation output."
+
+  validation {
+    condition = (
+      var.environment != "prod" ||
+      !var.workload_enabled ||
+      (var.auth_abuse_redis_url != null && can(regex("^rediss://[^/]+:6380/0$", var.auth_abuse_redis_url)))
+    )
+    error_message = "An active Production workload requires the private TLS HA Redis foundation endpoint."
+  }
+}
+
 variable "web_session_config_digest" {
   type        = string
   default     = null

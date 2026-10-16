@@ -45,6 +45,21 @@ if count > tonumber(ARGV[3]) then return {0, ttl} end
 return {1, ttl}
 `;
 
+const readinessScript = `
+local now = redis.call('TIME')
+local now_ms = (tonumber(now[1]) * 1000) + math.floor(tonumber(now[2]) / 1000)
+local epoch = redis.call('GET', KEYS[1])
+if not epoch then
+  redis.call('SET', KEYS[1], now_ms, 'NX')
+  return {-2, tonumber(ARGV[1])}
+end
+local elapsed = now_ms - tonumber(epoch)
+if elapsed < tonumber(ARGV[1]) then
+  return {-2, tonumber(ARGV[1]) - elapsed}
+end
+return {1, 0}
+`;
+
 function catalog(): LimitCatalog {
   const raw = process.env.AUTH_ABUSE_LIMITS_JSON;
   if (!raw) throw new Error('AUTH_ABUSE_LIMITS_JSON is required');
@@ -77,14 +92,17 @@ function catalog(): LimitCatalog {
 }
 
 function digestKey(): Buffer {
-  const raw = process.env.SESSION_PROTOCOL_DIGEST_KEYS;
-  const version = process.env.SESSION_PROTOCOL_DIGEST_WRITE_VERSION;
-  if (!raw || !version) throw new Error('Protocol digest key configuration is required');
-  const encoded = (JSON.parse(raw) as Record<string, unknown>)[version];
-  if (typeof encoded !== 'string') throw new Error('Protocol digest write key is unavailable');
-  const key = Buffer.from(encoded, 'base64');
-  if (key.length !== 32) throw new Error('Protocol digest write key is invalid');
+  const raw = process.env.AUTH_ABUSE_DIGEST_KEY;
+  if (!raw) throw new Error('Authentication abuse digest key is required');
+  const key = Buffer.from(raw, 'utf8');
+  if (key.length < 32) throw new Error('Authentication abuse digest key is invalid');
   return key;
+}
+
+function environmentName(): string {
+  const environment = process.env.WAOOAW_ENVIRONMENT?.trim().toLowerCase();
+  if (!environment || !/^[a-z0-9-]{1,32}$/.test(environment)) throw new Error('WAOOAW_ENVIRONMENT is required');
+  return environment;
 }
 
 function requestSubject(request: NextRequest, action: AuthAbuseAction): string {
@@ -100,8 +118,7 @@ export async function checkAuthAbuse(request: NextRequest, action: AuthAbuseActi
     const limits = catalog();
     const selected = limits[action];
     const longestWindowMs = Math.max(...Object.values(limits).map((value) => value.windowSeconds)) * 1000;
-    const environment = process.env.WAOOAW_ENVIRONMENT?.trim().toLowerCase();
-    if (!environment || !/^[a-z0-9-]{1,32}$/.test(environment)) throw new Error('WAOOAW_ENVIRONMENT is required');
+    const environment = environmentName();
     const subject = createHmac('sha256', digestKey())
       .update(`auth-abuse-v1\0${environment}\0${requestSubject(request, action)}`)
       .digest('hex');
@@ -128,6 +145,25 @@ export async function checkAuthAbuse(request: NextRequest, action: AuthAbuseActi
       cause: error instanceof Error ? error.name : 'UnknownError',
     });
     return { allowed: false, reason: 'LIMITER_UNAVAILABLE' };
+  }
+}
+
+export async function authAbuseLimiterReady(): Promise<boolean> {
+  try {
+    const limits = catalog();
+    digestKey();
+    const environment = environmentName();
+    const longestWindowMs = Math.max(...Object.values(limits).map((value) => value.windowSeconds)) * 1000;
+    const response = await redisCommand([
+      'EVAL',
+      readinessScript,
+      '1',
+      `waooaw:${environment}:auth-abuse:v1:epoch`,
+      String(longestWindowMs),
+    ]);
+    return Array.isArray(response) && response[0] === 1 && response[1] === 0;
+  } catch {
+    return false;
   }
 }
 

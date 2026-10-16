@@ -91,3 +91,8 @@ output "verification_client_id" {
 output "verification_principal_id" {
   value = module.foundation.verification_principal_id
 }
+
+output "auth_abuse_redis_url" {
+  value     = module.foundation.auth_abuse_redis_url
+  sensitive = true
+}
