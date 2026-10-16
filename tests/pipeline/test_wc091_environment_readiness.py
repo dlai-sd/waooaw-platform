@@ -187,9 +187,7 @@ def test_authentication_limiter_secrets_are_managed_for_every_environment() -> N
         managed = set(goal006_deployment_credentials.deployment_credentials(catalog, environment))
         assert {"auth-abuse-digest-key", "auth-abuse-redis-password"} <= managed
     prod_managed = set(goal006_deployment_credentials.deployment_credentials(catalog, "prod"))
-    prod_external = set(
-        goal006_deployment_credentials.required_external_credentials(catalog, "prod", "disabled")
-    )
+    prod_external = set(goal006_deployment_credentials.required_external_credentials(catalog, "prod", "disabled"))
     assert "auth-abuse-digest-key" in prod_managed
     assert "auth-abuse-redis-password" not in prod_managed
     assert "auth-abuse-redis-managed-key" in prod_external
@@ -213,9 +211,7 @@ def test_external_razorpay_credentials_are_validated_but_not_seeded() -> None:
         ]
     }
 
-    assert goal006_deployment_credentials.required_external_credentials(catalog, "demo") == [
-        "razorpay-test-key-id"
-    ]
+    assert goal006_deployment_credentials.required_external_credentials(catalog, "demo") == ["razorpay-test-key-id"]
     assert "razorpay-test-key-id" not in goal006_deployment_credentials.deployment_credentials(catalog, "demo")
     assert "managed-secret" in goal006_deployment_credentials.deployment_credentials(catalog, "demo")
 
@@ -238,7 +234,7 @@ def test_demo_deployment_requires_external_razorpay_credentials_before_apply() -
     assert set(entries) == expected
     assert all(entry["source"] == "external-operator" for entry in entries.values())
     assert all(entry["provisioner"] == "founder-key-vault-admin" for entry in entries.values())
-    assert set(goal006_deployment_credentials.required_external_credentials(catalog, "demo")) == expected
+    assert set(goal006_deployment_credentials.required_external_credentials(catalog, "demo")) >= expected
     assert expected.isdisjoint(goal006_deployment_credentials.deployment_credentials(catalog, "demo"))
     assert "--kind required-external" in workflow
     assert "Required external credential $name is missing" in workflow
@@ -249,23 +245,24 @@ def test_demo_deployment_requires_external_razorpay_credentials_before_apply() -
 def test_wc123_credentials_are_never_created_by_the_generic_seeder() -> None:
     root = wc091_environment.ROOT
     catalog = json.loads((root / "infrastructure/environment-readiness/secret-catalog.json").read_text())
-    session_entries = {
-        entry["id"]: entry
-        for entry in catalog["entries"]
-        if entry["id"].startswith("web-session-")
-    }
+    session_entries = {entry["id"]: entry for entry in catalog["entries"] if entry["id"].startswith("web-session-")}
     expected = {
         "web-session-database-url",
         "web-session-handle-digest",
         "web-session-protocol-digest",
         "web-session-token-envelope",
     }
+    oidc_transaction_credentials = expected - {"web-session-handle-digest"}
 
     assert {entry["vaultSecretName"] for entry in session_entries.values()} == expected
     assert all(entry["source"] == "external-operator" for entry in session_entries.values())
     assert all(entry["provisioner"] == "wc123-no-echo-provisioner" for entry in session_entries.values())
     assert expected.isdisjoint(goal006_deployment_credentials.deployment_credentials(catalog, "demo"))
-    assert expected.isdisjoint(
+    assert (
+        set(goal006_deployment_credentials.required_external_credentials(catalog, "demo", "disabled"))
+        >= oidc_transaction_credentials
+    )
+    assert "web-session-handle-digest" not in (
         goal006_deployment_credentials.required_external_credentials(catalog, "demo", "disabled")
     )
     assert set(goal006_deployment_credentials.required_external_credentials(catalog, "demo", "enforced")) >= expected
@@ -332,6 +329,19 @@ exit 0
         (
             "Unable to get value using Managed identity for secret identity-hmac-active",
             {"credentials": [{"name": "identity-hmac-active"}]},
+            True,
+        ),
+        (
+            (
+                'Code: "ContainerAppOperationError"\n'
+                "Field 'configuration.secrets' is invalid with details: "
+                '\'Invalid value: \\"web-session-database-url\\": Unable to get value using '
+                "Managed identity /subscriptions/sub/resourceGroups/rg/providers/"
+                "Microsoft.ManagedIdentity/userAssignedIdentities/id-demo-web for secret "
+                "web-session-database-url. Error: unable to fetch secret "
+                "'web-session-database-url' using Managed identity'"
+            ),
+            {"credentials": [{"name": "web-session-database-url"}]},
             True,
         ),
         (
