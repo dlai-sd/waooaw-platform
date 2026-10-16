@@ -1,7 +1,7 @@
 schema: waooaw.wc124-impact-manifest/v1
 work_contract: WC-124
 component: PST-WC01
-candidate_head: pending-final-milestone-commit
+candidate_head: 817500a6c88023e63ee471d362b94943a7ef58fc
 status: LOCALLY_QUALIFIED_PROVIDER_GATES_RESERVED
 requirement_binding:
   ledger: work-contracts/WC-124-requirements.yaml
