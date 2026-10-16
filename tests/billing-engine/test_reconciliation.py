@@ -475,7 +475,7 @@ async def test_run_daily_reconciliation_executes_both_audits(
     _TZ = ZoneInfo("Asia/Kolkata")
     yesterday = (datetime.now(tz=_TZ) - timedelta(days=1)).date()
     key = f"wbe:audit_in_progress:{yesterday.isoformat()}"
-    assert await mock_redis.exists(key) == 1
+    assert await mock_redis.exists(key) == 0
 
 
 @pytest.mark.asyncio

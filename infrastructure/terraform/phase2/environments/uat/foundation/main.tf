@@ -28,6 +28,7 @@ module "foundation" {
   runner_private_endpoints_subnet_id = var.runner_private_endpoints_subnet_id
   tfstate_storage_account_id         = var.tfstate_storage_account_id
   external_environment               = true
+  persistent_state_enabled           = true
 }
 
 output "resource_group_name" {
@@ -89,4 +90,16 @@ output "verification_principal_id" {
 output "auth_abuse_redis_url" {
   value     = module.foundation.auth_abuse_redis_url
   sensitive = true
+}
+
+output "postgresql_server_id" {
+  value = module.foundation.postgresql_server_id
+}
+
+output "postgresql_server_fqdn" {
+  value = module.foundation.postgresql_server_fqdn
+}
+
+output "database_bootstrap_client_id" {
+  value = module.foundation.database_bootstrap_client_id
 }

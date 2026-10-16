@@ -21,8 +21,12 @@ variable "repository_id" {
 variable "tfstate_storage_account_id" {
   type = string
   validation {
-    condition     = can(regex("^/subscriptions/[0-9a-f-]+/resourceGroups/waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/waooawp3tfstate2ed118$", var.tfstate_storage_account_id))
-    error_message = "Phase 3 state access is restricted to the authorized protected storage account."
+    condition = (
+      var.environment == "uat"
+      ? can(regex("^/subscriptions/[0-9a-f-]+/resourceGroups/waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/waooawuatstate2ed118$", var.tfstate_storage_account_id))
+      : can(regex("^/subscriptions/[0-9a-f-]+/resourceGroups/waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/waooawp3tfstate2ed118$", var.tfstate_storage_account_id))
+    )
+    error_message = "State access must use the exact environment-owned protected storage account."
   }
 }
 
@@ -57,6 +61,17 @@ variable "external_environment" {
   type        = bool
   description = "Expose the Container Apps environment load balancer for an explicitly authorized lower environment."
   default     = false
+}
+
+variable "persistent_state_enabled" {
+  type        = bool
+  description = "Create the protected Demo/UAT PostgreSQL persistent-state foundation."
+  default     = false
+
+  validation {
+    condition     = !var.persistent_state_enabled || contains(["demo", "uat"], var.environment)
+    error_message = "Persistent PostgreSQL is authorized only for Demo and UAT."
+  }
 }
 
 variable "log_analytics_workspace_name" {

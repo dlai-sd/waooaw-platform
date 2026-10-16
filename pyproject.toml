@@ -127,6 +127,7 @@ markers = [
     "cct: Constitutional Compliance Test — C-071",
     "acceptance: Acceptance Scenario test (AS-NNN) — Grade A required",
     "integration: Integration test — requires testcontainers",
+    "postgres: PostgreSQL integration test — requires the Docker PostgreSQL fixture",
     "performance: Performance test — may be slow",
     "security: Security test — prompt injection, adversarial",
     "flaky: Known flaky test — quarantined from blocking gates",

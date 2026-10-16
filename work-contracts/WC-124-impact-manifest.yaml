@@ -1,8 +1,8 @@
 schema: waooaw.wc124-impact-manifest/v1
 work_contract: WC-124
 component: PST-WC01
-candidate_head: fbf152e685d7605589dc66d4f63b206dc6f6aaa2
-status: BASELINE_CAPTURED
+candidate_head: pending-final-milestone-commit
+status: LOCALLY_QUALIFIED_PROVIDER_GATES_RESERVED
 requirement_binding:
   ledger: work-contracts/WC-124-requirements.yaml
   requirements: [WC124-R002]
@@ -10,7 +10,7 @@ requirement_binding:
 
 gaps:
   - id: PST-001
-    state: expected-fail
+    state: locally-qualified
     source: infrastructure/terraform/phase2/modules/workload/main.tf
     owning_surface: cloud workload database routes
     baseline:
@@ -21,7 +21,7 @@ gaps:
     direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-001]
 
   - id: PST-002
-    state: expected-fail
+    state: locally-qualified
     source: infrastructure/terraform/phase2/modules/workload/main.tf
     owning_surface: CE/BP/Billing application revisions
     baseline:
@@ -35,7 +35,7 @@ gaps:
     direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-002]
 
   - id: PST-003
-    state: expected-fail
+    state: locally-qualified
     source: infrastructure/terraform/phase2/modules/workload/main.tf
     owning_surface: Billing revision transient dependencies
     baseline:
@@ -48,7 +48,7 @@ gaps:
     direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-003]
 
   - id: PST-004
-    state: expected-fail
+    state: locally-qualified
     source: infrastructure/terraform/phase2/modules/workload/main.tf
     owning_surface: Demo Temporal persistence
     baseline:
@@ -58,7 +58,7 @@ gaps:
     direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-004]
 
   - id: PST-005
-    state: expected-fail
+    state: locally-qualified
     source: infrastructure/terraform/phase2/modules/foundation/main.tf
     owning_surface: Demo/UAT persistent database foundation
     baseline:
@@ -68,7 +68,7 @@ gaps:
     direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-005]
 
   - id: PST-006
-    state: expected-fail
+    state: locally-qualified
     source: infrastructure/terraform/phase2/modules/workload/main.tf
     owning_surface: dedicated environment PgBouncer dependency
     baseline:
@@ -80,7 +80,7 @@ gaps:
     direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-006]
 
   - id: PST-007
-    state: expected-fail
+    state: locally-qualified
     source: src/billing-engine/reconciliation/service.py
     owning_surface: Billing integrity halt authority
     baseline:
@@ -89,14 +89,14 @@ gaps:
         - "await self._redis.set(BILLING_HALTED_KEY"
         - "await self._redis.delete(BILLING_HALTED_KEY)"
     target:
-      contains_none:
-        - "await self._redis.set(BILLING_HALTED_KEY"
-        - "await self._redis.delete(BILLING_HALTED_KEY)"
-      contains_all: ["RECONCILIATION_REQUIRED"]
+      contains_all:
+        - "BillingAuthority(session, self._environment)"
+        - "if self._environment == \"production\""
+        - "RECONCILIATION_REQUIRED"
     direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-007]
 
   - id: PST-008
-    state: expected-fail
+    state: locally-qualified
     source: src/billing-engine/reconciliation/router.py
     owning_surface: Billing reconciliation status and outcome authority
     baseline:
@@ -105,13 +105,15 @@ gaps:
         - 'redis_client.get("wbe:last_daily_audit_result")'
         - 'redis_client.set('
     target:
-      contains_none:
+      contains_all:
+        - "if service.uses_durable_authority"
+        - "await service.last_audit_projection()"
         - 'redis_client.get("wbe:last_self_audit_result")'
-        - 'redis_client.get("wbe:last_daily_audit_result")'
+        - "if not service.uses_durable_authority"
     direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-008]
 
   - id: PST-009
-    state: expected-fail
+    state: locally-qualified
     source: src/billing-engine/reconciliation/scheduler.py
     owning_surface: Billing reconciliation idempotency
     baseline:
@@ -126,7 +128,7 @@ gaps:
     direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-009]
 
   - id: PST-010
-    state: expected-fail
+    state: locally-qualified
     source: .github/workflows/ci.yaml
     owning_surface: blocking persistent-state CI gates
     baseline:
@@ -136,7 +138,7 @@ gaps:
     direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-010]
 
   - id: PST-011
-    state: expected-fail
+    state: locally-qualified
     source: .github/workflows/deploy.yaml
     owning_surface: persistent-data deployment lifecycle
     baseline:
@@ -148,8 +150,8 @@ gaps:
     direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-011]
 
   - id: PST-012
-    state: expected-fail
-    source: .github/workflows/deploy.yaml
+    state: locally-qualified
+    source: scripts/wc124_azure_lifecycle.py
     owning_surface: retained-data cost and deletion boundary
     baseline:
       contains_none: ["residual_monthly_cost", "retained_authoritative_data"]

@@ -1,0 +1,44 @@
+schema: waooaw.wc124-runner-state-prerequisites/v1
+work_contract: WC-124
+component: PST-WC09A
+blueprint_version: 2.1.0
+repository_contract_status: IMPLEMENTED
+live_evidence_status: REQUIRED_NOT_YET_AUTHORIZED
+
+environments:
+  demo:
+    oidc_subject: repo:dlai-sd/waooaw-platform:environment:demo
+    oidc_audience: api://AzureADTokenExchange
+    runner_label: goal006-demo-private
+    state_storage_account: waooawp3tfstate2ed118
+    foundation_backend_key: goal006/demo/foundation.tfstate
+    workload_backend_key: goal006/demo/workload.tfstate
+  uat:
+    oidc_subject: repo:dlai-sd/waooaw-platform:environment:uat
+    oidc_audience: api://AzureADTokenExchange
+    runner_label: goal006-uat-private
+    state_storage_account: waooawuatstate2ed118
+    foundation_backend_key: goal006/uat/foundation.tfstate
+    workload_backend_key: goal006/uat/workload.tfstate
+
+mandatory_live_oracles:
+  - exact_environment_oidc_subject_and_audience
+  - private_runner_activation_and_ephemeral_cleanup
+  - isolated_backend_key_ownership_and_locking
+  - private_backend_access_and_public_fallback_denial
+  - cross_environment_identity_and_state_denial
+  - import_map_and_no_duplicate_resource_creation
+  - drift_and_reviewed_plan_retention
+  - partial_apply_recovery_hold_and_roll_forward
+  - distinct_demo_and_uat_state_storage_accounts
+
+authorization:
+  repository_validation: authorized
+  azure_login: not_authorized
+  azure_plan: not_authorized
+  azure_apply: not_authorized
+  deployment: not_authorized
+
+dependency:
+  blocks: PST-WC04_ACCEPTANCE
+  release_rule: all_mandatory_live_oracles_PASS_under_separate_founder_authority

@@ -1,0 +1,21 @@
+{
+  "authority": "diagnostic-local-only",
+  "base_sha": "7473eb60fe370ff4d272125fda44ec35b529a0d3",
+  "catalog_controlled": true,
+  "compose_project": "wc109-c2a25b5df47b38fa",
+  "execution_namespace": "wc109-c2a25b5df47b38fa",
+  "gate_id": "test-dotnet:business-platform",
+  "head_sha": "9899063ee79f7612f2b400e076c4baeb306e45d4",
+  "invocation_source": "catalog",
+  "mode": "qualification",
+  "output_directory": "test-results/wc109/runs/wc109-c2a25b5df47b38fa/test-dotnet-business-platform",
+  "product_image_build_events": 0,
+  "result": "PASS",
+  "return_code": 0,
+  "runner_build_events": 0,
+  "runner_digest": "sha256:78dd84220337678097b61c6b4b191fe98a9d49fc7dbcbdbd6a2f5ceddbd92bda",
+  "schema": "waooaw.wc109-tier2-execution/v1",
+  "service_identities": {},
+  "stderr_artifact": null,
+  "stdout_artifact": null
+}

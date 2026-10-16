@@ -17,6 +17,14 @@ EXPECTED_STATE_ID = (
     "/subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/resourceGroups/"
     "waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/waooawp3tfstate2ed118"
 )
+EXPECTED_STATE_IDS = {
+    "demo": EXPECTED_STATE_ID,
+    "uat": (
+        "/subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/resourceGroups/"
+        "waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/waooawuatstate2ed118"
+    ),
+    "prod": EXPECTED_STATE_ID,
+}
 EXPECTED_BOOTSTRAP_PRINCIPAL = "77147af5-a32d-4151-b557-e719f319b55b"
 EXPECTED_COST_ESTIMATE = {
     "planned_incremental_monthly_cost_inr": 1000,
@@ -152,7 +160,8 @@ def validate_bootstrap_manifest(repository_root: Path, manifest_path: Path, envi
         violations.append("ACTIVATION_STATE_MISMATCH")
     if parameters.get("runnerResourceGroupName") != f"waooaw-{environment}-runner-rg":
         violations.append("RESOURCE_GROUP_INVALID")
-    if parameters.get("stateStorageAccountId") != EXPECTED_STATE_ID:
+    expected_state_id = EXPECTED_STATE_IDS[environment]
+    if parameters.get("stateStorageAccountId") != expected_state_id:
         violations.append("STATE_STORAGE_ID_INVALID")
     if parameters.get("bootstrapPrincipalId") != EXPECTED_BOOTSTRAP_PRINCIPAL:
         violations.append("BOOTSTRAP_PRINCIPAL_INVALID")
@@ -163,7 +172,7 @@ def validate_bootstrap_manifest(repository_root: Path, manifest_path: Path, envi
         violations.append("MONTHLY_BUDGET_INVALID")
     if prerequisite_parameters.get("runnerResourceGroupName") != parameters.get("runnerResourceGroupName"):
         violations.append("PREREQUISITE_RESOURCE_GROUP_MISMATCH")
-    if prerequisite_parameters.get("stateStorageAccountId") != EXPECTED_STATE_ID:
+    if prerequisite_parameters.get("stateStorageAccountId") != expected_state_id:
         violations.append("PREREQUISITE_STATE_STORAGE_ID_INVALID")
     if prerequisite_parameters.get("bootstrapPrincipalId") != EXPECTED_BOOTSTRAP_PRINCIPAL:
         violations.append("PREREQUISITE_PRINCIPAL_INVALID")

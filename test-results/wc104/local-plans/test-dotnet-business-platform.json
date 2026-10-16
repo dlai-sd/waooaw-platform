@@ -1,0 +1,117 @@
+{
+  "authoritative": false,
+  "catalog_version": "wc121-selective-validation-v1",
+  "execution_namespace": "wc109-c2a25b5df47b38fa",
+  "head_sha": "9899063ee79f7612f2b400e076c4baeb306e45d4",
+  "machine_checkable": true,
+  "mode": "qualification",
+  "nodes": [
+    {
+      "acceptance_check": "sh scripts/validation_control/run_dotnet_test_gate.sh business-platform tests/business-platform.Tests/business-platform.Tests.csproj",
+      "artifacts": {
+        "common": "test-results/validation/test-dotnet.json",
+        "native": [
+          "test-results/**/*.trx",
+          "test-results/coverage/**/*.xml"
+        ]
+      },
+      "auxiliary_runners": [],
+      "command": "sh scripts/validation_control/run_dotnet_test_gate.sh business-platform tests/business-platform.Tests/business-platform.Tests.csproj",
+      "command_id": "test-business-platform",
+      "components": [
+        "business-platform"
+      ],
+      "compose_project": "wc109-c2a25b5df47b38fa",
+      "compose_service": "test-runner-dotnet",
+      "cost_class": "FOCUSED",
+      "direct_prerequisites": [],
+      "downstream_dependents": [],
+      "environment": [
+        "TESTCONTAINERS_HOST_OVERRIDE"
+      ],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/test-dotnet.json",
+          "native": [
+            "test-results/**/*.trx",
+            "test-results/coverage/**/*.xml"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-c2a25b5df47b38fa/test-dotnet-business-platform"
+      },
+      "gate_id": "test-dotnet:business-platform",
+      "inputs": {
+        "auxiliary_runners": [],
+        "catalog_version": "wc121-selective-validation-v1",
+        "command_id": "test-business-platform",
+        "environment": [
+          "TESTCONTAINERS_HOST_OVERRIDE"
+        ],
+        "head_sha": "9899063ee79f7612f2b400e076c4baeb306e45d4",
+        "required_services": [],
+        "runner_id": "dotnet"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "architecture/reference/api-specs/business-platform.openapi.yaml",
+          "architecture/reference/dockerfiles/**",
+          "docker-compose*.yml",
+          "infrastructure/postgres/init/**",
+          "requirements*.txt",
+          "scripts/validation_control/**",
+          "scripts/validation_control/catalog_execution.py",
+          "scripts/validation_control/execution_contract.py",
+          "scripts/validation_control/local_catalog_gate.py",
+          "scripts/validation_control/orchestrator.py",
+          "scripts/validation_control/qualification.py",
+          "scripts/validation_control/wc104_rollback.py",
+          "src/business-platform/**",
+          "tests/business-platform.Tests/**",
+          "validation/**",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml",
+          "validation/runner-supply.json"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-c2a25b5df47b38fa/test-dotnet-business-platform",
+      "owner": "business-platform",
+      "phase": "B_COMPONENT",
+      "product_image_builds": [],
+      "profile": "test-dotnet",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "integration",
+        "cpus": 2,
+        "disk_mb": 2048,
+        "docker_socket": true,
+        "memory_mb": 4096,
+        "socket_classification": "testcontainers",
+        "timeout_seconds": 1800
+      },
+      "retry_policy": "none",
+      "reusable": true,
+      "runner_id": "dotnet",
+      "runner_manifest": "test-results/wc104/runner-manifests/dotnet.json",
+      "runner_required": true,
+      "tool_digest": null
+    }
+  ],
+  "preflight": {
+    "build_events": 0,
+    "execution_events": 0,
+    "first_cause": null,
+    "result": "PASS",
+    "schema": "waooaw.plan-preflight-result/v1",
+    "violations": []
+  },
+  "requires_clean_commit": true,
+  "schema": "waooaw.validation-execution-plan/v1"
+}

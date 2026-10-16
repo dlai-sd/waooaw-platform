@@ -14,6 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import Settings
+from reconciliation.authority import BillingAuthority, BillingIntegrityHaltedError
 from wallet.models import (
     BucketBalance,
     BucketNotFoundError,
@@ -27,9 +28,6 @@ from wallet.models import (
 logger = logging.getLogger(__name__)
 
 settings: Settings = Settings()
-
-_BILLING_HALTED_KEY: str = "wbe:billing_halted"
-
 
 class WalletService:
     """
@@ -51,36 +49,72 @@ class WalletService:
     # ------------------------------------------------------------------
 
     async def _check_billing_halted(self) -> None:
-        """Raise HTTP 503 if the billing integrity halt flag is set in Redis."""
+        """Preserve the unchanged Production Redis authority path."""
         try:
-            halted: str | None = await self._redis.get(_BILLING_HALTED_KEY)
+            halted = await self._redis.get("wbe:billing_halted")
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            logger.error(
-                "Redis check for billing halt failed - failing open for safety",
-                exc_info=True,
-                extra={"context": "check_billing_halted"},
-            )
+            logger.error("Billing halt authority unavailable", exc_info=True)
             raise HTTPException(
                 status_code=503,
                 detail={
-                    "code": "BILLING_INTEGRITY_HALT",
-                    "message": (
-                        "Billing suspended pending reconciliation audit"
-                    ),
+                    "code": "BILLING_AUTHORITY_UNAVAILABLE",
+                    "message": "Billing authority is unavailable",
                 },
             ) from exc
-        if halted is not None:
+        if halted:
             raise HTTPException(
                 status_code=503,
                 detail={
                     "code": "BILLING_INTEGRITY_HALT",
-                    "message": (
-                        "Billing suspended pending reconciliation audit"
-                    ),
+                    "message": "Billing suspended pending reconciliation audit",
                 },
             )
+
+    async def _assert_billing_writes_allowed(
+        self,
+        *,
+        tenant_id: UUID,
+        accounting_scope_id: UUID,
+    ) -> None:
+        environment = settings.WAOOAW_ENVIRONMENT
+        if environment not in {"demo", "uat"}:
+            await self._check_billing_halted()
+            return
+        try:
+            authority = BillingAuthority(self._db, environment)
+            await authority.assert_writes_allowed(
+                tenant_id=tenant_id,
+                accounting_scope_id=accounting_scope_id,
+            )
+        except asyncio.CancelledError:
+            raise
+        except BillingIntegrityHaltedError as exc:
+            logger.error(
+                "Authoritative Billing integrity state denied a consequential write",
+                extra={"context": "check_billing_authority"},
+            )
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": "BILLING_INTEGRITY_HALT",
+                    "message": "Billing suspended pending reconciliation audit",
+                },
+            ) from exc
+        except Exception as exc:
+            logger.error(
+                "Billing authority lookup failed - denying consequential write",
+                exc_info=True,
+                extra={"context": "check_billing_authority"},
+            )
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": "BILLING_AUTHORITY_UNAVAILABLE",
+                    "message": "Billing authority is unavailable",
+                },
+            ) from exc
 
     # ------------------------------------------------------------------
     # Public API
@@ -152,42 +186,9 @@ class WalletService:
             BucketNotFoundError: If bucket does not exist.
             InsufficientBalanceError: If balance < amount_paise.
         """
-        # WC030-01b: use injected redis_client if provided, else fall back to self._redis
-        effective_redis: aioredis.Redis = (
-            redis_client if redis_client is not None else self._redis
-        )
-
-        # C-004: Check billing halt BEFORE any DB write
-        try:
-            halted: str | None = await effective_redis.get(_BILLING_HALTED_KEY)
-        except asyncio.CancelledError:
-            raise
-        except Exception as exc:
-            logger.error(
-                "Redis billing-halt check failed in reserve - blocking as safe default",
-                exc_info=True,
-                extra={"context": "reserve_billing_halt_check"},
-            )
-            raise HTTPException(
-                status_code=503,
-                detail={
-                    "code": "BILLING_INTEGRITY_HALT",
-                    "message": (
-                        "Billing suspended pending reconciliation audit"
-                    ),
-                },
-            ) from exc
-
-        if halted is not None:
-            raise HTTPException(
-                status_code=503,
-                detail={
-                    "code": "BILLING_INTEGRITY_HALT",
-                    "message": (
-                        "Billing suspended pending reconciliation audit"
-                    ),
-                },
-            )
+        durable_authority = settings.WAOOAW_ENVIRONMENT in {"demo", "uat"}
+        if not durable_authority:
+            await self._check_billing_halted()
 
         # Idempotency: check for existing reservation with this key
         existing = await self._db.execute(
@@ -227,6 +228,12 @@ class WalletService:
         if bucket_row is None:
             raise BucketNotFoundError(
                 f"Bucket not found: customer={customer_id} thread_type={thread_type}"
+            )
+
+        if durable_authority:
+            await self._assert_billing_writes_allowed(
+                tenant_id=customer_id,
+                accounting_scope_id=UUID(str(bucket_row.id)),
             )
 
         if bucket_row.balance_paise < amount_paise:
@@ -306,8 +313,11 @@ class WalletService:
         res_result = await self._db.execute(
             text(
                 """
-                SELECT br.id, br.reserved_paise, br.bucket_id, br.consumed
+                SELECT br.id, br.reserved_paise, br.bucket_id, br.consumed,
+                       ec.customer_id
                 FROM bucket_reservations br
+                JOIN wallet_buckets wb ON wb.id = br.bucket_id
+                JOIN employment_contracts ec ON ec.id = wb.employment_contract_id
                 WHERE br.id = :res_id
                 LIMIT 1
                 """
@@ -316,6 +326,11 @@ class WalletService:
         res_row = res_result.fetchone()
         if res_row is None:
             raise ValueError(f"Reservation not found: {reservation_id}")
+
+        await self._assert_billing_writes_allowed(
+            tenant_id=UUID(str(res_row.customer_id)),
+            accounting_scope_id=UUID(str(res_row.bucket_id)),
+        )
 
         now_utc: datetime = datetime.now(timezone.utc)
 

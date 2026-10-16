@@ -1,0 +1,60 @@
+schema: waooaw.wc124-lifecycle-alert-catalog/v1
+owner: Platform_Operations
+receiver_authority: observe_alert_escalate_only
+redaction: no_customer_data_secrets_tokens_connection_strings_or_raw_identifiers
+scheduled_mutation:
+  sole_action: re_stop_automatically_started_postgresql
+  identity_suffix: lifecycle-reconciler
+  required_conditions:
+    - original_sleep_lease_unexpired
+    - exact_founder_provider_authority_valid
+    - environment_tuple_exact
+    - no_active_or_uncertain_work
+    - backup_ready
+  otherwise: RECOVERY_HOLD
+signals:
+  - id: unexpected-postgresql-start
+    threshold: any_start_while_terminal_state_is_SLEEPING
+    retention_days: 400
+    evidence: lifecycle_record_and_provider_activity_digest
+    escalation: immediate_Platform_Operations_INST_009
+  - id: lifecycle-lease-transition-retry-lock
+    threshold: expired_lease_or_transition_timeout_or_retry_exhaustion_or_lock_conflict
+    retention_days: 400
+    evidence: authorization_tuple_and_hash_chain
+    escalation: immediate_Platform_Operations_INST_009
+  - id: database-start-stop-failure
+    threshold: any_failed_or_uncertain_database_lifecycle_operation
+    retention_days: 400
+    evidence: redacted_command_result_and_lifecycle_record
+    escalation: immediate_RECOVERY_HOLD_INST_006
+  - id: backup-restore-rpo-rto
+    threshold: backup_age_over_5_minutes_or_rpo_over_5_minutes_or_rto_over_30_minutes
+    retention_days: 400
+    evidence: independently_verified_restore_result
+    escalation: immediate_RECOVERY_HOLD_INST_006
+  - id: pgbouncer-saturation-rejection-route
+    threshold: utilization_over_80_percent_or_any_rejection_or_server_route_failure
+    retention_days: 35
+    evidence: redacted_pool_and_route_metrics
+    escalation: immediate_Platform_Operations_INST_009
+  - id: migration-schema-watermark-drift
+    threshold: any_expected_actual_digest_or_watermark_mismatch
+    retention_days: 90
+    evidence: migration_and_schema_digests
+    escalation: immediate_RECOVERY_HOLD_INST_006
+  - id: public-direct-foreign-route
+    threshold: any_successful_or_newly_reachable_prohibited_route
+    retention_days: 90
+    evidence: source_destination_denial_matrix
+    escalation: immediate_SECURITY_HOLD_INST_007
+  - id: cost-forecast-actual-drift
+    threshold: sleeping_combined_over_INR_3200_or_active_over_INR_10000_before_GST
+    retention_days: 400
+    evidence: protected_cost_inventory
+    escalation: immediate_Platform_Operations_INST_009
+  - id: evidence-chain-signature-failure
+    threshold: any_forged_replaced_truncated_wrong_environment_or_writer_self_accepted_chain
+    retention_days: 400
+    evidence: independently_verified_hash_chain
+    escalation: immediate_SECURITY_HOLD_INST_007

@@ -43,7 +43,7 @@ def test_manifest_binds_the_exact_candidate_and_requirement() -> None:
     assert manifest["schema"] == "waooaw.wc124-impact-manifest/v1"
     assert manifest["work_contract"] == "WC-124"
     assert manifest["component"] == "PST-WC01"
-    assert manifest["status"] == "BASELINE_CAPTURED"
+    assert manifest["status"] == "LOCALLY_QUALIFIED_PROVIDER_GATES_RESERVED"
     assert manifest["requirement_binding"] == {
         "ledger": "work-contracts/WC-124-requirements.yaml",
         "requirements": ["WC124-R002"],
@@ -64,7 +64,12 @@ def test_gap_baselines_and_target_oracles_are_exact(gap_id: str) -> None:
     gap = next(item for item in load_manifest()["gaps"] if item["id"] == gap_id)
     source = ROOT / gap["source"]
 
-    assert gap["state"] in {"expected-fail", "resolved"}
+    assert gap["state"] in {
+        "expected-fail",
+        "authored-pending-qualification",
+        "locally-qualified",
+        "resolved",
+    }
     assert gap["owning_surface"]
     assert gap["direct_evidence"].endswith(f"[{gap_id}]")
 

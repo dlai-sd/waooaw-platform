@@ -138,7 +138,16 @@ def test_all_foundation_roots_publish_the_same_workload_contract() -> None:
 
     for environment in ENVIRONMENTS:
         foundation = read_contract(f"environments/{environment}/foundation/main.tf")
-        assert set(re.findall(r'^output "([^"]+)"', foundation, re.MULTILINE)) == expected_outputs
+        environment_outputs = set(expected_outputs)
+        if environment in {"demo", "uat"}:
+            environment_outputs.update(
+                {
+                    "postgresql_server_id",
+                    "postgresql_server_fqdn",
+                    "database_bootstrap_client_id",
+                }
+            )
+        assert set(re.findall(r'^output "([^"]+)"', foundation, re.MULTILINE)) == environment_outputs
 
 
 @pytest.mark.parametrize("environment", ENVIRONMENTS)
@@ -304,7 +313,9 @@ def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
     assert "--import-realm" in keycloak
     assert "/opt/keycloak/data/import/waooaw-realm.json" in keycloak
     assert "until /opt/keycloak/bin/kcadm.sh" not in keycloak
-    assert "--db=dev-file" in keycloak
+    assert "--db=dev-file" not in keycloak
+    assert 'name  = "KC_DB"' in keycloak
+    assert 'value = "postgres"' in keycloak
     assert "--db=dev-mem" not in keycloak
     assert "startup_probe" in keycloak
     assert "readiness_probe" in keycloak
@@ -319,7 +330,7 @@ def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
     assert 'value = "xforwarded"' in keycloak
     assert re.search(r"external_enabled\s*=\s*false", keycloak)
     assert "allow_insecure_connections" not in keycloak
-    assert "min_replicas = 1" in keycloak
+    assert "min_replicas = var.application_activation_enabled ? 1 : 0" in keycloak
     assert "ip_security_restriction" not in keycloak
     assert "KC_BOOTSTRAP_ADMIN" not in keycloak
 
@@ -333,7 +344,7 @@ def test_identity_edge_exposes_only_customer_authentication_paths() -> None:
 
     assert goal006_live_inventory.IDENTITY_EDGE_IMAGE in identity_edge
     assert "external_enabled = true" in identity_edge
-    assert "min_replicas = 1" in identity_edge
+    assert "min_replicas = var.application_activation_enabled ? 1 : 0" in identity_edge
     assert "ip_security_restriction" not in identity_edge
     assert "templatefile(" in contract
     assert "identity-edge.conf.tftpl" in contract
@@ -669,8 +680,14 @@ def test_scale_contract_is_bounded_and_defaults_to_zero() -> None:
     for variable in ("ce_min_replicas", "pr_min_replicas", "bp_min_replicas", "web_min_replicas"):
         block = contract.split(f'variable "{variable}"', 1)[1].split("variable ", 1)[0]
         assert "default = 0" in block
-    assert '"business-platform"                       = var.bp_min_replicas' in workload
-    assert '"web"                                     = var.web_min_replicas' in workload
+    assert (
+        '"business-platform"                       = var.application_activation_enabled ? '
+        "var.bp_min_replicas : 0"
+    ) in workload
+    assert (
+        '"web"                                     = var.application_activation_enabled ? '
+        "var.web_min_replicas : 0"
+    ) in workload
     assert re.search(r"bp_min_replicas\s*=\s*1", demo_root)
     assert re.search(r"web_min_replicas\s*=\s*1", demo_root)
     assert "var.max_replicas > 0 && var.max_replicas <= 10" in contract
@@ -889,8 +906,8 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "waooaw-platform-bootstrap" in workflow
     assert "az storage container show" not in workflow
     assert workflow.count('gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main"') == 1
-    assert workflow.count("https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main") == 3
-    assert workflow.count("terraform apply -input=false -auto-approve") == 2
+    assert workflow.count("https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main") == 4
+    assert workflow.count("terraform apply -input=false -auto-approve") == 3
     assert "mcr.microsoft.com/azure-cli@sha256:" in workflow
     assert "https://mcr.microsoft.com/v2/$repository/manifests/$expected_digest" in workflow
     assert workflow.index("https://mcr.microsoft.com/v2/") > workflow.index(
@@ -905,7 +922,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "secret-seeder-job.json" in workflow
     assert "secret-seeder-console.log" in workflow
     assert workflow.index("capture_seeder_evidence()") < workflow.index("Delete private credential seeder")
-    assert workflow.count("if: inputs.apply") == 11
+    assert workflow.count("if: inputs.apply") == 14
     assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
     assert '--context "external_environment=$external_environment"' in workflow
     assert "if: steps.foundation-cache.outputs.cache_hit != 'true'" in workflow
@@ -933,7 +950,9 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "terraform state list > workload-state-after-apply-failure.txt" in workflow
     assert "managed resources were preserved for reconciliation" in workflow
     assert "workload/workload-state-after-apply-failure.txt" in workflow
-    assert workflow.index("Terraform workload apply") < workflow.index("Preserve workload state after apply failure")
+    assert workflow.index("Terraform dormant workload and migration dependency apply") < workflow.index(
+        "Preserve workload state after apply failure"
+    )
     assert workflow.index("Preserve workload state after apply failure") < workflow.index(
         "Delete private credential seeder"
     )
@@ -983,7 +1002,7 @@ def test_demo_web_url_uses_managed_custom_domain() -> None:
     assert 'api_custom_hostname                      = "api.demo.waooaw.com"' in demo
     assert "Bind Demo Azure-managed TLS certificates" in deployment
     assert "bash scripts/goal006_bind_demo_managed_certificates.sh" in deployment
-    assert deployment.index("Terraform workload apply") < deployment.index(
+    assert deployment.index("Apply application activation") < deployment.index(
         "Bind Demo Azure-managed TLS certificates"
     )
     assert "az containerapp hostname bind" in managed_tls
@@ -1147,12 +1166,15 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
         assert f"          - {environment}" in deploy
     assert "default: plan" in deploy
     assert "- plan" in deploy
-    assert "- apply" in deploy
-    assert "case \"$EXECUTION_MODE\" in plan|apply)" in deploy
-    assert "apply: ${{ inputs.execution == 'apply' }}" in deploy
+    assert "- activate" in deploy
+    assert "- sleep" in deploy
+    assert "- apply" not in deploy
+    assert "case \"$EXECUTION_MODE\" in plan|activate|sleep)" in deploy
+    assert "apply: ${{ inputs.execution == 'activate' }}" in deploy
+    assert "lifecycle_action: ${{ inputs.execution }}" in deploy
     assert "cost_controls:" not in deploy
     assert "enforce_cost_controls:" not in deploy
-    assert deploy.count("if: inputs.execution == 'apply'") == 2
+    assert deploy.count("if: inputs.execution == 'activate'") == 3
     assert "verification_client_id: ${{ needs.deploy.outputs.verification_client_id }}" in deploy
     assert "web_url: ${{ needs.deploy.outputs.web_url }}" in deploy
     assert not (REPO_ROOT / ".github/workflows/promote.yaml").exists()
@@ -1270,7 +1292,7 @@ def test_authentication_limiter_is_environment_scoped_and_independent_of_session
     assert 'name                         = "ca-${var.environment}-auth-redis"' in contract
     assert 'external_enabled = false' in contract
     assert 'image   = "redis@sha256:' in contract
-    assert 'REDIS_URL                        = local.auth_redis_url' in contract
+    assert re.search(r"REDIS_URL\s*=\s*local\.auth_redis_url", contract)
     assert re.search(
         r"AUTH_ABUSE_LIMITS_JSON\s*=\s*jsonencode\(local\.auth_abuse_limits\)",
         contract,
@@ -1285,7 +1307,9 @@ def test_authentication_limiter_is_environment_scoped_and_independent_of_session
     assert "auth-abuse:v1:epoch" in contract
     assert 'var.environment == "prod" ? var.auth_abuse_redis_url' in contract
     assert 'Production authentication limiting requires the separately approved private HA Redis' in contract
-    assert 'each.key == "billing-engine" ? [1] : []' in contract
+    assert (
+        "var.persistent_state_enabled && contains(local.database_members, each.key) ? [1] : []"
+    ) in contract
     assert 'AUTH_ABUSE_LIMITS_JSON = each.key == "web"' not in contract
     assert "try(data.terraform_remote_state.foundation.outputs.auth_abuse_redis_url, null)" in prod_workload
 

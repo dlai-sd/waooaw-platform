@@ -124,7 +124,7 @@ def test_workload_plan_safely_adopts_the_live_identity_edge() -> None:
     assert "terraform show -json workload.tfplan > workload-plan.json" in workload_plan
     assert "scripts/goal006_tfplan_policy.py" in workload_plan
     assert WORKFLOW.index("goal006_tfplan_policy.py", WORKFLOW.index("Terraform workload plan")) < WORKFLOW.index(
-        "      - name: Terraform workload apply"
+        "      - name: Terraform dormant workload and migration dependency apply"
     )
     assert "workload/workload-plan.json" in WORKFLOW
     assert "workload/workload-state-before-plan.txt" in WORKFLOW
@@ -132,7 +132,7 @@ def test_workload_plan_safely_adopts_the_live_identity_edge() -> None:
 
 def test_identity_edge_state_reconciliation_is_environment_parameterized() -> None:
     workload_plan = WORKFLOW.split("      - name: Terraform workload plan", 1)[1].split(
-        "      - name: Terraform workload apply", 1
+        "      - name: Terraform dormant workload and migration dependency apply", 1
     )[0]
 
     for environment in ("demo", "uat", "prod"):

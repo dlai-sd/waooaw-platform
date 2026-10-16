@@ -97,6 +97,23 @@ resource "azurerm_subnet" "private_endpoints" {
   address_prefixes     = [cidrsubnet(local.address_spaces[var.environment], 8, 2)]
 }
 
+resource "azurerm_subnet" "postgresql" {
+  count = var.persistent_state_enabled ? 1 : 0
+
+  name                 = "snet-postgresql"
+  resource_group_name  = azurerm_resource_group.environment.name
+  virtual_network_name = azurerm_virtual_network.environment.name
+  address_prefixes     = [cidrsubnet(local.address_spaces[var.environment], 8, 3)]
+
+  delegation {
+    name = "postgresql-flexible-server"
+    service_delegation {
+      name    = "Microsoft.DBforPostgreSQL/flexibleServers"
+      actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
+    }
+  }
+}
+
 resource "azurerm_network_security_group" "container_apps" {
   name                = "nsg-${local.name}-container-apps"
   location            = azurerm_resource_group.environment.location
@@ -255,6 +272,108 @@ resource "azurerm_private_dns_zone_virtual_network_link" "key_vault" {
   private_dns_zone_name = azurerm_private_dns_zone.key_vault.name
   virtual_network_id    = azurerm_virtual_network.environment.id
   tags                  = local.tags
+}
+
+resource "azurerm_user_assigned_identity" "database_bootstrap" {
+  count = var.persistent_state_enabled ? 1 : 0
+
+  name                = "id-${local.name}-db-bootstrap"
+  location            = azurerm_resource_group.environment.location
+  resource_group_name = azurerm_resource_group.environment.name
+  tags                = local.tags
+}
+
+resource "azurerm_private_dns_zone" "postgresql" {
+  count = var.persistent_state_enabled ? 1 : 0
+
+  name                = "privatelink.postgres.database.azure.com"
+  resource_group_name = azurerm_resource_group.environment.name
+  tags                = local.tags
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "postgresql" {
+  count = var.persistent_state_enabled ? 1 : 0
+
+  name                  = "link-${local.name}-postgresql"
+  resource_group_name   = azurerm_resource_group.environment.name
+  private_dns_zone_name = azurerm_private_dns_zone.postgresql[0].name
+  virtual_network_id    = azurerm_virtual_network.environment.id
+  tags                  = local.tags
+}
+
+resource "azurerm_postgresql_flexible_server" "persistent_state" {
+  count = var.persistent_state_enabled ? 1 : 0
+
+  name                          = "psql-${local.name}-state"
+  resource_group_name           = azurerm_resource_group.environment.name
+  location                      = azurerm_resource_group.environment.location
+  version                       = "16"
+  delegated_subnet_id           = azurerm_subnet.postgresql[0].id
+  private_dns_zone_id           = azurerm_private_dns_zone.postgresql[0].id
+  public_network_access_enabled = false
+  sku_name                      = "B_Standard_B1ms"
+  storage_mb                    = 32768
+  auto_grow_enabled             = false
+  backup_retention_days         = 35
+  geo_redundant_backup_enabled  = false
+  zone                          = "1"
+  tags                          = merge(local.tags, { authority = "persistent-state", cost_center = "demo-uat-retained-data" })
+
+  authentication {
+    active_directory_auth_enabled = true
+    password_auth_enabled         = false
+    tenant_id                     = azurerm_user_assigned_identity.deployment.tenant_id
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  depends_on = [azurerm_private_dns_zone_virtual_network_link.postgresql]
+}
+
+resource "azurerm_postgresql_flexible_server_active_directory_administrator" "bootstrap" {
+  count = var.persistent_state_enabled ? 1 : 0
+
+  server_name         = azurerm_postgresql_flexible_server.persistent_state[0].name
+  resource_group_name = azurerm_resource_group.environment.name
+  tenant_id           = azurerm_user_assigned_identity.database_bootstrap[0].tenant_id
+  object_id           = azurerm_user_assigned_identity.database_bootstrap[0].principal_id
+  principal_name      = azurerm_user_assigned_identity.database_bootstrap[0].name
+  principal_type      = "ServicePrincipal"
+}
+
+resource "azurerm_postgresql_flexible_server_database" "persistent_state" {
+  for_each = var.persistent_state_enabled ? toset(
+    var.environment == "demo"
+    ? ["waooaw_application", "waooaw_keycloak", "waooaw_temporal"]
+    : ["waooaw_application", "waooaw_keycloak"]
+  ) : toset([])
+
+  name      = each.value
+  server_id = azurerm_postgresql_flexible_server.persistent_state[0].id
+  charset   = "UTF8"
+  collation = "en_US.utf8"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "azurerm_postgresql_flexible_server_configuration" "extensions" {
+  count = var.persistent_state_enabled ? 1 : 0
+
+  name      = "azure.extensions"
+  server_id = azurerm_postgresql_flexible_server.persistent_state[0].id
+  value     = "VECTOR"
+}
+
+resource "azurerm_postgresql_flexible_server_configuration" "max_connections" {
+  count = var.persistent_state_enabled ? 1 : 0
+
+  name      = "max_connections"
+  server_id = azurerm_postgresql_flexible_server.persistent_state[0].id
+  value     = var.environment == "demo" ? "40" : "100"
 }
 
 resource "azurerm_redis_cache" "auth_abuse" {
@@ -433,4 +552,16 @@ output "verification_principal_id" {
 output "auth_abuse_redis_url" {
   value     = var.auth_redis_ha_enabled ? "rediss://${azurerm_redis_cache.auth_abuse[0].hostname}:${azurerm_redis_cache.auth_abuse[0].ssl_port}/0" : null
   sensitive = true
+}
+
+output "postgresql_server_id" {
+  value = var.persistent_state_enabled ? azurerm_postgresql_flexible_server.persistent_state[0].id : null
+}
+
+output "postgresql_server_fqdn" {
+  value = var.persistent_state_enabled ? azurerm_postgresql_flexible_server.persistent_state[0].fqdn : null
+}
+
+output "database_bootstrap_client_id" {
+  value = var.persistent_state_enabled ? azurerm_user_assigned_identity.database_bootstrap[0].client_id : null
 }

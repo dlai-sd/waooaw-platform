@@ -18,25 +18,25 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 -- ─── Application users ──────────────────────────────────────────────────────
 
 -- Constitutional Engine: INSERT + SELECT on constitutional only. No UPDATE/DELETE.
-CREATE USER constitutional_app WITH PASSWORD '${POSTGRES_PASSWORD}';
+ALTER ROLE constitutional_app LOGIN PASSWORD '${POSTGRES_PASSWORD}';
 
 -- Business Platform: full CRUD on business, SELECT on constitutional
-CREATE USER business_app WITH PASSWORD '${POSTGRES_PASSWORD}';
+ALTER ROLE business_app LOGIN PASSWORD '${POSTGRES_PASSWORD}';
 
 -- Professional Runtime + AI Runtime: SELECT on business
-CREATE USER runtime_app WITH PASSWORD '${POSTGRES_PASSWORD}';
+ALTER ROLE runtime_app LOGIN PASSWORD '${POSTGRES_PASSWORD}';
 
 -- AI Runtime: scoped grants are applied by the schema migrations
-CREATE USER ai_runtime_app WITH PASSWORD '${POSTGRES_PASSWORD}';
+ALTER ROLE ai_runtime_app LOGIN PASSWORD '${POSTGRES_PASSWORD}';
 
 -- Billing Engine: grants are applied by the billing schema migrations
-CREATE USER wbe_app WITH PASSWORD '${POSTGRES_PASSWORD}';
+ALTER ROLE wbe_app LOGIN PASSWORD '${POSTGRES_PASSWORD}';
 
 -- Generic domain-adapter runtime: grants are applied by WC-115 migrations
-CREATE USER domain_adapter_app WITH PASSWORD '${POSTGRES_PASSWORD}';
+ALTER ROLE domain_adapter_app LOGIN PASSWORD '${POSTGRES_PASSWORD}';
 
 -- Web BFF application-session runtime: function execution only, granted by WC-123 migration
-CREATE USER web_session_app WITH PASSWORD '${POSTGRES_PASSWORD}' NOBYPASSRLS;
+ALTER ROLE web_session_app LOGIN PASSWORD '${POSTGRES_PASSWORD}' NOBYPASSRLS;
 
 -- Temporal workflow server
 CREATE USER temporal WITH PASSWORD '${TEMPORAL_PASS}';

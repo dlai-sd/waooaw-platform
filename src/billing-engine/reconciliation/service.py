@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import logging
 import uuid
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 import redis.asyncio as aioredis
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from reconciliation.authority import BillingAuthority, ReconciliationIdentity
 
 logger = logging.getLogger(__name__)
 
@@ -91,10 +95,58 @@ class ReconciliationService:
         session_factory: async_sessionmaker[AsyncSession],
         redis_client: aioredis.Redis,
         founder_action_generator: FounderActionGenerator,
+        environment: str = "production",
     ) -> None:
         self._session_factory = session_factory
         self._redis = redis_client
         self._fag = founder_action_generator
+        self._environment = environment
+
+    @property
+    def uses_durable_authority(self) -> bool:
+        return self._environment in {"demo", "uat"}
+
+    async def is_any_scope_halted(self) -> bool:
+        """Return durable environment halt status; database uncertainty propagates."""
+        if self._environment == "production":
+            return bool(await self._redis.get(BILLING_HALTED_KEY))
+        async with self._session_factory() as session:
+            result = await session.execute(
+                text(
+                    """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM integrity_states
+                        WHERE environment = :environment
+                          AND state IN ('HALTED', 'RECONCILIATION_REQUIRED')
+                    )
+                    """
+                ),
+                {"environment": self._environment},
+            )
+            return bool(result.scalar())
+
+    async def last_audit_projection(self) -> tuple[date | None, datetime | None]:
+        """Return the latest durable audit projection for this environment."""
+        if self._environment == "production":
+            return None, None
+        async with self._session_factory() as session:
+            result = await session.execute(
+                text(
+                    """
+                    SELECT MAX(ar.completed_at)
+                    FROM audit_results ar
+                    WHERE ar.environment = :environment
+                    """
+                ),
+                {"environment": self._environment},
+            )
+            completed_at = result.scalar()
+            if completed_at is None:
+                return None, None
+            if isinstance(completed_at, str):
+                completed_at = datetime.fromisoformat(completed_at)
+            return completed_at.date(), completed_at
 
     # ------------------------------------------------------------------
     # run_daily_audit
@@ -220,6 +272,7 @@ class ReconciliationService:
         buckets_audited = 0
         billing_halted = False
         founder_action_created = False
+        founder_action_payloads: list[dict[str, object]] = []
 
         try:
             async with self._session_factory() as session:
@@ -230,7 +283,8 @@ class ReconciliationService:
                         SELECT wb.id,
                                wb.balance_paise,
                                wb.employment_contract_id,
-                               wb.thread_type
+                               wb.thread_type,
+                               wb.customer_id
                         FROM wallet_buckets wb
                         WHERE wb.is_active = TRUE
                         """
@@ -244,6 +298,11 @@ class ReconciliationService:
                     balance_paise = bucket[1]
                     employment_contract_id = bucket[2]
                     thread_type = bucket[3]
+                    tenant_id = (
+                        uuid.UUID(str(bucket[4]))
+                        if self._environment in {"demo", "uat"}
+                        else uuid.UUID(int=0)
+                    )
 
                     # Compute topup sum
                     topup_row = await session.execute(
@@ -277,6 +336,43 @@ class ReconciliationService:
 
                     expected_balance = total_topups - total_consumed
                     discrepancy = abs(balance_paise - expected_balance)
+                    accounting_scope_id = uuid.UUID(str(bucket_id))
+                    payload = {
+                        "accounting_scope_id": str(accounting_scope_id),
+                        "actual_balance_paise": int(balance_paise),
+                        "expected_balance_paise": int(expected_balance),
+                        "tenant_id": str(tenant_id),
+                        "thread_type": str(thread_type),
+                    }
+                    source_watermark = hashlib.sha256(
+                        json.dumps(
+                            payload,
+                            ensure_ascii=True,
+                            separators=(",", ":"),
+                            sort_keys=True,
+                        ).encode("utf-8")
+                    ).hexdigest()
+                    period_start = datetime.combine(
+                        audited_at.date(),
+                        datetime.min.time(),
+                        tzinfo=timezone.utc,
+                    )
+                    authority: BillingAuthority | None = None
+                    claim = None
+                    if self._environment in {"demo", "uat"}:
+                        authority = BillingAuthority(session, self._environment)
+                        claim = await authority.claim_execution(
+                            ReconciliationIdentity(
+                                environment=self._environment,
+                                tenant_id=tenant_id,
+                                accounting_scope_id=accounting_scope_id,
+                                reconciliation_type="SELF_AUDIT",
+                                covered_period_start=period_start,
+                                covered_period_end=period_start + timedelta(days=1),
+                                source_watermark=source_watermark,
+                            ),
+                            payload,
+                        )
 
                     if discrepancy > max_discrepancy:
                         max_discrepancy = discrepancy
@@ -291,21 +387,46 @@ class ReconciliationService:
                             expected_balance,
                             evidence_id,
                         )
-                        # Set Redis halt flag with no TTL (persists until cleared)
-                        await self._redis.set(BILLING_HALTED_KEY, "1")
-                        billing_halted = True
-
-                        fa_created = await self._fag.maybe_create(
-                            action_type="BILLING_INTEGRITY_HALT",
-                            payload={
-                                "bucket_id": str(bucket_id),
-                                "discrepancy_paise": discrepancy,
-                                "evidence_id": str(evidence_id),
-                                "audited_at": audited_at.isoformat(),
-                            },
+                        halt_committed = claim is None or not (
+                            claim.replayed and claim.status == "COMMITTED"
                         )
-                        if fa_created:
-                            founder_action_created = True
+                        if authority is not None and claim is not None and halt_committed:
+                            await authority.record_halt(
+                                execution_id=claim.execution_id,
+                                tenant_id=tenant_id,
+                                accounting_scope_id=accounting_scope_id,
+                                discrepancy_paise=discrepancy,
+                                expected_paise=expected_balance,
+                                actual_paise=balance_paise,
+                                actor_id="billing-reconciliation",
+                                authority_reference="ADR-034",
+                                evidence_reference=f"billing-audit:{evidence_id}",
+                                reason="wallet balance discrepancy exceeded one paise",
+                                result_digest=source_watermark,
+                            )
+                        elif authority is None:
+                            await self._redis.set(BILLING_HALTED_KEY, "1")
+                        billing_halted = True
+                        if halt_committed:
+                            founder_action_payloads.append(
+                                {
+                                    "bucket_id": str(bucket_id),
+                                    "discrepancy_paise": discrepancy,
+                                    "evidence_id": str(evidence_id),
+                                    "audited_at": audited_at.isoformat(),
+                                }
+                            )
+                    elif authority is not None and claim is not None and not (
+                        claim.replayed and claim.status == "COMMITTED"
+                    ):
+                        await authority.record_pass(
+                            execution_id=claim.execution_id,
+                            tenant_id=tenant_id,
+                            accounting_scope_id=accounting_scope_id,
+                            discrepancy_paise=discrepancy,
+                            evidence_reference=f"billing-audit:{evidence_id}",
+                            result_digest=source_watermark,
+                        )
 
                 # Emit C-023 evidence record
                 await session.execute(
@@ -329,6 +450,13 @@ class ReconciliationService:
                     )
                 )
                 await session.commit()
+
+            for payload in founder_action_payloads:
+                if await self._fag.maybe_create(
+                    action_type="BILLING_INTEGRITY_HALT",
+                    payload=payload,
+                ):
+                    founder_action_created = True
 
         except asyncio.CancelledError:
             raise
@@ -439,11 +567,51 @@ class ReconciliationService:
     # clear_halt
     # ------------------------------------------------------------------
 
-    async def clear_halt(self) -> None:
+    async def clear_halt(
+        self,
+        *,
+        tenant_id: uuid.UUID | None = None,
+        accounting_scope_id: uuid.UUID | None = None,
+        actor_id: str | None = None,
+        authority_reference: str | None = None,
+        reason: str | None = None,
+        evidence_reference: str | None = None,
+    ) -> uuid.UUID | None:
         """
-        Ops-only: removes wbe:billing_halted from Redis.
-        Operator must call POST /reconciliation/run-now after to confirm clean state.
-        No audit tracking -- this is an ops override action.
+        Append an authorized release event and clear current durable halt state.
         """
-        await self._redis.delete(BILLING_HALTED_KEY)
-        logger.info("clear_halt: wbe:billing_halted key deleted from Redis")
+        if self._environment == "production":
+            await self._redis.delete(BILLING_HALTED_KEY)
+            logger.info("Production Billing halt Redis key cleared")
+            return None
+        if any(
+            value is None or (isinstance(value, str) and not value.strip())
+            for value in (
+                tenant_id,
+                accounting_scope_id,
+                actor_id,
+                authority_reference,
+                reason,
+                evidence_reference,
+            )
+        ):
+            raise ValueError("durable halt release requires complete authority and evidence")
+        assert tenant_id is not None
+        assert accounting_scope_id is not None
+        assert actor_id is not None
+        assert authority_reference is not None
+        assert reason is not None
+        assert evidence_reference is not None
+        async with self._session_factory() as session:
+            authority = BillingAuthority(session, self._environment)
+            event_id = await authority.release_halt(
+                tenant_id=tenant_id,
+                accounting_scope_id=accounting_scope_id,
+                actor_id=actor_id,
+                authority_reference=authority_reference,
+                reason=reason,
+                evidence_reference=evidence_reference,
+            )
+            await session.commit()
+        logger.info("Billing integrity halt released with event_id=%s", event_id)
+        return event_id

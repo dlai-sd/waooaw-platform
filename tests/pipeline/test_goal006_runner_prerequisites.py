@@ -300,8 +300,15 @@ def test_reviewed_environment_parameters_are_isolated_and_consistent() -> None:
         parameters = {
             name: item["value"] for name, item in document["parameters"].items()
         }
-        assert parameters == {
+        expected = {
             "environment": environment,
             "runnerResourceGroupName": f"waooaw-{environment}-runner-rg",
             **expected_shared,
         }
+        if environment == "uat":
+            expected["stateStorageAccountId"] = (
+                "/subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/"
+                "resourceGroups/waooaw-platform-rg/providers/Microsoft.Storage/"
+                "storageAccounts/waooawuatstate2ed118"
+            )
+        assert parameters == expected

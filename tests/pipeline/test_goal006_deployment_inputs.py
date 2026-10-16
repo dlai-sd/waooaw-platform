@@ -5,7 +5,12 @@ from typing import Any
 
 import pytest
 
-from goal006_deployment_inputs import LEASE_FIELDS, add_key_vault_references, create_inputs
+from goal006_deployment_inputs import (
+    DATABASE_SECRET_NAMES,
+    LEASE_FIELDS,
+    add_key_vault_references,
+    create_inputs,
+)
 from goal006_registry_manifest import RELEASE_MEMBERS
 
 
@@ -49,7 +54,12 @@ def manifest() -> dict[str, Any]:
     }
 
 
-def configuration() -> dict[str, Any]:
+def configuration(environment: str = "demo") -> dict[str, Any]:
+    database_secret_names = {
+        principal: secret_name
+        for principal, secret_name in DATABASE_SECRET_NAMES.items()
+        if environment == "demo" or principal != "temporal"
+    }
     values: dict[str, Any] = {
         "key_vault_secret_uris": {
             member: f"https://kv-demo.vault.azure.net/secrets/{member}"
@@ -58,6 +68,17 @@ def configuration() -> dict[str, Any]:
         "key_vault_secret_resource_ids": {
             member: f"/subscriptions/test/resourceGroups/test/providers/Microsoft.KeyVault/vaults/test/secrets/{member}"
             for member in RELEASE_MEMBERS
+        },
+        "database_secret_uris": {
+            principal: f"https://kv-demo.vault.azure.net/secrets/{secret_name}"
+            for principal, secret_name in database_secret_names.items()
+        },
+        "database_secret_resource_ids": {
+            principal: (
+                "/subscriptions/test/resourceGroups/test/providers/"
+                f"Microsoft.KeyVault/vaults/test/secrets/{secret_name}"
+            )
+            for principal, secret_name in database_secret_names.items()
         },
         "planned_incremental_monthly_cost_inr": 1000,
         "cumulative_one_time_cost_inr": 1000,
@@ -75,7 +96,7 @@ def test_nonproduction_inputs_require_lease_and_preserve_exact_tuple(environment
     inputs = create_inputs(
         environment,
         manifest(),
-        configuration(),
+        configuration(environment),
         True,
         current_time=datetime(2026, 8, 25, tzinfo=timezone.utc),
     )
@@ -108,7 +129,7 @@ def test_missing_member_or_lease_field_is_rejected() -> None:
     del values["key_vault_secret_uris"]["web"]
     with pytest.raises(ValueError, match="exactly the seven"):
         create_inputs("demo", manifest(), values, True)
-    values = configuration()
+    values = configuration("uat")
     del values["lease_expires_at"]
     with pytest.raises(ValueError, match="lease_expires_at"):
         create_inputs("uat", manifest(), values, True)
@@ -129,6 +150,7 @@ def test_vault_references_are_derived_from_foundation_outputs() -> None:
         values,
         "/subscriptions/test/resourceGroups/demo/providers/Microsoft.KeyVault/vaults/kv-demo",
         "https://kv-demo.vault.azure.net/",
+        "demo",
     )
     inputs = create_inputs("demo", manifest(), values, True)
     assert inputs["key_vault_secret_uris"]["web"] == "https://kv-demo.vault.azure.net/secrets/web"
@@ -199,7 +221,7 @@ def test_missing_or_negative_cost_assumptions_are_rejected() -> None:
     del values["planned_incremental_monthly_cost_inr"]
     with pytest.raises(ValueError, match="planned_incremental_monthly_cost_inr"):
         create_inputs("demo", manifest(), values, True)
-    values = configuration()
+    values = configuration("uat")
     values["cumulative_one_time_cost_inr"] = -1
     with pytest.raises(ValueError, match="cumulative_one_time_cost_inr"):
         create_inputs("uat", manifest(), values, True)

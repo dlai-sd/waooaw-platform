@@ -71,6 +71,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         session_factory=get_session_factory(),
         redis_client=redis_client,
         founder_action_generator=_WBEFounderActionAdapter(),
+        environment=settings.WAOOAW_ENVIRONMENT,
     )
 
     scheduler = create_scheduler(

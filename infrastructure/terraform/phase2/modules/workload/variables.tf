@@ -34,6 +34,69 @@ variable "container_app_environment_default_domain" {
   default = "unconfigured.invalid"
 }
 
+variable "persistent_state_enabled" {
+  type        = bool
+  default     = false
+  description = "Route Demo/UAT authority traffic through the dedicated PgBouncer dependency."
+
+  validation {
+    condition     = !var.persistent_state_enabled || contains(["demo", "uat"], var.environment)
+    error_message = "Persistent-state workload routing is authorized only for Demo and UAT."
+  }
+}
+
+variable "postgresql_server_fqdn" {
+  type        = string
+  default     = null
+  nullable    = true
+  description = "Private Flexible Server hostname consumed only by PgBouncer."
+
+  validation {
+    condition     = !var.persistent_state_enabled || can(regex("^[a-z0-9-]+[.]postgres[.]database[.]azure[.]com$", var.postgresql_server_fqdn))
+    error_message = "Persistent-state workloads require the private Flexible Server FQDN."
+  }
+}
+
+variable "database_secret_uris" {
+  type        = map(string)
+  default     = {}
+  description = "Distinct versionless database credential references by principal."
+
+  validation {
+    condition = !var.persistent_state_enabled || (
+      toset(keys(var.database_secret_uris)) == toset(var.environment == "demo" ? [
+        "constitutional-engine", "business-platform", "billing-engine",
+        "billing-migration", "keycloak", "pgbouncer", "temporal",
+        ] : [
+        "constitutional-engine", "business-platform", "billing-engine",
+        "billing-migration", "keycloak", "pgbouncer",
+      ]) &&
+      alltrue([for uri in values(var.database_secret_uris) : can(regex("^https://[^/]+[.]vault[.]azure[.]net/secrets/[^/]+$", uri))])
+    )
+    error_message = "Persistent-state workloads require six distinct versionless database credential references."
+  }
+}
+
+variable "application_activation_enabled" {
+  type        = bool
+  default     = true
+  description = "Starts dependencies and application minimum replicas only after migrations pass."
+}
+
+variable "database_secret_resource_ids" {
+  type        = map(string)
+  default     = {}
+  description = "RBAC scopes for the distinct database credential references."
+
+  validation {
+    condition = !var.persistent_state_enabled || (
+      toset(keys(var.database_secret_resource_ids)) == toset(keys(var.database_secret_uris)) &&
+      alltrue([for id in values(var.database_secret_resource_ids) : can(regex("^/subscriptions/.+/secrets/[^/]+$", id))])
+    )
+    error_message = "Every database credential requires one Key Vault secret RBAC scope."
+  }
+}
+
 variable "web_custom_hostname" {
   type        = string
   default     = null

@@ -16,6 +16,7 @@ RUN test -n "$SECURITY_REFRESH" \
 WORKDIR /app
 COPY --from=dependencies /install/packages /usr/local
 COPY --chown=waooaw:waooaw src/billing-engine/ .
+COPY --chown=waooaw:waooaw infrastructure/postgres/init/ ./migrations/
 COPY --chown=waooaw:waooaw architecture/reference/proto/constitutional_service.proto ./proto/constitutional_service.proto
 USER waooaw
 RUN DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/waooaw \

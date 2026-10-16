@@ -19,11 +19,13 @@ def normalize_dispatch_inputs(
 ) -> dict[str, str]:
     if environment not in {"demo", "uat", "prod"}:
         raise ValueError("environment must be demo, uat, or prod")
-    if execution not in {"plan", "apply"}:
-        raise ValueError("execution must be plan or apply")
+    if execution not in {"plan", "activate", "sleep"}:
+        raise ValueError("execution must be plan, activate, or sleep")
+    if environment == "prod" and execution != "plan":
+        raise ValueError("Production remains plan-only")
 
     lease_expires_at = ""
-    if execution == "apply" and environment in {"demo", "uat"}:
+    if execution in {"activate", "sleep"} and environment in {"demo", "uat"}:
         now = current_time or datetime.now(timezone.utc)
         lease_expires_at = (now + LEASE_DURATION).astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
