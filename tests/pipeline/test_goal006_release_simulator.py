@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 import pytest
@@ -224,7 +225,6 @@ def test_ci_audits_billing_dependencies_and_release_qualification_has_no_provide
     assert enforce_step["run"] == "exit 1"
     assert "scripts/test-wc059-postgres.sh" in release_runner
     assert "scripts/goal006_release_simulator.py" in release_runner
-    assert release_job_text.count("secrets.") == 1
-    assert "secrets.GITHUB_TOKEN" in release_job_text
+    assert set(re.findall(r"secrets\.([A-Z0-9_]+)", release_job_text)) == {"GITHUB_TOKEN"}
     for prohibited in ("azure/login", "az login", "terraform apply"):
         assert prohibited not in release_job_text + release_runner
