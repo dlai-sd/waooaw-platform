@@ -112,6 +112,19 @@ Durable workflow management for multi-step employment operations.
 - **Temporal** (workflow client)
 - **Keycloak** (JWT public key endpoint for validation)
 
+## Stateful Asset Authority
+
+Business Platform owns its schemas, migrations, invariants, tenant/RLS policies, and APIs. It does
+not own a PostgreSQL, Redis, or filesystem sidecar. Employment relationships, participant roles,
+tenant membership, approvals, conversation timelines, idempotency outcomes, and customer evidence
+projections are durable PostgreSQL authority and must remain readable across revision replacement,
+scale-out, rollback, and environment restart.
+
+Any BP cache is reconstructible from PostgreSQL, carries no authorization or relationship authority,
+and cannot turn a database, tenant-context, or Constitutional Engine failure into success. Every
+replica observes the same durable tenant and relationship truth; local memory, local files, and
+transient coordination cannot create, merge, move, or delete a tenant-owned relationship.
+
 ## AE-01 Relationship Foundation (WC-057)
 
 The relationship foundation is implemented by `EmploymentRelationshipDbContext`,
