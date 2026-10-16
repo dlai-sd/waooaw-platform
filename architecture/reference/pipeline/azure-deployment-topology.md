@@ -49,6 +49,49 @@ traffic, UAT, or Production mutation. The existing implementation remains non-co
 separately authorized implementation session removes the sidecars and qualifies the persistent
 Demo route.
 
+### Founder Stateful Asset Authority Standard - Binding Decision 2026-10-16
+
+Component ownership means ownership of schema, invariants, migrations, APIs, and least-privilege
+database role. It does not permit a component revision to own a replica-local authority datastore.
+Tenant relationships, identity links, wallet balances, payment and reconciliation outcomes,
+workflow history, session state, constitutional evidence, permanent holds, and durable idempotency
+outcomes MUST survive revision replacement and MUST remain in their accepted governed persistent
+store.
+
+| Asset class | Permitted responsibility | Prohibited responsibility |
+|---|---|---|
+| Environment PostgreSQL | Durable component schemas, tenant and relationship state, financial records, constitutional evidence, session state, workflow backing stores, durable holds and idempotency outcomes | Shared unrestricted credentials, cross-schema access outside accepted APIs/roles, public/direct application routes |
+| Redis or equivalent transient store | Reconstructible TTL cache, bounded coordination lease, rate-limit counter, restart epoch, and performance acceleration whose loss is detected and safely reconciled | Sole authority for money, tenant/relationship state, identity, sessions, workflow completion, evidence, permanent halt, durable idempotency, or authorization |
+| Container filesystem and `EmptyDir` | Scratch files, rendered non-secret configuration, bounded temporary processing, and reconstructible artifacts | Any state required after restart, for tenant isolation, for customer-visible correctness, or as evidence |
+| Key Vault | Environment-local secret and key-version authority with one principal and purpose per credential | Business records, workflow state, shared multipurpose credentials, Terraform/workflow value transport |
+| Log Analytics and runtime logs | Redacted operational telemetry and diagnosis | Sole constitutional, billing, customer, security-decision, or acceptance evidence |
+| Terraform backend Storage | Private infrastructure ownership and plan/state continuity | Customer or application business data |
+
+Redis topology is environment-owned, not revision-owned. A component-local Redis sidecar is
+prohibited when more than one revision/replica must observe the same state or when losing that
+state can alter a customer, billing, security, or constitutional outcome. An accepted
+environment-level transient dependency may be used only with purpose-specific credentials,
+namespaces, bounded TTLs, readiness, restart/reconciliation behavior, and negative cross-purpose
+tests. If those controls are absent, the component must operate from PostgreSQL or fail closed; it
+may not silently create local authority.
+
+The current Billing Redis sidecar is non-conforming. Its thread-catalog and customer-mode entries
+are reconstructible caches, but the no-expiry billing-integrity halt and reconciliation
+idempotency key affect consequential outcomes. The durable halt, reason, evidence reference,
+actor, timestamps, clear decision, and idempotency outcome belong in Billing's governed PostgreSQL
+schema. Redis may cache the effective halt or hold a bounded execution lease only when loss,
+expiry, or restart cannot clear the durable halt, authorize a duplicate outcome, or convert
+uncertainty into success. Billing must fail closed while authoritative halt state cannot be read.
+
+The dedicated authentication abuse-limiter Redis remains conforming because it is
+environment-shared, private, transient, contains only keyed TTL counters and restart-epoch
+metadata, and Web fails closed during unavailability or the full restart hold. It may not acquire
+session, identity, membership, revocation, recovery, or evidence authority.
+
+This decision applies to Demo implementation and to the portable application contract promoted
+unchanged to later environments. It does not provision UAT or Production, choose a Production
+cache product, authorize cloud mutation, or permit application-image divergence.
+
 ### WC-091 Demo Data Amendment - Historical Decision Superseded 2026-10-16
 
 Enterprise Architecture approves the WC091-I1 bounded variance: Demo uses a digest-pinned PostgreSQL
@@ -408,3 +451,17 @@ single-replica topology: it requires the separately costed private HA foundation
 managed-service access key is handed to the `auth-abuse-redis-managed-key` Key Vault secret through
 the no-echo provisioner before activation; it is never generated independently by the deployment
 workflow or written to workflow output.
+
+### Billing transient-state dependency lifecycle
+
+Billing PostgreSQL is authoritative for wallet balances, reservations, payment and trial outcomes,
+reconciliation results, integrity holds, hold release, and durable idempotency. Billing Redis, when
+an environment manifest selects one, is a separately governed transient dependency rather than a
+Billing revision sidecar.
+
+Thread-catalog entries and customer-mode projections may be cached only when they are rebuilt from
+PostgreSQL and cache loss cannot change an outcome. Reconciliation may use a bounded Redis lease
+only after a durable database execution record and uniqueness rule make duplicate consequential
+completion impossible. The billing-integrity halt and its release are always database records;
+Redis may cache the effective state but cannot create, clear, or outlive the authoritative record.
+Missing or uncertain authoritative state blocks consequential Billing writes.

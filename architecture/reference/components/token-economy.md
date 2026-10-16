@@ -180,6 +180,11 @@ Hooks are real-time database reads — not LLM calls. The Off-Topic Redirect pro
 
 ### Cache Architecture
 
+All cache layers are reconstructible acceleration, never usage, entitlement, billing, tenant,
+identity, authorization, or constitutional authority. Cache loss or disagreement triggers a
+durable-store read or fail-closed response. It never grants units, clears a hold, repeats a charged
+operation, or supplies evidence of completion.
+
 ```
 Cache layers:
   L1 — In-memory (Redis): Hot items, last 24 hours, sub-millisecond retrieval
@@ -481,3 +486,15 @@ At ₹1,499 Curtain Raiser: **₹1,209 gross margin per customer** (from ₹399 
 4. `minimum_model_tier` column is added to `agent_prompt_versions` in the next SQL migration.
 5. `customer_usage_units` table is tenant-scoped (RLS). One row per organisation per billing period. Created when subscription activates.
 6. Top-up packs are Razorpay one-time orders (not subscriptions). `subscriptions.metadata` field stores pack credits.
+
+### Billing and Usage State Boundary
+
+Wallet balances, reservations, payments, trial/subscription transitions, reconciliation outcomes,
+integrity holds and releases, usage-unit consumption, and idempotency outcomes are PostgreSQL
+authority. Redis may contain TTL projections, cache entries, or bounded coordination leases only
+when database constraints and durable execution records preserve correctness without Redis.
+
+A billing-integrity halt is a durable, evidence-linked PostgreSQL state transition. Redis may cache
+that state but cannot be its sole record and cannot clear it through restart, expiry, eviction, or
+deployment. If Billing cannot establish the authoritative halt state, consequential writes fail
+closed. Component-local Redis sidecars are not an accepted cloud topology.

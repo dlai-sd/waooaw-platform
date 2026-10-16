@@ -38,7 +38,30 @@ schemas, cloud authorization, or Production acceptance.
 - Missing or malformed required configuration keeps the affected revision unready before traffic.
 - Database posture is explicit: Demo and UAT are persistent, independently isolated, and
   recovery-qualified; Production is persistent, independently isolated, and activation-gated.
+- A workload owns schema and invariants, never a replica-local authority datastore. PostgreSQL
+  sidecars, embedded identity databases, and component-local Redis authority are prohibited.
+- Redis and local files are reconstructible only. Losing them must cause deterministic rebuild,
+  bounded reconciliation, or fail-closed unavailability, never loss of a durable hold,
+  idempotency outcome, tenant relationship, identity link, workflow state, session, or evidence.
 - Readiness evidence never upgrades configuration presence into provider or human acceptance.
+
+### 2.1 Stateful Asset Classification
+
+Every environment projection classifies each state-bearing dependency before Terraform plan:
+
+| Classification | Required behavior |
+|---|---|
+| `DURABLE_AUTHORITY` | PostgreSQL-backed, migration-controlled, role-isolated, backup/recovery qualified, and tenant/RLS tested where applicable |
+| `SECRET_AUTHORITY` | Key Vault-backed, purpose/principal separated, versioned, no-echo, and excluded from plans, state, logs, and artifacts |
+| `RECONSTRUCTIBLE_CACHE` | TTL-bounded or explicitly invalidated; rebuilds from durable authority; loss cannot change a consequential outcome |
+| `BOUNDED_COORDINATION` | Has a durable idempotency/outcome record, bounded lease/expiry, restart reconciliation, and no success from uncertain state |
+| `SCRATCH` | Revision-local, non-secret or protected temporary data with no post-restart correctness or evidence obligation |
+| `OBSERVABILITY` | Redacted diagnostic data only; never sole constitutional or business evidence |
+| `INFRASTRUCTURE_STATE` | Private environment deployment state only; never customer/application data |
+
+The renderer and deployment preflight reject an undeclared state-bearing asset, a component-local
+authority sidecar, a Redis key with permanent business authority, a shared credential across
+purposes, or a classification whose readiness/recovery oracle is absent.
 
 ## 3. Environment Contract
 
@@ -52,6 +75,7 @@ schemas, cloud authorization, or Production acceptance.
 | Traffic | Founder/tester only under current Demo authority | Approved testers only | None until separate activation authority |
 | Promotion | May restore Demo independently; no durability inference | Same immutable application digests after Demo acceptance | Same qualified tuple after separate authorization |
 | Recovery proof | Backup, PITR, isolated sanitized restore and prior-revision compatibility | Backup, PITR, isolated restore and prior-revision compatibility | Plan-only gates reuse UAT evidence and define separately authorized Production proof |
+| Transient state | Environment-owned purpose-scoped dependencies only; no component sidecar authority | Same portable contract with independently selected capacity | Product and HA choice remains separately gated |
 
 The Founder superseded the disposable Demo variance on 2026-10-16. Demo now follows the UAT
 database standard with independently selected low-cost capacity, persistent Flexible Server,
