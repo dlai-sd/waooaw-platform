@@ -343,9 +343,10 @@ provider namespace, ambiguous match, absent historical subject proof, email equa
 conflicting current actor binding cannot use this path; return unresolved duplicate/recovery state.
 This is re-establishing the same proven login method, not attaching an additional login method.
 
-Bounded fallback for disposable Demo: if stock Keycloak cannot supply the approved proof or narrow
-publication permissions, qualification remains blocked. A joint reset is permissible only for the
-two explicitly approved synthetic test customers, with an enumerated Data-owned dependency set,
+Bounded fallback for synthetic Demo identities: if stock Keycloak cannot supply the approved proof
+or narrow publication permissions, qualification remains blocked. A joint identity reset is
+permissible only for the two explicitly approved synthetic test customers, with an enumerated
+Data-owned dependency set,
 Founder-approved destructive scope, and no retained customer, ledger, job, billing, file or AI state
 that could become orphaned or reachable from new tenants. Reset Keycloak plus the corresponding BP
 and downstream synthetic identity/data set together; invalidate sessions and discard test drafts.
@@ -692,7 +693,7 @@ only in approved origins, callbacks, credentials, provider activation and data d
 | Environment | Identity and data requirement | Promotion evidence |
 |---|---|---|
 | Codespaces/local | Synthetic providers and disposable PostgreSQL are allowed; apply the complete ordered migration set before tests | Docker journey covers both intents, new/returning account, denial, retry and sign-out |
-| Demo | Approved real provider callbacks; disposable data must be reset and then migrated/seeded deterministically | Real-account login and registration plus schema/readiness proof; no customer traffic |
+| Demo | Approved real provider callbacks; persistent synthetic data must use the recovery-qualified private PostgreSQL standard and ordered migrations | Real-account login and registration plus migration, schema, readiness, backup/PITR, and isolated-restore proof; no customer traffic |
 | UAT | Protected provider credentials and persistent recoverable data | Same immutable candidate; migration plan/apply, rollback and complete journey evidence |
 | Production | Separately authorized credentials, persistent data, recovery and customer traffic | Founder-authorized apply; migration/rollback proof and complete journey acceptance |
 

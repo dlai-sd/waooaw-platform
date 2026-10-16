@@ -2,7 +2,7 @@
 
 **Work Contract:** WC-091
 **Owner:** Solution Architect (INST-005)
-**Status:** OWNER-REVIEWED - CONDITIONAL PASS - EA AMENDMENT APPROVED - FOUNDER ACCEPTANCE BLOCKS I1 - IMPLEMENTATION UNAUTHORIZED
+**Status:** FOUNDER AMENDED 2026-10-16 - DEMO PERSISTENT DATABASE STANDARD - IMPLEMENTATION UNAUTHORIZED
 **Scope:** Runtime configuration, secret dependencies, identity match-key continuity, environment
 data posture, deployment preflight, and independent readiness evidence
 
@@ -36,29 +36,27 @@ schemas, cloud authorization, or Production acceptance.
 - Every workload receives only its own secret references through its own managed identity and exact
   secret-level authorization.
 - Missing or malformed required configuration keeps the affected revision unready before traffic.
-- Database posture is explicit: Demo is disposable; UAT is persistent and recovery-qualified;
-  Production is persistent, independently isolated, and activation-gated.
+- Database posture is explicit: Demo and UAT are persistent, independently isolated, and
+  recovery-qualified; Production is persistent, independently isolated, and activation-gated.
 - Readiness evidence never upgrades configuration presence into provider or human acceptance.
 
 ## 3. Environment Contract
 
 | Property | Demo - WC091-I1 | UAT - WC091-I2 | Dark Production - WC091-I3 |
 |---|---|---|---|
-| Data | Synthetic only; disposable database; reset on restart or revision replacement | Isolated persistent PostgreSQL | Isolated persistent PostgreSQL |
-| Durability claim | None | Backup, PITR, isolated restore, restart continuity | Plan-only target: HA, PITR, RPO/RTO, rollback |
-| Migration | Recreate/seed from approved synthetic fixtures | Expand-only, digest-pinned, before traffic | Same qualified migration contract as UAT |
-| Temporal | Self-hosted Demo dependency may be disposable | Temporal Cloud under ADR-015 | Temporal Cloud under ADR-015 |
+| Data | Synthetic only; isolated persistent low-cost PostgreSQL | Isolated persistent PostgreSQL | Isolated persistent PostgreSQL |
+| Durability claim | Backup, PITR, isolated restore, restart continuity | Backup, PITR, isolated restore, restart continuity | Plan-only target: HA, PITR, RPO/RTO, rollback |
+| Migration | Expand-only, digest-pinned, before traffic | Expand-only, digest-pinned, before traffic | Same qualified migration contract as UAT |
+| Temporal | Self-hosted Demo dependency using a separate persistent database/role; no PostgreSQL sidecar | Temporal Cloud under ADR-015 | Temporal Cloud under ADR-015 |
 | Manifest | `demo.json`, schema-validated and runtime-consumed | `uat.json`, same renderer and validator | `prod.json`, same renderer and validator |
 | Traffic | Founder/tester only under current Demo authority | Approved testers only | None until separate activation authority |
 | Promotion | May restore Demo independently; no durability inference | Same immutable application digests after Demo acceptance | Same qualified tuple after separate authorization |
-| Recovery proof | Deterministic reset and reseed | Backup, PITR, isolated restore and prior-revision compatibility | Plan-only gates reuse UAT evidence and define separately authorized Production proof |
+| Recovery proof | Backup, PITR, isolated sanitized restore and prior-revision compatibility | Backup, PITR, isolated restore and prior-revision compatibility | Plan-only gates reuse UAT evidence and define separately authorized Production proof |
 
-The Demo row is a Founder-directed bounded variance from the previously accepted reference topology.
-Enterprise Architecture amended `architecture/reference/pipeline/azure-deployment-topology.md` on
-2026-09-11 to name this exact disposable ACA design and its no-durability consequences and recorded
-EA approval. The Founder must still accept that exact amendment before WC091-I1 implementation.
-Until Founder acceptance is recorded, the variance is not effective and I1 remains implementation-
-blocked. This component does not authorize implementation, cloud mutation, or acceptance.
+The Founder superseded the disposable Demo variance on 2026-10-16. Demo now follows the UAT
+database standard with independently selected low-cost capacity, persistent Flexible Server,
+dedicated PgBouncer, separate databases/roles, private routing, and recovery qualification. This
+component does not authorize implementation, cloud mutation, UAT, Production, or acceptance.
 
 ## 4. Environment Manifest
 
@@ -188,32 +186,19 @@ truthfully unavailable without making unrelated public reads fail.
 
 ## 8. Data And Migration Contract
 
-### 8.1 Demo Disposable Data
+### 8.1 Demo Persistent PostgreSQL
 
-Subject to the Section 3 amendment gate, Demo uses a digest-pinned PostgreSQL container in ACA with
-replica-scoped ephemeral `EmptyDir` storage only: no Azure Files, managed disk, Flexible Server,
-backup, export, public endpoint, or retained database volume. For application state, the accepted
-CB-019 amendment places that container with its pinned PgBouncer gateway in the single
-`ca-demo-application-database` dependency Container App defined by CSA-AUTH-001 Section 12.7.1.
-It replaces replica-local application PostgreSQL sidecars so Web and the approved application
-consumers have one environment-local private-TLS route. PostgreSQL itself has no ingress and
-PgBouncer exposes only private `6432`. The dependency is not an eighth first-party release member,
-new product, or second database authority.
+Demo follows the UAT database standard with environment-specific low-cost capacity. One isolated
+Azure Database for PostgreSQL Flexible Server `psql-demo-application` hosts separate databases and
+least-privilege roles for application state, Keycloak, Web sessions, and self-hosted Demo Temporal.
+Dedicated `ca-demo-pgbouncer` is the only application gateway and network source. CE, BP, Billing,
+Keycloak, Web, and Temporal PostgreSQL sidecars are prohibited.
 
-Every phase-2 Demo application deployment replaces or explicitly resets the database dependency,
-destroys its `EmptyDir`, and runs a generation-fenced initialize-and-seed operation before traffic;
-application readiness requires the current generation ID and fixture digest. This implements the
-Founder's binding decision that Demo data is wiped on every deployment and closes the platform
-ambiguity that an ephemeral volume can survive a container-only restart within one replica. Lease
-expiry also scales both Web and the dependency to zero and retains no database state.
-
-The approved synthetic fixture generation is one dependency set spanning application, Keycloak,
-and self-hosted Temporal state. Partial preservation is prohibited: a reset failure or generation
-mismatch keeps all affected routes at zero traffic. Verification proves two consecutive restart/
-replacement cycles yield only the expected fixture IDs/counts and no prior generation is reachable.
-The UI, API, evidence, and operator output must label Demo disposable and must not imply backup,
-continuity, customer retention, or recovery. No real customer, irreplaceable acceptance data, or
-constitutional evidence requiring retention enters this database.
+Application deployment preserves database state, applies expand-only digest-pinned migrations
+before traffic, and proves prior-revision compatibility. Demo independently proves backup, PITR,
+isolated sanitized restore, restart continuity, private routing, and its reviewed connection
+budget. Demo remains synthetic-only and environment-isolated; persistence does not authorize real
+customer data or promotion of data, backups, credentials, or Key Vault versions to UAT.
 
 ### 8.2 UAT Persistent PostgreSQL
 
@@ -365,7 +350,7 @@ No outcome implies another. Missing evidence is `NOT_PROVEN`, never success.
 | 2 | Provider read-path dependency isolation and startup/readiness checks | Platform IT Expert | I1 |
 | 3 | Versioned domain-separated HMAC key ring and migration-safe storage contract | Platform IT Expert under Data/Security acceptance | I1 |
 | 4 | Idempotent private secret seeder and no-echo external-secret command | Platform IT Expert under Security acceptance | I1 |
-| 5 | Demo disposable database, synthetic seed, reset evidence, and truthful UI/operator state | Platform IT Expert | I1 |
+| 5 | Demo persistent PostgreSQL/PgBouncer route, sidecar removal, migrations, backup/PITR, isolated restore, and truthful UI/operator state | Platform IT Expert | I1 |
 | 6 | Split verifier outcomes and run assembled-container/rendered-plan tests | Platform IT Expert with independent verification | I1 |
 | 7 | UAT PostgreSQL, roles, private connectivity, migrations, rollback, backup/PITR and restore proof | Platform IT Expert under Data/Platform acceptance | I2 |
 | 8 | UAT manifest/provider promotion and Temporal Cloud dependency | Platform IT Expert | I2 |
@@ -385,7 +370,7 @@ alone do not satisfy assembled runtime configuration, startup, migration, or rec
 | Seeder partial failure | Preserve existing versions; retry only missing idempotent operations; no regeneration of valid secrets |
 | Manifest mismatch | Stop before mutation or traffic |
 | Provider broker failure | Mark only that provider unavailable; do not claim acceptance |
-| Demo database restart | Keep traffic at zero; destructively initialize the whole synthetic generation, reseed, and prove no prior generation is reachable |
+| Demo database restart | Keep traffic at zero until persistent-state continuity, schema readiness, and private-route checks pass; never destructively reset as an application deployment shortcut |
 | UAT migration failure | New revision gets zero traffic; preserve prior revision and database |
 | UAT restore failure | Block I2 completion and all Production readiness |
 | Rollback compatibility failure | Keep the current qualified revision; do not run a down-migration or restore an incompatible tuple |
@@ -395,14 +380,15 @@ alone do not satisfy assembled runtime configuration, startup, migration, or rec
 
 The single combined edit-mode review must resolve:
 
-- **Enterprise Architecture:** accept or repair the bounded Demo disposable-data exception and confirm
-  that three iterations preserve the target topology and promotion sequence.
-- **Data Architecture:** confirm HMAC version persistence, migration/reindex continuity, UAT database
-  roles, additive migrations, PITR/restore proof, and no durable Demo-data claim.
+- **Enterprise Architecture:** confirm the Founder-amended persistent Demo standard and that three
+  iterations preserve environment isolation and immutable-image promotion.
+- **Data Architecture:** confirm HMAC version persistence, migration/reindex continuity, Demo/UAT
+  database roles, additive migrations, and independent PITR/restore proof.
 - **Security Architecture:** confirm domain separation, key lifecycle, no-echo provisioning,
   credential separation, least privilege, compromise behavior, and evidence redaction.
-- **Platform Architecture:** confirm ACA-supported Demo ephemeral storage, common manifest rendering,
-  Key Vault references, PostgreSQL/Temporal handoff, preflight, rollback, and Production apply guard.
+- **Platform Architecture:** confirm low-cost Demo Flexible Server, dedicated PgBouncer, sidecar
+  removal, common manifest rendering, Key Vault references, PostgreSQL/Temporal handoff, preflight,
+  rollback, and Production apply guard.
 
 Reviewers repair bounded defects directly in this file and WC-091, then record one consolidated
 disposition. They do not defer small wording, interface, validation, or ownership corrections to a
@@ -431,7 +417,7 @@ evidence, Production approval, or Founder acceptance.
 | Requirement | Contract location |
 |---|---|
 | Restore Demo identity readiness | Sections 6, 7, 9 and 10 |
-| Disposable Demo database | Sections 3 and 8.1 |
+| Persistent recovery-qualified Demo database | Sections 3 and 8.1 |
 | Standard secret onboarding | Sections 4 and 5 |
 | Safe URL onboarding | Section 4 |
 | UAT PostgreSQL and recovery | Sections 8.2, 9 and 11 |

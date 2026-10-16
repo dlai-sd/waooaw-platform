@@ -901,7 +901,9 @@ prohibited.
 
 WC-123 Sections 7.2, 7.3, 12.7, and 12.8 require Web to connect as `web_session_app` only through
 the accepted private-TLS PgBouncer route to the existing environment application PostgreSQL
-boundary. The Founder accepted the exact Demo, UAT, and Production placement amendment on
-2026-10-15. Current roots remain explicitly `disabled`; selecting `shadow` or `enforced` before the
+boundary. The Founder superseded the disposable Demo placement on 2026-10-16: Demo now follows the
+UAT persistent Flexible Server and dedicated PgBouncer standard with lower environment-specific
+capacity and no application PostgreSQL sidecars. Production remains unchanged and separately
+gated. Current roots remain explicitly `disabled`; selecting `shadow` or `enforced` before the
 accepted environment-local database/PgBouncer resources, no-echo credential/keyring provisioner,
 and qualification evidence exist fails closed.

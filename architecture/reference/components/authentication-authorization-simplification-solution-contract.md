@@ -664,11 +664,10 @@ RTO <= 30 minutes measure recovery to this sanitized fail-closed state, not resu
 ### 12.7 Binding platform placement, configuration, and secret lifecycle
 
 `web_session` is deployed inside the existing environment application PostgreSQL boundary, not the
-Keycloak database. Demo uses the Founder-selected disposable PostgreSQL container boundary and
-therefore makes no session-continuity claim: every deployment wipes its data, invalidates every
-application session, and forces reauthentication. UAT uses its documented persistent application
-PostgreSQL boundary and must pass PITR plus the sanitized restore epoch in Section 12.6; the exact
-PgBouncer route is proposed in Section 12.7.1 pending Founder acceptance. Production uses a separate highly
+Keycloak database. Demo and UAT each use an isolated persistent application PostgreSQL boundary and
+must independently pass PITR plus the sanitized restore epoch in Section 12.6; application
+deployment does not wipe either environment's sessions or database state. Section 12.7.1 binds
+each environment to its dedicated PgBouncer route. Production uses a separate highly
 available PostgreSQL instance; its detailed placement, sizing, backup configuration, and activation
 remain plan-only until separately authorized. Web receives private database connectivity and only
 the function-execute runtime role in Section 12.4; Keycloak, BP, and other workloads receive no
@@ -703,31 +702,31 @@ hold for the longest applicable quota window rather than resetting callers to an
 Currently valid protected sessions may only use an explicitly qualified bounded degradation policy.
 Production cannot activate until the existing topology's Redis/HA decision satisfies this contract.
 
-#### 12.7.1 CB-019 bounded Demo/UAT database-route amendment
+#### 12.7.1 Founder-aligned Demo/UAT database-route amendment
 
-This amendment incorporates the Founder's binding selection that Demo uses a PostgreSQL container
-image and wipes its data on every deployment, and that Production uses a separate highly available
-PostgreSQL instance. The Founder accepted this complete phase-2 Demo/UAT route on 2026-10-15,
-closing the missing-architecture-input condition in `CB-019`. Acceptance does not authorize cloud
-mutation or change database authority. PostgreSQL remains the existing application-data authority
-and PgBouncer remains only its transaction-pooling gateway. The older
+The Founder superseded the disposable Demo placement on 2026-10-16 and bound Demo to the UAT
+database standard with lower, environment-specific capacity. Demo and UAT each use an isolated,
+persistent Azure Database for PostgreSQL Flexible Server and a dedicated PgBouncer dependency.
+Production remains a separate highly available PostgreSQL instance under separate authority. This
+closes the physical-placement decision but does not authorize cloud mutation or change database
+authority. PostgreSQL remains the existing application-data authority and PgBouncer remains only
+its transaction-pooling gateway. The older
 `infrastructure/terraform/modules/core` PgBouncer is evidence only and MUST NOT be copied or treated
 as the active phase-2 design.
 
-PgBouncer is a dedicated infrastructure dependency, never a first-party application workload:
-Demo runs it as the gateway container inside the dedicated database dependency Container App; UAT
-runs it in its own dedicated dependency Container App. It has no schema, data ownership, or
-independent credential authority.
+PgBouncer is a dedicated infrastructure dependency, never a first-party application workload.
+Demo and UAT each run it in their own dedicated dependency Container App. It has no schema, data
+ownership, or independent credential authority.
 
 | Property | Demo | UAT |
 |---|---|---|
-| Physical database | One dependency Container App named `ca-demo-application-database`, fixed at one replica while leased, containing a digest-pinned PostgreSQL 16 container and a separately digest-pinned PgBouncer container. PostgreSQL stores `waooaw_application` on replica-scoped `EmptyDir`; it has no ingress. PgBouncer alone has internal TCP ingress on `6432` and reaches PostgreSQL only over container-local `5432`. A standalone managed PostgreSQL instance is prohibited. | One persistent Azure Database for PostgreSQL Flexible Server named `psql-uat-application`, with private access only, hosts database `waooaw_application`. One dedicated infrastructure Container App named `ca-uat-pgbouncer`, fixed at one replica while leased, runs the digest-pinned PgBouncer dependency and is the only principal/network path permitted to server port `5432`. The active phase-2 roots do not yet implement either resource. |
+| Physical database | One persistent Azure Database for PostgreSQL Flexible Server named `psql-demo-application`, privately accessible only through dedicated infrastructure Container App `ca-demo-pgbouncer`. It hosts separate databases and roles for application state, Keycloak, Web sessions, and approved Demo dependencies. Environment-specific low-cost sizing is required; PostgreSQL sidecars are prohibited. | One persistent Azure Database for PostgreSQL Flexible Server named `psql-uat-application`, with private access only, hosts separate databases and roles for application state, Keycloak, Web sessions, and approved dependencies. One dedicated infrastructure Container App named `ca-uat-pgbouncer` is the only principal/network path permitted to server port `5432`. The active phase-2 roots do not yet implement either environment route. |
 | Release classification | PostgreSQL and PgBouncer are named infrastructure dependencies in the signed dependency manifest. Neither is a first-party application image, permanent workload, or eighth member of the exact-seven release tuple. | PgBouncer is a named infrastructure dependency in the signed dependency manifest; Flexible Server is a managed infrastructure resource. Neither changes the exact-seven first-party count. |
 | Session placement | `web_session` is a schema in `waooaw_application`; the migration administrator owns it and `web_session_app` receives only Section 12.4 function execution. | Identical logical placement and grants in the persistent `waooaw_application` database; it is not placed in Keycloak, Temporal, or a second database authority. |
 | Canonical Web target | `pgbouncer.db.demo.waooaw.internal:6432/waooaw_application` | `pgbouncer.db.uat.waooaw.internal:6432/waooaw_application` |
-| Private DNS and direct denial | Environment-owned zone `db.demo.waooaw.internal`, linked only to the Demo VNet, has one `pgbouncer` A record for the Container Apps environment internal ingress address. No public zone or fallback exists. PostgreSQL has no routable ingress. | Environment-owned zone `db.uat.waooaw.internal`, linked only to the UAT application and PgBouncer VNets, has one `pgbouncer` A record for the dedicated PgBouncer ACA internal ingress. VNet peering permits application-to-PgBouncer TCP `6432` and required return traffic only. Flexible Server uses private DNS for `psql-uat-application.postgres.database.azure.com`; that zone is linked only to the PgBouncer VNet. The server delegated-subnet NSG permits `5432` from the PgBouncer subnet and denies the application/runner subnets. Web therefore cannot resolve or route to the server directly. |
+| Private DNS and direct denial | Environment-owned zone `db.demo.waooaw.internal` has one `pgbouncer` record for dedicated PgBouncer. Flexible Server private DNS is linked only to the PgBouncer VNet; its delegated-subnet NSG permits `5432` only from PgBouncer and denies application/runner subnets. | The identical environment-isolated pattern applies to `db.uat.waooaw.internal` and `psql-uat-application`; neither environment can resolve or route directly to its server or to the other environment. |
 | TLS and trust | PgBouncer terminates TLS 1.2 or later with an environment-local server certificate whose only DNS SAN is `pgbouncer.db.demo.waooaw.internal`. A Demo database-serving intermediate signs it. The Web revision receives the pinned CA chain as a non-secret, digest-bound trust-bundle file; the signing key and server private key remain non-exportable or secret-scoped in Demo Key Vault and are readable only by the database dependency identity. Web uses full chain and hostname verification. | PgBouncer terminates TLS 1.2 or later with an environment-local certificate whose only DNS SAN is `pgbouncer.db.uat.waooaw.internal`; the UAT database-serving intermediate and private key follow the same Key Vault isolation. PgBouncer separately connects to `psql-uat-application.postgres.database.azure.com:5432` with `sslmode=verify-full` and a digest-pinned Microsoft PostgreSQL trust chain. Plaintext, public/IP fallback, trust-on-first-use, and verification downgrade are prohibited on both hops. |
-| Lifecycle and recovery | Every phase-2 Demo application deployment replaces or explicitly resets the database dependency, destroys the `EmptyDir`, initializes the current generation, applies the digest-pinned additive schema/functions/grants, seeds only approved synthetic fixtures, issues fresh database/TLS material, and publishes readiness only when generation and fixture digests match. This accepted wipe revokes every Demo session. Lease expiry scales Web and the dependency to zero and retains no database state. | Application revisions and lease expiry preserve database state. Automated backup/PITR retention is 35 days. Qualification restores the selected point to an isolated, private restore server, runs the Section 12.6 sanitized restore epoch before any Web credential or traffic, and proves RPO <= 5 minutes and RTO <= 30 minutes. Lease expiry scales Web and PgBouncer to zero and stops the server; the reconciler re-stops any provider-initiated restart without deleting storage or backups. |
+| Lifecycle and recovery | Application revisions and lease expiry preserve database state. Automated backup/PITR retention is 35 days. Qualification restores the selected point to an isolated private restore server, runs the Section 12.6 sanitized restore epoch before traffic, and proves RPO <= 5 minutes and RTO <= 30 minutes. Lease expiry scales workloads and PgBouncer to zero and stops the server without deleting storage or backups. | Identical standard with independently selected UAT capacity, credentials, backups, restore evidence, and environment isolation. |
 
 Production is not promoted from either database. It receives a separate highly available PostgreSQL
 instance and separate data, DNS, credentials, trust, backup, and recovery boundaries. No Demo/UAT
@@ -792,18 +791,15 @@ old password, exposes a direct route, or relaxes TLS. Emergency rotation follows
 also terminates all old-role backend sessions.
 
 Rollback selects only a retained Web/dependency tuple compatible with the current additive schema,
-credential secret version, trust-bundle digest, and keyring read set. Demo rollback recreates the
-database dependency from the retained digest and current approved synthetic fixture as a new
-deployment, thereby wiping data and invalidating all sessions. UAT rollback must preserve persistent
-database state and additive schema: it switches Web traffic to the retained compatible revision,
-keeps the current PgBouncer and credential versions, and never restores the source database merely
-to reverse application code. Neither environment may roll database state back
+credential secret version, trust-bundle digest, and keyring read set. Demo and UAT rollback preserve
+persistent database state and additive schema: each switches Web traffic to the retained compatible
+revision, keeps the current PgBouncer and credential versions, and never restores the source database
+merely to reverse application code. Neither environment may roll database state back
 in place, revive retired keys or invalidated sessions, reuse an expired secret version, or fall
 back to a sidecar, public DNS, or plaintext.
 
 Promotion copies no data, credentials, certificates, private-DNS records, Key Vault versions, or
-key bytes from Demo. Under the accepted amendment and current-session implementation authority,
-UAT independently provisions its persistent route and secrets, applies the same digest-pinned
+key bytes from Demo. UAT independently provisions its persistent route and secrets, applies the same digest-pinned
 additive migration and immutable application tuple, and must pass private DNS/TLS, restricted-role,
 capacity, PITR/restore, sanitized restore epoch, and readiness qualification. Demo acceptance is
 evidence for application behavior only; it does not establish UAT durability or authorize UAT
@@ -824,13 +820,10 @@ qualification must prove all of the following at the configured Web maximum repl
   possible.
 
 For this phase, Demo Web is limited to one replica and UAT Web to two; Section 12.8 fixes each Web
-pool at five. PgBouncer therefore reserves 5 Demo and 10 UAT server slots for `web_session_app`,
-plus 5 environment-local migration/operations slots. Demo PostgreSQL `max_connections` is 40 and
-Demo PgBouncer `max_client_conn` is 40; UAT Flexible Server `max_connections` is 100 and UAT
-PgBouncer `max_client_conn` is 80. The reviewed manifest allocates every other role's bounded pool
-inside the remaining budget, and qualification rejects any aggregate plan above 32 Demo or 80 UAT
-server connections (80%). Increasing any replica, pool, client, or server limit requires a reviewed
-capacity amendment and repeat qualification.
+pool at five. Each environment manifest selects the lowest capacity that preserves migration and
+operations reserve and keeps aggregate planned server connections at or below 80%. Increasing any
+replica, pool, client, or server limit requires a reviewed capacity amendment and repeat
+qualification.
 
 Demo and UAT sizing must be qualified independently. Scale-to-zero, cold start, database reset,
 Redis restart, and dependency recovery are load scenarios, not exemptions from the SLOs.
