@@ -1,0 +1,112 @@
+{
+  "authoritative": false,
+  "catalog_version": "wc121-selective-validation-v1",
+  "execution_namespace": "wc109-3457bd670fa17305",
+  "head_sha": "9899063ee79f7612f2b400e076c4baeb306e45d4",
+  "machine_checkable": true,
+  "mode": "qualification",
+  "nodes": [
+    {
+      "acceptance_check": "sh scripts/validation_control/run_dependency_scan_gate.sh typescript",
+      "artifacts": {
+        "common": "test-results/validation/security.json",
+        "native": [
+          "test-results/**/*.json"
+        ]
+      },
+      "auxiliary_runners": [],
+      "command": "sh scripts/validation_control/run_dependency_scan_gate.sh typescript",
+      "command_id": "dependency-scan-typescript",
+      "components": [
+        "web"
+      ],
+      "compose_project": "wc109-3457bd670fa17305",
+      "compose_service": "test-runner-ts",
+      "cost_class": "STATIC",
+      "direct_prerequisites": [],
+      "downstream_dependents": [],
+      "environment": [],
+      "execution": "container",
+      "expected_evidence": {
+        "artifacts": {
+          "common": "test-results/validation/security.json",
+          "native": [
+            "test-results/**/*.json"
+          ]
+        },
+        "directory": "test-results/wc109/runs/wc109-3457bd670fa17305/dep-scan-typescript"
+      },
+      "gate_id": "dep-scan:typescript",
+      "inputs": {
+        "auxiliary_runners": [],
+        "catalog_version": "wc121-selective-validation-v1",
+        "command_id": "dependency-scan-typescript",
+        "environment": [],
+        "head_sha": "9899063ee79f7612f2b400e076c4baeb306e45d4",
+        "required_services": [],
+        "runner_id": "typescript"
+      },
+      "invalidation_rule": {
+        "changed_paths": [
+          "architecture/reference/dockerfiles/Dockerfile.test-runner-ts",
+          "docker-compose*.yml",
+          "scripts/validation_control/**",
+          "scripts/validation_control/catalog_execution.py",
+          "scripts/validation_control/execution_contract.py",
+          "scripts/validation_control/local_catalog_gate.py",
+          "scripts/validation_control/orchestrator.py",
+          "scripts/validation_control/qualification.py",
+          "scripts/validation_control/wc104_rollback.py",
+          "validation/**",
+          "validation/catalog.schema.json",
+          "validation/engineering-validation.yaml",
+          "validation/runner-supply.json",
+          "web/**",
+          "web/package.json",
+          "web/patches/**",
+          "web/pnpm-lock.yaml",
+          "web/scripts/verify-*-guard.js",
+          "web/scripts/verify-security-patches.js",
+          "web/security-patches.json"
+        ],
+        "identity_fields": [
+          "head_sha",
+          "catalog_version",
+          "command_id",
+          "runner_id",
+          "environment"
+        ]
+      },
+      "output_directory": "test-results/wc109/runs/wc109-3457bd670fa17305/dep-scan-typescript",
+      "owner": "web",
+      "phase": "A_DESIGN",
+      "product_image_builds": [],
+      "profile": "test-ts",
+      "required_services": [],
+      "resources": {
+        "concurrency_class": "typescript",
+        "cpus": 2,
+        "disk_mb": 1024,
+        "docker_socket": false,
+        "memory_mb": 4096,
+        "timeout_seconds": 600
+      },
+      "retry_policy": "none",
+      "reusable": false,
+      "runner_id": "typescript",
+      "runner_manifest": "test-results/wc104/runner-manifests/typescript.json",
+      "runner_required": true,
+      "tool_digest": null
+    }
+  ],
+  "preflight": {
+    "build_events": 0,
+    "execution_events": 0,
+    "first_cause": null,
+    "result": "PASS",
+    "schema": "waooaw.plan-preflight-result/v1",
+    "violations": []
+  },
+  "requires_clean_commit": true,
+  "schema": "waooaw.validation-execution-plan/v1"
+}

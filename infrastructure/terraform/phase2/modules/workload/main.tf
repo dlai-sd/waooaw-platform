@@ -19,11 +19,17 @@ locals {
     "billing-engine",
     "agent-runtime-adapter-digital-marketing",
   ])
+  database_members = toset([
+    "constitutional-engine",
+    "business-platform",
+    "billing-engine",
+  ])
   active_members               = var.workload_enabled ? local.release_members : toset([])
   auth_redis_container_enabled = var.workload_enabled && contains(["demo", "uat"], var.environment)
   auth_redis_host              = "ca-${var.environment}-auth-redis.internal.${var.container_app_environment_default_domain}"
   auth_redis_url               = var.environment == "prod" ? var.auth_abuse_redis_url : "redis://${local.auth_redis_host}:6379/0"
   auth_redis_password_secret   = var.environment == "prod" ? "auth-abuse-redis-managed-key" : "auth-abuse-redis-password"
+  pgbouncer_host               = "ca-${var.environment}-pgbouncer.internal.${var.container_app_environment_default_domain}"
   auth_abuse_limits = {
     AUTH_START      = { limit = 20, windowSeconds = 600 }
     AUTH_CALLBACK   = { limit = 30, windowSeconds = 600 }
@@ -397,13 +403,11 @@ locals {
   identity_edge_config_base64 = base64encode(local.identity_edge_config)
   runtime_environment = {
     "constitutional-engine" = {
-      ASPNETCORE_URLS                      = "http://+:5002"
-      ConnectionStrings__DefaultConnection = "Host=localhost;Port=5432;Database=waooaw;Username=postgres"
+      ASPNETCORE_URLS = "http://+:5002"
     }
     "business-platform" = merge({
       ASPNETCORE_ENVIRONMENT                          = "Production"
       ASPNETCORE_URLS                                 = "http://+:5001"
-      ConnectionStrings__DefaultConnection            = "Host=localhost;Port=5432;Database=waooaw;Username=postgres"
       ConstitutionalEngine__Address                   = local.service_urls.constitutional_engine
       ConstitutionalEngine__GrpcUrl                   = local.service_urls.constitutional_engine
       Keycloak__Audience                              = "waooaw-platform"
@@ -423,8 +427,6 @@ locals {
       WAOOAW_DEMO_DATABASE_BOOTSTRAP = "true"
       DMA_ADMISSION_CONTENT_DIGEST   = var.dma_admission_content_digest
       DMA_ARTIFACT_DIGEST            = split("@", var.image_digests["agent-runtime-adapter-digital-marketing"])[1]
-      POSTGRES_USER                  = "postgres"
-      POSTGRES_DB                    = "waooaw"
       } : {}, var.auth_preview_origin != null ? {
       IdentityBrokerRead__AllowedAuthorizedParties__1 = "waooaw-web-preview"
       } : {}, var.google_login_enabled ? {
@@ -459,21 +461,21 @@ locals {
       PLATFORM_PHASE                = "IMPLEMENTATION"
     }
     "web" = merge({
-      AUTH_ABUSE_LIMITS_JSON           = jsonencode(local.auth_abuse_limits)
-      AZURE_KEY_VAULT_URL              = trimsuffix(var.key_vault_secret_uris["web"], "/secrets/web")
-      AZURE_KEY_VAULT_WRITER_CLIENT_ID = "710af8d6-8e2c-4f9d-9b1c-2230de9de1f8"
-      AZURE_TENANT_ID                  = "0471534c-1bbe-40ab-ae65-3f721b62582c"
-      BUSINESS_PLATFORM_URL            = local.service_urls.business_platform
-      KEYCLOAK_CLIENT_ID               = "waooaw-web"
-      KEYCLOAK_ISSUER                  = "${local.service_urls.identity_edge}/realms/waooaw"
-      NEXTAUTH_URL                     = local.service_urls.web
-      NODE_ENV                         = "production"
-      REDIS_URL                        = local.auth_redis_url
+      AUTH_ABUSE_LIMITS_JSON                = jsonencode(local.auth_abuse_limits)
+      AZURE_KEY_VAULT_URL                   = trimsuffix(var.key_vault_secret_uris["web"], "/secrets/web")
+      AZURE_KEY_VAULT_WRITER_CLIENT_ID      = "710af8d6-8e2c-4f9d-9b1c-2230de9de1f8"
+      AZURE_TENANT_ID                       = "0471534c-1bbe-40ab-ae65-3f721b62582c"
+      BUSINESS_PLATFORM_URL                 = local.service_urls.business_platform
+      KEYCLOAK_CLIENT_ID                    = "waooaw-web"
+      KEYCLOAK_ISSUER                       = "${local.service_urls.identity_edge}/realms/waooaw"
+      NEXTAUTH_URL                          = local.service_urls.web
+      NODE_ENV                              = "production"
+      REDIS_URL                             = local.auth_redis_url
       SESSION_PROTOCOL_DIGEST_WRITE_VERSION = var.web_session_protocol_digest_write_version
       SESSION_TOKEN_ENVELOPE_WRITE_VERSION  = var.web_session_token_envelope_write_version
-      WAOOAW_ENVIRONMENT               = var.environment
-      WAOOAW_SERVER_SESSION_MODE       = var.web_session_mode
-      WEB_SESSION_DEPLOY_VERSION       = var.web_session_deploy_version
+      WAOOAW_ENVIRONMENT                    = var.environment
+      WAOOAW_SERVER_SESSION_MODE            = var.web_session_mode
+      WEB_SESSION_DEPLOY_VERSION            = var.web_session_deploy_version
       }, var.web_session_mode == "disabled" ? {} : {
       SESSION_HANDLE_DIGEST_WRITE_VERSION         = var.web_session_handle_digest_write_version
       WEB_SESSION_CONFIG_DIGEST                   = var.web_session_config_digest
@@ -485,10 +487,10 @@ locals {
       BILLING_CONTRACT_ID            = "goal006-demo"
       BILLING_DECISION_SPACE_VERSION = "1"
       CONSTITUTIONAL_ENGINE_ADDRESS  = "ca-${var.environment}-constitutional-engine:80"
-      DATABASE_URL                   = "postgresql+asyncpg://postgres@localhost:5432/waooaw"
       MAX_DISCOUNT_PCT               = contains(["demo", "uat"], var.environment) ? "100" : "0"
       RAZORPAY_READINESS_STATE       = contains(["demo", "uat"], var.environment) ? "READY_TEST" : "NOT_CONFIGURED"
-      REDIS_URL                      = "redis://localhost:6379/0"
+      REDIS_URL                      = local.auth_redis_url
+      WAOOAW_ENVIRONMENT             = var.environment
       WBE_INTERNAL_BASE_URL          = local.service_urls.billing_engine
     }
     "agent-runtime-adapter-digital-marketing" = {
@@ -585,11 +587,11 @@ locals {
     razorpay-test-webhook-secret = "${trimsuffix(var.key_vault_secret_resource_ids["billing-engine"], "/billing-engine")}/razorpay-test-webhook-secret"
   } : {}
   minimum_replicas = {
-    "constitutional-engine"                   = var.ce_min_replicas
-    "professional-runtime"                    = var.pr_min_replicas
-    "business-platform"                       = var.bp_min_replicas
+    "constitutional-engine"                   = var.application_activation_enabled ? var.ce_min_replicas : 0
+    "professional-runtime"                    = var.application_activation_enabled ? var.pr_min_replicas : 0
+    "business-platform"                       = var.application_activation_enabled ? var.bp_min_replicas : 0
     "ai-runtime"                              = 0
-    "web"                                     = var.web_min_replicas
+    "web"                                     = var.application_activation_enabled ? var.web_min_replicas : 0
     "billing-engine"                          = 0
     "agent-runtime-adapter-digital-marketing" = 0
   }
@@ -720,7 +722,7 @@ resource "azurerm_container_app" "auth_redis" {
   }
 
   template {
-    min_replicas = 1
+    min_replicas = var.application_activation_enabled ? 1 : 0
     max_replicas = 1
 
     container {
@@ -809,6 +811,157 @@ resource "azurerm_container_app" "auth_redis" {
   ]
 }
 
+resource "azurerm_user_assigned_identity" "pgbouncer" {
+  count = var.workload_enabled && var.persistent_state_enabled ? 1 : 0
+
+  name                = "id-${var.environment}-pgbouncer"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+}
+
+resource "azurerm_role_assignment" "pgbouncer_database_secret" {
+  count = var.workload_enabled && var.persistent_state_enabled ? 1 : 0
+
+  scope                = var.database_secret_resource_ids["pgbouncer"]
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.pgbouncer[0].principal_id
+}
+
+resource "azurerm_container_app" "pgbouncer" {
+  count = var.workload_enabled && var.persistent_state_enabled ? 1 : 0
+
+  name                         = "ca-${var.environment}-pgbouncer"
+  container_app_environment_id = var.container_app_environment_id
+  resource_group_name          = var.resource_group_name
+  revision_mode                = "Single"
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.pgbouncer[0].id]
+  }
+
+  secret {
+    name                = "pgbouncer-auth"
+    identity            = azurerm_user_assigned_identity.pgbouncer[0].id
+    key_vault_secret_id = var.database_secret_uris["pgbouncer"]
+  }
+
+  template {
+    min_replicas = 1
+    max_replicas = 1
+
+    container {
+      name   = "pgbouncer"
+      image  = "docker.io/pgbouncer/pgbouncer@sha256:e8162131a43c54cd0ac7941e66eaaa802c5e5a49036f41b41260b70b290feea9"
+      cpu    = 0.25
+      memory = "0.5Gi"
+
+      env {
+        name  = "DATABASES_HOST"
+        value = var.postgresql_server_fqdn
+      }
+      env {
+        name  = "DATABASES_PORT"
+        value = "5432"
+      }
+      env {
+        name  = "DATABASES_DBNAME"
+        value = "waooaw_application"
+      }
+      env {
+        name  = "PGBOUNCER_POOL_MODE"
+        value = "transaction"
+      }
+      env {
+        name  = "PGBOUNCER_LISTEN_PORT"
+        value = "5432"
+      }
+      env {
+        name  = "PGBOUNCER_MAX_CLIENT_CONN"
+        value = var.environment == "demo" ? "40" : "80"
+      }
+      env {
+        name  = "PGBOUNCER_DEFAULT_POOL_SIZE"
+        value = var.environment == "demo" ? "32" : "80"
+      }
+      env {
+        name  = "PGBOUNCER_RESERVE_POOL_SIZE"
+        value = var.environment == "demo" ? "8" : "20"
+      }
+      env {
+        name  = "PGBOUNCER_RESERVE_POOL_TIMEOUT"
+        value = "3"
+      }
+      env {
+        name  = "PGBOUNCER_QUERY_WAIT_TIMEOUT"
+        value = "5"
+      }
+      env {
+        name  = "PGBOUNCER_CLIENT_IDLE_TIMEOUT"
+        value = "60"
+      }
+      env {
+        name  = "PGBOUNCER_SERVER_IDLE_TIMEOUT"
+        value = "300"
+      }
+      env {
+        name  = "PGBOUNCER_SERVER_LIFETIME"
+        value = "3600"
+      }
+      env {
+        name  = "PGBOUNCER_SERVER_CONNECT_TIMEOUT"
+        value = "15"
+      }
+      env {
+        name  = "PGBOUNCER_SERVER_LOGIN_RETRY"
+        value = "5"
+      }
+      env {
+        name        = "PGBOUNCER_AUTH_PASSWORD"
+        secret_name = "pgbouncer-auth"
+      }
+
+      startup_probe {
+        transport               = "TCP"
+        port                    = 5432
+        interval_seconds        = 5
+        timeout                 = 3
+        failure_count_threshold = 30
+      }
+
+      readiness_probe {
+        transport               = "TCP"
+        port                    = 5432
+        interval_seconds        = 10
+        timeout                 = 3
+        failure_count_threshold = 3
+      }
+    }
+  }
+
+  ingress {
+    external_enabled = false
+    target_port      = 5432
+    exposed_port     = 5432
+    transport        = "tcp"
+
+    traffic_weight {
+      latest_revision = true
+      percentage      = 100
+    }
+  }
+
+  depends_on = [azurerm_role_assignment.pgbouncer_database_secret]
+}
+
+resource "azurerm_role_assignment" "member_database_secret" {
+  for_each = var.workload_enabled && var.persistent_state_enabled ? local.database_members : toset([])
+
+  scope                = var.database_secret_resource_ids[each.key]
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.member[each.key].principal_id
+}
+
 resource "azurerm_container_app" "member" {
   for_each = local.active_members
 
@@ -826,6 +979,15 @@ resource "azurerm_container_app" "member" {
     name                = "runtime-reference"
     identity            = azurerm_user_assigned_identity.member[each.key].id
     key_vault_secret_id = var.key_vault_secret_uris[local.credential_member[each.key]]
+  }
+
+  dynamic "secret" {
+    for_each = var.persistent_state_enabled && contains(local.database_members, each.key) ? [1] : []
+    content {
+      name                = "database-credential"
+      identity            = azurerm_user_assigned_identity.member[each.key].id
+      key_vault_secret_id = var.database_secret_uris[each.key]
+    }
   }
 
   dynamic "secret" {
@@ -950,10 +1112,10 @@ resource "azurerm_container_app" "member" {
       }
 
       dynamic "env" {
-        for_each = contains(["constitutional-engine", "business-platform", "billing-engine"], each.key) ? [1] : []
+        for_each = var.persistent_state_enabled && contains(local.database_members, each.key) ? [1] : []
         content {
-          name        = "POSTGRES_PASSWORD"
-          secret_name = "runtime-reference"
+          name        = each.key == "billing-engine" ? "DATABASE_URL" : "ConnectionStrings__DefaultConnection"
+          secret_name = "database-credential"
         }
       }
 
@@ -1095,73 +1257,6 @@ resource "azurerm_container_app" "member" {
       }
     }
 
-    dynamic "container" {
-      for_each = contains(["constitutional-engine", "business-platform", "billing-engine"], each.key) ? [1] : []
-      content {
-        name    = "postgres"
-        image   = each.key == "business-platform" ? "pgvector/pgvector@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b" : "postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685"
-        cpu     = 0.25
-        memory  = "0.5Gi"
-        command = var.environment == "demo" ? ["/bin/sh", "-ec"] : null
-        args = var.environment == "demo" ? [<<-EOT
-          rm -rf /var/lib/postgresql/data/*
-          printf '%s\n' \
-            'CREATE TABLE IF NOT EXISTS public.wc091_demo_generation (generation_id text PRIMARY KEY, fixture_digest text NOT NULL);' \
-            "INSERT INTO public.wc091_demo_generation VALUES ('$WC091_GENERATION_ID', '$WC091_FIXTURE_DIGEST');" \
-            > /docker-entrypoint-initdb.d/00-wc091-generation.sql
-          exec docker-entrypoint.sh postgres
-        EOT
-        ] : null
-
-        env {
-          name  = "POSTGRES_DB"
-          value = "waooaw"
-        }
-        env {
-          name  = "POSTGRES_USER"
-          value = "postgres"
-        }
-        env {
-          name        = "POSTGRES_PASSWORD"
-          secret_name = "runtime-reference"
-        }
-        dynamic "env" {
-          for_each = var.environment == "demo" ? {
-            WC091_GENERATION_ID  = var.demo_data_generation_id
-            WC091_FIXTURE_DIGEST = var.demo_fixture_digest
-          } : {}
-          content {
-            name  = env.key
-            value = env.value
-          }
-        }
-        dynamic "volume_mounts" {
-          for_each = var.environment == "demo" ? [1] : []
-          content {
-            name = "wc091-demo-postgres"
-            path = "/var/lib/postgresql/data"
-          }
-        }
-      }
-    }
-
-    dynamic "container" {
-      for_each = each.key == "billing-engine" ? [1] : []
-      content {
-        name   = "redis"
-        image  = "redis@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2"
-        cpu    = 0.25
-        memory = "0.5Gi"
-      }
-    }
-
-    dynamic "volume" {
-      for_each = var.environment == "demo" ? [1] : []
-      content {
-        name         = "wc091-demo-postgres"
-        storage_type = "EmptyDir"
-      }
-    }
   }
 
   ingress {
@@ -1206,6 +1301,8 @@ resource "azurerm_container_app" "member" {
     azurerm_role_assignment.conversation_cursor_secret,
     azurerm_role_assignment.auth_abuse_web_secret,
     azurerm_role_assignment.razorpay_secret,
+    azurerm_role_assignment.member_database_secret,
+    azurerm_container_app.pgbouncer,
     azurerm_container_app.auth_redis,
     azurerm_container_app.temporal,
   ]
@@ -1238,9 +1335,17 @@ resource "azurerm_user_assigned_identity" "temporal" {
 resource "azurerm_role_assignment" "temporal_secret" {
   count = var.workload_enabled && var.environment == "demo" ? 1 : 0
 
-  scope                = var.key_vault_secret_resource_ids["business-platform"]
+  scope                = var.database_secret_resource_ids["temporal"]
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_user_assigned_identity.temporal[0].principal_id
+}
+
+resource "azurerm_role_assignment" "keycloak_database_secret" {
+  count = var.workload_enabled && var.persistent_state_enabled ? 1 : 0
+
+  scope                = var.database_secret_resource_ids["keycloak"]
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.member["web"].principal_id
 }
 
 resource "azurerm_container_app" "temporal" {
@@ -1259,11 +1364,11 @@ resource "azurerm_container_app" "temporal" {
   secret {
     name                = "postgres-password"
     identity            = azurerm_user_assigned_identity.temporal[0].id
-    key_vault_secret_id = var.key_vault_secret_uris["business-platform"]
+    key_vault_secret_id = var.database_secret_uris["temporal"]
   }
 
   template {
-    min_replicas = 1
+    min_replicas = var.application_activation_enabled ? 1 : 0
     max_replicas = 1
 
     container {
@@ -1281,8 +1386,12 @@ resource "azurerm_container_app" "temporal" {
         value = "5432"
       }
       env {
+        name  = "DBNAME"
+        value = "waooaw_temporal"
+      }
+      env {
         name  = "POSTGRES_USER"
-        value = "postgres"
+        value = "temporal_runtime"
       }
       env {
         name        = "POSTGRES_PWD"
@@ -1290,59 +1399,15 @@ resource "azurerm_container_app" "temporal" {
       }
       env {
         name  = "POSTGRES_SEEDS"
-        value = "localhost"
+        value = local.pgbouncer_host
       }
-    }
-
-    container {
-      name    = "postgres"
-      image   = "postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685"
-      cpu     = 0.25
-      memory  = "0.5Gi"
-      command = ["/bin/sh", "-ec"]
-      args = [<<-EOT
-        rm -rf /var/lib/postgresql/data/*
-        printf '%s\n' \
-          'CREATE TABLE IF NOT EXISTS public.wc091_demo_generation (generation_id text PRIMARY KEY, fixture_digest text NOT NULL);' \
-          "INSERT INTO public.wc091_demo_generation VALUES ('$WC091_GENERATION_ID', '$WC091_FIXTURE_DIGEST');" \
-          > /docker-entrypoint-initdb.d/00-wc091-generation.sql
-        exec docker-entrypoint.sh postgres
-      EOT
-      ]
-
-      env {
-        name  = "POSTGRES_DB"
-        value = "temporal"
-      }
-      env {
-        name  = "POSTGRES_USER"
-        value = "postgres"
-      }
-      env {
-        name        = "POSTGRES_PASSWORD"
-        secret_name = "postgres-password"
-      }
-      env {
-        name  = "WC091_GENERATION_ID"
-        value = var.demo_data_generation_id
-      }
-      env {
-        name  = "WC091_FIXTURE_DIGEST"
-        value = var.demo_fixture_digest
-      }
-      volume_mounts {
-        name = "wc091-demo-temporal-postgres"
-        path = "/var/lib/postgresql/data"
-      }
-    }
-
-    volume {
-      name         = "wc091-demo-temporal-postgres"
-      storage_type = "EmptyDir"
     }
   }
 
-  depends_on = [azurerm_role_assignment.temporal_secret]
+  depends_on = [
+    azurerm_role_assignment.temporal_secret,
+    azurerm_container_app.pgbouncer,
+  ]
 
   ingress {
     external_enabled = false
@@ -1378,6 +1443,15 @@ resource "azurerm_container_app" "keycloak" {
     name                = "keycloak-credential"
     identity            = azurerm_user_assigned_identity.member["web"].id
     key_vault_secret_id = var.key_vault_secret_uris["web"]
+  }
+
+  dynamic "secret" {
+    for_each = var.persistent_state_enabled ? [1] : []
+    content {
+      name                = "keycloak-database-credential"
+      identity            = azurerm_user_assigned_identity.member["web"].id
+      key_vault_secret_id = var.database_secret_uris["keycloak"]
+    }
   }
 
   dynamic "secret" {
@@ -1417,7 +1491,7 @@ resource "azurerm_container_app" "keycloak" {
   }
 
   template {
-    min_replicas = 1
+    min_replicas = var.application_activation_enabled ? 1 : 0
     max_replicas = 1
 
     container {
@@ -1434,7 +1508,7 @@ resource "azurerm_container_app" "keycloak" {
         rm -rf /opt/keycloak/data/*
         mkdir -p /opt/keycloak/data/import
         printf '%s' '${local.keycloak_realm_base64}' | base64 --decode > /opt/keycloak/data/import/waooaw-realm.json
-        exec /opt/keycloak/bin/kc.sh start-dev --db=dev-file --http-enabled=true --hostname-strict=false --import-realm
+        exec /opt/keycloak/bin/kc.sh start-dev --http-enabled=true --hostname-strict=false --import-realm
       EOT
       ]
 
@@ -1480,6 +1554,33 @@ resource "azurerm_container_app" "keycloak" {
       env {
         name  = "KC_PROXY_HEADERS"
         value = "xforwarded"
+      }
+      env {
+        name  = "KC_DB"
+        value = "postgres"
+      }
+      env {
+        name  = "KC_DB_URL_HOST"
+        value = local.pgbouncer_host
+      }
+      env {
+        name  = "KC_DB_URL_PORT"
+        value = "5432"
+      }
+      env {
+        name  = "KC_DB_URL_DATABASE"
+        value = "waooaw_keycloak"
+      }
+      env {
+        name  = "KC_DB_USERNAME"
+        value = "keycloak_runtime"
+      }
+      dynamic "env" {
+        for_each = var.persistent_state_enabled ? [1] : []
+        content {
+          name        = "KC_DB_PASSWORD"
+          secret_name = "keycloak-database-credential"
+        }
       }
 
       dynamic "env" {
@@ -1542,6 +1643,8 @@ resource "azurerm_container_app" "keycloak" {
     azurerm_role_assignment.google_broker_secret,
     azurerm_role_assignment.facebook_broker_secret,
     azurerm_role_assignment.identity_reader_secret,
+    azurerm_role_assignment.keycloak_database_secret,
+    azurerm_container_app.pgbouncer,
   ]
 }
 
@@ -1554,7 +1657,7 @@ resource "azurerm_container_app" "identity_edge" {
   revision_mode                = "Single"
 
   template {
-    min_replicas = 1
+    min_replicas = var.application_activation_enabled ? 1 : 0
     max_replicas = 1
 
     container {
@@ -1594,6 +1697,74 @@ resource "azurerm_container_app_custom_domain" "identity_edge" {
   lifecycle {
     ignore_changes = [certificate_binding_type, container_app_environment_certificate_id]
   }
+}
+
+resource "azurerm_user_assigned_identity" "billing_migration" {
+  count = var.workload_enabled && var.persistent_state_enabled ? 1 : 0
+
+  name                = "id-${var.environment}-billing-migration"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+}
+
+resource "azurerm_role_assignment" "billing_migration_database_secret" {
+  count = var.workload_enabled && var.persistent_state_enabled ? 1 : 0
+
+  scope                = var.database_secret_resource_ids["billing-migration"]
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.billing_migration[0].principal_id
+}
+
+resource "azurerm_container_app_job" "billing_migration" {
+  count = var.workload_enabled && var.persistent_state_enabled ? 1 : 0
+
+  name                         = "job-${var.environment}-wc124-billing-migration"
+  location                     = var.location
+  resource_group_name          = var.resource_group_name
+  container_app_environment_id = var.container_app_environment_id
+  replica_retry_limit          = 0
+  replica_timeout_in_seconds   = 1200
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.billing_migration[0].id]
+  }
+
+  secret {
+    name                = "migration-database"
+    identity            = azurerm_user_assigned_identity.billing_migration[0].id
+    key_vault_secret_id = var.database_secret_uris["billing-migration"]
+  }
+
+  manual_trigger_config {
+    parallelism              = 1
+    replica_completion_count = 1
+  }
+
+  template {
+    container {
+      name    = "billing-migration"
+      image   = var.image_digests["billing-engine"]
+      cpu     = 0.5
+      memory  = "1Gi"
+      command = ["python", "migrate.py"]
+
+      env {
+        name        = "DATABASE_URL"
+        secret_name = "migration-database"
+      }
+
+      env {
+        name  = "MIGRATION_PATTERN"
+        value = "59-wc124-billing-authority.sql"
+      }
+    }
+  }
+
+  depends_on = [
+    azurerm_container_app.pgbouncer,
+    azurerm_role_assignment.billing_migration_database_secret,
+  ]
 }
 
 resource "azurerm_container_app_job" "verification" {

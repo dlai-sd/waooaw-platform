@@ -1,0 +1,308 @@
+PASS components/conversation/ConversationExperience.test.tsx
+PASS components/relationships/RelationshipWorkspace.test.tsx
+PASS app/api/wc084-portal-boundaries.test.ts
+PASS components/auth/RegistrationFlow.test.tsx
+PASS components/public/PublicExperience.test.tsx
+PASS lib/auth.test.ts
+PASS app/api/auth/keycloak-logout/route.test.ts
+  ● Console
+
+    console.error
+      Web session revocation failed { cause: 'Error', command: 'LOCAL_LOGOUT' }
+
+      73 |     return 'confirmed' as const;
+      74 |   } catch (error) {
+    > 75 |     console.error('Web session revocation failed', {
+         |             ^
+      76 |       cause: error instanceof Error ? error.name : 'UnknownError',
+      77 |       command,
+      78 |     });
+
+      at error (app/api/auth/keycloak-logout/route.ts:75:13)
+      at logoutPost (app/api/auth/keycloak-logout/route.ts:160:7)
+      at lib/journey-telemetry.ts:31:24
+      at Object.<anonymous> (app/api/auth/keycloak-logout/route.test.ts:202:22)
+
+    console.error
+      Web session revocation failed { cause: 'Error', command: 'ACCOUNT_SWITCH' }
+
+      73 |     return 'confirmed' as const;
+      74 |   } catch (error) {
+    > 75 |     console.error('Web session revocation failed', {
+         |             ^
+      76 |       cause: error instanceof Error ? error.name : 'UnknownError',
+      77 |       command,
+      78 |     });
+
+      at error (app/api/auth/keycloak-logout/route.ts:75:13)
+      at logoutPost (app/api/auth/keycloak-logout/route.ts:160:7)
+      at lib/journey-telemetry.ts:31:24
+      at Object.<anonymous> (app/api/auth/keycloak-logout/route.test.ts:231:22)
+
+    console.error
+      Web session revocation failed { cause: 'TypeError', command: 'LOCAL_LOGOUT' }
+
+      73 |     return 'confirmed' as const;
+      74 |   } catch (error) {
+    > 75 |     console.error('Web session revocation failed', {
+         |             ^
+      76 |       cause: error instanceof Error ? error.name : 'UnknownError',
+      77 |       command,
+      78 |     });
+
+      at error (app/api/auth/keycloak-logout/route.ts:75:13)
+      at logoutPost (app/api/auth/keycloak-logout/route.ts:160:7)
+      at lib/journey-telemetry.ts:31:24
+      at Object.<anonymous> (app/api/auth/keycloak-logout/route.test.ts:266:22)
+
+    console.warn
+      Identity action origin denied {
+        applicationOrigin: 'https://app.example',
+        forwardedHost: null,
+        forwardedProto: null,
+        origin: 'https://attacker.example',
+        refererOrigin: undefined,
+        requestOrigin: 'https://app.example',
+        secFetchSite: null
+      }
+
+      28 |     refererOrigin = 'invalid';
+      29 |   }
+    > 30 |   console.warn('Identity action origin denied', {
+         |           ^
+      31 |     applicationOrigin,
+      32 |     forwardedHost: request.headers.get('x-forwarded-host'),
+      33 |     forwardedProto: request.headers.get('x-forwarded-proto'),
+
+      at warn (app/api/auth/keycloak-logout/route.ts:30:11)
+      at reportOriginDenial (app/api/auth/keycloak-logout/route.ts:128:5)
+      at logoutPost (app/api/auth/keycloak-logout/route.ts:225:89)
+      at command (lib/journey-telemetry.ts:31:30)
+      at NoopContextManager.with (../../opt/waooaw-web/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api/src/context/NoopContextManager.ts:20:15)
+      at ContextAPI.with (../../opt/waooaw-web/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api/src/api/context.ts:68:42)
+      at NoopTracer.startActiveSpan (../../opt/waooaw-web/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api/src/trace/NoopTracer.ts:87:27)
+      at ProxyTracer.startActiveSpan (../../opt/waooaw-web/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api/src/trace/ProxyTracer.ts:51:20)
+      at startActiveSpan (lib/journey-telemetry.ts:27:49)
+      at POST (app/api/auth/keycloak-logout/route.ts:225:63)
+      at Object.<anonymous> (app/api/auth/keycloak-logout/route.test.ts:330:32)
+
+    console.warn
+      Identity action origin denied {
+        applicationOrigin: 'https://app.example',
+        forwardedHost: null,
+        forwardedProto: null,
+        origin: null,
+        refererOrigin: undefined,
+        requestOrigin: 'https://app.example',
+        secFetchSite: null
+      }
+
+      28 |     refererOrigin = 'invalid';
+      29 |   }
+    > 30 |   console.warn('Identity action origin denied', {
+         |           ^
+      31 |     applicationOrigin,
+      32 |     forwardedHost: request.headers.get('x-forwarded-host'),
+      33 |     forwardedProto: request.headers.get('x-forwarded-proto'),
+
+      at warn (app/api/auth/keycloak-logout/route.ts:30:11)
+      at reportOriginDenial (app/api/auth/keycloak-logout/route.ts:128:5)
+      at logoutPost (app/api/auth/keycloak-logout/route.ts:225:89)
+      at command (lib/journey-telemetry.ts:31:30)
+      at NoopContextManager.with (../../opt/waooaw-web/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api/src/context/NoopContextManager.ts:20:15)
+      at ContextAPI.with (../../opt/waooaw-web/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api/src/api/context.ts:68:42)
+      at NoopTracer.startActiveSpan (../../opt/waooaw-web/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api/src/trace/NoopTracer.ts:87:27)
+      at ProxyTracer.startActiveSpan (../../opt/waooaw-web/node_modules/.pnpm/@opentelemetry+api@1.9.1/node_modules/@opentelemetry/api/src/trace/ProxyTracer.ts:51:20)
+      at startActiveSpan (lib/journey-telemetry.ts:27:49)
+      at POST (app/api/auth/keycloak-logout/route.ts:225:63)
+      at Object.<anonymous> (app/api/auth/keycloak-logout/route.test.ts:378:32)
+
+PASS components/acquisition/AcquisitionContinuation.test.tsx
+PASS app/api/acquisition/hire-checkout/route.test.ts
+PASS components/auth/AuthViews.test.tsx
+PASS components/relationships/ContractJourney.test.tsx
+PASS components/conversation/VoiceContribution.test.tsx
+PASS components/auth/ProviderCommands.test.tsx
+PASS components/shell/F1Shell.test.tsx
+PASS lib/i18n.test.ts
+PASS tests/contracts/conversation-web-contract.test.ts
+PASS components/acquisition/DisclosureContinuation.test.tsx
+PASS components/portal/PortalEditors.test.tsx
+PASS app/api/voice/voice-boundary.test.ts
+PASS __tests__/app/authenticated/professionals/mine/page.test.tsx
+  ● Console
+
+    console.error
+      Portal projection failed. {
+        correlationId: '00000000-0000-4000-8000-000000000000',
+        reasonCode: 'RESPONSE_INVALID',
+        statusClass: 'none',
+        surface: 'MY_AGENTS'
+      }
+
+      40 |   }
+      41 |
+    > 42 |   console.error('Portal projection failed.', { correlationId, reasonCode, statusClass, surface });
+         |           ^
+      43 |   return { correlationId, reasonCode, statusClass };
+      44 | }
+      45 |
+
+      at error (lib/api/portal-failure.ts:42:11)
+      at MyProfessionalsPage (/tmp/web/app/(application)../../professionals/mine/page.tsx:131:48)
+      at Object.<anonymous> (__tests__/app/authenticated/professionals/mine/page.test.tsx:146:12)
+
+PASS components/conversation/PersistentConversationDock.test.tsx
+PASS components/auth/SignOutCommand.test.tsx
+PASS components/admin/AzureKeyVaultWriter.test.tsx
+PASS app/api/auth/[...nextauth]/route.test.ts
+PASS app/api/conversations/conversation-boundary.test.ts
+PASS lib/api/identity.test.ts
+PASS app/api/acquisition/continue/route.test.ts
+PASS __tests__/app/application/marketplace/page.test.tsx
+PASS components/relationships/CustomerEngagementWorkspace.test.tsx
+PASS components/relationships/RelationshipPreActivation.test.tsx
+PASS lib/identity-security-events.test.ts
+PASS components/founder/OfferabilityWorkbench.test.tsx
+PASS app/api/admin/azure-key-vault/route.test.ts
+PASS components/conversation/PortalGuideExperience.test.tsx
+PASS __tests__/app/health-ready.test.ts
+PASS app/api/relationship-skill-decisions.test.ts
+PASS components/relationships/ConversationalEmploymentWorkspace.test.tsx
+PASS app/api/auth/identity-events/route.test.ts
+  ● Console
+
+    console.warn
+      Identity event origin denied {
+        applicationOrigin: 'https://app.example',
+        forwardedHost: null,
+        forwardedProto: null,
+        origin: 'https://attacker.example',
+        requestOrigin: 'https://app.example',
+        secFetchSite: null
+      }
+
+      26 |   const applicationOrigin = new URL(process.env.NEXTAUTH_URL ?? request.nextUrl.origin).origin;
+      27 |   if (!isSameOriginRequest(request, applicationOrigin)) {
+    > 28 |     console.warn('Identity event origin denied', {
+         |             ^
+      29 |       applicationOrigin,
+      30 |       forwardedHost: request.headers.get('x-forwarded-host'),
+      31 |       forwardedProto: request.headers.get('x-forwarded-proto'),
+
+      at warn (app/api/auth/identity-events/route.ts:28:13)
+      at Object.<anonymous> (app/api/auth/identity-events/route.test.ts:73:34)
+
+PASS app/(application)/professionals/mine/selection/route.test.ts
+PASS components/public/AcquisitionController.test.tsx
+  ● Console
+
+    console.error
+      [Error: Not implemented: navigation (except hash changes)] {
+        type: 'not implemented'
+      }
+
+      at VirtualConsole.<anonymous> (../../opt/waooaw-web/node_modules/.pnpm/jest-environment-jsdom@29.7.0/node_modules/jest-environment-jsdom/build/index.js:63:23)
+      at module.exports (../../opt/waooaw-web/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:12:26)
+      at navigateFetch (../../opt/waooaw-web/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/navigation.js:77:3)
+      at exports.navigate (../../opt/waooaw-web/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/navigation.js:55:3)
+      at Timeout._onTimeout (../../opt/waooaw-web/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/nodes/HTMLHyperlinkElementUtils-impl.js:81:7)
+
+    console.error
+      [Error: Not implemented: navigation (except hash changes)] {
+        type: 'not implemented'
+      }
+
+      at VirtualConsole.<anonymous> (../../opt/waooaw-web/node_modules/.pnpm/jest-environment-jsdom@29.7.0/node_modules/jest-environment-jsdom/build/index.js:63:23)
+      at module.exports (../../opt/waooaw-web/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/browser/not-implemented.js:12:26)
+      at navigateFetch (../../opt/waooaw-web/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/navigation.js:77:3)
+      at exports.navigate (../../opt/waooaw-web/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/window/navigation.js:55:3)
+      at Timeout._onTimeout (../../opt/waooaw-web/node_modules/.pnpm/jsdom@20.0.3/node_modules/jsdom/lib/jsdom/living/nodes/HTMLHyperlinkElementUtils-impl.js:81:7)
+
+PASS app/api/identity/membership-selection/route.test.ts
+PASS __tests__/verify-security-patches.test.js
+PASS app/api/interactions/portal/route.test.ts
+PASS app/api/acquisition/hire-preview/route.test.ts
+PASS lib/identity-lifecycle.test.ts
+PASS app/(application)/professionals/mine/MyAgentsSelection.test.tsx
+PASS app/api/identity/sessions/route.test.ts
+PASS __tests__/app/application/layout.test.tsx
+PASS lib/auth-abuse-limiter.test.ts
+  ● Console
+
+    console.error
+      Authentication abuse limiter failed { action: 'AUTH_START', cause: 'Error' }
+
+      141 |     return { allowed: false, reason: 'QUOTA_EXCEEDED', retryAfterSeconds };
+      142 |   } catch (error) {
+    > 143 |     console.error('Authentication abuse limiter failed', {
+          |             ^
+      144 |       action,
+      145 |       cause: error instanceof Error ? error.name : 'UnknownError',
+      146 |     });
+
+      at error (lib/auth-abuse-limiter.ts:143:13)
+      at Object.<anonymous> (lib/auth-abuse-limiter.test.ts:63:5)
+
+PASS lib/marketing-server.test.ts
+PASS lib/key-vault-admin.test.ts
+PASS app/api/relationships/[relationshipId]/contract-journey/route.test.ts
+PASS app/api/relationship-goal-verifications.test.ts
+PASS components/auth/AuthDialog.test.tsx
+PASS app/api/acquisition/events/route.test.ts
+PASS lib/post-auth-router.test.ts
+PASS __tests__/app/application/marketplace/detail-page.test.tsx
+PASS app/api/identity/sessions/[sessionId]/route.test.ts
+PASS components/shell/ProtectedAppShell.test.tsx
+PASS components/auth/AuthJourney.test.tsx
+PASS components/constitutional/EmergencyStop.test.tsx
+PASS components/auth/MobileVerificationFlow.test.tsx
+PASS __tests__/app/public/professionals/detail/page.test.tsx
+PASS components/professionals/ProfessionalComparison.test.tsx
+PASS app/api/relationships/[relationshipId]/focus-resolutions/route.test.ts
+PASS lib/backchannel-logout.test.ts
+PASS app/api/relationship-contract-journey.test.ts
+PASS __tests__/app/application/home/page.test.tsx
+PASS components/auth/AuthBoundary.test.tsx
+PASS __tests__/app/authenticated/visitor-pages.test.tsx
+PASS lib/safe-return.test.ts
+PASS lib/oidc-transaction.test.ts
+PASS config/public-config.test.ts
+PASS app/api/health/ready/route.test.ts
+PASS lib/acquisition.test.ts
+PASS lib/server-auth.test.ts
+PASS app/api/relationships/[relationshipId]/hire-setup/route.test.ts
+PASS app/api/emergency-stop/route.test.ts
+PASS components/relationships/EvidenceWindow.test.tsx
+PASS components/auth/RegistrationProgress.test.tsx
+PASS __tests__/app/auth/login/page.test.tsx
+PASS components/auth/SessionValidityGuard.test.tsx
+PASS components/public/LegalPage.test.ts
+PASS lib/auth-session-mode.test.ts
+PASS lib/web-session-pool.test.ts
+PASS __tests__/app/authenticated/layout.test.tsx
+PASS lib/api/portal-failure.test.ts
+PASS lib/journey-telemetry.test.ts
+PASS lib/preferences.test.ts
+PASS lib/keycloak-logout.test.ts
+PASS __tests__/app/session-middleware.test.ts
+PASS lib/auth-transition.test.ts
+PASS lib/server-session-mode.test.ts
+PASS lib/api/identity-cache.test.ts
+PASS lib/consent.test.ts
+PASS lib/api/conversation.test.ts
+PASS lib/api/customer-engagement.test.ts
+PASS config/professionals.test.ts
+PASS lib/api/voice.test.ts
+PASS components/auth/AuthSessionProvider.test.tsx
+PASS components/conversation/OpenConversationCommand.test.tsx
+PASS __tests__/app/middleware.test.ts
+PASS config/marketing.test.ts
+PASS config/blogs.test.ts
+
+Test Suites: 1 skipped, 104 passed, 104 of 105 total
+Tests:       2 skipped, 628 passed, 630 total
+Snapshots:   0 total
+Time:        20.536 s
+Ran all test suites.
+Test results written to: ../../workspace/test-results/web-test-results.json

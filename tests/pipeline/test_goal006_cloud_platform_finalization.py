@@ -20,7 +20,9 @@ def test_neutral_deploy_entry_is_the_only_manual_application_entry() -> None:
     assert all(f"          - {environment}" in deploy for environment in ("demo", "uat", "prod"))
     assert "      execution:" in deploy
     assert "          - plan" in deploy
-    assert "          - apply" in deploy
+    assert "          - activate" in deploy
+    assert "          - sleep" in deploy
+    assert "          - apply" not in deploy
     assert not (WORKFLOWS / "deploy-demo.yaml").exists()
 
     engine = _workflow("environment-deployment.yaml")
@@ -37,7 +39,7 @@ def test_neutral_entry_delegates_deployment_and_verification() -> None:
     assert "az " not in deploy
 
 
-def test_demo_apply_no_longer_depends_on_founder_source_ip() -> None:
+def test_demo_lifecycle_no_longer_depends_on_founder_source_ip() -> None:
     deploy = _workflow("deploy.yaml")
 
     assert "scripts/goal006_dispatch_inputs.py" in deploy

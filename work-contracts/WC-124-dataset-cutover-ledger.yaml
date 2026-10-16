@@ -1,0 +1,80 @@
+schema: waooaw.wc124-dataset-cutover-ledger/v1
+work_contract: WC-124
+component: PST-WC02
+method: freeze_export_import_reconcile
+synthetic_discard_authority: none
+source_deletion_authority: none
+source_hold_until: PST-WC11_restore_rollback_and_reconciliation_acceptance
+status: NOT_EXECUTED
+
+generated_field_contract: &generated_fields
+  source_revision_digest: required_at_execution
+  source_volume_id: required_at_execution
+  fence_timestamp: required_at_execution
+  source_watermark: required_at_execution
+  target_watermark: required_at_execution
+  schema_digest: required_at_execution
+  reconciliation_digest: required_at_execution
+  rollback_point: required_at_execution
+
+datasets:
+  - dataset: constitutional_engine
+    environment: demo
+    source: ce_postgresql_sidecar_volume
+    target: waooaw_application.constitutional
+    owner: ce_owner
+    authority_class: constitutional
+    consistency:
+      - row_counts
+      - primary_key_digest
+      - predecessor_successor_links
+      - append_only_denials
+    write_fence: source_revision_zero_traffic_plus_ce_migration_identity
+    status: NOT_EXECUTED
+    generated_fields: *generated_fields
+
+  - dataset: business_platform
+    environment: demo
+    source: bp_postgresql_sidecar_volume
+    target: waooaw_application.business
+    owner: bp_owner
+    authority_class: business
+    consistency:
+      - row_counts
+      - primary_key_digest
+      - tenant_relationship_watermarks
+      - foreign_keys
+    write_fence: source_revision_zero_traffic_plus_bp_migration_identity
+    status: NOT_EXECUTED
+    generated_fields: *generated_fields
+
+  - dataset: billing
+    environment: demo
+    source: billing_postgresql_and_redis_authority_projection
+    target: waooaw_application.billing
+    owner: billing_owner
+    authority_class: financial
+    consistency:
+      - wallet_totals
+      - reservations
+      - outcomes
+      - halt_release_history
+      - discrepancy_evidence
+    write_fence: source_revision_zero_traffic_plus_billing_migration_identity
+    status: NOT_EXECUTED
+    generated_fields: *generated_fields
+
+  - dataset: demo_temporal
+    environment: demo
+    source: temporal_postgresql_sidecar_volume
+    target: waooaw_temporal.public
+    owner: temporal_owner
+    authority_class: workflow
+    consistency:
+      - namespace_counts
+      - workflow_history_digest
+      - task_queue_watermark
+      - visibility_count
+    write_fence: temporal_frontend_zero_traffic_plus_temporal_migration_identity
+    status: NOT_EXECUTED
+    generated_fields: *generated_fields

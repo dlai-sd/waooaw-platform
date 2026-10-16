@@ -28,6 +28,15 @@ LEASE_FIELDS = frozenset(
     }
 )
 DMA_MEMBER = "agent-runtime-adapter-digital-marketing"
+DATABASE_SECRET_NAMES = {
+    "constitutional-engine": "db-ce-runtime",
+    "business-platform": "db-bp-runtime",
+    "billing-engine": "db-billing-runtime",
+    "billing-migration": "db-billing-migration",
+    "keycloak": "db-keycloak-runtime",
+    "pgbouncer": "db-pgbouncer-auth",
+    "temporal": "db-temporal-runtime-demo",
+}
 
 
 def parse_key_vault_url(value: Any):
@@ -51,6 +60,7 @@ def add_key_vault_references(
     configuration: Mapping[str, Any],
     key_vault_id: str,
     key_vault_uri: str,
+    environment: str | None = None,
 ) -> dict[str, Any]:
     if not key_vault_id.startswith("/subscriptions/") or "/vaults/" not in key_vault_id:
         raise ValueError("key_vault_id must be an Azure Key Vault resource ID")
@@ -66,6 +76,18 @@ def add_key_vault_references(
         member: f"{key_vault_id}/secrets/{'professional-runtime' if member == DMA_MEMBER else member}"
         for member in RELEASE_MEMBERS
     }
+    if environment in {"demo", "uat"}:
+        database_secret_names = {
+            principal: secret_name
+            for principal, secret_name in DATABASE_SECRET_NAMES.items()
+            if environment == "demo" or principal != "temporal"
+        }
+        values["database_secret_uris"] = {
+            principal: f"{key_vault_uri}secrets/{secret_name}" for principal, secret_name in database_secret_names.items()
+        }
+        values["database_secret_resource_ids"] = {
+            principal: f"{key_vault_id}/secrets/{secret_name}" for principal, secret_name in database_secret_names.items()
+        }
     return values
 
 
@@ -99,6 +121,26 @@ def create_inputs(
         for value in secret_resource_ids.values()
     ):
         raise ValueError("every Key Vault RBAC scope must be a secret resource ID")
+    database_secret_uris = configuration.get("database_secret_uris")
+    database_secret_resource_ids = configuration.get("database_secret_resource_ids")
+    if environment in {"demo", "uat"}:
+        expected_database_principals = set(DATABASE_SECRET_NAMES) - ({"temporal"} if environment == "uat" else set())
+        if not isinstance(database_secret_uris, Mapping) or set(database_secret_uris) != expected_database_principals:
+            raise ValueError("database_secret_uris must contain the exact persistent-state principals")
+        if not all(
+            (parsed := parse_key_vault_url(value)) is not None and re.fullmatch(r"/secrets/[^/]+", parsed.path) is not None
+            for value in database_secret_uris.values()
+        ):
+            raise ValueError("every database credential must be a versionless Key Vault secret URI")
+        if (
+            not isinstance(database_secret_resource_ids, Mapping)
+            or set(database_secret_resource_ids) != expected_database_principals
+            or not all(
+                isinstance(value, str) and value.startswith("/subscriptions/") and "/secrets/" in value
+                for value in database_secret_resource_ids.values()
+            )
+        ):
+            raise ValueError("every database credential requires an exact Key Vault RBAC scope")
     dma_admission_content_digest = configuration.get("dma_admission_content_digest")
     if (
         not isinstance(dma_admission_content_digest, str)
@@ -124,6 +166,8 @@ def create_inputs(
         validate_active_lease(configuration, current_time or datetime.now(timezone.utc))
         inputs.update({field: configuration[field] for field in LEASE_FIELDS})
         inputs["lease_revoked_at"] = configuration.get("lease_revoked_at")
+        inputs["database_secret_uris"] = dict(database_secret_uris)
+        inputs["database_secret_resource_ids"] = dict(database_secret_resource_ids)
     else:
         for field in ("ce_min_replicas", "pr_min_replicas"):
             value = configuration.get(field)
@@ -148,7 +192,12 @@ def main() -> int:
     if bool(args.key_vault_id) != bool(args.key_vault_uri):
         parser.error("--key-vault-id and --key-vault-uri must be provided together")
     if args.key_vault_id:
-        configuration = add_key_vault_references(configuration, args.key_vault_id, args.key_vault_uri)
+        configuration = add_key_vault_references(
+            configuration,
+            args.key_vault_id,
+            args.key_vault_uri,
+            args.environment,
+        )
     inputs = create_inputs(
         args.environment,
         manifest,

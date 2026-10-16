@@ -78,6 +78,7 @@ def mock_service() -> MagicMock:
     svc.run_daily_audit = AsyncMock(return_value=_make_daily_audit_result())
     svc.generate_margin_report = AsyncMock(return_value=[])
     svc.clear_halt = AsyncMock(return_value=None)
+    svc.uses_durable_authority = False
     return svc
 
 

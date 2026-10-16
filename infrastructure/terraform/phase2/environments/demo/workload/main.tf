@@ -49,6 +49,7 @@ module "lease" {
 module "workload" {
   source = "../../../modules/workload"
 
+  application_activation_enabled           = var.application_activation_enabled
   auth_preview_origin                      = var.auth_preview_origin
   facebook_login_enabled                   = true
   google_login_enabled                     = true
@@ -65,6 +66,10 @@ module "workload" {
   image_digests                            = var.image_digests
   key_vault_secret_uris                    = var.key_vault_secret_uris
   key_vault_secret_resource_ids            = var.key_vault_secret_resource_ids
+  database_secret_uris                     = var.database_secret_uris
+  database_secret_resource_ids             = var.database_secret_resource_ids
+  persistent_state_enabled                 = true
+  postgresql_server_fqdn                   = data.terraform_remote_state.foundation.outputs.postgresql_server_fqdn
   ghcr_packages_public                     = var.ghcr_packages_public
   ce_min_replicas                          = 0
   pr_min_replicas                          = 0

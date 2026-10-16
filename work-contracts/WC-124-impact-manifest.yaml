@@ -1,0 +1,175 @@
+schema: waooaw.wc124-impact-manifest/v1
+work_contract: WC-124
+component: PST-WC01
+candidate_head: c86c17616b30433de6635c15b1c520271b470fa7
+status: LOCALLY_QUALIFIED_PROVIDER_GATES_RESERVED
+requirement_binding:
+  ledger: work-contracts/WC-124-requirements.yaml
+  requirements: [WC124-R002]
+  gaps: 13
+
+gaps:
+  - id: PST-001
+    state: locally-qualified
+    source: infrastructure/terraform/phase2/modules/workload/main.tf
+    owning_surface: cloud workload database routes
+    baseline:
+      contains_all: ["Host=localhost;Port=5432", "postgres@localhost:5432"]
+    target:
+      contains_all: ["pgbouncer"]
+      contains_none: ["Host=localhost;Port=5432", "postgres@localhost:5432"]
+    direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-001]
+
+  - id: PST-002
+    state: locally-qualified
+    source: infrastructure/terraform/phase2/modules/workload/main.tf
+    owning_surface: CE/BP/Billing application revisions
+    baseline:
+      contains_all:
+        - 'contains(["constitutional-engine", "business-platform", "billing-engine"], each.key)'
+        - 'name    = "postgres"'
+    target:
+      contains_none:
+        - 'contains(["constitutional-engine", "business-platform", "billing-engine"], each.key)'
+        - 'name    = "postgres"'
+    direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-002]
+
+  - id: PST-003
+    state: locally-qualified
+    source: infrastructure/terraform/phase2/modules/workload/main.tf
+    owning_surface: Billing revision transient dependencies
+    baseline:
+      contains_all:
+        - 'for_each = each.key == "billing-engine" ? [1] : []'
+        - 'name   = "redis"'
+    target:
+      contains_none:
+        - 'for_each = each.key == "billing-engine" ? [1] : []'
+    direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-003]
+
+  - id: PST-004
+    state: locally-qualified
+    source: infrastructure/terraform/phase2/modules/workload/main.tf
+    owning_surface: Demo Temporal persistence
+    baseline:
+      contains_all: ["wc091-demo-temporal-postgres", 'POSTGRES_SEEDS"', 'value = "localhost"']
+    target:
+      contains_none: ["wc091-demo-temporal-postgres", 'value = "localhost"']
+    direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-004]
+
+  - id: PST-005
+    state: locally-qualified
+    source: infrastructure/terraform/phase2/modules/foundation/main.tf
+    owning_surface: Demo/UAT persistent database foundation
+    baseline:
+      contains_none: ["azurerm_postgresql_flexible_server"]
+    target:
+      contains_all: ["azurerm_postgresql_flexible_server"]
+    direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-005]
+
+  - id: PST-006
+    state: locally-qualified
+    source: infrastructure/terraform/phase2/modules/workload/main.tf
+    owning_surface: dedicated environment PgBouncer dependency
+    baseline:
+      contains_none: ['ca-${var.environment}-pgbouncer']
+    target:
+      contains_all:
+        - 'ca-${var.environment}-pgbouncer'
+        - 'docker.io/pgbouncer/pgbouncer@sha256:e8162131a43c54cd0ac7941e66eaaa802c5e5a49036f41b41260b70b290feea9'
+    direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-006]
+
+  - id: PST-007
+    state: locally-qualified
+    source: src/billing-engine/reconciliation/service.py
+    owning_surface: Billing integrity halt authority
+    baseline:
+      contains_all:
+        - 'BILLING_HALTED_KEY = "wbe:billing_halted"'
+        - "await self._redis.set(BILLING_HALTED_KEY"
+        - "await self._redis.delete(BILLING_HALTED_KEY)"
+    target:
+      contains_all:
+        - "BillingAuthority(session, self._environment)"
+        - "if self._environment == \"production\""
+        - "RECONCILIATION_REQUIRED"
+    direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-007]
+
+  - id: PST-008
+    state: locally-qualified
+    source: src/billing-engine/reconciliation/router.py
+    owning_surface: Billing reconciliation status and outcome authority
+    baseline:
+      contains_all:
+        - 'redis_client.get("wbe:last_self_audit_result")'
+        - 'redis_client.get("wbe:last_daily_audit_result")'
+        - 'redis_client.set('
+    target:
+      contains_all:
+        - "if service.uses_durable_authority"
+        - "await service.last_audit_projection()"
+        - 'redis_client.get("wbe:last_self_audit_result")'
+        - "if not service.uses_durable_authority"
+    direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-008]
+
+  - id: PST-009
+    state: locally-qualified
+    source: src/billing-engine/reconciliation/scheduler.py
+    owning_surface: Billing reconciliation idempotency
+    baseline:
+      contains_all:
+        - 'idempotency_key = f"wbe:audit_in_progress:'
+        - "already_running = await redis_client.get(idempotency_key)"
+        - 'await redis_client.set(idempotency_key, "1"'
+    target:
+      contains_none:
+        - 'idempotency_key = f"wbe:audit_in_progress:'
+        - "already_running = await redis_client.get(idempotency_key)"
+    direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-009]
+
+  - id: PST-010
+    state: locally-qualified
+    source: .github/workflows/ci.yaml
+    owning_surface: blocking persistent-state CI gates
+    baseline:
+      contains_none: ["wc124-persistent-state", "PST-SEC-EVIDENCE-01", "PST-SEC-EMERGENCY-01"]
+    target:
+      contains_all: ["wc124-persistent-state", "PST-SEC-EVIDENCE-01", "PST-SEC-EMERGENCY-01"]
+    direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-010]
+
+  - id: PST-011
+    state: locally-qualified
+    source: .github/workflows/deploy.yaml
+    owning_surface: persistent-data deployment lifecycle
+    baseline:
+      contains_all: ["- plan", "- apply"]
+      contains_none: ["- activate", "- sleep"]
+    target:
+      contains_all: ["- plan", "- activate", "- sleep"]
+      contains_none: ["- apply"]
+    direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-011]
+
+  - id: PST-012
+    state: locally-qualified
+    source: scripts/wc124_azure_lifecycle.py
+    owning_surface: retained-data cost and deletion boundary
+    baseline:
+      contains_none: ["residual_monthly_cost", "retained_authoritative_data"]
+    target:
+      contains_all: ["residual_monthly_cost", "retained_authoritative_data"]
+    direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-012]
+
+  - id: PST-013
+    state: resolved
+    source: scripts/run_goal006_local_azure_verification.sh
+    owning_surface: canonical Docker Azure CLI emulator verifier
+    baseline:
+      file_exists: true
+    target:
+      file_exists: true
+      contains_all:
+        - "mcr.microsoft.com/azure-cli@sha256:"
+        - "goal006-azure-emulator"
+        - "az cloud register"
+        - "WAOOAWLocal"
+    direct_evidence: test_gap_baselines_and_target_oracles_are_exact[PST-013]

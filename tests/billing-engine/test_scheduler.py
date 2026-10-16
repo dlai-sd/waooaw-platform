@@ -49,31 +49,24 @@ def mock_reconciliation_service() -> ReconciliationService:
 
 
 @pytest.mark.asyncio
-async def test_run_daily_reconciliation_idempotency_skips_if_in_progress(
+async def test_run_daily_reconciliation_ignores_redis_idempotency_projection(
     mock_reconciliation_service: ReconciliationService,
     mock_redis_client: aioredis.Redis,
 ) -> None:
     """
-    Test that _run_daily_reconciliation skips if audit_in_progress key exists (C-002).
-
-    Verifies: Redis idempotency key set with TTL prevents duplicate runs.
+    Redis cannot claim or suppress a durable reconciliation execution.
     """
-    # Setup: mock redis.get to return '1' (already in progress)
     mock_redis_client.get = AsyncMock(return_value="1")
     mock_redis_client.set = AsyncMock()
+    mock_reconciliation_service.run_daily_audit = AsyncMock()
+    mock_reconciliation_service.run_self_audit = AsyncMock()
 
-    now_ist = datetime.now(tz=_TZ_KOLKATA)
-    yesterday: date = (now_ist - timedelta(days=1)).date()
-    idempotency_key = f"wbe:audit_in_progress:{yesterday.isoformat()}"
-
-    # Execute
     await _run_daily_reconciliation(mock_reconciliation_service, mock_redis_client)
 
-    # Assert: get was called to check idempotency, set and service methods were NOT
-    mock_redis_client.get.assert_called_once_with(idempotency_key)
+    mock_redis_client.get.assert_not_called()
     mock_redis_client.set.assert_not_called()
-    mock_reconciliation_service.run_daily_audit.assert_not_called()
-    mock_reconciliation_service.run_self_audit.assert_not_called()
+    mock_reconciliation_service.run_daily_audit.assert_called_once()
+    mock_reconciliation_service.run_self_audit.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -111,14 +104,10 @@ async def test_run_daily_reconciliation_proceeds_if_not_in_progress(
     mock_reconciliation_service.run_daily_audit = AsyncMock(return_value=daily_result)
     mock_reconciliation_service.run_self_audit = AsyncMock(return_value=self_result)
 
-    idempotency_key = f"wbe:audit_in_progress:{yesterday.isoformat()}"
-
-    # Execute
     await _run_daily_reconciliation(mock_reconciliation_service, mock_redis_client)
 
-    # Assert: idempotency key set, both audits called
-    mock_redis_client.get.assert_called_once_with(idempotency_key)
-    mock_redis_client.set.assert_called_once_with(idempotency_key, "1", ex=4 * 60 * 60)
+    mock_redis_client.get.assert_not_called()
+    mock_redis_client.set.assert_not_called()
     mock_reconciliation_service.run_daily_audit.assert_called_once_with(yesterday)
     mock_reconciliation_service.run_self_audit.assert_called_once()
 

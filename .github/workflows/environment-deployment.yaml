@@ -26,6 +26,14 @@ on:
         required: false
         type: boolean
         default: false
+      lifecycle_action:
+        required: false
+        type: string
+        default: plan
+      sleep_evidence_json:
+        required: false
+        type: string
+        default: ""
     outputs:
       verification_client_id:
         value: ${{ jobs.terraform.outputs.verification_client_id }}
@@ -294,11 +302,14 @@ jobs:
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
           APPLY_REQUESTED: ${{ inputs.apply }}
           COST_CONTROLS_ENFORCED: ${{ inputs.enforce_cost_controls }}
+          LIFECYCLE_ACTION: ${{ inputs.lifecycle_action }}
         run: |
           test "$CALLER_WORKFLOW_REF" = "$EXPECTED_CALLER_WORKFLOW_REF"
           case "$TARGET_ENVIRONMENT" in demo|uat|prod) ;; *) exit 1 ;; esac
           case "$APPLY_REQUESTED" in true|false) ;; *) exit 1 ;; esac
           case "$COST_CONTROLS_ENFORCED" in true|false) ;; *) exit 1 ;; esac
+          case "$LIFECYCLE_ACTION" in plan|activate|sleep) ;; *) exit 1 ;; esac
+          test "$TARGET_ENVIRONMENT" != prod || test "$LIFECYCLE_ACTION" = plan
 
       - name: Reject stale release before cloud access
         env:
@@ -692,7 +703,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Resolve foundation outputs
-        if: inputs.apply
+        if: inputs.apply || inputs.lifecycle_action == 'sleep'
         id: foundation
         env:
           CACHE_HIT: ${{ steps.foundation-cache.outputs.cache_hit }}
@@ -733,7 +744,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Azure login with environment deployment OIDC identity
-        if: inputs.apply
+        if: inputs.apply || inputs.lifecycle_action == 'sleep'
         uses: azure/login@v2
         with:
           client-id: ${{ steps.foundation.outputs.deployment_client_id }}
@@ -741,8 +752,30 @@ jobs:
           subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
       - name: Verify environment deployment subscription
-        if: inputs.apply
+        if: inputs.apply || inputs.lifecycle_action == 'sleep'
         run: test "$(az account show --query id -o tsv)" = "$ARM_SUBSCRIPTION_ID"
+
+      - name: Start persistent database before dependency activation
+        if: inputs.lifecycle_action == 'activate'
+        run: |
+          python3 scripts/wc124_azure_lifecycle.py \
+            --environment '${{ inputs.environment }}' \
+            --action activate \
+            --output wc124-lifecycle-execution.json
+
+      - name: Execute retained-data sleep after all gates pass
+        if: inputs.lifecycle_action == 'sleep'
+        env:
+          SLEEP_EVIDENCE_JSON: ${{ inputs.sleep_evidence_json }}
+        run: |
+          set -euo pipefail
+          test -n "$SLEEP_EVIDENCE_JSON"
+          printf '%s' "$SLEEP_EVIDENCE_JSON" | jq -e . > wc124-sleep-evidence.json
+          python3 scripts/wc124_azure_lifecycle.py \
+            --environment '${{ inputs.environment }}' \
+            --action sleep \
+            --sleep-evidence wc124-sleep-evidence.json \
+            --output wc124-lifecycle-execution.json
 
       - name: Check credential inventory
         if: inputs.apply
@@ -965,6 +998,9 @@ jobs:
             --key-vault-uri '${{ steps.foundation.outputs.key_vault_uri }}' \
             --output workload.auto.tfvars.json \
             --ghcr-packages-public-verified
+          jq '.application_activation_enabled = false' \
+            workload.auto.tfvars.json > workload.dormant.tfvars.json
+          mv workload.dormant.tfvars.json workload.auto.tfvars.json
 
       - name: Terraform workload plan
         if: inputs.apply
@@ -1019,9 +1055,9 @@ jobs:
             --scope workload \
             --plan workload-plan.json
 
-      - name: Terraform workload apply
+      - name: Terraform dormant workload and migration dependency apply
         if: inputs.apply
-        id: workload
+        id: dormant-workload
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload
         run: |
           set -euo pipefail
@@ -1064,6 +1100,67 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+      - name: Run additive Billing authority migration through PgBouncer
+        if: inputs.apply
+        env:
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          job_name="job-${TARGET_ENVIRONMENT}-wc124-billing-migration"
+          execution=$(az containerapp job start \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$job_name" \
+            --query name \
+            --output tsv)
+          test -n "$execution"
+          for attempt in $(seq 1 120); do
+            status=$(az containerapp job execution show \
+              --resource-group "$RESOURCE_GROUP" \
+              --name "$job_name" \
+              --job-execution-name "$execution" \
+              --query properties.status \
+              --output tsv)
+            case "$status" in
+              Succeeded) break ;;
+              Failed|Stopped) echo "Billing migration failed: $status" >&2; exit 1 ;;
+            esac
+            test "$attempt" != 120
+            sleep 10
+          done
+
+      - name: Plan application activation after migration
+        if: inputs.apply
+        working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload
+        run: |
+          set -euo pipefail
+          jq '.application_activation_enabled = true' \
+            workload.auto.tfvars.json > workload.active.tfvars.json
+          mv workload.active.tfvars.json workload.auto.tfvars.json
+          terraform plan -input=false -lock-timeout=5m -out=workload-activation.tfplan
+          terraform show -json workload-activation.tfplan > workload-activation-plan.json
+          python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
+            --scope workload \
+            --plan workload-activation-plan.json
+
+      - name: Apply application activation
+        if: inputs.apply
+        id: workload
+        working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          latest_main_sha=$(curl --fail --silent --show-error \
+            --header "Authorization: ******" \
+            --header 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" | jq -er '.object.sha')
+          test '${{ inputs.release_sha }}' = "$latest_main_sha"
+          terraform apply -input=false -auto-approve workload-activation.tfplan
+          web_url=$(terraform output -raw web_url)
+          test -n "$web_url"
+          echo "web_url=$web_url" >> "$GITHUB_OUTPUT"
+
       - name: Bind Demo Azure-managed TLS certificates
         if: inputs.apply && inputs.environment == 'demo'
         env:
@@ -1089,6 +1186,17 @@ jobs:
         env:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
         run: az containerapp job delete --name "$SEEDER_JOB" --resource-group "$RESOURCE_GROUP" --yes --output none
+
+      - name: Retain persistent-state lifecycle execution evidence
+        if: always() && inputs.lifecycle_action != 'plan'
+        uses: actions/upload-artifact@v4
+        with:
+          name: wc124-lifecycle-execution-${{ inputs.environment }}-${{ github.run_id }}
+          path: |
+            wc124-lifecycle-execution.json
+            wc124-sleep-evidence.json
+          if-no-files-found: error
+          retention-days: 400
 
       - name: Upload plans and evidence
         if: always()

@@ -20,6 +20,19 @@ variable "key_vault_secret_resource_ids" {
   type = map(string)
 }
 
+variable "database_secret_uris" {
+  type = map(string)
+}
+
+variable "database_secret_resource_ids" {
+  type = map(string)
+}
+
+variable "application_activation_enabled" {
+  type    = bool
+  default = true
+}
+
 
 variable "ghcr_packages_public" {
   type        = bool

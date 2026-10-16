@@ -18,9 +18,6 @@ from reconciliation.service import ReconciliationService
 logger = logging.getLogger(__name__)
 
 _TZ_KOLKATA = ZoneInfo("Asia/Kolkata")
-_AUDIT_IN_PROGRESS_TTL_SECONDS = 4 * 60 * 60  # 4 hours
-
-
 async def _run_daily_reconciliation(
     service: ReconciliationService,
     redis_client: aioredis.Redis,
@@ -28,19 +25,6 @@ async def _run_daily_reconciliation(
     """02:00 IST job: run_daily_audit(yesterday) then run_self_audit()."""
     now_ist = datetime.now(tz=_TZ_KOLKATA)
     yesterday: date = (now_ist - timedelta(days=1)).date()
-    idempotency_key = f"wbe:audit_in_progress:{yesterday.isoformat()}"
-
-    # C-002 idempotency: skip if already running / completed today
-    already_running = await redis_client.get(idempotency_key)
-    if already_running:
-        logger.info(
-            "Daily reconciliation already in progress or completed for %s -- skipping",
-            yesterday.isoformat(),
-        )
-        return
-
-    # Mark audit in progress (TTL = 4 h)
-    await redis_client.set(idempotency_key, "1", ex=_AUDIT_IN_PROGRESS_TTL_SECONDS)
     logger.info("Starting daily reconciliation for date=%s", yesterday.isoformat())
 
     try:

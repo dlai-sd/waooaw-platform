@@ -16,7 +16,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from wallet.service import WalletService
+from wallet.service import WalletService, settings
 
 # ---------------------------------------------------------------------------
 # Schema
@@ -49,6 +49,13 @@ _WALLET_SCHEMA = [
         consumed INTEGER NOT NULL DEFAULT 0,
         consumed_at TEXT,
         created_at TEXT NOT NULL
+    )""",
+    """CREATE TABLE integrity_states (
+        environment TEXT NOT NULL,
+        tenant_id TEXT NOT NULL,
+        accounting_scope_id TEXT NOT NULL,
+        state TEXT NOT NULL,
+        PRIMARY KEY (environment, tenant_id, accounting_scope_id)
     )""",
 ]
 
@@ -122,7 +129,15 @@ def wallet_service(db_session, fake_redis):
     return WalletService(db=db_session, redis_client=fake_redis)
 
 
-async def _seed_bucket(session, *, customer_id, thread_type="DMA", balance_paise=10000, is_active=True):
+async def _seed_bucket(
+    session,
+    *,
+    customer_id,
+    thread_type="DMA",
+    balance_paise=10000,
+    is_active=True,
+    environment="production",
+):
     """Insert employment_contract + wallet_bucket. Returns (contract_id, bucket_id)."""
     contract_id = str(uuid.uuid4())
     bucket_id = str(uuid.uuid4())
@@ -138,6 +153,17 @@ async def _seed_bucket(session, *, customer_id, thread_type="DMA", balance_paise
             id=bucket_id, ec=contract_id, tt=thread_type,
             bal=balance_paise, active=1 if is_active else 0,
             now=datetime.now(tz=timezone.utc).isoformat(),
+        )
+    )
+    await session.execute(
+        text(
+            """INSERT INTO integrity_states
+               (environment, tenant_id, accounting_scope_id, state)
+               VALUES (:environment, :tenant_id, :scope_id, 'CLEAR')"""
+        ).bindparams(
+            environment=environment,
+            tenant_id=str(customer_id),
+            scope_id=bucket_id,
         )
     )
     await session.commit()
@@ -215,13 +241,40 @@ async def _seed_contract_with_prices(
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_reserve_raises_503_when_billing_halted(wallet_service, fake_redis):
-    """C-004: wbe:billing_halted set → reserve() raises HTTP 503 BILLING_INTEGRITY_HALT."""
+async def test_redis_cannot_create_billing_halt(db_session, fake_redis, monkeypatch):
+    """Redis is cache-only and cannot create an authoritative Billing halt."""
+    customer_id = uuid.uuid4()
+    monkeypatch.setattr(settings, "WAOOAW_ENVIRONMENT", "demo")
+    await _seed_bucket(db_session, customer_id=customer_id, environment="demo")
+    service = WalletService(db=db_session, redis_client=fake_redis)
     await fake_redis.set(b"wbe:billing_halted", b"1")
 
+    reservation = await service.reserve(
+        customer_id=customer_id,
+        thread_type="DMA",
+        amount_paise=1000,
+        idempotency_key=uuid.uuid4(),
+        redis_client=fake_redis,
+    )
+
+    assert reservation.reserved_paise == 1000
+
+
+@pytest.mark.asyncio
+async def test_reserve_fails_closed_when_authority_state_is_missing(
+    db_session, fake_redis, monkeypatch
+):
+    """Missing PostgreSQL authority state denies consequential writes."""
+    svc = WalletService(db=db_session, redis_client=fake_redis)
+    customer_id = uuid.uuid4()
+    monkeypatch.setattr(settings, "WAOOAW_ENVIRONMENT", "demo")
+    await _seed_bucket(db_session, customer_id=customer_id, environment="demo")
+    await db_session.execute(text("DELETE FROM integrity_states"))
+    await db_session.commit()
+
     with pytest.raises(HTTPException) as exc_info:
-        await wallet_service.reserve(
-            customer_id=uuid.uuid4(),
+        await svc.reserve(
+            customer_id=customer_id,
             thread_type="DMA",
             amount_paise=1000,
             idempotency_key=uuid.uuid4(),
@@ -229,57 +282,21 @@ async def test_reserve_raises_503_when_billing_halted(wallet_service, fake_redis
         )
 
     assert exc_info.value.status_code == 503
-    assert exc_info.value.detail["code"] == "BILLING_INTEGRITY_HALT"
+    assert exc_info.value.detail["code"] in {
+        "BILLING_INTEGRITY_HALT",
+        "BILLING_AUTHORITY_UNAVAILABLE",
+    }
 
 
 @pytest.mark.asyncio
-async def test_reserve_passes_halt_guard_when_not_halted(db_session, fake_redis):
-    """C-004: halt key absent → reserve() passes halt guard (no 503 raised)."""
-    svc = WalletService(db=db_session, redis_client=fake_redis)
-
-    try:
-        await svc.reserve(
-            customer_id=uuid.uuid4(),
-            thread_type="DMA",
-            amount_paise=1000,
-            idempotency_key=uuid.uuid4(),
-            redis_client=fake_redis,
-        )
-    except HTTPException as exc:
-        assert exc.status_code != 503, "Unexpected BILLING_INTEGRITY_HALT — key was not set"
-    except Exception:
-        pass  # DB-level error is fine — halt guard passed
-
-
-@pytest.mark.asyncio
-async def test_check_billing_halted_raises_503_when_key_set(wallet_service, fake_redis):
-    """_check_billing_halted() raises HTTP 503 when Redis key is present."""
-    await fake_redis.set(b"wbe:billing_halted", b"1")
+async def test_production_halt_check_retains_redis_authority(wallet_service, fake_redis):
+    await fake_redis.set("wbe:billing_halted", "1")
 
     with pytest.raises(HTTPException) as exc_info:
         await wallet_service._check_billing_halted()
 
     assert exc_info.value.status_code == 503
-    assert "BILLING_INTEGRITY_HALT" in exc_info.value.detail["code"]
-
-
-@pytest.mark.asyncio
-async def test_check_billing_halted_passes_when_key_absent(wallet_service):
-    """_check_billing_halted() returns normally when Redis key is absent."""
-    await wallet_service._check_billing_halted()  # must not raise
-
-
-@pytest.mark.asyncio
-async def test_check_billing_halted_fails_safe_on_redis_error(db_session):
-    """_check_billing_halted() raises HTTP 503 (fail-safe) when Redis errors."""
-    broken_redis = MagicMock()
-    broken_redis.get = AsyncMock(side_effect=OSError("Redis down"))
-    svc = WalletService(db=db_session, redis_client=broken_redis)
-
-    with pytest.raises(HTTPException) as exc_info:
-        await svc._check_billing_halted()
-
-    assert exc_info.value.status_code == 503
+    assert exc_info.value.detail["code"] == "BILLING_INTEGRITY_HALT"
 
 
 # ---------------------------------------------------------------------------
@@ -394,21 +411,24 @@ async def test_reserve_idempotency_raises_duplicate(db_session, fake_redis):
 
 
 @pytest.mark.asyncio
-async def test_reserve_redis_error_fails_safe_503(db_session):
+async def test_reserve_redis_error_fails_safe_503(db_session, monkeypatch):
     """reserve() raises HTTP 503 (fail-safe) when Redis errors during halt check."""
+    monkeypatch.setattr(settings, "WAOOAW_ENVIRONMENT", "production")
+    customer_id = uuid.uuid4()
+    await _seed_bucket(db_session, customer_id=customer_id)
     broken_redis = MagicMock()
     broken_redis.get = AsyncMock(side_effect=OSError("Redis down"))
     svc = WalletService(db=db_session, redis_client=broken_redis)
     with pytest.raises(HTTPException) as exc_info:
         await svc.reserve(
-            customer_id=uuid.uuid4(),
+            customer_id=customer_id,
             thread_type="DMA",
             amount_paise=1000,
             idempotency_key=uuid.uuid4(),
             redis_client=broken_redis,
         )
     assert exc_info.value.status_code == 503
-    assert exc_info.value.detail["code"] == "BILLING_INTEGRITY_HALT"
+    assert exc_info.value.detail["code"] == "BILLING_AUTHORITY_UNAVAILABLE"
 
 
 @pytest.mark.asyncio

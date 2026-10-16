@@ -1,0 +1,668 @@
+schema: waooaw.wc124-persistent-state-inputs/v1
+work_contract: WC-124
+produced_at: "2026-10-16"
+authority:
+  decision: FOUNDER_AUTHORIZED_OWNER_DECISION_PASS
+  statement: >-
+    INST-009, INST-006, and INST-007 may select, record, and accept the fourteen
+    missing WC-124 technical inputs within FA-055; this grants no provider,
+    deployment, restore, traffic, Production, approval, or merge authority.
+  deciding_offices:
+    - INST-009 Platform Architect
+    - INST-006 Data Architect
+    - INST-007 Security Architect
+environments: [demo, uat]
+production_change: prohibited
+implementation_may_begin: true
+blocker: CB-020
+blocker_status: CLOSED
+resolution_summary:
+  resolved: 15
+  blocked: 0
+  generated_evidence_contracts: [CB-020-09, CB-020-10, CB-020-11, CB-020-13, CB-020-15]
+
+source_baseline:
+  work_component:
+    path: architecture/reference/components/demo-uat-persistent-state-lifecycle-work-component.md
+    sha256: 247228e63115f1c137524767b02f7b21419d3c2fdbc6de8312cae4151b6b680f
+  environment_contract:
+    path: architecture/reference/components/environment-readiness-and-data-continuity.md
+    sha256: dde026ac1b7b6c1dda2194a412c2be34cbe2e10a2c1c3e262a10f522e64b0854
+  azure_topology:
+    path: architecture/reference/pipeline/azure-deployment-topology.md
+    sha256: 6f0520d7b4793fcd981f02b270e410e837b43bcb73eaab7cb41216810e6f7fce
+  adr_047:
+    path: adr/ADR-047-private-ephemeral-deployment-runners.md
+    sha256: 8112f6a060435f580f44ac1421de0be68a78c33cf8780e70946719087f2dd07f
+
+items:
+  - id: CB-020-01
+    subject: PostgreSQL capacity and availability
+    status: RESOLVED
+    deciding_owners: [INST-009, INST-006]
+    selected_value:
+      demo:
+        sku: B_Standard_B1ms
+        storage_gib: 32
+        storage_autogrow: disabled
+        availability: single_zone_no_ha
+        postgresql_max_connections: 40
+      uat:
+        sku: B_Standard_B1ms
+        storage_gib: 32
+        storage_autogrow: disabled
+        availability: single_zone_no_ha
+        postgresql_max_connections: 100
+      common:
+        postgresql_major: 16
+        backup_retention_days: 35
+        private_tls_only: true
+        geo_redundant_backup: false
+        workload_destroy_protection: true
+    rationale: >-
+      B1ms is the lowest accepted burstable posture; fixed 32 GiB prevents
+      unbounded storage spend, while no HA stays inside the Demo/UAT low-cost
+      boundary. Recovery is supplied by the accepted backup/PITR contract.
+    source_constraints:
+      - Work Component §5.1, §7.1 and §12
+      - Environment contract §3 and §3.1
+      - Production and public/direct routes remain unchanged/prohibited
+    acceptance_statement: INST-009 and INST-006 accept these exact Demo/UAT foundation inputs.
+    rollback_stop_condition: >-
+      Stop before plan if the provider rejects the SKU/storage/posture, predicted
+      aggregate connections exceed 80%, or monthly cost exceeds item CB-020-02;
+      return to the owners without substituting another SKU or enabling HA/autogrow.
+    package_evidence:
+      type: owner_decision
+      oracle: Terraform policy must match every selected field and show no Production delta.
+
+  - id: CB-020-02
+    subject: Monthly estimate and reserve
+    status: RESOLVED
+    deciding_owners: [INST-009]
+    selected_value:
+      currency: INR
+      tax_basis: before_GST
+      demo_sleeping_estimate_monthly: 1100
+      uat_sleeping_estimate_monthly: 1600
+      combined_sleeping_estimate_monthly: 2700
+      owner_approved_monthly_reserve: 3200
+      hard_monthly_apply_stop: 10000
+      estimate_includes: [storage, backup, private_dns, retained_telemetry, networking_control_plane]
+    rationale: >-
+      The exact estimates remain inside the accepted INR 350-1,600 per-environment
+      range and the INR 700-3,200 combined range; the reserve equals, but does not
+      exceed, the accepted combined ceiling and remains well below FA-052.
+    source_constraints:
+      - Environment contract §3.1 Cost boundary
+      - Work Component §12 and §20
+    acceptance_statement: INST-009 accepts INR 3,200/month before GST as the WC-124 owner reserve.
+    rollback_stop_condition: >-
+      Any plan above an environment estimate requires recorded variance review;
+      any combined sleeping forecast above INR 3,200 or active monthly forecast
+      above INR 10,000 stops before provider access.
+    package_evidence:
+      type: owner_decision_plus_future_plan_inventory
+      oracle: Plan records each cost class and compares exact totals to both thresholds.
+
+  - id: CB-020-03
+    subject: PostgreSQL, Terraform, and AzureRM versions
+    status: RESOLVED
+    deciding_owners: [INST-006, INST-009]
+    selected_value:
+      postgresql_major: 16
+      terraform: 1.9.8
+      providers: {azurerm: 4.14.0}
+    rationale: These are the versions already pinned by the accepted phase-2 roots and ADR-011.
+    source_constraints:
+      - ADR-011 PostgreSQL 16
+      - infrastructure/terraform/phase2 environment roots
+    acceptance_statement: INST-006 and INST-009 retain the existing exact version pins.
+    rollback_stop_condition: Stop on lock-file or root disagreement; do not auto-upgrade.
+    package_evidence:
+      path: infrastructure/terraform/phase2/environments/demo/foundation/main.tf
+      sha256: 4be7295c282ee4f5d8eb5b28c53314f2d19c3ab5edb2fd60ab8ab0103cbd6443
+
+  - id: CB-020-04
+    subject: PgBouncer immutable dependency and operating limits
+    status: RESOLVED
+    deciding_owners: [INST-009, INST-007]
+    selected_value:
+      image:
+        repository: docker.io/pgbouncer/pgbouncer
+        version: "1.22"
+        current_digest: sha256:e8162131a43c54cd0ac7941e66eaaa802c5e5a49036f41b41260b70b290feea9
+        accepted_reference: docker.io/pgbouncer/pgbouncer@sha256:e8162131a43c54cd0ac7941e66eaaa802c5e5a49036f41b41260b70b290feea9
+        linux_amd64_manifest: sha256:9270fb71b4728abb2db605aa46ab406aba567e1977eb9f0909f3e65f57b2d38e
+        decision: founder_authorized_read_only_registry_manifest_pin
+      pool_mode: transaction
+      min_replicas_outside_active_lease: 0
+      demo:
+        cpu_cores: 0.25
+        memory_gib: 0.5
+        max_client_conn: 40
+        max_db_connections: 32
+        default_pool_size: 20
+        reserve_pool_size: 4
+      uat:
+        cpu_cores: 0.5
+        memory_gib: 1
+        max_client_conn: 80
+        max_db_connections: 80
+        default_pool_size: 50
+        reserve_pool_size: 10
+      timeouts_seconds:
+        reserve_pool_timeout: 3
+        query_wait_timeout: 5
+        client_idle_timeout: 60
+        server_idle_timeout: 300
+        server_lifetime: 3600
+        server_connect_timeout: 15
+        server_login_retry: 5
+    rationale: >-
+      The Founder authorized one read-only public manifest lookup after no local
+      image or repository digest existed. The immutable OCI index digest now pins
+      the accepted dependency. Limits preserve the 20% server reserve and use the
+      reviewed timeout posture.
+    source_constraints:
+      - Work Component §7.3, §12, §18 and §20
+      - No image pull, run, publication, provider mutation, or Azure access
+    acceptance_statement: >-
+      INST-009 and INST-007 accept the immutable image digest, platform manifest,
+      resources, limits, and timeouts.
+    rollback_stop_condition: >-
+      Missing/invalid digest, digest mismatch, saturation above 80%, TLS/reset
+      failure, or any tag-only reference stops before workload plan.
+    package_evidence:
+      lookup_command: "docker buildx imagetools inspect docker.io/pgbouncer/pgbouncer:1.22"
+      lookup_authority: Founder-authorized read-only public manifest lookup
+      lookup_result_media_type: application/vnd.oci.image.index.v1+json
+      legacy_config:
+        path: infrastructure/postgres/pgbouncer/pgbouncer.ini
+        sha256: c0374e253ff73228f7a5c5a8446476efffee7700649d90146205427ee172691e
+      classification: immutable_dependency_input
+
+  - id: CB-020-05
+    subject: Complete database, schema, and principal inventory
+    status: RESOLVED
+    deciding_owners: [INST-006, INST-007]
+    selected_value:
+      applies_to: [demo, uat]
+      role_rules:
+        owners: NOLOGIN
+        migrations: LOGIN_NOBYPASSRLS_no_role_admin
+        runtimes: LOGIN_NOBYPASSRLS_non_owner
+        readers: NOLOGIN_grant_group
+        public_grants: revoked
+        tenant_tables: ENABLE_AND_FORCE_RLS
+      inventory:
+        - component: keycloak
+          database: waooaw_keycloak
+          schema: public
+          table_families: [identity_realms_clients, users_credentials_federation, sessions_tokens, admin_events]
+          owner: keycloak_owner
+          migration_role: keycloak_migrator
+          writer: keycloak_runtime
+          reader: keycloak_verifier
+          scope: environment_identity
+          retention: product_identity_policy_and_legal_hold
+          restore_order: 2
+        - component: demo_temporal
+          environments: [demo]
+          database: waooaw_temporal
+          schema: public
+          table_families: [workflow_executions, history_events, task_queues, visibility_search]
+          owner: temporal_owner
+          migration_role: temporal_migrator
+          writer: temporal_runtime
+          reader: temporal_verifier
+          scope: demo_workflow
+          retention: workflow_retention_and_legal_hold
+          restore_order: 3
+        - component: constitutional_engine
+          database: waooaw_application
+          schema: constitutional
+          table_families: [evidence_chain, policy_decisions, action_lineage, holds]
+          owner: ce_owner
+          migration_role: ce_migrator
+          writer: ce_runtime
+          reader: ce_verifier
+          scope: tenant_relationship
+          retention: append_only_indefinite_subject_to_legal_hold
+          restore_order: 4
+        - component: business_platform
+          database: waooaw_application
+          schema: business
+          table_families: [tenants_relationships, identity_links, conversations, employment_workflows, idempotency_outcomes]
+          owner: bp_owner
+          migration_role: bp_migrator
+          writer: bp_runtime
+          reader: bp_verifier
+          scope: tenant_relationship
+          retention: business_policy_and_legal_hold
+          restore_order: 5
+        - component: professional_runtime
+          database: waooaw_application
+          schema: professional
+          table_families: [professional_profiles, assignments, execution_state, durable_outcomes]
+          owner: pr_owner
+          migration_role: pr_migrator
+          writer: pr_runtime
+          reader: pr_verifier
+          scope: tenant_relationship
+          retention: employment_policy_and_legal_hold
+          restore_order: 6
+        - component: ai_runtime
+          database: waooaw_application
+          schema: ai_runtime
+          table_families: [conversation_state, tool_execution_outcomes, transcription_metadata, idempotency_outcomes]
+          owner: air_owner
+          migration_role: air_migrator
+          writer: air_runtime
+          reader: air_verifier
+          scope: tenant_relationship
+          retention: purpose_bound_runtime_policy
+          restore_order: 7
+        - component: billing
+          database: waooaw_application
+          schema: billing
+          table_families: [wallets_reservations, integrity_halt_release, reconciliation_execution_outcome, discrepancy_evidence, audit_projection]
+          owner: billing_owner
+          migration_role: billing_migrator
+          writer: billing_runtime
+          reader: billing_verifier
+          scope: tenant_accounting
+          retention: financial_policy_and_legal_hold
+          restore_order: 8
+        - component: web_sessions
+          database: waooaw_application
+          schema: web_session
+          table_families: [session_families, opaque_handle_digests, oidc_transactions, logout_replay, revocations]
+          owner: web_session_owner
+          migration_role: web_session_migrator
+          writer: web_session_app
+          reader: web_session_verifier
+          scope: tenant_subject
+          retention: session_expiry_plus_security_hold
+          restore_order: 9
+      uat_temporal_external:
+        authority: Temporal_Cloud_under_ADR_015
+        postgres_inventory: not_applicable
+    rationale: Separate databases for dependency-owned stores and schemas for first-party bounded contexts preserve ownership and least privilege without adding a datastore.
+    source_constraints:
+      - Work Component §6 and §6.1
+      - ADR-011 additive migrations
+      - UAT Temporal remains external under ADR-015
+    acceptance_statement: INST-006 and INST-007 accept the row-complete ownership and principal floor.
+    rollback_stop_condition: Stop on shared runtime credentials, runtime ownership, BYPASSRLS, missing FORCE RLS, cross-schema grants, or an unregistered table family.
+    package_evidence:
+      type: machine_readable_owner_register
+      oracle: Schema/role tests enumerate these rows and reject unregistered database objects.
+
+  - id: CB-020-06
+    subject: Entra bootstrap and generated credential handoff
+    status: RESOLVED
+    deciding_owners: [INST-006, INST-007]
+    selected_value:
+      demo_entra_bootstrap_identity: id-waooaw-demo-db-bootstrap
+      uat_entra_bootstrap_identity: id-waooaw-uat-db-bootstrap
+      transition: [entra_only_plan_a, bootstrap_transaction, reviewed_plan_b, handoff, bootstrap_revocation]
+      allowed_bootstrap_actions: [create_databases, create_nologin_owners, create_non_admin_roles, grant_accepted_rights, emit_secret_version_metadata]
+      generated_login_roles:
+        - keycloak_runtime
+        - temporal_runtime_demo_only
+        - ce_migrator
+        - ce_runtime
+        - bp_migrator
+        - bp_runtime
+        - pr_migrator
+        - pr_runtime
+        - air_migrator
+        - air_runtime
+        - billing_migrator
+        - billing_runtime
+        - web_session_migrator
+        - web_session_app
+        - pgbouncer_auth
+        - recovery_verifier_ephemeral
+      handoff:
+        value_transport: in_memory_no_echo
+        stored_result: environment_local_key_vault_secret_version
+        evidence_fields: [environment, role, logical_secret_id, vault_name, version_id, grant_digest, created_at]
+        forbidden_fields: [password, connection_string, token, private_key]
+        bootstrap_access_removed_before: migration_or_workload_activation
+    rationale: Logical managed-identity names are exact implementation inputs; provider object IDs and secret version IDs are generated evidence, not values an owner can fabricate before creation.
+    source_constraints:
+      - Work Component §7.2
+      - ADR-014 and environment contract §5.1
+    acceptance_statement: INST-006 and INST-007 accept the exact identities, role inventory, no-echo handoff, and revocation point.
+    rollback_stop_condition: Stop on password authentication before Plan A acceptance, plaintext emission, shared credential, missing version metadata, or surviving bootstrap access.
+    package_evidence:
+      type: generated_handoff_contract
+      oracle: Plan A/Plan B negative tests and metadata-only handoff ledger must pass.
+
+  - id: CB-020-07
+    subject: Billing Redis cutover and initial authority state
+    status: RESOLVED
+    deciding_owners: [INST-006, INST-007]
+    selected_value:
+      durable_authority: postgresql
+      redis_permitted_use: reconstructible_cache_or_bounded_lease_only
+      cutover_mapping:
+        redis_halt_present: import_append_only_halt_as_ACTIVE_with_source_digest
+        redis_halt_absent_and_audit_complete: create_UNHALTED_genesis_after_reconciliation
+        redis_unavailable_missing_or_conflicting: create_RECONCILIATION_REQUIRED_and_block_writes
+      initial_post_cutover_authority_state: RECONCILIATION_REQUIRED
+      required_reconciliation:
+        compare: [wallet_balances, reservations, payments, outcomes, halt_history, release_history, audit_watermark]
+        discrepancy_threshold_paise: 1
+        success_transition: UNHALTED_or_preserved_ACTIVE_halt
+        uncertainty_transition: RECONCILIATION_REQUIRED
+      source_redis_disposition: retained_read_only_until_PST_WC11_acceptance
+    rationale: Starting fail-closed prevents Redis absence from becoming an unhalt decision and preserves every existing halt until durable reconciliation establishes the exact state.
+    source_constraints:
+      - Work Component §8 and ADR-034
+      - No destructive Redis disposition before accepted recovery/rollback evidence
+    acceptance_statement: INST-006 and INST-007 accept RECONCILIATION_REQUIRED as the only safe initial state.
+    rollback_stop_condition: Stop consequential writes on missing/conflicting source data, digest mismatch, discrepancy above one paise, or incomplete halt/release history.
+    package_evidence:
+      type: owner_state_machine_decision
+      oracle: Redis-loss, restart, one-paise boundary, and append-only release tests pass.
+
+  - id: CB-020-08
+    subject: Migration, compatibility, lease, restart, and activation timing
+    status: RESOLVED
+    deciding_owners: [INST-006, INST-009]
+    selected_value:
+      activation_order: [postgresql, role_rls_backup_watermarks, pgbouncer, expand_only_migrations, previous_release_compatibility, dependencies, exact_seven, reconciliation, verification, traffic]
+      migration_order: [keycloak, demo_temporal, constitutional_engine, business_platform, professional_runtime, ai_runtime, billing, web_sessions]
+      previous_release_compatibility_window_hours: 24
+      prior_revision_retention: "24 hours and through the active environment lease, whichever is later"
+      sleep_lease_hours: 24
+      automatic_restart_reconciliation_interval_minutes: 5
+      activation_timeout_minutes: 20
+      retry_policy: {maximum_attempts_per_step: 3, backoff_seconds: [15, 30, 60]}
+    rationale: The values use the upper accepted activation target, the accepted minimum prior-revision rollback window, and a bounded daily sleep lease with prompt restart detection.
+    source_constraints:
+      - Work Component §10, §11 and §19
+      - Migrations are additive and previous-release readable
+    acceptance_statement: INST-006 and INST-009 accept this exact order and timing set.
+    rollback_stop_condition: Timeout, stale/expired lease, exhausted retry, migration disagreement, or previous-release incompatibility leaves traffic zero and enters a hold.
+    package_evidence:
+      type: owner_timing_decision
+      oracle: Docker clock-controlled sequencing, interruption, lease, and timeout tests pass.
+
+  - id: CB-020-09
+    subject: Restore fixture and backup/PITR qualification
+    status: RESOLVED
+    deciding_owners: [INST-006]
+    selected_value:
+      backup_retention_days: 35
+      rpo_minutes_maximum: 5
+      rto_minutes_maximum: 30
+      local_fixture_schema_seed:
+        path: infrastructure/recovery/phase2/fixtures/valid-recovery-bundle.json
+        sha256: 6ddf2299c51e61d51f86a9f9242bcbfded722204934307f32e5c1c087bc7940a
+        data_class: synthetic
+        production_derived: false
+      fixture_generation_contract:
+        environments: [demo, uat]
+        generator: goal006-deterministic-fixture-v1
+        required_content: [environment, synthetic_provenance, postgresql_16, schema_watermarks, release_tuple, role_rls_assertions, constitutional_chain, billing_reconciliation, source_route_denial]
+        digest_rule: canonical_JSON_SHA256_bound_before_restore_test
+      live_pitr_inputs:
+        restore_point: generated_from_successful_backup_with_age_at_most_5_minutes
+        target: new_isolated_private_target
+        source_mutation: prohibited
+        verifier: environment_recovery_verifier_ephemeral
+        cleanup: only_after_signed_evidence_retention
+    rationale: Existing synthetic evidence safely defines the fixture format; target-specific fixture digests and provider restore points necessarily arise during authorized qualification and are closed generated evidence, not missing architecture.
+    source_constraints:
+      - Work Component §13 Protected Azure PITR qualification
+      - Demo remains synthetic only
+    acceptance_statement: INST-006 accepts the fixture schema, deterministic generation, and exact recovery thresholds for both environments.
+    rollback_stop_condition: Stop on non-synthetic/identifiable Demo data, stale backup, source route, RPO/RTO breach, invariant mismatch, or cleanup before evidence retention.
+    package_evidence:
+      classification: generated_qualification_evidence_not_missing_design_input
+      oracle: Docker fixture passes first; live PITR remains separately Founder-authorized.
+
+  - id: CB-020-10
+    subject: Immutable Demo and UAT provider authorization tuples
+    status: RESOLVED
+    deciding_owners: [INST-009, INST-007]
+    selected_value:
+      common:
+        tenant_id: 0471534c-1bbe-40ab-ae65-3f721b62582c
+        subscription_id: 2ed11839-6a0f-4eaa-bd94-44ca96ff5d84
+        audience: api://AzureADTokenExchange
+      demo:
+        environment: demo
+        protected_environment: demo
+        oidc_subject: repo:dlai-sd/waooaw-platform:environment:demo
+        resource_group: waooaw-demo-rg
+        backend_key: goal006/demo/foundation.tfstate
+      uat:
+        environment: uat
+        protected_environment: uat
+        oidc_subject: repo:dlai-sd/waooaw-platform:environment:uat
+        resource_group: waooaw-uat-rg
+        backend_key: goal006/uat/foundation.tfstate
+      runtime_binding_contract:
+        fields: [founder_action_authority, runner_execution_identity, release_sha, plan_digest, secret_catalog_digest, lease_id, lease_expiry]
+        generation: protected_workflow_after_separate_founder_authority
+        validation: all_fields_present_immutable_unexpired_environment_exact_and_signed
+        mismatch_action: deny_before_provider_access
+      current_apply_authority: none
+    rationale: Static tuple values are repository-established; operation identities/digests/leases cannot exist before an authorized operation and are therefore exact generated runtime bindings.
+    source_constraints:
+      - Work Component §11.1
+      - No provider action is authorized by this package
+    acceptance_statement: INST-009 and INST-007 accept the static tuples and closed generation/validation contract; no apply tuple is currently accepted.
+    rollback_stop_condition: Any absent, expired, reused, cross-environment, mutable, unsigned, or mismatched field denies provider access.
+    package_evidence:
+      phase2_tenant_record:
+        path: infrastructure/terraform/phase2/modules/workload/main.tf
+        sha256: 8bf33e7a5eb952056beb72b6654fd056e676c5bac1ab37a162cb6e072476c3ab
+      classification: runtime_bindings_not_missing_design_input
+
+  - id: CB-020-11
+    subject: Canonical secret catalog and separated principals
+    status: RESOLVED
+    deciding_owners: [INST-007]
+    selected_value:
+      current_catalog:
+        path: infrastructure/environment-readiness/secret-catalog.json
+        canonical_digest: sha256:8959723677c5e671d2294ba203c3b7b586fa3f554d7505ae96341b71b2eb91e8
+        file_sha256: 21c166e93139e1b8f3eb060691ba74fb49a9bcadf8191bf864d3e6bfa7bf00c6
+      required_catalog_additions:
+        workload_credentials:
+          - db-keycloak-runtime
+          - db-temporal-runtime-demo
+          - db-ce-runtime
+          - db-bp-runtime
+          - db-pr-runtime
+          - db-air-runtime
+          - db-billing-runtime
+          - web-session-database
+        migration_credentials:
+          - db-ce-migration
+          - db-bp-migration
+          - db-pr-migration
+          - db-air-migration
+          - db-billing-migration
+          - db-web-session-migration
+        dependency_credentials: [db-pgbouncer-auth]
+        ephemeral_credentials: [db-recovery-verifier]
+      separated_principals:
+        bootstrap: "id-waooaw-{env}-db-bootstrap"
+        provisioning: "id-waooaw-{env}-db-provisioner"
+        migration: "id-waooaw-{env}-{component}-migration"
+        workload: "id-waooaw-{env}-{component}-workload"
+        deployment: "id-waooaw-{env}-deployment-writer"
+        verification: "id-waooaw-{env}-independent-verifier"
+      generated_catalog_contract:
+        digest: canonical_SHA256_after_schema_validation
+        binding: rendered_manifest_plan_lifecycle_record_and_authorization_tuple
+        values_in_repository: prohibited
+    rationale: The accepted closed-world catalog is extended, not replaced; each credential has one purpose and principal, and its new digest must be generated and bound before plan.
+    source_constraints:
+      - Environment contract §5 and §5.1
+      - ADR-014 no plaintext in source, plan, state, log, artifact, or evidence
+    acceptance_statement: INST-007 accepts these exact logical entries, principal patterns, operations boundary, and digest-generation contract.
+    rollback_stop_condition: Stop on undeclared/shared principal, plaintext, stale catalog digest, cross-environment binding, or excessive Key Vault operation.
+    package_evidence:
+      classification: generated_catalog_digest_not_missing_design_input
+      oracle: Catalog schema and closed-world consumer/principal checks pass before any plan.
+
+  - id: CB-020-12
+    subject: Dataset-level sidecar cutover decisions
+    status: RESOLVED
+    deciding_owners: [INST-006]
+    selected_value:
+      synthetic_discard_authority: none
+      common_method: freeze_export_import_reconcile
+      source_hold: until_PST_WC11_restore_rollback_and_reconciliation_acceptance
+      deletion_authority: none
+      cutover_ledger:
+        - dataset: constitutional_engine
+          source: ce_postgresql_sidecar_volume
+          target: waooaw_application.constitutional
+          owner: ce_owner
+          authority_class: constitutional
+          consistency: [row_counts, primary_key_digest, predecessor_successor_links, append_only_denials]
+          write_fence: source_revision_zero_traffic_plus_ce_migration_identity
+        - dataset: business_platform
+          source: bp_postgresql_sidecar_volume
+          target: waooaw_application.business
+          owner: bp_owner
+          authority_class: business
+          consistency: [row_counts, primary_key_digest, tenant_relationship_watermarks, foreign_keys]
+          write_fence: source_revision_zero_traffic_plus_bp_migration_identity
+        - dataset: billing
+          source: billing_postgresql_and_redis_authority_projection
+          target: waooaw_application.billing
+          owner: billing_owner
+          authority_class: financial
+          consistency: [wallet_totals, reservations, outcomes, halt_release_history, discrepancy_evidence]
+          write_fence: source_revision_zero_traffic_plus_billing_migration_identity
+        - dataset: demo_temporal
+          environments: [demo]
+          source: temporal_postgresql_sidecar_volume
+          target: waooaw_temporal.public
+          owner: temporal_owner
+          authority_class: workflow
+          consistency: [namespace_counts, workflow_history_digest, task_queue_watermark, visibility_count]
+          write_fence: temporal_frontend_zero_traffic_plus_temporal_migration_identity
+      generated_per_cutover_fields: [source_revision_digest, source_volume_id, fence_timestamp, source_watermark, target_watermark, schema_digest, reconciliation_digest, rollback_point]
+    rationale: All datasets are preserved and reconciled; no synthetic discard is needed or authorized, so Founder discard authority is not consumed.
+    source_constraints:
+      - Work Component §9.1
+      - Source deletion remains separately authorized
+    acceptance_statement: INST-006 accepts freeze/export/import/reconcile for all four datasets and rejects discard.
+    rollback_stop_condition: Stop sidecar removal on missing generated field, write-fence breach, count/digest/invariant mismatch, split authority, or absent rollback point.
+    package_evidence:
+      type: owner_cutover_ledger
+      oracle: Every generated field is immutable and reconciled before topology removal.
+
+  - id: CB-020-13
+    subject: ADR-047 runner and state ownership evidence
+    status: RESOLVED
+    deciding_owners: [INST-009, INST-007]
+    selected_value:
+      blueprint_version: 2.1.0
+      demo_backend_key: goal006/demo/foundation.tfstate
+      uat_backend_key: goal006/uat/foundation.tfstate
+      repository_manifest_state: {demo: ACTIVE, uat: ACTIVE}
+      live_evidence_status: REQUIRED_NOT_YET_PROVEN
+      prerequisite_component: PST-WC09A
+      required_exit_contract:
+        - exact environment OIDC subject and audience proven
+        - private runner activation and ephemeral cleanup proven
+        - isolated backend key ownership and locking proven
+        - private backend access and public fallback denial proven
+        - cross-environment identity/state denial proven
+        - import map and no duplicate resource creation proven
+        - drift and reviewed-plan retention proven
+        - partial-apply recovery hold and roll-forward proven
+        - separate Demo and UAT state Storage accounts proven before UAT qualification
+      dependency_rule: PST_WC04_cannot_start_until_all_PST_WC09A_oracles_pass
+    rationale: Live ownership cannot be inferred from repository manifests, but the Work Component expressly permits a bounded prerequisite delivery; accepting its exact exit contract resolves the design input without claiming evidence exists.
+    source_constraints:
+      - Work Component §9.2 and PST-WC09A
+      - ADR-047
+    acceptance_statement: INST-009 and INST-007 accept PST-WC09A as the mandatory prerequisite and do not accept current live ownership.
+    rollback_stop_condition: Any failed/absent exit oracle blocks PST-WC04; no public fallback, shared state account for UAT qualification, or duplicate creation is permitted.
+    package_evidence:
+      repository_manifest:
+        path: infrastructure/deployment-stacks/goal006-runner/bootstrap-manifest.json
+        sha256: 5234324f715ad2da53195fbe7125d5683ff6fde3e3b39311758f0890bc3ebb93
+      classification: prerequisite_exit_contract_not_live_proof
+
+  - id: CB-020-14
+    subject: Lifecycle signing, scheduled mutation, alert ownership, and retention
+    status: RESOLVED
+    deciding_owners: [INST-009, INST-007]
+    selected_value:
+      record_location: existing_protected_environment_lifecycle_evidence_storage
+      identities:
+        demo_writer: id-waooaw-demo-deployment-writer
+        demo_verifier: id-waooaw-demo-independent-verifier
+        demo_scheduler: id-waooaw-demo-lifecycle-reconciler
+        uat_writer: id-waooaw-uat-deployment-writer
+        uat_verifier: id-waooaw-uat-independent-verifier
+        uat_scheduler: id-waooaw-uat-lifecycle-reconciler
+      scheduled_mutation_authority:
+        default: observe_alert_only
+        sole_mutation: re_stop_automatically_started_postgresql
+        required_conditions: [original_sleep_lease_unexpired, exact_founder_provider_authority_valid, environment_tuple_exact, no_active_or_uncertain_work, backup_ready]
+        otherwise: RECOVERY_HOLD_and_alert
+      alert_owner: Platform_Operations
+      signal_retention_days:
+        lifecycle_transition_lease_retry_lock: 400
+        backup_restore_rpo_rto: 400
+        evidence_chain_signature_security_hold: 400
+        migration_schema_network_route: 90
+        pgbouncer_saturation_rejection_route: 35
+        cost_forecast_actual_drift: 400
+      redaction: no_customer_data_secrets_tokens_connection_strings_or_raw_identifiers
+      escalation:
+        security_or_evidence_failure: immediate_SECURITY_HOLD_INST_007
+        recovery_or_data_failure: immediate_RECOVERY_HOLD_INST_006
+        cost_or_lifecycle_failure: immediate_Platform_Operations_INST_009
+    rationale: Exact logical identities preserve writer/verifier separation; mutation remains narrowly limited to the already accepted auto-start reconciliation and evidence/security records receive longer retention.
+    source_constraints:
+      - Work Component §9.4, §14.1 and §16.1
+      - Alerts confer no mutation or hold-release authority
+    acceptance_statement: INST-009 and INST-007 accept the identities, sole scheduled mutation, owner, redaction, escalation, and per-signal retention.
+    rollback_stop_condition: Invalid authority/lease, identity overlap, signature failure, redaction failure, or uncertain work causes a hold without mutation.
+    package_evidence:
+      type: owner_security_operations_decision
+      oracle: Writer-self-acceptance and every unauthorized scheduler mutation are denied.
+
+  - id: CB-020-15
+    subject: UAT promotion evidence binding
+    status: RESOLVED
+    deciding_owners: [INST-009, INST-006, INST-007]
+    selected_value:
+      current_promotion_acceptance: none
+      generated_gate:
+        demo_identity_fields: [seven_application_oci_digests, schema_digest, migration_digest, demo_manifest_digest, dependency_manifest_digest]
+        founder_acceptance_fields: [accepted_by, accepted_at, accepted_demo_identity_digest, evidence_reference]
+        uat_identity_fields: [uat_manifest_digest, uat_dependency_manifest_digest, temporal_cloud_endpoint_identity, secret_catalog_digest, authorization_tuple_digest]
+        binding_algorithm: canonical_JSON_SHA256
+        signature_policy: demo_writer_plus_independent_verifier_then_Founder_acceptance_and_uat_independent_verifier
+        equality_rule: UAT_application_schema_migration_fields_equal_Founder_accepted_Demo_fields
+        rebuild_or_reselection: prohibited
+      current_uat_manifest:
+        path: infrastructure/environment-readiness/uat.rendered.json
+        file_sha256: bae2d362c169ca84da68d2e6ce24a99af3c072a2e21be2e3a76ff8ca892930c6
+        render_digest: sha256:88fd48d5737fb3c00532f193e9fa5c4069ef77809552a3389bc0d90716a03305
+    rationale: Demo identity and Founder acceptance are future gated facts; the exact canonical binding and signature/equality rules can be accepted now without fabricating those values or authorizing UAT.
+    source_constraints:
+      - Work Component §11 and §18
+      - UAT remains blocked until future Founder Demo acceptance
+    acceptance_statement: INST-009, INST-006, and INST-007 accept the generated promotion evidence contract, not a current promotion.
+    rollback_stop_condition: Missing Founder acceptance, digest/signature mismatch, rebuild, reselection, stale manifest, or invalid UAT dependency/authorization tuple blocks UAT before provider access.
+    package_evidence:
+      classification: future_gated_evidence_not_missing_design_input
+      oracle: Mutation tests independently change every bound field and require denial.

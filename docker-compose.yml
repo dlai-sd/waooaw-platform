@@ -69,6 +69,7 @@ services:
     environment:
       HOME: /tmp
       DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-waooaw-local-dev-only}@postgres:5432/waooaw
+      WC124_DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-waooaw-local-dev-only}@pgbouncer:5433/waooaw
       PYTHONPATH: /workspace
       PYTEST_ADDOPTS: -o cache_dir=/tmp/pytest_cache
       HYPOTHESIS_STORAGE_DIRECTORY: /tmp/hypothesis
@@ -236,27 +237,27 @@ services:
   # Exception: Keycloak connects directly (5432) — Keycloak has its own connection management.
   # Exception: Temporal connects directly (5432) — Temporal manages its own pool.
   pgbouncer:
-    image: pgbouncer/pgbouncer:1.22
+    image: docker.io/pgbouncer/pgbouncer@sha256:e8162131a43c54cd0ac7941e66eaaa802c5e5a49036f41b41260b70b290feea9
     ports:
       - "5433:5433"
     environment:
       DATABASES_HOST: postgres
       DATABASES_PORT: 5432
       DATABASES_DBNAME: waooaw
+      DATABASES: "waooaw = host=postgres port=5432 dbname=waooaw user=waooaw password=${POSTGRES_PASSWORD:-waooaw-local-dev-only}"
       PGBOUNCER_POOL_MODE: transaction
+      PGBOUNCER_LISTEN_PORT: 5433
       PGBOUNCER_MAX_CLIENT_CONN: 200
       PGBOUNCER_DEFAULT_POOL_SIZE: 25
       PGBOUNCER_QUERY_WAIT_TIMEOUT: 5
       PGBOUNCER_SERVER_IDLE_TIMEOUT: 300
       # Auth — password passed at runtime (ADR-014: no secrets in compose)
-      PGBOUNCER_AUTH_TYPE: scram-sha-256
-      PGBOUNCER_AUTH_USER: waooaw
-      PGBOUNCER_AUTH_PASSWORD: ${POSTGRES_PASSWORD:-waooaw-local-dev-only}
+      PGBOUNCER_AUTH_TYPE: any
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h localhost -p 5433 -U waooaw"]
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 5433"]
       interval: 5s
       timeout: 3s
       retries: 5

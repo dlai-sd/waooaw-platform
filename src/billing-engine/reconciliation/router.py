@@ -15,11 +15,13 @@ from pydantic import BaseModel
 
 from reconciliation.service import (
     ReconciliationService,
+    FounderActionGenerator,
     DailyAuditResult,
     SelfAuditResult,
     CustomerMarginRow,
 )
 from config import Settings
+from database import get_session_factory
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +47,23 @@ def _get_service(
     redis_client: aioredis.Redis = Depends(_get_redis),
 ) -> ReconciliationService:
     """Inject ReconciliationService with dependencies."""
-    return ReconciliationService(settings=settings, redis_client=redis_client)
+    return ReconciliationService(
+        session_factory=get_session_factory(),
+        redis_client=redis_client,
+        founder_action_generator=_RouterFounderActionGenerator(),
+        environment=settings.WAOOAW_ENVIRONMENT,
+    )
+
+
+class _RouterFounderActionGenerator(FounderActionGenerator):
+    async def maybe_create(
+        self,
+        *,
+        action_type: str,
+        payload: dict[str, object],
+    ) -> bool:
+        logger.warning("Founder action requested: action_type=%s", action_type)
+        return False
 
 
 async def _require_ops_auth(
@@ -87,8 +105,8 @@ class RunNowResponse(BaseModel):
 
 @router.get("/status", response_model=AuditStatusResponse)
 async def get_reconciliation_status(
-    redis_client: aioredis.Redis = Depends(_get_redis),
     service: ReconciliationService = Depends(_get_service),
+    redis_client: aioredis.Redis = Depends(_get_redis),
 ) -> AuditStatusResponse:
     """
     Return last audit result and current billing_halted flag from Redis.
@@ -112,9 +130,19 @@ async def get_reconciliation_status(
     - C-059: Structured logging on deserialization failures.
     """
     try:
+        if service.uses_durable_authority:
+            billing_halted = await service.is_any_scope_halted()
+            last_audit_date, last_audit_run_at = await service.last_audit_projection()
+            return AuditStatusResponse(
+                last_audit_date=last_audit_date,
+                last_audit_run_at=last_audit_run_at,
+                billing_halted=billing_halted,
+                last_self_audit=None,
+                last_daily_audit=None,
+            )
+
         halted_raw = await redis_client.get("wbe:billing_halted")
         billing_halted = halted_raw is not None
-
         last_self_audit: SelfAuditResult | None = None
         last_daily_audit: DailyAuditResult | None = None
         last_audit_date: date | None = None
@@ -138,14 +166,11 @@ async def get_reconciliation_status(
             last_daily_audit = DailyAuditResult(
                 audit_date=date.fromisoformat(raw["audit_date"]),
                 total_consumed_reservations=int(raw["total_consumed_reservations"]),
-                unlinked_reservations=[
-                    uuid.UUID(r) for r in raw.get("unlinked_reservations", [])
-                ],
+                unlinked_reservations=[uuid.UUID(row) for row in raw.get("unlinked_reservations", [])],
                 evidence_id=uuid.UUID(raw["evidence_id"]),
                 audited_at=datetime.fromisoformat(raw["audited_at"]),
             )
-            if last_daily_audit.audit_date:
-                last_audit_date = last_daily_audit.audit_date
+            last_audit_date = last_daily_audit.audit_date
 
         cached_ts = await redis_client.get("wbe:last_audit_run_at")
         if cached_ts:
@@ -205,14 +230,12 @@ async def run_self_audit_now(
     try:
         result = await service.run_self_audit()
         triggered_at = datetime.now(timezone.utc)
-        await redis_client.set(
-            "wbe:last_audit_run_at",
-            triggered_at.isoformat(),
-        )
-        await redis_client.set(
-            "wbe:last_self_audit_result",
-            json.dumps(dataclasses.asdict(result), default=str),
-        )
+        if not service.uses_durable_authority:
+            await redis_client.set("wbe:last_audit_run_at", triggered_at.isoformat())
+            await redis_client.set(
+                "wbe:last_self_audit_result",
+                json.dumps(dataclasses.asdict(result), default=str),
+            )
         logger.info(
             "Ops-triggered self-audit completed: billing_halted=%s discrepancy_paise=%s",
             result.billing_halted,

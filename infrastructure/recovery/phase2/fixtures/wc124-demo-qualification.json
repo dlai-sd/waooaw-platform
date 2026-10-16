@@ -1,0 +1,44 @@
+{
+  "schema": "waooaw.wc124-local-qualification/v1",
+  "mode": "local_synthetic_no_provider_claim",
+  "environment": "demo",
+  "recovery": {
+    "sanitized": true,
+    "isolated": true,
+    "migration_applied_twice": true,
+    "prior_release_readable": true,
+    "role_matrix_passed": true,
+    "force_rls_passed": true,
+    "constitutional_reconciliation_passed": true,
+    "financial_reconciliation_passed": true,
+    "rpo_minutes": 5,
+    "rto_minutes": 30
+  },
+  "capacity": {
+    "postgresql_limit": 40,
+    "postgresql_planned": 32,
+    "pgbouncer_limit": 40,
+    "pgbouncer_planned": 32
+  },
+  "cost": {
+    "currency": "INR",
+    "tax_basis": "before_GST",
+    "sleeping_monthly": 1100,
+    "combined_sleeping_monthly": 2700,
+    "active_monthly": 10000
+  },
+  "rollback": {
+    "immutable_prior_tuple": {
+      "configuration": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "dependency": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "migration": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "plan": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "release": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+      "schema": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+      "secret_catalog": "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+    },
+    "additive_schema_retained": true,
+    "uncertain_state_enters_recovery_hold": true,
+    "provider_mutation_performed": false
+  }
+}
