@@ -1,0 +1,295 @@
+schema: waooaw.wc124-persistent-state-inputs/v1
+work_contract: WC-124
+produced_at: "2026-10-16"
+authority: Founder-authorized bounded integrated Platform/Data/Security owner input package
+environments: [demo, uat]
+implementation_may_begin: false
+blocker: CB-020
+blocker_status: OPEN
+resolution_summary:
+  resolved: 1
+  blocked: 14
+items:
+  - id: CB-020-01
+    subject: PostgreSQL capacity and availability
+    owner: "INST-009 Platform Architect with INST-006 Data Architect"
+    status: BLOCKED
+    value:
+      demo: {sku: null, storage_gib: null, autogrow: null, availability: null}
+      uat: {sku: null, storage_gib: null, autogrow: null, availability: null}
+      accepted_constraints:
+        backup_retention_days: 35
+        private_tls_only: true
+        high_availability: false
+    unresolved: Exact per-environment SKU, storage, autogrow, and availability values are not accepted.
+    source:
+      path: architecture/reference/components/demo-uat-persistent-state-lifecycle-work-component.md
+      section_or_key: "§5 item 1; §7.1 Foundation"
+      sha256: 247228e63115f1c137524767b02f7b21419d3c2fdbc6de8312cae4151b6b680f
+
+  - id: CB-020-02
+    subject: Monthly estimate and reserve
+    owner: "INST-009 Platform Architect under FA-052"
+    status: BLOCKED
+    value:
+      accepted_combined_sleeping_range_inr_before_gst: {minimum: 700, maximum: 3200}
+      hard_monthly_apply_stop_inr: 10000
+      demo_exact_estimate_inr: null
+      uat_exact_estimate_inr: null
+      owner_approved_reserve_inr: null
+    unresolved: The accepted range and ceiling are not exact per-environment estimates or an owner-approved reserve.
+    source:
+      path: architecture/reference/components/environment-readiness-and-data-continuity.md
+      section_or_key: "§3 Cost boundary"
+      sha256: dde026ac1b7b6c1dda2194a412c2be34cbe2e10a2c1c3e262a10f522e64b0854
+
+  - id: CB-020-03
+    subject: PostgreSQL, Terraform, and AzureRM versions
+    owner: "INST-006 Data Architect and INST-009 Platform Architect"
+    status: RESOLVED
+    value:
+      postgresql_major: 16
+      terraform: 1.9.8
+      providers:
+        azurerm: 4.14.0
+    source:
+      path: architecture/reference/components/demo-uat-persistent-state-lifecycle-work-component.md
+      section_or_key: "§5 item 3 (use versions already accepted by the platform contract)"
+      sha256: 247228e63115f1c137524767b02f7b21419d3c2fdbc6de8312cae4151b6b680f
+      exact_record:
+        path: infrastructure/terraform/phase2/environments/demo/foundation/main.tf
+        section_or_key: "terraform.required_version; required_providers.azurerm.version"
+        sha256: 4be7295c282ee4f5d8eb5b28c53314f2d19c3ab5edb2fd60ab8ab0103cbd6443
+      postgresql_source:
+        path: adr/ADR-011-database-migration-strategy.md
+        section_or_key: "Context: single PostgreSQL 16 database"
+        sha256: ff81b1d00d9843a5e7e6a24f5ca9522360a661d6f4af1018760dc586675adf27
+
+  - id: CB-020-04
+    subject: PgBouncer immutable dependency and operating limits
+    owner: "INST-009 Platform Architect with INST-007 Security Architect"
+    status: BLOCKED
+    value:
+      image_digest: null
+      pool_mode: transaction
+      demo: {cpu: null, memory: null, server_limit: 40, client_limit: 40, timeouts: null}
+      uat: {cpu: null, memory: null, server_limit: 100, client_limit: 80, timeouts: null}
+      min_replicas_outside_active_lease: 0
+    unresolved: No accepted local record contains an immutable PgBouncer content digest, resource allocation, or WC-124 timeout set. The legacy pgbouncer.ini values are not promoted.
+    source:
+      path: architecture/reference/components/demo-uat-persistent-state-lifecycle-work-component.md
+      section_or_key: "§5 item 4; §7.3; §12 capacity qualification"
+      sha256: 247228e63115f1c137524767b02f7b21419d3c2fdbc6de8312cae4151b6b680f
+      inspected_legacy_record:
+        path: infrastructure/postgres/pgbouncer/pgbouncer.ini
+        section_or_key: "pgbouncer pool and timeout keys; no image digest"
+        sha256: c0374e253ff73228f7a5c5a8446476efffee7700649d90146205427ee172691e
+
+  - id: CB-020-05
+    subject: Complete database, schema, and principal inventory
+    owner: "INST-006 Data Architect with component owners"
+    status: BLOCKED
+    value:
+      required_components: [keycloak, demo_temporal, constitutional_engine, business_platform, professional_runtime, ai_runtime, billing, web_sessions]
+      inventory: null
+    unresolved: No accepted row-complete register supplies every database, schema/table family, NOLOGIN owner, migration role, runtime writer, and reader.
+    source:
+      path: architecture/reference/components/demo-uat-persistent-state-lifecycle-work-component.md
+      section_or_key: "§5 item 5; §6.1 Required Data Ownership And Retention Register"
+      sha256: 247228e63115f1c137524767b02f7b21419d3c2fdbc6de8312cae4151b6b680f
+
+  - id: CB-020-06
+    subject: Entra bootstrap and generated credential handoff
+    owner: "INST-007 Security Architect with INST-006 Data Architect"
+    status: BLOCKED
+    value:
+      transition: [entra_only_plan_a, bootstrap_transaction, compatibility_plan_b, handoff]
+      entra_bootstrap_identity: null
+      generated_non_admin_login_inventory: null
+      key_vault_version_handoff: null
+    unresolved: The transition is accepted, but the exact bootstrap identity and generated principal-to-secret-version handoff are absent.
+    source:
+      path: architecture/reference/components/demo-uat-persistent-state-lifecycle-work-component.md
+      section_or_key: "§7.2 Two-Plan Bootstrap And Principal Contract"
+      sha256: 247228e63115f1c137524767b02f7b21419d3c2fdbc6de8312cae4151b6b680f
+
+  - id: CB-020-07
+    subject: Billing Redis cutover and initial authority state
+    owner: "INST-006 Data Architect and Billing owner"
+    status: BLOCKED
+    value:
+      durable_authority: postgresql
+      redis_permitted_use: reconstructible_cache_or_bounded_lease_only
+      missing_or_uncertain_halt_state: fail_closed
+      existing_halt_preservation: mandatory
+      initial_post_cutover_state: null
+      mandatory_reconciliation_record: null
+    unresolved: The safety posture is accepted, but no dataset-specific initial state and reconciliation record exists.
+    source:
+      path: architecture/reference/components/demo-uat-persistent-state-lifecycle-work-component.md
+      section_or_key: "§8 Billing Durable-Authority Migration"
+      sha256: 247228e63115f1c137524767b02f7b21419d3c2fdbc6de8312cae4151b6b680f
+
+  - id: CB-020-08
+    subject: Migration, compatibility, lease, restart, and activation timing
+    owner: "INST-006 Data Architect and INST-009 Platform Architect"
+    status: BLOCKED
+    value:
+      activation_order: [postgresql, role_rls_backup_watermarks, pgbouncer, expand_only_migrations, previous_release_compatibility, dependencies, exact_seven, reconciliation, verification, traffic]
+      activation_target_minutes: {minimum: 5, maximum: 20}
+      previous_release_compatibility_window: null
+      sleep_lease: null
+      automatic_restart_reconciliation_interval: null
+      activation_timeout: null
+    unresolved: The accepted order and target are not an exact compatibility window, lease, reconciliation interval, or timeout.
+    source:
+      path: architecture/reference/components/demo-uat-persistent-state-lifecycle-work-component.md
+      section_or_key: "§11 Activation; §5 items 9-10"
+      sha256: 247228e63115f1c137524767b02f7b21419d3c2fdbc6de8312cae4151b6b680f
+
+  - id: CB-020-09
+    subject: Restore fixture and backup/PITR qualification
+    owner: "INST-006 Data Architect with INST-015 independent evidence"
+    status: BLOCKED
+    value:
+      backup_retention_days: 35
+      rpo_minutes_maximum: 5
+      rto_minutes_maximum: 30
+      candidate_fixture:
+        path: infrastructure/recovery/phase2/fixtures/valid-recovery-bundle.json
+        environment: uat
+        mode: offline_synthetic
+        sha256: 6ddf2299c51e61d51f86a9f9242bcbfded722204934307f32e5c1c087bc7940a
+      demo_sanitized_restore_fixture: null
+    unresolved: The existing accepted synthetic bundle is UAT-scoped; no accepted Demo sanitized-restore fixture or explicit cross-environment fixture authority exists.
+    source:
+      path: architecture/reference/components/demo-uat-persistent-state-lifecycle-work-component.md
+      section_or_key: "§13 Protected Azure PITR qualification; §5 item 11"
+      sha256: 247228e63115f1c137524767b02f7b21419d3c2fdbc6de8312cae4151b6b680f
+
+  - id: CB-020-10
+    subject: Immutable Demo and UAT provider authorization tuples
+    owner: "Founder runtime authorization with INST-009 tuple enforcement"
+    status: BLOCKED
+    value:
+      static:
+        tenant_id: null
+        subscription_id: 2ed11839-6a0f-4eaa-bd94-44ca96ff5d84
+        audience: api://AzureADTokenExchange
+        demo:
+          protected_environment: demo
+          oidc_subject: repo:dlai-sd/waooaw-platform:environment:demo
+          resource_group: waooaw-demo-rg
+          backend_key: goal006/demo/foundation.tfstate
+        uat:
+          protected_environment: uat
+          oidc_subject: repo:dlai-sd/waooaw-platform:environment:uat
+          resource_group: waooaw-uat-rg
+          backend_key: goal006/uat/foundation.tfstate
+      founder_reserved_runtime_bindings:
+        apply_authority: null
+        runner_execution_identity: null
+        release_sha: null
+        plan_digest: null
+        lease_id: null
+        lease_expiry: null
+      secret_catalog_digest: sha256:8959723677c5e671d2294ba203c3b7b586fa3f554d7505ae96341b71b2eb91e8
+    unresolved: Tenant, exact runner execution identity, and Founder-reserved operation bindings do not exist for an authorized provider operation; none may be fabricated.
+    source:
+      path: architecture/reference/components/demo-uat-persistent-state-lifecycle-work-component.md
+      section_or_key: "§11.1 Immutable Provider Authorization Tuple; §13 Plan"
+      sha256: 247228e63115f1c137524767b02f7b21419d3c2fdbc6de8312cae4151b6b680f
+      exact_record:
+        path: infrastructure/terraform/phase2/environments/demo/foundation/main.tf
+        section_or_key: "backend key; repository environment; OIDC contract"
+        sha256: 4be7295c282ee4f5d8eb5b28c53314f2d19c3ab5edb2fd60ab8ab0103cbd6443
+
+  - id: CB-020-11
+    subject: Canonical secret catalog and separated principals
+    owner: "INST-007 Security Architect"
+    status: BLOCKED
+    value:
+      catalog:
+        path: infrastructure/environment-readiness/secret-catalog.json
+        canonical_digest: sha256:8959723677c5e671d2294ba203c3b7b586fa3f554d7505ae96341b71b2eb91e8
+        file_sha256: 21c166e93139e1b8f3eb060691ba74fb49a9bcadf8191bf864d3e6bfa7bf00c6
+      required_principals: [bootstrap, provisioning, migration, workload, deployment, verification]
+      wc124_database_entries_and_bindings: null
+    unresolved: The canonical catalog exists, but it does not contain the complete WC-124 database/bootstrap/migration/PgBouncer entries and separated bindings.
+    source:
+      path: architecture/reference/components/environment-readiness-and-data-continuity.md
+      section_or_key: "§5 Secret Dependency Catalog; §5.1 Provisioning"
+      sha256: dde026ac1b7b6c1dda2194a412c2be34cbe2e10a2c1c3e262a10f522e64b0854
+
+  - id: CB-020-12
+    subject: Dataset-level sidecar cutover decisions
+    owner: "INST-006 Data Architect with component owners and Founder for discard"
+    status: BLOCKED
+    value:
+      required_datasets: [constitutional_engine, business_platform, billing, demo_temporal]
+      cutover_ledger: null
+      synthetic_discard_authority: null
+    unresolved: No row-complete cutover ledger or Founder synthetic-discard decision exists.
+    source:
+      path: architecture/reference/components/demo-uat-persistent-state-lifecycle-work-component.md
+      section_or_key: "§9.1 Dataset Cutover Ledger"
+      sha256: 247228e63115f1c137524767b02f7b21419d3c2fdbc6de8312cae4151b6b680f
+
+  - id: CB-020-13
+    subject: ADR-047 runner/state ownership evidence
+    owner: "INST-009 Platform Architect with INST-007 Security Architect"
+    status: BLOCKED
+    value:
+      blueprint_version: 2.1.0
+      demo_activation_manifest_state: ACTIVE
+      uat_activation_manifest_state: ACTIVE
+      demo_backend_key: goal006/demo/foundation.tfstate
+      uat_backend_key: goal006/uat/foundation.tfstate
+      storage_account_separation_before_uat: null
+      accepted_live_ownership_evidence: null
+    unresolved: Repository manifests do not prove deployed ownership, private backend denial, imports, drift, partial-apply reconciliation, or required Storage-account separation.
+    source:
+      path: architecture/reference/components/demo-uat-persistent-state-lifecycle-work-component.md
+      section_or_key: "§9.2 Terraform State And Runner Prerequisites"
+      sha256: 247228e63115f1c137524767b02f7b21419d3c2fdbc6de8312cae4151b6b680f
+      exact_record:
+        path: infrastructure/deployment-stacks/goal006-runner/bootstrap-manifest.json
+        section_or_key: "blueprint_version; environments; files"
+        sha256: 5234324f715ad2da53195fbe7125d5683ff6fde3e3b39311758f0890bc3ebb93
+
+  - id: CB-020-14
+    subject: Lifecycle signing, scheduled mutation, alert ownership, and retention
+    owner: "INST-009 Platform Operations with INST-007 Security Architect and INST-015 verifier"
+    status: BLOCKED
+    value:
+      record_location: protected_lifecycle_evidence_storage
+      signing_separation: [deployment_writer, independent_verifier]
+      alert_owner: Platform Operations
+      scheduled_reconciliation_mutation_authority: null
+      exact_signal_retention: null
+      exact_signing_identities: null
+    unresolved: The roles and location class are accepted, but exact signing identities, scheduled mutation authority, and per-signal retention are not pinned.
+    source:
+      path: architecture/reference/components/demo-uat-persistent-state-lifecycle-work-component.md
+      section_or_key: "§14.1 Security Holds And Independent Evidence; §16.1 Lifecycle Observability And Operations"
+      sha256: 247228e63115f1c137524767b02f7b21419d3c2fdbc6de8312cae4151b6b680f
+
+  - id: CB-020-15
+    subject: UAT promotion evidence binding
+    owner: "Founder Demo acceptance with INST-009 delivery and INST-015 verification"
+    status: BLOCKED
+    value:
+      demo_application_digest_tuple: null
+      schema_digest: null
+      migration_digest: null
+      founder_demo_acceptance: null
+      uat_configuration_manifest:
+        path: infrastructure/environment-readiness/uat.rendered.json
+        file_sha256: bae2d362c169ca84da68d2e6ce24a99af3c072a2e21be2e3a76ff8ca892930c6
+        render_digest: sha256:88fd48d5737fb3c00532f193e9fa5c4069ef77809552a3389bc0d90716a03305
+      cryptographic_binding_evidence: null
+    unresolved: No Founder-accepted Demo application/schema/migration identity or cryptographic UAT binding evidence exists.
+    source:
+      path: architecture/reference/components/demo-uat-persistent-state-lifecycle-work-component.md
+      section_or_key: "§11 Activation and UAT promotion"
+      sha256: 247228e63115f1c137524767b02f7b21419d3c2fdbc6de8312cae4151b6b680f

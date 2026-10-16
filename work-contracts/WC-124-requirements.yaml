@@ -1,7 +1,10 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-124
 contract_path: work-contracts/WC-124-demo-uat-persistent-state-lifecycle-implementation.md
-contract_digest: daa4c9f74da8128cd7db99e8101e7152ee9eb03241499545a79b8dd89a1910d7
+contract_digest: dc0e5008292ff369e738cf1001851205fef1a5c9ec515dd0eb24aa06c642af8b
+input_package_path: work-contracts/WC-124-persistent-state-inputs.yaml
+implementation_may_begin: false
+input_blocker: CB-020
 implementation_scope: true
 result: PLANNED
 

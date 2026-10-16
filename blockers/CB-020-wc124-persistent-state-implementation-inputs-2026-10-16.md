@@ -76,6 +76,37 @@ Provider authorization remains separate. Resolving this blocker does not authori
 query, plan/apply, deployment, restore qualification, DNS, traffic admission, activation,
 Production action, approval or merge.
 
+## Bounded Owner Input Package - 2026-10-16
+
+The Founder-authorized integrated Platform/Data/Security owner pass produced
+`work-contracts/WC-124-persistent-state-inputs.yaml`. It records an exact owner, source
+path/section or key, source SHA-256, value, and `RESOLVED` or `BLOCKED` status for each item above.
+It does not promote legacy implementation defaults and does not contain provider-derived values.
+Its complete SHA-256 is
+`6184ca0dab8ddcd331906d042cffc99401292643a786099a0fc6a1fa9f6c2f75`.
+
+| Item | Status | Exact result |
+|---|---|---|
+| 1 PostgreSQL sizing | BLOCKED | SKU, storage, autogrow and availability remain unaccepted |
+| 2 cost/reserve | BLOCKED | Per-environment estimate and owner reserve remain absent |
+| 3 platform versions | RESOLVED | PostgreSQL 16; Terraform 1.9.8; AzureRM 4.14.0 |
+| 4 PgBouncer | BLOCKED | No accepted immutable image digest, resources or timeout set |
+| 5 data/role inventory | BLOCKED | No row-complete register |
+| 6 bootstrap/handoff | BLOCKED | Exact Entra bootstrap identity and handoff absent |
+| 7 Billing cutover | BLOCKED | Dataset-specific initial state and reconciliation absent |
+| 8 order/timing | BLOCKED | Compatibility window, lease, restart interval and timeout absent |
+| 9 recovery fixture | BLOCKED | Existing fixture is UAT-scoped; Demo fixture authority absent |
+| 10 authorization tuples | BLOCKED | Tenant, runner identity and Founder-reserved operation bindings absent |
+| 11 secret/principals | BLOCKED | Canonical catalog lacks complete WC-124 entries/bindings |
+| 12 dataset cutover | BLOCKED | Ledger and discard authority absent |
+| 13 runner/state evidence | BLOCKED | Repository records do not prove live ownership/separation |
+| 14 lifecycle control | BLOCKED | Signing identities, mutation authority and retention absent |
+| 15 UAT promotion | BLOCKED | Founder Demo acceptance and cryptographic binding absent |
+
+**Disposition:** CB-020 remains **OPEN**. `implementation_may_begin=false`; PST-WC01 through
+PST-WC14 must not start. The package digest is evidence of this bounded pass, not a closing
+contract binding, because mandatory items remain unresolved.
+
 ## Runner Remediation
 
 The Founder authorized bounded local Docker daemon repair after targeted network cleanup did not

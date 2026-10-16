@@ -12,6 +12,8 @@
 | Source Work Component | `architecture/reference/components/demo-uat-persistent-state-lifecycle-work-component.md` v1.1.0-candidate.2 |
 | Source acceptance | PR #520 merged as `5a849683abec38ebb6d9d72b37b211d8a3376806` |
 | Requirement ledger | `work-contracts/WC-124-requirements.yaml` |
+| Owner input package | `work-contracts/WC-124-persistent-state-inputs.yaml` |
+| Input gate | **BLOCKED — 14 mandatory CB-020 items unresolved; `implementation_may_begin=false`** |
 | Release Qualification | OFF by explicit current-session Founder authority |
 | Result | PLANNED |
 
@@ -59,6 +61,9 @@ current Founder authorization.
   role/secret catalogue, dataset treatment, runner/state ownership and environment authorization
   tuples must come from accepted repository records. A missing or conflicting value blocks its
   dependent requirement and must not be invented.
+- The bounded owner package records the accepted values and unresolved decisions without promoting
+  legacy defaults. CB-020 remains open and PST-WC01 through PST-WC14 remain prohibited while
+  `implementation_may_begin` is false.
 
 ## Canonical Requirement Index
 
