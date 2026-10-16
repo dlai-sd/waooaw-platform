@@ -33,6 +33,7 @@ SLEEP_GATES = {
     "rollback_ready",
     "billing_watermark_recorded",
 }
+POSTGRESQL_TRANSITIONAL_STATES = {"Starting", "Stopping", "Updating"}
 
 
 class AzureLifecycleError(RuntimeError):
@@ -55,6 +56,28 @@ def run(arguments: Sequence[str]) -> str:
 def validate_sleep_gates(evidence: dict[str, Any]) -> None:
     if set(evidence) != SLEEP_GATES or any(evidence[field] is not True for field in SLEEP_GATES):
         raise AzureLifecycleError("sleep gates are incomplete or not all PASS")
+
+
+def postgresql_state(environment: str, runner: Callable[[Sequence[str]], str]) -> str:
+    state = runner(
+        [
+            "az",
+            "postgres",
+            "flexible-server",
+            "show",
+            "--resource-group",
+            f"waooaw-{environment}-rg",
+            "--name",
+            f"psql-waooaw-{environment}-state",
+            "--query",
+            "state",
+            "--output",
+            "tsv",
+        ]
+    ).strip()
+    if not state:
+        raise AzureLifecycleError("PostgreSQL state query returned no state")
+    return state
 
 
 def commands(environment: str, action: str) -> list[list[str]]:
@@ -138,60 +161,53 @@ def execute(
     *,
     sleep_evidence: dict[str, Any] | None,
     runner: Callable[[Sequence[str]], str] = run,
+    sleeper: Callable[[float], None] = time.sleep,
 ) -> dict[str, Any]:
     if action == "sleep":
         if sleep_evidence is None:
             raise AzureLifecycleError("sleep evidence is required")
         validate_sleep_gates(sleep_evidence)
     planned = commands(environment, action)
+    initial_postgresql_state = postgresql_state(environment, runner)
+    if initial_postgresql_state not in {"Ready", "Stopped"}:
+        raise AzureLifecycleError(f"PostgreSQL lifecycle denied from state {initial_postgresql_state}; expected Ready or Stopped")
     completed: list[str] = []
     for command in planned:
+        postgres_operation = tuple(command[1:4])
+        if postgres_operation in {
+            ("postgres", "flexible-server", "start"),
+            ("postgres", "flexible-server", "stop"),
+        }:
+            current_state = initial_postgresql_state if action == "activate" else postgresql_state(environment, runner)
+            target_state = "Ready" if command[3] == "start" else "Stopped"
+            required_state = "Stopped" if command[3] == "start" else "Ready"
+            if current_state == target_state:
+                completed.append(f"postgres flexible-server already-{target_state.lower()}")
+                continue
+            if current_state != required_state:
+                raise AzureLifecycleError(
+                    f"PostgreSQL {command[3]} denied from state {current_state}; expected {required_state} or {target_state}"
+                )
         runner(command)
         completed.append(f"{command[1]} {command[2]}")
-        if command[1:4] == ["postgres", "flexible-server", "start"]:
+        if postgres_operation == ("postgres", "flexible-server", "start"):
             for _ in range(60):
-                state = runner(
-                    [
-                        "az",
-                        "postgres",
-                        "flexible-server",
-                        "show",
-                        "--resource-group",
-                        f"waooaw-{environment}-rg",
-                        "--name",
-                        f"psql-waooaw-{environment}-state",
-                        "--query",
-                        "state",
-                        "--output",
-                        "tsv",
-                    ]
-                ).strip()
+                state = postgresql_state(environment, runner)
                 if state == "Ready":
                     break
-                time.sleep(5)
+                if state not in POSTGRESQL_TRANSITIONAL_STATES:
+                    raise AzureLifecycleError(f"PostgreSQL entered unexpected state {state} while starting")
+                sleeper(5)
             else:
                 raise AzureLifecycleError("PostgreSQL did not become Ready")
-        if command[1:4] == ["postgres", "flexible-server", "stop"]:
+        if postgres_operation == ("postgres", "flexible-server", "stop"):
             for _ in range(60):
-                state = runner(
-                    [
-                        "az",
-                        "postgres",
-                        "flexible-server",
-                        "show",
-                        "--resource-group",
-                        f"waooaw-{environment}-rg",
-                        "--name",
-                        f"psql-waooaw-{environment}-state",
-                        "--query",
-                        "state",
-                        "--output",
-                        "tsv",
-                    ]
-                ).strip()
+                state = postgresql_state(environment, runner)
                 if state == "Stopped":
                     break
-                time.sleep(5)
+                if state not in POSTGRESQL_TRANSITIONAL_STATES:
+                    raise AzureLifecycleError(f"PostgreSQL entered unexpected state {state} while stopping")
+                sleeper(5)
             else:
                 raise AzureLifecycleError("PostgreSQL did not stop")
         if action == "sleep" and command[1:3] == ["containerapp", "update"]:
@@ -239,7 +255,7 @@ def execute(
                     )
                 if replica_count == 0:
                     break
-                time.sleep(5)
+                sleeper(5)
             else:
                 raise AzureLifecycleError(f"{app_name} did not scale to zero")
     return {

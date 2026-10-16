@@ -50,14 +50,88 @@ def test_sleep_denies_missing_or_failed_gate_before_any_provider_command() -> No
     assert invoked == []
 
 
-def test_activation_waits_for_database_readiness() -> None:
+def test_activation_starts_a_stopped_database_and_waits_for_readiness() -> None:
     invocations: list[list[str]] = []
-    states = iter(["Starting", "Ready"])
+    states = iter(["Stopped", "Starting", "Ready"])
 
     def runner(command):
         invocations.append(list(command))
         return next(states) if command[1:4] == ["postgres", "flexible-server", "show"] else ""
 
-    record = execute("demo", "activate", sleep_evidence=None, runner=runner)
+    record = execute("demo", "activate", sleep_evidence=None, runner=runner, sleeper=lambda _: None)
     assert record["retained_authoritative_data"] is True
-    assert sum(command[1:4] == ["postgres", "flexible-server", "show"] for command in invocations) == 2
+    assert sum(command[1:4] == ["postgres", "flexible-server", "show"] for command in invocations) == 3
+    assert sum(command[1:4] == ["postgres", "flexible-server", "start"] for command in invocations) == 1
+
+
+def test_activation_treats_an_already_ready_database_as_success() -> None:
+    invocations: list[list[str]] = []
+
+    def runner(command):
+        invocations.append(list(command))
+        return "Ready" if command[1:4] == ["postgres", "flexible-server", "show"] else ""
+
+    record = execute("demo", "activate", sleep_evidence=None, runner=runner)
+
+    assert record["completed_steps"] == ["postgres flexible-server already-ready"]
+    assert not any(command[1:4] == ["postgres", "flexible-server", "start"] for command in invocations)
+
+
+@pytest.mark.parametrize("state", ["Starting", "Stopping", "Updating", "Dropping", "Disabled", ""])
+def test_activation_fails_closed_before_start_from_unsafe_state(state: str) -> None:
+    invocations: list[list[str]] = []
+
+    def runner(command):
+        invocations.append(list(command))
+        return state
+
+    with pytest.raises(AzureLifecycleError, match="state"):
+        execute("demo", "activate", sleep_evidence=None, runner=runner)
+
+    assert not any(command[1:4] == ["postgres", "flexible-server", "start"] for command in invocations)
+
+
+def test_sleep_stops_a_ready_database_after_scaling_dependencies() -> None:
+    invocations: list[list[str]] = []
+    states = iter(["Ready", "Ready", "Stopping", "Stopped"])
+
+    def runner(command):
+        invocations.append(list(command))
+        if command[1:4] == ["postgres", "flexible-server", "show"]:
+            return next(states)
+        if command[1:4] == ["containerapp", "revision", "list"]:
+            return "[]"
+        return ""
+
+    record = execute(
+        "demo",
+        "sleep",
+        sleep_evidence={field: True for field in SLEEP_GATES},
+        runner=runner,
+        sleeper=lambda _: None,
+    )
+
+    assert record["retained_authoritative_data"] is True
+    assert sum(command[1:4] == ["postgres", "flexible-server", "stop"] for command in invocations) == 1
+
+
+def test_sleep_treats_an_already_stopped_database_as_success() -> None:
+    invocations: list[list[str]] = []
+
+    def runner(command):
+        invocations.append(list(command))
+        if command[1:4] == ["postgres", "flexible-server", "show"]:
+            return "Stopped"
+        if command[1:4] == ["containerapp", "revision", "list"]:
+            return "[]"
+        return ""
+
+    record = execute(
+        "demo",
+        "sleep",
+        sleep_evidence={field: True for field in SLEEP_GATES},
+        runner=runner,
+    )
+
+    assert "postgres flexible-server already-stopped" in record["completed_steps"]
+    assert not any(command[1:4] == ["postgres", "flexible-server", "stop"] for command in invocations)
