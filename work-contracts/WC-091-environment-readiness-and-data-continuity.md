@@ -2,7 +2,7 @@
 
 **Office:** Solution Architect (INST-005), with one combined owner review and repair round
 **Assigned by:** Founder instruction, 2026-09-11
-**Status:** I1 IMPLEMENTED - AUTHOR REVIEW PASS - FOUNDER PR REVIEW PENDING
+**Status:** FOUNDER AMENDED 2026-10-16 - I1 DATABASE IMPLEMENTATION SUPERSEDED - REIMPLEMENTATION UNAUTHORIZED
 **Delivery unit:** One environment-readiness component delivered through three independently gated iterations
 **Controlling contract:** `architecture/reference/components/environment-readiness-and-data-continuity.md`
 **Predecessors:** WC-076, WC-077, WC-085, WC-086 and WC-090
@@ -21,18 +21,19 @@ plan, issue, label, clear platform gate, or merged planning PR is not implementa
 
 ## Objective
 
-Restore truthful Demo identity and deployment readiness without pretending that disposable Demo data
-is durable, then introduce persistent PostgreSQL and recovery in UAT, and only then qualify a dark
-Production control plane. Replace scattered secret exceptions with one versioned environment
+Restore truthful Demo identity and deployment readiness using persistent, recovery-qualified,
+low-cost PostgreSQL under the same database standard as UAT, and only then qualify a dark Production
+control plane. Replace scattered secret exceptions with one versioned environment
 configuration and secret dependency contract shared by preflight, Terraform, workloads, and
 independent verification.
 
 ## Iterations
 
-### WC091-I1 - Disposable Demo Readiness
+### WC091-I1 - Persistent Demo Readiness
 
-- Keep Demo data synthetic and disposable. The Demo database has no persistence, backup, restore,
-  migration-continuity, or customer-data claim and resets on revision replacement or restart.
+- Keep Demo data synthetic while using persistent, recovery-qualified PostgreSQL with
+  environment-specific low-cost capacity, dedicated PgBouncer, and no application database
+  sidecars.
 - Restore the anonymous identity-provider projection without constructing mutation-only cryptographic
   dependencies.
 - Introduce a versioned, domain-separated identity HMAC key ring before any durable customer identity
@@ -40,6 +41,8 @@ independent verification.
 - Define one machine-readable secret catalog and idempotent no-echo provisioning path for generated
   and externally supplied secrets.
 - Separate configuration readiness, provider redirect readiness, and real-user acceptance evidence.
+- Prove additive migration, restart continuity, backup/PITR, isolated sanitized restore, and
+  prior-revision compatibility before Demo traffic.
 - Keep UAT, Production, DNS activation, and customer traffic out of scope.
 
 ### WC091-I2 - UAT Persistent Data And Promotion Qualification
@@ -70,7 +73,7 @@ independent verification.
 | Input | Required state |
 |---|---|
 | WC-091 controlling component contract | Owner-reviewed and Founder-accepted exact revision |
-| Demo disposable-data exception | Enterprise Architecture authored and approved the amendment to `architecture/reference/pipeline/azure-deployment-topology.md` on 2026-09-11, replacing Demo PostgreSQL Flexible Server with the exact WC091-I1 disposable ACA design; Founder acceptance remains required before I1 implementation |
+| Demo database standard | Founder decision dated 2026-10-16 supersedes the disposable variance and binds Demo to persistent Flexible Server plus dedicated PgBouncer under the UAT standard, with independently selected low-cost capacity |
 | Identity HMAC lifecycle | Security and Data acceptance of key versions, domains, lookup continuity, and retirement |
 | PostgreSQL contract | Data, Security, and Platform acceptance before WC091-I2 implementation |
 | Environment control plane | Demo/UAT: protected GitHub environments, exact OIDC subjects, Key Vault, state, runner, DNS, cost, and denial evidence for the selected environment. Production: plan-only expected-state manifests and gate specifications; no resource creation or mutation under WC-091 |
@@ -80,8 +83,8 @@ independent verification.
 ## Definition Of Done
 
 - [ ] The controlling contract has no unresolved owner finding or invented implementation behavior.
-- [ ] WC091-I1 proves Demo configuration and identity readiness while describing Demo data as
-      disposable and synthetic, never durable or production-like.
+- [ ] WC091-I1 proves Demo configuration and identity readiness with synthetic, persistent,
+      recovery-qualified data and no application PostgreSQL sidecars.
 - [ ] WC091-I2 proves UAT persistence, migration, rollback, PITR, isolated restore, and manifest parity.
 - [ ] WC091-I3 produces deterministic plan-only Production control-plane, PostgreSQL, recovery,
       isolation, and manifest gate results without resource creation, apply, DNS, traffic, provider,
@@ -102,7 +105,7 @@ independent verification.
 Stop rather than proceed when:
 
 - an implementation session lacks explicit Founder authorization;
-- the Demo disposable-data decision lacks Enterprise Architecture disposition;
+- the Demo persistent database plan diverges from the 2026-10-16 Founder decision;
 - a secret value would enter Git, chat, a command argument, Terraform input/state, workflow output,
   log, screenshot, or retained artifact;
 - HMAC rotation could make an existing identity unresolvable or merge identity domains;
@@ -171,3 +174,14 @@ secret metadata, provider-readiness gaps, and stale rendered contracts. Rollback
 previous qualified release tuple; Demo data is intentionally discarded and never presented as
 durable. UAT, Production, DNS activation, customer traffic, self-approval, and merge remain outside
 this implementation.
+
+### Founder Supersession - 2026-10-16
+
+The Founder supersedes the disposable Demo database implementation and binds Demo to the UAT
+database standard with lower environment-specific capacity. The prior I1 sidecars, `EmptyDir`
+database storage, destructive reset evidence, and no-recovery claim remain historical evidence but
+are no longer an acceptable target. A separately authorized Platform IT Expert implementation must
+remove PostgreSQL sidecars from CE, BP, Billing, Keycloak, Web, and Demo Temporal; provision the
+persistent private Demo Flexible Server and dedicated PgBouncer route; migrate with no silent data
+loss; and qualify backup/PITR, isolated restore, rollback, capacity, and immutable-image promotion.
+This amendment authorizes documentation only and makes no UAT or Production change.
