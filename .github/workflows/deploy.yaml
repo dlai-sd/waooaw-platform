@@ -13,38 +13,14 @@ on:
           - uat
           - prod
       execution:
-        description: "Plan, activate, or sleep the selected environment"
+        description: "Plan or apply the selected environment"
         required: true
         default: plan
         type: choice
         options:
           - plan
-          - activate
-          - sleep
-      lifecycle_evidence:
-        description: "For sleep: retained-data gates; for UAT activate: Founder-accepted promotion JSON"
-        required: false
-        type: string
-      founder_action_authority:
-        description: "Current-session Founder authority reference required for activate/sleep"
-        required: false
-        type: string
-      plan_digest:
-        description: "Reviewed environment plan sha256 digest"
-        required: false
-        type: string
-      secret_catalog_digest:
-        description: "Rendered closed-world secret catalog sha256 digest"
-        required: false
-        type: string
-      lease_id:
-        description: "Single-use provider action lease identifier"
-        required: false
-        type: string
-      release_tuple:
-        description: "JSON containing configuration, dependency, migration, and schema sha256 digests"
-        required: false
-        type: string
+          - apply
+
 permissions:
   contents: read
   actions: read
@@ -61,7 +37,6 @@ jobs:
       release_run_id: ${{ steps.release.outputs.release_run_id }}
       release_sha: ${{ steps.release.outputs.release_sha }}
       lease_expires_at: ${{ steps.dispatch.outputs.lease_expires_at }}
-      lifecycle_record_digest: ${{ steps.lifecycle.outputs.record_digest }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -91,7 +66,7 @@ jobs:
             *) echo "Unauthorized deployment dispatcher" >&2; exit 1 ;;
           esac
           test "$DISPATCH_REF" = "refs/heads/main"
-          case "$EXECUTION_MODE" in plan|activate|sleep) ;; *) exit 1 ;; esac
+          case "$EXECUTION_MODE" in plan|apply) ;; *) exit 1 ;; esac
           test "$TARGET_ENVIRONMENT" != prod || test "$EXECUTION_MODE" = plan
           latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           release_run_id=$(gh api \
@@ -114,83 +89,6 @@ jobs:
           echo "release_run_id=$release_run_id" >> "$GITHUB_OUTPUT"
           echo "release_sha=$latest_main_sha" >> "$GITHUB_OUTPUT"
 
-      - name: Bind activate or sleep authorization tuple
-        if: inputs.execution != 'plan'
-        id: lifecycle
-        env:
-          ACTION: ${{ inputs.execution }}
-          FOUNDER_ACTION_AUTHORITY: ${{ inputs.founder_action_authority }}
-          LEASE_EXPIRY: ${{ steps.dispatch.outputs.lease_expires_at }}
-          LEASE_ID: ${{ inputs.lease_id }}
-          PLAN_DIGEST: ${{ inputs.plan_digest }}
-          RELEASE_SHA: ${{ steps.release.outputs.release_sha }}
-          RELEASE_TUPLE: ${{ inputs.release_tuple }}
-          SECRET_CATALOG_DIGEST: ${{ inputs.secret_catalog_digest }}
-          TARGET_ENVIRONMENT: ${{ inputs.environment }}
-        run: |
-          set -euo pipefail
-          CONFIGURATION_DIGEST=$(jq -er '.configuration | strings' <<< "$RELEASE_TUPLE")
-          DEPENDENCY_DIGEST=$(jq -er '.dependency | strings' <<< "$RELEASE_TUPLE")
-          MIGRATION_DIGEST=$(jq -er '.migration | strings' <<< "$RELEASE_TUPLE")
-          SCHEMA_DIGEST=$(jq -er '.schema | strings' <<< "$RELEASE_TUPLE")
-          jq -n \
-            --arg founder_action_authority "$FOUNDER_ACTION_AUTHORITY" \
-            --arg runner_execution_identity "id-waooaw-${TARGET_ENVIRONMENT}-deployment-writer" \
-            --arg release_sha "$RELEASE_SHA" \
-            --arg plan_digest "$PLAN_DIGEST" \
-            --arg secret_catalog_digest "$SECRET_CATALOG_DIGEST" \
-            --arg lease_id "$LEASE_ID" \
-            --arg lease_expiry "$LEASE_EXPIRY" \
-            '{
-              founder_action_authority: $founder_action_authority,
-              runner_execution_identity: $runner_execution_identity,
-              release_sha: $release_sha,
-              plan_digest: $plan_digest,
-              secret_catalog_digest: $secret_catalog_digest,
-              lease_id: $lease_id,
-              lease_expiry: $lease_expiry
-            }' > wc124-authorization.json
-          jq -n \
-            --arg configuration "$CONFIGURATION_DIGEST" \
-            --arg dependency "$DEPENDENCY_DIGEST" \
-            --arg migration "$MIGRATION_DIGEST" \
-            --arg release "sha256:$(printf '%s' "$RELEASE_SHA" | sha256sum | cut -d' ' -f1)" \
-            --arg schema "$SCHEMA_DIGEST" \
-            '{configuration:$configuration,dependency:$dependency,migration:$migration,release:$release,schema:$schema}' \
-            > wc124-tuple-digests.json
-          current_state=ACTIVE
-          test "$ACTION" = sleep || current_state=SLEEPING
-          python3 scripts/wc124_persistent_state_lifecycle.py \
-            --operation-id "wc124-${TARGET_ENVIRONMENT}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
-            --action "$ACTION" \
-            --environment "$TARGET_ENVIRONMENT" \
-            --current-state "$current_state" \
-            --authorization wc124-authorization.json \
-            --tuple-digests wc124-tuple-digests.json \
-            --output wc124-lifecycle-record.json
-          echo "record_digest=$(jq -r '.record_digest' wc124-lifecycle-record.json)" >> "$GITHUB_OUTPUT"
-
-      - name: Verify Founder-accepted Demo identity before UAT activation
-        if: inputs.execution == 'activate' && inputs.environment == 'uat'
-        env:
-          PROMOTION_EVIDENCE: ${{ inputs.lifecycle_evidence }}
-        run: |
-          set -euo pipefail
-          test -n "$PROMOTION_EVIDENCE"
-          printf '%s' "$PROMOTION_EVIDENCE" | jq -e . > wc124-uat-promotion.json
-          python3 scripts/wc124_uat_promotion.py wc124-uat-promotion.json
-
-      - name: Retain authorization-bound lifecycle record
-        if: inputs.execution != 'plan'
-        uses: actions/upload-artifact@v4
-        with:
-          name: wc124-lifecycle-authorization-${{ inputs.environment }}-${{ github.run_id }}
-          path: |
-            wc124-lifecycle-record.json
-            wc124-uat-promotion.json
-          if-no-files-found: error
-          retention-days: 400
-
   deploy:
     needs: authorize
     uses: ./.github/workflows/environment-deployment.yaml
@@ -198,14 +96,13 @@ jobs:
       environment: ${{ inputs.environment }}
       release_run_id: ${{ fromJSON(needs.authorize.outputs.release_run_id) }}
       release_sha: ${{ needs.authorize.outputs.release_sha }}
-      apply: ${{ inputs.execution == 'activate' }}
+      apply: ${{ inputs.execution == 'apply' }}
       lease_expires_at: ${{ needs.authorize.outputs.lease_expires_at }}
-      lifecycle_action: ${{ inputs.execution }}
-      sleep_evidence_json: ${{ inputs.lifecycle_evidence }}
+      lifecycle_action: ${{ inputs.execution == 'apply' && 'activate' || 'plan' }}
     secrets: inherit
 
   verify:
-    if: inputs.execution == 'activate'
+    if: inputs.execution == 'apply'
     needs: [authorize, deploy]
     uses: ./.github/workflows/environment-deployment-verification.yaml
     with:
@@ -217,7 +114,7 @@ jobs:
     secrets: inherit
 
   publish-url:
-    if: inputs.execution == 'activate'
+    if: inputs.execution == 'apply'
     needs: [authorize, deploy, verify]
     runs-on: ubuntu-latest
     steps:

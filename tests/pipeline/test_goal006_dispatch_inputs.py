@@ -8,25 +8,19 @@ from scripts.goal006_dispatch_inputs import normalize_dispatch_inputs
 NOW = datetime(2026, 8, 26, 10, 0, tzinfo=timezone.utc)
 
 
-def test_demo_activate_derives_ten_day_lease() -> None:
-    inputs = normalize_dispatch_inputs("demo", "activate", current_time=NOW)
+def test_demo_apply_derives_ten_day_lease() -> None:
+    inputs = normalize_dispatch_inputs("demo", "apply", current_time=NOW)
 
     assert inputs == {
         "environment": "demo",
-        "execution": "activate",
+        "execution": "apply",
         "lease_expires_at": "2026-09-05T10:00:00Z",
     }
 
 
-def test_uat_sleep_derives_lease() -> None:
-    inputs = normalize_dispatch_inputs("uat", "sleep", current_time=NOW)
-
-    assert inputs["lease_expires_at"] == "2026-09-05T10:00:00Z"
-
-
-def test_prod_activate_is_rejected() -> None:
+def test_prod_apply_is_rejected() -> None:
     with pytest.raises(ValueError, match="Production"):
-        normalize_dispatch_inputs("prod", "activate", current_time=NOW)
+        normalize_dispatch_inputs("prod", "apply", current_time=NOW)
 
 
 def test_plan_has_no_lease() -> None:
@@ -35,7 +29,7 @@ def test_plan_has_no_lease() -> None:
 
 @pytest.mark.parametrize(
     ("environment", "execution", "message"),
-    [("invalid", "activate", "environment"), ("demo", "invalid", "execution")],
+    [("invalid", "apply", "environment"), ("demo", "invalid", "execution")],
 )
 def test_dispatch_rejects_unknown_environment_or_execution(
     environment: str, execution: str, message: str

@@ -130,6 +130,38 @@ def test_workload_plan_safely_adopts_the_live_identity_edge() -> None:
     assert "workload/workload-state-before-plan.txt" in WORKFLOW
 
 
+def test_apply_generates_internal_activation_bundle_after_both_plans() -> None:
+    bundle_step = WORKFLOW.split(
+        "      - name: Generate internal WC-124 activation bundle",
+        1,
+    )[1].split(
+        "      - name: Terraform dormant workload and migration dependency apply",
+        1,
+    )[0]
+
+    assert "if: inputs.apply" in bundle_step
+    assert "scripts/wc124_deployment_bundle.py" in bundle_step
+    assert "--foundation-plan" in bundle_step
+    assert "--workload-plan" in bundle_step
+    assert "--secret-catalog" in bundle_step
+    assert "--dependency-file registry-release-manifest.json" in bundle_step
+    assert "--migration-file infrastructure/postgres/init/59-wc124-billing-authority.sql" in bundle_step
+    assert '"${schema_arguments[@]}"' in bundle_step
+    assert "scripts/wc124_persistent_state_lifecycle.py" in bundle_step
+    assert "--action activate" in bundle_step
+    assert WORKFLOW.index("Terraform foundation plan") < WORKFLOW.index(
+        "Generate internal WC-124 activation bundle"
+    )
+    assert WORKFLOW.index("Terraform workload plan") < WORKFLOW.index(
+        "Generate internal WC-124 activation bundle"
+    )
+    assert WORKFLOW.index("Generate internal WC-124 activation bundle") < WORKFLOW.index(
+        "Terraform dormant workload and migration dependency apply"
+    )
+    assert "wc124-deployment-activation-bundle.json" in WORKFLOW
+    assert "wc124-lifecycle-authorization-record.json" in WORKFLOW
+
+
 def test_identity_edge_state_reconciliation_is_environment_parameterized() -> None:
     workload_plan = WORKFLOW.split("      - name: Terraform workload plan", 1)[1].split(
         "      - name: Terraform dormant workload and migration dependency apply", 1
