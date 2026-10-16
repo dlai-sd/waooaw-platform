@@ -347,12 +347,17 @@ def build_execution_plan(
             raise ValueError(f"unknown gate: {gate_id}")
         command_id = gate.get("command_id")
         runner_id = gate.get("runner_id")
+        auxiliary_runners = gate.get("auxiliary_runners", [])
         command = commands.get(command_id)
         runner = runners.get(runner_id)
         if not isinstance(command, dict) or not isinstance(command.get("shell"), str):
             raise ValueError(f"gate {gate_id} has unknown command: {command_id}")
         if not isinstance(runner, dict) or not isinstance(runner.get("compose_service"), str):
             raise ValueError(f"gate {gate_id} has unknown runner: {runner_id}")
+        if not isinstance(auxiliary_runners, list) or not all(
+            isinstance(auxiliary_runner, str) and auxiliary_runner in runners for auxiliary_runner in auxiliary_runners
+        ):
+            raise ValueError(f"gate {gate_id} has invalid auxiliary runners")
         component_owners = sorted(
             component_id
             for component_id, component in components.items()
@@ -381,6 +386,7 @@ def build_execution_plan(
                 "cost_class": cost_class,
                 "phase": PHASE_BY_COST[cost_class],
                 "runner_id": runner_id,
+                "auxiliary_runners": auxiliary_runners,
                 "compose_service": runner["compose_service"],
                 "profile": runner["profile"],
                 "command_id": command_id,
@@ -404,6 +410,7 @@ def build_execution_plan(
                     "catalog_version": catalog.get("version"),
                     "command_id": command_id,
                     "runner_id": runner_id,
+                    "auxiliary_runners": auxiliary_runners,
                     "environment": gate.get("environment", []),
                     "required_services": gate.get("required_services", []),
                 },

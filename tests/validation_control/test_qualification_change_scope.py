@@ -33,6 +33,25 @@ def test_shared_validation_change_broadens_every_expensive_gate() -> None:
     assert scope == full_scope()
 
 
+def test_planning_only_inputs_do_not_select_release_qualification() -> None:
+    scope = scope_for_changes(
+        (
+            "requirements-validation-plan.txt",
+            "scripts/validation_control/hosted_policy.py",
+        )
+    )
+
+    assert scope.release_lanes == ()
+    assert scope.broadened is False
+
+
+def test_azure_verifier_image_selects_only_azure_lane() -> None:
+    scope = scope_for_changes(("architecture/reference/dockerfiles/Dockerfile.test-runner-azure",))
+
+    assert scope.release_lanes == ("azure",)
+    assert scope.broadened is False
+
+
 def test_missing_or_ambiguous_scope_broadens_instead_of_skipping() -> None:
     assert scope_for_changes(()) == full_scope()
     assert scope_for_changes(("unexpected-root/runtime.conf",)) == full_scope()

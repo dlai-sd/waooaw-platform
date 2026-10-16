@@ -10,12 +10,20 @@ from pathlib import Path
 
 
 SHARED_PATTERNS = (
-    "architecture/reference/dockerfiles/**",
+    "architecture/reference/dockerfiles/Dockerfile.test-runner",
+    "architecture/reference/dockerfiles/Dockerfile.test-runner-python",
     "docker-compose*.yml",
     "pyproject.toml",
-    "requirements*.txt",
-    "scripts/validation_control/**",
-    "validation/**",
+    "requirements-test.txt",
+    "requirements-udcp.txt",
+    "scripts/validation_control/catalog_execution.py",
+    "scripts/validation_control/execution_contract.py",
+    "scripts/validation_control/local_catalog_gate.py",
+    "scripts/validation_control/qualification.py",
+    "scripts/validation_control/qualification_change_scope.py",
+    "scripts/validation_control/run_execution_contract.sh",
+    "validation/engineering-validation.yaml",
+    "validation/runner-supply.json",
 )
 DOTNET_MUTATION_PATTERNS = (
     "src/constitutional-engine/**",
@@ -58,6 +66,7 @@ RELEASE_LANE_PATTERNS = {
         "scripts/goal006_release_simulator.py",
     ),
     "azure": (
+        "architecture/reference/dockerfiles/Dockerfile.test-runner-azure",
         "infrastructure/azure/**",
         "release/goal006/**",
         "scripts/goal006_runner_execution.py",
@@ -92,6 +101,9 @@ KNOWN_TOP_LEVELS = {
     "web",
     "work-contracts",
 }
+KNOWN_ROOT_FILES = {
+    "requirements-validation-plan.txt",
+}
 
 
 def matches(path: str, patterns: tuple[str, ...]) -> bool:
@@ -120,7 +132,10 @@ def full_scope() -> QualificationScope:
 def scope_for_changes(changed_files: tuple[str, ...]) -> QualificationScope:
     if not changed_files or any(matches(path, SHARED_PATTERNS) for path in changed_files):
         return full_scope()
-    if any("/" not in path or path.split("/", 1)[0] not in KNOWN_TOP_LEVELS for path in changed_files):
+    if any(
+        ("/" not in path and path not in KNOWN_ROOT_FILES) or ("/" in path and path.split("/", 1)[0] not in KNOWN_TOP_LEVELS)
+        for path in changed_files
+    ):
         return full_scope()
     return QualificationScope(
         mutation_dotnet=any(matches(path, DOTNET_MUTATION_PATTERNS) for path in changed_files),

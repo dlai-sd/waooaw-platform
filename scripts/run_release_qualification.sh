@@ -23,7 +23,9 @@ if test "$RELEASE_RUN_TESTS" = false \
 fi
 
 if test "$RELEASE_RUN_TESTS" = true || test "$RELEASE_RUN_POSTGRES" = true || test "$RELEASE_RUN_SIMULATOR" = true; then
-  if [ -z "${WAOOAW_TEST_RUNNER_IMAGE_ID:-}" ]; then
+  if [ -n "${WAOOAW_RUNNER_FULL_IMAGE:-}" ]; then
+    WAOOAW_TEST_RUNNER_IMAGE_ID=$(docker image inspect "$WAOOAW_RUNNER_FULL_IMAGE" --format '{{.Id}}')
+  elif [ -z "${WAOOAW_TEST_RUNNER_IMAGE_ID:-}" ]; then
     scripts/validation_control/run_docker_build.sh docker compose build test-runner
     WAOOAW_TEST_RUNNER_IMAGE_ID=$(scripts/runner_image_id.sh test test-runner)
   fi

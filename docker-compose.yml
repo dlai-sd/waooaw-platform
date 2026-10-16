@@ -155,6 +155,14 @@ services:
     profiles:
       - test                            # only starts when --profile test is specified
 
+  test-runner-azure:
+    image: ${WAOOAW_RUNNER_AZURE_IMAGE:-waooaw-platform-test-runner-azure:local}
+    build:
+      context: .
+      dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner-azure
+    profiles:
+      - test-azure                            # only starts when --profile test is specified
+
   # ─── UDCP standalone harness (ADR-039 §5 local iteration loop) ─────────────
   # Lightweight Python-only image (~120MB).  No API key needed for dry/mock modes.
   # Usage:

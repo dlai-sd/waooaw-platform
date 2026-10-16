@@ -156,7 +156,7 @@ def test_deployment_workflow_change_selects_release_without_service_builds() -> 
         "release-qualification",
         "secrets",
     ]
-    assert result["required_runners"] == ["full", "python", "typescript"]
+    assert result["required_runners"] == ["python", "typescript"]
     assert result["service_builds"] == []
     assert result["service_build_matrix"] == []
 
