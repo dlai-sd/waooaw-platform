@@ -9,6 +9,8 @@
 | Version | `1.0.0` |
 | Founder decision | FA-055, 2026-10-16 |
 | Architecture inputs | PR #518 merge `a6bceb310585a2370cb593a32f684381d6ca94c6`; PR #519 architecture commit `7d18239c569d1bc97d6afd3d91981657ecaf052a`; `environment-readiness-and-data-continuity.md`; `azure-deployment-topology.md` |
+| Constitutional basis | C-023, C-027, C-059, C-063, C-065, C-071, C-076 and C-080 |
+| Applicable ADRs | ADR-010, ADR-011, ADR-013, ADR-014, ADR-015 and ADR-047 |
 | Implementing office | Platform IT Expert (INST-010), Skill 17 |
 | Target environments | Demo and UAT only |
 | Authority boundary | Specification and implementation handoff. No `src/` implementation in the authoring session; no provider query/mutation, Terraform apply, deployment, traffic, Production, approval or merge. |
@@ -45,6 +47,30 @@ Apply inputs in this order:
 The implementer stops rather than selecting an Azure SKU, HA posture, recovery target, role,
 credential path, migration meaning, cost exception or destructive lifecycle not pinned by the
 approved inputs.
+
+### 2.1 ADR And Claim Applicability
+
+No new ADR is required for this Work Component. It applies accepted decisions rather than selecting
+a new technology, provider, workflow engine, registry, secret store or migration policy:
+
+| Reference | Binding effect |
+|---|---|
+| C-023 / C-027 | Lifecycle success and consequential state require durable evidence; constitutional evidence remains append-only |
+| C-059 | Every implementation, migration, workflow and test traces to this accepted component |
+| C-063 | Customer data and secrets remain purpose-bound, private and absent from plans/logs/artifacts |
+| C-065 | Author, approver and merger remain separate |
+| C-071 / C-076 / C-080 | Quality, coverage and Docker-only executable validation are non-waivable |
+| ADR-010 | Azure services retain named escape hatches; no undocumented lock-in is introduced |
+| ADR-011 | Database evolution is additive; constitutional records are never destructively migrated |
+| ADR-013 | Existing GitHub Actions CI/CD remains the delivery path and CCTs remain blocking |
+| ADR-014 | Cloud secrets use Key Vault references and never enter source, plan or evidence |
+| ADR-015 | Demo self-hosted Temporal and UAT Temporal Cloud retain their accepted environment split |
+| ADR-047 | Private runner, OIDC, state and local Azure-emulator qualification remain controlling |
+
+A future implementation that needs a new Azure service, database technology, cache authority,
+workflow engine, destructive migration, public database path or Production topology must stop for
+the owning architect and a new or amended ADR. FA-055 accepts the lifecycle and cost boundary; it
+does not amend the ADRs above or create implementation/provider authority.
 
 ## 3. Current-State Gap Baseline
 
