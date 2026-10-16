@@ -31,8 +31,9 @@ requirements:
     requirement_id: WC124-R002
     source: Work Component section 3
     observable_outcome: PST-001 through PST-013 each map to exact current source and at least one falsifying baseline test.
-    test_path_or_plan: WC-124 impact map plus focused topology, Billing, Terraform, workflow, and verifier baseline selectors
+    test_path_or_plan: work-contracts/WC-124-impact-manifest.yaml; tests/pipeline/test_wc124_impact_manifest.py
     dependencies: WC124-R001
+    result: PASS
 
   - <<: *defaults
     requirement_id: WC124-R003
