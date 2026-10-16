@@ -279,4 +279,4 @@ requirements:
     observable_outcome: Exact-head author review and mandatory candidate gates pass; PR body is prepared and handed to the Founder without approval, merge, deployment, activation, or traffic claims.
     test_path_or_plan: Engineering candidate qualification, C-059, C-065, PR prechecks, exact-head checks, hosted CI status, and Founder handoff
     dependencies: WC124-R022, WC124-R023, WC124-R027, WC124-R028, WC124-R029, WC124-R030, WC124-R031, WC124-R032, WC124-R033
-    result: PLANNED
+    result: BLOCKED
