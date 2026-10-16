@@ -38,7 +38,30 @@ schemas, cloud authorization, or Production acceptance.
 - Missing or malformed required configuration keeps the affected revision unready before traffic.
 - Database posture is explicit: Demo and UAT are persistent, independently isolated, and
   recovery-qualified; Production is persistent, independently isolated, and activation-gated.
+- A workload owns schema and invariants, never a replica-local authority datastore. PostgreSQL
+  sidecars, embedded identity databases, and component-local Redis authority are prohibited.
+- Redis and local files are reconstructible only. Losing them must cause deterministic rebuild,
+  bounded reconciliation, or fail-closed unavailability, never loss of a durable hold,
+  idempotency outcome, tenant relationship, identity link, workflow state, session, or evidence.
 - Readiness evidence never upgrades configuration presence into provider or human acceptance.
+
+### 2.1 Stateful Asset Classification
+
+Every environment projection classifies each state-bearing dependency before Terraform plan:
+
+| Classification | Required behavior |
+|---|---|
+| `DURABLE_AUTHORITY` | PostgreSQL-backed, migration-controlled, role-isolated, backup/recovery qualified, and tenant/RLS tested where applicable |
+| `SECRET_AUTHORITY` | Key Vault-backed, purpose/principal separated, versioned, no-echo, and excluded from plans, state, logs, and artifacts |
+| `RECONSTRUCTIBLE_CACHE` | TTL-bounded or explicitly invalidated; rebuilds from durable authority; loss cannot change a consequential outcome |
+| `BOUNDED_COORDINATION` | Has a durable idempotency/outcome record, bounded lease/expiry, restart reconciliation, and no success from uncertain state |
+| `SCRATCH` | Revision-local, non-secret or protected temporary data with no post-restart correctness or evidence obligation |
+| `OBSERVABILITY` | Redacted diagnostic data only; never sole constitutional or business evidence |
+| `INFRASTRUCTURE_STATE` | Private environment deployment state only; never customer/application data |
+
+The renderer and deployment preflight reject an undeclared state-bearing asset, a component-local
+authority sidecar, a Redis key with permanent business authority, a shared credential across
+purposes, or a classification whose readiness/recovery oracle is absent.
 
 ## 3. Environment Contract
 
@@ -52,11 +75,69 @@ schemas, cloud authorization, or Production acceptance.
 | Traffic | Founder/tester only under current Demo authority | Approved testers only | None until separate activation authority |
 | Promotion | May restore Demo independently; no durability inference | Same immutable application digests after Demo acceptance | Same qualified tuple after separate authorization |
 | Recovery proof | Backup, PITR, isolated sanitized restore and prior-revision compatibility | Backup, PITR, isolated restore and prior-revision compatibility | Plan-only gates reuse UAT evidence and define separately authorized Production proof |
+| Transient state | Environment-owned purpose-scoped dependencies only; no component sidecar authority | Same portable contract with independently selected capacity | Product and HA choice remains separately gated |
 
 The Founder superseded the disposable Demo variance on 2026-10-16. Demo now follows the UAT
 database standard with independently selected low-cost capacity, persistent Flexible Server,
 dedicated PgBouncer, separate databases/roles, private routing, and recovery qualification. This
 component does not authorize implementation, cloud mutation, UAT, Production, or acceptance.
+
+### 3.1 Founder-Accepted Sleep And Reactivation Contract
+
+FA-055 accepts a retained-data sleep model for Demo and UAT:
+
+- application revisions, PgBouncer and transient dependencies may scale to zero outside an active
+  lease;
+- PostgreSQL Flexible Server compute may be stopped after drain, evidence and recovery prechecks;
+- stopping PostgreSQL preserves databases, roles, configuration and backups and stops compute
+  billing, while storage, backup, DNS, retained telemetry and control-plane charges continue;
+- routine sleep never deletes PostgreSQL, backups, Terraform state, Key Vault authority or evidence;
+- literal zero cost is not claimed while authoritative data remains retained;
+- Azure's bounded stopped-server interval is reconciled by lifecycle automation. An automatic start,
+  maintenance start or failed stop creates cost and state evidence and is returned to the accepted
+  inactive state only after safety checks;
+- activation is explicit orchestration. An inbound customer request does not directly start a
+  database or bypass readiness;
+- transient Redis and local files may be lost during sleep. They rebuild from PostgreSQL or fail
+  closed and cannot change identity, billing, workflow, session, hold, idempotency or evidence truth;
+- database or backup deletion is a separately authorized destructive lifecycle with a qualified
+  restore source and acceptance oracle. It is not a cost-control implementation option.
+
+#### Sleep sequence
+
+1. close ingress and reject new consequential work;
+2. drain or reconcile active work and prove no uncertain commit;
+3. record release, schema, migration, evidence and billing-halt watermarks;
+4. prove backup/recovery readiness and no protected-resource destruction;
+5. scale application revisions to zero;
+6. scale PgBouncer and reconstructible dependencies to zero;
+7. stop PostgreSQL compute and verify the stopped state;
+8. retain evidence and monitor automatic restart, maintenance and cost drift.
+
+#### Reactivation sequence
+
+1. verify current authority, lease, cost forecast and exact release tuple;
+2. start PostgreSQL and wait for private-TLS readiness;
+3. verify backup, schema, roles, RLS, migration watermark and authoritative billing halt;
+4. start PgBouncer and prove each least-privilege route;
+5. run only accepted expand-only migrations and compatibility checks;
+6. start Keycloak, Temporal and transient Redis dependencies as applicable;
+7. start the exact qualified application tuple without rebuilding;
+8. rebuild caches, reconcile bounded leases and run internal, constitutional and public probes;
+9. publish the environment URL or admit traffic only after every required gate passes.
+
+The expected activation target is 5-20 minutes and is a measured objective, not a success fallback.
+Timeout leaves traffic closed and the environment in a failed activation state with retained
+evidence. Sleep and activation never infer Production authority.
+
+#### Cost boundary
+
+The accepted planning range is INR 350-1,600/month per sleeping environment and INR 700-3,200/month
+for Demo and UAT together before GST. It is an estimate, not a provider quote. Every plan records
+compute, storage, backup, DNS, telemetry and networking deltas. The existing FA-052 INR 10,000
+monthly ceiling remains the hard apply stop. A B2s-or-larger server, HA, managed Redis, additional
+minimum replica, private endpoint not required by the accepted network design, or Production
+resource requires separate evidence and authority.
 
 ## 4. Environment Manifest
 

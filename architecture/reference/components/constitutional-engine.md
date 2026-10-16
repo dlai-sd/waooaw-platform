@@ -65,6 +65,18 @@ service ConstitutionalService {
 - **PostgreSQL** (constitutional schema, append-only operations only)
 - **Temporal** (client only — used by Emergency Stop Handler to send `PAASSessionWorkflow.EmergencyStop` signals; CE does not author or orchestrate workflows — ADR-018)
 
+## Stateful Asset Authority
+
+The Constitutional Audit Ledger, evidence records, authority licenses, scope-boundary decisions,
+Emergency Stops, and durable idempotency outcomes exist only in the governed PostgreSQL
+constitutional schema. CE owns the schema and append-only invariants, not a revision-local database
+server. No Redis key, in-memory cache, local file, telemetry event, or Temporal signal may substitute
+for the committed record required by Evidence First.
+
+Decision Space caching is reconstructible acceleration only. A cache miss reads PostgreSQL; missing
+or uncertain authoritative state fails closed. Emergency Stop remains active according to its
+durable record even if a cache, process, revision, or transient coordination dependency restarts.
+
 ## Runtime Requirements (for Dockerfile)
 
 **gRPC Health Checking Protocol:** The CE exposes a gRPC health service (grpc.health.v1.Health) on port 5002 alongside the ConstitutionalService. This is required for:
