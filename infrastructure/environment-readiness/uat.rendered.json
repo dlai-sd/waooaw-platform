@@ -1,5 +1,5 @@
 {
-  "catalogDigest": "sha256:8959723677c5e671d2294ba203c3b7b586fa3f554d7505ae96341b71b2eb91e8",
+  "catalogDigest": "sha256:2b9fabf474944b9f9e6cdc387a26c42f04644a5abc4523211263c87140be4b52",
   "configuration": {
     "capacityProfile": {
       "environment": "uat",
@@ -169,7 +169,7 @@
   },
   "environment": "uat",
   "manifestDigest": "sha256:5f610dd422bf26bc65013d069b69455dd264975f66972d3393509df5c5569d51",
-  "renderDigest": "sha256:88fd48d5737fb3c00532f193e9fa5c4069ef77809552a3389bc0d90716a03305",
+  "renderDigest": "sha256:198e77ec91036f56b9f492c8fc2b0f13fd48bce36f675ca568adda22f008c27f",
   "schemaVersion": "1.0",
   "secretBindings": [
     {
@@ -289,17 +289,6 @@
         "get"
       ],
       "consumers": [
-        "web:WEB_SESSION_DATABASE_URL"
-      ],
-      "id": "web-session-database",
-      "principal": "web",
-      "reference": "kv://kv-waooaw-uat/secrets/web-session-database-url"
-    },
-    {
-      "allowedOperations": [
-        "get"
-      ],
-      "consumers": [
         "web:KEYCLOAK_CLIENT_SECRET",
         "keycloak:KEYCLOAK_CLIENT_SECRET"
       ],
@@ -372,6 +361,171 @@
       "id": "razorpay-test-webhook-secret",
       "principal": "billing-engine",
       "reference": "kv://kv-waooaw-uat/secrets/razorpay-test-webhook-secret"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "keycloak:KC_DB_PASSWORD"
+      ],
+      "id": "db-keycloak-runtime",
+      "principal": "keycloak_runtime",
+      "reference": "kv://kv-waooaw-uat/secrets/db-keycloak-runtime"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "constitutional-engine:ConnectionStrings__DefaultConnection"
+      ],
+      "id": "db-ce-runtime",
+      "principal": "ce_runtime",
+      "reference": "kv://kv-waooaw-uat/secrets/db-ce-runtime"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "business-platform:ConnectionStrings__DefaultConnection"
+      ],
+      "id": "db-bp-runtime",
+      "principal": "bp_runtime",
+      "reference": "kv://kv-waooaw-uat/secrets/db-bp-runtime"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "professional-runtime:DATABASE_URL"
+      ],
+      "id": "db-pr-runtime",
+      "principal": "pr_runtime",
+      "reference": "kv://kv-waooaw-uat/secrets/db-pr-runtime"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "ai-runtime:DATABASE_URL"
+      ],
+      "id": "db-air-runtime",
+      "principal": "air_runtime",
+      "reference": "kv://kv-waooaw-uat/secrets/db-air-runtime"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "billing-engine:DATABASE_URL"
+      ],
+      "id": "db-billing-runtime",
+      "principal": "billing_runtime",
+      "reference": "kv://kv-waooaw-uat/secrets/db-billing-runtime"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "web:WEB_SESSION_DATABASE_URL"
+      ],
+      "id": "web-session-database",
+      "principal": "web_session_app",
+      "reference": "kv://kv-waooaw-uat/secrets/web-session-database-url"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "wc124-migrator:CE_DATABASE_URL"
+      ],
+      "id": "db-ce-migration",
+      "principal": "ce_migrator",
+      "reference": "kv://kv-waooaw-uat/secrets/db-ce-migration"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "wc124-migrator:BP_DATABASE_URL"
+      ],
+      "id": "db-bp-migration",
+      "principal": "bp_migrator",
+      "reference": "kv://kv-waooaw-uat/secrets/db-bp-migration"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "wc124-migrator:PR_DATABASE_URL"
+      ],
+      "id": "db-pr-migration",
+      "principal": "pr_migrator",
+      "reference": "kv://kv-waooaw-uat/secrets/db-pr-migration"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "wc124-migrator:AIR_DATABASE_URL"
+      ],
+      "id": "db-air-migration",
+      "principal": "air_migrator",
+      "reference": "kv://kv-waooaw-uat/secrets/db-air-migration"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "wc124-migrator:BILLING_DATABASE_URL"
+      ],
+      "id": "db-billing-migration",
+      "principal": "billing_migrator",
+      "reference": "kv://kv-waooaw-uat/secrets/db-billing-migration"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "wc124-migrator:WEB_SESSION_DATABASE_URL"
+      ],
+      "id": "db-web-session-migration",
+      "principal": "web_session_migrator",
+      "reference": "kv://kv-waooaw-uat/secrets/db-web-session-migration"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "pgbouncer:PGBOUNCER_AUTH_PASSWORD"
+      ],
+      "id": "db-pgbouncer-auth",
+      "principal": "pgbouncer",
+      "reference": "kv://kv-waooaw-uat/secrets/db-pgbouncer-auth"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "wc124-recovery-verifier:DATABASE_URL"
+      ],
+      "id": "db-recovery-verifier",
+      "principal": "billing_verifier",
+      "reference": "kv://kv-waooaw-uat/secrets/db-recovery-verifier"
     }
   ]
 }

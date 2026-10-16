@@ -107,18 +107,18 @@ def test_catalog_rejects_duplicate_secret_identity(monkeypatch: pytest.MonkeyPat
         wc091_environment.validate_and_render("demo")
 
 
-def test_demo_terraform_uses_generation_fenced_emptydir_storage() -> None:
+def test_demo_terraform_uses_managed_postgres_and_generation_fenced_keycloak_storage() -> None:
     module = (wc091_environment.ROOT / "infrastructure/terraform/phase2/modules/workload/main.tf").read_text()
     demo = (wc091_environment.ROOT / "infrastructure/terraform/phase2/environments/demo/workload/main.tf").read_text()
 
-    assert module.count('storage_type = "EmptyDir"') == 3
-    assert 'path = "/var/lib/postgresql/data"' in module
+    assert module.count('storage_type = "EmptyDir"') == 1
+    assert 'path = "/var/lib/postgresql/data"' not in module
     assert 'path = "/opt/keycloak/data"' in module
-    assert module.count("rm -rf /var/lib/postgresql/data/*") == 2
+    assert "rm -rf /var/lib/postgresql/data/*" not in module
     assert "rm -rf /opt/keycloak/data/*" in module
-    assert "wc091_demo_generation" in module
-    assert "WC091_GENERATION_ID" in module
-    assert "WC091_FIXTURE_DIGEST" in module
+    assert "wc091_demo_generation" not in module
+    assert "WC091_GENERATION_ID" not in module
+    assert "WC091_FIXTURE_DIGEST" not in module
     assert 'name        = "Identity__Hmac__Key"' in module
     assert 'name  = "Identity__Hmac__ActiveVersion"' in module
     assert 'name        = "ChannelContinuity__EnvelopeHmacKey"' in module
@@ -246,26 +246,42 @@ def test_wc123_credentials_are_never_created_by_the_generic_seeder() -> None:
     root = wc091_environment.ROOT
     catalog = json.loads((root / "infrastructure/environment-readiness/secret-catalog.json").read_text())
     session_entries = {entry["id"]: entry for entry in catalog["entries"] if entry["id"].startswith("web-session-")}
-    expected = {
-        "web-session-database-url",
+    external_expected = {
         "web-session-handle-digest",
         "web-session-protocol-digest",
         "web-session-token-envelope",
     }
-    oidc_transaction_credentials = expected - {"web-session-handle-digest"}
+    oidc_transaction_credentials = external_expected - {"web-session-handle-digest"}
+    database_entry = session_entries["web-session-database"]
+    external_entries = {
+        secret_id: entry
+        for secret_id, entry in session_entries.items()
+        if secret_id != "web-session-database"
+    }
 
-    assert {entry["vaultSecretName"] for entry in session_entries.values()} == expected
-    assert all(entry["source"] == "external-operator" for entry in session_entries.values())
-    assert all(entry["provisioner"] == "wc123-no-echo-provisioner" for entry in session_entries.values())
-    assert expected.isdisjoint(goal006_deployment_credentials.deployment_credentials(catalog, "demo"))
+    assert database_entry["vaultSecretName"] == "web-session-database-url"
+    assert database_entry["source"] == "platform-generated"
+    assert database_entry["provisioner"] == "wc124-db-provisioner"
+    assert {entry["vaultSecretName"] for entry in external_entries.values()} == external_expected
+    assert all(entry["source"] == "external-operator" for entry in external_entries.values())
+    assert all(entry["provisioner"] == "wc123-no-echo-provisioner" for entry in external_entries.values())
+    assert (external_expected | {"web-session-database-url"}).isdisjoint(
+        goal006_deployment_credentials.deployment_credentials(catalog, "demo")
+    )
     assert (
         set(goal006_deployment_credentials.required_external_credentials(catalog, "demo", "disabled"))
         >= oidc_transaction_credentials
     )
+    assert "web-session-database-url" not in (
+        goal006_deployment_credentials.required_external_credentials(catalog, "demo", "disabled")
+    )
     assert "web-session-handle-digest" not in (
         goal006_deployment_credentials.required_external_credentials(catalog, "demo", "disabled")
     )
-    assert set(goal006_deployment_credentials.required_external_credentials(catalog, "demo", "enforced")) >= expected
+    assert (
+        set(goal006_deployment_credentials.required_external_credentials(catalog, "demo", "enforced"))
+        >= external_expected
+    )
 
 
 def test_private_deployment_seeder_creates_missing_hmac_secret(tmp_path) -> None:
@@ -540,7 +556,7 @@ def test_demo_reset_script_and_runtime_verifier_match_terraform_contract() -> No
     for marker in ("WC091_GENERATION_ID", "WC091_FIXTURE_DIGEST", "wc091_demo_generation"):
         assert marker in reset
         assert marker in verifier
-        assert marker in module
+        assert marker not in module
     assert 'rm -rf "${PGDATA:?}"/*' in reset
     assert "docker restart" in verifier
     assert '"priorGenerationReachable": false' in verifier
