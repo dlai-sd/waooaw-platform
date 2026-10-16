@@ -1,0 +1,255 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-124
+contract_path: work-contracts/WC-124-demo-uat-persistent-state-lifecycle-implementation.md
+contract_digest: daa4c9f74da8128cd7db99e8101e7152ee9eb03241499545a79b8dd89a1910d7
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010) within accepted owner contracts
+  evidence_class: Repository-owned Docker/catalog contract, unit, integration, security, migration, recovery, workflow, or policy evidence
+  initial_state: expected-fail
+  completion_rule: The direct oracle passes on the exact candidate with no skipped, advisory, TODO, or success-shaped fallback.
+  residual_risk: Passing local and emulated evidence does not establish Azure provider, deployment, restore, traffic, activation, approval, or merge acceptance.
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC124-R001
+    source: WC-124 Authority And Scope; issue #521; FA-055
+    observable_outcome: Protected actions are denied without separate exact authority and Release Qualification remains OFF without weakening any other gate.
+    test_path_or_plan: tests/pipeline and validation-control authorization, release-control, and PR-evidence contract tests
+    initial_state: existing-pass
+    dependencies: None
+
+  - <<: *defaults
+    requirement_id: WC124-R002
+    source: Work Component section 3
+    observable_outcome: PST-001 through PST-013 each map to exact current source and at least one falsifying baseline test.
+    test_path_or_plan: WC-124 impact map plus focused topology, Billing, Terraform, workflow, and verifier baseline selectors
+    dependencies: WC124-R001
+
+  - <<: *defaults
+    requirement_id: WC124-R003
+    source: Work Component section 9.2; ADR-047
+    observable_outcome: Private runner identity, isolated backend keys, locking, denial, drift, import ownership, partial-apply reconciliation, and rollback are executable and fail closed.
+    test_path_or_plan: tests/infra and tests/pipeline ADR-047 runner/state contract selectors
+    dependencies: WC124-R001
+
+  - <<: *defaults
+    requirement_id: WC124-R004
+    source: Work Component section 7.1
+    observable_outcome: Demo and UAT plans each contain one protected private Flexible Server with accepted retention and no Production delta.
+    test_path_or_plan: Terraform fmt/validate/policy/plan fixtures for Demo, UAT, and Production no-change
+    dependencies: WC124-R002, WC124-R003
+
+  - <<: *defaults
+    requirement_id: WC124-R005
+    source: Work Component section 7.2 Plan A
+    observable_outcome: Entra-only Plan A creates only the accepted foundation, databases, owners, schemas, roles, and secret references without workload credentials or traffic.
+    test_path_or_plan: Terraform and bootstrap policy tests for Entra-only Plan A
+    dependencies: WC124-R004
+
+  - <<: *defaults
+    requirement_id: WC124-R006
+    source: Work Component section 7.2 Plan B
+    observable_outcome: Password compatibility is enabled only after Plan A evidence and bootstrap access is removed before application activation.
+    test_path_or_plan: Bootstrap sequencing and credential-handoff negative tests
+    dependencies: WC124-R005
+
+  - <<: *defaults
+    requirement_id: WC124-R007
+    source: Work Component sections 6.1 and 7.2
+    observable_outcome: Runtime and migration principals are distinct, least privilege, NOBYPASSRLS, non-owner, FORCE-RLS constrained, and transaction-local tenant context is reset.
+    test_path_or_plan: Real PostgreSQL plus PgBouncer role, grant, RLS, tenant, and reset integration tests
+    dependencies: WC124-R005, WC124-R006
+
+  - <<: *defaults
+    requirement_id: WC124-R008
+    source: Work Component section 7.3
+    observable_outcome: One digest-pinned private PgBouncer per environment provides transaction pooling, zero-idle scaling, readiness, rejection, and saturation telemetry without authority.
+    test_path_or_plan: Terraform dependency-manifest policy plus Docker PgBouncer lifecycle and telemetry tests
+    dependencies: WC124-R004, WC124-R006
+
+  - <<: *defaults
+    requirement_id: WC124-R009
+    source: Work Component section 7.4
+    observable_outcome: Only accepted same-environment private routes work; application direct-server, public fallback, foreign environment, runner data-plane, and cross-route access fail.
+    test_path_or_plan: Demo/UAT positive and negative network denial matrix tests
+    dependencies: WC124-R007, WC124-R008
+
+  - <<: *defaults
+    requirement_id: WC124-R010
+    source: Work Component section 8
+    observable_outcome: Expand-only Billing integrity, release, reconciliation, outcome, discrepancy, evidence, and audit objects migrate twice idempotently through PgBouncer.
+    test_path_or_plan: Billing migration-order, second-apply, schema, constraint, role, and RLS tests
+    dependencies: WC124-R002
+
+  - <<: *defaults
+    requirement_id: WC124-R011
+    source: Work Component section 8
+    observable_outcome: Discrepancy greater than one paise atomically commits outcome, discrepancy, evidence, and halt while one-paise boundaries remain explicit.
+    test_path_or_plan: Billing atomic transaction and paise-boundary unit/integration tests
+    dependencies: WC124-R010
+
+  - <<: *defaults
+    requirement_id: WC124-R012
+    source: Work Component section 8
+    observable_outcome: Halt release appends actor, authority, reason, and evidence; missing or uncertain halt authority blocks consequential writes.
+    test_path_or_plan: Billing halt/release authorization, history, fail-closed, and restart tests
+    dependencies: WC124-R010
+
+  - <<: *defaults
+    requirement_id: WC124-R013
+    source: Work Component section 8.1
+    observable_outcome: Canonical execution identity and digest enforce one claim, terminal replay, digest conflict, tenant/environment separation, and safe crash recovery.
+    test_path_or_plan: Billing multi-replica reconciliation, duplicate, conflict, and crash-point tests
+    dependencies: WC124-R010
+
+  - <<: *defaults
+    requirement_id: WC124-R014
+    source: Work Component section 8
+    observable_outcome: Redis deletion and restart cannot clear or create halt authority, erase audit history, or duplicate outcomes; permitted projections rebuild.
+    test_path_or_plan: Billing Redis-loss, cache rebuild, process restart, and readiness tests
+    dependencies: WC124-R011, WC124-R012, WC124-R013
+
+  - <<: *defaults
+    requirement_id: WC124-R015
+    source: Work Component section 9
+    observable_outcome: Cloud revisions contain no PostgreSQL, Billing Redis, or Demo Temporal PostgreSQL sidecars, authority volumes, localhost database routes, or shared superuser credentials.
+    test_path_or_plan: Terraform topology and rendered revision policy tests
+    dependencies: WC124-R007, WC124-R008, WC124-R014
+
+  - <<: *defaults
+    requirement_id: WC124-R016
+    source: Work Component section 9.1
+    observable_outcome: Every CE, BP, Billing, and Demo Temporal dataset has owner, source/target, method, consistency, fence, watermark, rollback, retention, and disposition evidence before sidecar removal.
+    test_path_or_plan: Dataset cutover ledger schema, completeness, reconciliation, write-fence, and rollback tests
+    dependencies: WC124-R010, WC124-R015
+
+  - <<: *defaults
+    requirement_id: WC124-R017
+    source: Work Component section 9.4
+    observable_outcome: Lifecycle records are external, hash chained, content addressed, independently signed, environment locked, resumable, bounded, and fail closed in hold states.
+    test_path_or_plan: Lifecycle record, signature, lock, resume, retry, transition, and hold contract tests
+    dependencies: WC124-R016
+
+  - <<: *defaults
+    requirement_id: WC124-R018
+    source: Work Component section 10
+    observable_outcome: Sleep closes ingress, drains work, records watermarks, proves backup and non-destruction, scales exact-seven and dependencies to zero, stops PostgreSQL, and records residual cost.
+    test_path_or_plan: Docker/emulator retained-data sleep order, interruption, idempotency, cost, and protected-resource rehearsal
+    dependencies: WC124-R017
+
+  - <<: *defaults
+    requirement_id: WC124-R019
+    source: Work Component section 11
+    observable_outcome: Activation starts PostgreSQL, PgBouncer, migrations, dependencies, exact-seven applications, caches, reconciliation, probes, and traffic strictly in accepted order without rebuild.
+    test_path_or_plan: Docker/emulator database-to-traffic activation order, timeout, interruption, and fail-closed rehearsal
+    dependencies: WC124-R018
+
+  - <<: *defaults
+    requirement_id: WC124-R020
+    source: Work Component section 11
+    observable_outcome: UAT accepts only the Founder-accepted Demo application/schema/migration identity and a separately valid UAT Temporal/configuration/dependency manifest.
+    test_path_or_plan: UAT promotion identity, manifest binding, mismatch, and no-rebuild tests
+    dependencies: WC124-R019
+
+  - <<: *defaults
+    requirement_id: WC124-R021
+    source: Work Component section 11.1
+    observable_outcome: Every provider action validates the full immutable environment tuple and denies every independently mutated field before provider access.
+    test_path_or_plan: Workflow authorization-tuple mutation matrix tests
+    dependencies: WC124-R003, WC124-R019
+
+  - <<: *defaults
+    requirement_id: WC124-R022
+    source: Work Component section 12
+    observable_outcome: ci.yaml selects and blocks on every applicable Terraform, topology, secret, migration, RLS, Billing, lifecycle, recovery, security, authorization, network, release, and constitutional gate.
+    test_path_or_plan: CI planner selection and gate-contract tests plus impacted catalog execution
+    dependencies: WC124-R010 through WC124-R021
+
+  - <<: *defaults
+    requirement_id: WC124-R023
+    source: Work Component section 12 capacity qualification
+    observable_outcome: Capacity includes all accepted clients and overlapping revisions and blocks above 80%; recovery and cost thresholds are exact.
+    test_path_or_plan: Deterministic capacity, connection, RPO/RTO, retention, and cost calculation tests
+    dependencies: WC124-R004, WC124-R008, WC124-R019
+
+  - <<: *defaults
+    requirement_id: WC124-R024
+    source: Work Component section 13 Plan
+    observable_outcome: deploy.yaml plan authorizes dispatcher/release/environment/state/cost/lease and retains immutable non-destructive private plans and inventory.
+    test_path_or_plan: deploy.yaml plan action, authorization, destruction, public-route, state, secret, and cost tests
+    dependencies: WC124-R003, WC124-R004, WC124-R022
+
+  - <<: *defaults
+    requirement_id: WC124-R025
+    source: Work Component section 13 Activate
+    observable_outcome: deploy.yaml activate invokes the accepted lifecycle order and withholds traffic until independent verification and UAT promotion gates pass.
+    test_path_or_plan: deploy.yaml activate sequencing, identity, hold, verification, and traffic-admission tests
+    dependencies: WC124-R019, WC124-R020, WC124-R021, WC124-R022
+
+  - <<: *defaults
+    requirement_id: WC124-R026
+    source: Work Component section 13 Sleep
+    observable_outcome: deploy.yaml sleep reverses dependencies, retains all protected assets and evidence, verifies zero replicas and records residual state/cost.
+    test_path_or_plan: deploy.yaml sleep sequencing, retention, zero-replica, stop-state, failure, and cost tests
+    dependencies: WC124-R018, WC124-R021, WC124-R022
+
+  - <<: *defaults
+    requirement_id: WC124-R027
+    source: Work Component sections 13 and 14
+    observable_outcome: Docker fixtures prove additive migration, sanitized restore, previous-release readability, tenant/FORCE-RLS denial, constitutional lineage, financial reconciliation, RPO/RTO, and failure holds.
+    test_path_or_plan: PostgreSQL/PgBouncer migration, restore, compatibility, RLS, constitutional, financial, and recovery catalog gates
+    dependencies: WC124-R007, WC124-R010, WC124-R016, WC124-R022
+
+  - <<: *defaults
+    requirement_id: WC124-R028
+    source: Issue #521 protected actions; Work Component sections 13 and 14
+    observable_outcome: Real Azure plan/apply, deployment, restore qualification, and traffic admission cannot execute without separate exact current Founder authority.
+    test_path_or_plan: Workflow protected-environment and authorization-denial tests; live execution is Founder reserved
+    initial_state: Founder-reserved
+    dependencies: WC124-R001, WC124-R021
+
+  - <<: *defaults
+    requirement_id: WC124-R029
+    source: Work Component section 14
+    observable_outcome: The pinned Docker Azure CLI runs against the deterministic local emulator for focused verification and one final complete rehearsal with retained artifacts.
+    test_path_or_plan: scripts/run_goal006_local_azure_verification.sh and scripts/run_goal006_local_rehearsal.sh through catalog execution
+    dependencies: WC124-R024, WC124-R025, WC124-R026
+
+  - <<: *defaults
+    requirement_id: WC124-R030
+    source: Work Component section 14.1
+    observable_outcome: Direct evidence update, forged/replaced/truncated/cross-environment chains, and writer self-acceptance fail; C-001 emergency stop bypasses BP rate limiting.
+    test_path_or_plan: PST-SEC-EVIDENCE-01 and PST-SEC-EMERGENCY-01 security gates
+    dependencies: WC124-R017, WC124-R022
+
+  - <<: *defaults
+    requirement_id: WC124-R031
+    source: Work Component section 16.1
+    observable_outcome: Lifecycle, lease, retry, backup, restore, PgBouncer, migration, route, cost, and evidence signals have exact thresholds, retention, redaction, owners, and escalation without mutation authority.
+    test_path_or_plan: Observability schema, redaction, alert ownership, threshold, and lifecycle signal tests
+    dependencies: WC124-R017, WC124-R018, WC124-R019, WC124-R027
+
+  - <<: *defaults
+    requirement_id: WC124-R032
+    source: Work Component section 19
+    observable_outcome: Rollback uses the complete prior immutable tuple, retains prior zero-traffic revision, rolls schema forward, preserves protected assets, and enters recovery hold on uncertainty.
+    test_path_or_plan: Full-tuple rollback, prior-release, partial-apply, recovery-hold, and no-delete tests
+    dependencies: WC124-R016, WC124-R019, WC124-R027
+
+  - <<: *defaults
+    requirement_id: WC124-R033
+    source: Work Component section 15
+    observable_outcome: Only mandatory owning records, inventories, runbooks, alerts, parameters, and evidence references are updated after executable qualification.
+    test_path_or_plan: Documentation traceability, consistency, link, and evidence-reference checks
+    dependencies: WC124-R022, WC124-R027, WC124-R029, WC124-R030, WC124-R031, WC124-R032
+
+  - <<: *defaults
+    requirement_id: WC124-R034
+    source: Work Component sections 16 and 17; issue #521 Founder handoff
+    observable_outcome: Exact-head author review and mandatory candidate gates pass; PR body is prepared and handed to the Founder without approval, merge, deployment, activation, or traffic claims.
+    test_path_or_plan: Engineering candidate qualification, C-059, C-065, PR prechecks, exact-head checks, hosted CI status, and Founder handoff
+    dependencies: WC124-R022, WC124-R023, WC124-R027, WC124-R028, WC124-R029, WC124-R030, WC124-R031, WC124-R032, WC124-R033
