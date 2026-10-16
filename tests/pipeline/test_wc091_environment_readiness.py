@@ -375,8 +375,10 @@ exit 0
 def test_keyvault_retry_classifier_fails_closed(tmp_path, apply_log: str, inventory: object, expected: bool) -> None:
     apply_log_path = tmp_path / "workload-apply.log"
     inventory_path = tmp_path / "credential-inventory.json"
+    plan_path = tmp_path / "workload-plan.json"
     apply_log_path.write_text(apply_log)
     inventory_path.write_text(json.dumps(inventory))
+    plan_path.write_text(json.dumps({"planned_values": {"root_module": {}}}))
 
     result = subprocess.run(
         [
@@ -386,11 +388,69 @@ def test_keyvault_retry_classifier_fails_closed(tmp_path, apply_log: str, invent
             str(apply_log_path),
             "--inventory",
             str(inventory_path),
+            "--plan",
+            str(plan_path),
         ],
         check=False,
     )
 
     assert (result.returncode == 0) is expected
+
+
+def test_keyvault_retry_classifier_covers_exact_planned_container_app_secrets(tmp_path) -> None:
+    apply_log_path = tmp_path / "workload-apply.log"
+    inventory_path = tmp_path / "credential-inventory.json"
+    plan_path = tmp_path / "workload-plan.json"
+    inventory_path.write_text(json.dumps({"credentials": []}))
+    plan_path.write_text(
+        json.dumps(
+            {
+                "planned_values": {
+                    "root_module": {
+                        "child_modules": [
+                            {
+                                "resources": [
+                                    {
+                                        "type": "azurerm_container_app",
+                                        "values": {
+                                            "secret": [
+                                                {
+                                                    "key_vault_secret_id": (
+                                                        "https://kv-waooaw-demo.vault.azure.net/secrets/google-client-secret"
+                                                    )
+                                                }
+                                            ]
+                                        },
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            }
+        )
+    )
+
+    for secret_name, expected in (("google-client-secret", True), ("undeclared-secret", False)):
+        apply_log_path.write_text(
+            f'Invalid value: "{secret_name}": Unable to get value using Managed identity '
+            f"/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ManagedIdentity/"
+            f"userAssignedIdentities/id-demo-web for secret {secret_name}"
+        )
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(wc091_environment.ROOT / "scripts/goal006_keyvault_retry.py"),
+                "--apply-log",
+                str(apply_log_path),
+                "--inventory",
+                str(inventory_path),
+                "--plan",
+                str(plan_path),
+            ],
+            check=False,
+        )
+        assert (result.returncode == 0) is expected
 
 
 def test_readiness_outcomes_are_independent_and_missing_evidence_is_not_proven() -> None:
