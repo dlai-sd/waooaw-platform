@@ -13,7 +13,8 @@
 | Source acceptance | PR #520 merged as `5a849683abec38ebb6d9d72b37b211d8a3376806` |
 | Requirement ledger | `work-contracts/WC-124-requirements.yaml` |
 | Owner input package | `work-contracts/WC-124-persistent-state-inputs.yaml` |
-| Input gate | **BLOCKED — 14 mandatory CB-020 items unresolved; `implementation_may_begin=false`** |
+| Owner input package SHA-256 | `210b18e540c60dc7a0b530b7ca7220e5c5468067a4fa3cebccfece1b9232604c` |
+| Input gate | **CLEAR — all 15 inputs resolved; `implementation_may_begin=true`; CB-020 CLOSED** |
 | Release Qualification | OFF by explicit current-session Founder authority |
 | Result | PLANNED |
 
@@ -57,13 +58,40 @@ current Founder authorization.
 - Demo retains self-hosted Temporal; UAT retains Temporal Cloud under ADR-015.
 - `deploy.yaml` remains the only mutation entry.
 - Existing protected lifecycle-evidence storage remains the control record location.
-- Exact provider SKU, storage, availability, versions, PgBouncer digest/resources/timeouts,
-  role/secret catalogue, dataset treatment, runner/state ownership and environment authorization
-  tuples must come from accepted repository records. A missing or conflicting value blocks its
-  dependent requirement and must not be invented.
-- The bounded owner package records the accepted values and unresolved decisions without promoting
-  legacy defaults. CB-020 remains open and PST-WC01 through PST-WC14 remain prohibited while
-  `implementation_may_begin` is false.
+- Exact provider SKU, storage, availability, versions, PgBouncer build-and-pin contract,
+  resources/timeouts, role/secret catalogue, dataset treatment, runner/state prerequisite and
+  environment authorization tuples are accepted in the digest-bound owner package.
+- Provider-operation release SHA, plan digest, runner execution identity, lease/expiry and the
+  PgBouncer, extended-catalog, restore and promotion digests are generated evidence under closed
+  pre-access contracts. They are not fabricated present values or missing design inputs.
+- Live ADR-047 runner/state ownership remains the mandatory PST-WC09A exit prerequisite; its
+  acceptance here does not claim that live evidence already exists. PST-WC04 cannot start until
+  every PST-WC09A oracle passes.
+- CB-020 is closed and PST-WC01 may begin under the existing implementation authority. This owner
+  pass does not authorize provider access, plan/apply,
+  deployment, restore qualification, traffic, UAT acceptance, Production, approval, or merge.
+
+## Owner Decision Closure
+
+The Founder-authorized integrated INST-009/INST-006/INST-007 decision pass accepted all fifteen
+technical inputs in `work-contracts/WC-124-persistent-state-inputs.yaml`, SHA-256
+`210b18e540c60dc7a0b530b7ca7220e5c5468067a4fa3cebccfece1b9232604c`.
+The package is controlling in full; extracting a value without its rationale, source constraints,
+acceptance statement, rollback/stop condition and package-evidence classification is invalid.
+
+The package distinguishes exact owner decisions from values that can exist only during a later
+authorized operation:
+
+- PgBouncer is pinned to
+  `docker.io/pgbouncer/pgbouncer@sha256:e8162131a43c54cd0ac7941e66eaaa802c5e5a49036f41b41260b70b290feea9`
+  from the Founder-authorized read-only public manifest lookup; tag-only use and fabricated digests
+  remain prohibited.
+- protected-workflow release, plan, runner, lease and expiry fields must be generated and validated
+  as one immutable environment tuple before provider access;
+- target-specific restore fixtures/points and UAT promotion digests must be generated, signed and
+  accepted at their later gates; no current restore or UAT acceptance is claimed; and
+- PST-WC09A must produce live runner/backend ownership, isolation, denial, import, drift,
+  partial-apply and Storage-account-separation evidence before PST-WC04.
 
 ## Canonical Requirement Index
 

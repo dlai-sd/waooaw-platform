@@ -6,7 +6,7 @@
 | `record_id` | `CB-020` |
 | `record_type` | Constitutional Blocker |
 | `produced_at` | `2026-10-16` |
-| Status | **OPEN** |
+| Status | **CLOSED — OWNER INPUT GATE RESOLVED 2026-10-16** |
 | Raised by | INST-010 - Platform IT Expert |
 | Affected work | Issue #521 / WC-124 / PST-WC00 through PST-WC14 |
 | Constitutional basis | C-023, C-032, C-059, C-063, C-080; FA-055; Work Component sections 2, 5 and 20 |
@@ -20,7 +20,7 @@ mandatory Work Contract inputs and orders INST-010 to stop rather than select th
 
 The accepted sources establish persistent private Demo/UAT PostgreSQL, dedicated PgBouncer, retained
 data during sleep, exact recovery/capacity thresholds and the separate provider-action boundary.
-They do not pin all values required before implementation:
+At blocker creation they did not pin all values required before implementation:
 
 1. exact Demo and UAT PostgreSQL SKU, storage, autogrow and availability posture;
 2. exact per-environment monthly estimate and owner-approved reserve under FA-052;
@@ -78,34 +78,41 @@ Production action, approval or merge.
 
 ## Bounded Owner Input Package - 2026-10-16
 
-The Founder-authorized integrated Platform/Data/Security owner pass produced
-`work-contracts/WC-124-persistent-state-inputs.yaml`. It records an exact owner, source
-path/section or key, source SHA-256, value, and `RESOLVED` or `BLOCKED` status for each item above.
-It does not promote legacy implementation defaults and does not contain provider-derived values.
-Its complete SHA-256 is
-`6184ca0dab8ddcd331906d042cffc99401292643a786099a0fc6a1fa9f6c2f75`.
+The Founder-authorized integrated INST-009/INST-006/INST-007 owner pass produced
+`work-contracts/WC-124-persistent-state-inputs.yaml`. For every item it records the exact selected
+value or closed generated-evidence contract, deciding owners, rationale, source constraints,
+acceptance statement, rollback/stop condition and package evidence. It does not promote legacy
+implementation defaults or fabricate provider-derived values. Its complete SHA-256 is
+`210b18e540c60dc7a0b530b7ca7220e5c5468067a4fa3cebccfece1b9232604c`.
 
 | Item | Status | Exact result |
 |---|---|---|
-| 1 PostgreSQL sizing | BLOCKED | SKU, storage, autogrow and availability remain unaccepted |
-| 2 cost/reserve | BLOCKED | Per-environment estimate and owner reserve remain absent |
+| 1 PostgreSQL sizing | RESOLVED | Demo/UAT `B_Standard_B1ms`, 32 GiB, autogrow disabled, single-zone/no-HA; connection limits 40/100 |
+| 2 cost/reserve | RESOLVED | Demo INR 1,100; UAT INR 1,600; combined INR 2,700; owner reserve INR 3,200/month before GST |
 | 3 platform versions | RESOLVED | PostgreSQL 16; Terraform 1.9.8; AzureRM 4.14.0 |
-| 4 PgBouncer | BLOCKED | No accepted immutable image digest, resources or timeout set |
-| 5 data/role inventory | BLOCKED | No row-complete register |
-| 6 bootstrap/handoff | BLOCKED | Exact Entra bootstrap identity and handoff absent |
-| 7 Billing cutover | BLOCKED | Dataset-specific initial state and reconciliation absent |
-| 8 order/timing | BLOCKED | Compatibility window, lease, restart interval and timeout absent |
-| 9 recovery fixture | BLOCKED | Existing fixture is UAT-scoped; Demo fixture authority absent |
-| 10 authorization tuples | BLOCKED | Tenant, runner identity and Founder-reserved operation bindings absent |
-| 11 secret/principals | BLOCKED | Canonical catalog lacks complete WC-124 entries/bindings |
-| 12 dataset cutover | BLOCKED | Ledger and discard authority absent |
-| 13 runner/state evidence | BLOCKED | Repository records do not prove live ownership/separation |
-| 14 lifecycle control | BLOCKED | Signing identities, mutation authority and retention absent |
-| 15 UAT promotion | BLOCKED | Founder Demo acceptance and cryptographic binding absent |
+| 4 PgBouncer | RESOLVED | `docker.io/pgbouncer/pgbouncer@sha256:e8162131a43c54cd0ac7941e66eaaa802c5e5a49036f41b41260b70b290feea9`; exact resources/limits/timeouts accepted |
+| 5 data/role inventory | RESOLVED | Eight row-complete database/schema/table-family inventories with NOLOGIN owners and separated migration/runtime/read roles |
+| 6 bootstrap/handoff | RESOLVED | Exact environment bootstrap identity names, generated role list, no-echo Key Vault version handoff and pre-activation revocation |
+| 7 Billing cutover | RESOLVED | `RECONCILIATION_REQUIRED` initial state; existing halt preserved; exact fail-closed reconciliation mapping |
+| 8 order/timing | RESOLVED | Exact migration/activation order, 24-hour compatibility/lease, five-minute restart reconciliation and 20-minute activation timeout |
+| 9 recovery fixture | RESOLVED | Existing synthetic fixture schema plus exact Demo/UAT deterministic generation and live PITR qualification contract |
+| 10 authorization tuples | RESOLVED | Static Demo/UAT tuples pinned; provider-operation values are closed generated runtime bindings; current apply authority is none |
+| 11 secret/principals | RESOLVED | Exact catalog additions, separated principal patterns and canonical digest generation/binding contract |
+| 12 dataset cutover | RESOLVED | CE/BP/Billing/Demo-Temporal preserve-and-reconcile ledger; no discard or deletion authority |
+| 13 runner/state evidence | RESOLVED | PST-WC09A exact prerequisite exit contract accepted; live evidence explicitly not yet proven; PST-WC04 remains dependent |
+| 14 lifecycle control | RESOLVED | Exact writer/verifier/scheduler identities, sole scheduled mutation, Platform Operations owner and per-signal retention |
+| 15 UAT promotion | RESOLVED | Exact generated digest/signature/equality gate; current Founder Demo and UAT acceptance remain none |
 
-**Disposition:** CB-020 remains **OPEN**. `implementation_may_begin=false`; PST-WC01 through
-PST-WC14 must not start. The package digest is evidence of this bounded pass, not a closing
-contract binding, because mandatory items remain unresolved.
+**Disposition:** CB-020 is **CLOSED**. `implementation_may_begin=true`; PST-WC01 may begin under the
+existing implementation authority. The exact PgBouncer OCI index digest was obtained through the
+Founder-authorized read-only public manifest lookup; no image was pulled or run.
+
+## Preserved Authority Boundary
+
+The owner decisions grant no Azure access, image pull/publication, provider plan/apply, deployment, restore
+qualification, traffic admission, Demo acceptance, UAT action, Production action, approval or
+merge. The one authorized public manifest lookup supplied the exact immutable PgBouncer digest;
+no digest was fabricated.
 
 ## Runner Remediation
 
@@ -122,5 +129,8 @@ prior failure evidence is not deleted or rewritten.
 
 ## Stop
 
-PST-WC00 has no valid exit while these inputs are absent. PST-WC01 through PST-WC14 must not start,
-and no runnable code, Terraform, workflow or build artifact may be created.
+Stop before provider access on any package mismatch, missing generated evidence, invalid PgBouncer
+digest, failed PST-WC09A oracle, stale authorization tuple, cost/capacity breach, secret exposure,
+Production delta, public/direct route, uncertain Billing state, recovery failure, or absent future
+Founder acceptance. This owner pass creates no runnable code, Terraform, workflow or build artifact
+and does not start PST-WC01.
