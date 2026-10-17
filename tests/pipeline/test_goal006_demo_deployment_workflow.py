@@ -54,6 +54,8 @@ def test_wc124_live_cli_contracts_match_the_pinned_runner() -> None:
 
     assert "--reference \"$release_tag\"" in provisioner
     assert "replicaRetryLimit: 1" in provisioner
+    assert "--tail 300" in WORKFLOW
+    assert "--tail 500" not in WORKFLOW
     assert "postgres flexible-server microsoft-entra-admin list" in handoff
     assert "postgres flexible-server ad-admin" not in WORKFLOW
 
