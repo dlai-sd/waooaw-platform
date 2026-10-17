@@ -146,15 +146,10 @@ jobs:
             repository=${image#ghcr.io/}
             repository=${repository%@*}
             expected_digest=${image##*@}
-            token=$(curl --fail --silent --show-error --get \
-              --data-urlencode service=ghcr.io \
-              --data-urlencode "scope=repository:$repository:pull" \
-              https://ghcr.io/token | jq -er '.token')
-            actual_digest=$(curl --fail --silent --show-error --head \
-              --header "Authorization: Bearer $token" \
-              --header 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json' \
-              "https://ghcr.io/v2/$repository/manifests/$expected_digest" \
-              | awk 'tolower($1) == "docker-content-digest:" {gsub("\r", "", $2); print tolower($2)}')
+            actual_digest=$(python3 scripts/goal006_ghcr_digest.py \
+              --repository "$repository" \
+              --reference "$expected_digest" \
+              --expected-digest "$expected_digest")
             test "$actual_digest" = "$expected_digest"
           }
           while IFS= read -r image; do
@@ -1044,11 +1039,9 @@ jobs:
           job_name="job-${TARGET_ENVIRONMENT}-wc124-db-provisioner"
           repository="dlai-sd/goal006-private-runner"
           release_tag="sha-${{ inputs.release_sha }}"
-          runner_digest=$(curl --fail --silent --show-error --head \
-            --header 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json' \
-            "https://ghcr.io/v2/${repository}/manifests/${release_tag}" \
-            | awk 'tolower($1) == "docker-content-digest:" {gsub("\r", "", $2); print tolower($2)}')
-          test -n "$runner_digest"
+          runner_digest=$(python3 scripts/goal006_ghcr_digest.py \
+            --repository "$repository" \
+            --reference "$release_tag")
           runner_image="ghcr.io/${repository}@${runner_digest}"
           pgbouncer_host="ca-${TARGET_ENVIRONMENT}-pgbouncer.internal.${{ steps.foundation.outputs.container_app_environment_default_domain }}"
           az containerapp job delete \
@@ -1083,7 +1076,7 @@ jobs:
                 configuration: {
                   triggerType: "Manual",
                   replicaTimeout: 1800,
-                  replicaRetryLimit: 0,
+                  replicaRetryLimit: 1,
                   manualTriggerConfig: {
                     replicaCompletionCount: 1,
                     parallelism: 1
@@ -1254,7 +1247,7 @@ jobs:
           test "$(jq '.credentials | length' wc124-db-credential-inventory.json)" = "$expected_count"
           test "$(jq '[.credentials[].role] | unique | length' wc124-db-credential-inventory.json)" = "$expected_count"
           # shellcheck disable=SC2016
-          test "$(az postgres flexible-server ad-admin list \
+          test "$(az postgres flexible-server microsoft-entra-admin list \
             --resource-group "$RESOURCE_GROUP" \
             --server-name "psql-waooaw-${TARGET_ENVIRONMENT}-state" \
             --query '[?contains(principalName, `db-bootstrap`)] | length(@)' -o tsv)" = 0

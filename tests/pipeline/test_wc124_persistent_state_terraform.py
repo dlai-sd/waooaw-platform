@@ -114,6 +114,8 @@ def test_temporal_and_keycloak_use_pgbouncer_and_distinct_roles() -> None:
     assert "KC_SPI_CONNECTIONS_JPA_QUARKUS_INITIALIZE_EMPTY" in workload
     assert 'resource "azurerm_container_app_job" "keycloak_migration"' in workload
     assert 'resource "azurerm_container_app_job" "temporal_migration"' in workload
+    assert workload.count("replica_retry_limit          = 1") == 4
+    assert "replica_retry_limit          = 0" not in workload
     assert "sslmode=verify-full" in workload
     assert "--tls-ca-file /etc/ssl/certs/ca-certificates.crt" in workload
     assert 'name  = "KC_DB"' in workload

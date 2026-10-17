@@ -1391,7 +1391,7 @@ resource "azurerm_container_app_job" "temporal_migration" {
   location                     = var.location
   resource_group_name          = var.resource_group_name
   container_app_environment_id = var.container_app_environment_id
-  replica_retry_limit          = 0
+  replica_retry_limit          = 1
   replica_timeout_in_seconds   = 1200
 
   identity {
@@ -1496,7 +1496,7 @@ resource "azurerm_container_app_job" "keycloak_migration" {
   location                     = var.location
   resource_group_name          = var.resource_group_name
   container_app_environment_id = var.container_app_environment_id
-  replica_retry_limit          = 0
+  replica_retry_limit          = 1
   replica_timeout_in_seconds   = 1200
 
   identity {
@@ -1959,7 +1959,7 @@ resource "azurerm_container_app_job" "billing_migration" {
   location                     = var.location
   resource_group_name          = var.resource_group_name
   container_app_environment_id = var.container_app_environment_id
-  replica_retry_limit          = 0
+  replica_retry_limit          = 1
   replica_timeout_in_seconds   = 1200
 
   identity {
