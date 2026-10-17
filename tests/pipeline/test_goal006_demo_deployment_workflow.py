@@ -58,6 +58,17 @@ def test_wc124_live_cli_contracts_match_the_pinned_runner() -> None:
     assert "postgres flexible-server ad-admin" not in WORKFLOW
 
 
+def test_wc124_vendor_job_names_fit_azure_limit() -> None:
+    workload = Path("infrastructure/terraform/phase2/modules/workload/main.tf").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'name                         = "job-${var.environment}-temporal-migration"' in workload
+    assert 'name                         = "job-${var.environment}-keycloak-migration"' in workload
+    assert len("job-demo-temporal-migration") <= 32
+    assert len("job-demo-keycloak-migration") <= 32
+
+
 def test_private_job_uses_only_live_runner_commands() -> None:
     private_job = WORKFLOW.split("  terraform:", 1)[1].split("  cleanup-private:", 1)[0]
 
