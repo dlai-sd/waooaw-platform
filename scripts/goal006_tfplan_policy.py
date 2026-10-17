@@ -10,6 +10,10 @@ from typing import Any
 
 KNOWN_ACTIONS = frozenset({"no-op", "create", "read", "update", "delete"})
 TEMPORAL_ADDRESS = "module.workload.azurerm_container_app.temporal[0]"
+TEMPORAL_ROLE_ADDRESS = "module.workload.azurerm_role_assignment.temporal_secret[0]"
+LEGACY_TEMPORAL_SCOPE_SUFFIX = "/secrets/business-platform"
+DATABASE_TEMPORAL_SCOPE_SUFFIX = "/secrets/db-temporal-runtime-demo"
+KEY_VAULT_SECRETS_USER_ROLE = "Key Vault Secrets User"
 
 
 def destructive_changes(plan: dict[str, Any]) -> list[str]:
@@ -40,10 +44,58 @@ def destructive_changes(plan: dict[str, Any]) -> list[str]:
 def enforce_plan(plan: dict[str, Any], scope: str) -> None:
     """Reject deletion and replacement in an application plan."""
     destructive = destructive_changes(plan)
+    if scope == "workload" and destructive:
+        destructive = [
+            address for address in destructive if not (address == TEMPORAL_ROLE_ADDRESS and is_temporal_secret_role_cutover(plan))
+        ]
     if destructive:
         raise ValueError(f"{scope.capitalize()} plan contains delete or replacement actions: " + ", ".join(destructive))
     if scope == "workload":
         enforce_temporal_contract(plan)
+
+
+def is_temporal_secret_role_cutover(plan: dict[str, Any]) -> bool:
+    """Accept only the one-time Demo Temporal role scope migration."""
+    matches = [change for change in plan["resource_changes"] if change.get("address") == TEMPORAL_ROLE_ADDRESS]
+    if len(matches) != 1:
+        return False
+    resource_change = matches[0]
+    if resource_change.get("mode") != "managed" or resource_change.get("type") != "azurerm_role_assignment":
+        return False
+    change = resource_change.get("change")
+    if not isinstance(change, dict) or change.get("actions") != ["delete", "create"]:
+        return False
+    if change.get("replace_paths") != [["scope"]]:
+        return False
+    before = change.get("before")
+    after = change.get("after")
+    if not isinstance(before, dict) or not isinstance(after, dict):
+        return False
+    before_scope = before.get("scope")
+    after_scope = after.get("scope")
+    if not isinstance(before_scope, str) or not isinstance(after_scope, str):
+        return False
+    if not before_scope.endswith(LEGACY_TEMPORAL_SCOPE_SUFFIX):
+        return False
+    if not after_scope.endswith(DATABASE_TEMPORAL_SCOPE_SUFFIX):
+        return False
+    if before_scope[: -len(LEGACY_TEMPORAL_SCOPE_SUFFIX)] != after_scope[: -len(DATABASE_TEMPORAL_SCOPE_SUFFIX)]:
+        return False
+    stable_fields = (
+        "condition",
+        "condition_version",
+        "delegated_managed_identity_resource_id",
+        "description",
+        "principal_id",
+        "role_definition_name",
+    )
+    if any(before.get(field) != after.get(field) for field in stable_fields):
+        return False
+    return (
+        isinstance(before.get("principal_id"), str)
+        and bool(before["principal_id"])
+        and before.get("role_definition_name") == KEY_VAULT_SECRETS_USER_ROLE
+    )
 
 
 def enforce_temporal_contract(plan: dict[str, Any]) -> None:

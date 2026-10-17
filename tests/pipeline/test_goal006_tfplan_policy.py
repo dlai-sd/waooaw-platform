@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from goal006_tfplan_policy import enforce_plan
@@ -53,6 +55,41 @@ def temporal_plan(
     }
 
 
+def temporal_secret_role_cutover() -> dict[str, Any]:
+    vault = "/subscriptions/sub/resourceGroups/waooaw-demo-rg/providers/Microsoft.KeyVault/vaults/kv-waooaw-demo"
+    stable = {
+        "condition": None,
+        "condition_version": None,
+        "delegated_managed_identity_resource_id": None,
+        "description": None,
+        "principal_id": "cb3198d4-856a-4631-a667-385aa46136e5",
+        "role_definition_name": "Key Vault Secrets User",
+    }
+    return {
+        "resource_changes": [
+            {
+                "address": "module.workload.azurerm_role_assignment.temporal_secret[0]",
+                "mode": "managed",
+                "type": "azurerm_role_assignment",
+                "name": "temporal_secret",
+                "index": 0,
+                "change": {
+                    "actions": ["delete", "create"],
+                    "before": {
+                        **stable,
+                        "scope": f"{vault}/secrets/business-platform",
+                    },
+                    "after": {
+                        **stable,
+                        "scope": f"{vault}/secrets/db-temporal-runtime-demo",
+                    },
+                    "replace_paths": [["scope"]],
+                },
+            }
+        ]
+    }
+
+
 @pytest.mark.parametrize("scope", ["foundation", "workload"])
 def test_destructive_plan_error_names_its_scope(scope: str) -> None:
     with pytest.raises(ValueError, match=f"^{scope.capitalize()} plan contains"):
@@ -71,3 +108,59 @@ def test_workload_plan_rejects_destructive_temporal_startup_probe() -> None:
 def test_workload_plan_rejects_temporal_readiness_probe() -> None:
     with pytest.raises(ValueError, match="Temporal readiness probe must be absent"):
         enforce_plan(temporal_plan(readiness_probe=[{"transport": "TCP", "port": 7233}]), "workload")
+
+
+def test_workload_plan_accepts_exact_temporal_secret_role_cutover() -> None:
+    enforce_plan(temporal_secret_role_cutover(), "workload")
+
+
+def mutate_cutover(path: tuple[str, ...], value: object) -> dict[str, Any]:
+    plan = temporal_secret_role_cutover()
+    target = plan["resource_changes"][0]
+    for key in path[:-1]:
+        target = target[key]
+    target[path[-1]] = value
+    return plan
+
+
+@pytest.mark.parametrize(
+    ("path", "value"),
+    [
+        (("address",), 'module.workload.azurerm_role_assignment.member_database_secret["web"]'),
+        (("mode",), "data"),
+        (("type",), "azurerm_key_vault_secret"),
+        (("change", "actions"), ["create", "delete"]),
+        (("change", "replace_paths"), [["principal_id"]]),
+        (("change", "before", "scope"), "/subscriptions/sub/secrets/other"),
+        (("change", "after", "scope"), "/subscriptions/sub/secrets/db-temporal-runtime-demo"),
+        (("change", "after", "principal_id"), "different-principal"),
+        (("change", "after", "role_definition_name"), "Key Vault Administrator"),
+    ],
+)
+def test_workload_plan_rejects_near_match_temporal_role_replacements(
+    path: tuple[str, ...],
+    value: object,
+) -> None:
+    with pytest.raises(ValueError, match="delete or replacement"):
+        enforce_plan(mutate_cutover(path, value), "workload")
+
+
+def test_workload_plan_rejects_duplicate_temporal_role_replacements() -> None:
+    plan = temporal_secret_role_cutover()
+    plan["resource_changes"].append(plan["resource_changes"][0])
+
+    with pytest.raises(ValueError, match="delete or replacement"):
+        enforce_plan(plan, "workload")
+
+
+def test_workload_plan_rejects_extra_destructive_change_beside_cutover() -> None:
+    plan = temporal_secret_role_cutover()
+    plan["resource_changes"].extend(destructive_plan()["resource_changes"])
+
+    with pytest.raises(ValueError, match=r"delete or replacement.*container_app\.member"):
+        enforce_plan(plan, "workload")
+
+
+def test_foundation_plan_never_accepts_temporal_role_cutover() -> None:
+    with pytest.raises(ValueError, match="Foundation plan contains"):
+        enforce_plan(temporal_secret_role_cutover(), "foundation")
