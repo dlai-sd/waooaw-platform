@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote, unquote, urlsplit
 
+from cli_errors import fail_cli
+
 
 PROVISIONER = "wc124-db-provisioner"
 APPLICATION_DATABASE = "waooaw_application"
@@ -487,10 +489,10 @@ def main() -> int:
                 raise ValueError("missing execution arguments: " + ", ".join(missing))
             result = execute(arguments)
     except (OSError, json.JSONDecodeError, KeyError, RuntimeError, subprocess.CalledProcessError, ValueError) as error:
-        parser.error(str(error))
-        raise AssertionError("argparse parser.error must terminate") from error
-    json.dump(result, sys.stdout, indent=2, sort_keys=True)
-    sys.stdout.write("\n")
+        fail_cli(parser, str(error), cause=error)
+    else:
+        json.dump(result, sys.stdout, indent=2, sort_keys=True)
+        sys.stdout.write("\n")
     return 0
 
 

@@ -12,6 +12,8 @@ import urllib.request
 from collections.abc import Callable
 from typing import Any
 
+from cli_errors import fail_cli
+
 GHCR_AUTH_URL = "https://ghcr.io/token"
 GHCR_REGISTRY_URL = "https://ghcr.io"
 MANIFEST_ACCEPT = ", ".join(
@@ -98,8 +100,9 @@ def main() -> int:
             expected_digest=arguments.expected_digest,
         )
     except (RegistryResolutionError, json.JSONDecodeError, OSError) as error:
-        parser.error(str(error))
-    print(digest)
+        fail_cli(parser, str(error), cause=error)
+    else:
+        print(digest)
     return 0
 
 

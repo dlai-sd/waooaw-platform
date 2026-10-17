@@ -105,7 +105,7 @@
     "infrastructure/postgres/init/58-wc123-portal-preference-permissions.sql": "532f9f1b3079b1c876e4e716ee7be4d5aec87ef9eb06959165fa301a44d4241e",
     "infrastructure/postgres/init/59-wc124-billing-authority.sql": "21da6d7442bb4db30f32d121cb1014497e31127f540b79be02b837abc34254f7",
     "infrastructure/postgres/init/60-wc124-principal-handoff.sql": "48c00056b3b50e9d7f772fdc71614b99a0aea3f58ae0ef03462896614ca13956",
-    "infrastructure/runner/Dockerfile": "a249a1af1afc37280cd88bf558438da663ad77c439a5269dcd0130c815ac3d3a",
+    "infrastructure/runner/Dockerfile": "05a8bb812889571d302217760d470046a3776ec17db47d72bcd85733f8f235d1",
     "infrastructure/runner/entrypoint.sh": "fe467ae6782b0792bdf0e2dfada98e277abd5f8ec11bc817768ccf032cfe62a7",
     "infrastructure/runner/import-app-signing-material.sh": "e308e88ba3b70ea923e92f9840bb1fa4f25a462556f1b9b65e13fd0c54376e94",
     "scripts/azure_rest_retry.py": "e7510cf99a0f3924eb284d6362d7b09f394ee838fd00ff3471c76090f5eea76e",
@@ -114,10 +114,11 @@
     "scripts/goal006_runner_bootstrap.py": "04af340f24ad13be80ea3ecd1f0013939db16ca5087d125f88c0d4eddc4e7063",
     "scripts/goal006_runner_deployment.py": "66de181fdbde226bd84eafd4e0da18e2dba4426fffc00b9d40695109278e2f17",
     "scripts/goal006_runner_execution.py": "4319cf4b69e9624faceff72a4ca8e05df3d2fc8d8c85e008f90193ae4179a4ec",
+    "scripts/cli_errors.py": "889b959ffd13aed0505441bac702cb13f777585868e7e6323df9463014bfe501",
     "scripts/goal006_runner_lifecycle.py": "3277aa8c98bc7ddbf627ec604aebd0f44bf9968340d8dcde38319ed081210c49",
     "scripts/goal006_runner_prerequisites.py": "0807ec8c8379ac5a555644b0f24cf7f74b51f20357367625c136a2ffa948106b",
     "scripts/goal006_runner_qualification.py": "0c04399cf6ea6395d07015d28fdc14484df90d1a3dc13632b9171432b6e5bfb0",
-    "scripts/wc124_db_provisioner.py": "481e8aa6c52d52801c40d6359274d7e009b9dfde5f4940d553d51f1c0781bc9a"
+    "scripts/wc124_db_provisioner.py": "b56afefce72f54b70736e07767487d9dc6cc7e489a212d1b5c2ddd414c70f82f"
   },
   "schema_version": 3
 }
