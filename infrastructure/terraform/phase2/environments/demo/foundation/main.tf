@@ -5,6 +5,14 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "= 4.14.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "= 3.6.3"
+    }
+    azapi = {
+      source  = "Azure/azapi"
+      version = "= 2.2.0"
+    }
   }
   backend "azurerm" {
     key = "goal006/demo/foundation.tfstate"

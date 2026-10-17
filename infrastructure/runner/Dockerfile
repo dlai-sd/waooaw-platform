@@ -25,12 +25,13 @@ RUN apt-get update \
 COPY --chown=runner:runner scripts/goal006_runner_lifecycle.py /opt/waooaw/goal006_runner_lifecycle.py
 COPY --chown=runner:runner scripts/cli_errors.py /opt/waooaw/cli_errors.py
 COPY --chown=runner:runner scripts/wc124_db_provisioner.py /opt/waooaw/wc124_db_provisioner.py
+COPY --chown=runner:runner scripts/wc124_db_handoff.py /opt/waooaw/wc124_db_handoff.py
 COPY --chown=runner:runner infrastructure/environment-readiness/secret-catalog.json /opt/waooaw/secret-catalog.json
 COPY --chown=runner:runner infrastructure/postgres/init /opt/waooaw/postgres/init
 COPY --chown=runner:runner architecture/reference/pipeline/github-runner-app-manifest.json /opt/waooaw/github-runner-app-manifest.json
 COPY --chown=runner:runner infrastructure/runner/entrypoint.sh /opt/waooaw/entrypoint.sh
 COPY --chown=runner:runner infrastructure/runner/import-app-signing-material.sh /opt/waooaw/import-app-signing-material.sh
-RUN chmod 0555 /opt/waooaw/entrypoint.sh /opt/waooaw/goal006_runner_lifecycle.py /opt/waooaw/wc124_db_provisioner.py /opt/waooaw/import-app-signing-material.sh
+RUN chmod 0555 /opt/waooaw/entrypoint.sh /opt/waooaw/goal006_runner_lifecycle.py /opt/waooaw/wc124_db_provisioner.py /opt/waooaw/wc124_db_handoff.py /opt/waooaw/import-app-signing-material.sh
 
 USER runner
 WORKDIR /home/runner
