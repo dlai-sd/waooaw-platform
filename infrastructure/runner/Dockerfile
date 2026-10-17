@@ -23,6 +23,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* /tmp/azure-cli.deb /tmp/terraform.zip
 
 COPY --chown=runner:runner scripts/goal006_runner_lifecycle.py /opt/waooaw/goal006_runner_lifecycle.py
+COPY --chown=runner:runner scripts/cli_errors.py /opt/waooaw/cli_errors.py
 COPY --chown=runner:runner scripts/wc124_db_provisioner.py /opt/waooaw/wc124_db_provisioner.py
 COPY --chown=runner:runner infrastructure/environment-readiness/secret-catalog.json /opt/waooaw/secret-catalog.json
 COPY --chown=runner:runner infrastructure/postgres/init /opt/waooaw/postgres/init

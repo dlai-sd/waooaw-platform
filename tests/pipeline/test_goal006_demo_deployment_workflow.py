@@ -38,9 +38,24 @@ def test_demo_deployment_never_opens_public_storage_access() -> None:
 def test_private_runner_steps_do_not_require_a_docker_daemon() -> None:
     assert "docker/setup-buildx-action" not in WORKFLOW
     assert "docker buildx" not in WORKFLOW
-    assert "https://ghcr.io/v2/$repository/manifests/$expected_digest" in WORKFLOW
+    assert WORKFLOW.count("scripts/goal006_ghcr_digest.py") == 2
+    assert "--expected-digest \"$expected_digest\"" in WORKFLOW
     assert "https://mcr.microsoft.com/v2/$repository/manifests/$expected_digest" in WORKFLOW
     assert WORKFLOW.count('test "$actual_digest" = "$expected_digest"') == 2
+
+
+def test_wc124_live_cli_contracts_match_the_pinned_runner() -> None:
+    provisioner = WORKFLOW.split("      - name: Create WC-124 database provisioner", 1)[1].split(
+        "      - name: Run WC-124 database provisioner", 1
+    )[0]
+    handoff = WORKFLOW.split("      - name: Verify WC-124 database credential handoff", 1)[1].split(
+        "      - name: Build workload inputs", 1
+    )[0]
+
+    assert "--reference \"$release_tag\"" in provisioner
+    assert "replicaRetryLimit: 1" in provisioner
+    assert "postgres flexible-server microsoft-entra-admin list" in handoff
+    assert "postgres flexible-server ad-admin" not in WORKFLOW
 
 
 def test_private_job_uses_only_live_runner_commands() -> None:

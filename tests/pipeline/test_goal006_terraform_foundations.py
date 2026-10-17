@@ -853,11 +853,11 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "docker/setup-buildx-action" not in workflow
     assert '--evidence-directory "$evidence"' in workflow
     assert 'gh attestation verify "oci://$image"' in workflow
-    assert "https://ghcr.io/v2/$repository/manifests/$expected_digest" in workflow
+    assert workflow.count("scripts/goal006_ghcr_digest.py") == 2
     assert "https://mcr.microsoft.com/v2/$repository/manifests/$expected_digest" in workflow
     assert workflow.count('test "$actual_digest" = "$expected_digest"') == 2
     assert "--ghcr-packages-public-verified" in workflow
-    assert workflow.index("https://ghcr.io/v2/") < workflow.index("--ghcr-packages-public-verified")
+    assert workflow.index("scripts/goal006_ghcr_digest.py") < workflow.index("--ghcr-packages-public-verified")
     assert workflow.count('-backend-config="use_oidc=true"') == 3
     assert workflow.count('-backend-config="use_azuread_auth=true"') == 3
     assert "Enforce selected environment authorization" in workflow

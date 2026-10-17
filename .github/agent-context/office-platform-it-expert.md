@@ -28,6 +28,10 @@ own PR, access or mutate a provider without exact authority, or invoke another i
    `goal006-local-azure-runtime-<run-id>` artifact and Release qualification, C-059, C-065, and
    Test Champion gates. State explicitly whether Azure was emulated or a separately authorized
    live provider was used.
+   For a changed deployment command, execute the complete dependency-ordered path with the exact
+   pinned runner and component images. Workflow-text assertions do not qualify registry
+   authentication, Azure CLI command compatibility, managed-identity propagation, PostgreSQL
+   authority handoff, PgBouncer SCRAM/TLS, vendor migrations, activation, cleanup or verification.
 4. Read the touched engineering files, nearest tests, and only the ADR/claim sections named by the task.
 5. For every build or test, use the catalog-owned four-tier sequence: static contract and exact-container execution contract preflight with no image build;
    stack-specific disposable story execution against mounted source; dependency-complete milestone checks;
