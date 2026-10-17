@@ -29,6 +29,8 @@ module "foundation" {
   tfstate_storage_account_id         = var.tfstate_storage_account_id
   external_environment               = true
   persistent_state_enabled           = true
+  postgresql_password_auth_enabled   = var.postgresql_password_auth_enabled
+  database_bootstrap_admin_enabled   = var.database_bootstrap_admin_enabled
 }
 
 output "resource_group_name" {
@@ -102,4 +104,16 @@ output "postgresql_server_fqdn" {
 
 output "database_bootstrap_client_id" {
   value = module.foundation.database_bootstrap_client_id
+}
+
+output "database_bootstrap_identity_id" {
+  value = module.foundation.database_bootstrap_identity_id
+}
+
+output "database_provisioner_client_id" {
+  value = module.foundation.database_provisioner_client_id
+}
+
+output "database_provisioner_identity_id" {
+  value = module.foundation.database_provisioner_identity_id
 }

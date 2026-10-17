@@ -9,3 +9,13 @@ variable "runner_resource_group_name" {
 variable "runner_private_endpoints_subnet_id" {
   type = string
 }
+
+variable "postgresql_password_auth_enabled" {
+  type    = bool
+  default = false
+}
+
+variable "database_bootstrap_admin_enabled" {
+  type    = bool
+  default = true
+}

@@ -34,8 +34,10 @@ DATABASE_SECRET_NAMES = {
     "billing-engine": "db-billing-runtime",
     "billing-migration": "db-billing-migration",
     "keycloak": "db-keycloak-runtime",
+    "keycloak-migration": "db-keycloak-migration",
     "pgbouncer": "db-pgbouncer-auth",
     "temporal": "db-temporal-runtime-demo",
+    "temporal-migration": "db-temporal-migration-demo",
 }
 
 
@@ -80,7 +82,7 @@ def add_key_vault_references(
         database_secret_names = {
             principal: secret_name
             for principal, secret_name in DATABASE_SECRET_NAMES.items()
-            if environment == "demo" or principal != "temporal"
+            if environment == "demo" or principal not in {"temporal", "temporal-migration"}
         }
         values["database_secret_uris"] = {
             principal: f"{key_vault_uri}secrets/{secret_name}" for principal, secret_name in database_secret_names.items()
@@ -124,7 +126,9 @@ def create_inputs(
     database_secret_uris = configuration.get("database_secret_uris")
     database_secret_resource_ids = configuration.get("database_secret_resource_ids")
     if environment in {"demo", "uat"}:
-        expected_database_principals = set(DATABASE_SECRET_NAMES) - ({"temporal"} if environment == "uat" else set())
+        expected_database_principals = set(DATABASE_SECRET_NAMES) - (
+            {"temporal", "temporal-migration"} if environment == "uat" else set()
+        )
         if not isinstance(database_secret_uris, Mapping) or set(database_secret_uris) != expected_database_principals:
             raise ValueError("database_secret_uris must contain the exact persistent-state principals")
         if not all(

@@ -650,6 +650,38 @@ jobs:
           echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
           echo "cache_hit=$cache_hit" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve WC-124 database transition state
+        if: inputs.environment == 'demo' || inputs.environment == 'uat'
+        id: database-transition
+        run: |
+          set -euo pipefail
+          server_name="psql-waooaw-${{ inputs.environment }}-state"
+          bootstrap_required=true
+          password_auth_enabled=false
+          bootstrap_admin_enabled=true
+          if live_password_auth=$(az postgres flexible-server show \
+            --resource-group "waooaw-${{ inputs.environment }}-rg" \
+            --name "$server_name" \
+            --query authConfig.passwordAuth -o tsv 2>/dev/null); then
+            case "$live_password_auth" in
+              Enabled)
+                bootstrap_required=false
+                password_auth_enabled=true
+                bootstrap_admin_enabled=false
+                ;;
+              Disabled) ;;
+              *)
+                echo "Unexpected PostgreSQL password authentication state: $live_password_auth" >&2
+                exit 1
+                ;;
+            esac
+          fi
+          {
+            echo "bootstrap_required=$bootstrap_required"
+            echo "password_auth_enabled=$password_auth_enabled"
+            echo "bootstrap_admin_enabled=$bootstrap_admin_enabled"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Terraform foundation plan
         if: steps.foundation-cache.outputs.cache_hit != 'true'
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
@@ -657,6 +689,8 @@ jobs:
           APPLY_REQUESTED: ${{ inputs.apply }}
         run: |
           set -euo pipefail
+          password_auth_enabled='${{ steps.database-transition.outputs.password_auth_enabled || 'false' }}'
+          bootstrap_admin_enabled='${{ steps.database-transition.outputs.bootstrap_admin_enabled || 'true' }}'
           terraform init -input=false \
             -backend-config="resource_group_name=$TFSTATE_RESOURCE_GROUP" \
             -backend-config="storage_account_name=$TFSTATE_STORAGE_ACCOUNT" \
@@ -683,7 +717,10 @@ jobs:
             terraform import -input=false -lock-timeout=5m "$resource_address" "$resource_group_id"
           fi
           terraform validate
-          terraform plan -input=false -lock-timeout=5m -out=foundation.tfplan
+          terraform plan -input=false -lock-timeout=5m \
+            -var="postgresql_password_auth_enabled=$password_auth_enabled" \
+            -var="database_bootstrap_admin_enabled=$bootstrap_admin_enabled" \
+            -out=foundation.tfplan
           terraform show -json foundation.tfplan > foundation-plan.json
           python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
             --scope foundation \
@@ -738,7 +775,10 @@ jobs:
           {
             for key in deployment_client_id deployment_identity_id verification_client_id \
               resource_group_name container_app_environment_id container_app_environment_name \
-              key_vault_id key_vault_name key_vault_uri; do
+              container_app_environment_default_domain \
+              key_vault_id key_vault_name key_vault_uri postgresql_server_fqdn \
+              database_bootstrap_client_id database_bootstrap_identity_id \
+              database_provisioner_client_id database_provisioner_identity_id; do
               echo "$key=$(jq -r --arg key "$key" '.[$key]' <<< "$outputs")"
             done
           } >> "$GITHUB_OUTPUT"
@@ -987,6 +1027,238 @@ jobs:
             sleep 10
           done
 
+      - name: Create WC-124 database provisioner
+        if: inputs.apply && steps.database-transition.outputs.bootstrap_required == 'true'
+        env:
+          BOOTSTRAP_CLIENT_ID: ${{ steps.foundation.outputs.database_bootstrap_client_id }}
+          BOOTSTRAP_IDENTITY_ID: ${{ steps.foundation.outputs.database_bootstrap_identity_id }}
+          CONTAINER_APP_ENVIRONMENT_ID: ${{ steps.foundation.outputs.container_app_environment_id }}
+          DATABASE_PROVISIONER_CLIENT_ID: ${{ steps.foundation.outputs.database_provisioner_client_id }}
+          DATABASE_PROVISIONER_IDENTITY_ID: ${{ steps.foundation.outputs.database_provisioner_identity_id }}
+          KEY_VAULT_NAME: ${{ steps.foundation.outputs.key_vault_name }}
+          POSTGRESQL_SERVER_FQDN: ${{ steps.foundation.outputs.postgresql_server_fqdn }}
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          job_name="job-${TARGET_ENVIRONMENT}-wc124-db-provisioner"
+          repository="dlai-sd/goal006-private-runner"
+          release_tag="sha-${{ inputs.release_sha }}"
+          runner_digest=$(curl --fail --silent --show-error --head \
+            --header 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json' \
+            "https://ghcr.io/v2/${repository}/manifests/${release_tag}" \
+            | awk 'tolower($1) == "docker-content-digest:" {gsub("\r", "", $2); print tolower($2)}')
+          test -n "$runner_digest"
+          runner_image="ghcr.io/${repository}@${runner_digest}"
+          pgbouncer_host="ca-${TARGET_ENVIRONMENT}-pgbouncer.internal.${{ steps.foundation.outputs.container_app_environment_default_domain }}"
+          az containerapp job delete \
+            --name "$job_name" \
+            --resource-group "$RESOURCE_GROUP" \
+            --yes \
+            --output none 2>/dev/null || true
+          jq -n \
+            --arg name "$job_name" \
+            --arg environment_id "$CONTAINER_APP_ENVIRONMENT_ID" \
+            --arg bootstrap_identity_id "$BOOTSTRAP_IDENTITY_ID" \
+            --arg provisioner_identity_id "$DATABASE_PROVISIONER_IDENTITY_ID" \
+            --arg image "$runner_image" \
+            --arg target_environment "$TARGET_ENVIRONMENT" \
+            --arg vault_name "$KEY_VAULT_NAME" \
+            --arg server_fqdn "$POSTGRESQL_SERVER_FQDN" \
+            --arg pgbouncer_host "$pgbouncer_host" \
+            --arg bootstrap_client_id "$BOOTSTRAP_CLIENT_ID" \
+            --arg bootstrap_name "id-waooaw-${TARGET_ENVIRONMENT}-db-bootstrap" \
+            --arg provisioner_client_id "$DATABASE_PROVISIONER_CLIENT_ID" \
+            '{
+              name: $name,
+              identity: {
+                type: "UserAssigned",
+                userAssignedIdentities: {
+                  ($bootstrap_identity_id): {},
+                  ($provisioner_identity_id): {}
+                }
+              },
+              properties: {
+                environmentId: $environment_id,
+                configuration: {
+                  triggerType: "Manual",
+                  replicaTimeout: 1800,
+                  replicaRetryLimit: 0,
+                  manualTriggerConfig: {
+                    replicaCompletionCount: 1,
+                    parallelism: 1
+                  }
+                },
+                template: {
+                  containers: [{
+                    name: $name,
+                    image: $image,
+                    command: ["/usr/bin/python3"],
+                    args: [
+                      "/opt/waooaw/wc124_db_provisioner.py",
+                      "--environment", $target_environment,
+                      "--catalog", "/opt/waooaw/secret-catalog.json",
+                      "--vault-name", $vault_name,
+                      "--server-fqdn", $server_fqdn,
+                      "--pgbouncer-host", $pgbouncer_host,
+                      "--bootstrap-client-id", $bootstrap_client_id,
+                      "--bootstrap-name", $bootstrap_name,
+                      "--provisioner-client-id", $provisioner_client_id
+                    ],
+                    resources: {cpu: 0.5, memory: "1Gi"}
+                  }]
+                }
+              }
+            }' > wc124-db-provisioner-job-definition.json
+          az containerapp job create \
+            --name "$job_name" \
+            --resource-group "$RESOURCE_GROUP" \
+            --yaml wc124-db-provisioner-job-definition.json \
+            --output none
+
+      - name: Run WC-124 database provisioner
+        if: inputs.apply && steps.database-transition.outputs.bootstrap_required == 'true'
+        env:
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          job_name="job-${TARGET_ENVIRONMENT}-wc124-db-provisioner"
+          execution_name=$(az containerapp job start \
+            --name "$job_name" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query name -o tsv)
+          test -n "$execution_name"
+          capture_database_provisioner_evidence() {
+            az containerapp job show \
+              --name "$job_name" \
+              --resource-group "$RESOURCE_GROUP" \
+              --output json > wc124-db-provisioner-job.json
+            az containerapp job execution show \
+              --name "$job_name" \
+              --resource-group "$RESOURCE_GROUP" \
+              --job-execution-name "$execution_name" \
+              --output json > wc124-db-provisioner-execution.json
+            az containerapp job logs show \
+              --name "$job_name" \
+              --resource-group "$RESOURCE_GROUP" \
+              --execution "$execution_name" \
+              --container "$job_name" \
+              --tail 500 \
+              --format text > wc124-db-provisioner-evidence.log 2>&1 || true
+          }
+          for attempt in $(seq 1 180); do
+            status=$(az containerapp job execution show \
+              --name "$job_name" \
+              --resource-group "$RESOURCE_GROUP" \
+              --job-execution-name "$execution_name" \
+              --query properties.status -o tsv)
+            case "$status" in
+              Succeeded)
+                capture_database_provisioner_evidence
+                break
+                ;;
+              Failed|Stopped)
+                capture_database_provisioner_evidence
+                cat wc124-db-provisioner-evidence.log >&2
+                echo "WC-124 database provisioner failed with status: $status" >&2
+                exit 1
+                ;;
+            esac
+            if [ "$attempt" = 180 ]; then
+              capture_database_provisioner_evidence
+              cat wc124-db-provisioner-evidence.log >&2
+              echo "WC-124 database provisioner timed out with status: $status" >&2
+              exit 1
+            fi
+            sleep 10
+          done
+
+      - name: Apply reviewed PostgreSQL Plan B compatibility
+        if: inputs.apply && steps.database-transition.outputs.bootstrap_required == 'true'
+        working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
+        run: |
+          set -euo pipefail
+          terraform init -input=false \
+            -backend-config="resource_group_name=$TFSTATE_RESOURCE_GROUP" \
+            -backend-config="storage_account_name=$TFSTATE_STORAGE_ACCOUNT" \
+            -backend-config="container_name=$TFSTATE_CONTAINER" \
+            -backend-config="use_oidc=true" \
+            -backend-config="use_azuread_auth=true"
+          terraform plan -input=false -lock-timeout=5m \
+            -var="postgresql_password_auth_enabled=true" \
+            -var="database_bootstrap_admin_enabled=false" \
+            -out=foundation-plan-b.tfplan
+          terraform show -json foundation-plan-b.tfplan > foundation-plan-b.json
+          python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
+            --scope foundation \
+            --transition wc124-plan-b \
+            --plan foundation-plan-b.json
+          terraform apply -input=false -auto-approve foundation-plan-b.tfplan
+          test "$(az postgres flexible-server show \
+            --resource-group '${{ steps.foundation.outputs.resource_group_name }}' \
+            --name "psql-waooaw-${{ inputs.environment }}-state" \
+            --query authConfig.passwordAuth -o tsv)" = "Enabled"
+
+      - name: Verify WC-124 database credential handoff
+        if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
+        env:
+          KEY_VAULT_NAME: ${{ steps.foundation.outputs.key_vault_name }}
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          expected_count=15
+          test "$TARGET_ENVIRONMENT" != demo || expected_count=17
+          jq -n \
+            --arg environment "$TARGET_ENVIRONMENT" \
+            '{schema: "waooaw.wc124-db-credential-inventory/v1", environment: $environment, credentials: []}' \
+            > wc124-db-credential-inventory.json
+          while IFS=$'\t' read -r secret_id vault_name role; do
+            record=$(az keyvault secret show \
+              --vault-name "$KEY_VAULT_NAME" \
+              --name "$vault_name" \
+              --query '{id:id, enabled:attributes.enabled, tags:tags}' \
+              -o json)
+            test "$(jq -r '.enabled' <<< "$record")" = true
+            test "$(jq -r '.tags["wc124-role"] // ""' <<< "$record")" = "$role"
+            test "$(jq -r '.tags["wc124-provisioner"] // ""' <<< "$record")" = "wc124-db-provisioner"
+            version_id=$(jq -er '.id | split("/")[-1]' <<< "$record")
+            database=$(jq -er '.tags["wc124-database"]' <<< "$record")
+            jq \
+              --arg secret_id "$secret_id" \
+              --arg vault_name "$vault_name" \
+              --arg role "$role" \
+              --arg database "$database" \
+              --arg version_id "$version_id" \
+              '.credentials += [{
+                logical_secret_id: $secret_id,
+                vault_secret_name: $vault_name,
+                role: $role,
+                database: $database,
+                version_id: $version_id,
+                status: "ready"
+              }]' \
+              wc124-db-credential-inventory.json > wc124-db-credential-inventory.next.json
+            mv wc124-db-credential-inventory.next.json wc124-db-credential-inventory.json
+          done < <(jq -r \
+            --arg environment "$TARGET_ENVIRONMENT" \
+            ".entries[]
+             | select(
+                 .provisioner == \"wc124-db-provisioner\"
+                 and (.environments | index(\$environment))
+               )
+             | [.id, .vaultSecretName, .principal]
+             | @tsv" \
+            infrastructure/environment-readiness/secret-catalog.json)
+          test "$(jq '.credentials | length' wc124-db-credential-inventory.json)" = "$expected_count"
+          test "$(jq '[.credentials[].role] | unique | length' wc124-db-credential-inventory.json)" = "$expected_count"
+          # shellcheck disable=SC2016
+          test "$(az postgres flexible-server ad-admin list \
+            --resource-group "$RESOURCE_GROUP" \
+            --server-name "psql-waooaw-${TARGET_ENVIRONMENT}-state" \
+            --query '[?contains(principalName, `db-bootstrap`)] | length(@)' -o tsv)" = 0
+
       - name: Build workload inputs from trusted foundation outputs
         if: inputs.apply
         run: |
@@ -1051,6 +1323,7 @@ jobs:
           terraform validate
           terraform plan -input=false -lock-timeout=5m -out=workload.tfplan
           terraform show -json workload.tfplan > workload-plan.json
+          cp workload-plan.json "$GITHUB_WORKSPACE/workload-plan.json"
           python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
             --scope workload \
             --plan workload-plan.json
@@ -1142,6 +1415,62 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+      - name: Run vendor schema migrations against private PostgreSQL
+        if: inputs.apply
+        env:
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          jq -n \
+            --arg environment "$TARGET_ENVIRONMENT" \
+            '{schema: "waooaw.wc124-vendor-migrations/v1", environment: $environment, executions: []}' \
+            > wc124-vendor-migrations.json
+          run_migration() {
+            component="$1"
+            job_name="job-${TARGET_ENVIRONMENT}-wc124-${component}-migration"
+            execution=$(az containerapp job start \
+              --resource-group "$RESOURCE_GROUP" \
+              --name "$job_name" \
+              --query name \
+              --output tsv)
+            test -n "$execution"
+            status=
+            for attempt in $(seq 1 120); do
+              status=$(az containerapp job execution show \
+                --resource-group "$RESOURCE_GROUP" \
+                --name "$job_name" \
+                --job-execution-name "$execution" \
+                --query properties.status \
+                --output tsv)
+              case "$status" in
+                Succeeded) break ;;
+                Failed|Stopped)
+                  echo "${component} migration failed: $status" >&2
+                  exit 1
+                  ;;
+              esac
+              if [ "$attempt" = 120 ]; then
+                echo "${component} migration timed out with status: $status" >&2
+                exit 1
+              fi
+              sleep 10
+            done
+            jq \
+              --arg component "$component" \
+              --arg job "$job_name" \
+              --arg execution "$execution" \
+              --arg status "$status" \
+              '.executions += [{component: $component, job: $job, execution: $execution, status: $status}]' \
+              wc124-vendor-migrations.json > wc124-vendor-migrations.next.json
+            mv wc124-vendor-migrations.next.json wc124-vendor-migrations.json
+          }
+          run_migration keycloak
+          if [ "$TARGET_ENVIRONMENT" = demo ]; then
+            run_migration temporal
+          fi
+          test "$(jq '[.executions[].status == "Succeeded"] | all' wc124-vendor-migrations.json)" = true
+
       - name: Run additive Billing authority migration through PgBouncer
         if: inputs.apply
         env:
@@ -1229,6 +1558,18 @@ jobs:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
         run: az containerapp job delete --name "$SEEDER_JOB" --resource-group "$RESOURCE_GROUP" --yes --output none
 
+      - name: Delete WC-124 database provisioner
+        if: always() && steps.database-transition.outputs.bootstrap_required == 'true'
+        env:
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          az containerapp job delete \
+            --name "job-${TARGET_ENVIRONMENT}-wc124-db-provisioner" \
+            --resource-group "$RESOURCE_GROUP" \
+            --yes \
+            --output none
+
       - name: Retain persistent-state lifecycle execution evidence
         if: always() && inputs.lifecycle_action != 'plan'
         uses: actions/upload-artifact@v4
@@ -1273,9 +1614,18 @@ jobs:
             secret-seeder-job.json
             secret-seeder-execution.json
             secret-seeder-console.log
+            wc124-db-provisioner-job-definition.json
+            wc124-db-provisioner-job.json
+            wc124-db-provisioner-execution.json
+            wc124-db-provisioner-evidence.log
+            wc124-db-credential-inventory.json
+            wc124-vendor-migrations.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation.tfplan
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan-b.json
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan-b.tfplan
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-plan.json
+            workload-plan.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-state-before-plan.txt
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-state-after-apply-failure.txt
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload.tfplan

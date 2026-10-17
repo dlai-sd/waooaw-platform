@@ -7,6 +7,9 @@ on:
       - infrastructure/runner/**
       - scripts/goal006_runner_lifecycle.py
       - scripts/goal006_runner_qualification.py
+      - scripts/wc124_db_provisioner.py
+      - infrastructure/environment-readiness/secret-catalog.json
+      - infrastructure/postgres/init/**
       - infrastructure/terraform/phase2/environments/demo/foundation/**
       - infrastructure/terraform/phase2/modules/foundation/**
       - .github/workflows/private-runner-image.yaml
@@ -16,6 +19,9 @@ on:
       - infrastructure/runner/**
       - scripts/goal006_runner_lifecycle.py
       - scripts/goal006_runner_qualification.py
+      - scripts/wc124_db_provisioner.py
+      - infrastructure/environment-readiness/secret-catalog.json
+      - infrastructure/postgres/init/**
       - infrastructure/terraform/phase2/environments/demo/foundation/**
       - infrastructure/terraform/phase2/modules/foundation/**
       - .github/workflows/private-runner-image.yaml
@@ -71,7 +77,12 @@ jobs:
             /home/runner/bin/Runner.Listener --version | grep -Fxq "2.336.0"
             test "$(terraform version -json | jq -r .terraform_version)" = "1.9.8"
             test "$(az version --query "\"azure-cli\"" -o tsv)" = "2.79.0"
+            psql --version | grep -Fq "psql (PostgreSQL)"
             python3 /opt/waooaw/goal006_runner_lifecycle.py --help >/dev/null
+            python3 /opt/waooaw/wc124_db_provisioner.py \
+              --environment demo \
+              --catalog /opt/waooaw/secret-catalog.json \
+              --validate-only >/dev/null
             python3 /workspace/scripts/goal006_runner_qualification.py --help >/dev/null
             az storage blob lease acquire --help >/dev/null
             az storage blob lease release --help >/dev/null

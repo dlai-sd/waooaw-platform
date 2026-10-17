@@ -283,6 +283,23 @@ resource "azurerm_user_assigned_identity" "database_bootstrap" {
   tags                = local.tags
 }
 
+resource "azurerm_user_assigned_identity" "database_provisioner" {
+  count = var.persistent_state_enabled ? 1 : 0
+
+  name                = "id-${local.name}-db-provisioner"
+  location            = azurerm_resource_group.environment.location
+  resource_group_name = azurerm_resource_group.environment.name
+  tags                = local.tags
+}
+
+resource "azurerm_role_assignment" "database_provisioner_vault" {
+  count = var.persistent_state_enabled && var.database_bootstrap_admin_enabled ? 1 : 0
+
+  scope                = azurerm_key_vault.environment.id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = azurerm_user_assigned_identity.database_provisioner[0].principal_id
+}
+
 resource "azurerm_private_dns_zone" "postgresql" {
   count = var.persistent_state_enabled ? 1 : 0
 
@@ -321,7 +338,7 @@ resource "azurerm_postgresql_flexible_server" "persistent_state" {
 
   authentication {
     active_directory_auth_enabled = true
-    password_auth_enabled         = false
+    password_auth_enabled         = var.postgresql_password_auth_enabled
     tenant_id                     = azurerm_user_assigned_identity.deployment.tenant_id
   }
 
@@ -333,7 +350,7 @@ resource "azurerm_postgresql_flexible_server" "persistent_state" {
 }
 
 resource "azurerm_postgresql_flexible_server_active_directory_administrator" "bootstrap" {
-  count = var.persistent_state_enabled ? 1 : 0
+  count = var.persistent_state_enabled && var.database_bootstrap_admin_enabled ? 1 : 0
 
   server_name         = azurerm_postgresql_flexible_server.persistent_state[0].name
   resource_group_name = azurerm_resource_group.environment.name
@@ -346,7 +363,7 @@ resource "azurerm_postgresql_flexible_server_active_directory_administrator" "bo
 resource "azurerm_postgresql_flexible_server_database" "persistent_state" {
   for_each = var.persistent_state_enabled ? toset(
     var.environment == "demo"
-    ? ["waooaw_application", "waooaw_keycloak", "waooaw_temporal"]
+    ? ["waooaw_application", "waooaw_keycloak", "waooaw_temporal", "waooaw_temporal_visibility"]
     : ["waooaw_application", "waooaw_keycloak"]
   ) : toset([])
 
@@ -365,7 +382,7 @@ resource "azurerm_postgresql_flexible_server_configuration" "extensions" {
 
   name      = "azure.extensions"
   server_id = azurerm_postgresql_flexible_server.persistent_state[0].id
-  value     = "VECTOR"
+  value     = "BTREE_GIN,VECTOR"
 }
 
 resource "azurerm_postgresql_flexible_server_configuration" "max_connections" {
@@ -564,4 +581,16 @@ output "postgresql_server_fqdn" {
 
 output "database_bootstrap_client_id" {
   value = var.persistent_state_enabled ? azurerm_user_assigned_identity.database_bootstrap[0].client_id : null
+}
+
+output "database_bootstrap_identity_id" {
+  value = var.persistent_state_enabled ? azurerm_user_assigned_identity.database_bootstrap[0].id : null
+}
+
+output "database_provisioner_client_id" {
+  value = var.persistent_state_enabled ? azurerm_user_assigned_identity.database_provisioner[0].client_id : null
+}
+
+output "database_provisioner_identity_id" {
+  value = var.persistent_state_enabled ? azurerm_user_assigned_identity.database_provisioner[0].id : null
 }
