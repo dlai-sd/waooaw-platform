@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 from pathlib import Path
+import subprocess
 
 import pytest
 
@@ -14,6 +15,8 @@ from wc124_db_provisioner import (
     authfile_value,
     environment_specs,
     password_from_secret,
+    psql,
+    run,
     secret_value,
     validate_catalog,
 )
@@ -115,3 +118,41 @@ def test_vendor_databases_use_nologin_owners_and_separate_migrators() -> None:
     assert "ALTER DEFAULT PRIVILEGES FOR ROLE" in source
     assert "GRANT USAGE ON SCHEMA public" in source
     assert "CREATE EXTENSION IF NOT EXISTS btree_gin" in source
+
+
+def test_run_preserves_stderr_without_echoing_sensitive_arguments(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(command, 2, stdout="", stderr="root certificate file does not exist")
+
+    monkeypatch.setattr("wc124_db_provisioner.subprocess.run", fail)
+
+    with pytest.raises(RuntimeError, match="psql failed with exit code 2: root certificate") as raised:
+        run(["psql", "--password", "top-secret"])
+
+    assert "top-secret" not in str(raised.value)
+
+
+def test_psql_uses_the_runner_system_ca_bundle(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    def capture(
+        command: list[str],
+        *,
+        env: dict[str, str] | None = None,
+        stdin: str | None = None,
+    ) -> str:
+        captured.update(command=command, env=env, stdin=stdin)
+        return ""
+
+    monkeypatch.setattr("wc124_db_provisioner.run", capture)
+
+    psql("state.postgres.database.azure.com", "bootstrap", "application", "access-token", "SELECT 1;")
+
+    environment = captured["env"]
+    assert isinstance(environment, dict)
+    assert environment["PGSSLMODE"] == "verify-full"
+    assert environment["PGSSLROOTCERT"] == "/etc/ssl/certs/ca-certificates.crt"
+    assert environment["PGPASSWORD"] == "access-token"
+    assert captured["stdin"] == "SELECT 1;"

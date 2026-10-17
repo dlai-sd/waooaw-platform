@@ -1137,7 +1137,7 @@ jobs:
               --resource-group "$RESOURCE_GROUP" \
               --execution "$execution_name" \
               --container "$job_name" \
-              --tail 500 \
+              --tail 300 \
               --format text > wc124-db-provisioner-evidence.log 2>&1 || true
           }
           for attempt in $(seq 1 180); do

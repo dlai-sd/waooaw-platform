@@ -185,12 +185,14 @@ def password_from_secret(spec: CredentialSpec, value: str) -> str:
 def run(command: list[str], *, env: dict[str, str] | None = None, stdin: str | None = None) -> str:
     completed = subprocess.run(  # noqa: S603
         command,
-        check=True,
         capture_output=True,
         text=True,
         input=stdin,
         env=env,
     )
+    if completed.returncode != 0:
+        detail = completed.stderr.strip() or "command returned no diagnostic output"
+        raise RuntimeError(f"{Path(command[0]).name} failed with exit code {completed.returncode}: {detail}")
     return completed.stdout
 
 
@@ -253,6 +255,7 @@ def psql(
     environment = dict(os.environ)
     environment["PGPASSWORD"] = access_token
     environment["PGSSLMODE"] = "verify-full"
+    environment["PGSSLROOTCERT"] = "/etc/ssl/certs/ca-certificates.crt"
     run(
         [
             "psql",
