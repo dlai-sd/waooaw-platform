@@ -1387,7 +1387,7 @@ resource "azurerm_role_assignment" "temporal_migration_database_secret" {
 resource "azurerm_container_app_job" "temporal_migration" {
   count = var.workload_enabled && var.environment == "demo" ? 1 : 0
 
-  name                         = "job-${var.environment}-wc124-temporal-migration"
+  name                         = "job-${var.environment}-temporal-migration"
   location                     = var.location
   resource_group_name          = var.resource_group_name
   container_app_environment_id = var.container_app_environment_id
@@ -1492,7 +1492,7 @@ resource "azurerm_role_assignment" "keycloak_migration_database_secret" {
 resource "azurerm_container_app_job" "keycloak_migration" {
   count = var.workload_enabled && var.persistent_state_enabled ? 1 : 0
 
-  name                         = "job-${var.environment}-wc124-keycloak-migration"
+  name                         = "job-${var.environment}-keycloak-migration"
   location                     = var.location
   resource_group_name          = var.resource_group_name
   container_app_environment_id = var.container_app_environment_id
