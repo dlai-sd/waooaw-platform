@@ -78,10 +78,11 @@ def test_complete_principal_inventory_is_non_owner_and_nobypassrls() -> None:
     assert "login nosuperuser nobypassrls" in bootstrap
     assert "nologin nosuperuser nobypassrls" in bootstrap
     assert "revoke all on schema public from public" in handoff
+    assert "d.deptype in ('a', 'i')" in handoff
     assert "force row level security" in handoff
 
 
-def test_cutover_ledger_is_closed_world_and_non_destructive() -> None:
+def test_cutover_ledger_is_closed_world_demo_only_and_not_executed() -> None:
     ledger = yaml.safe_load(LEDGER.read_text(encoding="utf-8"))
     expected_fields = {
         "source_revision_digest",
@@ -95,9 +96,22 @@ def test_cutover_ledger_is_closed_world_and_non_destructive() -> None:
     }
 
     assert ledger["schema"] == "waooaw.wc124-dataset-cutover-ledger/v1"
-    assert ledger["status"] == "NOT_EXECUTED"
-    assert ledger["synthetic_discard_authority"] == "none"
-    assert ledger["source_deletion_authority"] == "none"
+    assert ledger["status"] == "FOUNDER_AUTHORIZED_NOT_EXECUTED"
+    assert ledger["synthetic_discard_authority"] == {
+        "status": "FOUNDER_AUTHORIZED",
+        "authorized_at": "2026-10-17T05:29:58Z",
+        "scope": "demo_ephemeral_sidecars_only",
+        "decision": "discard_current_demo_sidecar_content_and_reseed_persistent_postgresql",
+        "basis": "legacy_demo_sidecars_use_EmptyDir_and_delete_then_reseed_on_revision_start",
+        "excludes": ["uat", "prod"],
+        "provider_mutation_authority": "none",
+    }
+    assert ledger["source_deletion_authority"]["status"] == "DECISION_AUTHORIZED_EXECUTION_BLOCKED"
+    assert ledger["source_deletion_authority"]["execution_requires"] == (
+        "separate_founder_deployment_and_traffic_authorization"
+    )
+    assert ledger["uat_disposition"] == "PRESERVE_AND_DEFER_MIGRATION"
+    assert ledger["production_disposition"] == "OUT_OF_SCOPE_PRESERVE"
     assert [row["dataset"] for row in ledger["datasets"]] == [
         "constitutional_engine",
         "business_platform",
@@ -105,7 +119,9 @@ def test_cutover_ledger_is_closed_world_and_non_destructive() -> None:
         "demo_temporal",
     ]
     for row in ledger["datasets"]:
-        assert row["status"] == "NOT_EXECUTED"
+        assert row["environment"] == "demo"
+        assert row["migration_method"] == "synthetic_discard_and_clean_reseed"
+        assert row["status"] == "FOUNDER_AUTHORIZED_NOT_EXECUTED"
         assert row["consistency"]
         assert row["write_fence"]
         assert set(row["generated_fields"]) == expected_fields

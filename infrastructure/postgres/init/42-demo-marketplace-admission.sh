@@ -27,6 +27,7 @@ SET search_path = pg_catalog, business, identity
 AS \$function\$
 BEGIN
     IF NEW.status = 'ACTIVE' THEN
+        PERFORM set_config('app.current_tenant_id', NEW.tenant_id::text, true);
         INSERT INTO business.agent_admissions (
             tenant_id,
             professional_type_id,

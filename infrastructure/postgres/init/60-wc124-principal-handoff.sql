@@ -11,6 +11,75 @@ ALTER SCHEMA ai_runtime OWNER TO air_owner;
 ALTER SCHEMA billing OWNER TO billing_owner;
 ALTER SCHEMA web_session OWNER TO web_session_owner;
 
+DO $ownership$
+DECLARE
+    ownership record;
+    database_object record;
+BEGIN
+    FOR ownership IN
+        SELECT *
+        FROM (
+            VALUES
+                ('constitutional', 'ce_owner'),
+                ('business', 'bp_owner'),
+                ('professional', 'pr_owner'),
+                ('institutional', 'bp_owner'),
+                ('ai_runtime', 'air_owner'),
+                ('billing', 'billing_owner'),
+                ('web_session', 'web_session_owner')
+        ) AS accepted(schema_name, owner_name)
+    LOOP
+        FOR database_object IN
+            SELECT c.relname, c.relkind
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = ownership.schema_name
+              AND c.relkind IN ('r', 'p', 'S', 'v', 'm', 'f')
+              AND (
+                  c.relkind <> 'S'
+                  OR NOT EXISTS (
+                      SELECT 1
+                      FROM pg_depend d
+                      WHERE d.objid = c.oid
+                        AND d.classid = 'pg_class'::regclass
+                        AND d.refclassid = 'pg_class'::regclass
+                        AND d.deptype IN ('a', 'i')
+                  )
+              )
+        LOOP
+            EXECUTE format(
+                'ALTER %s %I.%I OWNER TO %I',
+                CASE database_object.relkind
+                    WHEN 'S' THEN 'SEQUENCE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                    ELSE 'TABLE'
+                END,
+                ownership.schema_name,
+                database_object.relname,
+                ownership.owner_name
+            );
+        END LOOP;
+
+        FOR database_object IN
+            SELECT p.oid::regprocedure AS routine_name, p.prokind
+            FROM pg_proc p
+            JOIN pg_namespace n ON n.oid = p.pronamespace
+            WHERE n.nspname = ownership.schema_name
+              AND p.prokind IN ('f', 'p')
+        LOOP
+            EXECUTE format(
+                'ALTER %s %s OWNER TO %I',
+                CASE database_object.prokind WHEN 'p' THEN 'PROCEDURE' ELSE 'FUNCTION' END,
+                database_object.routine_name,
+                ownership.owner_name
+            );
+        END LOOP;
+    END LOOP;
+END
+$ownership$;
+
 GRANT constitutional_app TO ce_runtime;
 GRANT business_app TO bp_runtime;
 GRANT runtime_app TO pr_runtime;

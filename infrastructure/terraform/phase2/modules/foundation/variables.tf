@@ -74,6 +74,28 @@ variable "persistent_state_enabled" {
   }
 }
 
+variable "postgresql_password_auth_enabled" {
+  type        = bool
+  description = "Enable non-admin password compatibility only after the WC-124 bootstrap transaction passes."
+  default     = false
+
+  validation {
+    condition     = !var.postgresql_password_auth_enabled || var.persistent_state_enabled
+    error_message = "PostgreSQL password compatibility requires the persistent-state foundation."
+  }
+}
+
+variable "database_bootstrap_admin_enabled" {
+  type        = bool
+  description = "Keep the Entra bootstrap administrator only through the WC-124 bootstrap transaction."
+  default     = true
+
+  validation {
+    condition     = !var.database_bootstrap_admin_enabled || var.persistent_state_enabled
+    error_message = "The database bootstrap administrator requires the persistent-state foundation."
+  }
+}
+
 variable "log_analytics_workspace_name" {
   type        = string
   description = "Existing workspace name to adopt when one was provisioned before Terraform ownership."

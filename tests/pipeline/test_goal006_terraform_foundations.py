@@ -145,6 +145,9 @@ def test_all_foundation_roots_publish_the_same_workload_contract() -> None:
                     "postgresql_server_id",
                     "postgresql_server_fqdn",
                     "database_bootstrap_client_id",
+                    "database_bootstrap_identity_id",
+                    "database_provisioner_client_id",
+                    "database_provisioner_identity_id",
                 }
             )
         assert set(re.findall(r'^output "([^"]+)"', foundation, re.MULTILINE)) == environment_outputs
@@ -293,6 +296,9 @@ def test_demo_temporal_lifecycle_and_member_readiness_are_fail_closed() -> None:
 
 def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
     contract = read_contract("modules/workload/main.tf")
+    keycloak_migration = contract.split(
+        'resource "azurerm_container_app_job" "keycloak_migration"', 1
+    )[1].split('resource "azurerm_container_app" "temporal"', 1)[0]
     keycloak = contract.split('resource "azurerm_container_app" "keycloak"', 1)[1].split(
         'resource "azurerm_container_app_job" "verification"', 1
     )[0]
@@ -310,8 +316,16 @@ def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
     assert 'protocolMapper = "oidc-usermodel-realm-role-mapper"' in contract
     assert '"claim.name"           = "realm_access.roles"' in contract
     assert '"userinfo.token.claim" = "true"' in contract
-    assert "--import-realm" in keycloak
-    assert "/opt/keycloak/data/import/waooaw-realm.json" in keycloak
+    assert "kc.sh import --file /tmp/waooaw-realm.json --override true" in keycloak_migration
+    assert "keycloak_migrator" in keycloak_migration
+    assert "KC_SPI_CONNECTIONS_JPA_QUARKUS_MIGRATION_STRATEGY" in keycloak_migration
+    assert 'value = "update"' in keycloak_migration
+    assert "--import-realm" not in keycloak
+    assert "/opt/keycloak/data/import/waooaw-realm.json" not in keycloak
+    assert "KC_SPI_CONNECTIONS_JPA_QUARKUS_MIGRATION_STRATEGY" in keycloak
+    assert 'value = "validate"' in keycloak
+    assert 'name  = "KC_SPI_CONNECTIONS_JPA_QUARKUS_INITIALIZE_EMPTY"' in keycloak
+    assert 'value = "false"' in keycloak
     assert "until /opt/keycloak/bin/kcadm.sh" not in keycloak
     assert "--db=dev-file" not in keycloak
     assert 'name  = "KC_DB"' in keycloak
@@ -322,8 +336,8 @@ def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
     assert keycloak.count('path                    = "/realms/waooaw/.well-known/openid-configuration"') == 2
     assert 'name  = "KEYCLOAK_ADMIN"' in keycloak
     assert 'name        = "KEYCLOAK_ADMIN_PASSWORD"' in keycloak
-    assert "printf '%s'" in keycloak
-    assert "printf '%%s'" not in keycloak
+    assert "printf '%s'" in keycloak_migration
+    assert "printf '%%s'" not in keycloak_migration
     assert 'name  = "KC_HOSTNAME"' in keycloak
     assert 'value = local.service_urls.identity_edge' in keycloak
     assert 'name  = "KC_PROXY_HEADERS"' in keycloak
@@ -844,8 +858,8 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert workflow.count('test "$actual_digest" = "$expected_digest"') == 2
     assert "--ghcr-packages-public-verified" in workflow
     assert workflow.index("https://ghcr.io/v2/") < workflow.index("--ghcr-packages-public-verified")
-    assert workflow.count('-backend-config="use_oidc=true"') == 2
-    assert workflow.count('-backend-config="use_azuread_auth=true"') == 2
+    assert workflow.count('-backend-config="use_oidc=true"') == 3
+    assert workflow.count('-backend-config="use_azuread_auth=true"') == 3
     assert "Enforce selected environment authorization" in workflow
     assert 'EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy.yaml@refs/heads/main' in workflow
     assert 'case "$TARGET_ENVIRONMENT" in demo|uat|prod)' in workflow
@@ -907,7 +921,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "az storage container show" not in workflow
     assert workflow.count('gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main"') == 1
     assert workflow.count("https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main") == 4
-    assert workflow.count("terraform apply -input=false -auto-approve") == 3
+    assert workflow.count("terraform apply -input=false -auto-approve") == 4
     assert "mcr.microsoft.com/azure-cli@sha256:" in workflow
     assert "https://mcr.microsoft.com/v2/$repository/manifests/$expected_digest" in workflow
     assert workflow.index("https://mcr.microsoft.com/v2/") > workflow.index(
@@ -920,9 +934,14 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "seeder_args=$(jq" not in workflow
     assert "capture_seeder_evidence()" in workflow
     assert "secret-seeder-job.json" in workflow
+    assert "Create WC-124 database provisioner" in workflow
+    assert "Run WC-124 database provisioner" in workflow
+    assert "Apply reviewed PostgreSQL Plan B compatibility" in workflow
+    assert "Verify WC-124 database credential handoff" in workflow
+    assert "--transition wc124-plan-b" in workflow
     assert "secret-seeder-console.log" in workflow
     assert workflow.index("capture_seeder_evidence()") < workflow.index("Delete private credential seeder")
-    assert workflow.count("if: inputs.apply") == 15
+    assert workflow.count("if: inputs.apply") == 20
     assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
     assert '--context "external_environment=$external_environment"' in workflow
     assert "if: steps.foundation-cache.outputs.cache_hit != 'true'" in workflow

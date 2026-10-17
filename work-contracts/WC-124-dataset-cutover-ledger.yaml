@@ -1,11 +1,23 @@
 schema: waooaw.wc124-dataset-cutover-ledger/v1
 work_contract: WC-124
 component: PST-WC02
-method: freeze_export_import_reconcile
-synthetic_discard_authority: none
-source_deletion_authority: none
-source_hold_until: PST-WC11_restore_rollback_and_reconciliation_acceptance
-status: NOT_EXECUTED
+method: founder_authorized_demo_synthetic_discard_and_clean_reseed
+synthetic_discard_authority:
+  status: FOUNDER_AUTHORIZED
+  authorized_at: "2026-10-17T05:29:58Z"
+  scope: demo_ephemeral_sidecars_only
+  decision: discard_current_demo_sidecar_content_and_reseed_persistent_postgresql
+  basis: legacy_demo_sidecars_use_EmptyDir_and_delete_then_reseed_on_revision_start
+  excludes: [uat, prod]
+  provider_mutation_authority: none
+source_deletion_authority:
+  status: DECISION_AUTHORIZED_EXECUTION_BLOCKED
+  scope: demo_ephemeral_sidecar_revision_retirement_only
+  execution_requires: separate_founder_deployment_and_traffic_authorization
+source_hold_until: separately_authorized_demo_cutover_execution_and_baseline_acceptance
+uat_disposition: PRESERVE_AND_DEFER_MIGRATION
+production_disposition: OUT_OF_SCOPE_PRESERVE
+status: FOUNDER_AUTHORIZED_NOT_EXECUTED
 
 generated_field_contract: &generated_fields
   source_revision_digest: required_at_execution
@@ -30,7 +42,8 @@ datasets:
       - predecessor_successor_links
       - append_only_denials
     write_fence: source_revision_zero_traffic_plus_ce_migration_identity
-    status: NOT_EXECUTED
+    migration_method: synthetic_discard_and_clean_reseed
+    status: FOUNDER_AUTHORIZED_NOT_EXECUTED
     generated_fields: *generated_fields
 
   - dataset: business_platform
@@ -45,7 +58,8 @@ datasets:
       - tenant_relationship_watermarks
       - foreign_keys
     write_fence: source_revision_zero_traffic_plus_bp_migration_identity
-    status: NOT_EXECUTED
+    migration_method: synthetic_discard_and_clean_reseed
+    status: FOUNDER_AUTHORIZED_NOT_EXECUTED
     generated_fields: *generated_fields
 
   - dataset: billing
@@ -61,7 +75,8 @@ datasets:
       - halt_release_history
       - discrepancy_evidence
     write_fence: source_revision_zero_traffic_plus_billing_migration_identity
-    status: NOT_EXECUTED
+    migration_method: synthetic_discard_and_clean_reseed
+    status: FOUNDER_AUTHORIZED_NOT_EXECUTED
     generated_fields: *generated_fields
 
   - dataset: demo_temporal
@@ -76,5 +91,6 @@ datasets:
       - task_queue_watermark
       - visibility_count
     write_fence: temporal_frontend_zero_traffic_plus_temporal_migration_identity
-    status: NOT_EXECUTED
+    migration_method: synthetic_discard_and_clean_reseed
+    status: FOUNDER_AUTHORIZED_NOT_EXECUTED
     generated_fields: *generated_fields

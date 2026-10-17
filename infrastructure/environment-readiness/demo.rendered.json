@@ -1,5 +1,5 @@
 {
-  "catalogDigest": "sha256:2b9fabf474944b9f9e6cdc387a26c42f04644a5abc4523211263c87140be4b52",
+  "catalogDigest": "sha256:1dac98364d71e9dd0a011c52d4f8f9e4bab706816b548079052acdb671182fb6",
   "configuration": {
     "capacityProfile": {
       "environment": "demo",
@@ -173,7 +173,7 @@
   },
   "environment": "demo",
   "manifestDigest": "sha256:228720c90c3decd509268cdb980a768391916798d2f08317cc93cceb7247246c",
-  "renderDigest": "sha256:7b154382df5071d5ae8f27a4548c7af0eca2329a3e1424526148da3571ace9e4",
+  "renderDigest": "sha256:812587daf9dd637a67692f9c8eda3bbc86b6531ca3a7808c3864573346b34114",
   "schemaVersion": "1.0",
   "secretBindings": [
     {
@@ -393,11 +393,33 @@
         "get"
       ],
       "consumers": [
+        "wc124-keycloak-migrator:KC_DB_PASSWORD"
+      ],
+      "id": "db-keycloak-migration",
+      "principal": "keycloak_migrator",
+      "reference": "kv://kv-waooaw-demo/secrets/db-keycloak-migration"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
         "temporal:POSTGRES_PWD"
       ],
       "id": "db-temporal-runtime-demo",
       "principal": "temporal_runtime",
       "reference": "kv://kv-waooaw-demo/secrets/db-temporal-runtime-demo"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "wc124-temporal-migrator:POSTGRES_PWD"
+      ],
+      "id": "db-temporal-migration-demo",
+      "principal": "temporal_migrator",
+      "reference": "kv://kv-waooaw-demo/secrets/db-temporal-migration-demo"
     },
     {
       "allowedOperations": [

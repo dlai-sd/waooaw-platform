@@ -14,6 +14,10 @@ TEMPORAL_ROLE_ADDRESS = "module.workload.azurerm_role_assignment.temporal_secret
 LEGACY_TEMPORAL_SCOPE_SUFFIX = "/secrets/business-platform"
 DATABASE_TEMPORAL_SCOPE_SUFFIX = "/secrets/db-temporal-runtime-demo"
 KEY_VAULT_SECRETS_USER_ROLE = "Key Vault Secrets User"
+DATABASE_BOOTSTRAP_ADMIN_ADDRESS = (
+    "module.foundation.azurerm_postgresql_flexible_server_active_directory_administrator.bootstrap[0]"
+)
+DATABASE_PROVISIONER_ROLE_ADDRESS = "module.foundation.azurerm_role_assignment.database_provisioner_vault[0]"
 
 
 def destructive_changes(plan: dict[str, Any]) -> list[str]:
@@ -41,46 +45,106 @@ def destructive_changes(plan: dict[str, Any]) -> list[str]:
     return destructive
 
 
-def enforce_plan(plan: dict[str, Any], scope: str) -> None:
+def enforce_plan(plan: dict[str, Any], scope: str, transition: str = "standard") -> None:
     """Reject deletion and replacement in an application plan."""
     destructive = destructive_changes(plan)
     if scope == "workload" and destructive:
+        cutover_violations = temporal_secret_role_cutover_violations(plan)
+        destructive = [address for address in destructive if not (address == TEMPORAL_ROLE_ADDRESS and not cutover_violations)]
+    if scope == "foundation" and transition == "wc124-plan-b" and destructive:
         destructive = [
-            address for address in destructive if not (address == TEMPORAL_ROLE_ADDRESS and is_temporal_secret_role_cutover(plan))
+            address
+            for address in destructive
+            if not (
+                address in {DATABASE_BOOTSTRAP_ADMIN_ADDRESS, DATABASE_PROVISIONER_ROLE_ADDRESS}
+                and is_wc124_plan_b_revocation(plan, address)
+            )
         ]
     if destructive:
-        raise ValueError(f"{scope.capitalize()} plan contains delete or replacement actions: " + ", ".join(destructive))
+        detail = ""
+        if scope == "workload" and TEMPORAL_ROLE_ADDRESS in destructive:
+            detail = "; Temporal cutover rejected: " + ", ".join(temporal_secret_role_cutover_violations(plan))
+        raise ValueError(f"{scope.capitalize()} plan contains delete or replacement actions: " + ", ".join(destructive) + detail)
     if scope == "workload":
         enforce_temporal_contract(plan)
 
 
-def is_temporal_secret_role_cutover(plan: dict[str, Any]) -> bool:
-    """Accept only the one-time Demo Temporal role scope migration."""
-    matches = [change for change in plan["resource_changes"] if change.get("address") == TEMPORAL_ROLE_ADDRESS]
+def is_wc124_plan_b_revocation(plan: dict[str, Any], address: str) -> bool:
+    """Allow only removal of the two temporary WC-124 bootstrap authorities."""
+    matches = [change for change in plan["resource_changes"] if change.get("address") == address]
     if len(matches) != 1:
         return False
     resource_change = matches[0]
-    if resource_change.get("mode") != "managed" or resource_change.get("type") != "azurerm_role_assignment":
+    change = resource_change.get("change")
+    if (
+        resource_change.get("mode") != "managed"
+        or not isinstance(change, dict)
+        or change.get("actions") != ["delete"]
+        or change.get("after") is not None
+        or not isinstance(change.get("before"), dict)
+    ):
         return False
+    before = change["before"]
+    if address == DATABASE_BOOTSTRAP_ADMIN_ADDRESS:
+        return (
+            resource_change.get("type") == "azurerm_postgresql_flexible_server_active_directory_administrator"
+            and before.get("principal_type") == "ServicePrincipal"
+            and isinstance(before.get("principal_name"), str)
+            and before["principal_name"].startswith("id-waooaw-")
+            and before["principal_name"].endswith("-db-bootstrap")
+        )
+    return (
+        resource_change.get("type") == "azurerm_role_assignment"
+        and before.get("role_definition_name") == "Key Vault Secrets Officer"
+        and isinstance(before.get("principal_id"), str)
+        and bool(before["principal_id"])
+        and isinstance(before.get("scope"), str)
+        and "/providers/Microsoft.KeyVault/vaults/kv-waooaw-" in before["scope"]
+        and "/secrets/" not in before["scope"]
+    )
+
+
+def is_temporal_secret_role_cutover(plan: dict[str, Any]) -> bool:
+    """Accept only the one-time Demo Temporal role scope migration."""
+    return not temporal_secret_role_cutover_violations(plan)
+
+
+def temporal_secret_role_cutover_violations(plan: dict[str, Any]) -> list[str]:
+    """Return closed-world reasons a Temporal role replacement is unsafe."""
+    matches = [change for change in plan["resource_changes"] if change.get("address") == TEMPORAL_ROLE_ADDRESS]
+    if len(matches) != 1:
+        return [f"expected one exact resource change, found {len(matches)}"]
+    resource_change = matches[0]
+    if resource_change.get("mode") != "managed" or resource_change.get("type") != "azurerm_role_assignment":
+        return ["resource must be a managed azurerm_role_assignment"]
     change = resource_change.get("change")
     if not isinstance(change, dict) or change.get("actions") != ["delete", "create"]:
-        return False
+        return ["actions must be exactly delete then create"]
     if change.get("replace_paths") != [["scope"]]:
-        return False
+        return [f"replacement paths must be scope only, got {change.get('replace_paths')!r}"]
     before = change.get("before")
     after = change.get("after")
     if not isinstance(before, dict) or not isinstance(after, dict):
-        return False
+        return ["before and after values must be objects"]
     before_scope = before.get("scope")
     after_scope = after.get("scope")
     if not isinstance(before_scope, str) or not isinstance(after_scope, str):
-        return False
+        return ["before and after scopes must be known strings"]
     if not before_scope.endswith(LEGACY_TEMPORAL_SCOPE_SUFFIX):
-        return False
+        return ["before scope is not the exact legacy Temporal secret"]
     if not after_scope.endswith(DATABASE_TEMPORAL_SCOPE_SUFFIX):
-        return False
+        return ["after scope is not the exact database Temporal secret"]
     if before_scope[: -len(LEGACY_TEMPORAL_SCOPE_SUFFIX)] != after_scope[: -len(DATABASE_TEMPORAL_SCOPE_SUFFIX)]:
-        return False
+        return ["before and after scopes are not in the same Key Vault"]
+    if not isinstance(before.get("principal_id"), str) or not before["principal_id"]:
+        return ["existing principal_id must be known and non-empty"]
+    if before.get("role_definition_name") != KEY_VAULT_SECRETS_USER_ROLE:
+        return ["existing role must be Key Vault Secrets User"]
+    after_unknown = change.get("after_unknown")
+    if after_unknown is None:
+        after_unknown = {}
+    if not isinstance(after_unknown, dict):
+        return ["after_unknown must be an object"]
     stable_fields = (
         "condition",
         "condition_version",
@@ -89,13 +153,14 @@ def is_temporal_secret_role_cutover(plan: dict[str, Any]) -> bool:
         "principal_id",
         "role_definition_name",
     )
-    if any(before.get(field) != after.get(field) for field in stable_fields):
-        return False
-    return (
-        isinstance(before.get("principal_id"), str)
-        and bool(before["principal_id"])
-        and before.get("role_definition_name") == KEY_VAULT_SECRETS_USER_ROLE
-    )
+    changed_fields = [
+        field
+        for field in stable_fields
+        if before.get(field) != after.get(field) and not (after.get(field) is None and after_unknown.get(field) is True)
+    ]
+    if changed_fields:
+        return ["stable fields changed: " + ", ".join(changed_fields)]
+    return []
 
 
 def enforce_temporal_contract(plan: dict[str, Any]) -> None:
@@ -135,12 +200,15 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--plan", required=True, type=Path)
     parser.add_argument("--scope", required=True, choices=("foundation", "workload"))
+    parser.add_argument("--transition", default="standard", choices=("standard", "wc124-plan-b"))
     arguments = parser.parse_args()
     try:
         plan = json.loads(arguments.plan.read_text(encoding="utf-8"))
         if not isinstance(plan, dict):
             raise ValueError("Terraform plan JSON must be an object")
-        enforce_plan(plan, arguments.scope)
+        if arguments.transition != "standard" and arguments.scope != "foundation":
+            raise ValueError("WC-124 Plan B transition is valid only for foundation plans")
+        enforce_plan(plan, arguments.scope, arguments.transition)
     except (OSError, json.JSONDecodeError, ValueError) as error:
         parser.error(str(error))
     print(json.dumps({"status": "PASS", "destructive_changes": 0}, sort_keys=True))

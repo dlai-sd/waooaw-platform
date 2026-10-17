@@ -9,7 +9,7 @@ USER root
 
 RUN apt-get update \
   && apt-get upgrade -y \
-    && apt-get install -y --no-install-recommends ca-certificates dnsutils jq openssl unzip \
+    && apt-get install -y --no-install-recommends ca-certificates dnsutils jq openssl postgresql-client unzip \
     && curl --fail --location --silent --show-error \
       --output /tmp/azure-cli.deb \
       "https://packages.microsoft.com/repos/azure-cli/pool/main/a/azure-cli/azure-cli_${AZURE_CLI_VERSION}_amd64.deb" \
@@ -23,10 +23,13 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* /tmp/azure-cli.deb /tmp/terraform.zip
 
 COPY --chown=runner:runner scripts/goal006_runner_lifecycle.py /opt/waooaw/goal006_runner_lifecycle.py
+COPY --chown=runner:runner scripts/wc124_db_provisioner.py /opt/waooaw/wc124_db_provisioner.py
+COPY --chown=runner:runner infrastructure/environment-readiness/secret-catalog.json /opt/waooaw/secret-catalog.json
+COPY --chown=runner:runner infrastructure/postgres/init /opt/waooaw/postgres/init
 COPY --chown=runner:runner architecture/reference/pipeline/github-runner-app-manifest.json /opt/waooaw/github-runner-app-manifest.json
 COPY --chown=runner:runner infrastructure/runner/entrypoint.sh /opt/waooaw/entrypoint.sh
 COPY --chown=runner:runner infrastructure/runner/import-app-signing-material.sh /opt/waooaw/import-app-signing-material.sh
-RUN chmod 0555 /opt/waooaw/entrypoint.sh /opt/waooaw/goal006_runner_lifecycle.py /opt/waooaw/import-app-signing-material.sh
+RUN chmod 0555 /opt/waooaw/entrypoint.sh /opt/waooaw/goal006_runner_lifecycle.py /opt/waooaw/wc124_db_provisioner.py /opt/waooaw/import-app-signing-material.sh
 
 USER runner
 WORKDIR /home/runner

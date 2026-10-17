@@ -58,7 +58,7 @@ def configuration(environment: str = "demo") -> dict[str, Any]:
     database_secret_names = {
         principal: secret_name
         for principal, secret_name in DATABASE_SECRET_NAMES.items()
-        if environment == "demo" or principal != "temporal"
+        if environment == "demo" or principal not in {"temporal", "temporal-migration"}
     }
     values: dict[str, Any] = {
         "key_vault_secret_uris": {

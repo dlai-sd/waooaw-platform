@@ -857,16 +857,22 @@ resource "azurerm_container_app" "pgbouncer" {
       memory = "0.5Gi"
 
       env {
-        name  = "DATABASES_HOST"
-        value = var.postgresql_server_fqdn
+        name = "DATABASES"
+        value = join(",", concat(
+          var.environment == "demo" ? [
+            "waooaw_temporal = host=${var.postgresql_server_fqdn} port=5432 pool_mode=session",
+            "waooaw_temporal_visibility = host=${var.postgresql_server_fqdn} port=5432 pool_mode=session",
+          ] : [],
+          ["* = host=${var.postgresql_server_fqdn} port=5432"],
+        ))
       }
       env {
-        name  = "DATABASES_PORT"
-        value = "5432"
+        name  = "PGBOUNCER_AUTH_TYPE"
+        value = "scram-sha-256"
       }
       env {
-        name  = "DATABASES_DBNAME"
-        value = "waooaw_application"
+        name  = "PGBOUNCER_AUTH_FILE"
+        value = "/mnt/secrets/pgbouncer-auth"
       }
       env {
         name  = "PGBOUNCER_POOL_MODE"
@@ -917,8 +923,20 @@ resource "azurerm_container_app" "pgbouncer" {
         value = "5"
       }
       env {
-        name        = "PGBOUNCER_AUTH_PASSWORD"
-        secret_name = "pgbouncer-auth"
+        name  = "PGBOUNCER_SERVER_TLS_SSLMODE"
+        value = "verify-full"
+      }
+      env {
+        name  = "PGBOUNCER_SERVER_TLS_CA_FILE"
+        value = "/etc/ssl/certs/ca-certificates.crt"
+      }
+      env {
+        name  = "PGBOUNCER_SERVER_RESET_QUERY"
+        value = "DISCARD ALL"
+      }
+      env {
+        name  = "PGBOUNCER_SERVER_RESET_QUERY_ALWAYS"
+        value = "1"
       }
 
       startup_probe {
@@ -936,6 +954,16 @@ resource "azurerm_container_app" "pgbouncer" {
         timeout                 = 3
         failure_count_threshold = 3
       }
+
+      volume_mounts {
+        name = "pgbouncer-secrets"
+        path = "/mnt/secrets"
+      }
+    }
+
+    volume {
+      name         = "pgbouncer-secrets"
+      storage_type = "Secret"
     }
   }
 
@@ -1340,12 +1368,209 @@ resource "azurerm_role_assignment" "temporal_secret" {
   principal_id         = azurerm_user_assigned_identity.temporal[0].principal_id
 }
 
+resource "azurerm_user_assigned_identity" "temporal_migration" {
+  count = var.workload_enabled && var.environment == "demo" ? 1 : 0
+
+  name                = "id-${var.environment}-temporal-migration"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+}
+
+resource "azurerm_role_assignment" "temporal_migration_database_secret" {
+  count = var.workload_enabled && var.environment == "demo" ? 1 : 0
+
+  scope                = var.database_secret_resource_ids["temporal-migration"]
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.temporal_migration[0].principal_id
+}
+
+resource "azurerm_container_app_job" "temporal_migration" {
+  count = var.workload_enabled && var.environment == "demo" ? 1 : 0
+
+  name                         = "job-${var.environment}-wc124-temporal-migration"
+  location                     = var.location
+  resource_group_name          = var.resource_group_name
+  container_app_environment_id = var.container_app_environment_id
+  replica_retry_limit          = 0
+  replica_timeout_in_seconds   = 1200
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.temporal_migration[0].id]
+  }
+
+  secret {
+    name                = "migration-database"
+    identity            = azurerm_user_assigned_identity.temporal_migration[0].id
+    key_vault_secret_id = var.database_secret_uris["temporal-migration"]
+  }
+
+  manual_trigger_config {
+    parallelism              = 1
+    replica_completion_count = 1
+  }
+
+  template {
+    container {
+      name    = "temporal-migration"
+      image   = "temporalio/auto-setup@sha256:98cdb6b5e02d64cb933864a9ba91cb66065eb320623a0dafdf44beba535bca88"
+      cpu     = 0.5
+      memory  = "1Gi"
+      command = ["/bin/bash", "-c"]
+      args = [<<-EOT
+        set -euo pipefail
+        export SQL_PASSWORD="$POSTGRES_PWD"
+        migrate() {
+          database="$1"
+          schema_directory="$2"
+          temporal-sql-tool \
+            --plugin postgres12 \
+            --endpoint "$POSTGRES_SEEDS" \
+            --port 5432 \
+            --user temporal_migrator \
+            --database "$database" \
+            --tls \
+            --tls-ca-file /etc/ssl/certs/ca-certificates.crt \
+            --tls-server-name "$POSTGRES_SEEDS" \
+            setup-schema --version 0.0
+          temporal-sql-tool \
+            --plugin postgres12 \
+            --endpoint "$POSTGRES_SEEDS" \
+            --port 5432 \
+            --user temporal_migrator \
+            --database "$database" \
+            --tls \
+            --tls-ca-file /etc/ssl/certs/ca-certificates.crt \
+            --tls-server-name "$POSTGRES_SEEDS" \
+            update-schema --schema-dir "$schema_directory"
+        }
+        migrate waooaw_temporal /etc/temporal/schema/postgresql/v12/temporal/versioned
+        migrate waooaw_temporal_visibility /etc/temporal/schema/postgresql/v12/visibility/versioned
+      EOT
+      ]
+
+      env {
+        name  = "POSTGRES_SEEDS"
+        value = var.postgresql_server_fqdn
+      }
+      env {
+        name        = "POSTGRES_PWD"
+        secret_name = "migration-database"
+      }
+    }
+  }
+
+  depends_on = [
+    azurerm_role_assignment.temporal_migration_database_secret,
+  ]
+}
+
 resource "azurerm_role_assignment" "keycloak_database_secret" {
   count = var.workload_enabled && var.persistent_state_enabled ? 1 : 0
 
   scope                = var.database_secret_resource_ids["keycloak"]
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_user_assigned_identity.member["web"].principal_id
+}
+
+resource "azurerm_user_assigned_identity" "keycloak_migration" {
+  count = var.workload_enabled && var.persistent_state_enabled ? 1 : 0
+
+  name                = "id-${var.environment}-keycloak-migration"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+}
+
+resource "azurerm_role_assignment" "keycloak_migration_database_secret" {
+  count = var.workload_enabled && var.persistent_state_enabled ? 1 : 0
+
+  scope                = var.database_secret_resource_ids["keycloak-migration"]
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.keycloak_migration[0].principal_id
+}
+
+resource "azurerm_container_app_job" "keycloak_migration" {
+  count = var.workload_enabled && var.persistent_state_enabled ? 1 : 0
+
+  name                         = "job-${var.environment}-wc124-keycloak-migration"
+  location                     = var.location
+  resource_group_name          = var.resource_group_name
+  container_app_environment_id = var.container_app_environment_id
+  replica_retry_limit          = 0
+  replica_timeout_in_seconds   = 1200
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.keycloak_migration[0].id]
+  }
+
+  secret {
+    name                = "migration-database"
+    identity            = azurerm_user_assigned_identity.keycloak_migration[0].id
+    key_vault_secret_id = var.database_secret_uris["keycloak-migration"]
+  }
+
+  manual_trigger_config {
+    parallelism              = 1
+    replica_completion_count = 1
+  }
+
+  template {
+    container {
+      name    = "keycloak-migration"
+      image   = "quay.io/keycloak/keycloak@sha256:82c5b7a110456dbd42b86ea572e728878549954cc8bd03cd65410d75328095d2"
+      cpu     = 1
+      memory  = "2Gi"
+      command = ["/bin/bash", "-c"]
+      args = [<<-EOT
+        set -euo pipefail
+        printf '%s' '${local.keycloak_realm_base64}' | base64 --decode > /tmp/waooaw-realm.json
+        exec /opt/keycloak/bin/kc.sh import --file /tmp/waooaw-realm.json --override true
+      EOT
+      ]
+
+      env {
+        name  = "KC_DB"
+        value = "postgres"
+      }
+      env {
+        name  = "KC_DB_URL_HOST"
+        value = var.postgresql_server_fqdn
+      }
+      env {
+        name  = "KC_DB_URL_PORT"
+        value = "5432"
+      }
+      env {
+        name  = "KC_DB_URL_DATABASE"
+        value = "waooaw_keycloak"
+      }
+      env {
+        name  = "KC_DB_URL_PROPERTIES"
+        value = "?sslmode=verify-full&sslrootcert=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem&prepareThreshold=0"
+      }
+      env {
+        name  = "KC_DB_USERNAME"
+        value = "keycloak_migrator"
+      }
+      env {
+        name        = "KC_DB_PASSWORD"
+        secret_name = "migration-database"
+      }
+      env {
+        name  = "KC_SPI_CONNECTIONS_JPA_QUARKUS_MIGRATION_STRATEGY"
+        value = "update"
+      }
+      env {
+        name  = "KC_SPI_CONNECTIONS_JPA_QUARKUS_INITIALIZE_EMPTY"
+        value = "true"
+      }
+    }
+  }
+
+  depends_on = [
+    azurerm_role_assignment.keycloak_migration_database_secret,
+  ]
 }
 
 resource "azurerm_container_app" "temporal" {
@@ -1390,6 +1615,10 @@ resource "azurerm_container_app" "temporal" {
         value = "waooaw_temporal"
       }
       env {
+        name  = "VISIBILITY_DBNAME"
+        value = "waooaw_temporal_visibility"
+      }
+      env {
         name  = "POSTGRES_USER"
         value = "temporal_runtime"
       }
@@ -1400,6 +1629,14 @@ resource "azurerm_container_app" "temporal" {
       env {
         name  = "POSTGRES_SEEDS"
         value = local.pgbouncer_host
+      }
+      env {
+        name  = "SKIP_SCHEMA_SETUP"
+        value = "true"
+      }
+      env {
+        name  = "SKIP_DB_CREATE"
+        value = "true"
       }
     }
   }
@@ -1505,10 +1742,7 @@ resource "azurerm_container_app" "keycloak" {
         ${var.google_login_enabled ? ": \"$${GOOGLE_CLIENT_ID:?Google client ID is required}\" \"$${GOOGLE_CLIENT_SECRET:?Google client secret is required}\"" : ""}
         ${var.facebook_login_enabled ? ": \"$${META_LOGIN_CLIENT_ID:?Meta login client ID is required}\" \"$${META_LOGIN_CLIENT_SECRET:?Meta login client secret is required}\"" : ""}
         ${var.google_login_enabled ? ": \"$${BP_IDENTITY_READER_CLIENT_SECRET:?BP identity reader client secret is required}\"" : ""}
-        rm -rf /opt/keycloak/data/*
-        mkdir -p /opt/keycloak/data/import
-        printf '%s' '${local.keycloak_realm_base64}' | base64 --decode > /opt/keycloak/data/import/waooaw-realm.json
-        exec /opt/keycloak/bin/kc.sh start-dev --http-enabled=true --hostname-strict=false --import-realm
+        exec /opt/keycloak/bin/kc.sh start-dev --http-enabled=true --hostname-strict=false
       EOT
       ]
 
@@ -1572,8 +1806,20 @@ resource "azurerm_container_app" "keycloak" {
         value = "waooaw_keycloak"
       }
       env {
+        name  = "KC_DB_URL_PROPERTIES"
+        value = "?prepareThreshold=0"
+      }
+      env {
         name  = "KC_DB_USERNAME"
         value = "keycloak_runtime"
+      }
+      env {
+        name  = "KC_SPI_CONNECTIONS_JPA_QUARKUS_MIGRATION_STRATEGY"
+        value = "validate"
+      }
+      env {
+        name  = "KC_SPI_CONNECTIONS_JPA_QUARKUS_INITIALIZE_EMPTY"
+        value = "false"
       }
       dynamic "env" {
         for_each = var.persistent_state_enabled ? [1] : []
@@ -1615,15 +1861,6 @@ resource "azurerm_container_app" "keycloak" {
         }
       }
 
-      volume_mounts {
-        name = "wc091-demo-keycloak-data"
-        path = "/opt/keycloak/data"
-      }
-    }
-
-    volume {
-      name         = "wc091-demo-keycloak-data"
-      storage_type = "EmptyDir"
     }
   }
 

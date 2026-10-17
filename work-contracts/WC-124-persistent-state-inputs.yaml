@@ -135,7 +135,14 @@ items:
         accepted_reference: docker.io/pgbouncer/pgbouncer@sha256:e8162131a43c54cd0ac7941e66eaaa802c5e5a49036f41b41260b70b290feea9
         linux_amd64_manifest: sha256:9270fb71b4728abb2db605aa46ab406aba567e1977eb9f0909f3e65f57b2d38e
         decision: founder_authorized_read_only_registry_manifest_pin
-      pool_mode: transaction
+      pool_modes:
+        default: transaction
+        waooaw_temporal: session
+        waooaw_temporal_visibility: session
+      backend_tls:
+        mode: verify-full
+        reset_query: DISCARD_ALL
+        reset_query_always: true
       min_replicas_outside_active_lease: 0
       demo:
         cpu_cores: 0.25
@@ -199,6 +206,8 @@ items:
         - component: keycloak
           database: waooaw_keycloak
           schema: public
+          migration_route: direct_private_postgresql_tls_verify_full
+          runtime_route: pgbouncer_transaction_pool
           table_families: [identity_realms_clients, users_credentials_federation, sessions_tokens, admin_events]
           owner: keycloak_owner
           migration_role: keycloak_migrator
@@ -210,7 +219,10 @@ items:
         - component: demo_temporal
           environments: [demo]
           database: waooaw_temporal
+          visibility_database: waooaw_temporal_visibility
           schema: public
+          migration_route: direct_private_postgresql_tls_verify_full
+          runtime_route: pgbouncer_session_pool
           table_families: [workflow_executions, history_events, task_queues, visibility_search]
           owner: temporal_owner
           migration_role: temporal_migrator
@@ -472,8 +484,9 @@ items:
     selected_value:
       current_catalog:
         path: infrastructure/environment-readiness/secret-catalog.json
-        canonical_digest: sha256:8959723677c5e671d2294ba203c3b7b586fa3f554d7505ae96341b71b2eb91e8
-        file_sha256: 21c166e93139e1b8f3eb060691ba74fb49a9bcadf8191bf864d3e6bfa7bf00c6
+        canonical_digest: sha256:1dac98364d71e9dd0a011c52d4f8f9e4bab706816b548079052acdb671182fb6
+        file_sha256: 243c6e0ef506a36e686d583a2d5d2c35f437ccc300f00a2af7c20f7ca76137d4
+        credential_counts: {demo: 17, uat: 15}
       required_catalog_additions:
         workload_credentials:
           - db-keycloak-runtime
@@ -485,6 +498,8 @@ items:
           - db-billing-runtime
           - web-session-database
         migration_credentials:
+          - db-keycloak-migration
+          - db-temporal-migration-demo
           - db-ce-migration
           - db-bp-migration
           - db-pr-migration
@@ -517,12 +532,29 @@ items:
   - id: CB-020-12
     subject: Dataset-level sidecar cutover decisions
     status: RESOLVED
-    deciding_owners: [INST-006]
+    deciding_owners: [Founder, INST-006]
     selected_value:
-      synthetic_discard_authority: none
-      common_method: freeze_export_import_reconcile
-      source_hold: until_PST_WC11_restore_rollback_and_reconciliation_acceptance
-      deletion_authority: none
+      synthetic_discard_authority:
+        demo:
+          status: FOUNDER_AUTHORIZED
+          authorized_at: "2026-10-17T05:29:58Z"
+          scope: ephemeral_EmptyDir_sidecars_only
+          decision: discard_and_clean_reseed
+          execution_requires: separate_founder_deployment_and_traffic_authorization
+        uat: none_preserve_and_defer_migration
+        prod: prohibited_out_of_scope_preserve
+      method:
+        demo: synthetic_discard_and_clean_reseed
+        uat: freeze_export_import_reconcile_when_separately_contracted
+        prod: no_change
+      source_hold:
+        demo: until_separately_authorized_cutover_execution_and_baseline_acceptance
+        uat: preserve_until_separately_authorized_migration_acceptance
+        prod: preserve_no_change
+      deletion_authority:
+        demo: decision_authorized_execution_blocked_without_separate_deployment_authority
+        uat: none
+        prod: none
       cutover_ledger:
         - dataset: constitutional_engine
           source: ce_postgresql_sidecar_volume

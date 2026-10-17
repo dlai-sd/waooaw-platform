@@ -25,15 +25,22 @@ def test_demo_and_uat_create_protected_private_flexible_servers_only() -> None:
         'resource "azurerm_postgresql_flexible_server_database" "persistent_state"'
         in foundation
     )
-    assert '["waooaw_application", "waooaw_keycloak", "waooaw_temporal"]' in foundation
+    assert (
+        '["waooaw_application", "waooaw_keycloak", "waooaw_temporal", '
+        '"waooaw_temporal_visibility"]'
+    ) in foundation
     assert '["waooaw_application", "waooaw_keycloak"]' in foundation
     assert 'sku_name                      = "B_Standard_B1ms"' in foundation
     assert "storage_mb                    = 32768" in foundation
     assert "auto_grow_enabled             = false" in foundation
+    assert 'value     = "BTREE_GIN,VECTOR"' in foundation
     assert "backup_retention_days         = 35" in foundation
     assert "public_network_access_enabled = false" in foundation
-    assert "password_auth_enabled         = false" in foundation
+    assert "password_auth_enabled         = var.postgresql_password_auth_enabled" in foundation
     assert "active_directory_auth_enabled = true" in foundation
+    assert 'resource "azurerm_user_assigned_identity" "database_provisioner"' in foundation
+    assert 'resource "azurerm_role_assignment" "database_provisioner_vault"' in foundation
+    assert "var.database_bootstrap_admin_enabled" in foundation
     assert "prevent_destroy = true" in foundation
     assert "persistent_state_enabled           = true" in demo
     assert "persistent_state_enabled           = true" in uat
@@ -53,8 +60,20 @@ def test_pgbouncer_is_digest_pinned_private_and_zero_idle() -> None:
     assert 'value = "transaction"' in workload
     assert 'name  = "PGBOUNCER_LISTEN_PORT"' in workload
     assert "external_enabled = false" in workload
-    assert "var.postgresql_server_fqdn" in workload
-    assert 'secret_name = "pgbouncer-auth"' in workload
+    assert 'name = "DATABASES"' in workload
+    assert "waooaw_temporal = host=${var.postgresql_server_fqdn} port=5432 pool_mode=session" in workload
+    assert "waooaw_temporal_visibility = host=${var.postgresql_server_fqdn} port=5432 pool_mode=session" in workload
+    assert 'name                = "pgbouncer-auth"' in workload
+    assert 'storage_type = "Secret"' in workload
+    assert 'name  = "DATABASES_DBNAME"' not in workload
+    assert 'name  = "PGBOUNCER_AUTH_FILE"' in workload
+    assert 'name  = "PGBOUNCER_AUTH_USER"' not in workload
+    assert 'name  = "PGBOUNCER_AUTH_QUERY"' not in workload
+    assert 'name  = "PGBOUNCER_AUTH_TYPE"' in workload
+    assert 'value = "scram-sha-256"' in workload
+    assert 'name  = "PGBOUNCER_SERVER_TLS_SSLMODE"' in workload
+    assert 'value = "verify-full"' in workload
+    assert 'name  = "PGBOUNCER_SERVER_RESET_QUERY_ALWAYS"' in workload
 
 
 def test_cloud_applications_have_no_authority_sidecars_or_localhost_routes() -> None:
@@ -70,9 +89,10 @@ def test_cloud_applications_have_no_authority_sidecars_or_localhost_routes() -> 
     assert 'name        = each.key == "billing-engine" ? "DATABASE_URL"' in workload
 
 
-def test_only_pgbouncer_receives_the_server_hostname() -> None:
+def test_only_pgbouncer_and_bounded_migrations_receive_the_server_hostname() -> None:
     workload = read("modules/workload/main.tf")
-    assert workload.count("var.postgresql_server_fqdn") == 1
+    assert 'value = var.postgresql_server_fqdn' in workload
+    assert 'value = local.pgbouncer_host' in workload
     assert "database_secret_resource_ids[each.key]" in workload
     assert "database_secret_resource_ids[\"keycloak\"]" in workload
     assert "database_secret_resource_ids[\"temporal\"]" in workload
@@ -85,7 +105,17 @@ def test_temporal_and_keycloak_use_pgbouncer_and_distinct_roles() -> None:
     assert 'value = "temporal_runtime"' in workload
     assert "value = local.pgbouncer_host" in workload
     assert 'value = "waooaw_temporal"' in workload
+    assert 'value = "waooaw_temporal_visibility"' in workload
     assert 'value = "keycloak_runtime"' in workload
+    assert 'value = "keycloak_migrator"' in workload
+    assert "--user temporal_migrator" in workload
+    assert 'value = "true"' in workload
+    assert "KC_SPI_CONNECTIONS_JPA_QUARKUS_MIGRATION_STRATEGY" in workload
+    assert "KC_SPI_CONNECTIONS_JPA_QUARKUS_INITIALIZE_EMPTY" in workload
+    assert 'resource "azurerm_container_app_job" "keycloak_migration"' in workload
+    assert 'resource "azurerm_container_app_job" "temporal_migration"' in workload
+    assert "sslmode=verify-full" in workload
+    assert "--tls-ca-file /etc/ssl/certs/ca-certificates.crt" in workload
     assert 'name  = "KC_DB"' in workload
     assert 'name  = "KC_DB_URL_HOST"' in workload
     assert 'secret_name = "keycloak-database-credential"' in workload

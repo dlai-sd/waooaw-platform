@@ -66,14 +66,15 @@ variable "database_secret_uris" {
     condition = !var.persistent_state_enabled || (
       toset(keys(var.database_secret_uris)) == toset(var.environment == "demo" ? [
         "constitutional-engine", "business-platform", "billing-engine",
-        "billing-migration", "keycloak", "pgbouncer", "temporal",
+        "billing-migration", "keycloak", "keycloak-migration", "pgbouncer",
+        "temporal", "temporal-migration",
         ] : [
         "constitutional-engine", "business-platform", "billing-engine",
-        "billing-migration", "keycloak", "pgbouncer",
+        "billing-migration", "keycloak", "keycloak-migration", "pgbouncer",
       ]) &&
       alltrue([for uri in values(var.database_secret_uris) : can(regex("^https://[^/]+[.]vault[.]azure[.]net/secrets/[^/]+$", uri))])
     )
-    error_message = "Persistent-state workloads require six distinct versionless database credential references."
+    error_message = "Persistent-state workloads require the exact runtime, migration, and PgBouncer database credential references."
   }
 }
 
