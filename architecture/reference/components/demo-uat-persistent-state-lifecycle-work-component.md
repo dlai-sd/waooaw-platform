@@ -227,7 +227,11 @@ Bootstrap is an exact two-plan transition:
    generates each distinct credential in memory and writes only its Key Vault version.
 3. **Plan B - reviewed compatibility enablement.** Only after Plan A and bootstrap evidence pass,
    enable the minimum accepted password-authentication compatibility required by PgBouncer,
-   Keycloak or another pinned dependency. Administrator passwords remain prohibited.
+   Keycloak or another pinned dependency. When Azure requires a server administrator to enable
+   password authentication, one generated break-glass administrator is permitted only when its
+   credential is created inside the private network, sealed in the environment Key Vault and
+   encrypted Terraform state, never granted to an application, never emitted, and independently
+   revocable. No other administrator password is permitted.
 4. **Handoff.** Separate migration and workload identities receive exact secret-version access.
    Bootstrap access is removed or disabled before application activation.
 

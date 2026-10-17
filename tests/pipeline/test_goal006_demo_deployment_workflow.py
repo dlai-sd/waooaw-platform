@@ -3,12 +3,9 @@
 from pathlib import Path
 
 
-WORKFLOW = Path(".github/workflows/environment-deployment.yaml").read_text(
-    encoding="utf-8"
-)
-DISPATCH_WORKFLOW = Path(".github/workflows/deploy.yaml").read_text(
-    encoding="utf-8"
-)
+WORKFLOW = Path(".github/workflows/environment-deployment.yaml").read_text(encoding="utf-8")
+DISPATCH_WORKFLOW = Path(".github/workflows/deploy.yaml").read_text(encoding="utf-8")
+FOUNDATION_MODULE = Path("infrastructure/terraform/phase2/modules/foundation/main.tf").read_text(encoding="utf-8")
 
 
 def test_environment_deployment_uses_qualified_private_runner_lifecycle() -> None:
@@ -39,7 +36,7 @@ def test_private_runner_steps_do_not_require_a_docker_daemon() -> None:
     assert "docker/setup-buildx-action" not in WORKFLOW
     assert "docker buildx" not in WORKFLOW
     assert WORKFLOW.count("scripts/goal006_ghcr_digest.py") == 2
-    assert "--expected-digest \"$expected_digest\"" in WORKFLOW
+    assert '--expected-digest "$expected_digest"' in WORKFLOW
     assert "https://mcr.microsoft.com/v2/$repository/manifests/$expected_digest" in WORKFLOW
     assert WORKFLOW.count('test "$actual_digest" = "$expected_digest"') == 2
 
@@ -51,17 +48,66 @@ def test_wc124_live_cli_contracts_match_the_pinned_runner() -> None:
     handoff = WORKFLOW.split("      - name: Verify WC-124 database credential handoff", 1)[1].split(
         "      - name: Build workload inputs", 1
     )[0]
+    authority_handoff = WORKFLOW.split("      - name: Finalize WC-124 PostgreSQL authority handoff", 1)[1].split(
+        "      - name: Remove WC-124 Entra bootstrap authority", 1
+    )[0]
+    bootstrap_removal = WORKFLOW.split("      - name: Remove WC-124 Entra bootstrap authority", 1)[1].split(
+        "      - name: Verify WC-124 database credential handoff", 1
+    )[0]
 
-    assert "--reference \"$release_tag\"" in provisioner
+    assert '--reference "$release_tag"' in provisioner
     assert "replicaRetryLimit: 1" in provisioner
+    assert "az resource wait" in provisioner
+    assert "--deleted" in provisioner
+    assert "keys(identity.userAssignedIdentities)" in provisioner
+    assert 'test "$actual_identities" = "$expected_identities"' in provisioner
+    assert "--tail 300" in WORKFLOW
+    assert "--tail 500" not in WORKFLOW
     assert "postgres flexible-server microsoft-entra-admin list" in handoff
     assert "postgres flexible-server ad-admin" not in WORKFLOW
+    assert 'if [ "$secret_id" = "db-pgbouncer-auth" ]' in handoff
+    assert 'expected_role="pgbouncer_auth"' in handoff
+    assert '.tags["wc124-role"] // ""' in handoff
+    assert "/opt/waooaw/wc124_db_handoff.py" in authority_handoff
+    assert 'test "$actual_identities" = "$expected_identities"' in authority_handoff
+    assert '"remaining_bootstrap_dependencies": 0' in authority_handoff
+    assert '-var="database_bootstrap_admin_enabled=false"' in bootstrap_removal
+    assert "microsoft-entra-admin list" in bootstrap_removal
+
+
+def test_wc124_plan_b_uses_sealed_structured_provider_update() -> None:
+    assert 'source  = "Azure/azapi"' in FOUNDATION_MODULE
+    assert 'resource "random_password" "postgresql_breakglass_administrator"' in FOUNDATION_MODULE
+    assert 'name         = "db-server-breakglass-admin"' in FOUNDATION_MODULE
+    assert 'resource "azapi_update_resource" "postgresql_plan_b_authentication"' in FOUNDATION_MODULE
+    assert 'type        = "Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01"' in FOUNDATION_MODULE
+    assert 'administratorLogin         = "wc124_breakglass_admin"' in FOUNDATION_MODULE
+    assert "administratorLoginPassword = random_password.postgresql_breakglass_administrator[0].result" in FOUNDATION_MODULE
+    assert 'passwordAuth        = "Enabled"' in FOUNDATION_MODULE
+    assert "authentication[0].password_auth_enabled" in FOUNDATION_MODULE
+
+
+def test_database_transition_state_fails_closed_on_azure_errors() -> None:
+    transition = WORKFLOW.split("      - name: Resolve WC-124 database transition state", 1)[1].split(
+        "      - name: Terraform foundation plan", 1
+    )[0]
+
+    assert "az postgres flexible-server list" in transition
+    assert "jq -er '.authConfig.passwordAuth'" in transition
+    assert "2>/dev/null" not in transition
+    assert "Unexpected PostgreSQL password authentication state" in transition
+
+
+def test_wc124_container_app_job_names_fit_azure_limit() -> None:
+    workload = Path("infrastructure/terraform/phase2/modules/workload/main.tf").read_text(encoding="utf-8")
+    assert 'name                         = "job-${var.environment}-temporal-migration"' in workload
+    assert 'name                         = "job-${var.environment}-keycloak-migration"' in workload
+    assert len("job-demo-temporal-migration") <= 32
+    assert len("job-demo-keycloak-migration") <= 32
 
 
 def test_wc124_vendor_job_names_fit_azure_limit() -> None:
-    workload = Path("infrastructure/terraform/phase2/modules/workload/main.tf").read_text(
-        encoding="utf-8"
-    )
+    workload = Path("infrastructure/terraform/phase2/modules/workload/main.tf").read_text(encoding="utf-8")
 
     assert 'name                         = "job-${var.environment}-temporal-migration"' in workload
     assert 'name                         = "job-${var.environment}-keycloak-migration"' in workload
@@ -107,7 +153,7 @@ def test_private_credential_seeding_preserves_existing_values() -> None:
     assert 'goal006-credential-schema="$CREDENTIAL_SCHEMA"' in seeder
     assert 'echo "credential_status name=$name status=preserved"' in seeder
     assert 'echo "credential_status name=$name status=created"' in seeder
-    assert 'status=invalid-length' in WORKFLOW
+    assert "status=invalid-length" in WORKFLOW
     assert 'test "$name" != "conversation-cursor-hmac"' in seeder
     assert 'jq -r ".value | length"' in seeder
     assert seeder.index("az keyvault secret show") < seeder.index("/dev/urandom")
@@ -175,12 +221,8 @@ def test_apply_generates_internal_activation_bundle_after_both_plans() -> None:
     assert '"${schema_arguments[@]}"' in bundle_step
     assert "scripts/wc124_persistent_state_lifecycle.py" in bundle_step
     assert "--action activate" in bundle_step
-    assert WORKFLOW.index("Terraform foundation plan") < WORKFLOW.index(
-        "Generate internal WC-124 activation bundle"
-    )
-    assert WORKFLOW.index("Terraform workload plan") < WORKFLOW.index(
-        "Generate internal WC-124 activation bundle"
-    )
+    assert WORKFLOW.index("Terraform foundation plan") < WORKFLOW.index("Generate internal WC-124 activation bundle")
+    assert WORKFLOW.index("Terraform workload plan") < WORKFLOW.index("Generate internal WC-124 activation bundle")
     assert WORKFLOW.index("Generate internal WC-124 activation bundle") < WORKFLOW.index(
         "Terraform dormant workload and migration dependency apply"
     )
@@ -217,7 +259,7 @@ def test_uat_configuration_initialization_is_explicit_create_only_and_private() 
     assert 'test "$TARGET_ENVIRONMENT" = uat' in initialization
     assert "source_blob=demo/workload-configuration.json" in initialization
     assert "--overwrite false" in initialization
-    assert 'del(.founder_ipv4_cidr)' in initialization
+    assert "del(.founder_ipv4_cidr)" in initialization
     assert "scripts/goal006_lease.py" in initialization
     assert 'test "$promoted_sha256" = "$verified_sha256"' in initialization
     assert "configuration-promotion.json" in initialization
@@ -239,7 +281,7 @@ def test_expired_lease_fails_before_foundation_plan_and_apply_renewal_is_etag_bo
     assert 'test -z "$REQUESTED_LEASE_EXPIRES_AT"' in configuration
     assert "REQUESTED_ACCESS_CIDR" not in configuration
     assert ".founder_ipv4_cidr = $access_cidr" not in configuration
-    assert "--expires-at \"$REQUESTED_LEASE_EXPIRES_AT\"" in configuration
+    assert '--expires-at "$REQUESTED_LEASE_EXPIRES_AT"' in configuration
     assert "--expires-at '${{ inputs.lease_expires_at }}'" not in configuration
     assert "scripts/goal006_lease.py" in configuration
     assert '--if-match "$etag_after"' in configuration
@@ -249,18 +291,14 @@ def test_expired_lease_fails_before_foundation_plan_and_apply_renewal_is_etag_bo
     assert "configuration-lease-renewal.json" in WORKFLOW
     assert "configuration-lease-validation.json" in WORKFLOW
     assert "configuration-renewal-verification-attempts.jsonl" in WORKFLOW
-    assert WORKFLOW.index("configuration-lease-validation.json") < WORKFLOW.index(
-        "      - name: Terraform foundation plan"
-    )
+    assert WORKFLOW.index("configuration-lease-validation.json") < WORKFLOW.index("      - name: Terraform foundation plan")
 
 
 def test_plan_policy_reports_the_plan_scope() -> None:
     foundation = WORKFLOW.split("      - name: Terraform foundation plan", 1)[1].split(
         "      - name: Terraform foundation apply", 1
     )[0]
-    workload = WORKFLOW.split("      - name: Terraform workload plan", 1)[1].split(
-        "      - name: Terraform workload apply", 1
-    )[0]
+    workload = WORKFLOW.split("      - name: Terraform workload plan", 1)[1].split("      - name: Terraform workload apply", 1)[0]
 
     assert "--scope foundation" in foundation
     assert "--scope workload" in workload
@@ -277,10 +315,27 @@ def test_private_seeder_retains_diagnostics_before_deletion() -> None:
     assert "az containerapp job logs show" in private_job
     assert "Failed|Stopped)" in private_job
     assert "Private credential seeder timed out" in private_job
-    assert private_job.count("capture_seeder_evidence") == 4
-    assert 'cat secret-seeder-console.log >&2' in private_job
+    assert private_job.count("capture_seeder_evidence") == 5
+    assert "cat secret-seeder-console.log >&2" in private_job
     delete_index = private_job.index("Delete private credential seeder")
     assert private_job.rindex("capture_seeder_evidence", 0, delete_index) < delete_index
+
+
+def test_job_polling_rejects_empty_and_unknown_statuses() -> None:
+    assert WORKFLOW.count("Processing|Running)") == 7
+    assert WORKFLOW.count("returned unknown status: ${status:-<empty>}") == 7
+
+
+def test_provisioner_replacement_waits_for_confirmed_deletion() -> None:
+    create_step = WORKFLOW.split("      - name: Create WC-124 database provisioner", 1)[1].split(
+        "      - name: Run WC-124 database provisioner", 1
+    )[0]
+
+    assert "az containerapp job list" in create_step
+    assert "az resource wait" in create_step
+    assert "--deleted" in create_step
+    assert "--timeout 300" in create_step
+    assert "2>/dev/null" not in create_step
 
 
 def test_cost_evidence_is_queried_once_and_reused_by_private_job() -> None:
@@ -307,7 +362,7 @@ def test_environment_deployment_cleanup_is_independent_and_retains_evidence() ->
     assert "client-id: ${{ env.ARM_CLIENT_ID }}" not in cleanup
     assert '--private-job-conclusion "$PRIVATE_JOB_CONCLUSION"' in cleanup
     assert '--cleanup-execution-name "$execution"' in cleanup
-    assert 'cleanup/${{ inputs.environment }}/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT.json' in cleanup
+    assert "cleanup/${{ inputs.environment }}/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT.json" in cleanup
     assert "goal006-private-runner-cleanup-${{ github.run_id }}-${{ github.run_attempt }}" in cleanup
     assert "if: always() && hashFiles('cleanup-record.json') != ''" in cleanup
 

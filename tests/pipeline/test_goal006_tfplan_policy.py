@@ -22,7 +22,24 @@ def temporal_plan(
     *,
     startup_probe: list[object] | None = None,
     readiness_probe: list[object] | None = None,
+    min_replicas: int = 1,
+    include_postgres_sidecar: bool = False,
 ) -> dict[str, object]:
+    containers = [
+        {
+            "name": "temporal",
+            "image": f"temporalio/auto-setup@sha256:{'a' * 64}",
+            "startup_probe": startup_probe or [],
+            "readiness_probe": readiness_probe or [],
+        }
+    ]
+    if include_postgres_sidecar:
+        containers.append(
+            {
+                "name": "postgres",
+                "image": f"postgres@sha256:{'b' * 64}",
+            }
+        )
     return {
         "resource_changes": [
             {
@@ -32,20 +49,9 @@ def temporal_plan(
                     "after": {
                         "template": [
                             {
-                                "min_replicas": 1,
+                                "min_replicas": min_replicas,
                                 "max_replicas": 1,
-                                "container": [
-                                    {
-                                        "name": "temporal",
-                                        "image": f"temporalio/auto-setup@sha256:{'a' * 64}",
-                                        "startup_probe": startup_probe or [],
-                                        "readiness_probe": readiness_probe or [],
-                                    },
-                                    {
-                                        "name": "postgres",
-                                        "image": f"postgres@sha256:{'b' * 64}",
-                                    },
-                                ],
+                                "container": containers,
                             }
                         ]
                     },
@@ -101,6 +107,20 @@ def test_workload_plan_accepts_safe_temporal_contract() -> None:
     enforce_plan(temporal_plan(), "workload")
 
 
+def test_workload_plan_accepts_dormant_temporal_contract() -> None:
+    enforce_plan(temporal_plan(min_replicas=0), "workload")
+
+
+def test_workload_plan_rejects_temporal_postgres_sidecar() -> None:
+    with pytest.raises(ValueError, match="without a database sidecar"):
+        enforce_plan(temporal_plan(include_postgres_sidecar=True), "workload")
+
+
+def test_workload_plan_rejects_temporal_replica_drift() -> None:
+    with pytest.raises(ValueError, match="dormant or run as one fixed replica"):
+        enforce_plan(temporal_plan(min_replicas=2), "workload")
+
+
 def test_workload_plan_rejects_destructive_temporal_startup_probe() -> None:
     with pytest.raises(ValueError, match="Temporal startup probe must be absent"):
         enforce_plan(temporal_plan(startup_probe=[{"transport": "TCP", "port": 7233}]), "workload")
@@ -123,6 +143,27 @@ def test_workload_plan_accepts_provider_computed_stable_cutover_fields() -> None
         change["after_unknown"][field] = True
 
     enforce_plan(plan, "workload")
+
+
+def test_workload_plan_accepts_azurerm_blank_to_null_optional_fields() -> None:
+    plan = temporal_secret_role_cutover()
+    change = plan["resource_changes"][0]["change"]
+    for field in ("condition", "condition_version", "delegated_managed_identity_resource_id", "description"):
+        change["before"][field] = ""
+        change["after"][field] = None
+    change["after_unknown"]["condition_version"] = True
+
+    enforce_plan(plan, "workload")
+
+
+def test_workload_plan_rejects_removed_nonempty_optional_field() -> None:
+    plan = temporal_secret_role_cutover()
+    change = plan["resource_changes"][0]["change"]
+    change["before"]["description"] = "required assignment"
+    change["after"]["description"] = None
+
+    with pytest.raises(ValueError, match=r"stable fields changed: description"):
+        enforce_plan(plan, "workload")
 
 
 def mutate_cutover(path: tuple[str, ...], value: object) -> dict[str, Any]:
@@ -192,10 +233,7 @@ def wc124_plan_b() -> dict[str, Any]:
     return {
         "resource_changes": [
             {
-                "address": (
-                    "module.foundation."
-                    "azurerm_postgresql_flexible_server_active_directory_administrator.bootstrap[0]"
-                ),
+                "address": ("module.foundation.azurerm_postgresql_flexible_server_active_directory_administrator.bootstrap[0]"),
                 "mode": "managed",
                 "type": "azurerm_postgresql_flexible_server_active_directory_administrator",
                 "change": {

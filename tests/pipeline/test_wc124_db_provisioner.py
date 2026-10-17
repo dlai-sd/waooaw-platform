@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 from pathlib import Path
+import subprocess
 
 import pytest
 
@@ -11,18 +12,20 @@ from wc124_db_provisioner import (
     KEYCLOAK_DATABASE,
     TEMPORAL_DATABASE,
     TEMPORAL_VISIBILITY_DATABASE,
+    application_migration_files,
     authfile_value,
     environment_specs,
     password_from_secret,
+    psql,
+    run,
     secret_value,
     validate_catalog,
 )
 
 
 ROOT = Path(__file__).resolve().parents[2]
-CATALOG = json.loads(
-    (ROOT / "infrastructure/environment-readiness/secret-catalog.json").read_text(encoding="utf-8")
-)
+CATALOG = json.loads((ROOT / "infrastructure/environment-readiness/secret-catalog.json").read_text(encoding="utf-8"))
+HANDOFF_SQL = (ROOT / "infrastructure/postgres/init/60-wc124-principal-handoff.sql").read_text(encoding="utf-8")
 
 
 def test_demo_catalog_has_exact_distinct_database_credentials() -> None:
@@ -44,6 +47,33 @@ def test_uat_excludes_demo_temporal_credential() -> None:
 
     assert len(specs) == 15
     assert TEMPORAL_DATABASE not in {spec.database for spec in specs}
+
+
+def test_handoff_covers_every_database_schema_and_owned_type() -> None:
+    expected_schemas = {
+        "constitutional": "ce_owner",
+        "audit_sink": "ce_owner",
+        "business": "bp_owner",
+        "institutional": "bp_owner",
+        "payload_store": "bp_owner",
+        "domain_adapter": "bp_owner",
+        "professional": "pr_owner",
+        "ai_runtime": "air_owner",
+        "billing": "billing_owner",
+        "identity": "web_session_owner",
+        "web_session": "web_session_owner",
+        "keycloak": "keycloak_owner",
+    }
+    for schema, owner in expected_schemas.items():
+        assert f"ALTER SCHEMA {schema} OWNER TO {owner};" in HANDOFF_SQL
+        assert f"('{schema}', '{owner}')" in HANDOFF_SQL
+    assert "t.typtype IN ('e', 'd')" in HANDOFF_SQL
+    assert "'ALTER TYPE %I.%I OWNER TO %I'" in HANDOFF_SQL
+    assert "('waooaw_application', 'bp_owner')" in HANDOFF_SQL
+    assert "('waooaw_keycloak', 'keycloak_owner')" in HANDOFF_SQL
+    assert "('waooaw_temporal', 'temporal_owner')" in HANDOFF_SQL
+    assert "('waooaw_temporal_visibility', 'temporal_owner')" in HANDOFF_SQL
+    assert "'ALTER DATABASE %I OWNER TO %I'" in HANDOFF_SQL
 
 
 @pytest.mark.parametrize("environment", ["prod", "development", ""])
@@ -79,10 +109,7 @@ def test_every_secret_value_round_trips_its_password_without_echo_metadata() -> 
 
 
 def test_pgbouncer_authfile_contains_the_exact_distinct_credential_set() -> None:
-    passwords = {
-        spec.role: f"{spec.role}-password"
-        for spec in environment_specs("demo")
-    }
+    passwords = {spec.role: f"{spec.role}-password" for spec in environment_specs("demo")}
     value = authfile_value(passwords)
 
     assert value.count("\n") == 17
@@ -115,3 +142,50 @@ def test_vendor_databases_use_nologin_owners_and_separate_migrators() -> None:
     assert "ALTER DEFAULT PRIVILEGES FOR ROLE" in source
     assert "GRANT USAGE ON SCHEMA public" in source
     assert "CREATE EXTENSION IF NOT EXISTS btree_gin" in source
+
+
+def test_run_preserves_stderr_without_echoing_sensitive_arguments(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(command, 2, stdout="", stderr="root certificate file does not exist")
+
+    monkeypatch.setattr("wc124_db_provisioner.subprocess.run", fail)
+
+    with pytest.raises(RuntimeError, match="psql failed with exit code 2: root certificate") as raised:
+        run(["psql", "--password", "top-secret"])
+
+    assert "top-secret" not in str(raised.value)
+
+
+def test_psql_uses_the_runner_system_ca_bundle(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    def capture(
+        command: list[str],
+        *,
+        env: dict[str, str] | None = None,
+        stdin: str | None = None,
+    ) -> str:
+        captured.update(command=command, env=env, stdin=stdin)
+        return ""
+
+    monkeypatch.setattr("wc124_db_provisioner.run", capture)
+
+    psql("state.postgres.database.azure.com", "bootstrap", "application", "access-token", "SELECT 1;")
+
+    environment = captured["env"]
+    assert isinstance(environment, dict)
+    assert environment["PGSSLMODE"] == "verify-full"
+    assert environment["PGSSLROOTCERT"] == "/etc/ssl/certs/ca-certificates.crt"
+    assert environment["PGPASSWORD"] == "access-token"
+    assert captured["stdin"] == "SELECT 1;"
+
+
+def test_application_migrations_exclude_the_legacy_baseline() -> None:
+    files = application_migration_files(ROOT / "infrastructure/postgres/init")
+
+    assert [path.name for path in files] == [
+        "59-wc124-billing-authority.sql",
+        "60-wc124-principal-handoff.sql",
+    ]

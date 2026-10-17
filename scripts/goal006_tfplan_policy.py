@@ -14,6 +14,13 @@ TEMPORAL_ROLE_ADDRESS = "module.workload.azurerm_role_assignment.temporal_secret
 LEGACY_TEMPORAL_SCOPE_SUFFIX = "/secrets/business-platform"
 DATABASE_TEMPORAL_SCOPE_SUFFIX = "/secrets/db-temporal-runtime-demo"
 KEY_VAULT_SECRETS_USER_ROLE = "Key Vault Secrets User"
+OPTIONAL_ROLE_ASSIGNMENT_FIELDS = frozenset(
+    {
+        "condition",
+        "delegated_managed_identity_resource_id",
+        "description",
+    }
+)
 DATABASE_BOOTSTRAP_ADMIN_ADDRESS = (
     "module.foundation.azurerm_postgresql_flexible_server_active_directory_administrator.bootstrap[0]"
 )
@@ -109,6 +116,23 @@ def is_temporal_secret_role_cutover(plan: dict[str, Any]) -> bool:
     return not temporal_secret_role_cutover_violations(plan)
 
 
+def stable_role_field_changed(
+    field: str,
+    before: dict[str, Any],
+    after: dict[str, Any],
+    after_unknown: dict[str, Any],
+) -> bool:
+    """Compare stable role fields across AzureRM blank/null normalization."""
+    after_value = after.get(field)
+    if after_value is None and after_unknown.get(field) is True:
+        return False
+    before_value = before.get(field)
+    if field in OPTIONAL_ROLE_ASSIGNMENT_FIELDS:
+        before_value = None if before_value in ("", None) else before_value
+        after_value = None if after_value in ("", None) else after_value
+    return before_value != after_value
+
+
 def temporal_secret_role_cutover_violations(plan: dict[str, Any]) -> list[str]:
     """Return closed-world reasons a Temporal role replacement is unsafe."""
     matches = [change for change in plan["resource_changes"] if change.get("address") == TEMPORAL_ROLE_ADDRESS]
@@ -153,11 +177,7 @@ def temporal_secret_role_cutover_violations(plan: dict[str, Any]) -> list[str]:
         "principal_id",
         "role_definition_name",
     )
-    changed_fields = [
-        field
-        for field in stable_fields
-        if before.get(field) != after.get(field) and not (after.get(field) is None and after_unknown.get(field) is True)
-    ]
+    changed_fields = [field for field in stable_fields if stable_role_field_changed(field, before, after, after_unknown)]
     if changed_fields:
         return ["stable fields changed: " + ", ".join(changed_fields)]
     return []
@@ -174,19 +194,19 @@ def enforce_temporal_contract(plan: dict[str, Any]) -> None:
         template = after["template"][0]
         containers = {container["name"]: container for container in template["container"]}
         temporal = containers["temporal"]
-        postgres = containers["postgres"]
     except (KeyError, IndexError, TypeError) as error:
         raise ValueError("Workload plan has an incomplete Demo Temporal contract") from error
     violations: list[str] = []
-    if template.get("min_replicas") != 1 or template.get("max_replicas") != 1:
-        violations.append("Temporal must run exactly one replica")
+    if set(containers) != {"temporal"}:
+        violations.append("Temporal must use external PostgreSQL without a database sidecar")
+    if template.get("min_replicas") not in {0, 1} or template.get("max_replicas") != 1:
+        violations.append("Temporal must be dormant or run as one fixed replica")
     if temporal.get("startup_probe"):
         violations.append("Temporal startup probe must be absent")
     if temporal.get("readiness_probe"):
         violations.append("Temporal readiness probe must be absent")
-    for name, container in (("Temporal", temporal), ("PostgreSQL", postgres)):
-        if "@sha256:" not in str(container.get("image", "")):
-            violations.append(f"{name} image must be digest-pinned")
+    if "@sha256:" not in str(temporal.get("image", "")):
+        violations.append("Temporal image must be digest-pinned")
     if violations:
         raise ValueError("Workload plan violates Demo Temporal contract: " + "; ".join(violations))
 

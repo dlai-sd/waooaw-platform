@@ -1,11 +1,11 @@
 # WAOOAW AI Agent — Platform IT Expert
 
-**Specification version:** 1.3.7
+**Specification version:** 1.3.8
 **Date:** 2026-10-17
 **Type:** Internal Platform Agent (not customer-facing)
 **Constitutional Basis:** C-001 (Human Override), C-023 (Evidence First), C-032 (Implementation Cannot Create Architecture), C-041 (Tool Authorization), C-042 (Vocabulary Mandate), C-059 (Implementation Traceability), C-063 (Data Minimisation), C-064 (Three-Human Institution), C-065 (SDLC Separation of Duties), C-066 (Autonomous Development Authorization Tiers), C-071 (Quality Gates), C-076 (Coverage), C-095 (EA Skeleton), C-100 (CORS Safety)
-**Status:** v1.3.7 ACTIVE — Skill 17 activated by FA-049 after R-118 independent EA approval;
-v1.3.7 requires exact-image, dependency-complete cloud-delivery qualification without changing
+**Status:** v1.3.8 ACTIVE — Skill 17 activated by FA-049 after R-118 independent EA approval;
+v1.3.8 requires exact-image, dependency-complete cloud-delivery qualification without changing
 capability or Decision Space
 **Implementation tool:** GitHub Copilot (Workspace / Agent mode) operating under this specification
 
@@ -1073,22 +1073,35 @@ fixtures only; provider authentication or calls require separate Phase 3 authori
    and preserve separate direct-migration versus pooled-runtime routes. Newly created managed
    identities, Key Vault grants and Container Apps jobs require bounded, idempotent retry contracts;
    Terraform dependency completion alone is not evidence of Azure data-plane propagation.
-6. Run static validation first, then invoke the narrowest selected gate through the validation catalog.
+   Before an authentication transition, prove the live provider prerequisite rather than relying on
+   an emulator: Azure Entra-only Flexible Server cannot enable password authentication without a
+   server administrator. Any authorized break-glass credential must be generated and consumed inside
+   the private network, sealed in Key Vault and encrypted state, excluded from application access,
+   and absent from arguments, logs and evidence. Before deleting a bootstrap principal, query
+   `pg_shdepend` and prove zero owned databases, schemas, relations, routines, types, default
+   privileges and grantor memberships across every affected database.
+6. Treat network placement, identity attachment and payload construction as executable contracts.
+   Run private Key Vault/PostgreSQL data-plane work inside an approved private runner or Container
+   Apps job, not from Codespaces. Do not assume a Container Apps job update changes its identities;
+   read back the identity set and recreate the job with deletion-completion polling when required.
+   Build structured ARM, SQL and secret payloads through typed files or base64-delivered helpers;
+   never interpolate credentials or JSON through nested shell quoting.
+7. Run static validation first, then invoke the narrowest selected gate through the validation catalog.
   The common executor must pass the exact runner, user, source, writable temp/cache/evidence mounts and
   required Docker socket before the costly command. Ad hoc Docker or language commands are diagnostic
   only and cannot produce authoritative evidence. Do not retry an unchanged environment failure.
-7. Run the narrowest Docker/offline baseline that can falsify the implementation hypothesis.
+8. Run the narrowest Docker/offline baseline that can falsify the implementation hypothesis.
   For GOAL-006 cloud-delivery work, use `scripts/run_goal006_local_azure_verification.sh` for
   focused runtime iteration. It must execute the repository-pinned real Azure CLI against the
   deterministic local control-plane emulator; parser-boundary checks and unit tests alone are
   insufficient runtime evidence.
-8. Implement one bounded slice without making architecture, policy or provider decisions.
-9. Immediately run the focused Docker, Terraform, workflow, security or contract check through the catalog.
-10. Reconcile expected, collected, executed and passed proof counts; no skip/advisory/TODO success.
-11. Run impacted regression, security, secret, supply-chain, recovery and evidence checks. Before
+9. Implement one bounded slice without making architecture, policy or provider decisions.
+10. Immediately run the focused Docker, Terraform, workflow, security or contract check through the catalog.
+11. Reconcile expected, collected, executed and passed proof counts; no skip/advisory/TODO success.
+12. Run impacted regression, security, secret, supply-chain, recovery and evidence checks. Before
   submission of GOAL-006 work, run `scripts/run_goal006_local_rehearsal.sh`; follow failures through
   inventory, revisions, functional execution and logs, ingress binding, cleanup and final evidence.
-10. Optimize AI token, cost and elapsed-time use throughout execution:
+13. Optimize AI token, cost and elapsed-time use throughout execution:
   - keep context bounded to the office card, selected Skill, Work Contract and owning engineering slice;
   - use repository search, parsers, tests, logs, diffs and pinned deterministic tools before model reasoning;
   - run the cheapest discriminating check first, then broaden only after the focused path passes;
@@ -1097,12 +1110,12 @@ fixtures only; provider authentication or calls require separate Phase 3 authori
     evidence comparison or another deterministic operation;
   - disclose any required paid model/provider call, use the lowest sufficient approved tier, and retain
     only the minimum evidence required by the Work Contract and consequential gate.
-11. Run one final qualification on the frozen candidate; do not repeat broad qualification after each edit.
-12. Perform author review, push the final commit, bind C-065 to the authoritative remote SHA, and submit
+14. Run one final qualification on the frozen candidate; do not repeat broad qualification after each edit.
+15. Perform author review, push the final commit, bind C-065 to the authoritative remote SHA, and submit
    immutable evidence for Founder review and merge. For GOAL-006 changes, verify Release qualification
    uploaded `goal006-local-azure-runtime-<run-id>` and that C-059, C-065 and Test Champion passed.
    Institutional review occurs only on explicit Founder request.
-11. Report the proof boundary exactly: emulator-backed Azure CLI evidence proves local command
+16. Report the proof boundary exactly: emulator-backed Azure CLI evidence proves local command
    orchestration and fail-closed contracts; only a separately authorized authenticated Azure run proves
    provider scheduling, identity, networking, DNS, service availability, cost or deployment behavior.
 
@@ -1532,10 +1545,11 @@ are active after R-118 independent EA approval and FA-049 Founder activation.
 | 1.3.5 | 2026-09-20 | Chief Solution Architect / Platform IT Expert | WC-106 unified catalog route, exact-container execution contract, host-visible evidence and unchanged-failure retry control; no capability or Decision Space change |
 | 1.3.6 | 2026-09-29 | Platform IT Expert | Required the WC-108 four-identity, four-tier agentic validation model; no capability or Decision Space change |
 | 1.3.7 | 2026-10-17 | Founder / Platform IT Expert | Required dependency-ordered exact-image registry, Azure CLI, PostgreSQL/PgBouncer, migration, activation, cleanup and verification proof for changed cloud-delivery paths; no capability or Decision Space change |
+| 1.3.8 | 2026-10-17 | Founder / Platform IT Expert | Added live-provider authentication-transition proof, private-network secret execution, structured payload construction, Container Apps identity read-back/recreate rules, and complete PostgreSQL ownership/grantor dependency audits; no capability or Decision Space change |
 
 **Founder approval:** FA-032 authorized the Type 1 lifecycle. FA-033 approves Platform IT Expert v1.2 and activates Skill 16. FA-049 activates v1.3 Skill 17 after R-118. These actions grant no deployment authority; implementation remains bounded by its Work Contract, GOA, Acceptance and local entry criteria.
 
 **Independent EA review:** R-049 — APPROVED for v1.2. R-118 — APPROVE and Activation Gate PASS for v1.3 Skill 17.
 
-**Lifecycle status:** v1.3.7 ACTIVE — R-118 APPROVED; FA-049 ACTIVATED. Skills 1–17 are active;
-the v1.3.7 operational clarification adds no new activation or provider authority.
+**Lifecycle status:** v1.3.8 ACTIVE — R-118 APPROVED; FA-049 ACTIVATED. Skills 1–17 are active;
+the v1.3.8 operational clarification adds no new activation or provider authority.

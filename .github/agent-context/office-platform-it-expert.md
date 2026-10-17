@@ -32,6 +32,13 @@ own PR, access or mutate a provider without exact authority, or invoke another i
    pinned runner and component images. Workflow-text assertions do not qualify registry
    authentication, Azure CLI command compatibility, managed-identity propagation, PostgreSQL
    authority handoff, PgBouncer SCRAM/TLS, vendor migrations, activation, cleanup or verification.
+   Prove live-provider authentication prerequisites before mutation. Run private Key Vault and
+   PostgreSQL data-plane operations inside the approved private network; construct secret, ARM and
+   SQL payloads through typed files or base64 helpers, never nested shell interpolation. Read back
+   Container Apps job identities and recreate with deletion-completion polling when identity changes
+   are required. Before bootstrap deletion, prove `pg_shdepend` has zero database, schema, relation,
+   routine, type, default-privilege and grantor-membership dependencies. After one failed mutation,
+   stop, audit read-only evidence, and do not retry unchanged commands or accelerate into throttling.
 4. Read the touched engineering files, nearest tests, and only the ADR/claim sections named by the task.
 5. For every build or test, use the catalog-owned four-tier sequence: static contract and exact-container execution contract preflight with no image build;
    stack-specific disposable story execution against mounted source; dependency-complete milestone checks;

@@ -23,6 +23,10 @@ APPLICATION_DATABASE = "waooaw_application"
 KEYCLOAK_DATABASE = "waooaw_keycloak"
 TEMPORAL_DATABASE = "waooaw_temporal"
 TEMPORAL_VISIBILITY_DATABASE = "waooaw_temporal_visibility"
+APPLICATION_MIGRATION_NAMES = (
+    "59-wc124-billing-authority.sql",
+    "60-wc124-principal-handoff.sql",
+)
 
 
 @dataclass(frozen=True)
@@ -185,17 +189,36 @@ def password_from_secret(spec: CredentialSpec, value: str) -> str:
 def run(command: list[str], *, env: dict[str, str] | None = None, stdin: str | None = None) -> str:
     completed = subprocess.run(  # noqa: S603
         command,
-        check=True,
         capture_output=True,
         text=True,
         input=stdin,
         env=env,
     )
+    if completed.returncode != 0:
+        detail = completed.stderr.strip() or "command returned no diagnostic output"
+        raise RuntimeError(f"{Path(command[0]).name} failed with exit code {completed.returncode}: {detail}")
     return completed.stdout
 
 
 def azure_login(client_id: str) -> None:
     run(["az", "login", "--identity", "--client-id", client_id, "--allow-no-subscriptions", "--output", "none"])
+
+
+def access_token() -> str:
+    token_record = json.loads(
+        run(
+            [
+                "az",
+                "account",
+                "get-access-token",
+                "--resource",
+                "https://ossrdbms-aad.database.windows.net",
+                "-o",
+                "json",
+            ]
+        )
+    )
+    return token_record["accessToken"]
 
 
 def read_credentials(
@@ -253,6 +276,7 @@ def psql(
     environment = dict(os.environ)
     environment["PGPASSWORD"] = access_token
     environment["PGSSLMODE"] = "verify-full"
+    environment["PGSSLROOTCERT"] = "/etc/ssl/certs/ca-certificates.crt"
     run(
         [
             "psql",
@@ -273,6 +297,14 @@ def psql(
     )
 
 
+def application_migration_files(init_directory: Path) -> tuple[Path, ...]:
+    files = tuple(init_directory / name for name in APPLICATION_MIGRATION_NAMES)
+    missing = [path.name for path in files if not path.is_file()]
+    if missing:
+        raise ValueError(f"WC-124 application migration files are missing: {', '.join(missing)}")
+    return files
+
+
 def provision_postgresql(
     specs: tuple[CredentialSpec, ...],
     passwords: dict[str, str],
@@ -280,33 +312,20 @@ def provision_postgresql(
     bootstrap_name: str,
     init_directory: Path,
 ) -> str:
-    token_record = json.loads(
-        run(
-            [
-                "az",
-                "account",
-                "get-access-token",
-                "--resource",
-                "https://ossrdbms-aad.database.windows.net",
-                "-o",
-                "json",
-            ]
-        )
-    )
-    access_token = token_record["accessToken"]
+    database_access_token = access_token()
     role_sql = (init_directory / "00-wc124-principal-bootstrap.sql").read_text(encoding="utf-8")
     role_sql += "\n" + "\n".join(
         f"ALTER ROLE {sql_identifier(role)} PASSWORD {sql_literal(password)};" for role, password in sorted(passwords.items())
     )
-    psql(server_fqdn, bootstrap_name, APPLICATION_DATABASE, access_token, role_sql)
+    psql(server_fqdn, bootstrap_name, APPLICATION_DATABASE, database_access_token, role_sql)
 
-    application_files = [path for path in sorted(init_directory.glob("*.sql")) if path.name != "00-wc124-principal-bootstrap.sql"]
+    application_files = application_migration_files(init_directory)
     for path in application_files:
         psql(
             server_fqdn,
             bootstrap_name,
             APPLICATION_DATABASE,
-            access_token,
+            database_access_token,
             path.read_text(encoding="utf-8"),
         )
 
@@ -324,7 +343,7 @@ def provision_postgresql(
             + ", ".join(sql_identifier(role) for role in roles)
             + ";\n"
         )
-        psql(server_fqdn, bootstrap_name, database, access_token, grants)
+        psql(server_fqdn, bootstrap_name, database, database_access_token, grants)
     vendor_databases = {
         KEYCLOAK_DATABASE: ("keycloak_owner", "keycloak_migrator", "keycloak_runtime"),
     }
@@ -356,8 +375,8 @@ ALTER DEFAULT PRIVILEGES FOR ROLE {sql_identifier(owner)} IN SCHEMA public
 ALTER DEFAULT PRIVILEGES FOR ROLE {sql_identifier(owner)} IN SCHEMA public
     GRANT EXECUTE ON FUNCTIONS TO {sql_identifier(runtime)};
 """
-        psql(server_fqdn, bootstrap_name, database, access_token, vendor_sql)
-    del access_token
+        psql(server_fqdn, bootstrap_name, database, database_access_token, vendor_sql)
+    del database_access_token
     return hashlib.sha256(
         b"\0".join(path.read_bytes() for path in [init_directory / "00-wc124-principal-bootstrap.sql", *application_files])
     ).hexdigest()
