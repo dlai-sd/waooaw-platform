@@ -101,6 +101,7 @@ def test_preview_package_runs_current_source_with_real_local_services() -> None:
     assert "ON CONFLICT (tenant_id, professional_type_id, professional_version) DO NOTHING" in marketplace_seed
     assert "SECURITY DEFINER" in marketplace_seed
     assert "SET search_path = pg_catalog, business, identity" in marketplace_seed
+    assert "set_config('app.current_tenant_id', NEW.tenant_id::text, true)" in marketplace_seed
     assert "DMA_ADMISSION_CONTENT_DIGEST" in marketplace_seed
     assert "DMA_ARTIFACT_DIGEST" in marketplace_seed
     assert "Never loaded by production workloads" not in marketplace_seed
@@ -181,12 +182,15 @@ def test_demo_web_has_a_stable_scaling_target() -> None:
     assert "max_replicas                             = 1" in demo_main
 
 
-def test_demo_postgres_requires_key_vault_backed_passwords() -> None:
+def test_demo_managed_postgres_requires_key_vault_backed_credentials() -> None:
     workload = (MODULE / "main.tf").read_text()
 
     assert "POSTGRES_HOST_AUTH_METHOD" not in workload
-    assert 'name        = "POSTGRES_PASSWORD"' in workload
+    assert 'name        = "POSTGRES_PASSWORD"' not in workload
     assert 'secret_name = "runtime-reference"' in workload
-    assert workload.count('secret_name = "postgres-password"') == 2
+    assert 'name                = "database-credential"' in workload
+    assert 'secret_name = "database-credential"' in workload
+    assert "key_vault_secret_id = var.database_secret_uris[each.key]" in workload
+    assert workload.count('secret_name = "postgres-password"') == 1
     assert 'resource "azurerm_user_assigned_identity" "temporal"' in workload
     assert 'resource "azurerm_role_assignment" "temporal_secret"' in workload

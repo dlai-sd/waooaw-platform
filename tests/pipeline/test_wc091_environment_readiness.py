@@ -107,15 +107,17 @@ def test_catalog_rejects_duplicate_secret_identity(monkeypatch: pytest.MonkeyPat
         wc091_environment.validate_and_render("demo")
 
 
-def test_demo_terraform_uses_managed_postgres_and_generation_fenced_keycloak_storage() -> None:
+def test_demo_terraform_uses_managed_postgres_and_no_ephemeral_vendor_storage() -> None:
     module = (wc091_environment.ROOT / "infrastructure/terraform/phase2/modules/workload/main.tf").read_text()
     demo = (wc091_environment.ROOT / "infrastructure/terraform/phase2/environments/demo/workload/main.tf").read_text()
 
-    assert module.count('storage_type = "EmptyDir"') == 1
+    assert 'storage_type = "EmptyDir"' not in module
     assert 'path = "/var/lib/postgresql/data"' not in module
-    assert 'path = "/opt/keycloak/data"' in module
+    assert 'path = "/opt/keycloak/data"' not in module
     assert "rm -rf /var/lib/postgresql/data/*" not in module
-    assert "rm -rf /opt/keycloak/data/*" in module
+    assert "rm -rf /opt/keycloak/data/*" not in module
+    assert 'resource "azurerm_container_app_job" "keycloak_migration"' in module
+    assert 'resource "azurerm_container_app_job" "temporal_migration"' in module
     assert "wc091_demo_generation" not in module
     assert "WC091_GENERATION_ID" not in module
     assert "WC091_FIXTURE_DIGEST" not in module

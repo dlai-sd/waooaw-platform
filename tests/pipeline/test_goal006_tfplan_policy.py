@@ -83,6 +83,7 @@ def temporal_secret_role_cutover() -> dict[str, Any]:
                         **stable,
                         "scope": f"{vault}/secrets/db-temporal-runtime-demo",
                     },
+                    "after_unknown": {},
                     "replace_paths": [["scope"]],
                 },
             }
@@ -112,6 +113,16 @@ def test_workload_plan_rejects_temporal_readiness_probe() -> None:
 
 def test_workload_plan_accepts_exact_temporal_secret_role_cutover() -> None:
     enforce_plan(temporal_secret_role_cutover(), "workload")
+
+
+def test_workload_plan_accepts_provider_computed_stable_cutover_fields() -> None:
+    plan = temporal_secret_role_cutover()
+    change = plan["resource_changes"][0]["change"]
+    for field in ("condition_version", "principal_id", "role_definition_name"):
+        change["after"][field] = None
+        change["after_unknown"][field] = True
+
+    enforce_plan(plan, "workload")
 
 
 def mutate_cutover(path: tuple[str, ...], value: object) -> dict[str, Any]:
@@ -153,6 +164,16 @@ def test_workload_plan_rejects_duplicate_temporal_role_replacements() -> None:
         enforce_plan(plan, "workload")
 
 
+def test_workload_plan_rejects_invalid_unknown_marker_for_changed_principal() -> None:
+    plan = temporal_secret_role_cutover()
+    change = plan["resource_changes"][0]["change"]
+    change["after"]["principal_id"] = None
+    change["after_unknown"]["principal_id"] = "yes"
+
+    with pytest.raises(ValueError, match=r"stable fields changed: principal_id"):
+        enforce_plan(plan, "workload")
+
+
 def test_workload_plan_rejects_extra_destructive_change_beside_cutover() -> None:
     plan = temporal_secret_role_cutover()
     plan["resource_changes"].extend(destructive_plan()["resource_changes"])
@@ -164,3 +185,71 @@ def test_workload_plan_rejects_extra_destructive_change_beside_cutover() -> None
 def test_foundation_plan_never_accepts_temporal_role_cutover() -> None:
     with pytest.raises(ValueError, match="Foundation plan contains"):
         enforce_plan(temporal_secret_role_cutover(), "foundation")
+
+
+def wc124_plan_b() -> dict[str, Any]:
+    vault = "/subscriptions/sub/resourceGroups/waooaw-demo-rg/providers/Microsoft.KeyVault/vaults/kv-waooaw-demo"
+    return {
+        "resource_changes": [
+            {
+                "address": (
+                    "module.foundation."
+                    "azurerm_postgresql_flexible_server_active_directory_administrator.bootstrap[0]"
+                ),
+                "mode": "managed",
+                "type": "azurerm_postgresql_flexible_server_active_directory_administrator",
+                "change": {
+                    "actions": ["delete"],
+                    "before": {
+                        "principal_name": "id-waooaw-demo-db-bootstrap",
+                        "principal_type": "ServicePrincipal",
+                    },
+                    "after": None,
+                },
+            },
+            {
+                "address": "module.foundation.azurerm_role_assignment.database_provisioner_vault[0]",
+                "mode": "managed",
+                "type": "azurerm_role_assignment",
+                "change": {
+                    "actions": ["delete"],
+                    "before": {
+                        "principal_id": "provisioner-principal",
+                        "role_definition_name": "Key Vault Secrets Officer",
+                        "scope": vault,
+                    },
+                    "after": None,
+                },
+            },
+        ]
+    }
+
+
+def test_foundation_plan_accepts_exact_wc124_plan_b_revocations() -> None:
+    enforce_plan(wc124_plan_b(), "foundation", "wc124-plan-b")
+
+
+def test_foundation_standard_plan_rejects_wc124_plan_b_revocations() -> None:
+    with pytest.raises(ValueError, match="delete or replacement"):
+        enforce_plan(wc124_plan_b(), "foundation")
+
+
+@pytest.mark.parametrize(
+    ("index", "field", "value"),
+    [
+        (0, "principal_name", "id-waooaw-demo-deployment"),
+        (0, "principal_type", "User"),
+        (1, "role_definition_name", "Key Vault Administrator"),
+        (1, "scope", "/subscriptions/sub/resourceGroups/other"),
+    ],
+)
+def test_foundation_plan_rejects_near_match_wc124_plan_b_revocations(
+    index: int,
+    field: str,
+    value: str,
+) -> None:
+    plan = wc124_plan_b()
+    plan["resource_changes"][index]["change"]["before"][field] = value
+
+    with pytest.raises(ValueError, match="delete or replacement"):
+        enforce_plan(plan, "foundation", "wc124-plan-b")

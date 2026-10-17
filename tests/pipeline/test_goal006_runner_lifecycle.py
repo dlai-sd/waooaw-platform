@@ -314,7 +314,9 @@ def test_runner_image_uses_immutable_inputs_and_ephemeral_registration() -> None
     assert "FROM ghcr.io/actions/actions-runner@sha256:" in dockerfile
     assert "AZURE_CLI_SHA256=" in dockerfile
     assert "TERRAFORM_SHA256=" in dockerfile
-    assert "jq openssl unzip" in dockerfile
+    assert "jq openssl postgresql-client unzip" in dockerfile
+    assert "wc124_db_provisioner.py /opt/waooaw/wc124_db_provisioner.py" in dockerfile
+    assert "infrastructure/postgres/init /opt/waooaw/postgres/init" in dockerfile
     assert "sha256sum --check --strict" in dockerfile
     assert "--ephemeral" in entrypoint
     assert "--disableupdate" in entrypoint
