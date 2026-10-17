@@ -4,12 +4,17 @@
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
 
 ALTER SCHEMA constitutional OWNER TO ce_owner;
+ALTER SCHEMA audit_sink OWNER TO ce_owner;
 ALTER SCHEMA business OWNER TO bp_owner;
 ALTER SCHEMA professional OWNER TO pr_owner;
 ALTER SCHEMA institutional OWNER TO bp_owner;
+ALTER SCHEMA payload_store OWNER TO bp_owner;
+ALTER SCHEMA domain_adapter OWNER TO bp_owner;
 ALTER SCHEMA ai_runtime OWNER TO air_owner;
 ALTER SCHEMA billing OWNER TO billing_owner;
+ALTER SCHEMA identity OWNER TO web_session_owner;
 ALTER SCHEMA web_session OWNER TO web_session_owner;
+ALTER SCHEMA keycloak OWNER TO keycloak_owner;
 
 DO $ownership$
 DECLARE
@@ -21,12 +26,17 @@ BEGIN
         FROM (
             VALUES
                 ('constitutional', 'ce_owner'),
+                ('audit_sink', 'ce_owner'),
                 ('business', 'bp_owner'),
                 ('professional', 'pr_owner'),
                 ('institutional', 'bp_owner'),
+                ('payload_store', 'bp_owner'),
+                ('domain_adapter', 'bp_owner'),
                 ('ai_runtime', 'air_owner'),
                 ('billing', 'billing_owner'),
-                ('web_session', 'web_session_owner')
+                ('identity', 'web_session_owner'),
+                ('web_session', 'web_session_owner'),
+                ('keycloak', 'keycloak_owner')
         ) AS accepted(schema_name, owner_name)
     LOOP
         FOR database_object IN
@@ -73,6 +83,21 @@ BEGIN
                 'ALTER %s %s OWNER TO %I',
                 CASE database_object.prokind WHEN 'p' THEN 'PROCEDURE' ELSE 'FUNCTION' END,
                 database_object.routine_name,
+                ownership.owner_name
+            );
+        END LOOP;
+
+        FOR database_object IN
+            SELECT t.typname
+            FROM pg_type t
+            JOIN pg_namespace n ON n.oid = t.typnamespace
+            WHERE n.nspname = ownership.schema_name
+              AND t.typtype IN ('e', 'd')
+        LOOP
+            EXECUTE format(
+                'ALTER TYPE %I.%I OWNER TO %I',
+                ownership.schema_name,
+                database_object.typname,
                 ownership.owner_name
             );
         END LOOP;
@@ -143,3 +168,28 @@ BEGIN
     END LOOP;
 END
 $rls$;
+
+DO $databases$
+DECLARE
+    database_ownership record;
+BEGIN
+    FOR database_ownership IN
+        SELECT *
+        FROM (
+            VALUES
+                ('waooaw_application', 'bp_owner'),
+                ('waooaw_keycloak', 'keycloak_owner'),
+                ('waooaw_temporal', 'temporal_owner'),
+                ('waooaw_temporal_visibility', 'temporal_owner')
+        ) AS mapping(database_name, owner_name)
+    LOOP
+        IF EXISTS (SELECT 1 FROM pg_database WHERE datname = database_ownership.database_name) THEN
+            EXECUTE format(
+                'ALTER DATABASE %I OWNER TO %I',
+                database_ownership.database_name,
+                database_ownership.owner_name
+            );
+        END IF;
+    END LOOP;
+END
+$databases$;

@@ -9,6 +9,9 @@ WORKFLOW = Path(".github/workflows/environment-deployment.yaml").read_text(
 DISPATCH_WORKFLOW = Path(".github/workflows/deploy.yaml").read_text(
     encoding="utf-8"
 )
+FOUNDATION_MODULE = Path(
+    "infrastructure/terraform/phase2/modules/foundation/main.tf"
+).read_text(encoding="utf-8")
 
 
 def test_environment_deployment_uses_qualified_private_runner_lifecycle() -> None:
@@ -51,13 +54,52 @@ def test_wc124_live_cli_contracts_match_the_pinned_runner() -> None:
     handoff = WORKFLOW.split("      - name: Verify WC-124 database credential handoff", 1)[1].split(
         "      - name: Build workload inputs", 1
     )[0]
+    authority_handoff = WORKFLOW.split(
+        "      - name: Finalize WC-124 PostgreSQL authority handoff", 1
+    )[1].split("      - name: Remove WC-124 Entra bootstrap authority", 1)[0]
+    bootstrap_removal = WORKFLOW.split(
+        "      - name: Remove WC-124 Entra bootstrap authority", 1
+    )[1].split("      - name: Verify WC-124 database credential handoff", 1)[0]
 
     assert "--reference \"$release_tag\"" in provisioner
     assert "replicaRetryLimit: 1" in provisioner
+    assert "Timed out waiting for Container Apps job deletion" in provisioner
+    assert "keys(identity.userAssignedIdentities)" in provisioner
+    assert 'test "$actual_identities" = "$expected_identities"' in provisioner
     assert "--tail 300" in WORKFLOW
     assert "--tail 500" not in WORKFLOW
     assert "postgres flexible-server microsoft-entra-admin list" in handoff
     assert "postgres flexible-server ad-admin" not in WORKFLOW
+    assert 'if [ "$secret_id" = "db-pgbouncer-auth" ]' in handoff
+    assert 'expected_role="pgbouncer_auth"' in handoff
+    assert '.tags["wc124-role"] // ""' in handoff
+    assert "/opt/waooaw/wc124_db_handoff.py" in authority_handoff
+    assert 'test "$actual_identities" = "$expected_identities"' in authority_handoff
+    assert '"remaining_bootstrap_dependencies": 0' in authority_handoff
+    assert '-var="database_bootstrap_admin_enabled=false"' in bootstrap_removal
+    assert "microsoft-entra-admin list" in bootstrap_removal
+
+
+def test_wc124_plan_b_uses_sealed_structured_provider_update() -> None:
+    assert 'source  = "Azure/azapi"' in FOUNDATION_MODULE
+    assert 'resource "random_password" "postgresql_breakglass_administrator"' in FOUNDATION_MODULE
+    assert 'name         = "db-server-breakglass-admin"' in FOUNDATION_MODULE
+    assert 'resource "azapi_update_resource" "postgresql_plan_b_authentication"' in FOUNDATION_MODULE
+    assert 'type        = "Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01"' in FOUNDATION_MODULE
+    assert 'administratorLogin         = "wc124_breakglass_admin"' in FOUNDATION_MODULE
+    assert "administratorLoginPassword = random_password.postgresql_breakglass_administrator[0].result" in FOUNDATION_MODULE
+    assert 'passwordAuth        = "Enabled"' in FOUNDATION_MODULE
+    assert "authentication[0].password_auth_enabled" in FOUNDATION_MODULE
+
+
+def test_wc124_container_app_job_names_fit_azure_limit() -> None:
+    workload = Path("infrastructure/terraform/phase2/modules/workload/main.tf").read_text(
+        encoding="utf-8"
+    )
+    assert 'name                         = "job-${var.environment}-temporal-migration"' in workload
+    assert 'name                         = "job-${var.environment}-keycloak-migration"' in workload
+    assert len("job-demo-temporal-migration") <= 32
+    assert len("job-demo-keycloak-migration") <= 32
 
 
 def test_private_job_uses_only_live_runner_commands() -> None:

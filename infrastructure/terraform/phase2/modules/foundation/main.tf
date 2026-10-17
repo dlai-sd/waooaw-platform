@@ -6,6 +6,14 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "= 4.14.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "= 3.6.3"
+    }
+    azapi = {
+      source  = "Azure/azapi"
+      version = "= 2.2.0"
+    }
   }
 }
 
@@ -318,6 +326,26 @@ resource "azurerm_private_dns_zone_virtual_network_link" "postgresql" {
   tags                  = local.tags
 }
 
+resource "random_password" "postgresql_breakglass_administrator" {
+  count = var.persistent_state_enabled && var.postgresql_password_auth_enabled ? 1 : 0
+
+  length           = 40
+  special          = true
+  override_special = "_%@-"
+}
+
+resource "azurerm_key_vault_secret" "postgresql_breakglass_administrator" {
+  count = var.persistent_state_enabled && var.postgresql_password_auth_enabled ? 1 : 0
+
+  name         = "db-server-breakglass-admin"
+  value        = random_password.postgresql_breakglass_administrator[0].result
+  key_vault_id = azurerm_key_vault.environment.id
+  content_type = "PostgreSQL sealed break-glass administrator credential"
+  tags         = merge(local.tags, { authority = "break-glass-only" })
+
+  depends_on = [azurerm_role_assignment.deployment_secret_officer]
+}
+
 resource "azurerm_postgresql_flexible_server" "persistent_state" {
   count = var.persistent_state_enabled ? 1 : 0
 
@@ -344,9 +372,34 @@ resource "azurerm_postgresql_flexible_server" "persistent_state" {
 
   lifecycle {
     prevent_destroy = true
+    ignore_changes = [
+      administrator_login,
+      administrator_password,
+      authentication[0].password_auth_enabled,
+    ]
   }
 
   depends_on = [azurerm_private_dns_zone_virtual_network_link.postgresql]
+}
+
+resource "azapi_update_resource" "postgresql_plan_b_authentication" {
+  count = var.persistent_state_enabled && var.postgresql_password_auth_enabled ? 1 : 0
+
+  type        = "Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01"
+  resource_id = azurerm_postgresql_flexible_server.persistent_state[0].id
+  body = {
+    properties = {
+      administratorLogin         = "wc124_breakglass_admin"
+      administratorLoginPassword = random_password.postgresql_breakglass_administrator[0].result
+      authConfig = {
+        activeDirectoryAuth = "Enabled"
+        passwordAuth        = "Enabled"
+        tenantId            = azurerm_user_assigned_identity.deployment.tenant_id
+      }
+    }
+  }
+
+  depends_on = [azurerm_key_vault_secret.postgresql_breakglass_administrator]
 }
 
 resource "azurerm_postgresql_flexible_server_active_directory_administrator" "bootstrap" {

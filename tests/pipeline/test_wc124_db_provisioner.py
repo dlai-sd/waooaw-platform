@@ -27,6 +27,9 @@ ROOT = Path(__file__).resolve().parents[2]
 CATALOG = json.loads(
     (ROOT / "infrastructure/environment-readiness/secret-catalog.json").read_text(encoding="utf-8")
 )
+HANDOFF_SQL = (ROOT / "infrastructure/postgres/init/60-wc124-principal-handoff.sql").read_text(
+    encoding="utf-8"
+)
 
 
 def test_demo_catalog_has_exact_distinct_database_credentials() -> None:
@@ -48,6 +51,33 @@ def test_uat_excludes_demo_temporal_credential() -> None:
 
     assert len(specs) == 15
     assert TEMPORAL_DATABASE not in {spec.database for spec in specs}
+
+
+def test_handoff_covers_every_database_schema_and_owned_type() -> None:
+    expected_schemas = {
+        "constitutional": "ce_owner",
+        "audit_sink": "ce_owner",
+        "business": "bp_owner",
+        "institutional": "bp_owner",
+        "payload_store": "bp_owner",
+        "domain_adapter": "bp_owner",
+        "professional": "pr_owner",
+        "ai_runtime": "air_owner",
+        "billing": "billing_owner",
+        "identity": "web_session_owner",
+        "web_session": "web_session_owner",
+        "keycloak": "keycloak_owner",
+    }
+    for schema, owner in expected_schemas.items():
+        assert f"ALTER SCHEMA {schema} OWNER TO {owner};" in HANDOFF_SQL
+        assert f"('{schema}', '{owner}')" in HANDOFF_SQL
+    assert "t.typtype IN ('e', 'd')" in HANDOFF_SQL
+    assert "'ALTER TYPE %I.%I OWNER TO %I'" in HANDOFF_SQL
+    assert "('waooaw_application', 'bp_owner')" in HANDOFF_SQL
+    assert "('waooaw_keycloak', 'keycloak_owner')" in HANDOFF_SQL
+    assert "('waooaw_temporal', 'temporal_owner')" in HANDOFF_SQL
+    assert "('waooaw_temporal_visibility', 'temporal_owner')" in HANDOFF_SQL
+    assert "'ALTER DATABASE %I OWNER TO %I'" in HANDOFF_SQL
 
 
 @pytest.mark.parametrize("environment", ["prod", "development", ""])

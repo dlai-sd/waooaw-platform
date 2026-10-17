@@ -1044,11 +1044,29 @@ jobs:
             --reference "$release_tag")
           runner_image="ghcr.io/${repository}@${runner_digest}"
           pgbouncer_host="ca-${TARGET_ENVIRONMENT}-pgbouncer.internal.${{ steps.foundation.outputs.container_app_environment_default_domain }}"
-          az containerapp job delete \
+          if az containerapp job show \
             --name "$job_name" \
             --resource-group "$RESOURCE_GROUP" \
-            --yes \
-            --output none 2>/dev/null || true
+            --output none 2>/dev/null; then
+            az containerapp job delete \
+              --name "$job_name" \
+              --resource-group "$RESOURCE_GROUP" \
+              --yes \
+              --output none
+            for attempt in $(seq 1 60); do
+              if ! az containerapp job show \
+                --name "$job_name" \
+                --resource-group "$RESOURCE_GROUP" \
+                --output none 2>/dev/null; then
+                break
+              fi
+              if [ "$attempt" = 60 ]; then
+                echo "Timed out waiting for Container Apps job deletion: $job_name" >&2
+                exit 1
+              fi
+              sleep 5
+            done
+          fi
           jq -n \
             --arg name "$job_name" \
             --arg environment_id "$CONTAINER_APP_ENVIRONMENT_ID" \
@@ -1108,6 +1126,16 @@ jobs:
             --resource-group "$RESOURCE_GROUP" \
             --yaml wc124-db-provisioner-job-definition.json \
             --output none
+          actual_identities=$(az containerapp job show \
+            --name "$job_name" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query 'keys(identity.userAssignedIdentities)' \
+            --output json | jq -c 'map(ascii_downcase) | sort')
+          expected_identities=$(jq -cn \
+            --arg bootstrap "$BOOTSTRAP_IDENTITY_ID" \
+            --arg provisioner "$DATABASE_PROVISIONER_IDENTITY_ID" \
+            '[$bootstrap, $provisioner] | map(ascii_downcase) | sort')
+          test "$actual_identities" = "$expected_identities"
 
       - name: Run WC-124 database provisioner
         if: inputs.apply && steps.database-transition.outputs.bootstrap_required == 'true'
@@ -1180,7 +1208,7 @@ jobs:
             -backend-config="use_azuread_auth=true"
           terraform plan -input=false -lock-timeout=5m \
             -var="postgresql_password_auth_enabled=true" \
-            -var="database_bootstrap_admin_enabled=false" \
+            -var="database_bootstrap_admin_enabled=true" \
             -out=foundation-plan-b.tfplan
           terraform show -json foundation-plan-b.tfplan > foundation-plan-b.json
           python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
@@ -1192,6 +1220,111 @@ jobs:
             --resource-group '${{ steps.foundation.outputs.resource_group_name }}' \
             --name "psql-waooaw-${{ inputs.environment }}-state" \
             --query authConfig.passwordAuth -o tsv)" = "Enabled"
+
+      - name: Finalize WC-124 PostgreSQL authority handoff
+        if: inputs.apply && steps.database-transition.outputs.bootstrap_required == 'true'
+        env:
+          BOOTSTRAP_CLIENT_ID: ${{ steps.foundation.outputs.database_bootstrap_client_id }}
+          BOOTSTRAP_IDENTITY_ID: ${{ steps.foundation.outputs.database_bootstrap_identity_id }}
+          DATABASE_PROVISIONER_CLIENT_ID: ${{ steps.foundation.outputs.database_provisioner_client_id }}
+          DATABASE_PROVISIONER_IDENTITY_ID: ${{ steps.foundation.outputs.database_provisioner_identity_id }}
+          KEY_VAULT_NAME: ${{ steps.foundation.outputs.key_vault_name }}
+          POSTGRESQL_SERVER_FQDN: ${{ steps.foundation.outputs.postgresql_server_fqdn }}
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          job_name="job-${TARGET_ENVIRONMENT}-wc124-db-provisioner"
+          az containerapp job update \
+            --name "$job_name" \
+            --resource-group "$RESOURCE_GROUP" \
+            --command /usr/bin/python3 \
+            --args \
+              /opt/waooaw/wc124_db_handoff.py \
+              --environment "$TARGET_ENVIRONMENT" \
+              --vault-name "$KEY_VAULT_NAME" \
+              --server-fqdn "$POSTGRESQL_SERVER_FQDN" \
+              --bootstrap-client-id "$BOOTSTRAP_CLIENT_ID" \
+              --bootstrap-name "id-waooaw-${TARGET_ENVIRONMENT}-db-bootstrap" \
+              --provisioner-client-id "$DATABASE_PROVISIONER_CLIENT_ID" \
+            --output none
+          actual_identities=$(az containerapp job show \
+            --name "$job_name" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query 'keys(identity.userAssignedIdentities)' \
+            --output json | jq -c 'map(ascii_downcase) | sort')
+          expected_identities=$(jq -cn \
+            --arg bootstrap "$BOOTSTRAP_IDENTITY_ID" \
+            --arg provisioner "$DATABASE_PROVISIONER_IDENTITY_ID" \
+            '[$bootstrap, $provisioner] | map(ascii_downcase) | sort')
+          test "$actual_identities" = "$expected_identities"
+          execution_name=$(az containerapp job start \
+            --name "$job_name" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query name -o tsv)
+          test -n "$execution_name"
+          capture_database_handoff_evidence() {
+            az containerapp job execution show \
+              --name "$job_name" \
+              --resource-group "$RESOURCE_GROUP" \
+              --job-execution-name "$execution_name" \
+              --output json > wc124-db-handoff-execution.json
+            az containerapp job logs show \
+              --name "$job_name" \
+              --resource-group "$RESOURCE_GROUP" \
+              --execution "$execution_name" \
+              --container "$job_name" \
+              --tail 300 \
+              --format text > wc124-db-handoff-evidence.log 2>&1 || true
+          }
+          for attempt in $(seq 1 180); do
+            status=$(az containerapp job execution show \
+              --name "$job_name" \
+              --resource-group "$RESOURCE_GROUP" \
+              --job-execution-name "$execution_name" \
+              --query properties.status -o tsv)
+            case "$status" in
+              Succeeded)
+                capture_database_handoff_evidence
+                grep -F '"remaining_bootstrap_dependencies": 0' wc124-db-handoff-evidence.log
+                break
+                ;;
+              Failed|Stopped)
+                capture_database_handoff_evidence
+                cat wc124-db-handoff-evidence.log >&2
+                echo "WC-124 database handoff failed with status: $status" >&2
+                exit 1
+                ;;
+            esac
+            if [ "$attempt" = 180 ]; then
+              capture_database_handoff_evidence
+              cat wc124-db-handoff-evidence.log >&2
+              echo "WC-124 database handoff timed out with status: $status" >&2
+              exit 1
+            fi
+            sleep 10
+          done
+
+      - name: Remove WC-124 Entra bootstrap authority
+        if: inputs.apply && steps.database-transition.outputs.bootstrap_required == 'true'
+        working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
+        run: |
+          set -euo pipefail
+          terraform plan -input=false -lock-timeout=5m \
+            -var="postgresql_password_auth_enabled=true" \
+            -var="database_bootstrap_admin_enabled=false" \
+            -out=foundation-bootstrap-removal.tfplan
+          terraform show -json foundation-bootstrap-removal.tfplan > foundation-bootstrap-removal.json
+          python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
+            --scope foundation \
+            --transition wc124-plan-b \
+            --plan foundation-bootstrap-removal.json
+          terraform apply -input=false -auto-approve foundation-bootstrap-removal.tfplan
+          # shellcheck disable=SC2016
+          test "$(az postgres flexible-server microsoft-entra-admin list \
+            --resource-group '${{ steps.foundation.outputs.resource_group_name }}' \
+            --server-name "psql-waooaw-${{ inputs.environment }}-state" \
+            --query '[?contains(principalName, `db-bootstrap`)] | length(@)' -o tsv)" = 0
 
       - name: Verify WC-124 database credential handoff
         if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
@@ -1208,20 +1341,24 @@ jobs:
             '{schema: "waooaw.wc124-db-credential-inventory/v1", environment: $environment, credentials: []}' \
             > wc124-db-credential-inventory.json
           while IFS=$'\t' read -r secret_id vault_name role; do
+            expected_role="$role"
+            if [ "$secret_id" = "db-pgbouncer-auth" ]; then
+              expected_role="pgbouncer_auth"
+            fi
             record=$(az keyvault secret show \
               --vault-name "$KEY_VAULT_NAME" \
               --name "$vault_name" \
               --query '{id:id, enabled:attributes.enabled, tags:tags}' \
               -o json)
             test "$(jq -r '.enabled' <<< "$record")" = true
-            test "$(jq -r '.tags["wc124-role"] // ""' <<< "$record")" = "$role"
+            test "$(jq -r '.tags["wc124-role"] // ""' <<< "$record")" = "$expected_role"
             test "$(jq -r '.tags["wc124-provisioner"] // ""' <<< "$record")" = "wc124-db-provisioner"
             version_id=$(jq -er '.id | split("/")[-1]' <<< "$record")
             database=$(jq -er '.tags["wc124-database"]' <<< "$record")
             jq \
               --arg secret_id "$secret_id" \
               --arg vault_name "$vault_name" \
-              --arg role "$role" \
+              --arg role "$expected_role" \
               --arg database "$database" \
               --arg version_id "$version_id" \
               '.credentials += [{
