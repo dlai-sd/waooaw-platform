@@ -488,6 +488,7 @@ def main() -> int:
             result = execute(arguments)
     except (OSError, json.JSONDecodeError, KeyError, RuntimeError, subprocess.CalledProcessError, ValueError) as error:
         parser.error(str(error))
+        raise AssertionError("argparse parser.error must terminate") from error
     json.dump(result, sys.stdout, indent=2, sort_keys=True)
     sys.stdout.write("\n")
     return 0
