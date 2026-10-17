@@ -227,3 +227,21 @@
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-08-06T02:51:44.087771+00:00", "run_id": "31065641010", "stub_mode": true, "sprint": "WC-030", "tasks_done": []}
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-08-10T04:45:50.050294+00:00", "run_id": "local", "stub_mode": true, "sprint": "WC-034", "branch": "ib/014/wc034-f3-implementation", "tasks": ["WC034-08", "WC034-09", "WC034-10", "WC034-11", "WC034-12"]}
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-08-10T04:48:08.619534+00:00", "run_id": "local", "stub_mode": true, "sprint": "WC-034", "tasks_done": []}
+{"event": "autonomous_halt_active", "timestamp": "2026-10-17T06:10:48.021794+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "spec_phase_validation_mode", "timestamp": "2026-10-17T06:10:48.023703+00:00", "run_id": "local", "stub_mode": true, "platform_phase": "SPEC"}
+{"event": "platform_phase_gate_blocked", "timestamp": "2026-10-17T06:10:48.024901+00:00", "run_id": "local", "stub_mode": true, "platform_phase": "ARCHIVED", "reason": "platform_phase=ARCHIVED, not IMPLEMENTATION."}
+{"event": "autonomous_halt_active", "timestamp": "2026-10-17T06:10:48.026869+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "autonomous_halt_active", "timestamp": "2026-10-17T06:10:48.027015+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "autonomous_halt_active", "timestamp": "2026-10-17T06:10:48.027132+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "autonomous_halt_active", "timestamp": "2026-10-17T06:14:05.183162+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "spec_phase_validation_mode", "timestamp": "2026-10-17T06:14:05.185073+00:00", "run_id": "local", "stub_mode": true, "platform_phase": "SPEC"}
+{"event": "platform_phase_gate_blocked", "timestamp": "2026-10-17T06:14:05.186239+00:00", "run_id": "local", "stub_mode": true, "platform_phase": "ARCHIVED", "reason": "platform_phase=ARCHIVED, not IMPLEMENTATION."}
+{"event": "autonomous_halt_active", "timestamp": "2026-10-17T06:14:05.188344+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "autonomous_halt_active", "timestamp": "2026-10-17T06:14:05.188495+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "autonomous_halt_active", "timestamp": "2026-10-17T06:14:05.188616+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "autonomous_halt_active", "timestamp": "2026-10-17T06:25:01.073467+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "spec_phase_validation_mode", "timestamp": "2026-10-17T06:25:01.075265+00:00", "run_id": "local", "stub_mode": true, "platform_phase": "SPEC"}
+{"event": "platform_phase_gate_blocked", "timestamp": "2026-10-17T06:25:01.076414+00:00", "run_id": "local", "stub_mode": true, "platform_phase": "ARCHIVED", "reason": "platform_phase=ARCHIVED, not IMPLEMENTATION."}
+{"event": "autonomous_halt_active", "timestamp": "2026-10-17T06:25:01.078420+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "autonomous_halt_active", "timestamp": "2026-10-17T06:25:01.078605+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "autonomous_halt_active", "timestamp": "2026-10-17T06:25:01.078760+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
