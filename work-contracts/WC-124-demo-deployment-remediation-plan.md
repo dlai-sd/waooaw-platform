@@ -11,7 +11,7 @@
 | Failed deployment | Environment Deployment run `39060171367`, job `117476784862` |
 | Environment boundary | Demo only |
 | Delivery shape | One bounded investigation, one consolidated remediation branch, one frozen-candidate qualification, and one retrospective PR |
-| Status | IMPLEMENTATION IN PROGRESS |
+| Status | LOCAL QUALIFICATION COMPLETE - PR PREPARATION IN PROGRESS |
 
 ## 1. Objective And Authority Boundary
 
@@ -31,9 +31,9 @@ prohibited.
 |---|---|---|
 | Audit failed deployment and complete saved workload plan | DONE | Run `39060171367`; artifact `12110269768`; all 30 planned actions classified |
 | Correct plan-policy false positives | DONE | Focused policy tests pass; exact saved workload plan returns `PASS` |
-| Consolidate evidence-backed WC-124 repairs | IN PROGRESS | Provisioner TLS, bounded migrations, database handoff, workflow lifecycle, and sealed break-glass changes carried onto the branch |
-| Qualify frozen remediation candidate | PENDING | Focused and broad local gates recorded with exact results |
-| Prepare retrospective PR and Founder handoff | PENDING | C-059/C-065 preparation passes and one PR is opened without self-merge |
+| Consolidate evidence-backed WC-124 repairs | DONE | Provisioner TLS, bounded migrations, database handoff, workflow lifecycle, and sealed break-glass changes carried onto the branch |
+| Qualify frozen remediation candidate | DONE | Focused tests, six Terraform roots, runner image, emulator lifecycle, GOAL-006 suite, and persistent-state gates pass |
+| Prepare retrospective PR and Founder handoff | IN PROGRESS | C-059/C-065 preparation passes and one PR is opened without self-merge |
 
 ## 3. Confirmed Defect Register
 
@@ -97,3 +97,39 @@ The remediation PR is ready when all defects discovered by the bounded audit are
 regression-tested, or explicitly recorded as unresolved with an owner and reason. A later authorized
 deployment is a qualification event, not permission to begin another automatic PR/deploy loop.
 Any newly observed failure is reported as an explicit blocker for Founder disposition.
+
+## 8. Frozen-Candidate Evidence
+
+| Qualification | Result |
+|---|---|
+| Exact saved `workload-plan.json` through corrected plan policy | PASS - zero destructive changes |
+| Focused WC-124 workflow, policy, runner, provisioner, and handoff tests | PASS - 121 tests |
+| Complete GOAL-006 pipeline suite | PASS - 542 tests |
+| Exact WC-124 persistent-state CI gate with live local PostgreSQL and PgBouncer | PASS - 126 tests |
+| GitHub Actions lint | PASS |
+| Terraform 1.9.8 validation | PASS - Demo, UAT, and Production foundation/workload roots |
+| Lease-controlled Terraform membership plan | PASS |
+| Docker Azure CLI end-to-end deployment emulator | PASS - positive deployment, negative deployment, and cleanup broker |
+| Private-runner image build from `infrastructure/runner/Dockerfile` | PASS |
+| Ruff checks and formatting for changed Python surfaces | PASS |
+
+The official run, not Codespaces, remains the authority for private remote state, Key Vault,
+PostgreSQL, OIDC, Terraform apply, and Container Apps runtime behavior.
+
+## 9. Cleanup Record And Residual Risk
+
+The three temporary direct-execution Container Apps jobs were deleted and control-plane queries
+verified that they are absent:
+
+- `waooaw-demo-rg/job-demo-direct-workload`
+- `waooaw-demo-runner-rg/job-demo-direct-workload`
+- `waooaw-demo-runner-rg/job-demo-direct-stage`
+
+Two temporary direct-execution blobs may remain under
+`deployment-config/demo/direct-execution/`. Codespaces cannot access that private data plane, and
+using account keys, a new SAS workaround, or an ad hoc privileged job would violate this plan's
+trust boundary. Their removal is assigned to the Platform IT Expert in the next separately
+authorized private cleanup execution:
+
+- `run-workload-apply.sh`
+- `registry-release-manifest.json`

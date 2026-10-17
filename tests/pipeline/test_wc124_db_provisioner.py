@@ -24,12 +24,8 @@ from wc124_db_provisioner import (
 
 
 ROOT = Path(__file__).resolve().parents[2]
-CATALOG = json.loads(
-    (ROOT / "infrastructure/environment-readiness/secret-catalog.json").read_text(encoding="utf-8")
-)
-HANDOFF_SQL = (ROOT / "infrastructure/postgres/init/60-wc124-principal-handoff.sql").read_text(
-    encoding="utf-8"
-)
+CATALOG = json.loads((ROOT / "infrastructure/environment-readiness/secret-catalog.json").read_text(encoding="utf-8"))
+HANDOFF_SQL = (ROOT / "infrastructure/postgres/init/60-wc124-principal-handoff.sql").read_text(encoding="utf-8")
 
 
 def test_demo_catalog_has_exact_distinct_database_credentials() -> None:
@@ -113,10 +109,7 @@ def test_every_secret_value_round_trips_its_password_without_echo_metadata() -> 
 
 
 def test_pgbouncer_authfile_contains_the_exact_distinct_credential_set() -> None:
-    passwords = {
-        spec.role: f"{spec.role}-password"
-        for spec in environment_specs("demo")
-    }
+    passwords = {spec.role: f"{spec.role}-password" for spec in environment_specs("demo")}
     value = authfile_value(passwords)
 
     assert value.count("\n") == 17

@@ -37,10 +37,7 @@ def read_contract(relative_path: str) -> str:
 
 def test_live_inventory_requires_pinned_identity_dependencies(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(goal006_live_inventory, "validate_registry_manifest", lambda manifest: [])
-    images = {
-        member: f"ghcr.io/dlai-sd/{member}@sha256:{'a' * 64}"
-        for member in goal006_live_inventory.RELEASE_MEMBERS
-    }
+    images = {member: f"ghcr.io/dlai-sd/{member}@sha256:{'a' * 64}" for member in goal006_live_inventory.RELEASE_MEMBERS}
     inventory = [
         {
             "name": goal006_live_inventory.release_app_name("demo", member),
@@ -79,9 +76,7 @@ def test_live_inventory_requires_pinned_identity_dependencies(monkeypatch: pytes
     )
 
     assert goal006_live_inventory.validate_inventory("demo", {"images": images}, inventory) == []
-    assert "LIVE_MEMBERSHIP_INVALID" in goal006_live_inventory.validate_inventory(
-        "demo", {"images": images}, inventory[:-1]
-    )
+    assert "LIVE_MEMBERSHIP_INVALID" in goal006_live_inventory.validate_inventory("demo", {"images": images}, inventory[:-1])
 
 
 def test_dma_uses_azure_safe_private_resource_names() -> None:
@@ -105,10 +100,8 @@ def test_environment_roots_have_isolated_state_and_oidc(environment: str) -> Non
     assert "use_azuread_auth     = true" in workload
     assert re.search(rf'environment\s*=\s*"{environment}"', foundation)
     assert re.search(r'source\s*=\s*"../../../modules/foundation"', foundation)
-    assert re.search(r'runner_resource_group_name\s*=\s*var\.runner_resource_group_name', foundation)
-    assert re.search(
-        r'runner_private_endpoints_subnet_id\s*=\s*var\.runner_private_endpoints_subnet_id', foundation
-    )
+    assert re.search(r"runner_resource_group_name\s*=\s*var\.runner_resource_group_name", foundation)
+    assert re.search(r"runner_private_endpoints_subnet_id\s*=\s*var\.runner_private_endpoints_subnet_id", foundation)
     assert 'source = "../../../modules/workload"' in workload
     for contract in (foundation, workload):
         assert re.search(r"use_oidc\s*=\s*true", contract)
@@ -227,9 +220,7 @@ def test_private_boundaries_and_key_vault_references_are_explicit() -> None:
 
 def test_internal_verification_uses_the_identity_edge() -> None:
     contract = read_contract("modules/workload/main.tf")
-    verification_job = contract.split(
-        'resource "azurerm_container_app_job" "verification"', 1
-    )[1]
+    verification_job = contract.split('resource "azurerm_container_app_job" "verification"', 1)[1]
 
     assert re.search(r'web\s*=\s*"http://ca-\$\{var\.environment\}-web"', contract)
     assert re.search(
@@ -242,7 +233,10 @@ def test_internal_verification_uses_the_identity_edge() -> None:
     assert 'probe ai-runtime "${local.verification_urls.ai_runtime}/health"' in verification_job
     assert 'probe billing-engine "${local.verification_urls.billing_engine}/health"' in verification_job
     assert 'probe dma-adapter "${local.verification_urls.dma_adapter}/health/live"' in verification_job
-    assert 'probe identity-edge "${local.verification_urls.identity_edge}/realms/waooaw/.well-known/openid-configuration"' in verification_job
+    assert (
+        'probe identity-edge "${local.verification_urls.identity_edge}/realms/waooaw/.well-known/openid-configuration"'
+        in verification_job
+    )
     assert "local.service_urls.web" not in verification_job
     assert "local.service_urls.keycloak" not in verification_job
 
@@ -264,12 +258,8 @@ def test_internal_verification_bypasses_public_business_platform_ingress() -> No
 
     assert locals_contract["public_ingress"]['"business-platform"'] is True
     assert "ip_security_restriction" not in contract
-    assert locals_contract["verification_urls"]["business_platform"] == (
-        "${local.service_urls.business_platform}"
-    )
-    assert locals_contract["service_urls"]["business_platform"] == (
-        '"http://ca-${var.environment}-business-platform"'
-    )
+    assert locals_contract["verification_urls"]["business_platform"] == ("${local.service_urls.business_platform}")
+    assert locals_contract["service_urls"]["business_platform"] == ('"http://ca-${var.environment}-business-platform"')
 
 
 def test_demo_temporal_lifecycle_and_member_readiness_are_fail_closed() -> None:
@@ -296,18 +286,18 @@ def test_demo_temporal_lifecycle_and_member_readiness_are_fail_closed() -> None:
 
 def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
     contract = read_contract("modules/workload/main.tf")
-    keycloak_migration = contract.split(
-        'resource "azurerm_container_app_job" "keycloak_migration"', 1
-    )[1].split('resource "azurerm_container_app" "temporal"', 1)[0]
+    keycloak_migration = contract.split('resource "azurerm_container_app_job" "keycloak_migration"', 1)[1].split(
+        'resource "azurerm_container_app" "temporal"', 1
+    )[0]
     keycloak = contract.split('resource "azurerm_container_app" "keycloak"', 1)[1].split(
         'resource "azurerm_container_app_job" "verification"', 1
     )[0]
 
     assert re.search(r'clientId\s*=\s*"waooaw-web"', contract)
-    assert re.search(r'publicClient\s*=\s*false', contract)
+    assert re.search(r"publicClient\s*=\s*false", contract)
     assert re.search(r'secret\s*=\s*"\$\$\{KEYCLOAK_CLIENT_SECRET\}"', contract)
     assert '"${local.service_urls.web}/api/auth/callback/keycloak"' in contract
-    assert 'webOrigins = [local.service_urls.web]' in contract
+    assert "webOrigins = [local.service_urls.web]" in contract
     assert "tenant_id_mapper" in contract
     assert "oidc-hardcoded-claim-mapper" in contract
     assert '"claim.value" = "00000000-0000-0000-0000-000000000001"' in contract
@@ -339,7 +329,7 @@ def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
     assert "printf '%s'" in keycloak_migration
     assert "printf '%%s'" not in keycloak_migration
     assert 'name  = "KC_HOSTNAME"' in keycloak
-    assert 'value = local.service_urls.identity_edge' in keycloak
+    assert "value = local.service_urls.identity_edge" in keycloak
     assert 'name  = "KC_PROXY_HEADERS"' in keycloak
     assert 'value = "xforwarded"' in keycloak
     assert re.search(r"external_enabled\s*=\s*false", keycloak)
@@ -352,9 +342,9 @@ def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
 def test_identity_edge_exposes_only_customer_authentication_paths() -> None:
     contract = read_contract("modules/workload/main.tf")
     policy = read_contract("modules/workload/identity-edge.conf.tftpl")
-    identity_edge = contract.split(
-        'resource "azurerm_container_app" "identity_edge"', 1
-    )[1].split('resource "azurerm_container_app_job" "verification"', 1)[0]
+    identity_edge = contract.split('resource "azurerm_container_app" "identity_edge"', 1)[1].split(
+        'resource "azurerm_container_app_job" "verification"', 1
+    )[0]
 
     assert goal006_live_inventory.IDENTITY_EDGE_IMAGE in identity_edge
     assert "external_enabled = true" in identity_edge
@@ -366,13 +356,8 @@ def test_identity_edge_exposes_only_customer_authentication_paths() -> None:
     assert "server ca-${environment}-keycloak.internal.${default_domain}:443;" in policy
     assert "proxy_http_version 1.1;" in policy
     assert "proxy_ssl_server_name on;" in policy
-    assert (
-        "proxy_ssl_name ca-${environment}-keycloak.internal.${default_domain};"
-    ) in policy
-    assert (
-        "proxy_set_header Host "
-        "ca-${environment}-keycloak.internal.${default_domain};"
-    ) in policy
+    assert ("proxy_ssl_name ca-${environment}-keycloak.internal.${default_domain};") in policy
+    assert ("proxy_set_header Host ca-${environment}-keycloak.internal.${default_domain};") in policy
     assert "proxy_pass http://keycloak" not in policy
     for path in (
         "/realms/waooaw/.well-known/",
@@ -438,7 +423,7 @@ def test_deployment_identity_is_environment_scoped_for_resources_and_rbac() -> N
     assert "azurerm_user_assigned_identity.deployment.principal_id" in contract
     assert 'output "deployment_client_id"' in contract
     assert 'role_definition_name = "Key Vault Secrets Officer"' in contract
-    assert 'scope                = azurerm_key_vault.environment.id' in contract
+    assert "scope                = azurerm_key_vault.environment.id" in contract
     assert 'output "deployment_identity_id"' in contract
     assert 'role_definition_name = "Reader"' in contract
     assert "azurerm_user_assigned_identity.verification.principal_id" in contract
@@ -452,7 +437,9 @@ def test_environment_foundation_roots_expose_identity_client_ids(environment: st
     assert re.search(r'output "deployment_client_id"\s*{\s*value\s*=\s*module\.foundation\.deployment_client_id', contract)
     assert re.search(r'output "verification_client_id"\s*{\s*value\s*=\s*module\.foundation\.verification_client_id', contract)
     if environment == "demo":
-        assert re.search(r'output "deployment_identity_id"\s*{\s*value\s*=\s*module\.foundation\.deployment_identity_id', contract)
+        assert re.search(
+            r'output "deployment_identity_id"\s*{\s*value\s*=\s*module\.foundation\.deployment_identity_id', contract
+        )
 
 
 def test_disabled_lease_removes_all_disposable_workload_resources() -> None:
@@ -526,7 +513,7 @@ def test_foundation_is_private_isolated_and_environment_scoped() -> None:
     assert contract.count("azurerm_subnet_network_security_group_association") == 2
     assert "internal_load_balancer_enabled = !var.external_environment" in contract
     assert 'name                = "privatelink.vaultcore.azure.net"' in contract
-    assert 'private_dns_zone_group {' in contract
+    assert "private_dns_zone_group {" in contract
     assert "private_dns_zone_ids = [azurerm_private_dns_zone.key_vault.id]" in contract
     assert 'resource "azurerm_private_dns_a_record" "key_vault_runner"' in contract
     assert 'resource "azurerm_private_endpoint" "key_vault_runner"' in contract
@@ -568,9 +555,7 @@ def test_demo_adopts_existing_validation_workspace_without_cleanup_debt() -> Non
 
 def test_verification_emits_structured_probe_results() -> None:
     contract = read_contract("modules/workload/main.tf")
-    verification_job = contract.split(
-        'resource "azurerm_container_app_job" "verification"', 1
-    )[1]
+    verification_job = contract.split('resource "azurerm_container_app_job" "verification"', 1)[1]
 
     assert "probe_result name=$name status=succeeded" in verification_job
     assert "probe_attempt name=$name status=failed" in verification_job
@@ -583,7 +568,7 @@ def test_post_deploy_verification_retains_each_container_log() -> None:
 
     assert "capture_functional_evidence()" in workflow
     assert "for container in http-probes constitutional-health" in workflow
-    assert 'functional-$container.log' in workflow
+    assert "functional-$container.log" in workflow
     assert "functional-http-probes.log" in workflow
     assert "functional-constitutional-health.log" in workflow
     assert 'functional-$container.log" 2>&1 || true' not in workflow
@@ -612,10 +597,10 @@ def test_post_deploy_verification_requires_the_exact_latest_revision() -> None:
     assert 'cat "revision-evidence/$app-revision.json" >&2' in workflow
     assert "capture_revision_failure_evidence()" in workflow
     assert 'capture_revision_failure_evidence "$app_name" "$app" "$latest_revision"' in workflow
-    assert '--type system' in workflow
-    assert '--type system \\\n    --tail 200 \\\n    --format json' in workflow
-    assert '--type console' in workflow
-    assert '--tail 200' in workflow
+    assert "--type system" in workflow
+    assert "--type system \\\n    --tail 200 \\\n    --format json" in workflow
+    assert "--type console" in workflow
+    assert "--tail 200" in workflow
     assert '--revision "$revision"' in workflow
     assert ".properties.template.containers[]?.name // empty" in workflow
     assert 'if test -z "$containers"; then' in workflow
@@ -624,25 +609,21 @@ def test_post_deploy_verification_requires_the_exact_latest_revision() -> None:
     assert "[REDACTED]" in workflow
     assert "--follow" not in workflow
 
-    rehearsal = (REPO_ROOT / "scripts/run_goal006_local_azure_verification.sh").read_text(
-        encoding="utf-8"
-    )
+    rehearsal = (REPO_ROOT / "scripts/run_goal006_local_azure_verification.sh").read_text(encoding="utf-8")
     assert "force-professional-runtime-unready" in rehearsal
     assert "unhealthy_revision_failure_proved: true" in rehearsal
     assert "Unhealthy-revision diagnostics crashed before timeout evidence" in rehearsal
     assert "Unhealthy-revision diagnostics used an unsupported system-log format" in rehearsal
     assert "professional-runtime-console.log" in rehearsal
     assert 'mktemp -d "$REPO_ROOT/test-results/goal006-local-azure.XXXXXX"' in rehearsal
-    assert 'RUN_ID=${WORK_DIR##*.}' in rehearsal
-    assert 'goal006-azure-verification-$$' not in rehearsal
-    assert 'goal006-azure-emulator-$$' not in rehearsal
+    assert "RUN_ID=${WORK_DIR##*.}" in rehearsal
+    assert "goal006-azure-verification-$$" not in rehearsal
+    assert "goal006-azure-emulator-$$" not in rehearsal
     assert rehearsal.count("-e AZURE_CORE_ONLY_SHOW_ERRORS=true") == 5
 
 
 def test_post_deploy_functional_verification_fails_fast_and_retains_job_contract() -> None:
-    workflow = (REPO_ROOT / ".github/workflows/environment-deployment-verification.yaml").read_text(
-        encoding="utf-8"
-    )
+    workflow = (REPO_ROOT / ".github/workflows/environment-deployment-verification.yaml").read_text(encoding="utf-8")
     verifier = (REPO_ROOT / "scripts/goal006_verify_deployment.sh").read_text(encoding="utf-8")
 
     assert "bash scripts/goal006_verify_deployment.sh" in workflow
@@ -675,7 +656,7 @@ def test_network_egress_is_explicitly_fail_closed() -> None:
     contract = read_contract("modules/foundation/main.tf")
 
     assert contract.count('name                       = "deny-unapproved-egress"') == 2
-    assert contract.count('priority                   = 4096') == 2
+    assert contract.count("priority                   = 4096") == 2
     assert contract.count('direction                  = "Outbound"') == 5
     assert contract.count('access                     = "Deny"') == 2
     assert 'destination_address_prefix = "VirtualNetwork"' in contract
@@ -695,12 +676,10 @@ def test_scale_contract_is_bounded_and_defaults_to_zero() -> None:
         block = contract.split(f'variable "{variable}"', 1)[1].split("variable ", 1)[0]
         assert "default = 0" in block
     assert (
-        '"business-platform"                       = var.application_activation_enabled ? '
-        "var.bp_min_replicas : 0"
+        '"business-platform"                       = var.application_activation_enabled ? var.bp_min_replicas : 0'
     ) in workload
     assert (
-        '"web"                                     = var.application_activation_enabled ? '
-        "var.web_min_replicas : 0"
+        '"web"                                     = var.application_activation_enabled ? var.web_min_replicas : 0'
     ) in workload
     assert re.search(r"bp_min_replicas\s*=\s*1", demo_root)
     assert re.search(r"web_min_replicas\s*=\s*1", demo_root)
@@ -732,7 +711,7 @@ def test_jit_break_glass_requires_separation_expiry_and_evidence() -> None:
     assert 'var.activation_state == "ACTIVE"' in contract
     assert "var.revoked_at == null" in contract
     assert "timecmp(var.expires_at, timestamp()) > 0" in contract
-    assert "var.activation_state != \"REVOKED\" || var.revoked_at != null" in contract
+    assert 'var.activation_state != "REVOKED" || var.revoked_at != null' in contract
     assert 'output "authority_enabled"' in contract
 
 
@@ -808,7 +787,7 @@ def test_release_qualification_retains_docker_azure_cli_runtime_evidence() -> No
     release_runner = (REPO_ROOT / "scripts/run_release_qualification.sh").read_text(encoding="utf-8")
 
     assert "gate-id: release-qualification" in workflow
-    assert "release-qualification: {shell: \"sh scripts/run_release_qualification.sh\"" in catalog
+    assert 'release-qualification: {shell: "sh scripts/run_release_qualification.sh"' in catalog
     assert "bash scripts/run_goal006_local_azure_verification.sh" in release_runner
     assert "GOAL006_EVIDENCE_DIR=${GOAL006_EVIDENCE_DIR:-goal006-local-azure-runtime}" in release_runner
     assert "goal006-local-azure-runtime-${{ github.run_id }}" in workflow
@@ -861,7 +840,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert workflow.count('-backend-config="use_oidc=true"') == 3
     assert workflow.count('-backend-config="use_azuread_auth=true"') == 3
     assert "Enforce selected environment authorization" in workflow
-    assert 'EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy.yaml@refs/heads/main' in workflow
+    assert "EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy.yaml@refs/heads/main" in workflow
     assert 'case "$TARGET_ENVIRONMENT" in demo|uat|prod)' in workflow
     assert 'case "$APPLY_REQUESTED" in true|false)' in workflow
     assert workflow.index("Enforce selected environment authorization") < workflow.index("azure/login@v2")
@@ -884,9 +863,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "actual-cost.json" in workflow
     assert "forecast-cost.json" in workflow
     assert "Bootstrap identity must not have Owner" not in workflow
-    assert workflow.index("Verify bootstrap RBAC and required Azure providers") < workflow.index(
-        "Verify subscription budget"
-    )
+    assert workflow.index("Verify bootstrap RBAC and required Azure providers") < workflow.index("Verify subscription budget")
     assert workflow.index("Verify bootstrap RBAC and required Azure providers") < workflow.index(
         "Download environment configuration with OIDC"
     )
@@ -895,9 +872,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "network-rule add" not in workflow
     assert "network-rule remove" not in workflow
     assert workflow.index("Verify subscription budget") < workflow.index("Enforce workload cost boundary")
-    assert workflow.index("Download environment configuration with OIDC") < workflow.index(
-        "Enforce workload cost boundary"
-    )
+    assert workflow.index("Download environment configuration with OIDC") < workflow.index("Enforce workload cost boundary")
     assert "WAOOAW_PLATFORM_" not in workflow
     assert "CONFIG_CONTAINER: deployment-config" in workflow
     assert "CONFIG_BLOB: ${{ inputs.environment }}/workload-configuration.json" in workflow
@@ -911,7 +886,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "firewall-cleanup.json" not in workflow
     assert 'manifest_digest="sha256:$(sha256sum registry-release-manifest.json' in workflow
     assert ".manifest_digest = $manifest_digest | .dma_admission_content_digest = $dma_admission_content_digest" in workflow
-    assert "terraform state show \"$resource_address\"" in workflow
+    assert 'terraform state show "$resource_address"' in workflow
     assert "scripts/goal006_execution_gate.py" in workflow
     assert '--execution "$APPLY_REQUESTED"' in workflow
     assert '--state-adopted "$state_adopted"' in workflow
@@ -921,12 +896,11 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "az storage container show" not in workflow
     assert workflow.count('gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main"') == 1
     assert workflow.count("https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main") == 4
-    assert workflow.count("terraform apply -input=false -auto-approve") == 4
+    assert workflow.count("terraform apply -input=false -auto-approve") == 5
+    assert "terraform apply -input=false -auto-approve foundation-bootstrap-removal.tfplan" in workflow
     assert "mcr.microsoft.com/azure-cli@sha256:" in workflow
     assert "https://mcr.microsoft.com/v2/$repository/manifests/$expected_digest" in workflow
-    assert workflow.index("https://mcr.microsoft.com/v2/") > workflow.index(
-        "Create private digest-pinned credential seeder"
-    )
+    assert workflow.index("https://mcr.microsoft.com/v2/") > workflow.index("Create private digest-pinned credential seeder")
     assert "Create private digest-pinned credential seeder" in workflow
     assert "Run private credential seeder" in workflow
     assert 'args: ["-c", $script]' in workflow
@@ -941,7 +915,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "--transition wc124-plan-b" in workflow
     assert "secret-seeder-console.log" in workflow
     assert workflow.index("capture_seeder_evidence()") < workflow.index("Delete private credential seeder")
-    assert workflow.count("if: inputs.apply") == 20
+    assert workflow.count("if: inputs.apply") == 22
     assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
     assert '--context "external_environment=$external_environment"' in workflow
     assert "if: steps.foundation-cache.outputs.cache_hit != 'true'" in workflow
@@ -972,9 +946,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert workflow.index("Terraform dormant workload and migration dependency apply") < workflow.index(
         "Preserve workload state after apply failure"
     )
-    assert workflow.index("Preserve workload state after apply failure") < workflow.index(
-        "Delete private credential seeder"
-    )
+    assert workflow.index("Preserve workload state after apply failure") < workflow.index("Delete private credential seeder")
     assert "set -x" not in workflow
     assert "resource_group_record=$(az group show" in workflow
     assert 'tags["managed-by"] == "waooaw-platform-bootstrap"' in workflow
@@ -984,7 +956,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
         "terraform apply -input=false -auto-approve workload.tfplan",
     ):
         apply_index = workflow.index(apply_command)
-        assert workflow.rfind('test \'${{ inputs.release_sha }}\' = "$latest_main_sha"', 0, apply_index) != -1
+        assert workflow.rfind("test '${{ inputs.release_sha }}' = \"$latest_main_sha\"", 0, apply_index) != -1
 
 
 def test_deployment_workflow_fails_closed_when_web_url_is_missing() -> None:
@@ -1021,9 +993,7 @@ def test_demo_web_url_uses_managed_custom_domain() -> None:
     assert 'api_custom_hostname                      = "api.demo.waooaw.com"' in demo
     assert "Bind Demo Azure-managed TLS certificates" in deployment
     assert "bash scripts/goal006_bind_demo_managed_certificates.sh" in deployment
-    assert deployment.index("Apply application activation") < deployment.index(
-        "Bind Demo Azure-managed TLS certificates"
-    )
+    assert deployment.index("Apply application activation") < deployment.index("Bind Demo Azure-managed TLS certificates")
     assert "az containerapp hostname bind" in managed_tls
     assert "--validation-method CNAME" in managed_tls
     assert "--managed-certificates-only" in managed_tls
@@ -1046,9 +1016,7 @@ def test_demo_web_url_uses_managed_custom_domain() -> None:
     assert "properties.latestRevisionFqdn" not in verifier
     assert '.properties.runningState == "ScaledToZero"' in verifier
 
-    rehearsal = (REPO_ROOT / "scripts/run_goal006_local_azure_verification.sh").read_text(
-        encoding="utf-8"
-    )
+    rehearsal = (REPO_ROOT / "scripts/run_goal006_local_azure_verification.sh").read_text(encoding="utf-8")
     assert rehearsal.count("https://cp.demo.waooaw.com") == 2
     assert "203.0.113.10/32" not in rehearsal
 
@@ -1111,11 +1079,7 @@ exit 1
     subprocess.run(command, check=True, env=env)
     subprocess.run(command, check=True, env=env)
 
-    bind_calls = [
-        line
-        for line in call_log.read_text(encoding="utf-8").splitlines()
-        if "containerapp hostname bind" in line
-    ]
+    bind_calls = [line for line in call_log.read_text(encoding="utf-8").splitlines() if "containerapp hostname bind" in line]
     assert len(bind_calls) == 3
     assert all("--validation-method CNAME" in call for call in bind_calls)
 
@@ -1131,7 +1095,7 @@ def test_release_attestation_has_one_bounded_fail_closed_retry() -> None:
     assert "Back off after transient attestation failure" in workflow
     assert "Retry published image attestation" in workflow
     assert "No successful image attestation bundle was produced" in workflow
-    assert "echo \"bundle-path=$bundle_path\"" in workflow
+    assert 'echo "bundle-path=$bundle_path"' in workflow
     assert "steps.image-attestation.outputs.bundle-path" in workflow
 
 
@@ -1188,7 +1152,7 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
     assert "- apply" in deploy
     assert "- activate" not in deploy
     assert "- sleep" not in deploy
-    assert "case \"$EXECUTION_MODE\" in plan|apply)" in deploy
+    assert 'case "$EXECUTION_MODE" in plan|apply)' in deploy
     assert "apply: ${{ inputs.execution == 'apply' }}" in deploy
     assert "lifecycle_action: ${{ inputs.execution == 'apply' && 'activate' || 'plan' }}" in deploy
     assert "cost_controls:" not in deploy
@@ -1210,9 +1174,7 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
     verification = (REPO_ROOT / ".github/workflows/environment-deployment-verification.yaml").read_text(encoding="utf-8")
     assert "Reject stale release before independent verification" in verification
     assert 'test "$RELEASE_SHA" = "$latest_main_sha"' in verification
-    assert verification.index("Reject stale release before independent verification") < verification.index(
-        "azure/login@v2"
-    )
+    assert verification.index("Reject stale release before independent verification") < verification.index("azure/login@v2")
     assert "ARM_CLIENT_ID: ${{ inputs.verification_client_id }}" in verification
     assert "WAOOAW_PLATFORM_VERIFICATION_CLIENT_ID" not in verification
     assert 'case "$TARGET_ENVIRONMENT" in demo|uat|prod)' in verification
@@ -1297,9 +1259,7 @@ def test_web_session_runtime_contract_is_external_and_fail_closed() -> None:
     ):
         assert f'variable "{variable}"' in variables
 
-    deployment_workflow = (REPO_ROOT / ".github/workflows/environment-deployment.yaml").read_text(
-        encoding="utf-8"
-    )
+    deployment_workflow = (REPO_ROOT / ".github/workflows/environment-deployment.yaml").read_text(encoding="utf-8")
     assert deployment_workflow.count("--web-session-mode disabled") == 2
 
     for secret_name, environment_name in {
@@ -1318,7 +1278,7 @@ def test_authentication_limiter_is_environment_scoped_and_independent_of_session
 
     assert 'auth_redis_container_enabled = var.workload_enabled && contains(["demo", "uat"], var.environment)' in contract
     assert 'name                         = "ca-${var.environment}-auth-redis"' in contract
-    assert 'external_enabled = false' in contract
+    assert "external_enabled = false" in contract
     assert 'image   = "redis@sha256:' in contract
     assert re.search(r"REDIS_URL\s*=\s*local\.auth_redis_url", contract)
     assert re.search(
@@ -1334,10 +1294,8 @@ def test_authentication_limiter_is_environment_scoped_and_independent_of_session
     assert 'name  = "WAOOAW_ENVIRONMENT"' in contract
     assert "auth-abuse:v1:epoch" in contract
     assert 'var.environment == "prod" ? var.auth_abuse_redis_url' in contract
-    assert 'Production authentication limiting requires the separately approved private HA Redis' in contract
-    assert (
-        "var.persistent_state_enabled && contains(local.database_members, each.key) ? [1] : []"
-    ) in contract
+    assert "Production authentication limiting requires the separately approved private HA Redis" in contract
+    assert ("var.persistent_state_enabled && contains(local.database_members, each.key) ? [1] : []") in contract
     assert 'AUTH_ABUSE_LIMITS_JSON = each.key == "web"' not in contract
     assert "try(data.terraform_remote_state.foundation.outputs.auth_abuse_redis_url, null)" in prod_workload
 
@@ -1345,9 +1303,9 @@ def test_authentication_limiter_is_environment_scoped_and_independent_of_session
     foundation_variables = read_contract("modules/foundation/variables.tf")
     prod_foundation = read_contract("environments/prod/foundation/main.tf")
     assert 'resource "azurerm_redis_cache" "auth_abuse"' in foundation
-    assert 'public_network_access_enabled = false' in foundation
+    assert "public_network_access_enabled = false" in foundation
     assert 'sku_name                      = "Premium"' in foundation
-    assert 'replicas_per_master           = 1' in foundation
+    assert "replicas_per_master           = 1" in foundation
     assert 'zones                         = ["1", "2"]' in foundation
     assert 'resource "azurerm_private_endpoint" "auth_redis"' in foundation
     assert 'variable "auth_redis_ha_enabled"' in foundation_variables

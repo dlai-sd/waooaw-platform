@@ -28,9 +28,7 @@ def test_demo_handoff_verifies_every_database_and_zero_dependencies(
     monkeypatch.setattr(
         handoff,
         "query_psql",
-        lambda _host, user, database, _password, sql: (
-            statements.append((user, database, sql)) or "0\n"
-        ),
+        lambda _host, user, database, _password, sql: statements.append((user, database, sql)) or "0\n",
     )
 
     evidence = handoff.finalize_handoff(
@@ -51,11 +49,7 @@ def test_demo_handoff_verifies_every_database_and_zero_dependencies(
         "remaining_bootstrap_dependencies": 0,
         "status": "ready-for-entra-bootstrap-removal",
     }
-    bootstrap_databases = {
-        database
-        for user, database, _sql in statements
-        if user == "id-waooaw-demo-db-bootstrap"
-    }
+    bootstrap_databases = {database for user, database, _sql in statements if user == "id-waooaw-demo-db-bootstrap"}
     assert bootstrap_databases == {
         "waooaw_application",
         "waooaw_keycloak",
@@ -66,7 +60,7 @@ def test_demo_handoff_verifies_every_database_and_zero_dependencies(
     assert "ALTER FUNCTION public.prevent_wc115_append_only_mutation() OWNER TO bp_owner" in combined_sql
     assert 'REVOKE "ce_owner" FROM "ce_migrator"' in combined_sql
     assert 'GRANT "ce_owner" TO "ce_migrator"' in combined_sql
-    assert "DROP OWNED BY \"id-waooaw-demo-db-bootstrap\"" in combined_sql
+    assert 'DROP OWNED BY "id-waooaw-demo-db-bootstrap"' in combined_sql
     assert "REVOKE CREATE ON SCHEMA public FROM bp_owner" in combined_sql
     assert "pg_shdepend" in combined_sql
     assert "sealed-password" not in combined_sql

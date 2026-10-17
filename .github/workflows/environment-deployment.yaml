@@ -245,6 +245,8 @@ jobs:
             case "$status" in
               Succeeded) break ;;
               Failed|Stopped) echo "Private broker failed: $status" >&2; exit 1 ;;
+              Processing|Running) ;;
+              *) echo "Private broker returned unknown status: ${status:-<empty>}" >&2; exit 1 ;;
             esac
             test "$attempt" != 60
             sleep 5
@@ -654,10 +656,12 @@ jobs:
           bootstrap_required=true
           password_auth_enabled=false
           bootstrap_admin_enabled=true
-          if live_password_auth=$(az postgres flexible-server show \
+          server=$(az postgres flexible-server list \
             --resource-group "waooaw-${{ inputs.environment }}-rg" \
-            --name "$server_name" \
-            --query authConfig.passwordAuth -o tsv 2>/dev/null); then
+            --query "[?name == '$server_name'] | [0]" \
+            --output json)
+          if [ "$server" != null ]; then
+            live_password_auth=$(jq -er '.authConfig.passwordAuth' <<< "$server")
             case "$live_password_auth" in
               Enabled)
                 bootstrap_required=false
@@ -1012,6 +1016,12 @@ jobs:
                 echo "Private credential seeder failed with status: $status" >&2
                 exit 1
                 ;;
+              Processing|Running) ;;
+              *)
+                capture_seeder_evidence
+                echo "Private credential seeder returned unknown status: ${status:-<empty>}" >&2
+                exit 1
+                ;;
             esac
             if [ "$attempt" = 60 ]; then
               capture_seeder_evidence
@@ -1044,28 +1054,21 @@ jobs:
             --reference "$release_tag")
           runner_image="ghcr.io/${repository}@${runner_digest}"
           pgbouncer_host="ca-${TARGET_ENVIRONMENT}-pgbouncer.internal.${{ steps.foundation.outputs.container_app_environment_default_domain }}"
-          if az containerapp job show \
-            --name "$job_name" \
+          job_id=$(az containerapp job list \
             --resource-group "$RESOURCE_GROUP" \
-            --output none 2>/dev/null; then
+            --query "[?name == '$job_name'].id | [0]" \
+            --output tsv)
+          if [ -n "$job_id" ]; then
             az containerapp job delete \
               --name "$job_name" \
               --resource-group "$RESOURCE_GROUP" \
               --yes \
               --output none
-            for attempt in $(seq 1 60); do
-              if ! az containerapp job show \
-                --name "$job_name" \
-                --resource-group "$RESOURCE_GROUP" \
-                --output none 2>/dev/null; then
-                break
-              fi
-              if [ "$attempt" = 60 ]; then
-                echo "Timed out waiting for Container Apps job deletion: $job_name" >&2
-                exit 1
-              fi
-              sleep 5
-            done
+            az resource wait \
+              --deleted \
+              --ids "$job_id" \
+              --interval 5 \
+              --timeout 300
           fi
           jq -n \
             --arg name "$job_name" \
@@ -1185,6 +1188,12 @@ jobs:
                 echo "WC-124 database provisioner failed with status: $status" >&2
                 exit 1
                 ;;
+              Processing|Running) ;;
+              *)
+                capture_database_provisioner_evidence
+                echo "WC-124 database provisioner returned unknown status: ${status:-<empty>}" >&2
+                exit 1
+                ;;
             esac
             if [ "$attempt" = 180 ]; then
               capture_database_provisioner_evidence
@@ -1293,6 +1302,12 @@ jobs:
                 capture_database_handoff_evidence
                 cat wc124-db-handoff-evidence.log >&2
                 echo "WC-124 database handoff failed with status: $status" >&2
+                exit 1
+                ;;
+              Processing|Running) ;;
+              *)
+                capture_database_handoff_evidence
+                echo "WC-124 database handoff returned unknown status: ${status:-<empty>}" >&2
                 exit 1
                 ;;
             esac
@@ -1579,6 +1594,8 @@ jobs:
                   echo "${component} migration failed: $status" >&2
                   exit 1
                   ;;
+                Processing|Running) ;;
+                *) echo "${component} migration returned unknown status: ${status:-<empty>}" >&2; exit 1 ;;
               esac
               if [ "$attempt" = 120 ]; then
                 echo "${component} migration timed out with status: $status" >&2
@@ -1625,6 +1642,8 @@ jobs:
             case "$status" in
               Succeeded) break ;;
               Failed|Stopped) echo "Billing migration failed: $status" >&2; exit 1 ;;
+              Processing|Running) ;;
+              *) echo "Billing migration returned unknown status: ${status:-<empty>}" >&2; exit 1 ;;
             esac
             test "$attempt" != 120
             sleep 10
@@ -1820,6 +1839,8 @@ jobs:
             case "$status" in
               Succeeded) break ;;
               Failed|Stopped) echo "Private cleanup broker failed: $status" >&2; exit 1 ;;
+              Processing|Running) ;;
+              *) echo "Private cleanup broker returned unknown status: ${status:-<empty>}" >&2; exit 1 ;;
             esac
             test "$attempt" != 180
             sleep 5
