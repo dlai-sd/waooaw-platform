@@ -12,6 +12,7 @@ from wc124_db_provisioner import (
     KEYCLOAK_DATABASE,
     TEMPORAL_DATABASE,
     TEMPORAL_VISIBILITY_DATABASE,
+    application_migration_files,
     authfile_value,
     environment_specs,
     password_from_secret,
@@ -156,3 +157,12 @@ def test_psql_uses_the_runner_system_ca_bundle(monkeypatch: pytest.MonkeyPatch) 
     assert environment["PGSSLROOTCERT"] == "/etc/ssl/certs/ca-certificates.crt"
     assert environment["PGPASSWORD"] == "access-token"
     assert captured["stdin"] == "SELECT 1;"
+
+
+def test_application_migrations_exclude_the_legacy_baseline() -> None:
+    files = application_migration_files(ROOT / "infrastructure/postgres/init")
+
+    assert [path.name for path in files] == [
+        "59-wc124-billing-authority.sql",
+        "60-wc124-principal-handoff.sql",
+    ]
