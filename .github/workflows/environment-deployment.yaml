@@ -1230,6 +1230,114 @@ jobs:
             sleep 10
           done
 
+      - name: Grant bounded WC-124 reconciliation authority
+        if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
+        id: reconciliation-authority
+        env:
+          DATABASE_PROVISIONER_IDENTITY_ID: ${{ steps.foundation.outputs.database_provisioner_identity_id }}
+          KEY_VAULT_ID: ${{ steps.foundation.outputs.key_vault_id }}
+        run: |
+          set -euo pipefail
+          role_id="b86a8fe4-44ce-4948-aee5-eccb2c155cd7"
+          foundation_root="infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation"
+          principal_id=$(az identity show \
+            --ids "$DATABASE_PROVISIONER_IDENTITY_ID" \
+            --query principalId \
+            --output tsv)
+          assignment_name=$(python3 - "$KEY_VAULT_ID" "$principal_id" <<'PY'
+          import sys
+          import uuid
+
+          print(uuid.uuid5(uuid.NAMESPACE_URL, "|".join(part.lower() for part in sys.argv[1:]) + "|wc124-reconciliation"))
+          PY
+          )
+          transition_assignment_id=$(terraform -chdir="$foundation_root" show -json | jq -r '
+            [
+              .values.root_module.child_modules[]?.resources[]?
+              | select(.address == "module.foundation.azurerm_role_assignment.database_provisioner_vault[0]")
+              | .values.id
+            ][0] // ""
+          ')
+          assignments=$(az role assignment list \
+            --assignee-object-id "$principal_id" \
+            --scope "$KEY_VAULT_ID" \
+            --query "[?contains(roleDefinitionId, '$role_id')]" \
+            --output json)
+          unknown_assignments=$(jq \
+            --arg name "$assignment_name" \
+            --arg transition_id "${transition_assignment_id,,}" \
+            '[
+              .[]
+              | select(.name != $name)
+              | select($transition_id == "" or (.id | ascii_downcase) != $transition_id)
+            ] | length' <<< "$assignments")
+          if [ "$unknown_assignments" != 0 ]; then
+            echo "Found WC-124 vault authority without positively established lifecycle ownership" >&2
+            exit 1
+          fi
+          transition_assignment_count=$(jq \
+            --arg transition_id "${transition_assignment_id,,}" \
+            '[.[] | select($transition_id != "" and (.id | ascii_downcase) == $transition_id)] | length' \
+            <<< "$assignments")
+          if [ "$transition_assignment_count" -gt 1 ]; then
+            echo "Found duplicate transition-owned WC-124 vault authority" >&2
+            exit 1
+          fi
+          reconciliation_assignments=$(jq \
+            --arg name "$assignment_name" \
+            '[.[] | select(.name == $name)]' \
+            <<< "$assignments")
+          reconciliation_assignment_count=$(jq 'length' <<< "$reconciliation_assignments")
+          case "$reconciliation_assignment_count" in
+            0)
+              assignment=$(az role assignment create \
+                --name "$assignment_name" \
+                --assignee-object-id "$principal_id" \
+                --assignee-principal-type ServicePrincipal \
+                --role "$role_id" \
+                --scope "$KEY_VAULT_ID" \
+                --output json)
+              ownership="created-by-current-execution"
+              ;;
+            1)
+              assignment=$(jq '.[0]' <<< "$reconciliation_assignments")
+              test "$(jq -r '.principalId | ascii_downcase' <<< "$assignment")" = "${principal_id,,}"
+              ownership="adopted-orphaned-reconciliation-authority"
+              ;;
+            *)
+              echo "Found duplicate deterministic WC-124 reconciliation authority" >&2
+              exit 1
+              ;;
+          esac
+          assignment_id=$(jq -er '.id' <<< "$assignment")
+          jq -n \
+            --arg assignment_id "$assignment_id" \
+            --arg assignment_name "$assignment_name" \
+            --arg principal_id "$principal_id" \
+            --arg role_id "$role_id" \
+            --arg scope "$KEY_VAULT_ID" \
+            --arg ownership "$ownership" \
+            --arg transition_assignment_id "$transition_assignment_id" \
+            '{
+              schema: "waooaw.wc124-reconciliation-authority/v1",
+              assignment_id: $assignment_id,
+              assignment_name: $assignment_name,
+              principal_id: $principal_id,
+              role_id: $role_id,
+              scope: $scope,
+              ownership: $ownership,
+              transition_assignment_id: (
+                if $transition_assignment_id == "" then null else $transition_assignment_id end
+              ),
+              status: "temporary-authority-pending-data-plane-proof"
+            }' > wc124-reconciliation-authority.json
+          {
+            echo "assignment_id=$assignment_id"
+            echo "assignment_name=$assignment_name"
+            echo "principal_id=$principal_id"
+            echo "ownership=$ownership"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Create WC-124 database provisioner
         if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
         env:
@@ -1434,6 +1542,28 @@ jobs:
             fi
             sleep 10
           done
+
+      - name: Revoke bounded WC-124 reconciliation authority
+        if: always() && steps.reconciliation-authority.outputs.assignment_id != ''
+        env:
+          ASSIGNMENT_ID: ${{ steps.reconciliation-authority.outputs.assignment_id }}
+          ASSIGNMENT_NAME: ${{ steps.reconciliation-authority.outputs.assignment_name }}
+          KEY_VAULT_ID: ${{ steps.foundation.outputs.key_vault_id }}
+          PRINCIPAL_ID: ${{ steps.reconciliation-authority.outputs.principal_id }}
+        run: |
+          set -euo pipefail
+          az role assignment delete --ids "$ASSIGNMENT_ID"
+          remaining=$(az role assignment list \
+            --assignee-object-id "$PRINCIPAL_ID" \
+            --scope "$KEY_VAULT_ID" \
+            --query "[?name == '$ASSIGNMENT_NAME'] | length(@)" \
+            --output tsv)
+          test "$remaining" = 0
+          jq \
+            '.status = "temporary-authority-revoked"
+             | .cleanup = "immediate"' \
+            wc124-reconciliation-authority.json > wc124-reconciliation-authority.revoked.json
+          mv wc124-reconciliation-authority.revoked.json wc124-reconciliation-authority.json
 
       - name: Apply reviewed PostgreSQL Plan B compatibility
         if: inputs.apply && steps.database-transition.outputs.plan_b_required == 'true'
@@ -2108,6 +2238,82 @@ jobs:
           test -n "$web_url"
           echo "web_url=$web_url" >> "$GITHUB_OUTPUT"
 
+      - name: Preflight PgBouncer from private ACA environment
+        if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
+        env:
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          job_name="job-${TARGET_ENVIRONMENT}-wc124-db-provisioner"
+          az containerapp job update \
+            --name "$job_name" \
+            --resource-group "$RESOURCE_GROUP" \
+            --command /usr/bin/python3 \
+            --args \
+              /opt/waooaw/wc124_db_provisioner.py \
+              --environment "$TARGET_ENVIRONMENT" \
+              --pgbouncer-host "ca-${TARGET_ENVIRONMENT}-pgbouncer" \
+              --network-probe \
+            --output none
+          az containerapp job show \
+            --name "$job_name" \
+            --resource-group "$RESOURCE_GROUP" \
+            --output json > wc124-pgbouncer-preflight-job.json
+          execution=$(az containerapp job start \
+            --name "$job_name" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query name \
+            --output tsv)
+          test -n "$execution"
+          capture_pgbouncer_preflight_evidence() {
+            az containerapp job execution show \
+              --name "$job_name" \
+              --resource-group "$RESOURCE_GROUP" \
+              --job-execution-name "$execution" \
+              --output json > wc124-pgbouncer-preflight-execution.json
+            az containerapp job logs show \
+              --name "$job_name" \
+              --resource-group "$RESOURCE_GROUP" \
+              --execution "$execution" \
+              --container "$job_name" \
+              --tail 100 \
+              --format text > wc124-pgbouncer-preflight.log 2>&1 || true
+          }
+          for attempt in $(seq 1 60); do
+            status=$(az containerapp job execution show \
+              --name "$job_name" \
+              --resource-group "$RESOURCE_GROUP" \
+              --job-execution-name "$execution" \
+              --query properties.status \
+              --output tsv)
+            case "$status" in
+              Succeeded)
+                capture_pgbouncer_preflight_evidence
+                break
+                ;;
+              Failed|Stopped)
+                capture_pgbouncer_preflight_evidence
+                cat wc124-pgbouncer-preflight.log >&2
+                echo "PgBouncer private ACA preflight failed: $status" >&2
+                exit 1
+                ;;
+              Processing|Running) ;;
+              *)
+                capture_pgbouncer_preflight_evidence
+                echo "PgBouncer private ACA preflight returned unknown status: ${status:-<empty>}" >&2
+                exit 1
+                ;;
+            esac
+            if [ "$attempt" = 60 ]; then
+              capture_pgbouncer_preflight_evidence
+              cat wc124-pgbouncer-preflight.log >&2
+              echo "PgBouncer private ACA preflight timed out with status: $status" >&2
+              exit 1
+            fi
+            sleep 10
+          done
+
       - name: Run vendor schema migrations against private PostgreSQL
         if: inputs.apply
         env:
@@ -2125,12 +2331,43 @@ jobs:
               keycloak|temporal) job_name="job-${TARGET_ENVIRONMENT}-${component}-migration" ;;
               *) echo "Unsupported vendor migration component: $component" >&2; exit 1 ;;
             esac
+            job_evidence="wc124-${component}-migration-job.json"
+            execution_evidence="wc124-${component}-migration-execution.json"
+            console_evidence="wc124-${component}-migration.log"
+            az containerapp job show \
+              --resource-group "$RESOURCE_GROUP" \
+              --name "$job_name" \
+              --output json > "$job_evidence"
+            test "$(jq -r '.name' "$job_evidence")" = "$job_name"
+            jq -e '
+              ([.properties.configuration.secrets[] | select(.keyVaultUrl != null)] | length) > 0
+              and all(
+                  .properties.configuration.secrets[];
+                  (.keyVaultUrl // "") == ""
+                  or (.keyVaultUrl | test("vault[.]azure[.]net/secrets/[^/]+/[^/]+$"))
+                )
+            ' "$job_evidence" > /dev/null
+            container_name=$(jq -er '.properties.template.containers[0].name' "$job_evidence")
             execution=$(az containerapp job start \
               --resource-group "$RESOURCE_GROUP" \
               --name "$job_name" \
               --query name \
               --output tsv)
             test -n "$execution"
+            capture_vendor_migration_evidence() {
+              az containerapp job execution show \
+                --resource-group "$RESOURCE_GROUP" \
+                --name "$job_name" \
+                --job-execution-name "$execution" \
+                --output json > "$execution_evidence"
+              az containerapp job logs show \
+                --resource-group "$RESOURCE_GROUP" \
+                --name "$job_name" \
+                --execution "$execution" \
+                --container "$container_name" \
+                --tail 300 \
+                --format text > "$console_evidence" 2>&1 || true
+            }
             status=
             for attempt in $(seq 1 120); do
               status=$(az containerapp job execution show \
@@ -2140,15 +2377,27 @@ jobs:
                 --query properties.status \
                 --output tsv)
               case "$status" in
-                Succeeded) break ;;
+                Succeeded)
+                  capture_vendor_migration_evidence
+                  break
+                  ;;
                 Failed|Stopped)
+                  capture_vendor_migration_evidence
+                  cat "$console_evidence" >&2
                   echo "${component} migration failed: $status" >&2
                   exit 1
                   ;;
                 Processing|Running) ;;
-                *) echo "${component} migration returned unknown status: ${status:-<empty>}" >&2; exit 1 ;;
+                *)
+                  capture_vendor_migration_evidence
+                  cat "$console_evidence" >&2
+                  echo "${component} migration returned unknown status: ${status:-<empty>}" >&2
+                  exit 1
+                  ;;
               esac
               if [ "$attempt" = 120 ]; then
+                capture_vendor_migration_evidence
+                cat "$console_evidence" >&2
                 echo "${component} migration timed out with status: $status" >&2
                 exit 1
               fi
@@ -2177,6 +2426,19 @@ jobs:
         run: |
           set -euo pipefail
           job_name="job-${TARGET_ENVIRONMENT}-wc124-billing-migration"
+          az containerapp job show \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$job_name" \
+            --output json > wc124-billing-migration-job.json
+          test "$(jq -r '.name' wc124-billing-migration-job.json)" = "$job_name"
+          jq -e '
+            ([.properties.configuration.secrets[] | select(.keyVaultUrl != null)] | length) > 0
+            and all(
+                .properties.configuration.secrets[];
+                (.keyVaultUrl // "") == ""
+                or (.keyVaultUrl | test("vault[.]azure[.]net/secrets/[^/]+/[^/]+$"))
+              )
+          ' wc124-billing-migration-job.json > /dev/null
           execution=$(az containerapp job start \
             --resource-group "$RESOURCE_GROUP" \
             --name "$job_name" \
@@ -2232,6 +2494,48 @@ jobs:
             fi
             sleep 10
           done
+
+      - name: Verify migration evidence before application activation
+        if: inputs.apply
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          test "$(jq -r '.properties.status' wc124-pgbouncer-preflight-execution.json)" = Succeeded
+          test "$(jq -r '.properties.status' wc124-billing-migration-execution.json)" = Succeeded
+          test "$(jq -r '.status' wc124-reconciliation-authority.json)" = temporary-authority-revoked
+          if [ "$TARGET_ENVIRONMENT" = demo ]; then
+            expected_components='["keycloak","temporal"]'
+          else
+            expected_components='["keycloak"]'
+          fi
+          jq -e \
+            --arg environment "$TARGET_ENVIRONMENT" \
+            --argjson expected "$expected_components" \
+            '
+              .environment == $environment
+              and ([.executions[].component] | sort) == ($expected | sort)
+              and all(.executions[]; .status == "Succeeded")
+            ' wc124-vendor-migrations.json > /dev/null
+          jq -n \
+            --arg environment "$TARGET_ENVIRONMENT" \
+            --arg pgbouncer_execution "$(jq -er '.name' wc124-pgbouncer-preflight-execution.json)" \
+            --arg billing_execution "$(jq -er '.name' wc124-billing-migration-execution.json)" \
+            --arg authority_evidence_sha256 "$(sha256sum wc124-reconciliation-authority.json | cut -d ' ' -f 1)" \
+            --arg vendor_evidence_sha256 "$(sha256sum wc124-vendor-migrations.json | cut -d ' ' -f 1)" \
+            --arg billing_evidence_sha256 "$(sha256sum wc124-billing-migration-execution.json | cut -d ' ' -f 1)" \
+            '{
+              schema: "waooaw.wc124-migration-acceptance/v1",
+              environment: $environment,
+              status: "accepted-for-activation",
+              pgbouncer_execution: $pgbouncer_execution,
+              billing_execution: $billing_execution,
+              evidence_sha256: {
+                reconciliation_authority: $authority_evidence_sha256,
+                vendor_migrations: $vendor_evidence_sha256,
+                billing_migration: $billing_evidence_sha256
+              }
+            }' > wc124-migration-acceptance.json
 
       - name: Plan application activation after migration
         if: inputs.apply
@@ -2310,7 +2614,8 @@ jobs:
             --state "$state_snapshot" \
             --output "$current_provenance"
           cmp --silent workload-activation-provenance.json "$current_provenance"
-          terraform apply -input=false -auto-approve workload-activation.tfplan
+          terraform apply -input=false -auto-approve workload-activation.tfplan 2>&1 \
+            | tee workload-activation-apply.log
           web_url=$(terraform output -raw web_url)
           test -n "$web_url"
           echo "web_url=$web_url" >> "$GITHUB_OUTPUT"
@@ -2324,7 +2629,26 @@ jobs:
           bash scripts/goal006_bind_demo_managed_certificates.sh \
             demo \
             "$RESOURCE_GROUP" \
-            "$CONTAINER_APP_ENVIRONMENT"
+            "$CONTAINER_APP_ENVIRONMENT" \
+            | tee demo-managed-certificates.log
+          jq -n \
+            --argjson web "$(az containerapp show --resource-group "$RESOURCE_GROUP" --name ca-demo-web --query properties.configuration.ingress.customDomains --output json)" \
+            --argjson business_platform "$(az containerapp show --resource-group "$RESOURCE_GROUP" --name ca-demo-business-platform --query properties.configuration.ingress.customDomains --output json)" \
+            --argjson identity_edge "$(az containerapp show --resource-group "$RESOURCE_GROUP" --name ca-demo-identity-edge --query properties.configuration.ingress.customDomains --output json)" \
+            '{
+              schema: "waooaw.goal006-managed-tls/v1",
+              applications: {
+                web: $web,
+                business_platform: $business_platform,
+                identity_edge: $identity_edge
+              }
+            }' > demo-managed-certificates.json
+          jq -e '
+            all(
+              .applications | to_entries[];
+              ([.value[] | select(.bindingType == "SniEnabled")] | length) > 0
+            )
+          ' demo-managed-certificates.json > /dev/null
 
       - name: Preserve workload state after apply failure
         if: failure() && steps.workload.outcome == 'failure'
@@ -2349,14 +2673,78 @@ jobs:
           inputs.apply &&
           (inputs.environment == 'demo' || inputs.environment == 'uat')
         env:
+          DATABASE_PROVISIONER_IDENTITY_ID: ${{ steps.foundation.outputs.database_provisioner_identity_id }}
+          KEY_VAULT_ID: ${{ steps.foundation.outputs.key_vault_id }}
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          az containerapp job delete \
-            --name "job-${TARGET_ENVIRONMENT}-wc124-db-provisioner" \
+          set -euo pipefail
+          cleanup_failed=0
+          principal_id=$(az identity show \
+            --ids "$DATABASE_PROVISIONER_IDENTITY_ID" \
+            --query principalId \
+            --output tsv)
+          assignment_name=$(python3 - "$KEY_VAULT_ID" "$principal_id" <<'PY'
+          import sys
+          import uuid
+
+          print(uuid.uuid5(uuid.NAMESPACE_URL, "|".join(part.lower() for part in sys.argv[1:]) + "|wc124-reconciliation"))
+          PY
+          )
+          assignment_id=$(az role assignment list \
+            --assignee-object-id "$principal_id" \
+            --scope "$KEY_VAULT_ID" \
+            --query "[?name == '$assignment_name'].id | [0]" \
+            --output tsv)
+          if [ -n "$assignment_id" ] && ! az role assignment delete --ids "$assignment_id"; then
+            cleanup_failed=1
+          fi
+          remaining=$(az role assignment list \
+            --assignee-object-id "$principal_id" \
+            --scope "$KEY_VAULT_ID" \
+            --query "[?name == '$assignment_name'] | length(@)" \
+            --output tsv)
+          if [ "$remaining" != 0 ]; then
+            cleanup_failed=1
+          fi
+          job_name="job-${TARGET_ENVIRONMENT}-wc124-db-provisioner"
+          job_id=$(az containerapp job list \
             --resource-group "$RESOURCE_GROUP" \
-            --yes \
-            --output none
+            --query "[?name == '$job_name'].id | [0]" \
+            --output tsv)
+          if [ -n "$job_id" ] && ! az containerapp job delete \
+              --name "$job_name" \
+              --resource-group "$RESOURCE_GROUP" \
+              --yes \
+              --output none; then
+            cleanup_failed=1
+          fi
+          if [ -f wc124-reconciliation-authority.json ]; then
+            jq \
+              --argjson cleanup_failed "$cleanup_failed" \
+              '.status = (if $cleanup_failed == 0 then "temporary-authority-absent" else "cleanup-failed" end)
+               | .cleanup = "final-idempotent"
+               | .cleanup_failed = ($cleanup_failed != 0)' \
+              wc124-reconciliation-authority.json > wc124-reconciliation-authority.cleanup.json
+          else
+            jq -n \
+              --arg assignment_name "$assignment_name" \
+              --arg principal_id "$principal_id" \
+              --arg scope "$KEY_VAULT_ID" \
+              --argjson cleanup_failed "$cleanup_failed" \
+              '{
+                schema: "waooaw.wc124-reconciliation-authority/v1",
+                assignment_name: $assignment_name,
+                principal_id: $principal_id,
+                scope: $scope,
+                ownership: "deterministic-recovery",
+                status: (if $cleanup_failed == 0 then "temporary-authority-absent" else "cleanup-failed" end),
+                cleanup: "final-idempotent",
+                cleanup_failed: ($cleanup_failed != 0)
+              }' > wc124-reconciliation-authority.cleanup.json
+          fi
+          mv wc124-reconciliation-authority.cleanup.json wc124-reconciliation-authority.json
+          exit "$cleanup_failed"
 
       - name: Retain persistent-state lifecycle execution evidence
         if: >-
@@ -2409,14 +2797,28 @@ jobs:
             wc124-db-provisioner-job.json
             wc124-db-provisioner-execution.json
             wc124-db-provisioner-evidence.log
+            wc124-pgbouncer-preflight-job.json
+            wc124-pgbouncer-preflight-execution.json
+            wc124-pgbouncer-preflight.log
             wc124-db-handoff-recovery-execution.json
             wc124-db-handoff-recovery-evidence.log
             wc124-bootstrap-revocation-evidence.json
             wc124-pgbouncer-metadata-reconciliation.json
+            wc124-reconciliation-authority.json
             wc124-db-credential-inventory.json
             wc124-vendor-migrations.json
+            wc124-keycloak-migration-job.json
+            wc124-keycloak-migration-execution.json
+            wc124-keycloak-migration.log
+            wc124-temporal-migration-job.json
+            wc124-temporal-migration-execution.json
+            wc124-temporal-migration.log
+            wc124-billing-migration-job.json
             wc124-billing-migration-execution.json
             wc124-billing-migration.log
+            wc124-migration-acceptance.json
+            demo-managed-certificates.json
+            demo-managed-certificates.log
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan-provenance.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan-policy.json
@@ -2433,6 +2835,11 @@ jobs:
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-state-after-apply-failure.txt
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload.tfplan
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-apply-attempt-*.log
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-activation-plan.json
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-activation-policy.json
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-activation-provenance.json
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-activation.tfplan
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-activation-apply.log
           if-no-files-found: warn
           retention-days: 90
 

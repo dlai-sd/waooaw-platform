@@ -187,13 +187,13 @@ timestamps, and released downstream dependencies before diagnosing a scheduler w
 | 6. WC-124 transition resolution | Read password-auth state, bootstrap administrator count, provisioner vault roles, secret metadata, and accepted digest | `PLAN_A`, `PLAN_B_ENABLED`, `REVOCATION_PENDING`, `REVOKED`, or fail-closed `RECOVERY_HOLD` |
 | 7. Foundation plan | Refresh complete foundation state, create a current saved plan, apply detailed exit handling, policy, and provenance | Exit `0` or authorized `2`; exact evidence PASS |
 | 8. Foundation apply | Apply only the saved and validated plan; resolve environment identities, PostgreSQL, Key Vault, network, and verification outputs | Foundation converged |
-| 9. Credential and database handoff | Inventory credentials, seed only missing values, provision databases/roles, reconcile metadata, verify ownership, remove bootstrap/provisioner authority | Zero bootstrap administrators and zero provisioner Key Vault roles |
+| 9. Credential and database handoff | Inventory credentials, seed only missing values, establish deterministic vault-scoped reconciliation authority, prove data-plane access, provision or reconcile without rotation, verify ownership, and revoke temporary authority | Reconciliation succeeded; deterministic temporary assignment absent; transition-owned authority preserved only for its lifecycle |
 | 10. Dormant workload plan | Generate external configuration, set application activation false, import only accepted live resources, plan, policy-check, and provenance-bind | Current workload authorization evidence |
 | 11. Activation bundle | Validate foundation and workload plan binaries, JSON, provenance, policy, release, environment, workflow, backend, and state identity | Internal WC-124 activation bundle PASS |
 | 12. Dormant workload apply | Create dependencies, migration jobs, identities, secret references, and applications at zero replicas | No application traffic yet |
-| 13. Migrations | Run Keycloak; run Demo Temporal; run Billing through PgBouncer; poll exact execution names to terminal success | All required executions `Succeeded` |
-| 14. Activation plan/apply | Set application activation true, create a fresh detailed-exit plan, policy and provenance record, recalculate and compare provenance immediately before apply | Only exact authorized activation plan applied |
-| 15. TLS and deployment evidence | Bind Demo managed certificates; verify live inventory and transition/cleanup evidence; upload retained artifacts | Deployment engine success |
+| 13. Migrations | Inventory exact migration jobs, verify version-qualified Key Vault references, prove same-ACA PgBouncer DNS/TCP, run Keycloak, Demo Temporal, and Billing, and retain executions plus sanitized logs | All required executions `Succeeded`; persisted migration acceptance PASS |
+| 14. Activation plan/apply | Require migration acceptance, set application activation true, create a fresh detailed-exit plan, policy and provenance record, recalculate and compare provenance immediately before apply, and retain the apply log | Only exact authorized activation plan applied with complete evidence |
+| 15. TLS and deployment evidence | Bind Demo managed certificates; verify structured SNI inventory; verify live inventory and transition/cleanup evidence; upload retained activation and TLS artifacts | Deployment engine success with no missing required evidence |
 | 16. Always-run cleanup | Stop private runner, remove registration/broker material, prove zero active executions, revoke temporary cleanup federation | No residual runner or temporary trust |
 | 17. Independent verification | Validate trusted caller/control SHA, trusted release, Azure inventory, job, revision, domain, and application probes under verification identity | Independent PASS |
 | 18. Publication | Publish the verified environment URL only after deploy and verification succeed | User-visible success |
@@ -218,25 +218,56 @@ backend key, state lineage/serial, policy result, plan JSON digest, and saved-pl
 2. Every Demo/UAT apply reconciles existing URL and Npgsql credentials to that short-name route,
    even after the WC-124 authority transition is complete. Reconciliation preserves passwords,
    roles, database names, raw-password secrets, and the PgBouncer authfile.
-3. The deployment records the resulting Key Vault versions and passes version-qualified database
+3. Reconciliation authority is one deterministic `Key Vault Secrets Officer` assignment for the
+   exact provisioner principal and exact environment vault. The workflow classifies the exact
+   assignment as created by the current execution or an adopted orphan. It separately resolves the
+   transition-owned assignment from Terraform state, rejects every assignment whose ownership is
+   not positively established, and never removes transition-owned authority during reconciliation
+   cleanup.
+4. The provisioner performs a bounded data-plane authorization probe before reading or writing
+   credentials. Authorization propagation may retry; an unexpected error or timeout fails closed.
+   The deterministic reconciliation assignment is revoked immediately after reconciliation and
+   independently recomputed and removed by final idempotent cleanup. Cleanup failure fails the
+   deployment and emits non-secret ownership/status evidence for recovery on the next run.
+5. The deployment records the resulting Key Vault versions and passes version-qualified database
    secret references into the Terraform workload plan. A successful Key Vault write alone is not
-   propagation evidence; the consumer Container App or Job must receive a Terraform-visible change.
-4. Keycloak and Temporal migration jobs use their approved direct PostgreSQL migration contracts.
+   propagation evidence: before starting a migration, the workflow inventories its effective ACA
+   Job and rejects absent or versionless Key Vault references.
+6. After the dormant workload exists, the still-private provisioner ACA Job runs a sanitized
+   network-only probe against `ca-<environment>-pgbouncer:5432`. DNS resolution and TCP connection
+   must both succeed from the workload ACA environment before any migration SQL runs.
+7. Keycloak and Temporal migration jobs use their approved direct PostgreSQL migration contracts.
    Application runtime traffic continues through PgBouncer.
-5. The Keycloak realm import substitutes every secret placeholder inside the job, checks that no
+8. The Keycloak realm import substitutes every secret placeholder inside the job, checks that no
    `${NAME}` placeholder remains, and then imports. Secrets stay in Key Vault-backed ACA secret
    references and are never written to logs or Terraform state.
-6. Each application migrator receives only its no-login owner role and a database-local default
+9. Each application migrator receives only its no-login owner role and a database-local default
    role. Runtime roles do not acquire DDL authority.
-7. Billing writes its immutable migration ledger in the governed `billing` schema and runs through
+10. Billing writes its immutable migration ledger in the governed `billing` schema and runs through
    PgBouncer using the exact `db-billing-migration` credential.
-8. Migration job names are producer-consumer contracts:
+11. Migration job names are producer-consumer contracts:
    `job-<environment>-keycloak-migration`,
    `job-<environment>-temporal-migration`, and
    `job-<environment>-wc124-billing-migration`.
-9. A timeout, `Failed`, `Stopped`, unknown status, digest mismatch, unresolved secret placeholder,
+12. Keycloak, Temporal, and Billing retain the exact ACA job definition, execution record, and
+    sanitized console log. A timeout, `Failed`, `Stopped`, unknown status, digest mismatch,
+    unresolved secret placeholder,
    ownership error, or connection error blocks application activation. The owning workflow step
    emits the ACA execution ID and sanitized container logs before cleanup and artifact retention.
+
+### Downstream activation and release acceptance
+
+Database success is not inferred from step ordering. Before application activation, the workflow
+creates `wc124-migration-acceptance.json` only after the private PgBouncer preflight, required vendor
+migrations, Billing migration, and immediate temporary-authority revocation are all proven. The
+record binds SHA-256 digests of the authority and migration evidence used for the decision.
+
+Activation then creates a new saved plan with policy and provenance, recalculates provenance against
+the current state immediately before apply, and retains the activation plan JSON, binary, policy,
+provenance, and apply log. Demo TLS binding retains a structured per-application custom-domain
+inventory and fails unless every required application has an `SniEnabled` binding. Independent
+verification treats missing required evidence as an error, and the verified URL is published only
+when deployment cleanup and independent live verification both succeed.
 
 ### Evidence inventory
 
@@ -248,10 +279,14 @@ backend key, state lineage/serial, policy result, plan JSON digest, and saved-pl
 | Plan provenance | Plan, state, backend, environment, release, and workflow binding |
 | WC-124 activation bundle | Both prerequisite plans were current and mutually consistent |
 | Transition and handoff records | Database authority moved to the intended final state |
-| Migration execution record | Exact job/execution/status for required migrations |
+| Reconciliation authority record | Deterministic ownership classification, immediate revocation, final recovery, and verified absence |
+| PgBouncer preflight record | Same-ACA short-name DNS resolution and TCP connectivity before migration SQL |
+| Migration job and execution records | Exact effective job, version-qualified secret references, execution/status, and sanitized logs |
+| Migration acceptance record | Required migrations, connectivity, and temporary-authority revocation passed before activation |
+| Activation plan, provenance, policy, and apply log | Exact post-migration activation mutation and its retained result |
 | Runner start/cleanup correlation evidence | The runner that started is the runner that was removed |
 | Temporary federation inventory | No break-fix cleanup trust remains |
-| TLS output | Required custom domains have managed SNI binding |
+| Structured TLS inventory and log | Required custom domains have managed `SniEnabled` binding |
 | Independent verification output | Live deployment matches release and functional contracts |
 
 GitHub logs aid diagnosis but are not the sole durable constitutional evidence. Secret values,

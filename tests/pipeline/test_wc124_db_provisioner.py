@@ -16,10 +16,12 @@ from wc124_db_provisioner import (
     TEMPORAL_VISIBILITY_DATABASE,
     application_migration_files,
     authfile_value,
+    await_vault_authorization,
     environment_specs,
     execute,
     existing_grant_digest,
     password_from_secret,
+    probe_pgbouncer_connectivity,
     psql,
     run,
     secret_value,
@@ -258,6 +260,7 @@ def test_refresh_only_rewrites_urls_without_database_bootstrap(
     writes: list[tuple[str, str]] = []
 
     monkeypatch.setattr("wc124_db_provisioner.azure_login", logins.append)
+    monkeypatch.setattr("wc124_db_provisioner.await_vault_authorization", lambda _vault: 3)
     monkeypatch.setattr(
         "wc124_db_provisioner.read_credentials",
         lambda *_args, **kwargs: (
@@ -298,7 +301,93 @@ def test_refresh_only_rewrites_urls_without_database_bootstrap(
     assert logins == ["provisioner-client"]
     assert writes == [("ca-demo-pgbouncer", "shared-grant-digest")]
     assert result["mode"] == "canonical-url-refresh"
+    assert result["vault_authorization_attempts"] == 3
     assert result["credentials"][0]["status"] == "updated"
+
+
+def test_vault_authorization_retries_propagation_delay(monkeypatch: pytest.MonkeyPatch) -> None:
+    responses = iter(
+        (
+            subprocess.CompletedProcess([], 1, stdout="", stderr="ForbiddenByRbac"),
+            subprocess.CompletedProcess([], 1, stdout="", stderr="Forbidden"),
+            subprocess.CompletedProcess([], 0, stdout="secret-id\n", stderr=""),
+        )
+    )
+    sleeps: list[float] = []
+    monkeypatch.setattr("wc124_db_provisioner.shutil.which", lambda _name: "/usr/bin/az")
+    monkeypatch.setattr("wc124_db_provisioner.subprocess.run", lambda *_args, **_kwargs: next(responses))
+    monkeypatch.setattr("wc124_db_provisioner.time.sleep", sleeps.append)
+
+    assert await_vault_authorization("kv-waooaw-demo", attempts=3, delay_seconds=2) == 3
+    assert sleeps == [2, 2]
+
+
+def test_vault_authorization_fails_closed_after_bounded_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("wc124_db_provisioner.shutil.which", lambda _name: "/usr/bin/az")
+    monkeypatch.setattr(
+        "wc124_db_provisioner.subprocess.run",
+        lambda *_args, **_kwargs: subprocess.CompletedProcess([], 1, stdout="", stderr="ForbiddenByRbac"),
+    )
+    monkeypatch.setattr("wc124_db_provisioner.time.sleep", lambda _delay: None)
+
+    with pytest.raises(RuntimeError, match="did not become effective after 2 attempts"):
+        await_vault_authorization("kv-waooaw-demo", attempts=2, delay_seconds=0)
+
+
+def test_vault_authorization_rejects_unexpected_probe_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("wc124_db_provisioner.shutil.which", lambda _name: "/usr/bin/az")
+    monkeypatch.setattr(
+        "wc124_db_provisioner.subprocess.run",
+        lambda *_args, **_kwargs: subprocess.CompletedProcess([], 1, stdout="", stderr="Network unreachable"),
+    )
+
+    with pytest.raises(RuntimeError, match="non-authorization error"):
+        await_vault_authorization("kv-waooaw-demo", attempts=2, delay_seconds=0)
+
+
+def test_pgbouncer_probe_requires_same_environment_host(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "wc124_db_provisioner.socket.getaddrinfo",
+        lambda *_args, **_kwargs: pytest.fail("invalid host must fail before DNS"),
+    )
+
+    with pytest.raises(ValueError, match="ca-demo-pgbouncer"):
+        probe_pgbouncer_connectivity("demo", "stale.internal.example")
+
+
+def test_pgbouncer_probe_proves_dns_and_tcp(monkeypatch: pytest.MonkeyPatch) -> None:
+    connections: list[tuple[tuple[str, int], float]] = []
+
+    class Connection:
+        def __enter__(self) -> Connection:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+    monkeypatch.setattr(
+        "wc124_db_provisioner.socket.getaddrinfo",
+        lambda *_args, **_kwargs: [
+            (2, 1, 6, "", ("100.100.230.37", 5432)),
+            (2, 1, 6, "", ("100.100.230.37", 5432)),
+        ],
+    )
+    monkeypatch.setattr(
+        "wc124_db_provisioner.socket.create_connection",
+        lambda endpoint, timeout: connections.append((endpoint, timeout)) or Connection(),
+    )
+
+    evidence = probe_pgbouncer_connectivity("demo", "ca-demo-pgbouncer", timeout_seconds=3)
+
+    assert evidence == {
+        "schema": "waooaw.wc124-pgbouncer-connectivity/v1",
+        "environment": "demo",
+        "host": "ca-demo-pgbouncer",
+        "port": 5432,
+        "resolved_addresses": ["100.100.230.37"],
+        "tcp": "connected",
+    }
+    assert connections == [(("ca-demo-pgbouncer", 5432), 3)]
 
 
 def test_principal_handoff_reassigns_schema_objects_to_nologin_owners() -> None:

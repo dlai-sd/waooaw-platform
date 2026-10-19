@@ -658,6 +658,7 @@ def test_post_deploy_functional_verification_fails_fast_and_retains_job_contract
     assert "2>/dev/null" not in verifier
     artifact_paths = workflow.split("- name: Upload independent evidence", 1)[1]
     assert "functional-job.json" in artifact_paths
+    assert "if-no-files-found: error" in artifact_paths
 
 
 def test_all_environments_are_public_and_demo_uses_application_authorization() -> None:
@@ -988,7 +989,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "--transition wc124-plan-b" in workflow
     assert "secret-seeder-console.log" in workflow
     assert workflow.index("capture_seeder_evidence()") < workflow.index("Delete private credential seeder")
-    assert workflow.count("if: inputs.apply") == 25
+    assert workflow.count("if: inputs.apply") == 28
     assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
     assert '--context "external_environment=$external_environment"' in workflow
     assert "if: inputs.apply || steps.foundation-cache.outputs.cache_hit != 'true'" in workflow

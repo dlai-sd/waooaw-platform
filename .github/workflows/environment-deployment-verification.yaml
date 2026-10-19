@@ -122,5 +122,5 @@ jobs:
             deployment-verification.json
             google-deployment-verification.json
             facebook-deployment-verification.json
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 90

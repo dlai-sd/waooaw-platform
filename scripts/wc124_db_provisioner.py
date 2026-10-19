@@ -8,8 +8,11 @@ import hashlib
 import json
 import os
 import secrets
+import shutil
+import socket
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -210,6 +213,62 @@ def run(command: list[str], *, env: dict[str, str] | None = None, stdin: str | N
 
 def azure_login(client_id: str) -> None:
     run(["az", "login", "--identity", "--client-id", client_id, "--allow-no-subscriptions", "--output", "none"])
+
+
+def await_vault_authorization(
+    vault_name: str,
+    *,
+    attempts: int = 12,
+    delay_seconds: float = 10,
+) -> int:
+    az_executable = shutil.which("az")
+    if az_executable is None:
+        raise RuntimeError("Azure CLI is unavailable for the Key Vault authorization probe")
+    for attempt in range(1, attempts + 1):
+        result = subprocess.run(  # noqa: S603
+            [
+                az_executable,
+                "keyvault",
+                "secret",
+                "show",
+                "--vault-name",
+                vault_name,
+                "--name",
+                "db-keycloak-runtime",
+                "--query",
+                "id",
+                "--output",
+                "tsv",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0 or "SecretNotFound" in result.stderr:
+            return attempt
+        if "Forbidden" not in result.stderr:
+            raise RuntimeError("Key Vault authorization probe failed with a non-authorization error")
+        if attempt < attempts:
+            time.sleep(delay_seconds)
+    raise RuntimeError(f"Key Vault data-plane authority did not become effective after {attempts} attempts")
+
+
+def probe_pgbouncer_connectivity(environment: str, host: str, *, timeout_seconds: float = 5) -> dict[str, Any]:
+    expected_host = f"ca-{environment}-pgbouncer"
+    if host != expected_host:
+        raise ValueError(f"PgBouncer host must be the same-environment service name {expected_host}")
+    addresses = sorted({record[4][0] for record in socket.getaddrinfo(host, 5432, type=socket.SOCK_STREAM)})
+    if not addresses:
+        raise RuntimeError("PgBouncer DNS returned no TCP addresses")
+    with socket.create_connection((host, 5432), timeout=timeout_seconds):
+        pass
+    return {
+        "schema": "waooaw.wc124-pgbouncer-connectivity/v1",
+        "environment": environment,
+        "host": host,
+        "port": 5432,
+        "resolved_addresses": addresses,
+        "tcp": "connected",
+    }
 
 
 def access_token() -> str:
@@ -484,6 +543,7 @@ def execute(arguments: argparse.Namespace) -> dict[str, Any]:
     specs = validate_catalog(catalog, arguments.environment)
     refresh_only = getattr(arguments, "refresh_existing_urls", False)
     azure_login(arguments.provisioner_client_id)
+    authorization_attempts = await_vault_authorization(arguments.vault_name)
     passwords, records = read_credentials(specs, arguments.vault_name, require_existing=refresh_only)
     if refresh_only:
         grant_digest = existing_grant_digest(records)
@@ -502,6 +562,7 @@ def execute(arguments: argparse.Namespace) -> dict[str, Any]:
             "grant_digest": grant_digest,
             "password_authentication_ready": True,
             "mode": "canonical-url-refresh",
+            "vault_authorization_attempts": authorization_attempts,
             "credentials": evidence,
         }
     azure_login(arguments.bootstrap_client_id)
@@ -527,6 +588,7 @@ def execute(arguments: argparse.Namespace) -> dict[str, Any]:
         "environment": arguments.environment,
         "grant_digest": grant_digest,
         "password_authentication_ready": True,
+        "vault_authorization_attempts": authorization_attempts,
         "credentials": evidence,
     }
 
@@ -534,7 +596,7 @@ def execute(arguments: argparse.Namespace) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--environment", required=True)
-    parser.add_argument("--catalog", type=Path, required=True)
+    parser.add_argument("--catalog", type=Path)
     parser.add_argument("--vault-name")
     parser.add_argument("--server-fqdn")
     parser.add_argument("--pgbouncer-host")
@@ -543,9 +605,19 @@ def main() -> int:
     parser.add_argument("--provisioner-client-id")
     parser.add_argument("--init-directory", type=Path, default=Path("/opt/waooaw/postgres/init"))
     parser.add_argument("--refresh-existing-urls", action="store_true")
+    parser.add_argument("--network-probe", action="store_true")
     parser.add_argument("--validate-only", action="store_true")
     arguments = parser.parse_args()
     try:
+        if arguments.network_probe:
+            if not arguments.pgbouncer_host:
+                raise ValueError("missing execution arguments: pgbouncer_host")
+            result = probe_pgbouncer_connectivity(arguments.environment, arguments.pgbouncer_host)
+            json.dump(result, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+            return 0
+        if arguments.catalog is None:
+            raise ValueError("missing execution arguments: catalog")
         catalog = json.loads(arguments.catalog.read_text(encoding="utf-8"))
         specs = validate_catalog(catalog, arguments.environment)
         if arguments.validate_only:

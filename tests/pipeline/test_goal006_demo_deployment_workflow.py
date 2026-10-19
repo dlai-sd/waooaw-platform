@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = (ROOT / ".github/workflows/environment-deployment.yaml").read_text(encoding="utf-8")
 DISPATCH_WORKFLOW = (ROOT / ".github/workflows/deploy.yaml").read_text(encoding="utf-8")
 FOUNDATION_MODULE = (ROOT / "infrastructure/terraform/phase2/modules/foundation/main.tf").read_text(encoding="utf-8")
+WORKLOAD_MODULE = (ROOT / "infrastructure/terraform/phase2/modules/workload/main.tf").read_text(encoding="utf-8")
 WORKLOAD_VARIABLES = (ROOT / "infrastructure/terraform/phase2/modules/workload/variables.tf").read_text(encoding="utf-8")
 
 
@@ -32,6 +33,40 @@ def test_environment_deployment_uses_qualified_private_runner_lifecycle() -> Non
     assert WORKFLOW.count('--execution-image "$execution_runner_image"') == 2
     assert WORKFLOW.count('--expected-image "$blueprint_runner_image"') == 2
     assert "execution_runner_image='${{ inputs.runner_image }}'" in WORKFLOW
+
+
+def test_october_defect_patterns_remain_prevented_or_captured() -> None:
+    # D1: expected migration jobs must exist under their exact deployed names.
+    assert 'az containerapp job show \\\n              --resource-group "$RESOURCE_GROUP" \\\n              --name "$job_name"' in WORKFLOW
+    assert 'job_name="job-${TARGET_ENVIRONMENT}-${component}-migration"' in WORKFLOW
+    # D2: realm secrets are rendered and unresolved placeholders fail closed.
+    assert "replace_secret DEMO_FOUNDER_PASSWORD" in WORKLOAD_MODULE
+    assert "Keycloak realm contains unresolved secret placeholders" in WORKLOAD_MODULE
+    # D3-D4: completed transitions still canonicalize URLs and propagate immutable versions.
+    assert "--refresh-existing-urls" in WORKFLOW
+    assert 'pgbouncer_host="ca-${TARGET_ENVIRONMENT}-pgbouncer"' in WORKFLOW
+    assert "missing database secret version for " in WORKFLOW
+    # D5: reconciliation has exact, temporary, data-plane-proven authority.
+    assert "Grant bounded WC-124 reconciliation authority" in WORKFLOW
+    assert "vault_authorization_attempts" in (ROOT / "scripts/wc124_db_provisioner.py").read_text(encoding="utf-8")
+    # D6: migration failures retain execution and container-log evidence.
+    assert "capture_vendor_migration_evidence()" in WORKFLOW
+    assert "capture_billing_evidence()" in WORKFLOW
+    # D7-D8: cache paths still produce plans bound to exact release/run/state provenance.
+    assert "if: inputs.apply || steps.foundation-cache.outputs.cache_hit != 'true'" in WORKFLOW
+    assert "--release-run-id" in WORKFLOW
+    assert "foundation-plan-provenance.json" in WORKFLOW
+    # D9-D10: identity operations and transition/rerun states fail closed.
+    assert "await_vault_authorization" in (ROOT / "scripts/wc124_db_provisioner.py").read_text(encoding="utf-8")
+    assert "RECOVERY_HOLD" in WORKFLOW
+    # D11-D12: effective secret versions and private ACA DNS/TCP are activation prerequisites.
+    assert 'select(.keyVaultUrl != null)' in WORKFLOW
+    assert "Preflight PgBouncer from private ACA environment" in WORKFLOW
+    assert "accepted-for-activation" in WORKFLOW
+    # D13: deterministic ownership recovery rejects unknown assignments and verifies absence.
+    assert "without positively established lifecycle ownership" in WORKFLOW
+    assert "deterministic-recovery" in WORKFLOW
+    assert 'exit "$cleanup_failed"' in WORKFLOW
 
 
 def test_demo_deployment_never_opens_public_storage_access() -> None:
@@ -124,6 +159,90 @@ def test_billing_failure_emits_container_logs_and_execution_evidence() -> None:
     assert "Billing migration timed out with status: $status" in billing_step
     assert "wc124-billing-migration-execution.json" in WORKFLOW
     assert "wc124-billing-migration.log" in WORKFLOW
+
+
+def test_migration_jobs_are_inventoried_and_require_versioned_key_vault_references() -> None:
+    vendor_step = WORKFLOW.split("      - name: Run vendor schema migrations against private PostgreSQL", 1)[1].split(
+        "      - name: Run additive Billing authority migration", 1
+    )[0]
+    billing_step = WORKFLOW.split("      - name: Run additive Billing authority migration through PgBouncer", 1)[1].split(
+        "      - name: Plan application activation after migration", 1
+    )[0]
+
+    for step in (vendor_step, billing_step):
+        assert "az containerapp job show" in step
+        assert 'test("vault[.]azure[.]net/secrets/[^/]+/[^/]+$")' in step
+        assert "select(.keyVaultUrl != null)" in step
+    assert 'test "$(jq -r \'.name\' "$job_evidence")" = "$job_name"' in vendor_step
+    assert 'test "$(jq -r \'.name\' wc124-billing-migration-job.json)" = "$job_name"' in billing_step
+
+
+def test_vendor_migration_failures_emit_execution_and_sanitized_log_evidence() -> None:
+    vendor_step = WORKFLOW.split("      - name: Run vendor schema migrations against private PostgreSQL", 1)[1].split(
+        "      - name: Run additive Billing authority migration", 1
+    )[0]
+
+    assert "capture_vendor_migration_evidence()" in vendor_step
+    assert "az containerapp job execution show" in vendor_step
+    assert "az containerapp job logs show" in vendor_step
+    assert 'cat "$console_evidence" >&2' in vendor_step
+    assert "wc124-keycloak-migration-execution.json" in WORKFLOW
+    assert "wc124-keycloak-migration.log" in WORKFLOW
+
+
+def test_pgbouncer_dns_and_tcp_preflight_blocks_migrations() -> None:
+    preflight_index = WORKFLOW.index("      - name: Preflight PgBouncer from private ACA environment")
+    vendor_index = WORKFLOW.index("      - name: Run vendor schema migrations against private PostgreSQL")
+    billing_index = WORKFLOW.index("      - name: Run additive Billing authority migration through PgBouncer")
+    preflight = WORKFLOW[preflight_index:vendor_index]
+
+    assert preflight_index < vendor_index < billing_index
+    assert "--network-probe" in preflight
+    assert '"ca-${TARGET_ENVIRONMENT}-pgbouncer"' in preflight
+    assert "capture_pgbouncer_preflight_evidence()" in preflight
+    assert "PgBouncer private ACA preflight failed" in preflight
+    assert "wc124-pgbouncer-preflight-execution.json" in WORKFLOW
+    assert "wc124-pgbouncer-preflight.log" in WORKFLOW
+
+
+def test_application_activation_requires_persisted_migration_acceptance() -> None:
+    acceptance_index = WORKFLOW.index("      - name: Verify migration evidence before application activation")
+    activation_index = WORKFLOW.index("      - name: Plan application activation after migration")
+    acceptance = WORKFLOW[acceptance_index:activation_index]
+
+    assert acceptance_index < activation_index
+    assert "wc124-pgbouncer-preflight-execution.json" in acceptance
+    assert "wc124-billing-migration-execution.json" in acceptance
+    assert "temporary-authority-revoked" in acceptance
+    assert "all(.executions[]; .status == \"Succeeded\")" in acceptance
+    assert "accepted-for-activation" in acceptance
+    assert "wc124-migration-acceptance.json" in acceptance
+    assert "wc124-migration-acceptance.json" in WORKFLOW
+
+
+def test_activation_and_tls_evidence_are_retained_and_fail_closed() -> None:
+    activation = WORKFLOW.split("      - name: Apply application activation", 1)[1].split(
+        "      - name: Bind Demo Azure-managed TLS certificates", 1
+    )[0]
+    tls = WORKFLOW.split("      - name: Bind Demo Azure-managed TLS certificates", 1)[1].split(
+        "      - name: Preserve workload state after apply failure", 1
+    )[0]
+
+    assert "workload-activation-apply.log" in activation
+    assert "| tee workload-activation-apply.log" in activation
+    assert "demo-managed-certificates.log" in tls
+    assert "demo-managed-certificates.json" in tls
+    assert 'select(.bindingType == "SniEnabled")' in tls
+    for evidence in (
+        "workload-activation-plan.json",
+        "workload-activation-policy.json",
+        "workload-activation-provenance.json",
+        "workload-activation.tfplan",
+        "workload-activation-apply.log",
+        "demo-managed-certificates.json",
+        "demo-managed-certificates.log",
+    ):
+        assert evidence in WORKFLOW
 
 
 def test_wc124_plan_b_uses_sealed_structured_provider_update() -> None:
@@ -526,8 +645,8 @@ def test_private_seeder_retains_diagnostics_before_deletion() -> None:
 
 
 def test_job_polling_rejects_empty_and_unknown_statuses() -> None:
-    assert WORKFLOW.count("Processing|Running)") == 8
-    assert WORKFLOW.count("returned unknown status: ${status:-<empty>}") == 8
+    assert WORKFLOW.count("Processing|Running)") == 9
+    assert WORKFLOW.count("returned unknown status: ${status:-<empty>}") == 9
 
 
 def test_provisioner_replacement_waits_for_confirmed_deletion() -> None:
@@ -540,6 +659,66 @@ def test_provisioner_replacement_waits_for_confirmed_deletion() -> None:
     assert "--deleted" in create_step
     assert "--timeout 300" in create_step
     assert "2>/dev/null" not in create_step
+
+
+def test_completed_transition_uses_deterministic_vault_scoped_reconciliation_authority() -> None:
+    authority = WORKFLOW.split("      - name: Grant bounded WC-124 reconciliation authority", 1)[1].split(
+        "      - name: Create WC-124 database provisioner", 1
+    )[0]
+
+    assert "uuid.uuid5(uuid.NAMESPACE_URL" in authority
+    assert '"|wc124-reconciliation"' in authority
+    assert '--scope "$KEY_VAULT_ID"' in authority
+    assert 'role_id="b86a8fe4-44ce-4948-aee5-eccb2c155cd7"' in authority
+    assert "--assignee-object-id \"$principal_id\"" in authority
+    assert "subscription" not in authority.lower()
+    assert "created-by-current-execution" in authority
+    assert "adopted-orphaned-reconciliation-authority" in authority
+
+
+def test_transition_owned_authority_is_positively_identified_and_preserved() -> None:
+    authority = WORKFLOW.split("      - name: Grant bounded WC-124 reconciliation authority", 1)[1].split(
+        "      - name: Create WC-124 database provisioner", 1
+    )[0]
+    cleanup = WORKFLOW.split("      - name: Delete WC-124 database provisioner", 1)[1].split(
+        "      - name: Retain persistent-state lifecycle execution evidence", 1
+    )[0]
+
+    assert "module.foundation.azurerm_role_assignment.database_provisioner_vault[0]" in authority
+    assert "transition_assignment_id" in authority
+    assert "Found WC-124 vault authority without positively established lifecycle ownership" in authority
+    assert "[?name == '$assignment_name']" in cleanup
+    assert "transition_assignment_id" not in cleanup
+
+
+def test_reconciliation_authority_cleanup_is_immediate_recoverable_and_fail_closed() -> None:
+    immediate = WORKFLOW.split("      - name: Revoke bounded WC-124 reconciliation authority", 1)[1].split(
+        "      - name: Apply reviewed PostgreSQL Plan B compatibility", 1
+    )[0]
+    final = WORKFLOW.split("      - name: Delete WC-124 database provisioner", 1)[1].split(
+        "      - name: Retain persistent-state lifecycle execution evidence", 1
+    )[0]
+
+    assert "if: always()" in immediate
+    assert 'az role assignment delete --ids "$ASSIGNMENT_ID"' in immediate
+    assert "uuid.uuid5(uuid.NAMESPACE_URL" in final
+    assert "deterministic-recovery" in final
+    assert "cleanup_failed=1" in final
+    assert 'exit "$cleanup_failed"' in final
+    assert "cleanup-failed" in final
+    assert "wc124-reconciliation-authority.json" in WORKFLOW
+
+
+def test_reconciliation_failure_still_runs_both_cleanup_paths() -> None:
+    provisioner = WORKFLOW.split("      - name: Run WC-124 database provisioner", 1)[1].split(
+        "      - name: Revoke bounded WC-124 reconciliation authority", 1
+    )[0]
+
+    assert "WC-124 database provisioner failed with status" in provisioner
+    assert "always() && steps.reconciliation-authority.outputs.assignment_id != ''" in WORKFLOW
+    assert "always() &&" in WORKFLOW.split("      - name: Delete WC-124 database provisioner", 1)[1].split(
+        "        env:", 1
+    )[0]
 
 
 def test_cost_evidence_is_queried_once_and_reused_by_private_job() -> None:
