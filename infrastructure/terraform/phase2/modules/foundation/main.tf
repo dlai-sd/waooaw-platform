@@ -3,8 +3,9 @@ terraform {
 
   required_providers {
     azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "= 4.14.0"
+      source                = "hashicorp/azurerm"
+      version               = "= 4.14.0"
+      configuration_aliases = [azurerm.deployment]
     }
     random = {
       source  = "hashicorp/random"
@@ -337,6 +338,7 @@ resource "random_password" "postgresql_breakglass_administrator" {
 resource "azurerm_key_vault_secret" "postgresql_breakglass_administrator" {
   count = var.persistent_state_enabled && var.postgresql_password_auth_enabled ? 1 : 0
 
+  provider     = azurerm.deployment
   name         = "db-server-breakglass-admin"
   value        = random_password.postgresql_breakglass_administrator[0].result
   key_vault_id = azurerm_key_vault.environment.id

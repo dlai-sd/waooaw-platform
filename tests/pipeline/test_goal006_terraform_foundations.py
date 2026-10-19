@@ -866,7 +866,22 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert (
         "ARM_CLIENT_ID: ${{ steps.plan-b-foundation-identity.outputs.client_id "
         "|| needs.resolve-environment.outputs.control_plane_client_id }}"
+    ) not in workflow
+    assert (
+        "TF_VAR_deployment_client_id: ${{ steps.plan-b-foundation-identity.outputs.client_id "
+        "|| needs.resolve-environment.outputs.control_plane_client_id }}"
     ) in workflow
+    assert "provider     = azurerm.deployment" in read_contract("modules/foundation/main.tf")
+    assert "configuration_aliases = [azurerm.deployment]" in read_contract("modules/foundation/main.tf")
+    for environment in ("demo", "uat", "prod"):
+        foundation_root = read_contract(f"environments/{environment}/foundation/main.tf")
+        foundation_variables = read_contract(f"environments/{environment}/foundation/variables.tf")
+        assert 'alias                           = "deployment"' in foundation_root
+        assert "azurerm.deployment = azurerm.deployment" in foundation_root
+        assert 'variable "deployment_client_id"' in foundation_variables
+    assert workflow.count(
+        "ARM_CLIENT_ID: ${{ steps.foundation.outputs.deployment_client_id }}"
+    ) >= 5
     assert workflow.index("Enforce selected environment authorization") < workflow.index("azure/login@v2")
     assert "Reject stale release before cloud access" in workflow
     assert 'timeframe:"Custom"' in workflow.replace(" ", "")

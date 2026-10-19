@@ -26,8 +26,21 @@ provider "azurerm" {
   features {}
 }
 
+provider "azurerm" {
+  alias                           = "deployment"
+  client_id                       = var.deployment_client_id
+  use_oidc                        = true
+  use_cli                         = false
+  resource_provider_registrations = "none"
+  features {}
+}
+
 module "foundation" {
-  source                                    = "../../../modules/foundation"
+  source = "../../../modules/foundation"
+  providers = {
+    azurerm            = azurerm
+    azurerm.deployment = azurerm.deployment
+  }
   environment                               = "uat"
   location                                  = "centralindia"
   repository_id                             = "dlai-sd/waooaw-platform"

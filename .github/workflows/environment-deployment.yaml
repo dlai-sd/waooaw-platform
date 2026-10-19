@@ -184,6 +184,52 @@ jobs:
           tenant-id: ${{ env.ARM_TENANT_ID }}
           subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
+      - name: Authorize exact break-fix cleanup subject
+        if: inputs.break_fix
+        env:
+          CLEANUP_CLIENT_ID: ${{ needs.resolve-environment.outputs.cleanup_client_id }}
+        run: |
+          set -euo pipefail
+          test '${{ inputs.environment }}' = demo
+          credential_name=github-demo-wc124-break-fix-cleanup
+          expected_subject='repo:${{ github.repository }}:ref:refs/heads/ib/532/wc124-transition-reconciliation'
+          identity_name=$(az identity list \
+            --resource-group "$RUNNER_RESOURCE_GROUP" \
+            --query "[?clientId == '$CLEANUP_CLIENT_ID'].name | [0]" \
+            --output tsv)
+          test -n "$identity_name"
+          credential_count=$(az identity federated-credential list \
+            --resource-group "$RUNNER_RESOURCE_GROUP" \
+            --identity-name "$identity_name" \
+            --query "[?name == '$credential_name'] | length(@)" \
+            --output tsv)
+          case "$credential_count" in
+            0)
+              az identity federated-credential create \
+                --resource-group "$RUNNER_RESOURCE_GROUP" \
+                --identity-name "$identity_name" \
+                --name "$credential_name" \
+                --issuer https://token.actions.githubusercontent.com \
+                --subject "$expected_subject" \
+                --audiences api://AzureADTokenExchange \
+                --output none
+              ;;
+            1)
+              existing_subject=$(az identity federated-credential show \
+                --resource-group "$RUNNER_RESOURCE_GROUP" \
+                --identity-name "$identity_name" \
+                --name "$credential_name" \
+                --query subject \
+                --output tsv)
+              test "$existing_subject" = "$expected_subject"
+              ;;
+            *)
+              echo "Unexpected duplicate break-fix cleanup credentials: $credential_count" >&2
+              exit 1
+              ;;
+          esac
+
+
       - name: Record batch cost control mode
         env:
           COST_CONTROLS_ENFORCED: ${{ inputs.enforce_cost_controls }}
@@ -765,7 +811,8 @@ jobs:
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
         env:
           APPLY_REQUESTED: ${{ inputs.apply }}
-          ARM_CLIENT_ID: ${{ steps.plan-b-foundation-identity.outputs.client_id || needs.resolve-environment.outputs.control_plane_client_id }}
+          ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
+          TF_VAR_deployment_client_id: ${{ steps.plan-b-foundation-identity.outputs.client_id || needs.resolve-environment.outputs.control_plane_client_id }}
         run: |
           set -euo pipefail
           password_auth_enabled='${{ steps.database-transition.outputs.password_auth_enabled || 'false' }}'
@@ -830,7 +877,8 @@ jobs:
           terraform apply -input=false -auto-approve foundation.tfplan
         env:
           GH_TOKEN: ${{ github.token }}
-          ARM_CLIENT_ID: ${{ steps.plan-b-foundation-identity.outputs.client_id || needs.resolve-environment.outputs.control_plane_client_id }}
+          ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
+          TF_VAR_deployment_client_id: ${{ steps.plan-b-foundation-identity.outputs.client_id || needs.resolve-environment.outputs.control_plane_client_id }}
 
       - name: Resolve foundation outputs
         if: inputs.apply || inputs.lifecycle_action == 'sleep'
@@ -1323,6 +1371,9 @@ jobs:
       - name: Apply reviewed PostgreSQL Plan B compatibility
         if: inputs.apply && steps.database-transition.outputs.plan_b_required == 'true'
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
+        env:
+          ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
+          TF_VAR_deployment_client_id: ${{ steps.foundation.outputs.deployment_client_id }}
         run: |
           set -euo pipefail
           terraform init -input=false \
@@ -1503,6 +1554,9 @@ jobs:
       - name: Remove WC-124 Entra bootstrap authority
         if: inputs.apply && steps.database-transition.outputs.revocation_required == 'true'
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
+        env:
+          ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
+          TF_VAR_deployment_client_id: ${{ steps.foundation.outputs.deployment_client_id }}
         run: |
           set -euo pipefail
           terraform plan -input=false -lock-timeout=5m \
@@ -1521,6 +1575,26 @@ jobs:
             --resource-group '${{ steps.foundation.outputs.resource_group_name }}' \
             --server-name "psql-waooaw-${{ inputs.environment }}-state" \
             --query '[?contains(principalName, `db-bootstrap`)] | length(@)' -o tsv)" = 0
+          provisioner_principal_id=$(az identity show \
+            --ids '${{ steps.foundation.outputs.database_provisioner_identity_id }}' \
+            --query principalId \
+            --output tsv)
+          provisioner_vault_role_count=$(az role assignment list \
+            --assignee-object-id "$provisioner_principal_id" \
+            --scope '${{ steps.foundation.outputs.key_vault_id }}' \
+            --query "[?roleDefinitionName == 'Key Vault Secrets Officer'] | length(@)" \
+            --output tsv)
+          test "$provisioner_vault_role_count" = 0
+          jq -n \
+            --arg environment '${{ inputs.environment }}' \
+            --argjson bootstrap_admin_count 0 \
+            --argjson provisioner_vault_role_count "$provisioner_vault_role_count" \
+            '{
+              environment: $environment,
+              bootstrap_admin_count: $bootstrap_admin_count,
+              provisioner_vault_role_count: $provisioner_vault_role_count,
+              status: "revocation-verified"
+            }' > wc124-bootstrap-revocation-evidence.json
 
       - name: Verify WC-124 database credential handoff
         if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
@@ -1603,6 +1677,8 @@ jobs:
       - name: Terraform workload plan
         if: inputs.apply
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload
+        env:
+          ARM_CLIENT_ID: ${{ steps.foundation.outputs.deployment_client_id }}
         run: |
           set -euo pipefail
           cp "$GITHUB_WORKSPACE/workload.auto.tfvars.json" .
@@ -1700,6 +1776,9 @@ jobs:
         if: inputs.apply
         id: dormant-workload
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload
+        env:
+          ARM_CLIENT_ID: ${{ steps.foundation.outputs.deployment_client_id }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           latest_main_sha=$(curl --fail --silent --show-error \
@@ -1738,8 +1817,6 @@ jobs:
           web_url=$(terraform output -raw web_url)
           test -n "$web_url"
           echo "web_url=$web_url" >> "$GITHUB_OUTPUT"
-        env:
-          GH_TOKEN: ${{ github.token }}
 
       - name: Run vendor schema migrations against private PostgreSQL
         if: inputs.apply
@@ -1833,6 +1910,8 @@ jobs:
       - name: Plan application activation after migration
         if: inputs.apply
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload
+        env:
+          ARM_CLIENT_ID: ${{ steps.foundation.outputs.deployment_client_id }}
         run: |
           set -euo pipefail
           jq '.application_activation_enabled = true' \
@@ -1849,6 +1928,7 @@ jobs:
         id: workload
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload
         env:
+          ARM_CLIENT_ID: ${{ steps.foundation.outputs.deployment_client_id }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
@@ -1876,6 +1956,8 @@ jobs:
       - name: Preserve workload state after apply failure
         if: failure() && steps.workload.outcome == 'failure'
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload
+        env:
+          ARM_CLIENT_ID: ${{ steps.foundation.outputs.deployment_client_id }}
         run: |
           if ! terraform state list > workload-state-after-apply-failure.txt; then
             echo "Terraform state listing failed after workload apply failure" > workload-state-after-apply-failure.txt
@@ -1889,7 +1971,12 @@ jobs:
         run: az containerapp job delete --name "$SEEDER_JOB" --resource-group "$RESOURCE_GROUP" --yes --output none
 
       - name: Delete WC-124 database provisioner
-        if: always() && steps.database-transition.outputs.bootstrap_required == 'true'
+        if: >-
+          always() &&
+          (
+            steps.database-transition.outputs.provisioner_required == 'true' ||
+            steps.database-transition.outputs.revocation_verification_required == 'true'
+          )
         env:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
@@ -1901,7 +1988,10 @@ jobs:
             --output none
 
       - name: Retain persistent-state lifecycle execution evidence
-        if: always() && inputs.lifecycle_action != 'plan'
+        if: >-
+          always() &&
+          inputs.lifecycle_action != 'plan' &&
+          hashFiles('wc124-deployment-activation-bundle.json', 'wc124-lifecycle-execution.json') != ''
         uses: actions/upload-artifact@v4
         with:
           name: wc124-lifecycle-execution-${{ inputs.environment }}-${{ github.run_id }}
@@ -1948,12 +2038,17 @@ jobs:
             wc124-db-provisioner-job.json
             wc124-db-provisioner-execution.json
             wc124-db-provisioner-evidence.log
+            wc124-db-handoff-recovery-execution.json
+            wc124-db-handoff-recovery-evidence.log
+            wc124-bootstrap-revocation-evidence.json
             wc124-db-credential-inventory.json
             wc124-vendor-migrations.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation.tfplan
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan-b.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan-b.tfplan
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-bootstrap-removal.json
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-bootstrap-removal.tfplan
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-plan.json
             workload-plan.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-state-before-plan.txt
@@ -2064,3 +2159,49 @@ jobs:
           path: cleanup-record.json
           if-no-files-found: error
           retention-days: ${{ env.EVIDENCE_RETENTION_DAYS }}
+
+  revoke-break-fix-cleanup-trust:
+    if: always() && inputs.break_fix && needs.resolve-environment.result == 'success'
+    needs: [resolve-environment, cleanup-private]
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Azure login with control-plane identity
+        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
+        with:
+          client-id: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Revoke exact break-fix cleanup subject
+        env:
+          CLEANUP_CLIENT_ID: ${{ needs.resolve-environment.outputs.cleanup_client_id }}
+          RUNNER_RESOURCE_GROUP: ${{ needs.resolve-environment.outputs.runner_resource_group }}
+        run: |
+          set -euo pipefail
+          test '${{ inputs.environment }}' = demo
+          credential_name=github-demo-wc124-break-fix-cleanup
+          identity_name=$(az identity list \
+            --resource-group "$RUNNER_RESOURCE_GROUP" \
+            --query "[?clientId == '$CLEANUP_CLIENT_ID'].name | [0]" \
+            --output tsv)
+          test -n "$identity_name"
+          credential_count=$(az identity federated-credential list \
+            --resource-group "$RUNNER_RESOURCE_GROUP" \
+            --identity-name "$identity_name" \
+            --query "[?name == '$credential_name'] | length(@)" \
+            --output tsv)
+          case "$credential_count" in
+            0) ;;
+            1)
+              az identity federated-credential delete \
+                --resource-group "$RUNNER_RESOURCE_GROUP" \
+                --identity-name "$identity_name" \
+                --name "$credential_name" \
+                --yes
+              ;;
+            *)
+              echo "Unexpected duplicate break-fix cleanup credentials: $credential_count" >&2
+              exit 1
+              ;;
+          esac

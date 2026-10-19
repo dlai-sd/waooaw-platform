@@ -115,6 +115,14 @@ def test_database_transition_reconciles_revocation_only_after_independent_handof
     assert '"remaining_bootstrap_dependencies": 0' in recovery
     assert '"remaining_bootstrap_sessions": 0' in recovery
     assert '"status": "verified-after-entra-bootstrap-removal"' in recovery
+    assert "provisioner_vault_role_count" in WORKFLOW
+    assert 'status: "revocation-verified"' in WORKFLOW
+    assert "wc124-bootstrap-revocation-evidence.json" in WORKFLOW
+    delete_provisioner = WORKFLOW.split("      - name: Delete WC-124 database provisioner", 1)[1].split(
+        "      - name: Retain persistent-state lifecycle execution evidence", 1
+    )[0]
+    assert "provisioner_required == 'true'" in delete_provisioner
+    assert "revocation_verification_required == 'true'" in delete_provisioner
 
 
 def test_wc124_container_app_job_names_fit_azure_limit() -> None:
@@ -384,6 +392,11 @@ def test_environment_deployment_cleanup_is_independent_and_retains_evidence() ->
     assert "cleanup/${{ inputs.environment }}/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT.json" in cleanup
     assert "goal006-private-runner-cleanup-${{ github.run_id }}-${{ github.run_attempt }}" in cleanup
     assert "if: always() && hashFiles('cleanup-record.json') != ''" in cleanup
+    assert "Authorize exact break-fix cleanup subject" in WORKFLOW
+    assert "repo:${{ github.repository }}:ref:refs/heads/ib/532/wc124-transition-reconciliation" in WORKFLOW
+    assert "revoke-break-fix-cleanup-trust:" in cleanup
+    assert "Revoke exact break-fix cleanup subject" in cleanup
+    assert "environment: ${{ inputs.environment }}" in cleanup
 
 
 def test_demo_deployment_binds_broker_and_cleanup_to_authorized_control_sha() -> None:
