@@ -111,7 +111,9 @@ principal does not automatically have state data-plane access.
 ### End-to-end execution sequence
 
 The GitHub UI may materialize downstream jobs as `queued` before their dependencies complete.
-`needs` still enforces the order below; a queued job with no runner and no steps has not executed.
+`needs` still enforces the order below. A queued job with no runner and no steps normally has not
+executed, but operators must reconcile that projection with downloadable logs, run-scoped artifact
+timestamps, and released downstream dependencies before diagnosing a scheduler wait.
 
 | Phase | Executable sequence | Required result |
 |---|---|---|
@@ -193,8 +195,10 @@ Do not rerun the full workflow immediately. Find the first causal failure, then 
 producer-consumer contract and execute the smallest real component in its Azure context.
 
 1. Confirm run SHA, release SHA, control SHA, environment, execution mode, and caller authorization.
-2. Identify whether the job has a runner. `queued` plus `runner_name: null` means scheduler wait;
-   queued downstream records may only be dependency placeholders.
+2. Reconcile the public job state with its logs, artifacts, and dependency progression. `queued`
+   plus `runner_name: null`, no downloadable log, no run-scoped artifact, and no released dependent
+   job means scheduler wait. A downloadable log or artifact created by that job proves execution
+   even when the public job/check projection remains stale.
 3. Inspect the first failed step, not the final skipped job.
 4. Compare resource names and outputs between Terraform producers and workflow consumers.
 5. Validate effective configuration from inside the failing ACA job without printing secrets.
@@ -235,13 +239,21 @@ Before declaring success:
 **Why are several jobs shown as queued before `authorize` finishes?**
 
 GitHub creates the workflow graph up front. `needs` still enforces execution order. Jobs with no
-runner and no started steps have not run.
+runner, no downloadable log, no job-produced artifact, and no released dependent job have not run.
 
 **Why can an `ubuntu-latest` job remain queued?**
 
-If no repository run holds the concurrency group and `runner_name` is null, the run is waiting at
+If no repository run holds the concurrency group, `runner_name` is null, logs are unavailable, no
+job-produced artifact exists, and no dependent job has been released, the run is waiting at
 GitHub's hosted-runner scheduler or account-capacity layer. WAOOAW private runner provisioning has
 not started.
+
+**Why can a run create artifacts while every job still appears queued?**
+
+The public Actions run, job, and check projections can lag or become inconsistent with the
+orchestrator. Treat run-scoped artifact creation, downloadable job logs, and dependency release as
+proof that execution occurred. Determine the real terminal result from the log and retained cleanup
+evidence; do not cancel or rerun solely because the displayed status remains `queued`.
 
 **Does Terraform exit code `2` mean failure?**
 

@@ -309,8 +309,8 @@ Do not infer deployment behavior from an isolated workflow log or an older run.
 This section is an operator routing summary, not a second cloud specification. The normative design,
 environment invariants, private-runner topology, promotion and rollback contract are owned only by
 `architecture/reference/pipeline/azure-deployment-topology.md`. Current execution status is owned by
-`constitution/PROJECT_STATE.md` and WC-076; immutable run details remain in the GOAL-006 finalization
-evidence.
+`constitution/PROJECT_STATE.md` and the assigned Work Contract; immutable run details remain in the
+GOAL-006 finalization evidence.
 
 #### Active Workflow Graph
 
