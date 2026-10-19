@@ -18,6 +18,10 @@ on:
       break_fix:
         required: true
         type: boolean
+      runner_image:
+        required: false
+        type: string
+        default: ""
       apply:
         required: true
         type: boolean
@@ -279,15 +283,29 @@ jobs:
       - name: Start private signing broker
         run: |
           set -eu
-          runner_image=$(jq -er '.parameters.runnerImage.value' \
+          blueprint_runner_image=$(jq -er '.parameters.runnerImage.value' \
             'infrastructure/deployment-stacks/goal006-runner/${{ inputs.environment }}.parameters.json')
+          execution_runner_image='${{ inputs.runner_image }}'
+          if [ '${{ inputs.break_fix }}' = true ]; then
+            test -n "$execution_runner_image"
+          else
+            test -z "$execution_runner_image"
+            execution_runner_image="$blueprint_runner_image"
+          fi
+          grep -Eq \
+            "^ghcr.io/${GITHUB_REPOSITORY_OWNER}/goal006-private-runner@sha256:[0-9a-f]{64}$" \
+            <<< "$execution_runner_image" || {
+              echo "Runner execution image is not an immutable repository digest" >&2
+              exit 1
+            }
           az containerapp job show \
             --resource-group "$RUNNER_RESOURCE_GROUP" \
             --name "$RUNNER_BROKER_JOB" \
             --output json > broker-job.json
           python scripts/goal006_runner_execution.py broker \
             --job broker-job.json \
-            --expected-image "$runner_image" \
+            --expected-image "$blueprint_runner_image" \
+            --execution-image "$execution_runner_image" \
             --run-id "$GITHUB_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT" \
             --output broker-execution.json
@@ -2388,15 +2406,23 @@ jobs:
           PRIVATE_JOB_CONCLUSION: ${{ needs.terraform.result }}
         run: |
           set -eu
-          runner_image=$(jq -er '.parameters.runnerImage.value' \
+          blueprint_runner_image=$(jq -er '.parameters.runnerImage.value' \
             'infrastructure/deployment-stacks/goal006-runner/${{ inputs.environment }}.parameters.json')
+          execution_runner_image='${{ inputs.runner_image }}'
+          if [ '${{ inputs.break_fix }}' = true ]; then
+            test -n "$execution_runner_image"
+          else
+            test -z "$execution_runner_image"
+            execution_runner_image="$blueprint_runner_image"
+          fi
           az containerapp job show \
             --resource-group "$RUNNER_RESOURCE_GROUP" \
             --name "$RUNNER_CLEANUP_BROKER_JOB" \
             --output json > cleanup-job.json
           python scripts/goal006_runner_execution.py cleanup \
             --job cleanup-job.json \
-            --expected-image "$runner_image" \
+            --expected-image "$blueprint_runner_image" \
+            --execution-image "$execution_runner_image" \
             --run-id "$GITHUB_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT" \
             --private-job-conclusion "$PRIVATE_JOB_CONCLUSION" \

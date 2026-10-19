@@ -94,6 +94,7 @@ def _runner_context(run_id: str = "123", run_attempt: str = "2") -> RunnerContex
         app_key_id="https://vault.example/keys/app/version",
         runner_label="goal006-demo-private",
         activation_state="ACTIVE",
+        execution_image="ghcr.io/dlai-sd/goal006-private-runner@sha256:" + "a" * 64,
         evidence_container_url="https://storage.example/goal006-runner-evidence",
         evidence_writer_client_id="11111111-2222-3333-4444-555555555555",
     )
@@ -428,6 +429,7 @@ def test_runner_start_clones_complete_template_before_binding_correlation() -> N
             "repository": "dlai-sd/waooaw-platform",
             "run_id": "123",
             "run_attempt": "2",
+            "execution_image": "ghcr.io/dlai-sd/goal006-private-runner@sha256:" + "b" * 64,
         },
     )()
     api = ExecutionApi()
@@ -436,7 +438,7 @@ def test_runner_start_clones_complete_template_before_binding_correlation() -> N
     assert set(api.body) <= {"containers", "initContainers"}
     assert "template" not in api.body
     container = api.body["containers"][0]
-    assert container["image"] == template["containers"][0]["image"]
+    assert container["image"] == context.execution_image
     assert container["command"] == ["/opt/waooaw/entrypoint.sh"]
     assert container["resources"] == {"cpu": 1.0, "memory": "2Gi"}
     environment = {item["name"]: item["value"] for item in container["env"]}
@@ -485,6 +487,7 @@ def test_runner_start_serializes_azure_execution_template_at_body_root(monkeypat
             "repository": "dlai-sd/waooaw-platform",
             "run_id": "123",
             "run_attempt": "2",
+            "execution_image": "ghcr.io/dlai-sd/goal006-private-runner@sha256:" + "b" * 64,
         },
     )()
 
@@ -502,6 +505,7 @@ def test_runner_start_serializes_azure_execution_template_at_body_root(monkeypat
                     {"name": "GITHUB_WORKFLOW_RUN_ID", "value": "123"},
                     {"name": "GITHUB_WORKFLOW_RUN_ATTEMPT", "value": "2"},
                 ],
+                "image": context.execution_image,
             }
         ],
         "initContainers": [{"name": "prepare"}],

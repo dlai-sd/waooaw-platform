@@ -129,12 +129,15 @@ jobs:
     if: needs.authorize.outputs.break_fix == 'true'
     needs: authorize
     runs-on: ubuntu-latest
+    outputs:
+      runner_image: ${{ steps.publish.outputs.runner_image }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ needs.authorize.outputs.control_sha }}
 
       - name: Publish exact break-fix private runner
+        id: publish
         env:
           CONTROL_SHA: ${{ needs.authorize.outputs.control_sha }}
           GH_TOKEN: ${{ github.token }}
@@ -144,6 +147,14 @@ jobs:
           echo "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           docker build --file infrastructure/runner/Dockerfile --tag "$image" .
           docker push "$image"
+          runner_image=$(docker image inspect "$image" --format '{{index .RepoDigests 0}}')
+          grep -Eq \
+            "^ghcr.io/${GITHUB_REPOSITORY_OWNER}/goal006-private-runner@sha256:[0-9a-f]{64}$" \
+            <<< "$runner_image" || {
+              echo "Break-fix runner image did not resolve to an immutable digest" >&2
+              exit 1
+            }
+          echo "runner_image=$runner_image" >> "$GITHUB_OUTPUT"
 
   deploy:
     if: always() && needs.authorize.result == 'success' && (needs.build-break-fix-runner.result == 'success' || needs.build-break-fix-runner.result == 'skipped')
@@ -155,6 +166,7 @@ jobs:
       release_sha: ${{ needs.authorize.outputs.release_sha }}
       control_sha: ${{ needs.authorize.outputs.control_sha }}
       break_fix: ${{ needs.authorize.outputs.break_fix == 'true' }}
+      runner_image: ${{ needs.build-break-fix-runner.outputs.runner_image }}
       apply: ${{ needs.authorize.outputs.execution == 'apply' }}
       lease_expires_at: ${{ needs.authorize.outputs.lease_expires_at }}
       lifecycle_action: ${{ needs.authorize.outputs.execution == 'apply' && 'activate' || 'plan' }}

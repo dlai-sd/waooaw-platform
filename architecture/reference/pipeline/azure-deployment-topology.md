@@ -92,6 +92,28 @@ The following are pinned platform dependencies, not additional release members:
 | `goal006_verify_deployment.sh` | Independent deployment verification | Runs through the separate verification identity and private job |
 | Actionlint, pytest, HCL parser, shell checks | Deterministic local validation | Required before paying for another cloud execution |
 
+### Private runner image supply chain
+
+The private runner contains deployment tools under `/opt/waooaw/`, including the WC-124 database
+provisioner. A workflow checkout does not replace those baked tools. Every deployment therefore
+binds the broker, runner, and cleanup executions to one immutable runner digest.
+
+| Path | Image behavior | Required evidence |
+|---|---|---|
+| Pull request | `private-runner-image.yaml` builds, validates, lease-tests, and scans the proposed runner without publishing it | Build, toolchain, real lease, and vulnerability gates pass |
+| Push to `main` affecting runner inputs | The private-runner image supply chain publishes and attests `sha-<main SHA>` and records its immutable digest | Successful image workflow plus retained digest manifest and attestation |
+| Normal main deployment | `build-break-fix-runner` is skipped. Broker, runner, and cleanup use the reviewed digest already promoted into the environment runner blueprint | Blueprint digest equals the approved main runner release |
+| Authorized break-fix deployment | A hosted job builds the exact control SHA, resolves the pushed tag to an immutable digest, and passes that digest through `deploy.yaml` to the broker, runner, and cleanup execution overrides | Built digest equals every execution digest; a published-but-unused image is a failure |
+
+The hosted break-fix build commonly takes about two minutes because it rebuilds and pushes the
+complete runner toolchain. It is required when the control SHA changes any baked runner input. It
+does not rebuild the exact-seven application release.
+
+After a runner-affecting PR merges, the main image workflow publishes the main-SHA image. That
+digest must be reviewed and promoted into the deployment-stack parameters before a normal main
+deployment relies on the changed baked tooling. A normal deployment must not silently use a branch
+image, mutable tag, or unpromoted digest.
+
 ### Identity and authority boundaries
 
 | Identity | Permitted authority | Explicitly not permitted |
@@ -118,7 +140,7 @@ timestamps, and released downstream dependencies before diagnosing a scheduler w
 | Phase | Executable sequence | Required result |
 |---|---|---|
 | 1. Entry authorization | `deploy.yaml` resolves environment, execution mode, trusted release SHA/run, control SHA, lease, and normal versus break-fix caller | Exact bounded authority or stop |
-| 2. Break-fix runner image | Only for authorized break-fix: build and push the private-runner image at the exact control SHA | Immutable runner image available |
+| 2. Break-fix runner image | Only for authorized break-fix: build and push the private-runner image at the exact control SHA, resolve its digest, and bind that digest to broker, runner, and cleanup executions | Built and executed immutable runner digest match |
 | 3. Environment resolution | Resolve reviewed configuration, runner names/labels, state paths, cleanup evidence, and environment outputs | One internally consistent environment contract |
 | 4. Broker/start path | Verify exact-seven tuple and attestations, verify broker blueprint, log in with control-plane identity, enforce cost, start ephemeral private runner | Correlated runner execution ready |
 | 5. Private-runner authorization | Verify caller/ref, pinned Terraform, OIDC subscription, provider allowlist, budget, cost, backend, and configuration | Private deployment may proceed |
@@ -254,6 +276,19 @@ The public Actions run, job, and check projections can lag or become inconsisten
 orchestrator. Treat run-scoped artifact creation, downloadable job logs, and dependency release as
 proof that execution occurred. Determine the real terminal result from the log and retained cleanup
 evidence; do not cancel or rerun solely because the displayed status remains `queued`.
+
+**Will `Publish exact break-fix private runner` run after merge to `main`?**
+
+Not as part of a normal deployment. The job is conditional on `break_fix == true`. A runner-affecting
+push to `main` instead invokes the separate private-runner image supply chain, which builds, pushes,
+attests, and records the main-SHA image. Normal deployment consumes only a reviewed digest promoted
+into the environment runner blueprint.
+
+**Why must a break-fix publish a private runner before deployment?**
+
+Workflow and Terraform files come from the control-SHA checkout, but tools under `/opt/waooaw/` are
+baked into the runner image. The exact break-fix digest must reach the broker, private runner, and
+cleanup executions; merely pushing an unused image does not update those tools.
 
 **Does Terraform exit code `2` mean failure?**
 

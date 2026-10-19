@@ -25,6 +25,12 @@ def test_environment_deployment_uses_qualified_private_runner_lifecycle() -> Non
     assert WORKFLOW.count("goal006_runner_execution.py broker") == 1
     assert WORKFLOW.count("goal006_runner_execution.py cleanup") == 1
     assert WORKFLOW.count("goal006_runner_execution.py pointer") == 1
+    assert "runner_image: ${{ needs.build-break-fix-runner.outputs.runner_image }}" in DISPATCH_WORKFLOW
+    assert "runner_image: ${{ steps.publish.outputs.runner_image }}" in DISPATCH_WORKFLOW
+    assert "runner_image=$(docker image inspect" in DISPATCH_WORKFLOW
+    assert WORKFLOW.count('--execution-image "$execution_runner_image"') == 2
+    assert WORKFLOW.count('--expected-image "$blueprint_runner_image"') == 2
+    assert "execution_runner_image='${{ inputs.runner_image }}'" in WORKFLOW
 
 
 def test_demo_deployment_never_opens_public_storage_access() -> None:

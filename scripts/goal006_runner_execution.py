@@ -141,6 +141,7 @@ def build_execution_template(
     *,
     mode: str,
     expected_image: str,
+    execution_image: str | None = None,
     run_id: str,
     run_attempt: str,
     private_job_conclusion: str | None = None,
@@ -149,6 +150,10 @@ def build_execution_template(
         raise ExecutionTemplateError("execution mode is invalid")
     if PINNED_IMAGE.fullmatch(expected_image) is None:
         raise ExecutionTemplateError("expected image is not digest-pinned")
+    if execution_image is None:
+        execution_image = expected_image
+    if PINNED_IMAGE.fullmatch(execution_image) is None:
+        raise ExecutionTemplateError("execution image is not digest-pinned")
     if RUN_NUMBER.fullmatch(run_id) is None or RUN_NUMBER.fullmatch(run_attempt) is None:
         raise ExecutionTemplateError("workflow run identity is invalid")
     if mode == "cleanup" and private_job_conclusion not in TERMINAL_CONCLUSIONS:
@@ -170,6 +175,7 @@ def build_execution_template(
     container = containers[0]
     if container.get("image") != expected_image:
         raise ExecutionTemplateError("job image differs from immutable parameters")
+    container["image"] = execution_image
     expected_command = COMMAND if mode == "broker" else CLEANUP_COMMAND
     if container.get("command") != expected_command:
         raise ExecutionTemplateError("job command differs from blueprint")
@@ -195,6 +201,11 @@ def build_execution_template(
     if not required_environment.issubset(names):
         raise ExecutionTemplateError("job environment is incomplete")
     values = {item.get("name"): item for item in environment}
+    values["RUNNER_EXECUTION_IMAGE"] = {
+        "name": "RUNNER_EXECUTION_IMAGE",
+        "value": execution_image,
+    }
+    container["env"] = list(values.values())
     environment_name = str(values["RUNNER_ENVIRONMENT"].get("value", ""))
     if ENVIRONMENT.fullmatch(environment_name) is None:
         raise ExecutionTemplateError("job environment is not authorized")
@@ -227,6 +238,7 @@ def main() -> int:
         execution_parser = subparsers.add_parser(mode)
         execution_parser.add_argument("--job", required=True, type=Path)
         execution_parser.add_argument("--expected-image", required=True)
+        execution_parser.add_argument("--execution-image")
         execution_parser.add_argument("--run-id", required=True)
         execution_parser.add_argument("--run-attempt", required=True)
         execution_parser.add_argument("--private-job-conclusion")
@@ -273,6 +285,7 @@ def main() -> int:
         job,
         mode=arguments.mode,
         expected_image=arguments.expected_image,
+        execution_image=arguments.execution_image,
         run_id=arguments.run_id,
         run_attempt=arguments.run_attempt,
         private_job_conclusion=arguments.private_job_conclusion,

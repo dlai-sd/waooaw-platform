@@ -40,6 +40,7 @@ ENVIRONMENT = re.compile(r"^(demo|uat|prod)$")
 RUN_NUMBER = re.compile(r"^[1-9][0-9]*$")
 KEY_VAULT_SECRET_NAME = re.compile(r"^[0-9A-Za-z-]{1,127}$")
 AZURE_CLIENT_ID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+IMMUTABLE_IMAGE = re.compile(r"^ghcr\.io/dlai-sd/goal006-private-runner@sha256:[0-9a-f]{64}$")
 CLEANUP_EVIDENCE_PREFIX = "GOAL006_CLEANUP_RECORD_B64="
 
 
@@ -114,6 +115,7 @@ class RunnerContext:
     app_key_id: str
     runner_label: str
     activation_state: str
+    execution_image: str = ""
     evidence_container_url: str = ""
     evidence_writer_client_id: str = ""
 
@@ -134,6 +136,7 @@ class RunnerContext:
             "app_key_id": "GITHUB_APP_KEY_ID",
             "runner_label": "RUNNER_LABEL",
             "activation_state": "RUNNER_ACTIVATION_STATE",
+            "execution_image": "RUNNER_EXECUTION_IMAGE",
         }
         values = {field: os.environ.get(variable, "").strip() for field, variable in names.items()}
         values["evidence_container_url"] = os.environ.get("RUNNER_EVIDENCE_CONTAINER_URL", "").strip()
@@ -149,6 +152,8 @@ class RunnerContext:
             raise LifecycleError("GitHub repository is invalid")
         if not context.vault_url.startswith("https://"):
             raise LifecycleError("runner vault URL is invalid")
+        if IMMUTABLE_IMAGE.fullmatch(context.execution_image) is None:
+            raise LifecycleError("runner execution image is invalid")
         _ = context.correlated_token_secret_name
         return context
 
@@ -477,6 +482,10 @@ def _start_execution(api: JsonApi, context: RunnerContext) -> str:
     if len(containers) != 1 or containers[0].get("name") != "runner":
         raise LifecycleError("runner job template is invalid")
     override = {name: json.loads(json.dumps(template[name])) for name in ("containers", "initContainers") if name in template}
+    execution_image = getattr(context, "execution_image", "") or str(containers[0].get("image", ""))
+    if IMMUTABLE_IMAGE.fullmatch(execution_image) is None:
+        raise LifecycleError("runner execution image is invalid")
+    override["containers"][0]["image"] = execution_image
     environment = {str(item["name"]): item for item in override["containers"][0].get("env", [])}
     for name, value in {
         "RUNNER_CORRELATION_ID": context.correlation,
@@ -588,6 +597,7 @@ def start_runner(api: JsonApi, context: RunnerContext, manifest_path: Path) -> d
         "aca_execution_name": execution_name,
         "token_secret_name": context.correlated_token_secret_name,
         "token_expires_within_minutes": 15,
+        "runner_image": context.execution_image,
     }
 
 
