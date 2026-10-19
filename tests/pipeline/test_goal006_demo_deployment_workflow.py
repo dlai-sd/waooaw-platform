@@ -275,9 +275,10 @@ def test_workload_plan_safely_adopts_the_live_identity_edge() -> None:
     assert '--container-app-id "$azure_edge_id"' in workload_plan
     assert '--expected-resource-group "$edge_resource_group"' in workload_plan
     assert '--expected-name "$edge_name"' in workload_plan
-    assert 'terraform import -input=false -lock-timeout=5m "$resource_address" "$edge_id"' in workload_plan
-    assert workload_plan.index("goal006_azure_resource_id.py") < workload_plan.index("terraform import")
-    assert workload_plan.index("terraform import") < workload_plan.index("terraform plan")
+    edge_import = 'terraform import -input=false -lock-timeout=5m "$resource_address" "$edge_id"'
+    assert edge_import in workload_plan
+    assert workload_plan.index("goal006_azure_resource_id.py") < workload_plan.index(edge_import)
+    assert workload_plan.index(edge_import) < workload_plan.index("terraform plan")
     assert "terraform show -json workload.tfplan > workload-plan.json" in workload_plan
     assert "scripts/goal006_tfplan_policy.py" in workload_plan
     assert WORKFLOW.index("goal006_tfplan_policy.py", WORKFLOW.index("Terraform workload plan")) < WORKFLOW.index(
@@ -285,6 +286,43 @@ def test_workload_plan_safely_adopts_the_live_identity_edge() -> None:
     )
     assert "workload/workload-plan.json" in WORKFLOW
     assert "workload/workload-state-before-plan.txt" in WORKFLOW
+
+
+def test_workload_plan_safely_adopts_keycloak_migration_role_assignments() -> None:
+    workload_plan = WORKFLOW.split("      - name: Terraform workload plan", 1)[1].split(
+        "      - name: Terraform workload apply", 1
+    )[0]
+
+    assert 'keycloak_identity_name="id-${TARGET_ENVIRONMENT}-keycloak-migration"' in workload_plan
+    assert "az identity list" in workload_plan
+    assert "keycloak_identity_count=$(jq 'length'" in workload_plan
+    assert 'web_secret_scope=$(jq -er \'.key_vault_secret_resource_ids.web\'' in workload_plan
+    assert (
+        'bp_secret_scope=$(jq -er \'.key_vault_secret_resource_ids["business-platform"]\''
+        in workload_plan
+    )
+    assert 'test "${bp_secret_scope%/secrets/business-platform}" = "$vault_scope"' in workload_plan
+    assert "keycloak-role-assignment-adoption.tsv" in workload_plan
+    assert "module.workload.azurerm_role_assignment.keycloak_migration_realm_credential[0]" in workload_plan
+    for alias in (
+        "google-client-id",
+        "google-client-secret",
+        "meta-login-id",
+        "meta-login-secret",
+        "bp-reader-secret",
+        "bp-writer-secret",
+    ):
+        assert f'module.workload.azurerm_role_assignment.keycloak_migration_realm_secrets["{alias}"]' in workload_plan
+    assert 'if grep -Fxq "$assignment_address" workload-state-before-plan.txt' in workload_plan
+    assert "az role assignment list" in workload_plan
+    assert '--assignee-object-id "$keycloak_principal_id"' in workload_plan
+    assert '--scope "$assignment_scope"' in workload_plan
+    assert "4633458b-17de-408a-b874-0445c86b69e6" in workload_plan
+    assert '(.principalId | ascii_downcase) == $principal_id' in workload_plan
+    assert '(.scope | ascii_downcase) == $scope' in workload_plan
+    assert 'terraform import -input=false -lock-timeout=5m "$assignment_address" "$assignment_id"' in workload_plan
+    assert "Expected zero or one Keycloak migration role assignment" in workload_plan
+    assert workload_plan.index("keycloak-role-assignment-adoption.tsv") < workload_plan.index("terraform plan")
 
 
 def test_apply_generates_internal_activation_bundle_after_both_plans() -> None:

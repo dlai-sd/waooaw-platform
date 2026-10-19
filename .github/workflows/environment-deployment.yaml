@@ -1817,8 +1817,80 @@ jobs:
             -backend-config="container_name=$TFSTATE_CONTAINER" \
             -backend-config="use_oidc=true" \
             -backend-config="use_azuread_auth=true"
-          resource_address='module.workload.azurerm_container_app.identity_edge[0]'
           terraform state list > workload-state-before-plan.txt
+          keycloak_identity_name="id-${TARGET_ENVIRONMENT}-keycloak-migration"
+          keycloak_identity_inventory=$(az identity list \
+            --resource-group '${{ steps.foundation.outputs.resource_group_name }}' \
+            --query "[?name == '$keycloak_identity_name']" \
+            --output json)
+          keycloak_identity_count=$(jq 'length' <<< "$keycloak_identity_inventory")
+          case "$keycloak_identity_count" in
+            0) ;;
+            1)
+              keycloak_principal_id=$(jq -er '.[0].principalId' <<< "$keycloak_identity_inventory")
+              web_secret_scope=$(jq -er '.key_vault_secret_resource_ids.web' workload.auto.tfvars.json)
+              bp_secret_scope=$(jq -er '.key_vault_secret_resource_ids["business-platform"]' workload.auto.tfvars.json)
+              vault_scope=${web_secret_scope%/secrets/web}
+              test "$vault_scope" != "$web_secret_scope"
+              test "${bp_secret_scope%/secrets/business-platform}" = "$vault_scope"
+              printf '%s\t%s\n' \
+                'module.workload.azurerm_role_assignment.keycloak_migration_realm_credential[0]' \
+                "$web_secret_scope" > keycloak-role-assignment-adoption.tsv
+              if [ "$TARGET_ENVIRONMENT" = demo ]; then
+                printf '%s\t%s\n' \
+                  'module.workload.azurerm_role_assignment.keycloak_migration_realm_secrets["google-client-id"]' \
+                  "$vault_scope/secrets/google-client-id" \
+                  'module.workload.azurerm_role_assignment.keycloak_migration_realm_secrets["google-client-secret"]' \
+                  "$vault_scope/secrets/google-client-secret" \
+                  'module.workload.azurerm_role_assignment.keycloak_migration_realm_secrets["meta-login-id"]' \
+                  "$vault_scope/secrets/meta-login-client-id" \
+                  'module.workload.azurerm_role_assignment.keycloak_migration_realm_secrets["meta-login-secret"]' \
+                  "$vault_scope/secrets/meta-login-client-secret" \
+                  'module.workload.azurerm_role_assignment.keycloak_migration_realm_secrets["bp-reader-secret"]' \
+                  "$vault_scope/secrets/bp-identity-reader-client-secret" \
+                  'module.workload.azurerm_role_assignment.keycloak_migration_realm_secrets["bp-writer-secret"]' \
+                  "$vault_scope/secrets/keycloak-lifecycle-writer-client-secret" \
+                  >> keycloak-role-assignment-adoption.tsv
+              fi
+              while IFS=$'\t' read -r assignment_address assignment_scope; do
+                if grep -Fxq "$assignment_address" workload-state-before-plan.txt; then
+                  continue
+                fi
+                assignment_inventory=$(az role assignment list \
+                  --assignee-object-id "$keycloak_principal_id" \
+                  --scope "$assignment_scope" \
+                  --fill-principal-name false \
+                  --fill-role-definition-name false \
+                  --only-show-errors \
+                  --output json)
+                matching_assignments=$(jq -c \
+                  --arg principal_id "${keycloak_principal_id,,}" \
+                  --arg scope "${assignment_scope,,}" \
+                  '[.[] | select(
+                    (.principalId | ascii_downcase) == $principal_id and
+                    (.scope | ascii_downcase) == $scope and
+                    (.roleDefinitionId | ascii_downcase | endswith("/4633458b-17de-408a-b874-0445c86b69e6"))
+                  )]' <<< "$assignment_inventory")
+                assignment_count=$(jq 'length' <<< "$matching_assignments")
+                case "$assignment_count" in
+                  0) ;;
+                  1)
+                    assignment_id=$(jq -er '.[0].id' <<< "$matching_assignments")
+                    terraform import -input=false -lock-timeout=5m "$assignment_address" "$assignment_id"
+                    ;;
+                  *)
+                    echo "Expected zero or one Keycloak migration role assignment at $assignment_scope; found $assignment_count" >&2
+                    exit 1
+                    ;;
+                esac
+              done < keycloak-role-assignment-adoption.tsv
+              ;;
+            *)
+              echo "Expected zero or one Keycloak migration identity named $keycloak_identity_name; found $keycloak_identity_count" >&2
+              exit 1
+              ;;
+          esac
+          resource_address='module.workload.azurerm_container_app.identity_edge[0]'
           if ! grep -Fxq "$resource_address" workload-state-before-plan.txt; then
             edge_name="ca-${{ inputs.environment }}-identity-edge"
             edge_resource_group='${{ steps.foundation.outputs.resource_group_name }}'
