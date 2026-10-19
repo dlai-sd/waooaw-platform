@@ -854,6 +854,10 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "terraform output -raw deployment_client_id" in workflow
     assert "steps.database-transition.outputs.password_auth_enabled == 'true'" in workflow
     assert workflow.index(plan_b_login) < workflow.index("Terraform foundation apply")
+    assert (
+        "ARM_CLIENT_ID: ${{ steps.plan-b-foundation-identity.outputs.client_id "
+        "|| needs.resolve-environment.outputs.control_plane_client_id }}"
+    ) in workflow
     assert workflow.index("Enforce selected environment authorization") < workflow.index("azure/login@v2")
     assert "Reject stale release before cloud access" in workflow
     assert 'timeframe:"Custom"' in workflow.replace(" ", "")

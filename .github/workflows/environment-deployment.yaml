@@ -811,6 +811,7 @@ jobs:
           terraform apply -input=false -auto-approve foundation.tfplan
         env:
           GH_TOKEN: ${{ github.token }}
+          ARM_CLIENT_ID: ${{ steps.plan-b-foundation-identity.outputs.client_id || needs.resolve-environment.outputs.control_plane_client_id }}
 
       - name: Resolve foundation outputs
         if: inputs.apply || inputs.lifecycle_action == 'sleep'
