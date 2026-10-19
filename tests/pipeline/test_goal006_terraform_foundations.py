@@ -856,6 +856,12 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert workflow.index(plan_b_login) < workflow.index("Terraform foundation plan")
     assert "az keyvault secret show" in workflow
     assert "db-server-breakglass-admin" in workflow
+    assert 'export TF_VAR_postgresql_password_auth_enabled="$password_auth_enabled"' in workflow
+    assert 'export TF_VAR_database_bootstrap_admin_enabled="$bootstrap_admin_enabled"' in workflow
+    assert (
+        'export TF_VAR_database_provisioner_vault_access_enabled="$provisioner_vault_access_enabled"'
+        in workflow
+    )
     assert "terraform import -input=false -lock-timeout=5m \"$secret_address\" \"$secret_id\"" in workflow
     assert (
         "ARM_CLIENT_ID: ${{ steps.plan-b-foundation-identity.outputs.client_id "

@@ -771,6 +771,9 @@ jobs:
           password_auth_enabled='${{ steps.database-transition.outputs.password_auth_enabled || 'false' }}'
           bootstrap_admin_enabled='${{ steps.database-transition.outputs.bootstrap_admin_enabled || 'true' }}'
           provisioner_vault_access_enabled='${{ steps.database-transition.outputs.provisioner_vault_access_enabled || 'true' }}'
+          export TF_VAR_postgresql_password_auth_enabled="$password_auth_enabled"
+          export TF_VAR_database_bootstrap_admin_enabled="$bootstrap_admin_enabled"
+          export TF_VAR_database_provisioner_vault_access_enabled="$provisioner_vault_access_enabled"
           terraform init -input=false \
             -backend-config="resource_group_name=$TFSTATE_RESOURCE_GROUP" \
             -backend-config="storage_account_name=$TFSTATE_STORAGE_ACCOUNT" \
@@ -809,11 +812,7 @@ jobs:
             fi
           fi
           terraform validate
-          terraform plan -input=false -lock-timeout=5m \
-            -var="postgresql_password_auth_enabled=$password_auth_enabled" \
-            -var="database_bootstrap_admin_enabled=$bootstrap_admin_enabled" \
-            -var="database_provisioner_vault_access_enabled=$provisioner_vault_access_enabled" \
-            -out=foundation.tfplan
+          terraform plan -input=false -lock-timeout=5m -out=foundation.tfplan
           terraform show -json foundation.tfplan > foundation-plan.json
           python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
             --scope foundation \
