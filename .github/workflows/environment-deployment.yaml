@@ -879,7 +879,8 @@ jobs:
           terraform show -json foundation.tfplan > foundation-plan.json
           python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
             --scope foundation \
-            --plan foundation-plan.json
+            --plan foundation-plan.json \
+            --output foundation-plan-policy.json
           state_snapshot=$(mktemp)
           trap 'rm -f "$state_snapshot"' EXIT
           terraform state pull > "$state_snapshot"
@@ -894,6 +895,7 @@ jobs:
             --backend-key "goal006/$TARGET_ENVIRONMENT/foundation.tfstate" \
             --plan-json foundation-plan.json \
             --plan-binary foundation.tfplan \
+            --policy-result foundation-plan-policy.json \
             --state "$state_snapshot" \
             --output foundation-plan-provenance.json
           if test "$CACHE_HIT" = true && test "$plan_has_changes" = true; then
@@ -1862,7 +1864,8 @@ jobs:
           cp workload-plan.json "$GITHUB_WORKSPACE/workload-plan.json"
           python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
             --scope workload \
-            --plan workload-plan.json
+            --plan workload-plan.json \
+            --output workload-plan-policy.json
           state_snapshot=$(mktemp)
           trap 'rm -f "$state_snapshot"' EXIT
           terraform state pull > "$state_snapshot"
@@ -1877,6 +1880,7 @@ jobs:
             --backend-key "goal006/$TARGET_ENVIRONMENT/workload.tfstate" \
             --plan-json workload-plan.json \
             --plan-binary workload.tfplan \
+            --policy-result workload-plan-policy.json \
             --state "$state_snapshot" \
             --output workload-plan-provenance.json
 
@@ -1893,9 +1897,11 @@ jobs:
             "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/foundation/foundation-plan.json" \
             "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/foundation/foundation.tfplan" \
             "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/foundation/foundation-plan-provenance.json" \
+            "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/foundation/foundation-plan-policy.json" \
             "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload/workload-plan.json" \
             "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload/workload.tfplan" \
-            "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload/workload-plan-provenance.json"; do
+            "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload/workload-plan-provenance.json" \
+            "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload/workload-plan-policy.json"; do
             test -s "$evidence_file" || {
               echo "Missing required activation evidence: $evidence_file" >&2
               exit 1
@@ -1916,9 +1922,11 @@ jobs:
             --foundation-plan "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/foundation/foundation-plan.json" \
             --foundation-plan-binary "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/foundation/foundation.tfplan" \
             --foundation-plan-provenance "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/foundation/foundation-plan-provenance.json" \
+            --foundation-policy-result "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/foundation/foundation-plan-policy.json" \
             --workload-plan "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload/workload-plan.json" \
             --workload-plan-binary "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload/workload.tfplan" \
             --workload-plan-provenance "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload/workload-plan-provenance.json" \
+            --workload-policy-result "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload/workload-plan-policy.json" \
             --secret-catalog infrastructure/environment-readiness/secret-catalog.json \
             --configuration workload-configuration.json \
             --dependency-file registry-release-manifest.json \
@@ -2212,6 +2220,7 @@ jobs:
             wc124-vendor-migrations.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan-provenance.json
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan-policy.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation.tfplan
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan-b.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan-b.tfplan
@@ -2219,6 +2228,7 @@ jobs:
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-bootstrap-removal.tfplan
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-plan.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-plan-provenance.json
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-plan-policy.json
             workload-plan.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-state-before-plan.txt
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-state-after-apply-failure.txt

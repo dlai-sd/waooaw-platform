@@ -61,9 +61,11 @@ def create_bundle(
     foundation_plan: Path,
     foundation_plan_binary: Path,
     foundation_plan_provenance: Path,
+    foundation_policy_result: Path,
     workload_plan: Path,
     workload_plan_binary: Path,
     workload_plan_provenance: Path,
+    workload_policy_result: Path,
     secret_catalog: Path,
     configuration: Path,
     dependency_files: list[Path],
@@ -88,9 +90,15 @@ def create_bundle(
     for name, plan in (("foundation", foundation), ("workload", workload)):
         if not isinstance(plan, dict) or not isinstance(plan.get("resource_changes"), list):
             raise ValueError(f"{name} plan is not a Terraform JSON plan")
-    for scope, plan_path, plan_binary, provenance in (
-        ("foundation", foundation_plan, foundation_plan_binary, foundation_provenance),
-        ("workload", workload_plan, workload_plan_binary, workload_provenance),
+    for scope, plan_path, plan_binary, provenance, policy_result in (
+        (
+            "foundation",
+            foundation_plan,
+            foundation_plan_binary,
+            foundation_provenance,
+            foundation_policy_result,
+        ),
+        ("workload", workload_plan, workload_plan_binary, workload_provenance, workload_policy_result),
     ):
         validate_provenance(
             provenance,
@@ -102,6 +110,7 @@ def create_bundle(
             scope=scope,
             plan_json=plan_path,
             plan_binary=plan_binary,
+            policy_result=policy_result,
         )
 
     plan_digest = canonical_digest(
@@ -158,9 +167,11 @@ def main() -> int:
     parser.add_argument("--foundation-plan", required=True, type=Path)
     parser.add_argument("--foundation-plan-binary", required=True, type=Path)
     parser.add_argument("--foundation-plan-provenance", required=True, type=Path)
+    parser.add_argument("--foundation-policy-result", required=True, type=Path)
     parser.add_argument("--workload-plan", required=True, type=Path)
     parser.add_argument("--workload-plan-binary", required=True, type=Path)
     parser.add_argument("--workload-plan-provenance", required=True, type=Path)
+    parser.add_argument("--workload-policy-result", required=True, type=Path)
     parser.add_argument("--secret-catalog", required=True, type=Path)
     parser.add_argument("--configuration", required=True, type=Path)
     parser.add_argument("--dependency-file", action="append", required=True, type=Path)
@@ -179,9 +190,11 @@ def main() -> int:
         foundation_plan=arguments.foundation_plan,
         foundation_plan_binary=arguments.foundation_plan_binary,
         foundation_plan_provenance=arguments.foundation_plan_provenance,
+        foundation_policy_result=arguments.foundation_policy_result,
         workload_plan=arguments.workload_plan,
         workload_plan_binary=arguments.workload_plan_binary,
         workload_plan_provenance=arguments.workload_plan_provenance,
+        workload_policy_result=arguments.workload_policy_result,
         secret_catalog=arguments.secret_catalog,
         configuration=arguments.configuration,
         dependency_files=arguments.dependency_file,

@@ -279,9 +279,11 @@ def test_apply_generates_internal_activation_bundle_after_both_plans() -> None:
     assert "--foundation-plan" in bundle_step
     assert "--foundation-plan-binary" in bundle_step
     assert "--foundation-plan-provenance" in bundle_step
+    assert "--foundation-policy-result" in bundle_step
     assert "--workload-plan" in bundle_step
     assert "--workload-plan-binary" in bundle_step
     assert "--workload-plan-provenance" in bundle_step
+    assert "--workload-policy-result" in bundle_step
     assert "--secret-catalog" in bundle_step
     assert "--dependency-file registry-release-manifest.json" in bundle_step
     assert "--migration-file infrastructure/postgres/init/59-wc124-billing-authority.sql" in bundle_step
@@ -313,12 +315,16 @@ def test_plan_evidence_is_current_exact_run_and_cache_drift_fails_closed() -> No
     assert 'test "$CACHE_HIT" = true && test "$plan_has_changes" = true' in foundation_plan
     assert "refusing automatic apply" in foundation_plan
     assert "goal006_plan_provenance.py" in foundation_plan
+    assert "--output foundation-plan-policy.json" in foundation_plan
+    assert "--policy-result foundation-plan-policy.json" in foundation_plan
     assert '--scope foundation' in foundation_plan
     assert '--release-sha "$RELEASE_SHA"' in foundation_plan
     assert '--workflow-run-id "$GITHUB_RUN_ID"' in foundation_plan
     assert "terraform plan -detailed-exitcode" in workload_plan
     assert "0|2)" in workload_plan
     assert "goal006_plan_provenance.py" in workload_plan
+    assert "--output workload-plan-policy.json" in workload_plan
+    assert "--policy-result workload-plan-policy.json" in workload_plan
     assert "--scope workload" in workload_plan
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -221,6 +222,7 @@ def main() -> int:
     parser.add_argument("--plan", required=True, type=Path)
     parser.add_argument("--scope", required=True, choices=("foundation", "workload"))
     parser.add_argument("--transition", default="standard", choices=("standard", "wc124-plan-b"))
+    parser.add_argument("--output", type=Path)
     arguments = parser.parse_args()
     try:
         plan = json.loads(arguments.plan.read_text(encoding="utf-8"))
@@ -231,7 +233,17 @@ def main() -> int:
         enforce_plan(plan, arguments.scope, arguments.transition)
     except (OSError, json.JSONDecodeError, ValueError) as error:
         parser.error(str(error))
-    print(json.dumps({"status": "PASS", "destructive_changes": 0}, sort_keys=True))
+    result = {
+        "schema": "waooaw.terraform-plan-policy-result/v1",
+        "status": "PASS",
+        "scope": arguments.scope,
+        "transition": arguments.transition,
+        "plan_json_sha256": "sha256:" + hashlib.sha256(arguments.plan.read_bytes()).hexdigest(),
+        "destructive_changes": 0,
+    }
+    if arguments.output is not None:
+        arguments.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(json.dumps(result, sort_keys=True))
     return 0
 
 

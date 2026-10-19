@@ -36,6 +36,7 @@ def create_provenance(
     backend_key: str,
     plan_json: Path,
     plan_binary: Path,
+    policy_result: Path,
     state: Path,
 ) -> dict[str, Any]:
     if environment not in {"demo", "uat"}:
@@ -56,6 +57,17 @@ def create_provenance(
     plan = load_json(plan_json)
     if not isinstance(plan, dict) or not isinstance(plan.get("resource_changes"), list):
         raise ValueError(f"{scope} plan is not a Terraform JSON plan")
+    policy = load_json(policy_result)
+    expected_policy = {
+        "schema": "waooaw.terraform-plan-policy-result/v1",
+        "status": "PASS",
+        "scope": scope,
+        "transition": "standard",
+        "plan_json_sha256": file_digest(plan_json),
+        "destructive_changes": 0,
+    }
+    if policy != expected_policy:
+        raise ValueError(f"{scope} plan policy result is invalid")
     state_record = load_json(state)
     lineage = state_record.get("lineage") if isinstance(state_record, dict) else None
     serial = state_record.get("serial") if isinstance(state_record, dict) else None
@@ -76,6 +88,7 @@ def create_provenance(
         "state_serial": serial,
         "plan_json_sha256": file_digest(plan_json),
         "plan_binary_sha256": file_digest(plan_binary),
+        "policy_result_sha256": file_digest(policy_result),
     }
 
 
@@ -90,6 +103,7 @@ def validate_provenance(
     scope: str,
     plan_json: Path,
     plan_binary: Path,
+    policy_result: Path,
 ) -> None:
     if not isinstance(record, dict):
         raise ValueError(f"{scope} plan provenance must be an object")
@@ -105,6 +119,7 @@ def validate_provenance(
         "backend_key": f"goal006/{environment}/{scope}.tfstate",
         "plan_json_sha256": file_digest(plan_json),
         "plan_binary_sha256": file_digest(plan_binary),
+        "policy_result_sha256": file_digest(policy_result),
     }
     mismatches = sorted(key for key, value in expected.items() if record.get(key) != value)
     if mismatches:
@@ -129,6 +144,7 @@ def main() -> int:
     parser.add_argument("--backend-key", required=True)
     parser.add_argument("--plan-json", required=True, type=Path)
     parser.add_argument("--plan-binary", required=True, type=Path)
+    parser.add_argument("--policy-result", required=True, type=Path)
     parser.add_argument("--state", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     arguments = parser.parse_args()
@@ -143,6 +159,7 @@ def main() -> int:
         backend_key=arguments.backend_key,
         plan_json=arguments.plan_json,
         plan_binary=arguments.plan_binary,
+        policy_result=arguments.policy_result,
         state=arguments.state,
     )
     arguments.output.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")

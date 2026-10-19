@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import json
+import subprocess
+import sys
+from pathlib import Path
 from typing import Any
 
 import pytest
 
 from goal006_tfplan_policy import enforce_plan
+
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def destructive_plan() -> dict[str, object]:
@@ -16,6 +23,32 @@ def destructive_plan() -> dict[str, object]:
             }
         ]
     }
+
+
+def test_policy_cli_writes_plan_bound_pass_evidence(tmp_path: Path) -> None:
+    plan = tmp_path / "plan.json"
+    result = tmp_path / "policy.json"
+    plan.write_text(json.dumps({"resource_changes": []}), encoding="utf-8")
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts/goal006_tfplan_policy.py"),
+            "--scope",
+            "foundation",
+            "--plan",
+            str(plan),
+            "--output",
+            str(result),
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert json.loads(result.read_text(encoding="utf-8")) == json.loads(completed.stdout)
 
 
 def temporal_plan(
