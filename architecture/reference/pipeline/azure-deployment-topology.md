@@ -4,6 +4,46 @@
 
 This contract turns the accepted GOAL-006 constitutional, security, data, and platform decisions into one deployable Azure topology. Infrastructure and workflows MUST implement this contract before another full Demo apply.
 
+## Skills needed for proactive detection
+
+## 1. The six engineering skill areas WAOOAW needs
+
+### 1. Workflow control-flow and state-machine engineering
+
+GitHub Actions · YAML · Bash · dependency graphs · conditional execution
+
+Detect when a completed authority transition causes a required follow-up action to be skipped. Test all combinations of transition state, cache hit/miss, and required refresh—not just the happy path.
+
+### 2. Infrastructure-as-Code and configuration lifecycle engineering
+
+Terraform · Azure Resource Manager · dependency graphs · drift detection
+
+Detect when Terraform believes infrastructure is converged but a runtime configuration value is stale. Understand resource dependencies, plan provenance, secret references, and whether a change actually propagates to its consumers.
+
+### 3. Secrets and runtime configuration engineering
+
+Azure Key Vault · managed identities · secret versions · container configuration
+
+Detect unresolved placeholders, stale secret values, incorrect identity permissions, and consumers that have not reloaded updated configuration. Distinguish a successful secret write from successful consumption.
+
+### 4. Cloud networking and runtime connectivity engineering
+
+Azure Container Apps · DNS · TCP · ingress · VNet · private endpoints
+
+Verify DNS resolution and actual TCP reachability from the consumer's network context. Know how to distinguish an incorrect hostname, a DNS issue, unreachable ingress, and an upstream database failure.
+
+### 5. Deployment qualification and failure-injection testing
+
+Python · pytest · shell tests · contract tests · fault injection
+
+Reproduce skipped stages, stale secret references, unresolved realm placeholders, unreachable database endpoints, and missing evidence artifacts in automated tests before paying for another full workflow run.
+
+### 6. Observability and automated incident diagnosis
+
+Azure CLI · structured logs · execution IDs · telemetry · failure classification
+
+Make every failed migration expose its execution ID, sanitized container logs, effective endpoint metadata, and failed health check automatically. A GitHub step should report the underlying exception, not merely `Billing migration failed: Failed`.
+
 ## Deployment Operator Handbook
 
 This section is the canonical operational entry point for deployment strategy, architecture,
