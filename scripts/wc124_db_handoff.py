@@ -214,28 +214,110 @@ WHERE refclassid = 'pg_authid'::regclass
     }
 
 
+def verify_completed_handoff(
+    environment: str,
+    vault_name: str,
+    server_fqdn: str,
+    bootstrap_name: str,
+    provisioner_client_id: str,
+) -> dict[str, object]:
+    if environment not in DATABASE_OWNERS:
+        raise ValueError("environment must be demo or uat")
+    expected_bootstrap_name = f"id-waooaw-{environment}-db-bootstrap"
+    if bootstrap_name != expected_bootstrap_name:
+        raise ValueError(f"bootstrap name must be {expected_bootstrap_name}")
+
+    azure_login(provisioner_client_id)
+    administrator_password = read_breakglass_password(vault_name)
+    administrator_name = "wc124_breakglass_admin"
+    for database, expected_owner in DATABASE_OWNERS[environment]:
+        actual_owner = query_psql(
+            server_fqdn,
+            administrator_name,
+            database,
+            administrator_password,
+            """
+SELECT pg_get_userbyid(datdba)
+FROM pg_database
+WHERE datname = current_database();
+""",
+        ).strip()
+        if actual_owner != expected_owner:
+            raise RuntimeError(
+                f"database owner handoff is incomplete for {database}: expected {expected_owner}, got {actual_owner}"
+            )
+
+    revocation_evidence = query_psql(
+        server_fqdn,
+        administrator_name,
+        APPLICATION_DATABASE,
+        administrator_password,
+        f"""
+SELECT
+  (
+    SELECT count(*)
+    FROM pg_shdepend
+    WHERE refclassid = 'pg_authid'::regclass
+      AND refobjid = (
+        SELECT oid FROM pg_roles WHERE rolname = {sql_literal(bootstrap_name)}
+      )
+  )::text
+  || E'\\t' ||
+  (
+    SELECT count(*)
+    FROM pg_stat_activity
+    WHERE usename = {sql_literal(bootstrap_name)}
+      AND pid <> pg_backend_pid()
+  )::text;
+""",
+    ).strip()
+    remaining_dependencies, active_sessions = revocation_evidence.split("\t", 1)
+    administrator_password = ""
+    if remaining_dependencies != "0":
+        raise RuntimeError(f"bootstrap authority still has {remaining_dependencies} PostgreSQL dependencies")
+    if active_sessions != "0":
+        raise RuntimeError(f"bootstrap authority still has {active_sessions} active PostgreSQL sessions")
+
+    return {
+        "schema": "waooaw.wc124-db-handoff/v1",
+        "environment": environment,
+        "databases_verified": len(DATABASE_OWNERS[environment]),
+        "remaining_bootstrap_dependencies": 0,
+        "remaining_bootstrap_sessions": 0,
+        "status": "verified-after-entra-bootstrap-removal",
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--environment", required=True)
     parser.add_argument("--vault-name", required=True)
     parser.add_argument("--server-fqdn", required=True)
-    parser.add_argument("--bootstrap-client-id", required=True)
+    parser.add_argument("--bootstrap-client-id")
     parser.add_argument("--bootstrap-name", required=True)
     parser.add_argument("--provisioner-client-id", required=True)
+    parser.add_argument("--verify-only", action="store_true")
     arguments = parser.parse_args()
-    print(
-        json.dumps(
-            finalize_handoff(
-                arguments.environment,
-                arguments.vault_name,
-                arguments.server_fqdn,
-                arguments.bootstrap_client_id,
-                arguments.bootstrap_name,
-                arguments.provisioner_client_id,
-            ),
-            sort_keys=True,
+    if arguments.verify_only:
+        evidence = verify_completed_handoff(
+            arguments.environment,
+            arguments.vault_name,
+            arguments.server_fqdn,
+            arguments.bootstrap_name,
+            arguments.provisioner_client_id,
         )
-    )
+    else:
+        if not arguments.bootstrap_client_id:
+            parser.error("--bootstrap-client-id is required unless --verify-only is used")
+        evidence = finalize_handoff(
+            arguments.environment,
+            arguments.vault_name,
+            arguments.server_fqdn,
+            arguments.bootstrap_client_id,
+            arguments.bootstrap_name,
+            arguments.provisioner_client_id,
+        )
+    print(json.dumps(evidence, sort_keys=True))
     return 0
 
 

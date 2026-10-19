@@ -20,11 +20,17 @@ on:
         options:
           - plan
           - apply
+      break_fix:
+        description: "Use the explicitly authorized Demo break-fix control SHA with the trusted current-main release"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
   actions: read
   id-token: write
+  packages: write
 
 concurrency:
   group: goal006-${{ inputs.environment }}-deployment
@@ -36,6 +42,7 @@ jobs:
     outputs:
       release_run_id: ${{ steps.release.outputs.release_run_id }}
       release_sha: ${{ steps.release.outputs.release_sha }}
+      control_sha: ${{ steps.release.outputs.control_sha }}
       lease_expires_at: ${{ steps.dispatch.outputs.lease_expires_at }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -45,6 +52,7 @@ jobs:
         env:
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
           EXECUTION_MODE: ${{ inputs.execution }}
+          BREAK_FIX: ${{ inputs.break_fix }}
         run: |
           normalized=$(python3 scripts/goal006_dispatch_inputs.py \
             --environment "$TARGET_ENVIRONMENT" \
@@ -58,6 +66,7 @@ jobs:
           DISPATCH_ACTOR: ${{ github.actor }}
           DISPATCH_REF: ${{ github.ref }}
           EXECUTION_MODE: ${{ inputs.execution }}
+          BREAK_FIX: ${{ inputs.break_fix }}
           GH_TOKEN: ${{ github.token }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
@@ -65,10 +74,23 @@ jobs:
             dlai-sd|yk-dlaisd) ;;
             *) echo "Unauthorized deployment dispatcher" >&2; exit 1 ;;
           esac
-          test "$DISPATCH_REF" = "refs/heads/main"
           case "$EXECUTION_MODE" in plan|apply) ;; *) exit 1 ;; esac
           test "$TARGET_ENVIRONMENT" != prod || test "$EXECUTION_MODE" = plan
+          if [ "$BREAK_FIX" = true ]; then
+            test "$TARGET_ENVIRONMENT" = demo
+            case "$DISPATCH_REF" in
+              refs/heads/ib/532/wc124-*) ;;
+              *) echo "Break-fix execution requires the authorized WC-124 branch" >&2; exit 1 ;;
+            esac
+            control_sha="$GITHUB_SHA"
+          else
+            test "$DISPATCH_REF" = "refs/heads/main"
+            control_sha=
+          fi
           latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          if [ -z "$control_sha" ]; then
+            control_sha="$latest_main_sha"
+          fi
           release_run_id=$(gh api \
             "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yaml/runs?branch=main&event=push&status=success&per_page=100" \
             | jq -r --arg sha "$latest_main_sha" \
@@ -86,16 +108,42 @@ jobs:
             echo "No unexpired release artifact named $artifact_name found in CI run $release_run_id" >&2
             exit 1
           }
-          echo "release_run_id=$release_run_id" >> "$GITHUB_OUTPUT"
-          echo "release_sha=$latest_main_sha" >> "$GITHUB_OUTPUT"
+          {
+            echo "release_run_id=$release_run_id"
+            echo "release_sha=$latest_main_sha"
+            echo "control_sha=$control_sha"
+          } >> "$GITHUB_OUTPUT"
+
+  build-break-fix-runner:
+    if: inputs.break_fix
+    needs: authorize
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.authorize.outputs.control_sha }}
+
+      - name: Publish exact break-fix private runner
+        env:
+          CONTROL_SHA: ${{ needs.authorize.outputs.control_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER}/goal006-private-runner:sha-${CONTROL_SHA}"
+          echo "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker build --file infrastructure/runner/Dockerfile --tag "$image" .
+          docker push "$image"
 
   deploy:
-    needs: authorize
+    if: always() && needs.authorize.result == 'success' && (needs.build-break-fix-runner.result == 'success' || needs.build-break-fix-runner.result == 'skipped')
+    needs: [authorize, build-break-fix-runner]
     uses: ./.github/workflows/environment-deployment.yaml
     with:
       environment: ${{ inputs.environment }}
       release_run_id: ${{ fromJSON(needs.authorize.outputs.release_run_id) }}
       release_sha: ${{ needs.authorize.outputs.release_sha }}
+      control_sha: ${{ needs.authorize.outputs.control_sha }}
+      break_fix: ${{ inputs.break_fix }}
       apply: ${{ inputs.execution == 'apply' }}
       lease_expires_at: ${{ needs.authorize.outputs.lease_expires_at }}
       lifecycle_action: ${{ inputs.execution == 'apply' && 'activate' || 'plan' }}

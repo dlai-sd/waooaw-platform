@@ -301,7 +301,7 @@ resource "azurerm_user_assigned_identity" "database_provisioner" {
 }
 
 resource "azurerm_role_assignment" "database_provisioner_vault" {
-  count = var.persistent_state_enabled && var.database_bootstrap_admin_enabled ? 1 : 0
+  count = var.persistent_state_enabled && var.database_provisioner_vault_access_enabled ? 1 : 0
 
   scope                = azurerm_key_vault.environment.id
   role_definition_name = "Key Vault Secrets Officer"

@@ -19,3 +19,8 @@ variable "database_bootstrap_admin_enabled" {
   type    = bool
   default = true
 }
+
+variable "database_provisioner_vault_access_enabled" {
+  type    = bool
+  default = true
+}

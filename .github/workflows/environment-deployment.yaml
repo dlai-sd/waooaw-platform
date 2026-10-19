@@ -12,6 +12,12 @@ on:
       release_sha:
         required: true
         type: string
+      control_sha:
+        required: true
+        type: string
+      break_fix:
+        required: true
+        type: boolean
       apply:
         required: true
         type: boolean
@@ -68,7 +74,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ inputs.release_sha }}
+          ref: ${{ inputs.control_sha }}
 
       - name: Resolve active environment configuration
         id: config
@@ -93,19 +99,28 @@ jobs:
       RUNNER_RESOURCE_GROUP: ${{ needs.resolve-environment.outputs.runner_resource_group }}
       RUNNER_BROKER_JOB: ${{ needs.resolve-environment.outputs.runner_broker_job }}
     steps:
-      - name: Require trusted current main
+      - name: Require trusted release and authorized control SHA
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
-          test "$GITHUB_REF" = "refs/heads/main"
           latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           test '${{ inputs.release_sha }}' = "$latest_main_sha"
-          test "$GITHUB_SHA" = "$latest_main_sha"
+          test "$GITHUB_SHA" = '${{ inputs.control_sha }}'
+          if [ '${{ inputs.break_fix }}' = true ]; then
+            test '${{ inputs.environment }}' = demo
+            case "$GITHUB_REF" in
+              refs/heads/ib/532/wc124-*) ;;
+              *) exit 1 ;;
+            esac
+          else
+            test "$GITHUB_REF" = "refs/heads/main"
+            test '${{ inputs.control_sha }}' = "$latest_main_sha"
+          fi
 
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ inputs.release_sha }}
+          ref: ${{ inputs.control_sha }}
 
       - name: Download signed exact-seven tuple
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
@@ -321,7 +336,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.release_sha }}
+          ref: ${{ inputs.control_sha }}
 
       - name: Download pre-start cost evidence
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
@@ -652,34 +667,58 @@ jobs:
         id: database-transition
         run: |
           set -euo pipefail
+          resource_group="waooaw-${{ inputs.environment }}-rg"
           server_name="psql-waooaw-${{ inputs.environment }}-state"
-          bootstrap_required=true
-          password_auth_enabled=false
-          bootstrap_admin_enabled=true
+          bootstrap_identity_name="id-waooaw-${{ inputs.environment }}-db-bootstrap"
+          provisioner_identity_name="id-waooaw-${{ inputs.environment }}-db-provisioner"
+          vault_name="kv-waooaw-${{ inputs.environment }}"
+          server_exists=false
+          password_auth=Absent
+          bootstrap_admin_count=0
+          provisioner_vault_role_count=0
           server=$(az postgres flexible-server list \
-            --resource-group "waooaw-${{ inputs.environment }}-rg" \
+            --resource-group "$resource_group" \
             --query "[?name == '$server_name'] | [0]" \
             --output json)
           if [ "$server" != null ]; then
-            live_password_auth=$(jq -er '.authConfig.passwordAuth' <<< "$server")
-            case "$live_password_auth" in
-              Enabled)
-                bootstrap_required=false
-                password_auth_enabled=true
-                bootstrap_admin_enabled=false
-                ;;
-              Disabled) ;;
-              *)
-                echo "Unexpected PostgreSQL password authentication state: $live_password_auth" >&2
-                exit 1
-                ;;
-            esac
+            server_exists=true
+            password_auth=$(jq -er '.authConfig.passwordAuth' <<< "$server")
+            bootstrap_admin_count=$(az postgres flexible-server microsoft-entra-admin list \
+              --resource-group "$resource_group" \
+              --server-name "$server_name" \
+              --query "[?principalName == '$bootstrap_identity_name'] | length(@)" \
+              --output tsv)
+            provisioner_principal_id=$(az identity show \
+              --resource-group "$resource_group" \
+              --name "$provisioner_identity_name" \
+              --query principalId \
+              --output tsv)
+            vault_id=$(az keyvault show \
+              --resource-group "$resource_group" \
+              --name "$vault_name" \
+              --query id \
+              --output tsv)
+            provisioner_vault_role_count=$(az role assignment list \
+              --assignee-object-id "$provisioner_principal_id" \
+              --scope "$vault_id" \
+              --query "[?roleDefinitionName == 'Key Vault Secrets Officer'] | length(@)" \
+              --output tsv)
           fi
-          {
-            echo "bootstrap_required=$bootstrap_required"
-            echo "password_auth_enabled=$password_auth_enabled"
-            echo "bootstrap_admin_enabled=$bootstrap_admin_enabled"
-          } >> "$GITHUB_OUTPUT"
+          python3 scripts/wc124_database_transition.py \
+            --server-exists "$server_exists" \
+            --password-auth "$password_auth" \
+            --bootstrap-admin-count "$bootstrap_admin_count" \
+            --provisioner-vault-role-count "$provisioner_vault_role_count" \
+            > wc124-database-transition.json
+          jq -r '
+            to_entries[]
+            | select(.value != null)
+            | "\(.key)=\(.value)"
+          ' wc124-database-transition.json >> "$GITHUB_OUTPUT"
+          if [ "$(jq -r '.mutations_allowed' wc124-database-transition.json)" != true ]; then
+            jq -r '"WC-124 RECOVERY_HOLD: \(.hold_reason)"' wc124-database-transition.json >&2
+            exit 1
+          fi
 
       - name: Terraform foundation plan
         if: steps.foundation-cache.outputs.cache_hit != 'true'
@@ -690,6 +729,7 @@ jobs:
           set -euo pipefail
           password_auth_enabled='${{ steps.database-transition.outputs.password_auth_enabled || 'false' }}'
           bootstrap_admin_enabled='${{ steps.database-transition.outputs.bootstrap_admin_enabled || 'true' }}'
+          provisioner_vault_access_enabled='${{ steps.database-transition.outputs.provisioner_vault_access_enabled || 'true' }}'
           terraform init -input=false \
             -backend-config="resource_group_name=$TFSTATE_RESOURCE_GROUP" \
             -backend-config="storage_account_name=$TFSTATE_STORAGE_ACCOUNT" \
@@ -719,6 +759,7 @@ jobs:
           terraform plan -input=false -lock-timeout=5m \
             -var="postgresql_password_auth_enabled=$password_auth_enabled" \
             -var="database_bootstrap_admin_enabled=$bootstrap_admin_enabled" \
+            -var="database_provisioner_vault_access_enabled=$provisioner_vault_access_enabled" \
             -out=foundation.tfplan
           terraform show -json foundation.tfplan > foundation-plan.json
           python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
@@ -1033,7 +1074,7 @@ jobs:
           done
 
       - name: Create WC-124 database provisioner
-        if: inputs.apply && steps.database-transition.outputs.bootstrap_required == 'true'
+        if: inputs.apply && (steps.database-transition.outputs.provisioner_required == 'true' || steps.database-transition.outputs.revocation_verification_required == 'true')
         env:
           BOOTSTRAP_CLIENT_ID: ${{ steps.foundation.outputs.database_bootstrap_client_id }}
           BOOTSTRAP_IDENTITY_ID: ${{ steps.foundation.outputs.database_bootstrap_identity_id }}
@@ -1046,9 +1087,10 @@ jobs:
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
+          recovery_verification='${{ steps.database-transition.outputs.revocation_verification_required }}'
           job_name="job-${TARGET_ENVIRONMENT}-wc124-db-provisioner"
           repository="dlai-sd/goal006-private-runner"
-          release_tag="sha-${{ inputs.release_sha }}"
+          release_tag="sha-${{ inputs.control_sha }}"
           runner_digest=$(python3 scripts/goal006_ghcr_digest.py \
             --repository "$repository" \
             --reference "$release_tag")
@@ -1083,14 +1125,20 @@ jobs:
             --arg bootstrap_client_id "$BOOTSTRAP_CLIENT_ID" \
             --arg bootstrap_name "id-waooaw-${TARGET_ENVIRONMENT}-db-bootstrap" \
             --arg provisioner_client_id "$DATABASE_PROVISIONER_CLIENT_ID" \
+            --argjson recovery_verification "$recovery_verification" \
             '{
               name: $name,
               identity: {
                 type: "UserAssigned",
-                userAssignedIdentities: {
-                  ($bootstrap_identity_id): {},
-                  ($provisioner_identity_id): {}
-                }
+                userAssignedIdentities: (
+                  if $recovery_verification
+                  then {($provisioner_identity_id): {}}
+                  else {
+                    ($bootstrap_identity_id): {},
+                    ($provisioner_identity_id): {}
+                  }
+                  end
+                )
               },
               properties: {
                 environmentId: $environment_id,
@@ -1108,17 +1156,30 @@ jobs:
                     name: $name,
                     image: $image,
                     command: ["/usr/bin/python3"],
-                    args: [
-                      "/opt/waooaw/wc124_db_provisioner.py",
-                      "--environment", $target_environment,
-                      "--catalog", "/opt/waooaw/secret-catalog.json",
-                      "--vault-name", $vault_name,
-                      "--server-fqdn", $server_fqdn,
-                      "--pgbouncer-host", $pgbouncer_host,
-                      "--bootstrap-client-id", $bootstrap_client_id,
-                      "--bootstrap-name", $bootstrap_name,
-                      "--provisioner-client-id", $provisioner_client_id
-                    ],
+                    args: (
+                      if $recovery_verification
+                      then [
+                        "/opt/waooaw/wc124_db_handoff.py",
+                        "--environment", $target_environment,
+                        "--vault-name", $vault_name,
+                        "--server-fqdn", $server_fqdn,
+                        "--bootstrap-name", $bootstrap_name,
+                        "--provisioner-client-id", $provisioner_client_id,
+                        "--verify-only"
+                      ]
+                      else [
+                        "/opt/waooaw/wc124_db_provisioner.py",
+                        "--environment", $target_environment,
+                        "--catalog", "/opt/waooaw/secret-catalog.json",
+                        "--vault-name", $vault_name,
+                        "--server-fqdn", $server_fqdn,
+                        "--pgbouncer-host", $pgbouncer_host,
+                        "--bootstrap-client-id", $bootstrap_client_id,
+                        "--bootstrap-name", $bootstrap_name,
+                        "--provisioner-client-id", $provisioner_client_id
+                      ]
+                      end
+                    ),
                     resources: {cpu: 0.5, memory: "1Gi"}
                   }]
                 }
@@ -1137,11 +1198,13 @@ jobs:
           expected_identities=$(jq -cn \
             --arg bootstrap "$BOOTSTRAP_IDENTITY_ID" \
             --arg provisioner "$DATABASE_PROVISIONER_IDENTITY_ID" \
-            '[$bootstrap, $provisioner] | map(ascii_downcase) | sort')
+            --argjson recovery_verification "$recovery_verification" \
+            'if $recovery_verification then [$provisioner] else [$bootstrap, $provisioner] end
+             | map(ascii_downcase) | sort')
           test "$actual_identities" = "$expected_identities"
 
       - name: Run WC-124 database provisioner
-        if: inputs.apply && steps.database-transition.outputs.bootstrap_required == 'true'
+        if: inputs.apply && steps.database-transition.outputs.provisioner_required == 'true'
         env:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
@@ -1205,7 +1268,7 @@ jobs:
           done
 
       - name: Apply reviewed PostgreSQL Plan B compatibility
-        if: inputs.apply && steps.database-transition.outputs.bootstrap_required == 'true'
+        if: inputs.apply && steps.database-transition.outputs.plan_b_required == 'true'
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
         run: |
           set -euo pipefail
@@ -1218,6 +1281,7 @@ jobs:
           terraform plan -input=false -lock-timeout=5m \
             -var="postgresql_password_auth_enabled=true" \
             -var="database_bootstrap_admin_enabled=true" \
+            -var="database_provisioner_vault_access_enabled=true" \
             -out=foundation-plan-b.tfplan
           terraform show -json foundation-plan-b.tfplan > foundation-plan-b.json
           python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
@@ -1231,7 +1295,7 @@ jobs:
             --query authConfig.passwordAuth -o tsv)" = "Enabled"
 
       - name: Finalize WC-124 PostgreSQL authority handoff
-        if: inputs.apply && steps.database-transition.outputs.bootstrap_required == 'true'
+        if: inputs.apply && steps.database-transition.outputs.handoff_required == 'true'
         env:
           BOOTSTRAP_CLIENT_ID: ${{ steps.foundation.outputs.database_bootstrap_client_id }}
           BOOTSTRAP_IDENTITY_ID: ${{ steps.foundation.outputs.database_bootstrap_identity_id }}
@@ -1320,14 +1384,78 @@ jobs:
             sleep 10
           done
 
+      - name: Verify interrupted WC-124 handoff before revocation
+        if: inputs.apply && steps.database-transition.outputs.revocation_verification_required == 'true'
+        env:
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          job_name="job-${TARGET_ENVIRONMENT}-wc124-db-provisioner"
+          execution_name=$(az containerapp job start \
+            --name "$job_name" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query name -o tsv)
+          test -n "$execution_name"
+          capture_recovery_handoff_evidence() {
+            az containerapp job execution show \
+              --name "$job_name" \
+              --resource-group "$RESOURCE_GROUP" \
+              --job-execution-name "$execution_name" \
+              --output json > wc124-db-handoff-recovery-execution.json
+            az containerapp job logs show \
+              --name "$job_name" \
+              --resource-group "$RESOURCE_GROUP" \
+              --execution "$execution_name" \
+              --container "$job_name" \
+              --tail 300 \
+              --format text > wc124-db-handoff-recovery-evidence.log 2>&1 || true
+          }
+          for attempt in $(seq 1 180); do
+            status=$(az containerapp job execution show \
+              --name "$job_name" \
+              --resource-group "$RESOURCE_GROUP" \
+              --job-execution-name "$execution_name" \
+              --query properties.status -o tsv)
+            case "$status" in
+              Succeeded)
+                capture_recovery_handoff_evidence
+                grep -F '"remaining_bootstrap_dependencies": 0' wc124-db-handoff-recovery-evidence.log
+                grep -F '"remaining_bootstrap_sessions": 0' wc124-db-handoff-recovery-evidence.log
+                grep -F '"status": "verified-after-entra-bootstrap-removal"' wc124-db-handoff-recovery-evidence.log
+                break
+                ;;
+              Failed|Stopped)
+                capture_recovery_handoff_evidence
+                cat wc124-db-handoff-recovery-evidence.log >&2
+                echo "WC-124 recovery handoff verification failed with status: $status" >&2
+                exit 1
+                ;;
+              Processing|Running) ;;
+              *)
+                capture_recovery_handoff_evidence
+                echo "WC-124 recovery handoff verification returned unknown status: ${status:-<empty>}" >&2
+                exit 1
+                ;;
+            esac
+            if [ "$attempt" = 180 ]; then
+              capture_recovery_handoff_evidence
+              cat wc124-db-handoff-recovery-evidence.log >&2
+              echo "WC-124 recovery handoff verification timed out with status: $status" >&2
+              exit 1
+            fi
+            sleep 10
+          done
+
       - name: Remove WC-124 Entra bootstrap authority
-        if: inputs.apply && steps.database-transition.outputs.bootstrap_required == 'true'
+        if: inputs.apply && steps.database-transition.outputs.revocation_required == 'true'
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
         run: |
           set -euo pipefail
           terraform plan -input=false -lock-timeout=5m \
             -var="postgresql_password_auth_enabled=true" \
             -var="database_bootstrap_admin_enabled=false" \
+            -var="database_provisioner_vault_access_enabled=false" \
             -out=foundation-bootstrap-removal.tfplan
           terraform show -json foundation-bootstrap-removal.tfplan > foundation-bootstrap-removal.json
           python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
@@ -1797,7 +1925,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ inputs.release_sha }}
+          ref: ${{ inputs.control_sha }}
 
       - name: Azure login with cleanup identity
         uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2

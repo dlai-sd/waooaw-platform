@@ -72,6 +72,7 @@ def test_wc124_live_cli_contracts_match_the_pinned_runner() -> None:
     assert 'test "$actual_identities" = "$expected_identities"' in authority_handoff
     assert '"remaining_bootstrap_dependencies": 0' in authority_handoff
     assert '-var="database_bootstrap_admin_enabled=false"' in bootstrap_removal
+    assert '-var="database_provisioner_vault_access_enabled=false"' in bootstrap_removal
     assert "microsoft-entra-admin list" in bootstrap_removal
 
 
@@ -93,9 +94,27 @@ def test_database_transition_state_fails_closed_on_azure_errors() -> None:
     )[0]
 
     assert "az postgres flexible-server list" in transition
-    assert "jq -er '.authConfig.passwordAuth'" in transition
+    assert "microsoft-entra-admin list" in transition
+    assert "az role assignment list" in transition
+    assert "wc124_database_transition.py" in transition
+    assert "RECOVERY_HOLD" in transition
     assert "2>/dev/null" not in transition
-    assert "Unexpected PostgreSQL password authentication state" in transition
+
+
+def test_database_transition_reconciles_revocation_only_after_independent_handoff_verification() -> None:
+    foundation_plan = WORKFLOW.split("      - name: Terraform foundation plan", 1)[1].split(
+        "      - name: Terraform foundation apply", 1
+    )[0]
+    recovery = WORKFLOW.split("      - name: Verify interrupted WC-124 handoff before revocation", 1)[1].split(
+        "      - name: Remove WC-124 Entra bootstrap authority", 1
+    )[0]
+
+    assert "database_provisioner_vault_access_enabled" in foundation_plan
+    assert "revocation_verification_required" in WORKFLOW
+    assert "--verify-only" in WORKFLOW
+    assert '"remaining_bootstrap_dependencies": 0' in recovery
+    assert '"remaining_bootstrap_sessions": 0' in recovery
+    assert '"status": "verified-after-entra-bootstrap-removal"' in recovery
 
 
 def test_wc124_container_app_job_names_fit_azure_limit() -> None:
@@ -322,8 +341,8 @@ def test_private_seeder_retains_diagnostics_before_deletion() -> None:
 
 
 def test_job_polling_rejects_empty_and_unknown_statuses() -> None:
-    assert WORKFLOW.count("Processing|Running)") == 7
-    assert WORKFLOW.count("returned unknown status: ${status:-<empty>}") == 7
+    assert WORKFLOW.count("Processing|Running)") == 8
+    assert WORKFLOW.count("returned unknown status: ${status:-<empty>}") == 8
 
 
 def test_provisioner_replacement_waits_for_confirmed_deletion() -> None:
@@ -367,6 +386,8 @@ def test_environment_deployment_cleanup_is_independent_and_retains_evidence() ->
     assert "if: always() && hashFiles('cleanup-record.json') != ''" in cleanup
 
 
-def test_demo_deployment_binds_broker_and_cleanup_to_release_sha() -> None:
-    assert WORKFLOW.count("ref: ${{ inputs.release_sha }}") >= 2
+def test_demo_deployment_binds_broker_and_cleanup_to_authorized_control_sha() -> None:
+    assert WORKFLOW.count("ref: ${{ inputs.control_sha }}") >= 2
     assert "test '${{ inputs.release_sha }}' = \"$latest_main_sha\"" in WORKFLOW
+    assert 'test "$GITHUB_SHA" = \'${{ inputs.control_sha }}\'' in WORKFLOW
+    assert "refs/heads/ib/532/wc124-*" in WORKFLOW

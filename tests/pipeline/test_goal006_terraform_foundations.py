@@ -915,7 +915,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "--transition wc124-plan-b" in workflow
     assert "secret-seeder-console.log" in workflow
     assert workflow.index("capture_seeder_evidence()") < workflow.index("Delete private credential seeder")
-    assert workflow.count("if: inputs.apply") == 22
+    assert workflow.count("if: inputs.apply") == 23
     assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
     assert '--context "external_environment=$external_environment"' in workflow
     assert "if: steps.foundation-cache.outputs.cache_hit != 'true'" in workflow
@@ -1133,6 +1133,10 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
     assert "dlai-sd|yk-dlaisd" in deploy
     assert '*) echo "Unauthorized deployment dispatcher" >&2; exit 1 ;;' in deploy
     assert 'test "$DISPATCH_REF" = "refs/heads/main"' in deploy
+    assert "refs/heads/ib/532/wc124-*" in deploy
+    assert 'test "$TARGET_ENVIRONMENT" = demo' in deploy
+    assert "build-break-fix-runner:" in deploy
+    assert "goal006-private-runner:sha-${CONTROL_SHA}" in deploy
     assert "actions/workflows/ci.yaml/runs?branch=main&event=push&status=success" in deploy
     assert 'artifact_name="goal006-exact-seven-release-$latest_main_sha"' in deploy
     assert 'test -n "$release_run_id"' in deploy

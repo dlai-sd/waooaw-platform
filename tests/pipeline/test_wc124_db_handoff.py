@@ -88,6 +88,92 @@ def test_handoff_refuses_to_remove_bootstrap_with_dependencies(
         )
 
 
+def test_completed_handoff_verifies_owners_dependencies_and_sessions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    logins: list[str] = []
+    queries: list[tuple[str, str]] = []
+    monkeypatch.setattr(handoff, "azure_login", logins.append)
+    monkeypatch.setattr(handoff, "read_breakglass_password", lambda _vault: "sealed-password")
+
+    def query(
+        _host: str,
+        _user: str,
+        database: str,
+        _password: str,
+        sql: str,
+    ) -> str:
+        queries.append((database, sql))
+        if "pg_shdepend" in sql:
+            return "0\t0\n"
+        return dict(handoff.DATABASE_OWNERS["demo"])[database] + "\n"
+
+    monkeypatch.setattr(handoff, "query_psql", query)
+
+    evidence = handoff.verify_completed_handoff(
+        "demo",
+        "kv-waooaw-demo",
+        "psql-waooaw-demo-state.postgres.database.azure.com",
+        "id-waooaw-demo-db-bootstrap",
+        "provisioner-client",
+    )
+
+    assert logins == ["provisioner-client"]
+    assert evidence == {
+        "schema": "waooaw.wc124-db-handoff/v1",
+        "environment": "demo",
+        "databases_verified": 4,
+        "remaining_bootstrap_dependencies": 0,
+        "remaining_bootstrap_sessions": 0,
+        "status": "verified-after-entra-bootstrap-removal",
+    }
+    assert {database for database, sql in queries if "pg_get_userbyid" in sql} == {
+        "waooaw_application",
+        "waooaw_keycloak",
+        "waooaw_temporal",
+        "waooaw_temporal_visibility",
+    }
+    assert any("pg_stat_activity" in sql for _database, sql in queries)
+
+
+@pytest.mark.parametrize(
+    ("evidence", "message"),
+    [
+        ("2\t0\n", "still has 2 PostgreSQL dependencies"),
+        ("0\t1\n", "still has 1 active PostgreSQL sessions"),
+    ],
+)
+def test_completed_handoff_rejects_surviving_bootstrap_authority(
+    monkeypatch: pytest.MonkeyPatch,
+    evidence: str,
+    message: str,
+) -> None:
+    monkeypatch.setattr(handoff, "azure_login", lambda _client_id: None)
+    monkeypatch.setattr(handoff, "read_breakglass_password", lambda _vault: "sealed-password")
+
+    def query(
+        _host: str,
+        _user: str,
+        database: str,
+        _password: str,
+        sql: str,
+    ) -> str:
+        if "pg_shdepend" in sql:
+            return evidence
+        return dict(handoff.DATABASE_OWNERS["uat"])[database] + "\n"
+
+    monkeypatch.setattr(handoff, "query_psql", query)
+
+    with pytest.raises(RuntimeError, match=message):
+        handoff.verify_completed_handoff(
+            "uat",
+            "kv-waooaw-uat",
+            "psql-waooaw-uat-state.postgres.database.azure.com",
+            "id-waooaw-uat-db-bootstrap",
+            "provisioner-client",
+        )
+
+
 def test_breakglass_secret_must_be_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         handoff,
