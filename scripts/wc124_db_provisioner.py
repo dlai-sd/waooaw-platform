@@ -416,11 +416,20 @@ def write_secrets(
     evidence: list[dict[str, str]] = []
     for spec in specs:
         record = records[spec.secret_id]
+        status = "preserved"
+        value: str | None = None
         if record is None:
             if spec.value_format == "authfile":
                 value = authfile_value(passwords)
             else:
                 value = secret_value(spec, passwords[spec.role], pgbouncer_host)
+            status = "created"
+        elif spec.value_format in {"url", "npgsql"}:
+            value = secret_value(spec, passwords[spec.role], pgbouncer_host)
+            if record.get("value") != value:
+                status = "updated"
+        if status in {"created", "updated"}:
+            assert value is not None
             record = json.loads(
                 run(
                     [
@@ -444,6 +453,7 @@ def write_secrets(
                     ]
                 )
             )
+        if value is not None:
             del value
         evidence.append(
             {
@@ -452,7 +462,7 @@ def write_secrets(
                 "database": spec.database,
                 "vault_name": vault_name,
                 "version_id": record["id"].rsplit("/", 1)[-1],
-                "status": "preserved" if records[spec.secret_id] is not None else "created",
+                "status": status,
             }
         )
     return evidence

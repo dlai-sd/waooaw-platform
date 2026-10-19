@@ -21,6 +21,7 @@ from wc124_db_provisioner import (
     run,
     secret_value,
     validate_catalog,
+    write_secrets,
 )
 
 
@@ -116,6 +117,105 @@ def test_pgbouncer_authfile_contains_the_exact_distinct_credential_set() -> None
     assert value.count("\n") == 17
     for role, password in passwords.items():
         assert f'"{role}" "{password}"' in value
+
+
+def test_existing_url_secret_is_updated_to_canonical_host_without_rotating_password(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    spec = next(spec for spec in environment_specs("demo") if spec.secret_id == "db-billing-migration")
+    password = "existing-billing-password"
+    records = {
+        spec.secret_id: {
+            "id": "https://example.vault.azure.net/secrets/db-billing-migration/old-version",
+            "value": secret_value(spec, password, "obsolete.internal.example"),
+        }
+    }
+    captured: list[str] = []
+
+    def capture(command: list[str], **_: object) -> str:
+        captured.extend(command)
+        return json.dumps(
+            {"id": "https://example.vault.azure.net/secrets/db-billing-migration/new-version"}
+        )
+
+    monkeypatch.setattr("wc124_db_provisioner.run", capture)
+
+    evidence = write_secrets(
+        (spec,),
+        {spec.role: password},
+        records,
+        "example",
+        "ca-demo-pgbouncer",
+        "grant-digest",
+    )
+
+    value_index = captured.index("--value") + 1
+    assert captured[value_index] == secret_value(spec, password, "ca-demo-pgbouncer")
+    assert password_from_secret(spec, captured[value_index]) == password
+    assert evidence == [
+        {
+            "logical_secret_id": spec.secret_id,
+            "role": spec.role,
+            "database": spec.database,
+            "vault_name": "example",
+            "version_id": "new-version",
+            "status": "updated",
+        }
+    ]
+
+
+def test_existing_canonical_url_secret_is_preserved(monkeypatch: pytest.MonkeyPatch) -> None:
+    spec = next(spec for spec in environment_specs("demo") if spec.secret_id == "db-billing-migration")
+    password = "existing-billing-password"
+    existing = secret_value(spec, password, "ca-demo-pgbouncer")
+
+    def unexpected_write(*_: object, **__: object) -> str:
+        raise AssertionError("canonical secret must not be rewritten")
+
+    monkeypatch.setattr("wc124_db_provisioner.run", unexpected_write)
+
+    evidence = write_secrets(
+        (spec,),
+        {spec.role: password},
+        {
+            spec.secret_id: {
+                "id": "https://example.vault.azure.net/secrets/db-billing-migration/current-version",
+                "value": existing,
+            }
+        },
+        "example",
+        "ca-demo-pgbouncer",
+        "grant-digest",
+    )
+
+    assert evidence[0]["status"] == "preserved"
+    assert evidence[0]["version_id"] == "current-version"
+
+
+def test_existing_password_secret_is_not_rewritten_for_host_change(monkeypatch: pytest.MonkeyPatch) -> None:
+    spec = next(spec for spec in environment_specs("demo") if spec.value_format == "password")
+    password = "existing-password"
+
+    def unexpected_write(*_: object, **__: object) -> str:
+        raise AssertionError("raw password secret must not be rewritten")
+
+    monkeypatch.setattr("wc124_db_provisioner.run", unexpected_write)
+
+    evidence = write_secrets(
+        (spec,),
+        {spec.role: password},
+        {
+            spec.secret_id: {
+                "id": f"https://example.vault.azure.net/secrets/{spec.vault_name}/current-version",
+                "value": password,
+            }
+        },
+        "example",
+        "ca-demo-pgbouncer",
+        "grant-digest",
+    )
+
+    assert evidence[0]["status"] == "preserved"
 
 
 def test_principal_handoff_reassigns_schema_objects_to_nologin_owners() -> None:
