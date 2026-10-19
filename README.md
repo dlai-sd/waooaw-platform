@@ -297,6 +297,15 @@ environment-isolated Azure Container Apps infrastructure. Environment configurat
 Key Vault references remain external to images. Deployment fails closed on authorization, release,
 cost, plan, security, health, cleanup or evidence failure.
 
+**Canonical deployment handbook and FAQ:**
+
+→ `architecture/reference/pipeline/azure-deployment-topology.md#deployment-operator-handbook`
+
+Use that handbook for deployment strategy, component boundaries, tool ownership, identity and
+database authority, exact workflow sequencing, Terraform exit codes, plan provenance, migration
+ordering, evidence requirements, failure diagnosis, operator checklists, and next-agent handoff.
+Do not infer deployment behavior from an isolated workflow log or an older run.
+
 This section is an operator routing summary, not a second cloud specification. The normative design,
 environment invariants, private-runner topology, promotion and rollback contract are owned only by
 `architecture/reference/pipeline/azure-deployment-topology.md`. Current execution status is owned by
@@ -445,6 +454,8 @@ The Goal Orchestrator (INST-013) is the AI institution that coordinates all auto
 | Coding standards | `standards/CODING-STANDARDS.md` |
 | DB schema (all migrations) | `infrastructure/postgres/init/` |
 | Terraform (all environments) | `infrastructure/terraform/` |
+| **Deployment handbook and FAQ** | `architecture/reference/pipeline/azure-deployment-topology.md#deployment-operator-handbook` |
+| Deployment workflows | `.github/workflows/deploy.yaml` and `.github/workflows/environment-deployment*.yaml` |
 | PMO program plan | `pmo/PROGRAM-PLAN.md` |
 | Founder actions outstanding | `security/FOUNDER-ACTIONS.md` |
 | Simulation walkthrough (DNA) | `simulation/SIM-018-constitutional-dna-inheritance-walkthrough.md` |

@@ -4,6 +4,305 @@
 
 This contract turns the accepted GOAL-006 constitutional, security, data, and platform decisions into one deployable Azure topology. Infrastructure and workflows MUST implement this contract before another full Demo apply.
 
+## Deployment Operator Handbook
+
+This section is the canonical operational entry point for deployment strategy, architecture,
+tooling, sequencing, evidence, recovery, and frequently asked questions. It explains the executable
+contracts without replacing them. When prose and executable behavior differ, deployment stops until
+the contradiction is resolved; an operator must not choose the more permissive interpretation.
+
+### Source-of-truth hierarchy
+
+| Question | Authoritative source |
+|---|---|
+| Is deployment currently authorized? | `constitution/PROJECT_STATE.md`, the assigned Work Contract, the GitHub environment, and the current Founder instruction |
+| What architecture is permitted? | This document, ratified claims, accepted ADRs, and the environment's approved component contracts |
+| What does the deployment execute? | `.github/workflows/deploy.yaml` and its reusable workflows |
+| Which release is deployable? | Successful current-main CI release evidence and `scripts/goal006_registry_manifest.py` |
+| Which infrastructure does Terraform own? | `infrastructure/terraform/phase2/environments/<environment>/` and its remote state |
+| Which runner infrastructure is permitted? | `infrastructure/deployment-stacks/goal006-runner/` and its reviewed bootstrap manifest |
+| What happened in a particular run? | GitHub Actions logs plus uploaded plan, policy, provenance, transition, migration, cleanup, and verification evidence |
+| What is live now? | Azure read-only inventory and the current `constitution/PROJECT_STATE.md` checkpoint |
+
+`G5 CLEAR`, an approved Work Contract, a successful plan, or an earlier accepted run satisfies only
+its own gate. None of them independently authorizes a new cloud mutation.
+
+### Deployment strategy
+
+1. **Build once, promote unchanged.** CI builds, scans, attests, and publishes one exact-seven
+   release tuple. Deployment promotes immutable digests; it never rebuilds application images.
+2. **Separate release from control logic.** Normal deployment uses trusted workflow logic from
+   `main`. A Founder-authorized break-fix may use an exact control SHA while still deploying the
+   trusted current-main release SHA. Both identities are recorded and verified.
+3. **Plan before mutation.** Foundation, dormant workload, and application activation each produce
+   saved Terraform plans. Policy and provenance bind authorization to the exact plan binary, JSON
+   representation, state lineage/serial, backend, environment, release, workflow run, and attempt.
+4. **Dependencies before applications.** Network, identity, state, secrets, PostgreSQL, PgBouncer,
+   Keycloak, Temporal, Redis, and migrations become ready before exact-seven applications activate.
+5. **Verify independently.** Deployment success is not acceptance. A distinct environment-scoped
+   OIDC identity runs live inventory, revision, endpoint, domain, and functional verification.
+6. **Clean up even on failure.** Private runner execution, registration, broker tokens, temporary
+   federation, and transition-only authority are removed by always-run cleanup paths.
+7. **Fail closed.** Unknown transition state, stale release, plan error, drift on a cache hit,
+   mismatched provenance, policy failure, migration failure, cleanup uncertainty, or failed
+   verification prevents success and URL publication.
+
+### Release and runtime component model
+
+The exact-seven release tuple contains only first-party application workloads:
+
+| Release member | Azure Container App | Responsibility |
+|---|---|---|
+| `constitutional-engine` | `ca-<environment>-constitutional-engine` | Constitutional validation and evidence enforcement |
+| `business-platform` | `ca-<environment>-business-platform` | Customer, relationship, employment, and institutional APIs |
+| `professional-runtime` | `ca-<environment>-professional-runtime` | Digital-professional execution runtime |
+| `ai-runtime` | `ca-<environment>-ai-runtime` | Governed model and inference runtime |
+| `web` | `ca-<environment>-web` | Customer and steward web experience |
+| `billing-engine` | `ca-<environment>-billing-engine` | Billing authority, integrity, and reconciliation |
+| `agent-runtime-adapter-digital-marketing` | `ca-<environment>-dma` | Digital Marketing Agent runtime adapter |
+
+The following are pinned platform dependencies, not additional release members:
+
+| Dependency | Placement | Deployment role |
+|---|---|---|
+| Identity edge | Internal-to-public constrained proxy | Exposes only approved Keycloak/OIDC paths |
+| Keycloak | Private ACA application | Identity provider and realm authority |
+| Temporal | Demo ACA dependency; later-environment contract per ADR-015 | Durable workflow execution |
+| Authentication Redis | Private ACA dependency | Reconstructible abuse-limiter counters only |
+| PostgreSQL Flexible Server | Private environment database | Durable governed state |
+| PgBouncer | Private ACA TCP service | Only application database route |
+| Migration jobs | ACA manual Jobs | Keycloak, Temporal, and Billing schema transitions |
+| Verification job | ACA manual Job | Private-context post-deployment checks |
+
+### Tooling map
+
+| Tool or script | Purpose | Security/evidence boundary |
+|---|---|---|
+| GitHub Actions | Orchestration, protected environments, OIDC, artifacts | Repository and environment policies determine who may execute |
+| GHCR | Immutable application and runner images | Digests and attestations are verified before deployment |
+| Azure CLI | Azure control-plane orchestration and read-only evidence | Runs only under the identity assigned to that step |
+| Terraform `1.9.8` | Foundation and workload planning/apply | Uses remote private state, saved plans, and no provider auto-registration |
+| `goal006_tfplan_policy.py` | Plan policy enforcement | Emits PASS evidence bound to the exact plan JSON |
+| `goal006_plan_provenance.py` | Plan provenance | Binds environment, release, run, backend, state, policy, JSON, and binary digests |
+| `wc124_deployment_bundle.py` | Activation authorization bundle | Requires current validated foundation and workload evidence |
+| `wc124_database_transition.py` | Database authority state machine | Unknown or inconsistent live facts produce `RECOVERY_HOLD` |
+| `wc124_db_provisioner.py` | Roles, grants, credentials, databases, additive migrations | No secret values in logs; temporary authority only |
+| `wc124_db_handoff.py` | Ownership and recovery verification | Proves ownership, sessions, dependencies, and revocation readiness |
+| `goal006_bind_demo_managed_certificates.sh` | Idempotent Demo TLS binding | Verifies all required custom domains reach `SniEnabled` |
+| `goal006_verify_deployment.sh` | Independent deployment verification | Runs through the separate verification identity and private job |
+| Actionlint, pytest, HCL parser, shell checks | Deterministic local validation | Required before paying for another cloud execution |
+
+### Identity and authority boundaries
+
+| Identity | Permitted authority | Explicitly not permitted |
+|---|---|---|
+| Control-plane OIDC | Resolve configuration, broker/runner control, complete foundation plan/apply, shared state-account RBAC and runner networking | Workload secret data-plane use |
+| Environment deployment OIDC | Environment workload resources, workload Terraform, environment Key Vault references | Bootstrap administrator or unrestricted subscription authority |
+| Database bootstrap identity | Temporary PostgreSQL Microsoft Entra administrator lifecycle | Persistent application access |
+| Database provisioner identity | Temporary database/role/credential provisioning and exact Key Vault secret writes | Remaining after handoff |
+| Cleanup identity | Runner/broker cleanup and evidence upload | Deployment or workload mutation |
+| Independent verification OIDC | Read/execute only the approved verification surface | Deployment mutation |
+| Workload managed identities | One service and purpose-specific secret/data boundary | Shared multipurpose credentials or cross-environment access |
+
+Terraform backend access and Azure resource-management authority are independent controls. A
+principal that can read state does not automatically have deployment authority, and a deployment
+principal does not automatically have state data-plane access.
+
+### End-to-end execution sequence
+
+The GitHub UI may materialize downstream jobs as `queued` before their dependencies complete.
+`needs` still enforces the order below; a queued job with no runner and no steps has not executed.
+
+| Phase | Executable sequence | Required result |
+|---|---|---|
+| 1. Entry authorization | `deploy.yaml` resolves environment, execution mode, trusted release SHA/run, control SHA, lease, and normal versus break-fix caller | Exact bounded authority or stop |
+| 2. Break-fix runner image | Only for authorized break-fix: build and push the private-runner image at the exact control SHA | Immutable runner image available |
+| 3. Environment resolution | Resolve reviewed configuration, runner names/labels, state paths, cleanup evidence, and environment outputs | One internally consistent environment contract |
+| 4. Broker/start path | Verify exact-seven tuple and attestations, verify broker blueprint, log in with control-plane identity, enforce cost, start ephemeral private runner | Correlated runner execution ready |
+| 5. Private-runner authorization | Verify caller/ref, pinned Terraform, OIDC subscription, provider allowlist, budget, cost, backend, and configuration | Private deployment may proceed |
+| 6. WC-124 transition resolution | Read password-auth state, bootstrap administrator count, provisioner vault roles, secret metadata, and accepted digest | `PLAN_A`, `PLAN_B_ENABLED`, `REVOCATION_PENDING`, `REVOKED`, or fail-closed `RECOVERY_HOLD` |
+| 7. Foundation plan | Refresh complete foundation state, create a current saved plan, apply detailed exit handling, policy, and provenance | Exit `0` or authorized `2`; exact evidence PASS |
+| 8. Foundation apply | Apply only the saved and validated plan; resolve environment identities, PostgreSQL, Key Vault, network, and verification outputs | Foundation converged |
+| 9. Credential and database handoff | Inventory credentials, seed only missing values, provision databases/roles, reconcile metadata, verify ownership, remove bootstrap/provisioner authority | Zero bootstrap administrators and zero provisioner Key Vault roles |
+| 10. Dormant workload plan | Generate external configuration, set application activation false, import only accepted live resources, plan, policy-check, and provenance-bind | Current workload authorization evidence |
+| 11. Activation bundle | Validate foundation and workload plan binaries, JSON, provenance, policy, release, environment, workflow, backend, and state identity | Internal WC-124 activation bundle PASS |
+| 12. Dormant workload apply | Create dependencies, migration jobs, identities, secret references, and applications at zero replicas | No application traffic yet |
+| 13. Migrations | Run Keycloak; run Demo Temporal; run Billing through PgBouncer; poll exact execution names to terminal success | All required executions `Succeeded` |
+| 14. Activation plan/apply | Set application activation true, create a fresh detailed-exit plan, policy and provenance record, recalculate and compare provenance immediately before apply | Only exact authorized activation plan applied |
+| 15. TLS and deployment evidence | Bind Demo managed certificates; verify live inventory and transition/cleanup evidence; upload retained artifacts | Deployment engine success |
+| 16. Always-run cleanup | Stop private runner, remove registration/broker material, prove zero active executions, revoke temporary cleanup federation | No residual runner or temporary trust |
+| 17. Independent verification | Validate trusted caller/control SHA, trusted release, Azure inventory, job, revision, domain, and application probes under verification identity | Independent PASS |
+| 18. Publication | Publish the verified environment URL only after deploy and verification succeed | User-visible success |
+
+### Terraform plan and cache semantics
+
+| Detailed exit code | Meaning | Required behavior |
+|---|---|---|
+| `0` | Plan succeeded with no changes | Produce plan, policy, and provenance evidence; continue according to mode |
+| `2` | Plan succeeded and detected changes | Treat as drift/change, never as automatic apply permission; require the relevant authorization and policy PASS |
+| `1` or any other code | Planning failed | Stop; do not create success-shaped evidence |
+
+A foundation cache may avoid an unnecessary apply, but it may never replace a current plan. Drift
+detected on a cache hit stops before apply. File existence alone is insufficient: every consumed
+plan must match the intended environment, release SHA/run, workflow run/attempt, Terraform root,
+backend key, state lineage/serial, policy result, plan JSON digest, and saved-plan binary digest.
+
+### Database and migration sequence
+
+1. Applications use `ca-<environment>-pgbouncer:5432` for same-ACA-environment TCP service
+   discovery. The internal-ingress FQDN is not the application connection hostname.
+2. Keycloak and Temporal migration jobs use their approved direct PostgreSQL migration contracts.
+   Application runtime traffic continues through PgBouncer.
+3. The Keycloak realm import substitutes every secret placeholder inside the job, checks that no
+   `${NAME}` placeholder remains, and then imports. Secrets stay in Key Vault-backed ACA secret
+   references and are never written to logs or Terraform state.
+4. Each application migrator receives only its no-login owner role and a database-local default
+   role. Runtime roles do not acquire DDL authority.
+5. Billing writes its immutable migration ledger in the governed `billing` schema and runs through
+   PgBouncer using the exact `db-billing-migration` credential.
+6. Migration job names are producer-consumer contracts:
+   `job-<environment>-keycloak-migration`,
+   `job-<environment>-temporal-migration`, and
+   `job-<environment>-wc124-billing-migration`.
+7. A timeout, `Failed`, `Stopped`, unknown status, digest mismatch, unresolved secret placeholder,
+   ownership error, or connection error blocks application activation.
+
+### Evidence inventory
+
+| Evidence | What it proves |
+|---|---|
+| Release verification and registry manifest | Exact current-main release run, SHA, seven digests, and attestations |
+| Foundation/workload/activation plan JSON and binaries | Exact proposed infrastructure change |
+| Policy result | The corresponding plan passed executable policy |
+| Plan provenance | Plan, state, backend, environment, release, and workflow binding |
+| WC-124 activation bundle | Both prerequisite plans were current and mutually consistent |
+| Transition and handoff records | Database authority moved to the intended final state |
+| Migration execution record | Exact job/execution/status for required migrations |
+| Runner start/cleanup correlation evidence | The runner that started is the runner that was removed |
+| Temporary federation inventory | No break-fix cleanup trust remains |
+| TLS output | Required custom domains have managed SNI binding |
+| Independent verification output | Live deployment matches release and functional contracts |
+
+GitHub logs aid diagnosis but are not the sole durable constitutional evidence. Secret values,
+access tokens, connection URLs containing credentials, and unredacted Terraform sensitive values
+must never be logged or uploaded.
+
+### Failure diagnosis order
+
+Do not rerun the full workflow immediately. Find the first causal failure, then trace the exact
+producer-consumer contract and execute the smallest real component in its Azure context.
+
+1. Confirm run SHA, release SHA, control SHA, environment, execution mode, and caller authorization.
+2. Identify whether the job has a runner. `queued` plus `runner_name: null` means scheduler wait;
+   queued downstream records may only be dependency placeholders.
+3. Inspect the first failed step, not the final skipped job.
+4. Compare resource names and outputs between Terraform producers and workflow consumers.
+5. Validate effective configuration from inside the failing ACA job without printing secrets.
+6. For network failures, test destination parsing, DNS, then TCP from the same ACA environment.
+7. For Terraform, record the detailed exit code and validate plan provenance before discussing
+   apply.
+8. For database failures, separate DNS/TCP, PgBouncer reachability, authentication, role/ownership,
+   schema, and migration-content failures.
+9. Run the corrected component directly where authority permits; only then spend another full
+   deployment run.
+10. Preserve the failed run URL, job/execution ID, exact error, live facts, fix, and successful
+    component evidence for the PR.
+
+### Operator checklist
+
+Before execution:
+
+- Bootstrap and office authority are current for the conversation.
+- The current Work Contract and Founder authorization cover the environment and mutation.
+- The branch, release, control SHA, and break-fix mode match the authorized path.
+- Targeted tests, workflow lint, Terraform/HCL checks, and producer-consumer contract tests pass.
+- No unresolved blocker, stale plan, destructive change, or unexplained drift remains.
+
+Before declaring success:
+
+- Every required migration reached `Succeeded`.
+- Application activation used the exact saved plan whose policy/provenance was revalidated.
+- All target apps and revisions are running at the intended digests.
+- Managed TLS and custom domains are healthy where applicable.
+- Independent verification passed.
+- Bootstrap administrator, provisioner Key Vault roles, temporary federation, runner executions,
+  registrations, and broker tokens are all at their accepted final counts.
+- Evidence artifacts are uploaded and retained.
+- The PR records exact commands/results and the final Actions run URL.
+
+### Frequently asked questions
+
+**Why are several jobs shown as queued before `authorize` finishes?**
+
+GitHub creates the workflow graph up front. `needs` still enforces execution order. Jobs with no
+runner and no started steps have not run.
+
+**Why can an `ubuntu-latest` job remain queued?**
+
+If no repository run holds the concurrency group and `runner_name` is null, the run is waiting at
+GitHub's hosted-runner scheduler or account-capacity layer. WAOOAW private runner provisioning has
+not started.
+
+**Does Terraform exit code `2` mean failure?**
+
+No. It means a valid plan detected changes. It also does not authorize apply.
+
+**Can a cache hit omit the foundation plan?**
+
+No. Every apply path needs a current plan. Cache controls apply necessity, not evidence production.
+
+**Why keep release SHA and control SHA separate?**
+
+The release SHA identifies immutable application artifacts from trusted current-main CI. The
+control SHA identifies the exact workflow/scripts executing an explicitly authorized break-fix.
+
+**Why not connect applications to PostgreSQL directly?**
+
+The accepted application route is PgBouncer with environment-specific credentials and connection
+budgets. Migration-only direct routes are separately bounded.
+
+**Why does ACA use the short PgBouncer name?**
+
+Same-environment custom TCP service discovery is proven through
+`ca-<environment>-pgbouncer:5432`. The internal-ingress FQDN resolved but was not reachable for
+this path during WC-124 qualification.
+
+**Can a failed migration be ignored if applications are healthy?**
+
+No. Dormant applications may exist, but activation is blocked until every required migration
+succeeds.
+
+**Can deployment and verification use the same identity?**
+
+No. Verification is deliberately independent and cannot inherit deployment mutation authority.
+
+**Can evidence be added to a PR after it opens?**
+
+Yes. Update the PR body or add an evidence comment with the exact run URL, SHA, commands, and
+results. Never change a `PENDING` result to `PASS` before the run reaches terminal success.
+
+**When is a PR ready for Founder review?**
+
+After scoped author review, required tests and prechecks pass, the branch is pushed, the PR body is
+prepared against the authoritative remote HEAD, deployment evidence is current, and no required
+result remains pending. The author never merges the PR.
+
+### Next-agent handoff
+
+A new deployment agent should be able to continue using only:
+
+1. `constitution/BOOTSTRAP.md`, `README.md`, and `constitution/PROJECT_STATE.md` in the required
+   bootstrap order;
+2. this handbook;
+3. the assigned Work Contract or issue;
+4. the exact GitHub Actions run and current branch diff;
+5. only the scripts, Terraform roots, and tests that own the failing phase.
+
+The handoff must state: role, authority, environment, branch, HEAD, trusted release SHA/run, control
+SHA, transition state, last successful phase, first causal failure, Azure component evidence,
+remaining work, tests executed, uncommitted files to exclude, PR status, and whether any watcher or
+background process remains active.
+
 ## Skill 17 Cloud Delivery Entry Point
 
 This document is the canonical implementation design for Platform IT Expert Skill 17 cloud-delivery
@@ -107,28 +406,18 @@ retained only as historical traceability for the sidecar implementation that mus
 
 ### CB-019 Web Session Database Route - Historical Demo Placement Superseded 2026-10-16
 
-The Founder binds Demo to a PostgreSQL container image, not a standalone managed instance, and
-accepts that every Demo deployment wipes Demo data. The proposed amendment in CSA-AUTH-001 Section
-12.7.1 places that container in one
-`ca-demo-application-database` dependency with replica-local `EmptyDir` and pinned PgBouncer; only
-PgBouncer has internal TCP ingress at `pgbouncer.db.demo.waooaw.internal:6432`.
-
-For UAT, the amendment selects persistent Flexible Server `psql-uat-application`, database
-`waooaw_application`, and dedicated infrastructure Container App `ca-uat-pgbouncer`. Web reaches
-only `pgbouncer.db.uat.waooaw.internal:6432` over private TLS. PgBouncer alone resolves and reaches
-the Flexible Server over a separate private network/TLS hop; subnet routing, NSGs, and DNS links
-deny Web a direct server path. UAT retains 35 days of backup/PITR and must prove an isolated
-sanitized restore at RPO <= 5 minutes and RTO <= 30 minutes. The active phase-2 UAT roots implement
-none of these resources or route.
+The 2026-10-15 amendment formerly placed a wipe-on-deploy PostgreSQL container and custom PgBouncer
+DNS route in Demo. The 2026-10-16 Founder Demo Database Standard superseded that physical placement,
+ephemeral storage, wipe, hostname, and recovery model. They are not current implementation guidance.
 
 The Founder also binds Production to a separate highly available PostgreSQL instance. It shares no
 data, route, DNS, credential, or trust boundary with Demo or UAT; detailed HA design and activation
 remain separately gated.
 
 The Founder accepted this bounded architecture amendment on 2026-10-15. The 2026-10-16 Founder
-Demo Database Standard supersedes only its Demo physical placement, wipe, and recovery clauses;
-the private PgBouncer-only route, least-privilege role, no-echo credential, environment isolation,
-and separately gated Production clauses remain binding. Acceptance closes the
+Demo Database Standard supersedes its obsolete Demo placement and connection details. The private
+PgBouncer-only application route, least-privilege roles, no-echo credentials, environment
+isolation, UAT recovery objectives, and separately gated Production clauses remain binding. Acceptance closes the
 CB-019 architecture-input condition but does not authorize cloud mutation, qualification, traffic,
 or Production activation. The phase-2 foundation/workload split, dependency manifest, environment
 projections, secret provisioning, qualification, and WC-123 impact manifest must follow this
@@ -144,17 +433,18 @@ and rolled back as one tuple. DMA remains separately admitted and gains no platf
 authority from release membership. This repository change authorizes code and local validation only;
 cloud apply remains separately authorized.
 
-### Current Delivery State - 2026-08-28
+### Current Delivery State - 2026-10-19
 
 `constitution/PROJECT_STATE.md` remains authoritative for live authorization. This dated snapshot
-records the implementation baseline accepted through PR #371. The normative topology below remains
-the single strategy source; current execution progress belongs in PROJECT_STATE and WC-076.
+records the WC-124 deployment architecture at commit `cebe78c1`. The normative topology below
+remains the single strategy source; current execution progress belongs in PROJECT_STATE and the
+active Work Contract.
 
 | Area | Verified state | Required next result |
 |---|---|---|
 | Canonical workflow | `.github/workflows/deploy.yaml` is the only manual application deployment entry and delegates to `environment-deployment.yaml` and `environment-deployment-verification.yaml`. | Preserve one operator entry; reusable workflows remain implementation details with contract tests. |
-| Demo | Private runner, exact-six apply, independent verification, browser CIDR correction, cleanup, and Founder acceptance passed. | Preserve the accepted tuple and evidence as regression inputs; do not reconstruct or rerun acceptance from prose. |
-| UAT | Private runner preview/apply, exact-six deployment, Keycloak/output corrections, public endpoint checks, independent verification, and cleanup passed. | Complete only evidence gaps required for dark-Production readiness; never rebuild the accepted images. |
+| Demo | Exact-seven applications, persistent PostgreSQL, PgBouncer, Keycloak, Temporal, Redis, managed TLS, direct component verification, and WC-124 transition controls are implemented. Final branch deployment evidence remains run-specific. | Require terminal deployment and independent-verification PASS before acceptance. |
+| UAT | Prior environment delivery exists; WC-124 persistent database and exact-seven promotion must use the same current contracts under separate authority. | Complete only evidence required for UAT qualification; never rebuild accepted images. |
 | Runner lifecycle | Demo and UAT use environment-derived ephemeral ACA runners, private state/config access, correlation-checked cleanup, and zero active executions after qualification. | Keep Production runner blueprint inactive and retain no-public-fallback assertions. |
 | State path | Shared state-account public access is disabled with default deny and approved private endpoint access. Declarative ownership of the existing shared account remains debt. | Assign accepted IaC ownership before Production readiness; do not reopen public access. |
 | Production | Terraform and runner blueprints are code-prepared; protected Production environments and plan prerequisites remain incomplete. No Production plan/apply ran. | Keep Production plan-only and runner `INACTIVE` until a separate Founder authorization. |
@@ -186,11 +476,12 @@ flowchart TB
     DDNS[www.demo / api.demo / auth.demo]
     DING[ACA managed ingress and L7 load balancer\nFounder IPv4 allowlist]
     DAPP[ACA revisions\nWeb, BP, PR, CE, AIR, Billing, DMA, identity edge, Keycloak, self-hosted Temporal, Redis]
-    DDB[Application database dependency ACA\nPostgreSQL EmptyDir + private-TLS PgBouncer\nreset and reseed]
+    DPGB[Dedicated PgBouncer ACA\nsame-environment TCP service discovery]
+    DDB[Persistent private PostgreSQL Flexible Server\nseparate databases and least-privilege roles]
     DKV[Key Vault private endpoint]
     DMON[Log Analytics]
     DDNS --> DING --> DAPP
-    DAPP --> DDB
+    DAPP --> DPGB --> DDB
     DAPP --> DKV
     DAPP --> DMON
   end
@@ -233,7 +524,7 @@ Azure Container Apps ingress is the environment load balancer. Demo and UAT do n
 | Access | Founder `/32` | Approved tester CIDRs | No customer traffic |
 | TLS | Deployment idempotently creates and binds ACA-managed certificates for `cp.demo`, `api.demo`, and `auth.demo`; Azure owns private keys and automatic renewal, and the Founder imports no certificate | ACA managed certificates; monitored renewal | Front Door managed TLS after activation decision |
 | Application compute | ACA min replicas `0`, max `1` | ACA min replicas `0`, bounded test max | Accepted production minima; no apply under WC-076 |
-| Data | Synthetic only; persistent low-cost `psql-demo-application` Flexible Server plus dedicated `ca-demo-pgbouncer`; separate databases/roles, private TLS on both hops, backup/PITR, isolated sanitized restore, and recovery qualification; absent from active phase-2 code | Synthetic representative; persistent `psql-uat-application` Flexible Server plus dedicated `ca-uat-pgbouncer`; private TLS on both hops, 35-day backup/PITR, isolated sanitized restore, RPO <= 5 minutes and RTO <= 30 minutes; absent from active phase-2 code | Separate highly available PostgreSQL instance; detailed HA design remains plan-only |
+| Data | Synthetic only; persistent low-cost PostgreSQL Flexible Server plus dedicated `ca-demo-pgbouncer`; separate databases/roles, private TLS, backup/PITR, isolated sanitized restore, and recovery qualification | Synthetic representative; persistent PostgreSQL Flexible Server plus dedicated `ca-uat-pgbouncer`; private TLS, 35-day backup/PITR, isolated sanitized restore, RPO <= 5 minutes and RTO <= 30 minutes | Separate highly available PostgreSQL instance; detailed HA design remains plan-only |
 | Redis | Transient ACA dependency; no backup | Transient ACA dependency; no backup | Managed or HA decision before activation |
 | Temporal | Self-hosted ACA dependency using a separate database/role in the persistent Demo PostgreSQL boundary; no PostgreSQL sidecar | Temporal Cloud namespace and mTLS per ADR-015 | Temporal Cloud namespace; activation remains reserved |
 | Expiry | Scale all workloads and PgBouncer to zero; stop PostgreSQL; keep state, vault, DNS, backups and evidence | Scale all workloads to zero; stop PostgreSQL; keep state, vault, DNS, backups and evidence | Not leased |
@@ -255,9 +546,8 @@ to incur bounded foundation cost.
 - Private endpoint addresses are environment-local private IPs, not public ingress addresses. One `privatelink.blob.core.windows.net` private DNS zone may be centrally managed and linked to the isolated runner VNets; VNet links do not grant cross-environment data or identity access.
 - Terraform state and reviewed deployment configuration use Storage private endpoints. Public network access is disabled after private-path qualification. No load balancer, public IP, application DNS record, or TLS certificate is introduced by the Storage private endpoint path.
 - Key Vault and PostgreSQL use private networking and private DNS.
-- Demo Web reaches application PostgreSQL only through
-  `pgbouncer.db.demo.waooaw.internal:6432` on dedicated `ca-demo-pgbouncer`. UAT Web reaches only
-  `pgbouncer.db.uat.waooaw.internal:6432` on dedicated `ca-uat-pgbouncer`. The UAT Flexible Server
+- Demo applications reach PostgreSQL only through same-environment ACA TCP service discovery at
+  `ca-demo-pgbouncer:5432`. UAT applications use `ca-uat-pgbouncer:5432`. The UAT Flexible Server
   pattern applies independently in Demo: each Flexible Server DNS zone is linked only to that
   environment's PgBouncer VNet, and its delegated-subnet NSG allows `5432` only from the PgBouncer
   subnet while denying application and runner subnets. Neither environment may
@@ -451,7 +741,9 @@ breach or destructive plan fails closed with traffic at zero.
 6. **Release mechanics:** migration job, pre-traffic verification, blue-green traffic switch, rollback, lease expiry and scale-to-zero reconciliation.
 7. **Promotion:** Founder Demo acceptance gate, same-tuple UAT deployment/qualification, dark-Production plan only.
 
-A full Demo apply is prohibited until slices 1 through 5 pass a real OIDC plan and independent review. Documentation updates are limited to this contract, WC-076 execution references, and PROJECT_STATE checkpoints; executable code and cloud evidence remain primary.
+A full Demo apply requires current Founder authorization plus passing slices 1 through 5, a real
+OIDC plan, policy/provenance evidence, migration qualification, and independent verification.
+Executable code and cloud evidence remain primary.
 
 ### Authentication abuse-limiter dependency lifecycle
 
