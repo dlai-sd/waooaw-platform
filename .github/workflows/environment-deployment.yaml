@@ -2246,15 +2246,19 @@ jobs:
         run: |
           set -euo pipefail
           job_name="job-${TARGET_ENVIRONMENT}-wc124-db-provisioner"
-          az containerapp job update \
+          az containerapp job show \
             --name "$job_name" \
             --resource-group "$RESOURCE_GROUP" \
-            --command /usr/bin/python3 \
-            --args \
-              /opt/waooaw/wc124_db_provisioner.py \
-              --environment "$TARGET_ENVIRONMENT" \
-              --pgbouncer-host "ca-${TARGET_ENVIRONMENT}-pgbouncer" \
-              --network-probe \
+            --output json > wc124-pgbouncer-preflight-job.before.json
+          python3 scripts/wc124_pgbouncer_preflight_job.py \
+            --job wc124-pgbouncer-preflight-job.before.json \
+            --environment "$TARGET_ENVIRONMENT" \
+            --output wc124-pgbouncer-preflight-job.patch.json
+          job_id=$(jq -er '.id' wc124-pgbouncer-preflight-job.before.json)
+          az rest \
+            --method patch \
+            --url "https://management.azure.com${job_id}?api-version=2024-03-01" \
+            --body @wc124-pgbouncer-preflight-job.patch.json \
             --output none
           az containerapp job show \
             --name "$job_name" \
@@ -2798,6 +2802,8 @@ jobs:
             wc124-db-provisioner-execution.json
             wc124-db-provisioner-evidence.log
             wc124-pgbouncer-preflight-job.json
+            wc124-pgbouncer-preflight-job.before.json
+            wc124-pgbouncer-preflight-job.patch.json
             wc124-pgbouncer-preflight-execution.json
             wc124-pgbouncer-preflight.log
             wc124-db-handoff-recovery-execution.json

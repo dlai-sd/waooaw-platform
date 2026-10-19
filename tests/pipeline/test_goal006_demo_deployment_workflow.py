@@ -197,8 +197,10 @@ def test_pgbouncer_dns_and_tcp_preflight_blocks_migrations() -> None:
     preflight = WORKFLOW[preflight_index:vendor_index]
 
     assert preflight_index < vendor_index < billing_index
-    assert "--network-probe" in preflight
-    assert '"ca-${TARGET_ENVIRONMENT}-pgbouncer"' in preflight
+    assert "wc124_pgbouncer_preflight_job.py" in preflight
+    assert "--method patch" in preflight
+    assert "--body @wc124-pgbouncer-preflight-job.patch.json" in preflight
+    assert "az containerapp job update" not in preflight
     assert "capture_pgbouncer_preflight_evidence()" in preflight
     assert "PgBouncer private ACA preflight failed" in preflight
     assert "wc124-pgbouncer-preflight-execution.json" in WORKFLOW
