@@ -9,6 +9,7 @@ import pytest
 
 from wc124_db_provisioner import (
     APPLICATION_DATABASE,
+    APPLICATION_MIGRATION_ROLES,
     KEYCLOAK_DATABASE,
     TEMPORAL_DATABASE,
     TEMPORAL_VISIBILITY_DATABASE,
@@ -102,7 +103,7 @@ def test_catalog_credential_omission_is_rejected() -> None:
 def test_every_secret_value_round_trips_its_password_without_echo_metadata() -> None:
     password = "unique-password-value"
     for spec in environment_specs("demo"):
-        value = secret_value(spec, password, "ca-demo-pgbouncer.internal.example")
+        value = secret_value(spec, password, "ca-demo-pgbouncer")
 
         assert password_from_secret(spec, value) == password
         assert spec.role in value if spec.value_format != "password" else value == password
@@ -142,6 +143,17 @@ def test_vendor_databases_use_nologin_owners_and_separate_migrators() -> None:
     assert "ALTER DEFAULT PRIVILEGES FOR ROLE" in source
     assert "GRANT USAGE ON SCHEMA public" in source
     assert "CREATE EXTENSION IF NOT EXISTS btree_gin" in source
+
+
+def test_application_migrators_assume_only_their_owner_roles() -> None:
+    assert APPLICATION_MIGRATION_ROLES == {
+        "ce_migrator": "ce_owner",
+        "bp_migrator": "bp_owner",
+        "pr_migrator": "pr_owner",
+        "air_migrator": "air_owner",
+        "billing_migrator": "billing_owner",
+        "web_session_migrator": "web_session_owner",
+    }
 
 
 def test_run_preserves_stderr_without_echoing_sensitive_arguments(

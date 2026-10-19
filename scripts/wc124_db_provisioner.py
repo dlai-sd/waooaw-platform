@@ -27,6 +27,14 @@ APPLICATION_MIGRATION_NAMES = (
     "59-wc124-billing-authority.sql",
     "60-wc124-principal-handoff.sql",
 )
+APPLICATION_MIGRATION_ROLES = {
+    "ce_migrator": "ce_owner",
+    "bp_migrator": "bp_owner",
+    "pr_migrator": "pr_owner",
+    "air_migrator": "air_owner",
+    "billing_migrator": "billing_owner",
+    "web_session_migrator": "web_session_owner",
+}
 
 
 @dataclass(frozen=True)
@@ -344,6 +352,21 @@ def provision_postgresql(
             + ";\n"
         )
         psql(server_fqdn, bootstrap_name, database, database_access_token, grants)
+    application_owner_sql = "\n".join(
+        (
+            f"GRANT {sql_identifier(owner)} TO {sql_identifier(migrator)};\n"
+            f"ALTER ROLE {sql_identifier(migrator)} IN DATABASE {sql_identifier(APPLICATION_DATABASE)} "
+            f"SET role TO {sql_identifier(owner)};"
+        )
+        for migrator, owner in APPLICATION_MIGRATION_ROLES.items()
+    )
+    psql(
+        server_fqdn,
+        bootstrap_name,
+        APPLICATION_DATABASE,
+        database_access_token,
+        application_owner_sql,
+    )
     vendor_databases = {
         KEYCLOAK_DATABASE: ("keycloak_owner", "keycloak_migrator", "keycloak_runtime"),
     }

@@ -168,6 +168,8 @@ jobs:
       environment: ${{ needs.authorize.outputs.environment }}
       release_run_id: ${{ fromJSON(needs.authorize.outputs.release_run_id) }}
       release_sha: ${{ needs.authorize.outputs.release_sha }}
+      control_sha: ${{ needs.authorize.outputs.control_sha }}
+      break_fix: ${{ needs.authorize.outputs.break_fix == 'true' }}
       verification_client_id: ${{ needs.deploy.outputs.verification_client_id }}
       web_url: ${{ needs.deploy.outputs.web_url }}
     secrets: inherit

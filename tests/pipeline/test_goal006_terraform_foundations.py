@@ -310,6 +310,23 @@ def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
     assert "keycloak_migrator" in keycloak_migration
     assert "KC_SPI_CONNECTIONS_JPA_QUARKUS_MIGRATION_STRATEGY" in keycloak_migration
     assert 'value = "update"' in keycloak_migration
+    assert 'name        = "KEYCLOAK_CLIENT_SECRET"' in keycloak_migration
+    assert 'name        = "DEMO_FOUNDER_PASSWORD"' in keycloak_migration
+    assert "replace_secret KEYCLOAK_CLIENT_SECRET" in keycloak_migration
+    assert "replace_secret DEMO_FOUNDER_PASSWORD" in keycloak_migration
+    assert "Keycloak realm contains unresolved secret placeholders" in keycloak_migration
+    assert 'scope                = var.key_vault_secret_resource_ids["web"]' in contract
+    assert 'principal_id         = azurerm_user_assigned_identity.keycloak_migration[0].principal_id' in contract
+    for alias in (
+        "google-client-id",
+        "google-client-secret",
+        "meta-login-id",
+        "meta-login-secret",
+        "bp-reader-secret",
+        "bp-writer-secret",
+    ):
+        assert len(alias) <= 20
+        assert f"{alias} =" in contract
     assert "--import-realm" not in keycloak
     assert "/opt/keycloak/data/import/waooaw-realm.json" not in keycloak
     assert "KC_SPI_CONNECTIONS_JPA_QUARKUS_MIGRATION_STRATEGY" in keycloak
@@ -337,6 +354,14 @@ def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
     assert "min_replicas = var.application_activation_enabled ? 1 : 0" in keycloak
     assert "ip_security_restriction" not in keycloak
     assert "KC_BOOTSTRAP_ADMIN" not in keycloak
+
+
+def test_same_environment_database_urls_use_container_app_service_discovery() -> None:
+    contract = read_contract("modules/workload/main.tf")
+
+    assert 'pgbouncer_host               = "ca-${var.environment}-pgbouncer"' in contract
+    assert "pgbouncer.internal.${var.container_app_environment_default_domain}" not in contract
+    assert 'name  = "MIGRATION_SCHEMA"\n        value = "billing"' in contract
 
 
 def test_identity_edge_exposes_only_customer_authentication_paths() -> None:
@@ -825,6 +850,10 @@ def test_oidc_policy_requires_exact_governed_refs_and_workflows() -> None:
 
 def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     workflow = (REPO_ROOT / ".github/workflows/environment-deployment.yaml").read_text(encoding="utf-8")
+    verification = (REPO_ROOT / ".github/workflows/environment-deployment-verification.yaml").read_text(
+        encoding="utf-8"
+    )
+    deploy = (REPO_ROOT / ".github/workflows/deploy.yaml").read_text(encoding="utf-8")
 
     assert "hashicorp/setup-terraform" not in workflow
     assert 'test "$(command -v terraform)" = "/usr/local/bin/terraform"' in workflow
@@ -847,6 +876,11 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     ) in workflow
     assert 'test "$TARGET_ENVIRONMENT" = demo' in workflow
     assert 'test "$CALLER_WORKFLOW_REF" = "$EXPECTED_BREAK_FIX_WORKFLOW_REF"' in workflow
+    assert "EXPECTED_BREAK_FIX_WORKFLOW_REF:" in verification
+    assert 'test "$CONTROL_SHA" = "$CURRENT_SHA"' in verification
+    assert 'test "$CONTROL_SHA" = \'${{ inputs.release_sha }}\'' in verification
+    assert "control_sha: ${{ needs.authorize.outputs.control_sha }}" in deploy
+    assert "break_fix: ${{ needs.authorize.outputs.break_fix == 'true' }}" in deploy
     assert 'case "$TARGET_ENVIRONMENT" in demo|uat|prod)' in workflow
     assert 'case "$APPLY_REQUESTED" in true|false)' in workflow
     plan_b_login = "Azure login with environment deployment identity for Plan B foundation mutation"

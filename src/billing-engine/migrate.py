@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import os
+import re
 from pathlib import Path
 
 import asyncpg
@@ -12,6 +13,10 @@ import asyncpg
 
 MIGRATION_ROOT = Path(os.getenv("MIGRATION_ROOT", "/app/migrations"))
 MIGRATION_PATTERN = os.getenv("MIGRATION_PATTERN", "*.sql")
+MIGRATION_SCHEMA = os.getenv("MIGRATION_SCHEMA", "public")
+
+if re.fullmatch(r"[a-z_][a-z0-9_]*", MIGRATION_SCHEMA) is None:
+    raise ValueError("MIGRATION_SCHEMA must be a lowercase PostgreSQL identifier")
 
 
 def migration_sql(path: Path) -> str:
@@ -35,12 +40,12 @@ async def apply_migrations() -> None:
     try:
         await connection.execute(
             """
-            CREATE TABLE IF NOT EXISTS public.waooaw_schema_migrations (
+            CREATE TABLE IF NOT EXISTS {MIGRATION_SCHEMA}.waooaw_schema_migrations (
                 migration_name text PRIMARY KEY,
                 migration_sha256 char(64) NOT NULL,
                 applied_at timestamptz NOT NULL DEFAULT clock_timestamp()
             )
-            """
+            """.format(MIGRATION_SCHEMA=MIGRATION_SCHEMA)
         )
         for path, digest, sql in files:
             async with connection.transaction():
@@ -51,9 +56,9 @@ async def apply_migrations() -> None:
                 existing = await connection.fetchval(
                     """
                     SELECT migration_sha256
-                    FROM public.waooaw_schema_migrations
+                    FROM {MIGRATION_SCHEMA}.waooaw_schema_migrations
                     WHERE migration_name = $1
-                    """,
+                    """.format(MIGRATION_SCHEMA=MIGRATION_SCHEMA),
                     path.name,
                 )
                 if existing is not None:
@@ -65,12 +70,12 @@ async def apply_migrations() -> None:
                 await connection.execute(sql)
                 await connection.execute(
                     """
-                    INSERT INTO public.waooaw_schema_migrations (
+                    INSERT INTO {MIGRATION_SCHEMA}.waooaw_schema_migrations (
                         migration_name,
                         migration_sha256
                     )
                     VALUES ($1, $2)
-                    """,
+                    """.format(MIGRATION_SCHEMA=MIGRATION_SCHEMA),
                     path.name,
                     digest,
                 )

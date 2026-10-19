@@ -29,7 +29,7 @@ locals {
   auth_redis_host              = "ca-${var.environment}-auth-redis.internal.${var.container_app_environment_default_domain}"
   auth_redis_url               = var.environment == "prod" ? var.auth_abuse_redis_url : "redis://${local.auth_redis_host}:6379/0"
   auth_redis_password_secret   = var.environment == "prod" ? "auth-abuse-redis-managed-key" : "auth-abuse-redis-password"
-  pgbouncer_host               = "ca-${var.environment}-pgbouncer.internal.${var.container_app_environment_default_domain}"
+  pgbouncer_host               = "ca-${var.environment}-pgbouncer"
   auth_abuse_limits = {
     AUTH_START      = { limit = 20, windowSeconds = 600 }
     AUTH_CALLBACK   = { limit = 30, windowSeconds = 600 }
@@ -396,6 +396,44 @@ locals {
     ] : [])
   }
   keycloak_realm_base64 = base64encode(jsonencode(local.keycloak_realm))
+  keycloak_migration_optional_secrets = merge(
+    var.google_login_enabled ? {
+      google-client-id = {
+        env_name    = "GOOGLE_CLIENT_ID"
+        resource_id = local.google_secret_resource_ids["google-client-id"]
+        uri         = local.google_secret_uris["google-client-id"]
+      }
+      google-client-secret = {
+        env_name    = "GOOGLE_CLIENT_SECRET"
+        resource_id = local.google_secret_resource_ids["google-client-secret"]
+        uri         = local.google_secret_uris["google-client-secret"]
+      }
+    } : {},
+    var.facebook_login_enabled ? {
+      meta-login-id = {
+        env_name    = "META_LOGIN_CLIENT_ID"
+        resource_id = local.facebook_secret_resource_ids["meta-login-client-id"]
+        uri         = local.facebook_secret_uris["meta-login-client-id"]
+      }
+      meta-login-secret = {
+        env_name    = "META_LOGIN_CLIENT_SECRET"
+        resource_id = local.facebook_secret_resource_ids["meta-login-client-secret"]
+        uri         = local.facebook_secret_uris["meta-login-client-secret"]
+      }
+    } : {},
+    var.google_login_enabled || var.facebook_login_enabled ? {
+      bp-reader-secret = {
+        env_name    = "BP_IDENTITY_READER_CLIENT_SECRET"
+        resource_id = local.identity_reader_secret_resource_ids["bp-identity-reader-client-secret"]
+        uri         = local.identity_reader_secret_uris["bp-identity-reader-client-secret"]
+      }
+      bp-writer-secret = {
+        env_name    = "BP_IDENTITY_LIFECYCLE_WRITER_CLIENT_SECRET"
+        resource_id = local.identity_lifecycle_writer_secret_resource_ids["keycloak-lifecycle-writer-client-secret"]
+        uri         = local.identity_lifecycle_writer_secret_uris["keycloak-lifecycle-writer-client-secret"]
+      }
+    } : {},
+  )
   identity_edge_config = templatefile("${path.module}/identity-edge.conf.tftpl", {
     environment    = var.environment
     default_domain = var.container_app_environment_default_domain
@@ -1489,6 +1527,22 @@ resource "azurerm_role_assignment" "keycloak_migration_database_secret" {
   principal_id         = azurerm_user_assigned_identity.keycloak_migration[0].principal_id
 }
 
+resource "azurerm_role_assignment" "keycloak_migration_realm_credential" {
+  count = var.workload_enabled && var.persistent_state_enabled ? 1 : 0
+
+  scope                = var.key_vault_secret_resource_ids["web"]
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.keycloak_migration[0].principal_id
+}
+
+resource "azurerm_role_assignment" "keycloak_migration_realm_secrets" {
+  for_each = var.workload_enabled && var.persistent_state_enabled ? local.keycloak_migration_optional_secrets : {}
+
+  scope                = each.value.resource_id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.keycloak_migration[0].principal_id
+}
+
 resource "azurerm_container_app_job" "keycloak_migration" {
   count = var.workload_enabled && var.persistent_state_enabled ? 1 : 0
 
@@ -1510,6 +1564,21 @@ resource "azurerm_container_app_job" "keycloak_migration" {
     key_vault_secret_id = var.database_secret_uris["keycloak-migration"]
   }
 
+  secret {
+    name                = "realm-credential"
+    identity            = azurerm_user_assigned_identity.keycloak_migration[0].id
+    key_vault_secret_id = var.key_vault_secret_uris["web"]
+  }
+
+  dynamic "secret" {
+    for_each = local.keycloak_migration_optional_secrets
+    content {
+      name                = secret.key
+      identity            = azurerm_user_assigned_identity.keycloak_migration[0].id
+      key_vault_secret_id = secret.value.uri
+    }
+  }
+
   manual_trigger_config {
     parallelism              = 1
     replica_completion_count = 1
@@ -1524,7 +1593,32 @@ resource "azurerm_container_app_job" "keycloak_migration" {
       command = ["/bin/bash", "-c"]
       args = [<<-EOT
         set -euo pipefail
-        printf '%s' '${local.keycloak_realm_base64}' | base64 --decode > /tmp/waooaw-realm.json
+        json_escape() {
+          value="$1"
+          value="$${value//\\/\\\\}"
+          value="$${value//\"/\\\"}"
+          value="$${value//$'\n'/\\n}"
+          value="$${value//$'\r'/\\r}"
+          value="$${value//$'\t'/\\t}"
+          printf '%s' "$value"
+        }
+        replace_secret() {
+          name="$1"
+          escaped=$(json_escape "$2")
+          placeholder='$''{'"$name"'}'
+          realm="$${realm//$placeholder/$escaped}"
+        }
+        realm=$(printf '%s' '${local.keycloak_realm_base64}' | base64 --decode)
+        replace_secret KEYCLOAK_CLIENT_SECRET "$KEYCLOAK_CLIENT_SECRET"
+        ${var.environment == "demo" ? "replace_secret DEMO_FOUNDER_PASSWORD \"$DEMO_FOUNDER_PASSWORD\"" : ""}
+        ${var.google_login_enabled ? "replace_secret GOOGLE_CLIENT_ID \"$GOOGLE_CLIENT_ID\"\n        replace_secret GOOGLE_CLIENT_SECRET \"$GOOGLE_CLIENT_SECRET\"" : ""}
+        ${var.facebook_login_enabled ? "replace_secret META_LOGIN_CLIENT_ID \"$META_LOGIN_CLIENT_ID\"\n        replace_secret META_LOGIN_CLIENT_SECRET \"$META_LOGIN_CLIENT_SECRET\"" : ""}
+        ${var.google_login_enabled || var.facebook_login_enabled ? "replace_secret BP_IDENTITY_READER_CLIENT_SECRET \"$BP_IDENTITY_READER_CLIENT_SECRET\"\n        replace_secret BP_IDENTITY_LIFECYCLE_WRITER_CLIENT_SECRET \"$BP_IDENTITY_LIFECYCLE_WRITER_CLIENT_SECRET\"" : ""}
+        if printf '%s' "$realm" | grep -Eq '\$\{[A-Z0-9_]+\}'; then
+          echo "Keycloak realm contains unresolved secret placeholders" >&2
+          exit 1
+        fi
+        printf '%s' "$realm" > /tmp/waooaw-realm.json
         exec /opt/keycloak/bin/kc.sh import --file /tmp/waooaw-realm.json --override true
       EOT
       ]
@@ -1558,6 +1652,24 @@ resource "azurerm_container_app_job" "keycloak_migration" {
         secret_name = "migration-database"
       }
       env {
+        name        = "KEYCLOAK_CLIENT_SECRET"
+        secret_name = "realm-credential"
+      }
+      dynamic "env" {
+        for_each = var.environment == "demo" ? [1] : []
+        content {
+          name        = "DEMO_FOUNDER_PASSWORD"
+          secret_name = "realm-credential"
+        }
+      }
+      dynamic "env" {
+        for_each = local.keycloak_migration_optional_secrets
+        content {
+          name        = env.value.env_name
+          secret_name = env.key
+        }
+      }
+      env {
         name  = "KC_SPI_CONNECTIONS_JPA_QUARKUS_MIGRATION_STRATEGY"
         value = "update"
       }
@@ -1570,6 +1682,8 @@ resource "azurerm_container_app_job" "keycloak_migration" {
 
   depends_on = [
     azurerm_role_assignment.keycloak_migration_database_secret,
+    azurerm_role_assignment.keycloak_migration_realm_credential,
+    azurerm_role_assignment.keycloak_migration_realm_secrets,
   ]
 }
 
@@ -1994,6 +2108,11 @@ resource "azurerm_container_app_job" "billing_migration" {
       env {
         name  = "MIGRATION_PATTERN"
         value = "59-wc124-billing-authority.sql"
+      }
+
+      env {
+        name  = "MIGRATION_SCHEMA"
+        value = "billing"
       }
     }
   }

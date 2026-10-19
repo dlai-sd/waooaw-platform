@@ -176,6 +176,28 @@ def test_wc124_vendor_job_names_fit_azure_limit() -> None:
     assert 'name                         = "job-${var.environment}-keycloak-migration"' in workload
     assert len("job-demo-temporal-migration") <= 32
     assert len("job-demo-keycloak-migration") <= 32
+    migration_step = WORKFLOW.split("      - name: Run vendor schema migrations", 1)[1].split(
+        "      - name: Run additive Billing authority migration", 1
+    )[0]
+    assert 'keycloak|temporal) job_name="job-${TARGET_ENVIRONMENT}-${component}-migration"' in migration_step
+    assert 'job_name="job-${TARGET_ENVIRONMENT}-wc124-${component}-migration"' not in migration_step
+
+
+def test_application_activation_plan_is_policy_and_provenance_bound() -> None:
+    plan_step = WORKFLOW.split("      - name: Plan application activation after migration", 1)[1].split(
+        "      - name: Apply application activation", 1
+    )[0]
+    apply_step = WORKFLOW.split("      - name: Apply application activation", 1)[1].split(
+        "      - name: Bind Demo Azure-managed TLS certificates", 1
+    )[0]
+
+    assert "terraform plan -detailed-exitcode" in plan_step
+    assert '0|2) ;;' in plan_step
+    assert "--output workload-activation-policy.json" in plan_step
+    assert "--plan-binary workload-activation.tfplan" in plan_step
+    assert "--output workload-activation-provenance.json" in plan_step
+    assert "cmp --silent workload-activation-provenance.json" in apply_step
+    assert apply_step.index("cmp --silent") < apply_step.index("terraform apply")
 
 
 def test_private_job_uses_only_live_runner_commands() -> None:

@@ -2005,7 +2005,10 @@ jobs:
             > wc124-vendor-migrations.json
           run_migration() {
             component="$1"
-            job_name="job-${TARGET_ENVIRONMENT}-wc124-${component}-migration"
+            case "$component" in
+              keycloak|temporal) job_name="job-${TARGET_ENVIRONMENT}-${component}-migration" ;;
+              *) echo "Unsupported vendor migration component: $component" >&2; exit 1 ;;
+            esac
             execution=$(az containerapp job start \
               --resource-group "$RESOURCE_GROUP" \
               --name "$job_name" \
@@ -2086,16 +2089,44 @@ jobs:
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload
         env:
           ARM_CLIENT_ID: ${{ steps.foundation.outputs.deployment_client_id }}
+          RELEASE_RUN_ID: ${{ inputs.release_run_id }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
           jq '.application_activation_enabled = true' \
             workload.auto.tfvars.json > workload.active.tfvars.json
           mv workload.active.tfvars.json workload.auto.tfvars.json
-          terraform plan -input=false -lock-timeout=5m -out=workload-activation.tfplan
+          set +e
+          terraform plan -detailed-exitcode -input=false -lock-timeout=5m -out=workload-activation.tfplan
+          plan_exit_code=$?
+          set -e
+          case "$plan_exit_code" in
+            0|2) ;;
+            *) echo "Application activation planning failed with exit code $plan_exit_code" >&2; exit "$plan_exit_code" ;;
+          esac
           terraform show -json workload-activation.tfplan > workload-activation-plan.json
           python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
             --scope workload \
-            --plan workload-activation-plan.json
+            --plan workload-activation-plan.json \
+            --output workload-activation-policy.json
+          state_snapshot=$(mktemp)
+          trap 'rm -f "$state_snapshot"' EXIT
+          terraform state pull > "$state_snapshot"
+          python3 "$GITHUB_WORKSPACE/scripts/goal006_plan_provenance.py" \
+            --environment "$TARGET_ENVIRONMENT" \
+            --release-sha "$RELEASE_SHA" \
+            --release-run-id "$RELEASE_RUN_ID" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --scope workload \
+            --terraform-root "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload" \
+            --backend-key "goal006/$TARGET_ENVIRONMENT/workload.tfstate" \
+            --plan-json workload-activation-plan.json \
+            --plan-binary workload-activation.tfplan \
+            --policy-result workload-activation-policy.json \
+            --state "$state_snapshot" \
+            --output workload-activation-provenance.json
 
       - name: Apply application activation
         if: inputs.apply
@@ -2111,6 +2142,25 @@ jobs:
             --header 'Accept: application/vnd.github+json' \
             "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" | jq -er '.object.sha')
           test '${{ inputs.release_sha }}' = "$latest_main_sha"
+          state_snapshot=$(mktemp)
+          current_provenance=$(mktemp)
+          trap 'rm -f "$state_snapshot" "$current_provenance"' EXIT
+          terraform state pull > "$state_snapshot"
+          python3 "$GITHUB_WORKSPACE/scripts/goal006_plan_provenance.py" \
+            --environment '${{ inputs.environment }}' \
+            --release-sha '${{ inputs.release_sha }}' \
+            --release-run-id '${{ inputs.release_run_id }}' \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --scope workload \
+            --terraform-root 'infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload' \
+            --backend-key 'goal006/${{ inputs.environment }}/workload.tfstate' \
+            --plan-json workload-activation-plan.json \
+            --plan-binary workload-activation.tfplan \
+            --policy-result workload-activation-policy.json \
+            --state "$state_snapshot" \
+            --output "$current_provenance"
+          cmp --silent workload-activation-provenance.json "$current_provenance"
           terraform apply -input=false -auto-approve workload-activation.tfplan
           web_url=$(terraform output -raw web_url)
           test -n "$web_url"
