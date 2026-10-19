@@ -733,11 +733,39 @@ jobs:
             exit 1
           fi
 
+      - name: Resolve Plan B foundation mutation identity
+        if: >-
+          inputs.apply &&
+          steps.foundation-cache.outputs.cache_hit != 'true' &&
+          steps.database-transition.outputs.password_auth_enabled == 'true'
+        id: plan-b-foundation-identity
+        working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
+        run: |
+          terraform init -input=false \
+            -backend-config="resource_group_name=$TFSTATE_RESOURCE_GROUP" \
+            -backend-config="storage_account_name=$TFSTATE_STORAGE_ACCOUNT" \
+            -backend-config="container_name=$TFSTATE_CONTAINER" \
+            -backend-config="use_oidc=true" \
+            -backend-config="use_azuread_auth=true"
+          echo "client_id=$(terraform output -raw deployment_client_id)" >> "$GITHUB_OUTPUT"
+
+      - name: Azure login with environment deployment identity for Plan B foundation mutation
+        if: >-
+          inputs.apply &&
+          steps.foundation-cache.outputs.cache_hit != 'true' &&
+          steps.database-transition.outputs.password_auth_enabled == 'true'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ steps.plan-b-foundation-identity.outputs.client_id }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
       - name: Terraform foundation plan
         if: steps.foundation-cache.outputs.cache_hit != 'true'
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
         env:
           APPLY_REQUESTED: ${{ inputs.apply }}
+          ARM_CLIENT_ID: ${{ steps.plan-b-foundation-identity.outputs.client_id || needs.resolve-environment.outputs.control_plane_client_id }}
         run: |
           set -euo pipefail
           password_auth_enabled='${{ steps.database-transition.outputs.password_auth_enabled || 'false' }}'
@@ -768,6 +796,18 @@ jobs:
             test -n "$resource_group_id"
             terraform import -input=false -lock-timeout=5m "$resource_address" "$resource_group_id"
           fi
+          secret_address='module.foundation.azurerm_key_vault_secret.postgresql_breakglass_administrator[0]'
+          if [ "$password_auth_enabled" = true ] &&
+             ! terraform state show "$secret_address" >/dev/null 2>&1; then
+            vault_name="kv-waooaw-${{ inputs.environment }}"
+            if secret_id=$(az keyvault secret show \
+              --vault-name "$vault_name" \
+              --name db-server-breakglass-admin \
+              --query id \
+              --output tsv 2>/dev/null); then
+              terraform import -input=false -lock-timeout=5m "$secret_address" "$secret_id"
+            fi
+          fi
           terraform validate
           terraform plan -input=false -lock-timeout=5m \
             -var="postgresql_password_auth_enabled=$password_auth_enabled" \
@@ -778,26 +818,6 @@ jobs:
           python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
             --scope foundation \
             --plan foundation-plan.json
-
-      - name: Resolve Plan B foundation mutation identity
-        if: >-
-          inputs.apply &&
-          steps.foundation-cache.outputs.cache_hit != 'true' &&
-          steps.database-transition.outputs.password_auth_enabled == 'true'
-        id: plan-b-foundation-identity
-        working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
-        run: echo "client_id=$(terraform output -raw deployment_client_id)" >> "$GITHUB_OUTPUT"
-
-      - name: Azure login with environment deployment identity for Plan B foundation mutation
-        if: >-
-          inputs.apply &&
-          steps.foundation-cache.outputs.cache_hit != 'true' &&
-          steps.database-transition.outputs.password_auth_enabled == 'true'
-        uses: azure/login@v2
-        with:
-          client-id: ${{ steps.plan-b-foundation-identity.outputs.client_id }}
-          tenant-id: ${{ env.ARM_TENANT_ID }}
-          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
       - name: Terraform foundation apply
         if: inputs.apply && steps.foundation-cache.outputs.cache_hit != 'true'

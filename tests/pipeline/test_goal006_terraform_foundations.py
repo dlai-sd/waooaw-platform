@@ -837,8 +837,8 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert workflow.count('test "$actual_digest" = "$expected_digest"') == 2
     assert "--ghcr-packages-public-verified" in workflow
     assert workflow.index("scripts/goal006_ghcr_digest.py") < workflow.index("--ghcr-packages-public-verified")
-    assert workflow.count('-backend-config="use_oidc=true"') == 3
-    assert workflow.count('-backend-config="use_azuread_auth=true"') == 3
+    assert workflow.count('-backend-config="use_oidc=true"') == 4
+    assert workflow.count('-backend-config="use_azuread_auth=true"') == 4
     assert "Enforce selected environment authorization" in workflow
     assert "EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy.yaml@refs/heads/main" in workflow
     assert (
@@ -853,7 +853,10 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "Resolve Plan B foundation mutation identity" in workflow
     assert "terraform output -raw deployment_client_id" in workflow
     assert "steps.database-transition.outputs.password_auth_enabled == 'true'" in workflow
-    assert workflow.index(plan_b_login) < workflow.index("Terraform foundation apply")
+    assert workflow.index(plan_b_login) < workflow.index("Terraform foundation plan")
+    assert "az keyvault secret show" in workflow
+    assert "db-server-breakglass-admin" in workflow
+    assert "terraform import -input=false -lock-timeout=5m \"$secret_address\" \"$secret_id\"" in workflow
     assert (
         "ARM_CLIENT_ID: ${{ steps.plan-b-foundation-identity.outputs.client_id "
         "|| needs.resolve-environment.outputs.control_plane_client_id }}"
