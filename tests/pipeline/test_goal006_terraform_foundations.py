@@ -849,6 +849,11 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert 'test "$CALLER_WORKFLOW_REF" = "$EXPECTED_BREAK_FIX_WORKFLOW_REF"' in workflow
     assert 'case "$TARGET_ENVIRONMENT" in demo|uat|prod)' in workflow
     assert 'case "$APPLY_REQUESTED" in true|false)' in workflow
+    plan_b_login = "Azure login with environment deployment identity for Plan B foundation mutation"
+    assert "Resolve Plan B foundation mutation identity" in workflow
+    assert "terraform output -raw deployment_client_id" in workflow
+    assert "steps.database-transition.outputs.password_auth_enabled == 'true'" in workflow
+    assert workflow.index(plan_b_login) < workflow.index("Terraform foundation apply")
     assert workflow.index("Enforce selected environment authorization") < workflow.index("azure/login@v2")
     assert "Reject stale release before cloud access" in workflow
     assert 'timeframe:"Custom"' in workflow.replace(" ", "")

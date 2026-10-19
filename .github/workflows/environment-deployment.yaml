@@ -779,6 +779,26 @@ jobs:
             --scope foundation \
             --plan foundation-plan.json
 
+      - name: Resolve Plan B foundation mutation identity
+        if: >-
+          inputs.apply &&
+          steps.foundation-cache.outputs.cache_hit != 'true' &&
+          steps.database-transition.outputs.password_auth_enabled == 'true'
+        id: plan-b-foundation-identity
+        working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
+        run: echo "client_id=$(terraform output -raw deployment_client_id)" >> "$GITHUB_OUTPUT"
+
+      - name: Azure login with environment deployment identity for Plan B foundation mutation
+        if: >-
+          inputs.apply &&
+          steps.foundation-cache.outputs.cache_hit != 'true' &&
+          steps.database-transition.outputs.password_auth_enabled == 'true'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ steps.plan-b-foundation-identity.outputs.client_id }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
       - name: Terraform foundation apply
         if: inputs.apply && steps.foundation-cache.outputs.cache_hit != 'true'
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
