@@ -311,12 +311,25 @@ jobs:
         env:
           CALLER_WORKFLOW_REF: ${{ github.workflow_ref }}
           EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy.yaml@refs/heads/main
+          EXPECTED_BREAK_FIX_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy.yaml@refs/heads/ib/532/wc124-transition-reconciliation
+          BREAK_FIX: ${{ inputs.break_fix }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
           APPLY_REQUESTED: ${{ inputs.apply }}
           COST_CONTROLS_ENFORCED: ${{ inputs.enforce_cost_controls }}
           LIFECYCLE_ACTION: ${{ inputs.lifecycle_action }}
         run: |
-          test "$CALLER_WORKFLOW_REF" = "$EXPECTED_CALLER_WORKFLOW_REF"
+          case "$BREAK_FIX" in
+            false)
+              test "$CALLER_WORKFLOW_REF" = "$EXPECTED_CALLER_WORKFLOW_REF"
+              ;;
+            true)
+              test "$TARGET_ENVIRONMENT" = demo
+              test "$CALLER_WORKFLOW_REF" = "$EXPECTED_BREAK_FIX_WORKFLOW_REF"
+              ;;
+            *)
+              exit 1
+              ;;
+          esac
           case "$TARGET_ENVIRONMENT" in demo|uat|prod) ;; *) exit 1 ;; esac
           case "$APPLY_REQUESTED" in true|false) ;; *) exit 1 ;; esac
           case "$COST_CONTROLS_ENFORCED" in true|false) ;; *) exit 1 ;; esac
