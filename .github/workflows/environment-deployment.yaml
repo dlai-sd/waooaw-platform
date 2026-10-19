@@ -1631,10 +1631,13 @@ jobs:
               --name db-pgbouncer-auth \
               --query value \
               --output tsv)
-            PGBOUNCER_AUTHFILE="$authfile" TARGET_ENVIRONMENT="$TARGET_ENVIRONMENT" python3 - <<'PY'
+            PGBOUNCER_AUTHFILE="$authfile" \
+              TARGET_ENVIRONMENT="$TARGET_ENVIRONMENT" \
+              PYTHONPATH="$GITHUB_WORKSPACE/scripts" \
+              python3 - <<'PY'
           import os
 
-          from scripts.wc124_db_provisioner import environment_specs, parse_authfile
+          from wc124_db_provisioner import environment_specs, parse_authfile
 
           actual = set(parse_authfile(os.environ["PGBOUNCER_AUTHFILE"]))
           expected = {spec.role for spec in environment_specs(os.environ["TARGET_ENVIRONMENT"])}

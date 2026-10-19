@@ -1,11 +1,15 @@
 """Contracts for private GOAL-006 Demo deployment execution."""
 
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 
-WORKFLOW = Path(".github/workflows/environment-deployment.yaml").read_text(encoding="utf-8")
-DISPATCH_WORKFLOW = Path(".github/workflows/deploy.yaml").read_text(encoding="utf-8")
-FOUNDATION_MODULE = Path("infrastructure/terraform/phase2/modules/foundation/main.tf").read_text(encoding="utf-8")
+ROOT = Path(__file__).resolve().parents[2]
+WORKFLOW = (ROOT / ".github/workflows/environment-deployment.yaml").read_text(encoding="utf-8")
+DISPATCH_WORKFLOW = (ROOT / ".github/workflows/deploy.yaml").read_text(encoding="utf-8")
+FOUNDATION_MODULE = (ROOT / "infrastructure/terraform/phase2/modules/foundation/main.tf").read_text(encoding="utf-8")
 
 
 def test_environment_deployment_uses_qualified_private_runner_lifecycle() -> None:
@@ -125,14 +129,40 @@ def test_database_transition_reconciles_revocation_only_after_independent_handof
     assert "revocation_verification_required == 'true'" in delete_provisioner
     assert "Reconcile legacy PgBouncer credential metadata" in WORKFLOW
     assert 'test "$current_role" = pgbouncer || {' in WORKFLOW
-    assert "from scripts.wc124_db_provisioner import environment_specs, parse_authfile" in WORKFLOW
+    assert 'PYTHONPATH="$GITHUB_WORKSPACE/scripts"' in WORKFLOW
+    assert "from wc124_db_provisioner import environment_specs, parse_authfile" in WORKFLOW
     assert "az keyvault secret set-attributes" in WORKFLOW
     assert "wc124-pgbouncer-metadata-reconciliation.json" in WORKFLOW
     assert "expected_count=$(jq" in WORKFLOW
 
 
+def test_pgbouncer_reconciliation_import_executes_with_runner_module_path() -> None:
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = str(ROOT / "scripts")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "from wc124_db_provisioner import environment_specs, parse_authfile; "
+                "assert len(environment_specs('demo')) == 17; "
+                "assert parse_authfile('\"role\" \"SCRAM-SHA-256$4096:salt$stored:server\"\\n') == "
+                "{'role': 'SCRAM-SHA-256$4096:salt$stored:server'}"
+            ),
+        ],
+        cwd=ROOT,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
 def test_wc124_container_app_job_names_fit_azure_limit() -> None:
-    workload = Path("infrastructure/terraform/phase2/modules/workload/main.tf").read_text(encoding="utf-8")
+    workload = (ROOT / "infrastructure/terraform/phase2/modules/workload/main.tf").read_text(encoding="utf-8")
     assert 'name                         = "job-${var.environment}-temporal-migration"' in workload
     assert 'name                         = "job-${var.environment}-keycloak-migration"' in workload
     assert len("job-demo-temporal-migration") <= 32
@@ -140,7 +170,7 @@ def test_wc124_container_app_job_names_fit_azure_limit() -> None:
 
 
 def test_wc124_vendor_job_names_fit_azure_limit() -> None:
-    workload = Path("infrastructure/terraform/phase2/modules/workload/main.tf").read_text(encoding="utf-8")
+    workload = (ROOT / "infrastructure/terraform/phase2/modules/workload/main.tf").read_text(encoding="utf-8")
 
     assert 'name                         = "job-${var.environment}-temporal-migration"' in workload
     assert 'name                         = "job-${var.environment}-keycloak-migration"' in workload
@@ -298,7 +328,7 @@ def test_uat_configuration_initialization_is_explicit_create_only_and_private() 
     assert "configuration-promotion.json" in initialization
     assert "default: false" in WORKFLOW.split("initialize_configuration:", 1)[1]
     assert "initialize_configuration: true" not in DISPATCH_WORKFLOW
-    assert not Path(".github/workflows/deploy-demo.yaml").exists()
+    assert not (ROOT / ".github/workflows/deploy-demo.yaml").exists()
 
 
 def test_expired_lease_fails_before_foundation_plan_and_apply_renewal_is_etag_bound() -> None:
