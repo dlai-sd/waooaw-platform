@@ -4,6 +4,7 @@ import copy
 import json
 from pathlib import Path
 import subprocess
+from types import SimpleNamespace
 
 import pytest
 
@@ -16,6 +17,8 @@ from wc124_db_provisioner import (
     application_migration_files,
     authfile_value,
     environment_specs,
+    execute,
+    existing_grant_digest,
     password_from_secret,
     psql,
     run,
@@ -216,6 +219,86 @@ def test_existing_password_secret_is_not_rewritten_for_host_change(monkeypatch: 
     )
 
     assert evidence[0]["status"] == "preserved"
+
+
+def test_existing_credentials_require_one_shared_grant_digest() -> None:
+    records = {
+        "first": {"tags": {"wc124-grant-digest": "digest-a"}},
+        "second": {"tags": {"wc124-grant-digest": "digest-a"}},
+    }
+
+    assert existing_grant_digest(records) == "digest-a"
+
+    records["second"] = {"tags": {"wc124-grant-digest": "digest-b"}}
+    with pytest.raises(ValueError, match="share one non-empty grant digest"):
+        existing_grant_digest(records)
+
+
+def test_refresh_only_rewrites_urls_without_database_bootstrap(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    catalog_path = tmp_path / "secret-catalog.json"
+    catalog_path.write_text(json.dumps(CATALOG), encoding="utf-8")
+    specs = environment_specs("demo")
+    passwords = {spec.role: f"{spec.role}-password" for spec in specs}
+    records = {
+        spec.secret_id: {
+            "id": f"https://example.vault.azure.net/secrets/{spec.vault_name}/version",
+            "tags": {
+                "wc124-role": spec.role,
+                "wc124-database": spec.database,
+                "wc124-grant-digest": "shared-grant-digest",
+            },
+            "value": secret_value(spec, passwords[spec.role], "obsolete.internal.example"),
+        }
+        for spec in specs
+    }
+    logins: list[str] = []
+    writes: list[tuple[str, str]] = []
+
+    monkeypatch.setattr("wc124_db_provisioner.azure_login", logins.append)
+    monkeypatch.setattr(
+        "wc124_db_provisioner.read_credentials",
+        lambda *_args, **kwargs: (
+            passwords,
+            records,
+        )
+        if kwargs == {"require_existing": True}
+        else pytest.fail("refresh must require every existing credential"),
+    )
+    monkeypatch.setattr(
+        "wc124_db_provisioner.write_secrets",
+        lambda _specs, _passwords, _records, vault, host, grant: (
+            writes.append((host, grant))
+            or [
+                {
+                    "logical_secret_id": "db-billing-migration",
+                    "status": "updated",
+                }
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "wc124_db_provisioner.provision_postgresql",
+        lambda *_args, **_kwargs: pytest.fail("refresh must not use database bootstrap authority"),
+    )
+
+    result = execute(
+        SimpleNamespace(
+            catalog=catalog_path,
+            environment="demo",
+            provisioner_client_id="provisioner-client",
+            vault_name="kv-waooaw-demo",
+            pgbouncer_host="ca-demo-pgbouncer",
+            refresh_existing_urls=True,
+        )
+    )
+
+    assert logins == ["provisioner-client"]
+    assert writes == [("ca-demo-pgbouncer", "shared-grant-digest")]
+    assert result["mode"] == "canonical-url-refresh"
+    assert result["credentials"][0]["status"] == "updated"
 
 
 def test_principal_handoff_reassigns_schema_objects_to_nologin_owners() -> None:

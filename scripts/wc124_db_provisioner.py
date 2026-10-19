@@ -232,6 +232,8 @@ def access_token() -> str:
 def read_credentials(
     specs: tuple[CredentialSpec, ...],
     vault_name: str,
+    *,
+    require_existing: bool = False,
 ) -> tuple[dict[str, str], dict[str, dict[str, Any] | None]]:
     passwords: dict[str, str] = {}
     records: dict[str, dict[str, Any] | None] = {}
@@ -251,6 +253,8 @@ def read_credentials(
             passwords[spec.role] = password_from_secret(spec, record.get("value", ""))
             records[spec.secret_id] = record
         elif "SecretNotFound" in result.stderr:
+            if require_existing:
+                raise ValueError(f"{spec.secret_id} is missing during canonical URL refresh")
             passwords[spec.role] = generate_password()
             records[spec.secret_id] = None
         else:
@@ -264,6 +268,13 @@ def read_credentials(
     if auth_record is not None and parse_authfile(auth_record.get("value", "")) != passwords:
         raise ValueError("db-pgbouncer-auth does not exactly match the database credential set")
     return passwords, records
+
+
+def existing_grant_digest(records: dict[str, dict[str, Any] | None]) -> str:
+    digests = {str((record.get("tags") or {}).get("wc124-grant-digest", "")) for record in records.values() if record is not None}
+    if len(digests) != 1 or not next(iter(digests), ""):
+        raise ValueError("existing WC-124 credentials must share one non-empty grant digest")
+    return digests.pop()
 
 
 def sql_literal(value: str) -> str:
@@ -471,8 +482,28 @@ def write_secrets(
 def execute(arguments: argparse.Namespace) -> dict[str, Any]:
     catalog = json.loads(arguments.catalog.read_text(encoding="utf-8"))
     specs = validate_catalog(catalog, arguments.environment)
+    refresh_only = getattr(arguments, "refresh_existing_urls", False)
     azure_login(arguments.provisioner_client_id)
-    passwords, records = read_credentials(specs, arguments.vault_name)
+    passwords, records = read_credentials(specs, arguments.vault_name, require_existing=refresh_only)
+    if refresh_only:
+        grant_digest = existing_grant_digest(records)
+        evidence = write_secrets(
+            specs,
+            passwords,
+            records,
+            arguments.vault_name,
+            arguments.pgbouncer_host,
+            grant_digest,
+        )
+        passwords.clear()
+        return {
+            "schema": "waooaw.wc124-db-provisioning/v1",
+            "environment": arguments.environment,
+            "grant_digest": grant_digest,
+            "password_authentication_ready": True,
+            "mode": "canonical-url-refresh",
+            "credentials": evidence,
+        }
     azure_login(arguments.bootstrap_client_id)
     grant_digest = provision_postgresql(
         specs,
@@ -511,6 +542,7 @@ def main() -> int:
     parser.add_argument("--bootstrap-name")
     parser.add_argument("--provisioner-client-id")
     parser.add_argument("--init-directory", type=Path, default=Path("/opt/waooaw/postgres/init"))
+    parser.add_argument("--refresh-existing-urls", action="store_true")
     parser.add_argument("--validate-only", action="store_true")
     arguments = parser.parse_args()
     try:
@@ -528,14 +560,9 @@ def main() -> int:
                 "roles": sorted(spec.role for spec in specs),
             }
         else:
-            required = (
-                "vault_name",
-                "server_fqdn",
-                "pgbouncer_host",
-                "bootstrap_client_id",
-                "bootstrap_name",
-                "provisioner_client_id",
-            )
+            required = ["vault_name", "pgbouncer_host", "provisioner_client_id"]
+            if not arguments.refresh_existing_urls:
+                required.extend(("server_fqdn", "bootstrap_client_id", "bootstrap_name"))
             missing = [name for name in required if not getattr(arguments, name)]
             if missing:
                 raise ValueError("missing execution arguments: " + ", ".join(missing))

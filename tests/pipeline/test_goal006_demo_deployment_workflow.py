@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = (ROOT / ".github/workflows/environment-deployment.yaml").read_text(encoding="utf-8")
 DISPATCH_WORKFLOW = (ROOT / ".github/workflows/deploy.yaml").read_text(encoding="utf-8")
 FOUNDATION_MODULE = (ROOT / "infrastructure/terraform/phase2/modules/foundation/main.tf").read_text(encoding="utf-8")
+WORKLOAD_VARIABLES = (ROOT / "infrastructure/terraform/phase2/modules/workload/variables.tf").read_text(encoding="utf-8")
 
 
 def test_environment_deployment_uses_qualified_private_runner_lifecycle() -> None:
@@ -86,6 +87,45 @@ def test_wc124_live_cli_contracts_match_the_pinned_runner() -> None:
     assert "microsoft-entra-admin list" in bootstrap_removal
 
 
+def test_completed_wc124_transition_still_refreshes_and_rebinds_database_urls() -> None:
+    create_step = WORKFLOW.split("      - name: Create WC-124 database provisioner", 1)[1].split(
+        "      - name: Run WC-124 database provisioner", 1
+    )[0]
+    run_step = WORKFLOW.split("      - name: Run WC-124 database provisioner", 1)[1].split(
+        "      - name: Apply reviewed PostgreSQL Plan B compatibility", 1
+    )[0]
+    input_step = WORKFLOW.split("      - name: Build workload inputs from trusted foundation outputs", 1)[1].split(
+        "      - name: Terraform workload plan", 1
+    )[0]
+
+    assert "if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')" in create_step
+    assert "full_provisioning='${{ steps.database-transition.outputs.provisioner_required }}'" in create_step
+    assert 'pgbouncer_host="ca-${TARGET_ENVIRONMENT}-pgbouncer"' in create_step
+    assert "pgbouncer.internal.${{ steps.foundation.outputs.container_app_environment_default_domain }}" not in create_step
+    assert "--refresh-existing-urls" in create_step
+    assert 'if $full_provisioning then [$bootstrap, $provisioner] else [$provisioner] end' in create_step
+    assert "if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')" in run_step
+    assert "wc124-db-credential-inventory.json" in input_step
+    assert "missing database secret version for " in input_step
+    assert ".value = (.value + \"/\" + $versions[$secret_name])" in input_step
+    assert "immutable-version database credential references" in WORKLOAD_VARIABLES
+    assert "vault[.]azure[.]net/secrets/[^/]+/[^/]+" in WORKLOAD_VARIABLES
+
+
+def test_billing_failure_emits_container_logs_and_execution_evidence() -> None:
+    billing_step = WORKFLOW.split("      - name: Run additive Billing authority migration through PgBouncer", 1)[1].split(
+        "      - name: Plan application activation after migration", 1
+    )[0]
+
+    assert 'echo "Billing migration execution: $execution"' in billing_step
+    assert "capture_billing_evidence()" in billing_step
+    assert "--container billing-migration" in billing_step
+    assert "cat wc124-billing-migration.log >&2" in billing_step
+    assert "Billing migration timed out with status: $status" in billing_step
+    assert "wc124-billing-migration-execution.json" in WORKFLOW
+    assert "wc124-billing-migration.log" in WORKFLOW
+
+
 def test_wc124_plan_b_uses_sealed_structured_provider_update() -> None:
     assert 'source  = "Azure/azapi"' in FOUNDATION_MODULE
     assert 'resource "random_password" "postgresql_breakglass_administrator"' in FOUNDATION_MODULE
@@ -131,8 +171,8 @@ def test_database_transition_reconciles_revocation_only_after_independent_handof
     delete_provisioner = WORKFLOW.split("      - name: Delete WC-124 database provisioner", 1)[1].split(
         "      - name: Retain persistent-state lifecycle execution evidence", 1
     )[0]
-    assert "provisioner_required == 'true'" in delete_provisioner
-    assert "revocation_verification_required == 'true'" in delete_provisioner
+    assert "inputs.apply" in delete_provisioner
+    assert "inputs.environment == 'demo' || inputs.environment == 'uat'" in delete_provisioner
     assert "Reconcile legacy PgBouncer credential metadata" in WORKFLOW
     assert 'test "$current_role" = pgbouncer || {' in WORKFLOW
     assert 'PYTHONPATH="$GITHUB_WORKSPACE/scripts"' in WORKFLOW

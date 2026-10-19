@@ -215,21 +215,28 @@ backend key, state lineage/serial, policy result, plan JSON digest, and saved-pl
 
 1. Applications use `ca-<environment>-pgbouncer:5432` for same-ACA-environment TCP service
    discovery. The internal-ingress FQDN is not the application connection hostname.
-2. Keycloak and Temporal migration jobs use their approved direct PostgreSQL migration contracts.
+2. Every Demo/UAT apply reconciles existing URL and Npgsql credentials to that short-name route,
+   even after the WC-124 authority transition is complete. Reconciliation preserves passwords,
+   roles, database names, raw-password secrets, and the PgBouncer authfile.
+3. The deployment records the resulting Key Vault versions and passes version-qualified database
+   secret references into the Terraform workload plan. A successful Key Vault write alone is not
+   propagation evidence; the consumer Container App or Job must receive a Terraform-visible change.
+4. Keycloak and Temporal migration jobs use their approved direct PostgreSQL migration contracts.
    Application runtime traffic continues through PgBouncer.
-3. The Keycloak realm import substitutes every secret placeholder inside the job, checks that no
+5. The Keycloak realm import substitutes every secret placeholder inside the job, checks that no
    `${NAME}` placeholder remains, and then imports. Secrets stay in Key Vault-backed ACA secret
    references and are never written to logs or Terraform state.
-4. Each application migrator receives only its no-login owner role and a database-local default
+6. Each application migrator receives only its no-login owner role and a database-local default
    role. Runtime roles do not acquire DDL authority.
-5. Billing writes its immutable migration ledger in the governed `billing` schema and runs through
+7. Billing writes its immutable migration ledger in the governed `billing` schema and runs through
    PgBouncer using the exact `db-billing-migration` credential.
-6. Migration job names are producer-consumer contracts:
+8. Migration job names are producer-consumer contracts:
    `job-<environment>-keycloak-migration`,
    `job-<environment>-temporal-migration`, and
    `job-<environment>-wc124-billing-migration`.
-7. A timeout, `Failed`, `Stopped`, unknown status, digest mismatch, unresolved secret placeholder,
-   ownership error, or connection error blocks application activation.
+9. A timeout, `Failed`, `Stopped`, unknown status, digest mismatch, unresolved secret placeholder,
+   ownership error, or connection error blocks application activation. The owning workflow step
+   emits the ACA execution ID and sanitized container logs before cleanup and artifact retention.
 
 ### Evidence inventory
 

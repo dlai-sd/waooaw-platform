@@ -60,7 +60,7 @@ variable "postgresql_server_fqdn" {
 variable "database_secret_uris" {
   type        = map(string)
   default     = {}
-  description = "Distinct versionless database credential references by principal."
+  description = "Distinct immutable-version database credential references by principal."
 
   validation {
     condition = !var.persistent_state_enabled || (
@@ -72,7 +72,7 @@ variable "database_secret_uris" {
         "constitutional-engine", "business-platform", "billing-engine",
         "billing-migration", "keycloak", "keycloak-migration", "pgbouncer",
       ]) &&
-      alltrue([for uri in values(var.database_secret_uris) : can(regex("^https://[^/]+[.]vault[.]azure[.]net/secrets/[^/]+$", uri))])
+      alltrue([for uri in values(var.database_secret_uris) : can(regex("^https://[^/]+[.]vault[.]azure[.]net/secrets/[^/]+/[^/]+$", uri))])
     )
     error_message = "Persistent-state workloads require the exact runtime, migration, and PgBouncer database credential references."
   }

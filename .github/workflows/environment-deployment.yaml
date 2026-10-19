@@ -1231,7 +1231,7 @@ jobs:
           done
 
       - name: Create WC-124 database provisioner
-        if: inputs.apply && (steps.database-transition.outputs.provisioner_required == 'true' || steps.database-transition.outputs.revocation_verification_required == 'true')
+        if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
         env:
           BOOTSTRAP_CLIENT_ID: ${{ steps.foundation.outputs.database_bootstrap_client_id }}
           BOOTSTRAP_IDENTITY_ID: ${{ steps.foundation.outputs.database_bootstrap_identity_id }}
@@ -1245,6 +1245,7 @@ jobs:
         run: |
           set -euo pipefail
           recovery_verification='${{ steps.database-transition.outputs.revocation_verification_required }}'
+          full_provisioning='${{ steps.database-transition.outputs.provisioner_required }}'
           job_name="job-${TARGET_ENVIRONMENT}-wc124-db-provisioner"
           repository="dlai-sd/goal006-private-runner"
           release_tag="sha-${{ inputs.control_sha }}"
@@ -1252,7 +1253,7 @@ jobs:
             --repository "$repository" \
             --reference "$release_tag")
           runner_image="ghcr.io/${repository}@${runner_digest}"
-          pgbouncer_host="ca-${TARGET_ENVIRONMENT}-pgbouncer.internal.${{ steps.foundation.outputs.container_app_environment_default_domain }}"
+          pgbouncer_host="ca-${TARGET_ENVIRONMENT}-pgbouncer"
           job_id=$(az containerapp job list \
             --resource-group "$RESOURCE_GROUP" \
             --query "[?name == '$job_name'].id | [0]" \
@@ -1283,17 +1284,17 @@ jobs:
             --arg bootstrap_name "id-waooaw-${TARGET_ENVIRONMENT}-db-bootstrap" \
             --arg provisioner_client_id "$DATABASE_PROVISIONER_CLIENT_ID" \
             --argjson recovery_verification "$recovery_verification" \
+            --argjson full_provisioning "$full_provisioning" \
             '{
               name: $name,
               identity: {
                 type: "UserAssigned",
                 userAssignedIdentities: (
-                  if $recovery_verification
-                  then {($provisioner_identity_id): {}}
-                  else {
+                  if $full_provisioning then {
                     ($bootstrap_identity_id): {},
                     ($provisioner_identity_id): {}
                   }
+                  else {($provisioner_identity_id): {}}
                   end
                 )
               },
@@ -1324,7 +1325,8 @@ jobs:
                         "--provisioner-client-id", $provisioner_client_id,
                         "--verify-only"
                       ]
-                      else [
+                      elif $full_provisioning
+                      then [
                         "/opt/waooaw/wc124_db_provisioner.py",
                         "--environment", $target_environment,
                         "--catalog", "/opt/waooaw/secret-catalog.json",
@@ -1334,6 +1336,15 @@ jobs:
                         "--bootstrap-client-id", $bootstrap_client_id,
                         "--bootstrap-name", $bootstrap_name,
                         "--provisioner-client-id", $provisioner_client_id
+                      ]
+                      else [
+                        "/opt/waooaw/wc124_db_provisioner.py",
+                        "--environment", $target_environment,
+                        "--catalog", "/opt/waooaw/secret-catalog.json",
+                        "--vault-name", $vault_name,
+                        "--pgbouncer-host", $pgbouncer_host,
+                        "--provisioner-client-id", $provisioner_client_id,
+                        "--refresh-existing-urls"
                       ]
                       end
                     ),
@@ -1355,13 +1366,13 @@ jobs:
           expected_identities=$(jq -cn \
             --arg bootstrap "$BOOTSTRAP_IDENTITY_ID" \
             --arg provisioner "$DATABASE_PROVISIONER_IDENTITY_ID" \
-            --argjson recovery_verification "$recovery_verification" \
-            'if $recovery_verification then [$provisioner] else [$bootstrap, $provisioner] end
+            --argjson full_provisioning "$full_provisioning" \
+            'if $full_provisioning then [$bootstrap, $provisioner] else [$provisioner] end
              | map(ascii_downcase) | sort')
           test "$actual_identities" = "$expected_identities"
 
       - name: Run WC-124 database provisioner
-        if: inputs.apply && steps.database-transition.outputs.provisioner_required == 'true'
+        if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
         env:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
@@ -1814,6 +1825,21 @@ jobs:
             --key-vault-uri '${{ steps.foundation.outputs.key_vault_uri }}' \
             --output workload.auto.tfvars.json \
             --ghcr-packages-public-verified
+          if test -f wc124-db-credential-inventory.json; then
+            jq --slurpfile inventory wc124-db-credential-inventory.json '
+              ($inventory[0].credentials
+                | map({key: .vault_secret_name, value: .version_id})
+                | from_entries) as $versions
+              | .database_secret_uris |= with_entries(
+                  (.value | split("/")[-1]) as $secret_name
+                  | if ($versions[$secret_name] | type) != "string"
+                    then error("missing database secret version for " + $secret_name)
+                    else .value = (.value + "/" + $versions[$secret_name])
+                    end
+                )
+            ' workload.auto.tfvars.json > workload.versioned.tfvars.json
+            mv workload.versioned.tfvars.json workload.auto.tfvars.json
+          fi
           jq '.application_activation_enabled = false' \
             workload.auto.tfvars.json > workload.dormant.tfvars.json
           mv workload.dormant.tfvars.json workload.auto.tfvars.json
@@ -2157,6 +2183,21 @@ jobs:
             --query name \
             --output tsv)
           test -n "$execution"
+          echo "Billing migration execution: $execution"
+          capture_billing_evidence() {
+            az containerapp job execution show \
+              --resource-group "$RESOURCE_GROUP" \
+              --name "$job_name" \
+              --job-execution-name "$execution" \
+              --output json > wc124-billing-migration-execution.json
+            az containerapp job logs show \
+              --resource-group "$RESOURCE_GROUP" \
+              --name "$job_name" \
+              --execution "$execution" \
+              --container billing-migration \
+              --tail 300 \
+              --format text > wc124-billing-migration.log 2>&1 || true
+          }
           for attempt in $(seq 1 120); do
             status=$(az containerapp job execution show \
               --resource-group "$RESOURCE_GROUP" \
@@ -2165,12 +2206,30 @@ jobs:
               --query properties.status \
               --output tsv)
             case "$status" in
-              Succeeded) break ;;
-              Failed|Stopped) echo "Billing migration failed: $status" >&2; exit 1 ;;
+              Succeeded)
+                capture_billing_evidence
+                break
+                ;;
+              Failed|Stopped)
+                capture_billing_evidence
+                cat wc124-billing-migration.log >&2
+                echo "Billing migration failed: $status" >&2
+                exit 1
+                ;;
               Processing|Running) ;;
-              *) echo "Billing migration returned unknown status: ${status:-<empty>}" >&2; exit 1 ;;
+              *)
+                capture_billing_evidence
+                cat wc124-billing-migration.log >&2
+                echo "Billing migration returned unknown status: ${status:-<empty>}" >&2
+                exit 1
+                ;;
             esac
-            test "$attempt" != 120
+            if [ "$attempt" = 120 ]; then
+              capture_billing_evidence
+              cat wc124-billing-migration.log >&2
+              echo "Billing migration timed out with status: $status" >&2
+              exit 1
+            fi
             sleep 10
           done
 
@@ -2287,10 +2346,8 @@ jobs:
       - name: Delete WC-124 database provisioner
         if: >-
           always() &&
-          (
-            steps.database-transition.outputs.provisioner_required == 'true' ||
-            steps.database-transition.outputs.revocation_verification_required == 'true'
-          )
+          inputs.apply &&
+          (inputs.environment == 'demo' || inputs.environment == 'uat')
         env:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
@@ -2358,6 +2415,8 @@ jobs:
             wc124-pgbouncer-metadata-reconciliation.json
             wc124-db-credential-inventory.json
             wc124-vendor-migrations.json
+            wc124-billing-migration-execution.json
+            wc124-billing-migration.log
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan-provenance.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan-policy.json
