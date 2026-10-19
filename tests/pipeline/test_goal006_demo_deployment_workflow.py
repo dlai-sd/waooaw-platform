@@ -277,11 +277,16 @@ def test_apply_generates_internal_activation_bundle_after_both_plans() -> None:
     assert "if: inputs.apply" in bundle_step
     assert "scripts/wc124_deployment_bundle.py" in bundle_step
     assert "--foundation-plan" in bundle_step
+    assert "--foundation-plan-binary" in bundle_step
+    assert "--foundation-plan-provenance" in bundle_step
     assert "--workload-plan" in bundle_step
+    assert "--workload-plan-binary" in bundle_step
+    assert "--workload-plan-provenance" in bundle_step
     assert "--secret-catalog" in bundle_step
     assert "--dependency-file registry-release-manifest.json" in bundle_step
     assert "--migration-file infrastructure/postgres/init/59-wc124-billing-authority.sql" in bundle_step
     assert '"${schema_arguments[@]}"' in bundle_step
+    assert 'test -s "$evidence_file"' in bundle_step
     assert "scripts/wc124_persistent_state_lifecycle.py" in bundle_step
     assert "--action activate" in bundle_step
     assert WORKFLOW.index("Terraform foundation plan") < WORKFLOW.index("Generate internal WC-124 activation bundle")
@@ -291,6 +296,30 @@ def test_apply_generates_internal_activation_bundle_after_both_plans() -> None:
     )
     assert "wc124-deployment-activation-bundle.json" in WORKFLOW
     assert "wc124-lifecycle-authorization-record.json" in WORKFLOW
+
+
+def test_plan_evidence_is_current_exact_run_and_cache_drift_fails_closed() -> None:
+    foundation_plan = WORKFLOW.split("      - name: Terraform foundation plan", 1)[1].split(
+        "      - name: Terraform foundation apply", 1
+    )[0]
+    workload_plan = WORKFLOW.split("      - name: Terraform workload plan", 1)[1].split(
+        "      - name: Generate internal WC-124 activation bundle", 1
+    )[0]
+
+    assert "if: inputs.apply || steps.foundation-cache.outputs.cache_hit != 'true'" in foundation_plan
+    assert "terraform plan -detailed-exitcode" in foundation_plan
+    assert "0) plan_has_changes=false" in foundation_plan
+    assert "2) plan_has_changes=true" in foundation_plan
+    assert 'test "$CACHE_HIT" = true && test "$plan_has_changes" = true' in foundation_plan
+    assert "refusing automatic apply" in foundation_plan
+    assert "goal006_plan_provenance.py" in foundation_plan
+    assert '--scope foundation' in foundation_plan
+    assert '--release-sha "$RELEASE_SHA"' in foundation_plan
+    assert '--workflow-run-id "$GITHUB_RUN_ID"' in foundation_plan
+    assert "terraform plan -detailed-exitcode" in workload_plan
+    assert "0|2)" in workload_plan
+    assert "goal006_plan_provenance.py" in workload_plan
+    assert "--scope workload" in workload_plan
 
 
 def test_identity_edge_state_reconciliation_is_environment_parameterized() -> None:

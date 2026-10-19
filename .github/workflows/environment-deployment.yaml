@@ -782,23 +782,27 @@ jobs:
       - name: Resolve Plan B foundation mutation identity
         if: >-
           inputs.apply &&
-          steps.foundation-cache.outputs.cache_hit != 'true' &&
           steps.database-transition.outputs.password_auth_enabled == 'true'
         id: plan-b-foundation-identity
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
         run: |
-          terraform init -input=false \
-            -backend-config="resource_group_name=$TFSTATE_RESOURCE_GROUP" \
-            -backend-config="storage_account_name=$TFSTATE_STORAGE_ACCOUNT" \
-            -backend-config="container_name=$TFSTATE_CONTAINER" \
-            -backend-config="use_oidc=true" \
-            -backend-config="use_azuread_auth=true"
-          echo "client_id=$(terraform output -raw deployment_client_id)" >> "$GITHUB_OUTPUT"
+          if test '${{ steps.foundation-cache.outputs.cache_hit }}' = true; then
+            client_id=$(jq -er '.deployment_client_id' "$GITHUB_WORKSPACE/foundation-cache-outputs.json")
+          else
+            terraform init -input=false \
+              -backend-config="resource_group_name=$TFSTATE_RESOURCE_GROUP" \
+              -backend-config="storage_account_name=$TFSTATE_STORAGE_ACCOUNT" \
+              -backend-config="container_name=$TFSTATE_CONTAINER" \
+              -backend-config="use_oidc=true" \
+              -backend-config="use_azuread_auth=true"
+            client_id=$(terraform output -raw deployment_client_id)
+          fi
+          test -n "$client_id"
+          echo "client_id=$client_id" >> "$GITHUB_OUTPUT"
 
       - name: Azure login with environment deployment identity for Plan B foundation mutation
         if: >-
           inputs.apply &&
-          steps.foundation-cache.outputs.cache_hit != 'true' &&
           steps.database-transition.outputs.password_auth_enabled == 'true'
         uses: azure/login@v2
         with:
@@ -807,11 +811,15 @@ jobs:
           subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
       - name: Terraform foundation plan
-        if: steps.foundation-cache.outputs.cache_hit != 'true'
+        if: inputs.apply || steps.foundation-cache.outputs.cache_hit != 'true'
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
         env:
           APPLY_REQUESTED: ${{ inputs.apply }}
+          CACHE_HIT: ${{ steps.foundation-cache.outputs.cache_hit }}
           ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
+          RELEASE_RUN_ID: ${{ inputs.release_run_id }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
           TF_VAR_deployment_client_id: ${{ steps.plan-b-foundation-identity.outputs.client_id || needs.resolve-environment.outputs.control_plane_client_id }}
         run: |
           set -euo pipefail
@@ -859,11 +867,39 @@ jobs:
             fi
           fi
           terraform validate
-          terraform plan -input=false -lock-timeout=5m -out=foundation.tfplan
+          set +e
+          terraform plan -detailed-exitcode -input=false -lock-timeout=5m -out=foundation.tfplan
+          plan_exit_code=$?
+          set -e
+          case "$plan_exit_code" in
+            0) plan_has_changes=false ;;
+            2) plan_has_changes=true ;;
+            *) echo "Foundation planning failed with exit code $plan_exit_code" >&2; exit "$plan_exit_code" ;;
+          esac
           terraform show -json foundation.tfplan > foundation-plan.json
           python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
             --scope foundation \
             --plan foundation-plan.json
+          state_snapshot=$(mktemp)
+          trap 'rm -f "$state_snapshot"' EXIT
+          terraform state pull > "$state_snapshot"
+          python3 "$GITHUB_WORKSPACE/scripts/goal006_plan_provenance.py" \
+            --environment "$TARGET_ENVIRONMENT" \
+            --release-sha "$RELEASE_SHA" \
+            --release-run-id "$RELEASE_RUN_ID" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --scope foundation \
+            --terraform-root "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/foundation" \
+            --backend-key "goal006/$TARGET_ENVIRONMENT/foundation.tfstate" \
+            --plan-json foundation-plan.json \
+            --plan-binary foundation.tfplan \
+            --state "$state_snapshot" \
+            --output foundation-plan-provenance.json
+          if test "$CACHE_HIT" = true && test "$plan_has_changes" = true; then
+            echo "Verified foundation cache contains drift; refusing automatic apply" >&2
+            exit 1
+          fi
 
       - name: Terraform foundation apply
         if: inputs.apply && steps.foundation-cache.outputs.cache_hit != 'true'
@@ -1767,6 +1803,9 @@ jobs:
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload
         env:
           ARM_CLIENT_ID: ${{ steps.foundation.outputs.deployment_client_id }}
+          RELEASE_RUN_ID: ${{ inputs.release_run_id }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
           cp "$GITHUB_WORKSPACE/workload.auto.tfvars.json" .
@@ -1811,12 +1850,35 @@ jobs:
             fi
           fi
           terraform validate
-          terraform plan -input=false -lock-timeout=5m -out=workload.tfplan
+          set +e
+          terraform plan -detailed-exitcode -input=false -lock-timeout=5m -out=workload.tfplan
+          plan_exit_code=$?
+          set -e
+          case "$plan_exit_code" in
+            0|2) ;;
+            *) echo "Workload planning failed with exit code $plan_exit_code" >&2; exit "$plan_exit_code" ;;
+          esac
           terraform show -json workload.tfplan > workload-plan.json
           cp workload-plan.json "$GITHUB_WORKSPACE/workload-plan.json"
           python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
             --scope workload \
             --plan workload-plan.json
+          state_snapshot=$(mktemp)
+          trap 'rm -f "$state_snapshot"' EXIT
+          terraform state pull > "$state_snapshot"
+          python3 "$GITHUB_WORKSPACE/scripts/goal006_plan_provenance.py" \
+            --environment "$TARGET_ENVIRONMENT" \
+            --release-sha "$RELEASE_SHA" \
+            --release-run-id "$RELEASE_RUN_ID" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --scope workload \
+            --terraform-root "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload" \
+            --backend-key "goal006/$TARGET_ENVIRONMENT/workload.tfstate" \
+            --plan-json workload-plan.json \
+            --plan-binary workload.tfplan \
+            --state "$state_snapshot" \
+            --output workload-plan-provenance.json
 
       - name: Generate internal WC-124 activation bundle
         if: inputs.apply
@@ -1827,6 +1889,18 @@ jobs:
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
+          for evidence_file in \
+            "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/foundation/foundation-plan.json" \
+            "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/foundation/foundation.tfplan" \
+            "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/foundation/foundation-plan-provenance.json" \
+            "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload/workload-plan.json" \
+            "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload/workload.tfplan" \
+            "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload/workload-plan-provenance.json"; do
+            test -s "$evidence_file" || {
+              echo "Missing required activation evidence: $evidence_file" >&2
+              exit 1
+            }
+          done
           schema_arguments=()
           for schema_file in infrastructure/postgres/init/*.sql; do
             schema_arguments+=(--schema-file "$schema_file")
@@ -1840,7 +1914,11 @@ jobs:
             --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
             --lease-expiry "$LEASE_EXPIRY" \
             --foundation-plan "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/foundation/foundation-plan.json" \
+            --foundation-plan-binary "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/foundation/foundation.tfplan" \
+            --foundation-plan-provenance "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/foundation/foundation-plan-provenance.json" \
             --workload-plan "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload/workload-plan.json" \
+            --workload-plan-binary "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload/workload.tfplan" \
+            --workload-plan-provenance "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload/workload-plan-provenance.json" \
             --secret-catalog infrastructure/environment-readiness/secret-catalog.json \
             --configuration workload-configuration.json \
             --dependency-file registry-release-manifest.json \
@@ -2133,12 +2211,14 @@ jobs:
             wc124-db-credential-inventory.json
             wc124-vendor-migrations.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan.json
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan-provenance.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation.tfplan
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan-b.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan-b.tfplan
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-bootstrap-removal.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-bootstrap-removal.tfplan
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-plan.json
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-plan-provenance.json
             workload-plan.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-state-before-plan.txt
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-state-after-apply-failure.txt
