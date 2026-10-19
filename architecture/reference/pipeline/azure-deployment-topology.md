@@ -236,9 +236,13 @@ backend key, state lineage/serial, policy result, plan JSON digest, and saved-pl
 6. After the dormant workload exists, the still-private provisioner ACA Job runs a sanitized
    network-only probe against `ca-<environment>-pgbouncer:5432`. DNS resolution and TCP connection
    must both succeed from the workload ACA environment before any migration SQL runs. The workflow
-   validates the existing one-container Job shape, generates a typed ARM template patch, and applies
-   it through `az rest`; probe arguments are never passed through the ambiguous
-   `az containerapp job update --args` parser surface.
+   validates the existing one-container Job shape, projects the Azure GET read model into an explicit
+   `Microsoft.App/jobs` 2024-03-01 write model, validates that payload against the pinned schema, and
+   applies it through `az rest`. Known read-only fields such as `imageType` and
+   `resources.ephemeralStorage` are excluded, unknown fields fail closed, and the effective Job is
+   compared with the pre-patch Job before execution so identity, configuration, environment placement,
+   image, environment variables, resources, and scaling cannot drift. Probe arguments are never passed
+   through the ambiguous `az containerapp job update --args` parser surface.
 7. Keycloak and Temporal migration jobs use their approved direct PostgreSQL migration contracts.
    Application runtime traffic continues through PgBouncer.
 8. The Keycloak realm import substitutes every secret placeholder inside the job, checks that no

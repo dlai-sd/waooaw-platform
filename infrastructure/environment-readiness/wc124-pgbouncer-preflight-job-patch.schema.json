@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://waooaw.com/schemas/wc124-pgbouncer-preflight-job-patch.schema.json",
+  "title": "WC-124 PgBouncer Preflight ACA Job PATCH",
+  "description": "Pinned writable projection derived from Azure/azure-rest-api-specs specification/app/resource-manager/Microsoft.App/ContainerApps/stable/2024-03-01/Jobs.json and CommonDefinitions.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "properties"
+  ],
+  "properties": {
+    "properties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "template"
+      ],
+      "properties": {
+        "template": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "containers"
+          ],
+          "properties": {
+            "containers": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1,
+              "items": {
+                "$ref": "#/$defs/container"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "container": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "image",
+        "command",
+        "args",
+        "resources"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "image": {
+          "type": "string",
+          "pattern": "^ghcr[.]io/dlai-sd/goal006-private-runner@sha256:[0-9a-f]{64}$"
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "env": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/environment"
+          }
+        },
+        "resources": {
+          "$ref": "#/$defs/resources"
+        },
+        "volumeMounts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/volumeMount"
+          }
+        }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": "string"
+        },
+        "secretRef": {
+          "type": "string"
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cpu",
+        "memory"
+      ],
+      "properties": {
+        "cpu": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "memory": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "volumeMount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "volumeName",
+        "mountPath"
+      ],
+      "properties": {
+        "volumeName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mountPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "subPath": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

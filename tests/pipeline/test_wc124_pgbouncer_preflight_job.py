@@ -1,52 +1,37 @@
 from __future__ import annotations
 
 import copy
+import json
+from pathlib import Path
 
 import pytest
+from jsonschema import Draft202012Validator
 
-from wc124_pgbouncer_preflight_job import build_preflight_patch
+from wc124_pgbouncer_preflight_job import build_preflight_patch, verify_effective_job
+
+
+ROOT = Path(__file__).resolve().parents[2]
+REAL_SHAPE_FIXTURE = ROOT / "tests/fixtures/wc124/aca-job-get-2024-03-01.sanitized.json"
+PATCH_SCHEMA = ROOT / "infrastructure/environment-readiness/wc124-pgbouncer-preflight-job-patch.schema.json"
+SUBSCRIPTION_ID = "00000000-0000-0000-0000-000000000000"
 
 
 def job_fixture() -> dict[str, object]:
-    return {
-        "id": (
-            "/subscriptions/sub/resourceGroups/waooaw-demo-rg/providers/"
-            "Microsoft.App/jobs/job-demo-wc124-db-provisioner"
-        ),
-        "identity": {"type": "UserAssigned", "userAssignedIdentities": {"/identity": {}}},
-        "name": "job-demo-wc124-db-provisioner",
-        "properties": {
-            "configuration": {
-                "replicaRetryLimit": 0,
-                "replicaTimeout": 1800,
-                "triggerType": "Manual",
-                "secrets": [{"name": "unchanged", "keyVaultUrl": "https://vault/secrets/name/version"}],
-                "registries": [{"server": "ghcr.io", "identity": "/identity"}],
-            },
-            "template": {
-                "initContainers": [{"name": "unchanged-init", "image": "example.invalid/init@sha256:" + ("b" * 64)}],
-                "containers": [
-                    {
-                        "name": "job-demo-wc124-db-provisioner",
-                        "image": "ghcr.io/dlai-sd/goal006-private-runner@sha256:" + ("a" * 64),
-                        "command": ["/usr/bin/python3"],
-                        "args": ["/opt/waooaw/wc124_db_handoff.py"],
-                        "env": [{"name": "UNCHANGED", "value": "true"}],
-                        "resources": {"cpu": 0.5, "memory": "1Gi"},
-                    }
-                ],
-            }
-        },
-    }
+    job = json.loads(REAL_SHAPE_FIXTURE.read_text(encoding="utf-8"))
+    container = job["properties"]["template"]["containers"][0]
+    container["env"] = [{"name": "UNCHANGED", "value": "true"}]
+    container["volumeMounts"] = [{"volumeName": "unchanged", "mountPath": "/unchanged"}]
+    return job
 
 
-def test_builds_typed_network_probe_patch_without_mutating_source() -> None:
+def test_projects_real_get_shape_to_schema_valid_write_model_without_mutating_source() -> None:
     job = job_fixture()
     original = copy.deepcopy(job)
 
-    patch = build_preflight_patch(job, "demo")
+    patch = build_preflight_patch(job, "demo", SUBSCRIPTION_ID)
 
     assert job == original
+    Draft202012Validator(json.loads(PATCH_SCHEMA.read_text(encoding="utf-8"))).validate(patch)
     container = patch["properties"]["template"]["containers"][0]
     assert container["command"] == ["/usr/bin/python3"]
     assert container["args"] == [
@@ -59,18 +44,57 @@ def test_builds_typed_network_probe_patch_without_mutating_source() -> None:
     ]
     assert container["image"] == original["properties"]["template"]["containers"][0]["image"]
     assert container["env"] == [{"name": "UNCHANGED", "value": "true"}]
+    assert container["volumeMounts"] == [{"volumeName": "unchanged", "mountPath": "/unchanged"}]
     assert container["resources"] == {"cpu": 0.5, "memory": "1Gi"}
-    assert patch["properties"]["template"]["initContainers"] == original["properties"]["template"]["initContainers"]
-    assert set(patch) == {"properties"}
-    assert set(patch["properties"]) == {"template"}
+    assert "imageType" not in container
+    assert "ephemeralStorage" not in container["resources"]
+    assert patch == {
+        "properties": {
+            "template": {
+                "containers": [container],
+            }
+        }
+    }
     assert "identity" not in patch
     assert "configuration" not in patch["properties"]
-    actual_without_mutation = copy.deepcopy(patch["properties"]["template"])
-    expected_without_mutation = copy.deepcopy(original["properties"]["template"])
-    for template in (actual_without_mutation, expected_without_mutation):
-        template["containers"][0].pop("command")
-        template["containers"][0].pop("args")
-    assert actual_without_mutation == expected_without_mutation
+
+
+def test_verifies_only_command_and_args_changed_in_effective_job() -> None:
+    before = job_fixture()
+    patch = build_preflight_patch(before, "demo", SUBSCRIPTION_ID)
+    after = copy.deepcopy(before)
+    after_container = after["properties"]["template"]["containers"][0]
+    after_container["command"] = patch["properties"]["template"]["containers"][0]["command"]
+    after_container["args"] = patch["properties"]["template"]["containers"][0]["args"]
+
+    verify_effective_job(before, after, patch, "demo", SUBSCRIPTION_ID)
+
+
+@pytest.mark.parametrize(
+    ("path", "value", "message"),
+    (
+        (("identity", "type"), "SystemAssigned", "effective identity"),
+        (("properties", "configuration", "replicaTimeout"), 60, "configuration"),
+        (("properties", "environmentId"), "/wrong", "environmentId"),
+        (("properties", "template", "containers", 0, "image"), "ghcr.io/example/image:latest", "immutable"),
+        (("properties", "template", "containers", 0, "env", 0, "value"), "false", "does not match"),
+        (("properties", "template", "containers", 0, "resources", "memory"), "2Gi", "does not match"),
+    ),
+)
+def test_rejects_unexpected_effective_job_changes(path: tuple[object, ...], value: object, message: str) -> None:
+    before = job_fixture()
+    patch = build_preflight_patch(before, "demo", SUBSCRIPTION_ID)
+    after = copy.deepcopy(before)
+    after_container = after["properties"]["template"]["containers"][0]
+    after_container["command"] = patch["properties"]["template"]["containers"][0]["command"]
+    after_container["args"] = patch["properties"]["template"]["containers"][0]["args"]
+    target = after
+    for component in path[:-1]:
+        target = target[component]
+    target[path[-1]] = value
+
+    with pytest.raises(ValueError, match=message):
+        verify_effective_job(before, after, patch, "demo", SUBSCRIPTION_ID)
 
 
 @pytest.mark.parametrize(
@@ -78,6 +102,17 @@ def test_builds_typed_network_probe_patch_without_mutating_source() -> None:
     (
         (lambda job: job.update(name="job-demo-wrong"), "expected ACA Job"),
         (lambda job: job.update(id=job["id"].replace("waooaw-demo-rg", "other-rg")), "environment scope"),
+        (lambda job: job.update(type="Microsoft.App/containerApps"), "resource type"),
+        (lambda job: job.update(resourceGroup="other-rg"), "resource group"),
+        (lambda job: job.update(unknownTopLevel="value"), "ACA Job contains unsupported fields"),
+        (
+            lambda job: job["properties"].update(unknownReadModelField="value"),
+            "ACA Job properties contains unsupported fields",
+        ),
+        (
+            lambda job: job["properties"]["template"].update(unknownTemplateField="value"),
+            "ACA Job template contains unsupported fields",
+        ),
         (lambda job: job["properties"].pop("template"), "no template"),
         (lambda job: job["properties"]["template"].update(containers=[]), "exactly one container"),
         (
@@ -88,6 +123,24 @@ def test_builds_typed_network_probe_patch_without_mutating_source() -> None:
             lambda job: job["properties"]["template"]["containers"][0].update(image="ghcr.io/example/image:latest"),
             "immutable WAOOAW runner digest",
         ),
+        (
+            lambda job: job["properties"]["template"]["containers"][0].update(unrecognized="value"),
+            "unsupported fields: unrecognized",
+        ),
+        (
+            lambda job: job["properties"]["template"]["containers"][0]["resources"].update(readModelAddition="value"),
+            "unsupported fields: readModelAddition",
+        ),
+        (
+            lambda job: job["properties"]["template"].update(
+                initContainers=[{"name": "unexpected", "image": "example.invalid/init"}]
+            ),
+            "must not define init containers",
+        ),
+        (
+            lambda job: job["properties"]["template"].update(volumes=[{"name": "unexpected"}]),
+            "must not define volumes",
+        ),
     ),
 )
 def test_rejects_untrusted_job_shapes(mutation: object, message: str) -> None:
@@ -95,7 +148,7 @@ def test_rejects_untrusted_job_shapes(mutation: object, message: str) -> None:
     mutation(job)
 
     with pytest.raises(ValueError, match=message):
-        build_preflight_patch(job, "demo")
+        build_preflight_patch(job, "demo", SUBSCRIPTION_ID)
 
 
 def test_rejects_production_mutation() -> None:
@@ -104,4 +157,17 @@ def test_rejects_production_mutation() -> None:
     job["properties"]["template"]["containers"][0]["name"] = "job-prod-wc124-db-provisioner"
 
     with pytest.raises(ValueError, match="demo or uat"):
-        build_preflight_patch(job, "prod")
+        build_preflight_patch(job, "prod", SUBSCRIPTION_ID)
+
+
+def test_allows_only_the_named_disposable_demo_qualification_job() -> None:
+    job = job_fixture()
+    job["id"] = job["id"].replace("job-demo-wc124-db-provisioner", "job-demo-wc124-net-qual")
+    job["name"] = "job-demo-wc124-net-qual"
+    job["properties"]["template"]["containers"][0]["name"] = "job-demo-wc124-net-qual"
+
+    patch = build_preflight_patch(job, "demo", SUBSCRIPTION_ID, qualification_job=True)
+
+    assert patch["properties"]["template"]["containers"][0]["name"] == "job-demo-wc124-net-qual"
+    with pytest.raises(ValueError, match="permitted only in demo"):
+        build_preflight_patch(job, "uat", SUBSCRIPTION_ID, qualification_job=True)

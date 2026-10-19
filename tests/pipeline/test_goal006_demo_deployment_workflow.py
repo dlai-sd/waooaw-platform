@@ -198,6 +198,10 @@ def test_pgbouncer_dns_and_tcp_preflight_blocks_migrations() -> None:
 
     assert preflight_index < vendor_index < billing_index
     assert "wc124_pgbouncer_preflight_job.py" in preflight
+    assert "wc124-pgbouncer-preflight-job-patch.schema.json" in preflight
+    assert '--subscription-id "$ARM_SUBSCRIPTION_ID"' in preflight
+    assert "--effective-job wc124-pgbouncer-preflight-job.json" in preflight
+    assert "cmp --silent" in preflight
     assert "--method patch" in preflight
     assert "--body @wc124-pgbouncer-preflight-job.patch.json" in preflight
     assert "az containerapp job update" not in preflight

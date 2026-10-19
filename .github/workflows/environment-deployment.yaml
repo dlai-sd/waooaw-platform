@@ -2253,6 +2253,8 @@ jobs:
           python3 scripts/wc124_pgbouncer_preflight_job.py \
             --job wc124-pgbouncer-preflight-job.before.json \
             --environment "$TARGET_ENVIRONMENT" \
+            --subscription-id "$ARM_SUBSCRIPTION_ID" \
+            --schema infrastructure/environment-readiness/wc124-pgbouncer-preflight-job-patch.schema.json \
             --output wc124-pgbouncer-preflight-job.patch.json
           job_id=$(jq -er '.id' wc124-pgbouncer-preflight-job.before.json)
           az rest \
@@ -2264,6 +2266,16 @@ jobs:
             --name "$job_name" \
             --resource-group "$RESOURCE_GROUP" \
             --output json > wc124-pgbouncer-preflight-job.json
+          python3 scripts/wc124_pgbouncer_preflight_job.py \
+            --job wc124-pgbouncer-preflight-job.before.json \
+            --effective-job wc124-pgbouncer-preflight-job.json \
+            --environment "$TARGET_ENVIRONMENT" \
+            --subscription-id "$ARM_SUBSCRIPTION_ID" \
+            --schema infrastructure/environment-readiness/wc124-pgbouncer-preflight-job-patch.schema.json \
+            --output wc124-pgbouncer-preflight-job.verified-patch.json
+          cmp --silent \
+            wc124-pgbouncer-preflight-job.patch.json \
+            wc124-pgbouncer-preflight-job.verified-patch.json
           execution=$(az containerapp job start \
             --name "$job_name" \
             --resource-group "$RESOURCE_GROUP" \
@@ -2804,6 +2816,7 @@ jobs:
             wc124-pgbouncer-preflight-job.json
             wc124-pgbouncer-preflight-job.before.json
             wc124-pgbouncer-preflight-job.patch.json
+            wc124-pgbouncer-preflight-job.verified-patch.json
             wc124-pgbouncer-preflight-execution.json
             wc124-pgbouncer-preflight.log
             wc124-db-handoff-recovery-execution.json
