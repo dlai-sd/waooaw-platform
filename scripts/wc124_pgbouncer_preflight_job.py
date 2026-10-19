@@ -5,18 +5,17 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import re
 from pathlib import Path
 from typing import Any
 
-from jsonschema import Draft202012Validator
-from jsonschema.exceptions import SchemaError, ValidationError
-
 from cli_errors import fail_cli
 
 
 RUNNER_IMAGE = re.compile(r"^ghcr[.]io/dlai-sd/goal006-private-runner@sha256:[0-9a-f]{64}$")
+PATCH_SCHEMA_SHA256 = "cc0b8f21c01734f35d199ad41c3f8c6113b42e8ed42c6b460e22dafc184f2001"
 JOB_FIELDS = {"id", "identity", "location", "name", "properties", "resourceGroup", "systemData", "type"}
 PROPERTY_FIELDS = {
     "configuration",
@@ -39,6 +38,69 @@ def _reject_unknown(record: dict[str, Any], allowed: set[str], description: str)
     unknown = sorted(set(record) - allowed)
     if unknown:
         raise ValueError(f"{description} contains unsupported fields: {', '.join(unknown)}")
+
+
+def _validate_json_schema(instance: object, schema: dict[str, Any], root: dict[str, Any], path: str) -> None:
+    reference = schema.get("$ref")
+    if reference is not None:
+        if not isinstance(reference, str) or not reference.startswith("#/$defs/"):
+            raise ValueError(f"PATCH schema contains unsupported reference at {path}")
+        definition = root.get("$defs", {}).get(reference.removeprefix("#/$defs/"))
+        if not isinstance(definition, dict):
+            raise ValueError(f"PATCH schema reference is unresolved at {path}")
+        _validate_json_schema(instance, definition, root, path)
+        return
+    expected_type = schema.get("type")
+    type_matches = {
+        "array": isinstance(instance, list),
+        "number": isinstance(instance, (int, float)) and not isinstance(instance, bool),
+        "object": isinstance(instance, dict),
+        "string": isinstance(instance, str),
+    }
+    if expected_type not in type_matches or not type_matches[expected_type]:
+        raise ValueError(f"PATCH payload has invalid type at {path}")
+    if expected_type == "object":
+        properties = schema.get("properties", {})
+        if not isinstance(properties, dict):
+            raise ValueError(f"PATCH schema properties are invalid at {path}")
+        required = schema.get("required", [])
+        if not isinstance(required, list) or any(name not in instance for name in required):
+            raise ValueError(f"PATCH payload is missing a required field at {path}")
+        if schema.get("additionalProperties") is False:
+            unexpected = sorted(set(instance) - set(properties))
+            if unexpected:
+                raise ValueError(f"PATCH payload contains unsupported fields at {path}: {', '.join(unexpected)}")
+        for name, value in instance.items():
+            field_schema = properties.get(name)
+            if isinstance(field_schema, dict):
+                _validate_json_schema(value, field_schema, root, f"{path}.{name}")
+    elif expected_type == "array":
+        if len(instance) < schema.get("minItems", 0):
+            raise ValueError(f"PATCH payload has too few items at {path}")
+        maximum = schema.get("maxItems")
+        if isinstance(maximum, int) and len(instance) > maximum:
+            raise ValueError(f"PATCH payload has too many items at {path}")
+        item_schema = schema.get("items")
+        if isinstance(item_schema, dict):
+            for index, value in enumerate(instance):
+                _validate_json_schema(value, item_schema, root, f"{path}[{index}]")
+    elif expected_type == "string":
+        if len(instance) < schema.get("minLength", 0):
+            raise ValueError(f"PATCH payload string is too short at {path}")
+        pattern = schema.get("pattern")
+        if isinstance(pattern, str) and re.fullmatch(pattern, instance) is None:
+            raise ValueError(f"PATCH payload does not match the required pattern at {path}")
+    elif expected_type == "number":
+        minimum = schema.get("exclusiveMinimum")
+        if isinstance(minimum, (int, float)) and instance <= minimum:
+            raise ValueError(f"PATCH payload number is outside the allowed range at {path}")
+
+
+def validate_patch_schema(patch: dict[str, Any], schema: dict[str, Any]) -> None:
+    canonical_schema = json.dumps(schema, sort_keys=True, separators=(",", ":")).encode()
+    if hashlib.sha256(canonical_schema).hexdigest() != PATCH_SCHEMA_SHA256:
+        raise ValueError("PATCH schema does not match the pinned Microsoft.App/jobs 2024-03-01 contract")
+    _validate_json_schema(patch, schema, schema, "$")
 
 
 def _project_environment(record: object) -> dict[str, Any]:
@@ -206,8 +268,9 @@ def main() -> int:
             qualification_job=arguments.qualification_job,
         )
         schema = json.loads(arguments.schema.read_text(encoding="utf-8"))
-        Draft202012Validator.check_schema(schema)
-        Draft202012Validator(schema).validate(patch)
+        if not isinstance(schema, dict):
+            raise ValueError("PATCH schema root is invalid")
+        validate_patch_schema(patch, schema)
         if arguments.effective_job is not None:
             effective_job = json.loads(arguments.effective_job.read_text(encoding="utf-8"))
             verify_effective_job(
@@ -219,7 +282,7 @@ def main() -> int:
                 qualification_job=arguments.qualification_job,
             )
         arguments.output.write_text(json.dumps(patch, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    except (OSError, json.JSONDecodeError, KeyError, SchemaError, TypeError, ValidationError, ValueError) as error:
+    except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError) as error:
         fail_cli(parser, str(error), cause=error)
     return 0
 

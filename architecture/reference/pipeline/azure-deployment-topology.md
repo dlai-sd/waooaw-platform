@@ -242,7 +242,9 @@ backend key, state lineage/serial, policy result, plan JSON digest, and saved-pl
    `resources.ephemeralStorage` are excluded, unknown fields fail closed, and the effective Job is
    compared with the pre-patch Job before execution so identity, configuration, environment placement,
    image, environment variables, resources, and scaling cannot drift. Probe arguments are never passed
-   through the ambiguous `az containerapp job update --args` parser surface.
+   through the ambiguous `az containerapp job update --args` parser surface. Schema validation uses a
+   pinned canonical digest and the Python standard library so the private runner does not depend on an
+   undeclared package.
 7. Keycloak and Temporal migration jobs use their approved direct PostgreSQL migration contracts.
    Application runtime traffic continues through PgBouncer.
 8. The Keycloak realm import substitutes every secret placeholder inside the job, checks that no

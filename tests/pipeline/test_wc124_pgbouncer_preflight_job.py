@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import copy
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator
 
-from wc124_pgbouncer_preflight_job import build_preflight_patch, verify_effective_job
+from wc124_pgbouncer_preflight_job import build_preflight_patch, validate_patch_schema, verify_effective_job
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -32,6 +34,7 @@ def test_projects_real_get_shape_to_schema_valid_write_model_without_mutating_so
 
     assert job == original
     Draft202012Validator(json.loads(PATCH_SCHEMA.read_text(encoding="utf-8"))).validate(patch)
+    validate_patch_schema(patch, json.loads(PATCH_SCHEMA.read_text(encoding="utf-8")))
     container = patch["properties"]["template"]["containers"][0]
     assert container["command"] == ["/usr/bin/python3"]
     assert container["args"] == [
@@ -57,6 +60,45 @@ def test_projects_real_get_shape_to_schema_valid_write_model_without_mutating_so
     }
     assert "identity" not in patch
     assert "configuration" not in patch["properties"]
+
+
+def test_rejects_unpinned_schema_and_schema_invalid_payload() -> None:
+    schema = json.loads(PATCH_SCHEMA.read_text(encoding="utf-8"))
+    patch = build_preflight_patch(job_fixture(), "demo", SUBSCRIPTION_ID)
+    altered_schema = copy.deepcopy(schema)
+    altered_schema["title"] = "untrusted"
+
+    with pytest.raises(ValueError, match="does not match the pinned"):
+        validate_patch_schema(patch, altered_schema)
+
+    patch["properties"]["template"]["containers"][0]["imageType"] = "ContainerImage"
+    with pytest.raises(ValueError, match="unsupported fields"):
+        validate_patch_schema(patch, schema)
+
+
+def test_cli_runs_without_site_packages(tmp_path: Path) -> None:
+    output = tmp_path / "patch.json"
+
+    subprocess.run(
+        [
+            sys.executable,
+            "-S",
+            str(ROOT / "scripts/wc124_pgbouncer_preflight_job.py"),
+            "--job",
+            str(REAL_SHAPE_FIXTURE),
+            "--environment",
+            "demo",
+            "--subscription-id",
+            SUBSCRIPTION_ID,
+            "--schema",
+            str(PATCH_SCHEMA),
+            "--output",
+            str(output),
+        ],
+        check=True,
+    )
+
+    validate_patch_schema(json.loads(output.read_text(encoding="utf-8")), json.loads(PATCH_SCHEMA.read_text()))
 
 
 def test_verifies_only_command_and_args_changed_in_effective_job() -> None:
