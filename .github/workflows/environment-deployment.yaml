@@ -1594,7 +1594,76 @@ jobs:
               bootstrap_admin_count: $bootstrap_admin_count,
               provisioner_vault_role_count: $provisioner_vault_role_count,
               status: "revocation-verified"
-            }' > wc124-bootstrap-revocation-evidence.json
+            }' > "$GITHUB_WORKSPACE/wc124-bootstrap-revocation-evidence.json"
+
+      - name: Reconcile legacy PgBouncer credential metadata
+        if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
+        env:
+          KEY_VAULT_NAME: ${{ steps.foundation.outputs.key_vault_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          record=$(az keyvault secret show \
+            --vault-name "$KEY_VAULT_NAME" \
+            --name db-pgbouncer-auth \
+            --query '{id:id, tags:tags}' \
+            --output json)
+          current_role=$(jq -r '.tags["wc124-role"] // ""' <<< "$record")
+          if [ "$current_role" = pgbouncer_auth ]; then
+            jq -n \
+              --arg environment "$TARGET_ENVIRONMENT" \
+              --arg status already-current \
+              '{environment: $environment, secret: "db-pgbouncer-auth", status: $status}' \
+              > wc124-pgbouncer-metadata-reconciliation.json
+          else
+            test "$current_role" = pgbouncer || {
+              echo "Unsupported db-pgbouncer-auth legacy role tag: ${current_role:-<empty>}" >&2
+              exit 1
+            }
+            database=$(jq -r '.tags["wc124-database"] // ""' <<< "$record")
+            provisioner=$(jq -r '.tags["wc124-provisioner"] // ""' <<< "$record")
+            grant_digest=$(jq -r '.tags["wc124-grant-digest"] // ""' <<< "$record")
+            test "$database" = waooaw_application
+            test "$provisioner" = wc124-db-provisioner
+            test -n "$grant_digest"
+            authfile=$(az keyvault secret show \
+              --vault-name "$KEY_VAULT_NAME" \
+              --name db-pgbouncer-auth \
+              --query value \
+              --output tsv)
+            PGBOUNCER_AUTHFILE="$authfile" TARGET_ENVIRONMENT="$TARGET_ENVIRONMENT" python3 - <<'PY'
+          import os
+
+          from scripts.wc124_db_provisioner import environment_specs, parse_authfile
+
+          actual = set(parse_authfile(os.environ["PGBOUNCER_AUTHFILE"]))
+          expected = {spec.role for spec in environment_specs(os.environ["TARGET_ENVIRONMENT"])}
+          if actual != expected:
+              raise SystemExit(
+                  f"PgBouncer authfile role mismatch; missing={sorted(expected - actual)}, "
+                  f"extra={sorted(actual - expected)}"
+              )
+          PY
+            unset authfile
+            az keyvault secret set-attributes \
+              --id "$(jq -r '.id' <<< "$record")" \
+              --tags \
+                wc124-role=pgbouncer_auth \
+                wc124-database="$database" \
+                wc124-grant-digest="$grant_digest" \
+                wc124-provisioner="$provisioner" \
+              --output none
+            jq -n \
+              --arg environment "$TARGET_ENVIRONMENT" \
+              --arg previous_role "$current_role" \
+              '{
+                environment: $environment,
+                secret: "db-pgbouncer-auth",
+                previous_role: $previous_role,
+                current_role: "pgbouncer_auth",
+                status: "legacy-metadata-reconciled"
+              }' > wc124-pgbouncer-metadata-reconciliation.json
+          fi
 
       - name: Verify WC-124 database credential handoff
         if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
@@ -1604,8 +1673,15 @@ jobs:
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
-          expected_count=15
-          test "$TARGET_ENVIRONMENT" != demo || expected_count=17
+          expected_count=$(jq \
+            --arg environment "$TARGET_ENVIRONMENT" \
+            '[.entries[]
+              | select(
+                  .provisioner == "wc124-db-provisioner"
+                  and (.environments | index($environment))
+                )
+            ] | length' \
+            infrastructure/environment-readiness/secret-catalog.json)
           jq -n \
             --arg environment "$TARGET_ENVIRONMENT" \
             '{schema: "waooaw.wc124-db-credential-inventory/v1", environment: $environment, credentials: []}' \
@@ -1620,9 +1696,18 @@ jobs:
               --name "$vault_name" \
               --query '{id:id, enabled:attributes.enabled, tags:tags}' \
               -o json)
-            test "$(jq -r '.enabled' <<< "$record")" = true
-            test "$(jq -r '.tags["wc124-role"] // ""' <<< "$record")" = "$expected_role"
-            test "$(jq -r '.tags["wc124-provisioner"] // ""' <<< "$record")" = "wc124-db-provisioner"
+            test "$(jq -r '.enabled' <<< "$record")" = true || {
+              echo "Disabled WC-124 credential: $vault_name" >&2
+              exit 1
+            }
+            test "$(jq -r '.tags["wc124-role"] // ""' <<< "$record")" = "$expected_role" || {
+              echo "Unexpected WC-124 role tag for $vault_name" >&2
+              exit 1
+            }
+            test "$(jq -r '.tags["wc124-provisioner"] // ""' <<< "$record")" = "wc124-db-provisioner" || {
+              echo "Unexpected WC-124 provisioner tag for $vault_name" >&2
+              exit 1
+            }
             version_id=$(jq -er '.id | split("/")[-1]' <<< "$record")
             database=$(jq -er '.tags["wc124-database"]' <<< "$record")
             jq \
@@ -2041,6 +2126,7 @@ jobs:
             wc124-db-handoff-recovery-execution.json
             wc124-db-handoff-recovery-evidence.log
             wc124-bootstrap-revocation-evidence.json
+            wc124-pgbouncer-metadata-reconciliation.json
             wc124-db-credential-inventory.json
             wc124-vendor-migrations.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan.json

@@ -123,6 +123,12 @@ def test_database_transition_reconciles_revocation_only_after_independent_handof
     )[0]
     assert "provisioner_required == 'true'" in delete_provisioner
     assert "revocation_verification_required == 'true'" in delete_provisioner
+    assert "Reconcile legacy PgBouncer credential metadata" in WORKFLOW
+    assert 'test "$current_role" = pgbouncer || {' in WORKFLOW
+    assert "from scripts.wc124_db_provisioner import environment_specs, parse_authfile" in WORKFLOW
+    assert "az keyvault secret set-attributes" in WORKFLOW
+    assert "wc124-pgbouncer-metadata-reconciliation.json" in WORKFLOW
+    assert "expected_count=$(jq" in WORKFLOW
 
 
 def test_wc124_container_app_job_names_fit_azure_limit() -> None:
