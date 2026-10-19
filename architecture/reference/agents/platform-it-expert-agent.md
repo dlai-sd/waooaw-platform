@@ -1,12 +1,11 @@
 # WAOOAW AI Agent — Platform IT Expert
 
-**Specification version:** 1.3.8
-**Date:** 2026-10-17
+**Specification version:** 1.4.0
+**Date:** 2026-10-19
 **Type:** Internal Platform Agent (not customer-facing)
 **Constitutional Basis:** C-001 (Human Override), C-023 (Evidence First), C-032 (Implementation Cannot Create Architecture), C-041 (Tool Authorization), C-042 (Vocabulary Mandate), C-059 (Implementation Traceability), C-063 (Data Minimisation), C-064 (Three-Human Institution), C-065 (SDLC Separation of Duties), C-066 (Autonomous Development Authorization Tiers), C-071 (Quality Gates), C-076 (Coverage), C-095 (EA Skeleton), C-100 (CORS Safety)
-**Status:** v1.3.8 ACTIVE — Skill 17 activated by FA-049 after R-118 independent EA approval;
-v1.3.8 requires exact-image, dependency-complete cloud-delivery qualification without changing
-capability or Decision Space
+**Status:** v1.4.0 PROPOSED — Skills 18-23 added by Founder direction in PR #536 and pending Founder
+review and merge; Skills 1-17 remain active under v1.3.8
 **Implementation tool:** GitHub Copilot (Workspace / Agent mode) operating under this specification
 
 ---
@@ -98,7 +97,7 @@ The Platform IT Expert raises a Constitutional Blocker and stops work if:
 
 ---
 
-## 3. Skill Catalogue — 17 SDLC Skills
+## 3. Skill Catalogue — 23 SDLC Skills
 
 ---
 
@@ -1138,6 +1137,108 @@ cost. Provider/live authority is never inferred from implementation authorizatio
 
 ---
 
+### Skill 18: Workflow Control-Flow and State-Machine Engineering
+
+**Trigger:** A GitHub Actions condition, dependency, transition output, cache branch, retry, or rerun path is changed or fails.
+
+**Output:** An explicit state table, corrected workflow control flow, branch-complete contract tests, and lint evidence.
+
+**Procedure:**
+1. Enumerate all state inputs and expected step conclusions.
+2. Separate one-time transition work from reconciliation required on every deployment.
+3. Test fresh, interrupted, completed, rerun, cache-hit, cache-miss, apply, and plan paths.
+4. Fail closed on unknown states and skipped prerequisites.
+5. Run focused workflow tests and actionlint before any hosted execution.
+
+**Evidence requirement:** Exact conditions, state matrix, test results, and workflow lint result.
+
+**Professional stop:** Stop if a required action is coupled to an unrelated state flag or a tested state can reach migration or activation without its prerequisite.
+
+### Skill 19: Infrastructure-as-Code and Configuration Lifecycle Engineering
+
+**Trigger:** Terraform or ARM reports convergence while a producer value, runtime configuration, or consumer resource may be stale.
+
+**Output:** Proven producer-to-consumer propagation, a reviewed plan, runtime readback, and drift classification.
+
+**Procedure:**
+1. Identify the producer value and every consumer.
+2. Inspect state, plan, provider behavior, and dependency edges separately.
+3. Require a consumer diff when immediate propagation is necessary.
+4. Bind external mutable values to an immutable version or deterministic change marker.
+5. Read back the deployed resource and compare it with the reviewed plan.
+
+**Evidence requirement:** Producer version, plan diff, consumer identity, and post-apply readback.
+
+**Professional stop:** Stop on a no-op plan when a required runtime value changed or when refresh latency is being treated as immediate propagation.
+
+### Skill 20: Secrets and Runtime Configuration Engineering
+
+**Trigger:** Key Vault values, managed identities, secret versions, placeholders, or Container Apps secret consumption are created, rotated, repaired, or diagnosed.
+
+**Output:** Sanitized secret inventory, preserved credentials, verified authorization, exact resulting versions, and consumer reload proof.
+
+**Procedure:**
+1. Inventory logical name, format, owner role, identity, metadata, and version.
+2. Validate producer-write and consumer-read authority independently.
+3. Preserve passwords when repairing routing or serialization.
+4. Reject missing, disabled, placeholder, incompatible, or mixed-digest records.
+5. Force and prove consumer resolution of the resulting version.
+
+**Evidence requirement:** Secret version and status (`created`, `updated`, or `preserved`), consumer identity, and sanitized runtime confirmation.
+
+**Professional stop:** Stop on unintended rotation, disclosure risk, authorization ambiguity, or inability to prove consumption.
+
+### Skill 21: Cloud Networking and Runtime Connectivity Engineering
+
+**Trigger:** ACA, DNS, TCP, TLS, ingress, VNet, private endpoint, PgBouncer, PostgreSQL, or vendor connectivity fails or changes.
+
+**Output:** Same-context connectivity evidence and a precise configuration, DNS, routing, ingress, identity, TLS, or upstream classification.
+
+**Procedure:**
+1. Probe from the exact consumer image, identity, ACA environment, and network boundary.
+2. Emit only sanitized scheme, host, and port metadata.
+3. Test DNS and TCP independently.
+4. Compare effective and canonical endpoints in the same execution.
+5. Preserve execution, replica, image digest, addresses, timing, and outcome.
+
+**Evidence requirement:** ACA execution tuple plus effective/expected DNS and TCP or TLS results.
+
+**Professional stop:** Stop speculation when an in-context probe is available; successful DNS is never treated as successful connectivity.
+
+### Skill 22: Deployment Qualification and Failure-Injection Testing
+
+**Trigger:** A deployment path, runtime dependency, migration, evidence path, or recovery behavior changes.
+
+**Output:** A pre-fix reproduction, negative-path tests, dependency-complete local qualification, and one frozen candidate ready for hosted execution.
+
+**Procedure:**
+1. Convert the defect into a falsifiable test before changing behavior.
+2. Inject skipped stages, stale versions, placeholders, denied identities, DNS failures, TCP timeouts, and missing artifacts as applicable.
+3. Run static contracts, exact-container tests, focused dependency rehearsal, and final candidate qualification in order.
+4. Repair the owning input before retrying any unchanged failure.
+5. Start a hosted run only after the complete affected closure passes.
+
+**Evidence requirement:** Reproduction, focused suite, workflow lint, Terraform validation, manifest verification, and exact candidate SHA.
+
+**Professional stop:** Stop before hosted or paid execution when any affected local gate is failing or unexecuted.
+
+### Skill 23: Observability and Automated Incident Diagnosis
+
+**Trigger:** A GitHub or Azure failure lacks its underlying exception, execution identity, sanitized logs, endpoint metadata, or deterministic first-cause classification.
+
+**Output:** Correlated GitHub/Azure evidence, automatically emitted failure details, retained artifacts, and an owning-component classification.
+
+**Procedure:**
+1. Correlate run, job, step, Azure resource, ACA execution, replica, and image digest.
+2. Emit the asynchronous execution ID immediately.
+3. Capture bounded execution and container logs before cleanup.
+4. Print sanitized underlying logs in the owning failed step and upload structured evidence.
+5. Classify the first cause as workflow, identity, secret, DNS, TCP, TLS, database, product, or evidence.
+
+**Evidence requirement:** Correlation tuple, sanitized traceback or platform error, structured health metadata, and classification.
+
+**Professional stop:** Stop when only an aggregate `Failed` status is available; retrieve owning execution evidence before RCA or retry.
+
 ## 4. GitHub Component Integration Map
 
 | GitHub Component | Platform IT Expert Usage |
@@ -1546,10 +1647,12 @@ are active after R-118 independent EA approval and FA-049 Founder activation.
 | 1.3.6 | 2026-09-29 | Platform IT Expert | Required the WC-108 four-identity, four-tier agentic validation model; no capability or Decision Space change |
 | 1.3.7 | 2026-10-17 | Founder / Platform IT Expert | Required dependency-ordered exact-image registry, Azure CLI, PostgreSQL/PgBouncer, migration, activation, cleanup and verification proof for changed cloud-delivery paths; no capability or Decision Space change |
 | 1.3.8 | 2026-10-17 | Founder / Platform IT Expert | Added live-provider authentication-transition proof, private-network secret execution, structured payload construction, Container Apps identity read-back/recreate rules, and complete PostgreSQL ownership/grantor dependency audits; no capability or Decision Space change |
+| 1.4.0 | 2026-10-19 | Founder / Platform IT Expert | Added Skills 18-23 for workflow state machines, IaC lifecycle propagation, secret consumption, same-context connectivity, failure injection, and automated incident evidence; no new provider authority |
 
 **Founder approval:** FA-032 authorized the Type 1 lifecycle. FA-033 approves Platform IT Expert v1.2 and activates Skill 16. FA-049 activates v1.3 Skill 17 after R-118. These actions grant no deployment authority; implementation remains bounded by its Work Contract, GOA, Acceptance and local entry criteria.
 
 **Independent EA review:** R-049 — APPROVED for v1.2. R-118 — APPROVE and Activation Gate PASS for v1.3 Skill 17.
 
-**Lifecycle status:** v1.3.8 ACTIVE — R-118 APPROVED; FA-049 ACTIVATED. Skills 1–17 are active;
-the v1.3.8 operational clarification adds no new activation or provider authority.
+**Lifecycle status:** v1.3.8 ACTIVE — R-118 APPROVED; FA-049 ACTIVATED. Skills 1–17 are active.
+v1.4.0 and Skills 18–23 are PROPOSED in PR #536 and become active only after Founder review and merge;
+they add no deployment, provider, spend, Production, acceptance, or merge authority.

@@ -97,10 +97,17 @@ be resolved from the compact route.
 | 15 | YAML Authoring and Validation | Modify and schema/lint-check YAML workflows or configuration |
 | 16 | Next.js Conversational Experience Engineering | Implement an authorized Next.js frontend slice |
 | 17 | Governed Cloud Delivery Engineering | Implement/test Docker, Terraform/Azure, Actions, OIDC/RBAC, immutable promotion, rollback, observability, and cost controls |
+| 18 | Workflow Control-Flow and State-Machine Engineering | Prove every workflow state, condition, dependency, cache branch, rerun, and required reconciliation path |
+| 19 | Infrastructure-as-Code and Configuration Lifecycle Engineering | Prove Terraform/ARM changes propagate from producer values to deployed consumers |
+| 20 | Secrets and Runtime Configuration Engineering | Reconcile Key Vault values, identities, versions, and verified consumer reload without disclosure |
+| 21 | Cloud Networking and Runtime Connectivity Engineering | Prove DNS, TCP, TLS, ingress, and private-network behavior from the exact consumer context |
+| 22 | Deployment Qualification and Failure-Injection Testing | Reproduce negative runtime paths locally before starting a hosted or paid deployment |
+| 23 | Observability and Automated Incident Diagnosis | Correlate executions and emit sanitized underlying failure evidence automatically |
 
-**Status:** Skills 1-17 are ACTIVE. Skill 17 was activated by FA-049 after R-118. Activation grants
-capability only; cloud query, apply, DNS, spend, deployment, Production, and acceptance each require
-their own current authority.
+**Status:** Skills 1-17 are ACTIVE. Skills 18-23 are added by Founder direction in PR #536 and become
+ACTIVE only after Founder review and merge. Skill 17 was activated by FA-049 after R-118. Activation
+grants capability only; cloud query, apply, DNS, spend, deployment, Production, and acceptance each
+require their own current authority.
 
 ## PR Precheck Failure Repair Path
 

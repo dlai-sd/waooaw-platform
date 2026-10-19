@@ -14,7 +14,7 @@ PR_TEMPLATE = ROOT / ".github" / "pull_request_template.md"
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yaml"
 
 
-def test_platform_it_expert_compact_inventory_maps_all_active_skills() -> None:
+def test_platform_it_expert_compact_inventory_maps_all_declared_skills() -> None:
     card = IT_EXPERT_CARD.read_text(encoding="utf-8")
     spec = IT_EXPERT_SPEC.read_text(encoding="utf-8")
     entry = AGENT_ENTRY.read_text(encoding="utf-8")
@@ -22,9 +22,11 @@ def test_platform_it_expert_compact_inventory_maps_all_active_skills() -> None:
     inventory = [int(value) for value in re.findall(r"^\| (\d+) \|", card, re.MULTILINE)]
     headings = [int(value) for value in re.findall(r"^### Skill (\d+):", spec, re.MULTILINE)]
 
-    assert inventory == list(range(1, 18))
-    assert headings == list(range(1, 18))
+    assert inventory == list(range(1, 24))
+    assert headings == list(range(1, 24))
     assert "Skills 1–17 ACTIVE" in entry
+    assert "Skills 18-23 are added by Founder direction in PR #536" in card
+    assert "v1.4.0 PROPOSED" in spec
     assert "Skill 17 Governed Cloud Delivery Engineering activated by FA-049" in entry
     assert "Platform IT Expert v1.3.5" in entry
     assert "deterministic-first token efficiency" in entry
