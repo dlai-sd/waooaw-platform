@@ -1148,7 +1148,7 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
     assert "No unexpired release artifact named" in deploy
     assert "release_run_id: ${{ fromJSON(needs.authorize.outputs.release_run_id) }}" in deploy
     assert "release_sha: ${{ needs.authorize.outputs.release_sha }}" in deploy
-    assert "environment: ${{ inputs.environment }}" in deploy
+    assert "environment: ${{ needs.authorize.outputs.environment }}" in deploy
     for environment in ("demo", "uat", "prod"):
         assert f"          - {environment}" in deploy
     assert "default: plan" in deploy
@@ -1157,11 +1157,11 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
     assert "- activate" not in deploy
     assert "- sleep" not in deploy
     assert 'case "$EXECUTION_MODE" in plan|apply)' in deploy
-    assert "apply: ${{ inputs.execution == 'apply' }}" in deploy
-    assert "lifecycle_action: ${{ inputs.execution == 'apply' && 'activate' || 'plan' }}" in deploy
+    assert "apply: ${{ needs.authorize.outputs.execution == 'apply' }}" in deploy
+    assert "lifecycle_action: ${{ needs.authorize.outputs.execution == 'apply' && 'activate' || 'plan' }}" in deploy
     assert "cost_controls:" not in deploy
     assert "enforce_cost_controls:" not in deploy
-    assert deploy.count("if: inputs.execution == 'apply'") == 2
+    assert deploy.count("if: needs.authorize.outputs.execution == 'apply'") == 2
     for internal_input in (
         "lifecycle_evidence:",
         "founder_action_authority:",
