@@ -4,6 +4,14 @@
 
 set -eu
 
+# The disposable-database path (POSTGRES_* variables, in-image schema bootstrap) exists only
+# for the CI image smoke test. Deployed environments connect to the provisioned persistent
+# instance through PgBouncer with a supplied connection string; there is no database sidecar.
+if [ "${WAOOAW_DEMO_DATABASE_BOOTSTRAP:-false}" = "true" ] && [ -n "${ConnectionStrings__DefaultConnection:-}" ] && [ -z "${POSTGRES_PASSWORD:-}" ]; then
+  echo "WAOOAW_DEMO_DATABASE_BOOTSTRAP is not permitted against a provisioned database instance" >&2
+  exit 1
+fi
+
 if [ -n "${POSTGRES_PASSWORD:-}" ]; then
   export ConnectionStrings__DefaultConnection="Host=localhost;Port=5432;Database=${POSTGRES_DB:-waooaw};Username=${POSTGRES_USER:-postgres};Password=$POSTGRES_PASSWORD"
 fi

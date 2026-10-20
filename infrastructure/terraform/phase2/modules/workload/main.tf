@@ -462,7 +462,9 @@ locals {
       IdentityLifecycleWriter__AllowedPrivateHosts__0 = "ca-${var.environment}-keycloak.internal.${var.container_app_environment_default_domain}"
       IdentityLifecycleWriter__ClientId               = "waooaw-bp-identity-lifecycle-writer"
       }, var.environment == "demo" ? {
-      WAOOAW_DEMO_DATABASE_BOOTSTRAP = "true"
+      # The Demo schema lives on the provisioned persistent instance (WC-124); the image's
+      # disposable-database bootstrap is only for the CI image smoke test.
+      WAOOAW_DEMO_DATABASE_BOOTSTRAP = "false"
       DMA_ADMISSION_CONTENT_DIGEST   = var.dma_admission_content_digest
       DMA_ARTIFACT_DIGEST            = split("@", var.image_digests["agent-runtime-adapter-digital-marketing"])[1]
       } : {}, var.auth_preview_origin != null ? {
@@ -513,6 +515,9 @@ locals {
       SESSION_TOKEN_ENVELOPE_WRITE_VERSION  = var.web_session_token_envelope_write_version
       WAOOAW_ENVIRONMENT                    = var.environment
       WAOOAW_SERVER_SESSION_MODE            = var.web_session_mode
+      # web reaches the provisioned instance through in-VNet PgBouncer, which terminates no TLS.
+      # Without this, NODE_ENV=production makes postgres.js demand TLS and readiness never passes.
+      WEB_SESSION_DATABASE_SSL_MODE         = "disable"
       WEB_SESSION_DEPLOY_VERSION            = var.web_session_deploy_version
       }, var.web_session_mode == "disabled" ? {} : {
       SESSION_HANDLE_DIGEST_WRITE_VERSION         = var.web_session_handle_digest_write_version
@@ -1751,6 +1756,18 @@ resource "azurerm_container_app" "temporal" {
       env {
         name  = "SKIP_DB_CREATE"
         value = "true"
+      }
+      # Temporal pools session-mode connections through PgBouncer against the single provisioned
+      # instance (Demo: max_client_conn 40, server max_connections 40). The image default of 20
+      # connections per store, per internal service (frontend/history/matching/worker x default +
+      # visibility), exhausts both and starves every other runtime; bound each pool to 2.
+      env {
+        name  = "SQL_MAX_CONNS"
+        value = "2"
+      }
+      env {
+        name  = "SQL_MAX_IDLE_CONNS"
+        value = "2"
       }
     }
   }

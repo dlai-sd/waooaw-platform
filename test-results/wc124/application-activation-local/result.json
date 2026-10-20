@@ -1,0 +1,41 @@
+{
+  "schema": "waooaw.wc124-application-activation-local/v1",
+  "fixture": "snapshot:job-demo-wc124-billing-migration-m8gnx9s",
+  "route": "pgbouncer-scram-per-role",
+  "database_topology": "single-provisioned-instance",
+  "images": {
+    "constitutional_engine": "waooaw/constitutional-engine:wc124local",
+    "business_platform": "waooaw/business-platform:wc124local",
+    "professional_runtime": "waooaw/professional-runtime:wc124local",
+    "web": "waooaw/web:wc124local",
+    "billing_engine": "waooaw/billing-engine:wc124bl1792495704"
+  },
+  "probes": {
+    "constitutional_engine": "tcp:5002",
+    "business_platform": "http:/health/ready",
+    "professional_runtime": "http:/health",
+    "temporal": "tcp:7233",
+    "web": [
+      "http:/api/health/live",
+      "http:/api/health/ready"
+    ]
+  },
+  "observed_backend_roles": [
+    "billing_migrator",
+    "bp_runtime",
+    "temporal_runtime",
+    "web_session_app"
+  ],
+  "backend_connections_by_role": {
+    "billing_migrator": 1,
+    "bp_runtime": 1,
+    "temporal_runtime": 13,
+    "web_session_app": 1
+  },
+  "pgbouncer_limits": {
+    "max_client_conn": 40,
+    "default_pool_size": 32,
+    "reserve_pool_size": 8
+  },
+  "status": "passed"
+}
