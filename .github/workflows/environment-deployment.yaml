@@ -2548,6 +2548,64 @@ jobs:
             sleep 10
           done
 
+      - name: Reclaim PostgreSQL connection budget before vendor migrations
+        if: inputs.apply
+        env:
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+          POSTGRESQL_SERVER_FQDN: ${{ steps.foundation.outputs.postgresql_server_fqdn }}
+        run: |
+          set -euo pipefail
+          # Demo runs one provisioned instance with max_connections=40, of which Azure reserves
+          # superuser_reserved_connections + reserved_connections; only the remainder is available to
+          # the vendor migrators. A stale, still-active Container Apps revision (one that predates the
+          # bounded pool configuration) keeps its old pools open and starves the migration job, so
+          # retire every non-latest active revision first and then require measured headroom.
+          server_name="${POSTGRESQL_SERVER_FQDN%%.*}"
+          server_json=$(az postgres flexible-server show --resource-group "$RESOURCE_GROUP" --name "$server_name" --output json)
+          server_id=$(jq -er '.id' <<< "$server_json")
+          param() {
+            az postgres flexible-server parameter show --resource-group "$RESOURCE_GROUP" \
+              --server-name "$server_name" --name "$1" --query value --output tsv
+          }
+          max_connections=$(param max_connections)
+          superuser_reserved=$(param superuser_reserved_connections)
+          reserved=$(param reserved_connections)
+          usable=$((max_connections - superuser_reserved - reserved))
+          retired='[]'
+          for app in ca-${TARGET_ENVIRONMENT}-temporal ca-${TARGET_ENVIRONMENT}-keycloak ca-${TARGET_ENVIRONMENT}-pgbouncer; do
+            az containerapp show --resource-group "$RESOURCE_GROUP" --name "$app" --output json > /dev/null 2>&1 || continue
+            latest=$(az containerapp show --resource-group "$RESOURCE_GROUP" --name "$app" --query properties.latestRevisionName --output tsv)
+            while IFS= read -r revision; do
+              [ -n "$revision" ] || continue
+              echo "Retiring stale active revision $revision of $app (latest is $latest)"
+              az containerapp revision deactivate --resource-group "$RESOURCE_GROUP" --name "$app" --revision "$revision" --output none
+              retired=$(jq -c --arg app "$app" --arg revision "$revision" '. + [{app: $app, revision: $revision}]' <<< "$retired")
+            done < <(az containerapp revision list --resource-group "$RESOURCE_GROUP" --name "$app" \
+              --query "[?properties.active && name != '$latest'].name" --output tsv)
+          done
+          required_headroom=8
+          for attempt in $(seq 1 18); do
+            active=$(az monitor metrics list --resource "$server_id" --metric active_connections \
+              --interval PT1M --offset 5m --aggregation Maximum \
+              --query "max(value[0].timeseries[0].data[].maximum)" --output tsv 2>/dev/null || echo "")
+            case "$active" in ''|None|null) active=0 ;; esac
+            active=${active%.*}
+            headroom=$((usable - active))
+            echo "PostgreSQL connections: max=$max_connections reserved=$((superuser_reserved + reserved)) usable=$usable active(5m max)=$active headroom=$headroom"
+            if [ "$headroom" -ge "$required_headroom" ]; then break; fi
+            test "$attempt" != 18 || { echo "Insufficient PostgreSQL connection headroom for vendor migrations" >&2; exit 1; }
+            sleep 10
+          done
+          jq -n \
+            --arg environment "$TARGET_ENVIRONMENT" --arg server "$server_name" \
+            --argjson max "$max_connections" --argjson reserved "$((superuser_reserved + reserved))" \
+            --argjson usable "$usable" --argjson active "$active" --argjson retired "$retired" \
+            '{schema: "waooaw.wc124-connection-budget/v1", environment: $environment, server: $server,
+              max_connections: $max, reserved_connections: $reserved, usable_connections: $usable,
+              active_connections_5m_max: $active, retired_revisions: $retired}' \
+            | tee wc124-connection-budget.json
+
       - name: Run vendor schema migrations against private PostgreSQL
         if: inputs.apply
         env:
@@ -3043,6 +3101,7 @@ jobs:
             wc124-pgbouncer-metadata-reconciliation.json
             wc124-reconciliation-authority.json
             wc124-db-credential-inventory.json
+            wc124-connection-budget.json
             wc124-vendor-migrations.json
             wc124-keycloak-migration-job.json
             wc124-keycloak-migration-execution.json

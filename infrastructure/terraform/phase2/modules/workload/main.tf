@@ -931,11 +931,11 @@ resource "azurerm_container_app" "pgbouncer" {
       }
       env {
         name  = "PGBOUNCER_DEFAULT_POOL_SIZE"
-        value = var.environment == "demo" ? "32" : "80"
+        value = var.environment == "demo" ? "8" : "80"
       }
       env {
         name  = "PGBOUNCER_RESERVE_POOL_SIZE"
-        value = var.environment == "demo" ? "8" : "20"
+        value = var.environment == "demo" ? "2" : "20"
       }
       env {
         name  = "PGBOUNCER_RESERVE_POOL_TIMEOUT"
@@ -1652,6 +1652,19 @@ resource "azurerm_container_app_job" "keycloak_migration" {
         name  = "KC_DB_USERNAME"
         value = "keycloak_migrator"
       }
+      # Connection budget on the single provisioned instance (Demo usable slots = 40 - reserved 15).
+      env {
+        name  = "KC_DB_POOL_INITIAL_SIZE"
+        value = "1"
+      }
+      env {
+        name  = "KC_DB_POOL_MIN_SIZE"
+        value = "1"
+      }
+      env {
+        name  = "KC_DB_POOL_MAX_SIZE"
+        value = "5"
+      }
       env {
         name        = "KC_DB_PASSWORD"
         secret_name = "migration-database"
@@ -1943,6 +1956,19 @@ resource "azurerm_container_app" "keycloak" {
       env {
         name  = "KC_DB_USERNAME"
         value = "keycloak_runtime"
+      }
+      # Connection budget on the single provisioned instance (Demo usable slots = 40 - reserved 15).
+      env {
+        name  = "KC_DB_POOL_INITIAL_SIZE"
+        value = "1"
+      }
+      env {
+        name  = "KC_DB_POOL_MIN_SIZE"
+        value = "1"
+      }
+      env {
+        name  = "KC_DB_POOL_MAX_SIZE"
+        value = "5"
       }
       env {
         name  = "KC_SPI_CONNECTIONS_JPA_QUARKUS_MIGRATION_STRATEGY"

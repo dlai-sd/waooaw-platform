@@ -989,7 +989,13 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "--transition wc124-plan-b" in workflow
     assert "secret-seeder-console.log" in workflow
     assert workflow.index("capture_seeder_evidence()") < workflow.index("Delete private credential seeder")
-    assert workflow.count("if: inputs.apply") == 28
+    assert "Reclaim PostgreSQL connection budget before vendor migrations" in workflow
+    assert workflow.index("Reclaim PostgreSQL connection budget before vendor migrations") < workflow.index(
+        "Run vendor schema migrations against private PostgreSQL"
+    )
+    assert "az containerapp revision deactivate" in workflow
+    assert "wc124-connection-budget.json" in workflow
+    assert workflow.count("if: inputs.apply") == 29
     assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
     assert '--context "external_environment=$external_environment"' in workflow
     assert "if: inputs.apply || steps.foundation-cache.outputs.cache_hit != 'true'" in workflow

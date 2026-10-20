@@ -19,6 +19,7 @@ RUN_ID="wc124act$(date +%s)"
 REDIS_IMAGE="redis:7-alpine"
 TEMPORAL_IMAGE="temporalio/auto-setup@sha256:98cdb6b5e02d64cb933864a9ba91cb66065eb320623a0dafdf44beba535bca88"
 STUB_IMAGE="nginx:alpine"
+KEYCLOAK_IMAGE="quay.io/keycloak/keycloak@sha256:82c5b7a110456dbd42b86ea572e728878549954cc8bd03cd65410d75328095d2"
 SECRET="wc124-local-activation-secret-32-bytes-min"
 HMAC_KEY=$(printf 'wc124-activation-%s' "$RUN_ID" | sha256sum | cut -d' ' -f1)
 SESSION_KEY_B64=$(printf '%s' "$HMAC_KEY" | head -c 32 | base64 -w0)
@@ -49,7 +50,57 @@ wc124_stack_init "$RUN_ID"
 wc124_start_postgres "$ROOT"
 fixture_source=$(wc124_replay_billing_snapshot "$SNAPSHOT")
 wc124_provision_temporal_databases
+wc124_provision_keycloak_database
 wc124_start_pgbouncer billing_migrator ce_runtime bp_runtime web_session_app temporal_runtime temporal_migrator
+
+# Keycloak vendor migration exactly as job-demo-keycloak-migration runs it: the exact image,
+# keycloak_migrator, directly on the instance (not through PgBouncer), with the bounded Agroal pool.
+run_keycloak_migration() {
+  local evidence="$1"
+  docker run --rm --network "$WC124_NETWORK" \
+    -e KC_DB=postgres -e KC_DB_URL_HOST="$WC124_POSTGRES" -e KC_DB_URL_PORT=5432 -e KC_DB_URL_DATABASE=waooaw_keycloak \
+    -e KC_DB_URL_PROPERTIES="?prepareThreshold=0" -e KC_DB_USERNAME=keycloak_migrator -e KC_DB_PASSWORD="$WC124_ROLE_PASSWORD" \
+    -e KC_DB_POOL_INITIAL_SIZE=1 -e KC_DB_POOL_MIN_SIZE=1 -e KC_DB_POOL_MAX_SIZE=5 \
+    -e KC_SPI_CONNECTIONS_JPA_QUARKUS_MIGRATION_STRATEGY=update -e KC_SPI_CONNECTIONS_JPA_QUARKUS_INITIALIZE_EMPTY=true \
+    --entrypoint /bin/bash "$KEYCLOAK_IMAGE" -c '
+      printf "{\"realm\":\"waooaw\",\"enabled\":true}" > /tmp/waooaw-realm.json
+      exec /opt/keycloak/bin/kc.sh import --file /tmp/waooaw-realm.json --override true
+    ' > "$evidence" 2>&1
+}
+
+# Reproduce the Demo failure mode first: a stale Temporal revision with the image-default pools
+# (20 per store per service) must be able to exhaust the usable slots and make Keycloak fail with
+# "remaining connection slots are reserved"; retiring it must make the same migration succeed.
+if [ "${WC124_REPRODUCE_STALE_POOLS:-1}" = 1 ]; then
+  # Hold the usable slots the way the stale revision did: idle sessions as temporal_runtime.
+  wc124_track "$RUN_ID-stale-temporal"
+  docker run -d --name "$RUN_ID-stale-temporal" --network "$WC124_NETWORK" -e PGPASSWORD="$WC124_ROLE_PASSWORD" \
+    --entrypoint bash "$WC124_POSTGRES_IMAGE" -c "
+      for i in \$(seq 1 $WC124_PG_USABLE_CONNECTIONS); do
+        psql -h $WC124_POSTGRES -U temporal_runtime -d waooaw_temporal -c 'SELECT pg_sleep(600)' >/dev/null 2>&1 &
+      done
+      wait" >/dev/null
+  for attempt in $(seq 1 30); do
+    held=$(psql_admin -c "SELECT count(*) FROM pg_stat_activity WHERE usename = 'temporal_runtime'")
+    [ "$held" -ge $((WC124_PG_USABLE_CONNECTIONS - 1)) ] && break
+    sleep 1
+  done
+  if run_keycloak_migration "$EVIDENCE_DIR/keycloak-migration-under-stale-pools.log"; then
+    echo "Keycloak migration unexpectedly succeeded with $held temporal_runtime backends holding the usable slots" >&2; exit 1
+  fi
+  grep -q "remaining connection slots are reserved" "$EVIDENCE_DIR/keycloak-migration-under-stale-pools.log" \
+    || { tail -20 "$EVIDENCE_DIR/keycloak-migration-under-stale-pools.log" >&2; echo "Keycloak failed for a reason other than slot exhaustion" >&2; exit 1; }
+  docker rm -f "$RUN_ID-stale-temporal" >/dev/null
+  psql_admin -c "SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity WHERE usename = 'temporal_runtime'" >/dev/null
+  stale_reproduced=true
+else
+  stale_reproduced=false
+fi
+
+run_keycloak_migration "$EVIDENCE_DIR/keycloak-migration.log" \
+  || { tail -30 "$EVIDENCE_DIR/keycloak-migration.log" >&2; echo "Keycloak migration failed with the connection budget restored" >&2; exit 1; }
+grep -q "Realm 'waooaw' imported\|Import finished successfully" "$EVIDENCE_DIR/keycloak-migration.log" \
+  || { tail -20 "$EVIDENCE_DIR/keycloak-migration.log" >&2; echo "Keycloak import did not report success" >&2; exit 1; }
 
 # Demo order: vendor (Temporal) schema migration by temporal_migrator directly on the instance.
 docker run --rm --network "$WC124_NETWORK" -e SQL_PASSWORD="$WC124_ROLE_PASSWORD" -e POSTGRES_SEEDS="$WC124_POSTGRES" \
@@ -217,12 +268,17 @@ test "$unexpected_roles" = 0
 temporal_backends=$(psql_admin -c "SELECT count(*) FROM pg_stat_activity WHERE usename = 'temporal_runtime'")
 # Upper bound: 4 internal services x 2 stores x SQL_MAX_CONNS=2.
 test "$temporal_backends" -le 16 || { echo "temporal_runtime holds $temporal_backends backends (> 16)" >&2; exit 1; }
+# The whole activated estate must leave Keycloak's bounded pool (5) spare within the usable slots.
+total_backends=$(psql_admin -c "SELECT count(*) FROM pg_stat_activity WHERE backend_type = 'client backend' AND usename <> 'waooaw'")
+test $((WC124_PG_USABLE_CONNECTIONS - total_backends)) -ge 5 \
+  || { echo "only $((WC124_PG_USABLE_CONNECTIONS - total_backends)) of $WC124_PG_USABLE_CONNECTIONS usable slots remain after activation" >&2; exit 1; }
 test "$(wc124_backend_identity bp_runtime)" = bp_runtime
 # Server-side connection footprint per role, to compare against the Demo PgBouncer limits.
 backend_footprint=$(psql_admin -c "SELECT json_object_agg(usename, n) FROM (SELECT usename, count(*) AS n FROM pg_stat_activity WHERE datname LIKE 'waooaw%' AND usename <> 'waooaw' GROUP BY usename) s")
 
 jq -n \
   --arg fixture "$fixture_source" --arg backend_roles "$backend_roles" --argjson backend_footprint "${backend_footprint:-{\}}" \
+  --argjson usable "$WC124_PG_USABLE_CONNECTIONS" --argjson total "$total_backends" --argjson stale "$stale_reproduced" \
   --arg ce "${IMAGES[constitutional-engine]}" --arg bp "${IMAGES[business-platform]}" \
   --arg pr "${IMAGES[professional-runtime]}" --arg web "${IMAGES[web]}" --arg billing "${IMAGES[billing-engine]}" \
   '{schema: "waooaw.wc124-application-activation-local/v1", fixture: $fixture,
@@ -231,5 +287,7 @@ jq -n \
     probes: {constitutional_engine: "tcp:5002", business_platform: "http:/health/ready",
              professional_runtime: "http:/health", temporal: "tcp:7233", web: ["http:/api/health/live", "http:/api/health/ready"]},
     observed_backend_roles: ($backend_roles | split(",")), backend_connections_by_role: $backend_footprint,
-    pgbouncer_limits: {max_client_conn: 40, default_pool_size: 32, reserve_pool_size: 8}, status: "passed"}' \
+    pgbouncer_limits: {max_client_conn: 40, default_pool_size: 8, reserve_pool_size: 2},
+    connection_budget: {usable_slots: $usable, backends_after_activation: $total, stale_pool_exhaustion_reproduced: $stale},
+    status: "passed"}' \
   | tee "$EVIDENCE_DIR/result.json"
