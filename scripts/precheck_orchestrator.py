@@ -342,14 +342,8 @@ def git_carry_forward_verifier(
     )
     if source_tree.returncode == 0 and current_tree.returncode == 0 and source_tree.stdout.strip() == current_tree.stdout.strip():
         return True, [], 0
-    ancestor = subprocess.run(  # noqa: S603
-        [git, "merge-base", "--is-ancestor", source_head, current_head],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    if ancestor.returncode != 0:
-        return False, [], None
+    # Ancestry is not required: a rewritten history (reword, rebase) is reusable
+    # as long as the tree-to-tree diff below does not touch the gate's inputs.
     distance_result = subprocess.run(  # noqa: S603
         [git, "rev-list", "--count", f"{source_head}..{current_head}"],
         check=False,

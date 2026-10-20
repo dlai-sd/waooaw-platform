@@ -238,6 +238,45 @@ def test_identical_tree_is_reused_across_non_ancestor_commits(tmp_path: Path, mo
     assert distance == 0
 
 
+def test_unaffected_inputs_are_carried_forward_across_rewritten_history(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = tmp_path / "repository"
+    repository.mkdir()
+
+    def git(*arguments: str) -> str:
+        return subprocess.run(
+            ["git", *arguments], cwd=repository, check=True, capture_output=True, text=True
+        ).stdout.strip()
+
+    git("init", "-q")
+    git("config", "user.name", "Validation Test")
+    git("config", "user.email", "validation@example.invalid")
+    (repository / "src").mkdir()
+    (repository / "src" / "gate.txt").write_text("gate input\n", encoding="utf-8")
+    (repository / "docs.md").write_text("v1\n", encoding="utf-8")
+    git("add", ".")
+    git("commit", "-q", "-m", "first")
+    source_head = git("rev-parse", "HEAD")
+    # Reword the source commit and add a docs-only change: the new head is not a
+    # descendant of the evidence head and its tree differs outside the gate inputs.
+    git("commit", "--amend", "-q", "-m", "rewritten")
+    (repository / "docs.md").write_text("v2\n", encoding="utf-8")
+    git("commit", "-q", "-am", "docs")
+    current_head = git("rev-parse", "HEAD")
+    monkeypatch.chdir(repository)
+
+    verified, changed_paths, distance = git_carry_forward_verifier(source_head, current_head, ("src/**",))
+    assert verified is True
+    assert changed_paths == ["docs.md"]
+    assert distance == 2
+
+    verified, changed_paths, distance = git_carry_forward_verifier(source_head, current_head, ("docs.md",))
+    assert verified is False
+    assert changed_paths == ["docs.md"]
+    assert distance == 2
+
+
 def test_identical_tree_reuse_records_non_ancestral_proof(tmp_path: Path) -> None:
     source_dir = tmp_path / "source"
     current_dir = tmp_path / "current"
