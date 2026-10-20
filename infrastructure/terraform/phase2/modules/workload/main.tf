@@ -752,6 +752,9 @@ resource "azurerm_container_app" "auth_redis" {
   container_app_environment_id = var.container_app_environment_id
   resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
+  # Every app runs on the environment's only profile. Azure reports it as "Consumption" even when
+  # omitted, so leaving it unset planned a 16-app no-op update (Consumption -> null) on every apply.
+  workload_profile_name = "Consumption"
 
   identity {
     type         = "UserAssigned"
@@ -877,6 +880,9 @@ resource "azurerm_container_app" "pgbouncer" {
   container_app_environment_id = var.container_app_environment_id
   resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
+  # Every app runs on the environment's only profile. Azure reports it as "Consumption" even when
+  # omitted, so leaving it unset planned a 16-app no-op update (Consumption -> null) on every apply.
+  workload_profile_name = "Consumption"
 
   identity {
     type         = "UserAssigned"
@@ -1040,6 +1046,9 @@ resource "azurerm_container_app" "member" {
   container_app_environment_id = var.container_app_environment_id
   resource_group_name          = var.resource_group_name
   revision_mode                = "Multiple"
+  # Every app runs on the environment's only profile. Azure reports it as "Consumption" even when
+  # omitted, so leaving it unset planned a 16-app no-op update (Consumption -> null) on every apply.
+  workload_profile_name = "Consumption"
 
   identity {
     type         = "UserAssigned"
@@ -1712,6 +1721,9 @@ resource "azurerm_container_app" "temporal" {
   container_app_environment_id = var.container_app_environment_id
   resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
+  # Every app runs on the environment's only profile. Azure reports it as "Consumption" even when
+  # omitted, so leaving it unset planned a 16-app no-op update (Consumption -> null) on every apply.
+  workload_profile_name = "Consumption"
 
   identity {
     type         = "UserAssigned"
@@ -1733,6 +1745,23 @@ resource "azurerm_container_app" "temporal" {
       image  = "temporalio/auto-setup@sha256:98cdb6b5e02d64cb933864a9ba91cb66065eb320623a0dafdf44beba535bca88"
       cpu    = 1
       memory = "2Gi"
+      # The image binds every listener to the replica IP only (BIND_ON_IP from getent), which
+      # Container Apps' TCP probes cannot reach over loopback: every single-container revision
+      # failed its startup probe while the frontend answered gRPC health from the network. Bind
+      # on all interfaces, keep ringpop advertising the routable replica address, and point the
+      # auto-setup CLI at loopback.
+      command = ["/bin/bash", "-c"]
+      args = [<<-EOT
+        set -euo pipefail
+        export TEMPORAL_BROADCAST_ADDRESS="$(hostname -i | awk '{print $1}')"
+        export TEMPORAL_ADDRESS="127.0.0.1:7233"
+        exec /etc/temporal/entrypoint.sh autosetup
+      EOT
+      ]
+      env {
+        name  = "BIND_ON_IP"
+        value = "0.0.0.0"
+      }
 
       env {
         name  = "DB"
@@ -1782,6 +1811,28 @@ resource "azurerm_container_app" "temporal" {
         name  = "SQL_MAX_IDLE_CONNS"
         value = "2"
       }
+      startup_probe {
+        transport               = "TCP"
+        port                    = 7233
+        interval_seconds        = 5
+        timeout                 = 3
+        failure_count_threshold = 36
+      }
+      readiness_probe {
+        transport               = "TCP"
+        port                    = 7233
+        interval_seconds        = 10
+        timeout                 = 3
+        failure_count_threshold = 3
+        success_count_threshold = 1
+      }
+      liveness_probe {
+        transport               = "TCP"
+        port                    = 7233
+        interval_seconds        = 30
+        timeout                 = 3
+        failure_count_threshold = 3
+      }
     }
   }
 
@@ -1809,6 +1860,9 @@ resource "azurerm_container_app" "keycloak" {
   container_app_environment_id = var.container_app_environment_id
   resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
+  # Every app runs on the environment's only profile. Azure reports it as "Consumption" even when
+  # omitted, so leaving it unset planned a 16-app no-op update (Consumption -> null) on every apply.
+  workload_profile_name = "Consumption"
 
   identity {
     type = "UserAssigned"
@@ -2049,6 +2103,9 @@ resource "azurerm_container_app" "identity_edge" {
   container_app_environment_id = var.container_app_environment_id
   resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
+  # Every app runs on the environment's only profile. Azure reports it as "Consumption" even when
+  # omitted, so leaving it unset planned a 16-app no-op update (Consumption -> null) on every apply.
+  workload_profile_name = "Consumption"
 
   template {
     min_replicas = var.application_activation_enabled ? 1 : 0

@@ -51,7 +51,7 @@ wc124_start_postgres "$ROOT"
 fixture_source=$(wc124_replay_billing_snapshot "$SNAPSHOT")
 wc124_provision_temporal_databases
 wc124_provision_keycloak_database
-wc124_start_pgbouncer billing_migrator ce_runtime bp_runtime web_session_app temporal_runtime temporal_migrator
+wc124_start_pgbouncer billing_migrator billing_runtime ce_runtime bp_runtime web_session_app temporal_runtime temporal_migrator
 
 # Keycloak vendor migration exactly as job-demo-keycloak-migration runs it: the exact image,
 # keycloak_migrator, directly on the instance (not through PgBouncer), with the bounded Agroal pool.
@@ -139,13 +139,19 @@ docker run -d --name "$RUN_ID-issuer" --network "$WC124_NETWORK" \
 ISSUER="http://$RUN_ID-issuer/realms/waooaw"
 
 # Temporal runtime as temporal_runtime through PgBouncer (session pools), schema setup skipped.
+# --entrypoint mirrors the ACA `command` override: the bind/broadcast exports must precede
+# entrypoint.sh, which renders docker.yaml before the server starts.
 TEMPORAL="$RUN_ID-temporal"
 wc124_track "$TEMPORAL"
 docker run -d --name "$TEMPORAL" --network "$WC124_NETWORK" \
   -e DB=postgres12 -e DB_PORT=5432 -e DBNAME=waooaw_temporal -e VISIBILITY_DBNAME=waooaw_temporal_visibility \
   -e POSTGRES_USER=temporal_runtime -e POSTGRES_PWD="$WC124_ROLE_PASSWORD" -e POSTGRES_SEEDS="$WC124_PGBOUNCER" \
   -e SKIP_SCHEMA_SETUP=true -e SKIP_DB_CREATE=true -e SQL_MAX_CONNS=2 -e SQL_MAX_IDLE_CONNS=2 \
-  "$TEMPORAL_IMAGE" >/dev/null
+  -e BIND_ON_IP=0.0.0.0 \
+  --entrypoint /bin/bash "$TEMPORAL_IMAGE" -c 'set -euo pipefail
+    export TEMPORAL_BROADCAST_ADDRESS="$(hostname -i | awk '"'"'{print $1}'"'"')"
+    export TEMPORAL_ADDRESS="127.0.0.1:7233"
+    exec /etc/temporal/entrypoint.sh autosetup' >/dev/null
 
 probe() {
   # probe NAME CONTAINER KIND TARGET  (KIND: tcp PORT | http URL)
@@ -158,8 +164,10 @@ probe() {
       return 1
     fi
     if [ "$kind" = tcp ]; then
-      if docker exec "$container" sh -c "exec 3<>/dev/tcp/127.0.0.1/$target" 2>/dev/null \
-        || docker run --rm --network "$WC124_NETWORK" "$WC124_POSTGRES_IMAGE" bash -c "exec 3<>/dev/tcp/$container/$target" 2>/dev/null; then
+      # Container Apps TCP probes connect over loopback inside the replica, so loopback is the
+      # authoritative check; network reachability alone (the Demo Temporal failure mode) is not.
+      if docker run --rm --network "container:$container" "$WC124_POSTGRES_IMAGE" bash -c "exec 3<>/dev/tcp/127.0.0.1/$target" 2>/dev/null \
+        && docker run --rm --network "$WC124_NETWORK" "$WC124_POSTGRES_IMAGE" bash -c "exec 3<>/dev/tcp/$container/$target" 2>/dev/null; then
         return 0
       fi
     else
@@ -209,6 +217,20 @@ docker run -d --name "$BP" --network "$WC124_NETWORK" \
   -e DMA_ADMISSION_CONTENT_DIGEST="$HMAC_KEY" -e DMA_ARTIFACT_DIGEST="sha256:$HMAC_KEY" \
   "${IMAGES[business-platform]}" >/dev/null
 probe business-platform "$BP" http "http://$BP:5001/health/ready"
+
+# Billing runtime as billing_runtime through the transaction-mode PgBouncer with the exact Demo
+# env contract: the libpq-style credential URL (plain scheme, sslmode=disable) must be accepted
+# by the asyncpg runtime, which fails closed at startup if the route is unusable.
+BILLING="$RUN_ID-billing-engine"
+wc124_track "$BILLING"
+docker run -d --name "$BILLING" --network "$WC124_NETWORK" \
+  -e DATABASE_URL="$(wc124_role_url billing_runtime)" \
+  -e REDIS_URL="redis://$RUN_ID-redis:6379/0" -e OPS_AUTH_TOKEN="$SECRET" \
+  -e CONSTITUTIONAL_ENGINE_ADDRESS="$CE:5002" -e BILLING_CONTRACT_ID=goal006-demo -e BILLING_DECISION_SPACE_VERSION=1 \
+  -e MAX_DISCOUNT_PCT=100 -e RAZORPAY_READINESS_STATE=READY_TEST -e WAOOAW_ENVIRONMENT=demo \
+  -e WBE_INTERNAL_BASE_URL="http://$BILLING:8140" \
+  "${IMAGES[billing-engine]}" >/dev/null
+probe billing-engine "$BILLING" http "http://$BILLING:8140/health"
 
 probe temporal "$TEMPORAL" tcp 7233
 # Professional Runtime must only start once the default namespace is registered; the client
@@ -262,7 +284,7 @@ done
 backend_roles=$(psql_admin -c "SELECT string_agg(DISTINCT usename, ',' ORDER BY usename) FROM pg_stat_activity WHERE datname LIKE 'waooaw%' AND usename <> 'waooaw'")
 # PgBouncer keeps the migration step's server connections pooled (idle, no client) after the job
 # exits, so the migrator identities may linger idle; no runtime may hold an active one.
-unexpected_roles=$(psql_admin -c "SELECT count(DISTINCT usename) FROM pg_stat_activity WHERE datname LIKE 'waooaw%' AND NOT (usename IN ('waooaw','ce_runtime','bp_runtime','web_session_app','temporal_runtime') OR (usename IN ('billing_migrator','temporal_migrator') AND state = 'idle'))")
+unexpected_roles=$(psql_admin -c "SELECT count(DISTINCT usename) FROM pg_stat_activity WHERE datname LIKE 'waooaw%' AND NOT (usename IN ('waooaw','ce_runtime','bp_runtime','billing_runtime','web_session_app','temporal_runtime') OR (usename IN ('billing_migrator','temporal_migrator') AND state = 'idle'))")
 test "$unexpected_roles" = 0
 # Demo PgBouncer admits 40 clients and the server 40 backends; Temporal's session pools must leave headroom.
 temporal_backends=$(psql_admin -c "SELECT count(*) FROM pg_stat_activity WHERE usename = 'temporal_runtime'")
@@ -284,8 +306,8 @@ jq -n \
   '{schema: "waooaw.wc124-application-activation-local/v1", fixture: $fixture,
     route: "pgbouncer-scram-per-role", database_topology: "single-provisioned-instance",
     images: {constitutional_engine: $ce, business_platform: $bp, professional_runtime: $pr, web: $web, billing_engine: $billing},
-    probes: {constitutional_engine: "tcp:5002", business_platform: "http:/health/ready",
-             professional_runtime: "http:/health", temporal: "tcp:7233", web: ["http:/api/health/live", "http:/api/health/ready"]},
+    probes: {constitutional_engine: "tcp:5002", business_platform: "http:/health/ready", billing_engine: "http:/health",
+             professional_runtime: "http:/health", temporal: "tcp:7233 (loopback+network)", web: ["http:/api/health/live", "http:/api/health/ready"]},
     observed_backend_roles: ($backend_roles | split(",")), backend_connections_by_role: $backend_footprint,
     pgbouncer_limits: {max_client_conn: 40, default_pool_size: 8, reserve_pool_size: 2},
     connection_budget: {usable_slots: $usable, backends_after_activation: $total, stale_pool_exhaustion_reproduced: $stale},

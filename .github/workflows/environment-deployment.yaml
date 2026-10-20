@@ -57,6 +57,9 @@ on:
         value: ${{ jobs.terraform.outputs.verification_client_id }}
       web_url:
         value: ${{ jobs.terraform.outputs.web_url }}
+      apply_result:
+        description: Result of the private Terraform job, independent of runner cleanup
+        value: ${{ jobs.terraform.result }}
 
 permissions:
   contents: read
@@ -106,6 +109,8 @@ jobs:
     needs: resolve-environment
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    outputs:
+      runner_started: ${{ steps.broker.outputs.runner_started }}
     env:
       ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
       RUNNER_RESOURCE_GROUP: ${{ needs.resolve-environment.outputs.runner_resource_group }}
@@ -297,6 +302,7 @@ jobs:
             --configuration infrastructure/deployment-stacks/goal006-runner/cost-estimate.json
 
       - name: Start private signing broker
+        id: broker
         run: |
           set -eu
           blueprint_runner_image=$(jq -er '.parameters.runnerImage.value' \
@@ -356,6 +362,8 @@ jobs:
               --yaml broker-execution.json \
               --query name -o tsv)
             test -n "$execution"
+            # From here a broker execution exists, so private cleanup has something to reconcile.
+            echo "runner_started=true" >> "$GITHUB_OUTPUT"
             jq -n \
               --argjson attempt "$execution_attempt" \
               --arg execution "$execution" \
@@ -603,7 +611,7 @@ jobs:
             "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" | jq -er '.object.sha')
           test "$RELEASE_SHA" = "$latest_main_sha"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ inputs.control_sha }}
 
@@ -619,7 +627,7 @@ jobs:
           test "$(terraform version -json | jq -r '.terraform_version')" = "1.9.8"
 
       - name: Azure login with constrained bootstrap OIDC identity
-        uses: azure/login@v2
+        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
         with:
           client-id: ${{ env.ARM_CLIENT_ID }}
           tenant-id: ${{ env.ARM_TENANT_ID }}
@@ -1014,7 +1022,7 @@ jobs:
         if: >-
           inputs.apply &&
           steps.database-transition.outputs.password_auth_enabled == 'true'
-        uses: azure/login@v2
+        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
         with:
           client-id: ${{ steps.plan-b-foundation-identity.outputs.client_id }}
           tenant-id: ${{ env.ARM_TENANT_ID }}
@@ -1174,7 +1182,7 @@ jobs:
 
       - name: Azure login with environment deployment OIDC identity
         if: inputs.apply || inputs.lifecycle_action == 'sleep'
-        uses: azure/login@v2
+        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
         with:
           client-id: ${{ steps.foundation.outputs.deployment_client_id }}
           tenant-id: ${{ env.ARM_TENANT_ID }}
@@ -2617,15 +2625,15 @@ jobs:
             --arg environment "$TARGET_ENVIRONMENT" \
             '{schema: "waooaw.wc124-vendor-migrations/v1", environment: $environment, executions: []}' \
             > wc124-vendor-migrations.json
-          run_migration() {
+          # Keycloak and Temporal migrate independent databases, so both jobs are started first and
+          # then polled together; each still retains its own job, execution, and sanitized log evidence.
+          start_migration() {
             component="$1"
             case "$component" in
               keycloak|temporal) job_name="job-${TARGET_ENVIRONMENT}-${component}-migration" ;;
               *) echo "Unsupported vendor migration component: $component" >&2; exit 1 ;;
             esac
             job_evidence="wc124-${component}-migration-job.json"
-            execution_evidence="wc124-${component}-migration-execution.json"
-            console_evidence="wc124-${component}-migration.log"
             az containerapp job show \
               --resource-group "$RESOURCE_GROUP" \
               --name "$job_name" \
@@ -2646,22 +2654,29 @@ jobs:
               --query name \
               --output tsv)
             test -n "$execution"
-            capture_vendor_migration_evidence() {
-              az containerapp job execution show \
-                --resource-group "$RESOURCE_GROUP" \
-                --name "$job_name" \
-                --job-execution-name "$execution" \
-                --output json > "$execution_evidence"
-              az containerapp job logs show \
-                --resource-group "$RESOURCE_GROUP" \
-                --name "$job_name" \
-                --execution "$execution" \
-                --container "$container_name" \
-                --tail 300 \
-                --format text > "$console_evidence" 2>&1 || true
-            }
+            printf '%s\t%s\t%s\t%s\n' "$component" "$job_name" "$container_name" "$execution" \
+              >> wc124-vendor-migrations.started.tsv
+          }
+          capture_vendor_migration_evidence() {
+            az containerapp job execution show \
+              --resource-group "$RESOURCE_GROUP" \
+              --name "$job_name" \
+              --job-execution-name "$execution" \
+              --output json > "$execution_evidence"
+            az containerapp job logs show \
+              --resource-group "$RESOURCE_GROUP" \
+              --name "$job_name" \
+              --execution "$execution" \
+              --container "$container_name" \
+              --tail 300 \
+              --format text > "$console_evidence" 2>&1 || true
+          }
+          wait_migration() {
+            component="$1"; job_name="$2"; container_name="$3"; execution="$4"
+            execution_evidence="wc124-${component}-migration-execution.json"
+            console_evidence="wc124-${component}-migration.log"
             status=
-            for attempt in $(seq 1 120); do
+            for attempt in $(seq 1 240); do
               status=$(az containerapp job execution show \
                 --resource-group "$RESOURCE_GROUP" \
                 --name "$job_name" \
@@ -2687,13 +2702,13 @@ jobs:
                   exit 1
                   ;;
               esac
-              if [ "$attempt" = 120 ]; then
+              if [ "$attempt" = 240 ]; then
                 capture_vendor_migration_evidence
                 cat "$console_evidence" >&2
                 echo "${component} migration timed out with status: $status" >&2
                 exit 1
               fi
-              sleep 10
+              sleep 5
             done
             jq \
               --arg component "$component" \
@@ -2704,10 +2719,14 @@ jobs:
               wc124-vendor-migrations.json > wc124-vendor-migrations.next.json
             mv wc124-vendor-migrations.next.json wc124-vendor-migrations.json
           }
-          run_migration keycloak
+          : > wc124-vendor-migrations.started.tsv
+          start_migration keycloak
           if [ "$TARGET_ENVIRONMENT" = demo ]; then
-            run_migration temporal
+            start_migration temporal
           fi
+          while IFS=$'\t' read -r component job_name container_name execution; do
+            wait_migration "$component" "$job_name" "$container_name" "$execution"
+          done < wc124-vendor-migrations.started.tsv
           test "$(jq '[.executions[].status == "Succeeded"] | all' wc124-vendor-migrations.json)" = true
 
       - name: Run additive Billing authority migration through PgBouncer
@@ -2912,6 +2931,63 @@ jobs:
           test -n "$web_url"
           echo "web_url=$web_url" >> "$GITHUB_OUTPUT"
 
+      - name: Require every activated Container Apps revision to become ready
+        if: inputs.apply
+        env:
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          # terraform apply returns once Azure accepts a revision, not once it serves traffic. Run
+          # 39428513813 passed while web, business-platform, billing-engine and temporal were all
+          # ActivationFailed on their latest revision; this gate fails the deployment instead.
+          python3 scripts/goal006_activation_readiness.py \
+            --resource-group "$RESOURCE_GROUP" \
+            --environment "$TARGET_ENVIRONMENT" \
+            --timeout-seconds 600 \
+            --interval-seconds 15 \
+            --output wc124-activation-readiness.json
+
+      - name: Measure PostgreSQL connection budget after activation
+        if: inputs.apply
+        env:
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+          POSTGRESQL_SERVER_FQDN: ${{ steps.foundation.outputs.postgresql_server_fqdn }}
+        run: |
+          set -euo pipefail
+          # The pre-migration budget only proves headroom before activation. Re-measure once every
+          # runtime holds its steady-state pools so the next deployment's vendor migrations and the
+          # provisioner are known to fit inside the same max_connections budget.
+          server_name="${POSTGRESQL_SERVER_FQDN%%.*}"
+          server_id=$(az postgres flexible-server show --resource-group "$RESOURCE_GROUP" --name "$server_name" --query id --output tsv)
+          param() {
+            az postgres flexible-server parameter show --resource-group "$RESOURCE_GROUP" \
+              --server-name "$server_name" --name "$1" --query value --output tsv
+          }
+          max_connections=$(param max_connections)
+          reserved=$(( $(param superuser_reserved_connections) + $(param reserved_connections) ))
+          usable=$((max_connections - reserved))
+          active=$(az monitor metrics list --resource "$server_id" --metric active_connections \
+            --interval PT1M --offset 5m --aggregation Maximum \
+            --query "max(value[0].timeseries[0].data[].maximum)" --output tsv 2>/dev/null || echo "")
+          case "$active" in ''|None|null) active=0 ;; esac
+          active=${active%.*}
+          headroom=$((usable - active))
+          required_headroom=8
+          echo "PostgreSQL connections after activation: max=$max_connections reserved=$reserved usable=$usable active(5m max)=$active headroom=$headroom"
+          jq -n \
+            --arg environment "$TARGET_ENVIRONMENT" --arg server "$server_name" \
+            --argjson max "$max_connections" --argjson reserved "$reserved" --argjson usable "$usable" \
+            --argjson active "$active" --argjson headroom "$headroom" --argjson required "$required_headroom" \
+            '{schema: "waooaw.wc124-connection-budget/v1", phase: "post-activation", environment: $environment,
+              server: $server, max_connections: $max, reserved_connections: $reserved, usable_connections: $usable,
+              active_connections_5m_max: $active, headroom: $headroom, required_headroom: $required,
+              status: (if $headroom >= $required then "passed" else "failed" end)}' \
+            | tee wc124-connection-budget-post-activation.json
+          test "$headroom" -ge "$required_headroom" \
+            || { echo "::error::Steady-state runtimes leave only $headroom PostgreSQL connections; the next migration window needs $required_headroom" >&2; exit 1; }
+
       - name: Bind Demo Azure-managed TLS certificates
         if: inputs.apply && inputs.environment == 'demo'
         env:
@@ -3043,7 +3119,7 @@ jobs:
           always() &&
           inputs.lifecycle_action != 'plan' &&
           hashFiles('wc124-deployment-activation-bundle.json', 'wc124-lifecycle-execution.json') != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: wc124-lifecycle-execution-${{ inputs.environment }}-${{ github.run_id }}
           path: |
@@ -3058,7 +3134,7 @@ jobs:
 
       - name: Upload plans and evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: goal006-${{ inputs.environment }}-${{ inputs.apply && 'apply' || 'plan' }}-${{ inputs.release_run_id }}
           path: |
@@ -3102,6 +3178,8 @@ jobs:
             wc124-reconciliation-authority.json
             wc124-db-credential-inventory.json
             wc124-connection-budget.json
+            wc124-connection-budget-post-activation.json
+            wc124-activation-readiness.json
             wc124-vendor-migrations.json
             wc124-keycloak-migration-job.json
             wc124-keycloak-migration-execution.json
@@ -3140,7 +3218,13 @@ jobs:
           retention-days: 90
 
   cleanup-private:
-    if: always() && needs.resolve-environment.result == 'success'
+    # Skip when no broker execution was ever started: there is no runner to reconcile and the
+    # break-fix cleanup federation may not exist yet, which would surface as a misleading
+    # AADSTS700213 login failure (run 39433203446).
+    if: >-
+      always()
+      && needs.resolve-environment.result == 'success'
+      && needs.start-broker.outputs.runner_started == 'true'
     needs: [resolve-environment, start-broker, terraform]
     runs-on: ubuntu-latest
     env:

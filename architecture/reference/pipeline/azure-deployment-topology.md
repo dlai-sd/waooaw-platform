@@ -128,6 +128,9 @@ The following are pinned platform dependencies, not additional release members:
 | `wc124_database_transition.py` | Database authority state machine | Unknown or inconsistent live facts produce `RECOVERY_HOLD` |
 | `wc124_db_provisioner.py` | Roles, grants, credentials, databases, additive migrations | No secret values in logs; temporary authority only |
 | `wc124_db_handoff.py` | Ownership and recovery verification | Proves ownership, sessions, dependencies, and revocation readiness |
+| `goal006_activation_readiness.py` | Post-activation revision readiness gate | Fails the deployment unless every latest revision is `Running`/`Healthy` and is the latest ready revision; writes `wc124-activation-readiness.json` |
+| `goal006_capture_aca_execution.sh` / `goal006_aca_execution_evidence.py` | ACA Job execution capture | ARM `Succeeded` is authoritative when Log Analytics system events lag; `Failed`/`Stopped` keep the fail-closed 6-minute event window |
+| `wc124_billing_migration_local.sh` / `wc124_application_activation_local.sh` | Local pre-qualification of the database and activation stages | Replay the Demo contracts with the exact release digests before a cloud run |
 | `goal006_bind_demo_managed_certificates.sh` | Idempotent Demo TLS binding | Verifies all required custom domains reach `SniEnabled` |
 | `goal006_verify_deployment.sh` | Independent deployment verification | Runs through the separate verification identity and private job |
 | Actionlint, pytest, HCL parser, shell checks | Deterministic local validation | Required before paying for another cloud execution |
@@ -145,9 +148,18 @@ binds the broker, runner, and cleanup executions to one immutable runner digest.
 | Normal main deployment | `build-break-fix-runner` is skipped. Broker, runner, and cleanup use the reviewed digest already promoted into the environment runner blueprint | Blueprint digest equals the approved main runner release |
 | Authorized break-fix deployment | A hosted job builds the exact control SHA, resolves the pushed tag to an immutable digest, and passes that digest through `deploy.yaml` to the broker, runner, and cleanup execution overrides | Built digest equals every execution digest; a published-but-unused image is a failure |
 
-The hosted break-fix build commonly takes about two minutes because it rebuilds and pushes the
-complete runner toolchain. It is required when the control SHA changes any baked runner input. It
-does not rebuild the exact-seven application release.
+The hosted break-fix build rebuilds and pushes the runner, control, and Billing images with a
+per-Dockerfile GitHub Actions layer cache (`buildx --cache-from/--cache-to type=gha`); unchanged
+apt/az/terraform and pip layers are reused, and each image is resolved from the pushed manifest
+digest (`--provenance=false`, `--metadata-file`) rather than a local tag. It is required when the
+control SHA changes any baked runner input. It does not rebuild the exact-seven application release.
+The runner image pins the `containerapp` and `log-analytics` az extensions so no job installs a
+floating extension version on first use.
+
+Every third-party GitHub Action in `deploy.yaml`, `environment-deployment.yaml`, and
+`private-runner-image.yaml` is pinned to a commit SHA with the version recorded in a trailing
+comment. A floating major tag (`@v4`) would let a tag move underneath an authorized deployment; the
+contract tests reject unpinned `uses:` entries.
 
 After a runner-affecting PR merges, the main image workflow publishes the main-SHA image. That
 digest must be reviewed and promoted into the deployment-stack parameters before a normal main
@@ -191,12 +203,13 @@ timestamps, and released downstream dependencies before diagnosing a scheduler w
 | 10. Dormant workload plan | Generate external configuration, set application activation false, import only accepted live resources, plan, policy-check, and provenance-bind | Current workload authorization evidence |
 | 11. Activation bundle | Validate foundation and workload plan binaries, JSON, provenance, policy, release, environment, workflow, backend, and state identity | Internal WC-124 activation bundle PASS |
 | 12. Dormant workload apply | Create dependencies, migration jobs, identities, secret references, and applications at zero replicas | No application traffic yet |
-| 13. Migrations | Inventory exact migration jobs, verify version-qualified Key Vault references, prove same-ACA PgBouncer DNS/TCP, reclaim the PostgreSQL connection budget (retire stale active revisions, require measured headroom), run Keycloak, Demo Temporal, and Billing, and retain executions plus sanitized logs | All required executions `Succeeded`; connection-budget record and persisted migration acceptance PASS |
+| 13. Migrations | Inventory exact migration jobs, verify version-qualified Key Vault references, prove same-ACA PgBouncer DNS/TCP, reclaim the PostgreSQL connection budget (retire stale active revisions, require measured headroom), start Keycloak and Demo Temporal in parallel (independent databases) and then Billing, and retain executions plus sanitized logs | All required executions `Succeeded`; connection-budget record and persisted migration acceptance PASS |
 | 14. Activation plan/apply | Require migration acceptance, set application activation true, create a fresh detailed-exit plan, policy and provenance record, recalculate and compare provenance immediately before apply, and retain the apply log | Only exact authorized activation plan applied with complete evidence |
+| 14a. Activation readiness | Poll every `ca-<environment>-*` application until its latest revision is `Running`/`Healthy` and is the latest ready revision (bounded 600 s), then re-measure the connection budget | `wc124-activation-readiness.json` `passed`; post-activation headroom >= 8 |
 | 15. TLS and deployment evidence | Bind Demo managed certificates; verify structured SNI inventory; verify live inventory and transition/cleanup evidence; upload retained activation and TLS artifacts | Deployment engine success with no missing required evidence |
-| 16. Always-run cleanup | Stop private runner, remove registration/broker material, prove zero active executions, revoke temporary cleanup federation | No residual runner or temporary trust |
-| 17. Independent verification | Validate trusted caller/control SHA, trusted release, Azure inventory, job, revision, domain, and application probes under verification identity | Independent PASS |
-| 18. Publication | Publish the verified environment URL only after deploy and verification succeed | User-visible success |
+| 16. Always-run cleanup | Runs whenever a broker execution actually started: stop private runner, remove registration/broker material, prove zero active executions (ARM `Succeeded` is authoritative when Log Analytics lags), revoke temporary cleanup federation | No residual runner or temporary trust |
+| 17. Independent verification | Runs only when the private apply reported success: validate trusted caller/control SHA, trusted release, Azure inventory, job, revision, domain, and application probes under verification identity | Independent PASS |
+| 18. Publication | Publish the verified environment URL only after deploy and verification both succeed | User-visible success |
 
 ### Terraform plan and cache semantics
 
@@ -300,19 +313,59 @@ Demo Billing state (`test-results/wc124/demo-billing-state.json`), vendor databa
 exactly as `scripts/wc124_db_provisioner.py` does, and a per-role SCRAM PgBouncer on `5432` with
 the Demo database map and limits. There is no sidecar database anywhere in either harness.
 
+The init-chain scope is the one place the harness is deliberately wider than Demo: the local
+instance receives all 69 init files through `initdb`, whereas the Demo provisioner applies only the
+files in `APPLICATION_MIGRATION_NAMES` (`59`, `60`) on top of a database whose earlier schema came
+from historical runs. The harness therefore cannot prove that Demo holds every identity schema the
+Business Platform readiness check requires (see "Activation readiness" below).
+
 | Harness | Runtime | Proves | Evidence |
 |---|---|---|---|
 | `scripts/wc124_billing_migration_local.sh` | ~15 s | Exact Billing image migrates as restricted `billing_migrator` through transaction-mode PgBouncer, ledger ownership converges, rerun is idempotent | `test-results/wc124/billing-migration-local/` |
-| `scripts/wc124_application_activation_local.sh` | ~70 s | Keycloak migration as `keycloak_migrator` (fails under stale pools, succeeds after reclaim), Temporal migration and runtime, Billing migration, CE/BP/PR/web readiness as their runtime roles, only restricted roles on the instance, >= 5 usable slots spare after activation | `test-results/wc124/application-activation-local/result.json` and per-component logs |
+| `scripts/wc124_application_activation_local.sh` | ~90 s | Keycloak migration as `keycloak_migrator` (fails under stale pools, succeeds after reclaim), Temporal migration and runtime with the ACA bind/probe contract (loopback TCP 7233 is the authoritative probe), Billing migration and the Billing runtime as `billing_runtime` through transaction-mode PgBouncer with the Demo `postgresql://...?sslmode=disable` URL, CE/BP/PR/web readiness as their runtime roles, only restricted roles on the instance, >= 5 usable slots spare after activation | `test-results/wc124/application-activation-local/result.json` and per-component logs |
 
 Run them with the exact release digests (`WC124_IMAGE_*`, `WC124_BILLING_IMAGE`) before spending a
 deployment run. Defects they surfaced that Azure would otherwise have reported one at a time:
 Demo BP still requesting in-image database bootstrap (`WAOOAW_DEMO_DATABASE_BOOTSTRAP`), unbounded
 Temporal pools, web demanding TLS toward plaintext PgBouncer (`WEB_SESSION_DATABASE_SSL_MODE`),
-Professional Runtime connecting before the Temporal `default` namespace existed, and Keycloak slot
-exhaustion behind a stale revision. `WC124_KEEP_STACK=1` leaves the containers running for
+Professional Runtime connecting before the Temporal `default` namespace existed, Keycloak slot
+exhaustion behind a stale revision, the Billing runtime importing `psycopg2` for a `postgresql://`
+URL with only asyncpg installed, PgBouncer rejecting `search_path` as a startup parameter, and
+Temporal listening only on its replica IP. `WC124_KEEP_STACK=1` leaves the containers running for
 inspection. The harnesses do not prove OIDC identity, private DNS, Key Vault propagation, managed
 TLS, or ACA revision replacement; those remain workflow-only evidence.
+
+Two harness rules follow from the Temporal and Billing defects. A component is only "ready" when
+the probe the platform will actually run passes: Container Apps TCP probes connect over loopback
+inside the replica, so the harness requires `127.0.0.1:<port>` as well as network reachability.
+And every runtime that the activation apply starts must run in the harness; the earlier harness
+exercised `migrate.py` but never started the Billing service, which is exactly where the import
+error lived.
+
+### Activation readiness
+
+`terraform apply` returns when Azure accepts a new revision, not when it serves traffic. Run
+39428513813 therefore reported a successful activation and TLS binding while `az containerapp show`
+showed `latestRevisionName != latestReadyRevisionName` for web (72/68), business-platform (68/64),
+billing-engine (73/67) and temporal (48/43); traffic stayed on the previous ready revisions. The
+workflow now fails closed in that state: `scripts/goal006_activation_readiness.py` polls every
+`ca-<environment>-*` app (bounded, 600 s) until its latest revision is `Running`/`Healthy` and is
+the latest ready revision, writes `wc124-activation-readiness.json`, and fails the deployment
+otherwise. The budget is then re-measured (`wc124-connection-budget-post-activation.json`) so the
+steady-state runtimes are proven to leave the next migration window its headroom.
+
+| Revision | Code tied to the log | Resolution |
+|---|---|---|
+| billing-engine 73 `ActivationFailed` | `ModuleNotFoundError: psycopg2` at `database.py:22`; the provisioner renders `postgresql://` (`wc124_db_provisioner.py:156`) and the image ships asyncpg only | `database.asyncpg_engine_target` pins `postgresql+asyncpg://`, maps `sslmode` to asyncpg `ssl`, disables prepared-statement caching for transaction pooling, and `init_db` performs a fail-closed `SELECT 1`. `search_path` moved from a client startup parameter (rejected by PgBouncer) to a `billing_runtime` role default in `00-wc124-principal-bootstrap.sql`. Proven by the activation harness. |
+| temporal 44-48 `Probe of StartUp failed` every ~4 min (`ProbeFailed x1624`), rev 43 clean | The `auto-setup` entrypoint sets `BIND_ON_IP` from `getent hosts $(hostname)`, so the server listens on the replica IP only; from a healthy replica `100.100.200.190:7233` answered `SERVING` while `127.0.0.1:7233` refused. ACA default probes (injected only into single-container revisions, which rev 44+ became) connect over loopback | Terraform runs the image through `/bin/bash -c` exporting `TEMPORAL_BROADCAST_ADDRESS=$(hostname -i)` and `TEMPORAL_ADDRESS=127.0.0.1:7233` with `BIND_ON_IP=0.0.0.0`, and declares explicit TCP 7233 startup/readiness/liveness probes; `goal006_tfplan_policy.enforce_temporal_contract` requires exactly that shape. Proven by the loopback probe in the harness. |
+| web 72 `ActivationFailed` | `web/app/api/health/ready/route.ts:39` requires Business Platform `/health/ready` | Cascade of the Business Platform finding; no web change. |
+| business-platform 68 `ActivationFailed` | `IdentitySchemaHealthCheck.cs` reports "Required identity schema or forced RLS is absent" | **Open gap, deliberately deferred.** Demo only ever applies `59`/`60`; the identity schema objects live in earlier init files (69 in total, of which `04`, `05`, `47`, `56`, `57`, `58` are not idempotent and `02` is a shell script with local passwords). Closing it needs a per-file digest ledger applied by the provisioner in canonical order with a second-apply idempotency proof (the gate already named in `demo-uat-persistent-state-lifecycle-work-component.md`). Until then the readiness gate will fail on business-platform and web, which is the intended signal. |
+
+Two further apply-time observations from the same run are fixed alongside. Both workload applies
+updated all 16 Container Apps because azurerm 4.14 planned `workload_profile_name: "Consumption"
+-> null` on every app (the environment's only profile); the module now declares the profile, so a
+plan shows only genuine template changes. And `az` was installing the `containerapp` and
+`log-analytics` extensions on first use in each job; the runner image now bakes pinned versions.
 
 ### Downstream activation and release acceptance
 
@@ -341,6 +394,8 @@ when deployment cleanup and independent live verification both succeed.
 | Reconciliation authority record | Deterministic ownership classification, immediate revocation, final recovery, and verified absence |
 | PgBouncer preflight record | Same-ACA short-name DNS resolution and TCP connectivity before migration SQL |
 | Connection budget record | Server limits, usable slots, measured active connections, and the stale revisions retired before vendor migrations |
+| Activation readiness record | Every `ca-<environment>-*` latest revision reached `Running`/`Healthy` and became the latest ready revision within the bounded wait |
+| Post-activation connection budget record | Steady-state runtimes leave the required headroom for the next migration window |
 | Local pre-qualification results | The exact images passed the database and activation stages against the Demo contracts before the deployment run |
 | Migration job and execution records | Exact effective job, version-qualified secret references, execution/status, and sanitized logs |
 | Migration acceptance record | Required migrations, connectivity, and temporary-authority revocation passed before activation |
@@ -375,12 +430,21 @@ producer-consumer contract and execute the smallest real component in its Azure 
    the Azure Monitor `active_connections` metric around the failure, list active revisions of the
    pooled dependencies (`az containerapp revision list`), and compare against the connection
    budget table before touching `max_connections`.
-9. Reproduce the failing stage locally with the pre-qualification harness and the exact digests
-   before changing Terraform or workflow files; a fix that cannot be reproduced locally needs an
-   Azure-only explanation recorded in the PR.
-10. Run the corrected component directly where authority permits; only then spend another full
+9. For a green apply with an unhealthy application, compare `latestRevisionName` with
+   `latestReadyRevisionName` (`az containerapp show`), read the failing revision's `runningState`
+   and `healthState` (`az containerapp revision show`), then query `ContainerAppSystemLogs_CL`
+   for `ProbeFailed`/`ActivationFailed` and `ContainerAppConsoleLogs_CL` for the application's
+   own stack trace. Tie the trace to a source line before proposing a fix; traffic is still on the
+   previous ready revision, so a "working" URL proves nothing about the new release.
+10. Reproduce the failing stage locally with the pre-qualification harness and the exact digests
+    before changing Terraform or workflow files; a fix that cannot be reproduced locally needs an
+    Azure-only explanation recorded in the PR. The harness must run the image the way ACA does:
+    an ACA `command` override replaces the image `ENTRYPOINT`, so the harness uses
+    `docker run --entrypoint`; passing the script as `CMD` would let the vendor entrypoint run
+    first and hide or invent a defect.
+11. Run the corrected component directly where authority permits; only then spend another full
     deployment run.
-11. Preserve the failed run URL, job/execution ID, exact error, live facts, fix, and successful
+12. Preserve the failed run URL, job/execution ID, exact error, live facts, fix, and successful
     component evidence for the PR.
 
 ### Operator checklist
@@ -392,6 +456,9 @@ Before execution:
 - The branch, release, control SHA, and break-fix mode match the authorized path.
 - Targeted tests, workflow lint, Terraform/HCL checks, and producer-consumer contract tests pass.
 - Both local pre-qualification harnesses pass with the exact release digests.
+- `ruff check scripts/`, the staged-precheck gates (`quality:scripts`, `precheck:gitleaks`) and the
+  bootstrap manifest validation pass locally; a refreshed manifest must keep the wrapped
+  `secret-catalog.json` entry or the gitleaks gate reports a false positive.
 - No non-latest active revision remains on `ca-<environment>-temporal`, `-keycloak`, or `-pgbouncer`.
 - No unresolved blocker, stale plan, destructive change, or unexplained drift remains.
 
@@ -399,7 +466,8 @@ Before declaring success:
 
 - Every required migration reached `Succeeded`.
 - Application activation used the exact saved plan whose policy/provenance was revalidated.
-- All target apps and revisions are running at the intended digests.
+- All target apps and revisions are running at the intended digests, and
+  `wc124-activation-readiness.json` reports `passed` (never infer readiness from a green apply).
 - Managed TLS and custom domains are healthy where applicable.
 - Independent verification passed.
 - Bootstrap administrator, provisioner Key Vault roles, temporary federation, runner executions,
@@ -484,6 +552,40 @@ steady state.
 
 No. Dormant applications may exist, but activation is blocked until every required migration
 succeeds.
+
+**Why did run 39428513813 report success while four applications were broken?**
+
+`terraform apply` on `azurerm_container_app` returns when Azure accepts the revision template, not
+when the revision becomes ready, and Container Apps keeps traffic on the previous ready revision
+when the new one fails. Nothing in the old workflow read revision state after the apply, so the
+TLS binding and verification both saw a healthy *old* release. The activation readiness gate now
+closes that hole; a green apply is never readiness evidence.
+
+**Why did the Billing runtime fail in Azure after its migration succeeded?**
+
+Two separate contracts. `migrate.py` calls `asyncpg.connect` directly, which accepts a plain
+`postgresql://` URL; the service builds a SQLAlchemy async engine from the runtime URL the
+provisioner renders as `postgresql://`, which SQLAlchemy maps to `psycopg2` — a driver the image
+does not ship.
+The runtime now pins `postgresql+asyncpg://`, and because transaction-mode PgBouncer rejects
+`search_path` as a startup parameter, the schema search path is a `billing_runtime` role default
+set by the init chain. The activation harness starts the Billing service so this class of defect
+cannot pass locally again.
+
+**Why did Temporal stop passing probes at revision 44 when revision 43 was clean?**
+
+Revision 43 still carried a sidecar, so Container Apps injected no default probes. Revision 44
+dropped to one container and received default TCP probes on `7233`, which connect over loopback.
+The vendor `auto-setup` entrypoint binds to the replica IP (`getent hosts $(hostname)`), so
+`127.0.0.1:7233` refused while the network address answered. The fix binds `0.0.0.0` with an
+explicit broadcast address and declares explicit probes, and the plan policy requires that shape.
+
+**Why does the plan no longer show 16 Container App updates?**
+
+azurerm 4.14 planned `workload_profile_name: "Consumption" -> null` for every app in a
+workload-profile environment when the attribute was unset. Azure accepted the PUT without a new
+revision, so it was noise rather than drift, but it hid genuine template changes. The module now
+declares the profile explicitly.
 
 **Can deployment and verification use the same identity?**
 
@@ -649,21 +751,22 @@ cloud apply remains separately authorized.
 ### Current Delivery State - 2026-10-20
 
 `constitution/PROJECT_STATE.md` remains authoritative for live authorization. This dated snapshot
-records the WC-124 deployment architecture at commit `aba3ac96`. The normative topology below
+records the WC-124 deployment architecture at the head of `ib/532/wc124-transition-reconciliation`
+after the activation-readiness hardening (successor of `aba3ac96`). The normative topology below
 remains the single strategy source; current execution progress belongs in PROJECT_STATE and the
 active Work Contract.
 
 | Area | Verified state | Required next result |
 |---|---|---|
-| Canonical workflow | `.github/workflows/deploy.yaml` is the only manual application deployment entry and delegates to `environment-deployment.yaml` and `environment-deployment-verification.yaml`. | Preserve one operator entry; reusable workflows remain implementation details with contract tests. |
-| Demo | Exact-seven applications, persistent PostgreSQL, PgBouncer, Keycloak, Temporal, Redis, managed TLS, direct component verification, and WC-124 transition controls are implemented. Runs 39383304742 through 39423882087 each exposed one stage defect (Billing least-privilege contract, ledger ownership under transaction pooling, BP in-image bootstrap, Temporal/Keycloak/PgBouncer connection budget, web TLS mode); all are fixed and locally pre-qualified. Run 39428513813 is the first run carrying the complete set; final evidence remains run-specific. | Require terminal deployment and independent-verification PASS before acceptance. |
+| Canonical workflow | `.github/workflows/deploy.yaml` is the only manual application deployment entry and delegates to `environment-deployment.yaml` and `environment-deployment-verification.yaml`. Verification and URL publication run only when the private apply reported success; cleanup runs only when a broker execution started; every third-party action is SHA-pinned; break-fix images build with a GitHub Actions layer cache and are resolved from the pushed digest. | Preserve one operator entry; reusable workflows remain implementation details with contract tests. |
+| Demo | Exact-seven applications, persistent PostgreSQL, PgBouncer, Keycloak, Temporal, Redis, managed TLS, direct component verification, and WC-124 transition controls are implemented. Runs 39383304742 through 39423882087 each exposed one stage defect (Billing least-privilege contract, ledger ownership under transaction pooling, BP in-image bootstrap, Temporal/Keycloak/PgBouncer connection budget, web TLS mode). Run 39428513813 passed activation but left billing-engine, temporal, business-platform and web on `ActivationFailed` latest revisions; the Billing asyncpg route and Temporal bind/probe contract are fixed and locally pre-qualified, and the workflow now has a fail-closed activation readiness gate. | Close the Business Platform identity-schema gap (Demo applies only `59`/`60`), then require terminal deployment, readiness `passed`, and independent-verification PASS before acceptance. |
 | UAT | Prior environment delivery exists; WC-124 persistent database and exact-seven promotion must use the same current contracts under separate authority. | Complete only evidence required for UAT qualification; never rebuild accepted images. |
-| Runner lifecycle | Demo and UAT use environment-derived ephemeral ACA runners, private state/config access, correlation-checked cleanup, and zero active executions after qualification. | Keep Production runner blueprint inactive and retain no-public-fallback assertions. |
+| Runner lifecycle | Demo and UAT use environment-derived ephemeral ACA runners, private state/config access, correlation-checked cleanup, and zero active executions after qualification. The runner image bakes pinned `containerapp`/`log-analytics` az extensions; execution capture treats ARM `Succeeded` as authoritative when Log Analytics ingestion lags. | Keep Production runner blueprint inactive and retain no-public-fallback assertions. |
 | State path | Shared state-account public access is disabled with default deny and approved private endpoint access. Declarative ownership of the existing shared account remains debt. | Assign accepted IaC ownership before Production readiness; do not reopen public access. |
 | Production | Terraform and runner blueprints are code-prepared; protected Production environments and plan prerequisites remain incomplete. No Production plan/apply ran. | Keep Production plan-only and runner `INACTIVE` until a separate Founder authorization. |
 | Execution contract | `work-contracts/WC-076-goal006-phase3-execution.md` exists and owns execution closure. | Keep status there and in PROJECT_STATE; do not duplicate live status in strategy documents. |
-| Local pre-qualification | Billing and activation harnesses replay the Demo database and activation stages in about 15 s and 70 s with the exact digests and the Demo connection ceiling. | Run before every deployment attempt; extend to Keycloak runtime and identity-edge when their contracts change. |
-| Known debt | `tests/billing-engine/test_wc124_billing_authority.py::test_atomic_halt_replay_conflict_release_and_redis_loss` raises `KeyError` without `WC124_DATABASE_URL` instead of skipping. | Make the integration test skip explicitly when its database is absent. |
+| Local pre-qualification | Billing and activation harnesses replay the Demo database and activation stages in about 15 s and 90 s with the exact digests and the Demo connection ceiling; the activation harness now runs the Billing service, mirrors the ACA Temporal command override, and requires loopback probes. | Run before every deployment attempt; extend to Keycloak runtime and identity-edge when their contracts change. |
+| Known debt | `tests/billing-engine/test_wc124_billing_authority.py::test_atomic_halt_replay_conflict_release_and_redis_loss` raises `KeyError` without `WC124_DATABASE_URL` instead of skipping. Demo's identity schema chain is not provisioned declaratively (only `59`/`60` are applied), so `ca-demo-business-platform` and `ca-demo-web` cannot pass readiness on a fresh revision. | Make the integration test skip explicitly when its database is absent. Deliver the per-file init-chain ledger in the provisioner with a second-apply idempotency proof. |
 
 The detailed topology, controls, interface gates, and implementation order below are normative. This
 section is a routing summary and must not be copied into a separate implementation plan.

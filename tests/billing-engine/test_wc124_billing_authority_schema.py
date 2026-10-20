@@ -81,6 +81,9 @@ def test_complete_principal_inventory_is_non_owner_and_nobypassrls() -> None:
     assert "grant billing_owner to billing_migrator" in bootstrap
     assert "create schema if not exists billing authorization billing_owner" in bootstrap
     assert "alter schema billing owner to billing_owner" in bootstrap
+    # Transaction-mode PgBouncer rejects search_path as a startup parameter; the runtime relies
+    # on this server-side role default for its unqualified table names.
+    assert "alter role billing_runtime set search_path = billing, business, institutional, public" in bootstrap
     assert "revoke all on schema public from public" in handoff
     assert "d.deptype in ('a', 'i')" in handoff
     assert "force row level security" in handoff

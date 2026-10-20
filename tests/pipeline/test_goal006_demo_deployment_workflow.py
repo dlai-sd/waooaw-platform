@@ -32,10 +32,17 @@ def test_environment_deployment_uses_qualified_private_runner_lifecycle() -> Non
     assert "billing_image: ${{ needs.build-break-fix-runner.outputs.billing_image }}" in DISPATCH_WORKFLOW
     assert "runner_image: ${{ steps.publish.outputs.runner_image }}" in DISPATCH_WORKFLOW
     assert "control_image: ${{ steps.publish.outputs.control_image }}" in DISPATCH_WORKFLOW
-    assert "runner_image=$(docker image inspect" in DISPATCH_WORKFLOW
-    assert "control_image=$(docker image inspect" in DISPATCH_WORKFLOW
-    assert "billing_image=$(docker image inspect" in DISPATCH_WORKFLOW
-    assert "docker build --file src/billing-engine/Dockerfile" in DISPATCH_WORKFLOW
+    # Break-fix images are built on the hosted runner with a per-Dockerfile layer cache and
+    # resolved to the pushed manifest digest, never to a mutable tag.
+    assert "docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f" in DISPATCH_WORKFLOW
+    assert 'docker buildx build --file "$file" --tag "$tag" --push --provenance=false' in DISPATCH_WORKFLOW
+    assert '--cache-from "type=gha,scope=break-fix-$scope"' in DISPATCH_WORKFLOW
+    assert '--cache-to "type=gha,scope=break-fix-$scope,mode=max"' in DISPATCH_WORKFLOW
+    assert "jq -er '.[\"containerimage.digest\"]' \"$metadata\"" in DISPATCH_WORKFLOW
+    assert 'runner_image="${image%%:*}@$(publish runner infrastructure/runner/Dockerfile "$image")"' in DISPATCH_WORKFLOW
+    assert 'control_image="${control_image%%:*}@$(publish control infrastructure/runner/Dockerfile.control "$control_image")"' in DISPATCH_WORKFLOW
+    assert 'billing_image="${billing_image%%:*}@$(publish billing src/billing-engine/Dockerfile "$billing_image")"' in DISPATCH_WORKFLOW
+    assert "docker image inspect" not in DISPATCH_WORKFLOW
     assert "break-fix-image-overrides.json" in WORKFLOW
     assert "BREAK_FIX_BILLING_IMAGE" in WORKFLOW
     assert '.image_digests["billing-engine"] = $image' in WORKFLOW
@@ -834,3 +841,16 @@ def test_demo_deployment_binds_broker_and_cleanup_to_authorized_control_sha() ->
     assert "test '${{ inputs.release_sha }}' = \"$latest_main_sha\"" in WORKFLOW
     assert 'test "$GITHUB_SHA" = \'${{ inputs.control_sha }}\'' in WORKFLOW
     assert "refs/heads/ib/532/wc124-*" in WORKFLOW
+
+
+def test_deployment_workflows_pin_every_third_party_action_to_a_commit() -> None:
+    import re
+
+    pinned = re.compile(r"^\s*-?\s*uses:\s+\S+@[0-9a-f]{40}\s+# \S", re.MULTILINE)
+    for name in ("deploy.yaml", "environment-deployment.yaml", "private-runner-image.yaml"):
+        text = (ROOT / ".github/workflows" / name).read_text(encoding="utf-8")
+        for line in text.splitlines():
+            stripped = line.strip()
+            if not stripped.startswith(("uses:", "- uses:")) or "uses: ./" in stripped:
+                continue
+            assert pinned.match(line), f"{name}: unpinned action: {stripped}"

@@ -303,6 +303,10 @@ def test_runner_image_uses_immutable_inputs_and_ephemeral_registration() -> None
     assert "cli_errors.py /opt/waooaw/cli_errors.py" in dockerfile
     assert "infrastructure/postgres/init /opt/waooaw/postgres/init" in dockerfile
     assert "sha256sum --check --strict" in dockerfile
+    # az extensions the workflow relies on are pinned in the image rather than fetched (floating)
+    # on first use inside every job.
+    assert 'az extension add --name containerapp --version "${AZ_CONTAINERAPP_EXTENSION_VERSION}" --system' in dockerfile
+    assert 'az extension add --name log-analytics --version "${AZ_LOG_ANALYTICS_EXTENSION_VERSION}" --system' in dockerfile
     assert "--ephemeral" in entrypoint
     assert "--disableupdate" in entrypoint
     assert '--url "https://github.com/$GITHUB_REPOSITORY"' in entrypoint

@@ -202,10 +202,25 @@ def enforce_temporal_contract(plan: dict[str, Any]) -> None:
         violations.append("Temporal must use external PostgreSQL without a database sidecar")
     if template.get("min_replicas") not in {0, 1} or template.get("max_replicas") != 1:
         violations.append("Temporal must be dormant or run as one fixed replica")
-    if temporal.get("startup_probe"):
-        violations.append("Temporal startup probe must be absent")
-    if temporal.get("readiness_probe"):
-        violations.append("Temporal readiness probe must be absent")
+    # Container Apps probes connect over loopback; the image binds to the replica IP by
+    # default, so probes are only valid when the server binds on every interface.
+    env = {entry.get("name"): entry.get("value") for entry in temporal.get("env") or []}
+    if env.get("BIND_ON_IP") != "0.0.0.0":  # noqa: S104
+        violations.append("Temporal must bind on 0.0.0.0 so Container Apps probes reach the frontend")
+    args = " ".join(str(arg) for arg in temporal.get("args") or [])
+    if "TEMPORAL_BROADCAST_ADDRESS=" not in args:
+        violations.append("Temporal must advertise its routable replica address through TEMPORAL_BROADCAST_ADDRESS")
+    for probe_kind, bound in (("startup_probe", 60), ("readiness_probe", 10)):
+        probes = temporal.get(probe_kind) or []
+        if len(probes) != 1:
+            violations.append(f"Temporal {probe_kind.replace('_', ' ')} must be defined exactly once")
+            continue
+        probe = probes[0]
+        if probe.get("transport") != "TCP" or probe.get("port") != 7233:
+            violations.append(f"Temporal {probe_kind.replace('_', ' ')} must be TCP on 7233")
+        threshold = probe.get("failure_count_threshold")
+        if not isinstance(threshold, int) or not 1 <= threshold <= bound:
+            violations.append(f"Temporal {probe_kind.replace('_', ' ')} failure threshold must be within 1..{bound}")
     if "@sha256:" not in str(temporal.get("image", "")):
         violations.append("Temporal image must be digest-pinned")
     if violations:

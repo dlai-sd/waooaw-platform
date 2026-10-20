@@ -57,13 +57,23 @@ def temporal_plan(
     readiness_probe: list[object] | None = None,
     min_replicas: int = 1,
     include_postgres_sidecar: bool = False,
+    bind_on_ip: str | None = "0.0.0.0",
+    args: list[str] | None = None,
 ) -> dict[str, object]:
+    if startup_probe is None:
+        startup_probe = [{"transport": "TCP", "port": 7233, "failure_count_threshold": 36}]
+    if readiness_probe is None:
+        readiness_probe = [{"transport": "TCP", "port": 7233, "failure_count_threshold": 3}]
+    if args is None:
+        args = ['export TEMPORAL_BROADCAST_ADDRESS="$(hostname -i)"\nexec /etc/temporal/entrypoint.sh autosetup\n']
     containers = [
         {
             "name": "temporal",
             "image": f"temporalio/auto-setup@sha256:{'a' * 64}",
-            "startup_probe": startup_probe or [],
-            "readiness_probe": readiness_probe or [],
+            "env": [] if bind_on_ip is None else [{"name": "BIND_ON_IP", "value": bind_on_ip}],
+            "args": args,
+            "startup_probe": startup_probe,
+            "readiness_probe": readiness_probe,
         }
     ]
     if include_postgres_sidecar:
@@ -154,14 +164,37 @@ def test_workload_plan_rejects_temporal_replica_drift() -> None:
         enforce_plan(temporal_plan(min_replicas=2), "workload")
 
 
-def test_workload_plan_rejects_destructive_temporal_startup_probe() -> None:
-    with pytest.raises(ValueError, match="Temporal startup probe must be absent"):
-        enforce_plan(temporal_plan(startup_probe=[{"transport": "TCP", "port": 7233}]), "workload")
+def test_workload_plan_rejects_unbounded_temporal_startup_probe() -> None:
+    with pytest.raises(ValueError, match="startup probe failure threshold must be within 1..60"):
+        enforce_plan(
+            temporal_plan(startup_probe=[{"transport": "TCP", "port": 7233, "failure_count_threshold": 240}]),
+            "workload",
+        )
 
 
-def test_workload_plan_rejects_temporal_readiness_probe() -> None:
-    with pytest.raises(ValueError, match="Temporal readiness probe must be absent"):
-        enforce_plan(temporal_plan(readiness_probe=[{"transport": "TCP", "port": 7233}]), "workload")
+def test_workload_plan_rejects_missing_temporal_probes() -> None:
+    with pytest.raises(ValueError, match="startup probe must be defined exactly once"):
+        enforce_plan(temporal_plan(startup_probe=[]), "workload")
+    with pytest.raises(ValueError, match="readiness probe must be defined exactly once"):
+        enforce_plan(temporal_plan(readiness_probe=[]), "workload")
+
+
+def test_workload_plan_rejects_temporal_http_probe() -> None:
+    with pytest.raises(ValueError, match="readiness probe must be TCP on 7233"):
+        enforce_plan(
+            temporal_plan(readiness_probe=[{"transport": "HTTP", "port": 7233, "failure_count_threshold": 3}]),
+            "workload",
+        )
+
+
+def test_workload_plan_rejects_temporal_replica_ip_bind() -> None:
+    with pytest.raises(ValueError, match="must bind on 0.0.0.0"):
+        enforce_plan(temporal_plan(bind_on_ip=None), "workload")
+
+
+def test_workload_plan_rejects_temporal_without_broadcast_address() -> None:
+    with pytest.raises(ValueError, match="TEMPORAL_BROADCAST_ADDRESS"):
+        enforce_plan(temporal_plan(args=["exec /etc/temporal/entrypoint.sh autosetup"]), "workload")
 
 
 def test_workload_plan_accepts_exact_temporal_secret_role_cutover() -> None:

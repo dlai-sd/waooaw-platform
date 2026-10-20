@@ -138,6 +138,8 @@ jobs:
         with:
           ref: ${{ needs.authorize.outputs.control_sha }}
 
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
       - name: Publish exact break-fix private runner
         id: publish
         env:
@@ -149,15 +151,21 @@ jobs:
           control_image="ghcr.io/${GITHUB_REPOSITORY_OWNER}/goal006-runner-control:sha-${CONTROL_SHA}"
           billing_image="ghcr.io/${GITHUB_REPOSITORY_OWNER}/billing-engine:break-fix-${CONTROL_SHA}"
           echo "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
-          docker build --file infrastructure/runner/Dockerfile --tag "$image" .
-          docker build --file infrastructure/runner/Dockerfile.control --tag "$control_image" .
-          docker build --file src/billing-engine/Dockerfile --tag "$billing_image" .
-          docker push "$image"
-          docker push "$control_image"
-          docker push "$billing_image"
-          runner_image=$(docker image inspect "$image" --format '{{index .RepoDigests 0}}')
-          control_image=$(docker image inspect "$control_image" --format '{{index .RepoDigests 0}}')
-          billing_image=$(docker image inspect "$billing_image" --format '{{index .RepoDigests 0}}')
+          # Layer cache keyed per Dockerfile: unchanged toolchain and pip layers are reused
+          # across break-fix runs instead of being rebuilt (~4 min) on every deployment attempt.
+          # provenance=false keeps each push a single-platform manifest with one immutable digest.
+          publish() {
+            local scope="$1" file="$2" tag="$3" metadata
+            metadata=$(mktemp)
+            docker buildx build --file "$file" --tag "$tag" --push --provenance=false \
+              --cache-from "type=gha,scope=break-fix-$scope" \
+              --cache-to "type=gha,scope=break-fix-$scope,mode=max" \
+              --metadata-file "$metadata" .
+            jq -er '.["containerimage.digest"]' "$metadata"
+          }
+          runner_image="${image%%:*}@$(publish runner infrastructure/runner/Dockerfile "$image")"
+          control_image="${control_image%%:*}@$(publish control infrastructure/runner/Dockerfile.control "$control_image")"
+          billing_image="${billing_image%%:*}@$(publish billing src/billing-engine/Dockerfile "$billing_image")"
           grep -Eq \
             "^ghcr.io/${GITHUB_REPOSITORY_OWNER}/goal006-private-runner@sha256:[0-9a-f]{64}$" \
             <<< "$runner_image" || {
@@ -201,7 +209,13 @@ jobs:
     secrets: inherit
 
   verify:
-    if: needs.authorize.outputs.execution == 'apply'
+    # Verification evidence is produced whenever the private apply succeeded, even if runner
+    # cleanup failed afterwards; publication still requires the whole deploy to succeed.
+    if: >-
+      always()
+      && needs.authorize.result == 'success'
+      && needs.authorize.outputs.execution == 'apply'
+      && needs.deploy.outputs.apply_result == 'success'
     needs: [authorize, deploy]
     uses: ./.github/workflows/environment-deployment-verification.yaml
     with:
@@ -215,7 +229,10 @@ jobs:
     secrets: inherit
 
   publish-url:
-    if: needs.authorize.outputs.execution == 'apply'
+    if: >-
+      needs.authorize.outputs.execution == 'apply'
+      && needs.deploy.result == 'success'
+      && needs.verify.result == 'success'
     needs: [authorize, deploy, verify]
     runs-on: ubuntu-latest
     steps:

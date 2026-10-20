@@ -280,8 +280,31 @@ def test_demo_temporal_lifecycle_and_member_readiness_are_fail_closed() -> None:
     assert 'for_each = each.key == "constitutional-engine" ? [] : [1]' in contract
     assert 'for_each = each.key == "constitutional-engine" ? [1] : []' in contract
     assert 'count = var.workload_enabled && var.environment == "demo" ? 1 : 0' in contract
-    assert "startup_probe" not in temporal
-    assert "readiness_probe" not in temporal
+    # Container Apps probes connect over loopback; the image's default bind (replica IP) made
+    # every single-container revision fail its startup probe while the frontend served gRPC.
+    assert re.search(r'name\s*=\s*"BIND_ON_IP"\s*\n\s*value\s*=\s*"0\.0\.0\.0"', temporal)
+    assert 'export TEMPORAL_BROADCAST_ADDRESS="$(hostname -i | awk \'{print $1}\')"' in temporal
+    assert 'export TEMPORAL_ADDRESS="127.0.0.1:7233"' in temporal
+    assert "exec /etc/temporal/entrypoint.sh autosetup" in temporal
+    assert temporal.count("startup_probe {") == 1
+    assert temporal.count("readiness_probe {") == 1
+    assert temporal.count("liveness_probe {") == 1
+    assert temporal.count('transport               = "TCP"') == 3
+    assert temporal.count("port                    = 7233") == 3
+    assert "failure_count_threshold = 36" in temporal
+
+
+def test_every_container_app_declares_its_workload_profile() -> None:
+    # azurerm 4.14 otherwise plans `workload_profile_name: "Consumption" -> null` for all 16 apps
+    # on every apply (run 39428513813 workload-plan.json), hiding the real template changes.
+    contract = read_contract("modules/workload/main.tf")
+    resources = [
+        block for block in hcl2.loads(contract).get("resource", []) if '"azurerm_container_app"' in block
+    ]
+    assert len(resources) == 6
+    for block in resources:
+        (name, body), = block['"azurerm_container_app"'].items()
+        assert body.get("workload_profile_name") == '"Consumption"', name
 
 
 def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
@@ -917,7 +940,12 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert workflow.count(
         "ARM_CLIENT_ID: ${{ steps.foundation.outputs.deployment_client_id }}"
     ) >= 5
-    assert workflow.index("Enforce selected environment authorization") < workflow.index("azure/login@v2")
+    # Within the private terraform job, environment authorization precedes the first cloud login.
+    terraform_job = workflow[workflow.index("\n  terraform:\n"):workflow.index("\n  cleanup-private:\n")]
+    assert terraform_job.index("Enforce selected environment authorization") < terraform_job.index(
+        "azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2"
+    )
+    assert "azure/login@v2" not in workflow  # every action is pinned to a reviewed commit
     assert "Reject stale release before cloud access" in workflow
     assert 'timeframe:"Custom"' in workflow.replace(" ", "")
     assert "Verify bootstrap RBAC and required Azure providers" in workflow
@@ -995,7 +1023,20 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     )
     assert "az containerapp revision deactivate" in workflow
     assert "wc124-connection-budget.json" in workflow
-    assert workflow.count("if: inputs.apply") == 29
+    # Post-activation gates: terraform apply does not wait for revision readiness, and the
+    # steady-state connection footprint must leave headroom for the next migration window.
+    readiness_step = "Require every activated Container Apps revision to become ready"
+    post_budget_step = "Measure PostgreSQL connection budget after activation"
+    assert workflow.index("Apply application activation") < workflow.index(readiness_step)
+    assert workflow.index(readiness_step) < workflow.index(post_budget_step)
+    assert workflow.index(post_budget_step) < workflow.index("Bind Demo Azure-managed TLS certificates")
+    assert "python3 scripts/goal006_activation_readiness.py" in workflow
+    assert "--output wc124-activation-readiness.json" in workflow
+    assert 'phase: "post-activation"' in workflow
+    assert 'test "$headroom" -ge "$required_headroom"' in workflow
+    for evidence in ("wc124-activation-readiness.json", "wc124-connection-budget-post-activation.json"):
+        assert workflow.count(evidence) == 2, evidence  # produced once, uploaded once
+    assert workflow.count("if: inputs.apply") == 31
     assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
     assert '--context "external_environment=$external_environment"' in workflow
     assert "if: inputs.apply || steps.foundation-cache.outputs.cache_hit != 'true'" in workflow
@@ -1241,7 +1282,17 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
     assert "lifecycle_action: ${{ needs.authorize.outputs.execution == 'apply' && 'activate' || 'plan' }}" in deploy
     assert "cost_controls:" not in deploy
     assert "enforce_cost_controls:" not in deploy
-    assert deploy.count("if: needs.authorize.outputs.execution == 'apply'") == 2
+    # verify runs whenever the private apply succeeded, independent of runner cleanup; publish
+    # still requires the whole deploy and verification to succeed (run 39428513813).
+    assert deploy.count("if: needs.authorize.outputs.execution == 'apply'") == 0
+    assert deploy.count("needs.authorize.outputs.execution == 'apply'\n") == 2
+    verify_job = deploy.split("  verify:", 1)[1].split("  publish-url:", 1)[0]
+    publish_job = deploy.split("  publish-url:", 1)[1]
+    assert "always()" in verify_job
+    assert "needs.authorize.result == 'success'" in verify_job
+    assert "needs.deploy.outputs.apply_result == 'success'" in verify_job
+    assert "needs.deploy.result == 'success'" in publish_job
+    assert "needs.verify.result == 'success'" in publish_job
     for internal_input in (
         "lifecycle_evidence:",
         "founder_action_authority:",

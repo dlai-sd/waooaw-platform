@@ -8,13 +8,14 @@
     "business_platform": "waooaw/business-platform:wc124local",
     "professional_runtime": "waooaw/professional-runtime:wc124local",
     "web": "waooaw/web:wc124local",
-    "billing_engine": "waooaw/billing-engine:wc124bl1792495704"
+    "billing_engine": "waooaw/billing-engine:wc124asyncpg"
   },
   "probes": {
     "constitutional_engine": "tcp:5002",
     "business_platform": "http:/health/ready",
+    "billing_engine": "http:/health",
     "professional_runtime": "http:/health",
-    "temporal": "tcp:7233",
+    "temporal": "tcp:7233 (loopback+network)",
     "web": [
       "http:/api/health/live",
       "http:/api/health/ready"
@@ -22,12 +23,14 @@
   },
   "observed_backend_roles": [
     "billing_migrator",
+    "billing_runtime",
     "bp_runtime",
     "temporal_runtime",
     "web_session_app"
   ],
   "backend_connections_by_role": {
     "billing_migrator": 1,
+    "billing_runtime": 1,
     "bp_runtime": 1,
     "temporal_runtime": 13,
     "web_session_app": 1
@@ -39,7 +42,7 @@
   },
   "connection_budget": {
     "usable_slots": 25,
-    "backends_after_activation": 16,
+    "backends_after_activation": 17,
     "stale_pool_exhaustion_reproduced": true
   },
   "status": "passed"
