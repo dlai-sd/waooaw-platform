@@ -276,7 +276,9 @@ backend key, state lineage/serial, policy result, plan JSON digest, and saved-pl
     server's `max_connections`, `superuser_reserved_connections`, and `reserved_connections`,
     deactivates every non-latest active revision of `ca-<environment>-temporal`, `-keycloak`, and
     `-pgbouncer` (a stale revision keeps its pre-fix pools open and starves the migrator), then
-    polls the Azure Monitor `active_connections` metric until at least 8 usable slots are free.
+    polls the latest completed one-minute Azure Monitor `active_connections` bucket (not a 5 m
+    maximum, which a transient spike would pin for the whole retry window) for up to 6 min until
+    at least 8 usable slots are free.
     The decision is retained as `wc124-connection-budget.json`.
 13. Keycloak, Temporal, and Billing retain the exact ACA job definition, execution record, and
     sanitized console log. A timeout, `Failed`, `Stopped`, unknown status, digest mismatch,
@@ -295,7 +297,7 @@ ordinary role. Any pool that is not bounded below can exhaust the instance; the 
 | Consumer | Route | Bound | Source |
 |---|---|---|---|
 | PgBouncer (all application runtimes, Billing migrator) | server pools | `max_client_conn 40`, `default_pool_size 8`, `reserve_pool_size 2` | `workload/main.tf` PgBouncer env |
-| Temporal runtime | PgBouncer session pools | `SQL_MAX_CONNS 2` / `SQL_MAX_IDLE_CONNS 2` per store per internal service (<= 16 backends; ~13 observed) | `workload/main.tf` Temporal env |
+| Temporal runtime | PgBouncer session pools | `SQL_MAX_CONNS 1` / `SQL_MAX_IDLE_CONNS 1` per store per internal service (<= 8 backends; 2 measured 28-29 total in run 39460884155) | `workload/main.tf` Temporal env |
 | Keycloak migration job and runtime | direct to the instance | Agroal `KC_DB_POOL_INITIAL_SIZE 1`, `MIN_SIZE 1`, `MAX_SIZE 5` | `workload/main.tf` Keycloak env |
 | CE, BP, web, Billing runtime | PgBouncer transaction pools | one backend each at idle; bounded by `default_pool_size` | observed in local activation |
 | Headroom required before vendor migrations | — | >= 8 free usable slots (measured, not inferred) | workflow gate |

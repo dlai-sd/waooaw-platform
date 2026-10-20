@@ -1802,14 +1802,15 @@ resource "azurerm_container_app" "temporal" {
       # Temporal pools session-mode connections through PgBouncer against the single provisioned
       # instance (Demo: max_client_conn 40, server max_connections 40). The image default of 20
       # connections per store, per internal service (frontend/history/matching/worker x default +
-      # visibility), exhausts both and starves every other runtime; bound each pool to 2.
+      # visibility), exhausts both and starves every other runtime; bound each pool to 1. With 2 the
+      # Demo steady state measured 28-29 backends against 25 ordinary slots (run 39460884155).
       env {
         name  = "SQL_MAX_CONNS"
-        value = "2"
+        value = "1"
       }
       env {
         name  = "SQL_MAX_IDLE_CONNS"
-        value = "2"
+        value = "1"
       }
       # azurerm 4.14 caps failure_count_threshold at 30 (provider IntBetween(1, 30)); the plan,
       # not validate, rejects a higher value because this resource is count-gated. 30 x 6 s keeps

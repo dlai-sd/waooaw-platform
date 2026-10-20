@@ -2596,16 +2596,18 @@ jobs:
               --query "[?properties.active && name != '$latest'].name" --output tsv)
           done
           required_headroom=8
-          for attempt in $(seq 1 18); do
+          # The gate reads the latest completed one-minute bucket, so a transient spike (provisioner
+          # sessions, revision restarts) ages out within the retry window instead of pinning a 5m max.
+          for attempt in $(seq 1 36); do
             active=$(az monitor metrics list --resource "$server_id" --metric active_connections \
-              --interval PT1M --offset 5m --aggregation Maximum \
-              --query "max(value[0].timeseries[0].data[].maximum)" --output tsv 2>/dev/null || echo "")
+              --interval PT1M --offset 2m --aggregation Maximum \
+              --query "value[0].timeseries[0].data[-1].maximum" --output tsv 2>/dev/null || echo "")
             case "$active" in ''|None|null) active=0 ;; esac
             active=${active%.*}
             headroom=$((usable - active))
-            echo "PostgreSQL connections: max=$max_connections reserved=$((superuser_reserved + reserved)) usable=$usable active(5m max)=$active headroom=$headroom"
+            echo "PostgreSQL connections: max=$max_connections reserved=$((superuser_reserved + reserved)) usable=$usable active(latest 1m)=$active headroom=$headroom"
             if [ "$headroom" -ge "$required_headroom" ]; then break; fi
-            test "$attempt" != 18 || { echo "Insufficient PostgreSQL connection headroom for vendor migrations" >&2; exit 1; }
+            test "$attempt" != 36 || { echo "Insufficient PostgreSQL connection headroom for vendor migrations" >&2; exit 1; }
             sleep 10
           done
           jq -n \
@@ -2614,7 +2616,7 @@ jobs:
             --argjson usable "$usable" --argjson active "$active" --argjson retired "$retired" \
             '{schema: "waooaw.wc124-connection-budget/v1", environment: $environment, server: $server,
               max_connections: $max, reserved_connections: $reserved, usable_connections: $usable,
-              active_connections_5m_max: $active, retired_revisions: $retired}' \
+              active_connections_latest_1m: $active, retired_revisions: $retired}' \
             | tee wc124-connection-budget.json
 
       - name: Run vendor schema migrations against private PostgreSQL
@@ -2972,20 +2974,20 @@ jobs:
           reserved=$(( $(param superuser_reserved_connections) + $(param reserved_connections) ))
           usable=$((max_connections - reserved))
           active=$(az monitor metrics list --resource "$server_id" --metric active_connections \
-            --interval PT1M --offset 5m --aggregation Maximum \
-            --query "max(value[0].timeseries[0].data[].maximum)" --output tsv 2>/dev/null || echo "")
+            --interval PT1M --offset 2m --aggregation Maximum \
+            --query "value[0].timeseries[0].data[-1].maximum" --output tsv 2>/dev/null || echo "")
           case "$active" in ''|None|null) active=0 ;; esac
           active=${active%.*}
           headroom=$((usable - active))
           required_headroom=8
-          echo "PostgreSQL connections after activation: max=$max_connections reserved=$reserved usable=$usable active(5m max)=$active headroom=$headroom"
+          echo "PostgreSQL connections after activation: max=$max_connections reserved=$reserved usable=$usable active(latest 1m)=$active headroom=$headroom"
           jq -n \
             --arg environment "$TARGET_ENVIRONMENT" --arg server "$server_name" \
             --argjson max "$max_connections" --argjson reserved "$reserved" --argjson usable "$usable" \
             --argjson active "$active" --argjson headroom "$headroom" --argjson required "$required_headroom" \
             '{schema: "waooaw.wc124-connection-budget/v1", phase: "post-activation", environment: $environment,
               server: $server, max_connections: $max, reserved_connections: $reserved, usable_connections: $usable,
-              active_connections_5m_max: $active, headroom: $headroom, required_headroom: $required,
+              active_connections_latest_1m: $active, headroom: $headroom, required_headroom: $required,
               status: (if $headroom >= $required then "passed" else "failed" end)}' \
             | tee wc124-connection-budget-post-activation.json
           test "$headroom" -ge "$required_headroom" \

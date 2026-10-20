@@ -1045,6 +1045,14 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "--output wc124-activation-readiness.json" in workflow
     assert 'phase: "post-activation"' in workflow
     assert 'test "$headroom" -ge "$required_headroom"' in workflow
+    # Run 39460884155: a 5-minute maximum pinned a transient spike for the whole 3-minute retry
+    # window; both gates must read the latest completed bucket and retry past one bucket.
+    assert "--offset 5m" not in workflow
+    assert workflow.count('--query "value[0].timeseries[0].data[-1].maximum"') == 2
+    assert "for attempt in $(seq 1 36); do" in workflow
+    temporal = read_contract("modules/workload/main.tf").split('name  = "SQL_MAX_CONNS"', 1)[1]
+    assert temporal.startswith('\n        value = "1"')
+    assert 'name  = "SQL_MAX_IDLE_CONNS"\n        value = "1"' in temporal
     for evidence in ("wc124-activation-readiness.json", "wc124-connection-budget-post-activation.json"):
         assert workflow.count(evidence) == 2, evidence  # produced once, uploaded once
     assert workflow.count("if: inputs.apply") == 31
