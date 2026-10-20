@@ -62,6 +62,7 @@ def test_cleanup_role_grants_only_exact_job_and_durable_log_actions() -> None:
     )[0]
 
     assert "Microsoft.OperationalInsights/workspaces/tables/data/read" not in broker_role
+    assert "Microsoft.App/managedEnvironments/read" in cleanup_role
     assert "Microsoft.App/jobs/getAuthToken/action" in cleanup_role
     assert "Microsoft.App/jobs/logstream/action" not in cleanup_role
     assert "Microsoft.OperationalInsights/workspaces/read" in cleanup_role
@@ -83,6 +84,7 @@ def test_cleanup_role_verifier_requires_system_log_read() -> None:
     permissions = CUSTOM_ROLE_PERMISSIONS["Cleanup Job Operator"]["actions"]
     data_permissions = CUSTOM_ROLE_PERMISSIONS["Cleanup Job Operator"]["dataActions"]
 
+    assert "Microsoft.App/managedEnvironments/read" in permissions
     assert "Microsoft.OperationalInsights/workspaces/query/read" in permissions
     assert "Microsoft.OperationalInsights/workspaces/query/ContainerAppSystemLogs/read" in permissions
     assert data_permissions == frozenset(

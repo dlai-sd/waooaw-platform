@@ -41,6 +41,7 @@ CUSTOM_ROLE_PERMISSIONS = {
     "Cleanup Job Operator": {
         "actions": frozenset(
             {
+                "Microsoft.App/managedEnvironments/read",
                 "Microsoft.App/jobs/read",
                 "Microsoft.App/jobs/executions/read",
                 "Microsoft.App/jobs/getAuthToken/action",
