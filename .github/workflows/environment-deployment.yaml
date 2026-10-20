@@ -2537,12 +2537,12 @@ jobs:
               --output json > "$job_evidence"
             test "$(jq -r '.name' "$job_evidence")" = "$job_name"
             jq -e '
-              ([.properties.configuration.secrets[] | select(.keyVaultUrl != null)] | length) > 0
-              and all(
-                  .properties.configuration.secrets[];
-                  (.keyVaultUrl // "") == ""
-                  or (.keyVaultUrl | test("vault[.]azure[.]net/secrets/[^/]+/[^/]+$"))
-                )
+              [
+                .properties.configuration.secrets[]
+                | select(.name == "migration-database" and .keyVaultUrl != null)
+              ] as $database_secrets
+              | ($database_secrets | length) == 1
+                and ($database_secrets[0].keyVaultUrl | test("vault[.]azure[.]net/secrets/[^/]+/[^/]+$"))
             ' "$job_evidence" > /dev/null
             container_name=$(jq -er '.properties.template.containers[0].name' "$job_evidence")
             execution=$(az containerapp job start \

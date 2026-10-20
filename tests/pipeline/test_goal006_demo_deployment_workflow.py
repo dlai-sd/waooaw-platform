@@ -166,7 +166,7 @@ def test_billing_failure_emits_container_logs_and_execution_evidence() -> None:
     assert "wc124-billing-migration.log" in WORKFLOW
 
 
-def test_migration_jobs_are_inventoried_and_require_versioned_key_vault_references() -> None:
+def test_migration_jobs_are_inventoried_and_require_versioned_database_references() -> None:
     vendor_step = WORKFLOW.split("      - name: Run vendor schema migrations against private PostgreSQL", 1)[1].split(
         "      - name: Run additive Billing authority migration", 1
     )[0]
@@ -174,10 +174,13 @@ def test_migration_jobs_are_inventoried_and_require_versioned_key_vault_referenc
         "      - name: Plan application activation after migration", 1
     )[0]
 
-    for step in (vendor_step, billing_step):
-        assert "az containerapp job show" in step
-        assert 'test("vault[.]azure[.]net/secrets/[^/]+/[^/]+$")' in step
-        assert "select(.keyVaultUrl != null)" in step
+    assert "az containerapp job show" in vendor_step
+    assert 'select(.name == "migration-database" and .keyVaultUrl != null)' in vendor_step
+    assert "all(" not in vendor_step
+    assert 'test("vault[.]azure[.]net/secrets/[^/]+/[^/]+$")' in vendor_step
+    assert "az containerapp job show" in billing_step
+    assert 'test("vault[.]azure[.]net/secrets/[^/]+/[^/]+$")' in billing_step
+    assert "select(.keyVaultUrl != null)" in billing_step
     assert 'test "$(jq -r \'.name\' "$job_evidence")" = "$job_name"' in vendor_step
     assert 'test "$(jq -r \'.name\' wc124-billing-migration-job.json)" = "$job_name"' in billing_step
 
