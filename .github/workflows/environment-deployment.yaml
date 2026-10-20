@@ -58,8 +58,10 @@ on:
       web_url:
         value: ${{ jobs.terraform.outputs.web_url }}
       apply_result:
+        # jobs.<id>.result is empty in workflow_call outputs (actions/runner#3087) and rejected
+        # by actionlint, so the Terraform job records its own status as a job output.
         description: Result of the private Terraform job, independent of runner cleanup
-        value: ${{ jobs.terraform.result }}
+        value: ${{ jobs.terraform.outputs.apply_result }}
 
 permissions:
   contents: read
@@ -554,6 +556,7 @@ jobs:
     outputs:
       verification_client_id: ${{ steps.foundation.outputs.verification_client_id }}
       web_url: ${{ steps.workload.outputs.web_url }}
+      apply_result: ${{ steps.apply_result.outputs.result }}
     env:
       ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
       TFSTATE_RESOURCE_GROUP: waooaw-platform-rg
@@ -3216,6 +3219,11 @@ jobs:
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-activation-apply.log
           if-no-files-found: warn
           retention-days: 90
+
+      - name: Record Terraform job result
+        id: apply_result
+        if: always()
+        run: echo "result=${{ job.status }}" >> "$GITHUB_OUTPUT"
 
   cleanup-private:
     # Skip when no broker execution was ever started: there is no runner to reconcile and the

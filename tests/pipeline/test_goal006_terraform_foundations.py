@@ -1302,6 +1302,14 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
     assert "always()" in verify_job
     assert "needs.authorize.result == 'success'" in verify_job
     assert "needs.deploy.outputs.apply_result == 'success'" in verify_job
+    # jobs.<id>.result is empty in workflow_call outputs (actions/runner#3087); the result must
+    # come from a job output recorded by an always() step, or verify never runs.
+    deployment = (REPO_ROOT / ".github/workflows/environment-deployment.yaml").read_text(encoding="utf-8")
+    assert "jobs.terraform.result" not in deployment
+    assert "value: ${{ jobs.terraform.outputs.apply_result }}" in deployment
+    terraform_job = deployment.split("\n  terraform:\n", 1)[1].split("\n  cleanup-private:\n", 1)[0]
+    assert "apply_result: ${{ steps.apply_result.outputs.result }}" in terraform_job
+    assert 'id: apply_result\n        if: always()\n        run: echo "result=${{ job.status }}" >> "$GITHUB_OUTPUT"' in terraform_job
     assert "needs.deploy.result == 'success'" in publish_job
     assert "needs.verify.result == 'success'" in publish_job
     for internal_input in (
