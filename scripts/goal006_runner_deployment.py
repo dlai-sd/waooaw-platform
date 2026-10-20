@@ -526,12 +526,15 @@ def verify_deployment(
         raise RuntimeError("cleanup broker identity boundary differs from blueprint")
     if runner_job.get("properties", {}).get("configuration", {}).get("triggerType") != "Manual":
         raise RuntimeError("runner job trigger is not Manual")
-    for name, job in (("broker", broker_job), ("cleanup broker", cleanup_broker_job)):
+    for name, job, expected_timeout in (
+        ("broker", broker_job, 600),
+        ("cleanup broker", cleanup_broker_job, 300),
+    ):
         configuration = job.get("properties", {}).get("configuration", {})
         if configuration.get("triggerType") != "Manual":
             raise RuntimeError(f"{name} job trigger is not Manual")
-        if configuration.get("replicaTimeout") != 300:
-            raise RuntimeError(f"{name} job timeout is not 300 seconds")
+        if configuration.get("replicaTimeout") != expected_timeout:
+            raise RuntimeError(f"{name} job timeout is not {expected_timeout} seconds")
         manual = configuration.get("manualTriggerConfig", {})
         if manual.get("parallelism") != 1 or manual.get("replicaCompletionCount") != 1:
             raise RuntimeError(f"{name} job concurrency is not one")
