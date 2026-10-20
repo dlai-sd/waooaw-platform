@@ -1811,12 +1811,15 @@ resource "azurerm_container_app" "temporal" {
         name  = "SQL_MAX_IDLE_CONNS"
         value = "2"
       }
+      # azurerm 4.14 caps failure_count_threshold at 30 (provider IntBetween(1, 30)); the plan,
+      # not validate, rejects a higher value because this resource is count-gated. 30 x 6 s keeps
+      # the 180 s startup window that auto-setup needs on a cold Demo PostgreSQL.
       startup_probe {
         transport               = "TCP"
         port                    = 7233
-        interval_seconds        = 5
+        interval_seconds        = 6
         timeout                 = 3
-        failure_count_threshold = 36
+        failure_count_threshold = 30
       }
       readiness_probe {
         transport               = "TCP"

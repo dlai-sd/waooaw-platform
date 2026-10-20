@@ -291,7 +291,18 @@ def test_demo_temporal_lifecycle_and_member_readiness_are_fail_closed() -> None:
     assert temporal.count("liveness_probe {") == 1
     assert temporal.count('transport               = "TCP"') == 3
     assert temporal.count("port                    = 7233") == 3
-    assert "failure_count_threshold = 36" in temporal
+    assert "failure_count_threshold = 30" in temporal
+    assert "interval_seconds        = 6" in temporal
+
+
+def test_every_probe_failure_threshold_is_within_the_azurerm_limit() -> None:
+    # azurerm 4.14 validates failure_count_threshold with IntBetween(1, 30) only during plan for
+    # count-gated resources, so `terraform validate` cannot catch an overrun (runs 39446836598
+    # and 39454383100 failed the Demo workload plan on a value of 36).
+    contract = read_contract("modules/workload/main.tf")
+    thresholds = [int(value) for value in re.findall(r"failure_count_threshold\s*=\s*(\d+)", contract)]
+    assert thresholds, "workload module declares no probes"
+    assert all(1 <= value <= 30 for value in thresholds), thresholds
 
 
 def test_every_container_app_declares_its_workload_profile() -> None:

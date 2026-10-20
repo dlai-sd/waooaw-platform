@@ -210,7 +210,9 @@ def enforce_temporal_contract(plan: dict[str, Any]) -> None:
     args = " ".join(str(arg) for arg in temporal.get("args") or [])
     if "TEMPORAL_BROADCAST_ADDRESS=" not in args:
         violations.append("Temporal must advertise its routable replica address through TEMPORAL_BROADCAST_ADDRESS")
-    for probe_kind, bound in (("startup_probe", 60), ("readiness_probe", 10)):
+    # azurerm 4.14 rejects failure_count_threshold above 30 at plan time (runs 39446836598 and
+    # 39454383100); the policy bound must never exceed what the provider can apply.
+    for probe_kind, bound in (("startup_probe", 30), ("readiness_probe", 10)):
         probes = temporal.get(probe_kind) or []
         if len(probes) != 1:
             violations.append(f"Temporal {probe_kind.replace('_', ' ')} must be defined exactly once")

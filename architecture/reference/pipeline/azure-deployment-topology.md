@@ -461,6 +461,9 @@ Before execution:
 - The current Work Contract and Founder authorization cover the environment and mutation.
 - The branch, release, control SHA, and break-fix mode match the authorized path.
 - Targeted tests, workflow lint, Terraform/HCL checks, and producer-consumer contract tests pass.
+  `terraform validate` does not apply azurerm value rules (for example probe
+  `failure_count_threshold` 1..30) to count-gated resources; those bounds are proven by the static
+  HCL tests and the plan policy, which must never be wider than the provider.
 - All three local pre-qualification harnesses pass with the exact release digests; any change under
   `infrastructure/postgres/init/` also needs `python scripts/wc124_init_chain_lint.py` at zero findings.
 - `ruff check scripts/`, the staged-precheck gates (`quality:scripts`, `precheck:gitleaks`) and the

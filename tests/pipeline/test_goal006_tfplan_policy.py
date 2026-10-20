@@ -61,7 +61,7 @@ def temporal_plan(
     args: list[str] | None = None,
 ) -> dict[str, object]:
     if startup_probe is None:
-        startup_probe = [{"transport": "TCP", "port": 7233, "failure_count_threshold": 36}]
+        startup_probe = [{"transport": "TCP", "port": 7233, "failure_count_threshold": 30}]
     if readiness_probe is None:
         readiness_probe = [{"transport": "TCP", "port": 7233, "failure_count_threshold": 3}]
     if args is None:
@@ -165,9 +165,18 @@ def test_workload_plan_rejects_temporal_replica_drift() -> None:
 
 
 def test_workload_plan_rejects_unbounded_temporal_startup_probe() -> None:
-    with pytest.raises(ValueError, match="startup probe failure threshold must be within 1..60"):
+    with pytest.raises(ValueError, match=r"startup probe failure threshold must be within 1\.\.30"):
         enforce_plan(
             temporal_plan(startup_probe=[{"transport": "TCP", "port": 7233, "failure_count_threshold": 240}]),
+            "workload",
+        )
+
+
+def test_workload_plan_rejects_temporal_startup_probe_above_provider_limit() -> None:
+    # 36 passed the old 1..60 policy but azurerm 4.14 refused it in the Demo workload plan.
+    with pytest.raises(ValueError, match=r"startup probe failure threshold must be within 1\.\.30"):
+        enforce_plan(
+            temporal_plan(startup_probe=[{"transport": "TCP", "port": 7233, "failure_count_threshold": 36}]),
             "workload",
         )
 
