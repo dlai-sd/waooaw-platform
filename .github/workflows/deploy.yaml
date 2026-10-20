@@ -1,9 +1,7 @@
 name: Environment Deployment
 
 on:
-  push:
-    branches:
-      - ib/532/wc124-transition-reconciliation
+  # Demo deployments are Founder-dispatched only; no branch push may start one.
   workflow_dispatch:
     inputs:
       environment:
