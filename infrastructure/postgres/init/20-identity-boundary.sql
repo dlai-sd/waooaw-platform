@@ -110,6 +110,7 @@ CREATE INDEX IF NOT EXISTS account_links_actor_tenant_idx ON identity.account_li
 ALTER TABLE identity.account_links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE identity.account_links FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS account_links_tenant_isolation ON identity.account_links;
+DROP POLICY IF EXISTS account_links_tenant_isolation ON identity.account_links;
 CREATE POLICY account_links_tenant_isolation ON identity.account_links
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);

@@ -11,10 +11,12 @@ import pytest
 from wc124_db_provisioner import (
     APPLICATION_DATABASE,
     APPLICATION_MIGRATION_ROLES,
+    INIT_CHAIN_LEDGER_TABLE,
     KEYCLOAK_DATABASE,
     TEMPORAL_DATABASE,
     TEMPORAL_VISIBILITY_DATABASE,
     application_migration_files,
+    apply_init_chain,
     authfile_value,
     await_vault_authorization,
     environment_specs,
@@ -139,9 +141,7 @@ def test_existing_url_secret_is_updated_to_canonical_host_without_rotating_passw
 
     def capture(command: list[str], **_: object) -> str:
         captured.extend(command)
-        return json.dumps(
-            {"id": "https://example.vault.azure.net/secrets/db-billing-migration/new-version"}
-        )
+        return json.dumps({"id": "https://example.vault.azure.net/secrets/db-billing-migration/new-version"})
 
     monkeypatch.setattr("wc124_db_provisioner.run", capture)
 
@@ -264,11 +264,13 @@ def test_refresh_only_rewrites_urls_without_database_bootstrap(
     monkeypatch.setattr(
         "wc124_db_provisioner.read_credentials",
         lambda *_args, **kwargs: (
-            passwords,
-            records,
-        )
-        if kwargs == {"require_existing": True}
-        else pytest.fail("refresh must require every existing credential"),
+            (
+                passwords,
+                records,
+            )
+            if kwargs == {"require_existing": True}
+            else pytest.fail("refresh must require every existing credential")
+        ),
     )
     monkeypatch.setattr(
         "wc124_db_provisioner.write_secrets",
@@ -466,10 +468,83 @@ def test_psql_uses_the_runner_system_ca_bundle(monkeypatch: pytest.MonkeyPatch) 
     assert captured["stdin"] == "SELECT 1;"
 
 
-def test_application_migrations_exclude_the_legacy_baseline() -> None:
-    files = application_migration_files(ROOT / "infrastructure/postgres/init")
+def test_application_migrations_cover_the_whole_sql_chain_after_the_principal_bootstrap() -> None:
+    init_directory = ROOT / "infrastructure/postgres/init"
+    files = application_migration_files(init_directory)
+    names = [path.name for path in files]
 
-    assert [path.name for path in files] == [
-        "59-wc124-billing-authority.sql",
-        "60-wc124-principal-handoff.sql",
+    assert "00-wc124-principal-bootstrap.sql" not in names
+    assert names == sorted(names, key=lambda name: name.encode())
+    assert names[0] == "01-schemas.sql"
+    assert names[-2:] == ["59-wc124-billing-authority.sql", "60-wc124-principal-handoff.sql"]
+    assert all(name.endswith(".sql") for name in names)
+    assert sorted(path.name for path in init_directory.glob("*.sh")) == [
+        "02-users-and-permissions.sh",
+        "42-demo-marketplace-admission.sh",
     ]
+
+
+def test_application_migrations_require_the_principal_bootstrap(tmp_path: Path) -> None:
+    (tmp_path / "01-schemas.sql").write_text("SELECT 1;", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="principal bootstrap file is missing"):
+        application_migration_files(tmp_path)
+
+
+def _ledger_psql(ledger: dict[str, str], calls: list[str]):
+    def fake_psql(_server, _bootstrap, _database, _token, sql, *, tuples_only=False):
+        calls.append(sql)
+        if tuples_only:
+            return "".join(f"{name}\t{digest}\n" for name, digest in sorted(ledger.items()))
+        if sql.startswith(f"INSERT INTO {INIT_CHAIN_LEDGER_TABLE}"):
+            name = sql.split("VALUES ('", 1)[1].split("'", 1)[0]
+            digest = sql.split("', '", 1)[1].split("'", 1)[0]
+            ledger[name] = digest
+        return ""
+
+    return fake_psql
+
+
+def test_init_chain_ledger_applies_only_changed_files(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    first = tmp_path / "01-schemas.sql"
+    second = tmp_path / "02-tables.sql"
+    first.write_text("CREATE SCHEMA IF NOT EXISTS a;", encoding="utf-8")
+    second.write_text("CREATE TABLE IF NOT EXISTS a.t (id int);", encoding="utf-8")
+    ledger: dict[str, str] = {}
+    calls: list[str] = []
+    monkeypatch.setattr("wc124_db_provisioner.psql", _ledger_psql(ledger, calls))
+
+    run_one = apply_init_chain("fqdn", "bootstrap", "token", (first, second))
+    assert run_one == {"applied": ["01-schemas.sql", "02-tables.sql"], "reapplied": [], "skipped": []}
+    assert calls[0].lstrip().startswith("CREATE SCHEMA IF NOT EXISTS wc124_provisioning")
+    assert calls.count(first.read_text(encoding="utf-8")) == 1
+
+    calls.clear()
+    run_two = apply_init_chain("fqdn", "bootstrap", "token", (first, second))
+    assert run_two == {"applied": [], "reapplied": [], "skipped": ["01-schemas.sql", "02-tables.sql"]}
+    assert not any(call.startswith("CREATE SCHEMA IF NOT EXISTS a") for call in calls)
+
+    second.write_text("CREATE TABLE IF NOT EXISTS a.t (id int, name text);", encoding="utf-8")
+    calls.clear()
+    run_three = apply_init_chain("fqdn", "bootstrap", "token", (first, second))
+    assert run_three == {"applied": [], "reapplied": ["02-tables.sql"], "skipped": ["01-schemas.sql"]}
+    assert second.read_text(encoding="utf-8") in calls
+    assert first.read_text(encoding="utf-8") not in calls
+
+    run_four = apply_init_chain("fqdn", "bootstrap", "token", (first, second), force=True)
+    assert run_four["reapplied"] == ["01-schemas.sql", "02-tables.sql"]
+
+
+def test_init_chain_ledger_rows_are_written_after_each_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    only = tmp_path / "01-schemas.sql"
+    only.write_text("CREATE SCHEMA IF NOT EXISTS a;", encoding="utf-8")
+    calls: list[str] = []
+    monkeypatch.setattr("wc124_db_provisioner.psql", _ledger_psql({}, calls))
+
+    apply_init_chain("fqdn", "bootstrap", "token", (only,))
+
+    file_index = calls.index(only.read_text(encoding="utf-8"))
+    ledger_write = calls[file_index + 1]
+    assert ledger_write.startswith(f"INSERT INTO {INIT_CHAIN_LEDGER_TABLE}")
+    assert "ON CONFLICT (file_name) DO UPDATE" in ledger_write
+    assert "'01-schemas.sql'" in ledger_write

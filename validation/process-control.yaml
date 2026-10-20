@@ -4,7 +4,7 @@ authoritative_ref: origin/main
 bootstrap_first: constitution/BOOTSTRAP.md
 source_digests:
   constitution/BOOTSTRAP.md: 6dd42836434eae5a1c5dfbe00f362f27e36192a6e9051dabc1ea4ccc9c334cef
-  .github/agent-context/office-platform-it-expert.md: 0729f41d4e489cec70a213354dad70b18361cd77c7f613cf7e6568887ee7ffdb
+  .github/agent-context/office-platform-it-expert.md: f1adde315019d63893c6aa5b83692bff35bb23e71170f80960ab1cbaf9a633a4
   work-contracts/IMPLEMENTATION-WORK-CONTRACT-TEMPLATE.md: 6694c9923a7177a0210a7a6b6b5148ef328f4200ebb52652b615f401afbf192e
 required_controls:
   process_baseline:

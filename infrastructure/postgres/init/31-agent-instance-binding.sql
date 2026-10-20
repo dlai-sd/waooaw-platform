@@ -78,7 +78,7 @@ $$;
 
 DROP TRIGGER IF EXISTS employment_relationships_agent_instance_immutable
     ON business.employment_relationships;
-CREATE TRIGGER employment_relationships_agent_instance_immutable
+CREATE OR REPLACE TRIGGER employment_relationships_agent_instance_immutable
     BEFORE INSERT OR UPDATE ON business.employment_relationships
     FOR EACH ROW EXECUTE FUNCTION business.validate_agent_instance_binding();
 

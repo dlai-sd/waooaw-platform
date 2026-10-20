@@ -152,19 +152,19 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS employment_contract_versions_no_update ON business.employment_contract_versions;
-CREATE TRIGGER employment_contract_versions_no_update
+CREATE OR REPLACE TRIGGER employment_contract_versions_no_update
     BEFORE UPDATE ON business.employment_contract_versions
     FOR EACH ROW EXECUTE FUNCTION business.reject_contract_record_mutation();
 DROP TRIGGER IF EXISTS employment_contract_versions_no_delete ON business.employment_contract_versions;
-CREATE TRIGGER employment_contract_versions_no_delete
+CREATE OR REPLACE TRIGGER employment_contract_versions_no_delete
     BEFORE DELETE ON business.employment_contract_versions
     FOR EACH ROW EXECUTE FUNCTION business.reject_contract_record_mutation();
 DROP TRIGGER IF EXISTS contract_acceptances_no_update ON business.contract_acceptances;
-CREATE TRIGGER contract_acceptances_no_update
+CREATE OR REPLACE TRIGGER contract_acceptances_no_update
     BEFORE UPDATE ON business.contract_acceptances
     FOR EACH ROW EXECUTE FUNCTION business.reject_contract_record_mutation();
 DROP TRIGGER IF EXISTS contract_acceptances_no_delete ON business.contract_acceptances;
-CREATE TRIGGER contract_acceptances_no_delete
+CREATE OR REPLACE TRIGGER contract_acceptances_no_delete
     BEFORE DELETE ON business.contract_acceptances
     FOR EACH ROW EXECUTE FUNCTION business.reject_contract_record_mutation();
 
@@ -202,11 +202,11 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS activation_intents_guard_update ON business.activation_intents;
-CREATE TRIGGER activation_intents_guard_update
+CREATE OR REPLACE TRIGGER activation_intents_guard_update
     BEFORE UPDATE ON business.activation_intents
     FOR EACH ROW EXECUTE FUNCTION business.guard_activation_intent_update();
 DROP TRIGGER IF EXISTS activation_intents_no_delete ON business.activation_intents;
-CREATE TRIGGER activation_intents_no_delete
+CREATE OR REPLACE TRIGGER activation_intents_no_delete
     BEFORE DELETE ON business.activation_intents
     FOR EACH ROW EXECUTE FUNCTION business.reject_contract_record_mutation();
 
@@ -218,13 +218,16 @@ ALTER TABLE business.activation_intents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.activation_intents FORCE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS employment_contract_versions_tenant_isolation ON business.employment_contract_versions;
+DROP POLICY IF EXISTS employment_contract_versions_tenant_isolation ON business.employment_contract_versions;
 CREATE POLICY employment_contract_versions_tenant_isolation ON business.employment_contract_versions
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
 DROP POLICY IF EXISTS contract_acceptances_tenant_isolation ON business.contract_acceptances;
+DROP POLICY IF EXISTS contract_acceptances_tenant_isolation ON business.contract_acceptances;
 CREATE POLICY contract_acceptances_tenant_isolation ON business.contract_acceptances
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS activation_intents_tenant_isolation ON business.activation_intents;
 DROP POLICY IF EXISTS activation_intents_tenant_isolation ON business.activation_intents;
 CREATE POLICY activation_intents_tenant_isolation ON business.activation_intents
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)

@@ -97,12 +97,18 @@ CREATE TABLE IF NOT EXISTS billing.integrity_events (
 
 ALTER TABLE billing.integrity_states
     DROP CONSTRAINT IF EXISTS integrity_states_active_halt_fk;
-ALTER TABLE billing.integrity_states
-    ADD CONSTRAINT integrity_states_active_halt_fk
-    FOREIGN KEY (active_halt_event_id)
-    REFERENCES billing.integrity_events(event_id)
-    ON DELETE RESTRICT
-    DEFERRABLE INITIALLY DEFERRED;
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'integrity_states_active_halt_fk' AND conrelid = 'billing.integrity_states'::regclass) THEN
+        ALTER TABLE billing.integrity_states
+            ADD CONSTRAINT integrity_states_active_halt_fk
+            FOREIGN KEY (active_halt_event_id)
+            REFERENCES billing.integrity_events(event_id)
+            ON DELETE RESTRICT
+            DEFERRABLE INITIALLY DEFERRED;
+    END IF;
+END
+$idempotent$;
 
 CREATE TABLE IF NOT EXISTS billing.reconciliation_executions (
     execution_id uuid PRIMARY KEY,

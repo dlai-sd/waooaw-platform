@@ -25,10 +25,16 @@ GRANT SELECT, INSERT, UPDATE ON business.coupon_reservations TO wbe_app;
 ALTER TABLE business.pre_hire_checkout_orders
     DROP CONSTRAINT IF EXISTS pre_hire_checkout_status_check;
 
-ALTER TABLE business.pre_hire_checkout_orders
-    ADD CONSTRAINT pre_hire_checkout_status_check CHECK (
-        status IN (
-            'CREATING', 'AWAITING_PROVIDER', 'CAPTURED', 'FULLY_DISCOUNTED',
-            'UNRESOLVED', 'CANCELLED'
-        )
-    );
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'pre_hire_checkout_status_check' AND conrelid = 'business.pre_hire_checkout_orders'::regclass) THEN
+        ALTER TABLE business.pre_hire_checkout_orders
+            ADD CONSTRAINT pre_hire_checkout_status_check CHECK (
+                status IN (
+                    'CREATING', 'AWAITING_PROVIDER', 'CAPTURED', 'FULLY_DISCOUNTED',
+                    'UNRESOLVED', 'CANCELLED'
+                )
+            );
+    END IF;
+END
+$idempotent$;

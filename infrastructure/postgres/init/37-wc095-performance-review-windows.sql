@@ -108,25 +108,26 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS performance_review_windows_no_update ON business.performance_review_windows;
-CREATE TRIGGER performance_review_windows_no_update
+CREATE OR REPLACE TRIGGER performance_review_windows_no_update
 BEFORE UPDATE ON business.performance_review_windows
 FOR EACH ROW EXECUTE FUNCTION business.reject_wc095_immutable_mutation();
 
 DROP TRIGGER IF EXISTS performance_review_responses_no_update ON business.performance_review_responses;
-CREATE TRIGGER performance_review_responses_no_update
+CREATE OR REPLACE TRIGGER performance_review_responses_no_update
 BEFORE UPDATE ON business.performance_review_responses
 FOR EACH ROW EXECUTE FUNCTION business.reject_wc095_immutable_mutation();
 DROP TRIGGER IF EXISTS performance_review_responses_no_delete ON business.performance_review_responses;
-CREATE TRIGGER performance_review_responses_no_delete
+CREATE OR REPLACE TRIGGER performance_review_responses_no_delete
 BEFORE DELETE ON business.performance_review_responses
 FOR EACH ROW EXECUTE FUNCTION business.reject_wc095_immutable_mutation();
 DROP TRIGGER IF EXISTS performance_review_windows_no_delete ON business.performance_review_windows;
-CREATE TRIGGER performance_review_windows_no_delete
+CREATE OR REPLACE TRIGGER performance_review_windows_no_delete
 BEFORE DELETE ON business.performance_review_windows
 FOR EACH ROW EXECUTE FUNCTION business.reject_wc095_immutable_mutation();
 
 ALTER TABLE business.performance_review_windows ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.performance_review_windows FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS performance_review_windows_tenant_isolation ON business.performance_review_windows;
 DROP POLICY IF EXISTS performance_review_windows_tenant_isolation ON business.performance_review_windows;
 CREATE POLICY performance_review_windows_tenant_isolation ON business.performance_review_windows
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
@@ -134,6 +135,7 @@ WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '
 
 ALTER TABLE business.performance_review_responses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.performance_review_responses FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS performance_review_responses_tenant_isolation ON business.performance_review_responses;
 DROP POLICY IF EXISTS performance_review_responses_tenant_isolation ON business.performance_review_responses;
 CREATE POLICY performance_review_responses_tenant_isolation ON business.performance_review_responses
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)

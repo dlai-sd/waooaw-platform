@@ -27,32 +27,50 @@ SET search_path TO professional, public;
 -- ─── Enums ───────────────────────────────────────────────────────────────────
 
 -- Agent types — must stay in sync with AGENT-AUTHORING-GUIDE and acceptance scenarios
-CREATE TYPE agent_type AS ENUM (
-    'DMA',                      -- WaooaW Expert Digital Marketing Agent
-    'TRADING',                  -- WaooaW Expert Trading Advisor
-    'AGRICULTURAL',             -- WaooaW Expert Agricultural Advisor
-    'PRIVATE_TUTOR',            -- WaooaW Expert Private Tutor
-    'PLATFORM_IT_EXPERT',       -- Internal: WAOOAW AI Agent — Platform IT Expert
-    'STEWARD_ASSISTANT',        -- Internal: WAOOAW AI Agent — Steward Assistant (C-068)
-    'SELF_IMPROVEMENT_ANALYST', -- Internal: WAOOAW AI Agent — Self-Improvement Analyst (C-069)
-    'QA',                       -- Internal: WAOOAW AI Agent — QA
-    'PLATFORM_OPERATIONS'       -- Internal: WAOOAW AI Agent — Platform Operations
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('agent_type') IS NULL THEN
+        CREATE TYPE agent_type AS ENUM (
+            'DMA',                      -- WaooaW Expert Digital Marketing Agent
+            'TRADING',                  -- WaooaW Expert Trading Advisor
+            'AGRICULTURAL',             -- WaooaW Expert Agricultural Advisor
+            'PRIVATE_TUTOR',            -- WaooaW Expert Private Tutor
+            'PLATFORM_IT_EXPERT',       -- Internal: WAOOAW AI Agent — Platform IT Expert
+            'STEWARD_ASSISTANT',        -- Internal: WAOOAW AI Agent — Steward Assistant (C-068)
+            'SELF_IMPROVEMENT_ANALYST', -- Internal: WAOOAW AI Agent — Self-Improvement Analyst (C-069)
+            'QA',                       -- Internal: WAOOAW AI Agent — QA
+            'PLATFORM_OPERATIONS'       -- Internal: WAOOAW AI Agent — Platform Operations
+        );
+    END IF;
+END
+$idempotent$;
 
 -- Simulation grade — matches acceptance scenario grading in AGENT-AUTHORING-GUIDE
-CREATE TYPE simulation_grade AS ENUM (
-    'A',    -- All acceptance criteria met, zero constitutional violations
-    'B',    -- Minor deviations, no constitutional violations, improvement recommended
-    'C',    -- Significant deviations or performance degradation — must be fixed before production
-    'FAIL'  -- Constitutional violation detected — blocked from production by CI gate
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('simulation_grade') IS NULL THEN
+        CREATE TYPE simulation_grade AS ENUM (
+            'A',    -- All acceptance criteria met, zero constitutional violations
+            'B',    -- Minor deviations, no constitutional violations, improvement recommended
+            'C',    -- Significant deviations or performance degradation — must be fixed before production
+            'FAIL'  -- Constitutional violation detected — blocked from production by CI gate
+        );
+    END IF;
+END
+$idempotent$;
 
 -- Minimum model tier required for this prompt (ADR-024, ADR-028)
-CREATE TYPE prompt_model_tier AS ENUM (
-    'LOCAL',        -- Ollama Llama 3.2 — classification and low-stakes text
-    'MID_TIER',     -- Azure OpenAI gpt-4o-mini — standard advisory
-    'FRONTIER'      -- Azure OpenAI gpt-4o (or configured STEWARD_FRONTIER_MODEL) — strategy + constitutional
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('prompt_model_tier') IS NULL THEN
+        CREATE TYPE prompt_model_tier AS ENUM (
+            'LOCAL',        -- Ollama Llama 3.2 — classification and low-stakes text
+            'MID_TIER',     -- Azure OpenAI gpt-4o-mini — standard advisory
+            'FRONTIER'      -- Azure OpenAI gpt-4o (or configured STEWARD_FRONTIER_MODEL) — strategy + constitutional
+        );
+    END IF;
+END
+$idempotent$;
 
 -- ─── Core Table ──────────────────────────────────────────────────────────────
 

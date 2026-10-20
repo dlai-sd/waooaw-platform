@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "sql_files": 67,
+  "shell_files_not_applied_in_demo": [
+    "02-users-and-permissions.sh",
+    "42-demo-marketplace-admission.sh"
+  ],
+  "findings": []
+}

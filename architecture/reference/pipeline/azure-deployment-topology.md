@@ -126,11 +126,12 @@ The following are pinned platform dependencies, not additional release members:
 | `goal006_plan_provenance.py` | Plan provenance | Binds environment, release, run, backend, state, policy, JSON, and binary digests |
 | `wc124_deployment_bundle.py` | Activation authorization bundle | Requires current validated foundation and workload evidence |
 | `wc124_database_transition.py` | Database authority state machine | Unknown or inconsistent live facts produce `RECOVERY_HOLD` |
-| `wc124_db_provisioner.py` | Roles, grants, credentials, databases, additive migrations | No secret values in logs; temporary authority only |
+| `wc124_db_provisioner.py` | Roles, grants, credentials, databases, the whole init chain through the `wc124_provisioning.init_chain_ledger` digest ledger | No secret values in logs; temporary authority only; unchanged files skipped, changed files re-applied (every file is idempotent by standard) |
+| `wc124_init_chain_lint.py` | Static form check of the Idempotent Init-Chain SQL Standard (Platform IT Expert spec §2.5) | Zero findings required for every `infrastructure/postgres/init/*.sql` change |
 | `wc124_db_handoff.py` | Ownership and recovery verification | Proves ownership, sessions, dependencies, and revocation readiness |
 | `goal006_activation_readiness.py` | Post-activation revision readiness gate | Fails the deployment unless every latest revision is `Running`/`Healthy` and is the latest ready revision; writes `wc124-activation-readiness.json` |
 | `goal006_capture_aca_execution.sh` / `goal006_aca_execution_evidence.py` | ACA Job execution capture | ARM `Succeeded` is authoritative when Log Analytics system events lag; `Failed`/`Stopped` keep the fail-closed 6-minute event window |
-| `wc124_billing_migration_local.sh` / `wc124_application_activation_local.sh` | Local pre-qualification of the database and activation stages | Replay the Demo contracts with the exact release digests before a cloud run |
+| `wc124_init_chain_local.sh` / `wc124_billing_migration_local.sh` / `wc124_application_activation_local.sh` | Local pre-qualification of the init chain, database and activation stages | Replay the Demo contracts with the exact release digests before a cloud run |
 | `goal006_bind_demo_managed_certificates.sh` | Idempotent Demo TLS binding | Verifies all required custom domains reach `SniEnabled` |
 | `goal006_verify_deployment.sh` | Independent deployment verification | Runs through the separate verification identity and private job |
 | Actionlint, pytest, HCL parser, shell checks | Deterministic local validation | Required before paying for another cloud execution |
@@ -313,14 +314,19 @@ Demo Billing state (`test-results/wc124/demo-billing-state.json`), vendor databa
 exactly as `scripts/wc124_db_provisioner.py` does, and a per-role SCRAM PgBouncer on `5432` with
 the Demo database map and limits. There is no sidecar database anywhere in either harness.
 
-The init-chain scope is the one place the harness is deliberately wider than Demo: the local
-instance receives all 69 init files through `initdb`, whereas the Demo provisioner applies only the
-files in `APPLICATION_MIGRATION_NAMES` (`59`, `60`) on top of a database whose earlier schema came
-from historical runs. The harness therefore cannot prove that Demo holds every identity schema the
-Business Platform readiness check requires (see "Activation readiness" below).
+The init-chain scope now matches Demo: the provisioner applies every `*.sql` file after
+`00-wc124-principal-bootstrap.sql` in C-locale order and records each file's sha256 in
+`wc124_provisioning.init_chain_ledger`; a file is skipped when its digest is unchanged and simply
+re-applied when it changed (`--force-init-chain` re-applies everything). This is only safe because
+every init file now satisfies the Idempotent Init-Chain SQL Standard (Platform IT Expert spec §2.5),
+enforced by `scripts/wc124_init_chain_lint.py`. The two `*.sh` init files (`02` legacy LOGIN
+passwords, `42` preview marketplace seed) run only under local `initdb` and are never applied to a
+managed environment. The activation harness still receives the chain through `initdb`, which is
+equivalent because the harness below proves the provisioner path converges to the same catalog.
 
 | Harness | Runtime | Proves | Evidence |
 |---|---|---|---|
+| `scripts/wc124_init_chain_local.sh` | ~35 s | Lint passes; real provisioner ledger logic on a bare pinned instance: run 1 applies all 66 SQL files, run 2 skips all 66, forced run 3 re-applies all 66 with zero `pg_dump --schema-only` drift; the `IdentitySchemaHealthCheck` object set (8 `identity.*` tables, forced RLS on 3) exists | `test-results/wc124/init-chain-local/result.json` |
 | `scripts/wc124_billing_migration_local.sh` | ~15 s | Exact Billing image migrates as restricted `billing_migrator` through transaction-mode PgBouncer, ledger ownership converges, rerun is idempotent | `test-results/wc124/billing-migration-local/` |
 | `scripts/wc124_application_activation_local.sh` | ~90 s | Keycloak migration as `keycloak_migrator` (fails under stale pools, succeeds after reclaim), Temporal migration and runtime with the ACA bind/probe contract (loopback TCP 7233 is the authoritative probe), Billing migration and the Billing runtime as `billing_runtime` through transaction-mode PgBouncer with the Demo `postgresql://...?sslmode=disable` URL, CE/BP/PR/web readiness as their runtime roles, only restricted roles on the instance, >= 5 usable slots spare after activation | `test-results/wc124/application-activation-local/result.json` and per-component logs |
 
@@ -359,7 +365,7 @@ steady-state runtimes are proven to leave the next migration window its headroom
 | billing-engine 73 `ActivationFailed` | `ModuleNotFoundError: psycopg2` at `database.py:22`; the provisioner renders `postgresql://` (`wc124_db_provisioner.py:156`) and the image ships asyncpg only | `database.asyncpg_engine_target` pins `postgresql+asyncpg://`, maps `sslmode` to asyncpg `ssl`, disables prepared-statement caching for transaction pooling, and `init_db` performs a fail-closed `SELECT 1`. `search_path` moved from a client startup parameter (rejected by PgBouncer) to a `billing_runtime` role default in `00-wc124-principal-bootstrap.sql`. Proven by the activation harness. |
 | temporal 44-48 `Probe of StartUp failed` every ~4 min (`ProbeFailed x1624`), rev 43 clean | The `auto-setup` entrypoint sets `BIND_ON_IP` from `getent hosts $(hostname)`, so the server listens on the replica IP only; from a healthy replica `100.100.200.190:7233` answered `SERVING` while `127.0.0.1:7233` refused. ACA default probes (injected only into single-container revisions, which rev 44+ became) connect over loopback | Terraform runs the image through `/bin/bash -c` exporting `TEMPORAL_BROADCAST_ADDRESS=$(hostname -i)` and `TEMPORAL_ADDRESS=127.0.0.1:7233` with `BIND_ON_IP=0.0.0.0`, and declares explicit TCP 7233 startup/readiness/liveness probes; `goal006_tfplan_policy.enforce_temporal_contract` requires exactly that shape. Proven by the loopback probe in the harness. |
 | web 72 `ActivationFailed` | `web/app/api/health/ready/route.ts:39` requires Business Platform `/health/ready` | Cascade of the Business Platform finding; no web change. |
-| business-platform 68 `ActivationFailed` | `IdentitySchemaHealthCheck.cs` reports "Required identity schema or forced RLS is absent" | **Open gap, deliberately deferred.** Demo only ever applies `59`/`60`; the identity schema objects live in earlier init files (69 in total, of which `04`, `05`, `47`, `56`, `57`, `58` are not idempotent and `02` is a shell script with local passwords). Closing it needs a per-file digest ledger applied by the provisioner in canonical order with a second-apply idempotency proof (the gate already named in `demo-uat-persistent-state-lifecycle-work-component.md`). Until then the readiness gate will fail on business-platform and web, which is the intended signal. |
+| business-platform 68 `ActivationFailed` | `IdentitySchemaHealthCheck.cs` reports "Required identity schema or forced RLS is absent" | **Closed.** Demo previously applied only `59`/`60`; the identity objects live in `29`, `56`–`58`. A two-pass local replay showed 31 of 69 init files were not re-runnable (`CREATE TYPE/POLICY/RULE/INDEX/TRIGGER/ROLE/TABLE`, seed `INSERT`s, `DROP CONSTRAINT`). All files were rewritten to the Idempotent Init-Chain SQL Standard (pg_dump schema and data identical to the untouched chain on pass 1; pass 2 clean), the provisioner now applies the whole chain through the `wc124_provisioning.init_chain_ledger` digest ledger, `wc124_init_chain_lint.py` guards the standard (456 findings on the legacy chain → 0), and `wc124_init_chain_local.sh` proves apply-all / skip-all / force-reapply convergence. The readiness gate remains the signal if Demo diverges. |
 
 Two further apply-time observations from the same run are fixed alongside. Both workload applies
 updated all 16 Container Apps because azurerm 4.14 planned `workload_profile_name: "Consumption"
@@ -455,7 +461,8 @@ Before execution:
 - The current Work Contract and Founder authorization cover the environment and mutation.
 - The branch, release, control SHA, and break-fix mode match the authorized path.
 - Targeted tests, workflow lint, Terraform/HCL checks, and producer-consumer contract tests pass.
-- Both local pre-qualification harnesses pass with the exact release digests.
+- All three local pre-qualification harnesses pass with the exact release digests; any change under
+  `infrastructure/postgres/init/` also needs `python scripts/wc124_init_chain_lint.py` at zero findings.
 - `ruff check scripts/`, the staged-precheck gates (`quality:scripts`, `precheck:gitleaks`) and the
   bootstrap manifest validation pass locally; a refreshed manifest must keep the wrapped
   `secret-catalog.json` entry or the gitleaks gate reports a false positive.
@@ -765,8 +772,9 @@ active Work Contract.
 | State path | Shared state-account public access is disabled with default deny and approved private endpoint access. Declarative ownership of the existing shared account remains debt. | Assign accepted IaC ownership before Production readiness; do not reopen public access. |
 | Production | Terraform and runner blueprints are code-prepared; protected Production environments and plan prerequisites remain incomplete. No Production plan/apply ran. | Keep Production plan-only and runner `INACTIVE` until a separate Founder authorization. |
 | Execution contract | `work-contracts/WC-076-goal006-phase3-execution.md` exists and owns execution closure. | Keep status there and in PROJECT_STATE; do not duplicate live status in strategy documents. |
+| Init chain | All 66 `*.sql` init files satisfy the Idempotent Init-Chain SQL Standard (Platform IT Expert spec §2.5); the provisioner applies the whole chain through `wc124_provisioning.init_chain_ledger`; lint and local harness pass (apply-all/skip-all/force-reapply, zero drift). | First Demo run must show `init_chain.applied == 66` in provisioner evidence, then `skipped == 66` on the next run; business-platform and web readiness must pass. |
 | Local pre-qualification | Billing and activation harnesses replay the Demo database and activation stages in about 15 s and 90 s with the exact digests and the Demo connection ceiling; the activation harness now runs the Billing service, mirrors the ACA Temporal command override, and requires loopback probes. | Run before every deployment attempt; extend to Keycloak runtime and identity-edge when their contracts change. |
-| Known debt | `tests/billing-engine/test_wc124_billing_authority.py::test_atomic_halt_replay_conflict_release_and_redis_loss` raises `KeyError` without `WC124_DATABASE_URL` instead of skipping. Demo's identity schema chain is not provisioned declaratively (only `59`/`60` are applied), so `ca-demo-business-platform` and `ca-demo-web` cannot pass readiness on a fresh revision. | Make the integration test skip explicitly when its database is absent. Deliver the per-file init-chain ledger in the provisioner with a second-apply idempotency proof. |
+| Known debt | `tests/billing-engine/test_wc124_billing_authority.py::test_atomic_halt_replay_conflict_release_and_redis_loss` raises `KeyError` without `WC124_DATABASE_URL` instead of skipping. Demo PostgreSQL major version is not pinned in evidence; `CREATE OR REPLACE TRIGGER` in the init chain requires PostgreSQL 14+ (local harness runs 16). | Make the integration test skip explicitly when its database is absent. Record the live Flexible Server version in provisioner evidence. |
 
 The detailed topology, controls, interface gates, and implementation order below are normative. This
 section is a routing summary and must not be copied into a separate implementation plan.

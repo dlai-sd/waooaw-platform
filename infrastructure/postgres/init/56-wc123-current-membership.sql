@@ -1,28 +1,41 @@
 -- WC-123 current multi-tenant membership authority.
 
-ALTER TABLE identity.memberships
-    DROP CONSTRAINT memberships_account_id_key,
-    DROP CONSTRAINT memberships_account_id_tenant_id_fkey,
-    DROP CONSTRAINT memberships_roles_check,
-    DROP CONSTRAINT memberships_status_check,
-    ADD CONSTRAINT memberships_account_fk
-        FOREIGN KEY (account_id) REFERENCES identity.accounts(account_id) ON DELETE RESTRICT,
-    ADD CONSTRAINT memberships_tenant_fk
-        FOREIGN KEY (tenant_id) REFERENCES business.organisations(tenant_id) ON DELETE RESTRICT,
-    ADD CONSTRAINT memberships_roles_check
-        CHECK (
-            cardinality(roles) = 1
-            AND roles[1] IN ('OWNER', 'MANAGER', 'VIEWER')
-        ),
-    ADD CONSTRAINT memberships_account_tenant_unique UNIQUE (account_id, tenant_id);
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'memberships_account_tenant_unique' AND conrelid = 'identity.memberships'::regclass) THEN
+        ALTER TABLE identity.memberships
+            DROP CONSTRAINT IF EXISTS memberships_account_id_key,
+            DROP CONSTRAINT IF EXISTS memberships_account_id_tenant_id_fkey,
+            DROP CONSTRAINT IF EXISTS memberships_roles_check,
+            DROP CONSTRAINT IF EXISTS memberships_status_check,
+            ADD CONSTRAINT memberships_account_fk
+                FOREIGN KEY (account_id) REFERENCES identity.accounts(account_id) ON DELETE RESTRICT,
+            ADD CONSTRAINT memberships_tenant_fk
+                FOREIGN KEY (tenant_id) REFERENCES business.organisations(tenant_id) ON DELETE RESTRICT,
+            ADD CONSTRAINT memberships_roles_check
+                CHECK (
+                    cardinality(roles) = 1
+                    AND roles[1] IN ('OWNER', 'MANAGER', 'VIEWER')
+                ),
+            ADD CONSTRAINT memberships_account_tenant_unique UNIQUE (account_id, tenant_id);
+    END IF;
+END
+$idempotent$;
 
 UPDATE identity.memberships SET status = 'SUSPENDED' WHERE status = 'INACTIVE';
 
-ALTER TABLE identity.memberships
-    ADD CONSTRAINT memberships_status_check
-        CHECK (status IN ('ACTIVE', 'SUSPENDED', 'REMOVED'));
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'memberships_status_check' AND conrelid = 'identity.memberships'::regclass) THEN
+        ALTER TABLE identity.memberships
+            ADD CONSTRAINT memberships_status_check
+                CHECK (status IN ('ACTIVE', 'SUSPENDED', 'REMOVED'));
+    END IF;
+END
+$idempotent$;
 
 DROP POLICY resolver_actor_scope ON business.organisations;
+DROP POLICY IF EXISTS resolver_actor_scope ON business.organisations;
 CREATE POLICY resolver_actor_scope ON business.organisations
 FOR SELECT TO identity_resolver_owner
 USING (

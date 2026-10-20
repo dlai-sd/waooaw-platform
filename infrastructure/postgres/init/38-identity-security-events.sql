@@ -98,25 +98,25 @@ $$;
 
 DROP TRIGGER IF EXISTS identity_security_events_no_update_delete
     ON institutional.identity_security_events;
-CREATE TRIGGER identity_security_events_no_update_delete
+CREATE OR REPLACE TRIGGER identity_security_events_no_update_delete
     BEFORE UPDATE OR DELETE ON institutional.identity_security_events
     FOR EACH ROW EXECUTE FUNCTION institutional.reject_identity_security_event_mutation();
 
 DROP TRIGGER IF EXISTS identity_security_events_no_truncate
     ON institutional.identity_security_events;
-CREATE TRIGGER identity_security_events_no_truncate
+CREATE OR REPLACE TRIGGER identity_security_events_no_truncate
     BEFORE TRUNCATE ON institutional.identity_security_events
     FOR EACH STATEMENT EXECUTE FUNCTION institutional.reject_identity_security_event_mutation();
 
 DROP TRIGGER IF EXISTS identity_security_event_holds_no_update_delete
     ON institutional.identity_security_event_legal_holds;
-CREATE TRIGGER identity_security_event_holds_no_update_delete
+CREATE OR REPLACE TRIGGER identity_security_event_holds_no_update_delete
     BEFORE UPDATE OR DELETE ON institutional.identity_security_event_legal_holds
     FOR EACH ROW EXECUTE FUNCTION institutional.reject_identity_security_event_mutation();
 
 DROP TRIGGER IF EXISTS identity_security_event_holds_no_truncate
     ON institutional.identity_security_event_legal_holds;
-CREATE TRIGGER identity_security_event_holds_no_truncate
+CREATE OR REPLACE TRIGGER identity_security_event_holds_no_truncate
     BEFORE TRUNCATE ON institutional.identity_security_event_legal_holds
     FOR EACH STATEMENT EXECUTE FUNCTION institutional.reject_identity_security_event_mutation();
 

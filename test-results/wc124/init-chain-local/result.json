@@ -1,0 +1,31 @@
+{
+  "schema": "waooaw.wc124-init-chain-local/v1",
+  "postgres_image": "pgvector/pgvector@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b",
+  "transport": "docker-exec psql (ledger logic and files are the production path)",
+  "sql_files": 66,
+  "run1": {
+    "applied": 66,
+    "reapplied": 0,
+    "skipped": 0,
+    "files": 66
+  },
+  "run2": {
+    "applied": 0,
+    "reapplied": 0,
+    "skipped": 66,
+    "files": 66
+  },
+  "run3_forced": {
+    "applied": 0,
+    "reapplied": 66,
+    "skipped": 0,
+    "files": 66
+  },
+  "schema_drift_lines_between_run1_and_run3": 0,
+  "ledger": "wc124_provisioning.init_chain_ledger",
+  "identity_health_check": {
+    "required_tables_present": 8,
+    "forced_rls_tables": 3
+  },
+  "status": "passed"
+}

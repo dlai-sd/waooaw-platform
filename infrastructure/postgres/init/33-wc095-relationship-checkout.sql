@@ -77,19 +77,20 @@ $$;
 
 DROP TRIGGER IF EXISTS relationship_checkout_intents_guard_update
 ON business.relationship_checkout_intents;
-CREATE TRIGGER relationship_checkout_intents_guard_update
+CREATE OR REPLACE TRIGGER relationship_checkout_intents_guard_update
 BEFORE UPDATE ON business.relationship_checkout_intents
 FOR EACH ROW EXECUTE FUNCTION business.guard_relationship_checkout_intent_update();
 
 DROP TRIGGER IF EXISTS relationship_checkout_intents_no_delete
 ON business.relationship_checkout_intents;
-CREATE TRIGGER relationship_checkout_intents_no_delete
+CREATE OR REPLACE TRIGGER relationship_checkout_intents_no_delete
 BEFORE DELETE ON business.relationship_checkout_intents
 FOR EACH ROW EXECUTE FUNCTION business.reject_relationship_history_mutation();
 
 ALTER TABLE business.relationship_checkout_intents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.relationship_checkout_intents FORCE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS relationship_checkout_intents_tenant_isolation ON business.relationship_checkout_intents;
 CREATE POLICY relationship_checkout_intents_tenant_isolation
 ON business.relationship_checkout_intents
 USING (tenant_id = NULLIF(CURRENT_SETTING('app.current_tenant_id', TRUE), '')::UUID)

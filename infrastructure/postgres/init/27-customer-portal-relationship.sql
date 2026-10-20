@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS business.relationship_onboard_preferences (
 
 ALTER TABLE business.relationship_onboard_preferences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.relationship_onboard_preferences FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS relationship_onboard_preferences_tenant_isolation ON business.relationship_onboard_preferences;
 CREATE POLICY relationship_onboard_preferences_tenant_isolation
     ON business.relationship_onboard_preferences
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)

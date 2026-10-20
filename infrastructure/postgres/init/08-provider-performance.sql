@@ -25,24 +25,36 @@ SET search_path TO institutional, public;
 
 -- ─── Enums ───────────────────────────────────────────────────────────────────
 
-CREATE TYPE llm_provider AS ENUM (
-    'ollama_llama3',          -- LOCAL: Ollama + Llama 3.2 3B (classification gate)
-    'ollama_ai4bharat',       -- LOCAL: AI4Bharat IndicBERT (Indian language tasks)
-    'google_gemini_flash',    -- MID_TIER: Gemini 2.0 Flash (Vertex AI asia-south1)
-    'sarvam_saaras',          -- MID_TIER: Sarvam AI Saaras (Agricultural agent override)
-    'azure_gpt4o_mini',       -- MID_TIER fallback: Azure OpenAI GPT-4o-mini (UAE North)
-    'google_gemini_pro',      -- FRONTIER: Gemini 2.5 Pro (Vertex AI asia-south1)
-    'azure_gpt4o'             -- FRONTIER fallback: Azure OpenAI GPT-4o (UAE North)
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('llm_provider') IS NULL THEN
+        CREATE TYPE llm_provider AS ENUM (
+            'ollama_llama3',          -- LOCAL: Ollama + Llama 3.2 3B (classification gate)
+            'ollama_ai4bharat',       -- LOCAL: AI4Bharat IndicBERT (Indian language tasks)
+            'google_gemini_flash',    -- MID_TIER: Gemini 2.0 Flash (Vertex AI asia-south1)
+            'sarvam_saaras',          -- MID_TIER: Sarvam AI Saaras (Agricultural agent override)
+            'azure_gpt4o_mini',       -- MID_TIER fallback: Azure OpenAI GPT-4o-mini (UAE North)
+            'google_gemini_pro',      -- FRONTIER: Gemini 2.5 Pro (Vertex AI asia-south1)
+            'azure_gpt4o'             -- FRONTIER fallback: Azure OpenAI GPT-4o (UAE North)
+        );
+    END IF;
+END
+$idempotent$;
 
-CREATE TYPE llm_dispatch_outcome AS ENUM (
-    'SUCCESS',         -- Response received, used by agent
-    'RATE_LIMITED',    -- Provider returned 429 — fallback triggered
-    'TIMEOUT',         -- Provider exceeded latency threshold — fallback triggered
-    'ERROR',           -- Provider returned 5xx — fallback triggered
-    'CIRCUIT_OPEN',    -- PSE circuit-breaker was open — provider not attempted
-    'FALLBACK_USED'    -- This row IS the fallback call (primary failed)
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('llm_dispatch_outcome') IS NULL THEN
+        CREATE TYPE llm_dispatch_outcome AS ENUM (
+            'SUCCESS',         -- Response received, used by agent
+            'RATE_LIMITED',    -- Provider returned 429 — fallback triggered
+            'TIMEOUT',         -- Provider exceeded latency threshold — fallback triggered
+            'ERROR',           -- Provider returned 5xx — fallback triggered
+            'CIRCUIT_OPEN',    -- PSE circuit-breaker was open — provider not attempted
+            'FALLBACK_USED'    -- This row IS the fallback call (primary failed)
+        );
+    END IF;
+END
+$idempotent$;
 
 -- ─── Raw Dispatch Events ─────────────────────────────────────────────────────
 -- One row per LLM call. High-volume table — partitioned by month.

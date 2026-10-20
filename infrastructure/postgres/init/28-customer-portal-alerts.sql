@@ -29,11 +29,13 @@ CREATE TABLE IF NOT EXISTS business.customer_alert_idempotency (
 
 ALTER TABLE business.customer_alerts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.customer_alerts FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS customer_alerts_tenant_isolation ON business.customer_alerts;
 CREATE POLICY customer_alerts_tenant_isolation ON business.customer_alerts
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
 ALTER TABLE business.customer_alert_idempotency ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.customer_alert_idempotency FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS customer_alert_idempotency_tenant_isolation ON business.customer_alert_idempotency;
 CREATE POLICY customer_alert_idempotency_tenant_isolation ON business.customer_alert_idempotency
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);

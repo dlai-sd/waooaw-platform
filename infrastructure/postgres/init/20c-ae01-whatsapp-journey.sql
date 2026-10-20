@@ -51,11 +51,11 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS whatsapp_message_receipts_no_update ON business.whatsapp_message_receipts;
-CREATE TRIGGER whatsapp_message_receipts_no_update
+CREATE OR REPLACE TRIGGER whatsapp_message_receipts_no_update
     BEFORE UPDATE ON business.whatsapp_message_receipts
     FOR EACH ROW EXECUTE FUNCTION business.reject_ae01_append_only_mutation();
 DROP TRIGGER IF EXISTS whatsapp_message_receipts_no_delete ON business.whatsapp_message_receipts;
-CREATE TRIGGER whatsapp_message_receipts_no_delete
+CREATE OR REPLACE TRIGGER whatsapp_message_receipts_no_delete
     BEFORE DELETE ON business.whatsapp_message_receipts
     FOR EACH ROW EXECUTE FUNCTION business.reject_unexpired_whatsapp_receipt_delete();
 

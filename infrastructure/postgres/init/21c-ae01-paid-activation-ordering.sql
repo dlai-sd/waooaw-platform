@@ -18,25 +18,37 @@ ADD COLUMN IF NOT EXISTS activation_correlation_id UUID,
 ADD COLUMN IF NOT EXISTS outcome_subscription_id UUID;
 
 ALTER TABLE business.payment_intents DROP CONSTRAINT IF EXISTS payment_intents_status_check;
-ALTER TABLE business.payment_intents ADD CONSTRAINT payment_intents_status_check CHECK (
-    status IN ('IN_PROGRESS', 'CAPTURED', 'ACTIVATION_IN_PROGRESS', 'ACTIVATED', 'FAILED', 'FAILED_RETRYABLE')
-);
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'payment_intents_status_check' AND conrelid = 'business.payment_intents'::regclass) THEN
+        ALTER TABLE business.payment_intents ADD CONSTRAINT payment_intents_status_check CHECK (
+            status IN ('IN_PROGRESS', 'CAPTURED', 'ACTIVATION_IN_PROGRESS', 'ACTIVATED', 'FAILED', 'FAILED_RETRYABLE')
+        );
+    END IF;
+END
+$idempotent$;
 CREATE UNIQUE INDEX IF NOT EXISTS ux_payment_intents_checkout_intent
 ON business.payment_intents (checkout_intent_id) WHERE checkout_intent_id IS NOT NULL;
 ALTER TABLE business.payment_intents DROP CONSTRAINT IF EXISTS payment_intents_relationship_material_check;
-ALTER TABLE business.payment_intents ADD CONSTRAINT payment_intents_relationship_material_check CHECK (
-    relationship_id IS NULL OR (
-        tenant_id IS NOT NULL
-        AND accepted_contract_id IS NOT NULL
-        AND contract_version IS NOT NULL AND contract_version > 0
-        AND contract_hash ~ '^[0-9a-f]{64}$'
-        AND contract_acceptance_id IS NOT NULL
-        AND payment_consent_evidence_id IS NOT NULL
-        AND payment_evidence_id IS NOT NULL
-        AND agent_type IS NOT NULL
-        AND bundle_tier IS NOT NULL
-    )
-);
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'payment_intents_relationship_material_check' AND conrelid = 'business.payment_intents'::regclass) THEN
+        ALTER TABLE business.payment_intents ADD CONSTRAINT payment_intents_relationship_material_check CHECK (
+            relationship_id IS NULL OR (
+                tenant_id IS NOT NULL
+                AND accepted_contract_id IS NOT NULL
+                AND contract_version IS NOT NULL AND contract_version > 0
+                AND contract_hash ~ '^[0-9a-f]{64}$'
+                AND contract_acceptance_id IS NOT NULL
+                AND payment_consent_evidence_id IS NOT NULL
+                AND payment_evidence_id IS NOT NULL
+                AND agent_type IS NOT NULL
+                AND bundle_tier IS NOT NULL
+            )
+        );
+    END IF;
+END
+$idempotent$;
 CREATE TABLE IF NOT EXISTS business.paid_subscriptions (
     subscription_id UUID PRIMARY KEY,
     organisation_id UUID NOT NULL REFERENCES business.organisations (id),

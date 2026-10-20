@@ -1,11 +1,12 @@
 # WAOOAW AI Agent — Platform IT Expert
 
-**Specification version:** 1.4.0
-**Date:** 2026-10-19
+**Specification version:** 1.4.1
+**Date:** 2026-10-20
 **Type:** Internal Platform Agent (not customer-facing)
 **Constitutional Basis:** C-001 (Human Override), C-023 (Evidence First), C-032 (Implementation Cannot Create Architecture), C-041 (Tool Authorization), C-042 (Vocabulary Mandate), C-059 (Implementation Traceability), C-063 (Data Minimisation), C-064 (Three-Human Institution), C-065 (SDLC Separation of Duties), C-066 (Autonomous Development Authorization Tiers), C-071 (Quality Gates), C-076 (Coverage), C-095 (EA Skeleton), C-100 (CORS Safety)
-**Status:** v1.4.0 PROPOSED — Skills 18-23 added by Founder direction in PR #536 and pending Founder
-review and merge; Skills 1-17 remain active under v1.3.8
+**Status:** v1.4.1 PROPOSED — §2.5 Idempotent Init-Chain SQL Standard added by Founder direction on
+IB-532/WC-124 and pending Founder review and merge; Skills 18-23 (v1.4.0, PR #536) likewise pending;
+Skills 1-17 remain active under v1.3.8
 **Implementation tool:** GitHub Copilot (Workspace / Agent mode) operating under this specification
 
 ---
@@ -96,6 +97,55 @@ The Platform IT Expert raises a Constitutional Blocker and stops work if:
 3. Only touch the work component when Founder explicitly authorizes it for the current session
 
 ---
+
+### 2.5 Idempotent Init-Chain SQL Standard (mandatory for every `infrastructure/postgres/init/*.sql`)
+
+**Why.** The Demo/UAT PostgreSQL instance is persistent and is provisioned by
+`scripts/wc124_db_provisioner.py`, which applies every `*.sql` init file after
+`00-wc124-principal-bootstrap.sql` in C-locale order and records each file's sha256 in
+`wc124_provisioning.init_chain_ledger`. A file whose digest changed is simply re-applied — there is
+no down-migration, no fresh database, and no human operator. Therefore every top-level statement the
+Platform IT Expert authors must succeed against a database that already contains its effect, and
+must produce the identical catalog on the first and every later run (Evidence: WC-124 gap B, run
+39428513813; 31 of 69 legacy files failed a second pass before this standard).
+
+**Authoring rules.** Statements are evaluated after comments, string literals and dollar-quoted
+bodies are honoured; a rule applies to the whole statement, including compound `ALTER TABLE` lists.
+
+| Construct | Required form |
+|---|---|
+| `CREATE SCHEMA` / `TABLE` / `INDEX` / `UNIQUE INDEX` / `SEQUENCE` / `EXTENSION` / `MATERIALIZED VIEW` | `CREATE … IF NOT EXISTS` |
+| `CREATE FUNCTION` / `PROCEDURE` / `VIEW` / `RULE` / `TRIGGER` | `CREATE OR REPLACE …` |
+| `CREATE CONSTRAINT TRIGGER` (no `OR REPLACE` form) | `DROP TRIGGER IF EXISTS <name> ON <table>;` immediately before |
+| `CREATE POLICY` | `DROP POLICY IF EXISTS <name> ON <table>;` immediately before |
+| `CREATE TYPE` / `DOMAIN` | `DO $idempotent$ … IF to_regtype('<schema>.<name>') IS NULL THEN CREATE … END IF … $idempotent$;` |
+| `CREATE ROLE` / `USER` | `DO` guard on `NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '<name>')` |
+| `ALTER TABLE … ADD CONSTRAINT` | `DO` guard on `NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = '<name>' AND conrelid = '<table>'::regclass)`, or pair with `DROP CONSTRAINT IF EXISTS <same name>` in the same statement |
+| `ALTER TABLE … ADD COLUMN` | `ADD COLUMN IF NOT EXISTS` |
+| `ALTER TABLE … DROP CONSTRAINT` | `DROP CONSTRAINT IF EXISTS` |
+| Seed `INSERT` on a table with a non-deferrable PK/unique key and no rules | `… ON CONFLICT DO NOTHING` |
+| Seed `INSERT` on a table with a deferrable unique arbiter, INSERT/UPDATE rules, or a serial key | `DO` guard on `NOT EXISTS (SELECT 1 FROM <table> WHERE <natural key of the first row>)` |
+| Dynamic DDL inside `DO` loops (`EXECUTE format('CREATE POLICY|TRIGGER …')`) | `EXECUTE format('DROP … IF EXISTS …')` first, or an `IF NOT EXISTS (SELECT 1 FROM pg_policy|pg_trigger …)` guard |
+| `GRANT` / `REVOKE` / `ALTER … OWNER TO` / `ALTER TABLE … ENABLE|FORCE ROW LEVEL SECURITY` / `COMMENT ON` | Already idempotent — no guard required |
+| Shell init files (`*.sh`) | Local compose only (legacy LOGIN passwords, preview seeds); never applied to a managed environment and never added for one |
+
+Additional constraints: do not rename or renumber an existing file (the ledger key is the file
+name; renaming re-applies the file under a new key and orphans the old row); add new behaviour as a
+new, higher-numbered file; never put `\connect`, `CREATE DATABASE`, psql meta-commands or
+environment interpolation in an init file; keep `60-wc124-principal-handoff.sql` the last file so
+ownership is handed to the runtime owner roles after every object exists.
+
+**Executable gates (both required before PR submission for any init-chain change).**
+
+1. `python scripts/wc124_init_chain_lint.py` — static form check; zero findings required. Any new
+   DDL shape not covered by the lint must be added to the lint in the same PR.
+2. `scripts/wc124_init_chain_local.sh` — fresh pinned pgvector instance; real provisioner ledger
+   logic; asserts run 1 applies every file, run 2 skips every file, forced run 3 re-applies every
+   file with zero `pg_dump --schema-only` drift, and the Business Platform
+   `IdentitySchemaHealthCheck` object set exists. Evidence lands in
+   `test-results/wc124/init-chain-local/result.json`.
+
+Both are form checks, not substitutes for Skill 5 behavioural tests of the schema itself.
 
 ## 3. Skill Catalogue — 23 SDLC Skills
 
@@ -1648,6 +1698,7 @@ are active after R-118 independent EA approval and FA-049 Founder activation.
 | 1.3.7 | 2026-10-17 | Founder / Platform IT Expert | Required dependency-ordered exact-image registry, Azure CLI, PostgreSQL/PgBouncer, migration, activation, cleanup and verification proof for changed cloud-delivery paths; no capability or Decision Space change |
 | 1.3.8 | 2026-10-17 | Founder / Platform IT Expert | Added live-provider authentication-transition proof, private-network secret execution, structured payload construction, Container Apps identity read-back/recreate rules, and complete PostgreSQL ownership/grantor dependency audits; no capability or Decision Space change |
 | 1.4.0 | 2026-10-19 | Founder / Platform IT Expert | Added Skills 18-23 for workflow state machines, IaC lifecycle propagation, secret consumption, same-context connectivity, failure injection, and automated incident evidence; no new provider authority |
+| 1.4.1 | 2026-10-20 | Founder / Platform IT Expert | Added §2.5 Idempotent Init-Chain SQL Standard with the `wc124_init_chain_lint.py` and `wc124_init_chain_local.sh` executable gates after WC-124 gap B showed 31 of 69 init files failed a second pass; no capability or Decision Space change |
 
 **Founder approval:** FA-032 authorized the Type 1 lifecycle. FA-033 approves Platform IT Expert v1.2 and activates Skill 16. FA-049 activates v1.3 Skill 17 after R-118. These actions grant no deployment authority; implementation remains bounded by its Work Contract, GOA, Acceptance and local entry criteria.
 

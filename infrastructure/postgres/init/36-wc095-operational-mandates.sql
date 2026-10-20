@@ -68,16 +68,16 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER agent_skill_runtime_bindings_no_update
+CREATE OR REPLACE TRIGGER agent_skill_runtime_bindings_no_update
 BEFORE UPDATE ON business.agent_skill_runtime_bindings
 FOR EACH ROW EXECUTE FUNCTION business.reject_wc095_immutable_mutation();
-CREATE TRIGGER agent_skill_runtime_bindings_no_delete
+CREATE OR REPLACE TRIGGER agent_skill_runtime_bindings_no_delete
 BEFORE DELETE ON business.agent_skill_runtime_bindings
 FOR EACH ROW EXECUTE FUNCTION business.reject_wc095_immutable_mutation();
-CREATE TRIGGER operational_mandate_snapshots_no_update
+CREATE OR REPLACE TRIGGER operational_mandate_snapshots_no_update
 BEFORE UPDATE ON business.operational_mandate_snapshots
 FOR EACH ROW EXECUTE FUNCTION business.reject_wc095_immutable_mutation();
-CREATE TRIGGER operational_mandate_snapshots_no_delete
+CREATE OR REPLACE TRIGGER operational_mandate_snapshots_no_delete
 BEFORE DELETE ON business.operational_mandate_snapshots
 FOR EACH ROW EXECUTE FUNCTION business.reject_wc095_immutable_mutation();
 
@@ -86,9 +86,11 @@ ALTER TABLE business.agent_skill_runtime_bindings FORCE ROW LEVEL SECURITY;
 ALTER TABLE business.operational_mandate_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.operational_mandate_snapshots FORCE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS agent_skill_runtime_bindings_tenant_isolation ON business.agent_skill_runtime_bindings;
 CREATE POLICY agent_skill_runtime_bindings_tenant_isolation ON business.agent_skill_runtime_bindings
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS operational_mandate_snapshots_tenant_isolation ON business.operational_mandate_snapshots;
 CREATE POLICY operational_mandate_snapshots_tenant_isolation ON business.operational_mandate_snapshots
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);

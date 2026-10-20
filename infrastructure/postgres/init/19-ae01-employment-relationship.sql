@@ -151,12 +151,12 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS relationship_state_history_no_update ON business.relationship_state_history;
-CREATE TRIGGER relationship_state_history_no_update
+CREATE OR REPLACE TRIGGER relationship_state_history_no_update
     BEFORE UPDATE ON business.relationship_state_history
     FOR EACH ROW EXECUTE FUNCTION business.reject_relationship_history_mutation();
 
 DROP TRIGGER IF EXISTS relationship_state_history_no_delete ON business.relationship_state_history;
-CREATE TRIGGER relationship_state_history_no_delete
+CREATE OR REPLACE TRIGGER relationship_state_history_no_delete
     BEFORE DELETE ON business.relationship_state_history
     FOR EACH ROW EXECUTE FUNCTION business.reject_relationship_history_mutation();
 
@@ -169,18 +169,22 @@ ALTER TABLE business.relationship_state_history FORCE ROW LEVEL SECURITY;
 ALTER TABLE business.relationship_idempotency ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.relationship_idempotency FORCE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS employment_relationships_tenant_isolation ON business.employment_relationships;
 CREATE POLICY employment_relationships_tenant_isolation
     ON business.employment_relationships
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS relationship_participants_tenant_isolation ON business.relationship_participants;
 CREATE POLICY relationship_participants_tenant_isolation
     ON business.relationship_participants
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS relationship_state_history_tenant_isolation ON business.relationship_state_history;
 CREATE POLICY relationship_state_history_tenant_isolation
     ON business.relationship_state_history
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS relationship_idempotency_tenant_isolation ON business.relationship_idempotency;
 CREATE POLICY relationship_idempotency_tenant_isolation
     ON business.relationship_idempotency
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)

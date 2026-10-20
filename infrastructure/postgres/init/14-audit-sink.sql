@@ -44,6 +44,7 @@ BEGIN
   END IF;
 END $$;
 
+DROP POLICY IF EXISTS evidence_insert_only ON audit_sink.evidence_records;
 CREATE POLICY evidence_insert_only ON audit_sink.evidence_records
   FOR INSERT TO ce_service_role
   WITH CHECK (true);

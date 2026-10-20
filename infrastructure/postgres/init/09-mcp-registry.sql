@@ -17,28 +17,46 @@
 SET search_path TO institutional, public;
 
 -- ─── MCP Credential Type Enum ─────────────────────────────────────────────────
-CREATE TYPE mcp_credential_type AS ENUM (
-    'NONE',        -- No credentials needed — auto-provision immediately (Type 3)
-    'CUSTOMER',    -- Requires customer's own account credentials (Type 1)
-    'PLATFORM'     -- Requires WAOOAW platform credentials — check Key Vault (Type 2)
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('mcp_credential_type') IS NULL THEN
+        CREATE TYPE mcp_credential_type AS ENUM (
+            'NONE',        -- No credentials needed — auto-provision immediately (Type 3)
+            'CUSTOMER',    -- Requires customer's own account credentials (Type 1)
+            'PLATFORM'     -- Requires WAOOAW platform credentials — check Key Vault (Type 2)
+        );
+    END IF;
+END
+$idempotent$;
 
 -- ─── MCP Status Enum ──────────────────────────────────────────────────────────
-CREATE TYPE mcp_status AS ENUM (
-    'NOT_PROVISIONED',    -- Never been started for this customer/environment
-    'PROVISIONING',       -- Being spun up (async)
-    'RUNNING',            -- Active and healthy
-    'SUSPENDED',          -- Scaled to zero (idle > 24h) — resumes on next request
-    'CREDENTIAL_PENDING', -- Waiting for customer to provide credentials
-    'FOUNDER_ACTION',     -- Waiting for Founder to add platform credentials
-    'ERROR'               -- Failed to provision — alert raised
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('mcp_status') IS NULL THEN
+        CREATE TYPE mcp_status AS ENUM (
+            'NOT_PROVISIONED',    -- Never been started for this customer/environment
+            'PROVISIONING',       -- Being spun up (async)
+            'RUNNING',            -- Active and healthy
+            'SUSPENDED',          -- Scaled to zero (idle > 24h) — resumes on next request
+            'CREDENTIAL_PENDING', -- Waiting for customer to provide credentials
+            'FOUNDER_ACTION',     -- Waiting for Founder to add platform credentials
+            'ERROR'               -- Failed to provision — alert raised
+        );
+    END IF;
+END
+$idempotent$;
 
 -- ─── MCP Isolation Model ──────────────────────────────────────────────────────
-CREATE TYPE mcp_isolation AS ENUM (
-    'SHARED',        -- One instance serves all customers (platform-level MCPs)
-    'PER_CUSTOMER'   -- One instance per customer (customer-credential MCPs)
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('mcp_isolation') IS NULL THEN
+        CREATE TYPE mcp_isolation AS ENUM (
+            'SHARED',        -- One instance serves all customers (platform-level MCPs)
+            'PER_CUSTOMER'   -- One instance per customer (customer-credential MCPs)
+        );
+    END IF;
+END
+$idempotent$;
 
 -- ─── MCP Registry — master catalog of all MCP servers ────────────────────────
 CREATE TABLE IF NOT EXISTS institutional.mcp_registry (
@@ -183,7 +201,8 @@ INSERT INTO institutional.mcp_registry VALUES
  '{"WABA_ACCESS_TOKEN", "WABA_PHONE_NUMBER_ID"}',
  NULL, NULL,
  'FA-009', 'WAOOAW WhatsApp Business Account (after FA-002 Meta BM verified)',
- '{}', 'Meta', 14, TRUE, NOW(), NULL);
+ '{}', 'Meta', 14, TRUE, NOW(), NULL)
+ON CONFLICT DO NOTHING;
 
 -- ─── Domain Capability Map — which MCPs each domain requires ─────────────────
 CREATE TABLE IF NOT EXISTS institutional.domain_capability_map (
@@ -241,7 +260,8 @@ INSERT INTO institutional.domain_capability_map VALUES
 ('digital_marketing_agency', 'facebook-mcp',       'P1', '{5}',   FALSE),
 ('digital_marketing_agency', 'ga4-mcp',           'P0', '{9}',    FALSE),
 ('digital_marketing_agency', 'meta-ads-mcp',       'P0', '{11}',  FALSE),
-('digital_marketing_agency', 'scheduling-mcp',     'P0', '{2,4}', TRUE);
+('digital_marketing_agency', 'scheduling-mcp',     'P0', '{2,4}', TRUE)
+ON CONFLICT DO NOTHING;
 
 -- ─── Customer MCP Provision Status ────────────────────────────────────────────
 -- Tracks per-customer MCP provisioning state for Type 1 (customer-credential) MCPs
@@ -387,7 +407,7 @@ COMMENT ON MATERIALIZED VIEW institutional.mcps_eligible_for_suspension IS
 -- ─── Recovery SLA View ────────────────────────────────────────────────────────
 -- SLA breach detection: any MCP that has been in ERROR state for > 1h is a breach.
 
-CREATE VIEW institutional.mcp_sla_breaches AS
+CREATE OR REPLACE VIEW institutional.mcp_sla_breaches AS
 SELECT
     cms.customer_id,
     cms.mcp_id,

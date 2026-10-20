@@ -10,94 +10,160 @@ SET search_path TO constitutional, business, professional, public;
 
 -- Evidence state machine (C-028, evidence-schema.md)
 -- ABANDONED added per evidence-schema.md specification
-CREATE TYPE evidence_state AS ENUM (
-    'PROPOSED',
-    'AWAITING_APPROVAL',
-    'APPROVED',
-    'REJECTED',
-    'EXECUTED',
-    'ABANDONED'
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('evidence_state') IS NULL THEN
+        CREATE TYPE evidence_state AS ENUM (
+            'PROPOSED',
+            'AWAITING_APPROVAL',
+            'APPROVED',
+            'REJECTED',
+            'EXECUTED',
+            'ABANDONED'
+        );
+    END IF;
+END
+$idempotent$;
 
 -- Employment lifecycle states (C-034)
-CREATE TYPE employment_state AS ENUM (
-    'EVALUATION',
-    'ACTIVE',
-    'SUSPENDED',
-    'TERMINATED'
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('employment_state') IS NULL THEN
+        CREATE TYPE employment_state AS ENUM (
+            'EVALUATION',
+            'ACTIVE',
+            'SUSPENDED',
+            'TERMINATED'
+        );
+    END IF;
+END
+$idempotent$;
 
 -- Execution model for a professional's Decision Space
-CREATE TYPE execution_model_type AS ENUM (
-    'APPROVAL_GATE',
-    'PRE_AUTHORIZED',
-    'PRODUCES_RECORD'       -- Intelligence skills: produce an artifact; customer confirms; no external action until confirmed (C-044, R-014-P2-01)
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('execution_model_type') IS NULL THEN
+        CREATE TYPE execution_model_type AS ENUM (
+            'APPROVAL_GATE',
+            'PRE_AUTHORIZED',
+            'PRODUCES_RECORD'       -- Intelligence skills: produce an artifact; customer confirms; no external action until confirmed (C-044, R-014-P2-01)
+        );
+    END IF;
+END
+$idempotent$;
 
 -- Approval mode for skill-level operating model (C-044, DP-015)
-CREATE TYPE skill_approval_mode AS ENUM (
-    'CUSTOMER_APPROVAL',    -- Customer explicitly approves every action
-    'EXCEPTION_APPROVAL',   -- Customer pre-defines exceptions; routine actions auto-execute within calendar
-    'SYNTHETIC_APPROVAL'    -- Skill generates approval from learned preference model (confidence-gated)
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('skill_approval_mode') IS NULL THEN
+        CREATE TYPE skill_approval_mode AS ENUM (
+            'CUSTOMER_APPROVAL',    -- Customer explicitly approves every action
+            'EXCEPTION_APPROVAL',   -- Customer pre-defines exceptions; routine actions auto-execute within calendar
+            'SYNTHETIC_APPROVAL'    -- Skill generates approval from learned preference model (confidence-gated)
+        );
+    END IF;
+END
+$idempotent$;
 
 -- Approval type recorded in evidence records (C-044)
-CREATE TYPE approval_evidence_type AS ENUM (
-    'CUSTOMER_EXPLICIT',        -- Customer manually approved this action
-    'CALENDAR_AUTHORIZED',      -- Action is within approved content calendar (EXCEPTION_APPROVAL mode)
-    'SYNTHETIC',                -- Skill generated approval via preference model (SYNTHETIC_APPROVAL mode)
-    'PRE_AUTHORIZED_CLASS'      -- Action is in a pre-authorized class (PRE_AUTHORIZED execution model)
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('approval_evidence_type') IS NULL THEN
+        CREATE TYPE approval_evidence_type AS ENUM (
+            'CUSTOMER_EXPLICIT',        -- Customer manually approved this action
+            'CALENDAR_AUTHORIZED',      -- Action is within approved content calendar (EXCEPTION_APPROVAL mode)
+            'SYNTHETIC',                -- Skill generated approval via preference model (SYNTHETIC_APPROVAL mode)
+            'PRE_AUTHORIZED_CLASS'      -- Action is in a pre-authorized class (PRE_AUTHORIZED execution model)
+        );
+    END IF;
+END
+$idempotent$;
 
 -- Digital Marketing needs heat map status (Skill 1)
-CREATE TYPE digital_marketing_need_status AS ENUM (
-    'ACTIVE',
-    'LATENT',
-    'NOT_APPLICABLE'
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('digital_marketing_need_status') IS NULL THEN
+        CREATE TYPE digital_marketing_need_status AS ENUM (
+            'ACTIVE',
+            'LATENT',
+            'NOT_APPLICABLE'
+        );
+    END IF;
+END
+$idempotent$;
 
 -- Digital Marketing need state labels (Skill 1 — 8 need states)
-CREATE TYPE digital_marketing_need_state AS ENUM (
-    'VISIBILITY',
-    'LEADS',
-    'CONVERSION',
-    'EFFICIENCY',
-    'COMPETITION',
-    'CONSISTENCY',
-    'TRUST',
-    'CLARITY'
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('digital_marketing_need_state') IS NULL THEN
+        CREATE TYPE digital_marketing_need_state AS ENUM (
+            'VISIBILITY',
+            'LEADS',
+            'CONVERSION',
+            'EFFICIENCY',
+            'COMPETITION',
+            'CONSISTENCY',
+            'TRUST',
+            'CLARITY'
+        );
+    END IF;
+END
+$idempotent$;
 
 -- Digital Marketing phase bundle (DP-014)
-CREATE TYPE dm_phase_bundle AS ENUM (
-    'CURTAIN_RAISER',
-    'GROWTH_ENGINE',
-    'MATURITY_PHASE'
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('dm_phase_bundle') IS NULL THEN
+        CREATE TYPE dm_phase_bundle AS ENUM (
+            'CURTAIN_RAISER',
+            'GROWTH_ENGINE',
+            'MATURITY_PHASE'
+        );
+    END IF;
+END
+$idempotent$;
 
 -- Digital Marketing profile status
-CREATE TYPE dm_profile_status AS ENUM (
-    'INCOMPLETE',
-    'MINIMUM_VIABLE',
-    'COMPLETE'
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('dm_profile_status') IS NULL THEN
+        CREATE TYPE dm_profile_status AS ENUM (
+            'INCOMPLETE',
+            'MINIMUM_VIABLE',
+            'COMPLETE'
+        );
+    END IF;
+END
+$idempotent$;
 
 -- Approval request state (mirrors evidence_state for the business schema)
-CREATE TYPE approval_state AS ENUM (
-    'PENDING',
-    'SCOPE_BOUNDARY_PENDING',
-    'APPROVED',
-    'REJECTED'
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('approval_state') IS NULL THEN
+        CREATE TYPE approval_state AS ENUM (
+            'PENDING',
+            'SCOPE_BOUNDARY_PENDING',
+            'APPROVED',
+            'REJECTED'
+        );
+    END IF;
+END
+$idempotent$;
 
 -- PAAS session state (evidence-schema.md + professional-runtime.md)
-CREATE TYPE paas_session_state AS ENUM (
-    'STARTING',
-    'ACTIVE',
-    'ENDED',
-    'EMERGENCY_STOPPED',
-    'INTERRUPTED'
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('paas_session_state') IS NULL THEN
+        CREATE TYPE paas_session_state AS ENUM (
+            'STARTING',
+            'ACTIVE',
+            'ENDED',
+            'EMERGENCY_STOPPED',
+            'INTERRUPTED'
+        );
+    END IF;
+END
+$idempotent$;
 
 -- ─── Constitutional Schema Tables ─────────────────────────────────────────────
 
@@ -105,7 +171,7 @@ SET search_path TO constitutional;
 
 -- Constitutional Audit Ledger (C-005, C-007, C-023, C-028)
 -- action_instance_id per evidence-schema.md — groups related state transitions
-CREATE TABLE constitutional.evidence_records (
+CREATE TABLE IF NOT EXISTS constitutional.evidence_records (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id                   UUID NOT NULL,
     contract_id                 UUID NOT NULL,
@@ -124,11 +190,11 @@ CREATE TABLE constitutional.evidence_records (
     -- NO updated_at — append-only. C-027.
 );
 
-CREATE INDEX idx_evidence_tenant_contract ON constitutional.evidence_records(tenant_id, contract_id);
-CREATE INDEX idx_evidence_action_instance ON constitutional.evidence_records(action_instance_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_evidence_tenant_contract ON constitutional.evidence_records(tenant_id, contract_id);
+CREATE INDEX IF NOT EXISTS idx_evidence_action_instance ON constitutional.evidence_records(action_instance_id, created_at);
 
 -- Authority License history (append-only per C-007)
-CREATE TABLE constitutional.authority_licenses (
+CREATE TABLE IF NOT EXISTS constitutional.authority_licenses (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id               UUID NOT NULL,
     contract_id             UUID NOT NULL,
@@ -146,7 +212,7 @@ CREATE TABLE constitutional.authority_licenses (
 SET search_path TO business, constitutional, public;
 
 -- Customer organisations
-CREATE TABLE business.organisations (
+CREATE TABLE IF NOT EXISTS business.organisations (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id   UUID NOT NULL UNIQUE,
     name        VARCHAR(200) NOT NULL,
@@ -161,7 +227,7 @@ CREATE TABLE business.organisations (
 );
 
 -- Employment contracts (C-034 four-state lifecycle)
-CREATE TABLE business.employment_contracts (
+CREATE TABLE IF NOT EXISTS business.employment_contracts (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id               UUID NOT NULL,
     professional_id         UUID NOT NULL,
@@ -187,7 +253,7 @@ CREATE TABLE business.employment_contracts (
 );
 
 -- Decision Spaces (C-030 — constitutional primitive)
-CREATE TABLE business.decision_spaces (
+CREATE TABLE IF NOT EXISTS business.decision_spaces (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id                   UUID NOT NULL,
     contract_id                 UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -205,17 +271,29 @@ CREATE TABLE business.decision_spaces (
 );
 
 -- Add FK from contracts to decision_spaces after both tables exist
-ALTER TABLE business.employment_contracts
-    ADD CONSTRAINT fk_decision_space
-    FOREIGN KEY (decision_space_id) REFERENCES business.decision_spaces(id);
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_decision_space' AND conrelid = 'business.employment_contracts'::regclass) THEN
+        ALTER TABLE business.employment_contracts
+            ADD CONSTRAINT fk_decision_space
+            FOREIGN KEY (decision_space_id) REFERENCES business.decision_spaces(id);
+    END IF;
+END
+$idempotent$;
 
 -- Add self-referencing FK for re-hire continuity (GAP-025)
-ALTER TABLE business.employment_contracts
-    ADD CONSTRAINT fk_previous_contract
-    FOREIGN KEY (previous_contract_id) REFERENCES business.employment_contracts(id);
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_previous_contract' AND conrelid = 'business.employment_contracts'::regclass) THEN
+        ALTER TABLE business.employment_contracts
+            ADD CONSTRAINT fk_previous_contract
+            FOREIGN KEY (previous_contract_id) REFERENCES business.employment_contracts(id);
+    END IF;
+END
+$idempotent$;
 
 -- Approval requests (business-facing view of evidence state machine)
-CREATE TABLE business.approval_requests (
+CREATE TABLE IF NOT EXISTS business.approval_requests (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id               UUID NOT NULL,
     contract_id             UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -232,7 +310,7 @@ CREATE TABLE business.approval_requests (
 
 -- PAAS sessions (GAP-004 resolution — tracks active sessions for Emergency Stop routing)
 -- session_id = Temporal workflow ID (ADR-018)
-CREATE TABLE business.paas_sessions (
+CREATE TABLE IF NOT EXISTS business.paas_sessions (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id              UUID NOT NULL UNIQUE,  -- Temporal workflow ID
     tenant_id               UUID NOT NULL,
@@ -244,11 +322,11 @@ CREATE TABLE business.paas_sessions (
     termination_reason      TEXT
 );
 
-CREATE INDEX idx_paas_sessions_contract ON business.paas_sessions(tenant_id, contract_id, state);
+CREATE INDEX IF NOT EXISTS idx_paas_sessions_contract ON business.paas_sessions(tenant_id, contract_id, state);
 
 -- Professional Templates (IB-015 FR-001 — WAOOAW-managed Decision Space templates)
 -- Stored under WAOOAW's own tenant_id. Readable by all tenants as catalogue.
-CREATE TABLE business.professional_templates (
+CREATE TABLE IF NOT EXISTS business.professional_templates (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id                   UUID NOT NULL,  -- WAOOAW's org tenant_id
     name                        VARCHAR(200) NOT NULL,
@@ -263,28 +341,40 @@ CREATE TABLE business.professional_templates (
 -- ─── Skill Tables (v0.8.0 — C-036) ──────────────────────────────────────────
 
 -- Skill lifecycle state (C-036 — independently governable unit)
-CREATE TYPE skill_state AS ENUM (
-    'ACTIVE',
-    'PAUSED',
-    'TERMINATED'
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('skill_state') IS NULL THEN
+        CREATE TYPE skill_state AS ENUM (
+            'ACTIVE',
+            'PAUSED',
+            'TERMINATED'
+        );
+    END IF;
+END
+$idempotent$;
 
 -- Subscription billing event type (C-038 — pro-rata billing)
-CREATE TYPE billing_event_type AS ENUM (
-    'CONTRACT_ACTIVATED',
-    'CONTRACT_SUSPENDED',
-    'CONTRACT_TERMINATED',
-    'TRIAL_STARTED',
-    'TRIAL_CONVERTED',
-    'TRIAL_EXPIRED',
-    'SKILL_ACTIVATED',
-    'SKILL_PAUSED',
-    'SKILL_RESUMED',
-    'SKILL_TERMINATED'
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('billing_event_type') IS NULL THEN
+        CREATE TYPE billing_event_type AS ENUM (
+            'CONTRACT_ACTIVATED',
+            'CONTRACT_SUSPENDED',
+            'CONTRACT_TERMINATED',
+            'TRIAL_STARTED',
+            'TRIAL_CONVERTED',
+            'TRIAL_EXPIRED',
+            'SKILL_ACTIVATED',
+            'SKILL_PAUSED',
+            'SKILL_RESUMED',
+            'SKILL_TERMINATED'
+        );
+    END IF;
+END
+$idempotent$;
 
 -- Professional Skills (C-036 — independently configurable, independently billable)
-CREATE TABLE business.professional_skills (
+CREATE TABLE IF NOT EXISTS business.professional_skills (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id                   UUID NOT NULL,
     contract_id                 UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -301,10 +391,10 @@ CREATE TABLE business.professional_skills (
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_skills_contract ON business.professional_skills(tenant_id, contract_id, state);
+CREATE INDEX IF NOT EXISTS idx_skills_contract ON business.professional_skills(tenant_id, contract_id, state);
 
 -- Skill Performance Records (C-037 — business KPIs, not technical metrics)
-CREATE TABLE business.skill_performance_records (
+CREATE TABLE IF NOT EXISTS business.skill_performance_records (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id                   UUID NOT NULL,
     contract_id                 UUID NOT NULL,
@@ -323,7 +413,7 @@ CREATE TABLE business.skill_performance_records (
 
 -- Subscription Billing Events (C-038 — minute-level pro-rata precision, AD-014)
 -- Append-only: billing events cannot be modified or deleted
-CREATE TABLE business.subscription_billing_events (
+CREATE TABLE IF NOT EXISTS business.subscription_billing_events (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id                   UUID NOT NULL,
     contract_id                 UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -335,14 +425,14 @@ CREATE TABLE business.subscription_billing_events (
     -- NO updated_at — append-only billing ledger. C-038.
 );
 
-CREATE INDEX idx_billing_events_contract ON business.subscription_billing_events(tenant_id, contract_id, occurred_at);
+CREATE INDEX IF NOT EXISTS idx_billing_events_contract ON business.subscription_billing_events(tenant_id, contract_id, occurred_at);
 
 -- Append-only rules for billing events (C-038 — billing is constitutional)
-CREATE RULE no_update_billing_events AS
+CREATE OR REPLACE RULE no_update_billing_events AS
     ON UPDATE TO business.subscription_billing_events
     DO INSTEAD NOTHING;
 
-CREATE RULE no_delete_billing_events AS
+CREATE OR REPLACE RULE no_delete_billing_events AS
     ON DELETE TO business.subscription_billing_events
     DO INSTEAD NOTHING;
 
@@ -351,14 +441,14 @@ CREATE RULE no_delete_billing_events AS
 SET search_path TO professional, constitutional, public;
 
 -- Professional identities (platform-owned, not tenant-scoped)
-CREATE TABLE professional.identities (
+CREATE TABLE IF NOT EXISTS professional.identities (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     professional_type   VARCHAR(50) NOT NULL,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Professional Experience Ledger (privacy-preserving — evidence_hash not raw evidence)
-CREATE TABLE professional.experience_records (
+CREATE TABLE IF NOT EXISTS professional.experience_records (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     professional_id             UUID NOT NULL REFERENCES professional.identities(id),
     engagement_type             VARCHAR(50) NOT NULL,
@@ -373,7 +463,7 @@ CREATE TABLE professional.experience_records (
 -- Requires pgvector extension
 CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 
-CREATE TABLE professional.creative_standard_embeddings (
+CREATE TABLE IF NOT EXISTS professional.creative_standard_embeddings (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     professional_id     UUID NOT NULL REFERENCES professional.identities(id),
     contract_id         UUID NOT NULL,  -- which customer's creative standard
@@ -383,7 +473,7 @@ CREATE TABLE professional.creative_standard_embeddings (
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_creative_embeddings_cosine
+CREATE INDEX IF NOT EXISTS idx_creative_embeddings_cosine
     ON professional.creative_standard_embeddings
     USING ivfflat (embedding vector_cosine_ops)
     WITH (lists = 100);
@@ -397,7 +487,7 @@ CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 
 -- Domain knowledge chunks (Tier 1 RAG — WAOOAW IP)
 -- Indexed knowledge about industry, regulations, best practices per professional type
-CREATE TABLE institutional.domain_knowledge (
+CREATE TABLE IF NOT EXISTS institutional.domain_knowledge (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     professional_type       VARCHAR(50) NOT NULL,   -- DIGITAL_MARKETING_HEALTHCARE, TRADING_FO, etc.
     knowledge_category      VARCHAR(100) NOT NULL,  -- ALGORITHM_PATTERNS, REGULATION, BEST_PRACTICE, SEASONAL
@@ -411,16 +501,16 @@ CREATE TABLE institutional.domain_knowledge (
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_domain_knowledge_embedding
+CREATE INDEX IF NOT EXISTS idx_domain_knowledge_embedding
     ON institutional.domain_knowledge
     USING ivfflat (content_embedding vector_cosine_ops)
     WITH (lists = 100);
 
-CREATE INDEX idx_domain_knowledge_type ON institutional.domain_knowledge(professional_type, knowledge_category);
+CREATE INDEX IF NOT EXISTS idx_domain_knowledge_type ON institutional.domain_knowledge(professional_type, knowledge_category);
 
 -- Platform intelligence (Tier 3 RAG — WAOOAW IP)
 -- Aggregate patterns derived from cross-customer signals (anonymised, no customer identification)
-CREATE TABLE institutional.platform_intelligence (
+CREATE TABLE IF NOT EXISTS institutional.platform_intelligence (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     professional_type       VARCHAR(50) NOT NULL,
     pattern_category        VARCHAR(100) NOT NULL,  -- POSTING_EFFECTIVENESS, TIMING, CONTENT_FORMAT
@@ -433,7 +523,7 @@ CREATE TABLE institutional.platform_intelligence (
     last_updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_platform_intelligence_embedding
+CREATE INDEX IF NOT EXISTS idx_platform_intelligence_embedding
     ON institutional.platform_intelligence
     USING ivfflat (pattern_embedding vector_cosine_ops)
     WITH (lists = 100);
@@ -447,7 +537,7 @@ CREATE INDEX idx_platform_intelligence_embedding
 
 -- Farmer profile: one row per employment_contract_id (set once during onboarding, C-039)
 -- Vocabulary Mandate (C-042): this table stores agronomic facts, never surfaced raw to customer
-CREATE TABLE business.farmer_profiles (
+CREATE TABLE IF NOT EXISTS business.farmer_profiles (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     employment_contract_id  UUID NOT NULL REFERENCES business.employment_contracts(id),
     organisation_id         UUID NOT NULL REFERENCES business.organisations(id),  -- tenant isolation
@@ -466,13 +556,13 @@ CREATE TABLE business.farmer_profiles (
     CONSTRAINT uq_farmer_profile_contract UNIQUE (employment_contract_id)
 );
 
-CREATE INDEX idx_farmer_profiles_org ON business.farmer_profiles(organisation_id);
-CREATE INDEX idx_farmer_profiles_location ON business.farmer_profiles(district, state);
+CREATE INDEX IF NOT EXISTS idx_farmer_profiles_org ON business.farmer_profiles(organisation_id);
+CREATE INDEX IF NOT EXISTS idx_farmer_profiles_location ON business.farmer_profiles(district, state);
 
 -- Progressive Crop State Model: one row per active crop season per farmer
 -- Updated conversationally across all interactions (C-039)
 -- Evidence of crop state transitions stored here — used for PMFBY evidence chain (C-023)
-CREATE TABLE business.agent_progressive_state (
+CREATE TABLE IF NOT EXISTS business.agent_progressive_state (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     employment_contract_id  UUID NOT NULL REFERENCES business.employment_contracts(id),
     organisation_id         UUID NOT NULL REFERENCES business.organisations(id),
@@ -489,9 +579,9 @@ CREATE TABLE business.agent_progressive_state (
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_progressive_state_contract ON business.agent_progressive_state(employment_contract_id);
-CREATE INDEX idx_progressive_state_season ON business.agent_progressive_state(employment_contract_id, season);
-CREATE INDEX idx_progressive_state_embedding
+CREATE INDEX IF NOT EXISTS idx_progressive_state_contract ON business.agent_progressive_state(employment_contract_id);
+CREATE INDEX IF NOT EXISTS idx_progressive_state_season ON business.agent_progressive_state(employment_contract_id, season);
+CREATE INDEX IF NOT EXISTS idx_progressive_state_embedding
     ON business.agent_progressive_state
     USING ivfflat (state_value_embedding vector_cosine_ops)
     WITH (lists = 100)
@@ -499,7 +589,7 @@ CREATE INDEX idx_progressive_state_embedding
 
 -- Weather alert log: immutable record for PMFBY evidence chain (C-023, C-007)
 -- Each alert sent to farmer is an append-only record; farmer acknowledgment appended as separate row
-CREATE TABLE business.weather_alert_log (
+CREATE TABLE IF NOT EXISTS business.weather_alert_log (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     employment_contract_id  UUID NOT NULL REFERENCES business.employment_contracts(id),
     organisation_id         UUID NOT NULL REFERENCES business.organisations(id),
@@ -516,9 +606,9 @@ CREATE TABLE business.weather_alert_log (
     cal_event_id            UUID REFERENCES constitutional.evidence_records(id)
 );
 
-CREATE INDEX idx_weather_alert_contract ON business.weather_alert_log(employment_contract_id);
-CREATE INDEX idx_weather_alert_issued ON business.weather_alert_log(alert_issued_at);
-CREATE INDEX idx_weather_alert_pmfby ON business.weather_alert_log(pmfby_evidence_exported_at)
+CREATE INDEX IF NOT EXISTS idx_weather_alert_contract ON business.weather_alert_log(employment_contract_id);
+CREATE INDEX IF NOT EXISTS idx_weather_alert_issued ON business.weather_alert_log(alert_issued_at);
+CREATE INDEX IF NOT EXISTS idx_weather_alert_pmfby ON business.weather_alert_log(pmfby_evidence_exported_at)
     WHERE pmfby_evidence_exported_at IS NOT NULL;
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -528,7 +618,7 @@ CREATE INDEX idx_weather_alert_pmfby ON business.weather_alert_log(pmfby_evidenc
 -- Customer profile from AI-native profiling conversation (Skill 0: CUSTOMER_PROFILING)
 -- Captures registration fields + extended conversation fields.
 -- All fields carry source attribution: where the data came from.
-CREATE TABLE business.digital_marketing_profiles (
+CREATE TABLE IF NOT EXISTS business.digital_marketing_profiles (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     -- Minimum viable profile fields (from registration)
@@ -564,13 +654,13 @@ CREATE TABLE business.digital_marketing_profiles (
     CONSTRAINT uq_dm_profile_org UNIQUE (organisation_id)     -- one active profile per organisation
 );
 
-CREATE INDEX idx_dm_profile_org ON business.digital_marketing_profiles(organisation_id);
-CREATE INDEX idx_dm_profile_status ON business.digital_marketing_profiles(profile_status);
-CREATE INDEX idx_dm_profile_domain ON business.digital_marketing_profiles(business_domain);
+CREATE INDEX IF NOT EXISTS idx_dm_profile_org ON business.digital_marketing_profiles(organisation_id);
+CREATE INDEX IF NOT EXISTS idx_dm_profile_status ON business.digital_marketing_profiles(profile_status);
+CREATE INDEX IF NOT EXISTS idx_dm_profile_domain ON business.digital_marketing_profiles(business_domain);
 
 -- Digital Marketing Maturity Score history (Skill 1: MARKET_RESEARCH)
 -- Append-only — each assessment creates a new row; scores are never overwritten (C-007).
-CREATE TABLE business.digital_marketing_maturity_scores (
+CREATE TABLE IF NOT EXISTS business.digital_marketing_maturity_scores (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     assessment_date             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -601,12 +691,12 @@ CREATE TABLE business.digital_marketing_maturity_scores (
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_dm_maturity_org ON business.digital_marketing_maturity_scores(organisation_id);
-CREATE INDEX idx_dm_maturity_date ON business.digital_marketing_maturity_scores(organisation_id, assessment_date DESC);
+CREATE INDEX IF NOT EXISTS idx_dm_maturity_org ON business.digital_marketing_maturity_scores(organisation_id);
+CREATE INDEX IF NOT EXISTS idx_dm_maturity_date ON business.digital_marketing_maturity_scores(organisation_id, assessment_date DESC);
 
 -- Needs Heat Map: per-customer assessment of 8 need states (Skill 1 output, used by all skills)
 -- One row per need state per assessment. Replaced on each 6-monthly refresh.
-CREATE TABLE business.digital_marketing_needs_heatmap (
+CREATE TABLE IF NOT EXISTS business.digital_marketing_needs_heatmap (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     maturity_score_id           UUID NOT NULL REFERENCES business.digital_marketing_maturity_scores(id),
@@ -618,14 +708,14 @@ CREATE TABLE business.digital_marketing_needs_heatmap (
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_dm_heatmap_org ON business.digital_marketing_needs_heatmap(organisation_id);
-CREATE INDEX idx_dm_heatmap_assessment ON business.digital_marketing_needs_heatmap(maturity_score_id);
-CREATE UNIQUE INDEX idx_dm_heatmap_unique ON business.digital_marketing_needs_heatmap(maturity_score_id, need_state);
+CREATE INDEX IF NOT EXISTS idx_dm_heatmap_org ON business.digital_marketing_needs_heatmap(organisation_id);
+CREATE INDEX IF NOT EXISTS idx_dm_heatmap_assessment ON business.digital_marketing_needs_heatmap(maturity_score_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_dm_heatmap_unique ON business.digital_marketing_needs_heatmap(maturity_score_id, need_state);
 
 -- Competitor snapshots: customer-private competitive intelligence (Skill 13: COMPETITIVE_INTELLIGENCE)
 -- NEVER aggregated into Tier 3 platform intelligence (C-041, FR-003).
 -- Append-only — each monitoring run creates new rows; prior snapshots retained as history.
-CREATE TABLE business.competitor_snapshots (
+CREATE TABLE IF NOT EXISTS business.competitor_snapshots (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     competitor_name             VARCHAR(255) NOT NULL,         -- confirmed by customer (always-ask: COMPETITOR_NAMED_REPORT)
@@ -651,13 +741,13 @@ CREATE TABLE business.competitor_snapshots (
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_competitor_org ON business.competitor_snapshots(organisation_id);
-CREATE INDEX idx_competitor_name ON business.competitor_snapshots(organisation_id, competitor_name);
-CREATE INDEX idx_competitor_date ON business.competitor_snapshots(organisation_id, snapshot_date DESC);
+CREATE INDEX IF NOT EXISTS idx_competitor_org ON business.competitor_snapshots(organisation_id);
+CREATE INDEX IF NOT EXISTS idx_competitor_name ON business.competitor_snapshots(organisation_id, competitor_name);
+CREATE INDEX IF NOT EXISTS idx_competitor_date ON business.competitor_snapshots(organisation_id, snapshot_date DESC);
 
 -- Phase bundle subscriptions: tracks which bundle is active and upgrade history (DP-014)
 -- Decision Space expansion events — each upgrade requires a new customer authorization (C-003).
-CREATE TABLE business.dm_phase_bundle_subscriptions (
+CREATE TABLE IF NOT EXISTS business.dm_phase_bundle_subscriptions (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -670,8 +760,8 @@ CREATE TABLE business.dm_phase_bundle_subscriptions (
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_dm_bundle_org ON business.dm_phase_bundle_subscriptions(organisation_id);
-CREATE INDEX idx_dm_bundle_active ON business.dm_phase_bundle_subscriptions(organisation_id, deactivated_at)
+CREATE INDEX IF NOT EXISTS idx_dm_bundle_org ON business.dm_phase_bundle_subscriptions(organisation_id);
+CREATE INDEX IF NOT EXISTS idx_dm_bundle_active ON business.dm_phase_bundle_subscriptions(organisation_id, deactivated_at)
     WHERE deactivated_at IS NULL;
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -680,7 +770,7 @@ CREATE INDEX idx_dm_bundle_active ON business.dm_phase_bundle_subscriptions(orga
 
 -- Skill runtime configuration per employment contract (Section 3.14 of agent spec)
 -- One row per skill per employment contract. Updated when customer changes approval mode.
-CREATE TABLE business.skill_runtime_configurations (
+CREATE TABLE IF NOT EXISTS business.skill_runtime_configurations (
     id                              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     employment_contract_id          UUID NOT NULL REFERENCES business.employment_contracts(id),
     skill_type                      VARCHAR(100) NOT NULL,
@@ -711,13 +801,13 @@ CREATE TABLE business.skill_runtime_configurations (
     CONSTRAINT uq_skill_config UNIQUE (employment_contract_id, skill_type)
 );
 
-CREATE INDEX idx_skill_config_contract ON business.skill_runtime_configurations(employment_contract_id);
-CREATE INDEX idx_skill_config_mode ON business.skill_runtime_configurations(approval_mode);
+CREATE INDEX IF NOT EXISTS idx_skill_config_contract ON business.skill_runtime_configurations(employment_contract_id);
+CREATE INDEX IF NOT EXISTS idx_skill_config_mode ON business.skill_runtime_configurations(approval_mode);
 
 -- Synthetic approval evidence extension (C-044, AD-017)
 -- Supplements constitutional.evidence_records for SYNTHETIC approval events.
 -- Each row extends one evidence_record of type SYNTHETIC_APPROVAL.
-CREATE TABLE business.synthetic_approval_records (
+CREATE TABLE IF NOT EXISTS business.synthetic_approval_records (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     evidence_record_id          UUID NOT NULL REFERENCES constitutional.evidence_records(id),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -739,15 +829,15 @@ CREATE TABLE business.synthetic_approval_records (
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_synthetic_org ON business.synthetic_approval_records(organisation_id);
-CREATE INDEX idx_synthetic_skill ON business.synthetic_approval_records(employment_contract_id, skill_type);
-CREATE INDEX idx_synthetic_override_window ON business.synthetic_approval_records(override_deadline)
+CREATE INDEX IF NOT EXISTS idx_synthetic_org ON business.synthetic_approval_records(organisation_id);
+CREATE INDEX IF NOT EXISTS idx_synthetic_skill ON business.synthetic_approval_records(employment_contract_id, skill_type);
+CREATE INDEX IF NOT EXISTS idx_synthetic_override_window ON business.synthetic_approval_records(override_deadline)
     WHERE sealed_at IS NULL AND overridden_at IS NULL;
 
 -- Skill self-governance log (Section 3.14.4 of agent spec — DP-015)
 -- Records autonomous corrections, escalations, and customer responses.
 -- Append-only: one row per governance event per skill per month.
-CREATE TABLE business.skill_self_governance_log (
+CREATE TABLE IF NOT EXISTS business.skill_self_governance_log (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
@@ -776,9 +866,9 @@ CREATE TABLE business.skill_self_governance_log (
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_governance_log_contract ON business.skill_self_governance_log(employment_contract_id);
-CREATE INDEX idx_governance_log_skill_month ON business.skill_self_governance_log(employment_contract_id, skill_type, log_month);
-CREATE INDEX idx_governance_log_escalation ON business.skill_self_governance_log(organisation_id, escalation_triggered)
+CREATE INDEX IF NOT EXISTS idx_governance_log_contract ON business.skill_self_governance_log(employment_contract_id);
+CREATE INDEX IF NOT EXISTS idx_governance_log_skill_month ON business.skill_self_governance_log(employment_contract_id, skill_type, log_month);
+CREATE INDEX IF NOT EXISTS idx_governance_log_escalation ON business.skill_self_governance_log(organisation_id, escalation_triggered)
     WHERE escalation_triggered = TRUE;
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -788,7 +878,7 @@ CREATE INDEX idx_governance_log_escalation ON business.skill_self_governance_log
 -- Business Domain Taxonomy — lookup table for all supported business types.
 -- Drives registration dropdown, agent type mapping, and Tier 1 RAG domain selection.
 -- Not tenant-scoped — platform-wide catalogue (same pattern as professional_templates).
-CREATE TABLE business.business_domain_taxonomy (
+CREATE TABLE IF NOT EXISTS business.business_domain_taxonomy (
     domain_code         VARCHAR(50) PRIMARY KEY,   -- DENTAL_CLINIC, FITNESS_STUDIO, etc.
     display_name        VARCHAR(100) NOT NULL,      -- shown in portal dropdown
     agent_type          VARCHAR(100),               -- DIGITAL_MARKETING_HEALTHCARE for all current domains
@@ -807,11 +897,12 @@ INSERT INTO business.business_domain_taxonomy (domain_code, display_name, agent_
     ('PHARMACY',             'Pharmacy / Medical Store',        'DIGITAL_MARKETING_HEALTHCARE', 'pharmacy_india',      60),
     ('RESTAURANT',           'Restaurant / Cloud Kitchen',      NULL,                           NULL,                  70),  -- future agent
     ('RETAIL_SHOP',          'Retail / Boutique Shop',          NULL,                           NULL,                  80),  -- future agent
-    ('OTHER',                'Other Business',                  NULL,                           NULL,                  999);
+    ('OTHER',                'Other Business',                  NULL,                           NULL,                  999)
+ON CONFLICT DO NOTHING;
 
 -- Payment Transactions — every Razorpay payment event (ADR-022).
 -- Append-only: each payment event is a new row. Never updated. C-007.
-CREATE TABLE business.payment_transactions (
+CREATE TABLE IF NOT EXISTS business.payment_transactions (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -836,14 +927,14 @@ CREATE TABLE business.payment_transactions (
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_payment_org ON business.payment_transactions(organisation_id);
-CREATE INDEX idx_payment_contract ON business.payment_transactions(employment_contract_id);
-CREATE INDEX idx_payment_razorpay ON business.payment_transactions(razorpay_payment_id) WHERE razorpay_payment_id IS NOT NULL;
-CREATE INDEX idx_payment_grace ON business.payment_transactions(grace_period_ends_at) WHERE grace_period_ends_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_payment_org ON business.payment_transactions(organisation_id);
+CREATE INDEX IF NOT EXISTS idx_payment_contract ON business.payment_transactions(employment_contract_id);
+CREATE INDEX IF NOT EXISTS idx_payment_razorpay ON business.payment_transactions(razorpay_payment_id) WHERE razorpay_payment_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_payment_grace ON business.payment_transactions(grace_period_ends_at) WHERE grace_period_ends_at IS NOT NULL;
 
 -- GST Invoices — GST-compliant invoice records (ADR-022, India GST Act).
 -- One invoice per billing period per contract. Append-only per C-007.
-CREATE TABLE business.gst_invoices (
+CREATE TABLE IF NOT EXISTS business.gst_invoices (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -879,18 +970,18 @@ CREATE TABLE business.gst_invoices (
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_gst_invoice_org ON business.gst_invoices(organisation_id);
-CREATE INDEX idx_gst_invoice_number ON business.gst_invoices(invoice_number);
-CREATE INDEX idx_gst_invoice_period ON business.gst_invoices(employment_contract_id, billing_period_start);
+CREATE INDEX IF NOT EXISTS idx_gst_invoice_org ON business.gst_invoices(organisation_id);
+CREATE INDEX IF NOT EXISTS idx_gst_invoice_number ON business.gst_invoices(invoice_number);
+CREATE INDEX IF NOT EXISTS idx_gst_invoice_period ON business.gst_invoices(employment_contract_id, billing_period_start);
 
 -- Invoice number sequence — ensures sequential numbering within financial year.
 -- Financial year runs April-March in India.
-CREATE SEQUENCE business.invoice_number_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS business.invoice_number_seq START 1;
 
 -- Data retention tracking (GAP-024, CD-003: Pause creates preservation obligation).
 -- Tracks when Tier 2 customer data may be deleted after contract termination.
 -- Records when customer exercised data export right (ART-IX).
-CREATE TABLE business.data_retention_records (
+CREATE TABLE IF NOT EXISTS business.data_retention_records (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -908,8 +999,8 @@ CREATE TABLE business.data_retention_records (
     CONSTRAINT uq_retention_contract UNIQUE (employment_contract_id)
 );
 
-CREATE INDEX idx_retention_org ON business.data_retention_records(organisation_id);
-CREATE INDEX idx_retention_expire ON business.data_retention_records(tier2_data_retain_until)
+CREATE INDEX IF NOT EXISTS idx_retention_org ON business.data_retention_records(organisation_id);
+CREATE INDEX IF NOT EXISTS idx_retention_expire ON business.data_retention_records(tier2_data_retain_until)
     WHERE deletion_completed_at IS NULL;
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -920,7 +1011,7 @@ CREATE INDEX idx_retention_expire ON business.data_retention_records(tier2_data_
 -- Governs which prompt version is active for each (skill_type, pipeline_step) combination.
 -- AI Runtime refuses to execute inferences for combinations with no active version.
 -- NOT tenant-scoped — platform-wide governance artifact.
-CREATE TABLE institutional.agent_prompt_versions (
+CREATE TABLE IF NOT EXISTS institutional.agent_prompt_versions (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     prompt_id               VARCHAR(150) NOT NULL,         -- e.g., DMA/INSTAGRAM_MARKETING/CAPTION
     version                 VARCHAR(20) NOT NULL,          -- semver: 1.0.0
@@ -952,97 +1043,115 @@ CREATE TABLE institutional.agent_prompt_versions (
         DEFERRABLE INITIALLY DEFERRED   -- allows atomic version swap
 );
 
-CREATE INDEX idx_prompt_active ON institutional.agent_prompt_versions(skill_type, pipeline_step, agent_type) WHERE is_active = TRUE;
-CREATE INDEX idx_prompt_tier ON institutional.agent_prompt_versions(minimum_model_tier) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_prompt_active ON institutional.agent_prompt_versions(skill_type, pipeline_step, agent_type) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_prompt_tier ON institutional.agent_prompt_versions(minimum_model_tier) WHERE is_active = TRUE;
 
 -- INST-015 Test Champion prompts (FA-050; capability development)
-INSERT INTO institutional.agent_prompt_versions
-    (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path,
-     constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at,
-     approved_by, approved_at, is_active, activated_at)
-VALUES
-    ('QA/SKILL_ACTIVATION_PLAN','1.0.0','QA_STRATEGY','SKILL_ACTIVATION_PLAN','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-050; C-048; C-049','STRATEGIC','FRONTIER','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
-    ('QA/PERFORMANCE_ASSESSMENT','1.0.0','QA_STRATEGY','PERFORMANCE_ASSESSMENT','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-037; C-049','BEHAVIOURAL','MID_TIER','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
-    ('QA/CAMPAIGN_DESIGN','1.0.0','QA_CAMPAIGN_DESIGN','CAMPAIGN_DESIGN','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-023; C-050; C-071','STRATEGIC','FRONTIER','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
-    ('QA/FAILURE_TRIAGE','1.0.0','DEFECT_CLASSIFICATION','FAILURE_TRIAGE','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-023; C-049; C-071','CLASSIFICATION','LOCAL','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
-    ('QA/EVIDENCE_SYNTHESIS','1.0.0','EVIDENCE_AUTHENTICITY','EVIDENCE_SYNTHESIS','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-023; C-059; C-099','BEHAVIOURAL','MID_TIER','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
-    ('QA/GATE_RECOMMENDATION','1.0.0','QUALITY_RECOMMENDATION','GATE_RECOMMENDATION','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-023; C-065; C-099','BREAKING','FRONTIER','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
-    ('QA/SKILL_INTENT_ROUTER','1.0.0','QA_ROUTING','SKILL_INTENT_ROUTER','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-054','CLASSIFICATION','LOCAL','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
-    ('QA/USAGE_SUMMARY','1.0.0','QA_ECONOMICS','USAGE_SUMMARY','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-051; C-077','USAGE_SUMMARY','LOCAL','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW());
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM institutional.agent_prompt_versions WHERE prompt_id = 'QA/SKILL_ACTIVATION_PLAN' AND version = '1.0.0') THEN
+        INSERT INTO institutional.agent_prompt_versions
+            (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path,
+             constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at,
+             approved_by, approved_at, is_active, activated_at)
+        VALUES
+            ('QA/SKILL_ACTIVATION_PLAN','1.0.0','QA_STRATEGY','SKILL_ACTIVATION_PLAN','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-050; C-048; C-049','STRATEGIC','FRONTIER','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
+            ('QA/PERFORMANCE_ASSESSMENT','1.0.0','QA_STRATEGY','PERFORMANCE_ASSESSMENT','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-037; C-049','BEHAVIOURAL','MID_TIER','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
+            ('QA/CAMPAIGN_DESIGN','1.0.0','QA_CAMPAIGN_DESIGN','CAMPAIGN_DESIGN','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-023; C-050; C-071','STRATEGIC','FRONTIER','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
+            ('QA/FAILURE_TRIAGE','1.0.0','DEFECT_CLASSIFICATION','FAILURE_TRIAGE','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-023; C-049; C-071','CLASSIFICATION','LOCAL','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
+            ('QA/EVIDENCE_SYNTHESIS','1.0.0','EVIDENCE_AUTHENTICITY','EVIDENCE_SYNTHESIS','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-023; C-059; C-099','BEHAVIOURAL','MID_TIER','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
+            ('QA/GATE_RECOMMENDATION','1.0.0','QUALITY_RECOMMENDATION','GATE_RECOMMENDATION','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-023; C-065; C-099','BREAKING','FRONTIER','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
+            ('QA/SKILL_INTENT_ROUTER','1.0.0','QA_ROUTING','SKILL_INTENT_ROUTER','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-054','CLASSIFICATION','LOCAL','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
+            ('QA/USAGE_SUMMARY','1.0.0','QA_ECONOMICS','USAGE_SUMMARY','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-051; C-077','USAGE_SUMMARY','LOCAL','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW());
+    END IF;
+END
+$idempotent$;
 
 -- Seed active prompts (v1.0.0 — all from digital-marketing-agent-prompts.md)
-INSERT INTO institutional.agent_prompt_versions
-    (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, reviewed_by, reviewed_at, is_active, activated_at)
-VALUES
-    ('DMA/CUSTOMER_PROFILING/NEXT_QUESTION', '1.0.0', 'CUSTOMER_PROFILING', 'NEXT_QUESTION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-039; C-044', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/MARKET_RESEARCH/SCORE_AXIS', '1.0.0', 'MARKET_RESEARCH', 'SCORE_AXIS', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; C-002', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/INSTAGRAM_MARKETING/CAPTION', '1.0.0', 'INSTAGRAM_MARKETING', 'CAPTION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-036; C-040; C-041', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/SYNTHETIC_APPROVAL/CONFIDENCE', '1.0.0', 'SYNTHETIC_APPROVAL', 'CONFIDENCE_ASSESSMENT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-044; AD-017', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/SELF_GOVERNANCE/DIAGNOSIS', '1.0.0', 'SELF_GOVERNANCE', 'DIAGNOSIS', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; DP-015', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), FALSE, NULL),
-    ('DMA/SELF_GOVERNANCE/DIAGNOSIS', '1.1.0', 'SELF_GOVERNANCE', 'DIAGNOSIS', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; C-048; C-049; DP-015', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('CE/EVALUATE_POLICY/CONSTITUTIONAL', '1.0.0', 'EVALUATE_POLICY', 'CONSTITUTIONAL_REASONING', 'CONSTITUTIONAL_ENGINE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-003; C-023; AD-008', 'BREAKING', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('PLATFORM_OPS/L1/HEALTH_CHECK', '1.0.0', 'PLATFORM_HEALTH_MONITORING', 'HEALTH_CHECK', 'PLATFORM_OPERATIONS', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-046; C-037', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    -- 9 additional DMA prompts (v0.21.0)
-    ('DMA/CUSTOMER_PROFILING/OPENING_MESSAGE', '1.0.0', 'CUSTOMER_PROFILING', 'OPENING_MESSAGE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-039; C-044', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/CUSTOMER_PROFILING/INFERENCE_CONFIRM', '1.0.0', 'CUSTOMER_PROFILING', 'INFERENCE_CONFIRM', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-039; C-002', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/MARKET_RESEARCH/NEEDS_HEATMAP', '1.0.0', 'MARKET_RESEARCH', 'NEEDS_HEATMAP', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; C-002', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/MARKET_RESEARCH/MATURITY_REPORT', '1.0.0', 'MARKET_RESEARCH', 'MATURITY_REPORT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; C-039; C-002', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/CONTENT_STRATEGY/MONTHLY_PLAN', '1.0.0', 'CONTENT_STRATEGY', 'MONTHLY_PLAN', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-036; C-039; C-040', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/INSTAGRAM_MARKETING/HASHTAGS', '1.0.0', 'INSTAGRAM_MARKETING', 'HASHTAGS', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-036; C-040', 'PHRASING_ONLY', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/SELF_GOVERNANCE/ESCALATION', '1.0.0', 'SELF_GOVERNANCE', 'ESCALATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; DP-015', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/PERFORMANCE_NARRATIVE/MONTHLY', '1.0.0', 'PERFORMANCE_ANALYTICS', 'MONTHLY_NARRATIVE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; C-039; DP-011', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('PLATFORM_OPS/L2/INCIDENT_DIAGNOSIS', '1.0.0', 'INCIDENT_RESOLUTION', 'DIAGNOSIS', 'PLATFORM_OPERATIONS', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-046; C-001', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    -- Trading Agent prompts (v0.21.0)
-    ('TRADING/MARKET_ANALYSIS/TRADE_SETUP', '1.0.0', 'MARKET_TECHNICAL_ANALYSIS', 'TRADE_SETUP', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-036; C-040; C-041', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('TRADING/RISK_MANAGEMENT/LOSS_LIMIT_ALERT', '1.0.0', 'RISK_MANAGEMENT', 'LOSS_LIMIT_ALERT', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-036; C-001; C-023', 'BREAKING', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('TRADING/PERFORMANCE/SESSION_REPORT', '1.0.0', 'TRADING_PERFORMANCE_ANALYTICS', 'SESSION_REPORT', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-037; C-039; DP-011', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    -- Agricultural Advisor prompts (v0.21.0)
-    ('AGRI/WEATHER_ADVISORY/FARMER_ALERT', '1.0.0', 'WEATHER_ADVISORY_FARMER', 'FARMER_ALERT', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-040; C-039', 'BREAKING', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('AGRI/CROP_HEALTH/MORNING_CHECKIN', '1.0.0', 'CROP_HEALTH_CONVERSATIONAL', 'MORNING_CHECKIN', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-039', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('AGRI/MANDI_PRICE/SELL_TIMING', '1.0.0', 'MANDI_PRICE_INTELLIGENCE', 'SELL_TIMING', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-037; C-039', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('AGRI/CROP_PLANNING/NEXT_SEASON', '1.0.0', 'CROP_SEASON_PLANNING', 'NEXT_SEASON', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-037; C-039', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    -- Trading Agent new prompts (v0.29.0 — Track A P1 fix)
-    ('TRADING/ONBOARDING/PROFILE_SETUP', '1.0.0', 'ONBOARDING', 'PROFILE_SETUP', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-039; AD-013; C-023', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('TRADING/EXECUTION/ESCALATION_DECISION', '1.0.0', 'FO_TRADE_EXECUTION', 'ESCALATION_DECISION', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-036; C-001; C-023', 'BREAKING', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('TRADING/CRYPTO/REBALANCE_DECISION', '1.0.0', 'CRYPTO_POSITION_MANAGEMENT', 'REBALANCE_DECISION', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-036; C-043; C-041', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    -- Agricultural Advisor new prompts (v0.29.0 — Track A P1 fix)
-    ('AGRI/ONBOARDING/OPENING_MESSAGE', '1.0.0', 'WHATSAPP_PHONE_IDENTITY', 'OPENING_MESSAGE', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-039; ADR-023', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('AGRI/ONBOARDING/INFERENCE_CONFIRM', '1.0.0', 'WHATSAPP_PHONE_IDENTITY', 'INFERENCE_CONFIRM', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-039; C-023; ADR-023', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('AGRI/HINT_SYSTEM/WEEKLY_HINT', '1.0.0', 'AGRICULTURAL_HINT_SYSTEM', 'WEEKLY_HINT', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-037; C-039', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    -- Self-Governance Diagnosis prompts (v0.30.0 — R017-01 P1 fix)
-    ('TRADING/SELF_GOVERNANCE/DIAGNOSIS', '1.0.0', 'TRADING_PERFORMANCE_ANALYTICS', 'SELF_GOVERNANCE_DIAGNOSIS', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-037; C-048; C-049; C-043; DP-015', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('AGRI/SELF_GOVERNANCE/DIAGNOSIS', '1.0.0', 'AGRICULTURAL_SELF_GOVERNANCE', 'SELF_GOVERNANCE_DIAGNOSIS', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-037; C-042; C-048; C-049; DP-015', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    -- Strategic Cognition Layer prompts (v0.31.0 — C-050)
-    ('DMA/STRATEGIC/SKILL_ACTIVATION_PLAN', '1.0.0', 'STRATEGIC_COGNITION', 'SKILL_ACTIVATION_PLAN', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-050; C-036; C-037; C-048; C-049; DP-019; AD-021', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/STRATEGIC/PERFORMANCE_ASSESSMENT', '1.0.0', 'STRATEGIC_COGNITION', 'PERFORMANCE_ASSESSMENT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-050; C-037; C-048; C-049; DP-015; DP-019', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('TRADING/STRATEGIC/SESSION_PREP', '1.0.0', 'STRATEGIC_COGNITION', 'SESSION_PREP', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-050; C-036; C-043; C-048; C-049; AD-021', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('TRADING/STRATEGIC/MONTHLY_PORTFOLIO_ASSESSMENT', '1.0.0', 'STRATEGIC_COGNITION', 'MONTHLY_PORTFOLIO_ASSESSMENT', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-050; C-037; C-043; C-048; C-049; DP-019', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN', '1.0.0', 'STRATEGIC_COGNITION', 'SEASONAL_ADVISORY_PLAN', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-050; C-042; C-036; C-037; C-048; C-049; DP-019; AD-021', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW', '1.0.0', 'STRATEGIC_COGNITION', 'ADVISORY_EFFECTIVENESS_REVIEW', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-050; C-042; C-037; C-048; C-049; DP-019', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    -- Token Economy Layer prompts (v0.32.0 — C-051, ADR-024)
-    ('DMA/TOKEN_ECONOMY/USAGE_SUMMARY', '1.0.0', 'TOKEN_ECONOMY', 'USAGE_SUMMARY', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-051; C-038; DP-020', 'USAGE_SUMMARY', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('TRADING/TOKEN_ECONOMY/USAGE_SUMMARY', '1.0.0', 'TOKEN_ECONOMY', 'USAGE_SUMMARY', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-051; C-038; DP-020', 'USAGE_SUMMARY', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('AGRI/TOKEN_ECONOMY/USAGE_SUMMARY', '1.0.0', 'TOKEN_ECONOMY', 'USAGE_SUMMARY', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-051; C-042; C-038; DP-020', 'USAGE_SUMMARY', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    -- Off-Topic Boundary Standard (v0.33.0 — Section 3.17)
-    ('PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT', '1.0.0', 'BOUNDARY', 'OFF_TOPIC_REDIRECT', 'PLATFORM_INTERNAL', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-036; C-037; C-048', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('PLATFORM/TOKEN_ECONOMY/MESSAGE_CLASSIFIER', '1.0.0', 'TOKEN_ECONOMY', 'MESSAGE_CLASSIFIER', 'PLATFORM_INTERNAL', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-051; AD-022; DP-020', 'CLASSIFICATION', 'Enterprise Architect', NOW(), TRUE, NOW());
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM institutional.agent_prompt_versions WHERE prompt_id = 'DMA/CUSTOMER_PROFILING/NEXT_QUESTION' AND version = '1.0.0') THEN
+        INSERT INTO institutional.agent_prompt_versions
+            (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, reviewed_by, reviewed_at, is_active, activated_at)
+        VALUES
+            ('DMA/CUSTOMER_PROFILING/NEXT_QUESTION', '1.0.0', 'CUSTOMER_PROFILING', 'NEXT_QUESTION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-039; C-044', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/MARKET_RESEARCH/SCORE_AXIS', '1.0.0', 'MARKET_RESEARCH', 'SCORE_AXIS', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; C-002', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/INSTAGRAM_MARKETING/CAPTION', '1.0.0', 'INSTAGRAM_MARKETING', 'CAPTION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-036; C-040; C-041', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/SYNTHETIC_APPROVAL/CONFIDENCE', '1.0.0', 'SYNTHETIC_APPROVAL', 'CONFIDENCE_ASSESSMENT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-044; AD-017', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/SELF_GOVERNANCE/DIAGNOSIS', '1.0.0', 'SELF_GOVERNANCE', 'DIAGNOSIS', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; DP-015', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), FALSE, NULL),
+            ('DMA/SELF_GOVERNANCE/DIAGNOSIS', '1.1.0', 'SELF_GOVERNANCE', 'DIAGNOSIS', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; C-048; C-049; DP-015', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('CE/EVALUATE_POLICY/CONSTITUTIONAL', '1.0.0', 'EVALUATE_POLICY', 'CONSTITUTIONAL_REASONING', 'CONSTITUTIONAL_ENGINE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-003; C-023; AD-008', 'BREAKING', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('PLATFORM_OPS/L1/HEALTH_CHECK', '1.0.0', 'PLATFORM_HEALTH_MONITORING', 'HEALTH_CHECK', 'PLATFORM_OPERATIONS', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-046; C-037', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            -- 9 additional DMA prompts (v0.21.0)
+            ('DMA/CUSTOMER_PROFILING/OPENING_MESSAGE', '1.0.0', 'CUSTOMER_PROFILING', 'OPENING_MESSAGE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-039; C-044', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/CUSTOMER_PROFILING/INFERENCE_CONFIRM', '1.0.0', 'CUSTOMER_PROFILING', 'INFERENCE_CONFIRM', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-039; C-002', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/MARKET_RESEARCH/NEEDS_HEATMAP', '1.0.0', 'MARKET_RESEARCH', 'NEEDS_HEATMAP', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; C-002', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/MARKET_RESEARCH/MATURITY_REPORT', '1.0.0', 'MARKET_RESEARCH', 'MATURITY_REPORT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; C-039; C-002', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/CONTENT_STRATEGY/MONTHLY_PLAN', '1.0.0', 'CONTENT_STRATEGY', 'MONTHLY_PLAN', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-036; C-039; C-040', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/INSTAGRAM_MARKETING/HASHTAGS', '1.0.0', 'INSTAGRAM_MARKETING', 'HASHTAGS', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-036; C-040', 'PHRASING_ONLY', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/SELF_GOVERNANCE/ESCALATION', '1.0.0', 'SELF_GOVERNANCE', 'ESCALATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; DP-015', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/PERFORMANCE_NARRATIVE/MONTHLY', '1.0.0', 'PERFORMANCE_ANALYTICS', 'MONTHLY_NARRATIVE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; C-039; DP-011', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('PLATFORM_OPS/L2/INCIDENT_DIAGNOSIS', '1.0.0', 'INCIDENT_RESOLUTION', 'DIAGNOSIS', 'PLATFORM_OPERATIONS', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-046; C-001', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            -- Trading Agent prompts (v0.21.0)
+            ('TRADING/MARKET_ANALYSIS/TRADE_SETUP', '1.0.0', 'MARKET_TECHNICAL_ANALYSIS', 'TRADE_SETUP', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-036; C-040; C-041', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('TRADING/RISK_MANAGEMENT/LOSS_LIMIT_ALERT', '1.0.0', 'RISK_MANAGEMENT', 'LOSS_LIMIT_ALERT', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-036; C-001; C-023', 'BREAKING', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('TRADING/PERFORMANCE/SESSION_REPORT', '1.0.0', 'TRADING_PERFORMANCE_ANALYTICS', 'SESSION_REPORT', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-037; C-039; DP-011', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            -- Agricultural Advisor prompts (v0.21.0)
+            ('AGRI/WEATHER_ADVISORY/FARMER_ALERT', '1.0.0', 'WEATHER_ADVISORY_FARMER', 'FARMER_ALERT', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-040; C-039', 'BREAKING', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('AGRI/CROP_HEALTH/MORNING_CHECKIN', '1.0.0', 'CROP_HEALTH_CONVERSATIONAL', 'MORNING_CHECKIN', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-039', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('AGRI/MANDI_PRICE/SELL_TIMING', '1.0.0', 'MANDI_PRICE_INTELLIGENCE', 'SELL_TIMING', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-037; C-039', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('AGRI/CROP_PLANNING/NEXT_SEASON', '1.0.0', 'CROP_SEASON_PLANNING', 'NEXT_SEASON', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-037; C-039', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            -- Trading Agent new prompts (v0.29.0 — Track A P1 fix)
+            ('TRADING/ONBOARDING/PROFILE_SETUP', '1.0.0', 'ONBOARDING', 'PROFILE_SETUP', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-039; AD-013; C-023', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('TRADING/EXECUTION/ESCALATION_DECISION', '1.0.0', 'FO_TRADE_EXECUTION', 'ESCALATION_DECISION', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-036; C-001; C-023', 'BREAKING', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('TRADING/CRYPTO/REBALANCE_DECISION', '1.0.0', 'CRYPTO_POSITION_MANAGEMENT', 'REBALANCE_DECISION', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-036; C-043; C-041', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            -- Agricultural Advisor new prompts (v0.29.0 — Track A P1 fix)
+            ('AGRI/ONBOARDING/OPENING_MESSAGE', '1.0.0', 'WHATSAPP_PHONE_IDENTITY', 'OPENING_MESSAGE', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-039; ADR-023', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('AGRI/ONBOARDING/INFERENCE_CONFIRM', '1.0.0', 'WHATSAPP_PHONE_IDENTITY', 'INFERENCE_CONFIRM', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-039; C-023; ADR-023', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('AGRI/HINT_SYSTEM/WEEKLY_HINT', '1.0.0', 'AGRICULTURAL_HINT_SYSTEM', 'WEEKLY_HINT', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-037; C-039', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            -- Self-Governance Diagnosis prompts (v0.30.0 — R017-01 P1 fix)
+            ('TRADING/SELF_GOVERNANCE/DIAGNOSIS', '1.0.0', 'TRADING_PERFORMANCE_ANALYTICS', 'SELF_GOVERNANCE_DIAGNOSIS', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-037; C-048; C-049; C-043; DP-015', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('AGRI/SELF_GOVERNANCE/DIAGNOSIS', '1.0.0', 'AGRICULTURAL_SELF_GOVERNANCE', 'SELF_GOVERNANCE_DIAGNOSIS', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-037; C-042; C-048; C-049; DP-015', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            -- Strategic Cognition Layer prompts (v0.31.0 — C-050)
+            ('DMA/STRATEGIC/SKILL_ACTIVATION_PLAN', '1.0.0', 'STRATEGIC_COGNITION', 'SKILL_ACTIVATION_PLAN', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-050; C-036; C-037; C-048; C-049; DP-019; AD-021', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/STRATEGIC/PERFORMANCE_ASSESSMENT', '1.0.0', 'STRATEGIC_COGNITION', 'PERFORMANCE_ASSESSMENT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-050; C-037; C-048; C-049; DP-015; DP-019', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('TRADING/STRATEGIC/SESSION_PREP', '1.0.0', 'STRATEGIC_COGNITION', 'SESSION_PREP', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-050; C-036; C-043; C-048; C-049; AD-021', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('TRADING/STRATEGIC/MONTHLY_PORTFOLIO_ASSESSMENT', '1.0.0', 'STRATEGIC_COGNITION', 'MONTHLY_PORTFOLIO_ASSESSMENT', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-050; C-037; C-043; C-048; C-049; DP-019', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN', '1.0.0', 'STRATEGIC_COGNITION', 'SEASONAL_ADVISORY_PLAN', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-050; C-042; C-036; C-037; C-048; C-049; DP-019; AD-021', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW', '1.0.0', 'STRATEGIC_COGNITION', 'ADVISORY_EFFECTIVENESS_REVIEW', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-050; C-042; C-037; C-048; C-049; DP-019', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            -- Token Economy Layer prompts (v0.32.0 — C-051, ADR-024)
+            ('DMA/TOKEN_ECONOMY/USAGE_SUMMARY', '1.0.0', 'TOKEN_ECONOMY', 'USAGE_SUMMARY', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-051; C-038; DP-020', 'USAGE_SUMMARY', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('TRADING/TOKEN_ECONOMY/USAGE_SUMMARY', '1.0.0', 'TOKEN_ECONOMY', 'USAGE_SUMMARY', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-051; C-038; DP-020', 'USAGE_SUMMARY', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('AGRI/TOKEN_ECONOMY/USAGE_SUMMARY', '1.0.0', 'TOKEN_ECONOMY', 'USAGE_SUMMARY', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-051; C-042; C-038; DP-020', 'USAGE_SUMMARY', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            -- Off-Topic Boundary Standard (v0.33.0 — Section 3.17)
+            ('PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT', '1.0.0', 'BOUNDARY', 'OFF_TOPIC_REDIRECT', 'PLATFORM_INTERNAL', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-036; C-037; C-048', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('PLATFORM/TOKEN_ECONOMY/MESSAGE_CLASSIFIER', '1.0.0', 'TOKEN_ECONOMY', 'MESSAGE_CLASSIFIER', 'PLATFORM_INTERNAL', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-051; AD-022; DP-020', 'CLASSIFICATION', 'Enterprise Architect', NOW(), TRUE, NOW());
+    END IF;
+END
+$idempotent$;
 
 -- Prompt seeds: Signal Intelligence Layer (C-053) + Skill Intelligence Router (C-054) — v0.35.0/v0.36.0
-INSERT INTO institutional.agent_prompt_versions
-    (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
-VALUES
-    ('DMA/ROUTING/SKILL_INTENT_ROUTER', '1.0.0', 'SKILL_ROUTING', 'INTENT_CLASSIFICATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-054; AD-027; DP-023', 'CLASSIFICATION', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('AGRI/ROUTING/SKILL_INTENT_ROUTER', '1.0.0', 'SKILL_ROUTING', 'INTENT_CLASSIFICATION', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/README.md', 'C-054; AD-027; DP-023', 'CLASSIFICATION', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('TRADING/ROUTING/SKILL_INTENT_ROUTER', '1.0.0', 'SKILL_ROUTING', 'INTENT_CLASSIFICATION', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/README.md', 'C-054; AD-027; DP-023', 'CLASSIFICATION', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/SIGNAL/PROACTIVE_ALERT', '1.0.0', 'SIGNAL_INTELLIGENCE', 'PROACTIVE_ALERT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-053; AD-026; DP-022', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('AGRI/SIGNAL/PROACTIVE_ALERT', '1.0.0', 'SIGNAL_INTELLIGENCE', 'PROACTIVE_ALERT', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/README.md', 'C-053; C-042; AD-026; DP-022', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('TRADING/SIGNAL/PROACTIVE_ALERT', '1.0.0', 'SIGNAL_INTELLIGENCE', 'PROACTIVE_ALERT', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/README.md', 'C-053; AD-026; DP-022', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('PLATFORM/SIGNAL/ADVISORY_BUNDLE', '1.0.0', 'SIGNAL_INTELLIGENCE', 'ADVISORY_BUNDLE', 'PLATFORM_INTERNAL', 'architecture/reference/prompts/README.md', 'C-053; AD-026', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW());
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM institutional.agent_prompt_versions WHERE prompt_id = 'DMA/ROUTING/SKILL_INTENT_ROUTER' AND version = '1.0.0') THEN
+        INSERT INTO institutional.agent_prompt_versions
+            (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
+        VALUES
+            ('DMA/ROUTING/SKILL_INTENT_ROUTER', '1.0.0', 'SKILL_ROUTING', 'INTENT_CLASSIFICATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-054; AD-027; DP-023', 'CLASSIFICATION', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('AGRI/ROUTING/SKILL_INTENT_ROUTER', '1.0.0', 'SKILL_ROUTING', 'INTENT_CLASSIFICATION', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/README.md', 'C-054; AD-027; DP-023', 'CLASSIFICATION', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('TRADING/ROUTING/SKILL_INTENT_ROUTER', '1.0.0', 'SKILL_ROUTING', 'INTENT_CLASSIFICATION', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/README.md', 'C-054; AD-027; DP-023', 'CLASSIFICATION', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/SIGNAL/PROACTIVE_ALERT', '1.0.0', 'SIGNAL_INTELLIGENCE', 'PROACTIVE_ALERT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-053; AD-026; DP-022', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('AGRI/SIGNAL/PROACTIVE_ALERT', '1.0.0', 'SIGNAL_INTELLIGENCE', 'PROACTIVE_ALERT', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/README.md', 'C-053; C-042; AD-026; DP-022', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('TRADING/SIGNAL/PROACTIVE_ALERT', '1.0.0', 'SIGNAL_INTELLIGENCE', 'PROACTIVE_ALERT', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/README.md', 'C-053; AD-026; DP-022', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('PLATFORM/SIGNAL/ADVISORY_BUNDLE', '1.0.0', 'SIGNAL_INTELLIGENCE', 'ADVISORY_BUNDLE', 'PLATFORM_INTERNAL', 'architecture/reference/prompts/README.md', 'C-053; AD-026', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW());
+    END IF;
+END
+$idempotent$;
 
 -- Agent Reasoning Traces — primary AI audit artifact (C-047, AD-008, AD-019)
 -- See architecture/reference/agent-reasoning-trace.md for full spec.
 -- Schema: institutional (WAOOAW IP — not tenant-scoped; queryable by platform ops)
-CREATE TABLE institutional.agent_reasoning_traces (
+CREATE TABLE IF NOT EXISTS institutional.agent_reasoning_traces (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     action_instance_id      UUID,                          -- links to constitutional.evidence_records
     contract_id             UUID NOT NULL,
@@ -1068,16 +1177,16 @@ CREATE TABLE institutional.agent_reasoning_traces (
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_reasoning_contract ON institutional.agent_reasoning_traces(contract_id, created_at DESC);
-CREATE INDEX idx_reasoning_skill ON institutional.agent_reasoning_traces(skill_type, pipeline_step);
-CREATE INDEX idx_reasoning_confidence ON institutional.agent_reasoning_traces(confidence_score) WHERE confidence_score < 0.80;
-CREATE INDEX idx_reasoning_prompt ON institutional.agent_reasoning_traces(prompt_id, prompt_version);
-CREATE INDEX idx_reasoning_override ON institutional.agent_reasoning_traces(customer_override) WHERE customer_override = TRUE;
+CREATE INDEX IF NOT EXISTS idx_reasoning_contract ON institutional.agent_reasoning_traces(contract_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_reasoning_skill ON institutional.agent_reasoning_traces(skill_type, pipeline_step);
+CREATE INDEX IF NOT EXISTS idx_reasoning_confidence ON institutional.agent_reasoning_traces(confidence_score) WHERE confidence_score < 0.80;
+CREATE INDEX IF NOT EXISTS idx_reasoning_prompt ON institutional.agent_reasoning_traces(prompt_id, prompt_version);
+CREATE INDEX IF NOT EXISTS idx_reasoning_override ON institutional.agent_reasoning_traces(customer_override) WHERE customer_override = TRUE;
 
 -- Agent Capability Registry — each agent registers its live capabilities (C-047, C-046)
 -- Updated by AI Runtime on every execution loop heartbeat.
 -- Read by Platform Operations Agent for health monitoring and intelligent routing.
-CREATE TABLE institutional.agent_capability_registry (
+CREATE TABLE IF NOT EXISTS institutional.agent_capability_registry (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     agent_id                VARCHAR(200) NOT NULL,          -- PROFESSIONAL_TYPE/contract_id/skill_type
     professional_type       VARCHAR(100) NOT NULL,
@@ -1103,13 +1212,13 @@ CREATE TABLE institutional.agent_capability_registry (
     CONSTRAINT uq_agent_capability UNIQUE (contract_id, skill_type)
 );
 
-CREATE INDEX idx_capability_contract ON institutional.agent_capability_registry(contract_id);
-CREATE INDEX idx_capability_type ON institutional.agent_capability_registry(professional_type);
-CREATE INDEX idx_capability_status ON institutional.agent_capability_registry(status) WHERE status != 'HEALTHY';
+CREATE INDEX IF NOT EXISTS idx_capability_contract ON institutional.agent_capability_registry(contract_id);
+CREATE INDEX IF NOT EXISTS idx_capability_type ON institutional.agent_capability_registry(professional_type);
+CREATE INDEX IF NOT EXISTS idx_capability_status ON institutional.agent_capability_registry(status) WHERE status != 'HEALTHY';
 
 -- Agent Messages — agent-to-agent communication bus (Platform Operations Agent ↔ skill agents)
 -- Asynchronous: sending agent writes; receiving agent reads on next heartbeat.
-CREATE TABLE institutional.agent_messages (
+CREATE TABLE IF NOT EXISTS institutional.agent_messages (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     from_agent              VARCHAR(200) NOT NULL,
     to_agent                VARCHAR(200) NOT NULL,
@@ -1123,11 +1232,11 @@ CREATE TABLE institutional.agent_messages (
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_messages_to ON institutional.agent_messages(to_agent, created_at DESC) WHERE acknowledged_at IS NULL;
-CREATE INDEX idx_messages_priority ON institutional.agent_messages(priority, created_at DESC) WHERE acknowledged_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_messages_to ON institutional.agent_messages(to_agent, created_at DESC) WHERE acknowledged_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_messages_priority ON institutional.agent_messages(priority, created_at DESC) WHERE acknowledged_at IS NULL;
 
 -- Platform Operations Events — audit trail for all platform operations (C-046)
-CREATE TABLE institutional.platform_operations_events (
+CREATE TABLE IF NOT EXISTS institutional.platform_operations_events (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tier                    VARCHAR(5) NOT NULL,           -- L1|L2|L3
     event_type              VARCHAR(100) NOT NULL,
@@ -1143,11 +1252,11 @@ CREATE TABLE institutional.platform_operations_events (
     resolved_at             TIMESTAMPTZ
 );
 
-CREATE INDEX idx_ops_events_tier ON institutional.platform_operations_events(tier, status);
-CREATE INDEX idx_ops_events_contract ON institutional.platform_operations_events(affected_contract_id) WHERE affected_contract_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_ops_events_tier ON institutional.platform_operations_events(tier, status);
+CREATE INDEX IF NOT EXISTS idx_ops_events_contract ON institutional.platform_operations_events(affected_contract_id) WHERE affected_contract_id IS NOT NULL;
 
 -- Agent Health Scores — rolling health metrics per agent/skill (12.1 capability)
-CREATE TABLE institutional.agent_health_scores (
+CREATE TABLE IF NOT EXISTS institutional.agent_health_scores (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     contract_id             UUID NOT NULL,
     organisation_id         UUID NOT NULL,
@@ -1173,7 +1282,7 @@ CREATE TABLE institutional.agent_health_scores (
     CONSTRAINT uq_health_score UNIQUE (contract_id, skill_type, period_start)
 );
 
-CREATE INDEX idx_health_contract ON institutional.agent_health_scores(contract_id, period_start DESC);
+CREATE INDEX IF NOT EXISTS idx_health_contract ON institutional.agent_health_scores(contract_id, period_start DESC);
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Simulation gap fixes (v0.21.0 — Simulation 005 + 006)
@@ -1181,9 +1290,9 @@ CREATE INDEX idx_health_contract ON institutional.agent_health_scores(contract_i
 
 -- GAP-A003: PMFBY adverse event confirmation needs IMD warning ID linkage
 ALTER TABLE business.weather_alert_log
-    ADD COLUMN imd_warning_id      VARCHAR(100),   -- IMD district warning reference ID
-    ADD COLUMN imd_warning_date    DATE,            -- date of IMD warning (for PMFBY cross-reference)
-    ADD COLUMN stt_confidence      NUMERIC(3,2);   -- STT confidence score if alert was generated from voice input (AD-020)
+    ADD COLUMN IF NOT EXISTS imd_warning_id      VARCHAR(100),   -- IMD district warning reference ID
+    ADD COLUMN IF NOT EXISTS imd_warning_date    DATE,            -- date of IMD warning (for PMFBY cross-reference)
+    ADD COLUMN IF NOT EXISTS stt_confidence      NUMERIC(3,2);   -- STT confidence score if alert was generated from voice input (AD-020)
 
 -- GAP-A001: farmer WhatsApp contact and language fields
 ALTER TABLE business.farmer_profiles
@@ -1219,7 +1328,7 @@ CREATE TABLE IF NOT EXISTS business.trading_profiles (
     CONSTRAINT uq_trading_profile_org UNIQUE (organisation_id)
 );
 
-CREATE INDEX idx_trading_profile_org ON business.trading_profiles(organisation_id);
+CREATE INDEX IF NOT EXISTS idx_trading_profile_org ON business.trading_profiles(organisation_id);
 
 /* Superseded by the Simulation Gap Bridge definition below.
 -- GAP-T006: Trading session records for slippage tracking
@@ -1251,7 +1360,7 @@ CREATE INDEX idx_trading_session_date ON business.trading_session_records(organi
 -- One row per employment contract — updated on each re-plan.
 -- ─────────────────────────────────────────────────────────────────────────────
 
-CREATE TABLE business.agent_strategic_state (
+CREATE TABLE IF NOT EXISTS business.agent_strategic_state (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -1271,8 +1380,8 @@ CREATE TABLE business.agent_strategic_state (
     updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_strategic_state_contract UNIQUE (employment_contract_id)
 );
-CREATE INDEX idx_strategic_state_org ON business.agent_strategic_state(organisation_id);
-CREATE INDEX idx_strategic_state_contract ON business.agent_strategic_state(employment_contract_id);
+CREATE INDEX IF NOT EXISTS idx_strategic_state_org ON business.agent_strategic_state(organisation_id);
+CREATE INDEX IF NOT EXISTS idx_strategic_state_contract ON business.agent_strategic_state(employment_contract_id);
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Agent Memory Layer (v0.34.0 — C-052, AD-025, DP-021)
@@ -1280,7 +1389,7 @@ CREATE INDEX idx_strategic_state_contract ON business.agent_strategic_state(empl
 
 -- Creative Fingerprint — per customer, per professional type (DMA and future content agents)
 -- Stores the living profile that guarantees content uniqueness (DP-021)
-CREATE TABLE business.customer_creative_fingerprints (
+CREATE TABLE IF NOT EXISTS business.customer_creative_fingerprints (
     id                              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id                 UUID NOT NULL REFERENCES business.organisations(id),
     employment_contract_id          UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -1307,13 +1416,13 @@ CREATE TABLE business.customer_creative_fingerprints (
     updated_at                      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_fingerprint_contract UNIQUE (employment_contract_id)
 );
-CREATE INDEX idx_fingerprint_org ON business.customer_creative_fingerprints(organisation_id);
-CREATE INDEX idx_fingerprint_voice ON business.customer_creative_fingerprints USING ivfflat (voice_embedding vector_cosine_ops) WHERE voice_embedding IS NOT NULL;
-CREATE INDEX idx_fingerprint_competitor ON business.customer_creative_fingerprints USING ivfflat (competitor_exclusion_embedding vector_cosine_ops) WHERE competitor_exclusion_embedding IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_fingerprint_org ON business.customer_creative_fingerprints(organisation_id);
+CREATE INDEX IF NOT EXISTS idx_fingerprint_voice ON business.customer_creative_fingerprints USING ivfflat (voice_embedding vector_cosine_ops) WHERE voice_embedding IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_fingerprint_competitor ON business.customer_creative_fingerprints USING ivfflat (competitor_exclusion_embedding vector_cosine_ops) WHERE competitor_exclusion_embedding IS NOT NULL;
 
 -- Tier 3 temporal fence — tracks when session data becomes eligible for Tier 3 aggregation
 -- Enforces the 24-hour lag requirement of AD-025
-CREATE TABLE institutional.tier3_eligibility_log (
+CREATE TABLE IF NOT EXISTS institutional.tier3_eligibility_log (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     employment_contract_id      UUID NOT NULL,
     professional_type           VARCHAR(100) NOT NULL,
@@ -1328,8 +1437,8 @@ CREATE TABLE institutional.tier3_eligibility_log (
     is_trading_session          BOOLEAN NOT NULL DEFAULT FALSE,    -- Trading sessions: position data NEVER written to Tier 3
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_tier3_eligible ON institutional.tier3_eligibility_log(eligible_for_tier3_at) WHERE tier3_written_at IS NULL;
-CREATE INDEX idx_tier3_trading ON institutional.tier3_eligibility_log(is_trading_session, eligible_for_tier3_at);
+CREATE INDEX IF NOT EXISTS idx_tier3_eligible ON institutional.tier3_eligibility_log(eligible_for_tier3_at) WHERE tier3_written_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_tier3_trading ON institutional.tier3_eligibility_log(is_trading_session, eligible_for_tier3_at);
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Token Economy Layer (v0.32.0 — C-051, ADR-024)
@@ -1337,7 +1446,7 @@ CREATE INDEX idx_tier3_trading ON institutional.tier3_eligibility_log(is_trading
 
 -- Customer usage unit tracking — one row per customer per billing period
 -- Tracks remaining advisory capacity in customer-meaningful units (not tokens)
-CREATE TABLE business.customer_usage_units (
+CREATE TABLE IF NOT EXISTS business.customer_usage_units (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -1373,12 +1482,12 @@ CREATE TABLE business.customer_usage_units (
     updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_usage_units_contract_period UNIQUE (employment_contract_id, billing_period_start)
 );
-CREATE INDEX idx_usage_units_org ON business.customer_usage_units(organisation_id);
-CREATE INDEX idx_usage_units_period ON business.customer_usage_units(billing_period_start, professional_type);
+CREATE INDEX IF NOT EXISTS idx_usage_units_org ON business.customer_usage_units(organisation_id);
+CREATE INDEX IF NOT EXISTS idx_usage_units_period ON business.customer_usage_units(billing_period_start, professional_type);
 
 -- Message classification log — Token Economy Gate audit trail
 -- Every incoming message classification decision is logged here
-CREATE TABLE institutional.message_classification_log (
+CREATE TABLE IF NOT EXISTS institutional.message_classification_log (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL,                 -- tenant (not FK — pre-auth messages included)
     professional_type           VARCHAR(100),
@@ -1396,13 +1505,13 @@ CREATE TABLE institutional.message_classification_log (
     -- Note: no tenant_id RLS — classification happens before tenant is confirmed (emergency path)
     -- Access controlled by DB role grants only (ai_runtime_app INSERT, business_app SELECT)
 );
-CREATE INDEX idx_classification_org ON institutional.message_classification_log(organisation_id, classified_at DESC);
-CREATE INDEX idx_classification_path ON institutional.message_classification_log(path_taken, classified_at DESC);
-CREATE INDEX idx_classification_llm ON institutional.message_classification_log(llm_dispatched, model_tier_used);
+CREATE INDEX IF NOT EXISTS idx_classification_org ON institutional.message_classification_log(organisation_id, classified_at DESC);
+CREATE INDEX IF NOT EXISTS idx_classification_path ON institutional.message_classification_log(path_taken, classified_at DESC);
+CREATE INDEX IF NOT EXISTS idx_classification_llm ON institutional.message_classification_log(llm_dispatched, model_tier_used);
 
 -- Prompt cache metadata — tracks cache entries for analytics and invalidation management
 -- The actual cached responses live in Redis/pgvector; this table tracks governance
-CREATE TABLE institutional.prompt_cache_metadata (
+CREATE TABLE IF NOT EXISTS institutional.prompt_cache_metadata (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     cache_key_hash              VARCHAR(64) NOT NULL UNIQUE,   -- SHA-256 of cache key components
     prompt_id                   VARCHAR(150) NOT NULL,
@@ -1417,19 +1526,25 @@ CREATE TABLE institutional.prompt_cache_metadata (
     invalidated_at              TIMESTAMPTZ,                   -- set when cache entry invalidated before TTL
     invalidation_reason         VARCHAR(100)                   -- OUTBREAK_ALERT | NEW_MSP | NEW_SEASONAL_DATA | TTL_EXPIRED
 );
-CREATE INDEX idx_cache_prompt ON institutional.prompt_cache_metadata(prompt_id, expires_at);
-CREATE INDEX idx_cache_hits ON institutional.prompt_cache_metadata(hit_count DESC) WHERE invalidated_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_cache_prompt ON institutional.prompt_cache_metadata(prompt_id, expires_at);
+CREATE INDEX IF NOT EXISTS idx_cache_hits ON institutional.prompt_cache_metadata(hit_count DESC) WHERE invalidated_at IS NULL;
 
 -- Billing preference enum (ADR-022: SEPARATE or COMBINED for customers with multiple agents)
-CREATE TYPE billing_preference_type AS ENUM (
-    'SEPARATE',   -- one invoice per agent, one Razorpay subscription per agent
-    'COMBINED'    -- one consolidated invoice for all agents (default for 2+ agents); each agent still has own Razorpay subscription
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('billing_preference_type') IS NULL THEN
+        CREATE TYPE billing_preference_type AS ENUM (
+            'SEPARATE',   -- one invoice per agent, one Razorpay subscription per agent
+            'COMBINED'    -- one consolidated invoice for all agents (default for 2+ agents); each agent still has own Razorpay subscription
+        );
+    END IF;
+END
+$idempotent$;
 
 -- Add billing_preference to organisations
 ALTER TABLE business.organisations
-    ADD COLUMN billing_preference billing_preference_type NOT NULL DEFAULT 'COMBINED',
-    ADD COLUMN combined_billing_anchor_day SMALLINT DEFAULT 1 CHECK (combined_billing_anchor_day BETWEEN 1 AND 28);
+    ADD COLUMN IF NOT EXISTS billing_preference billing_preference_type NOT NULL DEFAULT 'COMBINED',
+    ADD COLUMN IF NOT EXISTS combined_billing_anchor_day SMALLINT DEFAULT 1 CHECK (combined_billing_anchor_day BETWEEN 1 AND 28);
     -- billing_anchor_day: day of month for consolidated invoice generation (default 1st)
 
 -- Add consolidation_group_id to gst_invoices (for COMBINED billing)
@@ -1437,15 +1552,15 @@ ALTER TABLE business.organisations
 -- The "parent" invoice (the one displayed to the customer) has is_consolidated_parent = TRUE.
 -- Child invoices (per-agent) are the detail records.
 ALTER TABLE business.gst_invoices
-    ADD COLUMN consolidation_group_id UUID,      -- NULL for SEPARATE billing; shared UUID for COMBINED group
-    ADD COLUMN is_consolidated_parent BOOLEAN NOT NULL DEFAULT FALSE, -- TRUE only for the summary invoice in a COMBINED group
-    ADD COLUMN parent_invoice_id UUID REFERENCES business.gst_invoices(id); -- child invoices reference the parent
+    ADD COLUMN IF NOT EXISTS consolidation_group_id UUID,      -- NULL for SEPARATE billing; shared UUID for COMBINED group
+    ADD COLUMN IF NOT EXISTS is_consolidated_parent BOOLEAN NOT NULL DEFAULT FALSE, -- TRUE only for the summary invoice in a COMBINED group
+    ADD COLUMN IF NOT EXISTS parent_invoice_id UUID REFERENCES business.gst_invoices(id); -- child invoices reference the parent
 
-CREATE INDEX idx_gst_invoice_consolidation ON business.gst_invoices(consolidation_group_id) WHERE consolidation_group_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_gst_invoice_consolidation ON business.gst_invoices(consolidation_group_id) WHERE consolidation_group_id IS NOT NULL;
 
 -- Subscription tiers lookup — maps agent professional_type + tier_id to Razorpay plan ID and pricing
 -- Not tenant-scoped — platform catalogue (same pattern as professional_templates)
-CREATE TABLE business.subscription_tiers (
+CREATE TABLE IF NOT EXISTS business.subscription_tiers (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     professional_type           VARCHAR(100) NOT NULL,             -- DIGITAL_MARKETING_HEALTHCARE, TRADING_FO_CRYPTO, AGRICULTURAL_ADVISOR_INDIA
     tier_id                     VARCHAR(50) NOT NULL,              -- CURTAIN_RAISER, TRADING_FO_ONLY, AGRICULTURAL_ADVISOR, etc.
@@ -1468,14 +1583,15 @@ INSERT INTO business.subscription_tiers (professional_type, tier_id, display_nam
     ('DIGITAL_MARKETING_HEALTHCARE', 'MATURITY_PHASE',    'Maturity Phase',            399900, 338898, 61002, 'plan_dma_maturity_phase',   30),
     ('TRADING_FO_CRYPTO',           'TRADING_FO_ONLY',   'F&O Professional',          199900, 169407, 30493, 'plan_trading_fo_only',      10),
     ('TRADING_FO_CRYPTO',           'TRADING_FO_CRYPTO', 'F&O + Crypto Professional', 249900, 211864, 38036, 'plan_trading_fo_crypto',    20),
-    ('AGRICULTURAL_ADVISOR_INDIA',  'AGRICULTURAL',      'Agricultural Advisor',       20000,  16949,  3051, 'plan_agricultural_advisor', 10);
+    ('AGRICULTURAL_ADVISOR_INDIA',  'AGRICULTURAL',      'Agricultural Advisor',       20000,  16949,  3051, 'plan_agricultural_advisor', 10)
+ON CONFLICT DO NOTHING;
 
 -- ============================================================
 -- Signal Intelligence Layer tables (v0.35.0 — C-053, AD-026, DP-022)
 -- ============================================================
 
 -- signal_materiality_events: platform-level signal detection log (no customer PII)
-CREATE TABLE institutional.signal_materiality_events (
+CREATE TABLE IF NOT EXISTS institutional.signal_materiality_events (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     agent_type                  VARCHAR(100) NOT NULL,
     signal_type                 VARCHAR(100) NOT NULL,
@@ -1491,11 +1607,11 @@ CREATE TABLE institutional.signal_materiality_events (
     detected_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     workflow_run_id             VARCHAR(200)
 );
-CREATE INDEX idx_signal_events_type    ON institutional.signal_materiality_events(agent_type, signal_type, detected_at DESC);
-CREATE INDEX idx_signal_events_urgency ON institutional.signal_materiality_events(urgency_class, detected_at DESC);
+CREATE INDEX IF NOT EXISTS idx_signal_events_type    ON institutional.signal_materiality_events(agent_type, signal_type, detected_at DESC);
+CREATE INDEX IF NOT EXISTS idx_signal_events_urgency ON institutional.signal_materiality_events(urgency_class, detected_at DESC);
 
 -- skill_gap_signals: accumulates unserved customer intents → feeds Section 3.20 governance loop
-CREATE TABLE institutional.skill_gap_signals (
+CREATE TABLE IF NOT EXISTS institutional.skill_gap_signals (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     agent_type                  VARCHAR(100) NOT NULL,
     unserviced_intent           TEXT NOT NULL,
@@ -1510,15 +1626,15 @@ CREATE TABLE institutional.skill_gap_signals (
     skill_proposal_issue_id     INTEGER,
     detected_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_skill_gap_agent     ON institutional.skill_gap_signals(agent_type, similar_intent_hash);
-CREATE INDEX idx_skill_gap_frequency ON institutional.skill_gap_signals(agent_type, detected_at DESC) WHERE skill_proposal_raised = FALSE;
+CREATE INDEX IF NOT EXISTS idx_skill_gap_agent     ON institutional.skill_gap_signals(agent_type, similar_intent_hash);
+CREATE INDEX IF NOT EXISTS idx_skill_gap_frequency ON institutional.skill_gap_signals(agent_type, detected_at DESC) WHERE skill_proposal_raised = FALSE;
 
 -- ============================================================
 -- Skill Intelligence Router tables (v0.35.0 — C-054, AD-027, DP-023)
 -- ============================================================
 
 -- agent_skill_graph: materialized SCM declarations per customer's active skills (pgvector routing index)
-CREATE TABLE business.agent_skill_graph (
+CREATE TABLE IF NOT EXISTS business.agent_skill_graph (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -1535,37 +1651,55 @@ CREATE TABLE business.agent_skill_graph (
     tenant_id                   UUID NOT NULL,
     CONSTRAINT uq_skill_graph_entry UNIQUE (employment_contract_id, skill_id)
 );
-CREATE INDEX idx_skill_graph_contract  ON business.agent_skill_graph(employment_contract_id) WHERE is_active = TRUE;
-CREATE INDEX idx_skill_graph_embedding ON business.agent_skill_graph USING ivfflat (intent_signatures_embedding vector_cosine_ops) WITH (lists = 100);
+CREATE INDEX IF NOT EXISTS idx_skill_graph_contract  ON business.agent_skill_graph(employment_contract_id) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_skill_graph_embedding ON business.agent_skill_graph USING ivfflat (intent_signatures_embedding vector_cosine_ops) WITH (lists = 100);
 
 -- ============================================================
 -- Campaign Theme Engine tables (v0.39.0 — C-055, AD-028, DP-024)
 -- ============================================================
 
 -- Campaign approval mode enum
-CREATE TYPE campaign_approval_mode AS ENUM (
-    'POST_APPROVAL',       -- customer approves every piece individually
-    'CAMPAIGN_APPROVAL',   -- customer approves campaign brief; SCR gates content; weekly digest
-    'CAMPAIGN_AUTO'        -- customer approves campaign brief; full auto within SCR
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('campaign_approval_mode') IS NULL THEN
+        CREATE TYPE campaign_approval_mode AS ENUM (
+            'POST_APPROVAL',       -- customer approves every piece individually
+            'CAMPAIGN_APPROVAL',   -- customer approves campaign brief; SCR gates content; weekly digest
+            'CAMPAIGN_AUTO'        -- customer approves campaign brief; full auto within SCR
+        );
+    END IF;
+END
+$idempotent$;
 
 -- Campaign status enum
-CREATE TYPE campaign_status AS ENUM (
-    'DRAFT',             -- proposed by agent, not yet customer-approved
-    'CUSTOMER_APPROVED', -- customer approved the brief
-    'ACTIVE',            -- campaign is currently running (within campaign_window)
-    'PAUSED',            -- temporarily suspended
-    'COMPLETE',          -- campaign window elapsed
-    'CANCELLED'          -- cancelled before completion
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('campaign_status') IS NULL THEN
+        CREATE TYPE campaign_status AS ENUM (
+            'DRAFT',             -- proposed by agent, not yet customer-approved
+            'CUSTOMER_APPROVED', -- customer approved the brief
+            'ACTIVE',            -- campaign is currently running (within campaign_window)
+            'PAUSED',            -- temporarily suspended
+            'COMPLETE',          -- campaign window elapsed
+            'CANCELLED'          -- cancelled before completion
+        );
+    END IF;
+END
+$idempotent$;
 
 -- SCR check result enum
-CREATE TYPE scr_check_result AS ENUM (
-    'PASS', 'FAIL', 'NOT_RUN'
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('scr_check_result') IS NULL THEN
+        CREATE TYPE scr_check_result AS ENUM (
+            'PASS', 'FAIL', 'NOT_RUN'
+        );
+    END IF;
+END
+$idempotent$;
 
 -- content_campaigns: Level 1 — master campaign record (one per campaign period per customer)
-CREATE TABLE business.content_campaigns (
+CREATE TABLE IF NOT EXISTS business.content_campaigns (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -1588,11 +1722,11 @@ CREATE TABLE business.content_campaigns (
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_campaigns_contract  ON business.content_campaigns(employment_contract_id, status);
-CREATE INDEX idx_campaigns_window    ON business.content_campaigns(campaign_window_start, campaign_window_end);
+CREATE INDEX IF NOT EXISTS idx_campaigns_contract  ON business.content_campaigns(employment_contract_id, status);
+CREATE INDEX IF NOT EXISTS idx_campaigns_window    ON business.content_campaigns(campaign_window_start, campaign_window_end);
 
 -- campaign_weekly_themes: Level 2 — weekly sub-theme cascade
-CREATE TABLE business.campaign_weekly_themes (
+CREATE TABLE IF NOT EXISTS business.campaign_weekly_themes (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     campaign_id                 UUID NOT NULL REFERENCES business.content_campaigns(id),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
@@ -1607,15 +1741,21 @@ CREATE TABLE business.campaign_weekly_themes (
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_campaign_week UNIQUE (campaign_id, week_number)
 );
-CREATE INDEX idx_weekly_themes_campaign ON business.campaign_weekly_themes(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_weekly_themes_campaign ON business.campaign_weekly_themes(campaign_id);
 
 -- campaign_content_items: Level 3 — individual content pieces per platform per week
-CREATE TYPE content_scr_status AS ENUM (
-    'PENDING', 'SCR_PASSED', 'SCR_FAILED', 'COMPLIANCE_VIOLATION',
-    'CUSTOMER_APPROVED', 'CUSTOMER_REJECTED', 'PUBLISHED', 'PUBLISH_FAILED'
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('content_scr_status') IS NULL THEN
+        CREATE TYPE content_scr_status AS ENUM (
+            'PENDING', 'SCR_PASSED', 'SCR_FAILED', 'COMPLIANCE_VIOLATION',
+            'CUSTOMER_APPROVED', 'CUSTOMER_REJECTED', 'PUBLISHED', 'PUBLISH_FAILED'
+        );
+    END IF;
+END
+$idempotent$;
 
-CREATE TABLE business.campaign_content_items (
+CREATE TABLE IF NOT EXISTS business.campaign_content_items (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     campaign_id                 UUID NOT NULL REFERENCES business.content_campaigns(id),
     weekly_theme_id             UUID NOT NULL REFERENCES business.campaign_weekly_themes(id),
@@ -1634,12 +1774,12 @@ CREATE TABLE business.campaign_content_items (
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_content_items_campaign  ON business.campaign_content_items(campaign_id);
-CREATE INDEX idx_content_items_schedule  ON business.campaign_content_items(scheduled_at) WHERE scr_status IN ('SCR_PASSED','CUSTOMER_APPROVED');
-CREATE INDEX idx_content_items_status    ON business.campaign_content_items(scr_status, organisation_id);
+CREATE INDEX IF NOT EXISTS idx_content_items_campaign  ON business.campaign_content_items(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_content_items_schedule  ON business.campaign_content_items(scheduled_at) WHERE scr_status IN ('SCR_PASSED','CUSTOMER_APPROVED');
+CREATE INDEX IF NOT EXISTS idx_content_items_status    ON business.campaign_content_items(scr_status, organisation_id);
 
 -- scr_review_records: SCR check results per content item (constitutional audit artifact — INSERT only)
-CREATE TABLE business.scr_review_records (
+CREATE TABLE IF NOT EXISTS business.scr_review_records (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     content_item_id             UUID NOT NULL REFERENCES business.campaign_content_items(id),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
@@ -1659,8 +1799,8 @@ CREATE TABLE business.scr_review_records (
     reviewed_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     tenant_id                   UUID NOT NULL
 );
-CREATE INDEX idx_scr_records_item ON business.scr_review_records(content_item_id);
-CREATE INDEX idx_scr_records_org  ON business.scr_review_records(organisation_id, reviewed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_scr_records_item ON business.scr_review_records(content_item_id);
+CREATE INDEX IF NOT EXISTS idx_scr_records_org  ON business.scr_review_records(organisation_id, reviewed_at DESC);
 -- ============================================================
 
 /* Historical duplicate retained for traceability; the canonical definitions above control.
@@ -1792,15 +1932,21 @@ CREATE INDEX idx_scr_records_org  ON business.scr_review_records(organisation_id
 */
 
 -- Prompt seeds: Campaign Theme Engine (C-055) + Platform Intelligence (DP-024) — v0.39.0
-INSERT INTO institutional.agent_prompt_versions
-    (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
-VALUES
-    ('DMA/CAMPAIGN/MASTER_THEME_PROPOSAL', '1.0.0', 'CONTENT_STRATEGY', 'MASTER_THEME_PROPOSAL', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-055; C-036; C-037; C-050; AD-028; DP-024', 'BREAKING', 'FRONTIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/CAMPAIGN/WEEKLY_THEME_CASCADE', '1.0.0', 'CONTENT_STRATEGY', 'WEEKLY_THEME_CASCADE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-055; C-036; AD-028', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/CAMPAIGN/PLATFORM_CONTENT_VARIANT', '1.0.0', 'CONTENT_STRATEGY', 'PLATFORM_CONTENT_VARIANT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-055; C-036; C-052; AD-028; DP-024', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/CAMPAIGN/SCR_QUALITY_CHECK', '1.0.0', 'SYNTHETIC_CONTENT_REVIEW', 'SCR_QUALITY_CHECK', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-055; C-052; DP-021', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/CAMPAIGN/CAMPAIGN_DIGEST', '1.0.0', 'CONTENT_STRATEGY', 'CAMPAIGN_DIGEST', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-055; C-037; C-051', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/PLATFORM/PLATFORM_INTELLIGENCE_RESEARCH', '1.0.0', 'MARKET_RESEARCH', 'PLATFORM_INTELLIGENCE_RESEARCH', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; DP-024', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW());
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM institutional.agent_prompt_versions WHERE prompt_id = 'DMA/CAMPAIGN/MASTER_THEME_PROPOSAL' AND version = '1.0.0') THEN
+        INSERT INTO institutional.agent_prompt_versions
+            (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
+        VALUES
+            ('DMA/CAMPAIGN/MASTER_THEME_PROPOSAL', '1.0.0', 'CONTENT_STRATEGY', 'MASTER_THEME_PROPOSAL', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-055; C-036; C-037; C-050; AD-028; DP-024', 'BREAKING', 'FRONTIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/CAMPAIGN/WEEKLY_THEME_CASCADE', '1.0.0', 'CONTENT_STRATEGY', 'WEEKLY_THEME_CASCADE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-055; C-036; AD-028', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/CAMPAIGN/PLATFORM_CONTENT_VARIANT', '1.0.0', 'CONTENT_STRATEGY', 'PLATFORM_CONTENT_VARIANT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-055; C-036; C-052; AD-028; DP-024', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/CAMPAIGN/SCR_QUALITY_CHECK', '1.0.0', 'SYNTHETIC_CONTENT_REVIEW', 'SCR_QUALITY_CHECK', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-055; C-052; DP-021', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/CAMPAIGN/CAMPAIGN_DIGEST', '1.0.0', 'CONTENT_STRATEGY', 'CAMPAIGN_DIGEST', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-055; C-037; C-051', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/PLATFORM/PLATFORM_INTELLIGENCE_RESEARCH', '1.0.0', 'MARKET_RESEARCH', 'PLATFORM_INTELLIGENCE_RESEARCH', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; DP-024', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW());
+    END IF;
+END
+$idempotent$;
 
 -- ============================================================
 -- Simulation Gap Bridges (v0.40.0)
@@ -1811,7 +1957,7 @@ VALUES
 -- ============================================================
 
 -- trading_session_records: per-session summary for trading agent (GAP-T015)
-CREATE TABLE business.trading_session_records (
+CREATE TABLE IF NOT EXISTS business.trading_session_records (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -1838,8 +1984,8 @@ CREATE TABLE business.trading_session_records (
     tenant_id                   UUID NOT NULL,
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_trading_session_contract ON business.trading_session_records(employment_contract_id, session_date DESC);
-CREATE INDEX idx_trading_session_date     ON business.trading_session_records(session_date DESC);
+CREATE INDEX IF NOT EXISTS idx_trading_session_contract ON business.trading_session_records(employment_contract_id, session_date DESC);
+CREATE INDEX IF NOT EXISTS idx_trading_session_date     ON business.trading_session_records(session_date DESC);
 
 -- farmer_profiles: add stated_price_target (GAP-A013)
 -- Note: farmer_profiles table created in earlier migration; adding column here
@@ -1856,7 +2002,7 @@ ALTER TABLE business.weather_alert_log
 CREATE INDEX IF NOT EXISTS idx_weather_alert_imd ON business.weather_alert_log(imd_warning_id) WHERE imd_warning_id IS NOT NULL;
 
 -- signal_bundling_log: tracks multi-signal bundling decisions (GAP-A010)
-CREATE TABLE institutional.signal_bundling_log (
+CREATE TABLE IF NOT EXISTS institutional.signal_bundling_log (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     bundle_session_id           UUID NOT NULL,              -- all signals in same bundle share this ID
@@ -1869,20 +2015,26 @@ CREATE TABLE institutional.signal_bundling_log (
     bundle_message_sent         BOOLEAN NOT NULL DEFAULT FALSE,
     logged_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_signal_bundle_org ON institutional.signal_bundling_log(organisation_id, logged_at DESC);
+CREATE INDEX IF NOT EXISTS idx_signal_bundle_org ON institutional.signal_bundling_log(organisation_id, logged_at DESC);
 
 -- ============================================================
 -- Centralized Ad Account Management (v0.43.0 — C-056, ADR-026)
 -- ============================================================
 
 -- connection_model enum: WAOOAW_MANAGED (default) | CUSTOMER_OWNED (pending Founder auth)
-CREATE TYPE ads_connection_model AS ENUM (
-    'WAOOAW_MANAGED',   -- WAOOAW MBM + Google MCC (default, ADR-026)
-    'CUSTOMER_OWNED'    -- per-customer OAuth (PENDING_FOUNDER_AUTHORIZATION)
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('ads_connection_model') IS NULL THEN
+        CREATE TYPE ads_connection_model AS ENUM (
+            'WAOOAW_MANAGED',   -- WAOOAW MBM + Google MCC (default, ADR-026)
+            'CUSTOMER_OWNED'    -- per-customer OAuth (PENDING_FOUNDER_AUTHORIZATION)
+        );
+    END IF;
+END
+$idempotent$;
 
 -- customer_ad_accounts: sub-accounts under WAOOAW's MBM and Google MCC (per customer)
-CREATE TABLE business.customer_ad_accounts (
+CREATE TABLE IF NOT EXISTS business.customer_ad_accounts (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -1913,10 +2065,10 @@ CREATE TABLE business.customer_ad_accounts (
     updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_ad_account_contract UNIQUE (employment_contract_id)
 );
-CREATE INDEX idx_ad_accounts_org ON business.customer_ad_accounts(organisation_id, status);
+CREATE INDEX IF NOT EXISTS idx_ad_accounts_org ON business.customer_ad_accounts(organisation_id, status);
 
 -- ad_spend_wallets: per-customer prepaid Ad Spend Wallet (C-056 segregation)
-CREATE TABLE business.ad_spend_wallets (
+CREATE TABLE IF NOT EXISTS business.ad_spend_wallets (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -1941,20 +2093,26 @@ CREATE TABLE business.ad_spend_wallets (
     updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_wallet_contract UNIQUE (employment_contract_id)
 );
-CREATE INDEX idx_ad_wallets_org ON business.ad_spend_wallets(organisation_id);
+CREATE INDEX IF NOT EXISTS idx_ad_wallets_org ON business.ad_spend_wallets(organisation_id);
 
 -- ad_spend_ledger: complete audit trail of every ad spend event (C-056 evidentiary record)
 -- This table is append-only — no UPDATE or DELETE (same immutability as evidence_records)
-CREATE TYPE ad_spend_transaction_type AS ENUM (
-    'TOPUP',            -- customer funded the wallet via Razorpay
-    'CHARGE',           -- Meta/Google billed WAOOAW for this customer's campaigns
-    'MANAGEMENT_FEE',   -- WAOOAW's 10% management fee on the CHARGE
-    'CREDIT',           -- Meta/Google issued a promotional credit → passed to customer
-    'REFUND',           -- Razorpay refund of unused wallet balance (at termination)
-    'ADJUSTMENT'        -- WAOOAW manually corrects an error (requires constitutional evidence record)
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('ad_spend_transaction_type') IS NULL THEN
+        CREATE TYPE ad_spend_transaction_type AS ENUM (
+            'TOPUP',            -- customer funded the wallet via Razorpay
+            'CHARGE',           -- Meta/Google billed WAOOAW for this customer's campaigns
+            'MANAGEMENT_FEE',   -- WAOOAW's 10% management fee on the CHARGE
+            'CREDIT',           -- Meta/Google issued a promotional credit → passed to customer
+            'REFUND',           -- Razorpay refund of unused wallet balance (at termination)
+            'ADJUSTMENT'        -- WAOOAW manually corrects an error (requires constitutional evidence record)
+        );
+    END IF;
+END
+$idempotent$;
 
-CREATE TABLE business.ad_spend_ledger (
+CREATE TABLE IF NOT EXISTS business.ad_spend_ledger (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -1973,10 +2131,10 @@ CREATE TABLE business.ad_spend_ledger (
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
     -- NOTE: No updated_at, no tenant_id needed — this is immutable financial audit record
 );
-CREATE INDEX idx_ad_ledger_wallet    ON business.ad_spend_ledger(wallet_id, billing_month DESC);
-CREATE INDEX idx_ad_ledger_org       ON business.ad_spend_ledger(organisation_id, billing_month DESC);
-CREATE INDEX idx_ad_ledger_type      ON business.ad_spend_ledger(transaction_type, billing_month DESC);
-CREATE INDEX idx_ad_ledger_campaign  ON business.ad_spend_ledger(external_campaign_id) WHERE external_campaign_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_ad_ledger_wallet    ON business.ad_spend_ledger(wallet_id, billing_month DESC);
+CREATE INDEX IF NOT EXISTS idx_ad_ledger_org       ON business.ad_spend_ledger(organisation_id, billing_month DESC);
+CREATE INDEX IF NOT EXISTS idx_ad_ledger_type      ON business.ad_spend_ledger(transaction_type, billing_month DESC);
+CREATE INDEX IF NOT EXISTS idx_ad_ledger_campaign  ON business.ad_spend_ledger(external_campaign_id) WHERE external_campaign_id IS NOT NULL;
 
 -- ============================================================
 -- DMA Performance Portfolio — Tier 3 Agency Track Record (v0.44.0 — C-057)
@@ -1984,7 +2142,7 @@ CREATE INDEX idx_ad_ledger_campaign  ON business.ad_spend_ledger(external_campai
 -- Used in onboarding conversations and portal agency pitch
 -- ============================================================
 
-CREATE TABLE institutional.dma_performance_portfolio (
+CREATE TABLE IF NOT EXISTS institutional.dma_performance_portfolio (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     professional_type           VARCHAR(100) NOT NULL DEFAULT 'DIGITAL_MARKETING_HEALTHCARE',
     business_domain             VARCHAR(100) NOT NULL,    -- DENTAL_CLINIC, BEAUTY_ARTIST, etc.
@@ -2003,25 +2161,31 @@ CREATE TABLE institutional.dma_performance_portfolio (
     -- C-052: This table contains NO individual customer data — only cohort aggregates.
     -- C-002: portfolio_claim_approved = TRUE required before any claim is shown in portal or agent conversation.
 );
-CREATE INDEX idx_portfolio_domain ON institutional.dma_performance_portfolio(professional_type, business_domain, city_tier, portfolio_period DESC);
+CREATE INDEX IF NOT EXISTS idx_portfolio_domain ON institutional.dma_performance_portfolio(professional_type, business_domain, city_tier, portfolio_period DESC);
 -- Note: no RLS — institutional table. No PII. Accessible by ai_runtime (onboarding RAG) and business_app (portal display).
 GRANT SELECT, INSERT, UPDATE ON institutional.dma_performance_portfolio TO ai_runtime_app;
 GRANT SELECT                 ON institutional.dma_performance_portfolio TO business_app;
 
 -- Prompt seeds: AI Agency Onboarding + Portfolio (C-057) — v0.44.0
-INSERT INTO institutional.agent_prompt_versions
-    (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
-VALUES
-    ('DMA/ONBOARDING/PROFESSIONAL_INTAKE_OPENING', '1.0.0', 'CUSTOMER_PROFILING', 'PROFESSIONAL_INTAKE_OPENING', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-057; C-036; C-037; C-040', 'BEHAVIOURAL', 'FRONTIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/ONBOARDING/COMPETITIVE_POSITIONING', '1.0.0', 'CUSTOMER_PROFILING', 'COMPETITIVE_POSITIONING', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-057; C-049; C-002', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/PORTFOLIO/PORTFOLIO_CLAIM_GENERATION', '1.0.0', 'MARKET_RESEARCH', 'PORTFOLIO_CLAIM_GENERATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-057; C-002; C-052', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW());
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM institutional.agent_prompt_versions WHERE prompt_id = 'DMA/ONBOARDING/PROFESSIONAL_INTAKE_OPENING' AND version = '1.0.0') THEN
+        INSERT INTO institutional.agent_prompt_versions
+            (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
+        VALUES
+            ('DMA/ONBOARDING/PROFESSIONAL_INTAKE_OPENING', '1.0.0', 'CUSTOMER_PROFILING', 'PROFESSIONAL_INTAKE_OPENING', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-057; C-036; C-037; C-040', 'BEHAVIOURAL', 'FRONTIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/ONBOARDING/COMPETITIVE_POSITIONING', '1.0.0', 'CUSTOMER_PROFILING', 'COMPETITIVE_POSITIONING', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-057; C-049; C-002', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/PORTFOLIO/PORTFOLIO_CLAIM_GENERATION', '1.0.0', 'MARKET_RESEARCH', 'PORTFOLIO_CLAIM_GENERATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-057; C-002; C-052', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW());
+    END IF;
+END
+$idempotent$;
 
 -- ============================================================
 -- DMA Skill Deepening Tables (v0.45.0 — P0: Review gen, Blog, Patient reactivation)
 -- ============================================================
 
 -- review_requests: tracks review request messages sent to patients (Skill 6+7)
-CREATE TABLE business.review_requests (
+CREATE TABLE IF NOT EXISTS business.review_requests (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -2038,19 +2202,25 @@ CREATE TABLE business.review_requests (
     tenant_id                   UUID NOT NULL,
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_review_requests_org ON business.review_requests(organisation_id, sent_at DESC);
-CREATE INDEX idx_review_requests_patient ON business.review_requests(organisation_id, patient_identifier, next_eligible_at);
+CREATE INDEX IF NOT EXISTS idx_review_requests_org ON business.review_requests(organisation_id, sent_at DESC);
+CREATE INDEX IF NOT EXISTS idx_review_requests_patient ON business.review_requests(organisation_id, patient_identifier, next_eligible_at);
 
 -- blog_posts: tracks blog content from draft to published to performance (Skill 10)
-CREATE TYPE blog_post_status AS ENUM (
-    'DRAFT',          -- agent generated, not yet reviewed
-    'CUSTOMER_REVIEW', -- awaiting customer approval
-    'APPROVED',        -- customer approved, ready to publish
-    'PUBLISHED',       -- live on website
-    'REJECTED'         -- customer rejected; return for revision
-);
+DO $idempotent$
+BEGIN
+    IF to_regtype('blog_post_status') IS NULL THEN
+        CREATE TYPE blog_post_status AS ENUM (
+            'DRAFT',          -- agent generated, not yet reviewed
+            'CUSTOMER_REVIEW', -- awaiting customer approval
+            'APPROVED',        -- customer approved, ready to publish
+            'PUBLISHED',       -- live on website
+            'REJECTED'         -- customer rejected; return for revision
+        );
+    END IF;
+END
+$idempotent$;
 
-CREATE TABLE business.blog_posts (
+CREATE TABLE IF NOT EXISTS business.blog_posts (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -2073,11 +2243,11 @@ CREATE TABLE business.blog_posts (
     evidence_record_id          UUID,
     tenant_id                   UUID NOT NULL
 );
-CREATE INDEX idx_blog_posts_org ON business.blog_posts(organisation_id, status);
-CREATE INDEX idx_blog_posts_published ON business.blog_posts(organisation_id, published_at DESC) WHERE status = 'PUBLISHED';
+CREATE INDEX IF NOT EXISTS idx_blog_posts_org ON business.blog_posts(organisation_id, status);
+CREATE INDEX IF NOT EXISTS idx_blog_posts_published ON business.blog_posts(organisation_id, published_at DESC) WHERE status = 'PUBLISHED';
 
 -- patient_reactivation_log: tracks dormant patient outreach (Skill 7)
-CREATE TABLE business.patient_reactivation_log (
+CREATE TABLE IF NOT EXISTS business.patient_reactivation_log (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -2094,40 +2264,52 @@ CREATE TABLE business.patient_reactivation_log (
     evidence_record_id          UUID,
     tenant_id                   UUID NOT NULL
 );
-CREATE INDEX idx_reactivation_org ON business.patient_reactivation_log(organisation_id, reactivation_sent_at DESC);
+CREATE INDEX IF NOT EXISTS idx_reactivation_org ON business.patient_reactivation_log(organisation_id, reactivation_sent_at DESC);
 
 -- Prompt seeds: DMA Skill Deepening P0+P1 (v0.46.0)
-INSERT INTO institutional.agent_prompt_versions
-    (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
-VALUES
-    ('DMA/GBP/QA_SEEDING', '1.0.0', 'GOOGLE_BUSINESS_PROFILE', 'QA_SEEDING', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/WHATSAPP/REVIEW_REQUEST', '1.0.0', 'WHATSAPP_BUSINESS', 'REVIEW_REQUEST', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; C-048', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/WHATSAPP/PATIENT_REACTIVATION', '1.0.0', 'WHATSAPP_BUSINESS', 'PATIENT_REACTIVATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; C-048', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/WHATSAPP/POST_TREATMENT_CHECKIN', '1.0.0', 'WHATSAPP_BUSINESS', 'POST_TREATMENT_CHECKIN', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/WHATSAPP/WELCOME_SEQUENCE', '1.0.0', 'WHATSAPP_BUSINESS', 'WELCOME_SEQUENCE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-039', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/SEO/KEYWORD_RESEARCH_FOR_BLOG', '1.0.0', 'LOCAL_SEO', 'KEYWORD_RESEARCH_FOR_BLOG', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/SEO/BLOG_POST_CONTENT', '1.0.0', 'LOCAL_SEO', 'BLOG_POST_CONTENT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; C-048; C-055', 'BEHAVIOURAL', 'FRONTIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/SEO/SCHEMA_MARKUP_GENERATION', '1.0.0', 'LOCAL_SEO', 'SCHEMA_MARKUP_GENERATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/INSTAGRAM/REELS_HOOK', '1.0.0', 'INSTAGRAM_MARKETING', 'REELS_HOOK', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-052; C-055', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/INSTAGRAM/CAROUSEL_CONTENT', '1.0.0', 'INSTAGRAM_MARKETING', 'CAROUSEL_CONTENT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-052; C-055', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/YOUTUBE/CHANNEL_OPTIMIZATION', '1.0.0', 'VIDEO_CONTENT_CREATION', 'CHANNEL_OPTIMIZATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/CONTENT/PHOTO_SHOT_LIST', '1.0.0', 'CONTENT_STRATEGY', 'PHOTO_SHOT_LIST', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-055', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/GBP/SERVICES_MENU_UPDATE', '1.0.0', 'GOOGLE_BUSINESS_PROFILE', 'SERVICES_MENU_UPDATE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW());
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM institutional.agent_prompt_versions WHERE prompt_id = 'DMA/GBP/QA_SEEDING' AND version = '1.0.0') THEN
+        INSERT INTO institutional.agent_prompt_versions
+            (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
+        VALUES
+            ('DMA/GBP/QA_SEEDING', '1.0.0', 'GOOGLE_BUSINESS_PROFILE', 'QA_SEEDING', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/WHATSAPP/REVIEW_REQUEST', '1.0.0', 'WHATSAPP_BUSINESS', 'REVIEW_REQUEST', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; C-048', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/WHATSAPP/PATIENT_REACTIVATION', '1.0.0', 'WHATSAPP_BUSINESS', 'PATIENT_REACTIVATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; C-048', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/WHATSAPP/POST_TREATMENT_CHECKIN', '1.0.0', 'WHATSAPP_BUSINESS', 'POST_TREATMENT_CHECKIN', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/WHATSAPP/WELCOME_SEQUENCE', '1.0.0', 'WHATSAPP_BUSINESS', 'WELCOME_SEQUENCE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-039', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/SEO/KEYWORD_RESEARCH_FOR_BLOG', '1.0.0', 'LOCAL_SEO', 'KEYWORD_RESEARCH_FOR_BLOG', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/SEO/BLOG_POST_CONTENT', '1.0.0', 'LOCAL_SEO', 'BLOG_POST_CONTENT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; C-048; C-055', 'BEHAVIOURAL', 'FRONTIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/SEO/SCHEMA_MARKUP_GENERATION', '1.0.0', 'LOCAL_SEO', 'SCHEMA_MARKUP_GENERATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/INSTAGRAM/REELS_HOOK', '1.0.0', 'INSTAGRAM_MARKETING', 'REELS_HOOK', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-052; C-055', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/INSTAGRAM/CAROUSEL_CONTENT', '1.0.0', 'INSTAGRAM_MARKETING', 'CAROUSEL_CONTENT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-052; C-055', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/YOUTUBE/CHANNEL_OPTIMIZATION', '1.0.0', 'VIDEO_CONTENT_CREATION', 'CHANNEL_OPTIMIZATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/CONTENT/PHOTO_SHOT_LIST', '1.0.0', 'CONTENT_STRATEGY', 'PHOTO_SHOT_LIST', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-055', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/GBP/SERVICES_MENU_UPDATE', '1.0.0', 'GOOGLE_BUSINESS_PROFILE', 'SERVICES_MENU_UPDATE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW());
+    END IF;
+END
+$idempotent$;
 
 -- Prompt seeds: P2 prompts (v0.47.0)
-INSERT INTO institutional.agent_prompt_versions
-    (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
-VALUES
-    ('DMA/SEASONAL/OPPORTUNITY_CALENDAR', '1.0.0', 'MARKET_RESEARCH', 'OPPORTUNITY_CALENDAR', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; C-055', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/FACEBOOK/MESSENGER_AUTOMATION', '1.0.0', 'FACEBOOK_MARKETING', 'MESSENGER_AUTOMATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-039', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/FACEBOOK/COMMUNITY_EVENTS', '1.0.0', 'FACEBOOK_MARKETING', 'COMMUNITY_EVENTS', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW());
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM institutional.agent_prompt_versions WHERE prompt_id = 'DMA/SEASONAL/OPPORTUNITY_CALENDAR' AND version = '1.0.0') THEN
+        INSERT INTO institutional.agent_prompt_versions
+            (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
+        VALUES
+            ('DMA/SEASONAL/OPPORTUNITY_CALENDAR', '1.0.0', 'MARKET_RESEARCH', 'OPPORTUNITY_CALENDAR', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; C-055', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/FACEBOOK/MESSENGER_AUTOMATION', '1.0.0', 'FACEBOOK_MARKETING', 'MESSENGER_AUTOMATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-039', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/FACEBOOK/COMMUNITY_EVENTS', '1.0.0', 'FACEBOOK_MARKETING', 'COMMUNITY_EVENTS', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW());
+    END IF;
+END
+$idempotent$;
 
 -- ============================================================
 -- Video Brief-First System (v0.48.0 — C-058, DP-025)
 -- ============================================================
 
 -- style_anchor_library: pre-curated visual style packages per domain
-CREATE TABLE institutional.style_anchor_library (
+CREATE TABLE IF NOT EXISTS institutional.style_anchor_library (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     anchor_id                   VARCHAR(50) NOT NULL UNIQUE,  -- e.g., WARM_INTIMATE, CLEAN_PROFESSIONAL
     domain                      VARCHAR(100) NOT NULL,         -- BEAUTY_BRIDAL, DENTAL_CLINIC, etc.
@@ -2139,14 +2321,26 @@ CREATE TABLE institutional.style_anchor_library (
     is_active                   BOOLEAN NOT NULL DEFAULT TRUE,
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_style_anchor_domain ON institutional.style_anchor_library(domain) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_style_anchor_domain ON institutional.style_anchor_library(domain) WHERE is_active = TRUE;
 -- No RLS — this is a platform catalogue, not customer data
 
 -- video_creation_briefs: approved brief before any video generation (C-058)
-CREATE TYPE video_track AS ENUM ('TRACK_1_PHOTO_TO_VIDEO', 'TRACK_2_DIGITAL_TWIN', 'TRACK_3_GENERATIVE');
-CREATE TYPE video_brief_status AS ENUM ('DRAFT', 'QUALITY_REVIEW', 'CUSTOMER_APPROVED', 'GENERATING', 'GENERATED', 'DELIVERED', 'CANCELLED');
+DO $idempotent$
+BEGIN
+    IF to_regtype('video_track') IS NULL THEN
+        CREATE TYPE video_track AS ENUM ('TRACK_1_PHOTO_TO_VIDEO', 'TRACK_2_DIGITAL_TWIN', 'TRACK_3_GENERATIVE');
+    END IF;
+END
+$idempotent$;
+DO $idempotent$
+BEGIN
+    IF to_regtype('video_brief_status') IS NULL THEN
+        CREATE TYPE video_brief_status AS ENUM ('DRAFT', 'QUALITY_REVIEW', 'CUSTOMER_APPROVED', 'GENERATING', 'GENERATED', 'DELIVERED', 'CANCELLED');
+    END IF;
+END
+$idempotent$;
 
-CREATE TABLE business.video_creation_briefs (
+CREATE TABLE IF NOT EXISTS business.video_creation_briefs (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -2171,13 +2365,19 @@ CREATE TABLE business.video_creation_briefs (
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_video_briefs_contract ON business.video_creation_briefs(employment_contract_id, status);
-CREATE INDEX idx_video_briefs_campaign ON business.video_creation_briefs(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_video_briefs_contract ON business.video_creation_briefs(employment_contract_id, status);
+CREATE INDEX IF NOT EXISTS idx_video_briefs_campaign ON business.video_creation_briefs(campaign_id);
 
 -- digital_twins: Digital Twin configuration + consent record (C-058 + C-003)
-CREATE TYPE digital_twin_status AS ENUM ('CONSENT_PENDING', 'SOURCE_RECORDING_REQUESTED', 'CREATING', 'TEST_CLIP_REVIEW', 'APPROVED', 'REVOKED', 'DELETED');
+DO $idempotent$
+BEGIN
+    IF to_regtype('digital_twin_status') IS NULL THEN
+        CREATE TYPE digital_twin_status AS ENUM ('CONSENT_PENDING', 'SOURCE_RECORDING_REQUESTED', 'CREATING', 'TEST_CLIP_REVIEW', 'APPROVED', 'REVOKED', 'DELETED');
+    END IF;
+END
+$idempotent$;
 
-CREATE TABLE business.digital_twins (
+CREATE TABLE IF NOT EXISTS business.digital_twins (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -2197,13 +2397,25 @@ CREATE TABLE business.digital_twins (
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_digital_twin_contract UNIQUE (employment_contract_id)
 );
-CREATE INDEX idx_digital_twins_org ON business.digital_twins(organisation_id, status);
+CREATE INDEX IF NOT EXISTS idx_digital_twins_org ON business.digital_twins(organisation_id, status);
 
 -- content_assets: media asset library (photos from WhatsApp, video clips, etc.)
-CREATE TYPE asset_source AS ENUM ('WHATSAPP_INGESTION', 'PORTAL_UPLOAD', 'AI_GENERATED', 'THIRD_PARTY');
-CREATE TYPE asset_type AS ENUM ('PHOTO', 'VIDEO', 'AUDIO', 'DIGITAL_TWIN_SOURCE', 'DIGITAL_TWIN_AVATAR');
+DO $idempotent$
+BEGIN
+    IF to_regtype('asset_source') IS NULL THEN
+        CREATE TYPE asset_source AS ENUM ('WHATSAPP_INGESTION', 'PORTAL_UPLOAD', 'AI_GENERATED', 'THIRD_PARTY');
+    END IF;
+END
+$idempotent$;
+DO $idempotent$
+BEGIN
+    IF to_regtype('asset_type') IS NULL THEN
+        CREATE TYPE asset_type AS ENUM ('PHOTO', 'VIDEO', 'AUDIO', 'DIGITAL_TWIN_SOURCE', 'DIGITAL_TWIN_AVATAR');
+    END IF;
+END
+$idempotent$;
 
-CREATE TABLE business.content_assets (
+CREATE TABLE IF NOT EXISTS business.content_assets (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
@@ -2219,17 +2431,23 @@ CREATE TABLE business.content_assets (
     tenant_id                   UUID NOT NULL,
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_content_assets_org ON business.content_assets(organisation_id, asset_type, created_at DESC);
-CREATE INDEX idx_content_assets_face ON business.content_assets(organisation_id) WHERE contains_identifiable_face = TRUE AND consent_confirmed = FALSE;
+CREATE INDEX IF NOT EXISTS idx_content_assets_org ON business.content_assets(organisation_id, asset_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_content_assets_face ON business.content_assets(organisation_id) WHERE contains_identifiable_face = TRUE AND consent_confirmed = FALSE;
 
 -- Prompt seeds: Video Brief-First + Communication Standard (v0.48.0)
-INSERT INTO institutional.agent_prompt_versions
-    (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
-VALUES
-    ('DMA/VIDEO/VIDEO_BRIEF_CREATION', '1.0.0', 'VIDEO_CONTENT_CREATION', 'VIDEO_BRIEF_CREATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-058; C-055; C-052', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/VIDEO/BRIEF_QUALITY_REVIEW', '1.0.0', 'VIDEO_CONTENT_CREATION', 'BRIEF_QUALITY_REVIEW', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-058; C-049; C-048; DP-025', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/VIDEO/DIGITAL_TWIN_SETUP_GUIDE', '1.0.0', 'VIDEO_CONTENT_CREATION', 'DIGITAL_TWIN_SETUP_GUIDE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-058; C-003; C-039', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/VIDEO/PROFESSIONAL_REFERRAL', '1.0.0', 'VIDEO_CONTENT_CREATION', 'PROFESSIONAL_REFERRAL', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-058; C-049; C-048; DP-025', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/CONTENT/MESSAGING_CHECKLIST', '1.0.0', 'CONTENT_STRATEGY', 'MESSAGING_CHECKLIST', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-037; C-048; DP-025', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('DMA/ANALYTICS/PERFORMANCE_NARRATIVE', '1.0.0', 'PERFORMANCE_ANALYTICS', 'PERFORMANCE_NARRATIVE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-037; C-049; DP-025', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW());
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM institutional.agent_prompt_versions WHERE prompt_id = 'DMA/VIDEO/VIDEO_BRIEF_CREATION' AND version = '1.0.0') THEN
+        INSERT INTO institutional.agent_prompt_versions
+            (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
+        VALUES
+            ('DMA/VIDEO/VIDEO_BRIEF_CREATION', '1.0.0', 'VIDEO_CONTENT_CREATION', 'VIDEO_BRIEF_CREATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-058; C-055; C-052', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/VIDEO/BRIEF_QUALITY_REVIEW', '1.0.0', 'VIDEO_CONTENT_CREATION', 'BRIEF_QUALITY_REVIEW', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-058; C-049; C-048; DP-025', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/VIDEO/DIGITAL_TWIN_SETUP_GUIDE', '1.0.0', 'VIDEO_CONTENT_CREATION', 'DIGITAL_TWIN_SETUP_GUIDE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-058; C-003; C-039', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/VIDEO/PROFESSIONAL_REFERRAL', '1.0.0', 'VIDEO_CONTENT_CREATION', 'PROFESSIONAL_REFERRAL', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-058; C-049; C-048; DP-025', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/CONTENT/MESSAGING_CHECKLIST', '1.0.0', 'CONTENT_STRATEGY', 'MESSAGING_CHECKLIST', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-037; C-048; DP-025', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+            ('DMA/ANALYTICS/PERFORMANCE_NARRATIVE', '1.0.0', 'PERFORMANCE_ANALYTICS', 'PERFORMANCE_NARRATIVE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-037; C-049; DP-025', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW());
+    END IF;
+END
+$idempotent$;
 -- Validated: WC-011 Sprint 011 (infrastructure check only)

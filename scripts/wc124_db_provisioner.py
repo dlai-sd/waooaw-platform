@@ -26,10 +26,19 @@ APPLICATION_DATABASE = "waooaw_application"
 KEYCLOAK_DATABASE = "waooaw_keycloak"
 TEMPORAL_DATABASE = "waooaw_temporal"
 TEMPORAL_VISIBILITY_DATABASE = "waooaw_temporal_visibility"
-APPLICATION_MIGRATION_NAMES = (
-    "59-wc124-billing-authority.sql",
-    "60-wc124-principal-handoff.sql",
-)
+PRINCIPAL_BOOTSTRAP_NAME = "00-wc124-principal-bootstrap.sql"
+PROVISIONING_SCHEMA = "wc124_provisioning"
+INIT_CHAIN_LEDGER_TABLE = f"{PROVISIONING_SCHEMA}.init_chain_ledger"
+INIT_CHAIN_LEDGER_SQL = f"""
+CREATE SCHEMA IF NOT EXISTS {PROVISIONING_SCHEMA};
+REVOKE ALL ON SCHEMA {PROVISIONING_SCHEMA} FROM PUBLIC;
+CREATE TABLE IF NOT EXISTS {INIT_CHAIN_LEDGER_TABLE} (
+    file_name text PRIMARY KEY,
+    sha256 char(64) NOT NULL,
+    applied_at timestamptz NOT NULL DEFAULT now(),
+    applied_by text NOT NULL DEFAULT current_user
+);
+"""
 APPLICATION_MIGRATION_ROLES = {
     "ce_migrator": "ce_owner",
     "bp_migrator": "bp_owner",
@@ -350,17 +359,20 @@ def psql(
     database: str,
     access_token: str,
     sql: str,
-) -> None:
+    *,
+    tuples_only: bool = False,
+) -> str:
     environment = dict(os.environ)
     environment["PGPASSWORD"] = access_token
     environment["PGSSLMODE"] = "verify-full"
     environment["PGSSLROOTCERT"] = "/etc/ssl/certs/ca-certificates.crt"
-    run(
+    return run(
         [
             "psql",
             "--no-psqlrc",
             "--set",
             "ON_ERROR_STOP=1",
+            *(("--tuples-only", "--no-align", "--field-separator=\t") if tuples_only else ()),
             "--host",
             server_fqdn,
             "--port",
@@ -376,11 +388,84 @@ def psql(
 
 
 def application_migration_files(init_directory: Path) -> tuple[Path, ...]:
-    files = tuple(init_directory / name for name in APPLICATION_MIGRATION_NAMES)
-    missing = [path.name for path in files if not path.is_file()]
-    if missing:
-        raise ValueError(f"WC-124 application migration files are missing: {', '.join(missing)}")
+    """Return every ``*.sql`` init file after the principal bootstrap in C-locale order.
+
+    Shell init files are local-compose only (legacy LOGIN passwords, preview seeds) and are
+    never applied to a managed environment.
+    """
+    if not (init_directory / PRINCIPAL_BOOTSTRAP_NAME).is_file():
+        raise ValueError(f"WC-124 principal bootstrap file is missing: {PRINCIPAL_BOOTSTRAP_NAME}")
+    files = tuple(
+        sorted(
+            (path for path in init_directory.glob("*.sql") if path.name != PRINCIPAL_BOOTSTRAP_NAME),
+            key=lambda path: path.name.encode(),
+        )
+    )
+    if not files:
+        raise ValueError(f"WC-124 init chain has no application migration files in {init_directory}")
     return files
+
+
+def file_digest(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def read_init_chain_ledger(
+    server_fqdn: str,
+    bootstrap_name: str,
+    access_token: str,
+) -> dict[str, str]:
+    psql(server_fqdn, bootstrap_name, APPLICATION_DATABASE, access_token, INIT_CHAIN_LEDGER_SQL)
+    rows = psql(
+        server_fqdn,
+        bootstrap_name,
+        APPLICATION_DATABASE,
+        access_token,
+        f"SELECT file_name, sha256 FROM {INIT_CHAIN_LEDGER_TABLE} ORDER BY file_name;",  # noqa: S608 constant table
+        tuples_only=True,
+    )
+    ledger: dict[str, str] = {}
+    for line in rows.splitlines():
+        if "\t" in line:
+            file_name, digest = line.split("\t", 1)
+            ledger[file_name.strip()] = digest.strip()
+    return ledger
+
+
+def apply_init_chain(
+    server_fqdn: str,
+    bootstrap_name: str,
+    access_token: str,
+    files: tuple[Path, ...],
+    *,
+    force: bool = False,
+) -> dict[str, list[str]]:
+    """Apply every changed init file in order and record its digest in the ledger.
+
+    Each file is idempotent by authoring standard (see ``wc124_init_chain_lint.py``), so a file
+    whose digest differs from the ledger is simply re-applied; unchanged files are skipped.
+    """
+    ledger = read_init_chain_ledger(server_fqdn, bootstrap_name, access_token)
+    outcome: dict[str, list[str]] = {"applied": [], "reapplied": [], "skipped": []}
+    for path in files:
+        digest = file_digest(path)
+        recorded = ledger.get(path.name)
+        if recorded == digest and not force:
+            outcome["skipped"].append(path.name)
+            continue
+        psql(server_fqdn, bootstrap_name, APPLICATION_DATABASE, access_token, path.read_text(encoding="utf-8"))
+        psql(
+            server_fqdn,
+            bootstrap_name,
+            APPLICATION_DATABASE,
+            access_token,
+            f"INSERT INTO {INIT_CHAIN_LEDGER_TABLE} (file_name, sha256) VALUES "  # noqa: S608 constant table, quoted literals
+            f"({sql_literal(path.name)}, {sql_literal(digest)}) "
+            "ON CONFLICT (file_name) DO UPDATE SET sha256 = EXCLUDED.sha256, "
+            "applied_at = now(), applied_by = current_user;",
+        )
+        outcome["reapplied" if recorded else "applied"].append(path.name)
+    return outcome
 
 
 def provision_postgresql(
@@ -389,23 +474,24 @@ def provision_postgresql(
     server_fqdn: str,
     bootstrap_name: str,
     init_directory: Path,
-) -> str:
+    *,
+    force_init_chain: bool = False,
+) -> tuple[str, dict[str, list[str]]]:
     database_access_token = access_token()
-    role_sql = (init_directory / "00-wc124-principal-bootstrap.sql").read_text(encoding="utf-8")
+    role_sql = (init_directory / PRINCIPAL_BOOTSTRAP_NAME).read_text(encoding="utf-8")
     role_sql += "\n" + "\n".join(
         f"ALTER ROLE {sql_identifier(role)} PASSWORD {sql_literal(password)};" for role, password in sorted(passwords.items())
     )
     psql(server_fqdn, bootstrap_name, APPLICATION_DATABASE, database_access_token, role_sql)
 
     application_files = application_migration_files(init_directory)
-    for path in application_files:
-        psql(
-            server_fqdn,
-            bootstrap_name,
-            APPLICATION_DATABASE,
-            database_access_token,
-            path.read_text(encoding="utf-8"),
-        )
+    init_chain = apply_init_chain(
+        server_fqdn,
+        bootstrap_name,
+        database_access_token,
+        application_files,
+        force=force_init_chain,
+    )
 
     database_roles = {
         APPLICATION_DATABASE: sorted({spec.role for spec in specs if spec.database == APPLICATION_DATABASE}),
@@ -470,9 +556,10 @@ ALTER DEFAULT PRIVILEGES FOR ROLE {sql_identifier(owner)} IN SCHEMA public
 """
         psql(server_fqdn, bootstrap_name, database, database_access_token, vendor_sql)
     del database_access_token
-    return hashlib.sha256(
-        b"\0".join(path.read_bytes() for path in [init_directory / "00-wc124-principal-bootstrap.sql", *application_files])
+    grant_digest = hashlib.sha256(
+        b"\0".join(path.read_bytes() for path in [init_directory / PRINCIPAL_BOOTSTRAP_NAME, *application_files])
     ).hexdigest()
+    return grant_digest, init_chain
 
 
 def write_secrets(
@@ -566,12 +653,13 @@ def execute(arguments: argparse.Namespace) -> dict[str, Any]:
             "credentials": evidence,
         }
     azure_login(arguments.bootstrap_client_id)
-    grant_digest = provision_postgresql(
+    grant_digest, init_chain = provision_postgresql(
         specs,
         passwords,
         arguments.server_fqdn,
         arguments.bootstrap_name,
         arguments.init_directory,
+        force_init_chain=getattr(arguments, "force_init_chain", False),
     )
     azure_login(arguments.provisioner_client_id)
     evidence = write_secrets(
@@ -589,6 +677,13 @@ def execute(arguments: argparse.Namespace) -> dict[str, Any]:
         "grant_digest": grant_digest,
         "password_authentication_ready": True,
         "vault_authorization_attempts": authorization_attempts,
+        "init_chain": {
+            "ledger": INIT_CHAIN_LEDGER_TABLE,
+            "applied": len(init_chain["applied"]),
+            "reapplied": len(init_chain["reapplied"]),
+            "skipped": len(init_chain["skipped"]),
+            "changed_files": init_chain["applied"] + init_chain["reapplied"],
+        },
         "credentials": evidence,
     }
 
@@ -605,6 +700,11 @@ def main() -> int:
     parser.add_argument("--provisioner-client-id")
     parser.add_argument("--init-directory", type=Path, default=Path("/opt/waooaw/postgres/init"))
     parser.add_argument("--refresh-existing-urls", action="store_true")
+    parser.add_argument(
+        "--force-init-chain",
+        action="store_true",
+        help="re-apply every init file regardless of the ledger digest (files are idempotent)",
+    )
     parser.add_argument("--network-probe", action="store_true")
     parser.add_argument("--validate-only", action="store_true")
     arguments = parser.parse_args()

@@ -60,12 +60,15 @@ ALTER TABLE business.portal_interaction_messages FORCE ROW LEVEL SECURITY;
 ALTER TABLE business.portal_interaction_idempotency_outcomes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.portal_interaction_idempotency_outcomes FORCE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS portal_interaction_contexts_tenant_isolation ON business.portal_interaction_contexts;
 CREATE POLICY portal_interaction_contexts_tenant_isolation ON business.portal_interaction_contexts
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS portal_interaction_messages_tenant_isolation ON business.portal_interaction_messages;
 CREATE POLICY portal_interaction_messages_tenant_isolation ON business.portal_interaction_messages
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS portal_interaction_idempotency_tenant_isolation ON business.portal_interaction_idempotency_outcomes;
 CREATE POLICY portal_interaction_idempotency_tenant_isolation ON business.portal_interaction_idempotency_outcomes
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);

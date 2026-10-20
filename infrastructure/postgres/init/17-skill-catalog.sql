@@ -28,6 +28,7 @@ ALTER TABLE business.skills ENABLE ROW LEVEL SECURITY;
 
 -- Catalog rows are platform-level (no tenant_id column) — all authenticated callers
 -- may read PUBLISHED rows; only the platform service account may write.
+DROP POLICY IF EXISTS skills_read_published ON business.skills;
 CREATE POLICY skills_read_published
     ON business.skills
     FOR SELECT

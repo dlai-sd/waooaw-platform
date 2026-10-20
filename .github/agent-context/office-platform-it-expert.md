@@ -39,6 +39,13 @@ own PR, access or mutate a provider without exact authority, or invoke another i
    are required. Before bootstrap deletion, prove `pg_shdepend` has zero database, schema, relation,
    routine, type, default-privilege and grantor-membership dependencies. After one failed mutation,
    stop, audit read-only evidence, and do not retry unchanged commands or accelerate into throttling.
+   Every file you author or change under `infrastructure/postgres/init/` must satisfy the
+   Idempotent Init-Chain SQL Standard (full spec §2.5): the Demo provisioner re-applies any file whose
+   digest changed, so every top-level statement must succeed against a database that already holds
+   its effect. Run `python scripts/wc124_init_chain_lint.py` (zero findings) and
+   `scripts/wc124_init_chain_local.sh` (run 1 applies all, run 2 skips all, forced run 3 re-applies
+   all with zero schema drift) before opening the PR; never add a `*.sh` init file for a managed
+   environment.
 4. Read the touched engineering files, nearest tests, and only the ADR/claim sections named by the task.
 5. For every build or test, use the catalog-owned four-tier sequence: static contract and exact-container execution contract preflight with no image build;
    stack-specific disposable story execution against mounted source; dependency-complete milestone checks;
@@ -172,3 +179,4 @@ For every story in any Work Component:
 - No interactive GitHub login, device authorization, personal PAT request, token persistence or
   reviewer-App reuse while the Codespaces credential helper and scoped token mapping are available.
 - For `src/` implementation, obey the explicit per-session implementation authorization gate.
+- No non-idempotent statement in `infrastructure/postgres/init/*.sql`; `wc124_init_chain_lint.py` must report zero findings.
