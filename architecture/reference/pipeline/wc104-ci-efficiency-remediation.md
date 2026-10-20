@@ -54,7 +54,7 @@ The remediation must preserve these merged WC-104 controls:
 | Producer/consumer separation | Consumers pull supplied digests and never invoke runner builds | A trusted miss has at most one producer |
 | Remote acceleration | Buildx imports and exports identity-scoped GHA caches | Cache state accelerates work but never authorizes PASS |
 | Catalog execution | Commands and runner assignments come from the validation catalog | Workflow YAML does not redefine test commands |
-| Evidence reuse | Exact and nearest valid ancestor evidence can be reused per gate | Every reuse emits current-head provenance and fails closed on impact |
+| Evidence reuse | Exact, identical-tree, and nearest prior evidence whose declared inputs are unchanged (tree-to-tree diff, ancestry not required) can be reused per gate | Every reuse emits current-head provenance and fails closed on impact |
 | Static-first local preparation | Deterministic authority and configuration failures precede costly nodes | Invalid metadata starts zero costly processes |
 | Full authoritative inventory | PR, main and release coverage remains authoritative while selection is Shadow | No gate reduction before activation evidence and Founder approval |
 
@@ -355,7 +355,8 @@ next slice; broad Docker qualification is not repeated during ordinary iteration
    applicable checks pass.
 10. Every workflow path has exactly one declared ownership class; unknown paths fail closed.
 11. A carry-forward mutation matrix rejects changed commands, runners, environments, policies,
-    source evidence, base ancestry and declared inputs.
+    source evidence and declared inputs; rewritten history (reword, rebase) is reusable when the
+    tree-to-tree diff leaves the gate's declared inputs untouched.
 12. Main and release fixtures retain the complete authoritative gate inventory.
 
 ### 7.2 Static Fail-Fast Test Matrix

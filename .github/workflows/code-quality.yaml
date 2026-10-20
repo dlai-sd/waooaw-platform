@@ -6,10 +6,10 @@
 
 name: Code Quality
 
+# No push trigger: every gate here already ran on the exact PR head that was
+# merged, so a post-merge rerun on main would only duplicate that evidence.
 on:
   pull_request:
-    branches: [main]
-  push:
     branches: [main]
   schedule:
     - cron: "0 0 * * 0"
