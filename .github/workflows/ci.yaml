@@ -360,6 +360,81 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+  # ─── Publish private runner images ────────────────────────────────────────
+  # Deployments never build images. The runner and control images that the
+  # deployment engine resolves as :sha-<control_sha> are published here on every
+  # merge so the current main head is always deployable (run 39476789794 failed
+  # when a merge that did not touch the runner inputs left no image behind).
+  publish-runner-images:
+    name: Publish runner image (${{ matrix.image.name }})
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - name: goal006-private-runner
+            dockerfile: infrastructure/runner/Dockerfile
+          - name: goal006-runner-control
+            dockerfile: infrastructure/runner/Dockerfile.control
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Publish attested runner image
+        id: image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.image.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY_PREFIX }}/${{ matrix.image.name }}:sha-${{ github.sha }}
+          sbom: true
+          provenance: mode=max
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.waooaw.goal=GOAL-006
+            org.waooaw.purpose=private-ephemeral-runner
+          cache-from: type=gha,scope=release-${{ matrix.image.name }}
+          cache-to: type=gha,mode=max,scope=release-${{ matrix.image.name }}
+      - name: Attest published runner image
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY_PREFIX }}/${{ matrix.image.name }}
+          subject-digest: ${{ steps.image.outputs.digest }}
+          push-to-registry: true
+      - name: Record immutable runner digest
+        env:
+          IMAGE: ${{ env.REGISTRY_PREFIX }}/${{ matrix.image.name }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          mkdir -p runner-image
+          jq -n \
+            --arg image "$IMAGE@$IMAGE_DIGEST" \
+            --arg source_commit "$GITHUB_SHA" \
+            --arg workflow_run_id "$GITHUB_RUN_ID" \
+            '{schema:"waooaw.goal006-runner-image/v1", image:$image, source_commit:$source_commit, workflow_run_id:$workflow_run_id}' \
+            > runner-image/manifest.json
+      - name: Upload immutable runner digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: goal006-runner-image-${{ matrix.image.name }}-${{ github.sha }}
+          path: runner-image/manifest.json
+          if-no-files-found: error
+          retention-days: 90
+
   # ─── Secret detection ─────────────────────────────────────────────────────
   secrets:
     name: Secret detection
@@ -994,6 +1069,7 @@ jobs:
     needs:
       - build
       - publish
+      - publish-runner-images
       - secrets
       - test-dotnet
       - test-python
@@ -1013,6 +1089,7 @@ jobs:
       - name: Require successful exact-seven validation prerequisites
         env:
           PUBLISH_RESULT: ${{ needs.publish.result }}
+          RUNNER_IMAGES_RESULT: ${{ needs.publish-runner-images.result }}
           SECRETS_RESULT: ${{ needs.secrets.result }}
           DOTNET_RESULT: ${{ needs.test-dotnet.result }}
           PYTHON_RESULT: ${{ needs.test-python.result }}
@@ -1025,6 +1102,7 @@ jobs:
         run: |
           for prerequisite in \
             "publish=$PUBLISH_RESULT" \
+            "publish-runner-images=$RUNNER_IMAGES_RESULT" \
             "secrets=$SECRETS_RESULT" \
             "test-dotnet=$DOTNET_RESULT" \
             "test-python=$PYTHON_RESULT" \

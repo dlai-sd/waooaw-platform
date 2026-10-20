@@ -13,18 +13,8 @@ on:
       - infrastructure/terraform/phase2/environments/demo/foundation/**
       - infrastructure/terraform/phase2/modules/foundation/**
       - .github/workflows/private-runner-image.yaml
-  push:
-    branches: [main]
-    paths:
-      - infrastructure/runner/**
-      - scripts/goal006_runner_lifecycle.py
-      - scripts/goal006_runner_qualification.py
-      - scripts/wc124_db_provisioner.py
-      - infrastructure/environment-readiness/secret-catalog.json
-      - infrastructure/postgres/init/**
-      - infrastructure/terraform/phase2/environments/demo/foundation/**
-      - infrastructure/terraform/phase2/modules/foundation/**
-      - .github/workflows/private-runner-image.yaml
+  # Publication happens only in ci.yaml (publish-runner-images) on merge to main;
+  # this workflow qualifies the runner image at PR time and never pushes it.
 
 permissions:
   contents: read
@@ -37,20 +27,9 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-      packages: write
       security-events: write
-      id-token: write
-      attestations: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
-      - name: Log in to GHCR
-        if: github.event_name == 'push'
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
@@ -60,18 +39,16 @@ jobs:
         with:
           context: .
           file: infrastructure/runner/Dockerfile
-          push: ${{ github.event_name == 'push' }}
-          load: ${{ github.event_name == 'pull_request' }}
+          push: false
+          load: true
           tags: ${{ env.IMAGE }}:sha-${{ github.sha }}
-          sbom: ${{ github.event_name == 'push' }}
-          provenance: ${{ github.event_name == 'push' && 'mode=max' || 'false' }}
+          provenance: false
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
             org.waooaw.goal=GOAL-006
             org.waooaw.purpose=private-ephemeral-runner
 
       - name: Verify runner toolchain
-        if: github.event_name == 'pull_request'
         run: |
           docker run --rm --volume "$GITHUB_WORKSPACE:/workspace" --entrypoint /bin/bash '${{ env.IMAGE }}:sha-${{ github.sha }}' -lc '
             /home/runner/bin/Runner.Listener --version | grep -Fxq "2.336.0"
@@ -93,7 +70,6 @@ jobs:
           '
 
       - name: Verify real Storage lease contract
-        if: github.event_name == 'pull_request'
         run: |
           set -euo pipefail
           network="goal006-storage-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
@@ -155,7 +131,6 @@ jobs:
             '
 
       - name: Scan private runner
-        if: github.event_name == 'pull_request'
         uses: aquasecurity/trivy-action@2736533278103862a861f4a35ebac3e97854d956 # main, trivy v0.73.0
         with:
           image-ref: ${{ env.IMAGE }}:sha-${{ github.sha }}
@@ -169,37 +144,7 @@ jobs:
           exit-code: 1
 
       - name: Upload scan results
-        if: always() && github.event_name == 'pull_request' && steps.image.outcome == 'success'
+        if: always() && steps.image.outcome == 'success'
         uses: github/codeql-action/upload-sarif@ce5e7eeac396d720fe2d802714996c8ce561e311 # v3
         with:
           sarif_file: trivy-goal006-private-runner.sarif
-
-      - name: Attest published runner
-        if: github.event_name == 'push'
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
-        with:
-          subject-name: ${{ env.IMAGE }}
-          subject-digest: ${{ steps.image.outputs.digest }}
-          push-to-registry: true
-
-      - name: Record immutable runner digest
-        if: github.event_name == 'push'
-        env:
-          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
-        run: |
-          mkdir -p runner-image
-          jq -n \
-            --arg image "$IMAGE@$IMAGE_DIGEST" \
-            --arg source_commit "$GITHUB_SHA" \
-            --arg workflow_run_id "$GITHUB_RUN_ID" \
-            '{schema:"waooaw.goal006-runner-image/v1", image:$image, source_commit:$source_commit, workflow_run_id:$workflow_run_id}' \
-            > runner-image/manifest.json
-
-      - name: Upload immutable runner digest
-        if: github.event_name == 'push'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: goal006-private-runner-${{ github.sha }}
-          path: runner-image/manifest.json
-          if-no-files-found: error
-          retention-days: 90

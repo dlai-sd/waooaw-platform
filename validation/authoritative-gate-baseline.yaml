@@ -16,7 +16,7 @@ workflows:
       - constitutional-commit-gate
       - author-review-gate
       - authorization-tier-check
-    external_jobs: [build, publish, secrets, sast, trivy, qa-campaign, release-manifest]
+    external_jobs: [build, publish, publish-runner-images, secrets, sast, trivy, qa-campaign, release-manifest]
   .github/workflows/code-quality.yaml:
     catalog_gates:
       - quality:commitlint

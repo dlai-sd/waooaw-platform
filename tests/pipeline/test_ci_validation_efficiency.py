@@ -375,6 +375,7 @@ def test_main_release_manifest_fails_when_a_prerequisite_is_not_successful() -> 
     assert prerequisite["name"] == "Require successful exact-seven validation prerequisites"
     assert set(prerequisite["env"]) == {
         "PUBLISH_RESULT",
+        "RUNNER_IMAGES_RESULT",
         "SECRETS_RESULT",
         "DOTNET_RESULT",
         "PYTHON_RESULT",

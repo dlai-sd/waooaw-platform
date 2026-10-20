@@ -11,18 +11,19 @@ def test_runner_image_is_separate_from_exact_six_release() -> None:
     assert "matrix.service" not in WORKFLOW
 
 
-def test_runner_image_publishes_only_from_main_push() -> None:
-    assert "push:" in WORKFLOW
-    assert "branches: [main]" in WORKFLOW
-    assert "push: ${{ github.event_name == 'push' }}" in WORKFLOW
-    assert "load: ${{ github.event_name == 'pull_request' }}" in WORKFLOW
+def test_runner_image_workflow_qualifies_without_publishing() -> None:
+    assert "push:\n    branches" not in WORKFLOW
+    assert "pull_request:" in WORKFLOW
+    assert "push: false" in WORKFLOW
+    assert "load: true" in WORKFLOW
+    assert "docker/login-action" not in WORKFLOW
+    assert "attest-build-provenance" not in WORKFLOW
+    assert "packages: write" not in WORKFLOW
 
 
-def test_runner_image_is_scanned_attested_and_digest_recorded() -> None:
+def test_runner_image_is_scanned_for_fixable_os_vulnerabilities() -> None:
     assert "aquasecurity/trivy-action@" in WORKFLOW
-    assert "actions/attest-build-provenance@" in WORKFLOW
-    assert "${{ steps.image.outputs.digest }}" in WORKFLOW
-    assert "goal006-private-runner-${{ github.sha }}" in WORKFLOW
+    assert "exit-code: 1" in WORKFLOW
 
 
 def test_runner_image_executes_qualification_contract_and_terraform_root() -> None:

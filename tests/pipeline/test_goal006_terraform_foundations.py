@@ -905,17 +905,12 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert workflow.count('-backend-config="use_azuread_auth=true"') == 4
     assert "Enforce selected environment authorization" in workflow
     assert "EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy.yaml@refs/heads/main" in workflow
-    assert (
-        "EXPECTED_BREAK_FIX_WORKFLOW_REF: ${{ github.repository }}"
-        "/.github/workflows/deploy.yaml@refs/heads/ib/532/wc124-transition-reconciliation"
-    ) in workflow
-    assert 'test "$TARGET_ENVIRONMENT" = demo' in workflow
-    assert 'test "$CALLER_WORKFLOW_REF" = "$EXPECTED_BREAK_FIX_WORKFLOW_REF"' in workflow
-    assert "EXPECTED_BREAK_FIX_WORKFLOW_REF:" in verification
-    assert 'test "$CONTROL_SHA" = "$CURRENT_SHA"' in verification
+    assert "BREAK_FIX" not in workflow
+    assert 'test "$CALLER_WORKFLOW_REF" = "$EXPECTED_CALLER_WORKFLOW_REF"' in workflow
+    assert "BREAK_FIX" not in verification
     assert 'test "$CONTROL_SHA" = \'${{ inputs.release_sha }}\'' in verification
     assert "control_sha: ${{ needs.authorize.outputs.control_sha }}" in deploy
-    assert "break_fix: ${{ needs.authorize.outputs.break_fix == 'true' }}" in deploy
+    assert "break_fix" not in deploy
     assert 'case "$TARGET_ENVIRONMENT" in demo|uat|prod)' in workflow
     assert 'case "$APPLY_REQUESTED" in true|false)' in workflow
     plan_b_login = "Azure login with environment deployment identity for Plan B foundation mutation"
@@ -1227,7 +1222,7 @@ exit 1
 def test_release_attestation_has_one_bounded_fail_closed_retry() -> None:
     workflow = (REPO_ROOT / ".github/workflows/ci.yaml").read_text(encoding="utf-8")
 
-    assert workflow.count("uses: actions/attest-build-provenance@v2") == 3
+    assert workflow.count("uses: actions/attest-build-provenance@v2") == 4
     assert "id: image-attestation-primary" in workflow
     assert "id: image-attestation-retry" in workflow
     assert "continue-on-error: true" in workflow
@@ -1273,10 +1268,9 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
     assert "dlai-sd|yk-dlaisd" in deploy
     assert '*) echo "Unauthorized deployment dispatcher" >&2; exit 1 ;;' in deploy
     assert 'test "$DISPATCH_REF" = "refs/heads/main"' in deploy
-    assert "refs/heads/ib/532/wc124-*" in deploy
-    assert 'test "$TARGET_ENVIRONMENT" = demo' in deploy
-    assert "build-break-fix-runner:" in deploy
-    assert "goal006-private-runner:sha-${CONTROL_SHA}" in deploy
+    assert "ib/532" not in deploy
+    assert "build-break-fix-runner" not in deploy
+    assert "docker buildx build" not in deploy
     assert "actions/workflows/ci.yaml/runs?branch=main&event=push&status=success" in deploy
     assert 'artifact_name="goal006-exact-seven-release-$latest_main_sha"' in deploy
     assert 'test -n "$release_run_id"' in deploy

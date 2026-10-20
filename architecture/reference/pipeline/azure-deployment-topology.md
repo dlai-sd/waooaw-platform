@@ -71,9 +71,9 @@ its own gate. None of them independently authorizes a new cloud mutation.
 
 1. **Build once, promote unchanged.** CI builds, scans, attests, and publishes one exact-seven
    release tuple. Deployment promotes immutable digests; it never rebuilds application images.
-2. **Separate release from control logic.** Normal deployment uses trusted workflow logic from
-   `main`. A Founder-authorized break-fix may use an exact control SHA while still deploying the
-   trusted current-main release SHA. Both identities are recorded and verified.
+2. **Separate release from control logic.** Deployment always uses trusted workflow logic from
+   `main`; the control SHA is the current `main` head and must equal the release SHA. Both
+   identities are recorded and verified. There is no break-fix path: deployments never build images.
 3. **Plan before mutation.** Foundation, dormant workload, and application activation each produce
    saved Terraform plans. Policy and provenance bind authorization to the exact plan binary, JSON
    representation, state lineage/serial, backend, environment, release, workflow run, and attempt.
@@ -144,16 +144,13 @@ binds the broker, runner, and cleanup executions to one immutable runner digest.
 
 | Path | Image behavior | Required evidence |
 |---|---|---|
-| Pull request | `private-runner-image.yaml` builds, validates, lease-tests, and scans the proposed runner without publishing it | Build, toolchain, real lease, and vulnerability gates pass |
-| Push to `main` affecting runner inputs | The private-runner image supply chain publishes and attests `sha-<main SHA>` and records its immutable digest | Successful image workflow plus retained digest manifest and attestation |
-| Normal main deployment | `build-break-fix-runner` is skipped. Broker, runner, and cleanup use the reviewed digest already promoted into the environment runner blueprint | Blueprint digest equals the approved main runner release |
-| Authorized break-fix deployment | A hosted job builds the exact control SHA, resolves the pushed tag to an immutable digest, and passes that digest through `deploy.yaml` to the broker, runner, and cleanup execution overrides | Built digest equals every execution digest; a published-but-unused image is a failure |
+| Pull request | `private-runner-image.yaml` builds, validates, lease-tests, and scans the proposed runner without publishing it (`push: false`) | Build, toolchain, real lease, and vulnerability gates pass |
+| Every push to `main` | `ci.yaml` job `publish-runner-images` publishes and attests `goal006-private-runner:sha-<main SHA>` and `goal006-runner-control:sha-<main SHA>` alongside the exact-seven release and records their immutable digests; `release-manifest` requires it to succeed | Successful CI merge run plus retained digest manifests and attestations |
+| Deployment | Broker, runner, and cleanup use the reviewed digest already promoted into the environment runner blueprint; the WC-124 provisioner pulls `goal006-private-runner:sha-<control SHA>` published by that merge | Blueprint digest equals the approved main runner release; the control-SHA image exists because CI published it |
 
-The hosted break-fix build rebuilds and pushes the runner, control, and Billing images with a
-per-Dockerfile GitHub Actions layer cache (`buildx --cache-from/--cache-to type=gha`); unchanged
-apt/az/terraform and pip layers are reused, and each image is resolved from the pushed manifest
-digest (`--provenance=false`, `--metadata-file`) rather than a local tag. It is required when the
-control SHA changes any baked runner input. It does not rebuild the exact-seven application release.
+Deployment never builds or pushes images. Run `39476789794` failed because the runner image was
+published only by a path-filtered workflow, so a merge that did not touch runner inputs left no
+`sha-<main SHA>` image for the provisioner; publishing from every CI merge removes that gap.
 The runner image pins the `containerapp` and `log-analytics` az extensions so no job installs a
 floating extension version on first use.
 
@@ -192,8 +189,8 @@ timestamps, and released downstream dependencies before diagnosing a scheduler w
 
 | Phase | Executable sequence | Required result |
 |---|---|---|
-| 1. Entry authorization | `deploy.yaml` resolves environment, execution mode, trusted release SHA/run, control SHA, lease, and normal versus break-fix caller | Exact bounded authority or stop |
-| 2. Break-fix runner image | Only for authorized break-fix: build and push the private-runner image at the exact control SHA, resolve its digest, and bind that digest to broker, runner, and cleanup executions | Built and executed immutable runner digest match |
+| 1. Entry authorization | `deploy.yaml` resolves environment, execution mode, trusted release SHA/run, control SHA (current `main`), lease, and caller | Exact bounded authority or stop |
+| 2. Runner image provenance | Verify the blueprint runner digest and resolve the CI-published `sha-<control SHA>` runner image; no image is built | Immutable runner digests resolved from CI publication |
 | 3. Environment resolution | Resolve reviewed configuration, runner names/labels, state paths, cleanup evidence, and environment outputs | One internally consistent environment contract |
 | 4. Broker/start path | Verify exact-seven tuple and attestations, verify broker blueprint, log in with control-plane identity, enforce cost, start ephemeral private runner | Correlated runner execution ready |
 | 5. Private-runner authorization | Verify caller/ref, pinned Terraform, OIDC subscription, provider allowlist, budget, cost, backend, and configuration | Private deployment may proceed |
@@ -409,7 +406,6 @@ when deployment cleanup and independent live verification both succeed.
 | Migration acceptance record | Required migrations, connectivity, and temporary-authority revocation passed before activation |
 | Activation plan, provenance, policy, and apply log | Exact post-migration activation mutation and its retained result |
 | Runner start/cleanup correlation evidence | The runner that started is the runner that was removed |
-| Temporary federation inventory | No break-fix cleanup trust remains |
 | Structured TLS inventory and log | Required custom domains have managed `SniEnabled` binding |
 | Independent verification output | Live deployment matches release and functional contracts |
 
@@ -461,7 +457,7 @@ Before execution:
 
 - Bootstrap and office authority are current for the conversation.
 - The current Work Contract and Founder authorization cover the environment and mutation.
-- The branch, release, control SHA, and break-fix mode match the authorized path.
+- The branch, release, and control SHA match the authorized `main` path.
 - Targeted tests, workflow lint, Terraform/HCL checks, and producer-consumer contract tests pass.
   `terraform validate` does not apply azurerm value rules (for example probe
   `failure_count_threshold` 1..30) to count-gated resources; those bounds are proven by the static
@@ -508,18 +504,12 @@ orchestrator. Treat run-scoped artifact creation, downloadable job logs, and dep
 proof that execution occurred. Determine the real terminal result from the log and retained cleanup
 evidence; do not cancel or rerun solely because the displayed status remains `queued`.
 
-**Will `Publish exact break-fix private runner` run after merge to `main`?**
+**Where does the runner image for a deployment come from?**
 
-Not as part of a normal deployment. The job is conditional on `break_fix == true`. A runner-affecting
-push to `main` instead invokes the separate private-runner image supply chain, which builds, pushes,
-attests, and records the main-SHA image. Normal deployment consumes only a reviewed digest promoted
-into the environment runner blueprint.
-
-**Why must a break-fix publish a private runner before deployment?**
-
-Workflow and Terraform files come from the control-SHA checkout, but tools under `/opt/waooaw/` are
-baked into the runner image. The exact break-fix digest must reach the broker, private runner, and
-cleanup executions; merely pushing an unused image does not update those tools.
+From the CI merge run. `ci.yaml` publishes `goal006-private-runner` and `goal006-runner-control`
+at `sha-<main SHA>` on every push to `main`, and `release-manifest` fails if that publication fails.
+Deployment resolves those tags to immutable digests and never builds an image itself. The
+pull-request workflow `private-runner-image.yaml` only qualifies the proposed image.
 
 **Does Terraform exit code `2` mean failure?**
 
@@ -532,7 +522,8 @@ No. Every apply path needs a current plan. Cache controls apply necessity, not e
 **Why keep release SHA and control SHA separate?**
 
 The release SHA identifies immutable application artifacts from trusted current-main CI. The
-control SHA identifies the exact workflow/scripts executing an explicitly authorized break-fix.
+control SHA identifies the exact workflow/scripts executing the deployment; both must be the
+current `main` head, and the check is kept so a divergence is detected rather than assumed away.
 
 **Why not connect applications to PostgreSQL directly?**
 
@@ -770,7 +761,7 @@ active Work Contract.
 
 | Area | Verified state | Required next result |
 |---|---|---|
-| Canonical workflow | `.github/workflows/deploy.yaml` is the only manual application deployment entry and delegates to `environment-deployment.yaml` and `environment-deployment-verification.yaml`. Verification and URL publication run only when the private apply reported success; cleanup runs only when a broker execution started; every third-party action is SHA-pinned; break-fix images build with a GitHub Actions layer cache and are resolved from the pushed digest. | Preserve one operator entry; reusable workflows remain implementation details with contract tests. |
+| Canonical workflow | `.github/workflows/deploy.yaml` is the only manual application deployment entry and delegates to `environment-deployment.yaml` and `environment-deployment-verification.yaml`. Verification and URL publication run only when the private apply reported success; cleanup runs only when a broker execution started; every third-party action is SHA-pinned; no deployment job builds or pushes an image. | Preserve one operator entry; reusable workflows remain implementation details with contract tests. |
 | Demo | Exact-seven applications, persistent PostgreSQL, PgBouncer, Keycloak, Temporal, Redis, managed TLS, direct component verification, and WC-124 transition controls are implemented. Runs 39383304742 through 39423882087 each exposed one stage defect (Billing least-privilege contract, ledger ownership under transaction pooling, BP in-image bootstrap, Temporal/Keycloak/PgBouncer connection budget, web TLS mode). Run 39428513813 passed activation but left billing-engine, temporal, business-platform and web on `ActivationFailed` latest revisions; the Billing asyncpg route and Temporal bind/probe contract are fixed and locally pre-qualified, and the workflow now has a fail-closed activation readiness gate. | Close the Business Platform identity-schema gap (Demo applies only `59`/`60`), then require terminal deployment, readiness `passed`, and independent-verification PASS before acceptance. |
 | UAT | Prior environment delivery exists; WC-124 persistent database and exact-seven promotion must use the same current contracts under separate authority. | Complete only evidence required for UAT qualification; never rebuild accepted images. |
 | Runner lifecycle | Demo and UAT use environment-derived ephemeral ACA runners, private state/config access, correlation-checked cleanup, and zero active executions after qualification. The runner image bakes pinned `containerapp`/`log-analytics` az extensions; execution capture treats ARM `Succeeded` as authoritative when Log Analytics ingestion lags. | Keep Production runner blueprint inactive and retain no-public-fallback assertions. |
