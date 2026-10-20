@@ -54,19 +54,55 @@ def test_cleanup_role_grants_only_exact_job_and_durable_log_actions() -> None:
     template = Path(
         "infrastructure/deployment-stacks/goal006-runner/prerequisites.bicep"
     ).read_text(encoding="utf-8")
+    broker_role = template.split("resource brokerJobOperatorRole", 1)[1].split(
+        "resource cleanupSecretDeleterRole", 1
+    )[0]
     cleanup_role = template.split("resource cleanupJobOperatorRole", 1)[1].split(
         "resource monthlyBudget", 1
     )[0]
 
+    assert "Microsoft.OperationalInsights/workspaces/tables/data/read" not in broker_role
     assert "Microsoft.App/jobs/getAuthToken/action" in cleanup_role
     assert "Microsoft.App/jobs/logstream/action" not in cleanup_role
     assert "Microsoft.OperationalInsights/workspaces/read" in cleanup_role
+    assert "Microsoft.OperationalInsights/workspaces/query/read" in cleanup_role
     assert "Microsoft.OperationalInsights/workspaces/analytics/query/action" in cleanup_role
     assert (
         "Microsoft.OperationalInsights/workspaces/query/ContainerAppConsoleLogs/read"
         in cleanup_role
     )
+    assert (
+        "Microsoft.OperationalInsights/workspaces/query/ContainerAppSystemLogs/read"
+        in cleanup_role
+    )
+    assert "Microsoft.OperationalInsights/workspaces/tables/data/read" in cleanup_role
     assert "Microsoft.OperationalInsights/*" not in cleanup_role
+
+
+def test_cleanup_role_verifier_requires_system_log_read() -> None:
+    permissions = CUSTOM_ROLE_PERMISSIONS["Cleanup Job Operator"]["actions"]
+    data_permissions = CUSTOM_ROLE_PERMISSIONS["Cleanup Job Operator"]["dataActions"]
+
+    assert "Microsoft.OperationalInsights/workspaces/query/read" in permissions
+    assert "Microsoft.OperationalInsights/workspaces/query/ContainerAppSystemLogs/read" in permissions
+    assert data_permissions == frozenset(
+        {"Microsoft.OperationalInsights/workspaces/tables/data/read"}
+    )
+
+
+def test_cleanup_log_data_action_is_conditioned_to_exact_aca_tables() -> None:
+    template = Path(
+        "infrastructure/deployment-stacks/goal006-runner/main.bicep"
+    ).read_text(encoding="utf-8")
+    assignment = template.split("resource cleanupJobControl", 1)[1].split(
+        "resource blobPrivateDns", 1
+    )[0]
+
+    assert "conditionVersion: '2.0'" in assignment
+    assert "ActionMatches" in assignment
+    assert "Microsoft.OperationalInsights/workspaces/tables/data/read" in assignment
+    assert "ContainerAppConsoleLogs" in assignment
+    assert "ContainerAppSystemLogs" in assignment
 
 
 def test_custom_role_is_verified_by_direct_resource_id(

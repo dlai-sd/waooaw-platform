@@ -102,6 +102,7 @@ jobs:
       ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
       RUNNER_RESOURCE_GROUP: ${{ needs.resolve-environment.outputs.runner_resource_group }}
       RUNNER_BROKER_JOB: ${{ needs.resolve-environment.outputs.runner_broker_job }}
+      RUNNER_JOB: ${{ needs.resolve-environment.outputs.runner_job }}
     steps:
       - name: Require trusted release and authorized control SHA
         env:
@@ -309,29 +310,170 @@ jobs:
             --run-id "$GITHUB_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT" \
             --output broker-execution.json
-          execution=$(az containerapp job start \
-            --resource-group "$RUNNER_RESOURCE_GROUP" \
-            --name "$RUNNER_BROKER_JOB" \
-            --yaml broker-execution.json \
-            --query name -o tsv)
-          test -n "$execution"
-          for attempt in $(seq 1 60); do
-            status=$(az containerapp job execution show \
+          environment_id=$(jq -er '.properties.environmentId' broker-job.json)
+          workspace_customer_id=$(az resource show \
+            --ids "$environment_id" \
+            --api-version 2024-03-01 \
+            --query properties.appLogsConfiguration.logAnalyticsConfiguration.customerId \
+            --output tsv)
+          test -n "$workspace_customer_id"
+
+          broker_succeeded=false
+          for execution_attempt in 1 2; do
+            az containerapp job execution list \
+              --resource-group "$RUNNER_RESOURCE_GROUP" \
+              --name "$RUNNER_JOB" \
+              --output json > "broker-runner-before-${execution_attempt}.json"
+            execution=$(az containerapp job start \
               --resource-group "$RUNNER_RESOURCE_GROUP" \
               --name "$RUNNER_BROKER_JOB" \
-              --job-execution-name "$execution" \
-              --query properties.status -o tsv)
-            case "$status" in
-              Succeeded) break ;;
-              Failed|Stopped) echo "Private broker failed: $status" >&2; exit 1 ;;
-              Processing|Running) ;;
-              *) echo "Private broker returned unknown status: ${status:-<empty>}" >&2; exit 1 ;;
+              --yaml broker-execution.json \
+              --query name -o tsv)
+            test -n "$execution"
+            jq -n \
+              --argjson attempt "$execution_attempt" \
+              --arg execution "$execution" \
+              '{attempt: $attempt, execution: $execution}' \
+              >> broker-executions.jsonl
+            status=
+            for poll_attempt in $(seq 1 60); do
+              status=$(az containerapp job execution show \
+                --resource-group "$RUNNER_RESOURCE_GROUP" \
+                --name "$RUNNER_BROKER_JOB" \
+                --job-execution-name "$execution" \
+                --query properties.status -o tsv)
+              case "$status" in
+                Succeeded|Failed|Stopped) break ;;
+                Processing|Running) ;;
+                *) echo "Private broker returned unknown status: ${status:-<empty>}" >&2; exit 1 ;;
+              esac
+              if [ "$poll_attempt" = 60 ]; then
+                echo "Timed out waiting for private broker: $execution" >&2
+                exit 1
+              fi
+              sleep 5
+            done
+
+            bash scripts/goal006_capture_aca_execution.sh \
+              --job "$RUNNER_BROKER_JOB" \
+              --container "$RUNNER_BROKER_JOB" \
+              --execution "$execution" \
+              --status "$status" \
+              --attempt "$execution_attempt" \
+              --workspace "$workspace_customer_id" \
+              --resource-group "$RUNNER_RESOURCE_GROUP" \
+              --prefix "broker-attempt-${execution_attempt}"
+            for correlation_attempt in $(seq 1 6); do
+              az containerapp job execution list \
+                --resource-group "$RUNNER_RESOURCE_GROUP" \
+                --name "$RUNNER_JOB" \
+                --output json > "broker-runner-after-${execution_attempt}.json"
+              jq --slurpfile before "broker-runner-before-${execution_attempt}.json" \
+                '[.[] | select(.name as $name | ($before[0] | map(.name) | index($name) | not))]' \
+                "broker-runner-after-${execution_attempt}.json" \
+                > "broker-runner-delta-${execution_attempt}.json"
+              python scripts/goal006_aca_execution_evidence.py correlate \
+                --executions "broker-runner-delta-${execution_attempt}.json" \
+                --run-id "$GITHUB_RUN_ID" \
+                --run-attempt "$GITHUB_RUN_ATTEMPT" \
+                --output "broker-runner-correlation-${execution_attempt}.json"
+              child_count=$(jq -er '.matches | length' "broker-runner-correlation-${execution_attempt}.json")
+              if [ "$child_count" != 0 ]; then
+                break
+              fi
+              if [ "$status" != Succeeded ] &&
+                jq -e '.retry_eligible' "broker-attempt-${execution_attempt}.classification.json" >/dev/null; then
+                break
+              fi
+              if [ "$correlation_attempt" != 6 ]; then
+                sleep 5
+              fi
+            done
+
+            if [ "$status" = Succeeded ]; then
+              if [ "$child_count" != 1 ]; then
+                echo "Broker succeeded without exactly one correlated child runner: $child_count" >&2
+                exit 1
+              fi
+              child_execution=$(jq -er '.matches[0].name' "broker-runner-correlation-${execution_attempt}.json")
+              child_status=$(jq -er '.matches[0].status' "broker-runner-correlation-${execution_attempt}.json")
+              az containerapp job execution show \
+                --resource-group "$RUNNER_RESOURCE_GROUP" \
+                --name "$RUNNER_JOB" \
+                --job-execution-name "$child_execution" \
+                --output json > "broker-child-attempt-${execution_attempt}.execution.json"
+              case "$child_status" in
+                Running|Processing) ;;
+                *)
+                  echo "Broker succeeded but child runner is not active: $child_status" >&2
+                  exit 1
+                  ;;
+              esac
+              jq -n \
+                --arg broker_execution "$execution" \
+                --arg runner_execution "$child_execution" \
+                --argjson attempts "$execution_attempt" \
+                '{broker_execution: $broker_execution, runner_execution: $runner_execution, attempts: $attempts}' \
+                > broker-result.json
+              broker_succeeded=true
+              break
+            fi
+
+            if [ "$child_count" = 0 ]; then
+              if [ "$execution_attempt" = 1 ] &&
+                jq -e '.retry_eligible' broker-attempt-1.classification.json >/dev/null; then
+                echo "Retrying proven pre-image-pull broker failure: $execution" >&2
+                continue
+              fi
+              cat "broker-attempt-${execution_attempt}.classification.json" >&2
+              echo "Private broker failed before child creation without retry eligibility: $status" >&2
+              exit 1
+            fi
+            if [ "$child_count" != 1 ]; then
+              cat "broker-runner-correlation-${execution_attempt}.json" >&2
+              echo "Private broker produced ambiguous child runners: $child_count" >&2
+              exit 1
+            fi
+            child_execution=$(jq -er '.matches[0].name' "broker-runner-correlation-${execution_attempt}.json")
+            child_status=$(jq -er '.matches[0].status' "broker-runner-correlation-${execution_attempt}.json")
+            az containerapp job execution show \
+              --resource-group "$RUNNER_RESOURCE_GROUP" \
+              --name "$RUNNER_JOB" \
+              --job-execution-name "$child_execution" \
+              --output json > "broker-child-attempt-${execution_attempt}.execution.json"
+            case "$child_status" in
+              Failed|Stopped)
+                bash scripts/goal006_capture_aca_execution.sh \
+                  --job "$RUNNER_JOB" \
+                  --container "$RUNNER_JOB" \
+                  --execution "$child_execution" \
+                  --status "$child_status" \
+                  --attempt "$execution_attempt" \
+                  --workspace "$workspace_customer_id" \
+                  --resource-group "$RUNNER_RESOURCE_GROUP" \
+                  --prefix "broker-child-attempt-${execution_attempt}"
+                ;;
+              *)
+                echo "Broker failed while child runner is non-terminal: $child_status" >&2
+                exit 1
+                ;;
             esac
-            test "$attempt" != 60
-            sleep 5
+            if [ "$execution_attempt" = 1 ] &&
+              jq -e '.retry_eligible' broker-child-attempt-1.classification.json >/dev/null; then
+              echo "Retrying broker after proven pre-image-pull child failure: $child_execution" >&2
+              continue
+            fi
+            cat "broker-child-attempt-${execution_attempt}.classification.json" >&2
+            echo "Private broker failed without retry eligibility: $status" >&2
+            exit 1
           done
+          if [ "$broker_succeeded" != true ]; then
+            echo "Private broker exhausted its single qualified retry" >&2
+            exit 1
+          fi
 
       - name: Retain hosted pre-start evidence
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: goal006-private-runner-prestart-${{ github.run_id }}-${{ github.run_attempt }}
@@ -341,7 +483,22 @@ jobs:
             forecast-cost.json
             registry-release-manifest.json
             release-verification.json
-          if-no-files-found: error
+            broker-execution.json
+            broker-executions.jsonl
+            broker-result.json
+            broker-attempt-*.execution.json
+            broker-attempt-*.events.json
+            broker-attempt-*.classification.json
+            broker-attempt-*.log
+            broker-runner-before-*.json
+            broker-runner-after-*.json
+            broker-runner-delta-*.json
+            broker-runner-correlation-*.json
+            broker-child-attempt-*.execution.json
+            broker-child-attempt-*.events.json
+            broker-child-attempt-*.classification.json
+            broker-child-attempt-*.log
+          if-no-files-found: warn
           retention-days: ${{ env.EVIDENCE_RETENTION_DAYS }}
 
   terraform:
@@ -2912,34 +3069,73 @@ jobs:
             --run-attempt "$GITHUB_RUN_ATTEMPT" \
             --private-job-conclusion "$PRIVATE_JOB_CONCLUSION" \
             --output cleanup-execution.json
-          execution=$(az containerapp job start \
-            --resource-group "$RUNNER_RESOURCE_GROUP" \
-            --name "$RUNNER_CLEANUP_BROKER_JOB" \
-            --yaml cleanup-execution.json \
-            --query name -o tsv)
-          test -n "$execution"
-          for attempt in $(seq 1 180); do
-            status=$(az containerapp job execution show \
+          environment_id=$(jq -er '.properties.environmentId' cleanup-job.json)
+          workspace_customer_id=$(az resource show \
+            --ids "$environment_id" \
+            --api-version 2024-03-01 \
+            --query properties.appLogsConfiguration.logAnalyticsConfiguration.customerId \
+            --output tsv)
+          test -n "$workspace_customer_id"
+
+          cleanup_succeeded=false
+          for execution_attempt in 1 2; do
+            execution=$(az containerapp job start \
               --resource-group "$RUNNER_RESOURCE_GROUP" \
               --name "$RUNNER_CLEANUP_BROKER_JOB" \
-              --job-execution-name "$execution" \
-              --query properties.status -o tsv)
-            case "$status" in
-              Succeeded) break ;;
-              Failed|Stopped) echo "Private cleanup broker failed: $status" >&2; exit 1 ;;
-              Processing|Running) ;;
-              *) echo "Private cleanup broker returned unknown status: ${status:-<empty>}" >&2; exit 1 ;;
-            esac
-            test "$attempt" != 180
-            sleep 5
+              --yaml cleanup-execution.json \
+              --query name -o tsv)
+            test -n "$execution"
+            jq -n \
+              --argjson attempt "$execution_attempt" \
+              --arg execution "$execution" \
+              '{attempt: $attempt, execution: $execution}' \
+              >> cleanup-executions.jsonl
+            status=
+            for poll_attempt in $(seq 1 180); do
+              status=$(az containerapp job execution show \
+                --resource-group "$RUNNER_RESOURCE_GROUP" \
+                --name "$RUNNER_CLEANUP_BROKER_JOB" \
+                --job-execution-name "$execution" \
+                --query properties.status -o tsv)
+              case "$status" in
+                Succeeded|Failed|Stopped) break ;;
+                Processing|Running) ;;
+                *) echo "Private cleanup broker returned unknown status: ${status:-<empty>}" >&2; exit 1 ;;
+              esac
+              if [ "$poll_attempt" = 180 ]; then
+                echo "Timed out waiting for private cleanup broker: $execution" >&2
+                exit 1
+              fi
+              sleep 5
+            done
+
+            bash scripts/goal006_capture_aca_execution.sh \
+              --job "$RUNNER_CLEANUP_BROKER_JOB" \
+              --container cleanup-broker \
+              --execution "$execution" \
+              --status "$status" \
+              --attempt "$execution_attempt" \
+              --workspace "$workspace_customer_id" \
+              --resource-group "$RUNNER_RESOURCE_GROUP" \
+              --prefix "cleanup-attempt-${execution_attempt}"
+            if [ "$status" = Succeeded ]; then
+              cp "cleanup-attempt-${execution_attempt}.log" cleanup-job.log
+              cleanup_succeeded=true
+              break
+            fi
+            if [ "$execution_attempt" = 1 ] &&
+              jq -e '.retry_eligible' cleanup-attempt-1.classification.json >/dev/null; then
+              echo "Retrying proven pre-image-pull cleanup failure: $execution" >&2
+              continue
+            fi
+            cat "cleanup-attempt-${execution_attempt}.classification.json" >&2
+            echo "Private cleanup broker failed without retry eligibility: $status" >&2
+            exit 1
           done
-          az containerapp job logs show \
-            --resource-group "$RUNNER_RESOURCE_GROUP" \
-            --name "$RUNNER_CLEANUP_BROKER_JOB" \
-            --execution "$execution" \
-            --container cleanup-broker \
-            --tail 50 \
-            --format text > cleanup-job.log 2>&1 || true
+          if [ "$cleanup_succeeded" != true ]; then
+            echo "Private cleanup broker exhausted its single qualified retry" >&2
+            exit 1
+          fi
           evidence_container_url="https://$TFSTATE_STORAGE_ACCOUNT.blob.core.windows.net/$CLEANUP_EVIDENCE_CONTAINER"
           python scripts/goal006_runner_execution.py pointer \
             --environment '${{ inputs.environment }}' \
@@ -2954,7 +3150,7 @@ jobs:
       - name: Verify zero active private executions
         run: |
           set -eu
-          for job in "$RUNNER_JOB" "$RUNNER_BROKER_JOB"; do
+          for job in "$RUNNER_JOB" "$RUNNER_BROKER_JOB" "$RUNNER_CLEANUP_BROKER_JOB"; do
             active=$(az containerapp job execution list \
               --resource-group "$RUNNER_RESOURCE_GROUP" \
               --name "$job" \
@@ -2964,12 +3160,21 @@ jobs:
           done
 
       - name: Retain hosted cleanup evidence
-        if: always() && hashFiles('cleanup-record.json') != ''
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: goal006-private-runner-cleanup-${{ github.run_id }}-${{ github.run_attempt }}
-          path: cleanup-record.json
-          if-no-files-found: error
+          path: |
+            cleanup-job.json
+            cleanup-execution.json
+            cleanup-executions.jsonl
+            cleanup-record.json
+            cleanup-job.log
+            cleanup-attempt-*.execution.json
+            cleanup-attempt-*.events.json
+            cleanup-attempt-*.classification.json
+            cleanup-attempt-*.log
+          if-no-files-found: warn
           retention-days: ${{ env.EVIDENCE_RETENTION_DAYS }}
 
   revoke-break-fix-cleanup-trust:

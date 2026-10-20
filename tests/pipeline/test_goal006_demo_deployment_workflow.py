@@ -753,12 +753,59 @@ def test_environment_deployment_cleanup_is_independent_and_retains_evidence() ->
     assert '--cleanup-execution-name "$execution"' in cleanup
     assert "cleanup/${{ inputs.environment }}/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT.json" in cleanup
     assert "goal006-private-runner-cleanup-${{ github.run_id }}-${{ github.run_attempt }}" in cleanup
-    assert "if: always() && hashFiles('cleanup-record.json') != ''" in cleanup
+    assert "cleanup-attempt-*.classification.json" in cleanup
+    assert "if: always()" in cleanup
     assert "Authorize exact break-fix cleanup subject" in WORKFLOW
     assert "repo:${{ github.repository }}:ref:refs/heads/ib/532/wc124-transition-reconciliation" in WORKFLOW
     assert "revoke-break-fix-cleanup-trust:" in cleanup
     assert "Revoke exact break-fix cleanup subject" in cleanup
     assert "environment: ${{ inputs.environment }}" in cleanup
+
+
+def test_runner_retry_is_bounded_and_requires_proven_pre_pull_failure() -> None:
+    broker = WORKFLOW.split("      - name: Start private signing broker", 1)[1].split(
+        "      - name: Retain hosted pre-start evidence", 1
+    )[0]
+    cleanup = WORKFLOW.split("      - name: Start private cleanup broker", 1)[1].split(
+        "      - name: Verify zero active private executions", 1
+    )[0]
+
+    assert broker.count("for execution_attempt in 1 2") == 1
+    assert cleanup.count("for execution_attempt in 1 2") == 1
+    assert "broker-child-attempt-1.classification.json" in broker
+    assert "cleanup-attempt-1.classification.json" in cleanup
+    assert broker.count("'.retry_eligible'") == 3
+    assert cleanup.count("'.retry_eligible'") == 1
+    assert "broker-runner-before-${execution_attempt}.json" in broker
+    assert "broker-runner-delta-${execution_attempt}.json" in broker
+    assert "broker-attempt-1.classification.json" in broker
+    assert 'child_count=$(jq -er \'.matches | length\'' in broker
+    assert "Private broker produced ambiguous child runners" in broker
+    assert "Broker failed while child runner is non-terminal" in broker
+
+
+def test_runner_failure_evidence_is_uploaded_even_when_execution_fails() -> None:
+    broker_artifact = WORKFLOW.split("      - name: Retain hosted pre-start evidence", 1)[1].split(
+        "  terraform:", 1
+    )[0]
+    cleanup_artifact = WORKFLOW.split("      - name: Retain hosted cleanup evidence", 1)[1].split(
+        "  revoke-break-fix-cleanup-trust:", 1
+    )[0]
+
+    assert "if: always()" in broker_artifact
+    assert "broker-runner-correlation-*.json" in broker_artifact
+    assert "broker-child-attempt-*.events.json" in broker_artifact
+    assert "if: always()" in cleanup_artifact
+    assert "cleanup-attempt-*.events.json" in cleanup_artifact
+    assert "cleanup-record.json" in cleanup_artifact
+
+
+def test_cleanup_verifies_all_private_job_executions_are_terminal() -> None:
+    verification = WORKFLOW.split("      - name: Verify zero active private executions", 1)[1].split(
+        "      - name: Retain hosted cleanup evidence", 1
+    )[0]
+
+    assert '"$RUNNER_JOB" "$RUNNER_BROKER_JOB" "$RUNNER_CLEANUP_BROKER_JOB"' in verification
 
 
 def test_demo_deployment_binds_broker_and_cleanup_to_authorized_control_sha() -> None:

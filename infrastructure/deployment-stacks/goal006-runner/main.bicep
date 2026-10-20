@@ -339,6 +339,8 @@ resource cleanupJobControl 'Microsoft.Authorization/roleAssignments@2022-04-01' 
     principalId: cleanupIdentity.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: cleanupJobOperatorRoleDefinitionId
+    conditionVersion: '2.0'
+    condition: '((!(ActionMatches{\'Microsoft.OperationalInsights/workspaces/tables/data/read\'})) OR ((@Resource[Microsoft.OperationalInsights/workspaces/tables:name] StringEquals \'ContainerAppConsoleLogs\') OR (@Resource[Microsoft.OperationalInsights/workspaces/tables:name] StringEquals \'ContainerAppSystemLogs\')))'
   }
 }
 

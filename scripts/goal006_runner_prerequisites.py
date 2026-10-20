@@ -47,11 +47,13 @@ CUSTOM_ROLE_PERMISSIONS = {
                 "Microsoft.App/jobs/start/action",
                 "Microsoft.App/jobs/stop/execution/action",
                 "Microsoft.OperationalInsights/workspaces/read",
+                "Microsoft.OperationalInsights/workspaces/query/read",
                 "Microsoft.OperationalInsights/workspaces/analytics/query/action",
                 "Microsoft.OperationalInsights/workspaces/query/ContainerAppConsoleLogs/read",
+                "Microsoft.OperationalInsights/workspaces/query/ContainerAppSystemLogs/read",
             }
         ),
-        "dataActions": frozenset(),
+        "dataActions": frozenset({"Microsoft.OperationalInsights/workspaces/tables/data/read"}),
     },
     "Cleanup Evidence Writer": {
         "actions": frozenset(),
