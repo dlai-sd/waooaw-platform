@@ -19,4 +19,7 @@ def test_billing_image_contains_the_immutable_migration_set() -> None:
     runner = (ROOT / "src/billing-engine/migrate.py").read_text(encoding="utf-8")
     assert "infrastructure/postgres/init/ ./migrations/" in dockerfile
     assert "pg_advisory_xact_lock" in runner
+    assert "pg_has_role(session_user, $2, 'MEMBER')" in runner
+    assert "migration login has prohibited elevated PostgreSQL attributes" in runner
+    assert 'await connection.execute(f"SET ROLE {MIGRATION_OWNER_ROLE}")' in runner
     assert "immutable migration digest changed" in runner

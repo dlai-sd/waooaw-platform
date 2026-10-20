@@ -47,3 +47,8 @@ BEGIN
     END LOOP;
 END
 $roles$;
+
+GRANT billing_owner TO billing_migrator;
+CREATE SCHEMA IF NOT EXISTS billing AUTHORIZATION billing_owner;
+ALTER SCHEMA billing OWNER TO billing_owner;
+REVOKE ALL ON SCHEMA billing FROM PUBLIC;

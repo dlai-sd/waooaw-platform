@@ -312,6 +312,13 @@ CREATE TABLE IF NOT EXISTS billing.employment_eligibility_versions (
     CONSTRAINT billing_employment_supersession_check
         CHECK (supersedes_source_version IS NULL OR supersedes_source_version <> source_version)
 );
+DO $billing_ownership$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'billing_owner') THEN
+        ALTER TABLE billing.employment_eligibility_versions OWNER TO billing_owner;
+    END IF;
+END
+$billing_ownership$;
 
 CREATE TABLE IF NOT EXISTS domain_adapter.employment_interface_manifests (
     tenant_id UUID NOT NULL,
