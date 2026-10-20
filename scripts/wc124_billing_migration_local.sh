@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Fast local qualification of the Demo "Billing migration through PgBouncer" step.
+# Reproduces the Demo instance state (bootstrap chain + residual state from a captured
+# snapshot) and runs the exact Billing image as the restricted billing_migrator identity
+# through a PgBouncer that authenticates per role (no admin backend identity).
+# Implements: architecture/reference/components/demo-uat-persistent-state-lifecycle-work-component.md §9
+# Constitutional basis: C-005 (Evidence First), C-026, C-059, C-080
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=scripts/lib/wc124_local_stack.sh
+. "$ROOT/scripts/lib/wc124_local_stack.sh"
+
+SNAPSHOT="${WC124_DEMO_SNAPSHOT:-$ROOT/test-results/wc124/demo-billing-state.json}"
+IMAGE="${WC124_BILLING_IMAGE:-}"
+EVIDENCE_DIR="${WC124_EVIDENCE_DIR:-$ROOT/test-results/wc124/billing-migration-local}"
+RUN_ID="wc124bl$(date +%s)"
+mkdir -p "$EVIDENCE_DIR"
+
+if [ -z "$IMAGE" ]; then
+  IMAGE="waooaw/billing-engine:$RUN_ID"
+  docker build --quiet --file "$ROOT/src/billing-engine/Dockerfile" --tag "$IMAGE" "$ROOT" >/dev/null
+fi
+image_digest=$(docker image inspect "$IMAGE" --format '{{.Id}}')
+
+wc124_stack_init "$RUN_ID"
+wc124_start_postgres "$ROOT"
+fixture_source=$(wc124_replay_billing_snapshot "$SNAPSHOT")
+wc124_start_pgbouncer billing_migrator
+
+run_migration() {
+  docker run --rm --network "$WC124_NETWORK" \
+    -e DATABASE_URL="$(wc124_role_url billing_migrator)" \
+    -e MIGRATION_PATTERN=59-wc124-billing-authority.sql \
+    -e MIGRATION_SCHEMA=billing \
+    "$IMAGE" python migrate.py
+}
+
+run_migration > "$EVIDENCE_DIR/first-run.log" 2>&1 || { cat "$EVIDENCE_DIR/first-run.log" >&2; echo "first migration run failed" >&2; exit 1; }
+run_migration > "$EVIDENCE_DIR/second-run.log" 2>&1 || { cat "$EVIDENCE_DIR/second-run.log" >&2; echo "idempotent rerun failed" >&2; exit 1; }
+
+ledger_owner=$(psql_admin -c "SELECT pg_get_userbyid(relowner) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'billing' AND c.relname = 'waooaw_schema_migrations'")
+ledger_entry=$(psql_admin -c "SELECT migration_sha256 FROM billing.waooaw_schema_migrations WHERE migration_name = '59-wc124-billing-authority.sql'")
+expected_digest=$(sha256sum "$ROOT/infrastructure/postgres/init/59-wc124-billing-authority.sql" | cut -d' ' -f1)
+foreign_owned=$(psql_admin -c "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'billing' AND c.relkind IN ('r','S') AND pg_get_userbyid(c.relowner) <> 'billing_owner'")
+backend_identity=$(wc124_backend_identity billing_migrator)
+
+test "$ledger_owner" = billing_owner
+test "$ledger_entry" = "$expected_digest"
+test "$foreign_owned" = 0
+test "$backend_identity" = billing_migrator
+
+jq -n \
+  --arg schema "waooaw.wc124-billing-migration-local/v1" \
+  --arg image "$IMAGE" --arg image_id "$image_digest" --arg fixture "$fixture_source" \
+  --arg ledger_owner "$ledger_owner" --arg digest "$ledger_entry" --arg backend "$backend_identity" \
+  '{schema: $schema, image: $image, image_id: $image_id, fixture: $fixture, route: "pgbouncer-scram-per-role",
+    login: "billing_migrator", backend_identity: $backend, ledger_owner: $ledger_owner,
+    recorded_migration_sha256: $digest, idempotent_rerun: true, status: "passed"}' \
+  | tee "$EVIDENCE_DIR/result.json"

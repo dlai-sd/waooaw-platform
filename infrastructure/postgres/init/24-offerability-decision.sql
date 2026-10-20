@@ -31,6 +31,7 @@ ON business.offerability_decisions (tenant_id, relationship_id, idempotency_key)
 ALTER TABLE business.offerability_decisions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.offerability_decisions FORCE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS offerability_tenant_isolation ON business.offerability_decisions;
 CREATE POLICY offerability_tenant_isolation ON business.offerability_decisions
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
@@ -42,7 +43,7 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER offerability_append_only
+CREATE OR REPLACE TRIGGER offerability_append_only
 BEFORE UPDATE OR DELETE ON business.offerability_decisions
 FOR EACH ROW EXECUTE FUNCTION business.reject_offerability_mutation();
 

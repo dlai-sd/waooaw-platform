@@ -46,17 +46,17 @@ jobs:
 
       - name: Log in to GHCR
         if: github.event_name == 'push'
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Build private runner
         id: image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
         with:
           context: .
           file: infrastructure/runner/Dockerfile
@@ -77,6 +77,8 @@ jobs:
             /home/runner/bin/Runner.Listener --version | grep -Fxq "2.336.0"
             test "$(terraform version -json | jq -r .terraform_version)" = "1.9.8"
             test "$(az version --query "\"azure-cli\"" -o tsv)" = "2.79.0"
+            test "$(az extension show --name containerapp --query version -o tsv)" = "1.2.0b5"
+            az extension show --name log-analytics --query name -o tsv | grep -Fxq log-analytics
             psql --version | grep -Fq "psql (PostgreSQL)"
             python3 /opt/waooaw/goal006_runner_lifecycle.py --help >/dev/null
             python3 /opt/waooaw/wc124_db_provisioner.py \
@@ -154,7 +156,7 @@ jobs:
 
       - name: Scan private runner
         if: github.event_name == 'pull_request'
-        uses: aquasecurity/trivy-action@2736533278103862a861f4a35ebac3e97854d956
+        uses: aquasecurity/trivy-action@2736533278103862a861f4a35ebac3e97854d956 # main, trivy v0.73.0
         with:
           image-ref: ${{ env.IMAGE }}:sha-${{ github.sha }}
           format: sarif
@@ -168,13 +170,13 @@ jobs:
 
       - name: Upload scan results
         if: always() && github.event_name == 'pull_request' && steps.image.outcome == 'success'
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@ce5e7eeac396d720fe2d802714996c8ce561e311 # v3
         with:
           sarif_file: trivy-goal006-private-runner.sarif
 
       - name: Attest published runner
         if: github.event_name == 'push'
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-name: ${{ env.IMAGE }}
           subject-digest: ${{ steps.image.outputs.digest }}

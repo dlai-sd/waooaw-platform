@@ -34,9 +34,15 @@ END $$;
 ALTER TABLE business.trial_allocations
     DROP CONSTRAINT IF EXISTS trial_allocations_agent_version_check;
 
-ALTER TABLE business.trial_allocations
-    ADD CONSTRAINT trial_allocations_agent_version_check
-    CHECK (agent_version ~ '^[0-9]+\.[0-9]+\.[0-9]+$');
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'trial_allocations_agent_version_check' AND conrelid = 'business.trial_allocations'::regclass) THEN
+        ALTER TABLE business.trial_allocations
+            ADD CONSTRAINT trial_allocations_agent_version_check
+            CHECK (agent_version ~ '^[0-9]+\.[0-9]+\.[0-9]+$');
+    END IF;
+END
+$idempotent$;
 
 ALTER TABLE business.coupon_codes
     ADD COLUMN IF NOT EXISTS agent_version VARCHAR(32);
@@ -47,9 +53,15 @@ ALTER TABLE business.coupon_codes
 ALTER TABLE business.coupon_codes
     DROP CONSTRAINT IF EXISTS coupon_codes_agent_version_check;
 
-ALTER TABLE business.coupon_codes
-    ADD CONSTRAINT coupon_codes_agent_version_check
-    CHECK (agent_version IS NULL OR agent_version ~ '^[0-9]+\.[0-9]+\.[0-9]+$');
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'coupon_codes_agent_version_check' AND conrelid = 'business.coupon_codes'::regclass) THEN
+        ALTER TABLE business.coupon_codes
+            ADD CONSTRAINT coupon_codes_agent_version_check
+            CHECK (agent_version IS NULL OR agent_version ~ '^[0-9]+\.[0-9]+\.[0-9]+$');
+    END IF;
+END
+$idempotent$;
 
 UPDATE business.coupon_codes
 SET agent_type = 'DIGITAL_MARKETING_LOCAL_SERVICE',

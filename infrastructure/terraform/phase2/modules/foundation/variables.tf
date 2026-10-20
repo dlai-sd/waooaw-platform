@@ -96,6 +96,17 @@ variable "database_bootstrap_admin_enabled" {
   }
 }
 
+variable "database_provisioner_vault_access_enabled" {
+  type        = bool
+  description = "Retain provisioner Key Vault access until WC-124 handoff and revocation evidence passes."
+  default     = true
+
+  validation {
+    condition     = !var.database_provisioner_vault_access_enabled || var.persistent_state_enabled
+    error_message = "Database provisioner Key Vault access requires the persistent-state foundation."
+  }
+}
+
 variable "log_analytics_workspace_name" {
   type        = string
   description = "Existing workspace name to adopt when one was provisioned before Terraform ownership."

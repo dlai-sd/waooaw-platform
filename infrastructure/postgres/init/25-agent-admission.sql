@@ -238,6 +238,7 @@ BEGIN
     ] LOOP
         EXECUTE format('ALTER TABLE business.%I ENABLE ROW LEVEL SECURITY', table_name);
         EXECUTE format('ALTER TABLE business.%I FORCE ROW LEVEL SECURITY', table_name);
+        EXECUTE format('DROP POLICY IF EXISTS %I ON business.%I', table_name || '_tenant_isolation', table_name);
         EXECUTE format(
             'CREATE POLICY %I ON business.%I USING (tenant_id = nullif(current_setting(''app.current_tenant_id'', TRUE), '''')::UUID) WITH CHECK (tenant_id = nullif(current_setting(''app.current_tenant_id'', TRUE), '''')::UUID)',
             table_name || '_tenant_isolation', table_name);
@@ -259,6 +260,7 @@ BEGIN
         'agent_admission_revisions', 'agent_admission_validations', 'agent_admission_findings',
         'agent_admission_assertions', 'agent_admission_transitions'
     ] LOOP
+        EXECUTE format('DROP TRIGGER IF EXISTS %I ON business.%I', table_name || '_append_only', table_name);
         EXECUTE format('CREATE TRIGGER %I BEFORE UPDATE OR DELETE ON business.%I FOR EACH ROW EXECUTE FUNCTION business.reject_agent_admission_lineage_mutation()', table_name || '_append_only', table_name);
     END LOOP;
 END;

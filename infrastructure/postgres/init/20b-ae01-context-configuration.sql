@@ -181,19 +181,19 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS context_confirmation_events_no_update ON business.context_confirmation_events;
-CREATE TRIGGER context_confirmation_events_no_update
+CREATE OR REPLACE TRIGGER context_confirmation_events_no_update
     BEFORE UPDATE ON business.context_confirmation_events
     FOR EACH ROW EXECUTE FUNCTION business.reject_ae01_append_only_mutation();
 DROP TRIGGER IF EXISTS context_confirmation_events_no_delete ON business.context_confirmation_events;
-CREATE TRIGGER context_confirmation_events_no_delete
+CREATE OR REPLACE TRIGGER context_confirmation_events_no_delete
     BEFORE DELETE ON business.context_confirmation_events
     FOR EACH ROW EXECUTE FUNCTION business.reject_ae01_append_only_mutation();
 DROP TRIGGER IF EXISTS decision_space_snapshots_no_update ON business.decision_space_snapshots;
-CREATE TRIGGER decision_space_snapshots_no_update
+CREATE OR REPLACE TRIGGER decision_space_snapshots_no_update
     BEFORE UPDATE ON business.decision_space_snapshots
     FOR EACH ROW EXECUTE FUNCTION business.reject_ae01_append_only_mutation();
 DROP TRIGGER IF EXISTS decision_space_snapshots_no_delete ON business.decision_space_snapshots;
-CREATE TRIGGER decision_space_snapshots_no_delete
+CREATE OR REPLACE TRIGGER decision_space_snapshots_no_delete
     BEFORE DELETE ON business.decision_space_snapshots
     FOR EACH ROW EXECUTE FUNCTION business.reject_ae01_append_only_mutation();
 
@@ -211,25 +211,31 @@ ALTER TABLE business.relationship_trial_bindings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.relationship_trial_bindings FORCE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS relationship_context_payloads_tenant_isolation ON payload_store.relationship_context_payloads;
+DROP POLICY IF EXISTS relationship_context_payloads_tenant_isolation ON payload_store.relationship_context_payloads;
 CREATE POLICY relationship_context_payloads_tenant_isolation ON payload_store.relationship_context_payloads
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS context_confirmation_events_tenant_isolation ON business.context_confirmation_events;
 DROP POLICY IF EXISTS context_confirmation_events_tenant_isolation ON business.context_confirmation_events;
 CREATE POLICY context_confirmation_events_tenant_isolation ON business.context_confirmation_events
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
 DROP POLICY IF EXISTS relationship_goals_tenant_isolation ON business.relationship_goals;
+DROP POLICY IF EXISTS relationship_goals_tenant_isolation ON business.relationship_goals;
 CREATE POLICY relationship_goals_tenant_isolation ON business.relationship_goals
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS relationship_skill_configuration_tenant_isolation ON business.relationship_skill_configuration;
 DROP POLICY IF EXISTS relationship_skill_configuration_tenant_isolation ON business.relationship_skill_configuration;
 CREATE POLICY relationship_skill_configuration_tenant_isolation ON business.relationship_skill_configuration
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
 DROP POLICY IF EXISTS decision_space_snapshots_tenant_isolation ON business.decision_space_snapshots;
+DROP POLICY IF EXISTS decision_space_snapshots_tenant_isolation ON business.decision_space_snapshots;
 CREATE POLICY decision_space_snapshots_tenant_isolation ON business.decision_space_snapshots
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS relationship_trial_bindings_tenant_isolation ON business.relationship_trial_bindings;
 DROP POLICY IF EXISTS relationship_trial_bindings_tenant_isolation ON business.relationship_trial_bindings;
 CREATE POLICY relationship_trial_bindings_tenant_isolation ON business.relationship_trial_bindings
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)

@@ -345,12 +345,14 @@ ALTER TABLE business.relationship_emergency_stop_latches ENABLE ROW LEVEL SECURI
 ALTER TABLE business.relationship_emergency_stop_latches FORCE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS conversation_outbox_tenant_isolation ON business.conversation_outbox;
+DROP POLICY IF EXISTS conversation_outbox_tenant_isolation ON business.conversation_outbox;
 CREATE POLICY conversation_outbox_tenant_isolation ON business.conversation_outbox
 USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
 
 DROP POLICY IF EXISTS conversation_context_observations_tenant_isolation
 ON business.conversation_context_observations;
+DROP POLICY IF EXISTS conversation_context_observations_tenant_isolation ON business.conversation_context_observations;
 CREATE POLICY conversation_context_observations_tenant_isolation
 ON business.conversation_context_observations
 USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
@@ -358,6 +360,7 @@ WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '
 
 DROP POLICY IF EXISTS conversation_context_summaries_tenant_isolation
 ON business.conversation_context_summaries;
+DROP POLICY IF EXISTS conversation_context_summaries_tenant_isolation ON business.conversation_context_summaries;
 CREATE POLICY conversation_context_summaries_tenant_isolation
 ON business.conversation_context_summaries
 USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
@@ -365,6 +368,7 @@ WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '
 
 DROP POLICY IF EXISTS conversation_delivery_observations_tenant_isolation
 ON business.conversation_delivery_observations;
+DROP POLICY IF EXISTS conversation_delivery_observations_tenant_isolation ON business.conversation_delivery_observations;
 CREATE POLICY conversation_delivery_observations_tenant_isolation
 ON business.conversation_delivery_observations
 USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
@@ -372,11 +376,13 @@ WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '
 
 DROP POLICY IF EXISTS conversation_data_right_requests_tenant_isolation
 ON business.conversation_data_right_requests;
+DROP POLICY IF EXISTS conversation_data_right_requests_tenant_isolation ON business.conversation_data_right_requests;
 CREATE POLICY conversation_data_right_requests_tenant_isolation
 ON business.conversation_data_right_requests
 USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
 
+DROP POLICY IF EXISTS whatsapp_media_tenant_isolation ON business.whatsapp_media;
 DROP POLICY IF EXISTS whatsapp_media_tenant_isolation ON business.whatsapp_media;
 CREATE POLICY whatsapp_media_tenant_isolation ON business.whatsapp_media
 USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
@@ -384,6 +390,7 @@ WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '
 
 DROP POLICY IF EXISTS relationship_emergency_stop_latches_tenant_isolation
 ON business.relationship_emergency_stop_latches;
+DROP POLICY IF EXISTS relationship_emergency_stop_latches_tenant_isolation ON business.relationship_emergency_stop_latches;
 CREATE POLICY relationship_emergency_stop_latches_tenant_isolation
 ON business.relationship_emergency_stop_latches
 USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)

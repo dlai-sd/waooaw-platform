@@ -24,25 +24,32 @@ ALTER TABLE business.organisations ENABLE ROW LEVEL SECURITY;
 -- at the start of every DB connection, before any query executes.
 
 -- Constitutional schema
+DROP POLICY IF EXISTS tenant_isolation ON constitutional.evidence_records;
 CREATE POLICY tenant_isolation ON constitutional.evidence_records
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
 
+DROP POLICY IF EXISTS tenant_isolation ON constitutional.authority_licenses;
 CREATE POLICY tenant_isolation ON constitutional.authority_licenses
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
 
 -- Business schema
+DROP POLICY IF EXISTS tenant_isolation ON business.organisations;
 CREATE POLICY tenant_isolation ON business.organisations
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
 
+DROP POLICY IF EXISTS tenant_isolation ON business.employment_contracts;
 CREATE POLICY tenant_isolation ON business.employment_contracts
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
 
+DROP POLICY IF EXISTS tenant_isolation ON business.decision_spaces;
 CREATE POLICY tenant_isolation ON business.decision_spaces
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
 
+DROP POLICY IF EXISTS tenant_isolation ON business.approval_requests;
 CREATE POLICY tenant_isolation ON business.approval_requests
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
 
+DROP POLICY IF EXISTS tenant_isolation ON business.paas_sessions;
 CREATE POLICY tenant_isolation ON business.paas_sessions
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
 
@@ -63,6 +70,7 @@ CREATE POLICY tenant_isolation ON business.paas_sessions
 
 ALTER TABLE professional.creative_standard_embeddings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS tenant_isolation ON professional.creative_standard_embeddings;
 CREATE POLICY tenant_isolation ON professional.creative_standard_embeddings
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
 
@@ -84,18 +92,23 @@ ALTER TABLE business.skill_self_governance_log       ENABLE ROW LEVEL SECURITY;
 -- The JWT tenant_id maps to organisations.id.
 -- Developer note: ensure app.tenant_id session variable is set before any query.
 
+DROP POLICY IF EXISTS tenant_isolation ON business.digital_marketing_profiles;
 CREATE POLICY tenant_isolation ON business.digital_marketing_profiles
     USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
 
+DROP POLICY IF EXISTS tenant_isolation ON business.digital_marketing_maturity_scores;
 CREATE POLICY tenant_isolation ON business.digital_marketing_maturity_scores
     USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
 
+DROP POLICY IF EXISTS tenant_isolation ON business.digital_marketing_needs_heatmap;
 CREATE POLICY tenant_isolation ON business.digital_marketing_needs_heatmap
     USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
 
+DROP POLICY IF EXISTS tenant_isolation ON business.competitor_snapshots;
 CREATE POLICY tenant_isolation ON business.competitor_snapshots
     USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
 
+DROP POLICY IF EXISTS tenant_isolation ON business.dm_phase_bundle_subscriptions;
 CREATE POLICY tenant_isolation ON business.dm_phase_bundle_subscriptions
     USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
 
@@ -105,6 +118,7 @@ CREATE POLICY tenant_isolation ON business.dm_phase_bundle_subscriptions
 -- (RLS via JOIN is complex; application-level enforcement is acceptable per AD-004 note).
 -- The table does not contain directly personal data — it contains configuration only.
 -- Still enable RLS with a function-based policy for defence in depth:
+DROP POLICY IF EXISTS tenant_isolation ON business.skill_runtime_configurations;
 CREATE POLICY tenant_isolation ON business.skill_runtime_configurations
     USING (
         employment_contract_id IN (
@@ -113,9 +127,11 @@ CREATE POLICY tenant_isolation ON business.skill_runtime_configurations
         )
     );
 
+DROP POLICY IF EXISTS tenant_isolation ON business.synthetic_approval_records;
 CREATE POLICY tenant_isolation ON business.synthetic_approval_records
     USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
 
+DROP POLICY IF EXISTS tenant_isolation ON business.skill_self_governance_log;
 CREATE POLICY tenant_isolation ON business.skill_self_governance_log
     USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
 
@@ -137,12 +153,15 @@ ALTER TABLE business.data_retention_records ENABLE ROW LEVEL SECURITY;
 -- business_domain_taxonomy is NOT tenant-scoped (platform catalogue — public read)
 -- No RLS on business_domain_taxonomy.
 
+DROP POLICY IF EXISTS tenant_isolation ON business.payment_transactions;
 CREATE POLICY tenant_isolation ON business.payment_transactions
     USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
 
+DROP POLICY IF EXISTS tenant_isolation ON business.gst_invoices;
 CREATE POLICY tenant_isolation ON business.gst_invoices
     USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
 
+DROP POLICY IF EXISTS tenant_isolation ON business.data_retention_records;
 CREATE POLICY tenant_isolation ON business.data_retention_records
     USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
 
@@ -177,6 +196,7 @@ GRANT SELECT, INSERT, UPDATE ON institutional.agent_health_scores      TO busine
 
 -- agent_strategic_state: tenant-scoped RLS (v0.31.0 — C-050 Strategic Cognition Layer)
 ALTER TABLE business.agent_strategic_state ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS agent_strategic_state_tenant_isolation ON business.agent_strategic_state;
 CREATE POLICY agent_strategic_state_tenant_isolation ON business.agent_strategic_state
     FOR ALL
     TO business_app, ai_runtime_app
@@ -188,6 +208,7 @@ GRANT SELECT                 ON business.agent_strategic_state TO business_app;
 
 -- customer_usage_units: tenant-scoped RLS (customer cannot see other customers' budgets)
 ALTER TABLE business.customer_usage_units ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS customer_usage_units_tenant_isolation ON business.customer_usage_units;
 CREATE POLICY customer_usage_units_tenant_isolation ON business.customer_usage_units
     FOR ALL
     TO business_app, ai_runtime_app
@@ -208,6 +229,7 @@ GRANT SELECT                 ON institutional.prompt_cache_metadata TO business_
 
 -- customer_creative_fingerprints: tenant-scoped RLS (Creative Fingerprint is strictly customer-private — C-034)
 ALTER TABLE business.customer_creative_fingerprints ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS creative_fingerprint_tenant_isolation ON business.customer_creative_fingerprints;
 CREATE POLICY creative_fingerprint_tenant_isolation ON business.customer_creative_fingerprints
     FOR ALL
     TO business_app, ai_runtime_app
@@ -235,6 +257,7 @@ GRANT SELECT         ON institutional.signal_materiality_events TO business_app;
 
 -- skill_gap_signals: tenant-scoped for INSERT (customer org owns gap events); platform-wide SELECT for PO analytics
 ALTER TABLE institutional.skill_gap_signals ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS skill_gap_signals_tenant_isolation ON institutional.skill_gap_signals;
 CREATE POLICY skill_gap_signals_tenant_isolation ON institutional.skill_gap_signals
     FOR INSERT
     TO ai_runtime_app
@@ -244,6 +267,7 @@ GRANT SELECT         ON institutional.skill_gap_signals TO business_app;
 
 -- agent_skill_graph: tenant-scoped RLS (each customer's skill graph is private — C-034)
 ALTER TABLE business.agent_skill_graph ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS agent_skill_graph_tenant_isolation ON business.agent_skill_graph;
 CREATE POLICY agent_skill_graph_tenant_isolation ON business.agent_skill_graph
     FOR ALL TO business_app, ai_runtime_app
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
@@ -254,6 +278,7 @@ GRANT SELECT                 ON business.agent_skill_graph TO business_app;
 -- All 4 campaign tables are tenant-scoped — campaign data is strictly customer-private (C-034)
 
 ALTER TABLE business.content_campaigns ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS content_campaigns_tenant_isolation ON business.content_campaigns;
 CREATE POLICY content_campaigns_tenant_isolation ON business.content_campaigns
     FOR ALL TO business_app, ai_runtime_app
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
@@ -261,6 +286,7 @@ GRANT SELECT, INSERT, UPDATE ON business.content_campaigns TO ai_runtime_app;
 GRANT SELECT, INSERT         ON business.content_campaigns TO business_app;
 
 ALTER TABLE business.campaign_weekly_themes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS campaign_weekly_themes_tenant_isolation ON business.campaign_weekly_themes;
 CREATE POLICY campaign_weekly_themes_tenant_isolation ON business.campaign_weekly_themes
     FOR ALL TO business_app, ai_runtime_app
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
@@ -268,6 +294,7 @@ GRANT SELECT, INSERT, UPDATE ON business.campaign_weekly_themes TO ai_runtime_ap
 GRANT SELECT                 ON business.campaign_weekly_themes TO business_app;
 
 ALTER TABLE business.campaign_content_items ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS campaign_content_items_tenant_isolation ON business.campaign_content_items;
 CREATE POLICY campaign_content_items_tenant_isolation ON business.campaign_content_items
     FOR ALL TO business_app, ai_runtime_app
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
@@ -275,6 +302,7 @@ GRANT SELECT, INSERT, UPDATE ON business.campaign_content_items TO ai_runtime_ap
 GRANT SELECT, UPDATE         ON business.campaign_content_items TO business_app;
 
 ALTER TABLE business.scr_review_records ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS scr_review_records_tenant_isolation ON business.scr_review_records;
 CREATE POLICY scr_review_records_tenant_isolation ON business.scr_review_records
     FOR ALL TO business_app, ai_runtime_app
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
@@ -347,6 +375,7 @@ GRANT SELECT         ON business.scr_review_records TO business_app;
 
 -- trading_session_records: tenant-scoped (C-034)
 ALTER TABLE business.trading_session_records ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS trading_session_records_tenant_isolation ON business.trading_session_records;
 CREATE POLICY trading_session_records_tenant_isolation ON business.trading_session_records
     FOR ALL TO business_app, ai_runtime_app
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
@@ -361,6 +390,7 @@ GRANT SELECT         ON institutional.signal_bundling_log TO business_app;
 -- All three tables are tenant-scoped — ad data is customer-private (C-034 + C-056 segregation)
 
 ALTER TABLE business.customer_ad_accounts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS customer_ad_accounts_tenant_isolation ON business.customer_ad_accounts;
 CREATE POLICY customer_ad_accounts_tenant_isolation ON business.customer_ad_accounts
     FOR ALL TO business_app, ai_runtime_app
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
@@ -368,6 +398,7 @@ GRANT SELECT, INSERT, UPDATE ON business.customer_ad_accounts TO ai_runtime_app;
 GRANT SELECT, INSERT         ON business.customer_ad_accounts TO business_app;
 
 ALTER TABLE business.ad_spend_wallets ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS ad_spend_wallets_tenant_isolation ON business.ad_spend_wallets;
 CREATE POLICY ad_spend_wallets_tenant_isolation ON business.ad_spend_wallets
     FOR ALL TO business_app, ai_runtime_app
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
@@ -377,6 +408,7 @@ GRANT SELECT                 ON business.ad_spend_wallets TO business_app;
 -- ad_spend_ledger: tenant-scoped INSERT; institutional SELECT for billing reconciliation
 -- C-056: no UPDATE or DELETE — immutable financial audit record (same principle as CAL)
 ALTER TABLE business.ad_spend_ledger ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS ad_spend_ledger_tenant_isolation ON business.ad_spend_ledger;
 CREATE POLICY ad_spend_ledger_tenant_isolation ON business.ad_spend_ledger
     FOR SELECT TO business_app, ai_runtime_app
     USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
@@ -387,6 +419,7 @@ GRANT SELECT, INSERT ON business.ad_spend_ledger TO business_app;
 
 -- DMA Skill Deepening RLS (v0.45.0)
 ALTER TABLE business.review_requests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS review_requests_tenant_isolation ON business.review_requests;
 CREATE POLICY review_requests_tenant_isolation ON business.review_requests
     FOR ALL TO business_app, ai_runtime_app
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
@@ -394,6 +427,7 @@ GRANT SELECT, INSERT, UPDATE ON business.review_requests TO ai_runtime_app;
 GRANT SELECT                 ON business.review_requests TO business_app;
 
 ALTER TABLE business.blog_posts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS blog_posts_tenant_isolation ON business.blog_posts;
 CREATE POLICY blog_posts_tenant_isolation ON business.blog_posts
     FOR ALL TO business_app, ai_runtime_app
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
@@ -401,6 +435,7 @@ GRANT SELECT, INSERT, UPDATE ON business.blog_posts TO ai_runtime_app;
 GRANT SELECT, UPDATE         ON business.blog_posts TO business_app;
 
 ALTER TABLE business.patient_reactivation_log ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS patient_reactivation_tenant_isolation ON business.patient_reactivation_log;
 CREATE POLICY patient_reactivation_tenant_isolation ON business.patient_reactivation_log
     FOR ALL TO business_app, ai_runtime_app
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
@@ -413,6 +448,7 @@ GRANT SELECT ON institutional.style_anchor_library TO ai_runtime_app;
 GRANT SELECT ON institutional.style_anchor_library TO business_app;
 
 ALTER TABLE business.video_creation_briefs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS video_briefs_tenant_isolation ON business.video_creation_briefs;
 CREATE POLICY video_briefs_tenant_isolation ON business.video_creation_briefs
     FOR ALL TO business_app, ai_runtime_app
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
@@ -420,6 +456,7 @@ GRANT SELECT, INSERT, UPDATE ON business.video_creation_briefs TO ai_runtime_app
 GRANT SELECT                 ON business.video_creation_briefs TO business_app;
 
 ALTER TABLE business.digital_twins ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS digital_twins_tenant_isolation ON business.digital_twins;
 CREATE POLICY digital_twins_tenant_isolation ON business.digital_twins
     FOR ALL TO business_app, ai_runtime_app
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
@@ -427,6 +464,7 @@ GRANT SELECT, INSERT, UPDATE ON business.digital_twins TO ai_runtime_app;
 GRANT SELECT                 ON business.digital_twins TO business_app;
 
 ALTER TABLE business.content_assets ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS content_assets_tenant_isolation ON business.content_assets;
 CREATE POLICY content_assets_tenant_isolation ON business.content_assets
     FOR ALL TO business_app, ai_runtime_app
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);

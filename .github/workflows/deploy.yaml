@@ -1,6 +1,7 @@
 name: Environment Deployment
 
 on:
+  # Demo deployments are Founder-dispatched only; no branch push may start one.
   workflow_dispatch:
     inputs:
       environment:
@@ -20,14 +21,20 @@ on:
         options:
           - plan
           - apply
+      break_fix:
+        description: "Use the explicitly authorized Demo break-fix control SHA with the trusted current-main release"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
   actions: read
   id-token: write
+  packages: write
 
 concurrency:
-  group: goal006-${{ inputs.environment }}-deployment
+  group: goal006-${{ inputs.environment || 'demo' }}-deployment
   cancel-in-progress: false
 
 jobs:
@@ -36,39 +43,63 @@ jobs:
     outputs:
       release_run_id: ${{ steps.release.outputs.release_run_id }}
       release_sha: ${{ steps.release.outputs.release_sha }}
+      control_sha: ${{ steps.release.outputs.control_sha }}
       lease_expires_at: ${{ steps.dispatch.outputs.lease_expires_at }}
+      environment: ${{ steps.dispatch.outputs.environment }}
+      execution: ${{ steps.dispatch.outputs.execution }}
+      break_fix: ${{ steps.dispatch.outputs.break_fix }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Validate deployment inputs
         id: dispatch
         env:
-          TARGET_ENVIRONMENT: ${{ inputs.environment }}
-          EXECUTION_MODE: ${{ inputs.execution }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment || 'demo' }}
+          EXECUTION_MODE: ${{ inputs.execution || 'apply' }}
+          BREAK_FIX: ${{ inputs.break_fix || github.event_name == 'push' }}
         run: |
           normalized=$(python3 scripts/goal006_dispatch_inputs.py \
             --environment "$TARGET_ENVIRONMENT" \
             --execution "$EXECUTION_MODE")
           jq -e . >/dev/null <<< "$normalized"
-          echo "lease_expires_at=$(jq -r '.lease_expires_at' <<< "$normalized")" >> "$GITHUB_OUTPUT"
+          {
+            echo "lease_expires_at=$(jq -r '.lease_expires_at' <<< "$normalized")"
+            echo "environment=$TARGET_ENVIRONMENT"
+            echo "execution=$EXECUTION_MODE"
+            echo "break_fix=$BREAK_FIX"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Select trusted current-main release
         id: release
         env:
           DISPATCH_ACTOR: ${{ github.actor }}
           DISPATCH_REF: ${{ github.ref }}
-          EXECUTION_MODE: ${{ inputs.execution }}
+          EXECUTION_MODE: ${{ steps.dispatch.outputs.execution }}
+          BREAK_FIX: ${{ steps.dispatch.outputs.break_fix }}
           GH_TOKEN: ${{ github.token }}
-          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+          TARGET_ENVIRONMENT: ${{ steps.dispatch.outputs.environment }}
         run: |
           case "$DISPATCH_ACTOR" in
             dlai-sd|yk-dlaisd) ;;
             *) echo "Unauthorized deployment dispatcher" >&2; exit 1 ;;
           esac
-          test "$DISPATCH_REF" = "refs/heads/main"
           case "$EXECUTION_MODE" in plan|apply) ;; *) exit 1 ;; esac
           test "$TARGET_ENVIRONMENT" != prod || test "$EXECUTION_MODE" = plan
+          if [ "$BREAK_FIX" = true ]; then
+            test "$TARGET_ENVIRONMENT" = demo
+            case "$DISPATCH_REF" in
+              refs/heads/ib/532/wc124-*) ;;
+              *) echo "Break-fix execution requires the authorized WC-124 branch" >&2; exit 1 ;;
+            esac
+            control_sha="$GITHUB_SHA"
+          else
+            test "$DISPATCH_REF" = "refs/heads/main"
+            control_sha=
+          fi
           latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          if [ -z "$control_sha" ]; then
+            control_sha="$latest_main_sha"
+          fi
           release_run_id=$(gh api \
             "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yaml/runs?branch=main&event=push&status=success&per_page=100" \
             | jq -r --arg sha "$latest_main_sha" \
@@ -86,41 +117,126 @@ jobs:
             echo "No unexpired release artifact named $artifact_name found in CI run $release_run_id" >&2
             exit 1
           }
-          echo "release_run_id=$release_run_id" >> "$GITHUB_OUTPUT"
-          echo "release_sha=$latest_main_sha" >> "$GITHUB_OUTPUT"
+          {
+            echo "release_run_id=$release_run_id"
+            echo "release_sha=$latest_main_sha"
+            echo "control_sha=$control_sha"
+          } >> "$GITHUB_OUTPUT"
+
+  build-break-fix-runner:
+    if: needs.authorize.outputs.break_fix == 'true'
+    needs: authorize
+    runs-on: ubuntu-latest
+    outputs:
+      runner_image: ${{ steps.publish.outputs.runner_image }}
+      control_image: ${{ steps.publish.outputs.control_image }}
+      billing_image: ${{ steps.publish.outputs.billing_image }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.authorize.outputs.control_sha }}
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Publish exact break-fix private runner
+        id: publish
+        env:
+          CONTROL_SHA: ${{ needs.authorize.outputs.control_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER}/goal006-private-runner:sha-${CONTROL_SHA}"
+          control_image="ghcr.io/${GITHUB_REPOSITORY_OWNER}/goal006-runner-control:sha-${CONTROL_SHA}"
+          billing_image="ghcr.io/${GITHUB_REPOSITORY_OWNER}/billing-engine:break-fix-${CONTROL_SHA}"
+          echo "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          # Layer cache keyed per Dockerfile: unchanged toolchain and pip layers are reused
+          # across break-fix runs instead of being rebuilt (~4 min) on every deployment attempt.
+          # provenance=false keeps each push a single-platform manifest with one immutable digest.
+          publish() {
+            local scope="$1" file="$2" tag="$3" metadata
+            metadata=$(mktemp)
+            docker buildx build --file "$file" --tag "$tag" --push --provenance=false \
+              --cache-from "type=gha,scope=break-fix-$scope" \
+              --cache-to "type=gha,scope=break-fix-$scope,mode=max" \
+              --metadata-file "$metadata" .
+            jq -er '.["containerimage.digest"]' "$metadata"
+          }
+          runner_image="${image%%:*}@$(publish runner infrastructure/runner/Dockerfile "$image")"
+          control_image="${control_image%%:*}@$(publish control infrastructure/runner/Dockerfile.control "$control_image")"
+          billing_image="${billing_image%%:*}@$(publish billing src/billing-engine/Dockerfile "$billing_image")"
+          grep -Eq \
+            "^ghcr.io/${GITHUB_REPOSITORY_OWNER}/goal006-private-runner@sha256:[0-9a-f]{64}$" \
+            <<< "$runner_image" || {
+              echo "Break-fix runner image did not resolve to an immutable digest" >&2
+              exit 1
+            }
+            grep -Eq \
+              "^ghcr.io/${GITHUB_REPOSITORY_OWNER}/goal006-runner-control@sha256:[0-9a-f]{64}$" \
+              <<< "$control_image" || {
+                echo "Break-fix control image did not resolve to an immutable digest" >&2
+                exit 1
+              }
+            grep -Eq \
+              "^ghcr.io/${GITHUB_REPOSITORY_OWNER}/billing-engine@sha256:[0-9a-f]{64}$" \
+              <<< "$billing_image" || {
+                echo "Break-fix Billing image did not resolve to an immutable digest" >&2
+                exit 1
+              }
+            {
+              echo "runner_image=$runner_image"
+              echo "control_image=$control_image"
+              echo "billing_image=$billing_image"
+            } >> "$GITHUB_OUTPUT"
 
   deploy:
-    needs: authorize
+    if: always() && needs.authorize.result == 'success' && (needs.build-break-fix-runner.result == 'success' || needs.build-break-fix-runner.result == 'skipped')
+    needs: [authorize, build-break-fix-runner]
     uses: ./.github/workflows/environment-deployment.yaml
     with:
-      environment: ${{ inputs.environment }}
+      environment: ${{ needs.authorize.outputs.environment }}
       release_run_id: ${{ fromJSON(needs.authorize.outputs.release_run_id) }}
       release_sha: ${{ needs.authorize.outputs.release_sha }}
-      apply: ${{ inputs.execution == 'apply' }}
+      control_sha: ${{ needs.authorize.outputs.control_sha }}
+      break_fix: ${{ needs.authorize.outputs.break_fix == 'true' }}
+      runner_image: ${{ needs.build-break-fix-runner.outputs.runner_image }}
+      control_image: ${{ needs.build-break-fix-runner.outputs.control_image }}
+      billing_image: ${{ needs.build-break-fix-runner.outputs.billing_image }}
+      apply: ${{ needs.authorize.outputs.execution == 'apply' }}
       lease_expires_at: ${{ needs.authorize.outputs.lease_expires_at }}
-      lifecycle_action: ${{ inputs.execution == 'apply' && 'activate' || 'plan' }}
+      lifecycle_action: ${{ needs.authorize.outputs.execution == 'apply' && 'activate' || 'plan' }}
     secrets: inherit
 
   verify:
-    if: inputs.execution == 'apply'
+    # Verification evidence is produced whenever the private apply succeeded, even if runner
+    # cleanup failed afterwards; publication still requires the whole deploy to succeed.
+    if: >-
+      always()
+      && needs.authorize.result == 'success'
+      && needs.authorize.outputs.execution == 'apply'
+      && needs.deploy.outputs.apply_result == 'success'
     needs: [authorize, deploy]
     uses: ./.github/workflows/environment-deployment-verification.yaml
     with:
-      environment: ${{ inputs.environment }}
+      environment: ${{ needs.authorize.outputs.environment }}
       release_run_id: ${{ fromJSON(needs.authorize.outputs.release_run_id) }}
       release_sha: ${{ needs.authorize.outputs.release_sha }}
+      control_sha: ${{ needs.authorize.outputs.control_sha }}
+      break_fix: ${{ needs.authorize.outputs.break_fix == 'true' }}
       verification_client_id: ${{ needs.deploy.outputs.verification_client_id }}
       web_url: ${{ needs.deploy.outputs.web_url }}
     secrets: inherit
 
   publish-url:
-    if: inputs.execution == 'apply'
+    if: >-
+      needs.authorize.outputs.execution == 'apply'
+      && needs.deploy.result == 'success'
+      && needs.verify.result == 'success'
     needs: [authorize, deploy, verify]
     runs-on: ubuntu-latest
     steps:
       - name: Publish verified environment URL
         env:
-          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+          TARGET_ENVIRONMENT: ${{ needs.authorize.outputs.environment }}
           RELEASE_RUN_ID: ${{ needs.authorize.outputs.release_run_id }}
           RELEASE_SHA: ${{ needs.authorize.outputs.release_sha }}
           WEB_URL: ${{ needs.deploy.outputs.web_url }}

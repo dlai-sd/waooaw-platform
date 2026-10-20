@@ -1,6 +1,6 @@
 -- WC-123 durable provider lifecycle operation and projection authority.
 
-CREATE TABLE identity.lifecycle_operations (
+CREATE TABLE IF NOT EXISTS identity.lifecycle_operations (
     operation_id uuid PRIMARY KEY,
     actor_issuer varchar(256) COLLATE "C" NOT NULL,
     actor_subject varchar(256) COLLATE "C" NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE identity.lifecycle_operations (
         UNIQUE (actor_issuer, actor_subject, command_type, idempotency_digest)
 );
 
-CREATE TABLE identity.provider_link_projections (
+CREATE TABLE IF NOT EXISTS identity.provider_link_projections (
     link_id uuid PRIMARY KEY,
     global_user_id uuid NOT NULL,
     provider_class varchar(16) NOT NULL,
@@ -56,9 +56,9 @@ CREATE TABLE identity.provider_link_projections (
     CONSTRAINT provider_link_projections_binding_unique UNIQUE (binding_reference)
 );
 
-CREATE INDEX lifecycle_operations_actor_state_idx
+CREATE INDEX IF NOT EXISTS lifecycle_operations_actor_state_idx
     ON identity.lifecycle_operations (actor_issuer, actor_subject, state);
-CREATE INDEX provider_link_projections_user_state_idx
+CREATE INDEX IF NOT EXISTS provider_link_projections_user_state_idx
     ON identity.provider_link_projections (global_user_id, state);
 
 ALTER TABLE identity.lifecycle_operations ENABLE ROW LEVEL SECURITY;
@@ -66,6 +66,7 @@ ALTER TABLE identity.lifecycle_operations FORCE ROW LEVEL SECURITY;
 ALTER TABLE identity.provider_link_projections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE identity.provider_link_projections FORCE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS actor_scope ON identity.lifecycle_operations;
 CREATE POLICY actor_scope ON identity.lifecycle_operations TO business_app
     USING (
         actor_issuer =
@@ -100,6 +101,7 @@ CREATE POLICY actor_scope ON identity.lifecycle_operations TO business_app
         )
     );
 
+DROP POLICY IF EXISTS actor_scope ON identity.provider_link_projections;
 CREATE POLICY actor_scope ON identity.provider_link_projections TO business_app
     USING (
         EXISTS (
@@ -157,7 +159,7 @@ BEGIN
 END
 $function$;
 
-CREATE TRIGGER lifecycle_operations_immutable
+CREATE OR REPLACE TRIGGER lifecycle_operations_immutable
 BEFORE UPDATE ON identity.lifecycle_operations
 FOR EACH ROW EXECUTE FUNCTION identity.lifecycle_history_is_immutable();
 
@@ -183,7 +185,7 @@ BEGIN
 END
 $function$;
 
-CREATE TRIGGER provider_link_projections_immutable
+CREATE OR REPLACE TRIGGER provider_link_projections_immutable
 BEFORE UPDATE ON identity.provider_link_projections
 FOR EACH ROW EXECUTE FUNCTION identity.provider_link_key_is_immutable();
 
@@ -198,10 +200,10 @@ BEGIN
 END
 $function$;
 
-CREATE TRIGGER lifecycle_operations_delete_denied
+CREATE OR REPLACE TRIGGER lifecycle_operations_delete_denied
 BEFORE DELETE ON identity.lifecycle_operations
 FOR EACH ROW EXECUTE FUNCTION identity.lifecycle_history_delete_denied();
-CREATE TRIGGER provider_link_projections_delete_denied
+CREATE OR REPLACE TRIGGER provider_link_projections_delete_denied
 BEFORE DELETE ON identity.provider_link_projections
 FOR EACH ROW EXECUTE FUNCTION identity.lifecycle_history_delete_denied();
 

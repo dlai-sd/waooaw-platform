@@ -10,6 +10,11 @@ import re
 from pathlib import Path
 from typing import Any
 
+try:
+    from goal006_plan_provenance import validate_provenance
+except ModuleNotFoundError:
+    from scripts.goal006_plan_provenance import validate_provenance
+
 
 FULL_SHA = re.compile(r"[0-9a-f]{40}$")
 
@@ -54,7 +59,13 @@ def create_bundle(
     workflow_run_attempt: str,
     lease_expiry: str,
     foundation_plan: Path,
+    foundation_plan_binary: Path,
+    foundation_plan_provenance: Path,
+    foundation_policy_result: Path,
     workload_plan: Path,
+    workload_plan_binary: Path,
+    workload_plan_provenance: Path,
+    workload_policy_result: Path,
     secret_catalog: Path,
     configuration: Path,
     dependency_files: list[Path],
@@ -72,16 +83,42 @@ def create_bundle(
 
     foundation = load_json(foundation_plan)
     workload = load_json(workload_plan)
+    foundation_provenance = load_json(foundation_plan_provenance)
+    workload_provenance = load_json(workload_plan_provenance)
     catalog = load_json(secret_catalog)
     config = load_json(configuration)
     for name, plan in (("foundation", foundation), ("workload", workload)):
         if not isinstance(plan, dict) or not isinstance(plan.get("resource_changes"), list):
             raise ValueError(f"{name} plan is not a Terraform JSON plan")
+    for scope, plan_path, plan_binary, provenance, policy_result in (
+        (
+            "foundation",
+            foundation_plan,
+            foundation_plan_binary,
+            foundation_provenance,
+            foundation_policy_result,
+        ),
+        ("workload", workload_plan, workload_plan_binary, workload_provenance, workload_policy_result),
+    ):
+        validate_provenance(
+            provenance,
+            environment=environment,
+            release_sha=release_sha,
+            release_run_id=release_run_id,
+            workflow_run_id=workflow_run_id,
+            workflow_run_attempt=workflow_run_attempt,
+            scope=scope,
+            plan_json=plan_path,
+            plan_binary=plan_binary,
+            policy_result=policy_result,
+        )
 
     plan_digest = canonical_digest(
         {
             "foundation": foundation,
+            "foundation_provenance": foundation_provenance,
             "workload": workload,
+            "workload_provenance": workload_provenance,
         }
     )
     secret_catalog_digest = canonical_digest(catalog)
@@ -107,6 +144,10 @@ def create_bundle(
         "release_run_id": release_run_id,
         "workflow_run_id": workflow_run_id,
         "workflow_run_attempt": workflow_run_attempt,
+        "plan_provenance": {
+            "foundation": foundation_provenance,
+            "workload": workload_provenance,
+        },
         "authorization": authorization,
         "tuple_digests": tuple_digests,
     }
@@ -124,7 +165,13 @@ def main() -> int:
     parser.add_argument("--workflow-run-attempt", required=True)
     parser.add_argument("--lease-expiry", required=True)
     parser.add_argument("--foundation-plan", required=True, type=Path)
+    parser.add_argument("--foundation-plan-binary", required=True, type=Path)
+    parser.add_argument("--foundation-plan-provenance", required=True, type=Path)
+    parser.add_argument("--foundation-policy-result", required=True, type=Path)
     parser.add_argument("--workload-plan", required=True, type=Path)
+    parser.add_argument("--workload-plan-binary", required=True, type=Path)
+    parser.add_argument("--workload-plan-provenance", required=True, type=Path)
+    parser.add_argument("--workload-policy-result", required=True, type=Path)
     parser.add_argument("--secret-catalog", required=True, type=Path)
     parser.add_argument("--configuration", required=True, type=Path)
     parser.add_argument("--dependency-file", action="append", required=True, type=Path)
@@ -141,7 +188,13 @@ def main() -> int:
         workflow_run_attempt=arguments.workflow_run_attempt,
         lease_expiry=arguments.lease_expiry,
         foundation_plan=arguments.foundation_plan,
+        foundation_plan_binary=arguments.foundation_plan_binary,
+        foundation_plan_provenance=arguments.foundation_plan_provenance,
+        foundation_policy_result=arguments.foundation_policy_result,
         workload_plan=arguments.workload_plan,
+        workload_plan_binary=arguments.workload_plan_binary,
+        workload_plan_provenance=arguments.workload_plan_provenance,
+        workload_policy_result=arguments.workload_policy_result,
         secret_catalog=arguments.secret_catalog,
         configuration=arguments.configuration,
         dependency_files=arguments.dependency_file,

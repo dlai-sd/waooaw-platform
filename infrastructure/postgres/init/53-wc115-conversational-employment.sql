@@ -312,6 +312,13 @@ CREATE TABLE IF NOT EXISTS billing.employment_eligibility_versions (
     CONSTRAINT billing_employment_supersession_check
         CHECK (supersedes_source_version IS NULL OR supersedes_source_version <> source_version)
 );
+DO $billing_ownership$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'billing_owner') THEN
+        ALTER TABLE billing.employment_eligibility_versions OWNER TO billing_owner;
+    END IF;
+END
+$billing_ownership$;
 
 CREATE TABLE IF NOT EXISTS domain_adapter.employment_interface_manifests (
     tenant_id UUID NOT NULL,
@@ -433,57 +440,74 @@ ALTER TABLE domain_adapter.employment_interface_manifests FORCE ROW LEVEL SECURI
 ALTER TABLE domain_adapter.employment_assessments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE domain_adapter.employment_assessments FORCE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS employment_workspace_tenant_isolation ON business.employment_workspace_versions;
 CREATE POLICY employment_workspace_tenant_isolation ON business.employment_workspace_versions
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS employment_plan_tenant_isolation ON business.employment_plan_versions;
 CREATE POLICY employment_plan_tenant_isolation ON business.employment_plan_versions
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS employment_workspace_projection_content_tenant_isolation ON business.employment_workspace_projection_content;
 CREATE POLICY employment_workspace_projection_content_tenant_isolation
 ON business.employment_workspace_projection_content
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS employment_projection_erasure_tombstone_tenant_isolation ON business.employment_projection_erasure_tombstones;
 CREATE POLICY employment_projection_erasure_tombstone_tenant_isolation
 ON business.employment_projection_erasure_tombstones
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS employment_owner_context_tenant_isolation ON business.employment_owner_contexts;
 CREATE POLICY employment_owner_context_tenant_isolation
 ON business.employment_owner_contexts
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS employment_command_tenant_isolation ON business.employment_commands;
 CREATE POLICY employment_command_tenant_isolation ON business.employment_commands
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS employment_command_event_tenant_isolation ON business.employment_command_events;
 CREATE POLICY employment_command_event_tenant_isolation ON business.employment_command_events
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS employment_scan_tenant_isolation ON business.employment_compatibility_scans;
 CREATE POLICY employment_scan_tenant_isolation ON business.employment_compatibility_scans
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS employment_outbox_tenant_isolation ON business.employment_outbox;
 CREATE POLICY employment_outbox_tenant_isolation ON business.employment_outbox
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS employment_inbox_tenant_isolation ON business.employment_inbox;
 CREATE POLICY employment_inbox_tenant_isolation ON business.employment_inbox
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS professional_employment_tenant_isolation ON professional.employment_execution_records;
 CREATE POLICY professional_employment_tenant_isolation ON professional.employment_execution_records
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS air_employment_tenant_isolation ON ai_runtime.employment_patch_proposals;
 CREATE POLICY air_employment_tenant_isolation ON ai_runtime.employment_patch_proposals
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS air_employment_event_tenant_isolation ON ai_runtime.employment_patch_proposal_events;
 CREATE POLICY air_employment_event_tenant_isolation ON ai_runtime.employment_patch_proposal_events
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS air_employment_transient_tenant_isolation ON ai_runtime.employment_patch_transient_content;
 CREATE POLICY air_employment_transient_tenant_isolation ON ai_runtime.employment_patch_transient_content
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS billing_employment_tenant_isolation ON billing.employment_eligibility_versions;
 CREATE POLICY billing_employment_tenant_isolation ON billing.employment_eligibility_versions
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS domain_adapter_manifest_tenant_isolation ON domain_adapter.employment_interface_manifests;
 CREATE POLICY domain_adapter_manifest_tenant_isolation ON domain_adapter.employment_interface_manifests
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS domain_adapter_assessment_tenant_isolation ON domain_adapter.employment_assessments;
 CREATE POLICY domain_adapter_assessment_tenant_isolation ON domain_adapter.employment_assessments
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);

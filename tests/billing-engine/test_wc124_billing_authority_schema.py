@@ -34,9 +34,10 @@ def test_migration_is_expand_only_and_declares_every_authority_object() -> None:
     assert "drop table" not in lowered
     assert "drop schema" not in lowered
     assert "truncate " not in lowered
-    assert "billing_runtime\n            login nosuperuser nobypassrls" in lowered
-    assert "billing_migrator\n            login nosuperuser nobypassrls" in lowered
-    assert "alter schema billing owner to billing_owner" in lowered
+    assert "create schema" not in lowered
+    assert "create role" not in lowered
+    assert "set local role billing_owner" in lowered
+    assert "billing schema must be provisioned before migration" in lowered
     for table in TABLES:
         assert f"create table if not exists billing.{table}" in lowered
     assert "enable row level security" in lowered
@@ -77,6 +78,12 @@ def test_complete_principal_inventory_is_non_owner_and_nobypassrls() -> None:
         assert f"'{runtime}'" in bootstrap
     assert "login nosuperuser nobypassrls" in bootstrap
     assert "nologin nosuperuser nobypassrls" in bootstrap
+    assert "grant billing_owner to billing_migrator" in bootstrap
+    assert "create schema if not exists billing authorization billing_owner" in bootstrap
+    assert "alter schema billing owner to billing_owner" in bootstrap
+    # Transaction-mode PgBouncer rejects search_path as a startup parameter; the runtime relies
+    # on this server-side role default for its unqualified table names.
+    assert "alter role billing_runtime set search_path = billing, business, institutional, public" in bootstrap
     assert "revoke all on schema public from public" in handoff
     assert "d.deptype in ('a', 'i')" in handoff
     assert "force row level security" in handoff
@@ -195,6 +202,7 @@ def test_migration_reapplies_and_enforces_roles_rls_and_append_only_history(
                 'HALT', 'CLEAR', 'HALTED', 2, 'wc124-test',
                 'WC-124', 'synthetic migration qualification', 'evidence:wc124-test'
             )
+            ON CONFLICT (event_id) DO NOTHING
             """
         )
         with pytest.raises(psycopg2.errors.RaiseException, match="append-only"):

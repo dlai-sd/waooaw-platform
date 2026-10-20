@@ -39,6 +39,13 @@ own PR, access or mutate a provider without exact authority, or invoke another i
    are required. Before bootstrap deletion, prove `pg_shdepend` has zero database, schema, relation,
    routine, type, default-privilege and grantor-membership dependencies. After one failed mutation,
    stop, audit read-only evidence, and do not retry unchanged commands or accelerate into throttling.
+   Every file you author or change under `infrastructure/postgres/init/` must satisfy the
+   Idempotent Init-Chain SQL Standard (full spec §2.5): the Demo provisioner re-applies any file whose
+   digest changed, so every top-level statement must succeed against a database that already holds
+   its effect. Run `python scripts/wc124_init_chain_lint.py` (zero findings) and
+   `scripts/wc124_init_chain_local.sh` (run 1 applies all, run 2 skips all, forced run 3 re-applies
+   all with zero schema drift) before opening the PR; never add a `*.sh` init file for a managed
+   environment.
 4. Read the touched engineering files, nearest tests, and only the ADR/claim sections named by the task.
 5. For every build or test, use the catalog-owned four-tier sequence: static contract and exact-container execution contract preflight with no image build;
    stack-specific disposable story execution against mounted source; dependency-complete milestone checks;
@@ -97,10 +104,17 @@ be resolved from the compact route.
 | 15 | YAML Authoring and Validation | Modify and schema/lint-check YAML workflows or configuration |
 | 16 | Next.js Conversational Experience Engineering | Implement an authorized Next.js frontend slice |
 | 17 | Governed Cloud Delivery Engineering | Implement/test Docker, Terraform/Azure, Actions, OIDC/RBAC, immutable promotion, rollback, observability, and cost controls |
+| 18 | Workflow Control-Flow and State-Machine Engineering | Prove every workflow state, condition, dependency, cache branch, rerun, and required reconciliation path |
+| 19 | Infrastructure-as-Code and Configuration Lifecycle Engineering | Prove Terraform/ARM changes propagate from producer values to deployed consumers |
+| 20 | Secrets and Runtime Configuration Engineering | Reconcile Key Vault values, identities, versions, and verified consumer reload without disclosure |
+| 21 | Cloud Networking and Runtime Connectivity Engineering | Prove DNS, TCP, TLS, ingress, and private-network behavior from the exact consumer context |
+| 22 | Deployment Qualification and Failure-Injection Testing | Reproduce negative runtime paths locally before starting a hosted or paid deployment |
+| 23 | Observability and Automated Incident Diagnosis | Correlate executions and emit sanitized underlying failure evidence automatically |
 
-**Status:** Skills 1-17 are ACTIVE. Skill 17 was activated by FA-049 after R-118. Activation grants
-capability only; cloud query, apply, DNS, spend, deployment, Production, and acceptance each require
-their own current authority.
+**Status:** Skills 1-17 are ACTIVE. Skills 18-23 are added by Founder direction in PR #536 and become
+ACTIVE only after Founder review and merge. Skill 17 was activated by FA-049 after R-118. Activation
+grants capability only; cloud query, apply, DNS, spend, deployment, Production, and acceptance each
+require their own current authority.
 
 ## PR Precheck Failure Repair Path
 
@@ -165,3 +179,4 @@ For every story in any Work Component:
 - No interactive GitHub login, device authorization, personal PAT request, token persistence or
   reviewer-App reuse while the Codespaces credential helper and scoped token mapping are available.
 - For `src/` implementation, obey the explicit per-session implementation authorization gate.
+- No non-idempotent statement in `infrastructure/postgres/init/*.sql`; `wc124_init_chain_lint.py` must report zero findings.

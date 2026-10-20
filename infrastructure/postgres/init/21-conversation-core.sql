@@ -168,21 +168,27 @@ ALTER TABLE business.conversation_read_positions FORCE ROW LEVEL SECURITY;
 ALTER TABLE business.conversation_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.conversation_events FORCE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS conversations_tenant_isolation ON business.conversations;
 CREATE POLICY conversations_tenant_isolation ON business.conversations
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS conversation_messages_tenant_isolation ON business.conversation_messages;
 CREATE POLICY conversation_messages_tenant_isolation ON business.conversation_messages
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS conversation_executions_tenant_isolation ON business.conversation_executions;
 CREATE POLICY conversation_executions_tenant_isolation ON business.conversation_executions
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS conversation_idempotency_tenant_isolation ON business.conversation_idempotency_outcomes;
 CREATE POLICY conversation_idempotency_tenant_isolation ON business.conversation_idempotency_outcomes
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS conversation_read_positions_tenant_isolation ON business.conversation_read_positions;
 CREATE POLICY conversation_read_positions_tenant_isolation ON business.conversation_read_positions
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS conversation_events_tenant_isolation ON business.conversation_events;
 CREATE POLICY conversation_events_tenant_isolation ON business.conversation_events
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);

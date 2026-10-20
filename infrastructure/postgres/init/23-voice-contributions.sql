@@ -129,18 +129,23 @@ ALTER TABLE business.voice_idempotency_outcomes FORCE ROW LEVEL SECURITY;
 ALTER TABLE business.voice_erasure_tombstones ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.voice_erasure_tombstones FORCE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS voice_sessions_tenant_isolation ON business.voice_contribution_sessions;
 CREATE POLICY voice_sessions_tenant_isolation ON business.voice_contribution_sessions
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS voice_audio_tenant_isolation ON business.voice_audio_payloads;
 CREATE POLICY voice_audio_tenant_isolation ON business.voice_audio_payloads
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS voice_transcripts_tenant_isolation ON business.voice_transcript_versions;
 CREATE POLICY voice_transcripts_tenant_isolation ON business.voice_transcript_versions
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS voice_idempotency_tenant_isolation ON business.voice_idempotency_outcomes;
 CREATE POLICY voice_idempotency_tenant_isolation ON business.voice_idempotency_outcomes
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS voice_erasure_tenant_isolation ON business.voice_erasure_tombstones;
 CREATE POLICY voice_erasure_tenant_isolation ON business.voice_erasure_tombstones
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);

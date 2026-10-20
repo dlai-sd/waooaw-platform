@@ -36,12 +36,14 @@ CREATE INDEX IF NOT EXISTS identity_sessions_account_active_idx
 ALTER TABLE business.identity_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.identity_sessions FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS identity_sessions_account_isolation ON business.identity_sessions;
+DROP POLICY IF EXISTS identity_sessions_account_isolation ON business.identity_sessions;
 CREATE POLICY identity_sessions_account_isolation ON business.identity_sessions
     USING (account_ref = NULLIF(current_setting('app.identity_account_ref', TRUE), ''))
     WITH CHECK (account_ref = NULLIF(current_setting('app.identity_account_ref', TRUE), ''));
 
 ALTER TABLE business.identity_session_generations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.identity_session_generations FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS identity_session_generations_account_isolation ON business.identity_session_generations;
 DROP POLICY IF EXISTS identity_session_generations_account_isolation ON business.identity_session_generations;
 CREATE POLICY identity_session_generations_account_isolation ON business.identity_session_generations
     USING (account_ref = NULLIF(current_setting('app.identity_account_ref', TRUE), ''))

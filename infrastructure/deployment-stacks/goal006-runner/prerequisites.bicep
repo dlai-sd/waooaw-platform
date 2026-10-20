@@ -103,17 +103,22 @@ resource cleanupJobOperatorRole 'Microsoft.Authorization/roleDefinitions@2022-04
     permissions: [
       {
         actions: [
+          'Microsoft.App/managedEnvironments/read'
           'Microsoft.App/jobs/read'
           'Microsoft.App/jobs/executions/read'
           'Microsoft.App/jobs/getAuthToken/action'
           'Microsoft.App/jobs/start/action'
           'Microsoft.App/jobs/stop/execution/action'
           'Microsoft.OperationalInsights/workspaces/read'
+          'Microsoft.OperationalInsights/workspaces/query/read'
           'Microsoft.OperationalInsights/workspaces/analytics/query/action'
           'Microsoft.OperationalInsights/workspaces/query/ContainerAppConsoleLogs/read'
+          'Microsoft.OperationalInsights/workspaces/query/ContainerAppSystemLogs/read'
         ]
         notActions: []
-        dataActions: []
+        dataActions: [
+          'Microsoft.OperationalInsights/workspaces/tables/data/read'
+        ]
         notDataActions: []
       }
     ]

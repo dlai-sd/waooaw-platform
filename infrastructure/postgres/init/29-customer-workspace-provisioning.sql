@@ -10,7 +10,13 @@ ALTER SCHEMA identity OWNER TO CURRENT_USER;
 REVOKE CREATE ON SCHEMA business, identity, public
     FROM PUBLIC, business_app, constitutional_app, runtime_app, wbe_app;
 GRANT USAGE ON SCHEMA business, identity TO business_app, constitutional_app, runtime_app, wbe_app;
-CREATE ROLE identity_resolver_owner NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION;
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'identity_resolver_owner') THEN
+        CREATE ROLE identity_resolver_owner NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION;
+    END IF;
+END
+$idempotent$;
 GRANT USAGE ON SCHEMA identity, business TO identity_resolver_owner;
 ALTER DEFAULT PRIVILEGES REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
 
@@ -28,35 +34,47 @@ BEGIN
 END;
 $permissions$;
 
-ALTER TABLE business.organisations
-    ADD COLUMN identity_managed boolean NOT NULL DEFAULT false,
-    ADD COLUMN identity_status varchar(24) NOT NULL DEFAULT 'LEGACY_UNVERIFIED'
-        CHECK (identity_status IN ('LEGACY_UNVERIFIED', 'ACTIVE', 'INACTIVE')),
-    ADD CONSTRAINT organisations_managed_identity_check CHECK (
-        NOT identity_managed OR (id = tenant_id AND identity_status IN ('ACTIVE', 'INACTIVE')));
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'organisations_managed_identity_check' AND conrelid = 'business.organisations'::regclass) THEN
+        ALTER TABLE business.organisations
+            ADD COLUMN IF NOT EXISTS identity_managed boolean NOT NULL DEFAULT false,
+            ADD COLUMN IF NOT EXISTS identity_status varchar(24) NOT NULL DEFAULT 'LEGACY_UNVERIFIED'
+                CHECK (identity_status IN ('LEGACY_UNVERIFIED', 'ACTIVE', 'INACTIVE')),
+            ADD CONSTRAINT organisations_managed_identity_check CHECK (
+                NOT identity_managed OR (id = tenant_id AND identity_status IN ('ACTIVE', 'INACTIVE')));
+    END IF;
+END
+$idempotent$;
 
-ALTER TABLE identity.registrations
-    ADD COLUMN actor_issuer varchar(256) COLLATE "C" CHECK (octet_length(actor_issuer) > 0),
-    ALTER COLUMN actor_subject TYPE varchar(256) COLLATE "C",
-    ADD COLUMN actor_binding_id uuid,
-    ADD COLUMN origin_registration_id uuid REFERENCES identity.registrations(registration_id) ON DELETE RESTRICT,
-    ADD COLUMN completed_at timestamptz,
-    ADD COLUMN completion_outcome varchar(24) CHECK (completion_outcome IN ('ACCOUNT_CREATED', 'ACCOUNT_REUSED')),
-    ADD COLUMN completion_profile_snapshot jsonb CHECK (jsonb_typeof(completion_profile_snapshot) = 'object'),
-    ADD COLUMN completion_status_code integer CHECK (completion_status_code = 200),
-    ADD COLUMN completion_response_body text,
-    ADD CONSTRAINT registrations_actor_unique UNIQUE (registration_id, actor_issuer, actor_subject),
-    ADD CONSTRAINT registrations_issuer_required CHECK (actor_issuer IS NOT NULL) NOT VALID,
-    ADD CONSTRAINT registrations_subject_nonempty CHECK (octet_length(actor_subject) > 0) NOT VALID,
-    ADD CONSTRAINT registrations_completed_identity_check CHECK (state <> 'Completed' OR (
-        actor_issuer IS NOT NULL AND actor_binding_id IS NOT NULL AND account_id IS NOT NULL
-        AND origin_registration_id IS NOT NULL AND completed_at IS NOT NULL
-        AND completion_outcome IS NOT NULL AND completion_profile_snapshot IS NOT NULL
-        AND completion_status_code IS NOT NULL AND completion_response_body IS NOT NULL)) NOT VALID;
-CREATE INDEX registrations_actor_pair_idx ON identity.registrations(actor_issuer, actor_subject);
-CREATE INDEX registrations_origin_idx ON identity.registrations(origin_registration_id);
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'registrations_completed_identity_check' AND conrelid = 'identity.registrations'::regclass) THEN
+        ALTER TABLE identity.registrations
+            ADD COLUMN IF NOT EXISTS actor_issuer varchar(256) COLLATE "C" CHECK (octet_length(actor_issuer) > 0),
+            ALTER COLUMN actor_subject TYPE varchar(256) COLLATE "C",
+            ADD COLUMN IF NOT EXISTS actor_binding_id uuid,
+            ADD COLUMN IF NOT EXISTS origin_registration_id uuid REFERENCES identity.registrations(registration_id) ON DELETE RESTRICT,
+            ADD COLUMN IF NOT EXISTS completed_at timestamptz,
+            ADD COLUMN IF NOT EXISTS completion_outcome varchar(24) CHECK (completion_outcome IN ('ACCOUNT_CREATED', 'ACCOUNT_REUSED')),
+            ADD COLUMN IF NOT EXISTS completion_profile_snapshot jsonb CHECK (jsonb_typeof(completion_profile_snapshot) = 'object'),
+            ADD COLUMN IF NOT EXISTS completion_status_code integer CHECK (completion_status_code = 200),
+            ADD COLUMN IF NOT EXISTS completion_response_body text,
+            ADD CONSTRAINT registrations_actor_unique UNIQUE (registration_id, actor_issuer, actor_subject),
+            ADD CONSTRAINT registrations_issuer_required CHECK (actor_issuer IS NOT NULL) NOT VALID,
+            ADD CONSTRAINT registrations_subject_nonempty CHECK (octet_length(actor_subject) > 0) NOT VALID,
+            ADD CONSTRAINT registrations_completed_identity_check CHECK (state <> 'Completed' OR (
+                actor_issuer IS NOT NULL AND actor_binding_id IS NOT NULL AND account_id IS NOT NULL
+                AND origin_registration_id IS NOT NULL AND completed_at IS NOT NULL
+                AND completion_outcome IS NOT NULL AND completion_profile_snapshot IS NOT NULL
+                AND completion_status_code IS NOT NULL AND completion_response_body IS NOT NULL)) NOT VALID;
+    END IF;
+END
+$idempotent$;
+CREATE INDEX IF NOT EXISTS registrations_actor_pair_idx ON identity.registrations(actor_issuer, actor_subject);
+CREATE INDEX IF NOT EXISTS registrations_origin_idx ON identity.registrations(origin_registration_id);
 
-CREATE TABLE identity.accounts (
+CREATE TABLE IF NOT EXISTS identity.accounts (
     account_id uuid PRIMARY KEY,
     initial_tenant_id uuid NOT NULL UNIQUE REFERENCES business.organisations(tenant_id)
         ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED,
@@ -67,7 +85,7 @@ CREATE TABLE identity.accounts (
     CHECK (account_id <> initial_tenant_id),
     UNIQUE (account_id, initial_tenant_id)
 );
-CREATE TABLE identity.login_methods (
+CREATE TABLE IF NOT EXISTS identity.login_methods (
     login_method_id uuid PRIMARY KEY,
     provider_issuer varchar(256) COLLATE "C" NOT NULL CHECK (octet_length(provider_issuer) > 0),
     broker_alias varchar(40) COLLATE "C" NOT NULL CHECK (octet_length(broker_alias) > 0),
@@ -79,8 +97,8 @@ CREATE TABLE identity.login_methods (
     CONSTRAINT login_methods_provider_unique UNIQUE (provider_issuer, broker_alias, provider_subject),
     UNIQUE (login_method_id, account_id)
 );
-CREATE INDEX login_methods_account_idx ON identity.login_methods(account_id);
-CREATE TABLE identity.actor_bindings (
+CREATE INDEX IF NOT EXISTS login_methods_account_idx ON identity.login_methods(account_id);
+CREATE TABLE IF NOT EXISTS identity.actor_bindings (
     actor_binding_id uuid PRIMARY KEY,
     actor_issuer varchar(256) COLLATE "C" NOT NULL CHECK (octet_length(actor_issuer) > 0),
     actor_subject varchar(256) COLLATE "C" NOT NULL CHECK (octet_length(actor_subject) > 0),
@@ -99,10 +117,10 @@ CREATE TABLE identity.actor_bindings (
     UNIQUE (actor_binding_id, account_id, actor_issuer, actor_subject),
     CHECK (auth_time <= verified_at + interval '30 seconds')
 );
-CREATE UNIQUE INDEX actor_bindings_active_login_unique ON identity.actor_bindings(login_method_id) WHERE status = 'ACTIVE';
-CREATE INDEX actor_bindings_login_account_idx ON identity.actor_bindings(login_method_id, account_id);
-CREATE INDEX actor_bindings_account_idx ON identity.actor_bindings(account_id);
-CREATE TABLE identity.memberships (
+CREATE UNIQUE INDEX IF NOT EXISTS actor_bindings_active_login_unique ON identity.actor_bindings(login_method_id) WHERE status = 'ACTIVE';
+CREATE INDEX IF NOT EXISTS actor_bindings_login_account_idx ON identity.actor_bindings(login_method_id, account_id);
+CREATE INDEX IF NOT EXISTS actor_bindings_account_idx ON identity.actor_bindings(account_id);
+CREATE TABLE IF NOT EXISTS identity.memberships (
     membership_id uuid PRIMARY KEY,
     account_id uuid NOT NULL UNIQUE,
     tenant_id uuid NOT NULL,
@@ -112,40 +130,58 @@ CREATE TABLE identity.memberships (
     FOREIGN KEY (account_id, tenant_id) REFERENCES identity.accounts(account_id, initial_tenant_id) ON DELETE RESTRICT,
     UNIQUE (membership_id, account_id, tenant_id)
 );
-CREATE INDEX memberships_tenant_idx ON identity.memberships(tenant_id);
-ALTER TABLE identity.registrations ADD CONSTRAINT registrations_binding_fk
-    FOREIGN KEY (actor_binding_id, account_id, actor_issuer, actor_subject)
-    REFERENCES identity.actor_bindings(actor_binding_id, account_id, actor_issuer, actor_subject)
-    ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED;
-CREATE INDEX registrations_binding_idx ON identity.registrations(actor_binding_id, account_id, actor_issuer, actor_subject);
+CREATE INDEX IF NOT EXISTS memberships_tenant_idx ON identity.memberships(tenant_id);
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'registrations_binding_fk' AND conrelid = 'identity.registrations'::regclass) THEN
+        ALTER TABLE identity.registrations ADD CONSTRAINT registrations_binding_fk
+            FOREIGN KEY (actor_binding_id, account_id, actor_issuer, actor_subject)
+            REFERENCES identity.actor_bindings(actor_binding_id, account_id, actor_issuer, actor_subject)
+            ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED;
+    END IF;
+END
+$idempotent$;
+CREATE INDEX IF NOT EXISTS registrations_binding_idx ON identity.registrations(actor_binding_id, account_id, actor_issuer, actor_subject);
 
-ALTER TABLE identity.idempotency_ledger
-    ADD COLUMN actor_issuer varchar(256) COLLATE "C" CHECK (octet_length(actor_issuer) > 0),
-    ALTER COLUMN actor_subject TYPE varchar(256) COLLATE "C",
-    ADD COLUMN registration_id uuid,
-    DROP CONSTRAINT idempotency_ledger_actor_key_op_unique,
-    ADD CONSTRAINT idempotency_ledger_actor_key_op_unique UNIQUE (actor_issuer, actor_subject, idempotency_key, operation_family),
-    ADD CONSTRAINT idempotency_registration_fk FOREIGN KEY (registration_id, actor_issuer, actor_subject)
-        REFERENCES identity.registrations(registration_id, actor_issuer, actor_subject)
-        ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED,
-    ADD CONSTRAINT idempotency_issuer_required CHECK (actor_issuer IS NOT NULL) NOT VALID,
-    ADD CONSTRAINT idempotency_subject_nonempty CHECK (octet_length(actor_subject) > 0) NOT VALID,
-    ADD CONSTRAINT idempotency_completion_check CHECK (operation_family <> 'CompleteRegistration' OR (
-        registration_id IS NOT NULL AND status_code = 200 AND response_body IS NOT NULL
-        AND idempotency_key ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-        AND canonical_hash ~ '^[0-9a-f]{64}$')) NOT VALID,
-    ADD CONSTRAINT idempotency_completion_retention CHECK (operation_family <> 'CompleteRegistration'
-        OR expires_at >= created_at + interval '24 hours') NOT VALID;
-CREATE INDEX idempotency_registration_idx ON identity.idempotency_ledger(registration_id, actor_issuer, actor_subject);
-ALTER TABLE identity.registration_events
-    ADD COLUMN actor_issuer varchar(256) COLLATE "C" CHECK (octet_length(actor_issuer) > 0),
-    ALTER COLUMN actor_subject TYPE varchar(256) COLLATE "C",
-    ADD CONSTRAINT events_issuer_required CHECK (actor_issuer IS NOT NULL) NOT VALID,
-    ADD CONSTRAINT events_subject_nonempty CHECK (octet_length(actor_subject) > 0) NOT VALID,
-    ADD CONSTRAINT events_registration_fk FOREIGN KEY (registration_id, actor_issuer, actor_subject)
-        REFERENCES identity.registrations(registration_id, actor_issuer, actor_subject)
-        ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED;
-CREATE INDEX events_actor_idx ON identity.registration_events(actor_issuer, actor_subject);
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'idempotency_completion_retention' AND conrelid = 'identity.idempotency_ledger'::regclass) THEN
+        ALTER TABLE identity.idempotency_ledger
+            ADD COLUMN IF NOT EXISTS actor_issuer varchar(256) COLLATE "C" CHECK (octet_length(actor_issuer) > 0),
+            ALTER COLUMN actor_subject TYPE varchar(256) COLLATE "C",
+            ADD COLUMN IF NOT EXISTS registration_id uuid,
+            DROP CONSTRAINT IF EXISTS idempotency_ledger_actor_key_op_unique,
+            ADD CONSTRAINT idempotency_ledger_actor_key_op_unique UNIQUE (actor_issuer, actor_subject, idempotency_key, operation_family),
+            ADD CONSTRAINT idempotency_registration_fk FOREIGN KEY (registration_id, actor_issuer, actor_subject)
+                REFERENCES identity.registrations(registration_id, actor_issuer, actor_subject)
+                ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED,
+            ADD CONSTRAINT idempotency_issuer_required CHECK (actor_issuer IS NOT NULL) NOT VALID,
+            ADD CONSTRAINT idempotency_subject_nonempty CHECK (octet_length(actor_subject) > 0) NOT VALID,
+            ADD CONSTRAINT idempotency_completion_check CHECK (operation_family <> 'CompleteRegistration' OR (
+                registration_id IS NOT NULL AND status_code = 200 AND response_body IS NOT NULL
+                AND idempotency_key ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                AND canonical_hash ~ '^[0-9a-f]{64}$')) NOT VALID,
+            ADD CONSTRAINT idempotency_completion_retention CHECK (operation_family <> 'CompleteRegistration'
+                OR expires_at >= created_at + interval '24 hours') NOT VALID;
+    END IF;
+END
+$idempotent$;
+CREATE INDEX IF NOT EXISTS idempotency_registration_idx ON identity.idempotency_ledger(registration_id, actor_issuer, actor_subject);
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'events_registration_fk' AND conrelid = 'identity.registration_events'::regclass) THEN
+        ALTER TABLE identity.registration_events
+            ADD COLUMN IF NOT EXISTS actor_issuer varchar(256) COLLATE "C" CHECK (octet_length(actor_issuer) > 0),
+            ALTER COLUMN actor_subject TYPE varchar(256) COLLATE "C",
+            ADD CONSTRAINT events_issuer_required CHECK (actor_issuer IS NOT NULL) NOT VALID,
+            ADD CONSTRAINT events_subject_nonempty CHECK (octet_length(actor_subject) > 0) NOT VALID,
+            ADD CONSTRAINT events_registration_fk FOREIGN KEY (registration_id, actor_issuer, actor_subject)
+                REFERENCES identity.registrations(registration_id, actor_issuer, actor_subject)
+                ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED;
+    END IF;
+END
+$idempotent$;
+CREATE INDEX IF NOT EXISTS events_actor_idx ON identity.registration_events(actor_issuer, actor_subject);
 
 DO $tables$
 DECLARE
@@ -183,32 +219,39 @@ GRANT SELECT (account_id, initial_tenant_id, status) ON identity.accounts TO ide
 GRANT SELECT (membership_id, account_id, tenant_id, roles, status) ON identity.memberships TO identity_resolver_owner;
 GRANT SELECT (tenant_id, identity_managed, identity_status) ON business.organisations TO identity_resolver_owner;
 
+DROP POLICY IF EXISTS actor_scope ON identity.actor_bindings;
 CREATE POLICY actor_scope ON identity.actor_bindings TO business_app, identity_resolver_owner
     USING (actor_issuer = NULLIF(current_setting('app.identity_issuer', true), '') COLLATE "C"
        AND actor_subject = NULLIF(current_setting('app.identity_subject', true), '') COLLATE "C")
     WITH CHECK (actor_issuer = NULLIF(current_setting('app.identity_issuer', true), '') COLLATE "C"
        AND actor_subject = NULLIF(current_setting('app.identity_subject', true), '') COLLATE "C");
+DROP POLICY IF EXISTS actor_scope ON identity.login_methods;
 CREATE POLICY actor_scope ON identity.login_methods TO business_app, identity_resolver_owner
     USING (EXISTS (SELECT 1 FROM identity.actor_bindings AS actor
         WHERE actor.account_id = login_methods.account_id AND actor.login_method_id = login_methods.login_method_id))
     WITH CHECK (EXISTS (SELECT 1 FROM identity.actor_bindings AS actor
         WHERE actor.account_id = login_methods.account_id AND actor.login_method_id = login_methods.login_method_id));
+DROP POLICY IF EXISTS actor_scope ON identity.accounts;
 CREATE POLICY actor_scope ON identity.accounts TO business_app, identity_resolver_owner
     USING (EXISTS (SELECT 1 FROM identity.actor_bindings AS actor WHERE actor.account_id = accounts.account_id))
     WITH CHECK (EXISTS (SELECT 1 FROM identity.actor_bindings AS actor WHERE actor.account_id = accounts.account_id));
+DROP POLICY IF EXISTS actor_scope ON identity.memberships;
 CREATE POLICY actor_scope ON identity.memberships TO business_app, identity_resolver_owner
     USING (EXISTS (SELECT 1 FROM identity.actor_bindings AS actor WHERE actor.account_id = memberships.account_id))
     WITH CHECK (EXISTS (SELECT 1 FROM identity.actor_bindings AS actor WHERE actor.account_id = memberships.account_id));
+DROP POLICY IF EXISTS actor_scope ON identity.registrations;
 CREATE POLICY actor_scope ON identity.registrations TO business_app
     USING (actor_issuer = NULLIF(current_setting('app.identity_issuer', true), '') COLLATE "C"
        AND actor_subject = NULLIF(current_setting('app.identity_subject', true), '') COLLATE "C")
     WITH CHECK (actor_issuer = NULLIF(current_setting('app.identity_issuer', true), '') COLLATE "C"
        AND actor_subject = NULLIF(current_setting('app.identity_subject', true), '') COLLATE "C");
+DROP POLICY IF EXISTS actor_scope ON identity.registration_events;
 CREATE POLICY actor_scope ON identity.registration_events TO business_app
     USING (actor_issuer = NULLIF(current_setting('app.identity_issuer', true), '') COLLATE "C"
        AND actor_subject = NULLIF(current_setting('app.identity_subject', true), '') COLLATE "C")
     WITH CHECK (actor_issuer = NULLIF(current_setting('app.identity_issuer', true), '') COLLATE "C"
        AND actor_subject = NULLIF(current_setting('app.identity_subject', true), '') COLLATE "C");
+DROP POLICY IF EXISTS actor_scope ON identity.idempotency_ledger;
 CREATE POLICY actor_scope ON identity.idempotency_ledger TO business_app
     USING (actor_issuer = NULLIF(current_setting('app.identity_issuer', true), '') COLLATE "C"
        AND actor_subject = NULLIF(current_setting('app.identity_subject', true), '') COLLATE "C")
@@ -216,10 +259,14 @@ CREATE POLICY actor_scope ON identity.idempotency_ledger TO business_app
        AND actor_subject = NULLIF(current_setting('app.identity_subject', true), '') COLLATE "C");
 
 DROP POLICY IF EXISTS tenant_isolation ON business.organisations;
+DROP POLICY IF EXISTS resolver_actor_scope ON business.organisations;
 CREATE POLICY resolver_actor_scope ON business.organisations FOR SELECT TO identity_resolver_owner
     USING (EXISTS (SELECT 1 FROM identity.accounts AS account WHERE account.initial_tenant_id = organisations.tenant_id));
+DROP POLICY IF EXISTS bp_select ON business.organisations;
 CREATE POLICY bp_select ON business.organisations FOR SELECT TO business_app USING (true);
+DROP POLICY IF EXISTS bp_insert ON business.organisations;
 CREATE POLICY bp_insert ON business.organisations FOR INSERT TO business_app WITH CHECK (identity_status = 'ACTIVE');
+DROP POLICY IF EXISTS bp_identity_boundary ON business.organisations;
 CREATE POLICY bp_identity_boundary ON business.organisations AS RESTRICTIVE TO business_app
     USING (identity_managed AND id = tenant_id AND (
         (NULLIF(current_setting('app.tenant_id', true), '') IS NULL
@@ -239,13 +286,14 @@ CREATE POLICY bp_identity_boundary ON business.organisations AS RESTRICTIVE TO b
         AND NULLIF(current_setting('app.tenant_id', true), '') IS NULL
         AND NULLIF(current_setting('app.current_tenant_id', true), '') IS NULL
         AND EXISTS (SELECT 1 FROM identity.accounts AS account WHERE account.initial_tenant_id = organisations.tenant_id));
+DROP POLICY IF EXISTS service_tenant_boundary ON business.organisations;
 CREATE POLICY service_tenant_boundary ON business.organisations AS RESTRICTIVE TO constitutional_app, runtime_app, wbe_app
     USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
        AND tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
        AND tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
-CREATE FUNCTION identity.resolve_customer_membership()
+CREATE OR REPLACE FUNCTION identity.resolve_customer_membership()
 RETURNS TABLE (account_id uuid, tenant_id uuid, membership_id uuid, roles text[])
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = pg_catalog SET row_security = on
 AS $function$
@@ -280,7 +328,7 @@ REVOKE CREATE ON SCHEMA identity FROM identity_resolver_owner;
 REVOKE ALL ON FUNCTION identity.resolve_customer_membership() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION identity.resolve_customer_membership() TO business_app, constitutional_app, runtime_app, wbe_app;
 
-CREATE FUNCTION identity.guard_registration_identity() RETURNS trigger
+CREATE OR REPLACE FUNCTION identity.guard_registration_identity() RETURNS trigger
 LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog AS $guard$
 BEGIN
     IF TG_OP = 'UPDATE' THEN
@@ -297,10 +345,10 @@ BEGIN
     RETURN NEW;
 END;
 $guard$;
-CREATE TRIGGER guard_registration_identity BEFORE INSERT OR UPDATE ON identity.registrations
+CREATE OR REPLACE TRIGGER guard_registration_identity BEFORE INSERT OR UPDATE ON identity.registrations
     FOR EACH ROW EXECUTE FUNCTION identity.guard_registration_identity();
 
-CREATE FUNCTION identity.assert_completed_cohort() RETURNS trigger
+CREATE OR REPLACE FUNCTION identity.assert_completed_cohort() RETURNS trigger
 LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog AS $cohort$
 DECLARE
     target_registration uuid;
@@ -382,10 +430,13 @@ EXCEPTION
     WHEN no_data_found OR too_many_rows THEN RAISE EXCEPTION 'completion invariant failed' USING ERRCODE = '23514';
 END;
 $cohort$;
+DROP TRIGGER IF EXISTS account_completed_cohort ON identity.accounts;
 CREATE CONSTRAINT TRIGGER account_completed_cohort AFTER INSERT ON identity.accounts DEFERRABLE INITIALLY DEFERRED
     FOR EACH ROW EXECUTE FUNCTION identity.assert_completed_cohort();
+DROP TRIGGER IF EXISTS registration_completed_cohort ON identity.registrations;
 CREATE CONSTRAINT TRIGGER registration_completed_cohort AFTER INSERT OR UPDATE ON identity.registrations DEFERRABLE INITIALLY DEFERRED
     FOR EACH ROW EXECUTE FUNCTION identity.assert_completed_cohort();
+DROP TRIGGER IF EXISTS replay_completed_cohort ON identity.idempotency_ledger;
 CREATE CONSTRAINT TRIGGER replay_completed_cohort AFTER INSERT ON identity.idempotency_ledger DEFERRABLE INITIALLY DEFERRED
     FOR EACH ROW EXECUTE FUNCTION identity.assert_completed_cohort();
 REVOKE ALL ON FUNCTION identity.guard_registration_identity(), identity.assert_completed_cohort() FROM PUBLIC;

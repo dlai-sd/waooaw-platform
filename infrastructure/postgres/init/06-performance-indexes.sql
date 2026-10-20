@@ -30,7 +30,7 @@ DROP INDEX IF EXISTS constitutional.idx_state_value_embedding;           -- if e
 -- ─── HNSW indexes — professional schema ──────────────────────────────────────
 
 -- Creative Standard Embeddings (DMA Skill 8 — Digital Twin fingerprinting)
-CREATE INDEX idx_creative_embeddings_hnsw
+CREATE INDEX IF NOT EXISTS idx_creative_embeddings_hnsw
     ON professional.creative_standard_embeddings
     USING hnsw (embedding vector_cosine_ops)
     WITH (m = 16, ef_construction = 64);
@@ -38,14 +38,14 @@ CREATE INDEX idx_creative_embeddings_hnsw
 -- ─── HNSW indexes — institutional schema ─────────────────────────────────────
 
 -- Domain Knowledge (Tier 1 RAG — agent knowledge base)
-CREATE INDEX idx_domain_knowledge_hnsw
+CREATE INDEX IF NOT EXISTS idx_domain_knowledge_hnsw
     ON institutional.domain_knowledge
     USING hnsw (content_embedding vector_cosine_ops)
     WITH (m = 16, ef_construction = 64);
 
 -- Platform Intelligence (Tier 3 RAG — aggregate cross-customer patterns)
 -- NOTE: Tier 3 is read-heavy and large → HNSW is critical here
-CREATE INDEX idx_platform_intelligence_hnsw
+CREATE INDEX IF NOT EXISTS idx_platform_intelligence_hnsw
     ON institutional.platform_intelligence
     USING hnsw (pattern_embedding vector_cosine_ops)
     WITH (m = 16, ef_construction = 64)
@@ -55,13 +55,13 @@ CREATE INDEX idx_platform_intelligence_hnsw
 
 -- Customer Creative Fingerprints (DMA uniqueness enforcement — C-052)
 -- These are queried on every content generation to enforce brand uniqueness
-CREATE INDEX idx_fingerprint_voice_hnsw
+CREATE INDEX IF NOT EXISTS idx_fingerprint_voice_hnsw
     ON business.customer_creative_fingerprints
     USING hnsw (voice_embedding vector_cosine_ops)
     WITH (m = 16, ef_construction = 64)
     WHERE voice_embedding IS NOT NULL;
 
-CREATE INDEX idx_fingerprint_competitor_hnsw
+CREATE INDEX IF NOT EXISTS idx_fingerprint_competitor_hnsw
     ON business.customer_creative_fingerprints
     USING hnsw (competitor_exclusion_embedding vector_cosine_ops)
     WITH (m = 16, ef_construction = 64)
@@ -69,7 +69,7 @@ CREATE INDEX idx_fingerprint_competitor_hnsw
 
 -- Agent Skill Graph (SIR intent routing — C-054)
 -- Queried on every agent request to route to the right skill
-CREATE INDEX idx_skill_graph_hnsw
+CREATE INDEX IF NOT EXISTS idx_skill_graph_hnsw
     ON business.agent_skill_graph
     USING hnsw (intent_signatures_embedding vector_cosine_ops)
     WITH (m = 16, ef_construction = 64)

@@ -4,22 +4,31 @@ import copy
 import json
 from pathlib import Path
 import subprocess
+from types import SimpleNamespace
 
 import pytest
 
 from wc124_db_provisioner import (
     APPLICATION_DATABASE,
+    APPLICATION_MIGRATION_ROLES,
+    INIT_CHAIN_LEDGER_TABLE,
     KEYCLOAK_DATABASE,
     TEMPORAL_DATABASE,
     TEMPORAL_VISIBILITY_DATABASE,
     application_migration_files,
+    apply_init_chain,
     authfile_value,
+    await_vault_authorization,
     environment_specs,
+    execute,
+    existing_grant_digest,
     password_from_secret,
+    probe_pgbouncer_connectivity,
     psql,
     run,
     secret_value,
     validate_catalog,
+    write_secrets,
 )
 
 
@@ -102,7 +111,7 @@ def test_catalog_credential_omission_is_rejected() -> None:
 def test_every_secret_value_round_trips_its_password_without_echo_metadata() -> None:
     password = "unique-password-value"
     for spec in environment_specs("demo"):
-        value = secret_value(spec, password, "ca-demo-pgbouncer.internal.example")
+        value = secret_value(spec, password, "ca-demo-pgbouncer")
 
         assert password_from_secret(spec, value) == password
         assert spec.role in value if spec.value_format != "password" else value == password
@@ -115,6 +124,272 @@ def test_pgbouncer_authfile_contains_the_exact_distinct_credential_set() -> None
     assert value.count("\n") == 17
     for role, password in passwords.items():
         assert f'"{role}" "{password}"' in value
+
+
+def test_existing_url_secret_is_updated_to_canonical_host_without_rotating_password(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    spec = next(spec for spec in environment_specs("demo") if spec.secret_id == "db-billing-migration")
+    password = "existing-billing-password"
+    records = {
+        spec.secret_id: {
+            "id": "https://example.vault.azure.net/secrets/db-billing-migration/old-version",
+            "value": secret_value(spec, password, "obsolete.internal.example"),
+        }
+    }
+    captured: list[str] = []
+
+    def capture(command: list[str], **_: object) -> str:
+        captured.extend(command)
+        return json.dumps({"id": "https://example.vault.azure.net/secrets/db-billing-migration/new-version"})
+
+    monkeypatch.setattr("wc124_db_provisioner.run", capture)
+
+    evidence = write_secrets(
+        (spec,),
+        {spec.role: password},
+        records,
+        "example",
+        "ca-demo-pgbouncer",
+        "grant-digest",
+    )
+
+    value_index = captured.index("--value") + 1
+    assert captured[value_index] == secret_value(spec, password, "ca-demo-pgbouncer")
+    assert password_from_secret(spec, captured[value_index]) == password
+    assert evidence == [
+        {
+            "logical_secret_id": spec.secret_id,
+            "role": spec.role,
+            "database": spec.database,
+            "vault_name": "example",
+            "version_id": "new-version",
+            "status": "updated",
+        }
+    ]
+
+
+def test_existing_canonical_url_secret_is_preserved(monkeypatch: pytest.MonkeyPatch) -> None:
+    spec = next(spec for spec in environment_specs("demo") if spec.secret_id == "db-billing-migration")
+    password = "existing-billing-password"
+    existing = secret_value(spec, password, "ca-demo-pgbouncer")
+
+    def unexpected_write(*_: object, **__: object) -> str:
+        raise AssertionError("canonical secret must not be rewritten")
+
+    monkeypatch.setattr("wc124_db_provisioner.run", unexpected_write)
+
+    evidence = write_secrets(
+        (spec,),
+        {spec.role: password},
+        {
+            spec.secret_id: {
+                "id": "https://example.vault.azure.net/secrets/db-billing-migration/current-version",
+                "value": existing,
+            }
+        },
+        "example",
+        "ca-demo-pgbouncer",
+        "grant-digest",
+    )
+
+    assert evidence[0]["status"] == "preserved"
+    assert evidence[0]["version_id"] == "current-version"
+
+
+def test_existing_password_secret_is_not_rewritten_for_host_change(monkeypatch: pytest.MonkeyPatch) -> None:
+    spec = next(spec for spec in environment_specs("demo") if spec.value_format == "password")
+    password = "existing-password"
+
+    def unexpected_write(*_: object, **__: object) -> str:
+        raise AssertionError("raw password secret must not be rewritten")
+
+    monkeypatch.setattr("wc124_db_provisioner.run", unexpected_write)
+
+    evidence = write_secrets(
+        (spec,),
+        {spec.role: password},
+        {
+            spec.secret_id: {
+                "id": f"https://example.vault.azure.net/secrets/{spec.vault_name}/current-version",
+                "value": password,
+            }
+        },
+        "example",
+        "ca-demo-pgbouncer",
+        "grant-digest",
+    )
+
+    assert evidence[0]["status"] == "preserved"
+
+
+def test_existing_credentials_require_one_shared_grant_digest() -> None:
+    records = {
+        "first": {"tags": {"wc124-grant-digest": "digest-a"}},
+        "second": {"tags": {"wc124-grant-digest": "digest-a"}},
+    }
+
+    assert existing_grant_digest(records) == "digest-a"
+
+    records["second"] = {"tags": {"wc124-grant-digest": "digest-b"}}
+    with pytest.raises(ValueError, match="share one non-empty grant digest"):
+        existing_grant_digest(records)
+
+
+def test_refresh_only_rewrites_urls_without_database_bootstrap(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    catalog_path = tmp_path / "secret-catalog.json"
+    catalog_path.write_text(json.dumps(CATALOG), encoding="utf-8")
+    specs = environment_specs("demo")
+    passwords = {spec.role: f"{spec.role}-password" for spec in specs}
+    records = {
+        spec.secret_id: {
+            "id": f"https://example.vault.azure.net/secrets/{spec.vault_name}/version",
+            "tags": {
+                "wc124-role": spec.role,
+                "wc124-database": spec.database,
+                "wc124-grant-digest": "shared-grant-digest",
+            },
+            "value": secret_value(spec, passwords[spec.role], "obsolete.internal.example"),
+        }
+        for spec in specs
+    }
+    logins: list[str] = []
+    writes: list[tuple[str, str]] = []
+
+    monkeypatch.setattr("wc124_db_provisioner.azure_login", logins.append)
+    monkeypatch.setattr("wc124_db_provisioner.await_vault_authorization", lambda _vault: 3)
+    monkeypatch.setattr(
+        "wc124_db_provisioner.read_credentials",
+        lambda *_args, **kwargs: (
+            (
+                passwords,
+                records,
+            )
+            if kwargs == {"require_existing": True}
+            else pytest.fail("refresh must require every existing credential")
+        ),
+    )
+    monkeypatch.setattr(
+        "wc124_db_provisioner.write_secrets",
+        lambda _specs, _passwords, _records, vault, host, grant: (
+            writes.append((host, grant))
+            or [
+                {
+                    "logical_secret_id": "db-billing-migration",
+                    "status": "updated",
+                }
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "wc124_db_provisioner.provision_postgresql",
+        lambda *_args, **_kwargs: pytest.fail("refresh must not use database bootstrap authority"),
+    )
+
+    result = execute(
+        SimpleNamespace(
+            catalog=catalog_path,
+            environment="demo",
+            provisioner_client_id="provisioner-client",
+            vault_name="kv-waooaw-demo",
+            pgbouncer_host="ca-demo-pgbouncer",
+            refresh_existing_urls=True,
+        )
+    )
+
+    assert logins == ["provisioner-client"]
+    assert writes == [("ca-demo-pgbouncer", "shared-grant-digest")]
+    assert result["mode"] == "canonical-url-refresh"
+    assert result["vault_authorization_attempts"] == 3
+    assert result["credentials"][0]["status"] == "updated"
+
+
+def test_vault_authorization_retries_propagation_delay(monkeypatch: pytest.MonkeyPatch) -> None:
+    responses = iter(
+        (
+            subprocess.CompletedProcess([], 1, stdout="", stderr="ForbiddenByRbac"),
+            subprocess.CompletedProcess([], 1, stdout="", stderr="Forbidden"),
+            subprocess.CompletedProcess([], 0, stdout="secret-id\n", stderr=""),
+        )
+    )
+    sleeps: list[float] = []
+    monkeypatch.setattr("wc124_db_provisioner.shutil.which", lambda _name: "/usr/bin/az")
+    monkeypatch.setattr("wc124_db_provisioner.subprocess.run", lambda *_args, **_kwargs: next(responses))
+    monkeypatch.setattr("wc124_db_provisioner.time.sleep", sleeps.append)
+
+    assert await_vault_authorization("kv-waooaw-demo", attempts=3, delay_seconds=2) == 3
+    assert sleeps == [2, 2]
+
+
+def test_vault_authorization_fails_closed_after_bounded_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("wc124_db_provisioner.shutil.which", lambda _name: "/usr/bin/az")
+    monkeypatch.setattr(
+        "wc124_db_provisioner.subprocess.run",
+        lambda *_args, **_kwargs: subprocess.CompletedProcess([], 1, stdout="", stderr="ForbiddenByRbac"),
+    )
+    monkeypatch.setattr("wc124_db_provisioner.time.sleep", lambda _delay: None)
+
+    with pytest.raises(RuntimeError, match="did not become effective after 2 attempts"):
+        await_vault_authorization("kv-waooaw-demo", attempts=2, delay_seconds=0)
+
+
+def test_vault_authorization_rejects_unexpected_probe_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("wc124_db_provisioner.shutil.which", lambda _name: "/usr/bin/az")
+    monkeypatch.setattr(
+        "wc124_db_provisioner.subprocess.run",
+        lambda *_args, **_kwargs: subprocess.CompletedProcess([], 1, stdout="", stderr="Network unreachable"),
+    )
+
+    with pytest.raises(RuntimeError, match="non-authorization error"):
+        await_vault_authorization("kv-waooaw-demo", attempts=2, delay_seconds=0)
+
+
+def test_pgbouncer_probe_requires_same_environment_host(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "wc124_db_provisioner.socket.getaddrinfo",
+        lambda *_args, **_kwargs: pytest.fail("invalid host must fail before DNS"),
+    )
+
+    with pytest.raises(ValueError, match="ca-demo-pgbouncer"):
+        probe_pgbouncer_connectivity("demo", "stale.internal.example")
+
+
+def test_pgbouncer_probe_proves_dns_and_tcp(monkeypatch: pytest.MonkeyPatch) -> None:
+    connections: list[tuple[tuple[str, int], float]] = []
+
+    class Connection:
+        def __enter__(self) -> Connection:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+    monkeypatch.setattr(
+        "wc124_db_provisioner.socket.getaddrinfo",
+        lambda *_args, **_kwargs: [
+            (2, 1, 6, "", ("100.100.230.37", 5432)),
+            (2, 1, 6, "", ("100.100.230.37", 5432)),
+        ],
+    )
+    monkeypatch.setattr(
+        "wc124_db_provisioner.socket.create_connection",
+        lambda endpoint, timeout: connections.append((endpoint, timeout)) or Connection(),
+    )
+
+    evidence = probe_pgbouncer_connectivity("demo", "ca-demo-pgbouncer", timeout_seconds=3)
+
+    assert evidence == {
+        "schema": "waooaw.wc124-pgbouncer-connectivity/v1",
+        "environment": "demo",
+        "host": "ca-demo-pgbouncer",
+        "port": 5432,
+        "resolved_addresses": ["100.100.230.37"],
+        "tcp": "connected",
+    }
+    assert connections == [(("ca-demo-pgbouncer", 5432), 3)]
 
 
 def test_principal_handoff_reassigns_schema_objects_to_nologin_owners() -> None:
@@ -142,6 +417,17 @@ def test_vendor_databases_use_nologin_owners_and_separate_migrators() -> None:
     assert "ALTER DEFAULT PRIVILEGES FOR ROLE" in source
     assert "GRANT USAGE ON SCHEMA public" in source
     assert "CREATE EXTENSION IF NOT EXISTS btree_gin" in source
+
+
+def test_application_migrators_assume_only_their_owner_roles() -> None:
+    assert APPLICATION_MIGRATION_ROLES == {
+        "ce_migrator": "ce_owner",
+        "bp_migrator": "bp_owner",
+        "pr_migrator": "pr_owner",
+        "air_migrator": "air_owner",
+        "billing_migrator": "billing_owner",
+        "web_session_migrator": "web_session_owner",
+    }
 
 
 def test_run_preserves_stderr_without_echoing_sensitive_arguments(
@@ -182,10 +468,83 @@ def test_psql_uses_the_runner_system_ca_bundle(monkeypatch: pytest.MonkeyPatch) 
     assert captured["stdin"] == "SELECT 1;"
 
 
-def test_application_migrations_exclude_the_legacy_baseline() -> None:
-    files = application_migration_files(ROOT / "infrastructure/postgres/init")
+def test_application_migrations_cover_the_whole_sql_chain_after_the_principal_bootstrap() -> None:
+    init_directory = ROOT / "infrastructure/postgres/init"
+    files = application_migration_files(init_directory)
+    names = [path.name for path in files]
 
-    assert [path.name for path in files] == [
-        "59-wc124-billing-authority.sql",
-        "60-wc124-principal-handoff.sql",
+    assert "00-wc124-principal-bootstrap.sql" not in names
+    assert names == sorted(names, key=lambda name: name.encode())
+    assert names[0] == "01-schemas.sql"
+    assert names[-2:] == ["59-wc124-billing-authority.sql", "60-wc124-principal-handoff.sql"]
+    assert all(name.endswith(".sql") for name in names)
+    assert sorted(path.name for path in init_directory.glob("*.sh")) == [
+        "02-users-and-permissions.sh",
+        "42-demo-marketplace-admission.sh",
     ]
+
+
+def test_application_migrations_require_the_principal_bootstrap(tmp_path: Path) -> None:
+    (tmp_path / "01-schemas.sql").write_text("SELECT 1;", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="principal bootstrap file is missing"):
+        application_migration_files(tmp_path)
+
+
+def _ledger_psql(ledger: dict[str, str], calls: list[str]):
+    def fake_psql(_server, _bootstrap, _database, _token, sql, *, tuples_only=False):
+        calls.append(sql)
+        if tuples_only:
+            return "".join(f"{name}\t{digest}\n" for name, digest in sorted(ledger.items()))
+        if sql.startswith(f"INSERT INTO {INIT_CHAIN_LEDGER_TABLE}"):
+            name = sql.split("VALUES ('", 1)[1].split("'", 1)[0]
+            digest = sql.split("', '", 1)[1].split("'", 1)[0]
+            ledger[name] = digest
+        return ""
+
+    return fake_psql
+
+
+def test_init_chain_ledger_applies_only_changed_files(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    first = tmp_path / "01-schemas.sql"
+    second = tmp_path / "02-tables.sql"
+    first.write_text("CREATE SCHEMA IF NOT EXISTS a;", encoding="utf-8")
+    second.write_text("CREATE TABLE IF NOT EXISTS a.t (id int);", encoding="utf-8")
+    ledger: dict[str, str] = {}
+    calls: list[str] = []
+    monkeypatch.setattr("wc124_db_provisioner.psql", _ledger_psql(ledger, calls))
+
+    run_one = apply_init_chain("fqdn", "bootstrap", "token", (first, second))
+    assert run_one == {"applied": ["01-schemas.sql", "02-tables.sql"], "reapplied": [], "skipped": []}
+    assert calls[0].lstrip().startswith("CREATE SCHEMA IF NOT EXISTS wc124_provisioning")
+    assert calls.count(first.read_text(encoding="utf-8")) == 1
+
+    calls.clear()
+    run_two = apply_init_chain("fqdn", "bootstrap", "token", (first, second))
+    assert run_two == {"applied": [], "reapplied": [], "skipped": ["01-schemas.sql", "02-tables.sql"]}
+    assert not any(call.startswith("CREATE SCHEMA IF NOT EXISTS a") for call in calls)
+
+    second.write_text("CREATE TABLE IF NOT EXISTS a.t (id int, name text);", encoding="utf-8")
+    calls.clear()
+    run_three = apply_init_chain("fqdn", "bootstrap", "token", (first, second))
+    assert run_three == {"applied": [], "reapplied": ["02-tables.sql"], "skipped": ["01-schemas.sql"]}
+    assert second.read_text(encoding="utf-8") in calls
+    assert first.read_text(encoding="utf-8") not in calls
+
+    run_four = apply_init_chain("fqdn", "bootstrap", "token", (first, second), force=True)
+    assert run_four["reapplied"] == ["01-schemas.sql", "02-tables.sql"]
+
+
+def test_init_chain_ledger_rows_are_written_after_each_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    only = tmp_path / "01-schemas.sql"
+    only.write_text("CREATE SCHEMA IF NOT EXISTS a;", encoding="utf-8")
+    calls: list[str] = []
+    monkeypatch.setattr("wc124_db_provisioner.psql", _ledger_psql({}, calls))
+
+    apply_init_chain("fqdn", "bootstrap", "token", (only,))
+
+    file_index = calls.index(only.read_text(encoding="utf-8"))
+    ledger_write = calls[file_index + 1]
+    assert ledger_write.startswith(f"INSERT INTO {INIT_CHAIN_LEDGER_TABLE}")
+    assert "ON CONFLICT (file_name) DO UPDATE" in ledger_write
+    assert "'01-schemas.sql'" in ledger_write

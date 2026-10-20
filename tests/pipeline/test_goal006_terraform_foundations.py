@@ -280,8 +280,42 @@ def test_demo_temporal_lifecycle_and_member_readiness_are_fail_closed() -> None:
     assert 'for_each = each.key == "constitutional-engine" ? [] : [1]' in contract
     assert 'for_each = each.key == "constitutional-engine" ? [1] : []' in contract
     assert 'count = var.workload_enabled && var.environment == "demo" ? 1 : 0' in contract
-    assert "startup_probe" not in temporal
-    assert "readiness_probe" not in temporal
+    # Container Apps probes connect over loopback; the image's default bind (replica IP) made
+    # every single-container revision fail its startup probe while the frontend served gRPC.
+    assert re.search(r'name\s*=\s*"BIND_ON_IP"\s*\n\s*value\s*=\s*"0\.0\.0\.0"', temporal)
+    assert 'export TEMPORAL_BROADCAST_ADDRESS="$(hostname -i | awk \'{print $1}\')"' in temporal
+    assert 'export TEMPORAL_ADDRESS="127.0.0.1:7233"' in temporal
+    assert "exec /etc/temporal/entrypoint.sh autosetup" in temporal
+    assert temporal.count("startup_probe {") == 1
+    assert temporal.count("readiness_probe {") == 1
+    assert temporal.count("liveness_probe {") == 1
+    assert temporal.count('transport               = "TCP"') == 3
+    assert temporal.count("port                    = 7233") == 3
+    assert "failure_count_threshold = 30" in temporal
+    assert "interval_seconds        = 6" in temporal
+
+
+def test_every_probe_failure_threshold_is_within_the_azurerm_limit() -> None:
+    # azurerm 4.14 validates failure_count_threshold with IntBetween(1, 30) only during plan for
+    # count-gated resources, so `terraform validate` cannot catch an overrun (runs 39446836598
+    # and 39454383100 failed the Demo workload plan on a value of 36).
+    contract = read_contract("modules/workload/main.tf")
+    thresholds = [int(value) for value in re.findall(r"failure_count_threshold\s*=\s*(\d+)", contract)]
+    assert thresholds, "workload module declares no probes"
+    assert all(1 <= value <= 30 for value in thresholds), thresholds
+
+
+def test_every_container_app_declares_its_workload_profile() -> None:
+    # azurerm 4.14 otherwise plans `workload_profile_name: "Consumption" -> null` for all 16 apps
+    # on every apply (run 39428513813 workload-plan.json), hiding the real template changes.
+    contract = read_contract("modules/workload/main.tf")
+    resources = [
+        block for block in hcl2.loads(contract).get("resource", []) if '"azurerm_container_app"' in block
+    ]
+    assert len(resources) == 6
+    for block in resources:
+        (name, body), = block['"azurerm_container_app"'].items()
+        assert body.get("workload_profile_name") == '"Consumption"', name
 
 
 def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
@@ -310,6 +344,23 @@ def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
     assert "keycloak_migrator" in keycloak_migration
     assert "KC_SPI_CONNECTIONS_JPA_QUARKUS_MIGRATION_STRATEGY" in keycloak_migration
     assert 'value = "update"' in keycloak_migration
+    assert 'name        = "KEYCLOAK_CLIENT_SECRET"' in keycloak_migration
+    assert 'name        = "DEMO_FOUNDER_PASSWORD"' in keycloak_migration
+    assert "replace_secret KEYCLOAK_CLIENT_SECRET" in keycloak_migration
+    assert "replace_secret DEMO_FOUNDER_PASSWORD" in keycloak_migration
+    assert "Keycloak realm contains unresolved secret placeholders" in keycloak_migration
+    assert 'scope                = var.key_vault_secret_resource_ids["web"]' in contract
+    assert 'principal_id         = azurerm_user_assigned_identity.keycloak_migration[0].principal_id' in contract
+    for alias in (
+        "google-client-id",
+        "google-client-secret",
+        "meta-login-id",
+        "meta-login-secret",
+        "bp-reader-secret",
+        "bp-writer-secret",
+    ):
+        assert len(alias) <= 20
+        assert f"{alias} =" in contract
     assert "--import-realm" not in keycloak
     assert "/opt/keycloak/data/import/waooaw-realm.json" not in keycloak
     assert "KC_SPI_CONNECTIONS_JPA_QUARKUS_MIGRATION_STRATEGY" in keycloak
@@ -337,6 +388,14 @@ def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
     assert "min_replicas = var.application_activation_enabled ? 1 : 0" in keycloak
     assert "ip_security_restriction" not in keycloak
     assert "KC_BOOTSTRAP_ADMIN" not in keycloak
+
+
+def test_same_environment_database_urls_use_container_app_service_discovery() -> None:
+    contract = read_contract("modules/workload/main.tf")
+
+    assert 'pgbouncer_host               = "ca-${var.environment}-pgbouncer"' in contract
+    assert "pgbouncer.internal.${var.container_app_environment_default_domain}" not in contract
+    assert 'name  = "MIGRATION_SCHEMA"\n        value = "billing"' in contract
 
 
 def test_identity_edge_exposes_only_customer_authentication_paths() -> None:
@@ -633,6 +692,7 @@ def test_post_deploy_functional_verification_fails_fast_and_retains_job_contract
     assert "2>/dev/null" not in verifier
     artifact_paths = workflow.split("- name: Upload independent evidence", 1)[1]
     assert "functional-job.json" in artifact_paths
+    assert "if-no-files-found: error" in artifact_paths
 
 
 def test_all_environments_are_public_and_demo_uses_application_authorization() -> None:
@@ -825,6 +885,10 @@ def test_oidc_policy_requires_exact_governed_refs_and_workflows() -> None:
 
 def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     workflow = (REPO_ROOT / ".github/workflows/environment-deployment.yaml").read_text(encoding="utf-8")
+    verification = (REPO_ROOT / ".github/workflows/environment-deployment-verification.yaml").read_text(
+        encoding="utf-8"
+    )
+    deploy = (REPO_ROOT / ".github/workflows/deploy.yaml").read_text(encoding="utf-8")
 
     assert "hashicorp/setup-terraform" not in workflow
     assert 'test "$(command -v terraform)" = "/usr/local/bin/terraform"' in workflow
@@ -837,13 +901,62 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert workflow.count('test "$actual_digest" = "$expected_digest"') == 2
     assert "--ghcr-packages-public-verified" in workflow
     assert workflow.index("scripts/goal006_ghcr_digest.py") < workflow.index("--ghcr-packages-public-verified")
-    assert workflow.count('-backend-config="use_oidc=true"') == 3
-    assert workflow.count('-backend-config="use_azuread_auth=true"') == 3
+    assert workflow.count('-backend-config="use_oidc=true"') == 4
+    assert workflow.count('-backend-config="use_azuread_auth=true"') == 4
     assert "Enforce selected environment authorization" in workflow
     assert "EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy.yaml@refs/heads/main" in workflow
+    assert (
+        "EXPECTED_BREAK_FIX_WORKFLOW_REF: ${{ github.repository }}"
+        "/.github/workflows/deploy.yaml@refs/heads/ib/532/wc124-transition-reconciliation"
+    ) in workflow
+    assert 'test "$TARGET_ENVIRONMENT" = demo' in workflow
+    assert 'test "$CALLER_WORKFLOW_REF" = "$EXPECTED_BREAK_FIX_WORKFLOW_REF"' in workflow
+    assert "EXPECTED_BREAK_FIX_WORKFLOW_REF:" in verification
+    assert 'test "$CONTROL_SHA" = "$CURRENT_SHA"' in verification
+    assert 'test "$CONTROL_SHA" = \'${{ inputs.release_sha }}\'' in verification
+    assert "control_sha: ${{ needs.authorize.outputs.control_sha }}" in deploy
+    assert "break_fix: ${{ needs.authorize.outputs.break_fix == 'true' }}" in deploy
     assert 'case "$TARGET_ENVIRONMENT" in demo|uat|prod)' in workflow
     assert 'case "$APPLY_REQUESTED" in true|false)' in workflow
-    assert workflow.index("Enforce selected environment authorization") < workflow.index("azure/login@v2")
+    plan_b_login = "Azure login with environment deployment identity for Plan B foundation mutation"
+    assert "Resolve Plan B foundation mutation identity" in workflow
+    assert "terraform output -raw deployment_client_id" in workflow
+    assert "steps.database-transition.outputs.password_auth_enabled == 'true'" in workflow
+    assert workflow.index(plan_b_login) < workflow.index("Terraform foundation plan")
+    assert "az keyvault secret show" in workflow
+    assert "db-server-breakglass-admin" in workflow
+    assert 'export TF_VAR_postgresql_password_auth_enabled="$password_auth_enabled"' in workflow
+    assert 'export TF_VAR_database_bootstrap_admin_enabled="$bootstrap_admin_enabled"' in workflow
+    assert (
+        'export TF_VAR_database_provisioner_vault_access_enabled="$provisioner_vault_access_enabled"'
+        in workflow
+    )
+    assert "terraform import -input=false -lock-timeout=5m \"$secret_address\" \"$secret_id\"" in workflow
+    assert (
+        "ARM_CLIENT_ID: ${{ steps.plan-b-foundation-identity.outputs.client_id "
+        "|| needs.resolve-environment.outputs.control_plane_client_id }}"
+    ) not in workflow
+    assert (
+        "TF_VAR_deployment_client_id: ${{ steps.plan-b-foundation-identity.outputs.client_id "
+        "|| needs.resolve-environment.outputs.control_plane_client_id }}"
+    ) in workflow
+    assert "provider     = azurerm.deployment" in read_contract("modules/foundation/main.tf")
+    assert "configuration_aliases = [azurerm.deployment]" in read_contract("modules/foundation/main.tf")
+    for environment in ("demo", "uat", "prod"):
+        foundation_root = read_contract(f"environments/{environment}/foundation/main.tf")
+        foundation_variables = read_contract(f"environments/{environment}/foundation/variables.tf")
+        assert 'alias                           = "deployment"' in foundation_root
+        assert "azurerm.deployment = azurerm.deployment" in foundation_root
+        assert 'variable "deployment_client_id"' in foundation_variables
+    assert workflow.count(
+        "ARM_CLIENT_ID: ${{ steps.foundation.outputs.deployment_client_id }}"
+    ) >= 5
+    # Within the private terraform job, environment authorization precedes the first cloud login.
+    terraform_job = workflow[workflow.index("\n  terraform:\n"):workflow.index("\n  cleanup-private:\n")]
+    assert terraform_job.index("Enforce selected environment authorization") < terraform_job.index(
+        "azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2"
+    )
+    assert "azure/login@v2" not in workflow  # every action is pinned to a reviewed commit
     assert "Reject stale release before cloud access" in workflow
     assert 'timeframe:"Custom"' in workflow.replace(" ", "")
     assert "Verify bootstrap RBAC and required Azure providers" in workflow
@@ -915,10 +1028,37 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "--transition wc124-plan-b" in workflow
     assert "secret-seeder-console.log" in workflow
     assert workflow.index("capture_seeder_evidence()") < workflow.index("Delete private credential seeder")
-    assert workflow.count("if: inputs.apply") == 22
+    assert "Reclaim PostgreSQL connection budget before vendor migrations" in workflow
+    assert workflow.index("Reclaim PostgreSQL connection budget before vendor migrations") < workflow.index(
+        "Run vendor schema migrations against private PostgreSQL"
+    )
+    assert "az containerapp revision deactivate" in workflow
+    assert "wc124-connection-budget.json" in workflow
+    # Post-activation gates: terraform apply does not wait for revision readiness, and the
+    # steady-state connection footprint must leave headroom for the next migration window.
+    readiness_step = "Require every activated Container Apps revision to become ready"
+    post_budget_step = "Measure PostgreSQL connection budget after activation"
+    assert workflow.index("Apply application activation") < workflow.index(readiness_step)
+    assert workflow.index(readiness_step) < workflow.index(post_budget_step)
+    assert workflow.index(post_budget_step) < workflow.index("Bind Demo Azure-managed TLS certificates")
+    assert "python3 scripts/goal006_activation_readiness.py" in workflow
+    assert "--output wc124-activation-readiness.json" in workflow
+    assert 'phase: "post-activation"' in workflow
+    assert 'test "$headroom" -ge "$required_headroom"' in workflow
+    # Run 39460884155: a 5-minute maximum pinned a transient spike for the whole 3-minute retry
+    # window; both gates must read the latest completed bucket and retry past one bucket.
+    assert "--offset 5m" not in workflow
+    assert workflow.count('--query "value[0].timeseries[0].data[-1].maximum"') == 2
+    assert "for attempt in $(seq 1 36); do" in workflow
+    temporal = read_contract("modules/workload/main.tf").split('name  = "SQL_MAX_CONNS"', 1)[1]
+    assert temporal.startswith('\n        value = "1"')
+    assert 'name  = "SQL_MAX_IDLE_CONNS"\n        value = "1"' in temporal
+    for evidence in ("wc124-activation-readiness.json", "wc124-connection-budget-post-activation.json"):
+        assert workflow.count(evidence) == 2, evidence  # produced once, uploaded once
+    assert workflow.count("if: inputs.apply") == 31
     assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
     assert '--context "external_environment=$external_environment"' in workflow
-    assert "if: steps.foundation-cache.outputs.cache_hit != 'true'" in workflow
+    assert "if: inputs.apply || steps.foundation-cache.outputs.cache_hit != 'true'" in workflow
     assert "if: inputs.apply && steps.foundation-cache.outputs.cache_hit != 'true'" in workflow
     assert "for output_name in container_app_environment_id key_vault_id deployment_identity_id" in workflow
     assert 'az resource show --ids "$resource_id" --output none || live_valid=false' in workflow
@@ -1133,6 +1273,10 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
     assert "dlai-sd|yk-dlaisd" in deploy
     assert '*) echo "Unauthorized deployment dispatcher" >&2; exit 1 ;;' in deploy
     assert 'test "$DISPATCH_REF" = "refs/heads/main"' in deploy
+    assert "refs/heads/ib/532/wc124-*" in deploy
+    assert 'test "$TARGET_ENVIRONMENT" = demo' in deploy
+    assert "build-break-fix-runner:" in deploy
+    assert "goal006-private-runner:sha-${CONTROL_SHA}" in deploy
     assert "actions/workflows/ci.yaml/runs?branch=main&event=push&status=success" in deploy
     assert 'artifact_name="goal006-exact-seven-release-$latest_main_sha"' in deploy
     assert 'test -n "$release_run_id"' in deploy
@@ -1144,7 +1288,7 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
     assert "No unexpired release artifact named" in deploy
     assert "release_run_id: ${{ fromJSON(needs.authorize.outputs.release_run_id) }}" in deploy
     assert "release_sha: ${{ needs.authorize.outputs.release_sha }}" in deploy
-    assert "environment: ${{ inputs.environment }}" in deploy
+    assert "environment: ${{ needs.authorize.outputs.environment }}" in deploy
     for environment in ("demo", "uat", "prod"):
         assert f"          - {environment}" in deploy
     assert "default: plan" in deploy
@@ -1153,11 +1297,29 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
     assert "- activate" not in deploy
     assert "- sleep" not in deploy
     assert 'case "$EXECUTION_MODE" in plan|apply)' in deploy
-    assert "apply: ${{ inputs.execution == 'apply' }}" in deploy
-    assert "lifecycle_action: ${{ inputs.execution == 'apply' && 'activate' || 'plan' }}" in deploy
+    assert "apply: ${{ needs.authorize.outputs.execution == 'apply' }}" in deploy
+    assert "lifecycle_action: ${{ needs.authorize.outputs.execution == 'apply' && 'activate' || 'plan' }}" in deploy
     assert "cost_controls:" not in deploy
     assert "enforce_cost_controls:" not in deploy
-    assert deploy.count("if: inputs.execution == 'apply'") == 2
+    # verify runs whenever the private apply succeeded, independent of runner cleanup; publish
+    # still requires the whole deploy and verification to succeed (run 39428513813).
+    assert deploy.count("if: needs.authorize.outputs.execution == 'apply'") == 0
+    assert deploy.count("needs.authorize.outputs.execution == 'apply'\n") == 2
+    verify_job = deploy.split("  verify:", 1)[1].split("  publish-url:", 1)[0]
+    publish_job = deploy.split("  publish-url:", 1)[1]
+    assert "always()" in verify_job
+    assert "needs.authorize.result == 'success'" in verify_job
+    assert "needs.deploy.outputs.apply_result == 'success'" in verify_job
+    # jobs.<id>.result is empty in workflow_call outputs (actions/runner#3087); the result must
+    # come from a job output recorded by an always() step, or verify never runs.
+    deployment = (REPO_ROOT / ".github/workflows/environment-deployment.yaml").read_text(encoding="utf-8")
+    assert "jobs.terraform.result" not in deployment
+    assert "value: ${{ jobs.terraform.outputs.apply_result }}" in deployment
+    terraform_job = deployment.split("\n  terraform:\n", 1)[1].split("\n  cleanup-private:\n", 1)[0]
+    assert "apply_result: ${{ steps.apply_result.outputs.result }}" in terraform_job
+    assert 'id: apply_result\n        if: always()\n        run: echo "result=${{ job.status }}" >> "$GITHUB_OUTPUT"' in terraform_job
+    assert "needs.deploy.result == 'success'" in publish_job
+    assert "needs.verify.result == 'success'" in publish_job
     for internal_input in (
         "lifecycle_evidence:",
         "founder_action_authority:",

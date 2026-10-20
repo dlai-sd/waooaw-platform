@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS institutional.thread_catalog (
     updated_at               TIMESTAMPTZ         NOT NULL DEFAULT NOW()
 );
 
-CREATE RULE no_delete_thread_catalog AS
+CREATE OR REPLACE RULE no_delete_thread_catalog AS
     ON DELETE TO institutional.thread_catalog DO INSTEAD NOTHING;
 
 -- --------------------------------------------------------------------------
@@ -132,6 +132,7 @@ CREATE INDEX IF NOT EXISTS idx_bucket_wallet ON business.wallet_buckets(wallet_i
 CREATE INDEX IF NOT EXISTS idx_bucket_period ON business.wallet_buckets(period_start, period_end);
 
 ALTER TABLE business.wallet_buckets ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS wallet_buckets_tenant_isolation ON business.wallet_buckets;
 CREATE POLICY wallet_buckets_tenant_isolation ON business.wallet_buckets
     USING (wallet_id IN (
         SELECT id FROM business.customer_wallets
@@ -160,7 +161,7 @@ CREATE INDEX IF NOT EXISTS idx_reservation_bucket
 CREATE INDEX IF NOT EXISTS idx_reservation_expires
     ON business.bucket_reservations(expires_at) WHERE consumed IS NULL;
 
-CREATE RULE no_delete_reservations AS
+CREATE OR REPLACE RULE no_delete_reservations AS
     ON DELETE TO business.bucket_reservations DO INSTEAD NOTHING;
 
 -- --------------------------------------------------------------------------
@@ -218,9 +219,9 @@ CREATE TABLE IF NOT EXISTS business.price_change_notices (
     CONSTRAINT chk_notice_30_days CHECK (effective_date >= (notice_sent_at::date + 30))
 );
 
-CREATE RULE no_update_price_change_notices AS
+CREATE OR REPLACE RULE no_update_price_change_notices AS
     ON UPDATE TO business.price_change_notices DO INSTEAD NOTHING;
-CREATE RULE no_delete_price_change_notices AS
+CREATE OR REPLACE RULE no_delete_price_change_notices AS
     ON DELETE TO business.price_change_notices DO INSTEAD NOTHING;
 
 -- --------------------------------------------------------------------------
@@ -294,9 +295,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_cost_ledger_dma_invocation
     ON institutional.platform_cost_ledger (tenant_id, relationship_id, agent_instance_id, invocation_id)
     WHERE invocation_id IS NOT NULL;
 
-CREATE RULE no_update_cost_ledger AS
+CREATE OR REPLACE RULE no_update_cost_ledger AS
     ON UPDATE TO institutional.platform_cost_ledger DO INSTEAD NOTHING;
-CREATE RULE no_delete_cost_ledger AS
+CREATE OR REPLACE RULE no_delete_cost_ledger AS
     ON DELETE TO institutional.platform_cost_ledger DO INSTEAD NOTHING;
 
 -- --------------------------------------------------------------------------

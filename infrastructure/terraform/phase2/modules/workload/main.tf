@@ -29,7 +29,7 @@ locals {
   auth_redis_host              = "ca-${var.environment}-auth-redis.internal.${var.container_app_environment_default_domain}"
   auth_redis_url               = var.environment == "prod" ? var.auth_abuse_redis_url : "redis://${local.auth_redis_host}:6379/0"
   auth_redis_password_secret   = var.environment == "prod" ? "auth-abuse-redis-managed-key" : "auth-abuse-redis-password"
-  pgbouncer_host               = "ca-${var.environment}-pgbouncer.internal.${var.container_app_environment_default_domain}"
+  pgbouncer_host               = "ca-${var.environment}-pgbouncer"
   auth_abuse_limits = {
     AUTH_START      = { limit = 20, windowSeconds = 600 }
     AUTH_CALLBACK   = { limit = 30, windowSeconds = 600 }
@@ -396,6 +396,44 @@ locals {
     ] : [])
   }
   keycloak_realm_base64 = base64encode(jsonencode(local.keycloak_realm))
+  keycloak_migration_optional_secrets = merge(
+    var.google_login_enabled ? {
+      google-client-id = {
+        env_name    = "GOOGLE_CLIENT_ID"
+        resource_id = local.google_secret_resource_ids["google-client-id"]
+        uri         = local.google_secret_uris["google-client-id"]
+      }
+      google-client-secret = {
+        env_name    = "GOOGLE_CLIENT_SECRET"
+        resource_id = local.google_secret_resource_ids["google-client-secret"]
+        uri         = local.google_secret_uris["google-client-secret"]
+      }
+    } : {},
+    var.facebook_login_enabled ? {
+      meta-login-id = {
+        env_name    = "META_LOGIN_CLIENT_ID"
+        resource_id = local.facebook_secret_resource_ids["meta-login-client-id"]
+        uri         = local.facebook_secret_uris["meta-login-client-id"]
+      }
+      meta-login-secret = {
+        env_name    = "META_LOGIN_CLIENT_SECRET"
+        resource_id = local.facebook_secret_resource_ids["meta-login-client-secret"]
+        uri         = local.facebook_secret_uris["meta-login-client-secret"]
+      }
+    } : {},
+    var.google_login_enabled || var.facebook_login_enabled ? {
+      bp-reader-secret = {
+        env_name    = "BP_IDENTITY_READER_CLIENT_SECRET"
+        resource_id = local.identity_reader_secret_resource_ids["bp-identity-reader-client-secret"]
+        uri         = local.identity_reader_secret_uris["bp-identity-reader-client-secret"]
+      }
+      bp-writer-secret = {
+        env_name    = "BP_IDENTITY_LIFECYCLE_WRITER_CLIENT_SECRET"
+        resource_id = local.identity_lifecycle_writer_secret_resource_ids["keycloak-lifecycle-writer-client-secret"]
+        uri         = local.identity_lifecycle_writer_secret_uris["keycloak-lifecycle-writer-client-secret"]
+      }
+    } : {},
+  )
   identity_edge_config = templatefile("${path.module}/identity-edge.conf.tftpl", {
     environment    = var.environment
     default_domain = var.container_app_environment_default_domain
@@ -424,7 +462,9 @@ locals {
       IdentityLifecycleWriter__AllowedPrivateHosts__0 = "ca-${var.environment}-keycloak.internal.${var.container_app_environment_default_domain}"
       IdentityLifecycleWriter__ClientId               = "waooaw-bp-identity-lifecycle-writer"
       }, var.environment == "demo" ? {
-      WAOOAW_DEMO_DATABASE_BOOTSTRAP = "true"
+      # The Demo schema lives on the provisioned persistent instance (WC-124); the image's
+      # disposable-database bootstrap is only for the CI image smoke test.
+      WAOOAW_DEMO_DATABASE_BOOTSTRAP = "false"
       DMA_ADMISSION_CONTENT_DIGEST   = var.dma_admission_content_digest
       DMA_ARTIFACT_DIGEST            = split("@", var.image_digests["agent-runtime-adapter-digital-marketing"])[1]
       } : {}, var.auth_preview_origin != null ? {
@@ -475,6 +515,9 @@ locals {
       SESSION_TOKEN_ENVELOPE_WRITE_VERSION  = var.web_session_token_envelope_write_version
       WAOOAW_ENVIRONMENT                    = var.environment
       WAOOAW_SERVER_SESSION_MODE            = var.web_session_mode
+      # web reaches the provisioned instance through in-VNet PgBouncer, which terminates no TLS.
+      # Without this, NODE_ENV=production makes postgres.js demand TLS and readiness never passes.
+      WEB_SESSION_DATABASE_SSL_MODE         = "disable"
       WEB_SESSION_DEPLOY_VERSION            = var.web_session_deploy_version
       }, var.web_session_mode == "disabled" ? {} : {
       SESSION_HANDLE_DIGEST_WRITE_VERSION         = var.web_session_handle_digest_write_version
@@ -709,6 +752,9 @@ resource "azurerm_container_app" "auth_redis" {
   container_app_environment_id = var.container_app_environment_id
   resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
+  # Every app runs on the environment's only profile. Azure reports it as "Consumption" even when
+  # omitted, so leaving it unset planned a 16-app no-op update (Consumption -> null) on every apply.
+  workload_profile_name = "Consumption"
 
   identity {
     type         = "UserAssigned"
@@ -834,6 +880,9 @@ resource "azurerm_container_app" "pgbouncer" {
   container_app_environment_id = var.container_app_environment_id
   resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
+  # Every app runs on the environment's only profile. Azure reports it as "Consumption" even when
+  # omitted, so leaving it unset planned a 16-app no-op update (Consumption -> null) on every apply.
+  workload_profile_name = "Consumption"
 
   identity {
     type         = "UserAssigned"
@@ -888,11 +937,11 @@ resource "azurerm_container_app" "pgbouncer" {
       }
       env {
         name  = "PGBOUNCER_DEFAULT_POOL_SIZE"
-        value = var.environment == "demo" ? "32" : "80"
+        value = var.environment == "demo" ? "8" : "80"
       }
       env {
         name  = "PGBOUNCER_RESERVE_POOL_SIZE"
-        value = var.environment == "demo" ? "8" : "20"
+        value = var.environment == "demo" ? "2" : "20"
       }
       env {
         name  = "PGBOUNCER_RESERVE_POOL_TIMEOUT"
@@ -997,6 +1046,9 @@ resource "azurerm_container_app" "member" {
   container_app_environment_id = var.container_app_environment_id
   resource_group_name          = var.resource_group_name
   revision_mode                = "Multiple"
+  # Every app runs on the environment's only profile. Azure reports it as "Consumption" even when
+  # omitted, so leaving it unset planned a 16-app no-op update (Consumption -> null) on every apply.
+  workload_profile_name = "Consumption"
 
   identity {
     type         = "UserAssigned"
@@ -1489,6 +1541,22 @@ resource "azurerm_role_assignment" "keycloak_migration_database_secret" {
   principal_id         = azurerm_user_assigned_identity.keycloak_migration[0].principal_id
 }
 
+resource "azurerm_role_assignment" "keycloak_migration_realm_credential" {
+  count = var.workload_enabled && var.persistent_state_enabled ? 1 : 0
+
+  scope                = var.key_vault_secret_resource_ids["web"]
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.keycloak_migration[0].principal_id
+}
+
+resource "azurerm_role_assignment" "keycloak_migration_realm_secrets" {
+  for_each = var.workload_enabled && var.persistent_state_enabled ? local.keycloak_migration_optional_secrets : {}
+
+  scope                = each.value.resource_id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.keycloak_migration[0].principal_id
+}
+
 resource "azurerm_container_app_job" "keycloak_migration" {
   count = var.workload_enabled && var.persistent_state_enabled ? 1 : 0
 
@@ -1510,6 +1578,21 @@ resource "azurerm_container_app_job" "keycloak_migration" {
     key_vault_secret_id = var.database_secret_uris["keycloak-migration"]
   }
 
+  secret {
+    name                = "realm-credential"
+    identity            = azurerm_user_assigned_identity.keycloak_migration[0].id
+    key_vault_secret_id = var.key_vault_secret_uris["web"]
+  }
+
+  dynamic "secret" {
+    for_each = local.keycloak_migration_optional_secrets
+    content {
+      name                = secret.key
+      identity            = azurerm_user_assigned_identity.keycloak_migration[0].id
+      key_vault_secret_id = secret.value.uri
+    }
+  }
+
   manual_trigger_config {
     parallelism              = 1
     replica_completion_count = 1
@@ -1524,7 +1607,32 @@ resource "azurerm_container_app_job" "keycloak_migration" {
       command = ["/bin/bash", "-c"]
       args = [<<-EOT
         set -euo pipefail
-        printf '%s' '${local.keycloak_realm_base64}' | base64 --decode > /tmp/waooaw-realm.json
+        json_escape() {
+          value="$1"
+          value="$${value//\\/\\\\}"
+          value="$${value//\"/\\\"}"
+          value="$${value//$'\n'/\\n}"
+          value="$${value//$'\r'/\\r}"
+          value="$${value//$'\t'/\\t}"
+          printf '%s' "$value"
+        }
+        replace_secret() {
+          name="$1"
+          escaped=$(json_escape "$2")
+          placeholder='$''{'"$name"'}'
+          realm="$${realm//$placeholder/$escaped}"
+        }
+        realm=$(printf '%s' '${local.keycloak_realm_base64}' | base64 --decode)
+        replace_secret KEYCLOAK_CLIENT_SECRET "$KEYCLOAK_CLIENT_SECRET"
+        ${var.environment == "demo" ? "replace_secret DEMO_FOUNDER_PASSWORD \"$DEMO_FOUNDER_PASSWORD\"" : ""}
+        ${var.google_login_enabled ? "replace_secret GOOGLE_CLIENT_ID \"$GOOGLE_CLIENT_ID\"\n        replace_secret GOOGLE_CLIENT_SECRET \"$GOOGLE_CLIENT_SECRET\"" : ""}
+        ${var.facebook_login_enabled ? "replace_secret META_LOGIN_CLIENT_ID \"$META_LOGIN_CLIENT_ID\"\n        replace_secret META_LOGIN_CLIENT_SECRET \"$META_LOGIN_CLIENT_SECRET\"" : ""}
+        ${var.google_login_enabled || var.facebook_login_enabled ? "replace_secret BP_IDENTITY_READER_CLIENT_SECRET \"$BP_IDENTITY_READER_CLIENT_SECRET\"\n        replace_secret BP_IDENTITY_LIFECYCLE_WRITER_CLIENT_SECRET \"$BP_IDENTITY_LIFECYCLE_WRITER_CLIENT_SECRET\"" : ""}
+        if printf '%s' "$realm" | grep -Eq '\$\{[A-Z0-9_]+\}'; then
+          echo "Keycloak realm contains unresolved secret placeholders" >&2
+          exit 1
+        fi
+        printf '%s' "$realm" > /tmp/waooaw-realm.json
         exec /opt/keycloak/bin/kc.sh import --file /tmp/waooaw-realm.json --override true
       EOT
       ]
@@ -1553,9 +1661,40 @@ resource "azurerm_container_app_job" "keycloak_migration" {
         name  = "KC_DB_USERNAME"
         value = "keycloak_migrator"
       }
+      # Connection budget on the single provisioned instance (Demo usable slots = 40 - reserved 15).
+      env {
+        name  = "KC_DB_POOL_INITIAL_SIZE"
+        value = "1"
+      }
+      env {
+        name  = "KC_DB_POOL_MIN_SIZE"
+        value = "1"
+      }
+      env {
+        name  = "KC_DB_POOL_MAX_SIZE"
+        value = "5"
+      }
       env {
         name        = "KC_DB_PASSWORD"
         secret_name = "migration-database"
+      }
+      env {
+        name        = "KEYCLOAK_CLIENT_SECRET"
+        secret_name = "realm-credential"
+      }
+      dynamic "env" {
+        for_each = var.environment == "demo" ? [1] : []
+        content {
+          name        = "DEMO_FOUNDER_PASSWORD"
+          secret_name = "realm-credential"
+        }
+      }
+      dynamic "env" {
+        for_each = local.keycloak_migration_optional_secrets
+        content {
+          name        = env.value.env_name
+          secret_name = env.key
+        }
       }
       env {
         name  = "KC_SPI_CONNECTIONS_JPA_QUARKUS_MIGRATION_STRATEGY"
@@ -1570,6 +1709,8 @@ resource "azurerm_container_app_job" "keycloak_migration" {
 
   depends_on = [
     azurerm_role_assignment.keycloak_migration_database_secret,
+    azurerm_role_assignment.keycloak_migration_realm_credential,
+    azurerm_role_assignment.keycloak_migration_realm_secrets,
   ]
 }
 
@@ -1580,6 +1721,9 @@ resource "azurerm_container_app" "temporal" {
   container_app_environment_id = var.container_app_environment_id
   resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
+  # Every app runs on the environment's only profile. Azure reports it as "Consumption" even when
+  # omitted, so leaving it unset planned a 16-app no-op update (Consumption -> null) on every apply.
+  workload_profile_name = "Consumption"
 
   identity {
     type         = "UserAssigned"
@@ -1601,6 +1745,23 @@ resource "azurerm_container_app" "temporal" {
       image  = "temporalio/auto-setup@sha256:98cdb6b5e02d64cb933864a9ba91cb66065eb320623a0dafdf44beba535bca88"
       cpu    = 1
       memory = "2Gi"
+      # The image binds every listener to the replica IP only (BIND_ON_IP from getent), which
+      # Container Apps' TCP probes cannot reach over loopback: every single-container revision
+      # failed its startup probe while the frontend answered gRPC health from the network. Bind
+      # on all interfaces, keep ringpop advertising the routable replica address, and point the
+      # auto-setup CLI at loopback.
+      command = ["/bin/bash", "-c"]
+      args = [<<-EOT
+        set -euo pipefail
+        export TEMPORAL_BROADCAST_ADDRESS="$(hostname -i | awk '{print $1}')"
+        export TEMPORAL_ADDRESS="127.0.0.1:7233"
+        exec /etc/temporal/entrypoint.sh autosetup
+      EOT
+      ]
+      env {
+        name  = "BIND_ON_IP"
+        value = "0.0.0.0"
+      }
 
       env {
         name  = "DB"
@@ -1638,6 +1799,44 @@ resource "azurerm_container_app" "temporal" {
         name  = "SKIP_DB_CREATE"
         value = "true"
       }
+      # Temporal pools session-mode connections through PgBouncer against the single provisioned
+      # instance (Demo: max_client_conn 40, server max_connections 40). The image default of 20
+      # connections per store, per internal service (frontend/history/matching/worker x default +
+      # visibility), exhausts both and starves every other runtime; bound each pool to 1. With 2 the
+      # Demo steady state measured 28-29 backends against 25 ordinary slots (run 39460884155).
+      env {
+        name  = "SQL_MAX_CONNS"
+        value = "1"
+      }
+      env {
+        name  = "SQL_MAX_IDLE_CONNS"
+        value = "1"
+      }
+      # azurerm 4.14 caps failure_count_threshold at 30 (provider IntBetween(1, 30)); the plan,
+      # not validate, rejects a higher value because this resource is count-gated. 30 x 6 s keeps
+      # the 180 s startup window that auto-setup needs on a cold Demo PostgreSQL.
+      startup_probe {
+        transport               = "TCP"
+        port                    = 7233
+        interval_seconds        = 6
+        timeout                 = 3
+        failure_count_threshold = 30
+      }
+      readiness_probe {
+        transport               = "TCP"
+        port                    = 7233
+        interval_seconds        = 10
+        timeout                 = 3
+        failure_count_threshold = 3
+        success_count_threshold = 1
+      }
+      liveness_probe {
+        transport               = "TCP"
+        port                    = 7233
+        interval_seconds        = 30
+        timeout                 = 3
+        failure_count_threshold = 3
+      }
     }
   }
 
@@ -1665,6 +1864,9 @@ resource "azurerm_container_app" "keycloak" {
   container_app_environment_id = var.container_app_environment_id
   resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
+  # Every app runs on the environment's only profile. Azure reports it as "Consumption" even when
+  # omitted, so leaving it unset planned a 16-app no-op update (Consumption -> null) on every apply.
+  workload_profile_name = "Consumption"
 
   identity {
     type = "UserAssigned"
@@ -1813,6 +2015,19 @@ resource "azurerm_container_app" "keycloak" {
         name  = "KC_DB_USERNAME"
         value = "keycloak_runtime"
       }
+      # Connection budget on the single provisioned instance (Demo usable slots = 40 - reserved 15).
+      env {
+        name  = "KC_DB_POOL_INITIAL_SIZE"
+        value = "1"
+      }
+      env {
+        name  = "KC_DB_POOL_MIN_SIZE"
+        value = "1"
+      }
+      env {
+        name  = "KC_DB_POOL_MAX_SIZE"
+        value = "5"
+      }
       env {
         name  = "KC_SPI_CONNECTIONS_JPA_QUARKUS_MIGRATION_STRATEGY"
         value = "validate"
@@ -1892,6 +2107,9 @@ resource "azurerm_container_app" "identity_edge" {
   container_app_environment_id = var.container_app_environment_id
   resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
+  # Every app runs on the environment's only profile. Azure reports it as "Consumption" even when
+  # omitted, so leaving it unset planned a 16-app no-op update (Consumption -> null) on every apply.
+  workload_profile_name = "Consumption"
 
   template {
     min_replicas = var.application_activation_enabled ? 1 : 0
@@ -1994,6 +2212,11 @@ resource "azurerm_container_app_job" "billing_migration" {
       env {
         name  = "MIGRATION_PATTERN"
         value = "59-wc124-billing-authority.sql"
+      }
+
+      env {
+        name  = "MIGRATION_SCHEMA"
+        value = "billing"
       }
     }
   }

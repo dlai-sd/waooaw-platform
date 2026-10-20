@@ -8,8 +8,11 @@ import hashlib
 import json
 import os
 import secrets
+import shutil
+import socket
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -23,10 +26,27 @@ APPLICATION_DATABASE = "waooaw_application"
 KEYCLOAK_DATABASE = "waooaw_keycloak"
 TEMPORAL_DATABASE = "waooaw_temporal"
 TEMPORAL_VISIBILITY_DATABASE = "waooaw_temporal_visibility"
-APPLICATION_MIGRATION_NAMES = (
-    "59-wc124-billing-authority.sql",
-    "60-wc124-principal-handoff.sql",
-)
+PRINCIPAL_BOOTSTRAP_NAME = "00-wc124-principal-bootstrap.sql"
+PROVISIONING_SCHEMA = "wc124_provisioning"
+INIT_CHAIN_LEDGER_TABLE = f"{PROVISIONING_SCHEMA}.init_chain_ledger"
+INIT_CHAIN_LEDGER_SQL = f"""
+CREATE SCHEMA IF NOT EXISTS {PROVISIONING_SCHEMA};
+REVOKE ALL ON SCHEMA {PROVISIONING_SCHEMA} FROM PUBLIC;
+CREATE TABLE IF NOT EXISTS {INIT_CHAIN_LEDGER_TABLE} (
+    file_name text PRIMARY KEY,
+    sha256 char(64) NOT NULL,
+    applied_at timestamptz NOT NULL DEFAULT now(),
+    applied_by text NOT NULL DEFAULT current_user
+);
+"""
+APPLICATION_MIGRATION_ROLES = {
+    "ce_migrator": "ce_owner",
+    "bp_migrator": "bp_owner",
+    "pr_migrator": "pr_owner",
+    "air_migrator": "air_owner",
+    "billing_migrator": "billing_owner",
+    "web_session_migrator": "web_session_owner",
+}
 
 
 @dataclass(frozen=True)
@@ -204,6 +224,62 @@ def azure_login(client_id: str) -> None:
     run(["az", "login", "--identity", "--client-id", client_id, "--allow-no-subscriptions", "--output", "none"])
 
 
+def await_vault_authorization(
+    vault_name: str,
+    *,
+    attempts: int = 12,
+    delay_seconds: float = 10,
+) -> int:
+    az_executable = shutil.which("az")
+    if az_executable is None:
+        raise RuntimeError("Azure CLI is unavailable for the Key Vault authorization probe")
+    for attempt in range(1, attempts + 1):
+        result = subprocess.run(  # noqa: S603
+            [
+                az_executable,
+                "keyvault",
+                "secret",
+                "show",
+                "--vault-name",
+                vault_name,
+                "--name",
+                "db-keycloak-runtime",
+                "--query",
+                "id",
+                "--output",
+                "tsv",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0 or "SecretNotFound" in result.stderr:
+            return attempt
+        if "Forbidden" not in result.stderr:
+            raise RuntimeError("Key Vault authorization probe failed with a non-authorization error")
+        if attempt < attempts:
+            time.sleep(delay_seconds)
+    raise RuntimeError(f"Key Vault data-plane authority did not become effective after {attempts} attempts")
+
+
+def probe_pgbouncer_connectivity(environment: str, host: str, *, timeout_seconds: float = 5) -> dict[str, Any]:
+    expected_host = f"ca-{environment}-pgbouncer"
+    if host != expected_host:
+        raise ValueError(f"PgBouncer host must be the same-environment service name {expected_host}")
+    addresses = sorted({record[4][0] for record in socket.getaddrinfo(host, 5432, type=socket.SOCK_STREAM)})
+    if not addresses:
+        raise RuntimeError("PgBouncer DNS returned no TCP addresses")
+    with socket.create_connection((host, 5432), timeout=timeout_seconds):
+        pass
+    return {
+        "schema": "waooaw.wc124-pgbouncer-connectivity/v1",
+        "environment": environment,
+        "host": host,
+        "port": 5432,
+        "resolved_addresses": addresses,
+        "tcp": "connected",
+    }
+
+
 def access_token() -> str:
     token_record = json.loads(
         run(
@@ -224,6 +300,8 @@ def access_token() -> str:
 def read_credentials(
     specs: tuple[CredentialSpec, ...],
     vault_name: str,
+    *,
+    require_existing: bool = False,
 ) -> tuple[dict[str, str], dict[str, dict[str, Any] | None]]:
     passwords: dict[str, str] = {}
     records: dict[str, dict[str, Any] | None] = {}
@@ -243,6 +321,8 @@ def read_credentials(
             passwords[spec.role] = password_from_secret(spec, record.get("value", ""))
             records[spec.secret_id] = record
         elif "SecretNotFound" in result.stderr:
+            if require_existing:
+                raise ValueError(f"{spec.secret_id} is missing during canonical URL refresh")
             passwords[spec.role] = generate_password()
             records[spec.secret_id] = None
         else:
@@ -256,6 +336,13 @@ def read_credentials(
     if auth_record is not None and parse_authfile(auth_record.get("value", "")) != passwords:
         raise ValueError("db-pgbouncer-auth does not exactly match the database credential set")
     return passwords, records
+
+
+def existing_grant_digest(records: dict[str, dict[str, Any] | None]) -> str:
+    digests = {str((record.get("tags") or {}).get("wc124-grant-digest", "")) for record in records.values() if record is not None}
+    if len(digests) != 1 or not next(iter(digests), ""):
+        raise ValueError("existing WC-124 credentials must share one non-empty grant digest")
+    return digests.pop()
 
 
 def sql_literal(value: str) -> str:
@@ -272,17 +359,20 @@ def psql(
     database: str,
     access_token: str,
     sql: str,
-) -> None:
+    *,
+    tuples_only: bool = False,
+) -> str:
     environment = dict(os.environ)
     environment["PGPASSWORD"] = access_token
     environment["PGSSLMODE"] = "verify-full"
     environment["PGSSLROOTCERT"] = "/etc/ssl/certs/ca-certificates.crt"
-    run(
+    return run(
         [
             "psql",
             "--no-psqlrc",
             "--set",
             "ON_ERROR_STOP=1",
+            *(("--tuples-only", "--no-align", "--field-separator=\t") if tuples_only else ()),
             "--host",
             server_fqdn,
             "--port",
@@ -298,11 +388,84 @@ def psql(
 
 
 def application_migration_files(init_directory: Path) -> tuple[Path, ...]:
-    files = tuple(init_directory / name for name in APPLICATION_MIGRATION_NAMES)
-    missing = [path.name for path in files if not path.is_file()]
-    if missing:
-        raise ValueError(f"WC-124 application migration files are missing: {', '.join(missing)}")
+    """Return every ``*.sql`` init file after the principal bootstrap in C-locale order.
+
+    Shell init files are local-compose only (legacy LOGIN passwords, preview seeds) and are
+    never applied to a managed environment.
+    """
+    if not (init_directory / PRINCIPAL_BOOTSTRAP_NAME).is_file():
+        raise ValueError(f"WC-124 principal bootstrap file is missing: {PRINCIPAL_BOOTSTRAP_NAME}")
+    files = tuple(
+        sorted(
+            (path for path in init_directory.glob("*.sql") if path.name != PRINCIPAL_BOOTSTRAP_NAME),
+            key=lambda path: path.name.encode(),
+        )
+    )
+    if not files:
+        raise ValueError(f"WC-124 init chain has no application migration files in {init_directory}")
     return files
+
+
+def file_digest(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def read_init_chain_ledger(
+    server_fqdn: str,
+    bootstrap_name: str,
+    access_token: str,
+) -> dict[str, str]:
+    psql(server_fqdn, bootstrap_name, APPLICATION_DATABASE, access_token, INIT_CHAIN_LEDGER_SQL)
+    rows = psql(
+        server_fqdn,
+        bootstrap_name,
+        APPLICATION_DATABASE,
+        access_token,
+        f"SELECT file_name, sha256 FROM {INIT_CHAIN_LEDGER_TABLE} ORDER BY file_name;",  # noqa: S608 constant table
+        tuples_only=True,
+    )
+    ledger: dict[str, str] = {}
+    for line in rows.splitlines():
+        if "\t" in line:
+            file_name, digest = line.split("\t", 1)
+            ledger[file_name.strip()] = digest.strip()
+    return ledger
+
+
+def apply_init_chain(
+    server_fqdn: str,
+    bootstrap_name: str,
+    access_token: str,
+    files: tuple[Path, ...],
+    *,
+    force: bool = False,
+) -> dict[str, list[str]]:
+    """Apply every changed init file in order and record its digest in the ledger.
+
+    Each file is idempotent by authoring standard (see ``wc124_init_chain_lint.py``), so a file
+    whose digest differs from the ledger is simply re-applied; unchanged files are skipped.
+    """
+    ledger = read_init_chain_ledger(server_fqdn, bootstrap_name, access_token)
+    outcome: dict[str, list[str]] = {"applied": [], "reapplied": [], "skipped": []}
+    for path in files:
+        digest = file_digest(path)
+        recorded = ledger.get(path.name)
+        if recorded == digest and not force:
+            outcome["skipped"].append(path.name)
+            continue
+        psql(server_fqdn, bootstrap_name, APPLICATION_DATABASE, access_token, path.read_text(encoding="utf-8"))
+        psql(
+            server_fqdn,
+            bootstrap_name,
+            APPLICATION_DATABASE,
+            access_token,
+            f"INSERT INTO {INIT_CHAIN_LEDGER_TABLE} (file_name, sha256) VALUES "  # noqa: S608 constant table, quoted literals
+            f"({sql_literal(path.name)}, {sql_literal(digest)}) "
+            "ON CONFLICT (file_name) DO UPDATE SET sha256 = EXCLUDED.sha256, "
+            "applied_at = now(), applied_by = current_user;",
+        )
+        outcome["reapplied" if recorded else "applied"].append(path.name)
+    return outcome
 
 
 def provision_postgresql(
@@ -311,23 +474,24 @@ def provision_postgresql(
     server_fqdn: str,
     bootstrap_name: str,
     init_directory: Path,
-) -> str:
+    *,
+    force_init_chain: bool = False,
+) -> tuple[str, dict[str, list[str]]]:
     database_access_token = access_token()
-    role_sql = (init_directory / "00-wc124-principal-bootstrap.sql").read_text(encoding="utf-8")
+    role_sql = (init_directory / PRINCIPAL_BOOTSTRAP_NAME).read_text(encoding="utf-8")
     role_sql += "\n" + "\n".join(
         f"ALTER ROLE {sql_identifier(role)} PASSWORD {sql_literal(password)};" for role, password in sorted(passwords.items())
     )
     psql(server_fqdn, bootstrap_name, APPLICATION_DATABASE, database_access_token, role_sql)
 
     application_files = application_migration_files(init_directory)
-    for path in application_files:
-        psql(
-            server_fqdn,
-            bootstrap_name,
-            APPLICATION_DATABASE,
-            database_access_token,
-            path.read_text(encoding="utf-8"),
-        )
+    init_chain = apply_init_chain(
+        server_fqdn,
+        bootstrap_name,
+        database_access_token,
+        application_files,
+        force=force_init_chain,
+    )
 
     database_roles = {
         APPLICATION_DATABASE: sorted({spec.role for spec in specs if spec.database == APPLICATION_DATABASE}),
@@ -344,6 +508,21 @@ def provision_postgresql(
             + ";\n"
         )
         psql(server_fqdn, bootstrap_name, database, database_access_token, grants)
+    application_owner_sql = "\n".join(
+        (
+            f"GRANT {sql_identifier(owner)} TO {sql_identifier(migrator)};\n"
+            f"ALTER ROLE {sql_identifier(migrator)} IN DATABASE {sql_identifier(APPLICATION_DATABASE)} "
+            f"SET role TO {sql_identifier(owner)};"
+        )
+        for migrator, owner in APPLICATION_MIGRATION_ROLES.items()
+    )
+    psql(
+        server_fqdn,
+        bootstrap_name,
+        APPLICATION_DATABASE,
+        database_access_token,
+        application_owner_sql,
+    )
     vendor_databases = {
         KEYCLOAK_DATABASE: ("keycloak_owner", "keycloak_migrator", "keycloak_runtime"),
     }
@@ -377,9 +556,10 @@ ALTER DEFAULT PRIVILEGES FOR ROLE {sql_identifier(owner)} IN SCHEMA public
 """
         psql(server_fqdn, bootstrap_name, database, database_access_token, vendor_sql)
     del database_access_token
-    return hashlib.sha256(
-        b"\0".join(path.read_bytes() for path in [init_directory / "00-wc124-principal-bootstrap.sql", *application_files])
+    grant_digest = hashlib.sha256(
+        b"\0".join(path.read_bytes() for path in [init_directory / PRINCIPAL_BOOTSTRAP_NAME, *application_files])
     ).hexdigest()
+    return grant_digest, init_chain
 
 
 def write_secrets(
@@ -393,11 +573,20 @@ def write_secrets(
     evidence: list[dict[str, str]] = []
     for spec in specs:
         record = records[spec.secret_id]
+        status = "preserved"
+        value: str | None = None
         if record is None:
             if spec.value_format == "authfile":
                 value = authfile_value(passwords)
             else:
                 value = secret_value(spec, passwords[spec.role], pgbouncer_host)
+            status = "created"
+        elif spec.value_format in {"url", "npgsql"}:
+            value = secret_value(spec, passwords[spec.role], pgbouncer_host)
+            if record.get("value") != value:
+                status = "updated"
+        if status in {"created", "updated"}:
+            assert value is not None
             record = json.loads(
                 run(
                     [
@@ -421,6 +610,7 @@ def write_secrets(
                     ]
                 )
             )
+        if value is not None:
             del value
         evidence.append(
             {
@@ -429,7 +619,7 @@ def write_secrets(
                 "database": spec.database,
                 "vault_name": vault_name,
                 "version_id": record["id"].rsplit("/", 1)[-1],
-                "status": "preserved" if records[spec.secret_id] is not None else "created",
+                "status": status,
             }
         )
     return evidence
@@ -438,15 +628,38 @@ def write_secrets(
 def execute(arguments: argparse.Namespace) -> dict[str, Any]:
     catalog = json.loads(arguments.catalog.read_text(encoding="utf-8"))
     specs = validate_catalog(catalog, arguments.environment)
+    refresh_only = getattr(arguments, "refresh_existing_urls", False)
     azure_login(arguments.provisioner_client_id)
-    passwords, records = read_credentials(specs, arguments.vault_name)
+    authorization_attempts = await_vault_authorization(arguments.vault_name)
+    passwords, records = read_credentials(specs, arguments.vault_name, require_existing=refresh_only)
+    if refresh_only:
+        grant_digest = existing_grant_digest(records)
+        evidence = write_secrets(
+            specs,
+            passwords,
+            records,
+            arguments.vault_name,
+            arguments.pgbouncer_host,
+            grant_digest,
+        )
+        passwords.clear()
+        return {
+            "schema": "waooaw.wc124-db-provisioning/v1",
+            "environment": arguments.environment,
+            "grant_digest": grant_digest,
+            "password_authentication_ready": True,
+            "mode": "canonical-url-refresh",
+            "vault_authorization_attempts": authorization_attempts,
+            "credentials": evidence,
+        }
     azure_login(arguments.bootstrap_client_id)
-    grant_digest = provision_postgresql(
+    grant_digest, init_chain = provision_postgresql(
         specs,
         passwords,
         arguments.server_fqdn,
         arguments.bootstrap_name,
         arguments.init_directory,
+        force_init_chain=getattr(arguments, "force_init_chain", False),
     )
     azure_login(arguments.provisioner_client_id)
     evidence = write_secrets(
@@ -463,6 +676,14 @@ def execute(arguments: argparse.Namespace) -> dict[str, Any]:
         "environment": arguments.environment,
         "grant_digest": grant_digest,
         "password_authentication_ready": True,
+        "vault_authorization_attempts": authorization_attempts,
+        "init_chain": {
+            "ledger": INIT_CHAIN_LEDGER_TABLE,
+            "applied": len(init_chain["applied"]),
+            "reapplied": len(init_chain["reapplied"]),
+            "skipped": len(init_chain["skipped"]),
+            "changed_files": init_chain["applied"] + init_chain["reapplied"],
+        },
         "credentials": evidence,
     }
 
@@ -470,7 +691,7 @@ def execute(arguments: argparse.Namespace) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--environment", required=True)
-    parser.add_argument("--catalog", type=Path, required=True)
+    parser.add_argument("--catalog", type=Path)
     parser.add_argument("--vault-name")
     parser.add_argument("--server-fqdn")
     parser.add_argument("--pgbouncer-host")
@@ -478,9 +699,25 @@ def main() -> int:
     parser.add_argument("--bootstrap-name")
     parser.add_argument("--provisioner-client-id")
     parser.add_argument("--init-directory", type=Path, default=Path("/opt/waooaw/postgres/init"))
+    parser.add_argument("--refresh-existing-urls", action="store_true")
+    parser.add_argument(
+        "--force-init-chain",
+        action="store_true",
+        help="re-apply every init file regardless of the ledger digest (files are idempotent)",
+    )
+    parser.add_argument("--network-probe", action="store_true")
     parser.add_argument("--validate-only", action="store_true")
     arguments = parser.parse_args()
     try:
+        if arguments.network_probe:
+            if not arguments.pgbouncer_host:
+                raise ValueError("missing execution arguments: pgbouncer_host")
+            result = probe_pgbouncer_connectivity(arguments.environment, arguments.pgbouncer_host)
+            json.dump(result, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+            return 0
+        if arguments.catalog is None:
+            raise ValueError("missing execution arguments: catalog")
         catalog = json.loads(arguments.catalog.read_text(encoding="utf-8"))
         specs = validate_catalog(catalog, arguments.environment)
         if arguments.validate_only:
@@ -495,14 +732,9 @@ def main() -> int:
                 "roles": sorted(spec.role for spec in specs),
             }
         else:
-            required = (
-                "vault_name",
-                "server_fqdn",
-                "pgbouncer_host",
-                "bootstrap_client_id",
-                "bootstrap_name",
-                "provisioner_client_id",
-            )
+            required = ["vault_name", "pgbouncer_host", "provisioner_client_id"]
+            if not arguments.refresh_existing_urls:
+                required.extend(("server_fqdn", "bootstrap_client_id", "bootstrap_name"))
             missing = [name for name in required if not getattr(arguments, name)]
             if missing:
                 raise ValueError("missing execution arguments: " + ", ".join(missing))

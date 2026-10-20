@@ -1,8 +1,10 @@
+import hashlib
 import json
 from pathlib import Path
 
 import pytest
 
+from scripts.goal006_plan_provenance import create_provenance
 from scripts.wc124_deployment_bundle import canonical_digest, create_bundle
 
 
@@ -19,7 +21,53 @@ def write_text(path: Path, value: str) -> Path:
     return path
 
 
+def write_provenance(
+    tmp_path: Path,
+    *,
+    scope: str,
+    plan_json: Path,
+    plan_binary: Path,
+) -> Path:
+    state = write_json(tmp_path / f"{scope}-state.json", {"lineage": f"{scope}-lineage", "serial": 7})
+    policy_result = write_json(
+        tmp_path / f"{scope}-plan-policy.json",
+        {
+            "schema": "waooaw.terraform-plan-policy-result/v1",
+            "status": "PASS",
+            "scope": scope,
+            "transition": "standard",
+            "plan_json_sha256": "sha256:" + hashlib.sha256(plan_json.read_bytes()).hexdigest(),
+            "destructive_changes": 0,
+        },
+    )
+    provenance = create_provenance(
+        environment="demo",
+        release_sha=SHA,
+        release_run_id="1234",
+        workflow_run_id="5678",
+        workflow_run_attempt="1",
+        scope=scope,
+        terraform_root=f"infrastructure/terraform/phase2/environments/demo/{scope}",
+        backend_key=f"goal006/demo/{scope}.tfstate",
+        plan_json=plan_json,
+        plan_binary=plan_binary,
+        policy_result=policy_result,
+        state=state,
+    )
+    return write_json(tmp_path / f"{scope}-plan-provenance.json", provenance)
+
+
 def bundle_inputs(tmp_path: Path) -> dict[str, object]:
+    foundation_plan = write_json(
+        tmp_path / "foundation-plan.json",
+        {"format_version": "1.2", "resource_changes": []},
+    )
+    foundation_plan_binary = write_text(tmp_path / "foundation.tfplan", "foundation plan")
+    workload_plan = write_json(
+        tmp_path / "workload-plan.json",
+        {"format_version": "1.2", "resource_changes": []},
+    )
+    workload_plan_binary = write_text(tmp_path / "workload.tfplan", "workload plan")
     return {
         "environment": "demo",
         "release_sha": SHA,
@@ -28,14 +76,24 @@ def bundle_inputs(tmp_path: Path) -> dict[str, object]:
         "workflow_run_id": "5678",
         "workflow_run_attempt": "1",
         "lease_expiry": "2026-10-26T12:00:00Z",
-        "foundation_plan": write_json(
-            tmp_path / "foundation-plan.json",
-            {"format_version": "1.2", "resource_changes": []},
+        "foundation_plan": foundation_plan,
+        "foundation_plan_binary": foundation_plan_binary,
+        "foundation_plan_provenance": write_provenance(
+            tmp_path,
+            scope="foundation",
+            plan_json=foundation_plan,
+            plan_binary=foundation_plan_binary,
         ),
-        "workload_plan": write_json(
-            tmp_path / "workload-plan.json",
-            {"format_version": "1.2", "resource_changes": []},
+        "foundation_policy_result": tmp_path / "foundation-plan-policy.json",
+        "workload_plan": workload_plan,
+        "workload_plan_binary": workload_plan_binary,
+        "workload_plan_provenance": write_provenance(
+            tmp_path,
+            scope="workload",
+            plan_json=workload_plan,
+            plan_binary=workload_plan_binary,
         ),
+        "workload_policy_result": tmp_path / "workload-plan-policy.json",
         "secret_catalog": write_json(tmp_path / "secret-catalog.json", {"entries": []}),
         "configuration": write_json(tmp_path / "configuration.json", {"environment": "demo"}),
         "dependency_files": [write_json(tmp_path / "release-manifest.json", {"images": {}})],
@@ -68,6 +126,7 @@ def test_apply_bundle_is_generated_from_internal_exact_run_evidence(tmp_path: Pa
         "schema",
     }
     assert bundle["bundle_digest"].startswith("sha256:")
+    assert set(bundle["plan_provenance"]) == {"foundation", "workload"}
 
 
 def test_bundle_digest_changes_when_either_reviewed_plan_changes(tmp_path: Path) -> None:
@@ -80,10 +139,77 @@ def test_bundle_digest_changes_when_either_reviewed_plan_changes(tmp_path: Path)
             "resource_changes": [{"address": "module.workload.pgbouncer"}],
         },
     )
+    inputs["workload_plan_provenance"] = write_provenance(
+        tmp_path,
+        scope="workload",
+        plan_json=inputs["workload_plan"],
+        plan_binary=inputs["workload_plan_binary"],
+    )
     second = create_bundle(**inputs)
 
     assert second["authorization"]["plan_digest"] != first["authorization"]["plan_digest"]
     assert second["bundle_digest"] != first["bundle_digest"]
+
+
+def test_apply_bundle_rejects_plan_provenance_from_another_release(tmp_path: Path) -> None:
+    inputs = bundle_inputs(tmp_path)
+    provenance = json.loads(inputs["foundation_plan_provenance"].read_text(encoding="utf-8"))
+    provenance["release_sha"] = "b" * 40
+    write_json(inputs["foundation_plan_provenance"], provenance)
+
+    with pytest.raises(ValueError, match="foundation plan provenance mismatch"):
+        create_bundle(**inputs)
+
+
+def test_apply_bundle_rejects_plan_binary_tampering(tmp_path: Path) -> None:
+    inputs = bundle_inputs(tmp_path)
+    write_text(inputs["workload_plan_binary"], "tampered workload plan")
+
+    with pytest.raises(ValueError, match="workload plan provenance mismatch"):
+        create_bundle(**inputs)
+
+
+def test_apply_bundle_rejects_policy_result_tampering(tmp_path: Path) -> None:
+    inputs = bundle_inputs(tmp_path)
+    policy = json.loads(inputs["workload_policy_result"].read_text(encoding="utf-8"))
+    policy["status"] = "FAIL"
+    write_json(inputs["workload_policy_result"], policy)
+
+    with pytest.raises(ValueError, match="workload plan provenance mismatch"):
+        create_bundle(**inputs)
+
+
+def test_plan_provenance_rejects_cross_environment_backend(tmp_path: Path) -> None:
+    plan_json = write_json(tmp_path / "foundation-plan.json", {"format_version": "1.2", "resource_changes": []})
+    plan_binary = write_text(tmp_path / "foundation.tfplan", "foundation plan")
+    state = write_json(tmp_path / "foundation-state.json", {"lineage": "lineage", "serial": 1})
+    policy_result = write_json(
+        tmp_path / "foundation-plan-policy.json",
+        {
+            "schema": "waooaw.terraform-plan-policy-result/v1",
+            "status": "PASS",
+            "scope": "foundation",
+            "transition": "standard",
+            "plan_json_sha256": "sha256:" + hashlib.sha256(plan_json.read_bytes()).hexdigest(),
+            "destructive_changes": 0,
+        },
+    )
+
+    with pytest.raises(ValueError, match="backend key is not environment-exact"):
+        create_provenance(
+            environment="demo",
+            release_sha=SHA,
+            release_run_id="1234",
+            workflow_run_id="5678",
+            workflow_run_attempt="1",
+            scope="foundation",
+            terraform_root="infrastructure/terraform/phase2/environments/demo/foundation",
+            backend_key="goal006/uat/foundation.tfstate",
+            plan_json=plan_json,
+            plan_binary=plan_binary,
+            policy_result=policy_result,
+            state=state,
+        )
 
 
 @pytest.mark.parametrize("environment", ["prod", "invalid"])

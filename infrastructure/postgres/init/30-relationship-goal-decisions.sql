@@ -62,18 +62,19 @@ $$;
 
 DROP TRIGGER IF EXISTS relationship_goal_decisions_no_update
     ON business.relationship_goal_decisions;
-CREATE TRIGGER relationship_goal_decisions_no_update
+CREATE OR REPLACE TRIGGER relationship_goal_decisions_no_update
     BEFORE UPDATE ON business.relationship_goal_decisions
     FOR EACH ROW EXECUTE FUNCTION business.reject_relationship_goal_decision_mutation();
 
 DROP TRIGGER IF EXISTS relationship_goal_decisions_no_delete
     ON business.relationship_goal_decisions;
-CREATE TRIGGER relationship_goal_decisions_no_delete
+CREATE OR REPLACE TRIGGER relationship_goal_decisions_no_delete
     BEFORE DELETE ON business.relationship_goal_decisions
     FOR EACH ROW EXECUTE FUNCTION business.reject_relationship_goal_decision_mutation();
 
 ALTER TABLE business.relationship_goal_decisions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.relationship_goal_decisions FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS relationship_goal_decisions_tenant_isolation ON business.relationship_goal_decisions;
 CREATE POLICY relationship_goal_decisions_tenant_isolation
     ON business.relationship_goal_decisions
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)

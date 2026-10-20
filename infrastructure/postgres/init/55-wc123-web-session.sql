@@ -189,14 +189,19 @@ ALTER TABLE web_session.oidc_transactions FORCE ROW LEVEL SECURITY;
 ALTER TABLE web_session.logout_replays ENABLE ROW LEVEL SECURITY;
 ALTER TABLE web_session.logout_replays FORCE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS user_generations_operations_only ON web_session.user_generations;
 CREATE POLICY user_generations_operations_only ON web_session.user_generations
     FOR ALL TO web_session_operations USING (TRUE) WITH CHECK (TRUE);
+DROP POLICY IF EXISTS session_families_operations_only ON web_session.session_families;
 CREATE POLICY session_families_operations_only ON web_session.session_families
     FOR ALL TO web_session_operations USING (TRUE) WITH CHECK (TRUE);
+DROP POLICY IF EXISTS session_handles_operations_only ON web_session.session_handles;
 CREATE POLICY session_handles_operations_only ON web_session.session_handles
     FOR ALL TO web_session_operations USING (TRUE) WITH CHECK (TRUE);
+DROP POLICY IF EXISTS oidc_transactions_operations_only ON web_session.oidc_transactions;
 CREATE POLICY oidc_transactions_operations_only ON web_session.oidc_transactions
     FOR ALL TO web_session_operations USING (TRUE) WITH CHECK (TRUE);
+DROP POLICY IF EXISTS logout_replays_operations_only ON web_session.logout_replays;
 CREATE POLICY logout_replays_operations_only ON web_session.logout_replays
     FOR ALL TO web_session_operations USING (TRUE) WITH CHECK (TRUE);
 

@@ -39,7 +39,13 @@ ALTER ROLE domain_adapter_app LOGIN PASSWORD '${POSTGRES_PASSWORD}';
 ALTER ROLE web_session_app LOGIN PASSWORD '${POSTGRES_PASSWORD}' NOBYPASSRLS;
 
 -- Temporal workflow server
-CREATE USER temporal WITH PASSWORD '${TEMPORAL_PASS}';
+DO \$temporal\$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'temporal') THEN
+        CREATE USER temporal WITH PASSWORD '${TEMPORAL_PASS}';
+    END IF;
+END
+\$temporal\$;
 
 -- ─── Schema ownership ────────────────────────────────────────────────────────
 

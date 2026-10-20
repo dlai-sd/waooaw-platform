@@ -339,6 +339,8 @@ resource cleanupJobControl 'Microsoft.Authorization/roleAssignments@2022-04-01' 
     principalId: cleanupIdentity.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: cleanupJobOperatorRoleDefinitionId
+    conditionVersion: '2.0'
+    condition: '((!(ActionMatches{\'Microsoft.OperationalInsights/workspaces/tables/data/read\'})) OR ((@Resource[Microsoft.OperationalInsights/workspaces/tables:name] StringEquals \'ContainerAppConsoleLogs\') OR (@Resource[Microsoft.OperationalInsights/workspaces/tables:name] StringEquals \'ContainerAppSystemLogs\')))'
   }
 }
 
@@ -592,7 +594,7 @@ resource brokerJob 'Microsoft.App/jobs@2024-03-01' = {
     environmentId: runnerEnvironment.id
     configuration: {
       triggerType: 'Manual'
-      replicaTimeout: 300
+      replicaTimeout: 600
       replicaRetryLimit: 0
       manualTriggerConfig: {
         parallelism: 1

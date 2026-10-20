@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -201,10 +202,27 @@ def enforce_temporal_contract(plan: dict[str, Any]) -> None:
         violations.append("Temporal must use external PostgreSQL without a database sidecar")
     if template.get("min_replicas") not in {0, 1} or template.get("max_replicas") != 1:
         violations.append("Temporal must be dormant or run as one fixed replica")
-    if temporal.get("startup_probe"):
-        violations.append("Temporal startup probe must be absent")
-    if temporal.get("readiness_probe"):
-        violations.append("Temporal readiness probe must be absent")
+    # Container Apps probes connect over loopback; the image binds to the replica IP by
+    # default, so probes are only valid when the server binds on every interface.
+    env = {entry.get("name"): entry.get("value") for entry in temporal.get("env") or []}
+    if env.get("BIND_ON_IP") != "0.0.0.0":  # noqa: S104
+        violations.append("Temporal must bind on 0.0.0.0 so Container Apps probes reach the frontend")
+    args = " ".join(str(arg) for arg in temporal.get("args") or [])
+    if "TEMPORAL_BROADCAST_ADDRESS=" not in args:
+        violations.append("Temporal must advertise its routable replica address through TEMPORAL_BROADCAST_ADDRESS")
+    # azurerm 4.14 rejects failure_count_threshold above 30 at plan time (runs 39446836598 and
+    # 39454383100); the policy bound must never exceed what the provider can apply.
+    for probe_kind, bound in (("startup_probe", 30), ("readiness_probe", 10)):
+        probes = temporal.get(probe_kind) or []
+        if len(probes) != 1:
+            violations.append(f"Temporal {probe_kind.replace('_', ' ')} must be defined exactly once")
+            continue
+        probe = probes[0]
+        if probe.get("transport") != "TCP" or probe.get("port") != 7233:
+            violations.append(f"Temporal {probe_kind.replace('_', ' ')} must be TCP on 7233")
+        threshold = probe.get("failure_count_threshold")
+        if not isinstance(threshold, int) or not 1 <= threshold <= bound:
+            violations.append(f"Temporal {probe_kind.replace('_', ' ')} failure threshold must be within 1..{bound}")
     if "@sha256:" not in str(temporal.get("image", "")):
         violations.append("Temporal image must be digest-pinned")
     if violations:
@@ -221,6 +239,7 @@ def main() -> int:
     parser.add_argument("--plan", required=True, type=Path)
     parser.add_argument("--scope", required=True, choices=("foundation", "workload"))
     parser.add_argument("--transition", default="standard", choices=("standard", "wc124-plan-b"))
+    parser.add_argument("--output", type=Path)
     arguments = parser.parse_args()
     try:
         plan = json.loads(arguments.plan.read_text(encoding="utf-8"))
@@ -231,7 +250,17 @@ def main() -> int:
         enforce_plan(plan, arguments.scope, arguments.transition)
     except (OSError, json.JSONDecodeError, ValueError) as error:
         parser.error(str(error))
-    print(json.dumps({"status": "PASS", "destructive_changes": 0}, sort_keys=True))
+    result = {
+        "schema": "waooaw.terraform-plan-policy-result/v1",
+        "status": "PASS",
+        "scope": arguments.scope,
+        "transition": arguments.transition,
+        "plan_json_sha256": "sha256:" + hashlib.sha256(arguments.plan.read_bytes()).hexdigest(),
+        "destructive_changes": 0,
+    }
+    if arguments.output is not None:
+        arguments.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(json.dumps(result, sort_keys=True))
     return 0
 
 

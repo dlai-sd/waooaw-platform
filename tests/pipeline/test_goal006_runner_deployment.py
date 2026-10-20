@@ -393,7 +393,7 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
             }
             if broker or cleanup_broker:
                 configuration.update(
-                    replicaTimeout=300,
+                    replicaTimeout=600 if broker else 300,
                     manualTriggerConfig={"parallelism": 1, "replicaCompletionCount": 1},
                 )
             if reconciler and reconciler_trigger == "Schedule":

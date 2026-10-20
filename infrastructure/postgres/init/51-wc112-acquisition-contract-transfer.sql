@@ -14,15 +14,21 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_employment_relationship_acquisition_intent
 ALTER TABLE business.employment_relationships
     DROP CONSTRAINT IF EXISTS employment_relationship_acquisition_contract_complete;
 
-ALTER TABLE business.employment_relationships
-    ADD CONSTRAINT employment_relationship_acquisition_contract_complete CHECK (
-        (acquisition_intent_id IS NULL
-            AND acquisition_contract_version IS NULL
-            AND acquisition_contract_hash IS NULL
-            AND acquisition_contract_accepted_at IS NULL)
-        OR
-        (acquisition_intent_id IS NOT NULL
-            AND acquisition_contract_version IS NOT NULL
-            AND acquisition_contract_hash ~ '^[0-9a-f]{64}$'
-            AND acquisition_contract_accepted_at IS NOT NULL)
-    );
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'employment_relationship_acquisition_contract_complete' AND conrelid = 'business.employment_relationships'::regclass) THEN
+        ALTER TABLE business.employment_relationships
+            ADD CONSTRAINT employment_relationship_acquisition_contract_complete CHECK (
+                (acquisition_intent_id IS NULL
+                    AND acquisition_contract_version IS NULL
+                    AND acquisition_contract_hash IS NULL
+                    AND acquisition_contract_accepted_at IS NULL)
+                OR
+                (acquisition_intent_id IS NOT NULL
+                    AND acquisition_contract_version IS NOT NULL
+                    AND acquisition_contract_hash ~ '^[0-9a-f]{64}$'
+                    AND acquisition_contract_accepted_at IS NOT NULL)
+            );
+    END IF;
+END
+$idempotent$;

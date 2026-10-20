@@ -18,6 +18,12 @@ on:
       web_url:
         required: true
         type: string
+      control_sha:
+        required: true
+        type: string
+      break_fix:
+        required: true
+        type: boolean
 permissions:
   contents: read
   actions: read
@@ -36,9 +42,20 @@ jobs:
         env:
           CALLER_WORKFLOW_REF: ${{ github.workflow_ref }}
           EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy.yaml@refs/heads/main
+          EXPECTED_BREAK_FIX_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy.yaml@refs/heads/ib/532/wc124-transition-reconciliation
+          BREAK_FIX: ${{ inputs.break_fix }}
+          CONTROL_SHA: ${{ inputs.control_sha }}
+          CURRENT_SHA: ${{ github.sha }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          test "$CALLER_WORKFLOW_REF" = "$EXPECTED_CALLER_WORKFLOW_REF"
+          if [ "$BREAK_FIX" = true ]; then
+            test "$TARGET_ENVIRONMENT" = demo
+            test "$CALLER_WORKFLOW_REF" = "$EXPECTED_BREAK_FIX_WORKFLOW_REF"
+            test "$CONTROL_SHA" = "$CURRENT_SHA"
+          else
+            test "$CALLER_WORKFLOW_REF" = "$EXPECTED_CALLER_WORKFLOW_REF"
+            test "$CONTROL_SHA" = '${{ inputs.release_sha }}'
+          fi
           case "$TARGET_ENVIRONMENT" in demo|uat|prod) ;; *) exit 1 ;; esac
 
       - name: Reject stale release before independent verification
@@ -105,5 +122,5 @@ jobs:
             deployment-verification.json
             google-deployment-verification.json
             facebook-deployment-verification.json
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 90

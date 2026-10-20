@@ -3,6 +3,7 @@
 # Implements: architecture/reference/components/demo-uat-persistent-state-lifecycle-work-component.md §§7-9
 # Constitutional basis: C-026, C-059, C-063, C-080, C-091
 
+import re
 from pathlib import Path
 
 
@@ -41,9 +42,10 @@ def test_demo_and_uat_create_protected_private_flexible_servers_only() -> None:
     assert 'resource "azurerm_user_assigned_identity" "database_provisioner"' in foundation
     assert 'resource "azurerm_role_assignment" "database_provisioner_vault"' in foundation
     assert "var.database_bootstrap_admin_enabled" in foundation
+    assert "var.database_provisioner_vault_access_enabled" in foundation
     assert "prevent_destroy = true" in foundation
-    assert "persistent_state_enabled           = true" in demo
-    assert "persistent_state_enabled           = true" in uat
+    assert re.search(r"persistent_state_enabled\s*=\s*true", demo)
+    assert re.search(r"persistent_state_enabled\s*=\s*true", uat)
     assert "persistent_state_enabled" not in production
     assert "postgresql_server_fqdn" not in production
 

@@ -2,10 +2,16 @@
 -- constitutional_basis: C-005, C-007, C-023, C-026, C-059
 
 ALTER TABLE business.relationship_skill_configuration
-    DROP CONSTRAINT relationship_skill_configuration_status_check;
-ALTER TABLE business.relationship_skill_configuration
-    ADD CONSTRAINT relationship_skill_configuration_status_check
-    CHECK (status IN ('PROPOSED', 'SELECTED', 'ACCEPTED', 'EDITED', 'REJECTED', 'DEFERRED', 'RETIRED'));
+    DROP CONSTRAINT IF EXISTS relationship_skill_configuration_status_check;
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'relationship_skill_configuration_status_check' AND conrelid = 'business.relationship_skill_configuration'::regclass) THEN
+        ALTER TABLE business.relationship_skill_configuration
+            ADD CONSTRAINT relationship_skill_configuration_status_check
+            CHECK (status IN ('PROPOSED', 'SELECTED', 'ACCEPTED', 'EDITED', 'REJECTED', 'DEFERRED', 'RETIRED'));
+    END IF;
+END
+$idempotent$;
 
 DO $$ BEGIN
     IF NOT EXISTS (
@@ -60,16 +66,17 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS relationship_skill_decisions_no_update ON business.relationship_skill_decisions;
-CREATE TRIGGER relationship_skill_decisions_no_update
+CREATE OR REPLACE TRIGGER relationship_skill_decisions_no_update
     BEFORE UPDATE ON business.relationship_skill_decisions
     FOR EACH ROW EXECUTE FUNCTION business.reject_relationship_skill_decision_mutation();
 DROP TRIGGER IF EXISTS relationship_skill_decisions_no_delete ON business.relationship_skill_decisions;
-CREATE TRIGGER relationship_skill_decisions_no_delete
+CREATE OR REPLACE TRIGGER relationship_skill_decisions_no_delete
     BEFORE DELETE ON business.relationship_skill_decisions
     FOR EACH ROW EXECUTE FUNCTION business.reject_relationship_skill_decision_mutation();
 
 ALTER TABLE business.relationship_skill_decisions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.relationship_skill_decisions FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS relationship_skill_decisions_tenant_isolation ON business.relationship_skill_decisions;
 CREATE POLICY relationship_skill_decisions_tenant_isolation
     ON business.relationship_skill_decisions
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)

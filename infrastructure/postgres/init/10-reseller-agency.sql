@@ -100,7 +100,8 @@ INSERT INTO business.reseller_plans VALUES
 ('AGENCY_STARTER', 'Agency Starter',   1499, 10,         FALSE, TRUE, FALSE),
 ('AGENCY_GROWTH',  'Agency Growth',    1299, 50,         TRUE,  TRUE, TRUE),
 ('AGENCY_SCALE',   'Agency Scale',     1099, 200,        TRUE,  TRUE, TRUE),
-('ENTERPRISE',     'Enterprise',        899, 9999,       TRUE,  TRUE, TRUE);
+('ENTERPRISE',     'Enterprise',        899, 9999,       TRUE,  TRUE, TRUE)
+ON CONFLICT DO NOTHING;
 
 COMMENT ON TABLE business.reseller_plans IS
     'C-075 commercial model. Wholesale price per seat decreases at scale.

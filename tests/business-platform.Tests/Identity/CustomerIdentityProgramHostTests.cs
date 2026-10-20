@@ -65,7 +65,7 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
         foreach (var table in new[] { "organisations", "business_domain_taxonomy" })
         {
             var start = canonical.IndexOf(
-                $"CREATE TABLE business.{table} (",
+                $"CREATE TABLE IF NOT EXISTS business.{table} (",
                 StringComparison.Ordinal
             );
             var end = canonical.IndexOf(");", start, StringComparison.Ordinal) + 2;

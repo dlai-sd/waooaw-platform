@@ -12,13 +12,19 @@ ALTER TABLE identity.customer_portal_preferences
 
 ALTER TABLE identity.customer_portal_preferences
     DROP CONSTRAINT IF EXISTS ck_customer_portal_workspace_layout;
-ALTER TABLE identity.customer_portal_preferences
-    ADD CONSTRAINT ck_customer_portal_workspace_layout CHECK (
-        workspace_layout_version >= 0
-        AND navigation_visibility IN ('VISIBLE', 'COLLAPSED', 'HIDDEN')
-        AND progress_visibility IN ('VISIBLE', 'COLLAPSED', 'HIDDEN')
-        AND conversation_width_percent BETWEEN 35 AND 75
-    );
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_customer_portal_workspace_layout' AND conrelid = 'identity.customer_portal_preferences'::regclass) THEN
+        ALTER TABLE identity.customer_portal_preferences
+            ADD CONSTRAINT ck_customer_portal_workspace_layout CHECK (
+                workspace_layout_version >= 0
+                AND navigation_visibility IN ('VISIBLE', 'COLLAPSED', 'HIDDEN')
+                AND progress_visibility IN ('VISIBLE', 'COLLAPSED', 'HIDDEN')
+                AND conversation_width_percent BETWEEN 35 AND 75
+            );
+    END IF;
+END
+$idempotent$;
 
 ALTER TABLE business.relationship_onboard_preferences
     ADD COLUMN IF NOT EXISTS workspace_preference_version integer NOT NULL DEFAULT 0,
@@ -27,19 +33,25 @@ ALTER TABLE business.relationship_onboard_preferences
 
 ALTER TABLE business.relationship_onboard_preferences
     DROP CONSTRAINT IF EXISTS ck_relationship_workspace_preferences;
-ALTER TABLE business.relationship_onboard_preferences
-    ADD CONSTRAINT ck_relationship_workspace_preferences CHECK (
-        workspace_preference_version >= 0
-        AND default_focus IN (
-            'LIFECYCLE',
-            'INDUCTION',
-            'SKILLS_GOALS',
-            'OPERATIONS',
-            'PERFORMANCE',
-            'BUDGET',
-            'RIGHTS'
-        )
-    );
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_relationship_workspace_preferences' AND conrelid = 'business.relationship_onboard_preferences'::regclass) THEN
+        ALTER TABLE business.relationship_onboard_preferences
+            ADD CONSTRAINT ck_relationship_workspace_preferences CHECK (
+                workspace_preference_version >= 0
+                AND default_focus IN (
+                    'LIFECYCLE',
+                    'INDUCTION',
+                    'SKILLS_GOALS',
+                    'OPERATIONS',
+                    'PERFORMANCE',
+                    'BUDGET',
+                    'RIGHTS'
+                )
+            );
+    END IF;
+END
+$idempotent$;
 
 CREATE TABLE IF NOT EXISTS business.customer_engagement_admission_operations (
     operation_id uuid PRIMARY KEY,
@@ -71,6 +83,7 @@ ALTER TABLE business.customer_engagement_admission_operations ENABLE ROW LEVEL S
 ALTER TABLE business.customer_engagement_admission_operations FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tenant_isolation_customer_engagement_admission_operations
     ON business.customer_engagement_admission_operations;
+DROP POLICY IF EXISTS tenant_isolation_customer_engagement_admission_operations ON business.customer_engagement_admission_operations;
 CREATE POLICY tenant_isolation_customer_engagement_admission_operations
     ON business.customer_engagement_admission_operations
     USING (

@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS business.relationship_evidence_exports (
 ALTER TABLE business.relationship_evidence_exports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.relationship_evidence_exports FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS relationship_evidence_exports_tenant_isolation ON business.relationship_evidence_exports;
+DROP POLICY IF EXISTS relationship_evidence_exports_tenant_isolation ON business.relationship_evidence_exports;
 CREATE POLICY relationship_evidence_exports_tenant_isolation ON business.relationship_evidence_exports
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
@@ -128,6 +129,7 @@ ALTER TABLE business.channel_bindings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.channel_bindings FORCE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS channel_bindings_tenant_isolation ON business.channel_bindings;
+DROP POLICY IF EXISTS channel_bindings_tenant_isolation ON business.channel_bindings;
 CREATE POLICY channel_bindings_tenant_isolation ON business.channel_bindings
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
@@ -170,7 +172,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS channel_binding_transition ON business.channel_bindings;
-CREATE TRIGGER channel_binding_transition
+CREATE OR REPLACE TRIGGER channel_binding_transition
     BEFORE UPDATE ON business.channel_bindings
     FOR EACH ROW EXECUTE FUNCTION business.channel_binding_transition_guard();
 
@@ -247,6 +249,7 @@ ALTER TABLE business.continuity_checkpoints ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.continuity_checkpoints FORCE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS continuity_checkpoints_tenant_isolation ON business.continuity_checkpoints;
+DROP POLICY IF EXISTS continuity_checkpoints_tenant_isolation ON business.continuity_checkpoints;
 CREATE POLICY continuity_checkpoints_tenant_isolation ON business.continuity_checkpoints
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
@@ -289,7 +292,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS continuity_checkpoint_transition ON business.continuity_checkpoints;
-CREATE TRIGGER continuity_checkpoint_transition
+CREATE OR REPLACE TRIGGER continuity_checkpoint_transition
     BEFORE UPDATE ON business.continuity_checkpoints
     FOR EACH ROW EXECUTE FUNCTION business.continuity_checkpoint_transition_guard();
 
@@ -336,6 +339,7 @@ ALTER TABLE business.delivery_acknowledgements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.delivery_acknowledgements FORCE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS delivery_acknowledgements_tenant_isolation ON business.delivery_acknowledgements;
+DROP POLICY IF EXISTS delivery_acknowledgements_tenant_isolation ON business.delivery_acknowledgements;
 CREATE POLICY delivery_acknowledgements_tenant_isolation ON business.delivery_acknowledgements
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
@@ -351,7 +355,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS delivery_acknowledgements_no_update ON business.delivery_acknowledgements;
-CREATE TRIGGER delivery_acknowledgements_no_update
+CREATE OR REPLACE TRIGGER delivery_acknowledgements_no_update
     BEFORE UPDATE OR DELETE ON business.delivery_acknowledgements
     FOR EACH ROW EXECUTE FUNCTION business.delivery_acknowledgements_append_only();
 
@@ -410,6 +414,7 @@ ALTER TABLE business.channel_message_deduplication FORCE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS channel_message_deduplication_tenant_isolation
     ON business.channel_message_deduplication;
+DROP POLICY IF EXISTS channel_message_deduplication_tenant_isolation ON business.channel_message_deduplication;
 CREATE POLICY channel_message_deduplication_tenant_isolation
     ON business.channel_message_deduplication
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
@@ -460,6 +465,6 @@ $$;
 
 DROP TRIGGER IF EXISTS channel_message_dedup_transition
     ON business.channel_message_deduplication;
-CREATE TRIGGER channel_message_dedup_transition
+CREATE OR REPLACE TRIGGER channel_message_dedup_transition
     BEFORE UPDATE ON business.channel_message_deduplication
     FOR EACH ROW EXECUTE FUNCTION business.channel_message_dedup_transition_guard();

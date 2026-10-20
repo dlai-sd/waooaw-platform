@@ -26,25 +26,39 @@ provider "azurerm" {
   features {}
 }
 
+provider "azurerm" {
+  alias                           = "deployment"
+  client_id                       = var.deployment_client_id
+  use_oidc                        = true
+  use_cli                         = false
+  resource_provider_registrations = "none"
+  features {}
+}
+
 import {
   to = module.foundation.azurerm_log_analytics_workspace.environment
   id = "/subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/resourceGroups/waooaw-demo-rg/providers/Microsoft.OperationalInsights/workspaces/law-waooaw-demo-validation"
 }
 
 module "foundation" {
-  source                             = "../../../modules/foundation"
-  environment                        = "demo"
-  location                           = "centralindia"
-  repository_id                      = "dlai-sd/waooaw-platform"
-  repository_environment             = "demo"
-  runner_resource_group_name         = var.runner_resource_group_name
-  runner_private_endpoints_subnet_id = var.runner_private_endpoints_subnet_id
-  tfstate_storage_account_id         = var.tfstate_storage_account_id
-  external_environment               = true
-  persistent_state_enabled           = true
-  postgresql_password_auth_enabled   = var.postgresql_password_auth_enabled
-  database_bootstrap_admin_enabled   = var.database_bootstrap_admin_enabled
-  log_analytics_workspace_name       = "law-waooaw-demo-validation"
+  source = "../../../modules/foundation"
+  providers = {
+    azurerm            = azurerm
+    azurerm.deployment = azurerm.deployment
+  }
+  environment                               = "demo"
+  location                                  = "centralindia"
+  repository_id                             = "dlai-sd/waooaw-platform"
+  repository_environment                    = "demo"
+  runner_resource_group_name                = var.runner_resource_group_name
+  runner_private_endpoints_subnet_id        = var.runner_private_endpoints_subnet_id
+  tfstate_storage_account_id                = var.tfstate_storage_account_id
+  external_environment                      = true
+  persistent_state_enabled                  = true
+  postgresql_password_auth_enabled          = var.postgresql_password_auth_enabled
+  database_bootstrap_admin_enabled          = var.database_bootstrap_admin_enabled
+  database_provisioner_vault_access_enabled = var.database_provisioner_vault_access_enabled
+  log_analytics_workspace_name              = "law-waooaw-demo-validation"
 }
 
 output "resource_group_name" {

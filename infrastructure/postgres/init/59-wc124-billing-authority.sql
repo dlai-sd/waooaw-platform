@@ -3,31 +3,28 @@
 
 BEGIN;
 
-CREATE SCHEMA IF NOT EXISTS billing;
-REVOKE ALL ON SCHEMA billing FROM PUBLIC;
-
-DO $roles$
+DO $preflight$
+DECLARE
+    schema_owner text;
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'billing_owner') THEN
-        CREATE ROLE billing_owner
-            NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOINHERIT;
+    SELECT pg_get_userbyid(nspowner)
+    INTO schema_owner
+    FROM pg_namespace
+    WHERE nspname = 'billing';
+
+    IF schema_owner IS NULL THEN
+        RAISE EXCEPTION 'billing schema must be provisioned before migration';
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'billing_migrator') THEN
-        CREATE ROLE billing_migrator
-            LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOINHERIT;
+    IF schema_owner <> 'billing_owner' THEN
+        RAISE EXCEPTION 'billing schema owner must be billing_owner, found %', schema_owner;
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'billing_runtime') THEN
-        CREATE ROLE billing_runtime
-            LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOINHERIT;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'billing_verifier') THEN
-        CREATE ROLE billing_verifier
-            NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOINHERIT;
+    IF NOT pg_has_role(session_user, 'billing_owner', 'MEMBER') THEN
+        RAISE EXCEPTION '% cannot assume billing_owner', session_user;
     END IF;
 END
-$roles$;
+$preflight$;
 
-ALTER SCHEMA billing OWNER TO billing_owner;
+SET LOCAL ROLE billing_owner;
 
 CREATE OR REPLACE FUNCTION billing.reject_authority_history_mutation()
 RETURNS trigger
@@ -100,12 +97,18 @@ CREATE TABLE IF NOT EXISTS billing.integrity_events (
 
 ALTER TABLE billing.integrity_states
     DROP CONSTRAINT IF EXISTS integrity_states_active_halt_fk;
-ALTER TABLE billing.integrity_states
-    ADD CONSTRAINT integrity_states_active_halt_fk
-    FOREIGN KEY (active_halt_event_id)
-    REFERENCES billing.integrity_events(event_id)
-    ON DELETE RESTRICT
-    DEFERRABLE INITIALLY DEFERRED;
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'integrity_states_active_halt_fk' AND conrelid = 'billing.integrity_states'::regclass) THEN
+        ALTER TABLE billing.integrity_states
+            ADD CONSTRAINT integrity_states_active_halt_fk
+            FOREIGN KEY (active_halt_event_id)
+            REFERENCES billing.integrity_events(event_id)
+            ON DELETE RESTRICT
+            DEFERRABLE INITIALLY DEFERRED;
+    END IF;
+END
+$idempotent$;
 
 CREATE TABLE IF NOT EXISTS billing.reconciliation_executions (
     execution_id uuid PRIMARY KEY,

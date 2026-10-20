@@ -47,3 +47,13 @@ BEGIN
     END LOOP;
 END
 $roles$;
+
+GRANT billing_owner TO billing_migrator;
+CREATE SCHEMA IF NOT EXISTS billing AUTHORIZATION billing_owner;
+ALTER SCHEMA billing OWNER TO billing_owner;
+REVOKE ALL ON SCHEMA billing FROM PUBLIC;
+
+-- The Billing runtime reaches the instance through a transaction-pooling PgBouncer, which
+-- rejects search_path as a client startup parameter and keeps no session state. The runtime's
+-- unqualified table names therefore resolve through this server-side role default.
+ALTER ROLE billing_runtime SET search_path = billing, business, institutional, public;

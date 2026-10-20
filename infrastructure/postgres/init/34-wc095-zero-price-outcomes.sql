@@ -64,20 +64,26 @@ ON business.paid_subscriptions (commercial_outcome_reference)
 WHERE commercial_outcome_reference IS NOT NULL;
 ALTER TABLE business.paid_subscriptions
 DROP CONSTRAINT IF EXISTS paid_subscriptions_outcome_source_check;
-ALTER TABLE business.paid_subscriptions
-ADD CONSTRAINT paid_subscriptions_outcome_source_check CHECK (
-    (
-        commercial_outcome_kind IS NULL
-        AND razorpay_order_id IS NOT NULL
-        AND razorpay_payment_id IS NOT NULL
-    )
-    OR (
-        commercial_outcome_kind = 'ZERO_PRICE_SATISFIED'
-        AND commercial_outcome_reference IS NOT NULL
-        AND razorpay_order_id IS NULL
-        AND razorpay_payment_id IS NULL
-    )
-);
+DO $idempotent$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'paid_subscriptions_outcome_source_check' AND conrelid = 'business.paid_subscriptions'::regclass) THEN
+        ALTER TABLE business.paid_subscriptions
+        ADD CONSTRAINT paid_subscriptions_outcome_source_check CHECK (
+            (
+                commercial_outcome_kind IS NULL
+                AND razorpay_order_id IS NOT NULL
+                AND razorpay_payment_id IS NOT NULL
+            )
+            OR (
+                commercial_outcome_kind = 'ZERO_PRICE_SATISFIED'
+                AND commercial_outcome_reference IS NOT NULL
+                AND razorpay_order_id IS NULL
+                AND razorpay_payment_id IS NULL
+            )
+        );
+    END IF;
+END
+$idempotent$;
 
 CREATE OR REPLACE FUNCTION business.protect_zero_price_commercial_outcome()
 RETURNS TRIGGER AS $$
@@ -109,7 +115,7 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS protect_zero_price_commercial_outcome
 ON business.zero_price_commercial_outcomes;
-CREATE TRIGGER protect_zero_price_commercial_outcome
+CREATE OR REPLACE TRIGGER protect_zero_price_commercial_outcome
 BEFORE UPDATE OR DELETE ON business.zero_price_commercial_outcomes
 FOR EACH ROW EXECUTE FUNCTION business.protect_zero_price_commercial_outcome();
 

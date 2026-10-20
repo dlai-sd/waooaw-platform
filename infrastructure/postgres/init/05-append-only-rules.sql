@@ -16,31 +16,31 @@
 
 -- ─── evidence_records: append-only ───────────────────────────────────────────
 
-CREATE RULE no_update_evidence_records AS
+CREATE OR REPLACE RULE no_update_evidence_records AS
     ON UPDATE TO constitutional.evidence_records
     DO INSTEAD NOTHING;
 
-CREATE RULE no_delete_evidence_records AS
+CREATE OR REPLACE RULE no_delete_evidence_records AS
     ON DELETE TO constitutional.evidence_records
     DO INSTEAD NOTHING;
 
 -- ─── authority_licenses: append-only ─────────────────────────────────────────
 
-CREATE RULE no_update_authority_licenses AS
+CREATE OR REPLACE RULE no_update_authority_licenses AS
     ON UPDATE TO constitutional.authority_licenses
     DO INSTEAD NOTHING;
 
-CREATE RULE no_delete_authority_licenses AS
+CREATE OR REPLACE RULE no_delete_authority_licenses AS
     ON DELETE TO constitutional.authority_licenses
     DO INSTEAD NOTHING;
 
 -- ─── experience_records: append-only (Professional Experience Ledger) ─────────
 
-CREATE RULE no_update_experience_records AS
+CREATE OR REPLACE RULE no_update_experience_records AS
     ON UPDATE TO professional.experience_records
     DO INSTEAD NOTHING;
 
-CREATE RULE no_delete_experience_records AS
+CREATE OR REPLACE RULE no_delete_experience_records AS
     ON DELETE TO professional.experience_records
     DO INSTEAD NOTHING;
 

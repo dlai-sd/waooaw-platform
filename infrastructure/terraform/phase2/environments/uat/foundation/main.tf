@@ -26,19 +26,33 @@ provider "azurerm" {
   features {}
 }
 
+provider "azurerm" {
+  alias                           = "deployment"
+  client_id                       = var.deployment_client_id
+  use_oidc                        = true
+  use_cli                         = false
+  resource_provider_registrations = "none"
+  features {}
+}
+
 module "foundation" {
-  source                             = "../../../modules/foundation"
-  environment                        = "uat"
-  location                           = "centralindia"
-  repository_id                      = "dlai-sd/waooaw-platform"
-  repository_environment             = "uat"
-  runner_resource_group_name         = var.runner_resource_group_name
-  runner_private_endpoints_subnet_id = var.runner_private_endpoints_subnet_id
-  tfstate_storage_account_id         = var.tfstate_storage_account_id
-  external_environment               = true
-  persistent_state_enabled           = true
-  postgresql_password_auth_enabled   = var.postgresql_password_auth_enabled
-  database_bootstrap_admin_enabled   = var.database_bootstrap_admin_enabled
+  source = "../../../modules/foundation"
+  providers = {
+    azurerm            = azurerm
+    azurerm.deployment = azurerm.deployment
+  }
+  environment                               = "uat"
+  location                                  = "centralindia"
+  repository_id                             = "dlai-sd/waooaw-platform"
+  repository_environment                    = "uat"
+  runner_resource_group_name                = var.runner_resource_group_name
+  runner_private_endpoints_subnet_id        = var.runner_private_endpoints_subnet_id
+  tfstate_storage_account_id                = var.tfstate_storage_account_id
+  external_environment                      = true
+  persistent_state_enabled                  = true
+  postgresql_password_auth_enabled          = var.postgresql_password_auth_enabled
+  database_bootstrap_admin_enabled          = var.database_bootstrap_admin_enabled
+  database_provisioner_vault_access_enabled = var.database_provisioner_vault_access_enabled
 }
 
 output "resource_group_name" {
