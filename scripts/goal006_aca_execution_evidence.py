@@ -58,7 +58,7 @@ def correlate_runner_executions(
         if not isinstance(containers[0], dict):
             raise ValueError("ACA execution container is invalid")
         environment = _environment(containers[0])
-        if environment.get("GITHUB_RUN_ID") == run_id and environment.get("GITHUB_RUN_ATTEMPT") == run_attempt:
+        if environment.get("GITHUB_WORKFLOW_RUN_ID") == run_id and environment.get("GITHUB_WORKFLOW_RUN_ATTEMPT") == run_attempt:
             matches.append({"name": name, "status": status})
     matches.sort(key=lambda item: item["name"])
     return {

@@ -17,8 +17,8 @@ def execution(name: str, status: str, run_id: str, run_attempt: str) -> dict[str
                 "containers": [
                     {
                         "env": [
-                            {"name": "GITHUB_RUN_ID", "value": run_id},
-                            {"name": "GITHUB_RUN_ATTEMPT", "value": run_attempt},
+                            {"name": "GITHUB_WORKFLOW_RUN_ID", "value": run_id},
+                            {"name": "GITHUB_WORKFLOW_RUN_ATTEMPT", "value": run_attempt},
                         ]
                     }
                 ]
@@ -45,6 +45,24 @@ def test_correlates_exact_runner_execution_without_accepting_other_runs() -> Non
 
     assert result["unambiguous"] is True
     assert result["matches"] == [{"name": "goal006-demo-runner-job-match", "status": "Failed"}]
+
+
+def test_correlates_observed_azure_child_execution_shape() -> None:
+    observed = execution(
+        "goal006-demo-runner-job-qqueljh",
+        "Running",
+        "39380363878",
+        "1",
+    )
+
+    result = correlate_runner_executions(
+        [observed],
+        run_id="39380363878",
+        run_attempt="1",
+    )
+
+    assert result["unambiguous"] is True
+    assert result["matches"] == [{"name": "goal006-demo-runner-job-qqueljh", "status": "Running"}]
 
 
 def test_reports_ambiguous_correlated_executions() -> None:
@@ -134,7 +152,7 @@ def test_capture_helper_fails_closed_when_system_events_are_unavailable() -> Non
 
     assert "ContainerAppSystemLogs_CL" in helper
     assert "where ExecutionName_s == '$execution'" in helper
-    assert "for evidence_attempt in $(seq 1 6)" in helper
+    assert "for evidence_attempt in $(seq 1 18)" in helper
     assert "az monitor log-analytics query" in helper
     assert '--output json > "${prefix}.events.json"' in helper
     assert "goal006_aca_execution_evidence.py classify" in helper

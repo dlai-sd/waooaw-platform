@@ -51,7 +51,7 @@ az containerapp job logs show \
   --format text > "${prefix}.log" 2>&1 || true
 
 query="ContainerAppSystemLogs_CL | where TimeGenerated > ago(30m) | where ExecutionName_s == '$execution' | project TimeGenerated, ExecutionName_s, JobName_s, Reason_s, Log_s, ReplicaName_s | order by TimeGenerated asc"
-for evidence_attempt in $(seq 1 6); do
+for evidence_attempt in $(seq 1 18); do
   az monitor log-analytics query \
     --workspace "$workspace" \
     --analytics-query "$query" \
@@ -66,7 +66,7 @@ for evidence_attempt in $(seq 1 6); do
     "${prefix}.classification.json" >/dev/null; then
     exit 0
   fi
-  if [ "$evidence_attempt" = 6 ]; then
+  if [ "$evidence_attempt" = 18 ]; then
     echo "ACA scheduling or container-start system events were not observable for $execution" >&2
     exit 1
   fi
