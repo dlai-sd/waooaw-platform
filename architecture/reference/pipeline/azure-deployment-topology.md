@@ -191,7 +191,7 @@ timestamps, and released downstream dependencies before diagnosing a scheduler w
 | 10. Dormant workload plan | Generate external configuration, set application activation false, import only accepted live resources, plan, policy-check, and provenance-bind | Current workload authorization evidence |
 | 11. Activation bundle | Validate foundation and workload plan binaries, JSON, provenance, policy, release, environment, workflow, backend, and state identity | Internal WC-124 activation bundle PASS |
 | 12. Dormant workload apply | Create dependencies, migration jobs, identities, secret references, and applications at zero replicas | No application traffic yet |
-| 13. Migrations | Inventory exact migration jobs, verify version-qualified Key Vault references, prove same-ACA PgBouncer DNS/TCP, run Keycloak, Demo Temporal, and Billing, and retain executions plus sanitized logs | All required executions `Succeeded`; persisted migration acceptance PASS |
+| 13. Migrations | Inventory exact migration jobs, verify version-qualified Key Vault references, prove same-ACA PgBouncer DNS/TCP, reclaim the PostgreSQL connection budget (retire stale active revisions, require measured headroom), run Keycloak, Demo Temporal, and Billing, and retain executions plus sanitized logs | All required executions `Succeeded`; connection-budget record and persisted migration acceptance PASS |
 | 14. Activation plan/apply | Require migration acceptance, set application activation true, create a fresh detailed-exit plan, policy and provenance record, recalculate and compare provenance immediately before apply, and retain the apply log | Only exact authorized activation plan applied with complete evidence |
 | 15. TLS and deployment evidence | Bind Demo managed certificates; verify structured SNI inventory; verify live inventory and transition/cleanup evidence; upload retained activation and TLS artifacts | Deployment engine success with no missing required evidence |
 | 16. Always-run cleanup | Stop private runner, remove registration/broker material, prove zero active executions, revoke temporary cleanup federation | No residual runner or temporary trust |
@@ -258,11 +258,61 @@ backend key, state lineage/serial, policy result, plan JSON digest, and saved-pl
    `job-<environment>-keycloak-migration`,
    `job-<environment>-temporal-migration`, and
    `job-<environment>-wc124-billing-migration`.
-12. Keycloak, Temporal, and Billing retain the exact ACA job definition, execution record, and
+12. Before any vendor migration starts, the workflow reclaims the connection budget: it reads the
+    server's `max_connections`, `superuser_reserved_connections`, and `reserved_connections`,
+    deactivates every non-latest active revision of `ca-<environment>-temporal`, `-keycloak`, and
+    `-pgbouncer` (a stale revision keeps its pre-fix pools open and starves the migrator), then
+    polls the Azure Monitor `active_connections` metric until at least 8 usable slots are free.
+    The decision is retained as `wc124-connection-budget.json`.
+13. Keycloak, Temporal, and Billing retain the exact ACA job definition, execution record, and
     sanitized console log. A timeout, `Failed`, `Stopped`, unknown status, digest mismatch,
     unresolved secret placeholder,
    ownership error, or connection error blocks application activation. The owning workflow step
    emits the ACA execution ID and sanitized container logs before cleanup and artifact retention.
+
+### Demo connection budget
+
+The Demo instance is `B_Standard_B1ms` with `max_connections = 40`. Azure Flexible Server reserves
+`superuser_reserved_connections = 10` and `reserved_connections = 5`, so **25 slots** serve every
+ordinary role. Any pool that is not bounded below can exhaust the instance; the symptom is
+`FATAL: remaining connection slots are reserved for roles with privileges of the
+"pg_use_reserved_connections" role` in whichever component connects last.
+
+| Consumer | Route | Bound | Source |
+|---|---|---|---|
+| PgBouncer (all application runtimes, Billing migrator) | server pools | `max_client_conn 40`, `default_pool_size 8`, `reserve_pool_size 2` | `workload/main.tf` PgBouncer env |
+| Temporal runtime | PgBouncer session pools | `SQL_MAX_CONNS 2` / `SQL_MAX_IDLE_CONNS 2` per store per internal service (<= 16 backends; ~13 observed) | `workload/main.tf` Temporal env |
+| Keycloak migration job and runtime | direct to the instance | Agroal `KC_DB_POOL_INITIAL_SIZE 1`, `MIN_SIZE 1`, `MAX_SIZE 5` | `workload/main.tf` Keycloak env |
+| CE, BP, web, Billing runtime | PgBouncer transaction pools | one backend each at idle; bounded by `default_pool_size` | observed in local activation |
+| Headroom required before vendor migrations | — | >= 8 free usable slots (measured, not inferred) | workflow gate |
+
+Local activation of the complete Demo estate uses 16 of 25 usable slots. Raising `max_connections`
+is not a substitute for bounding pools: it costs memory on the smallest SKU and hides the defect
+until the next unbounded consumer appears.
+
+### Local pre-qualification harnesses
+
+A failed Azure run costs about ten minutes before it reaches the database and activation stages,
+so those stages are first proven locally against the same contracts. Both harnesses build on
+`scripts/lib/wc124_local_stack.sh`: a fresh pgvector PostgreSQL started with the Demo ceiling
+(`40 / 10 / 5`), the complete `infrastructure/postgres/init` bootstrap chain, replay of the captured
+Demo Billing state (`test-results/wc124/demo-billing-state.json`), vendor databases provisioned
+exactly as `scripts/wc124_db_provisioner.py` does, and a per-role SCRAM PgBouncer on `5432` with
+the Demo database map and limits. There is no sidecar database anywhere in either harness.
+
+| Harness | Runtime | Proves | Evidence |
+|---|---|---|---|
+| `scripts/wc124_billing_migration_local.sh` | ~15 s | Exact Billing image migrates as restricted `billing_migrator` through transaction-mode PgBouncer, ledger ownership converges, rerun is idempotent | `test-results/wc124/billing-migration-local/` |
+| `scripts/wc124_application_activation_local.sh` | ~70 s | Keycloak migration as `keycloak_migrator` (fails under stale pools, succeeds after reclaim), Temporal migration and runtime, Billing migration, CE/BP/PR/web readiness as their runtime roles, only restricted roles on the instance, >= 5 usable slots spare after activation | `test-results/wc124/application-activation-local/result.json` and per-component logs |
+
+Run them with the exact release digests (`WC124_IMAGE_*`, `WC124_BILLING_IMAGE`) before spending a
+deployment run. Defects they surfaced that Azure would otherwise have reported one at a time:
+Demo BP still requesting in-image database bootstrap (`WAOOAW_DEMO_DATABASE_BOOTSTRAP`), unbounded
+Temporal pools, web demanding TLS toward plaintext PgBouncer (`WEB_SESSION_DATABASE_SSL_MODE`),
+Professional Runtime connecting before the Temporal `default` namespace existed, and Keycloak slot
+exhaustion behind a stale revision. `WC124_KEEP_STACK=1` leaves the containers running for
+inspection. The harnesses do not prove OIDC identity, private DNS, Key Vault propagation, managed
+TLS, or ACA revision replacement; those remain workflow-only evidence.
 
 ### Downstream activation and release acceptance
 
@@ -290,6 +340,8 @@ when deployment cleanup and independent live verification both succeed.
 | Transition and handoff records | Database authority moved to the intended final state |
 | Reconciliation authority record | Deterministic ownership classification, immediate revocation, final recovery, and verified absence |
 | PgBouncer preflight record | Same-ACA short-name DNS resolution and TCP connectivity before migration SQL |
+| Connection budget record | Server limits, usable slots, measured active connections, and the stale revisions retired before vendor migrations |
+| Local pre-qualification results | The exact images passed the database and activation stages against the Demo contracts before the deployment run |
 | Migration job and execution records | Exact effective job, version-qualified secret references, execution/status, and sanitized logs |
 | Migration acceptance record | Required migrations, connectivity, and temporary-authority revocation passed before activation |
 | Activation plan, provenance, policy, and apply log | Exact post-migration activation mutation and its retained result |
@@ -319,10 +371,16 @@ producer-consumer contract and execute the smallest real component in its Azure 
 7. For Terraform, record the detailed exit code and validate plan provenance before discussing
    apply.
 8. For database failures, separate DNS/TCP, PgBouncer reachability, authentication, role/ownership,
-   schema, and migration-content failures.
-9. Run the corrected component directly where authority permits; only then spend another full
-   deployment run.
-10. Preserve the failed run URL, job/execution ID, exact error, live facts, fix, and successful
+   schema, connection-slot exhaustion, and migration-content failures. For slot exhaustion, read
+   the Azure Monitor `active_connections` metric around the failure, list active revisions of the
+   pooled dependencies (`az containerapp revision list`), and compare against the connection
+   budget table before touching `max_connections`.
+9. Reproduce the failing stage locally with the pre-qualification harness and the exact digests
+   before changing Terraform or workflow files; a fix that cannot be reproduced locally needs an
+   Azure-only explanation recorded in the PR.
+10. Run the corrected component directly where authority permits; only then spend another full
+    deployment run.
+11. Preserve the failed run URL, job/execution ID, exact error, live facts, fix, and successful
     component evidence for the PR.
 
 ### Operator checklist
@@ -333,6 +391,8 @@ Before execution:
 - The current Work Contract and Founder authorization cover the environment and mutation.
 - The branch, release, control SHA, and break-fix mode match the authorized path.
 - Targeted tests, workflow lint, Terraform/HCL checks, and producer-consumer contract tests pass.
+- Both local pre-qualification harnesses pass with the exact release digests.
+- No non-latest active revision remains on `ca-<environment>-temporal`, `-keycloak`, or `-pgbouncer`.
 - No unresolved blocker, stale plan, destructive change, or unexplained drift remains.
 
 Before declaring success:
@@ -404,6 +464,21 @@ budgets. Migration-only direct routes are separately bounded.
 Same-environment custom TCP service discovery is proven through
 `ca-<environment>-pgbouncer:5432`. The internal-ingress FQDN resolved but was not reachable for
 this path during WC-124 qualification.
+
+**Why did the Keycloak migration fail with "remaining connection slots are reserved"?**
+
+The Demo instance exposes 25 usable slots. A previous `ca-demo-temporal` revision from before the
+pool bounds stayed active while the new revision had zero replicas, so its default pools held the
+slots and Keycloak, which connects last and directly, was refused. The budget gate now retires
+stale revisions and requires measured headroom before any vendor migration starts.
+
+**Why does web readiness stay 503 for an hour after auth Redis is recreated?**
+
+`ca-<environment>-auth-redis` seeds `waooaw:<environment>:auth-abuse:v1:epoch` at start, and
+`authAbuseLimiterReady()` fails closed until the longest limiter window (3600 s) has elapsed since
+that epoch. This is a deliberate abuse-control property, not a defect: do not recreate Redis as part
+of a deployment unless that hold is acceptable. The local harness seeds a warmed epoch to test the
+steady state.
 
 **Can a failed migration be ignored if applications are healthy?**
 
@@ -571,22 +646,24 @@ and rolled back as one tuple. DMA remains separately admitted and gains no platf
 authority from release membership. This repository change authorizes code and local validation only;
 cloud apply remains separately authorized.
 
-### Current Delivery State - 2026-10-19
+### Current Delivery State - 2026-10-20
 
 `constitution/PROJECT_STATE.md` remains authoritative for live authorization. This dated snapshot
-records the WC-124 deployment architecture at commit `cebe78c1`. The normative topology below
+records the WC-124 deployment architecture at commit `aba3ac96`. The normative topology below
 remains the single strategy source; current execution progress belongs in PROJECT_STATE and the
 active Work Contract.
 
 | Area | Verified state | Required next result |
 |---|---|---|
 | Canonical workflow | `.github/workflows/deploy.yaml` is the only manual application deployment entry and delegates to `environment-deployment.yaml` and `environment-deployment-verification.yaml`. | Preserve one operator entry; reusable workflows remain implementation details with contract tests. |
-| Demo | Exact-seven applications, persistent PostgreSQL, PgBouncer, Keycloak, Temporal, Redis, managed TLS, direct component verification, and WC-124 transition controls are implemented. Final branch deployment evidence remains run-specific. | Require terminal deployment and independent-verification PASS before acceptance. |
+| Demo | Exact-seven applications, persistent PostgreSQL, PgBouncer, Keycloak, Temporal, Redis, managed TLS, direct component verification, and WC-124 transition controls are implemented. Runs 39383304742 through 39423882087 each exposed one stage defect (Billing least-privilege contract, ledger ownership under transaction pooling, BP in-image bootstrap, Temporal/Keycloak/PgBouncer connection budget, web TLS mode); all are fixed and locally pre-qualified. Run 39428513813 is the first run carrying the complete set; final evidence remains run-specific. | Require terminal deployment and independent-verification PASS before acceptance. |
 | UAT | Prior environment delivery exists; WC-124 persistent database and exact-seven promotion must use the same current contracts under separate authority. | Complete only evidence required for UAT qualification; never rebuild accepted images. |
 | Runner lifecycle | Demo and UAT use environment-derived ephemeral ACA runners, private state/config access, correlation-checked cleanup, and zero active executions after qualification. | Keep Production runner blueprint inactive and retain no-public-fallback assertions. |
 | State path | Shared state-account public access is disabled with default deny and approved private endpoint access. Declarative ownership of the existing shared account remains debt. | Assign accepted IaC ownership before Production readiness; do not reopen public access. |
 | Production | Terraform and runner blueprints are code-prepared; protected Production environments and plan prerequisites remain incomplete. No Production plan/apply ran. | Keep Production plan-only and runner `INACTIVE` until a separate Founder authorization. |
 | Execution contract | `work-contracts/WC-076-goal006-phase3-execution.md` exists and owns execution closure. | Keep status there and in PROJECT_STATE; do not duplicate live status in strategy documents. |
+| Local pre-qualification | Billing and activation harnesses replay the Demo database and activation stages in about 15 s and 70 s with the exact digests and the Demo connection ceiling. | Run before every deployment attempt; extend to Keycloak runtime and identity-edge when their contracts change. |
+| Known debt | `tests/billing-engine/test_wc124_billing_authority.py::test_atomic_halt_replay_conflict_release_and_redis_loss` raises `KeyError` without `WC124_DATABASE_URL` instead of skipping. | Make the integration test skip explicitly when its database is absent. |
 
 The detailed topology, controls, interface gates, and implementation order below are normative. This
 section is a routing summary and must not be copied into a separate implementation plan.
