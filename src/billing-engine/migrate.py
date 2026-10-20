@@ -41,7 +41,10 @@ def migration_files() -> list[tuple[Path, str, str]]:
 async def apply_migrations() -> None:
     database_url = os.environ["DATABASE_URL"]
     files = await asyncio.to_thread(migration_files)
-    connection = await asyncpg.connect(database_url)
+    # The route is a transaction-pooling PgBouncer: server-side prepared statements and
+    # session-level state cannot be relied upon, so the cache is disabled and the owner role
+    # is assumed with SET LOCAL inside every transaction.
+    connection = await asyncpg.connect(database_url, statement_cache_size=0)
     try:
         preflight = await connection.fetchrow(
             """
@@ -72,18 +75,41 @@ async def apply_migrations() -> None:
             raise RuntimeError(f"{preflight['login_name']} cannot assume {MIGRATION_OWNER_ROLE}")
         if any(preflight[field] for field in ("rolsuper", "rolcreatedb", "rolcreaterole", "rolbypassrls")):
             raise RuntimeError("migration login has prohibited elevated PostgreSQL attributes")
-        await connection.execute(f"SET ROLE {MIGRATION_OWNER_ROLE}")
-        await connection.execute(
+        # Converge a ledger created by an earlier runner revision under the login identity:
+        # the login still owns it and is a member of the owner role, so the handoff is permitted.
+        ledger_owner = await connection.fetchval(
             """
+            SELECT pg_get_userbyid(relation.relowner)
+            FROM pg_class AS relation
+            JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+            WHERE namespace.nspname = $1
+              AND relation.relname = 'waooaw_schema_migrations'
+              AND relation.relkind = 'r'
+            """,
+            MIGRATION_SCHEMA,
+        )
+        if ledger_owner == preflight["login_name"]:
+            await connection.execute(
+                f"ALTER TABLE {MIGRATION_SCHEMA}.waooaw_schema_migrations OWNER TO {MIGRATION_OWNER_ROLE}"
+            )
+        elif ledger_owner not in (None, MIGRATION_OWNER_ROLE):
+            raise RuntimeError(
+                f"migration ledger owner mismatch: expected {MIGRATION_OWNER_ROLE}, found {ledger_owner}"
+            )
+        async with connection.transaction():
+            await connection.execute(f"SET LOCAL ROLE {MIGRATION_OWNER_ROLE}")
+            await connection.execute(
+                """
             CREATE TABLE IF NOT EXISTS {MIGRATION_SCHEMA}.waooaw_schema_migrations (
                 migration_name text PRIMARY KEY,
                 migration_sha256 char(64) NOT NULL,
                 applied_at timestamptz NOT NULL DEFAULT clock_timestamp()
             )
             """.format(MIGRATION_SCHEMA=MIGRATION_SCHEMA)
-        )
+            )
         for path, digest, sql in files:
             async with connection.transaction():
+                await connection.execute(f"SET LOCAL ROLE {MIGRATION_OWNER_ROLE}")
                 await connection.execute(
                     "SELECT pg_advisory_xact_lock(hashtext($1))",
                     f"waooaw-migration:{path.name}",

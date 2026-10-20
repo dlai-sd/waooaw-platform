@@ -1,0 +1,39 @@
+{
+  "schema": [
+    {
+      "nspname": "billing",
+      "owner": "billing_owner"
+    }
+  ],
+  "execution": "job-demo-wc124-billing-migration-m8gnx9s",
+  "identity": [
+    {
+      "session_user": "billing_migrator",
+      "current_user": "billing_migrator",
+      "current_database": "waooaw_application",
+      "version": "PostgreSQL 16.15 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 13.2.0, 64-bit"
+    }
+  ],
+  "login_role": [
+    {
+      "rolname": "billing_migrator",
+      "rolsuper": false,
+      "rolcreatedb": false,
+      "rolcreaterole": false,
+      "rolbypassrls": false,
+      "rolinherit": true
+    }
+  ],
+  "memberships": [
+    {
+      "member": "billing_migrator",
+      "granted_role": "billing_owner"
+    },
+    {
+      "member": "billing_runtime",
+      "granted_role": "wbe_app"
+    }
+  ],
+  "relations": [],
+  "ledger_rows": []
+}
