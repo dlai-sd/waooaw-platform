@@ -129,6 +129,7 @@ def classify_execution_events(
         "application_code_started": container_started,
         "retry_eligible": retry_eligible,
         "observed_reasons": sorted(reasons),
+        "system_events_observed": len(events) > 0,
     }
 
 

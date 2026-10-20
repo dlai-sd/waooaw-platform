@@ -147,18 +147,43 @@ def test_rejects_events_not_bound_to_exact_execution() -> None:
         classify_execution_events(events, execution_name=name, status="Failed", attempt=1)
 
 
-def test_capture_helper_fails_closed_when_system_events_are_unavailable() -> None:
+def test_capture_helper_fails_closed_when_system_events_are_unavailable_for_non_success() -> None:
     helper = Path("scripts/goal006_capture_aca_execution.sh").read_text(encoding="utf-8")
 
     assert "ContainerAppSystemLogs_CL" in helper
     assert "where ExecutionName_s == '$execution'" in helper
-    assert "for evidence_attempt in $(seq 1 18)" in helper
+    assert "evidence_polls=18" in helper
+    assert 'if [ "$status" != Succeeded ]; then\n  evidence_polls=36' in helper
+    assert 'for evidence_attempt in $(seq 1 "$evidence_polls")' in helper
     assert "az monitor log-analytics query" in helper
     assert '--output json > "${prefix}.events.json"' in helper
     assert "goal006_aca_execution_evidence.py classify" in helper
-    assert 'if [ "$status" = Succeeded ]' not in helper
     assert ".application_code_started or .terminal_platform_failure" in helper
     query_block = helper.split("az monitor log-analytics query", 1)[1].split(
         "python3 scripts/goal006_aca_execution_evidence.py", 1
     )[0]
     assert "|| true" not in query_block
+    exhausted_block = helper.split('if [ "$evidence_attempt" = "$evidence_polls" ]; then', 1)[1]
+    # ARM Succeeded is authoritative; absent events are recorded, not fatal (run 39428513813).
+    assert 'if [ "$status" = Succeeded ]' in exhausted_block
+    assert "recorded as absent" in exhausted_block
+    assert "system events were not observable" in exhausted_block
+    assert "exit 1" in exhausted_block
+
+
+def test_classification_records_whether_system_events_were_observed() -> None:
+    absent = classify_execution_events(
+        [], execution_name="goal006-demo-runner-cleanup-quqp9fl", status="Succeeded", attempt=1
+    )
+    assert absent["system_events_observed"] is False
+    assert absent["application_code_started"] is False
+    assert absent["retry_eligible"] is False
+
+    present = classify_execution_events(
+        [event("ContainerStarted", "Started container 'cleanup-broker'")],
+        execution_name="goal006-demo-runner-job-failed",
+        status="Succeeded",
+        attempt=1,
+    )
+    assert present["system_events_observed"] is True
+    assert present["application_code_started"] is True
