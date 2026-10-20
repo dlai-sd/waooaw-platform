@@ -29,10 +29,16 @@ def test_environment_deployment_uses_qualified_private_runner_lifecycle() -> Non
     assert WORKFLOW.count("goal006_runner_execution.py pointer") == 1
     assert "runner_image: ${{ needs.build-break-fix-runner.outputs.runner_image }}" in DISPATCH_WORKFLOW
     assert "control_image: ${{ needs.build-break-fix-runner.outputs.control_image }}" in DISPATCH_WORKFLOW
+    assert "billing_image: ${{ needs.build-break-fix-runner.outputs.billing_image }}" in DISPATCH_WORKFLOW
     assert "runner_image: ${{ steps.publish.outputs.runner_image }}" in DISPATCH_WORKFLOW
     assert "control_image: ${{ steps.publish.outputs.control_image }}" in DISPATCH_WORKFLOW
     assert "runner_image=$(docker image inspect" in DISPATCH_WORKFLOW
     assert "control_image=$(docker image inspect" in DISPATCH_WORKFLOW
+    assert "billing_image=$(docker image inspect" in DISPATCH_WORKFLOW
+    assert "docker build --file src/billing-engine/Dockerfile" in DISPATCH_WORKFLOW
+    assert "break-fix-image-overrides.json" in WORKFLOW
+    assert "BREAK_FIX_BILLING_IMAGE" in WORKFLOW
+    assert '.image_digests["billing-engine"] = $image' in WORKFLOW
     assert WORKFLOW.count('--execution-image "$execution_runner_image"') == 2
     assert WORKFLOW.count('--control-image "$execution_control_image"') == 2
     assert WORKFLOW.count('--expected-image "$blueprint_runner_image"') == 2

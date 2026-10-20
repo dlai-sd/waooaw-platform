@@ -132,6 +132,7 @@ jobs:
     outputs:
       runner_image: ${{ steps.publish.outputs.runner_image }}
       control_image: ${{ steps.publish.outputs.control_image }}
+      billing_image: ${{ steps.publish.outputs.billing_image }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -146,13 +147,17 @@ jobs:
           set -euo pipefail
           image="ghcr.io/${GITHUB_REPOSITORY_OWNER}/goal006-private-runner:sha-${CONTROL_SHA}"
           control_image="ghcr.io/${GITHUB_REPOSITORY_OWNER}/goal006-runner-control:sha-${CONTROL_SHA}"
+          billing_image="ghcr.io/${GITHUB_REPOSITORY_OWNER}/billing-engine:break-fix-${CONTROL_SHA}"
           echo "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           docker build --file infrastructure/runner/Dockerfile --tag "$image" .
           docker build --file infrastructure/runner/Dockerfile.control --tag "$control_image" .
+          docker build --file src/billing-engine/Dockerfile --tag "$billing_image" .
           docker push "$image"
           docker push "$control_image"
+          docker push "$billing_image"
           runner_image=$(docker image inspect "$image" --format '{{index .RepoDigests 0}}')
           control_image=$(docker image inspect "$control_image" --format '{{index .RepoDigests 0}}')
+          billing_image=$(docker image inspect "$billing_image" --format '{{index .RepoDigests 0}}')
           grep -Eq \
             "^ghcr.io/${GITHUB_REPOSITORY_OWNER}/goal006-private-runner@sha256:[0-9a-f]{64}$" \
             <<< "$runner_image" || {
@@ -165,8 +170,17 @@ jobs:
                 echo "Break-fix control image did not resolve to an immutable digest" >&2
                 exit 1
               }
-            echo "runner_image=$runner_image" >> "$GITHUB_OUTPUT"
-            echo "control_image=$control_image" >> "$GITHUB_OUTPUT"
+            grep -Eq \
+              "^ghcr.io/${GITHUB_REPOSITORY_OWNER}/billing-engine@sha256:[0-9a-f]{64}$" \
+              <<< "$billing_image" || {
+                echo "Break-fix Billing image did not resolve to an immutable digest" >&2
+                exit 1
+              }
+            {
+              echo "runner_image=$runner_image"
+              echo "control_image=$control_image"
+              echo "billing_image=$billing_image"
+            } >> "$GITHUB_OUTPUT"
 
   deploy:
     if: always() && needs.authorize.result == 'success' && (needs.build-break-fix-runner.result == 'success' || needs.build-break-fix-runner.result == 'skipped')
@@ -180,6 +194,7 @@ jobs:
       break_fix: ${{ needs.authorize.outputs.break_fix == 'true' }}
       runner_image: ${{ needs.build-break-fix-runner.outputs.runner_image }}
       control_image: ${{ needs.build-break-fix-runner.outputs.control_image }}
+      billing_image: ${{ needs.build-break-fix-runner.outputs.billing_image }}
       apply: ${{ needs.authorize.outputs.execution == 'apply' }}
       lease_expires_at: ${{ needs.authorize.outputs.lease_expires_at }}
       lifecycle_action: ${{ needs.authorize.outputs.execution == 'apply' && 'activate' || 'plan' }}

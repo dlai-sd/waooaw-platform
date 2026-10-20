@@ -26,6 +26,10 @@ on:
         required: false
         type: string
         default: ""
+      billing_image:
+        required: false
+        type: string
+        default: ""
       apply:
         required: true
         type: boolean
@@ -179,6 +183,13 @@ jobs:
           while IFS= read -r image; do
             verify_ghcr_digest "$image"
           done < <(jq -r '.images | to_entries[] | .value' registry-release-manifest.json)
+          if [ '${{ inputs.break_fix }}' = true ]; then
+            billing_image='${{ inputs.billing_image }}'
+            grep -Eq '^ghcr.io/dlai-sd/billing-engine@sha256:[0-9a-f]{64}$' <<< "$billing_image"
+            verify_ghcr_digest "$billing_image"
+          else
+            test -z '${{ inputs.billing_image }}'
+          fi
 
       - name: Verify immutable broker blueprint
         run: |
@@ -2127,7 +2138,10 @@ jobs:
 
       - name: Build workload inputs from trusted foundation outputs
         if: inputs.apply
+        env:
+          BREAK_FIX_BILLING_IMAGE: ${{ inputs.billing_image }}
         run: |
+          set -euo pipefail
           python3 scripts/goal006_deployment_inputs.py \
             --environment '${{ inputs.environment }}' \
             --manifest registry-release-manifest.json \
@@ -2136,6 +2150,28 @@ jobs:
             --key-vault-uri '${{ steps.foundation.outputs.key_vault_uri }}' \
             --output workload.auto.tfvars.json \
             --ghcr-packages-public-verified
+          jq -n \
+            --arg original "$(jq -r '.image_digests[\"billing-engine\"]' workload.auto.tfvars.json)" \
+            --arg replacement "$BREAK_FIX_BILLING_IMAGE" \
+            --arg control_sha '${{ inputs.control_sha }}' \
+            '{
+              schema: "waooaw.break-fix-image-overrides/v1",
+              control_sha: $control_sha,
+              overrides: (
+                if $replacement == "" then {}
+                else {"billing-engine": {original: $original, replacement: $replacement}}
+                end
+              )
+            }' > break-fix-image-overrides.json
+          if [ '${{ inputs.break_fix }}' = true ]; then
+            grep -Eq '^ghcr.io/dlai-sd/billing-engine@sha256:[0-9a-f]{64}$' <<< "$BREAK_FIX_BILLING_IMAGE"
+            jq --arg image "$BREAK_FIX_BILLING_IMAGE" \
+              '.image_digests["billing-engine"] = $image' \
+              workload.auto.tfvars.json > workload.auto.tfvars.next.json
+            mv workload.auto.tfvars.next.json workload.auto.tfvars.json
+          else
+            test -z "$BREAK_FIX_BILLING_IMAGE"
+          fi
           if test -f wc124-db-credential-inventory.json; then
             jq --slurpfile inventory wc124-db-credential-inventory.json '
               ($inventory[0].credentials
@@ -2357,6 +2393,7 @@ jobs:
             --secret-catalog infrastructure/environment-readiness/secret-catalog.json \
             --configuration workload-configuration.json \
             --dependency-file registry-release-manifest.json \
+            --dependency-file break-fix-image-overrides.json \
             --dependency-file infrastructure/terraform/phase2/modules/workload/main.tf \
             --migration-file src/billing-engine/migrate.py \
             --migration-file infrastructure/postgres/init/59-wc124-billing-authority.sql \
