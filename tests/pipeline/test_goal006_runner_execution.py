@@ -21,6 +21,7 @@ from scripts.goal006_runner_execution import (
 
 IMAGE = "ghcr.io/dlai-sd/runner@sha256:" + "a" * 64
 EXECUTION_IMAGE = "ghcr.io/dlai-sd/goal006-private-runner@sha256:" + "b" * 64
+CONTROL_IMAGE = "ghcr.io/dlai-sd/goal006-runner-control@sha256:" + "c" * 64
 
 
 def job(name: str, arguments: list[str], environment_name: str = "demo") -> dict:
@@ -97,6 +98,36 @@ def test_broker_template_binds_exact_execution_image() -> None:
     environment = {item["name"]: item["value"] for item in container["env"]}
     assert container["image"] == EXECUTION_IMAGE
     assert environment["RUNNER_EXECUTION_IMAGE"] == EXECUTION_IMAGE
+
+
+def test_broker_template_separates_control_and_runner_images() -> None:
+    result = build_execution_template(
+        job("broker", BROKER_ARGS),
+        mode="broker",
+        expected_image=IMAGE,
+        execution_image=EXECUTION_IMAGE,
+        control_image=CONTROL_IMAGE,
+        run_id="123",
+        run_attempt="2",
+    )
+
+    container = result["containers"][0]
+    environment = {item["name"]: item["value"] for item in container["env"]}
+    assert container["image"] == CONTROL_IMAGE
+    assert environment["RUNNER_EXECUTION_IMAGE"] == EXECUTION_IMAGE
+
+
+def test_template_rejects_mutable_control_image() -> None:
+    with pytest.raises(ExecutionTemplateError, match="control image"):
+        build_execution_template(
+            job("broker", BROKER_ARGS),
+            mode="broker",
+            expected_image=IMAGE,
+            execution_image=EXECUTION_IMAGE,
+            control_image="ghcr.io/dlai-sd/goal006-runner-control:latest",
+            run_id="123",
+            run_attempt="2",
+        )
 
 
 def test_broker_template_rejects_mutable_execution_image() -> None:

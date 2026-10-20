@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.48.1.52935",
-      "templateHash": "2988502025231137261"
+      "templateHash": "17340880089839596296"
     }
   },
   "parameters": {
@@ -759,7 +759,7 @@
         "environmentId": "[resourceId('Microsoft.App/managedEnvironments', format('{0}-aca', variables('prefix')))]",
         "configuration": {
           "triggerType": "Manual",
-          "replicaTimeout": 300,
+          "replicaTimeout": 600,
           "replicaRetryLimit": 0,
           "manualTriggerConfig": {
             "parallelism": 1,

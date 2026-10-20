@@ -210,7 +210,8 @@ def test_stack_is_environment_generic_and_uses_valid_private_dns() -> None:
     assert main.count("loadTextContent('../../../scripts/goal006_runner_lifecycle.py')") == 2
     assert "'reconcile'" in main
     assert 'exit 64 || exit 0' not in main
-    assert main.count("replicaTimeout: 300") == 2
+    assert main.count("replicaTimeout: 300") == 1
+    assert main.count("replicaTimeout: 600") == 1
     assert "bootstrapKeySignAccess" not in main
     assert "bootstrapSecretAccess" not in main
 

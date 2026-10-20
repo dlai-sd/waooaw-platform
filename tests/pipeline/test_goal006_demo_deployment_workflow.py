@@ -28,11 +28,16 @@ def test_environment_deployment_uses_qualified_private_runner_lifecycle() -> Non
     assert WORKFLOW.count("goal006_runner_execution.py cleanup") == 1
     assert WORKFLOW.count("goal006_runner_execution.py pointer") == 1
     assert "runner_image: ${{ needs.build-break-fix-runner.outputs.runner_image }}" in DISPATCH_WORKFLOW
+    assert "control_image: ${{ needs.build-break-fix-runner.outputs.control_image }}" in DISPATCH_WORKFLOW
     assert "runner_image: ${{ steps.publish.outputs.runner_image }}" in DISPATCH_WORKFLOW
+    assert "control_image: ${{ steps.publish.outputs.control_image }}" in DISPATCH_WORKFLOW
     assert "runner_image=$(docker image inspect" in DISPATCH_WORKFLOW
+    assert "control_image=$(docker image inspect" in DISPATCH_WORKFLOW
     assert WORKFLOW.count('--execution-image "$execution_runner_image"') == 2
+    assert WORKFLOW.count('--control-image "$execution_control_image"') == 2
     assert WORKFLOW.count('--expected-image "$blueprint_runner_image"') == 2
     assert "execution_runner_image='${{ inputs.runner_image }}'" in WORKFLOW
+    assert "execution_control_image='${{ inputs.control_image }}'" in WORKFLOW
 
 
 def test_october_defect_patterns_remain_prevented_or_captured() -> None:
@@ -773,7 +778,8 @@ def test_runner_retry_is_bounded_and_requires_proven_pre_pull_failure() -> None:
 
     assert broker.count("for execution_attempt in 1 2") == 1
     assert cleanup.count("for execution_attempt in 1 2") == 1
-    assert "for poll_attempt in $(seq 1 72)" in broker
+    assert "for poll_attempt in $(seq 1 132)" in broker
+    assert "for correlation_attempt in $(seq 1 24)" in broker
     assert '--prefix "broker-attempt-${execution_attempt}"' in broker
     assert '--prefix "cleanup-attempt-${execution_attempt}"' in cleanup
     assert "Processing|Running|Waiting)" in broker

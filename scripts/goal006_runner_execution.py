@@ -142,6 +142,7 @@ def build_execution_template(
     mode: str,
     expected_image: str,
     execution_image: str | None = None,
+    control_image: str | None = None,
     run_id: str,
     run_attempt: str,
     private_job_conclusion: str | None = None,
@@ -154,6 +155,10 @@ def build_execution_template(
         execution_image = expected_image
     if PINNED_IMAGE.fullmatch(execution_image) is None:
         raise ExecutionTemplateError("execution image is not digest-pinned")
+    if control_image is None:
+        control_image = execution_image
+    if PINNED_IMAGE.fullmatch(control_image) is None:
+        raise ExecutionTemplateError("control image is not digest-pinned")
     if RUN_NUMBER.fullmatch(run_id) is None or RUN_NUMBER.fullmatch(run_attempt) is None:
         raise ExecutionTemplateError("workflow run identity is invalid")
     if mode == "cleanup" and private_job_conclusion not in TERMINAL_CONCLUSIONS:
@@ -175,7 +180,7 @@ def build_execution_template(
     container = containers[0]
     if container.get("image") != expected_image:
         raise ExecutionTemplateError("job image differs from immutable parameters")
-    container["image"] = execution_image
+    container["image"] = control_image
     expected_command = COMMAND if mode == "broker" else CLEANUP_COMMAND
     if container.get("command") != expected_command:
         raise ExecutionTemplateError("job command differs from blueprint")
@@ -239,6 +244,7 @@ def main() -> int:
         execution_parser.add_argument("--job", required=True, type=Path)
         execution_parser.add_argument("--expected-image", required=True)
         execution_parser.add_argument("--execution-image")
+        execution_parser.add_argument("--control-image")
         execution_parser.add_argument("--run-id", required=True)
         execution_parser.add_argument("--run-attempt", required=True)
         execution_parser.add_argument("--private-job-conclusion")
@@ -286,6 +292,7 @@ def main() -> int:
         mode=arguments.mode,
         expected_image=arguments.expected_image,
         execution_image=arguments.execution_image,
+        control_image=arguments.control_image,
         run_id=arguments.run_id,
         run_attempt=arguments.run_attempt,
         private_job_conclusion=arguments.private_job_conclusion,

@@ -22,6 +22,10 @@ on:
         required: false
         type: string
         default: ""
+      control_image:
+        required: false
+        type: string
+        default: ""
       apply:
         required: true
         type: boolean
@@ -287,11 +291,15 @@ jobs:
           blueprint_runner_image=$(jq -er '.parameters.runnerImage.value' \
             'infrastructure/deployment-stacks/goal006-runner/${{ inputs.environment }}.parameters.json')
           execution_runner_image='${{ inputs.runner_image }}'
+          execution_control_image='${{ inputs.control_image }}'
           if [ '${{ inputs.break_fix }}' = true ]; then
             test -n "$execution_runner_image"
+            test -n "$execution_control_image"
           else
             test -z "$execution_runner_image"
+            test -z "$execution_control_image"
             execution_runner_image="$blueprint_runner_image"
+            execution_control_image="$blueprint_runner_image"
           fi
           grep -Eq \
             "^ghcr.io/${GITHUB_REPOSITORY_OWNER}/goal006-private-runner@sha256:[0-9a-f]{64}$" \
@@ -299,6 +307,12 @@ jobs:
               echo "Runner execution image is not an immutable repository digest" >&2
               exit 1
             }
+            grep -Eq \
+              "^ghcr.io/${GITHUB_REPOSITORY_OWNER}/goal006-(private-runner|runner-control)@sha256:[0-9a-f]{64}$" \
+              <<< "$execution_control_image" || {
+                echo "Control execution image is not an immutable repository digest" >&2
+                exit 1
+              }
           az containerapp job show \
             --resource-group "$RUNNER_RESOURCE_GROUP" \
             --name "$RUNNER_BROKER_JOB" \
@@ -307,6 +321,7 @@ jobs:
             --job broker-job.json \
             --expected-image "$blueprint_runner_image" \
             --execution-image "$execution_runner_image" \
+            --control-image "$execution_control_image" \
             --run-id "$GITHUB_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT" \
             --output broker-execution.json
@@ -336,7 +351,7 @@ jobs:
               '{attempt: $attempt, execution: $execution}' \
               >> broker-executions.jsonl
             status=
-            for poll_attempt in $(seq 1 72); do
+            for poll_attempt in $(seq 1 132); do
               status=$(az containerapp job execution show \
                 --resource-group "$RUNNER_RESOURCE_GROUP" \
                 --name "$RUNNER_BROKER_JOB" \
@@ -347,7 +362,7 @@ jobs:
                 Processing|Running|Waiting) ;;
                 *) echo "Private broker returned unknown status: ${status:-<empty>}" >&2; exit 1 ;;
               esac
-              if [ "$poll_attempt" = 72 ]; then
+              if [ "$poll_attempt" = 132 ]; then
                 bash scripts/goal006_capture_aca_execution.sh \
                   --job "$RUNNER_BROKER_JOB" \
                   --container "$RUNNER_BROKER_JOB" \
@@ -372,7 +387,7 @@ jobs:
               --workspace "$workspace_customer_id" \
               --resource-group "$RUNNER_RESOURCE_GROUP" \
               --prefix "broker-attempt-${execution_attempt}"
-            for correlation_attempt in $(seq 1 6); do
+            for correlation_attempt in $(seq 1 24); do
               az containerapp job execution list \
                 --resource-group "$RUNNER_RESOURCE_GROUP" \
                 --name "$RUNNER_JOB" \
@@ -394,7 +409,7 @@ jobs:
                 jq -e '.retry_eligible' "broker-attempt-${execution_attempt}.classification.json" >/dev/null; then
                 break
               fi
-              if [ "$correlation_attempt" != 6 ]; then
+              if [ "$correlation_attempt" != 24 ]; then
                 sleep 5
               fi
             done
@@ -3060,11 +3075,15 @@ jobs:
           blueprint_runner_image=$(jq -er '.parameters.runnerImage.value' \
             'infrastructure/deployment-stacks/goal006-runner/${{ inputs.environment }}.parameters.json')
           execution_runner_image='${{ inputs.runner_image }}'
+          execution_control_image='${{ inputs.control_image }}'
           if [ '${{ inputs.break_fix }}' = true ]; then
             test -n "$execution_runner_image"
+            test -n "$execution_control_image"
           else
             test -z "$execution_runner_image"
+            test -z "$execution_control_image"
             execution_runner_image="$blueprint_runner_image"
+            execution_control_image="$blueprint_runner_image"
           fi
           az containerapp job show \
             --resource-group "$RUNNER_RESOURCE_GROUP" \
@@ -3074,6 +3093,7 @@ jobs:
             --job cleanup-job.json \
             --expected-image "$blueprint_runner_image" \
             --execution-image "$execution_runner_image" \
+            --control-image "$execution_control_image" \
             --run-id "$GITHUB_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT" \
             --private-job-conclusion "$PRIVATE_JOB_CONCLUSION" \

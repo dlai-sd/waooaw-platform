@@ -594,7 +594,7 @@ resource brokerJob 'Microsoft.App/jobs@2024-03-01' = {
     environmentId: runnerEnvironment.id
     configuration: {
       triggerType: 'Manual'
-      replicaTimeout: 300
+      replicaTimeout: 600
       replicaRetryLimit: 0
       manualTriggerConfig: {
         parallelism: 1
