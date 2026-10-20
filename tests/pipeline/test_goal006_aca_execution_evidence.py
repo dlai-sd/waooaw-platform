@@ -72,6 +72,16 @@ def test_allows_one_retry_only_for_proven_pre_pull_platform_failure() -> None:
     assert result["application_code_started"] is False
 
 
+def test_nonterminal_execution_is_observable_but_never_retry_eligible() -> None:
+    name = "goal006-demo-runner-job-failed"
+    events = [event("AssigningReplica", f"Replica for Job Execution '{name}' has been scheduled to run on a node.")]
+
+    result = classify_execution_events(events, execution_name=name, status="Waiting", attempt=1)
+
+    assert result["scheduled"] is True
+    assert result["retry_eligible"] is False
+
+
 @pytest.mark.parametrize(
     ("mutation", "status", "attempt"),
     (
@@ -128,6 +138,8 @@ def test_capture_helper_fails_closed_when_system_events_are_unavailable() -> Non
     assert "az monitor log-analytics query" in helper
     assert '--output json > "${prefix}.events.json"' in helper
     assert "goal006_aca_execution_evidence.py classify" in helper
+    assert 'if [ "$status" = Succeeded ]' not in helper
+    assert ".application_code_started or .terminal_platform_failure" in helper
     query_block = helper.split("az monitor log-analytics query", 1)[1].split(
         "python3 scripts/goal006_aca_execution_evidence.py", 1
     )[0]

@@ -651,7 +651,8 @@ def test_private_seeder_retains_diagnostics_before_deletion() -> None:
 
 
 def test_job_polling_rejects_empty_and_unknown_statuses() -> None:
-    assert WORKFLOW.count("Processing|Running)") == 9
+    assert WORKFLOW.count("Processing|Running)") == 7
+    assert WORKFLOW.count("Processing|Running|Waiting)") == 3
     assert WORKFLOW.count("returned unknown status: ${status:-<empty>}") == 9
 
 
@@ -772,6 +773,11 @@ def test_runner_retry_is_bounded_and_requires_proven_pre_pull_failure() -> None:
 
     assert broker.count("for execution_attempt in 1 2") == 1
     assert cleanup.count("for execution_attempt in 1 2") == 1
+    assert "for poll_attempt in $(seq 1 72)" in broker
+    assert '--prefix "broker-attempt-${execution_attempt}"' in broker
+    assert '--prefix "cleanup-attempt-${execution_attempt}"' in cleanup
+    assert "Processing|Running|Waiting)" in broker
+    assert "Processing|Running|Waiting)" in cleanup
     assert "broker-child-attempt-1.classification.json" in broker
     assert "cleanup-attempt-1.classification.json" in cleanup
     assert broker.count("'.retry_eligible'") == 3

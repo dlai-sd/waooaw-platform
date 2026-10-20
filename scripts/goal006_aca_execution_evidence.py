@@ -14,7 +14,7 @@ from cli_errors import fail_cli
 
 EXECUTION_NAME = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$")
 RUN_NUMBER = re.compile(r"^[1-9][0-9]*$")
-TERMINAL_STATUSES = {"Failed", "Stopped", "Succeeded"}
+OBSERVABLE_STATUSES = {"Failed", "Processing", "Running", "Stopped", "Succeeded", "Waiting"}
 
 
 def _environment(container: dict[str, Any]) -> dict[str, str]:
@@ -79,8 +79,8 @@ def classify_execution_events(
 ) -> dict[str, Any]:
     if EXECUTION_NAME.fullmatch(execution_name) is None:
         raise ValueError("ACA execution name is invalid")
-    if status not in TERMINAL_STATUSES:
-        raise ValueError("ACA execution status is not terminal")
+    if status not in OBSERVABLE_STATUSES:
+        raise ValueError("ACA execution status is invalid")
     if attempt not in {1, 2}:
         raise ValueError("ACA execution attempt is invalid")
     if not isinstance(events, list):

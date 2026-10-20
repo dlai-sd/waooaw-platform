@@ -336,7 +336,7 @@ jobs:
               '{attempt: $attempt, execution: $execution}' \
               >> broker-executions.jsonl
             status=
-            for poll_attempt in $(seq 1 60); do
+            for poll_attempt in $(seq 1 72); do
               status=$(az containerapp job execution show \
                 --resource-group "$RUNNER_RESOURCE_GROUP" \
                 --name "$RUNNER_BROKER_JOB" \
@@ -344,10 +344,19 @@ jobs:
                 --query properties.status -o tsv)
               case "$status" in
                 Succeeded|Failed|Stopped) break ;;
-                Processing|Running) ;;
+                Processing|Running|Waiting) ;;
                 *) echo "Private broker returned unknown status: ${status:-<empty>}" >&2; exit 1 ;;
               esac
-              if [ "$poll_attempt" = 60 ]; then
+              if [ "$poll_attempt" = 72 ]; then
+                bash scripts/goal006_capture_aca_execution.sh \
+                  --job "$RUNNER_BROKER_JOB" \
+                  --container "$RUNNER_BROKER_JOB" \
+                  --execution "$execution" \
+                  --status "$status" \
+                  --attempt "$execution_attempt" \
+                  --workspace "$workspace_customer_id" \
+                  --resource-group "$RUNNER_RESOURCE_GROUP" \
+                  --prefix "broker-attempt-${execution_attempt}"
                 echo "Timed out waiting for private broker: $execution" >&2
                 exit 1
               fi
@@ -403,7 +412,7 @@ jobs:
                 --job-execution-name "$child_execution" \
                 --output json > "broker-child-attempt-${execution_attempt}.execution.json"
               case "$child_status" in
-                Running|Processing) ;;
+                Processing|Running|Waiting) ;;
                 *)
                   echo "Broker succeeded but child runner is not active: $child_status" >&2
                   exit 1
@@ -3099,10 +3108,19 @@ jobs:
                 --query properties.status -o tsv)
               case "$status" in
                 Succeeded|Failed|Stopped) break ;;
-                Processing|Running) ;;
+                Processing|Running|Waiting) ;;
                 *) echo "Private cleanup broker returned unknown status: ${status:-<empty>}" >&2; exit 1 ;;
               esac
               if [ "$poll_attempt" = 180 ]; then
+                bash scripts/goal006_capture_aca_execution.sh \
+                  --job "$RUNNER_CLEANUP_BROKER_JOB" \
+                  --container cleanup-broker \
+                  --execution "$execution" \
+                  --status "$status" \
+                  --attempt "$execution_attempt" \
+                  --workspace "$workspace_customer_id" \
+                  --resource-group "$RUNNER_RESOURCE_GROUP" \
+                  --prefix "cleanup-attempt-${execution_attempt}"
                 echo "Timed out waiting for private cleanup broker: $execution" >&2
                 exit 1
               fi

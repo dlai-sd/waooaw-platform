@@ -29,8 +29,8 @@ for value in "$job" "$container" "$execution" "$status" "$attempt" "$workspace" 
 done
 grep -Eq '^[a-z0-9][a-z0-9-]{0,63}$' <<< "$execution"
 case "$status" in
-  Failed|Stopped|Succeeded) ;;
-  *) echo "ACA execution status is not terminal: $status" >&2; exit 2 ;;
+  Failed|Processing|Running|Stopped|Succeeded|Waiting) ;;
+  *) echo "ACA execution status is invalid: $status" >&2; exit 2 ;;
 esac
 case "$attempt" in
   1|2) ;;
@@ -62,12 +62,12 @@ for evidence_attempt in $(seq 1 6); do
     --status "$status" \
     --attempt "$attempt" \
     --output "${prefix}.classification.json"
-  if [ "$status" = Succeeded ] || jq -e '.terminal_platform_failure or .application_code_started' \
+  if jq -e '.application_code_started or .terminal_platform_failure' \
     "${prefix}.classification.json" >/dev/null; then
     exit 0
   fi
   if [ "$evidence_attempt" = 6 ]; then
-    echo "ACA terminal system events were not observable for $execution" >&2
+    echo "ACA scheduling or container-start system events were not observable for $execution" >&2
     exit 1
   fi
   sleep 10
