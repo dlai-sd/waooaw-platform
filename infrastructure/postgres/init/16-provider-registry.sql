@@ -4,6 +4,28 @@
 -- constitutional_basis: C-031 (ADR on file), C-041 (tool authorization), C-003 (authority licensed)
 
 -- provider_configs lives in the business schema (BP-owned, PR/AIR read-only via internal API)
+BEGIN;
+
+SELECT set_config(
+  'waooaw.provider_registry_was_forced',
+  COALESCE((
+    SELECT relforcerowsecurity::text
+    FROM pg_class
+    WHERE oid = to_regclass('business.provider_configs')
+  ), 'false'),
+  true
+);
+
+DO $provider_registry_rls$
+BEGIN
+  IF current_setting('waooaw.provider_registry_was_forced')::boolean THEN
+    EXECUTE 'SET LOCAL ROLE bp_owner';
+    EXECUTE 'ALTER TABLE business.provider_configs NO FORCE ROW LEVEL SECURITY';
+    EXECUTE 'RESET ROLE';
+  END IF;
+END
+$provider_registry_rls$;
+
 CREATE TABLE IF NOT EXISTS business.provider_configs (
   id              UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id       UUID,                                              -- NULL = platform-level (e.g. OpenAI API key)
@@ -48,3 +70,15 @@ VALUES
    ARRAY[]::TEXT[],
    'providers/platform/openai')
 ON CONFLICT (provider_name) WHERE tenant_id IS NULL DO NOTHING;
+
+DO $provider_registry_rls$
+BEGIN
+  IF current_setting('waooaw.provider_registry_was_forced')::boolean THEN
+    EXECUTE 'SET LOCAL ROLE bp_owner';
+    EXECUTE 'ALTER TABLE business.provider_configs FORCE ROW LEVEL SECURITY';
+    EXECUTE 'RESET ROLE';
+  END IF;
+END
+$provider_registry_rls$;
+
+COMMIT;

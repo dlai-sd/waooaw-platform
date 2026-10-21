@@ -68,6 +68,11 @@ def test_demo_handoff_verifies_every_database_and_zero_dependencies(
     assert "pg_shdepend" in combined_sql
     assert "sealed-password" not in combined_sql
     assert "bootstrap-token" not in combined_sql
+    dependency_queries = [
+        sql for user, _database, sql in statements if user == "wc124_breakglass_admin" and "pg_shdepend" in sql
+    ]
+    assert len(dependency_queries) == 1
+    assert "REVOKE" not in dependency_queries[0]
 
 
 def test_handoff_refuses_to_remove_bootstrap_with_dependencies(

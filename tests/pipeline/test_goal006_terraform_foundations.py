@@ -1071,7 +1071,8 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     # Run 39539976383: a freshly started ACA job execution reports `Unknown` until its replica is
     # scheduled; every job poller must tolerate that for a bounded grace and fail only if it persists.
     assert workflow.count("Processing|Running) ;;") == 8
-    assert workflow.count('Unknown) if [ "$attempt" -le 6 ]; then sleep 10; continue; fi ;;&') == 8
+    assert workflow.count('Unknown) if [ "$attempt" -le 6 ]; then sleep 10; continue; fi ;;&') == 6
+    assert workflow.count('Unknown) if [ "$poll" -le 6 ]; then sleep 10; continue; fi ;;&') == 2
     temporal = read_contract("modules/workload/main.tf").split('name  = "SQL_MAX_CONNS"', 1)[1]
     assert temporal.startswith('\n        value = "1"')
     assert 'name  = "SQL_MAX_IDLE_CONNS"\n        value = "1"' in temporal
@@ -1461,6 +1462,7 @@ def test_authentication_limiter_is_environment_scoped_and_independent_of_session
     prod_workload = read_contract("environments/prod/workload/main.tf")
 
     assert 'auth_redis_container_enabled = var.workload_enabled && contains(["demo", "uat"], var.environment)' in contract
+    assert 'auth_redis_host              = "ca-${var.environment}-auth-redis"' in contract
     assert 'name                         = "ca-${var.environment}-auth-redis"' in contract
     assert "external_enabled = false" in contract
     assert 'image   = "redis@sha256:' in contract

@@ -28,6 +28,11 @@ DEBIAN_RUNTIME_DOCKERFILES = (
     "src/ai-runtime/Dockerfile",
     "src/billing-engine/Dockerfile",
 )
+PYTHON_DEPENDENCY_DOCKERFILES = (
+    "src/professional-runtime/Dockerfile",
+    "src/ai-runtime/Dockerfile",
+    "src/billing-engine/Dockerfile",
+)
 
 
 def _compose() -> dict:
@@ -131,6 +136,16 @@ def test_hosted_builds_refresh_debian_runtime_security_layers() -> None:
             "apt-get update"
         )
 
+    for dockerfile in PYTHON_DEPENDENCY_DOCKERFILES:
+        content = (REPO_ROOT / dockerfile).read_text(encoding="utf-8")
+        first_stage = content.index("FROM ")
+        second_stage = content.index("\nFROM ", first_stage) + 1
+        dependency_stage = content[first_stage:second_stage]
+        assert "ARG SECURITY_REFRESH=local" in dependency_stage
+        assert dependency_stage.index('RUN test -n "$SECURITY_REFRESH"') < (
+            dependency_stage.index("pip install")
+        )
+
 
 def test_release_images_are_non_root_and_expose_accepted_ports() -> None:
     for _, (port, context, dockerfile) in RELEASE_MEMBERS.items():
@@ -151,6 +166,10 @@ def test_release_images_pin_fixed_security_dependencies() -> None:
         encoding="utf-8"
     )
 
+    assert (
+        "golang:1.26.10-alpine@sha256:9ce231b28998b32e116927c61aa5c406183061d4f3f2d61b292c88e7f6bdf7ca"
+        in constitutional_engine
+    )
     assert "GRPC_GO_VERSION=v1.83.2" in constitutional_engine
     fixed_aspnet_runtime = (
         "mcr.microsoft.com/dotnet/aspnet:9.0.21"

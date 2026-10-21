@@ -8,7 +8,7 @@ COPY src/constitutional-engine/ .
 RUN dotnet publish --configuration Release --runtime linux-musl-x64 \
     --self-contained false --no-restore --output /app/publish
 
-FROM golang:1.26.9-alpine@sha256:3082400e369fa24d5fc60bca20edab3f6d604e0c5a690ec66b295eff4dd87ade AS health-probe
+FROM golang:1.26.10-alpine@sha256:9ce231b28998b32e116927c61aa5c406183061d4f3f2d61b292c88e7f6bdf7ca AS health-probe
 ARG GRPC_HEALTH_PROBE_COMMIT=b5fef775b4ec749eefb19fb00787089ec9a772d5
 ARG GRPC_GO_VERSION=v1.83.2
 ARG GOLANG_X_NET_VERSION=v0.60.0

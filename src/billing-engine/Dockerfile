@@ -1,9 +1,11 @@
 # Implements: architecture/reference/agents/platform-it-expert-agent.md Skill 17
 # Constitutional basis: C-059 (Implementation Traceability)
 FROM python:3.12-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e AS dependencies
+ARG SECURITY_REFRESH=local
 WORKDIR /install
 COPY src/billing-engine/requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install/packages -r requirements.txt
+RUN test -n "$SECURITY_REFRESH" \
+	&& pip install --no-cache-dir --prefix=/install/packages -r requirements.txt
 
 FROM python:3.12-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e
 ARG SECURITY_REFRESH=local

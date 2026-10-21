@@ -26,6 +26,12 @@ APPLICATION_DATABASE = "waooaw_application"
 KEYCLOAK_DATABASE = "waooaw_keycloak"
 TEMPORAL_DATABASE = "waooaw_temporal"
 TEMPORAL_VISIBILITY_DATABASE = "waooaw_temporal_visibility"
+DEMO_DATABASES = (
+    APPLICATION_DATABASE,
+    KEYCLOAK_DATABASE,
+    TEMPORAL_DATABASE,
+    TEMPORAL_VISIBILITY_DATABASE,
+)
 PRINCIPAL_BOOTSTRAP_NAME = "00-wc124-principal-bootstrap.sql"
 PROVISIONING_SCHEMA = "wc124_provisioning"
 INIT_CHAIN_LEDGER_TABLE = f"{PROVISIONING_SCHEMA}.init_chain_ledger"
@@ -47,7 +53,6 @@ APPLICATION_MIGRATION_ROLES = {
     "billing_migrator": "billing_owner",
     "web_session_migrator": "web_session_owner",
 }
-PROVIDER_REGISTRY_MIGRATION = "16-provider-registry.sql"
 REQUIRED_IDENTITY_RELATIONS = (
     "registrations",
     "idempotency_ledger",
@@ -462,41 +467,33 @@ def file_digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def migration_sql(path: Path) -> str:
-    sql = path.read_text(encoding="utf-8")
-    if path.name != PROVIDER_REGISTRY_MIGRATION:
-        return sql
-    prefix = """
-BEGIN;
-SET LOCAL ROLE bp_owner;
-SELECT set_config(
-    'waooaw.provider_registry_was_forced',
-    COALESCE((
-        SELECT relforcerowsecurity::text
-        FROM pg_class
-        WHERE oid = to_regclass('business.provider_configs')
-    ), 'false'),
-    true
-);
-DO $provider_registry_rls$
-BEGIN
-    IF current_setting('waooaw.provider_registry_was_forced')::boolean THEN
-        ALTER TABLE business.provider_configs NO FORCE ROW LEVEL SECURITY;
-    END IF;
-END
-$provider_registry_rls$;
-"""
-    suffix = """
-DO $provider_registry_rls$
-BEGIN
-    IF current_setting('waooaw.provider_registry_was_forced')::boolean THEN
-        ALTER TABLE business.provider_configs FORCE ROW LEVEL SECURITY;
-    END IF;
-END
-$provider_registry_rls$;
-COMMIT;
-"""
-    return "".join((prefix, sql, suffix))
+def reset_demo_databases(
+    server_fqdn: str,
+    bootstrap_name: str,
+    database_access_token: str,
+) -> dict[str, Any]:
+    for index, database in enumerate(DEMO_DATABASES, start=1):
+        print(
+            f"[wc124-db-provisioner] phase=demo-reset database={database} progress={index}/{len(DEMO_DATABASES)}",
+            file=sys.stderr,
+            flush=True,
+        )
+        quoted_database = sql_identifier(database)
+        psql(
+            server_fqdn,
+            bootstrap_name,
+            "postgres",
+            database_access_token,
+            f"DROP DATABASE IF EXISTS {quoted_database} WITH (FORCE);",
+        )
+        psql(
+            server_fqdn,
+            bootstrap_name,
+            "postgres",
+            database_access_token,
+            f"CREATE DATABASE {quoted_database} OWNER {sql_identifier(bootstrap_name)};",
+        )
+    return {"status": "completed", "databases": list(DEMO_DATABASES)}
 
 
 def read_init_chain_ledger(
@@ -544,7 +541,13 @@ def apply_init_chain(
                 "recorded digest differs; use the explicit force-init-chain recovery path only "
                 "after migration-specific repair review"
             )
-        psql(server_fqdn, bootstrap_name, APPLICATION_DATABASE, access_token, migration_sql(path))
+        psql(
+            server_fqdn,
+            bootstrap_name,
+            APPLICATION_DATABASE,
+            access_token,
+            path.read_text(encoding="utf-8"),
+        )
         psql(
             server_fqdn,
             bootstrap_name,
@@ -667,8 +670,10 @@ def provision_postgresql(
     init_directory: Path,
     *,
     force_init_chain: bool = False,
-) -> tuple[str, dict[str, list[str]], dict[str, Any]]:
+    reset_demo: bool = False,
+) -> tuple[str, dict[str, list[str]], dict[str, Any], dict[str, Any] | None]:
     database_access_token = access_token()
+    database_reset = reset_demo_databases(server_fqdn, bootstrap_name, database_access_token) if reset_demo else None
     role_sql = (init_directory / PRINCIPAL_BOOTSTRAP_NAME).read_text(encoding="utf-8")
     role_sql += "\n" + "\n".join(
         f"ALTER ROLE {sql_identifier(role)} PASSWORD {sql_literal(password)};" for role, password in sorted(passwords.items())
@@ -771,7 +776,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE {sql_identifier(owner)} IN SCHEMA public
     grant_digest = hashlib.sha256(
         b"\0".join(path.read_bytes() for path in [init_directory / PRINCIPAL_BOOTSTRAP_NAME, *application_files])
     ).hexdigest()
-    return grant_digest, init_chain, identity_schema
+    return grant_digest, init_chain, identity_schema, database_reset
 
 
 def write_secrets(
@@ -865,13 +870,17 @@ def execute(arguments: argparse.Namespace) -> dict[str, Any]:
             "credentials": evidence,
         }
     azure_login(arguments.bootstrap_client_id)
-    grant_digest, init_chain, identity_schema = provision_postgresql(
+    reset_demo = getattr(arguments, "reset_demo_databases", False)
+    if reset_demo and arguments.environment != "demo":
+        raise ValueError("--reset-demo-databases is restricted to the demo environment")
+    grant_digest, init_chain, identity_schema, database_reset = provision_postgresql(
         specs,
         passwords,
         arguments.server_fqdn,
         arguments.bootstrap_name,
         arguments.init_directory,
         force_init_chain=getattr(arguments, "force_init_chain", False),
+        reset_demo=reset_demo,
     )
     azure_login(arguments.provisioner_client_id)
     evidence = write_secrets(
@@ -889,6 +898,7 @@ def execute(arguments: argparse.Namespace) -> dict[str, Any]:
         "grant_digest": grant_digest,
         "password_authentication_ready": True,
         "vault_authorization_attempts": authorization_attempts,
+        "database_reset": database_reset,
         "init_chain": {
             "ledger": INIT_CHAIN_LEDGER_TABLE,
             "applied": len(init_chain["applied"]),
@@ -913,6 +923,11 @@ def main() -> int:
     parser.add_argument("--provisioner-client-id")
     parser.add_argument("--init-directory", type=Path, default=Path("/opt/waooaw/postgres/init"))
     parser.add_argument("--refresh-existing-urls", action="store_true")
+    parser.add_argument(
+        "--reset-demo-databases",
+        action="store_true",
+        help="drop and recreate all four demo databases before applying the clean init chain",
+    )
     parser.add_argument(
         "--force-init-chain",
         action="store_true",

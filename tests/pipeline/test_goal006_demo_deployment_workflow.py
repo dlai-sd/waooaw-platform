@@ -146,6 +146,8 @@ def test_completed_wc124_transition_still_refreshes_and_rebinds_database_urls() 
     assert 'pgbouncer_host="ca-${TARGET_ENVIRONMENT}-pgbouncer"' in create_step
     assert "pgbouncer.internal.${{ steps.foundation.outputs.container_app_environment_default_domain }}" not in create_step
     assert "--refresh-existing-urls" in create_step
+    assert '"--reset-demo-databases"' in create_step
+    assert 'if $target_environment == "demo"' in create_step
     assert 'if $full_provisioning then [$bootstrap, $provisioner] else [$provisioner] end' in create_step
     assert "if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')" in run_step
     assert "wc124-db-credential-inventory.json" in input_step
@@ -767,6 +769,22 @@ def test_reconciliation_failure_still_runs_both_cleanup_paths() -> None:
     assert "always() &&" in WORKFLOW.split("      - name: Delete WC-124 database provisioner", 1)[1].split(
         "        env:", 1
     )[0]
+
+
+def test_wc124_database_jobs_emit_unambiguous_poll_progress() -> None:
+    provisioner = WORKFLOW.split("      - name: Run WC-124 database provisioner", 1)[1].split(
+        "      - name: Revoke bounded WC-124 reconciliation authority", 1
+    )[0]
+    handoff = WORKFLOW.split("      - name: Finalize WC-124 PostgreSQL authority handoff", 1)[1].split(
+        "      - name: Verify interrupted WC-124 handoff before revocation", 1
+    )[0]
+
+    assert "for poll in $(seq 1 180)" in provisioner
+    assert "[wc124-db-provisioner] poll=%s elapsed=%ss status=%s time=%s" in provisioner
+    assert "for poll in $(seq 1 180)" in handoff
+    assert "[wc124-db-handoff] poll=%s elapsed=%ss status=%s time=%s" in handoff
+    assert "attempt=%s" not in provisioner
+    assert "attempt=%s" not in handoff
 
 
 def test_terminal_cleanup_forces_and_verifies_zero_database_authority() -> None:

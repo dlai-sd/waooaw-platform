@@ -24,9 +24,9 @@ from wc124_db_provisioner import (
     execute,
     existing_grant_digest,
     password_from_secret,
-    migration_sql,
     probe_pgbouncer_connectivity,
     psql,
+    reset_demo_databases,
     run,
     secret_value,
     validate_catalog,
@@ -553,25 +553,81 @@ def test_init_chain_ledger_rows_are_written_after_each_file(monkeypatch: pytest.
     assert "'01-schemas.sql'" in ledger_write
 
 
-def test_provider_registry_reconciliation_restores_forced_rls_atomically(tmp_path: Path) -> None:
-    migration = tmp_path / "16-provider-registry.sql"
-    migration.write_text("INSERT INTO business.provider_configs (provider_name) VALUES ('meta');", encoding="utf-8")
+def test_demo_reset_recreates_all_databases_under_bootstrap_owner(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, str]] = []
 
-    sql = migration_sql(migration)
+    monkeypatch.setattr(
+        "wc124_db_provisioner.psql",
+        lambda _server, _bootstrap, database, _token, sql, **_kwargs: calls.append((database, sql)) or "",
+    )
 
-    assert sql.lstrip().startswith("BEGIN;")
-    assert "SET LOCAL ROLE bp_owner;" in sql
-    assert "ALTER TABLE business.provider_configs NO FORCE ROW LEVEL SECURITY;" in sql
-    assert migration.read_text(encoding="utf-8") in sql
-    assert "ALTER TABLE business.provider_configs FORCE ROW LEVEL SECURITY;" in sql
+    evidence = reset_demo_databases("fqdn", "bootstrap-principal", "token")
+
+    assert evidence == {
+        "status": "completed",
+        "databases": [
+            APPLICATION_DATABASE,
+            KEYCLOAK_DATABASE,
+            TEMPORAL_DATABASE,
+            TEMPORAL_VISIBILITY_DATABASE,
+        ],
+    }
+    assert all(database == "postgres" for database, _sql in calls)
+    assert len(calls) == 8
+    for database in evidence["databases"]:
+        quoted = f'"{database}"'
+        assert ("postgres", f"DROP DATABASE IF EXISTS {quoted} WITH (FORCE);") in calls
+        assert (
+            "postgres",
+            f'CREATE DATABASE {quoted} OWNER "bootstrap-principal";',
+        ) in calls
+
+
+def test_provider_registry_migration_owns_forced_rls_reconciliation() -> None:
+    sql = (ROOT / "infrastructure/postgres/init/16-provider-registry.sql").read_text(encoding="utf-8")
+
+    assert sql.index("BEGIN;") < sql.index("CREATE TABLE IF NOT EXISTS business.provider_configs")
+    assert "EXECUTE 'SET LOCAL ROLE bp_owner';" in sql
+    assert "EXECUTE 'ALTER TABLE business.provider_configs NO FORCE ROW LEVEL SECURITY';" in sql
+    assert "EXECUTE 'ALTER TABLE business.provider_configs FORCE ROW LEVEL SECURITY';" in sql
     assert sql.rstrip().endswith("COMMIT;")
 
 
-def test_other_migrations_are_not_wrapped(tmp_path: Path) -> None:
-    migration = tmp_path / "15-other.sql"
-    migration.write_text("SELECT 1;", encoding="utf-8")
+@pytest.mark.parametrize(
+    ("name", "grant", "revoke"),
+    [
+        (
+            "55-wc123-web-session.sql",
+            "GRANT CREATE ON SCHEMA web_session TO web_session_operations;",
+            "REVOKE CREATE ON SCHEMA web_session FROM web_session_operations;",
+        ),
+        (
+            "56-wc123-current-membership.sql",
+            "GRANT CREATE ON SCHEMA identity TO identity_resolver_owner;",
+            "REVOKE CREATE ON SCHEMA identity FROM identity_resolver_owner;",
+        ),
+        (
+            "59-wc124-billing-authority.sql",
+            "GRANT billing_owner TO %I",
+            "REVOKE billing_owner FROM %I",
+        ),
+        (
+            "60-wc124-principal-handoff.sql",
+            "EXECUTE format('GRANT %I TO %I', owner_name, session_user);",
+            "EXECUTE format('REVOKE %I FROM %I', owner_name, session_user);",
+        ),
+    ],
+)
+def test_migration_files_own_their_bounded_prerequisites(
+    name: str,
+    grant: str,
+    revoke: str,
+) -> None:
+    sql = (ROOT / "infrastructure/postgres/init" / name).read_text(encoding="utf-8")
 
-    assert migration_sql(migration) == "SELECT 1;"
+    assert sql.index("BEGIN;") < sql.index(grant)
+    assert sql.index(grant) < sql.index(revoke)
+    assert sql.index(revoke) < sql.rindex("COMMIT;")
 
 
 def test_identity_schema_verifier_requires_every_relation_policy_and_forced_rls(

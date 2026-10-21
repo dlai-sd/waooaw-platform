@@ -54,7 +54,7 @@
     "infrastructure/postgres/init/13-customer-acquisition.sql": "79829fe29f7c3118d2fba9540822831ac495c42de50e629d5ce48ce6ee82ff27",
     "infrastructure/postgres/init/14-audit-sink.sql": "d798a9a57bdc8333eded53d91361b015511f8c492d1e894af65bd6999d1da0c3",
     "infrastructure/postgres/init/15-payload-store.sql": "b0642692c80e8aa7e1a763d4cdb710d42803a144d975f8ecbc8104c4ff46c179",
-    "infrastructure/postgres/init/16-provider-registry.sql": "8d4f4fda505a842c435d0f1b0ea4f4c3a45b504e4f6e3d2d165ab0dbd2fabd69",
+    "infrastructure/postgres/init/16-provider-registry.sql": "7e252ae22652942b4e58ae6102dd3917fdf8af40cee57f08456c016232f1f28a",
     "infrastructure/postgres/init/17-skill-catalog.sql": "a8c5ce7e6ed45e15ef4bc45b4dd5867e505701736c406d876aa0a5e2163dcb9d",
     "infrastructure/postgres/init/18-wbe-s7-payment.sql": "723c887146366a4677e89f949ab629030e06dada20e38e31bac4e99c364a4700",
     "infrastructure/postgres/init/19-ae01-employment-relationship.sql": "2446a371c9dbf1f243aef4ce1b3ab08390134cc9e5ca168c37854b7d012a6f7e",
@@ -99,13 +99,13 @@
     "infrastructure/postgres/init/52-wc112-acquisition-correlation.sql": "b1daa70341aca3d5ef7044dfaf35519d789f25de6ec0814b4c4c094a0a916520",
     "infrastructure/postgres/init/53-wc115-conversational-employment.sql": "ce5c4844c85e44e8fe1e328e0e11bfe1e2d1e9f96c6e04a950982d5d35657634",
     "infrastructure/postgres/init/54-wc121-customer-engagement-workspace.sql": "ef827851dfb3f47c3a0d362a5927f9c77af479668a780f8545fa74bbe7cdd416",
-    "infrastructure/postgres/init/55-wc123-web-session.sql": "c788e89b64573db065d043995ae19fb7e8fc5a0faa19014e045604eb7b3e8926",
-    "infrastructure/postgres/init/56-wc123-current-membership.sql": "93e1afb78c2457aefb9c36fb3bf35dfb539449c8abab9e9aabb091e32b23938b",
+    "infrastructure/postgres/init/55-wc123-web-session.sql": "b4ae8ed5bfa8dc8935cf297a5e339232aabe7bb56c03f3f911c6993e19642a9f",
+    "infrastructure/postgres/init/56-wc123-current-membership.sql": "4027f12307734e9ef283522f9edf0d38d417168ba5871887af61375c115f6188",
     "infrastructure/postgres/init/57-wc123-identity-lifecycle.sql": "9d5456d5d89bac170276c52b5e9884697fcc8d02c5220c4723163d861d955f5a",
     "infrastructure/postgres/init/58-wc123-portal-preference-permissions.sql": "532f9f1b3079b1c876e4e716ee7be4d5aec87ef9eb06959165fa301a44d4241e",
-    "infrastructure/postgres/init/59-wc124-billing-authority.sql": "df9fd5a3e27ecc4da0f8b5f75c89ad9316621908644c0b20b110f834e45fa05c",
-    "infrastructure/postgres/init/60-wc124-principal-handoff.sql": "8a349dbd6ab47fe8a365d84c5d3ee68839e57983c5e85feac5c034b344a82ee8",
-    "infrastructure/runner/Dockerfile": "e9f0ba220f04964eb116320591127e6fa3e04c258eb3985d93797d1e9f6407d8",
+    "infrastructure/postgres/init/59-wc124-billing-authority.sql": "1984359391ca1fdc7df94ba77f15972247008951ceac3bc4495edb39021e84b2",
+    "infrastructure/postgres/init/60-wc124-principal-handoff.sql": "cd3373003ea6164fa51125c42d6a46413ea80ebcca440ce69b8e4afc63be7ccd",
+    "infrastructure/runner/Dockerfile": "abfa2d543f69adbd0ccefda819b93560e5e55f7b3acc3ce861974724fccf4e89",
     "infrastructure/runner/Dockerfile.control": "c3d1c42fb381d9019c32fa2f8936218283f2bca81f6eb8cb8edf151c988f9a9b",
     "infrastructure/runner/entrypoint.sh": "fe467ae6782b0792bdf0e2dfada98e277abd5f8ec11bc817768ccf032cfe62a7",
     "infrastructure/runner/import-app-signing-material.sh": "e308e88ba3b70ea923e92f9840bb1fa4f25a462556f1b9b65e13fd0c54376e94",
@@ -121,8 +121,8 @@
     "scripts/goal006_runner_lifecycle.py": "12498d948bb6ff4e9a1735d22d449587895960e08ed65194ac191fd46b1c2a36",
     "scripts/goal006_runner_prerequisites.py": "afaafd3824b254af712a67be05ea8210ce415ddcc7d7cdb4e562173d3c8f6652",
     "scripts/goal006_runner_qualification.py": "0c04399cf6ea6395d07015d28fdc14484df90d1a3dc13632b9171432b6e5bfb0",
-    "scripts/wc124_db_handoff.py": "d090929fecd010368e313caeb3534961d03e4d1ea2d0aae6457d7abac1ce4032",
-    "scripts/wc124_db_provisioner.py": "89a13cac191ff3572273091b039dfcb3d03338f215f5d905b105cc066a792ee5"
+    "scripts/wc124_db_handoff.py": "2cd7e3aa0bd2203d47e9a5f62b798b940799bc8ae05a7dae8b9b9a16bc76753a",
+    "scripts/wc124_db_provisioner.py": "7ee41a193c236d6d320330c59adaf8434e5cfc1e874c9871cc6ff181fcc6e3fd"
   },
   "schema_version": 3
 }

@@ -1,6 +1,8 @@
 -- Implements: CSA-AUTH-001 Sections 12.3-12.6; WC-123 AUTH-WC-02
 -- Constitutional basis: C-023, C-026, C-059, C-063, C-080
 
+BEGIN;
+
 CREATE SCHEMA IF NOT EXISTS web_session;
 REVOKE ALL ON SCHEMA web_session FROM PUBLIC;
 
@@ -12,6 +14,8 @@ BEGIN
     END IF;
 END
 $roles$;
+
+GRANT CREATE ON SCHEMA web_session TO web_session_operations;
 
 CREATE TABLE IF NOT EXISTS web_session.user_generations (
     global_user_id UUID PRIMARY KEY,
@@ -1088,3 +1092,7 @@ REVOKE ALL ON FUNCTION web_session.expire_sessions(TIMESTAMPTZ) FROM web_session
 REVOKE ALL ON FUNCTION web_session.sanitize_restored_sessions(VARCHAR, UUID, TIMESTAMPTZ)
     FROM web_session_app;
 REVOKE ALL ON FUNCTION web_session.cleanup_retained(TIMESTAMPTZ) FROM web_session_app;
+
+REVOKE CREATE ON SCHEMA web_session FROM web_session_operations;
+
+COMMIT;
