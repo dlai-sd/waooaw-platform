@@ -2459,7 +2459,7 @@ jobs:
           POSTGRESQL_SERVER_FQDN: ${{ steps.foundation.outputs.postgresql_server_fqdn }}
         run: |
           set -euo pipefail
-          # Demo runs one provisioned instance with max_connections=40, of which Azure reserves
+          # Demo runs one provisioned instance with max_connections=50, of which Azure reserves
           # superuser_reserved_connections + reserved_connections; only the remainder is available to
           # the vendor migrators. A stale, still-active Container Apps revision (one that predates the
           # bounded pool configuration) keeps its old pools open and starves the migration job, so

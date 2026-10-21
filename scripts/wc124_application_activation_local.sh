@@ -286,10 +286,10 @@ backend_roles=$(psql_admin -c "SELECT string_agg(DISTINCT usename, ',' ORDER BY 
 # exits, so the migrator identities may linger idle; no runtime may hold an active one.
 unexpected_roles=$(psql_admin -c "SELECT count(DISTINCT usename) FROM pg_stat_activity WHERE datname LIKE 'waooaw%' AND NOT (usename IN ('waooaw','ce_runtime','bp_runtime','billing_runtime','web_session_app','temporal_runtime') OR (usename IN ('billing_migrator','temporal_migrator') AND state = 'idle'))")
 test "$unexpected_roles" = 0
-# Demo PgBouncer admits 40 clients and the server 40 backends; Temporal's session pools must leave headroom.
+# Demo PgBouncer admits 40 clients and the server 50 backends; Temporal's session pools must leave headroom.
 temporal_backends=$(psql_admin -c "SELECT count(*) FROM pg_stat_activity WHERE usename = 'temporal_runtime'")
-# Upper bound: 4 internal services x 2 stores x SQL_MAX_CONNS=2.
-test "$temporal_backends" -le 16 || { echo "temporal_runtime holds $temporal_backends backends (> 16)" >&2; exit 1; }
+# Upper bound: the two session pools, pool_size=5 each.
+test "$temporal_backends" -le 10 || { echo "temporal_runtime holds $temporal_backends backends (> 10)" >&2; exit 1; }
 # The whole activated estate must leave Keycloak's bounded pool (5) spare within the usable slots.
 total_backends=$(psql_admin -c "SELECT count(*) FROM pg_stat_activity WHERE backend_type = 'client backend' AND usename <> 'waooaw'")
 test $((WC124_PG_USABLE_CONNECTIONS - total_backends)) -ge 5 \
@@ -309,7 +309,7 @@ jq -n \
     probes: {constitutional_engine: "tcp:5002", business_platform: "http:/health/ready", billing_engine: "http:/health",
              professional_runtime: "http:/health", temporal: "tcp:7233 (loopback+network)", web: ["http:/api/health/live", "http:/api/health/ready"]},
     observed_backend_roles: ($backend_roles | split(",")), backend_connections_by_role: $backend_footprint,
-    pgbouncer_limits: {max_client_conn: 40, default_pool_size: 8, reserve_pool_size: 2},
+    pgbouncer_limits: {max_client_conn: 40, default_pool_size: 2, reserve_pool_size: 0, server_idle_timeout: 30, temporal_session_pool_size: 5},
     connection_budget: {usable_slots: $usable, backends_after_activation: $total, stale_pool_exhaustion_reproduced: $stale},
     status: "passed"}' \
   | tee "$EVIDENCE_DIR/result.json"
