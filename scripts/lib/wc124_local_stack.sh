@@ -155,8 +155,8 @@ wc124_start_pgbouncer() {
   # Database map mirrors the Demo PgBouncer: Temporal databases pool per session, all else per transaction.
   cat > "$WC124_WORKDIR/pgbouncer.ini" <<EOF
 [databases]
-waooaw_temporal = host=$WC124_POSTGRES port=5432 pool_mode=session pool_size=5
-waooaw_temporal_visibility = host=$WC124_POSTGRES port=5432 pool_mode=session pool_size=5
+waooaw_temporal = host=$WC124_POSTGRES port=5432 pool_mode=session pool_size=8
+waooaw_temporal_visibility = host=$WC124_POSTGRES port=5432 pool_mode=session pool_size=8
 * = host=$WC124_POSTGRES port=5432
 [pgbouncer]
 listen_addr = 0.0.0.0
@@ -169,6 +169,8 @@ max_client_conn = 40
 default_pool_size = 2
 reserve_pool_size = 0
 server_idle_timeout = 30
+query_wait_timeout = 5
+stats_users = temporal_runtime
 ignore_startup_parameters = extra_float_digits
 EOF
   chmod 644 "$WC124_WORKDIR/pgbouncer.ini" "$WC124_WORKDIR/userlist.txt"

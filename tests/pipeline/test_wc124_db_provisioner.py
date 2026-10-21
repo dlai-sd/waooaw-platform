@@ -12,6 +12,7 @@ from wc124_db_provisioner import (
     APPLICATION_DATABASE,
     APPLICATION_MIGRATION_ROLES,
     INIT_CHAIN_LEDGER_TABLE,
+    IDENTITY_POLICY_CONTRACT,
     KEYCLOAK_DATABASE,
     TEMPORAL_DATABASE,
     TEMPORAL_VISIBILITY_DATABASE,
@@ -28,6 +29,7 @@ from wc124_db_provisioner import (
     run,
     secret_value,
     validate_catalog,
+    verify_identity_schema,
     write_secrets,
 )
 
@@ -526,9 +528,9 @@ def test_init_chain_ledger_applies_only_changed_files(monkeypatch: pytest.Monkey
 
     second.write_text("CREATE TABLE IF NOT EXISTS a.t (id int, name text);", encoding="utf-8")
     calls.clear()
-    run_three = apply_init_chain("fqdn", "bootstrap", "token", (first, second))
-    assert run_three == {"applied": [], "reapplied": ["02-tables.sql"], "skipped": ["01-schemas.sql"]}
-    assert second.read_text(encoding="utf-8") in calls
+    with pytest.raises(ValueError, match=r"init-chain integrity failure.*02-tables\.sql"):
+        apply_init_chain("fqdn", "bootstrap", "token", (first, second))
+    assert second.read_text(encoding="utf-8") not in calls
     assert first.read_text(encoding="utf-8") not in calls
 
     run_four = apply_init_chain("fqdn", "bootstrap", "token", (first, second), force=True)
@@ -548,3 +550,107 @@ def test_init_chain_ledger_rows_are_written_after_each_file(monkeypatch: pytest.
     assert ledger_write.startswith(f"INSERT INTO {INIT_CHAIN_LEDGER_TABLE}")
     assert "ON CONFLICT (file_name) DO UPDATE" in ledger_write
     assert "'01-schemas.sql'" in ledger_write
+
+
+def test_identity_schema_verifier_requires_every_relation_policy_and_forced_rls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rows = "\n".join(
+        "\t".join(
+            (
+                name,
+                "t",
+                "t",
+                "t",
+                "1",
+                "1",
+                "PERMISSIVE",
+                "ALL",
+                ",".join(sorted(contract.roles)),
+                contract.expression,
+                contract.expression,
+            )
+        )
+        for name, contract in sorted(IDENTITY_POLICY_CONTRACT.items())
+    )
+    monkeypatch.setattr("wc124_db_provisioner.psql", lambda *_args, **_kwargs: rows)
+
+    evidence = verify_identity_schema("fqdn", "bootstrap", "token")
+
+    assert evidence["status"] == "passed"
+    assert len(evidence["relations"]) == 6
+
+
+def test_identity_schema_verifier_fails_when_one_policy_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rows = "\n".join(
+        f"{name}\tt\tt\tt\t{'0' if name == 'memberships' else '1'}\t1\tPERMISSIVE\tALL\t"
+        f"business_app\tactor_bindings account_id\tactor_bindings account_id"
+        for name in (
+            "accounts",
+            "actor_bindings",
+            "idempotency_ledger",
+            "login_methods",
+            "memberships",
+            "registrations",
+        )
+    )
+    monkeypatch.setattr("wc124_db_provisioner.psql", lambda *_args, **_kwargs: rows)
+
+    with pytest.raises(ValueError, match="memberships"):
+        verify_identity_schema("fqdn", "bootstrap", "token")
+
+
+def test_identity_schema_verifier_rejects_semantically_permissive_policy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rows = "\n".join(
+        "\t".join(
+            (
+                name,
+                "t",
+                "t",
+                "t",
+                "1",
+                "1",
+                "PERMISSIVE",
+                "ALL",
+                ",".join(sorted(contract.roles)),
+                f"(true OR {contract.expression})" if name == "memberships" else contract.expression,
+                f"(true OR {contract.expression})" if name == "memberships" else contract.expression,
+            )
+        )
+        for name, contract in sorted(IDENTITY_POLICY_CONTRACT.items())
+    )
+    monkeypatch.setattr("wc124_db_provisioner.psql", lambda *_args, **_kwargs: rows)
+
+    with pytest.raises(ValueError, match="memberships"):
+        verify_identity_schema("fqdn", "bootstrap", "token")
+
+
+def test_identity_schema_verifier_rejects_additional_permissive_policy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rows = "\n".join(
+        "\t".join(
+            (
+                name,
+                "t",
+                "t",
+                "t",
+                "1",
+                "2" if name == "memberships" else "1",
+                "PERMISSIVE",
+                "ALL",
+                ",".join(sorted(contract.roles)),
+                contract.expression,
+                contract.expression,
+            )
+        )
+        for name, contract in sorted(IDENTITY_POLICY_CONTRACT.items())
+    )
+    monkeypatch.setattr("wc124_db_provisioner.psql", lambda *_args, **_kwargs: rows)
+
+    with pytest.raises(ValueError, match="memberships"):
+        verify_identity_schema("fqdn", "bootstrap", "token")

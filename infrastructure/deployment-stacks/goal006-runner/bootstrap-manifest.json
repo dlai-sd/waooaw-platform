@@ -122,7 +122,7 @@
     "scripts/goal006_runner_prerequisites.py": "afaafd3824b254af712a67be05ea8210ce415ddcc7d7cdb4e562173d3c8f6652",
     "scripts/goal006_runner_qualification.py": "0c04399cf6ea6395d07015d28fdc14484df90d1a3dc13632b9171432b6e5bfb0",
     "scripts/wc124_db_handoff.py": "41c00a95b1aad05bb5313afa4b7e053ae1a58a074bd033dd1972ea886853bf70",
-    "scripts/wc124_db_provisioner.py": "e73fe98d9a73eb59f36f6eac65df15b1df668d805c5c1f8bd1d1a07fe364f669"
+    "scripts/wc124_db_provisioner.py": "2fdd089a1cf06d6cd8a415e0352f18d3570082c8a84bda9ecd16b1b4fbf96c05"
   },
   "schema_version": 3
 }

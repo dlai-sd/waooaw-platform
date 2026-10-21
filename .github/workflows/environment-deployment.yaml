@@ -1338,6 +1338,38 @@ jobs:
             sleep 10
           done
 
+      - name: Open bounded WC-124 schema reconciliation authority
+        if: inputs.apply && steps.database-transition.outputs.schema_reconciliation_required == 'true'
+        working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
+        env:
+          ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
+          TF_VAR_deployment_client_id: ${{ steps.foundation.outputs.deployment_client_id }}
+        run: |
+          set -euo pipefail
+          terraform init -input=false \
+            -backend-config="resource_group_name=$TFSTATE_RESOURCE_GROUP" \
+            -backend-config="storage_account_name=$TFSTATE_STORAGE_ACCOUNT" \
+            -backend-config="container_name=$TFSTATE_CONTAINER" \
+            -backend-config="use_oidc=true" \
+            -backend-config="use_azuread_auth=true"
+          terraform plan -input=false -lock-timeout=5m \
+            -var="postgresql_password_auth_enabled=true" \
+            -var="database_bootstrap_admin_enabled=true" \
+            -var="database_provisioner_vault_access_enabled=false" \
+            -out=foundation-schema-reconciliation.tfplan
+          terraform show -json foundation-schema-reconciliation.tfplan > foundation-schema-reconciliation.json
+          python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
+            --scope foundation \
+            --transition wc124-schema-reconciliation \
+            --plan foundation-schema-reconciliation.json
+          terraform apply -input=false -auto-approve foundation-schema-reconciliation.tfplan
+          admin_count=$(az postgres flexible-server microsoft-entra-admin list \
+            --resource-group '${{ steps.foundation.outputs.resource_group_name }}' \
+            --server-name "psql-waooaw-${{ inputs.environment }}-state" \
+            --query "[?principalName == 'id-waooaw-${{ inputs.environment }}-db-bootstrap'] | length(@)" \
+            --output tsv)
+          test "$admin_count" = 1
+
       - name: Grant bounded WC-124 reconciliation authority
         if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
         id: reconciliation-authority
@@ -1653,9 +1685,21 @@ jobs:
             fi
             sleep 10
           done
+          sed -n -E 's/^[^ ]+ stdout F ?//p' wc124-db-provisioner-evidence.log \
+            > wc124-db-provisioner-result.json
+          jq --arg execution "$execution_name" '. + {execution: $execution}' \
+            wc124-db-provisioner-result.json > wc124-db-provisioner-result.bound.json
+          mv wc124-db-provisioner-result.bound.json wc124-db-provisioner-result.json
+          jq -e '
+            .schema == "waooaw.wc124-db-provisioning/v1"
+            and .mode != "canonical-url-refresh"
+            and (.init_chain.ledger == "wc124_provisioning.init_chain_ledger")
+            and (.identity_schema.status == "passed")
+            and (.identity_schema.required_relations | length == 6)
+          ' wc124-db-provisioner-result.json > /dev/null
 
       - name: Revoke bounded WC-124 reconciliation authority
-        if: always() && steps.reconciliation-authority.outputs.assignment_id != ''
+        if: always() && steps.reconciliation-authority.outputs.assignment_id != '' && steps.database-transition.outputs.schema_reconciliation_required != 'true'
         env:
           ASSIGNMENT_ID: ${{ steps.reconciliation-authority.outputs.assignment_id }}
           ASSIGNMENT_NAME: ${{ steps.reconciliation-authority.outputs.assignment_name }}
@@ -1865,8 +1909,33 @@ jobs:
             sleep 10
           done
 
+      - name: Revoke reconciliation authority after schema handoff
+        if: >-
+          always() &&
+          steps.reconciliation-authority.outputs.assignment_id != '' &&
+          steps.database-transition.outputs.schema_reconciliation_required == 'true'
+        env:
+          ASSIGNMENT_ID: ${{ steps.reconciliation-authority.outputs.assignment_id }}
+          ASSIGNMENT_NAME: ${{ steps.reconciliation-authority.outputs.assignment_name }}
+          KEY_VAULT_ID: ${{ steps.foundation.outputs.key_vault_id }}
+          PRINCIPAL_ID: ${{ steps.reconciliation-authority.outputs.principal_id }}
+        run: |
+          set -euo pipefail
+          az role assignment delete --ids "$ASSIGNMENT_ID"
+          remaining=$(az role assignment list \
+            --assignee-object-id "$PRINCIPAL_ID" \
+            --scope "$KEY_VAULT_ID" \
+            --query "[?name == '$ASSIGNMENT_NAME'] | length(@)" \
+            --output tsv)
+          test "$remaining" = 0
+          jq \
+            '.status = "temporary-authority-revoked"
+             | .cleanup = "after-schema-handoff"' \
+            wc124-reconciliation-authority.json > wc124-reconciliation-authority.revoked.json
+          mv wc124-reconciliation-authority.revoked.json wc124-reconciliation-authority.json
+
       - name: Remove WC-124 Entra bootstrap authority
-        if: inputs.apply && steps.database-transition.outputs.revocation_required == 'true'
+        if: always() && inputs.apply && steps.database-transition.outputs.revocation_required == 'true'
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
         env:
           ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
@@ -2752,6 +2821,126 @@ jobs:
             sleep 10
           done
 
+      - name: Qualify exact Temporal startup through PgBouncer
+        if: inputs.apply && inputs.environment == 'demo'
+        env:
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          job_name="job-${TARGET_ENVIRONMENT}-temporal-startup-qualification"
+          az containerapp job show \
+            --name "$job_name" \
+            --resource-group "$RESOURCE_GROUP" \
+            --output json > wc124-temporal-startup-job.json
+          execution=$(az containerapp job start \
+            --name "$job_name" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query name \
+            --output tsv)
+          test -n "$execution"
+          capture_temporal_startup_evidence() {
+            az containerapp job execution show \
+              --name "$job_name" \
+              --resource-group "$RESOURCE_GROUP" \
+              --job-execution-name "$execution" \
+              --output json > wc124-temporal-startup-execution.json
+            az containerapp job logs show \
+              --name "$job_name" \
+              --resource-group "$RESOURCE_GROUP" \
+              --execution "$execution" \
+              --container temporal-startup-qualification \
+              --tail 1000 \
+              --format text > wc124-temporal-startup.log 2>&1 || true
+          }
+          for attempt in $(seq 1 60); do
+            status=$(az containerapp job execution show \
+              --name "$job_name" \
+              --resource-group "$RESOURCE_GROUP" \
+              --job-execution-name "$execution" \
+              --query properties.status \
+              --output tsv)
+            case "$status" in
+              Succeeded)
+                capture_temporal_startup_evidence
+                break
+                ;;
+              Failed|Stopped)
+                capture_temporal_startup_evidence
+                cat wc124-temporal-startup.log >&2
+                echo "Temporal startup qualification failed: $status" >&2
+                exit 1
+                ;;
+              Processing|Running) ;;
+              Unknown) if [ "$attempt" -le 6 ]; then sleep 10; continue; fi ;;&
+              *)
+                capture_temporal_startup_evidence
+                echo "Temporal startup qualification returned unknown status: ${status:-<empty>}" >&2
+                exit 1
+                ;;
+            esac
+            test "$attempt" != 60 || {
+              capture_temporal_startup_evidence
+              echo "Temporal startup qualification timed out with status: $status" >&2
+              exit 1
+            }
+            sleep 10
+          done
+          sed -n -E 's/^[^ ]+ stdout F ?//p' wc124-temporal-startup.log \
+            | grep -F '"schema":"waooaw.wc124-temporal-startup/v1"' \
+            | tail -1 > wc124-temporal-startup-result.json
+          jq -e '
+            .status == "passed"
+            and .qualification_seconds >= 60
+            and .max_waiting_clients == 0
+            and .max_wait_seconds == 0
+            and .minimum_postgresql_headroom >= 5
+          ' wc124-temporal-startup-result.json > /dev/null
+          if grep -Eq 'driver: bad connection|query_wait_timeout|pooler error' wc124-temporal-startup.log; then
+            echo "Temporal startup log contains a pool failure" >&2
+            exit 1
+          fi
+          start_time=$(jq -er '.properties.startTime' wc124-temporal-startup-execution.json)
+          end_time=$(jq -er '.properties.endTime' wc124-temporal-startup-execution.json)
+          workspace_id=$(az monitor log-analytics workspace show \
+            --resource-group "$RESOURCE_GROUP" \
+            --workspace-name "law-waooaw-${TARGET_ENVIRONMENT}" \
+            --query customerId \
+            --output tsv)
+          timeout_events=$(az monitor log-analytics query \
+            --workspace "$workspace_id" \
+            --analytics-query "
+              ContainerAppConsoleLogs_CL
+              | where TimeGenerated between (datetime($start_time) .. datetime($end_time))
+              | where ContainerAppName_s == 'ca-${TARGET_ENVIRONMENT}-pgbouncer'
+              | where Log_s contains 'query_wait_timeout'
+              | summarize count()
+            " \
+            --query 'tables[0].rows[0][0]' \
+            --output tsv)
+          case "$timeout_events" in ''|*[!0-9]*) echo "Malformed PgBouncer timeout evidence" >&2; exit 1 ;; esac
+          test "$timeout_events" = 0
+          jq \
+            --arg execution "$execution" \
+            --arg start_time "$start_time" \
+            --arg end_time "$end_time" \
+            --argjson pool_size 8 \
+            --argjson sql_max_conns 1 \
+            --argjson query_wait_timeout_events "$timeout_events" \
+            '{
+              schema: "waooaw.wc124-temporal-pool-evidence/v1",
+              execution: $execution,
+              observation: {start_time: $start_time, end_time: $end_time},
+              temporal_pool_size_per_database: $pool_size,
+              sql_max_connections_per_store_per_service: $sql_max_conns,
+              qualification_seconds,
+              max_waiting_clients,
+              max_wait_seconds,
+              minimum_postgresql_headroom,
+              query_wait_timeout_events: $query_wait_timeout_events,
+              status
+            }' wc124-temporal-startup-result.json > wc124-temporal-pool-evidence.json
+
       - name: Verify migration evidence before application activation
         if: inputs.apply
         env:
@@ -2761,11 +2950,29 @@ jobs:
           test "$(jq -r '.properties.status' wc124-pgbouncer-preflight-execution.json)" = Succeeded
           test "$(jq -r '.properties.status' wc124-billing-migration-execution.json)" = Succeeded
           test "$(jq -r '.status' wc124-reconciliation-authority.json)" = temporary-authority-revoked
+          test "$(jq -r '.identity_schema.status' wc124-db-provisioner-result.json)" = passed
           if [ "$TARGET_ENVIRONMENT" = demo ]; then
             expected_components='["keycloak","temporal"]'
+            test "$(jq -r '.status' wc124-temporal-pool-evidence.json)" = passed
+            test "$(jq -r '.query_wait_timeout_events' wc124-temporal-pool-evidence.json)" = 0
+            test "$(jq -r '.qualification_seconds' wc124-temporal-pool-evidence.json)" -ge 60
           else
             expected_components='["keycloak"]'
           fi
+          evidence_arguments=(
+            --environment "$TARGET_ENVIRONMENT"
+            --identity wc124-db-provisioner-result.json
+            --identity-execution wc124-db-provisioner-execution.json
+            --output wc124-pre-activation-evidence.json
+          )
+          if [ "$TARGET_ENVIRONMENT" = demo ]; then
+            evidence_arguments+=(
+              --temporal wc124-temporal-pool-evidence.json
+              --temporal-execution wc124-temporal-startup-execution.json
+            )
+          fi
+          python3 scripts/wc124_pre_activation_evidence.py "${evidence_arguments[@]}"
+          test "$(jq -r '.status' wc124-pre-activation-evidence.json)" = accepted-for-activation
           jq -e \
             --arg environment "$TARGET_ENVIRONMENT" \
             --argjson expected "$expected_components" \
@@ -2779,8 +2986,15 @@ jobs:
             --arg pgbouncer_execution "$(jq -er '.name' wc124-pgbouncer-preflight-execution.json)" \
             --arg billing_execution "$(jq -er '.name' wc124-billing-migration-execution.json)" \
             --arg authority_evidence_sha256 "$(sha256sum wc124-reconciliation-authority.json | cut -d ' ' -f 1)" \
+            --arg identity_evidence_sha256 "$(sha256sum wc124-db-provisioner-result.json | cut -d ' ' -f 1)" \
+            --arg pre_activation_evidence_sha256 "$(sha256sum wc124-pre-activation-evidence.json | cut -d ' ' -f 1)" \
             --arg vendor_evidence_sha256 "$(sha256sum wc124-vendor-migrations.json | cut -d ' ' -f 1)" \
             --arg billing_evidence_sha256 "$(sha256sum wc124-billing-migration-execution.json | cut -d ' ' -f 1)" \
+            --arg temporal_evidence_sha256 "$(
+              if [ -f wc124-temporal-pool-evidence.json ]; then
+                sha256sum wc124-temporal-pool-evidence.json | cut -d ' ' -f 1
+              fi
+            )" \
             '{
               schema: "waooaw.wc124-migration-acceptance/v1",
               environment: $environment,
@@ -2789,8 +3003,13 @@ jobs:
               billing_execution: $billing_execution,
               evidence_sha256: {
                 reconciliation_authority: $authority_evidence_sha256,
+                identity_schema: $identity_evidence_sha256,
+                pre_activation_gates: $pre_activation_evidence_sha256,
                 vendor_migrations: $vendor_evidence_sha256,
-                billing_migration: $billing_evidence_sha256
+                billing_migration: $billing_evidence_sha256,
+                temporal_pool: (
+                  if $temporal_evidence_sha256 == "" then null else $temporal_evidence_sha256 end
+                )
               }
             }' > wc124-migration-acceptance.json
 
@@ -2982,6 +3201,69 @@ jobs:
           fi
           echo "::error::Workload apply failed; managed resources were preserved for reconciliation"
 
+      - name: Ensure zero WC-124 database authority on terminal path
+        if: always() && inputs.apply && steps.database-transition.outputs.revocation_required == 'true'
+        working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
+        env:
+          ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
+        run: |
+          set -euo pipefail
+          terraform init -input=false \
+            -backend-config="resource_group_name=$TFSTATE_RESOURCE_GROUP" \
+            -backend-config="storage_account_name=$TFSTATE_STORAGE_ACCOUNT" \
+            -backend-config="container_name=$TFSTATE_CONTAINER" \
+            -backend-config="use_oidc=true" \
+            -backend-config="use_azuread_auth=true"
+          export TF_VAR_deployment_client_id
+          TF_VAR_deployment_client_id=$(terraform output -raw deployment_client_id)
+          terraform plan -input=false -lock-timeout=5m \
+            -var="postgresql_password_auth_enabled=true" \
+            -var="database_bootstrap_admin_enabled=false" \
+            -var="database_provisioner_vault_access_enabled=false" \
+            -out=foundation-terminal-authority-removal.tfplan
+          terraform show -json foundation-terminal-authority-removal.tfplan \
+            > foundation-terminal-authority-removal.json
+          python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
+            --scope foundation \
+            --transition wc124-schema-reconciliation \
+            --plan foundation-terminal-authority-removal.json
+          terraform apply -input=false -auto-approve foundation-terminal-authority-removal.tfplan
+          resource_group="waooaw-${{ inputs.environment }}-rg"
+          server_name="psql-waooaw-${{ inputs.environment }}-state"
+          provisioner_principal_id=$(az identity show \
+            --resource-group "$resource_group" \
+            --name "id-waooaw-${{ inputs.environment }}-db-provisioner" \
+            --query principalId \
+            --output tsv)
+          vault_id=$(az keyvault show \
+            --resource-group "$resource_group" \
+            --name "kv-waooaw-${{ inputs.environment }}" \
+            --query id \
+            --output tsv)
+          bootstrap_admin_count=$(az postgres flexible-server microsoft-entra-admin list \
+            --resource-group "$resource_group" \
+            --server-name "$server_name" \
+            --query "[?principalName == 'id-waooaw-${{ inputs.environment }}-db-bootstrap'] | length(@)" \
+            --output tsv)
+          provisioner_vault_role_count=$(az role assignment list \
+            --assignee-object-id "$provisioner_principal_id" \
+            --scope "$vault_id" \
+            --query "[?roleDefinitionName == 'Key Vault Secrets Officer'] | length(@)" \
+            --output tsv)
+          test "$bootstrap_admin_count" = 0
+          test "$provisioner_vault_role_count" = 0
+          jq -n \
+            --arg environment '${{ inputs.environment }}' \
+            --argjson bootstrap_admin_count "$bootstrap_admin_count" \
+            --argjson provisioner_vault_role_count "$provisioner_vault_role_count" \
+            '{
+              schema: "waooaw.wc124-terminal-authority-cleanup/v1",
+              environment: $environment,
+              bootstrap_admin_count: $bootstrap_admin_count,
+              provisioner_vault_role_count: $provisioner_vault_role_count,
+              status: "zero-authority-verified"
+            }' > "$GITHUB_WORKSPACE/wc124-terminal-authority-cleanup.json"
+
       - name: Delete private credential seeder
         if: always() && steps.credential-inventory.outputs.seeding_required == 'true'
         env:
@@ -3028,12 +3310,25 @@ jobs:
           if [ "$remaining" != 0 ]; then
             cleanup_failed=1
           fi
+          all_officer_assignments=$(az role assignment list \
+            --assignee-object-id "$principal_id" \
+            --scope "$KEY_VAULT_ID" \
+            --query "[?roleDefinitionName == 'Key Vault Secrets Officer'] | length(@)" \
+            --output tsv)
+          bootstrap_admin_count=$(az postgres flexible-server microsoft-entra-admin list \
+            --resource-group "$RESOURCE_GROUP" \
+            --server-name "psql-waooaw-${TARGET_ENVIRONMENT}-state" \
+            --query "[?principalName == 'id-waooaw-${TARGET_ENVIRONMENT}-db-bootstrap'] | length(@)" \
+            --output tsv)
+          if [ "$all_officer_assignments" != 0 ] || [ "$bootstrap_admin_count" != 0 ]; then
+            cleanup_failed=1
+          fi
           job_name="job-${TARGET_ENVIRONMENT}-wc124-db-provisioner"
           job_id=$(az containerapp job list \
             --resource-group "$RESOURCE_GROUP" \
             --query "[?name == '$job_name'].id | [0]" \
             --output tsv)
-          if [ -n "$job_id" ] && ! az containerapp job delete \
+          if [ "$cleanup_failed" = 0 ] && [ -n "$job_id" ] && ! az containerapp job delete \
               --name "$job_name" \
               --resource-group "$RESOURCE_GROUP" \
               --yes \
@@ -3118,6 +3413,7 @@ jobs:
             wc124-db-provisioner-job.json
             wc124-db-provisioner-execution.json
             wc124-db-provisioner-evidence.log
+            wc124-db-provisioner-result.json
             wc124-pgbouncer-preflight-job.json
             wc124-pgbouncer-preflight-job.before.json
             wc124-pgbouncer-preflight-job.patch.json
@@ -3127,6 +3423,7 @@ jobs:
             wc124-db-handoff-recovery-execution.json
             wc124-db-handoff-recovery-evidence.log
             wc124-bootstrap-revocation-evidence.json
+            wc124-terminal-authority-cleanup.json
             wc124-pgbouncer-metadata-reconciliation.json
             wc124-reconciliation-authority.json
             wc124-db-credential-inventory.json
@@ -3140,9 +3437,15 @@ jobs:
             wc124-temporal-migration-job.json
             wc124-temporal-migration-execution.json
             wc124-temporal-migration.log
+            wc124-temporal-startup-job.json
+            wc124-temporal-startup-execution.json
+            wc124-temporal-startup.log
+            wc124-temporal-startup-result.json
+            wc124-temporal-pool-evidence.json
             wc124-billing-migration-job.json
             wc124-billing-migration-execution.json
             wc124-billing-migration.log
+            wc124-pre-activation-evidence.json
             wc124-migration-acceptance.json
             demo-managed-certificates.json
             demo-managed-certificates.log
@@ -3152,6 +3455,10 @@ jobs:
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation.tfplan
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan-b.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan-b.tfplan
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-schema-reconciliation.json
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-schema-reconciliation.tfplan
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-terminal-authority-removal.json
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-terminal-authority-removal.tfplan
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-bootstrap-removal.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-bootstrap-removal.tfplan
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-plan.json

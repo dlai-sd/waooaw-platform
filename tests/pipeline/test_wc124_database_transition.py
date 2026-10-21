@@ -34,7 +34,7 @@ def test_resolves_authorized_transition_states(
     assert transition.hold_reason is None
 
 
-def test_revocation_pending_preserves_provisioner_access_for_independent_verification() -> None:
+def test_revocation_pending_reconciles_schema_before_completing_revocation() -> None:
     transition = resolve_transition(
         server_exists=True,
         password_auth="Enabled",
@@ -42,10 +42,29 @@ def test_revocation_pending_preserves_provisioner_access_for_independent_verific
         provisioner_vault_role_count=1,
     )
 
-    assert transition.revocation_verification_required is True
+    assert transition.schema_reconciliation_required is True
+    assert transition.provisioner_required is True
+    assert transition.handoff_required is True
+    assert transition.revocation_verification_required is False
     assert transition.revocation_required is True
     assert transition.bootstrap_admin_enabled is False
     assert transition.provisioner_vault_access_enabled is True
+
+
+def test_revoked_state_requires_bounded_schema_reconciliation() -> None:
+    transition = resolve_transition(
+        server_exists=True,
+        password_auth="Enabled",
+        bootstrap_admin_count=0,
+        provisioner_vault_role_count=0,
+    )
+
+    assert transition.schema_reconciliation_required is True
+    assert transition.provisioner_required is True
+    assert transition.handoff_required is True
+    assert transition.revocation_required is True
+    assert transition.bootstrap_admin_enabled is False
+    assert transition.provisioner_vault_access_enabled is False
 
 
 @pytest.mark.parametrize(
