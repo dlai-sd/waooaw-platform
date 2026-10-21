@@ -1043,8 +1043,21 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     # Run 39460884155: a 5-minute maximum pinned a transient spike for the whole 3-minute retry
     # window; both gates must read the latest completed bucket and retry past one bucket.
     assert "--offset 5m" not in workflow
-    assert workflow.count('--query "value[0].timeseries[0].data[-1].maximum"') == 2
-    assert "for attempt in $(seq 1 36); do" in workflow
+    # Run 39534308490: both vendor migrations started together needed 8 free slots that Demo's
+    # 25-slot instance could not offer, and the gate idled 6 minutes before failing. Migrations now
+    # run as two sequential groups (Keycloak, then Temporal) that each need 4 slots, measured before
+    # the group starts; the pre-migration gate waits for the metric lag only after retiring a revision.
+    assert workflow.count('--query "value[0].timeseries[0].data[-1].maximum"') == 3
+    assert "for attempt in $(seq 1 36); do" not in workflow
+    assert "if [ \"$retired\" = '[]' ]; then max_attempts=3; else max_attempts=18; fi" in workflow
+    assert workflow.count("required_headroom=4") == 2
+    assert "required_headroom=8" not in workflow
+    assert "required_headroom_per_group: $required" in workflow
+    assert "require_group_headroom() {" in workflow
+    assert "run_migration_group keycloak keycloak" in workflow
+    migrations = workflow.split("run_migration_group keycloak keycloak", 1)[1]
+    assert migrations.index("require_group_headroom temporal") < migrations.index("run_migration_group temporal temporal")
+    assert "Insufficient PostgreSQL connection headroom for $group migration group" in workflow
     temporal = read_contract("modules/workload/main.tf").split('name  = "SQL_MAX_CONNS"', 1)[1]
     assert temporal.startswith('\n        value = "1"')
     assert 'name  = "SQL_MAX_IDLE_CONNS"\n        value = "1"' in temporal
