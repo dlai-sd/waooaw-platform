@@ -445,7 +445,9 @@ resource "azurerm_postgresql_flexible_server_configuration" "max_connections" {
 
   name      = "max_connections"
   server_id = azurerm_postgresql_flexible_server.persistent_state[0].id
-  value     = var.environment == "demo" ? "40" : "100"
+  # Demo stays on B1ms; 50 is Microsoft's documented default for that SKU (15 reserved, 35 usable).
+  # Run 39557651135 measured 26 steady-state backends against the former 25 usable slots.
+  value = var.environment == "demo" ? "50" : "100"
 }
 
 resource "azurerm_redis_cache" "auth_abuse" {

@@ -63,8 +63,18 @@ def test_pgbouncer_is_digest_pinned_private_and_zero_idle() -> None:
     assert 'name  = "PGBOUNCER_LISTEN_PORT"' in workload
     assert "external_enabled = false" in workload
     assert 'name = "DATABASES"' in workload
-    assert "waooaw_temporal = host=${var.postgresql_server_fqdn} port=5432 pool_mode=session" in workload
-    assert "waooaw_temporal_visibility = host=${var.postgresql_server_fqdn} port=5432 pool_mode=session" in workload
+    assert "waooaw_temporal = host=${var.postgresql_server_fqdn} port=5432 pool_mode=session pool_size=5" in workload
+    assert (
+        "waooaw_temporal_visibility = host=${var.postgresql_server_fqdn} port=5432 pool_mode=session pool_size=5"
+        in workload
+    )
+    # Demo pools are sized for one replica per application; run 39557651135 measured 26 steady-state
+    # backends against 25 usable slots with the former 8/2 pools and 300 s idle hold.
+    assert 'value = var.environment == "demo" ? "2" : "80"' in workload
+    assert 'value = var.environment == "demo" ? "0" : "20"' in workload
+    assert 'value = var.environment == "demo" ? "30" : "300"' in workload
+    assert 'value = var.environment == "demo" ? "2" : "5"' in workload
+    assert 'value = var.environment == "demo" ? "50" : "100"' in read("modules/foundation/main.tf")
     assert 'name                = "pgbouncer-auth"' in workload
     assert 'storage_type = "Secret"' in workload
     assert 'name  = "DATABASES_DBNAME"' not in workload

@@ -909,8 +909,8 @@ resource "azurerm_container_app" "pgbouncer" {
         name = "DATABASES"
         value = join(",", concat(
           var.environment == "demo" ? [
-            "waooaw_temporal = host=${var.postgresql_server_fqdn} port=5432 pool_mode=session",
-            "waooaw_temporal_visibility = host=${var.postgresql_server_fqdn} port=5432 pool_mode=session",
+            "waooaw_temporal = host=${var.postgresql_server_fqdn} port=5432 pool_mode=session pool_size=5",
+            "waooaw_temporal_visibility = host=${var.postgresql_server_fqdn} port=5432 pool_mode=session pool_size=5",
           ] : [],
           ["* = host=${var.postgresql_server_fqdn} port=5432"],
         ))
@@ -936,12 +936,15 @@ resource "azurerm_container_app" "pgbouncer" {
         value = var.environment == "demo" ? "40" : "80"
       }
       env {
+        # Demo serves one replica per application to a handful of users; its transaction pools hold
+        # two warm backends per role and release idle ones after 30 s. Run 39557651135 measured a
+        # healthy Demo at 26 steady-state backends with 8/2 pools and a 300 s idle hold.
         name  = "PGBOUNCER_DEFAULT_POOL_SIZE"
-        value = var.environment == "demo" ? "8" : "80"
+        value = var.environment == "demo" ? "2" : "80"
       }
       env {
         name  = "PGBOUNCER_RESERVE_POOL_SIZE"
-        value = var.environment == "demo" ? "2" : "20"
+        value = var.environment == "demo" ? "0" : "20"
       }
       env {
         name  = "PGBOUNCER_RESERVE_POOL_TIMEOUT"
@@ -957,7 +960,7 @@ resource "azurerm_container_app" "pgbouncer" {
       }
       env {
         name  = "PGBOUNCER_SERVER_IDLE_TIMEOUT"
-        value = "300"
+        value = var.environment == "demo" ? "30" : "300"
       }
       env {
         name  = "PGBOUNCER_SERVER_LIFETIME"
@@ -1800,7 +1803,7 @@ resource "azurerm_container_app" "temporal" {
         value = "true"
       }
       # Temporal pools session-mode connections through PgBouncer against the single provisioned
-      # instance (Demo: max_client_conn 40, server max_connections 40). The image default of 20
+      # instance (Demo: max_client_conn 40, server max_connections 50). The image default of 20
       # connections per store, per internal service (frontend/history/matching/worker x default +
       # visibility), exhausts both and starves every other runtime; bound each pool to 1. With 2 the
       # Demo steady state measured 28-29 backends against 25 ordinary slots (run 39460884155).
@@ -2026,7 +2029,7 @@ resource "azurerm_container_app" "keycloak" {
       }
       env {
         name  = "KC_DB_POOL_MAX_SIZE"
-        value = "5"
+        value = var.environment == "demo" ? "2" : "5"
       }
       env {
         name  = "KC_SPI_CONNECTIONS_JPA_QUARKUS_MIGRATION_STRATEGY"

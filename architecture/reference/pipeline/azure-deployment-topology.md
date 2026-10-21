@@ -281,8 +281,8 @@ backend key, state lineage/serial, policy result, plan JSON digest, and saved-pl
     The decision is retained as `wc124-connection-budget.json`.
     Vendor migrations then run as two sequential groups, Keycloak first and Demo Temporal second,
     and the second group starts only after the bucket again shows the per-group headroom
-    (`groups` in `wc124-vendor-migrations.json`); Demo's 25 usable slots cannot host both pools
-    at once.
+    (`groups` in `wc124-vendor-migrations.json`); Demo's 35 usable slots are not assumed to host
+    both pools at once.
 13. Keycloak, Temporal, and Billing retain the exact ACA job definition, execution record, and
     sanitized console log. A timeout, `Failed`, `Stopped`, unknown status, digest mismatch,
     unresolved secret placeholder,
@@ -291,23 +291,26 @@ backend key, state lineage/serial, policy result, plan JSON digest, and saved-pl
 
 ### Demo connection budget
 
-The Demo instance is `B_Standard_B1ms` with `max_connections = 40`. Azure Flexible Server reserves
-`superuser_reserved_connections = 10` and `reserved_connections = 5`, so **25 slots** serve every
-ordinary role. Any pool that is not bounded below can exhaust the instance; the symptom is
+The Demo instance is `B_Standard_B1ms` with `max_connections = 50` (Microsoft's documented default
+for the SKU; it was pinned to 40 until run 39557651135 measured a fully healthy Demo at 26 backends
+against 25 usable slots). Azure Flexible Server reserves `superuser_reserved_connections = 10` and
+`reserved_connections = 5`, so **35 slots** serve every ordinary role. Any pool that is not bounded below can exhaust the instance; the symptom is
 `FATAL: remaining connection slots are reserved for roles with privileges of the
 "pg_use_reserved_connections" role` in whichever component connects last.
 
 | Consumer | Route | Bound | Source |
 |---|---|---|---|
-| PgBouncer (all application runtimes, Billing migrator) | server pools | `max_client_conn 40`, `default_pool_size 8`, `reserve_pool_size 2` | `workload/main.tf` PgBouncer env |
-| Temporal runtime | PgBouncer session pools | `SQL_MAX_CONNS 1` / `SQL_MAX_IDLE_CONNS 1` per store per internal service (<= 8 backends; 2 measured 28-29 total in run 39460884155) | `workload/main.tf` Temporal env |
-| Keycloak migration job and runtime | direct to the instance | Agroal `KC_DB_POOL_INITIAL_SIZE 1`, `MIN_SIZE 1`, `MAX_SIZE 5` | `workload/main.tf` Keycloak env |
+| PgBouncer (all application runtimes, Billing migrator) | server pools | `max_client_conn 40`, `default_pool_size 2`, `reserve_pool_size 0`, `server_idle_timeout 30` (Demo; 8/2/300 measured 26 total in run 39557651135) | `workload/main.tf` PgBouncer env |
+| Temporal runtime | PgBouncer session pools (`pool_size 5` per store) | `SQL_MAX_CONNS 1` / `SQL_MAX_IDLE_CONNS 1` per store per internal service (<= 8 backends; 2 measured 28-29 total in run 39460884155) | `workload/main.tf` Temporal env |
+| Keycloak migration job (direct) and runtime (PgBouncer) | see Route | Agroal `KC_DB_POOL_INITIAL_SIZE 1`, `MIN_SIZE 1`, `MAX_SIZE 5` (runtime: 2 on Demo) | `workload/main.tf` Keycloak env |
 | CE, BP, web, Billing runtime | PgBouncer transaction pools | one backend each at idle; bounded by `default_pool_size` | observed in local activation |
 | Headroom required before vendor migrations | — | >= 8 free usable slots (measured, not inferred) | workflow gate |
 
-Local activation of the complete Demo estate uses 16 of 25 usable slots. Raising `max_connections`
-is not a substitute for bounding pools: it costs memory on the smallest SKU and hides the defect
-until the next unbounded consumer appears.
+Local activation of the complete Demo estate used 16 of 25 usable slots before the pool
+reduction. Raising `max_connections` is not a substitute for bounding pools: it costs memory on the
+smallest SKU and hides the defect until the next unbounded consumer appears; 50 is the SKU default,
+not a relaxation beyond it. The post-activation budget step (`wc124-post-activation-budget.json`)
+records the live steady-state count after each Demo run.
 
 ### Local pre-qualification harnesses
 
@@ -544,7 +547,7 @@ this path during WC-124 qualification.
 
 **Why did the Keycloak migration fail with "remaining connection slots are reserved"?**
 
-The Demo instance exposes 25 usable slots. A previous `ca-demo-temporal` revision from before the
+The Demo instance exposed 25 usable slots at the time (35 since `max_connections` moved to the B1ms default). A previous `ca-demo-temporal` revision from before the
 pool bounds stayed active while the new revision had zero replicas, so its default pools held the
 slots and Keycloak, which connects last and directly, was refused. The budget gate now retires
 stale revisions and requires measured headroom before any vendor migration starts, and the

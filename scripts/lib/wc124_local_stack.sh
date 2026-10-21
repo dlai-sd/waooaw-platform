@@ -8,8 +8,8 @@
 
 WC124_POSTGRES_IMAGE="pgvector/pgvector@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b"
 # Demo instance ceiling (foundation/main.tf max_connections; Azure Flexible Server reserves
-# superuser_reserved_connections=10 and reserved_connections=5), so 25 slots serve ordinary roles.
-WC124_PG_MAX_CONNECTIONS="${WC124_PG_MAX_CONNECTIONS:-40}"
+# superuser_reserved_connections=10 and reserved_connections=5), so 35 slots serve ordinary roles.
+WC124_PG_MAX_CONNECTIONS="${WC124_PG_MAX_CONNECTIONS:-50}"
 WC124_PG_SUPERUSER_RESERVED="${WC124_PG_SUPERUSER_RESERVED:-10}"
 WC124_PG_RESERVED="${WC124_PG_RESERVED:-5}"
 WC124_PG_USABLE_CONNECTIONS=$((WC124_PG_MAX_CONNECTIONS - WC124_PG_SUPERUSER_RESERVED - WC124_PG_RESERVED))
@@ -155,8 +155,8 @@ wc124_start_pgbouncer() {
   # Database map mirrors the Demo PgBouncer: Temporal databases pool per session, all else per transaction.
   cat > "$WC124_WORKDIR/pgbouncer.ini" <<EOF
 [databases]
-waooaw_temporal = host=$WC124_POSTGRES port=5432 pool_mode=session
-waooaw_temporal_visibility = host=$WC124_POSTGRES port=5432 pool_mode=session
+waooaw_temporal = host=$WC124_POSTGRES port=5432 pool_mode=session pool_size=5
+waooaw_temporal_visibility = host=$WC124_POSTGRES port=5432 pool_mode=session pool_size=5
 * = host=$WC124_POSTGRES port=5432
 [pgbouncer]
 listen_addr = 0.0.0.0
@@ -166,8 +166,9 @@ auth_file = /etc/pgbouncer/userlist.txt
 pool_mode = transaction
 # Demo limits (workload/main.tf PGBOUNCER_* for environment == "demo").
 max_client_conn = 40
-default_pool_size = 8
-reserve_pool_size = 2
+default_pool_size = 2
+reserve_pool_size = 0
+server_idle_timeout = 30
 ignore_startup_parameters = extra_float_digits
 EOF
   chmod 644 "$WC124_WORKDIR/pgbouncer.ini" "$WC124_WORKDIR/userlist.txt"
