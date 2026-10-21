@@ -96,6 +96,28 @@ def test_fails_closed_on_activation_failed_without_waiting_for_the_deadline():
     assert "ActivationFailed" in failed["reason"]
 
 
+def test_scaled_to_zero_apps_are_ready_but_temporal_must_hold_a_replica():
+    # Demo runs ce, pr, ai-runtime, billing-engine and dma with min_replicas=0; Azure reports
+    # their idle latest revision as ScaledToZero/Healthy, never Running.
+    azure = FakeAzure({
+        "ca-demo-billing-engine": [
+            {"latest": "ca-demo-billing-engine--r74", "ready": "ca-demo-billing-engine--r74",
+             "running": "ScaledToZero", "health": "Healthy", "replicas": 0},
+        ],
+        "ca-demo-temporal": [
+            {"latest": "ca-demo-temporal--r9", "ready": "ca-demo-temporal--r9",
+             "running": "ScaledToZero", "health": "Healthy", "replicas": 0},
+        ],
+    })
+    clock, sleep = _clock()
+    result = readiness.evaluate("rg", "demo", timeout_seconds=30, interval_seconds=15,
+                                run_az=azure, clock=clock, sleep=sleep, log=lambda _: None)
+    assert result["status"] == "failed"
+    assert result["not_ready"] == ["ca-demo-temporal"]
+    assert result["revisions"][0]["ready"] is True
+    assert "ScaledToZero" in result["revisions"][1]["reason"]
+
+
 def test_fails_when_the_bounded_wait_expires_while_still_processing():
     azure = FakeAzure({
         "ca-demo-business-platform": [

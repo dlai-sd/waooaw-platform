@@ -18,6 +18,7 @@ from goal006_live_inventory import (
     DEMO_TEMPORAL_IMAGE,
     IDENTITY_EDGE_IMAGE,
     KEYCLOAK_IMAGE,
+    PGBOUNCER_IMAGE,
     release_app_name,
 )
 from goal006_registry_manifest import RELEASE_MEMBERS
@@ -71,6 +72,7 @@ def container_apps(manifest: dict[str, object]) -> list[dict[str, object]]:
         "identity-edge": IDENTITY_EDGE_IMAGE,
         "temporal": DEMO_TEMPORAL_IMAGE,
         "auth-redis": AUTH_REDIS_IMAGE,
+        "pgbouncer": PGBOUNCER_IMAGE,
     }
     release_apps = [
         {

@@ -74,6 +74,13 @@ def test_live_inventory_requires_pinned_identity_dependencies(monkeypatch: pytes
             "provisioningState": "Succeeded",
         }
     )
+    inventory.append(
+        {
+            "name": "ca-demo-pgbouncer",
+            "image": goal006_live_inventory.PGBOUNCER_IMAGE,
+            "provisioningState": "Succeeded",
+        }
+    )
 
     assert goal006_live_inventory.validate_inventory("demo", {"images": images}, inventory) == []
     assert "LIVE_MEMBERSHIP_INVALID" in goal006_live_inventory.validate_inventory("demo", {"images": images}, inventory[:-1])

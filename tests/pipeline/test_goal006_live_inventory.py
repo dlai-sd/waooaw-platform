@@ -7,6 +7,7 @@ from goal006_live_inventory import (
     DEMO_TEMPORAL_IMAGE,
     IDENTITY_EDGE_IMAGE,
     KEYCLOAK_IMAGE,
+    PGBOUNCER_IMAGE,
     release_app_name,
     validate_inventory,
 )
@@ -83,6 +84,13 @@ def inventory(environment: str, release: dict[str, Any]) -> list[dict[str, str]]
     if environment in {"demo", "uat"}:
         live.append(
             {
+                "name": f"ca-{environment}-pgbouncer",
+                "image": PGBOUNCER_IMAGE,
+                "provisioningState": "Succeeded",
+            }
+        )
+        live.append(
+            {
                 "name": f"ca-{environment}-auth-redis",
                 "image": AUTH_REDIS_IMAGE,
                 "provisioningState": "Succeeded",
@@ -123,6 +131,22 @@ def test_environment_scoped_auth_redis_is_a_pinned_dependency_not_a_release_memb
 
     assert all(item["name"] != "ca-prod-auth-redis" for item in inventory("prod", release))
     assert "auth-redis" not in release["images"]
+
+
+def test_wc124_pgbouncer_is_a_pinned_dependency_in_demo_and_uat_only() -> None:
+    # PR 531 deployed ca-{env}-pgbouncer without adding it here, so a correct Demo deployment
+    # would have failed independent verification with LIVE_MEMBERSHIP_INVALID.
+    release = manifest()
+    for environment in ("demo", "uat"):
+        live = inventory(environment, release)
+        pooler = next(item for item in live if item["name"] == f"ca-{environment}-pgbouncer")
+        pooler["image"] = "pgbouncer/pgbouncer:latest"
+        assert f"ca-{environment}-pgbouncer:DIGEST_MISMATCH" in validate_inventory(environment, release, live)
+        live.remove(pooler)
+        assert "LIVE_MEMBERSHIP_INVALID" in validate_inventory(environment, release, live)
+
+    assert all(item["name"] != "ca-prod-pgbouncer" for item in inventory("prod", release))
+    assert "pgbouncer" not in release["images"]
 
 
 def test_missing_extra_or_digest_mismatched_member_fails() -> None:

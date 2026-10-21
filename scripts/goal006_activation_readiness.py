@@ -94,12 +94,11 @@ def observe_revision(resource_group: str, app: str, run_az: Callable[[list[str]]
     )
     running = revision.get("running")
     health = revision.get("health")
-    ready = (
-        revision.get("active") is not False
-        and running in {"Running", "RunningAtMaxScale"}
-        and health == "Healthy"
-        and shown.get("ready") == latest
-    )
+    # Mirror scripts/goal006_verify_deployment.sh: a min_replicas=0 app (Demo ce, pr, ai-runtime,
+    # billing-engine, dma) idles as ScaledToZero and is still Healthy once Azure promoted it to
+    # latestReadyRevisionName; only Temporal must hold a replica.
+    settled = running in {"Running", "RunningAtMaxScale"} or (running == "ScaledToZero" and not app.endswith("-temporal"))
+    ready = revision.get("active") is not False and settled and health == "Healthy" and shown.get("ready") == latest
     observation.update(
         {
             "running_state": running,
