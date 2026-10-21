@@ -541,6 +541,36 @@ def test_apply_generates_internal_activation_bundle_after_both_plans() -> None:
     assert "wc124-lifecycle-authorization-record.json" in WORKFLOW
 
 
+def test_identity_catalog_evidence_blocks_activation_independently() -> None:
+    open_authority = WORKFLOW.index("Open bounded WC-124 schema reconciliation authority")
+    provisioner = WORKFLOW.index("Run WC-124 database provisioner")
+    verify = WORKFLOW.index("Verify migration evidence before application activation")
+    activation = WORKFLOW.index("Apply application activation")
+
+    assert "schema_reconciliation_required" in WORKFLOW
+    assert "wc124-schema-reconciliation" in WORKFLOW
+    assert '.identity_schema.status == "passed"' in WORKFLOW
+    assert "wc124-db-provisioner-result.json" in WORKFLOW
+    assert "scripts/wc124_pre_activation_evidence.py" in WORKFLOW
+    assert open_authority < provisioner < verify < activation
+
+
+def test_temporal_pool_evidence_blocks_activation_independently() -> None:
+    migrations = WORKFLOW.index("Run vendor schema migrations against private PostgreSQL")
+    qualification = WORKFLOW.index("Qualify exact Temporal startup through PgBouncer")
+    verify = WORKFLOW.index("Verify migration evidence before application activation")
+    activation = WORKFLOW.index("Apply application activation")
+
+    assert "job-${TARGET_ENVIRONMENT}-temporal-startup-qualification" in WORKFLOW
+    assert ".qualification_seconds >= 60" in WORKFLOW
+    assert "query_wait_timeout_events" in WORKFLOW
+    assert "max_waiting_clients" in WORKFLOW
+    assert "minimum_postgresql_headroom" in WORKFLOW
+    assert "ContainerAppConsoleLogs_CL" in WORKFLOW
+    assert "wc124-temporal-pool-evidence.json" in WORKFLOW
+    assert migrations < qualification < verify < activation
+
+
 def test_plan_evidence_is_current_exact_run_and_cache_drift_fails_closed() -> None:
     foundation_plan = WORKFLOW.split("      - name: Terraform foundation plan", 1)[1].split(
         "      - name: Terraform foundation apply", 1
@@ -661,9 +691,9 @@ def test_private_seeder_retains_diagnostics_before_deletion() -> None:
 
 
 def test_job_polling_rejects_empty_and_unknown_statuses() -> None:
-    assert WORKFLOW.count("Processing|Running)") == 7
+    assert WORKFLOW.count("Processing|Running)") == 8
     assert WORKFLOW.count("Processing|Running|Waiting)") == 3
-    assert WORKFLOW.count("returned unknown status: ${status:-<empty>}") == 9
+    assert WORKFLOW.count("returned unknown status: ${status:-<empty>}") == 10
 
 
 def test_provisioner_replacement_waits_for_confirmed_deletion() -> None:
@@ -736,6 +766,24 @@ def test_reconciliation_failure_still_runs_both_cleanup_paths() -> None:
     assert "always() &&" in WORKFLOW.split("      - name: Delete WC-124 database provisioner", 1)[1].split(
         "        env:", 1
     )[0]
+
+
+def test_terminal_cleanup_forces_and_verifies_zero_database_authority() -> None:
+    cleanup = WORKFLOW.split("      - name: Ensure zero WC-124 database authority on terminal path", 1)[1].split(
+        "      - name: Delete private credential seeder", 1
+    )[0]
+    final = WORKFLOW.split("      - name: Delete WC-124 database provisioner", 1)[1].split(
+        "      - name: Retain persistent-state lifecycle execution evidence", 1
+    )[0]
+
+    assert "if: always()" in cleanup
+    assert 'database_bootstrap_admin_enabled=false' in cleanup
+    assert 'database_provisioner_vault_access_enabled=false' in cleanup
+    assert 'test "$bootstrap_admin_count" = 0' in cleanup
+    assert 'test "$provisioner_vault_role_count" = 0' in cleanup
+    assert "wc124-terminal-authority-cleanup.json" in cleanup
+    assert 'all_officer_assignments=$(az role assignment list' in final
+    assert '[ "$cleanup_failed" = 0 ] && [ -n "$job_id" ]' in final
 
 
 def test_cost_evidence_is_queried_once_and_reused_by_private_job() -> None:

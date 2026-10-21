@@ -908,8 +908,8 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert workflow.count('test "$actual_digest" = "$expected_digest"') == 2
     assert "--ghcr-packages-public-verified" in workflow
     assert workflow.index("scripts/goal006_ghcr_digest.py") < workflow.index("--ghcr-packages-public-verified")
-    assert workflow.count('-backend-config="use_oidc=true"') == 4
-    assert workflow.count('-backend-config="use_azuread_auth=true"') == 4
+    assert workflow.count('-backend-config="use_oidc=true"') == 6
+    assert workflow.count('-backend-config="use_azuread_auth=true"') == 6
     assert "Enforce selected environment authorization" in workflow
     assert "EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy.yaml@refs/heads/main" in workflow
     assert "BREAK_FIX" not in workflow
@@ -1011,7 +1011,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "az storage container show" not in workflow
     assert workflow.count('gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main"') == 1
     assert workflow.count("https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main") == 4
-    assert workflow.count("terraform apply -input=false -auto-approve") == 5
+    assert workflow.count("terraform apply -input=false -auto-approve") == 7
     assert "terraform apply -input=false -auto-approve foundation-bootstrap-removal.tfplan" in workflow
     assert "mcr.microsoft.com/azure-cli@sha256:" in workflow
     assert "https://mcr.microsoft.com/v2/$repository/manifests/$expected_digest" in workflow
@@ -1070,14 +1070,14 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "Insufficient PostgreSQL connection headroom for $group migration group" in workflow
     # Run 39539976383: a freshly started ACA job execution reports `Unknown` until its replica is
     # scheduled; every job poller must tolerate that for a bounded grace and fail only if it persists.
-    assert workflow.count("Processing|Running) ;;") == 7
-    assert workflow.count('Unknown) if [ "$attempt" -le 6 ]; then sleep 10; continue; fi ;;&') == 7
+    assert workflow.count("Processing|Running) ;;") == 8
+    assert workflow.count('Unknown) if [ "$attempt" -le 6 ]; then sleep 10; continue; fi ;;&') == 8
     temporal = read_contract("modules/workload/main.tf").split('name  = "SQL_MAX_CONNS"', 1)[1]
     assert temporal.startswith('\n        value = "1"')
     assert 'name  = "SQL_MAX_IDLE_CONNS"\n        value = "1"' in temporal
     for evidence in ("wc124-activation-readiness.json", "wc124-connection-budget-post-activation.json"):
         assert workflow.count(evidence) == 2, evidence  # produced once, uploaded once
-    assert workflow.count("if: inputs.apply") == 31
+    assert workflow.count("if: inputs.apply") == 32
     assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
     assert '--context "external_environment=$external_environment"' in workflow
     assert "if: inputs.apply || steps.foundation-cache.outputs.cache_hit != 'true'" in workflow

@@ -342,6 +342,10 @@ def test_foundation_plan_accepts_exact_wc124_plan_b_revocations() -> None:
     enforce_plan(wc124_plan_b(), "foundation", "wc124-plan-b")
 
 
+def test_foundation_plan_accepts_exact_wc124_schema_reconciliation_transition() -> None:
+    enforce_plan(wc124_plan_b(), "foundation", "wc124-schema-reconciliation")
+
+
 def test_foundation_standard_plan_rejects_wc124_plan_b_revocations() -> None:
     with pytest.raises(ValueError, match="delete or replacement"):
         enforce_plan(wc124_plan_b(), "foundation")

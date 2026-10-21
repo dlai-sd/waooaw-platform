@@ -47,6 +47,57 @@ APPLICATION_MIGRATION_ROLES = {
     "billing_migrator": "billing_owner",
     "web_session_migrator": "web_session_owner",
 }
+REQUIRED_IDENTITY_RELATIONS = (
+    "registrations",
+    "idempotency_ledger",
+    "accounts",
+    "login_methods",
+    "actor_bindings",
+    "memberships",
+)
+ACTOR_SUBJECT_POLICY_EXPRESSION = (
+    "(((actor_issuer)::text = (NULLIF(current_setting('app.identity_issuer'::text, true), "
+    "''::text) COLLATE \"C\")) AND ((actor_subject)::text = "
+    "(NULLIF(current_setting('app.identity_subject'::text, true), ''::text) COLLATE \"C\")))"
+)
+
+
+@dataclass(frozen=True)
+class PolicyContract:
+    roles: frozenset[str]
+    expression: str
+
+
+IDENTITY_POLICY_CONTRACT = {
+    "accounts": PolicyContract(
+        roles=frozenset(("business_app", "identity_resolver_owner")),
+        expression=("(EXISTS ( SELECT 1 FROM identity.actor_bindings actor WHERE (actor.account_id = accounts.account_id)))"),
+    ),
+    "actor_bindings": PolicyContract(
+        roles=frozenset(("business_app", "identity_resolver_owner")),
+        expression=ACTOR_SUBJECT_POLICY_EXPRESSION,
+    ),
+    "idempotency_ledger": PolicyContract(
+        roles=frozenset(("business_app",)),
+        expression=ACTOR_SUBJECT_POLICY_EXPRESSION,
+    ),
+    "login_methods": PolicyContract(
+        roles=frozenset(("business_app", "identity_resolver_owner")),
+        expression=(
+            "(EXISTS ( SELECT 1 FROM identity.actor_bindings actor WHERE "
+            "((actor.account_id = login_methods.account_id) AND "
+            "(actor.login_method_id = login_methods.login_method_id))))"
+        ),
+    ),
+    "memberships": PolicyContract(
+        roles=frozenset(("business_app", "identity_resolver_owner")),
+        expression=("(EXISTS ( SELECT 1 FROM identity.actor_bindings actor WHERE (actor.account_id = memberships.account_id)))"),
+    ),
+    "registrations": PolicyContract(
+        roles=frozenset(("business_app",)),
+        expression=ACTOR_SUBJECT_POLICY_EXPRESSION,
+    ),
+}
 
 
 @dataclass(frozen=True)
@@ -440,11 +491,7 @@ def apply_init_chain(
     *,
     force: bool = False,
 ) -> dict[str, list[str]]:
-    """Apply every changed init file in order and record its digest in the ledger.
-
-    Each file is idempotent by authoring standard (see ``wc124_init_chain_lint.py``), so a file
-    whose digest differs from the ledger is simply re-applied; unchanged files are skipped.
-    """
+    """Apply new init files and reject changed applied files unless repair is explicit."""
     ledger = read_init_chain_ledger(server_fqdn, bootstrap_name, access_token)
     outcome: dict[str, list[str]] = {"applied": [], "reapplied": [], "skipped": []}
     for path in files:
@@ -453,6 +500,12 @@ def apply_init_chain(
         if recorded == digest and not force:
             outcome["skipped"].append(path.name)
             continue
+        if recorded and not force:
+            raise ValueError(
+                f"init-chain integrity failure for already-applied migration {path.name}: "
+                "recorded digest differs; use the explicit force-init-chain recovery path only "
+                "after migration-specific repair review"
+            )
         psql(server_fqdn, bootstrap_name, APPLICATION_DATABASE, access_token, path.read_text(encoding="utf-8"))
         psql(
             server_fqdn,
@@ -468,6 +521,106 @@ def apply_init_chain(
     return outcome
 
 
+def verify_identity_schema(
+    server_fqdn: str,
+    bootstrap_name: str,
+    access_token: str,
+) -> dict[str, Any]:
+    relation_values = ", ".join(f"({sql_literal(name)})" for name in REQUIRED_IDENTITY_RELATIONS)
+    catalog_sql = f"""
+WITH required(relname) AS (VALUES {relation_values})
+SELECT required.relname,
+       classes.oid IS NOT NULL,
+       COALESCE(classes.relrowsecurity, false),
+       COALESCE(classes.relforcerowsecurity, false),
+       (SELECT count(*) FROM pg_policies
+        WHERE schemaname = 'identity' AND tablename = required.relname AND policyname = 'actor_scope'),
+       (SELECT count(*) FROM pg_policies
+        WHERE schemaname = 'identity' AND tablename = required.relname),
+       COALESCE(policy.permissive, ''),
+       COALESCE(policy.cmd, ''),
+       COALESCE(array_to_string(policy.roles, ','), ''),
+       COALESCE(regexp_replace(policy.qual, E'[\\t\\n\\r ]+', ' ', 'g'), ''),
+       COALESCE(regexp_replace(policy.with_check, E'[\\t\\n\\r ]+', ' ', 'g'), '')
+FROM required
+LEFT JOIN pg_namespace AS namespaces ON namespaces.nspname = 'identity'
+LEFT JOIN pg_class AS classes ON classes.relnamespace = namespaces.oid
+    AND classes.relname = required.relname AND classes.relkind IN ('r', 'p')
+LEFT JOIN pg_policies AS policy ON policy.schemaname = 'identity'
+    AND policy.tablename = required.relname AND policy.policyname = 'actor_scope'
+ORDER BY required.relname;
+"""  # noqa: S608 - relation names are fixed constants escaped by sql_literal.
+    output = psql(
+        server_fqdn,
+        bootstrap_name,
+        APPLICATION_DATABASE,
+        access_token,
+        catalog_sql,
+        tuples_only=True,
+    )
+    observed: dict[str, dict[str, Any]] = {}
+    for line in output.splitlines():
+        fields = line.split("\t")
+        if len(fields) != 11:
+            raise ValueError(f"invalid identity catalog evidence row: {line}")
+        (
+            name,
+            exists,
+            rls,
+            forced_rls,
+            actor_scope_count,
+            total_policy_count,
+            permissive,
+            command,
+            roles,
+            qual,
+            with_check,
+        ) = fields
+        contract = IDENTITY_POLICY_CONTRACT.get(name)
+        expected_roles = contract.roles if contract else frozenset()
+        expected_expression = contract.expression if contract else None
+        policy_definition_valid = (
+            actor_scope_count == "1"
+            and total_policy_count == "1"
+            and permissive == "PERMISSIVE"
+            and command == "ALL"
+            and set(filter(None, roles.split(","))) == expected_roles
+            and qual == expected_expression
+            and with_check == expected_expression
+        )
+        canonical_roles = ",".join(sorted(filter(None, roles.split(","))))
+        observed[name] = {
+            "exists": exists == "t",
+            "rls": rls == "t",
+            "forced_rls": forced_rls == "t",
+            "actor_scope_policy": policy_definition_valid,
+            "policy_definition_sha256": hashlib.sha256(
+                "\0".join((permissive, command, canonical_roles, qual, with_check)).encode()
+            ).hexdigest(),
+        }
+    failures = [
+        name
+        for name in REQUIRED_IDENTITY_RELATIONS
+        if name not in observed
+        or not all(observed[name][field] for field in ("exists", "rls", "forced_rls", "actor_scope_policy"))
+    ]
+    if failures:
+        raise ValueError("identity schema verification failed for required relations: " + ", ".join(failures))
+    return {
+        "schema": "identity",
+        "required_relations": list(REQUIRED_IDENTITY_RELATIONS),
+        "relations": observed,
+        "status": "passed",
+    }
+
+
+def expected_identity_policy_digest(name: str) -> str:
+    contract = IDENTITY_POLICY_CONTRACT[name]
+    roles = ",".join(sorted(contract.roles))
+    expression = contract.expression
+    return hashlib.sha256("\0".join(("PERMISSIVE", "ALL", roles, expression, expression)).encode()).hexdigest()
+
+
 def provision_postgresql(
     specs: tuple[CredentialSpec, ...],
     passwords: dict[str, str],
@@ -476,7 +629,7 @@ def provision_postgresql(
     init_directory: Path,
     *,
     force_init_chain: bool = False,
-) -> tuple[str, dict[str, list[str]]]:
+) -> tuple[str, dict[str, list[str]], dict[str, Any]]:
     database_access_token = access_token()
     role_sql = (init_directory / PRINCIPAL_BOOTSTRAP_NAME).read_text(encoding="utf-8")
     role_sql += "\n" + "\n".join(
@@ -555,11 +708,16 @@ ALTER DEFAULT PRIVILEGES FOR ROLE {sql_identifier(owner)} IN SCHEMA public
     GRANT EXECUTE ON FUNCTIONS TO {sql_identifier(runtime)};
 """
         psql(server_fqdn, bootstrap_name, database, database_access_token, vendor_sql)
+    identity_schema = verify_identity_schema(
+        server_fqdn,
+        bootstrap_name,
+        database_access_token,
+    )
     del database_access_token
     grant_digest = hashlib.sha256(
         b"\0".join(path.read_bytes() for path in [init_directory / PRINCIPAL_BOOTSTRAP_NAME, *application_files])
     ).hexdigest()
-    return grant_digest, init_chain
+    return grant_digest, init_chain, identity_schema
 
 
 def write_secrets(
@@ -653,7 +811,7 @@ def execute(arguments: argparse.Namespace) -> dict[str, Any]:
             "credentials": evidence,
         }
     azure_login(arguments.bootstrap_client_id)
-    grant_digest, init_chain = provision_postgresql(
+    grant_digest, init_chain, identity_schema = provision_postgresql(
         specs,
         passwords,
         arguments.server_fqdn,
@@ -684,6 +842,7 @@ def execute(arguments: argparse.Namespace) -> dict[str, Any]:
             "skipped": len(init_chain["skipped"]),
             "changed_files": init_chain["applied"] + init_chain["reapplied"],
         },
+        "identity_schema": identity_schema,
         "credentials": evidence,
     }
 

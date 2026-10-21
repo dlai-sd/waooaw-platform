@@ -63,11 +63,18 @@ def test_pgbouncer_is_digest_pinned_private_and_zero_idle() -> None:
     assert 'name  = "PGBOUNCER_LISTEN_PORT"' in workload
     assert "external_enabled = false" in workload
     assert 'name = "DATABASES"' in workload
-    assert "waooaw_temporal = host=${var.postgresql_server_fqdn} port=5432 pool_mode=session pool_size=5" in workload
+    assert "waooaw_temporal = host=${var.postgresql_server_fqdn} port=5432 pool_mode=session pool_size=8" in workload
     assert (
-        "waooaw_temporal_visibility = host=${var.postgresql_server_fqdn} port=5432 pool_mode=session pool_size=5"
+        "waooaw_temporal_visibility = host=${var.postgresql_server_fqdn} port=5432 pool_mode=session pool_size=8"
         in workload
     )
+    assert 'resource "azurerm_container_app_job" "temporal_startup_qualification"' in workload
+    assert '"qualification_seconds":60' in workload
+    assert "query_wait_timeout" in workload
+    assert 'name  = "PGBOUNCER_STATS_USERS"' in workload
+    assert "SHOW POOLS;" in workload
+    assert "max_waiting_clients" in workload
+    assert "minimum_postgresql_headroom" in workload
     # Demo pools are sized for one replica per application; run 39557651135 measured 26 steady-state
     # backends against 25 usable slots with the former 8/2 pools and 300 s idle hold.
     assert 'value = var.environment == "demo" ? "2" : "80"' in workload
@@ -127,7 +134,7 @@ def test_temporal_and_keycloak_use_pgbouncer_and_distinct_roles() -> None:
     assert 'resource "azurerm_container_app_job" "keycloak_migration"' in workload
     assert 'resource "azurerm_container_app_job" "temporal_migration"' in workload
     assert workload.count("replica_retry_limit          = 1") == 4
-    assert "replica_retry_limit          = 0" not in workload
+    assert workload.count("replica_retry_limit          = 0") == 1
     assert "sslmode=verify-full" in workload
     assert "--tls-ca-file /etc/ssl/certs/ca-certificates.crt" in workload
     assert 'name  = "KC_DB"' in workload

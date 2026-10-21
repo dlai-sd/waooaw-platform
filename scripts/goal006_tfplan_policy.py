@@ -59,7 +59,7 @@ def enforce_plan(plan: dict[str, Any], scope: str, transition: str = "standard")
     if scope == "workload" and destructive:
         cutover_violations = temporal_secret_role_cutover_violations(plan)
         destructive = [address for address in destructive if not (address == TEMPORAL_ROLE_ADDRESS and not cutover_violations)]
-    if scope == "foundation" and transition == "wc124-plan-b" and destructive:
+    if scope == "foundation" and transition in {"wc124-plan-b", "wc124-schema-reconciliation"} and destructive:
         destructive = [
             address
             for address in destructive
@@ -238,7 +238,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--plan", required=True, type=Path)
     parser.add_argument("--scope", required=True, choices=("foundation", "workload"))
-    parser.add_argument("--transition", default="standard", choices=("standard", "wc124-plan-b"))
+    parser.add_argument(
+        "--transition",
+        default="standard",
+        choices=("standard", "wc124-plan-b", "wc124-schema-reconciliation"),
+    )
     parser.add_argument("--output", type=Path)
     arguments = parser.parse_args()
     try:
@@ -246,7 +250,7 @@ def main() -> int:
         if not isinstance(plan, dict):
             raise ValueError("Terraform plan JSON must be an object")
         if arguments.transition != "standard" and arguments.scope != "foundation":
-            raise ValueError("WC-124 Plan B transition is valid only for foundation plans")
+            raise ValueError("WC-124 database transitions are valid only for foundation plans")
         enforce_plan(plan, arguments.scope, arguments.transition)
     except (OSError, json.JSONDecodeError, ValueError) as error:
         parser.error(str(error))

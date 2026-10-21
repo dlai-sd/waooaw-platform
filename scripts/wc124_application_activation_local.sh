@@ -146,7 +146,7 @@ wc124_track "$TEMPORAL"
 docker run -d --name "$TEMPORAL" --network "$WC124_NETWORK" \
   -e DB=postgres12 -e DB_PORT=5432 -e DBNAME=waooaw_temporal -e VISIBILITY_DBNAME=waooaw_temporal_visibility \
   -e POSTGRES_USER=temporal_runtime -e POSTGRES_PWD="$WC124_ROLE_PASSWORD" -e POSTGRES_SEEDS="$WC124_PGBOUNCER" \
-  -e SKIP_SCHEMA_SETUP=true -e SKIP_DB_CREATE=true -e SQL_MAX_CONNS=2 -e SQL_MAX_IDLE_CONNS=2 \
+  -e SKIP_SCHEMA_SETUP=true -e SKIP_DB_CREATE=true -e SQL_MAX_CONNS=1 -e SQL_MAX_IDLE_CONNS=1 \
   -e BIND_ON_IP=0.0.0.0 \
   --entrypoint /bin/bash "$TEMPORAL_IMAGE" -c 'set -euo pipefail
     export TEMPORAL_BROADCAST_ADDRESS="$(hostname -i | awk '"'"'{print $1}'"'"')"
@@ -233,6 +233,64 @@ docker run -d --name "$BILLING" --network "$WC124_NETWORK" \
 probe billing-engine "$BILLING" http "http://$BILLING:8140/health"
 
 probe temporal "$TEMPORAL" tcp 7233
+docker run --rm --network "$WC124_NETWORK" \
+  -e PGPASSWORD="$WC124_ROLE_PASSWORD" \
+  -e PGBOUNCER_HOST="$WC124_PGBOUNCER" \
+  "$WC124_POSTGRES_IMAGE" bash -c '
+    set -euo pipefail
+    max_waiting=0
+    max_wait_seconds=0
+    min_headroom=999
+    for sample in $(seq 1 60); do
+      psql --no-psqlrc --set ON_ERROR_STOP=1 --host "$PGBOUNCER_HOST" --port 5432 \
+        --username temporal_runtime --dbname pgbouncer --csv --command "SHOW POOLS;" > /tmp/pools.csv
+      waiting=$(awk -F, '"'"'
+        NR == 1 {
+          for (i = 1; i <= NF; i++) column[$i] = i
+          if (!("cl_waiting" in column)) exit 2
+          next
+        }
+        ($1 == "waooaw_temporal" || $1 == "waooaw_temporal_visibility") {
+          if ($(column["cl_waiting"]) > maximum) maximum = $(column["cl_waiting"])
+        }
+        END {print maximum + 0}
+      '"'"' /tmp/pools.csv)
+      wait_seconds=$(awk -F, '"'"'
+        NR == 1 {
+          for (i = 1; i <= NF; i++) column[$i] = i
+          if (!("maxwait" in column)) exit 2
+          next
+        }
+        ($1 == "waooaw_temporal" || $1 == "waooaw_temporal_visibility") {
+          if ($(column["maxwait"]) > maximum) maximum = $(column["maxwait"])
+        }
+        END {print maximum + 0}
+      '"'"' /tmp/pools.csv)
+      headroom=$(psql --no-psqlrc --set ON_ERROR_STOP=1 --host "$PGBOUNCER_HOST" --port 5432 \
+        --username temporal_runtime --dbname waooaw_temporal --tuples-only --no-align --command "
+          SELECT current_setting('"'"'max_connections'"'"')::int
+               - current_setting('"'"'superuser_reserved_connections'"'"')::int
+               - current_setting('"'"'reserved_connections'"'"')::int
+               - count(*)
+          FROM pg_stat_activity
+          WHERE backend_type = '"'"'client backend'"'"';
+        ")
+      if (( waiting > max_waiting )); then max_waiting=$waiting; fi
+      if (( wait_seconds > max_wait_seconds )); then max_wait_seconds=$wait_seconds; fi
+      if (( headroom < min_headroom )); then min_headroom=$headroom; fi
+      printf "sample=%d cl_waiting=%d maxwait=%d postgres_headroom=%d\n" \
+        "$sample" "$waiting" "$wait_seconds" "$headroom"
+      sleep 1
+    done
+    test "$max_waiting" = 0
+    test "$max_wait_seconds" = 0
+    test "$min_headroom" -ge 5
+    printf "max_waiting_clients=%d max_wait_seconds=%d minimum_postgresql_headroom=%d\n" \
+      "$max_waiting" "$max_wait_seconds" "$min_headroom"
+  ' > "$EVIDENCE_DIR/temporal-pool-samples.log"
+docker logs "$WC124_PGBOUNCER" > "$EVIDENCE_DIR/pgbouncer.log" 2>&1
+! grep -Eq 'query_wait_timeout|pooler error' "$EVIDENCE_DIR/pgbouncer.log" \
+  || { grep -E 'query_wait_timeout|pooler error' "$EVIDENCE_DIR/pgbouncer.log" >&2; exit 1; }
 # Professional Runtime must only start once the default namespace is registered; the client
 # otherwise stalls on an unknown namespace instead of retrying.
 temporal_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$TEMPORAL")
@@ -288,8 +346,8 @@ unexpected_roles=$(psql_admin -c "SELECT count(DISTINCT usename) FROM pg_stat_ac
 test "$unexpected_roles" = 0
 # Demo PgBouncer admits 40 clients and the server 50 backends; Temporal's session pools must leave headroom.
 temporal_backends=$(psql_admin -c "SELECT count(*) FROM pg_stat_activity WHERE usename = 'temporal_runtime'")
-# Upper bound: the two session pools, pool_size=5 each.
-test "$temporal_backends" -le 10 || { echo "temporal_runtime holds $temporal_backends backends (> 10)" >&2; exit 1; }
+# Upper bound: the two session pools, pool_size=8 each.
+test "$temporal_backends" -le 16 || { echo "temporal_runtime holds $temporal_backends backends (> 16)" >&2; exit 1; }
 # The whole activated estate must leave Keycloak's bounded pool (5) spare within the usable slots.
 total_backends=$(psql_admin -c "SELECT count(*) FROM pg_stat_activity WHERE backend_type = 'client backend' AND usename <> 'waooaw'")
 test $((WC124_PG_USABLE_CONNECTIONS - total_backends)) -ge 5 \
@@ -297,10 +355,17 @@ test $((WC124_PG_USABLE_CONNECTIONS - total_backends)) -ge 5 \
 test "$(wc124_backend_identity bp_runtime)" = bp_runtime
 # Server-side connection footprint per role, to compare against the Demo PgBouncer limits.
 backend_footprint=$(psql_admin -c "SELECT json_object_agg(usename, n) FROM (SELECT usename, count(*) AS n FROM pg_stat_activity WHERE datname LIKE 'waooaw%' AND usename <> 'waooaw' GROUP BY usename) s")
+pool_summary=$(tail -1 "$EVIDENCE_DIR/temporal-pool-samples.log")
+max_waiting=$(sed -nE 's/.*max_waiting_clients=([0-9]+).*/\1/p' <<< "$pool_summary")
+max_wait_seconds=$(sed -nE 's/.*max_wait_seconds=([0-9]+).*/\1/p' <<< "$pool_summary")
+minimum_headroom=$(sed -nE 's/.*minimum_postgresql_headroom=([0-9]+).*/\1/p' <<< "$pool_summary")
+test -n "$max_waiting" -a -n "$max_wait_seconds" -a -n "$minimum_headroom"
 
 jq -n \
   --arg fixture "$fixture_source" --arg backend_roles "$backend_roles" --argjson backend_footprint "${backend_footprint:-{\}}" \
   --argjson usable "$WC124_PG_USABLE_CONNECTIONS" --argjson total "$total_backends" --argjson stale "$stale_reproduced" \
+  --argjson max_waiting "$max_waiting" --argjson max_wait_seconds "$max_wait_seconds" \
+  --argjson minimum_headroom "$minimum_headroom" \
   --arg ce "${IMAGES[constitutional-engine]}" --arg bp "${IMAGES[business-platform]}" \
   --arg pr "${IMAGES[professional-runtime]}" --arg web "${IMAGES[web]}" --arg billing "${IMAGES[billing-engine]}" \
   '{schema: "waooaw.wc124-application-activation-local/v1", fixture: $fixture,
@@ -309,7 +374,10 @@ jq -n \
     probes: {constitutional_engine: "tcp:5002", business_platform: "http:/health/ready", billing_engine: "http:/health",
              professional_runtime: "http:/health", temporal: "tcp:7233 (loopback+network)", web: ["http:/api/health/live", "http:/api/health/ready"]},
     observed_backend_roles: ($backend_roles | split(",")), backend_connections_by_role: $backend_footprint,
-    pgbouncer_limits: {max_client_conn: 40, default_pool_size: 2, reserve_pool_size: 0, server_idle_timeout: 30, temporal_session_pool_size: 5},
+    pgbouncer_limits: {max_client_conn: 40, default_pool_size: 2, reserve_pool_size: 0, server_idle_timeout: 30, query_wait_timeout: 5, temporal_session_pool_size: 8},
+    temporal_startup_qualification: {seconds: 60, max_waiting_clients: $max_waiting,
+      max_wait_seconds: $max_wait_seconds, minimum_postgresql_headroom: $minimum_headroom,
+      query_wait_timeout_events: 0, status: "passed"},
     connection_budget: {usable_slots: $usable, backends_after_activation: $total, stale_pool_exhaustion_reproduced: $stale},
     status: "passed"}' \
   | tee "$EVIDENCE_DIR/result.json"

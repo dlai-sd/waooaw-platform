@@ -13,6 +13,7 @@ class Transition:
     state: str
     mutations_allowed: bool
     bootstrap_required: bool
+    schema_reconciliation_required: bool
     provisioner_required: bool
     plan_b_required: bool
     handoff_required: bool
@@ -29,6 +30,7 @@ def recovery_hold(reason: str) -> Transition:
         state="RECOVERY_HOLD",
         mutations_allowed=False,
         bootstrap_required=False,
+        schema_reconciliation_required=False,
         provisioner_required=False,
         plan_b_required=False,
         handoff_required=False,
@@ -61,6 +63,7 @@ def resolve_transition(
             state="PLAN_A",
             mutations_allowed=True,
             bootstrap_required=True,
+            schema_reconciliation_required=False,
             provisioner_required=True,
             plan_b_required=True,
             handoff_required=True,
@@ -76,6 +79,7 @@ def resolve_transition(
             state="PLAN_A",
             mutations_allowed=True,
             bootstrap_required=True,
+            schema_reconciliation_required=False,
             provisioner_required=True,
             plan_b_required=True,
             handoff_required=True,
@@ -91,6 +95,7 @@ def resolve_transition(
             state="PLAN_B_ENABLED",
             mutations_allowed=True,
             bootstrap_required=False,
+            schema_reconciliation_required=False,
             provisioner_required=True,
             plan_b_required=False,
             handoff_required=True,
@@ -106,10 +111,11 @@ def resolve_transition(
             state="REVOCATION_PENDING",
             mutations_allowed=True,
             bootstrap_required=False,
-            provisioner_required=False,
+            schema_reconciliation_required=True,
+            provisioner_required=True,
             plan_b_required=False,
-            handoff_required=False,
-            revocation_verification_required=True,
+            handoff_required=True,
+            revocation_verification_required=False,
             revocation_required=True,
             password_auth_enabled=True,
             bootstrap_admin_enabled=False,
@@ -121,11 +127,12 @@ def resolve_transition(
             state="REVOKED",
             mutations_allowed=True,
             bootstrap_required=False,
-            provisioner_required=False,
+            schema_reconciliation_required=True,
+            provisioner_required=True,
             plan_b_required=False,
-            handoff_required=False,
+            handoff_required=True,
             revocation_verification_required=False,
-            revocation_required=False,
+            revocation_required=True,
             password_auth_enabled=True,
             bootstrap_admin_enabled=False,
             provisioner_vault_access_enabled=False,

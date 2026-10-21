@@ -4,11 +4,11 @@
   "route": "pgbouncer-scram-per-role",
   "database_topology": "single-provisioned-instance",
   "images": {
-    "constitutional_engine": "waooaw/constitutional-engine:wc124local",
-    "business_platform": "waooaw/business-platform:wc124local",
-    "professional_runtime": "waooaw/professional-runtime:wc124local",
-    "web": "waooaw/web:wc124local",
-    "billing_engine": "waooaw/billing-engine:wc124asyncpg"
+    "constitutional_engine": "waooaw/constitutional-engine:wc124act1792577642",
+    "business_platform": "waooaw/business-platform:wc124act1792577642",
+    "professional_runtime": "waooaw/professional-runtime:wc124act1792577642",
+    "web": "waooaw/web:wc124act1792577642",
+    "billing_engine": "waooaw/billing-engine:wc124act1792577642"
   },
   "probes": {
     "constitutional_engine": "tcp:5002",
@@ -22,28 +22,35 @@
     ]
   },
   "observed_backend_roles": [
-    "billing_migrator",
-    "billing_runtime",
     "bp_runtime",
     "temporal_runtime",
     "web_session_app"
   ],
   "backend_connections_by_role": {
-    "billing_migrator": 1,
-    "billing_runtime": 1,
     "bp_runtime": 1,
-    "temporal_runtime": 13,
+    "temporal_runtime": 10,
     "web_session_app": 1
   },
   "pgbouncer_limits": {
     "max_client_conn": 40,
-    "default_pool_size": 8,
-    "reserve_pool_size": 2
+    "default_pool_size": 2,
+    "reserve_pool_size": 0,
+    "server_idle_timeout": 30,
+    "query_wait_timeout": 5,
+    "temporal_session_pool_size": 8
+  },
+  "temporal_startup_qualification": {
+    "seconds": 60,
+    "max_waiting_clients": 0,
+    "max_wait_seconds": 0,
+    "minimum_postgresql_headroom": 25,
+    "query_wait_timeout_events": 0,
+    "status": "passed"
   },
   "connection_budget": {
-    "usable_slots": 25,
-    "backends_after_activation": 17,
-    "stale_pool_exhaustion_reproduced": true
+    "usable_slots": 35,
+    "backends_after_activation": 12,
+    "stale_pool_exhaustion_reproduced": false
   },
   "status": "passed"
 }

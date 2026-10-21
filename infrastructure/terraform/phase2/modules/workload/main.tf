@@ -517,8 +517,8 @@ locals {
       WAOOAW_SERVER_SESSION_MODE            = var.web_session_mode
       # web reaches the provisioned instance through in-VNet PgBouncer, which terminates no TLS.
       # Without this, NODE_ENV=production makes postgres.js demand TLS and readiness never passes.
-      WEB_SESSION_DATABASE_SSL_MODE         = "disable"
-      WEB_SESSION_DEPLOY_VERSION            = var.web_session_deploy_version
+      WEB_SESSION_DATABASE_SSL_MODE = "disable"
+      WEB_SESSION_DEPLOY_VERSION    = var.web_session_deploy_version
       }, var.web_session_mode == "disabled" ? {} : {
       SESSION_HANDLE_DIGEST_WRITE_VERSION         = var.web_session_handle_digest_write_version
       WEB_SESSION_CONFIG_DIGEST                   = var.web_session_config_digest
@@ -909,8 +909,8 @@ resource "azurerm_container_app" "pgbouncer" {
         name = "DATABASES"
         value = join(",", concat(
           var.environment == "demo" ? [
-            "waooaw_temporal = host=${var.postgresql_server_fqdn} port=5432 pool_mode=session pool_size=5",
-            "waooaw_temporal_visibility = host=${var.postgresql_server_fqdn} port=5432 pool_mode=session pool_size=5",
+            "waooaw_temporal = host=${var.postgresql_server_fqdn} port=5432 pool_mode=session pool_size=8",
+            "waooaw_temporal_visibility = host=${var.postgresql_server_fqdn} port=5432 pool_mode=session pool_size=8",
           ] : [],
           ["* = host=${var.postgresql_server_fqdn} port=5432"],
         ))
@@ -922,6 +922,10 @@ resource "azurerm_container_app" "pgbouncer" {
       env {
         name  = "PGBOUNCER_AUTH_FILE"
         value = "/mnt/secrets/pgbouncer-auth"
+      }
+      env {
+        name  = "PGBOUNCER_STATS_USERS"
+        value = var.environment == "demo" ? "temporal_runtime" : ""
       }
       env {
         name  = "PGBOUNCER_POOL_MODE"
@@ -1517,6 +1521,176 @@ resource "azurerm_container_app_job" "temporal_migration" {
 
   depends_on = [
     azurerm_role_assignment.temporal_migration_database_secret,
+  ]
+}
+
+resource "azurerm_container_app_job" "temporal_startup_qualification" {
+  count = var.workload_enabled && var.environment == "demo" ? 1 : 0
+
+  name                         = "job-${var.environment}-temporal-startup-qualification"
+  location                     = var.location
+  resource_group_name          = var.resource_group_name
+  container_app_environment_id = var.container_app_environment_id
+  replica_retry_limit          = 0
+  replica_timeout_in_seconds   = 300
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.temporal[0].id]
+  }
+
+  secret {
+    name                = "postgres-password"
+    identity            = azurerm_user_assigned_identity.temporal[0].id
+    key_vault_secret_id = var.database_secret_uris["temporal"]
+  }
+
+  manual_trigger_config {
+    parallelism              = 1
+    replica_completion_count = 1
+  }
+
+  template {
+    container {
+      name    = "temporal-startup-qualification"
+      image   = "temporalio/auto-setup@sha256:98cdb6b5e02d64cb933864a9ba91cb66065eb320623a0dafdf44beba535bca88"
+      cpu     = 1
+      memory  = "2Gi"
+      command = ["/bin/bash", "-c"]
+      args = [<<-EOT
+        set -euo pipefail
+        log=/tmp/temporal-startup.log
+        export TEMPORAL_BROADCAST_ADDRESS="$(hostname -i | awk '{print $1}')"
+        export TEMPORAL_ADDRESS="127.0.0.1:7233"
+        /etc/temporal/entrypoint.sh autosetup >"$log" 2>&1 &
+        temporal_pid=$!
+        cleanup() {
+          kill "$temporal_pid" 2>/dev/null || true
+          wait "$temporal_pid" 2>/dev/null || true
+          cat "$log"
+        }
+        trap cleanup EXIT
+        ready=false
+        for attempt in $(seq 1 36); do
+          kill -0 "$temporal_pid"
+          if timeout 3 bash -c 'exec 3<>/dev/tcp/127.0.0.1/7233'; then
+            ready=true
+            break
+          fi
+          sleep 5
+        done
+        test "$ready" = true
+        samples=/tmp/pgbouncer-pool-samples.csv
+        max_waiting=0
+        max_wait_seconds=0
+        min_headroom=999
+        for sample in $(seq 1 60); do
+          kill -0 "$temporal_pid"
+          timeout 3 bash -c 'exec 3<>/dev/tcp/127.0.0.1/7233'
+          PGPASSWORD="$POSTGRES_PWD" psql --no-psqlrc --set ON_ERROR_STOP=1 \
+            --host "$POSTGRES_SEEDS" --port 5432 --username temporal_runtime \
+            --dbname pgbouncer --csv --command 'SHOW POOLS;' > "$samples"
+          waiting=$(awk -F, '
+            NR == 1 {
+              for (i = 1; i <= NF; i++) column[$i] = i
+              if (!("cl_waiting" in column)) exit 2
+              next
+            }
+            ($1 == "waooaw_temporal" || $1 == "waooaw_temporal_visibility") {
+              if ($(column["cl_waiting"]) > maximum) maximum = $(column["cl_waiting"])
+            }
+            END {print maximum + 0}
+          ' "$samples")
+          wait_seconds=$(awk -F, '
+            NR == 1 {
+              for (i = 1; i <= NF; i++) column[$i] = i
+              if (!("maxwait" in column)) exit 2
+              next
+            }
+            ($1 == "waooaw_temporal" || $1 == "waooaw_temporal_visibility") {
+              if ($(column["maxwait"]) > maximum) maximum = $(column["maxwait"])
+            }
+            END {print maximum + 0}
+          ' "$samples")
+          headroom=$(PGPASSWORD="$POSTGRES_PWD" psql --no-psqlrc --set ON_ERROR_STOP=1 \
+            --host "$POSTGRES_SEEDS" --port 5432 --username temporal_runtime \
+            --dbname waooaw_temporal --tuples-only --no-align --command "
+              SELECT current_setting('max_connections')::int
+                   - current_setting('superuser_reserved_connections')::int
+                   - current_setting('reserved_connections')::int
+                   - count(*)
+              FROM pg_stat_activity
+              WHERE backend_type = 'client backend';
+            ")
+          if (( waiting > max_waiting )); then max_waiting=$waiting; fi
+          if (( wait_seconds > max_wait_seconds )); then max_wait_seconds=$wait_seconds; fi
+          if (( headroom < min_headroom )); then min_headroom=$headroom; fi
+          printf 'WC124_POOL_SAMPLE sample=%d cl_waiting=%d maxwait=%d postgres_headroom=%d\n' \
+            "$sample" "$waiting" "$wait_seconds" "$headroom"
+          sleep 1
+        done
+        test "$max_waiting" = 0
+        test "$max_wait_seconds" = 0
+        test "$min_headroom" -ge 5
+        ! grep -Eq 'driver: bad connection|query_wait_timeout' "$log"
+        printf '{"schema":"waooaw.wc124-temporal-startup/v1","qualification_seconds":60,"max_waiting_clients":%d,"max_wait_seconds":%d,"minimum_postgresql_headroom":%d,"status":"passed"}\n' \
+          "$max_waiting" "$max_wait_seconds" "$min_headroom"
+      EOT
+      ]
+
+      env {
+        name  = "BIND_ON_IP"
+        value = "0.0.0.0"
+      }
+      env {
+        name  = "DB"
+        value = "postgres12"
+      }
+      env {
+        name  = "DB_PORT"
+        value = "5432"
+      }
+      env {
+        name  = "DBNAME"
+        value = "waooaw_temporal"
+      }
+      env {
+        name  = "VISIBILITY_DBNAME"
+        value = "waooaw_temporal_visibility"
+      }
+      env {
+        name  = "POSTGRES_USER"
+        value = "temporal_runtime"
+      }
+      env {
+        name        = "POSTGRES_PWD"
+        secret_name = "postgres-password"
+      }
+      env {
+        name  = "POSTGRES_SEEDS"
+        value = local.pgbouncer_host
+      }
+      env {
+        name  = "SKIP_SCHEMA_SETUP"
+        value = "true"
+      }
+      env {
+        name  = "SKIP_DB_CREATE"
+        value = "true"
+      }
+      env {
+        name  = "SQL_MAX_CONNS"
+        value = "1"
+      }
+      env {
+        name  = "SQL_MAX_IDLE_CONNS"
+        value = "1"
+      }
+    }
+  }
+
+  depends_on = [
+    azurerm_role_assignment.temporal_secret,
   ]
 }
 
