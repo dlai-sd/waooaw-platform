@@ -201,9 +201,9 @@ timestamps, and released downstream dependencies before diagnosing a scheduler w
 | 10. Dormant workload plan | Generate external configuration, set application activation false, import only accepted live resources, plan, policy-check, and provenance-bind | Current workload authorization evidence |
 | 11. Activation bundle | Validate foundation and workload plan binaries, JSON, provenance, policy, release, environment, workflow, backend, and state identity | Internal WC-124 activation bundle PASS |
 | 12. Dormant workload apply | Create dependencies, migration jobs, identities, secret references, and applications at zero replicas | No application traffic yet |
-| 13. Migrations | Inventory exact migration jobs, verify version-qualified Key Vault references, prove same-ACA PgBouncer DNS/TCP, reclaim the PostgreSQL connection budget (retire stale active revisions, require measured headroom), start Keycloak and Demo Temporal in parallel (independent databases) and then Billing, and retain executions plus sanitized logs | All required executions `Succeeded`; connection-budget record and persisted migration acceptance PASS |
+| 13. Migrations | Inventory exact migration jobs, verify version-qualified Key Vault references, prove same-ACA PgBouncer DNS/TCP, reclaim the PostgreSQL connection budget (retire stale active revisions, require measured per-group headroom), run Keycloak and then Demo Temporal as two sequential groups (each re-measured before it starts) and then Billing, and retain executions plus sanitized logs | All required executions `Succeeded`; connection-budget record and persisted migration acceptance PASS |
 | 14. Activation plan/apply | Require migration acceptance, set application activation true, create a fresh detailed-exit plan, policy and provenance record, recalculate and compare provenance immediately before apply, and retain the apply log | Only exact authorized activation plan applied with complete evidence |
-| 14a. Activation readiness | Poll every `ca-<environment>-*` application until its latest revision is `Running`/`Healthy` and is the latest ready revision (bounded 600 s), then re-measure the connection budget | `wc124-activation-readiness.json` `passed`; post-activation headroom >= 8 |
+| 14a. Activation readiness | Poll every `ca-<environment>-*` application until its latest revision is `Running`/`Healthy` and is the latest ready revision (bounded 600 s), then re-measure the connection budget | `wc124-activation-readiness.json` `passed`; post-activation headroom >= 4 (one migration group) |
 | 15. TLS and deployment evidence | Bind Demo managed certificates; verify structured SNI inventory; verify live inventory and transition/cleanup evidence; upload retained activation and TLS artifacts | Deployment engine success with no missing required evidence |
 | 16. Always-run cleanup | Runs whenever a broker execution actually started: stop private runner, remove registration/broker material, prove zero active executions (ARM `Succeeded` is authoritative when Log Analytics lags), revoke temporary cleanup federation | No residual runner or temporary trust |
 | 17. Independent verification | Runs only when the private apply reported success: validate trusted caller/control SHA, trusted release, Azure inventory, job, revision, domain, and application probes under verification identity | Independent PASS |
@@ -273,10 +273,15 @@ backend key, state lineage/serial, policy result, plan JSON digest, and saved-pl
     server's `max_connections`, `superuser_reserved_connections`, and `reserved_connections`,
     deactivates every non-latest active revision of `ca-<environment>-temporal`, `-keycloak`, and
     `-pgbouncer` (a stale revision keeps its pre-fix pools open and starves the migrator), then
-    polls the latest completed one-minute Azure Monitor `active_connections` bucket (not a 5 m
-    maximum, which a transient spike would pin for the whole retry window) for up to 6 min until
-    at least 8 usable slots are free.
+    reads the latest completed one-minute Azure Monitor `active_connections` bucket (not a 5 m
+    maximum, which a transient spike would pin for the whole retry window) and requires at least
+    4 usable slots, the budget of one migration group. It waits for the metric lag (up to 3 min)
+    only when it actually retired a revision; otherwise it fails fast after one fresh bucket.
     The decision is retained as `wc124-connection-budget.json`.
+    Vendor migrations then run as two sequential groups, Keycloak first and Demo Temporal second,
+    and the second group starts only after the bucket again shows the per-group headroom
+    (`groups` in `wc124-vendor-migrations.json`); Demo's 25 usable slots cannot host both pools
+    at once.
 13. Keycloak, Temporal, and Billing retain the exact ACA job definition, execution record, and
     sanitized console log. A timeout, `Failed`, `Stopped`, unknown status, digest mismatch,
     unresolved secret placeholder,
@@ -541,7 +546,8 @@ this path during WC-124 qualification.
 The Demo instance exposes 25 usable slots. A previous `ca-demo-temporal` revision from before the
 pool bounds stayed active while the new revision had zero replicas, so its default pools held the
 slots and Keycloak, which connects last and directly, was refused. The budget gate now retires
-stale revisions and requires measured headroom before any vendor migration starts.
+stale revisions and requires measured headroom before any vendor migration starts, and the
+migrations run one group at a time so a single group's budget (4 slots) is all that must be free.
 
 **Why does web readiness stay 503 for an hour after auth Redis is recreated?**
 

@@ -2472,28 +2472,36 @@ jobs:
             done < <(az containerapp revision list --resource-group "$RESOURCE_GROUP" --name "$app" \
               --query "[?properties.active && name != '$latest'].name" --output tsv)
           done
-          required_headroom=8
+          # Vendor migrations run one group at a time (Keycloak, then Demo Temporal), so the gate only
+          # needs the budget of a single group rather than both pools at once.
+          required_headroom=4
           # The gate reads the latest completed one-minute bucket, so a transient spike (provisioner
           # sessions, revision restarts) ages out within the retry window instead of pinning a 5m max.
-          for attempt in $(seq 1 36); do
+          # Retired revisions release their pools within the metric lag, so wait for that only when a
+          # revision was actually retired; otherwise nothing is about to change and the gate fails fast
+          # after one fresh bucket instead of idling for six minutes.
+          if [ "$retired" = '[]' ]; then max_attempts=3; else max_attempts=18; fi
+          for attempt in $(seq 1 "$max_attempts"); do
             active=$(az monitor metrics list --resource "$server_id" --metric active_connections \
               --interval PT1M --offset 2m --aggregation Maximum \
               --query "value[0].timeseries[0].data[-1].maximum" --output tsv 2>/dev/null || echo "")
             case "$active" in ''|None|null) active=0 ;; esac
             active=${active%.*}
             headroom=$((usable - active))
-            echo "PostgreSQL connections: max=$max_connections reserved=$((superuser_reserved + reserved)) usable=$usable active(latest 1m)=$active headroom=$headroom"
+            echo "PostgreSQL connections: max=$max_connections reserved=$((superuser_reserved + reserved)) usable=$usable active(latest 1m)=$active headroom=$headroom required=$required_headroom"
             if [ "$headroom" -ge "$required_headroom" ]; then break; fi
-            test "$attempt" != 36 || { echo "Insufficient PostgreSQL connection headroom for vendor migrations" >&2; exit 1; }
+            test "$attempt" != "$max_attempts" || { echo "Insufficient PostgreSQL connection headroom for vendor migrations" >&2; exit 1; }
             sleep 10
           done
           jq -n \
-            --arg environment "$TARGET_ENVIRONMENT" --arg server "$server_name" \
+            --arg environment "$TARGET_ENVIRONMENT" --arg server "$server_name" --arg server_id "$server_id" \
             --argjson max "$max_connections" --argjson reserved "$((superuser_reserved + reserved))" \
             --argjson usable "$usable" --argjson active "$active" --argjson retired "$retired" \
+            --argjson required "$required_headroom" \
             '{schema: "waooaw.wc124-connection-budget/v1", environment: $environment, server: $server,
-              max_connections: $max, reserved_connections: $reserved, usable_connections: $usable,
-              active_connections_latest_1m: $active, retired_revisions: $retired}' \
+              server_id: $server_id, max_connections: $max, reserved_connections: $reserved,
+              usable_connections: $usable, active_connections_latest_1m: $active,
+              required_headroom_per_group: $required, retired_revisions: $retired}' \
             | tee wc124-connection-budget.json
 
       - name: Run vendor schema migrations against private PostgreSQL
@@ -2505,10 +2513,39 @@ jobs:
           set -euo pipefail
           jq -n \
             --arg environment "$TARGET_ENVIRONMENT" \
-            '{schema: "waooaw.wc124-vendor-migrations/v1", environment: $environment, executions: []}' \
+            '{schema: "waooaw.wc124-vendor-migrations/v1", environment: $environment, groups: [], executions: []}' \
             > wc124-vendor-migrations.json
-          # Keycloak and Temporal migrate independent databases, so both jobs are started first and
-          # then polled together; each still retains its own job, execution, and sanitized log evidence.
+          # Keycloak and Temporal migrate independent databases, but Demo's instance only exposes 25
+          # usable connections, so they run as two sequential groups: Keycloak first, then Temporal.
+          # Each group starts only after the latest completed one-minute bucket shows the per-group
+          # headroom recorded by the connection-budget gate; each still retains its own job,
+          # execution, and sanitized log evidence.
+          require_group_headroom() {
+            group="$1"
+            server_id=$(jq -er '.server_id' wc124-connection-budget.json)
+            usable=$(jq -er '.usable_connections' wc124-connection-budget.json)
+            required_headroom=$(jq -er '.required_headroom_per_group' wc124-connection-budget.json)
+            # The previous group's connections close when its job finishes, but the metric lags by
+            # about two buckets, so this wait is bounded to that lag rather than open-ended.
+            for attempt in $(seq 1 18); do
+              active=$(az monitor metrics list --resource "$server_id" --metric active_connections \
+                --interval PT1M --offset 2m --aggregation Maximum \
+                --query "value[0].timeseries[0].data[-1].maximum" --output tsv 2>/dev/null || echo "")
+              case "$active" in ''|None|null) active=0 ;; esac
+              active=${active%.*}
+              headroom=$((usable - active))
+              echo "PostgreSQL connections before $group migration group: usable=$usable active(latest 1m)=$active headroom=$headroom required=$required_headroom"
+              if [ "$headroom" -ge "$required_headroom" ]; then break; fi
+              test "$attempt" != 18 || { echo "Insufficient PostgreSQL connection headroom for $group migration group" >&2; exit 1; }
+              sleep 10
+            done
+            jq \
+              --arg group "$group" --argjson active "$active" --argjson headroom "$headroom" \
+              --argjson required "$required_headroom" \
+              '.groups += [{group: $group, active_connections_latest_1m: $active, headroom: $headroom, required_headroom: $required}]' \
+              wc124-vendor-migrations.json > wc124-vendor-migrations.next.json
+            mv wc124-vendor-migrations.next.json wc124-vendor-migrations.json
+          }
           start_migration() {
             component="$1"
             case "$component" in
@@ -2601,14 +2638,20 @@ jobs:
               wc124-vendor-migrations.json > wc124-vendor-migrations.next.json
             mv wc124-vendor-migrations.next.json wc124-vendor-migrations.json
           }
-          : > wc124-vendor-migrations.started.tsv
-          start_migration keycloak
+          run_migration_group() {
+            group="$1"; shift
+            : > wc124-vendor-migrations.started.tsv
+            for component in "$@"; do start_migration "$component"; done
+            while IFS=$'\t' read -r component job_name container_name execution; do
+              wait_migration "$component" "$job_name" "$container_name" "$execution"
+            done < wc124-vendor-migrations.started.tsv
+          }
+          # Group 1 reuses the gate's measurement, which was taken immediately before this step.
+          run_migration_group keycloak keycloak
           if [ "$TARGET_ENVIRONMENT" = demo ]; then
-            start_migration temporal
+            require_group_headroom temporal
+            run_migration_group temporal temporal
           fi
-          while IFS=$'\t' read -r component job_name container_name execution; do
-            wait_migration "$component" "$job_name" "$container_name" "$execution"
-          done < wc124-vendor-migrations.started.tsv
           test "$(jq '[.executions[].status == "Succeeded"] | all' wc124-vendor-migrations.json)" = true
 
       - name: Run additive Billing authority migration through PgBouncer
@@ -2856,7 +2899,7 @@ jobs:
           case "$active" in ''|None|null) active=0 ;; esac
           active=${active%.*}
           headroom=$((usable - active))
-          required_headroom=8
+          required_headroom=4  # one sequential vendor migration group
           echo "PostgreSQL connections after activation: max=$max_connections reserved=$reserved usable=$usable active(latest 1m)=$active headroom=$headroom"
           jq -n \
             --arg environment "$TARGET_ENVIRONMENT" --arg server "$server_name" \
