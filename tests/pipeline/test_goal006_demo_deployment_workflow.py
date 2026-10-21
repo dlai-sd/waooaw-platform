@@ -122,6 +122,7 @@ def test_wc124_live_cli_contracts_match_the_pinned_runner() -> None:
     assert 'expected_role="pgbouncer_auth"' in handoff
     assert '.tags["wc124-role"] // ""' in handoff
     assert "/opt/waooaw/wc124_db_handoff.py" in authority_handoff
+    assert "if: always() && inputs.apply && steps.database-transition.outputs.handoff_required == 'true'" in authority_handoff
     assert 'test "$actual_identities" = "$expected_identities"' in authority_handoff
     assert '"remaining_bootstrap_dependencies": 0' in authority_handoff
     assert '-var="database_bootstrap_admin_enabled=false"' in bootstrap_removal

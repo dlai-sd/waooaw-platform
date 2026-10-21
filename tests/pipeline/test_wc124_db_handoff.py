@@ -60,7 +60,10 @@ def test_demo_handoff_verifies_every_database_and_zero_dependencies(
     assert "ALTER FUNCTION public.prevent_wc115_append_only_mutation() OWNER TO bp_owner" in combined_sql
     assert 'REVOKE "ce_owner" FROM "ce_migrator"' in combined_sql
     assert 'GRANT "ce_owner" TO "ce_migrator"' in combined_sql
+    assert 'REASSIGN OWNED BY "id-waooaw-demo-db-bootstrap" TO "bp_owner"' in combined_sql
+    assert 'REASSIGN OWNED BY "id-waooaw-demo-db-bootstrap" TO "temporal_owner"' in combined_sql
     assert 'DROP OWNED BY "id-waooaw-demo-db-bootstrap"' in combined_sql
+    assert 'REVOKE "bp_owner" FROM "id-waooaw-demo-db-bootstrap"' in combined_sql
     assert "REVOKE CREATE ON SCHEMA public FROM bp_owner" in combined_sql
     assert "pg_shdepend" in combined_sql
     assert "sealed-password" not in combined_sql

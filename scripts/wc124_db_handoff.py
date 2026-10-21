@@ -142,6 +142,7 @@ def finalize_handoff(
         f"""
 GRANT USAGE, CREATE ON SCHEMA public TO {quoted_bootstrap};
 GRANT USAGE, CREATE ON SCHEMA public TO bp_owner;
+{"".join(f"GRANT {sql_identifier(owner)} TO {quoted_bootstrap};" for owner in sorted(set(dict(DATABASE_OWNERS[environment]).values())))}
 """,
     )
 
@@ -176,12 +177,17 @@ BEGIN
 END
 $owner$;
 {transfer_public_function}
+REASSIGN OWNED BY {quoted_bootstrap} TO {sql_identifier(expected_owner)};
 {revoke_memberships if database == APPLICATION_DATABASE else ""}
 DROP OWNED BY {quoted_bootstrap};
 """,
         )
 
     regrant_memberships = "\n".join(f"GRANT {sql_identifier(granted)} TO {sql_identifier(member)};" for granted, member in grants)
+    revoke_temporary_owner_memberships = "\n".join(
+        f"REVOKE {sql_identifier(owner)} FROM {quoted_bootstrap};"
+        for owner in sorted(set(dict(DATABASE_OWNERS[environment]).values()))
+    )
     remaining_dependencies = query_psql(
         server_fqdn,
         administrator_name,
@@ -189,6 +195,7 @@ DROP OWNED BY {quoted_bootstrap};
         administrator_password,
         f"""
 {regrant_memberships}
+{revoke_temporary_owner_memberships}
 REVOKE CREATE ON SCHEMA public FROM bp_owner;
 REVOKE USAGE, CREATE ON SCHEMA public FROM {quoted_bootstrap};
 SELECT count(*)
