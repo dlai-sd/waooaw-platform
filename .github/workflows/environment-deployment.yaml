@@ -1320,6 +1320,9 @@ jobs:
                 exit 1
                 ;;
               Processing|Running) ;;
+              # Azure reports Unknown until a fresh execution's replica is scheduled (run 39539976383);
+              # tolerate it for the first six polls and fall through to the fatal branch if it persists.
+              Unknown) if [ "$attempt" -le 6 ]; then sleep 10; continue; fi ;;&
               *)
                 capture_seeder_evidence
                 echo "Private credential seeder returned unknown status: ${status:-<empty>}" >&2
@@ -1633,6 +1636,9 @@ jobs:
                 exit 1
                 ;;
               Processing|Running) ;;
+              # Azure reports Unknown until a fresh execution's replica is scheduled (run 39539976383);
+              # tolerate it for the first six polls and fall through to the fatal branch if it persists.
+              Unknown) if [ "$attempt" -le 6 ]; then sleep 10; continue; fi ;;&
               *)
                 capture_database_provisioner_evidence
                 echo "WC-124 database provisioner returned unknown status: ${status:-<empty>}" >&2
@@ -1775,6 +1781,9 @@ jobs:
                 exit 1
                 ;;
               Processing|Running) ;;
+              # Azure reports Unknown until a fresh execution's replica is scheduled (run 39539976383);
+              # tolerate it for the first six polls and fall through to the fatal branch if it persists.
+              Unknown) if [ "$attempt" -le 6 ]; then sleep 10; continue; fi ;;&
               *)
                 capture_database_handoff_evidence
                 echo "WC-124 database handoff returned unknown status: ${status:-<empty>}" >&2
@@ -1838,6 +1847,9 @@ jobs:
                 exit 1
                 ;;
               Processing|Running) ;;
+              # Azure reports Unknown until a fresh execution's replica is scheduled (run 39539976383);
+              # tolerate it for the first six polls and fall through to the fatal branch if it persists.
+              Unknown) if [ "$attempt" -le 6 ]; then sleep 10; continue; fi ;;&
               *)
                 capture_recovery_handoff_evidence
                 echo "WC-124 recovery handoff verification returned unknown status: ${status:-<empty>}" >&2
@@ -2421,6 +2433,9 @@ jobs:
                 exit 1
                 ;;
               Processing|Running) ;;
+              # Azure reports Unknown until a fresh execution's replica is scheduled (run 39539976383);
+              # tolerate it for the first six polls and fall through to the fatal branch if it persists.
+              Unknown) if [ "$attempt" -le 6 ]; then sleep 10; continue; fi ;;&
               *)
                 capture_pgbouncer_preflight_evidence
                 echo "PgBouncer private ACA preflight returned unknown status: ${status:-<empty>}" >&2
@@ -2614,6 +2629,9 @@ jobs:
                   exit 1
                   ;;
                 Processing|Running) ;;
+                # Azure reports Unknown until a fresh execution's replica is scheduled (run 39539976383);
+                # tolerate it for the first six polls and fall through to the fatal branch if it persists.
+                Unknown) if [ "$attempt" -le 6 ]; then sleep 10; continue; fi ;;&
                 *)
                   capture_vendor_migration_evidence
                   cat "$console_evidence" >&2
@@ -2715,6 +2733,9 @@ jobs:
                 exit 1
                 ;;
               Processing|Running) ;;
+              # Azure reports Unknown until a fresh execution's replica is scheduled (run 39539976383);
+              # tolerate it for the first six polls and fall through to the fatal branch if it persists.
+              Unknown) if [ "$attempt" -le 6 ]; then sleep 10; continue; fi ;;&
               *)
                 capture_billing_evidence
                 cat wc124-billing-migration.log >&2
