@@ -13,7 +13,8 @@ ARG APT_ACQUIRE_RETRIES=5
 
 USER root
 
-RUN apt-get -o Acquire::Retries="${APT_ACQUIRE_RETRIES}" update \
+RUN rm -f /etc/apt/sources.list.d/git-core-ubuntu-ppa-noble.sources \
+  && apt-get -o Acquire::Retries="${APT_ACQUIRE_RETRIES}" update \
   && apt-get -o Acquire::Retries="${APT_ACQUIRE_RETRIES}" upgrade -y \
     && apt-get -o Acquire::Retries="${APT_ACQUIRE_RETRIES}" install -y --no-install-recommends ca-certificates dnsutils jq openssl postgresql-client unzip \
     && curl --fail --location --silent --show-error \
