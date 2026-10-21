@@ -28,6 +28,11 @@ DEBIAN_RUNTIME_DOCKERFILES = (
     "src/ai-runtime/Dockerfile",
     "src/billing-engine/Dockerfile",
 )
+PYTHON_DEPENDENCY_DOCKERFILES = (
+    "src/professional-runtime/Dockerfile",
+    "src/ai-runtime/Dockerfile",
+    "src/billing-engine/Dockerfile",
+)
 
 
 def _compose() -> dict:
@@ -129,6 +134,16 @@ def test_hosted_builds_refresh_debian_runtime_security_layers() -> None:
         assert 'RUN test -n "$SECURITY_REFRESH"' in content
         assert content.index('RUN test -n "$SECURITY_REFRESH"') < content.index(
             "apt-get update"
+        )
+
+    for dockerfile in PYTHON_DEPENDENCY_DOCKERFILES:
+        content = (REPO_ROOT / dockerfile).read_text(encoding="utf-8")
+        first_stage = content.index("FROM ")
+        second_stage = content.index("\nFROM ", first_stage) + 1
+        dependency_stage = content[first_stage:second_stage]
+        assert "ARG SECURITY_REFRESH=local" in dependency_stage
+        assert dependency_stage.index('RUN test -n "$SECURITY_REFRESH"') < (
+            dependency_stage.index("pip install")
         )
 
 
