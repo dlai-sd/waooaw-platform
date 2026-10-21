@@ -151,6 +151,10 @@ def test_release_images_pin_fixed_security_dependencies() -> None:
         encoding="utf-8"
     )
 
+    assert (
+        "golang:1.26.10-alpine@sha256:9ce231b28998b32e116927c61aa5c406183061d4f3f2d61b292c88e7f6bdf7ca"
+        in constitutional_engine
+    )
     assert "GRPC_GO_VERSION=v1.83.2" in constitutional_engine
     fixed_aspnet_runtime = (
         "mcr.microsoft.com/dotnet/aspnet:9.0.21"
