@@ -26,7 +26,7 @@ locals {
   ])
   active_members               = var.workload_enabled ? local.release_members : toset([])
   auth_redis_container_enabled = var.workload_enabled && contains(["demo", "uat"], var.environment)
-  auth_redis_host              = "ca-${var.environment}-auth-redis.internal.${var.container_app_environment_default_domain}"
+  auth_redis_host              = "ca-${var.environment}-auth-redis"
   auth_redis_url               = var.environment == "prod" ? var.auth_abuse_redis_url : "redis://${local.auth_redis_host}:6379/0"
   auth_redis_password_secret   = var.environment == "prod" ? "auth-abuse-redis-managed-key" : "auth-abuse-redis-password"
   pgbouncer_host               = "ca-${var.environment}-pgbouncer"

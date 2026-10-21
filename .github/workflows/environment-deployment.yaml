@@ -1574,7 +1574,7 @@ jobs:
                         "--verify-only"
                       ]
                       elif $full_provisioning
-                      then [
+                      then ([
                         "/opt/waooaw/wc124_db_provisioner.py",
                         "--environment", $target_environment,
                         "--catalog", "/opt/waooaw/secret-catalog.json",
@@ -1584,7 +1584,7 @@ jobs:
                         "--bootstrap-client-id", $bootstrap_client_id,
                         "--bootstrap-name", $bootstrap_name,
                         "--provisioner-client-id", $provisioner_client_id
-                      ]
+                      ] + if $target_environment == "demo" then ["--reset-demo-databases"] else [] end)
                       else [
                         "/opt/waooaw/wc124_db_provisioner.py",
                         "--environment", $target_environment,
@@ -1650,12 +1650,16 @@ jobs:
               --tail 300 \
               --format text > wc124-db-provisioner-evidence.log 2>&1 || true
           }
-          for attempt in $(seq 1 180); do
+          started=$(date +%s)
+          for poll in $(seq 1 180); do
             status=$(az containerapp job execution show \
               --name "$job_name" \
               --resource-group "$RESOURCE_GROUP" \
               --job-execution-name "$execution_name" \
               --query properties.status -o tsv)
+            elapsed=$(( $(date +%s) - started ))
+            printf '[wc124-db-provisioner] poll=%s elapsed=%ss status=%s time=%s\n' \
+              "$poll" "$elapsed" "${status:-<empty>}" "$(date -u +%FT%TZ)"
             case "$status" in
               Succeeded)
                 capture_database_provisioner_evidence
@@ -1670,14 +1674,14 @@ jobs:
               Processing|Running) ;;
               # Azure reports Unknown until a fresh execution's replica is scheduled (run 39539976383);
               # tolerate it for the first six polls and fall through to the fatal branch if it persists.
-              Unknown) if [ "$attempt" -le 6 ]; then sleep 10; continue; fi ;;&
+              Unknown) if [ "$poll" -le 6 ]; then sleep 10; continue; fi ;;&
               *)
                 capture_database_provisioner_evidence
                 echo "WC-124 database provisioner returned unknown status: ${status:-<empty>}" >&2
                 exit 1
                 ;;
             esac
-            if [ "$attempt" = 180 ]; then
+            if [ "$poll" = 180 ]; then
               capture_database_provisioner_evidence
               cat wc124-db-provisioner-evidence.log >&2
               echo "WC-124 database provisioner timed out with status: $status" >&2
@@ -1690,9 +1694,25 @@ jobs:
           jq --arg execution "$execution_name" '. + {execution: $execution}' \
             wc124-db-provisioner-result.json > wc124-db-provisioner-result.bound.json
           mv wc124-db-provisioner-result.bound.json wc124-db-provisioner-result.json
-          jq -e '
+          jq -e --arg environment "$TARGET_ENVIRONMENT" '
             .schema == "waooaw.wc124-db-provisioning/v1"
             and .mode != "canonical-url-refresh"
+            and (
+              if $environment == "demo"
+              then (
+                .database_reset.status == "completed"
+                and (.database_reset.databases | sort) == ([
+                  "waooaw_application",
+                  "waooaw_keycloak",
+                  "waooaw_temporal",
+                  "waooaw_temporal_visibility"
+                ] | sort)
+                and .init_chain.reapplied == 0
+                and .init_chain.skipped == 0
+              )
+              else .database_reset == null
+              end
+            )
             and (.init_chain.ledger == "wc124_provisioning.init_chain_ledger")
             and (.identity_schema.status == "passed")
             and (.identity_schema.required_relations | length == 6)
@@ -1806,12 +1826,16 @@ jobs:
               --tail 300 \
               --format text > wc124-db-handoff-evidence.log 2>&1 || true
           }
-          for attempt in $(seq 1 180); do
+          started=$(date +%s)
+          for poll in $(seq 1 180); do
             status=$(az containerapp job execution show \
               --name "$job_name" \
               --resource-group "$RESOURCE_GROUP" \
               --job-execution-name "$execution_name" \
               --query properties.status -o tsv)
+            elapsed=$(( $(date +%s) - started ))
+            printf '[wc124-db-handoff] poll=%s elapsed=%ss status=%s time=%s\n' \
+              "$poll" "$elapsed" "${status:-<empty>}" "$(date -u +%FT%TZ)"
             case "$status" in
               Succeeded)
                 capture_database_handoff_evidence
@@ -1827,14 +1851,14 @@ jobs:
               Processing|Running) ;;
               # Azure reports Unknown until a fresh execution's replica is scheduled (run 39539976383);
               # tolerate it for the first six polls and fall through to the fatal branch if it persists.
-              Unknown) if [ "$attempt" -le 6 ]; then sleep 10; continue; fi ;;&
+              Unknown) if [ "$poll" -le 6 ]; then sleep 10; continue; fi ;;&
               *)
                 capture_database_handoff_evidence
                 echo "WC-124 database handoff returned unknown status: ${status:-<empty>}" >&2
                 exit 1
                 ;;
             esac
-            if [ "$attempt" = 180 ]; then
+            if [ "$poll" = 180 ]; then
               capture_database_handoff_evidence
               cat wc124-db-handoff-evidence.log >&2
               echo "WC-124 database handoff timed out with status: $status" >&2

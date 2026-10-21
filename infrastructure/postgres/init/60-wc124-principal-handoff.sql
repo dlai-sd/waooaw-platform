@@ -1,6 +1,28 @@
 -- WC-124 final ownership and least-privilege compatibility handoff.
 -- Constitutional basis: C-005, C-026, C-059, C-063, C-080
 
+BEGIN;
+
+DO $bootstrap_memberships$
+DECLARE
+    owner_name text;
+BEGIN
+    FOREACH owner_name IN ARRAY ARRAY[
+        'ce_owner',
+        'bp_owner',
+        'pr_owner',
+        'air_owner',
+        'billing_owner',
+        'web_session_owner',
+        'keycloak_owner',
+        'temporal_owner'
+    ]
+    LOOP
+        EXECUTE format('GRANT %I TO %I', owner_name, session_user);
+    END LOOP;
+END
+$bootstrap_memberships$;
+
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
 
 ALTER SCHEMA constitutional OWNER TO ce_owner;
@@ -193,3 +215,25 @@ BEGIN
     END LOOP;
 END
 $databases$;
+
+DO $bootstrap_memberships$
+DECLARE
+    owner_name text;
+BEGIN
+    FOREACH owner_name IN ARRAY ARRAY[
+        'ce_owner',
+        'bp_owner',
+        'pr_owner',
+        'air_owner',
+        'billing_owner',
+        'web_session_owner',
+        'keycloak_owner',
+        'temporal_owner'
+    ]
+    LOOP
+        EXECUTE format('REVOKE %I FROM %I', owner_name, session_user);
+    END LOOP;
+END
+$bootstrap_memberships$;
+
+COMMIT;

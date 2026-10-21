@@ -26,6 +26,13 @@ Work Component control any conflict.
 
 Implement PST-WC00 through PST-WC14 for Demo and UAT only:
 
+- Demo deployments intentionally drop and recreate all four logical databases before the clean
+  initialization chain; Demo data is disposable and no historical migration replay is permitted;
+- UAT remains non-destructive and ledger-driven: only unapplied forward migrations may run, and
+  existing UAT data must survive;
+- Production remains outside WC-124 scope and may only receive a separately authorized
+  forward-only DDL/data migration design;
+
 - migrate Billing halt, release, reconciliation, audit, outcome and idempotency authority to
   PostgreSQL;
 - create the accepted PostgreSQL Flexible Server, PgBouncer, principal, RLS, private-network,

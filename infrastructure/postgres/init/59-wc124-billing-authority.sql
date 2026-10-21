@@ -3,6 +3,12 @@
 
 BEGIN;
 
+DO $bootstrap_membership$
+BEGIN
+    EXECUTE format('GRANT billing_owner TO %I', session_user);
+END
+$bootstrap_membership$;
+
 DO $preflight$
 DECLARE
     schema_owner text;
@@ -323,5 +329,12 @@ GRANT SELECT, INSERT ON billing.discrepancy_evidence TO billing_runtime;
 GRANT SELECT, INSERT ON billing.audit_results TO billing_runtime;
 GRANT SELECT, INSERT, UPDATE ON billing.audit_projections TO billing_runtime;
 GRANT SELECT ON ALL TABLES IN SCHEMA billing TO billing_verifier;
+
+RESET ROLE;
+DO $bootstrap_membership$
+BEGIN
+    EXECUTE format('REVOKE billing_owner FROM %I', session_user);
+END
+$bootstrap_membership$;
 
 COMMIT;

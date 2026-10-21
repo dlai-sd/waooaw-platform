@@ -1,5 +1,9 @@
 -- WC-123 current multi-tenant membership authority.
 
+BEGIN;
+
+GRANT CREATE ON SCHEMA identity TO identity_resolver_owner;
+
 DO $idempotent$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'memberships_account_tenant_unique' AND conrelid = 'identity.memberships'::regclass) THEN
@@ -126,3 +130,7 @@ GRANT EXECUTE ON FUNCTION identity.list_customer_memberships()
     TO business_app, constitutional_app, runtime_app, wbe_app;
 GRANT EXECUTE ON FUNCTION identity.resolve_customer_membership()
     TO business_app, constitutional_app, runtime_app, wbe_app;
+
+REVOKE CREATE ON SCHEMA identity FROM identity_resolver_owner;
+
+COMMIT;
