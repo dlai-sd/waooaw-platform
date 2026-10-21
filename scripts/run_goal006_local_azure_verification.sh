@@ -165,7 +165,7 @@ jq -e '.redirect_verified == true and .real_user_sign_in_verified == false and
 jq -e '.redirect_verified == true and .real_user_sign_in_verified == false and
   .keycloak_revision == "ca-demo-keycloak--0000002" and .release_sha == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' \
   "$EVIDENCE_DIR/facebook-deployment-verification.json" >/dev/null
-test "$(find "$EVIDENCE_DIR/revision-evidence" -name '*-revision.json' | wc -l)" = 11
+test "$(find "$EVIDENCE_DIR/revision-evidence" -name '*-revision.json' | wc -l)" = 12  # exact seven + keycloak, identity-edge, temporal, auth-redis, pgbouncer
 for provider in google facebook; do
   jq -e '.provider_start_verified == true and
     .release_sha == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' \

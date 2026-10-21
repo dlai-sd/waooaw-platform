@@ -15,6 +15,8 @@ KEYCLOAK_IMAGE = "quay.io/keycloak/keycloak@sha256:82c5b7a110456dbd42b86ea572e72
 IDENTITY_EDGE_IMAGE = "nginxinc/nginx-unprivileged@sha256:62a904036bfc0e4a4f2b556e34cbf17bc136b47fde8cdb4628762725f48c5782"
 DEMO_TEMPORAL_IMAGE = "temporalio/auto-setup@sha256:98cdb6b5e02d64cb933864a9ba91cb66065eb320623a0dafdf44beba535bca88"
 AUTH_REDIS_IMAGE = "redis@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2"
+# WC-124 per-role connection pooler (modules/workload/main.tf azurerm_container_app.pgbouncer).
+PGBOUNCER_IMAGE = "docker.io/pgbouncer/pgbouncer@sha256:e8162131a43c54cd0ac7941e66eaaa802c5e5a49036f41b41260b70b290feea9"
 DMA_MEMBER = "agent-runtime-adapter-digital-marketing"
 
 
@@ -32,6 +34,7 @@ def expected_dependencies(environment: str) -> dict[str, str]:
         dependencies[f"ca-{environment}-temporal"] = DEMO_TEMPORAL_IMAGE
     if environment in {"demo", "uat"}:
         dependencies[f"ca-{environment}-auth-redis"] = AUTH_REDIS_IMAGE
+        dependencies[f"ca-{environment}-pgbouncer"] = PGBOUNCER_IMAGE
     return dependencies
 
 
