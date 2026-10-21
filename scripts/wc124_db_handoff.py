@@ -188,7 +188,7 @@ DROP OWNED BY {quoted_bootstrap};
         f"REVOKE {sql_identifier(owner)} FROM {quoted_bootstrap};"
         for owner in sorted(set(dict(DATABASE_OWNERS[environment]).values()))
     )
-    remaining_dependencies = query_psql(
+    psql(
         server_fqdn,
         administrator_name,
         APPLICATION_DATABASE,
@@ -198,6 +198,14 @@ DROP OWNED BY {quoted_bootstrap};
 {revoke_temporary_owner_memberships}
 REVOKE CREATE ON SCHEMA public FROM bp_owner;
 REVOKE USAGE, CREATE ON SCHEMA public FROM {quoted_bootstrap};
+""",
+    )
+    remaining_dependencies = query_psql(
+        server_fqdn,
+        administrator_name,
+        APPLICATION_DATABASE,
+        administrator_password,
+        f"""
 SELECT count(*)
 FROM pg_shdepend
 WHERE refclassid = 'pg_authid'::regclass
