@@ -29,10 +29,13 @@ TERMINAL_FAILURE_STATES = {"ActivationFailed", "Failed", "Degraded", "Deprovisio
 def _run_az(args: list[str]) -> Any:
     completed = subprocess.run(  # noqa: S603
         ["az", *args, "--output", "json"],  # noqa: S607
-        check=True,
+        check=False,
         capture_output=True,
         text=True,
     )
+    if completed.returncode != 0:
+        # Surface the CLI's own message; a bare CalledProcessError hid a usage error in run 39548319770.
+        raise RuntimeError(f"az {' '.join(args[:3])} failed ({completed.returncode}): {completed.stderr.strip()}")
     return json.loads(completed.stdout or "null")
 
 
@@ -79,9 +82,9 @@ def observe_revision(resource_group: str, app: str, run_az: Callable[[list[str]]
                 "show",
                 "--resource-group",
                 resource_group,
-                "--app",
-                app,
                 "--name",
+                app,
+                "--revision",
                 latest,
                 "--query",
                 "properties.{running: runningState, health: healthState, replicas: replicas, active: active}",

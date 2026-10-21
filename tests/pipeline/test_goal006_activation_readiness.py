@@ -27,7 +27,12 @@ class FakeAzure:
     def __call__(self, args):
         if args[:2] == ["containerapp", "list"]:
             return [*self.timeline, "ca-other-web"]
-        app = args[args.index("--name") + 1] if "--app" not in args else args[args.index("--app") + 1]
+        # `az containerapp revision show` takes --name <app> --revision <revision>; run 39548319770
+        # failed with exit 2 because the script passed a non-existent --app flag.
+        assert "--app" not in args
+        app = args[args.index("--name") + 1]
+        if args[:3] == ["containerapp", "revision", "show"]:
+            assert args[args.index("--revision") + 1] == self.timeline[app][min(self.calls[app], len(self.timeline[app]) - 1)]["latest"]
         states = self.timeline[app]
         state = states[min(self.calls[app], len(states) - 1)]
         if args[:2] == ["containerapp", "show"]:
