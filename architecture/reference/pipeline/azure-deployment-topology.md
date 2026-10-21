@@ -263,7 +263,8 @@ backend key, state lineage/serial, policy result, plan JSON digest, and saved-pl
    references and are never written to logs or Terraform state.
 9. Each application migrator receives only its no-login owner role and a database-local default
    role. Runtime roles do not acquire DDL authority.
-10. Billing writes its immutable migration ledger in the governed `billing` schema and runs through
+10. Billing writes its digest ledger in the governed `billing` schema (a changed, idempotent file is
+   re-applied and the ledger row converged, as the provisioner does) and runs through
    PgBouncer using the exact `db-billing-migration` credential.
 11. Migration job names are producer-consumer contracts:
    `job-<environment>-keycloak-migration`,

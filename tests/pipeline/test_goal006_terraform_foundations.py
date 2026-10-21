@@ -1051,6 +1051,9 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "for attempt in $(seq 1 36); do" not in workflow
     assert "if [ \"$retired\" = '[]' ]; then max_attempts=3; else max_attempts=18; fi" in workflow
     assert workflow.count("required_headroom=4") == 2
+    # The post-activation budget settles (bounded) instead of failing a live deployment on one sample.
+    post_budget = workflow.split("Measure PostgreSQL connection budget after activation", 1)[1]
+    assert post_budget.index("for attempt in $(seq 1 18); do") < post_budget.index('test "$headroom" -ge "$required_headroom"')
     assert "required_headroom=8" not in workflow
     assert "required_headroom_per_group: $required" in workflow
     assert "require_group_headroom() {" in workflow

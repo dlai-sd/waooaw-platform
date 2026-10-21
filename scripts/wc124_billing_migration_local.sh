@@ -38,6 +38,11 @@ run_migration() {
 
 run_migration > "$EVIDENCE_DIR/first-run.log" 2>&1 || { cat "$EVIDENCE_DIR/first-run.log" >&2; echo "first migration run failed" >&2; exit 1; }
 run_migration > "$EVIDENCE_DIR/second-run.log" 2>&1 || { cat "$EVIDENCE_DIR/second-run.log" >&2; echo "idempotent rerun failed" >&2; exit 1; }
+# Demo run 39543680599: the ledger held the digest of an earlier revision of the same file. The
+# migrator must re-apply the (idempotent) current file and converge the ledger, not refuse forever.
+psql_admin -c "UPDATE billing.waooaw_schema_migrations SET migration_sha256 = repeat('0', 64) WHERE migration_name = '59-wc124-billing-authority.sql'" >/dev/null
+run_migration > "$EVIDENCE_DIR/stale-digest-run.log" 2>&1 || { cat "$EVIDENCE_DIR/stale-digest-run.log" >&2; echo "stale-digest re-apply failed" >&2; exit 1; }
+grep -q "migration digest changed, re-applying: 59-wc124-billing-authority.sql" "$EVIDENCE_DIR/stale-digest-run.log"
 
 ledger_owner=$(psql_admin -c "SELECT pg_get_userbyid(relowner) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'billing' AND c.relname = 'waooaw_schema_migrations'")
 ledger_entry=$(psql_admin -c "SELECT migration_sha256 FROM billing.waooaw_schema_migrations WHERE migration_name = '59-wc124-billing-authority.sql'")
@@ -56,5 +61,5 @@ jq -n \
   --arg ledger_owner "$ledger_owner" --arg digest "$ledger_entry" --arg backend "$backend_identity" \
   '{schema: $schema, image: $image, image_id: $image_id, fixture: $fixture, route: "pgbouncer-scram-per-role",
     login: "billing_migrator", backend_identity: $backend, ledger_owner: $ledger_owner,
-    recorded_migration_sha256: $digest, idempotent_rerun: true, status: "passed"}' \
+    recorded_migration_sha256: $digest, idempotent_rerun: true, stale_digest_reapplied: true, status: "passed"}' \
   | tee "$EVIDENCE_DIR/result.json"
