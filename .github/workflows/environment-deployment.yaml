@@ -1751,7 +1751,7 @@ jobs:
             --query authConfig.passwordAuth -o tsv)" = "Enabled"
 
       - name: Finalize WC-124 PostgreSQL authority handoff
-        if: inputs.apply && steps.database-transition.outputs.handoff_required == 'true'
+        if: always() && inputs.apply && steps.database-transition.outputs.handoff_required == 'true'
         env:
           BOOTSTRAP_CLIENT_ID: ${{ steps.foundation.outputs.database_bootstrap_client_id }}
           BOOTSTRAP_IDENTITY_ID: ${{ steps.foundation.outputs.database_bootstrap_identity_id }}

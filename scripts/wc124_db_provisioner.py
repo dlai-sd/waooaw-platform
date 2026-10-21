@@ -47,6 +47,7 @@ APPLICATION_MIGRATION_ROLES = {
     "billing_migrator": "billing_owner",
     "web_session_migrator": "web_session_owner",
 }
+PROVIDER_REGISTRY_MIGRATION = "16-provider-registry.sql"
 REQUIRED_IDENTITY_RELATIONS = (
     "registrations",
     "idempotency_ledger",
@@ -461,6 +462,43 @@ def file_digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def migration_sql(path: Path) -> str:
+    sql = path.read_text(encoding="utf-8")
+    if path.name != PROVIDER_REGISTRY_MIGRATION:
+        return sql
+    prefix = """
+BEGIN;
+SET LOCAL ROLE bp_owner;
+SELECT set_config(
+    'waooaw.provider_registry_was_forced',
+    COALESCE((
+        SELECT relforcerowsecurity::text
+        FROM pg_class
+        WHERE oid = to_regclass('business.provider_configs')
+    ), 'false'),
+    true
+);
+DO $provider_registry_rls$
+BEGIN
+    IF current_setting('waooaw.provider_registry_was_forced')::boolean THEN
+        ALTER TABLE business.provider_configs NO FORCE ROW LEVEL SECURITY;
+    END IF;
+END
+$provider_registry_rls$;
+"""
+    suffix = """
+DO $provider_registry_rls$
+BEGIN
+    IF current_setting('waooaw.provider_registry_was_forced')::boolean THEN
+        ALTER TABLE business.provider_configs FORCE ROW LEVEL SECURITY;
+    END IF;
+END
+$provider_registry_rls$;
+COMMIT;
+"""
+    return "".join((prefix, sql, suffix))
+
+
 def read_init_chain_ledger(
     server_fqdn: str,
     bootstrap_name: str,
@@ -506,7 +544,7 @@ def apply_init_chain(
                 "recorded digest differs; use the explicit force-init-chain recovery path only "
                 "after migration-specific repair review"
             )
-        psql(server_fqdn, bootstrap_name, APPLICATION_DATABASE, access_token, path.read_text(encoding="utf-8"))
+        psql(server_fqdn, bootstrap_name, APPLICATION_DATABASE, access_token, migration_sql(path))
         psql(
             server_fqdn,
             bootstrap_name,
@@ -638,13 +676,29 @@ def provision_postgresql(
     psql(server_fqdn, bootstrap_name, APPLICATION_DATABASE, database_access_token, role_sql)
 
     application_files = application_migration_files(init_directory)
-    init_chain = apply_init_chain(
+    psql(
         server_fqdn,
         bootstrap_name,
+        APPLICATION_DATABASE,
         database_access_token,
-        application_files,
-        force=force_init_chain,
+        f"GRANT bp_owner TO {sql_identifier(bootstrap_name)};",
     )
+    try:
+        init_chain = apply_init_chain(
+            server_fqdn,
+            bootstrap_name,
+            database_access_token,
+            application_files,
+            force=force_init_chain,
+        )
+    finally:
+        psql(
+            server_fqdn,
+            bootstrap_name,
+            APPLICATION_DATABASE,
+            database_access_token,
+            f"REVOKE bp_owner FROM {sql_identifier(bootstrap_name)};",
+        )
 
     database_roles = {
         APPLICATION_DATABASE: sorted({spec.role for spec in specs if spec.database == APPLICATION_DATABASE}),

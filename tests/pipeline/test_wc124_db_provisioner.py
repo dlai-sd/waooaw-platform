@@ -24,6 +24,7 @@ from wc124_db_provisioner import (
     execute,
     existing_grant_digest,
     password_from_secret,
+    migration_sql,
     probe_pgbouncer_connectivity,
     psql,
     run,
@@ -550,6 +551,27 @@ def test_init_chain_ledger_rows_are_written_after_each_file(monkeypatch: pytest.
     assert ledger_write.startswith(f"INSERT INTO {INIT_CHAIN_LEDGER_TABLE}")
     assert "ON CONFLICT (file_name) DO UPDATE" in ledger_write
     assert "'01-schemas.sql'" in ledger_write
+
+
+def test_provider_registry_reconciliation_restores_forced_rls_atomically(tmp_path: Path) -> None:
+    migration = tmp_path / "16-provider-registry.sql"
+    migration.write_text("INSERT INTO business.provider_configs (provider_name) VALUES ('meta');", encoding="utf-8")
+
+    sql = migration_sql(migration)
+
+    assert sql.lstrip().startswith("BEGIN;")
+    assert "SET LOCAL ROLE bp_owner;" in sql
+    assert "ALTER TABLE business.provider_configs NO FORCE ROW LEVEL SECURITY;" in sql
+    assert migration.read_text(encoding="utf-8") in sql
+    assert "ALTER TABLE business.provider_configs FORCE ROW LEVEL SECURITY;" in sql
+    assert sql.rstrip().endswith("COMMIT;")
+
+
+def test_other_migrations_are_not_wrapped(tmp_path: Path) -> None:
+    migration = tmp_path / "15-other.sql"
+    migration.write_text("SELECT 1;", encoding="utf-8")
+
+    assert migration_sql(migration) == "SELECT 1;"
 
 
 def test_identity_schema_verifier_requires_every_relation_policy_and_forced_rls(
