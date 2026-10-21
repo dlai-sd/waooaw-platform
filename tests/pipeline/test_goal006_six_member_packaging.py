@@ -80,7 +80,10 @@ def test_ci_publishes_only_main_with_attestations_and_digest_artifacts() -> None
     assert "load: true" in workflow
     assert "sbom: false" in workflow
     assert "provenance: false" in workflow
-    assert workflow.count("push: true") == 1
+    # Exactly two publication points, both main-only: the exact-seven release and the runner images.
+    assert workflow.count("push: true") == 2
+    assert "publish-runner-images:" in workflow
+    assert workflow.count("if: github.event_name == 'push' && github.ref == 'refs/heads/main'") >= 2
     assert "sbom: true" in workflow
     assert "provenance: mode=max" in workflow
     assert "steps.image.outputs.digest" in workflow
