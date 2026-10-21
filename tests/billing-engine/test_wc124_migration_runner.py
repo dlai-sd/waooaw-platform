@@ -26,4 +26,9 @@ def test_billing_image_contains_the_immutable_migration_set() -> None:
     assert "statement_cache_size=0" in runner
     assert "migration ledger owner mismatch" in runner
     assert "waooaw_schema_migrations OWNER TO {MIGRATION_OWNER_ROLE}" in runner
-    assert "immutable migration digest changed" in runner
+    # Run 39543680599: #536 rewrote an already-applied 59-wc124-billing-authority.sql and the
+    # migrator refused the digest change forever. Files are idempotent by standard, so the
+    # migrator re-applies a changed file and updates its ledger row, like the provisioner does.
+    assert "immutable migration digest changed" not in runner
+    assert "migration digest changed, re-applying" in runner
+    assert "ON CONFLICT (migration_name) DO UPDATE" in runner

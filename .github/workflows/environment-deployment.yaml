@@ -2914,14 +2914,21 @@ jobs:
           max_connections=$(param max_connections)
           reserved=$(( $(param superuser_reserved_connections) + $(param reserved_connections) ))
           usable=$((max_connections - reserved))
-          active=$(az monitor metrics list --resource "$server_id" --metric active_connections \
-            --interval PT1M --offset 2m --aggregation Maximum \
-            --query "value[0].timeseries[0].data[-1].maximum" --output tsv 2>/dev/null || echo "")
-          case "$active" in ''|None|null) active=0 ;; esac
-          active=${active%.*}
-          headroom=$((usable - active))
           required_headroom=4  # one sequential vendor migration group
-          echo "PostgreSQL connections after activation: max=$max_connections reserved=$reserved usable=$usable active(latest 1m)=$active headroom=$headroom"
+          # Readiness passes while startup pools (Temporal auto-setup, Keycloak) are still draining and
+          # the latest completed bucket lags by about two minutes, so a single sample would fail a
+          # healthy, already-live deployment on a spike. Allow the steady state to settle, bounded.
+          for attempt in $(seq 1 18); do
+            active=$(az monitor metrics list --resource "$server_id" --metric active_connections \
+              --interval PT1M --offset 2m --aggregation Maximum \
+              --query "value[0].timeseries[0].data[-1].maximum" --output tsv 2>/dev/null || echo "")
+            case "$active" in ''|None|null) active=0 ;; esac
+            active=${active%.*}
+            headroom=$((usable - active))
+            echo "PostgreSQL connections after activation: max=$max_connections reserved=$reserved usable=$usable active(latest 1m)=$active headroom=$headroom required=$required_headroom"
+            if [ "$headroom" -ge "$required_headroom" ] || [ "$attempt" = 18 ]; then break; fi
+            sleep 10
+          done
           jq -n \
             --arg environment "$TARGET_ENVIRONMENT" --arg server "$server_name" \
             --argjson max "$max_connections" --argjson reserved "$reserved" --argjson usable "$usable" \

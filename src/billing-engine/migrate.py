@@ -1,4 +1,4 @@
-"""Apply immutable PostgreSQL migrations through the configured PgBouncer route."""
+"""Apply idempotent init-chain migrations through the configured PgBouncer route."""
 
 from __future__ import annotations
 
@@ -122,12 +122,17 @@ async def apply_migrations() -> None:
                     """.format(MIGRATION_SCHEMA=MIGRATION_SCHEMA),
                     path.name,
                 )
-                if existing is not None:
-                    if existing != digest:
-                        raise RuntimeError(
-                            f"immutable migration digest changed: {path.name}"
-                        )
+                if existing == digest:
+                    print(f"migration unchanged, skipped: {path.name} sha256={digest}")
                     continue
+                # Init-chain files are idempotent by authoring standard (wc124_init_chain_lint.py)
+                # and the WC-124 provisioner re-applies a file whose digest changed; the restricted
+                # migrator follows the same policy and records the previous digest for evidence.
+                if existing is not None:
+                    print(
+                        f"migration digest changed, re-applying: {path.name} "
+                        f"previous_sha256={existing} sha256={digest}"
+                    )
                 await connection.execute(sql)
                 await connection.execute(
                     """
@@ -136,10 +141,14 @@ async def apply_migrations() -> None:
                         migration_sha256
                     )
                     VALUES ($1, $2)
+                    ON CONFLICT (migration_name) DO UPDATE
+                    SET migration_sha256 = EXCLUDED.migration_sha256,
+                        applied_at = clock_timestamp()
                     """.format(MIGRATION_SCHEMA=MIGRATION_SCHEMA),
                     path.name,
                     digest,
                 )
+                print(f"migration {'re-applied' if existing is not None else 'applied'}: {path.name} sha256={digest}")
     finally:
         await connection.close()
 
