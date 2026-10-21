@@ -27,30 +27,19 @@ def test_environment_deployment_uses_qualified_private_runner_lifecycle() -> Non
     assert WORKFLOW.count("goal006_runner_execution.py broker") == 1
     assert WORKFLOW.count("goal006_runner_execution.py cleanup") == 1
     assert WORKFLOW.count("goal006_runner_execution.py pointer") == 1
-    assert "runner_image: ${{ needs.build-break-fix-runner.outputs.runner_image }}" in DISPATCH_WORKFLOW
-    assert "control_image: ${{ needs.build-break-fix-runner.outputs.control_image }}" in DISPATCH_WORKFLOW
-    assert "billing_image: ${{ needs.build-break-fix-runner.outputs.billing_image }}" in DISPATCH_WORKFLOW
-    assert "runner_image: ${{ steps.publish.outputs.runner_image }}" in DISPATCH_WORKFLOW
-    assert "control_image: ${{ steps.publish.outputs.control_image }}" in DISPATCH_WORKFLOW
-    # Break-fix images are built on the hosted runner with a per-Dockerfile layer cache and
-    # resolved to the pushed manifest digest, never to a mutable tag.
-    assert "docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f" in DISPATCH_WORKFLOW
-    assert 'docker buildx build --file "$file" --tag "$tag" --push --provenance=false' in DISPATCH_WORKFLOW
-    assert '--cache-from "type=gha,scope=break-fix-$scope"' in DISPATCH_WORKFLOW
-    assert '--cache-to "type=gha,scope=break-fix-$scope,mode=max"' in DISPATCH_WORKFLOW
-    assert "jq -er '.[\"containerimage.digest\"]' \"$metadata\"" in DISPATCH_WORKFLOW
-    assert 'runner_image="${image%%:*}@$(publish runner infrastructure/runner/Dockerfile "$image")"' in DISPATCH_WORKFLOW
-    assert 'control_image="${control_image%%:*}@$(publish control infrastructure/runner/Dockerfile.control "$control_image")"' in DISPATCH_WORKFLOW
-    assert 'billing_image="${billing_image%%:*}@$(publish billing src/billing-engine/Dockerfile "$billing_image")"' in DISPATCH_WORKFLOW
-    assert "docker image inspect" not in DISPATCH_WORKFLOW
-    assert "break-fix-image-overrides.json" in WORKFLOW
-    assert "BREAK_FIX_BILLING_IMAGE" in WORKFLOW
-    assert '.image_digests["billing-engine"] = $image' in WORKFLOW
+    # Deployments never build images: the dispatcher carries no image overrides and the
+    # engine runs every execution on the blueprint-pinned runner image.
+    for forbidden in ("break_fix", "break-fix", "runner_image:", "control_image:", "billing_image:",
+                      "docker buildx build", "docker/setup-buildx-action", "packages: write"):
+        assert forbidden not in DISPATCH_WORKFLOW, forbidden
+    for forbidden in ("break_fix", "break-fix", "BREAK_FIX", "runner_image:", "control_image:", "billing_image:"):
+        assert forbidden not in WORKFLOW, forbidden
+    assert "    needs: authorize\n" in DISPATCH_WORKFLOW
+    assert WORKFLOW.count('execution_runner_image="$blueprint_runner_image"') == 2
+    assert WORKFLOW.count('execution_control_image="$blueprint_runner_image"') == 2
     assert WORKFLOW.count('--execution-image "$execution_runner_image"') == 2
     assert WORKFLOW.count('--control-image "$execution_control_image"') == 2
     assert WORKFLOW.count('--expected-image "$blueprint_runner_image"') == 2
-    assert "execution_runner_image='${{ inputs.runner_image }}'" in WORKFLOW
-    assert "execution_control_image='${{ inputs.control_image }}'" in WORKFLOW
 
 
 def test_october_defect_patterns_remain_prevented_or_captured() -> None:
@@ -777,11 +766,7 @@ def test_environment_deployment_cleanup_is_independent_and_retains_evidence() ->
     assert "goal006-private-runner-cleanup-${{ github.run_id }}-${{ github.run_attempt }}" in cleanup
     assert "cleanup-attempt-*.classification.json" in cleanup
     assert "if: always()" in cleanup
-    assert "Authorize exact break-fix cleanup subject" in WORKFLOW
-    assert "repo:${{ github.repository }}:ref:refs/heads/ib/532/wc124-transition-reconciliation" in WORKFLOW
-    assert "revoke-break-fix-cleanup-trust:" in cleanup
-    assert "Revoke exact break-fix cleanup subject" in cleanup
-    assert "environment: ${{ inputs.environment }}" in cleanup
+    assert "ib/532/wc124-transition-reconciliation" not in WORKFLOW
 
 
 def test_runner_retry_is_bounded_and_requires_proven_pre_pull_failure() -> None:
@@ -816,9 +801,7 @@ def test_runner_failure_evidence_is_uploaded_even_when_execution_fails() -> None
     broker_artifact = WORKFLOW.split("      - name: Retain hosted pre-start evidence", 1)[1].split(
         "  terraform:", 1
     )[0]
-    cleanup_artifact = WORKFLOW.split("      - name: Retain hosted cleanup evidence", 1)[1].split(
-        "  revoke-break-fix-cleanup-trust:", 1
-    )[0]
+    cleanup_artifact = WORKFLOW.split("      - name: Retain hosted cleanup evidence", 1)[1]
 
     assert "if: always()" in broker_artifact
     assert "broker-runner-correlation-*.json" in broker_artifact
@@ -840,7 +823,7 @@ def test_demo_deployment_binds_broker_and_cleanup_to_authorized_control_sha() ->
     assert WORKFLOW.count("ref: ${{ inputs.control_sha }}") >= 2
     assert "test '${{ inputs.release_sha }}' = \"$latest_main_sha\"" in WORKFLOW
     assert 'test "$GITHUB_SHA" = \'${{ inputs.control_sha }}\'' in WORKFLOW
-    assert "refs/heads/ib/532/wc124-*" in WORKFLOW
+    assert "ib/532" not in WORKFLOW
 
 
 def test_deployment_workflows_pin_every_third_party_action_to_a_commit() -> None:

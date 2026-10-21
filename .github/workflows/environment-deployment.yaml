@@ -15,21 +15,6 @@ on:
       control_sha:
         required: true
         type: string
-      break_fix:
-        required: true
-        type: boolean
-      runner_image:
-        required: false
-        type: string
-        default: ""
-      control_image:
-        required: false
-        type: string
-        default: ""
-      billing_image:
-        required: false
-        type: string
-        default: ""
       apply:
         required: true
         type: boolean
@@ -127,16 +112,8 @@ jobs:
           latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           test '${{ inputs.release_sha }}' = "$latest_main_sha"
           test "$GITHUB_SHA" = '${{ inputs.control_sha }}'
-          if [ '${{ inputs.break_fix }}' = true ]; then
-            test '${{ inputs.environment }}' = demo
-            case "$GITHUB_REF" in
-              refs/heads/ib/532/wc124-*) ;;
-              *) exit 1 ;;
-            esac
-          else
-            test "$GITHUB_REF" = "refs/heads/main"
-            test '${{ inputs.control_sha }}' = "$latest_main_sha"
-          fi
+          test "$GITHUB_REF" = "refs/heads/main"
+          test '${{ inputs.control_sha }}' = "$latest_main_sha"
 
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -190,13 +167,6 @@ jobs:
           while IFS= read -r image; do
             verify_ghcr_digest "$image"
           done < <(jq -r '.images | to_entries[] | .value' registry-release-manifest.json)
-          if [ '${{ inputs.break_fix }}' = true ]; then
-            billing_image='${{ inputs.billing_image }}'
-            grep -Eq '^ghcr.io/dlai-sd/billing-engine@sha256:[0-9a-f]{64}$' <<< "$billing_image"
-            verify_ghcr_digest "$billing_image"
-          else
-            test -z '${{ inputs.billing_image }}'
-          fi
 
       - name: Verify immutable broker blueprint
         run: |
@@ -210,52 +180,6 @@ jobs:
           client-id: ${{ env.ARM_CLIENT_ID }}
           tenant-id: ${{ env.ARM_TENANT_ID }}
           subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
-
-      - name: Authorize exact break-fix cleanup subject
-        if: inputs.break_fix
-        env:
-          CLEANUP_CLIENT_ID: ${{ needs.resolve-environment.outputs.cleanup_client_id }}
-        run: |
-          set -euo pipefail
-          test '${{ inputs.environment }}' = demo
-          credential_name=github-demo-wc124-break-fix-cleanup
-          expected_subject='repo:${{ github.repository }}:ref:refs/heads/ib/532/wc124-transition-reconciliation'
-          identity_name=$(az identity list \
-            --resource-group "$RUNNER_RESOURCE_GROUP" \
-            --query "[?clientId == '$CLEANUP_CLIENT_ID'].name | [0]" \
-            --output tsv)
-          test -n "$identity_name"
-          credential_count=$(az identity federated-credential list \
-            --resource-group "$RUNNER_RESOURCE_GROUP" \
-            --identity-name "$identity_name" \
-            --query "[?name == '$credential_name'] | length(@)" \
-            --output tsv)
-          case "$credential_count" in
-            0)
-              az identity federated-credential create \
-                --resource-group "$RUNNER_RESOURCE_GROUP" \
-                --identity-name "$identity_name" \
-                --name "$credential_name" \
-                --issuer https://token.actions.githubusercontent.com \
-                --subject "$expected_subject" \
-                --audiences api://AzureADTokenExchange \
-                --output none
-              ;;
-            1)
-              existing_subject=$(az identity federated-credential show \
-                --resource-group "$RUNNER_RESOURCE_GROUP" \
-                --identity-name "$identity_name" \
-                --name "$credential_name" \
-                --query subject \
-                --output tsv)
-              test "$existing_subject" = "$expected_subject"
-              ;;
-            *)
-              echo "Unexpected duplicate break-fix cleanup credentials: $credential_count" >&2
-              exit 1
-              ;;
-          esac
-
 
       - name: Record batch cost control mode
         env:
@@ -309,17 +233,8 @@ jobs:
           set -eu
           blueprint_runner_image=$(jq -er '.parameters.runnerImage.value' \
             'infrastructure/deployment-stacks/goal006-runner/${{ inputs.environment }}.parameters.json')
-          execution_runner_image='${{ inputs.runner_image }}'
-          execution_control_image='${{ inputs.control_image }}'
-          if [ '${{ inputs.break_fix }}' = true ]; then
-            test -n "$execution_runner_image"
-            test -n "$execution_control_image"
-          else
-            test -z "$execution_runner_image"
-            test -z "$execution_control_image"
-            execution_runner_image="$blueprint_runner_image"
-            execution_control_image="$blueprint_runner_image"
-          fi
+          execution_runner_image="$blueprint_runner_image"
+          execution_control_image="$blueprint_runner_image"
           grep -Eq \
             "^ghcr.io/${GITHUB_REPOSITORY_OWNER}/goal006-private-runner@sha256:[0-9a-f]{64}$" \
             <<< "$execution_runner_image" || {
@@ -578,25 +493,12 @@ jobs:
         env:
           CALLER_WORKFLOW_REF: ${{ github.workflow_ref }}
           EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy.yaml@refs/heads/main
-          EXPECTED_BREAK_FIX_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy.yaml@refs/heads/ib/532/wc124-transition-reconciliation
-          BREAK_FIX: ${{ inputs.break_fix }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
           APPLY_REQUESTED: ${{ inputs.apply }}
           COST_CONTROLS_ENFORCED: ${{ inputs.enforce_cost_controls }}
           LIFECYCLE_ACTION: ${{ inputs.lifecycle_action }}
         run: |
-          case "$BREAK_FIX" in
-            false)
-              test "$CALLER_WORKFLOW_REF" = "$EXPECTED_CALLER_WORKFLOW_REF"
-              ;;
-            true)
-              test "$TARGET_ENVIRONMENT" = demo
-              test "$CALLER_WORKFLOW_REF" = "$EXPECTED_BREAK_FIX_WORKFLOW_REF"
-              ;;
-            *)
-              exit 1
-              ;;
-          esac
+          test "$CALLER_WORKFLOW_REF" = "$EXPECTED_CALLER_WORKFLOW_REF"
           case "$TARGET_ENVIRONMENT" in demo|uat|prod) ;; *) exit 1 ;; esac
           case "$APPLY_REQUESTED" in true|false) ;; *) exit 1 ;; esac
           case "$COST_CONTROLS_ENFORCED" in true|false) ;; *) exit 1 ;; esac
@@ -2149,8 +2051,6 @@ jobs:
 
       - name: Build workload inputs from trusted foundation outputs
         if: inputs.apply
-        env:
-          BREAK_FIX_BILLING_IMAGE: ${{ inputs.billing_image }}
         run: |
           set -euo pipefail
           python3 scripts/goal006_deployment_inputs.py \
@@ -2161,28 +2061,6 @@ jobs:
             --key-vault-uri '${{ steps.foundation.outputs.key_vault_uri }}' \
             --output workload.auto.tfvars.json \
             --ghcr-packages-public-verified
-          jq -n \
-            --arg original "$(jq -r '.image_digests[\"billing-engine\"]' workload.auto.tfvars.json)" \
-            --arg replacement "$BREAK_FIX_BILLING_IMAGE" \
-            --arg control_sha '${{ inputs.control_sha }}' \
-            '{
-              schema: "waooaw.break-fix-image-overrides/v1",
-              control_sha: $control_sha,
-              overrides: (
-                if $replacement == "" then {}
-                else {"billing-engine": {original: $original, replacement: $replacement}}
-                end
-              )
-            }' > break-fix-image-overrides.json
-          if [ '${{ inputs.break_fix }}' = true ]; then
-            grep -Eq '^ghcr.io/dlai-sd/billing-engine@sha256:[0-9a-f]{64}$' <<< "$BREAK_FIX_BILLING_IMAGE"
-            jq --arg image "$BREAK_FIX_BILLING_IMAGE" \
-              '.image_digests["billing-engine"] = $image' \
-              workload.auto.tfvars.json > workload.auto.tfvars.next.json
-            mv workload.auto.tfvars.next.json workload.auto.tfvars.json
-          else
-            test -z "$BREAK_FIX_BILLING_IMAGE"
-          fi
           if test -f wc124-db-credential-inventory.json; then
             jq --slurpfile inventory wc124-db-credential-inventory.json '
               ($inventory[0].credentials
@@ -2404,7 +2282,6 @@ jobs:
             --secret-catalog infrastructure/environment-readiness/secret-catalog.json \
             --configuration workload-configuration.json \
             --dependency-file registry-release-manifest.json \
-            --dependency-file break-fix-image-overrides.json \
             --dependency-file infrastructure/terraform/phase2/modules/workload/main.tf \
             --migration-file src/billing-engine/migrate.py \
             --migration-file infrastructure/postgres/init/59-wc124-billing-authority.sql \
@@ -3228,9 +3105,8 @@ jobs:
         run: echo "result=${{ job.status }}" >> "$GITHUB_OUTPUT"
 
   cleanup-private:
-    # Skip when no broker execution was ever started: there is no runner to reconcile and the
-    # break-fix cleanup federation may not exist yet, which would surface as a misleading
-    # AADSTS700213 login failure (run 39433203446).
+    # Skip when no broker execution was ever started: there is no runner to reconcile
+    # (run 39433203446 surfaced this as a misleading AADSTS700213 login failure).
     if: >-
       always()
       && needs.resolve-environment.result == 'success'
@@ -3264,17 +3140,8 @@ jobs:
           set -eu
           blueprint_runner_image=$(jq -er '.parameters.runnerImage.value' \
             'infrastructure/deployment-stacks/goal006-runner/${{ inputs.environment }}.parameters.json')
-          execution_runner_image='${{ inputs.runner_image }}'
-          execution_control_image='${{ inputs.control_image }}'
-          if [ '${{ inputs.break_fix }}' = true ]; then
-            test -n "$execution_runner_image"
-            test -n "$execution_control_image"
-          else
-            test -z "$execution_runner_image"
-            test -z "$execution_control_image"
-            execution_runner_image="$blueprint_runner_image"
-            execution_control_image="$blueprint_runner_image"
-          fi
+          execution_runner_image="$blueprint_runner_image"
+          execution_control_image="$blueprint_runner_image"
           az containerapp job show \
             --resource-group "$RUNNER_RESOURCE_GROUP" \
             --name "$RUNNER_CLEANUP_BROKER_JOB" \
@@ -3404,49 +3271,3 @@ jobs:
             cleanup-attempt-*.log
           if-no-files-found: warn
           retention-days: ${{ env.EVIDENCE_RETENTION_DAYS }}
-
-  revoke-break-fix-cleanup-trust:
-    if: always() && inputs.break_fix && needs.resolve-environment.result == 'success'
-    needs: [resolve-environment, cleanup-private]
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
-    steps:
-      - name: Azure login with control-plane identity
-        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
-        with:
-          client-id: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
-          tenant-id: ${{ env.ARM_TENANT_ID }}
-          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
-
-      - name: Revoke exact break-fix cleanup subject
-        env:
-          CLEANUP_CLIENT_ID: ${{ needs.resolve-environment.outputs.cleanup_client_id }}
-          RUNNER_RESOURCE_GROUP: ${{ needs.resolve-environment.outputs.runner_resource_group }}
-        run: |
-          set -euo pipefail
-          test '${{ inputs.environment }}' = demo
-          credential_name=github-demo-wc124-break-fix-cleanup
-          identity_name=$(az identity list \
-            --resource-group "$RUNNER_RESOURCE_GROUP" \
-            --query "[?clientId == '$CLEANUP_CLIENT_ID'].name | [0]" \
-            --output tsv)
-          test -n "$identity_name"
-          credential_count=$(az identity federated-credential list \
-            --resource-group "$RUNNER_RESOURCE_GROUP" \
-            --identity-name "$identity_name" \
-            --query "[?name == '$credential_name'] | length(@)" \
-            --output tsv)
-          case "$credential_count" in
-            0) ;;
-            1)
-              az identity federated-credential delete \
-                --resource-group "$RUNNER_RESOURCE_GROUP" \
-                --identity-name "$identity_name" \
-                --name "$credential_name" \
-                --yes
-              ;;
-            *)
-              echo "Unexpected duplicate break-fix cleanup credentials: $credential_count" >&2
-              exit 1
-              ;;
-          esac
