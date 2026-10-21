@@ -105,7 +105,7 @@
     "infrastructure/postgres/init/58-wc123-portal-preference-permissions.sql": "532f9f1b3079b1c876e4e716ee7be4d5aec87ef9eb06959165fa301a44d4241e",
     "infrastructure/postgres/init/59-wc124-billing-authority.sql": "1984359391ca1fdc7df94ba77f15972247008951ceac3bc4495edb39021e84b2",
     "infrastructure/postgres/init/60-wc124-principal-handoff.sql": "cd3373003ea6164fa51125c42d6a46413ea80ebcca440ce69b8e4afc63be7ccd",
-    "infrastructure/runner/Dockerfile": "e9f0ba220f04964eb116320591127e6fa3e04c258eb3985d93797d1e9f6407d8",
+    "infrastructure/runner/Dockerfile": "f5e6dec3940326ced7d60e4c952819ff76af197b7510603cc6e2699d52b2c013",
     "infrastructure/runner/Dockerfile.control": "c3d1c42fb381d9019c32fa2f8936218283f2bca81f6eb8cb8edf151c988f9a9b",
     "infrastructure/runner/entrypoint.sh": "fe467ae6782b0792bdf0e2dfada98e277abd5f8ec11bc817768ccf032cfe62a7",
     "infrastructure/runner/import-app-signing-material.sh": "e308e88ba3b70ea923e92f9840bb1fa4f25a462556f1b9b65e13fd0c54376e94",

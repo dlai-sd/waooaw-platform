@@ -9,17 +9,18 @@ ARG TERRAFORM_SHA256=186e0145f5e5f2eb97cbd785bc78f21bae4ef15119349f6ad4fa535b83b
 # places them where the unprivileged runner user can load them.
 ARG AZ_CONTAINERAPP_EXTENSION_VERSION=1.2.0b5
 ARG AZ_LOG_ANALYTICS_EXTENSION_VERSION=1.0.0b3
+ARG APT_ACQUIRE_RETRIES=5
 
 USER root
 
-RUN apt-get update \
-  && apt-get upgrade -y \
-    && apt-get install -y --no-install-recommends ca-certificates dnsutils jq openssl postgresql-client unzip \
+RUN apt-get -o Acquire::Retries="${APT_ACQUIRE_RETRIES}" update \
+  && apt-get -o Acquire::Retries="${APT_ACQUIRE_RETRIES}" upgrade -y \
+    && apt-get -o Acquire::Retries="${APT_ACQUIRE_RETRIES}" install -y --no-install-recommends ca-certificates dnsutils jq openssl postgresql-client unzip \
     && curl --fail --location --silent --show-error \
       --output /tmp/azure-cli.deb \
       "https://packages.microsoft.com/repos/azure-cli/pool/main/a/azure-cli/azure-cli_${AZURE_CLI_VERSION}_amd64.deb" \
     && echo "${AZURE_CLI_SHA256}  /tmp/azure-cli.deb" | sha256sum --check --strict \
-    && apt-get install -y --no-install-recommends /tmp/azure-cli.deb \
+    && apt-get -o Acquire::Retries="${APT_ACQUIRE_RETRIES}" install -y --no-install-recommends /tmp/azure-cli.deb \
     && curl --fail --location --silent --show-error \
       --output /tmp/terraform.zip \
       "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" \

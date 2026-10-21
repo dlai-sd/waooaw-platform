@@ -3,6 +3,7 @@
 from pathlib import Path
 
 WORKFLOW = Path(".github/workflows/private-runner-image.yaml").read_text(encoding="utf-8")
+DOCKERFILE = Path("infrastructure/runner/Dockerfile").read_text(encoding="utf-8")
 
 
 def test_runner_image_is_separate_from_exact_six_release() -> None:
@@ -24,6 +25,11 @@ def test_runner_image_workflow_qualifies_without_publishing() -> None:
 def test_runner_image_is_scanned_for_fixable_os_vulnerabilities() -> None:
     assert "aquasecurity/trivy-action@" in WORKFLOW
     assert "exit-code: 1" in WORKFLOW
+
+
+def test_runner_image_retries_transient_apt_download_failures() -> None:
+    assert "ARG APT_ACQUIRE_RETRIES=5" in DOCKERFILE
+    assert DOCKERFILE.count('-o Acquire::Retries="${APT_ACQUIRE_RETRIES}"') == 4
 
 
 def test_runner_image_executes_qualification_contract_and_terraform_root() -> None:
