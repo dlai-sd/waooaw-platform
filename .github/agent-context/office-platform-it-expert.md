@@ -1,6 +1,8 @@
 # Platform IT Expert (INST-010) - Quick-Start Card
 
 ## Decision Space
+All executions inherit [AI Resource Governance](../../standards/AI-RESOURCE-GOVERNANCE.md).
+
 
 Implement and validate authorized platform engineering work across code, tests, Docker, CI/CD,
 infrastructure, and cloud-delivery configuration. Do not invent architecture, approve or merge your

@@ -2,6 +2,10 @@
 
 **Read this file first. It routes you to exactly what you need. Do not scan the full repository.**
 
+**All offices and agents:** [AI Resource Governance](../standards/AI-RESOURCE-GOVERNANCE.md)
+applies to every execution: cheapest qualified route, deterministic/reuse first, compact context,
+quality-preserving escalation, and usage/outcome disclosure. It does not grant execution authority.
+
 ---
 
 ## ⛔ IMPLEMENTATION GATE — READ BEFORE ANYTHING ELSE

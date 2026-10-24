@@ -69,7 +69,7 @@ commands:
   wc123-identity-contract: {shell: "pytest tests/contract/test_wc123_identity_contract.py -q"}
   wc123-session-readiness: {shell: "pytest tests/pipeline/test_wc123_session_readiness.py tests/identity-foundation/test_identity_artifacts.py -q"}
   wc123-session-contract: {shell: "sh scripts/validation_control/run_wc123_session_contract.sh"}
-  quality-scripts: {shell: "ruff check scripts/ --config pyproject.toml && ruff format --check scripts/ && pytest tests/validation_control/test_unified_execution_contract.py tests/validation_control/test_wc104_rollback.py -q && pytest tests/validation_control/test_pilot.py tests/validation_control/test_wc109_value_pilot.py -q && pytest tests/pipeline/test_goal006_runner_bootstrap.py -q && python scripts/seed-prompts.py --dry-run"}
+  quality-scripts: {shell: "ruff check scripts/ --config pyproject.toml && ruff format --check scripts/ && python scripts/ai_resource_governance.py --repository /workspace && pytest tests/scripts/test_ai_resource_governance.py -q && pytest tests/validation_control/test_unified_execution_contract.py tests/validation_control/test_wc104_rollback.py -q && pytest tests/validation_control/test_pilot.py tests/validation_control/test_wc109_value_pilot.py -q && pytest tests/pipeline/test_goal006_runner_bootstrap.py -q && python scripts/seed-prompts.py --dry-run"}
   quality-commitlint: {shell: "sh scripts/validation_control/run_commitlint_quality_gate.sh"}
   quality-dotnet-constitutional-engine: {shell: "sh scripts/validation_control/run_dotnet_quality_gate.sh src/constitutional-engine constitutional-engine"}
   quality-dotnet-business-platform: {shell: "sh scripts/validation_control/run_dotnet_quality_gate.sh src/business-platform business-platform"}

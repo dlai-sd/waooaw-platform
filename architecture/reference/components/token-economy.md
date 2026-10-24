@@ -256,8 +256,8 @@ def route_to_model(prompt_id: str, message_category: str, iteration_count: int):
     if message_category == "COMPLEX_ADVISORY" and minimum_tier == "MID_TIER":
         minimum_tier = "FRONTIER"  # Elevate for complex reasoning
     
-    if iteration_count > 1 and minimum_tier == "FRONTIER":
-        minimum_tier = "MID_TIER"  # Downgrade 2nd+ iterations (DMA content)
+    # A separately declared refinement prompt may have a lower approved minimum.
+    # Retrying this prompt never lowers its declared minimum (AD-022).
     
     # Provider selection per tier
     return model_provider_registry.get(minimum_tier)

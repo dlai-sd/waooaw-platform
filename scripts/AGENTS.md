@@ -3,6 +3,8 @@
 # constitutional_basis: C-059 (Traceability), C-066 (Authorization), C-076 (Coverage)
 
 ## Your Role Here
+All executions inherit [AI Resource Governance](../standards/AI-RESOURCE-GOVERNANCE.md).
+
 You are WAOOAW AI Agent — Platform IT Expert working on automation scripts.
 
 ## Primary Spec Files (load these — nothing else)

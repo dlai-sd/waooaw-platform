@@ -1,0 +1,64 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-125
+contract_path: work-contracts/WC-125-ai-office-cost-effectiveness-analysis.md
+contract_digest: 91dfd3ffff9e56f36ceaf98b6435f31300ed24aedde46ea48892e899b3061b5c
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Enterprise Architect (INST-004), Founder-authorized bounded governance delivery
+  evidence_class: Policy inheritance and Docker author regression evidence
+  initial_state: new
+  dependencies: None
+  completion_rule: Required policy and deterministic contract checks pass without weakening quality or authority.
+  residual_risk: Passing local contract checks does not prove universal runtime routing, cost controls, or external client compliance.
+  result: PASS
+  evidence_refs:
+    - work-contracts/WC-125-ai-office-cost-effectiveness-analysis.md section 10
+    - tests/scripts/test_ai_resource_governance.py
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC125-R001
+    source: WC-125 section 9; AI Resource Governance sections 1 and 5
+    observable_outcome: Every current office card, nested AGENTS entry, shared entry point, and runner prompt inherits the standard.
+    test_path_or_plan: tests/scripts/test_ai_resource_governance.py inheritance and prompt tests
+  - <<: *defaults
+    requirement_id: WC125-R002
+    source: WC-125 section 9; AI Resource Governance section 2
+    observable_outcome: Free preference requires task-class qualification; paid selection requires a reason; protected floors and privacy authority remain.
+    test_path_or_plan: Standard author review and free/paid record regression tests
+  - <<: *defaults
+    requirement_id: WC125-R003
+    source: WC-125 section 9; AI Resource Governance sections 3 and 4
+    observable_outcome: Compact context, deterministic reuse, bounded repairs, and monthly/event-triggered outcome review are specified.
+    test_path_or_plan: Standard author review; repair escalation negative tests
+  - <<: *defaults
+    requirement_id: WC125-R004
+    source: WC-125 section 9; AI Resource Governance section 4
+    observable_outcome: Unknown measurements require disclosure; acceptance requires evidence; invalid/negative/nonfinite metrics fail.
+    test_path_or_plan: tests/scripts/test_ai_resource_governance.py execution-record tests
+  - <<: *defaults
+    requirement_id: WC125-R005
+    source: WC-125 section 9; AI Resource Governance section 5
+    observable_outcome: Existing global scripts quality gate invokes the inheritance checker and regression suite.
+    test_path_or_plan: tests/scripts/test_ai_resource_governance.py catalog wiring test
+  - <<: *defaults
+    requirement_id: WC125-R006
+    source: WC-125 section 5 finding 4 and section 9
+    observable_outcome: Index matches ratified C-051 type; retry example does not lower a declared prompt minimum.
+    test_path_or_plan: tests/scripts/test_ai_resource_governance.py source consistency tests
+  - <<: *defaults
+    requirement_id: WC125-R007
+    source: WC-125 section 9 delivery boundary
+    observable_outcome: Evidence distinguishes inheritance/record checks from unimplemented universal provider/runtime enforcement.
+    test_path_or_plan: Standard and Work Contract author review; CLI output boundary test
+  - <<: *defaults
+    requirement_id: WC125-R008
+    source: Founder request for all agent executions to comply; WC-125 section 9
+    observable_outcome: Every channel has qualified pre-dispatch routing/budget controls and measured usage/outcome integration.
+    test_path_or_plan: Requires channel inventory, dispatcher/client integration, qualified candidate models, and runtime no-bypass tests.
+    initial_state: blocked
+    result: BLOCKED
+    evidence_refs: []
+    residual_risk: External clients do not expose universal routing/billing controls; legacy provider dispatchers were not integrated in this delivery.

@@ -3,6 +3,8 @@
 # constitutional_basis: C-005 (Three-Ledger), C-038 (Pro-rata billing), C-059, C-076
 
 ## Service Identity
+All executions inherit [AI Resource Governance](../../standards/AI-RESOURCE-GOVERNANCE.md).
+
 - **Name:** Business Platform (BP)
 - **Language:** .NET 9 REST/gRPC service
 - **Decision Space:** Employment contracts, billing, tenant management, user auth

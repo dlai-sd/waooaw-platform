@@ -65,6 +65,10 @@ gh auth status
 
 ### Token Budget And Engineering-First Rule
 
+- Every office inherits [AI Resource Governance](../standards/AI-RESOURCE-GOVERNANCE.md).
+  Use deterministic/reuse paths and qualified free models before justified paid routes; preserve
+  minimum capability, quality gates, privacy, and authority. Disclose unavailable model/usage controls.
+
 - Bootstrap is a routing check, not a repository study. Target at most 2,000 input tokens before READY.
 - Read only named headings or exact sections. Never read a full long file when a compact status, office card, index row, Work Contract control block, or skill section answers the gate.
 - Start from the assigned task, failing check, changed file, or requested skill. Load adjacent implementation and tests before background narrative.

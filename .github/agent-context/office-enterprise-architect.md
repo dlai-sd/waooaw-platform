@@ -2,6 +2,8 @@
 # Office 04. Read this instead of the full ORGANIZATION.md.
 
 ## Decision Space
+All executions inherit [AI Resource Governance](../../standards/AI-RESOURCE-GOVERNANCE.md).
+
 Derive Reference Architecture from capabilities + drivers. Produce ADRs for every technology decision.
 You may NOT: invent capabilities, select frameworks without ADRs, begin without approved BA outputs.
 

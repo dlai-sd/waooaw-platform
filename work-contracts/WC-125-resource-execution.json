@@ -1,0 +1,31 @@
+{
+  "execution_id": "WC125-governance-author-execution-2026-10-24",
+  "office": "INST-004",
+  "work_contract": "WC-125",
+  "task_class": "resource-governance-policy-and-contract-checks",
+  "route": "CLIENT_CONTROLLED",
+  "model": null,
+  "selection_reason": "The chat client selected the session model; no provider or model settings were changed.",
+  "qualification_ref": null,
+  "escalation_reason": null,
+  "limitations": [
+    "Client model identity, metered tokens, costs, elapsed time, and escaped-defect observations are unavailable to this execution record.",
+    "No model capability qualification or measured savings is claimed.",
+    "WC125-R008 universal runtime enforcement remains blocked; accepted is false for the overall Founder request.",
+    "Local Docker checks are diagnostic evidence, not hosted CI or catalog-qualified release evidence."
+  ],
+  "input_tokens": null,
+  "output_tokens": null,
+  "cached_tokens": null,
+  "cost": null,
+  "currency": null,
+  "cost_basis": "UNKNOWN",
+  "elapsed_seconds": null,
+  "repair_count": 0,
+  "accepted": false,
+  "validation_refs": [
+    "work-contracts/WC-125-ai-office-cost-effectiveness-analysis.md#10-qualification-evidence-and-current-resume-point",
+    "tests/scripts/test_ai_resource_governance.py"
+  ],
+  "escaped_defects": null
+}

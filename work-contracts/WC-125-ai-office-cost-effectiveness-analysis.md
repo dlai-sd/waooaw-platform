@@ -2,7 +2,7 @@
 
 **Office:** Enterprise Architect (INST-004)
 **Assigned by:** Founder instruction, 2026-10-24
-**Status:** ANALYSIS COMPLETE — STRATEGY IMPLEMENTATION NOT AUTHORIZED
+**Status:** GOVERNANCE IMPLEMENTATION IN PROGRESS — NOT UNIVERSAL RUNTIME ENFORCEMENT
 **Authority:** Founder-approved analysis scope in this session
 **Baseline context:** Founder reports more than USD 5,000 spent and more than 500 PRs; these figures are not independently verified in this analysis.
 
@@ -115,3 +115,97 @@ repository configuration changes are authorized by this contract.
 On Codespace restart, resume by reading this Work Contract first. The analysis is complete; the
 next Founder decision is whether to authorize a separate strategy-design or implementation
 Work Contract. Do not infer implementation authority from this checkpoint.
+
+## 9. Founder-Authorized Governance Implementation Addendum
+
+On 2026-10-24 the Founder requested implementation of the proposed points and explicitly answered
+the current-session implementation authorization question affirmatively. The Founder selected an
+isolated branch/worktree from freshly fetched main. This addendum supersedes the analysis-only
+boundary for the following delivery; Sections 1-8 retain the original analysis as historical context.
+
+**Branch:** `ib/125/ai-office-resource-governance`
+**Implementation baseline:** `origin/main` at `7c64918b`
+**Scope:** A shared resource-governance standard, universal entry-point inheritance, corrections
+to the two documented consistency issues, a typed deterministic execution-record/inheritance
+validator, regression tests, and wiring into the existing global Docker scripts-quality gate.
+Class 1 constitutional texts remain unchanged; no new claim is fabricated or self-ratified.
+
+The refreshed baseline includes C-077 development budget requirements, Goal Orchestrator vNext
+cheapest-capable routing/budget states, and WC-106/108/121 validation controls. Reuse these rather
+than introducing another test orchestration system or treating the older checkout as current.
+
+### Acceptance and Stops
+
+| ID | Required outcome | Validation |
+|---|---|---|
+| WC125-R001 | One standard applies to all current and future offices/agents without changing authority or protected floors | Entry-point inheritance checker and regression tests |
+| WC125-R002 | Free-model preference is capability-qualified; provider/privacy authority and paid escalation remain explicit | Standard author review and execution-record negative tests |
+| WC125-R003 | Compact context, deterministic/reuse-first work, bounded repairs, and monthly/event-triggered review are specified | Standard author review |
+| WC125-R004 | Unknown usage/cost is disclosed, accepted work cites evidence, repair escalation is recorded, and nonfinite/invalid metrics fail | Execution-record tests |
+| WC125-R005 | Existing global Docker quality path checks inheritance and regression tests | Catalog wiring regression test |
+| WC125-R006 | C-051 index type and minimum-tier retry contradiction are corrected without altering claim authority | Targeted consistency tests |
+| WC125-R007 | No claim of universal runtime compliance, measured savings, or free-provider qualification without evidence | Author review and explicit enforcement boundary |
+| WC125-R008 | Every execution channel has qualified pre-dispatch model/cost controls and measured usage/outcome integration | OPEN: dispatcher/client integrations and qualification remain unavailable in this delivery |
+
+Stop rather than modify an immutable constitutional text, waive an existing quality gate, use a
+new external provider, spend funds, or claim enforcement unavailable in a client/dispatcher.
+
+### Delivery Boundary
+
+This delivery implements policy inheritance and deterministic contract checks, not model dispatch
+adapters or provider billing integration. Existing dispatchers and external clients need separately
+qualified integration for enforceable model selection and per-call budget/usage capture.
+Universal automated runtime compliance therefore remains an explicit open requirement, not a
+completed or self-attested outcome. The Founder retains review, activation, and merge authority.
+
+## 10. Qualification Evidence And Current Resume Point
+
+The Section 9 addendum supersedes the original Section 8 resume decision. Continue on
+`ib/125/ai-office-resource-governance` in `/workspaces/waooaw-platform-wc125`, not the original
+dirty web branch. Continuous-session bootstrap remains valid; do not repeat it without explicit
+Founder approval. A new session follows the bootstrap authorization rules, not a checkpoint shortcut.
+
+Local diagnostic validation used the existing Docker Python runner image
+`sha256:c1514644b3979e421b166fa26030ae5acff1ea80b721454cde992ea33134aec1`.
+Source mounts remained read-only; legacy writer fixtures ran from a disposable `/tmp` copy.
+
+Command prefix for the checks below:
+
+```sh
+WAOOAW_RUNNER_PYTHON_IMAGE=waooaw-platform-test-runner-python:latest \
+docker compose -p wc125-validation --profile test-python run --rm --no-deps --pull never \
+test-runner-python sh -c '<check>'
+```
+
+| Check inside the Docker runner | Result |
+|---|---|
+| `ruff check scripts/ai_resource_governance.py tests/scripts/test_ai_resource_governance.py` | PASS |
+| `ruff format --check scripts/ai_resource_governance.py tests/scripts/test_ai_resource_governance.py` | PASS |
+| `mypy --strict --follow-imports=silent --cache-dir=/tmp/wc125-mypy scripts/ai_resource_governance.py` | PASS; installed jsonschema has no typing stubs, so only its import uses a narrow import-untyped suppression |
+| `python scripts/ai_resource_governance.py --repository /workspace` | PASS for instruction inheritance, not provider-routing or billing assurance |
+| `COVERAGE_FILE=/tmp/wc125.coverage pytest tests/scripts/test_ai_resource_governance.py tests/validation_control/test_unified_execution_contract.py tests/validation_control/test_pilot.py -q --cov=ai_resource_governance --cov-branch --cov-fail-under=90 --cov-report=term-missing` | 102 passed; validator combined line/branch coverage 97.08% |
+| `mkdir /tmp/wc125-regression && cp -a scripts tests pyproject.toml /tmp/wc125-regression/ && cd /tmp/wc125-regression && PYTHONPATH=/tmp/wc125-regression:/tmp/wc125-regression/scripts pytest tests/pipeline/test_magic_llm_context_evaluator.py tests/pipeline/test_magic_llm_end_to_end.py -q` | 55 passed; no live model calls |
+| Catalog-qualified full gate, hosted CI, provider/model qualification, deployment, Founder activation | NOT RUN / NOT CLAIMED |
+
+Initial validation discovered two additional current-main office cards (Founder support and QA);
+both now inherit the standard. The first legacy regression attempt had 110 passes and one failure
+because its fixture attempted a source write into the read-only Docker mount. The disposable
+workspace rerun passed all 55 legacy regressions without changing application code or weakening
+read-only source isolation.
+
+The first Compose invocation attempted to build the unavailable default `:local` runner tag and
+was stopped; subsequent checks explicitly reused the existing `:latest` image without rebuilding.
+An initial mypy invocation failed with its default cache configuration; the disposable writable
+cache exposed and allowed repair of a local exception-variable typing issue. No host Python,
+package installation, live provider call, deployment, or unrelated web edit was used.
+
+Author review covers authority, quality floors, context minimization, missing metrics, escalation,
+private-data isolation, instruction links, negative tests, and rollback. Deterministic contract
+checks validate shape and inheritance, not the truth of qualifications or universal adoption.
+Rollback is reverting the governance delivery while retaining historical execution evidence;
+no database, infrastructure, customer allowance, or deployed provider configuration changed.
+
+**Remaining blocker:** WC125-R008 is not satisfied. Repository guidance cannot force an external
+client's model or meter its bill, and legacy dispatchers still require separately qualified
+pre-dispatch enforcement/exporter integration. Do not declare universal compliance, cost savings,
+or this overall request DONE from the passing local tests.

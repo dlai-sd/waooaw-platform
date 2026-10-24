@@ -114,7 +114,7 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 | C-048 | LAW | Information Non-Exploitation — agent's expertise used only for customer benefit | 2026-07-09 |
 | C-049 | LAW | Honest Limitation Disclosure — agent must say when it cannot deliver | 2026-07-09 |
 | C-050 | LAW | Strategic Cognition Obligation — agent plans beyond immediate task | 2026-07-11 |
-| C-051 | CONFIRMED | Token Economy Layer — 66-74% cost reduction via 4-tier routing | 2026-07-11 |
+| C-051 | LAW | Resource transparency and quality-preserving resource boundaries; routing savings are projections, not measured office results | 2026-07-11 |
 | C-052 | CONFIRMED | Context Fidelity + SEBI Isolation + Creative Fingerprint Uniqueness | 2026-07-11 |
 | C-053 | LAW | Signal Intelligence Layer — proactive signal detection (SIL) | 2026-07-12 |
 | C-054 | LAW | Skill Intelligence Router — cross-skill capability awareness (SIR) | 2026-07-12 |
