@@ -160,6 +160,15 @@ completed or self-attested outcome. The Founder retains review, activation, and 
 
 ## 10. Qualification Evidence And Current Resume Point
 
+**Founder clarification, 2026-10-24:** MagicLLM is not used for the Founder's current code-generation
+path. Prioritize interactive Copilot offices, not enabling unused dispatchers. The Founder requested
+implementation of a bold model recommendation when any office is occupied. Shared Copilot
+instructions and the agent entry point now route to AI Resource Governance section 2.1. It requires
+task-specific guidance, verified account/picker evidence before naming free options, explicit
+unknowns, no assumption that Auto is free, and no claim that office assignment changes the model.
+The notice does not require or restart bootstrap. This documentation-only follow-up does not claim
+automatic model selection or close WC125-R008. Author review checked these boundaries and examples.
+
 The Section 9 addendum supersedes the original Section 8 resume decision. Continue on
 `ib/125/ai-office-resource-governance` in `/workspaces/waooaw-platform-wc125`, not the original
 dirty web branch. Continuous-session bootstrap remains valid; do not repeat it without explicit

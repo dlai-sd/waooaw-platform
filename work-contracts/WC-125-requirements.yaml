@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-125
 contract_path: work-contracts/WC-125-ai-office-cost-effectiveness-analysis.md
-contract_digest: 91dfd3ffff9e56f36ceaf98b6435f31300ed24aedde46ea48892e899b3061b5c
+contract_digest: adc04822b582fc4f3af39b3ab9ea0c7cce3580b6433473c3310d85f3ba4906d3
 implementation_scope: true
 result: PLANNED
 

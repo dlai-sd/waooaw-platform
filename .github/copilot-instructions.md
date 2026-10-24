@@ -6,6 +6,12 @@ routes, compact task context, bounded repairs, unchanged quality/authority floor
 usage/quality evidence. Never pretend to switch a client-controlled model or treat missing cost as zero.
 Read only the relevant standard section when needed; do not reload the whole governance corpus.
 
+**Office activation model notice:** When occupying any office, output one bold line beginning
+`Model recommendation:` identifying the task-appropriate model or picker setting and a brief reason.
+Follow AI Resource Governance section 2.1: use verified picker/account information, never assume Auto
+is free, and disclose unknown availability rather than inventing free models. Recommend again only
+when the task or required capability changes; office assignment does not change the client's model.
+
 Do not start the BOOTSTRAP sequence automatically. Run it only when the Founder explicitly asks for or approves bootstrap in the current conversation. If bootstrap is required but has not been authorized, ask for permission before reading `constitution/BOOTSTRAP.md`.
 
 **CRITICAL — Once bootstrap is authorized, no shortcuts are permitted:**

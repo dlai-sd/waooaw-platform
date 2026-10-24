@@ -49,6 +49,32 @@ approved spend envelope. If no compliant route exists, report BLOCKED.
 Emergency Stop and constitutional evidence paths remain exempt from commercial resource controls;
 they must never wait for this standard's scorecard, model routing, or budget consolidation.
 
+### 2.1 Office activation model notice
+
+When occupying any office in an interactive client, include exactly one bold recommendation line
+before substantive task execution. Use the known task and its minimum capability, not office name
+alone. If the task is not assigned yet, explicitly label the recommendation provisional.
+
+- Start the line with `Model recommendation:`; name the selectable model or setting, a short reason,
+  and any material availability/qualification uncertainty.
+- Name a free option only from currently verified picker/account evidence, such as the Founder's
+  supplied model-picker list or screenshot. Distinguish zero premium-request multiplier from
+  zero total subscription cost. Availability and pricing may differ by account.
+- If picker details are unavailable, do not invent a list or claim a named model is free. Use:
+  **Model recommendation: Check Copilot's model picker for a zero-premium-request option; availability
+  and task suitability are unverified here, and Auto is not guaranteed free.**
+- If a qualified available model is known, recommend it explicitly with the task reason. Otherwise
+  identify qualification as pending; do not present a trial candidate as already quality-qualified.
+- If a stronger model is required, name it only when selectable options are known; otherwise specify
+  the required capability and request picker options using the client's question mechanism.
+- Office activation does not change the selected model. Never claim to observe or switch it unless
+  the client actually exposes that control. Do not infer that an "Auto agent" label identifies a model,
+  a billing rate, or even the Auto model-selection setting.
+
+Give the notice once per office activation, including when bootstrap is not requested. Do not start
+bootstrap automatically to produce it. Repeat only when the task's capability requirement changes
+or an escalation is needed. Do not delay emergency action to display a recommendation.
+
 ## 3. Context, execution, and reuse discipline
 
 - Load only the task's compact office card, skill section, owning files, and nearest tests.

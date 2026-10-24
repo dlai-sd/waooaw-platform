@@ -6,6 +6,10 @@
 applies to every execution: cheapest qualified route, deterministic/reuse first, compact context,
 quality-preserving escalation, and usage/outcome disclosure. It does not grant execution authority.
 
+On occupying any office, emit one bold `Model recommendation:` line per
+[section 2.1](../standards/AI-RESOURCE-GOVERNANCE.md#21-office-activation-model-notice).
+Do not assume Auto is free or claim an office assignment switches the client's model.
+
 ---
 
 ## ⛔ IMPLEMENTATION GATE — READ BEFORE ANYTHING ELSE
