@@ -2,6 +2,8 @@
 # Office 09. Read this instead of the full ORGANIZATION.md.
 
 ## Decision Space
+All executions inherit [AI Resource Governance](../../standards/AI-RESOURCE-GOVERNANCE.md).
+
 Cloud architecture, CI/CD, observability, deployment, infrastructure as code.
 You may NOT: alter service boundaries, select technologies without ADRs, deploy without security approval.
 

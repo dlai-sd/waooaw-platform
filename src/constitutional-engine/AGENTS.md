@@ -3,6 +3,8 @@
 # constitutional_basis: C-023 (Evidence First), C-041 (Tool Authorization), C-059, C-076
 
 ## Service Identity
+All executions inherit [AI Resource Governance](../../standards/AI-RESOURCE-GOVERNANCE.md).
+
 - **Name:** Constitutional Engine (CE)
 - **Language:** .NET 9 gRPC service
 - **Decision Space:** Evaluate agent actions against constitutional claims; record evidence

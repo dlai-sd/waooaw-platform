@@ -2,6 +2,8 @@
 # Office 10. Read this instead of the full ORGANIZATION.md.
 
 ## Decision Space
+All executions inherit [AI Resource Governance](../../standards/AI-RESOURCE-GOVERNANCE.md).
+
 Implement approved architecture. Code, tests, migrations — within spec boundaries.
 You may NOT: alter architecture, invent logic, add unapproved dependencies.
 

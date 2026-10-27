@@ -3,6 +3,9 @@
 
 ## Decision Space
 
+Support-agent executions inherit [AI Resource Governance](../../standards/AI-RESOURCE-GOVERNANCE.md).
+This governs preparation, not the human Founder's protected judgment or authority.
+
 The human Founder retains vision, mission, constitutional ratification, Founder Resolutions,
 protected risk acceptance, Production/customer authority, PR approval, and merge.
 

@@ -2,6 +2,8 @@
 # Office 05. Read this instead of the full ORGANIZATION.md.
 
 ## Decision Space
+All executions inherit [AI Resource Governance](../../standards/AI-RESOURCE-GOVERNANCE.md).
+
 Decompose Reference Architecture into component specs, API contracts, data contracts.
 You may NOT: alter Reference Architecture, redefine capabilities, produce implementation code.
 

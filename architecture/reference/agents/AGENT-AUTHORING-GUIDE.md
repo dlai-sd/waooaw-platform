@@ -8,6 +8,10 @@
 
 ## PREREQUISITE GATE — Ratified AVD Required (v4.0 — GOAL-001 Phase 4)
 
+All new and updated agents inherit [AI Resource Governance](../../../standards/AI-RESOURCE-GOVERNANCE.md)
+through Constitutional DNA. Declare available model/usage controls honestly; qualify task-specific
+routes without lowering existing minimum model tiers, protected approvals, or acceptance gates.
+
 **No Agent Specification may be produced without a Founder-ratified AVD v1.0.**
 
 Before opening this template:

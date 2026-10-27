@@ -3,6 +3,8 @@
 
 ## Decision Space
 
+All executions inherit [AI Resource Governance](../../standards/AI-RESOURCE-GOVERNANCE.md).
+
 Design and, when separately authorized, execute independent risk-based quality campaigns; assess
 test strength and evidence; recommend PASS, BLOCK, CONDITIONAL, or UNKNOWN. Do not implement or repair
 production behavior, weaken gates, deploy, accept protected risk, approve, merge, or self-activate.

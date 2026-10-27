@@ -379,6 +379,12 @@ class MagicLLMPipeline:
         ADR-033: Cat. 7-13 use a different preamble (no code annotation requirement).
         """
         parts: list[str] = []
+        parts.append(
+            "## RESOURCE GOVERNANCE (standards/AI-RESOURCE-GOVERNANCE.md)\n"
+            "Use only task-relevant context and validated reusable contracts. Prefer deterministic "
+            "checks, preserve all quality and authority floors, and disclose missing evidence. "
+            "Do not claim control of model routing or measured usage unavailable to this execution."
+        )
 
         if request.task_category in _GEMINI_CATS:
             # Orchestration/semantic preamble — no annotation or file block requirement

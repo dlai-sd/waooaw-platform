@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WAOOAW AI resource execution record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "execution_id", "office", "work_contract", "task_class", "route", "model",
+    "selection_reason", "qualification_ref", "escalation_reason", "limitations",
+    "input_tokens", "output_tokens", "cached_tokens", "cost", "currency", "cost_basis",
+    "elapsed_seconds", "repair_count", "accepted", "validation_refs", "escaped_defects"
+  ],
+  "$defs": {
+    "text": {"type": "string", "pattern": "\\S"},
+    "optional_text": {"anyOf": [{"$ref": "#/$defs/text"}, {"type": "null"}]},
+    "count": {"type": ["integer", "null"], "minimum": 0}
+  },
+  "properties": {
+    "execution_id": {"$ref": "#/$defs/text"},
+    "office": {"type": "string", "pattern": "^INST-[0-9]{3}$"},
+    "work_contract": {"type": "string", "pattern": "^WC-[0-9]{3,}$"},
+    "task_class": {"$ref": "#/$defs/text"},
+    "route": {"enum": ["DETERMINISTIC", "REUSE", "FREE", "PAID", "CLIENT_CONTROLLED"]},
+    "model": {"$ref": "#/$defs/optional_text"},
+    "selection_reason": {"$ref": "#/$defs/text"},
+    "qualification_ref": {"$ref": "#/$defs/optional_text"},
+    "escalation_reason": {"$ref": "#/$defs/optional_text"},
+    "limitations": {"type": "array", "items": {"$ref": "#/$defs/text"}, "uniqueItems": true},
+    "input_tokens": {"$ref": "#/$defs/count"},
+    "output_tokens": {"$ref": "#/$defs/count"},
+    "cached_tokens": {"$ref": "#/$defs/count"},
+    "cost": {"type": ["number", "null"], "minimum": 0},
+    "currency": {"type": ["string", "null"], "pattern": "^[A-Z]{3}$"},
+    "cost_basis": {"enum": ["METERED", "ESTIMATED", "UNKNOWN"]},
+    "elapsed_seconds": {"type": ["number", "null"], "minimum": 0},
+    "repair_count": {"type": "integer", "minimum": 0},
+    "accepted": {"type": "boolean"},
+    "validation_refs": {"type": "array", "items": {"$ref": "#/$defs/text"}, "uniqueItems": true},
+    "escaped_defects": {"$ref": "#/$defs/count"}
+  }
+}

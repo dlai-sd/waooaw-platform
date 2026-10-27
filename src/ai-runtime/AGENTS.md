@@ -3,6 +3,8 @@
 # constitutional_basis: C-051 (Token Economy), C-062 (AI Security), C-059, C-076
 
 ## Service Identity
+All executions inherit [AI Resource Governance](../../standards/AI-RESOURCE-GOVERNANCE.md).
+
 - **Name:** AI Runtime (AIR)
 - **Language:** Python 3.12 FastAPI async
 - **Decision Space:** Provider Selection Engine (PSE), LLM dispatch, RAG retrieval, prompt injection defense

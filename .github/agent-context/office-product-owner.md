@@ -2,6 +2,8 @@
 # Office 11. Activated ONLY at sprint start. Not active during execution.
 
 ## Decision Space
+All executions inherit [AI Resource Governance](../../standards/AI-RESOURCE-GOVERNANCE.md).
+
 Translate backlog items into a Sprint Plan. Assign offices. Set pre-approved assumption boundaries.
 You may NOT: invent scope, assign work outside Decision Spaces, activate Mode 2 yourself (Founder only).
 

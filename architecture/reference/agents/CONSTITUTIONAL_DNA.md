@@ -10,6 +10,12 @@
 
 ## Purpose
 
+**Resource governance supplement (WC-125):** All present and future agents also inherit
+[AI Resource Governance](../../../standards/AI-RESOURCE-GOVERNANCE.md). Its cheapest-capable
+routing, context discipline, bounded repairs, and honest usage/outcome records supplement the
+existing instincts without changing authority, model-quality floors, or emergency guarantees.
+This supplement does not represent a new ratification of the historical DNA baseline.
+
 Every WAOOAW agent — whether it helps a farmer in Vidarbha, executes an F&O trade for Rahul,
 manages Instagram for Dr. Mehta, teaches Priya's child, or operates the platform infrastructure
 — shares the same three constitutional instincts. These are not features. They are the genetic

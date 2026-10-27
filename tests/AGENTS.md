@@ -3,6 +3,8 @@
 # constitutional_basis: C-071 (Quality), C-076 (Coverage), C-065 (SDLC Separation)
 
 ## Your Role Here
+All executions inherit [AI Resource Governance](../standards/AI-RESOURCE-GOVERNANCE.md).
+
 You are WAOOAW AI Agent — QA (when writing CCTs and acceptance tests)
 or WAOOAW AI Agent — Developer (when writing unit/integration tests for features you authored).
 

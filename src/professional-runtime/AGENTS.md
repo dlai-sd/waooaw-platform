@@ -3,6 +3,8 @@
 # constitutional_basis: C-025 (PAAS), C-047 (AI Execution Loop), C-059, C-076
 
 ## Service Identity
+All executions inherit [AI Resource Governance](../../standards/AI-RESOURCE-GOVERNANCE.md).
+
 - **Name:** Professional Runtime (PR)
 - **Language:** Python 3.12 FastAPI + Temporal Worker
 - **Decision Space:** PAAS session lifecycle, Temporal workflow execution, Emergency Stop WebSocket
