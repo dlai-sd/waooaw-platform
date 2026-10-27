@@ -73,6 +73,24 @@ def test_pgbouncer_is_digest_pinned_private_and_zero_idle() -> None:
     assert "query_wait_timeout" in workload
     assert 'name  = "PGBOUNCER_STATS_USERS"' in workload
     assert "SHOW POOLS;" in workload
+    temporal_startup = workload.split('resource "azurerm_container_app_job" "temporal_startup_qualification"', 1)[1].split(
+        "\nresource ", 1
+    )[0]
+    controller, sampler = temporal_startup.split('name    = "pool-sampler"', 1)
+    # Run 40542694439: the Temporal image has no psql, so only the PostgreSQL client container may call it.
+    controller_script = controller.split("args = [<<-EOT", 1)[1].split("EOT", 1)[0]
+    assert not [line for line in controller_script.splitlines() if "psql" in line and not line.strip().startswith("#")]
+    assert (
+        'image   = "docker.io/library/postgres@sha256:'
+        '0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab"'
+    ) in sampler
+    assert "--dbname pgbouncer --csv --command 'SHOW POOLS;'" in sampler
+    # Samples and exit signals travel over replica loopback; WC-091 forbids EmptyDir in the module.
+    assert 'nc -l -p 17300 > /tmp/pool-samples.tar &' in controller
+    assert "printf 'exited\\n' | nc -w 2 127.0.0.1 17301" in controller
+    assert 'tar -C "$out" -cf - . | nc -w 5 127.0.0.1 17300' in sampler
+    assert "nc -l -p 17301 > /tmp/temporal-exited &" in sampler
+    assert "volume_mounts" not in temporal_startup
     assert "max_waiting_clients" in workload
     assert "minimum_postgresql_headroom" in workload
     # Demo pools are sized for one replica per application; run 39557651135 measured 26 steady-state
