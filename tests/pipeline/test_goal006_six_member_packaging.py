@@ -168,6 +168,9 @@ def test_release_images_pin_fixed_security_dependencies() -> None:
     professional_requirements = (
         REPO_ROOT / "src/professional-runtime/requirements.txt"
     ).read_text(encoding="utf-8")
+    billing_requirements = (
+        REPO_ROOT / "src/billing-engine/requirements.txt"
+    ).read_text(encoding="utf-8")
     web_package = (REPO_ROOT / "web/package.json").read_text(encoding="utf-8")
 
     assert (
@@ -187,6 +190,10 @@ def test_release_images_pin_fixed_security_dependencies() -> None:
         assert "opentelemetry-sdk==1.45.1" in requirements
         assert "opentelemetry-exporter-otlp==1.45.1" in requirements
         assert "opentelemetry-instrumentation-fastapi==0.66b1" in requirements
+    assert "opentelemetry-api==1.45.1" in billing_requirements
+    assert "opentelemetry-sdk==1.45.1" in billing_requirements
+    assert "opentelemetry-exporter-otlp-proto-grpc==1.45.1" in billing_requirements
+    assert "opentelemetry-instrumentation-fastapi==0.66b1" in billing_requirements
     assert '"next": "15.5.28"' in web_package
     assert '"eslint-config-next": "15.5.28"' in web_package
 
