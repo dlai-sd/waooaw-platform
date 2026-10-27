@@ -103,7 +103,7 @@
     "infrastructure/postgres/init/56-wc123-current-membership.sql": "4027f12307734e9ef283522f9edf0d38d417168ba5871887af61375c115f6188",
     "infrastructure/postgres/init/57-wc123-identity-lifecycle.sql": "9d5456d5d89bac170276c52b5e9884697fcc8d02c5220c4723163d861d955f5a",
     "infrastructure/postgres/init/58-wc123-portal-preference-permissions.sql": "532f9f1b3079b1c876e4e716ee7be4d5aec87ef9eb06959165fa301a44d4241e",
-    "infrastructure/postgres/init/59-wc124-billing-authority.sql": "1984359391ca1fdc7df94ba77f15972247008951ceac3bc4495edb39021e84b2",
+    "infrastructure/postgres/init/59-wc124-billing-authority.sql": "7482e523741ed6307b8dd97bcfe8320d19f1e71b502b121b42746071f0a60443",
     "infrastructure/postgres/init/60-wc124-principal-handoff.sql": "cd3373003ea6164fa51125c42d6a46413ea80ebcca440ce69b8e4afc63be7ccd",
     "infrastructure/runner/Dockerfile": "abfa2d543f69adbd0ccefda819b93560e5e55f7b3acc3ce861974724fccf4e89",
     "infrastructure/runner/Dockerfile.control": "c3d1c42fb381d9019c32fa2f8936218283f2bca81f6eb8cb8edf151c988f9a9b",
