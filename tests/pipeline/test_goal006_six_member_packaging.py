@@ -165,6 +165,9 @@ def test_release_images_pin_fixed_security_dependencies() -> None:
     ai_requirements = (REPO_ROOT / "src/ai-runtime/requirements.txt").read_text(
         encoding="utf-8"
     )
+    professional_requirements = (
+        REPO_ROOT / "src/professional-runtime/requirements.txt"
+    ).read_text(encoding="utf-8")
     web_package = (REPO_ROOT / "web/package.json").read_text(encoding="utf-8")
 
     assert (
@@ -179,6 +182,11 @@ def test_release_images_pin_fixed_security_dependencies() -> None:
     assert fixed_aspnet_runtime in constitutional_engine
     assert fixed_aspnet_runtime in business_platform
     assert "transformers==5.10.0" in ai_requirements
+    for requirements in (professional_requirements, ai_requirements):
+        assert "opentelemetry-api==1.45.1" in requirements
+        assert "opentelemetry-sdk==1.45.1" in requirements
+        assert "opentelemetry-exporter-otlp==1.45.1" in requirements
+        assert "opentelemetry-instrumentation-fastapi==0.66b1" in requirements
     assert '"next": "15.5.28"' in web_package
     assert '"eslint-config-next": "15.5.28"' in web_package
 
