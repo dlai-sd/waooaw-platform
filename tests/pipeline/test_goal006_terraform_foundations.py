@@ -1079,7 +1079,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     for evidence in ("wc124-activation-readiness.json", "wc124-connection-budget-post-activation.json"):
         assert workflow.count(evidence) == 2, evidence  # produced once, uploaded once
     assert workflow.count("if: inputs.apply") == 31
-    assert workflow.count("if: always() && inputs.apply") == 3
+    assert workflow.count("always() && inputs.apply") == 3
     assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
     assert '--context "external_environment=$external_environment"' in workflow
     assert "if: inputs.apply || steps.foundation-cache.outputs.cache_hit != 'true'" in workflow

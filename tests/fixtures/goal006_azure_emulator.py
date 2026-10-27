@@ -132,6 +132,44 @@ def cleanup_job() -> dict[str, object]:
     }
 
 
+def database_provisioner_job() -> dict[str, object]:
+    resource_prefix = f"/subscriptions/{SUBSCRIPTION_ID}/resourceGroups/waooaw-demo-rg/providers"
+    return {
+        "id": f"{resource_prefix}/Microsoft.App/jobs/job-demo-wc124-db-provisioner",
+        "name": "job-demo-wc124-db-provisioner",
+        "type": "Microsoft.App/jobs",
+        "location": "centralindia",
+        "identity": {
+            "type": "UserAssigned",
+            "userAssignedIdentities": {
+                f"{resource_prefix}/Microsoft.ManagedIdentity/userAssignedIdentities/id-waooaw-demo-db-{identity}": {}
+                for identity in ("bootstrap", "provisioner")
+            },
+        },
+        "properties": {
+            "provisioningState": "Succeeded",
+            "environmentId": f"{resource_prefix}/Microsoft.App/managedEnvironments/cae-waooaw-demo",
+            "configuration": {
+                "triggerType": "Manual",
+                "replicaTimeout": 1800,
+                "replicaRetryLimit": 1,
+                "manualTriggerConfig": {"parallelism": 1, "replicaCompletionCount": 1},
+            },
+            "template": {
+                "containers": [
+                    {
+                        "name": "job-demo-wc124-db-provisioner",
+                        "image": RUNNER_IMAGE,
+                        "command": ["/usr/bin/python3"],
+                        "args": ["/opt/waooaw/wc124_db_provisioner.py", "--reset-demo-databases"],
+                        "resources": {"cpu": 0.5, "memory": "1Gi"},
+                    }
+                ]
+            },
+        },
+    }
+
+
 class AzureHandler(BaseHTTPRequestHandler):
     manifest = release_manifest()
     apps = container_apps(manifest)
@@ -290,7 +328,9 @@ class AzureHandler(BaseHTTPRequestHandler):
             return
         if "/providers/Microsoft.App/jobs/" in path:
             name = path.rsplit("/", 1)[-1]
-            if name == "goal006-demo-runner-cleanup-broker":
+            if name == "job-demo-wc124-db-provisioner":
+                self.send_json(200, database_provisioner_job())
+            elif name == "goal006-demo-runner-cleanup-broker":
                 self.send_json(200, cleanup_job())
             else:
                 self.send_json(
@@ -306,6 +346,19 @@ class AzureHandler(BaseHTTPRequestHandler):
                         },
                     },
                 )
+            return
+        self.send_json(404, {"error": {"code": "EmulatorRouteMissing", "message": path}})
+
+    def do_PATCH(self) -> None:
+        path = urlparse(self.path).path.rstrip("/")
+        if path.endswith("/providers/Microsoft.App/jobs/job-demo-wc124-db-provisioner"):
+            length = int(self.headers.get("Content-Length", "0"))
+            body = json.loads(self.rfile.read(length))
+            (EVIDENCE_DIR / "handoff-update-request.json").write_text(
+                json.dumps(body, sort_keys=True), encoding="utf-8"
+            )
+            body["properties"]["provisioningState"] = "Succeeded"
+            self.send_json(200, body)
             return
         self.send_json(404, {"error": {"code": "EmulatorRouteMissing", "message": path}})
 

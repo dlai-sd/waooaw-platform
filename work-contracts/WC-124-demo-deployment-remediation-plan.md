@@ -133,3 +133,40 @@ authorized private cleanup execution:
 
 - `run-workload-apply.sh`
 - `registry-release-manifest.json`
+
+## 10. Run 39706644135 Handoff Follow-Up
+
+Founder-authorized implementation on 2026-10-27 is limited to the failed deployment of
+PR #547 (`7c64918bcc930c1987df682fbcdeba3140ba7cb4`). The repair branch is
+`ib/124/deployment-handoff-repair`, based on `main` at `19a73dce`.
+This follow-up does not authorize a live deployment, database reset, state unlock, provider
+mutation, UAT/Production operation, approval, or merge.
+
+| Defect | Evidence | Correction and falsifying check |
+|---|---|---|
+| Handoff command argument parsing | The handoff step failed in one second; the provisioner still had its original reset arguments and no handoff execution existed. The pinned CLI rejects the inline `--environment` and subsequent script flags as unrecognized job-update options. Failed-job logs are unavailable (`log not found: 119588999573`), so the command diagnosis is supported by reproduction and observed job state, not a quoted workflow log. | Render the existing job as a structured JSON/YAML definition and replace only its command/arguments. Execute the actual workflow shell for Demo/UAT, reject update failures and nonzero bootstrap dependencies, and exercise the real pinned CLI PATCH against the local Azure emulator. |
+| Normal revocation attempted without completed handoff | Azure Activity Log correlations `628e77e3-a4f3-41de-bb4c-845a67e7cfa9` and `24080c07-7701-46aa-8dfd-655c19d92509` report `AadAuthPrincipalDropFailed`, SQLSTATE `2BP01`: bootstrap-owned objects prevented role deletion. | Require successful normal or recovery handoff when that transition is required. Preserve unconditional terminal cleanup and its zero-authority assertions; a cleanup failure must remain a failed deployment. |
+| Deletion retries consumed the runner window | Normal removal lasted 30 minutes 46 seconds; terminal cleanup never reported completion. ADR-047 fixes the runner lifetime at 60 minutes. The exact runner termination cause is unproven without execution diagnostics. | Bound the Terraform bootstrap-administrator delete to five minutes for both removal paths without extending runner life, bypassing locks, or relaxing zero-authority checks. |
+
+Focused Docker qualification passes 131 tests covering the workflow, Terraform foundation,
+and database handoff. The pinned CLI emulator qualification passes the structured handoff
+PATCH, positive deployment, unhealthy-revision rejection, and cleanup-broker journeys.
+Local emulation is not live ownership transfer or Azure acceptance. The remaining bootstrap
+administrator and any private-backend lock require inspection/recovery through the existing
+protected workflow under separate Founder authorization; do not unlock an unverified lease.
+
+Execution record: INST-010; WC124-R006/R017/R025/R029/R031/R032/R033/R034; deterministic
+source, Docker, CLI-parser and emulator checks; no delegated models or additional provider;
+existing runner images reused. Token/model billing and host-compute cost are not measured.
+Exact-head PR preparation and hosted gates remain required before Founder handoff.
+
+The full rehearsal initially passed all infrastructure/emulator stages but its lean Python
+test lane failed four new shell-execution cases because that runner did not contain `jq`.
+The lean runner now explicitly installs the same existing `jq` tool used by the full/private
+runners. This is test-runner parity, not a new application dependency or a weakened test.
+
+The repaired final `scripts/run_goal006_local_rehearsal.sh` passes: GitHub Actions lint,
+Terraform 1.9.8 validation of all six Demo/UAT/Production roots, lease-membership plan,
+pinned CLI parser check, structured handoff PATCH, positive/negative deployment and cleanup
+emulation, and all 614 GOAL-006 tests. The 131-test focused suite also passes in the rebuilt
+lean runner. No live provider operation was performed by this qualification.
