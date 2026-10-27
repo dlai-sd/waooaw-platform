@@ -413,6 +413,10 @@ resource "azurerm_postgresql_flexible_server_active_directory_administrator" "bo
   object_id           = azurerm_user_assigned_identity.database_bootstrap[0].principal_id
   principal_name      = azurerm_user_assigned_identity.database_bootstrap[0].name
   principal_type      = "ServicePrincipal"
+
+  timeouts {
+    delete = "5m"
+  }
 }
 
 resource "azurerm_postgresql_flexible_server_database" "persistent_state" {

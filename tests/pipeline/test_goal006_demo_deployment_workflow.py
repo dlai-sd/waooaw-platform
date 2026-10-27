@@ -1,9 +1,13 @@
 """Contracts for private GOAL-006 Demo deployment execution."""
 
+import json
 import os
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -128,6 +132,132 @@ def test_wc124_live_cli_contracts_match_the_pinned_runner() -> None:
     assert '-var="database_bootstrap_admin_enabled=false"' in bootstrap_removal
     assert '-var="database_provisioner_vault_access_enabled=false"' in bootstrap_removal
     assert "microsoft-entra-admin list" in bootstrap_removal
+
+
+@pytest.mark.parametrize("environment", ["demo", "uat"])
+@pytest.mark.parametrize("failure", ["", "update", "dependencies"])
+def test_wc124_handoff_executes_structured_job_update(tmp_path: Path, environment: str, failure: str) -> None:
+    step = next(
+        step
+        for step in yaml.safe_load(WORKFLOW)["jobs"]["terraform"]["steps"]
+        if step.get("name") == "Finalize WC-124 PostgreSQL authority handoff"
+    )
+    bootstrap_id = "/identities/bootstrap"
+    provisioner_id = "/identities/provisioner"
+    definition = {
+        "name": f"job-{environment}-wc124-db-provisioner",
+        "location": "centralindia",
+        "identity": {"userAssignedIdentities": {bootstrap_id: {}, provisioner_id: {}}},
+        "properties": {
+            "configuration": {"triggerType": "Manual", "replicaTimeout": 1800},
+            "template": {
+                "containers": [
+                    {
+                        "name": f"job-{environment}-wc124-db-provisioner",
+                        "image": "example.invalid/runner@sha256:" + "a" * 64,
+                        "command": ["/usr/bin/python3"],
+                        "args": ["/opt/waooaw/wc124_db_provisioner.py", "--reset-demo-databases"],
+                        "resources": {"cpu": 0.5, "memory": "1Gi"},
+                    }
+                ]
+            },
+        },
+    }
+    (tmp_path / "original.json").write_text(json.dumps(definition), encoding="utf-8")
+    az = tmp_path / "az"
+    az.write_text(
+        f"#!{sys.executable}\n"
+        "import json, os, sys\n"
+        "from pathlib import Path\n"
+        "args = sys.argv[1:]\n"
+        "operation = args[2]\n"
+        "if operation == 'update':\n"
+        "    if '--args' in args or os.environ['FAILURE'] == 'update':\n"
+        "        sys.exit('job update failed')\n"
+        "    payload = Path(args[args.index('--yaml') + 1]).read_text()\n"
+        "    Path('updated.json').write_text(payload)\n"
+        "elif operation == 'show':\n"
+        "    if '--query' in args:\n"
+        "        print(json.dumps(['/identities/bootstrap', '/identities/provisioner']))\n"
+        "    else:\n"
+        "        print(Path('original.json').read_text())\n"
+        "elif operation == 'start':\n"
+        "    Path('started').touch()\n"
+        "    print('handoff-execution')\n"
+        "elif operation == 'execution':\n"
+        "    print('Succeeded')\n"
+        "elif operation == 'logs':\n"
+        "    print(json.dumps({'remaining_bootstrap_dependencies': "
+        "1 if os.environ['FAILURE'] == 'dependencies' else 0}))\n"
+        "else:\n"
+        "    sys.exit('unexpected az operation: ' + repr(args))\n",
+        encoding="utf-8",
+    )
+    az.chmod(0o755)
+    result = subprocess.run(
+        ["bash", "-c", step["run"]],
+        cwd=tmp_path,
+        env={
+            **os.environ,
+            "PATH": f"{tmp_path}:{os.environ['PATH']}",
+            "BOOTSTRAP_CLIENT_ID": "bootstrap-client",
+            "BOOTSTRAP_IDENTITY_ID": bootstrap_id,
+            "DATABASE_PROVISIONER_CLIENT_ID": "provisioner-client",
+            "DATABASE_PROVISIONER_IDENTITY_ID": provisioner_id,
+            "KEY_VAULT_NAME": f"kv-waooaw-{environment}",
+            "POSTGRESQL_SERVER_FQDN": "postgres.example.invalid",
+            "RESOURCE_GROUP": f"waooaw-{environment}-rg",
+            "TARGET_ENVIRONMENT": environment,
+            "FAILURE": failure,
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=20,
+    )
+    if failure:
+        assert result.returncode != 0, result.stdout
+        assert (tmp_path / "started").exists() == (failure != "update")
+    else:
+        assert result.returncode == 0, result.stderr
+        definition["properties"]["template"]["containers"][0]["args"] = [
+            "/opt/waooaw/wc124_db_handoff.py",
+            "--environment",
+            environment,
+            "--vault-name",
+            f"kv-waooaw-{environment}",
+            "--server-fqdn",
+            "postgres.example.invalid",
+            "--bootstrap-client-id",
+            "bootstrap-client",
+            "--bootstrap-name",
+            f"id-waooaw-{environment}-db-bootstrap",
+            "--provisioner-client-id",
+            "provisioner-client",
+        ]
+        assert json.loads((tmp_path / "updated.json").read_text(encoding="utf-8")) == definition
+
+
+def test_wc124_handoff_shell_dependency_is_supplied_by_lean_python_runner() -> None:
+    dockerfile = (ROOT / "architecture/reference/dockerfiles/Dockerfile.test-runner-python").read_text(encoding="utf-8")
+    assert "\n    jq \\" in dockerfile
+
+
+def test_wc124_normal_revocation_requires_successful_handoff_and_terminal_cleanup_remains_unconditional() -> None:
+    steps = {step.get("name"): step for step in yaml.safe_load(WORKFLOW)["jobs"]["terraform"]["steps"]}
+    assert steps["Finalize WC-124 PostgreSQL authority handoff"]["id"] == "database-handoff"
+    assert steps["Verify interrupted WC-124 handoff before revocation"]["id"] == "database-handoff-verification"
+    revocation = steps["Remove WC-124 Entra bootstrap authority"]["if"]
+    assert "steps.database-handoff.outcome == 'success'" in revocation
+    assert "steps.database-handoff-verification.outcome == 'success'" in revocation
+    assert "steps.database-transition.outputs.handoff_required != 'true'" in revocation
+    assert "steps.database-transition.outputs.revocation_verification_required != 'true'" in revocation
+    terminal = steps["Ensure zero WC-124 database authority on terminal path"]["if"]
+    assert terminal == "always() && inputs.apply && steps.database-transition.outputs.revocation_required == 'true'"
+    bootstrap = FOUNDATION_MODULE.split(
+        'resource "azurerm_postgresql_flexible_server_active_directory_administrator" "bootstrap" {', 1
+    )[1].split('\nresource "', 1)[0]
+    assert 'delete = "5m"' in bootstrap
 
 
 def test_completed_wc124_transition_still_refreshes_and_rebinds_database_urls() -> None:

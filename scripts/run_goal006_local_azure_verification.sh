@@ -114,6 +114,7 @@ run_az() {
   docker run --rm \
     --user "$(id -u):$(id -g)" \
     --network "$NETWORK" \
+    -w /evidence \
     -v "$AZURE_CONFIG_DIR:/azure-config" \
     -e HOME=/tmp \
     -e AZURE_CONFIG_DIR=/azure-config \
@@ -135,6 +136,36 @@ fi
 test "$(run_az extension show --name containerapp --query version -o tsv)" = "$CONTAINERAPP_EXTENSION_VERSION"
 test "$(run_az account show --query id -o tsv)" = "00000000-0000-0000-0000-000000000006"
 complete_phase extension-readiness extension_readiness_seconds
+start_phase database-handoff-update
+docker compose --profile test-python run --rm --no-deps test-runner-python \
+  python -c '
+from pathlib import Path
+import yaml
+workflow = yaml.safe_load(Path(".github/workflows/environment-deployment.yaml").read_text())
+step = next(step for step in workflow["jobs"]["terraform"]["steps"]
+            if step.get("name") == "Finalize WC-124 PostgreSQL authority handoff")
+print(step["run"].split("actual_identities=", 1)[0])
+' > "$EVIDENCE_DIR/wc124-handoff-update.sh"
+(
+  cd "$EVIDENCE_DIR"
+  export TARGET_ENVIRONMENT=demo RESOURCE_GROUP=waooaw-demo-rg
+  export KEY_VAULT_NAME=kv-waooaw-demo POSTGRESQL_SERVER_FQDN=postgres.example.invalid
+  export BOOTSTRAP_CLIENT_ID=00000000-0000-0000-0000-000000000008
+  export DATABASE_PROVISIONER_CLIENT_ID=00000000-0000-0000-0000-000000000009
+  az() { run_az "$@"; }
+  source ./wc124-handoff-update.sh
+)
+jq -e --slurpfile expected "$EVIDENCE_DIR/wc124-db-handoff-job-definition.json" '
+  .properties.template.containers[0].args
+    == $expected[0].properties.template.containers[0].args
+  and .identity.type == $expected[0].identity.type
+  and (.identity.userAssignedIdentities // $expected[0].identity.userAssignedIdentities)
+    == $expected[0].identity.userAssignedIdentities
+  and .properties.template.containers[0].image
+    == $expected[0].properties.template.containers[0].image
+  and .properties.configuration == $expected[0].properties.configuration
+' "$EVIDENCE_DIR/handoff-update-request.json" > /dev/null
+complete_phase database-handoff-update database_handoff_update_seconds
 start_phase positive-deployment
 docker run --rm \
   --user "$(id -u):$(id -g)" \
@@ -283,6 +314,7 @@ jq -n \
   --arg containerapp_extension_version "$CONTAINERAPP_EXTENSION_VERSION" \
   --argjson image_and_emulator_seconds "$image_and_emulator_seconds" \
   --argjson extension_readiness_seconds "$extension_readiness_seconds" \
+  --argjson database_handoff_update_seconds "$database_handoff_update_seconds" \
   --argjson positive_deployment_seconds "$positive_deployment_seconds" \
   --argjson negative_deployment_seconds "$negative_deployment_seconds" \
   --argjson cleanup_broker_seconds "$cleanup_broker_seconds" \
@@ -297,6 +329,7 @@ jq -n \
     phase_timings_seconds: {
       image_and_emulator: $image_and_emulator_seconds,
       extension_readiness: $extension_readiness_seconds,
+      database_handoff_update: $database_handoff_update_seconds,
       positive_deployment: $positive_deployment_seconds,
       negative_deployment: $negative_deployment_seconds,
       cleanup_broker: $cleanup_broker_seconds
@@ -304,6 +337,7 @@ jq -n \
     azure_requests: $azure_requests,
     revision_evidence: $revision_evidence,
     functional_verification: true,
+    structured_database_handoff_update: true,
     unhealthy_revision_failure_proved: true,
     cleanup_stale_source_replaced: true,
     cleanup_request_sha256: $cleanup_request_sha256,

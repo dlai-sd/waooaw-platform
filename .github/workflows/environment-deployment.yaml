@@ -1771,6 +1771,7 @@ jobs:
             --query authConfig.passwordAuth -o tsv)" = "Enabled"
 
       - name: Finalize WC-124 PostgreSQL authority handoff
+        id: database-handoff
         if: always() && inputs.apply && steps.database-transition.outputs.handoff_required == 'true'
         env:
           BOOTSTRAP_CLIENT_ID: ${{ steps.foundation.outputs.database_bootstrap_client_id }}
@@ -1784,18 +1785,32 @@ jobs:
         run: |
           set -euo pipefail
           job_name="job-${TARGET_ENVIRONMENT}-wc124-db-provisioner"
+          az containerapp job show \
+            --name "$job_name" \
+            --resource-group "$RESOURCE_GROUP" \
+            --output json |
+            jq \
+              --arg environment "$TARGET_ENVIRONMENT" \
+              --arg vault "$KEY_VAULT_NAME" \
+              --arg server "$POSTGRESQL_SERVER_FQDN" \
+              --arg bootstrap "$BOOTSTRAP_CLIENT_ID" \
+              --arg provisioner "$DATABASE_PROVISIONER_CLIENT_ID" \
+              '.properties.template.containers[0] |= (
+                .command = ["/usr/bin/python3"]
+                | .args = [
+                  "/opt/waooaw/wc124_db_handoff.py",
+                  "--environment", $environment,
+                  "--vault-name", $vault,
+                  "--server-fqdn", $server,
+                  "--bootstrap-client-id", $bootstrap,
+                  "--bootstrap-name", ("id-waooaw-" + $environment + "-db-bootstrap"),
+                  "--provisioner-client-id", $provisioner
+                ]
+              )' > wc124-db-handoff-job-definition.json
           az containerapp job update \
             --name "$job_name" \
             --resource-group "$RESOURCE_GROUP" \
-            --command /usr/bin/python3 \
-            --args \
-              /opt/waooaw/wc124_db_handoff.py \
-              --environment "$TARGET_ENVIRONMENT" \
-              --vault-name "$KEY_VAULT_NAME" \
-              --server-fqdn "$POSTGRESQL_SERVER_FQDN" \
-              --bootstrap-client-id "$BOOTSTRAP_CLIENT_ID" \
-              --bootstrap-name "id-waooaw-${TARGET_ENVIRONMENT}-db-bootstrap" \
-              --provisioner-client-id "$DATABASE_PROVISIONER_CLIENT_ID" \
+            --yaml wc124-db-handoff-job-definition.json \
             --output none
           actual_identities=$(az containerapp job show \
             --name "$job_name" \
@@ -1868,6 +1883,7 @@ jobs:
           done
 
       - name: Verify interrupted WC-124 handoff before revocation
+        id: database-handoff-verification
         if: inputs.apply && steps.database-transition.outputs.revocation_verification_required == 'true'
         env:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
@@ -1959,7 +1975,13 @@ jobs:
           mv wc124-reconciliation-authority.revoked.json wc124-reconciliation-authority.json
 
       - name: Remove WC-124 Entra bootstrap authority
-        if: always() && inputs.apply && steps.database-transition.outputs.revocation_required == 'true'
+        if: >-
+          always() && inputs.apply &&
+          steps.database-transition.outputs.revocation_required == 'true' &&
+          (steps.database-transition.outputs.handoff_required != 'true' ||
+           steps.database-handoff.outcome == 'success') &&
+          (steps.database-transition.outputs.revocation_verification_required != 'true' ||
+           steps.database-handoff-verification.outcome == 'success')
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
         env:
           ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
