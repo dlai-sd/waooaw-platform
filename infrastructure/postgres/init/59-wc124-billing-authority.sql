@@ -3,9 +3,15 @@
 
 BEGIN;
 
+-- The provisioner (PostgreSQL 16 CREATEROLE admin, implicit ADMIN without SET) needs temporary
+-- settable membership. The restricted billing_migrator already holds it without ADMIN OPTION, so
+-- it must neither grant nor revoke it (Demo run 40530276041).
 DO $bootstrap_membership$
 BEGIN
-    EXECUTE format('GRANT billing_owner TO %I', session_user);
+    IF NOT pg_has_role(session_user, 'billing_owner', 'SET') THEN
+        EXECUTE format('GRANT billing_owner TO %I', session_user);
+        PERFORM set_config('waooaw.wc124_billing_owner_granted', 'true', true);
+    END IF;
 END
 $bootstrap_membership$;
 
@@ -24,7 +30,7 @@ BEGIN
     IF schema_owner <> 'billing_owner' THEN
         RAISE EXCEPTION 'billing schema owner must be billing_owner, found %', schema_owner;
     END IF;
-    IF NOT pg_has_role(session_user, 'billing_owner', 'MEMBER') THEN
+    IF NOT pg_has_role(session_user, 'billing_owner', 'SET') THEN
         RAISE EXCEPTION '% cannot assume billing_owner', session_user;
     END IF;
 END
@@ -333,7 +339,9 @@ GRANT SELECT ON ALL TABLES IN SCHEMA billing TO billing_verifier;
 RESET ROLE;
 DO $bootstrap_membership$
 BEGIN
-    EXECUTE format('REVOKE billing_owner FROM %I', session_user);
+    IF current_setting('waooaw.wc124_billing_owner_granted', true) = 'true' THEN
+        EXECUTE format('REVOKE billing_owner FROM %I', session_user);
+    END IF;
 END
 $bootstrap_membership$;
 
