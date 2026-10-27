@@ -53,10 +53,13 @@ az containerapp job logs show \
 query="ContainerAppSystemLogs_CL | where TimeGenerated > ago(30m) | where ExecutionName_s == '$execution' | project TimeGenerated, ExecutionName_s, JobName_s, Reason_s, Log_s, ReplicaName_s | order by TimeGenerated asc"
 # Log Analytics ingestion of ACA system events lags the ARM execution status by several minutes.
 # An ARM terminal Succeeded status is authoritative for success; system events are then supporting
-# evidence and their absence is recorded, not fatal. Failed/Stopped executions still require the
+# evidence and their absence is recorded, not fatal, so success waits only briefly for them
+# (run 40518989967 spent ~4m after Azure success). Failed/Stopped executions still require the
 # events because retry eligibility is decided from them.
-evidence_polls=18
-if [ "$status" != Succeeded ]; then
+evidence_polls=3
+if [ "$status" = Succeeded ]; then
+  echo "ACA execution $execution reported Succeeded; collecting supporting system events for at most $evidence_polls polls" >&2
+else
   evidence_polls=36
 fi
 for evidence_attempt in $(seq 1 "$evidence_polls"); do

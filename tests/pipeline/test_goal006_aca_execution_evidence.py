@@ -1,11 +1,56 @@
 from __future__ import annotations
 
 import copy
+import os
+import subprocess
 from pathlib import Path
 
 import pytest
 
 from goal006_aca_execution_evidence import classify_execution_events, correlate_runner_executions
+
+REPOSITORY = Path(__file__).resolve().parents[2]
+CAPTURE_HELPER = REPOSITORY / "scripts" / "goal006_capture_aca_execution.sh"
+FAKE_AZ = """#!/usr/bin/env bash
+set -eu
+printf '%s\\n' "$*" >> "$AZ_CALLS"
+case "$*" in
+  "monitor log-analytics query"*) printf '[]\\n' ;;
+  "containerapp job execution show"*) printf '{"name":"goal006-demo-runner-cleanup-abc1234"}\\n' ;;
+  *) printf 'log line\\n' ;;
+esac
+"""
+
+
+def run_capture_helper(tmp_path: Path, status: str) -> tuple[subprocess.CompletedProcess[str], list[str]]:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "az").write_text(FAKE_AZ, encoding="utf-8")
+    (bin_dir / "sleep").write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+    for tool in bin_dir.iterdir():
+        tool.chmod(0o755)
+    calls = tmp_path / "az-calls.txt"
+    result = subprocess.run(
+        [
+            "bash",
+            str(CAPTURE_HELPER),
+            "--job", "goal006-demo-runner-cleanup",
+            "--container", "cleanup-broker",
+            "--execution", "goal006-demo-runner-cleanup-abc1234",
+            "--status", status,
+            "--attempt", "1",
+            "--workspace", "00000000-0000-0000-0000-000000000000",
+            "--resource-group", "waooaw-demo-runner-rg",
+            "--prefix", str(tmp_path / "cleanup-attempt-1"),
+        ],
+        cwd=REPOSITORY,
+        env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "AZ_CALLS": str(calls)},
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    queries = [line for line in calls.read_text(encoding="utf-8").splitlines() if line.startswith("monitor log-analytics query")]
+    return result, queries
 
 
 def execution(name: str, status: str, run_id: str, run_attempt: str) -> dict[str, object]:
@@ -152,8 +197,10 @@ def test_capture_helper_fails_closed_when_system_events_are_unavailable_for_non_
 
     assert "ContainerAppSystemLogs_CL" in helper
     assert "where ExecutionName_s == '$execution'" in helper
-    assert "evidence_polls=18" in helper
-    assert 'if [ "$status" != Succeeded ]; then\n  evidence_polls=36' in helper
+    assert "evidence_polls=3" in helper
+    assert "evidence_polls=18" not in helper
+    assert 'if [ "$status" = Succeeded ]; then' in helper
+    assert "else\n  evidence_polls=36" in helper
     assert 'for evidence_attempt in $(seq 1 "$evidence_polls")' in helper
     assert "az monitor log-analytics query" in helper
     assert '--output json > "${prefix}.events.json"' in helper
@@ -187,3 +234,21 @@ def test_classification_records_whether_system_events_were_observed() -> None:
     )
     assert present["system_events_observed"] is True
     assert present["application_code_started"] is True
+
+
+def test_capture_helper_bounds_optional_evidence_after_azure_success(tmp_path: Path) -> None:
+    result, queries = run_capture_helper(tmp_path, "Succeeded")
+
+    assert result.returncode == 0, result.stderr
+    assert len(queries) == 3
+    assert result.stderr.index("reported Succeeded; collecting supporting system events") < result.stderr.index(
+        "recorded as absent"
+    )
+
+
+def test_capture_helper_still_requires_system_events_for_failed_execution(tmp_path: Path) -> None:
+    result, queries = run_capture_helper(tmp_path, "Failed")
+
+    assert result.returncode == 1
+    assert len(queries) == 36
+    assert "system events were not observable" in result.stderr
