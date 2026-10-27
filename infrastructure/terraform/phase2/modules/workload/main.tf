@@ -1527,7 +1527,7 @@ resource "azurerm_container_app_job" "temporal_migration" {
 resource "azurerm_container_app_job" "temporal_startup_qualification" {
   count = var.workload_enabled && var.environment == "demo" ? 1 : 0
 
-  name                         = "job-${var.environment}-temporal-startup-qualification"
+  name                         = "job-${var.environment}-temporal-startup"
   location                     = var.location
   resource_group_name          = var.resource_group_name
   container_app_environment_id = var.container_app_environment_id

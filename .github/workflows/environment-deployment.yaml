@@ -2874,7 +2874,7 @@ jobs:
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
-          job_name="job-${TARGET_ENVIRONMENT}-temporal-startup-qualification"
+          job_name="job-${TARGET_ENVIRONMENT}-temporal-startup"
           az containerapp job show \
             --name "$job_name" \
             --resource-group "$RESOURCE_GROUP" \
@@ -3252,8 +3252,12 @@ jobs:
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
         env:
           ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
+          DEPLOYMENT_JOB_STATUS: ${{ job.status }}
         run: |
           set -euo pipefail
+          if [ "$DEPLOYMENT_JOB_STATUS" != success ]; then
+            echo "::notice title=WC-124 post-failure safety cleanup::Deployment already ${DEPLOYMENT_JOB_STATUS}; removing temporary database authority only. This does not continue the deployment."
+          fi
           terraform init -input=false \
             -backend-config="resource_group_name=$TFSTATE_RESOURCE_GROUP" \
             -backend-config="storage_account_name=$TFSTATE_STORAGE_ACCOUNT" \
@@ -3302,9 +3306,12 @@ jobs:
             --arg environment '${{ inputs.environment }}' \
             --argjson bootstrap_admin_count "$bootstrap_admin_count" \
             --argjson provisioner_vault_role_count "$provisioner_vault_role_count" \
+            --arg deployment_status "$DEPLOYMENT_JOB_STATUS" \
             '{
               schema: "waooaw.wc124-terminal-authority-cleanup/v1",
               environment: $environment,
+              deployment_status: $deployment_status,
+              cleanup_mode: (if $deployment_status == "success" then "normal-terminal" else "post-failure-safety" end),
               bootstrap_admin_count: $bootstrap_admin_count,
               provisioner_vault_role_count: $provisioner_vault_role_count,
               status: "zero-authority-verified"
@@ -3326,8 +3333,12 @@ jobs:
           KEY_VAULT_ID: ${{ steps.foundation.outputs.key_vault_id }}
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
+          DEPLOYMENT_JOB_STATUS: ${{ job.status }}
         run: |
           set -euo pipefail
+          if [ "$DEPLOYMENT_JOB_STATUS" != success ]; then
+            echo "::notice title=WC-124 post-failure safety cleanup::Deployment already ${DEPLOYMENT_JOB_STATUS}; deleting the temporary database provisioner only. This does not continue the deployment."
+          fi
           cleanup_failed=0
           principal_id=$(az identity show \
             --ids "$DATABASE_PROVISIONER_IDENTITY_ID" \

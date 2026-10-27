@@ -111,7 +111,7 @@
     "infrastructure/runner/import-app-signing-material.sh": "e308e88ba3b70ea923e92f9840bb1fa4f25a462556f1b9b65e13fd0c54376e94",
     "scripts/azure_rest_retry.py": "e7510cf99a0f3924eb284d6362d7b09f394ee838fd00ff3471c76090f5eea76e",
     "scripts/goal006_aca_execution_evidence.py": "73a2aa785a295135f837eac9cc355304469cc78f2e9d17f00b37813ef0697f01",
-    "scripts/goal006_capture_aca_execution.sh": "912dfaaeb9bc764f195e1567dcac8db587a9cbf6458eeeb362c0a13a7a4e74ec",
+    "scripts/goal006_capture_aca_execution.sh": "7448403204182cf29a1db38b154043e636c9c30261651aff787c9275cd701cb2",
     "scripts/goal006_cost_gate.py": "0b7ed44ae239283f6186d69515fa73efd32dcbcf98dda374de85bcf166a719cf",
     "scripts/goal006_import_app_signing_material.sh": "9f45ba6158195d32f2de4e3f3410e2efebdb5a4fc8ccb2c464827c5757d4af45",
     "scripts/goal006_runner_bootstrap.py": "04af340f24ad13be80ea3ecd1f0013939db16ca5087d125f88c0d4eddc4e7063",

@@ -694,7 +694,7 @@ def test_temporal_pool_evidence_blocks_activation_independently() -> None:
     verify = WORKFLOW.index("Verify migration evidence before application activation")
     activation = WORKFLOW.index("Apply application activation")
 
-    assert "job-${TARGET_ENVIRONMENT}-temporal-startup-qualification" in WORKFLOW
+    assert 'job_name="job-${TARGET_ENVIRONMENT}-temporal-startup"' in WORKFLOW
     assert ".qualification_seconds >= 60" in WORKFLOW
     assert "query_wait_timeout_events" in WORKFLOW
     assert "max_waiting_clients" in WORKFLOW
@@ -931,6 +931,14 @@ def test_terminal_cleanup_forces_and_verifies_zero_database_authority() -> None:
     assert 'test "$bootstrap_admin_count" = 0' in cleanup
     assert 'test "$provisioner_vault_role_count" = 0' in cleanup
     assert "wc124-terminal-authority-cleanup.json" in cleanup
+    # Run 40518989967: authority cleanup after a failed workload plan read as continued deployment.
+    for step in (cleanup, final):
+        assert "DEPLOYMENT_JOB_STATUS: ${{ job.status }}" in step
+        assert 'if [ "$DEPLOYMENT_JOB_STATUS" != success ]; then' in step
+        assert "::notice title=WC-124 post-failure safety cleanup::" in step
+        assert "This does not continue the deployment." in step
+    assert 'cleanup_mode: (if $deployment_status == "success" then "normal-terminal" else "post-failure-safety" end)' in cleanup
+    assert cleanup.index("post-failure safety cleanup") < cleanup.index("terraform init")
     assert 'all_officer_assignments=$(az role assignment list' in final
     assert '[ "$cleanup_failed" = 0 ] && [ -n "$job_id" ]' in final
 
