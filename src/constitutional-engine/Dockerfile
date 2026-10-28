@@ -12,12 +12,14 @@ FROM golang:1.26.10-alpine@sha256:9ce231b28998b32e116927c61aa5c406183061d4f3f2d6
 ARG GRPC_HEALTH_PROBE_COMMIT=b5fef775b4ec749eefb19fb00787089ec9a772d5
 ARG GRPC_GO_VERSION=v1.83.2
 ARG GOLANG_X_NET_VERSION=v0.60.0
+ARG GO_JOSE_VERSION=v4.1.6
 RUN apk add --no-cache git \
     && git clone https://github.com/grpc-ecosystem/grpc-health-probe.git /src/grpc-health-probe \
     && cd /src/grpc-health-probe \
     && git checkout "${GRPC_HEALTH_PROBE_COMMIT}" \
     && go get "google.golang.org/grpc@${GRPC_GO_VERSION}" \
     && go get "golang.org/x/net@${GOLANG_X_NET_VERSION}" \
+    && go get "github.com/go-jose/go-jose/v4@${GO_JOSE_VERSION}" \
     && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /grpc_health_probe .
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0.21@sha256:4d94cf3204df98d321e8dbf8d6d06e0b34fd136aa75c945abf4390ee07eb30dd

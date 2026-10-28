@@ -178,6 +178,10 @@ def test_release_images_pin_fixed_security_dependencies() -> None:
         in constitutional_engine
     )
     assert "GRPC_GO_VERSION=v1.83.2" in constitutional_engine
+    assert "ARG GO_JOSE_VERSION=v4.1.6" in constitutional_engine
+    jose_pin = 'go get "github.com/go-jose/go-jose/v4@${GO_JOSE_VERSION}"'
+    assert jose_pin in constitutional_engine
+    assert constitutional_engine.index(jose_pin) < constitutional_engine.index("CGO_ENABLED=0 go build")
     fixed_aspnet_runtime = (
         "mcr.microsoft.com/dotnet/aspnet:9.0.21"
         "@sha256:4d94cf3204df98d321e8dbf8d6d06e0b34fd136aa75c945abf4390ee07eb30dd"

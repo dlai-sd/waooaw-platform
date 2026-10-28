@@ -1,10 +1,12 @@
 # PROJECT_STATE.md
 **State Schema:** 2.0.0
-**State Revision:** 300
+**State Revision:** 301
 **Last Updated:** 2026-10-28 (WC-124 TEMPORAL QUALIFICATION REPAIR)
 **Purpose:** Current operational snapshot for bootstrap, recovery, and automated sprint controls; keep it below 200 lines, update checkpoints in place, and retain durable detail in the owning Work Contract, Goal, review, evidence artifact, Git history, or archive index.
 ---
 ## Institutional Snapshot
+PR #555 precheck repair: completed run `40654097361` failed the Constitutional Engine image scan; QA Campaign blocked only on `build`. Apply the same go-jose v4.1.6 health-probe dependency patch verified for #554 (CVE-2026-116587), independently on the Temporal branch. No scan-policy weakening, business-logic change, or change to Temporal qualification semantics.
+
 | Field | Current Value |
 |---|---|
 | Epoch | Epoch 1 — Foundation |
