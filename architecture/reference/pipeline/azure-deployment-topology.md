@@ -1118,3 +1118,107 @@ only after a durable database execution record and uniqueness rule make duplicat
 completion impossible. The billing-integrity halt and its release are always database records;
 Redis may cache the effective state but cannot create, clear, or outlive the authoritative record.
 Missing or uncertain authoritative state blocks consequential Billing writes.
+
+### Demo cost controls and staged idle/wakeup policy
+
+The Founder authorized Demo cost remediation on 2026-10-28, with a target of INR 10,000/month,
+20-minute user inactivity rather than fixed office hours, and a design before implementing
+whole-stack wake-on-website-hit. UAT changes remain proposals, not provider mutation authority.
+Mandatory deployment/security/audit evidence is preserved; routine console history is not required.
+
+#### Revision budget (implemented deployment control)
+
+`scripts/goal006_demo_revision_cleanup.py` defaults to a read-only plan. `--apply` is allowed only
+for `waooaw-demo-rg`; it never touches UAT, secrets, databases or images. The deployment workflow
+runs it after all latest revisions pass activation readiness and before measuring connection
+headroom. It validates the whole app inventory before mutation, then rechecks each candidate:
+
+- retain the active, healthy latest-ready revision;
+- require 100 percent traffic to that revision; refuse traffic splits and labelled routes;
+- deactivate obsolete active revisions and verify both inactive status and zero replicas;
+- fail explicitly on API errors, rollout changes or a bounded deactivation timeout;
+- retain `demo-revision-cleanup.json` with the deployment evidence.
+
+Deactivation, not deletion of Container Apps or databases, eliminates obsolete running replicas.
+Inactive revision metadata does not incur replica compute charges and may be useful for rollback.
+The existing Multiple revision mode and blue/green controls are unchanged. This control does not
+silently retire a failed rollout's previous serving revision.
+
+The live 2026-10-28 inventory after subscription recovery contained one obsolete active Professional
+Runtime revision (`ca-demo-professional-runtime--0000075`), with zero traffic and zero replicas.
+It was deactivated and verified inactive at zero replicas. Every one of the 12 Demo apps then had
+one active revision. Identity Edge retained 20 inactive historical revisions with zero replicas.
+Earlier log evidence showed 21 Business Platform revisions emitting logs in the same minute;
+that historical condition must not be confused with the recovered current inventory.
+
+#### Routine logs (configuration change, not a history purge)
+
+Demo Business Platform and Constitutional Engine set only the framework categories
+`Microsoft.AspNetCore.Hosting.Diagnostics` and `Microsoft.AspNetCore.Routing.EndpointMiddleware`
+to `Warning`. This suppresses the successful request/endpoint messages that dominated health-check
+logs, but keeps warnings/errors and application/audit categories unchanged. UAT/Production log
+configuration is unchanged. This does not claim to suppress all successful probe messages.
+
+There is no "keep only the current instance" retention mode in the current shared Log Analytics
+console table: it currently retains 30 days. Do not purge this mixed table or reduce shared evidence
+retention to approximate that requirement. A later change must separate mandatory evidence from
+routine console diagnostics, stop unnecessary routine ingestion, and identify any historical purge
+by exact table/predicate/time range after proving it excludes mandatory evidence. Existing log
+history has not been purged. Purging already ingested logs does not refund ingestion charges.
+
+#### Whole-stack idle/wakeup design (not implemented)
+
+Native HTTP scale-to-zero can wake an HTTP-facing app but does not safely activate a sleeping
+PostgreSQL/Temporal/identity stack. Keep the existing minimum replicas and CPU/memory allocations
+until the complete dependency lifecycle and measured sizing have been accepted and tested.
+
+1. A small public wake/landing endpoint requests a deduplicated, rate-limited activation under a
+   pre-authorized release/lease. It must not bypass the WC-124 authority and traffic-admission gates.
+2. Display a starting page while the existing activation sequence starts PostgreSQL, validates
+   private TLS/schema/holds, starts PgBouncer and identity/Temporal/Redis, then admits application
+   traffic only after qualification. The existing target is 5-20 minutes, not instant cold start.
+3. Measure genuine user activity separately from probes and background polling. After 20 minutes
+   of user inactivity, request governed sleep only if requests, workflows, migrations and integrity
+   holds permit it. A website hit during drain must cancel/defer sleep or queue one safe reactivation.
+4. Drain work, retain authoritative watermarks, scale application/dependency revisions to zero,
+   stop PostgreSQL, and reconcile its platform-driven automatic restarts under the existing lease.
+   Never delete authoritative data to meet the budget.
+5. Test duplicate wake hits, cold starts, active work during idle, lost activity signals, interrupted
+   activation, lease expiry, restart reconciliation and rollback before enabling this policy.
+
+Right-sizing requires per-current-revision peak working set and CPU, startup qualification and
+load/latency tests. Do not divide historical aggregate usage across old replicas and assume that
+the result proves a smaller allocation safe. No CPU/memory reductions or automatic sleep have
+been applied by this remediation.
+
+#### Cost baseline and UAT proposals
+
+Azure Cost Management ActualCost/PreTaxCost, October 2026 month-to-date, queried 2026-10-28;
+INR, not an invoice/tax-inclusive forecast. Demo includes its runner and managed resource groups.
+Costs already incurred are not recoverable by deleting revisions.
+
+| Scope/contributor | MTD INR | Assessment/proposed action |
+|---|---:|---|
+| Demo, including runner/networking | 73,306.61 | Remove revision overlap first; measure a clean baseline |
+| Demo idle CPU/memory (subset of above) | 33,173.53 | Historical waste; not a guaranteed future saving |
+| Demo networking, DNS, Key Vault (subset of above) | 5,807.57 | Rough 31-day extrapolation: 6,667.96, before compute/logs/storage |
+| UAT two managed load balancers | 2,190.96 | App scale-to-zero does not remove this infrastructure cost |
+| UAT Keycloak | 2,003.05 | Candidate for governed sleep outside accepted UAT sessions |
+| UAT runner key-import helper | 1,662.42 | Has `minReplicas=0`, but runs `tail -f /dev/null`; inspect activation history and make it on-demand |
+| UAT four private endpoints | 2,484.21 | Validate consumers and DNS before any consolidation/removal |
+| UAT Identity Edge | 499.48 | Sleep with Keycloak, subject to activation/identity holds |
+| UAT managed public IP | 310.05 | Retained infrastructure cost |
+| UAT reconciler | 173.87 | Preserve required lease/restart reconciliation; review frequency |
+| UAT other resources | 139.84 | DNS, logs, Key Vault and minor application charges |
+| UAT total | 9,463.87 | No UAT mutation authorized or performed |
+| Subscription total | 82,770.58 | Demo and UAT plus approximately INR 0.10 shared storage |
+
+UAT Web logs last appeared on 2026-10-18 (30 lines MTD), Professional Runtime on 2026-10-15
+(90 lines), and Keycloak on 2026-10-27 (105 lines). These are low-use signals, not proof that
+resources are unused. UAT maxima of ten replicas and always-on identity dependencies require
+review before reopening UAT.
+
+At the observed networking rate, the INR 10,000 Demo target leaves roughly INR 3,332/month for
+compute, storage, the wake endpoint and retained evidence. It is not yet a validated monthly
+estimate. Consolidating private infrastructure requires dependency/security review and separate
+authorization; do not make endpoints public or remove controls to reduce the bill.

@@ -1298,6 +1298,18 @@ resource "azurerm_container_app" "member" {
         }
       }
 
+      dynamic "env" {
+        # Successful probe requests dominated Demo ingestion; application/audit categories remain unchanged.
+        for_each = var.environment == "demo" && contains(["business-platform", "constitutional-engine"], each.key) ? {
+          "Logging__LogLevel__Microsoft.AspNetCore.Hosting.Diagnostics"        = "Warning"
+          "Logging__LogLevel__Microsoft.AspNetCore.Routing.EndpointMiddleware" = "Warning"
+        } : {}
+        content {
+          name  = env.key
+          value = env.value
+        }
+      }
+
       startup_probe {
         transport               = "TCP"
         port                    = local.target_ports[each.key]
