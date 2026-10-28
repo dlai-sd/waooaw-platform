@@ -2876,6 +2876,16 @@ jobs:
             sleep 10
           done
 
+      # The OIDC client assertion expires 5 minutes after login; refresh before
+      # the first Log Analytics token is required by Temporal qualification.
+      - name: Refresh Azure login before Temporal qualification
+        if: inputs.apply && inputs.environment == 'demo'
+        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
+        with:
+          client-id: ${{ steps.foundation.outputs.deployment_client_id }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
       - name: Qualify exact Temporal startup through PgBouncer
         if: inputs.apply && inputs.environment == 'demo'
         env:
@@ -2883,6 +2893,9 @@ jobs:
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
+          # Acquire and cache the Log Analytics token while the OIDC assertion is fresh.
+          az account get-access-token --resource https://api.loganalytics.io \
+            --query expiresOn --output tsv >/dev/null
           job_name="job-${TARGET_ENVIRONMENT}-temporal-startup"
           az containerapp job show \
             --name "$job_name" \
