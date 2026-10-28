@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-124
 contract_path: work-contracts/WC-124-demo-uat-persistent-state-lifecycle-implementation.md
-contract_digest: f6048cba89d9eea13927b7a8913efed5fef306117016af122cf70a2a0638c965
+contract_digest: 695826f8015d1bf2e69dcd63a38985403f66f0e106961005e369e1f8c21912b5
 input_package_path: work-contracts/WC-124-persistent-state-inputs.yaml
 input_package_digest: 2b4692f1ac916442a6ffa557524a97b76a59a244952015b4f467bed379859e3e
 implementation_may_begin: true
@@ -36,7 +36,7 @@ requirements:
   - <<: *defaults
     requirement_id: WC124-R035
     source: WC-124 Founder amendment, 2026-10-28
-    observable_outcome: Exactly two manual inputs, daily Stop-only schedule, shared deployment lock and environment-exact OIDC.
+    observable_outcome: Exactly two manual inputs with Demo only, UAT denied, daily Stop-only schedule, shared deployment lock and environment-exact OIDC.
     test_path_or_plan: tests/pipeline/test_goal006_application_lifecycle.py
     dependencies: WC124-R001
     evidence_refs:
@@ -49,7 +49,7 @@ requirements:
     test_path_or_plan: tests/pipeline/test_goal006_application_lifecycle.py; tests/infra/application_lifecycle_cli_rehearsal.py
     dependencies: WC124-R035
     evidence_refs:
-      - Docker complete Demo/UAT stop-start and replay tests plus pinned CLI local HTTP rehearsal; not live-provider proof.
+      - Docker Demo stop-start and replay tests plus pinned CLI local HTTP rehearsal; live Identity Edge smoke test is separate, not full-environment proof.
 
   - <<: *defaults
     requirement_id: WC124-R001

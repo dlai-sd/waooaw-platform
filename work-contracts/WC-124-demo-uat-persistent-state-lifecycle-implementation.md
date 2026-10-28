@@ -31,6 +31,12 @@ exactly `environment` (`demo`, `uat`) and `action` (`Start`, `Stop`), plus daily
 Asia/Kolkata (16:30 UTC). Start is manual only. This narrow operational exception to the
 `deploy.yaml` entry restriction does not deploy, migrate or select a release.
 
+Following live discovery of PostgreSQL sidecars in three UAT applications, the Founder narrowed
+this batch to Demo only. UAT is excluded from manual and scheduled workflow execution; the
+environment input exposes only `demo`. The separately authorized CLI action stopped all eight UAT
+apps including their database sidecars after explicit data-loss-risk acceptance, with all eight
+revisions verified at zero replicas. This one-off action does not authorize recurring UAT shutdown.
+
 After being informed that strict no-interruption shutdown requires additional runtime controls,
 the Founder explicitly selected standard Azure graceful shutdown and accepted possible interruption
 of unfinished work. This supersedes the earlier strict work-drained requirement for this operation
@@ -159,7 +165,7 @@ authorized operation:
 | WC124-R032 | Bind rollback to the complete immutable prior tuple, preserve additive schema and enter recovery hold on partial/uncertain infrastructure state. | PST-WC11 |
 | WC124-R033 | Update only mandatory owning documentation, inventories, runbooks, alert catalogues and implementation evidence after executable qualification. | PST-WC12 |
 | WC124-R034 | Complete exact-head author review, mandatory engineering candidate qualification, PR preparation and Founder handoff without self-approval, merge, deployment or activation claims. | PST-WC13 / PST-WC14 |
-| WC124-R035 | Provide native application-only Demo/UAT Start/Stop and daily 22:00 IST Stop; manual Start only; share deployment serialization and trusted environment OIDC. | Application-only Founder amendment |
+| WC124-R035 | Provide native application-only Demo Start/Stop and daily 22:00 IST Stop; manual Start only; exclude UAT; share deployment serialization and trusted environment OIDC. | Application-only Founder amendment |
 | WC124-R036 | Preserve DB, network and application configuration/revision identity; verify zero replicas on Stop and readiness on Start; fail and retain partial evidence on errors. | Application-only Founder amendment |
 
 Dependencies are exactly those in Work Component section 17. No PST component starts before every

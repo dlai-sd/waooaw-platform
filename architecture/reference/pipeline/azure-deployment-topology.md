@@ -1225,7 +1225,10 @@ authorization; do not make endpoints public or remove controls to reduce the bil
 
 ### Application-only manual Start/Stop (Founder decision, 2026-10-28)
 
-`Application Start Stop` exposes only environment (`demo`, `uat`) and action (`Start`, `Stop`).
+`Application Start Stop` exposes only environment (`demo`) and action (`Start`, `Stop`).
+The Founder excluded UAT after live inspection found PostgreSQL sidecars in Billing, CE and BP.
+All eight UAT apps were stopped separately via CLI with explicit DB-sidecar/data-loss-risk consent;
+all eight revisions reached zero replicas. No recurring UAT shutdown or workflow Start is enabled.
 Daily `30 16 * * *` means 22:00 Asia/Kolkata; edit this cron to change shutdown time.
 GitHub schedules can be delayed and environment protection may require approval: this is not an
 exact-time availability guarantee. There is no scheduled Start or website-triggered wake.
@@ -1239,11 +1242,12 @@ this is not a guaranteed business-work drain or runtime hold check.
   and the pinned environment Azure runner image. Only public ARM management operations occur;
   no private backend, Key Vault secret or PostgreSQL data-plane access is required.
 - Share `goal006-<environment>-deployment` concurrency with the deployment entry, never cancel an
-  in-flight operation, and run scheduled Demo/UAT independently. GitHub concurrency has one pending
+  in-flight operation. GitHub concurrency has one pending
   slot, not a durable FIFO; operators must verify queued runs rather than assume every dispatch runs.
 - Validate the complete known application inventory before mutation. Start PgBouncer, Redis,
   Keycloak, Identity Edge and Demo Temporal before applications, with Web last. Stop in reverse.
   UAT Temporal Cloud is not mutated. Jobs and runner-resource-group helper apps are not stopped.
+  Any discovered PostgreSQL container blocks the operation before any mutation.
 - Preserve existing revisions, configuration, min/max replicas, routes and images through the
   native operation; compare digests before/after without publishing environment values. Stop waits
   for `Stopped` and zero replicas; Start waits for `Running` and latest revision readiness.
@@ -1256,3 +1260,7 @@ this is not a guaranteed business-work drain or runtime hold check.
 
 Azure state/readiness checks are platform checks, not full business-journey acceptance. Local mocked
 and CLI-emulated tests must be reported separately from any separately authorized live rehearsal.
+The live native stop/start smoke test on Demo Identity Edge restored the same `--0000012` revision
+to Healthy with one replica; Demo PostgreSQL stayed Ready. A full-environment rehearsal was not
+performed because the latest Demo Web revision was already `ActivationFailed` after deployment
+run `40646811876`. This batch neither repairs that deployment nor claims Demo-wide health.

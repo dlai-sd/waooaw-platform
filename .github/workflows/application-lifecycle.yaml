@@ -7,7 +7,7 @@ on:
         description: Application environment (database is unchanged)
         required: true
         type: choice
-        options: [demo, uat]
+        options: [demo]
       action:
         description: Native graceful shutdown can interrupt unfinished work
         required: true
@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        environment: ${{ github.event_name == 'schedule' && fromJSON('["demo","uat"]') || fromJSON(format('["{0}"]', inputs.environment)) }}
+        environment: ${{ github.event_name == 'schedule' && fromJSON('["demo"]') || fromJSON(format('["{0}"]', inputs.environment)) }}
     runs-on: ubuntu-latest
     environment: ${{ matrix.environment }}
     timeout-minutes: 45
@@ -51,7 +51,7 @@ jobs:
           if test "$GITHUB_EVENT_NAME" != schedule; then
             case "$GITHUB_ACTOR" in dlai-sd|yk-dlaisd) ;; *) echo "Unauthorized dispatcher" >&2; exit 1 ;; esac
           fi
-          case "$TARGET_ENVIRONMENT:$LIFECYCLE_ACTION" in demo:Start|demo:Stop|uat:Start|uat:Stop) ;; *) exit 1 ;; esac
+          case "$TARGET_ENVIRONMENT:$LIFECYCLE_ACTION" in demo:Start|demo:Stop) ;; *) exit 1 ;; esac
           config=$(python3 scripts/goal006_environment_config.py --environment "$TARGET_ENVIRONMENT")
           echo "CONTROL_CLIENT_ID=$(jq -er .control_plane_client_id <<< "$config")" >> "$GITHUB_ENV"
 

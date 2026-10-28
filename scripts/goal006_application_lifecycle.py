@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Start/stop existing Demo/UAT Container Apps without deploying or touching databases."""
+"""Start/stop existing Demo Container Apps without deploying or touching databases."""
 
 from __future__ import annotations
 
@@ -52,13 +52,13 @@ def execute(
     sleep: Callable[[float], None] = time.sleep,
     evidence: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    if environment not in {"demo", "uat"} or action not in {"Start", "Stop"}:
-        raise ValueError("Only Demo/UAT and Start/Stop are authorized")
+    if environment != "demo" or action not in {"Start", "Stop"}:
+        raise ValueError("Only Demo Start/Stop is enabled; UAT is excluded by Founder decision")
     operation_deadline = clock() + 1800
     result = evidence if evidence is not None else {}
     result.update(schema="waooaw.application-lifecycle/v1", environment=environment, action=action, status="failed", apps=[])
     group = f"waooaw-{environment}-rg"
-    members = [member for member in START_ORDER if environment != "uat" or member != "temporal"]
+    members = list(START_ORDER)
     expected = {f"ca-{environment}-{member}" for member in members}
     inventory = run_az(["containerapp", "list", "--resource-group", group])
     found = {app["name"] for app in inventory}
@@ -67,6 +67,9 @@ def execute(
     snapshots = {}
     for app in inventory:
         name = app["name"]
+        containers = app["properties"]["template"].get("containers", [])
+        if any("postgres" in (container["name"] + " " + container.get("image", "")).lower() for container in containers):
+            raise ValueError(f"{name}: embedded PostgreSQL would violate database exclusion")
         revisions = run_az(["containerapp", "revision", "list", "-g", group, "-n", name, "--all"])
         if app["properties"].get("runningStatus") not in {"Running", "Stopped"}:
             raise ValueError(f"{name}: application is not in a settled Running/Stopped state")
@@ -120,7 +123,7 @@ def execute(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--environment", choices=("demo", "uat"), required=True)
+    parser.add_argument("--environment", choices=("demo",), required=True)
     parser.add_argument("--action", choices=("Start", "Stop"), required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()

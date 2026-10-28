@@ -69,7 +69,7 @@ class Azure:
         return {"running": "Running", "health": "Healthy", "replicas": 1, "active": True}
 
 
-@pytest.mark.parametrize("environment", ["demo", "uat"])
+@pytest.mark.parametrize("environment", ["demo"])
 def test_complete_stop_start_and_idempotent_replays_preserve_configuration(environment):
     azure = Azure(environment)
     original = {name: copy.deepcopy(app["properties"]["template"]) for name, app in azure.apps.items()}
@@ -88,7 +88,7 @@ def test_complete_stop_start_and_idempotent_replays_preserve_configuration(envir
     assert all("postgres" not in str(call) and "update" not in call and "delete" not in call for call in azure.calls)
 
 
-@pytest.mark.parametrize("environment,action", [("prod", "Stop"), ("demo", "delete"), ("other", "Start")])
+@pytest.mark.parametrize("environment,action", [("prod", "Stop"), ("demo", "delete"), ("other", "Start"), ("uat", "Stop")])
 def test_rejects_bad_scope_before_provider_access(environment, action):
     azure = Azure()
     with pytest.raises(ValueError):
@@ -140,6 +140,16 @@ def test_configuration_drift_fails_without_continuing():
     assert len(azure.mutations) == 1
 
 
+def test_embedded_database_blocks_all_mutations():
+    azure = Azure()
+    azure.apps["ca-demo-business-platform"]["properties"]["template"]["containers"] = [
+        {"name": "postgres", "image": "postgres:16"}
+    ]
+    with pytest.raises(ValueError, match="database exclusion"):
+        execute("demo", "Stop", run_az=azure)
+    assert azure.mutations == []
+
+
 @pytest.mark.parametrize("action", ["Start", "Stop"])
 def test_target_running_status_alone_is_not_success(action):
     azure = Azure(state="Stopped" if action == "Start" else "Running")
@@ -175,7 +185,7 @@ def test_workflow_has_two_inputs_schedule_environment_lock_and_no_deploy_path():
     workflow = yaml.safe_load((ROOT / ".github/workflows/application-lifecycle.yaml").read_text())
     trigger = workflow.get("on", workflow.get(True))
     assert set(trigger["workflow_dispatch"]["inputs"]) == {"environment", "action"}
-    assert trigger["workflow_dispatch"]["inputs"]["environment"]["options"] == ["demo", "uat"]
+    assert trigger["workflow_dispatch"]["inputs"]["environment"]["options"] == ["demo"]
     assert trigger["workflow_dispatch"]["inputs"]["action"]["options"] == ["Stop", "Start"]
     assert trigger["schedule"] == [{"cron": "30 16 * * *"}]
     job = workflow["jobs"]["lifecycle"]
