@@ -2901,8 +2901,21 @@ jobs:
               --resource-group "$RESOURCE_GROUP" \
               --execution "$execution" \
               --container temporal-startup-qualification \
-              --tail 1000 \
-              --format text > wc124-temporal-startup.log 2>&1 || true
+              --tail 300 \
+              --format text > wc124-temporal-startup.log 2>&1 || {
+                echo "Temporal console capture failed; see retained diagnostics" >&2
+                cat wc124-temporal-startup.log >&2
+              }
+            az containerapp job logs show \
+              --name "$job_name" \
+              --resource-group "$RESOURCE_GROUP" \
+              --execution "$execution" \
+              --container pool-sampler \
+              --tail 300 \
+              --format text > wc124-temporal-sampler.log 2>&1 || {
+                echo "Sampler console capture failed; see retained diagnostics" >&2
+                cat wc124-temporal-sampler.log >&2
+              }
           }
           for attempt in $(seq 1 60); do
             status=$(az containerapp job execution show \
@@ -3516,6 +3529,7 @@ jobs:
             wc124-temporal-startup-job.json
             wc124-temporal-startup-execution.json
             wc124-temporal-startup.log
+            wc124-temporal-sampler.log
             wc124-temporal-startup-result.json
             wc124-temporal-pool-evidence.json
             wc124-billing-migration-job.json

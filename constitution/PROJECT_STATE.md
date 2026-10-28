@@ -1,10 +1,12 @@
 # PROJECT_STATE.md
 **State Schema:** 2.0.0
-**State Revision:** 301
-**Last Updated:** 2026-10-28 (WC-124 APPLICATION START/STOP)
+**State Revision:** 302
+**Last Updated:** 2026-10-28 (WC-124 TEMPORAL REPAIR RECONCILED WITH MERGED APPLICATION LIFECYCLE)
 **Purpose:** Current operational snapshot for bootstrap, recovery, and automated sprint controls; keep it below 200 lines, update checkpoints in place, and retain durable detail in the owning Work Contract, Goal, review, evidence artifact, Git history, or archive index.
 ---
 ## Institutional Snapshot
+PR #555 precheck repair: completed run `40654097361` failed the Constitutional Engine image scan; QA Campaign blocked only on `build`. Apply the same go-jose v4.1.6 health-probe dependency patch verified for #554 (CVE-2026-116587), independently on the Temporal branch. No scan-policy weakening, business-logic change, or change to Temporal qualification semantics.
+
 | Field | Current Value |
 |---|---|
 | Epoch | Epoch 1 — Foundation |
@@ -12,7 +14,8 @@
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-102 - Docker-Only Validation Control Plane |
-| Latest merge | PR #553 merged to `main` as `ed84f4ba` |
+| Latest merge | PR #554 merged to `main` as `ad3848ac`; PR #555 retains its independently qualified Temporal repair. |
+| Temporal qualification repair | Separate branch `ib/124/temporal-readiness-qualification`, implementation milestone `111e8404`, not PR #554. Run `40646811876` failed on startup samples 1-2 with one waiting client; remaining 58 clean, max wait zero, PostgreSQL headroom 19. Unsupported tail 1000 masked failure; unbounded shutdown logs also hid successful results from supported tail 300. Final focused regressions 111 passed and pinned local rehearsal passed. Founder-authorized CLI baseline `job-demo-temporal-startup-fhp90bt` succeeded but result was outside tail 300. Candidate execution-only override `job-demo-temporal-startup-wnzrj92` succeeded: five clean warmup observations, then 60 zero-wait samples/headroom 26; exact workflow parser/error scan passed. Saved job template unchanged and PostgreSQL Ready. Original specific queued connection remains unproven; no full deployment dispatch or run watching. Exact-head prechecks and Founder review remain. |
 | Application lifecycle batch | `ib/124/application-start-stop`: implementation milestone `b263f849`; Founder narrowed workflow to Demo only after live inspection found UAT DB sidecars. Native graceful shutdown accepts possible unfinished-work interruption; daily 22:00 IST Stop, manual Start, DB excluded, no new control plane. Separate explicit CLI authority stopped all eight UAT apps including DB sidecars after data-loss-risk consent; all revisions verified zero replicas. Demo Identity Edge native Stop/Start smoke test restored unchanged `--0000012` Healthy with one replica; PostgreSQL remained Ready. Full Demo rehearsal not performed: latest Web revision already ActivationFailed after run `40646811876`. Local regressions 76 passed before scope correction; CLI local rehearsal 3 passed. Final scope regression/author qualification and Founder review remain. |
 | PR #554 precheck repair | Founder-authorized narrow dependency repair: exact candidate image rebuild reproduces CVE-2026-116587 in the gRPC health probe's transitive go-jose v4.1.4 (advisory published 2026-10-26). Pin v4.1.6 before compiling the probe; no application business logic or scan-policy change. Patched image builds, probe executable runs, and CI-equivalent Trivy 0.73.0 scan reports zero fixable HIGH/CRITICAL findings. Packaging regressions pass 16/16. QA Campaign failure in run `40652119043` is downstream of the image scan; hosted rerun is not claimed. |
 | Active Demo cost control | Founder-authorized cleanup on 2026-10-28 deactivated the zero-traffic obsolete Professional Runtime revision `ca-demo-professional-runtime--0000075`; verified inactive with zero replicas. All 12 Demo apps have one active revision; inactive Identity Edge history has zero replicas. Branch `ib/124/demo-cost-controls` adds fail-closed post-readiness revision retirement and Demo-only framework request-log suppression. Focused Docker tests pass 147/147; workflow lint, Python lint/type checks and Demo/UAT/Prod Terraform validation pass. October MTD costs: Demo including runner/networking INR 73,306.61; UAT INR 9,463.87. Whole-stack 20-minute idle/wakeup remains a design, not enabled; CPU/memory, minimum replicas, historical logs, mandatory evidence, UAT and Production are unchanged. Author prechecks and Founder review/merge remain required. Durable policy and cost evidence: Azure Deployment Topology, Demo cost controls section. |
