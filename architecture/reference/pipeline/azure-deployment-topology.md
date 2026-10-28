@@ -1245,3 +1245,16 @@ bound controller shutdown-log output to 150 lines so the 60 samples and result r
 Full Azure history remains available in the existing Log Analytics workspace; this repair does
 not purge it. Local script-driven warmup/strict-window fault regressions and the pinned
 Temporal/PostgreSQL/PgBouncer rehearsal are distinct from later live rollout acceptance.
+
+The separately Founder-authorized Azure CLI component rehearsal ran the unchanged saved job as
+`job-demo-temporal-startup-fhp90bt`: Succeeded, 60 zero-wait samples, minimum headroom 26. Its
+result marker was absent from the last 300 console lines, independently proving that changing
+the tail argument alone is insufficient. Startup queuing is timing-dependent, not a permanent
+capacity failure; the specific connection responsible for the original two queued observations
+was not identified from the retained aggregate samples.
+
+An execution-only template override then ran the candidate as `job-demo-temporal-startup-wnzrj92`:
+Succeeded, five clean warmup observations, 60 zero-wait qualification samples, minimum headroom
+26. The exact workflow `sed`/`grep`/`jq` parser and negative log-pattern scan passed on its live
+300-line console capture. Before/after saved job templates were identical; PostgreSQL remained
+Ready. This establishes Azure component execution, not a full deployment or business-journey PASS.
