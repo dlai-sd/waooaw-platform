@@ -36,7 +36,11 @@ from pathlib import Path
 args = sys.argv[1:]
 with Path("commands.jsonl").open("a") as log:
     log.write(json.dumps(args) + "\\n")
-if args[:3] == ["containerapp", "job", "show"]:
+if args[:2] == ["account", "get-access-token"]:
+    if os.environ.get("TOKEN_ERROR"):
+        sys.exit(5)
+    print("2026-10-28T13:00:00Z")
+elif args[:3] == ["containerapp", "job", "show"]:
     print(json.dumps({{"properties": {{"environmentId": "/subscriptions/fixture/environments/demo"}}}}))
 elif args[:2] == ["resource", "show"]:
     if os.environ.get("WORKSPACE_ERROR"):
@@ -174,11 +178,25 @@ def test_qualification_reaches_actual_migration_acceptance(path_context):
         i for i, args in enumerate(calls) if args[:3] == ["containerapp", "job", "start"]
     )
     assert not any("workspace" in args and "show" in args for args in calls)
+    assert calls[0] == [
+        "account", "get-access-token", "--resource", "https://api.loganalytics.io",
+        "--query", "expiresOn", "--output", "tsv",
+    ]
+
+
+def test_azure_login_is_refreshed_immediately_before_temporal_qualification():
+    names = [item.get("name") for item in STEPS]
+    index = names.index("Qualify exact Temporal startup through PgBouncer")
+    refresh = STEPS[index - 1]
+    assert refresh["uses"].startswith("azure/login@")
+    assert refresh["if"] == STEPS[index]["if"]
+    assert refresh["with"]["client-id"] == "${{ steps.foundation.outputs.deployment_client_id }}"
 
 
 @pytest.mark.parametrize(
     "overrides",
     [
+        {"TOKEN_ERROR": "1"},
         {"WORKSPACE_ERROR": "1"},
         {"QUERY_ERROR": "1"},
         {"QUERY_ROWS": '[{"timeout_events": "2"}]'},
@@ -198,7 +216,7 @@ def test_qualification_rejects_missing_malformed_or_failed_evidence(path_context
     result = execute(path_context, "Qualify exact Temporal startup through PgBouncer")
     assert result.returncode != 0
     assert not (directory / "wc124-temporal-pool-evidence.json").exists()
-    if "WORKSPACE_ERROR" in overrides:
+    if "WORKSPACE_ERROR" in overrides or "TOKEN_ERROR" in overrides:
         assert '"start"' not in (directory / "commands.jsonl").read_text()
 
 
