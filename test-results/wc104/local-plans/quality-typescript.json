@@ -1,8 +1,8 @@
 {
   "authoritative": false,
   "catalog_version": "wc121-selective-validation-v1",
-  "execution_namespace": "wc109-86dd3373b8f26256",
-  "head_sha": "7576892c7b8b6c12859db400730f2a45ad6117bf",
+  "execution_namespace": "wc109-5a141e1d4e4c8994",
+  "head_sha": "9899063ee79f7612f2b400e076c4baeb306e45d4",
   "machine_checkable": true,
   "mode": "qualification",
   "nodes": [
@@ -16,7 +16,7 @@
       "command": "sh scripts/validation_control/run_typescript_quality_gate.sh",
       "command_id": "quality-typescript",
       "components": [],
-      "compose_project": "wc109-86dd3373b8f26256",
+      "compose_project": "wc109-5a141e1d4e4c8994",
       "compose_service": "test-runner-ts",
       "cost_class": "STATIC",
       "direct_prerequisites": [],
@@ -28,7 +28,7 @@
           "common": "test-results/validation/build.json",
           "native": []
         },
-        "directory": "test-results/wc109/runs/wc109-86dd3373b8f26256/quality-typescript"
+        "directory": "test-results/wc109/runs/wc109-5a141e1d4e4c8994/quality-typescript"
       },
       "gate_id": "quality:typescript",
       "inputs": {
@@ -36,7 +36,7 @@
         "catalog_version": "wc121-selective-validation-v1",
         "command_id": "quality-typescript",
         "environment": [],
-        "head_sha": "7576892c7b8b6c12859db400730f2a45ad6117bf",
+        "head_sha": "9899063ee79f7612f2b400e076c4baeb306e45d4",
         "required_services": [],
         "runner_id": "typescript"
       },
@@ -65,7 +65,7 @@
           "environment"
         ]
       },
-      "output_directory": "test-results/wc109/runs/wc109-86dd3373b8f26256/quality-typescript",
+      "output_directory": "test-results/wc109/runs/wc109-5a141e1d4e4c8994/quality-typescript",
       "owner": "validation-control",
       "phase": "A_DESIGN",
       "product_image_builds": [],
