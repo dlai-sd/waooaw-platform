@@ -39,7 +39,7 @@ class FakeAzure:
             return {"latest": state["latest"], "ready": state.get("ready")}
         self.calls[app] += 1
         return {"running": state["running"], "health": state["health"], "replicas": state.get("replicas", 1),
-                "active": True}
+                "active": state.get("active", True)}
 
 
 def _clock():
@@ -145,6 +145,26 @@ def test_a_running_revision_that_is_not_the_latest_ready_one_is_not_ready():
     result = readiness.evaluate("rg", "demo", timeout_seconds=0, interval_seconds=15,
                                 run_az=azure, clock=clock, sleep=sleep, log=lambda _: None)
     assert result["status"] == "failed"
+
+
+@pytest.mark.parametrize("replicas", [0, None, "1"])
+def test_running_temporal_without_a_proven_replica_is_not_ready(replicas):
+    azure = FakeAzure({
+        "ca-demo-temporal": [
+            {"latest": "r1", "ready": "r1", "running": "Running", "health": "Healthy", "replicas": replicas},
+        ],
+    })
+    assert readiness.observe_revision("rg", "ca-demo-temporal", azure)["ready"] is False
+
+
+@pytest.mark.parametrize("active", [None, False, "true"])
+def test_missing_or_malformed_active_state_is_not_ready(active):
+    azure = FakeAzure({
+        "ca-demo-web": [
+            {"latest": "r1", "ready": "r1", "running": "Running", "health": "Healthy", "active": active},
+        ],
+    })
+    assert readiness.observe_revision("rg", "ca-demo-web", azure)["ready"] is False
 
 
 def test_main_writes_evidence_and_returns_nonzero_on_failure(tmp_path, monkeypatch, capsys):

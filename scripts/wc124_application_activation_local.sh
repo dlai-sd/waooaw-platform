@@ -147,6 +147,7 @@ docker run -d --name "$TEMPORAL" --network "$WC124_NETWORK" \
   -e DB=postgres12 -e DB_PORT=5432 -e DBNAME=waooaw_temporal -e VISIBILITY_DBNAME=waooaw_temporal_visibility \
   -e POSTGRES_USER=temporal_runtime -e POSTGRES_PWD="$WC124_ROLE_PASSWORD" -e POSTGRES_SEEDS="$WC124_PGBOUNCER" \
   -e SKIP_SCHEMA_SETUP=true -e SKIP_DB_CREATE=true -e SQL_MAX_CONNS=1 -e SQL_MAX_IDLE_CONNS=1 \
+  -e SQL_VIS_MAX_CONNS=1 -e SQL_VIS_MAX_IDLE_CONNS=1 \
   -e BIND_ON_IP=0.0.0.0 \
   --entrypoint /bin/bash "$TEMPORAL_IMAGE" -c 'set -euo pipefail
     export TEMPORAL_BROADCAST_ADDRESS="$(hostname -i | awk '"'"'{print $1}'"'"')"
