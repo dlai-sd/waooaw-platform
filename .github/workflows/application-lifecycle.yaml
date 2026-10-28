@@ -1,0 +1,117 @@
+name: Application Start Stop
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Application environment (database is unchanged)
+        required: true
+        type: choice
+        options: [demo, uat]
+      action:
+        description: Native graceful shutdown can interrupt unfinished work
+        required: true
+        type: choice
+        options: [Stop, Start]
+  schedule:
+    # 22:00 Asia/Kolkata daily; GitHub may delay scheduled runs. Manual Start only.
+    - cron: "30 16 * * *"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  lifecycle:
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: ${{ github.event_name == 'schedule' && fromJSON('["demo","uat"]') || fromJSON(format('["{0}"]', inputs.environment)) }}
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.environment }}
+    timeout-minutes: 45
+    concurrency:
+      group: goal006-${{ matrix.environment }}-deployment
+      cancel-in-progress: false
+    env:
+      TARGET_ENVIRONMENT: ${{ matrix.environment }}
+      LIFECYCLE_ACTION: ${{ github.event_name == 'schedule' && 'Stop' || inputs.action }}
+      ARM_TENANT_ID: 0471534c-1bbe-40ab-ae65-3f721b62582c
+      ARM_SUBSCRIPTION_ID: 2ed11839-6a0f-4eaa-bd94-44ca96ff5d84
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Require authorized main operation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          test "$GITHUB_SHA" = "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)"
+          if test "$GITHUB_EVENT_NAME" != schedule; then
+            case "$GITHUB_ACTOR" in dlai-sd|yk-dlaisd) ;; *) echo "Unauthorized dispatcher" >&2; exit 1 ;; esac
+          fi
+          case "$TARGET_ENVIRONMENT:$LIFECYCLE_ACTION" in demo:Start|demo:Stop|uat:Start|uat:Stop) ;; *) exit 1 ;; esac
+          config=$(python3 scripts/goal006_environment_config.py --environment "$TARGET_ENVIRONMENT")
+          echo "CONTROL_CLIENT_ID=$(jq -er .control_plane_client_id <<< "$config")" >> "$GITHUB_ENV"
+
+      - name: Azure control-plane login
+        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
+        with:
+          client-id: ${{ env.CONTROL_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Resolve existing environment deployment identity
+        run: |
+          set -euo pipefail
+          client_id=$(az identity show -g "waooaw-$TARGET_ENVIRONMENT-rg" \
+            -n "id-waooaw-$TARGET_ENVIRONMENT-deployment" --query clientId -o tsv)
+          test -n "$client_id"
+          echo "DEPLOYMENT_CLIENT_ID=$client_id" >> "$GITHUB_ENV"
+
+      - name: Azure environment deployment login
+        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
+        with:
+          client-id: ${{ env.DEPLOYMENT_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Start or stop existing applications
+        run: |
+          set -euo pipefail
+          test "$(az account show --query id -o tsv)" = "$ARM_SUBSCRIPTION_ID"
+          runner_image=$(jq -er .parameters.runnerImage.value \
+            "infrastructure/deployment-stacks/goal006-runner/$TARGET_ENVIRONMENT.parameters.json")
+          [[ "$runner_image" =~ @sha256:[0-9a-f]{64}$ ]]
+          mkdir -p "$RUNNER_TEMP/application-lifecycle"
+          docker run --rm --user "$(id -u):$(id -g)" --entrypoint python3 \
+            -e AZURE_CONFIG_DIR=/azure -e HOME=/tmp \
+            -v "$GITHUB_WORKSPACE:/repo:ro" -v "$HOME/.azure:/azure" \
+            -v "$RUNNER_TEMP/application-lifecycle:/evidence" -w /repo \
+            "$runner_image" scripts/goal006_application_lifecycle.py \
+            --environment "$TARGET_ENVIRONMENT" --action "$LIFECYCLE_ACTION" \
+            --output /evidence/application-lifecycle.json
+
+      - name: Retain operation evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: application-lifecycle-${{ matrix.environment }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/application-lifecycle/application-lifecycle.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Publish operation summary
+        if: always()
+        run: |
+          {
+            echo "## $TARGET_ENVIRONMENT application $LIFECYCLE_ACTION"
+            evidence="$RUNNER_TEMP/application-lifecycle/application-lifecycle.json"
+            if test -f "$evidence"; then
+              jq -r '"Result: \(.status)", (.apps[] | "\(.app): \(.status)"), (.error // empty)' "$evidence"
+            else
+              echo "Operation did not reach execution; inspect failed prerequisite step."
+            fi
+            echo "Database, networking, data and retained logs are unchanged. Unfinished work may be interrupted."
+          } >> "$GITHUB_STEP_SUMMARY"
