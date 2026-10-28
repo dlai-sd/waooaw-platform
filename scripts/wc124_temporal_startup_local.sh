@@ -80,6 +80,7 @@ docker run -d --name "$CONTROLLER" --network "$WC124_NETWORK" \
   -e DBNAME=waooaw_temporal -e VISIBILITY_DBNAME=waooaw_temporal_visibility \
   -e POSTGRES_USER=temporal_runtime -e POSTGRES_PWD="$WC124_ROLE_PASSWORD" -e POSTGRES_SEEDS="$WC124_PGBOUNCER" \
   -e SKIP_SCHEMA_SETUP=true -e SKIP_DB_CREATE=true -e SQL_MAX_CONNS=1 -e SQL_MAX_IDLE_CONNS=1 \
+  -e SQL_VIS_MAX_CONNS=1 -e SQL_VIS_MAX_IDLE_CONNS=1 \
   --entrypoint "$CONTROLLER_SHELL" "$CONTROLLER_IMAGE" -c "$(cat "$EVIDENCE_DIR/temporal-startup-qualification.sh")" >/dev/null
 docker run -d --name "$SAMPLER" --network "container:$CONTROLLER" \
   -e POSTGRES_PWD="$WC124_ROLE_PASSWORD" -e POSTGRES_SEEDS="$WC124_PGBOUNCER" \

@@ -65,11 +65,12 @@ retain the supporting RCA and component evidence.
 | Post-readiness obsolete-revision retirement and scoped framework-log suppression (#553) | Merged | Demo only; retain cleanup evidence. No historical-log purge or mandatory-evidence suppression. |
 | Manual Demo Start/Stop and 22:00 IST shutdown (#554) | Merged | Separate lifecycle workflow; PostgreSQL stays running. UAT is excluded; no scheduled Start or website wake. |
 | gRPC readiness, bounded warmup and supported console capture (#555) | Merged | Five clean observations before the full 60-sample strict window; capture both containers with `--tail 300`. |
-| Direct headroom monitoring and sampler failure diagnostics | Current repair branch; not merged or deployed | Azure A/B and final source-rendered component executions passed. Existing saved job configuration was not updated; a reviewed merge/deployment is still required. |
+| Direct headroom monitoring and sampler failure diagnostics (#556) | Merged; component passed in deployment `40689458378` | That deployment failed at the subsequent Log Analytics lookup, not the direct monitor. Component success is not rollout acceptance. |
+| Workspace discovery, visibility-store bounds and downstream fail-closed checks | Current consolidated repair; not deployed | Resolve the workspace from the actual ACA environment, parse CLI rows, await a log watermark, bound both Temporal stores, reject missing metrics and require proven activation readiness. |
 
 These are component and workflow changes, not evidence that the full environment deployment
-has succeeded. Run `40660849211` failed before activation on the monitoring contention described
-below; do not report the candidate component PASS as a successful rollout.
+has succeeded. Runs `40660849211` and `40689458378` failed before activation at different gates
+described below; do not report a component PASS as a successful rollout.
 
 ### Source-of-truth hierarchy
 
@@ -224,7 +225,7 @@ timestamps, and released downstream dependencies before diagnosing a scheduler w
 | 11. Activation bundle | Validate foundation and workload plan binaries, JSON, provenance, policy, release, environment, workflow, backend, and state identity | Internal WC-124 activation bundle PASS |
 | 12. Dormant workload apply | Create dependencies, migration jobs, identities, secret references, and applications at zero replicas | No application traffic yet |
 | 13. Migrations | Inventory exact migration jobs, verify version-qualified Key Vault references, prove same-ACA PgBouncer DNS/TCP, reclaim the PostgreSQL connection budget (retire stale active revisions, require measured per-group headroom), run Keycloak and then Demo Temporal as two sequential groups (each re-measured before it starts) and then Billing, and retain executions plus sanitized logs | All required executions `Succeeded`; connection-budget record and persisted migration acceptance PASS |
-| 13a. Temporal qualification | Demo starts the exact pinned Temporal image through session-mode PgBouncer alongside its pinned PostgreSQL-client sampler; require gRPC health, five clean warmup observations within 30, then 60 strict samples | Zero waiting clients, zero wait seconds, minimum PostgreSQL headroom >= 5; failed sampler blocks activation. Direct headroom routing is the current repair, not yet deployed. |
+| 13a. Temporal qualification | Demo starts the exact pinned Temporal image through session-mode PgBouncer alongside its pinned PostgreSQL-client sampler; require gRPC health, five clean warmup observations within 30, then 60 strict samples | Zero waiting clients, zero wait seconds, minimum PostgreSQL headroom >= 5; failed sampler blocks activation. Headroom uses private PostgreSQL directly; pool observations still use PgBouncer. |
 | 14. Activation plan/apply | Require migration acceptance, set application activation true, create a fresh detailed-exit plan, policy and provenance record, recalculate and compare provenance immediately before apply, and retain the apply log | Only exact authorized activation plan applied with complete evidence |
 | 14a. Activation readiness | Poll every `ca-<environment>-*` application until its latest revision is `Running`/`Healthy` and is the latest ready revision (bounded 600 s) | `wc124-activation-readiness.json` `passed`; proceed to Demo retirement and post-activation headroom measurement |
 | 14b. Revision and connection budgets | Demo only: retire obsolete active revisions meeting the guarded no-traffic contract. Then measure post-activation connection headroom for the target environment | Demo `demo-revision-cleanup.json`; post-activation headroom >= 4. Previous serving revision is not retired on a failed rollout |
@@ -1283,6 +1284,52 @@ estimate. Consolidating private infrastructure requires dependency/security revi
 authorization; do not make endpoints public or remove controls to reduce the bill.
 
 ### Temporal qualification readiness boundary (2026-10-28 repair)
+
+#### Consolidated deployment-path repair (run 40689458378)
+
+Execution `job-demo-temporal-startup-4aiylyw` passed 60 strict samples with minimum
+headroom 18. The next command failed with `ResourceNotFound` because it guessed
+`law-waooaw-demo`; the environment actually uses `law-waooaw-demo-validation`.
+Replaying the corrected read-only Azure CLI query returned a flat row with
+`timeout_events: "2"` and `latest_log: "2026-10-28T13:18:15.7497484Z"`.
+Those two records represent one visibility-store `query_wait_timeout`, emitted at both
+LOG and WARNING levels. Fixing workspace discovery alone would therefore still block.
+
+The pinned Temporal image independently configures its default and visibility stores.
+Rendering its actual template with the old environment proves main max/idle connections
+are 1/1 but visibility remains at its default 10/10. The repair sets both
+`SQL_VIS_MAX_CONNS=1` and `SQL_VIS_MAX_IDLE_CONNS=1` in the qualification job,
+actual Demo runtime and both local harnesses. Rendering the repaired environment proves
+1/1 for each store. Eight-slot PgBouncer pools and strict zero-wait acceptance remain
+unchanged. The specific historical client responsible for the timeout is not identified.
+
+The workflow discovers the Log Analytics customer UUID through the job's actual ACA
+environment, before starting the job. It retains and validates the CLI's flat JSON
+response rather than looking for REST-style `tables[].rows`. It rejects any timeout
+record immediately; for zero records it waits at most 18 observations, ten seconds apart,
+for PgBouncer's latest ingested log timestamp to reach the execution end. Missing or
+stale logs cannot become an immediate zero-timeout PASS. This watermark is a bounded
+ingestion safeguard, not a guarantee of atomic or ordered delivery by Log Analytics.
+
+The remaining-path audit also removes missing-metric-as-zero fallbacks from all three
+connection-budget consumers; CLI errors and malformed metrics fail, genuine zero remains
+valid, and fractional maxima round upward. Activation readiness now requires explicit
+`active=true`, and Temporal needs an integer replica count of at least one, matching
+the independent verification contract. Other approved scale-to-zero apps remain allowed.
+
+| Qualification surface | Evidence and boundary |
+|---|---|
+| Qualification -> migration acceptance; activation plan -> state-bound apply; three budget consumers | 191 focused regressions passed, including execution of extracted workflow shell, real evidence/provenance consumers, malformed/failed queries, stale logs, state drift and missing/insufficient metrics. Azure/Terraform mutations in these tests are fixtures, not a real rollout. |
+| Actual pinned Temporal/PostgreSQL/PgBouncer | `scripts/wc124_temporal_startup_local.sh` passed 60 strict zero-wait samples, minimum headroom 25, using Terraform-extracted scripts and both bounded stores. |
+| Verification, provider-start checks and cleanup | `scripts/run_goal006_local_azure_verification.sh` passed using its pinned Azure CLI image against the existing local ARM/HTTPS emulator, including positive, negative and cleanup-broker paths. Real-provider account acceptance is separate. |
+| Workflow, Terraform and Python checks | Actionlint for apply/dispatcher/verification, workload Terraform format, all six Demo/UAT/Prod foundation/workload Terraform validations, edited harness syntax, changed Python lint and readiness mypy all passed. |
+| Azure read-only replay | Actual workspace discovery and corrected query returned the original timeout records; PostgreSQL remains Ready. No application activation, UAT change or full deployment dispatch. |
+| New live candidate execution | Not verified: the tool approval layer refused the start, including after explicit Founder re-approval. No saved job was changed and no candidate execution was started by this batch. |
+
+This batch qualifies the commands and their downstream consumers together rather than
+using another full deployment to discover the next parser error. The remaining live
+candidate and full environment acceptance must still pass; local/emulated evidence is
+not substituted for either.
 
 #### Monitoring isolation follow-up (run 40660849211)
 

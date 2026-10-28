@@ -1719,6 +1719,14 @@ resource "azurerm_container_app_job" "temporal_startup_qualification" {
         name  = "SQL_MAX_IDLE_CONNS"
         value = "1"
       }
+      env {
+        name  = "SQL_VIS_MAX_CONNS"
+        value = "1"
+      }
+      env {
+        name  = "SQL_VIS_MAX_IDLE_CONNS"
+        value = "1"
+      }
     }
 
     container {
@@ -2119,6 +2127,14 @@ resource "azurerm_container_app" "temporal" {
       }
       env {
         name  = "SQL_MAX_IDLE_CONNS"
+        value = "1"
+      }
+      env {
+        name  = "SQL_VIS_MAX_CONNS"
+        value = "1"
+      }
+      env {
+        name  = "SQL_VIS_MAX_IDLE_CONNS"
         value = "1"
       }
       # azurerm 4.14 caps failure_count_threshold at 30 (provider IntBetween(1, 30)); the plan,

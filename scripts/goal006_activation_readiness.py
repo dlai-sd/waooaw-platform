@@ -98,17 +98,22 @@ def observe_revision(resource_group: str, app: str, run_az: Callable[[list[str]]
     # billing-engine, dma) idles as ScaledToZero and is still Healthy once Azure promoted it to
     # latestReadyRevisionName; only Temporal must hold a replica.
     settled = running in {"Running", "RunningAtMaxScale"} or (running == "ScaledToZero" and not app.endswith("-temporal"))
-    ready = revision.get("active") is not False and settled and health == "Healthy" and shown.get("ready") == latest
+    replicas = revision.get("replicas")
+    replica_ready = not app.endswith("-temporal") or (type(replicas) is int and replicas >= 1)
+    ready = revision.get("active") is True and settled and replica_ready and health == "Healthy" and shown.get("ready") == latest
     observation.update(
         {
             "running_state": running,
             "health_state": health,
-            "replicas": revision.get("replicas"),
+            "replicas": replicas,
             "ready": ready,
         }
     )
     if not ready:
-        observation["reason"] = f"runningState={running} healthState={health} latestReady={shown.get('ready')}"
+        observation["reason"] = (
+            f"runningState={running} healthState={health} active={revision.get('active')} "
+            f"replicas={replicas} latestReady={shown.get('ready')}"
+        )
     return observation
 
 
