@@ -15,6 +15,19 @@ def read(path: str) -> str:
     return (PHASE2 / path).read_text(encoding="utf-8")
 
 
+def test_persistent_state_gate_excludes_only_the_unrelated_deepeval_plugin() -> None:
+    import yaml
+
+    workflow = yaml.safe_load((ROOT / ".github/workflows/ci.yaml").read_text(encoding="utf-8"))
+    steps = workflow["jobs"]["wc124-persistent-state"]["steps"]
+    pytest_commands = [step["run"] for step in steps if "pytest " in step.get("run", "")]
+    assert len(pytest_commands) == 3
+    for command in pytest_commands:
+        assert "pytest -p no:plugins -q " in command
+        assert "PYTEST_DISABLE_PLUGIN_AUTOLOAD" not in command
+        assert "-W ignore" not in command
+
+
 def test_demo_and_uat_create_protected_private_flexible_servers_only() -> None:
     foundation = read("modules/foundation/main.tf")
     demo = read("environments/demo/foundation/main.tf")
