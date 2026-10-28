@@ -51,6 +51,26 @@ tooling, sequencing, evidence, recovery, and frequently asked questions. It expl
 contracts without replacing them. When prose and executable behavior differ, deployment stops until
 the contradiction is resolved; an operator must not choose the more permissive interpretation.
 
+### Operator update - 2026-10-27 through 2026-10-28
+
+The handbook below incorporates these changes; the detailed sections later in this document
+retain the supporting RCA and component evidence.
+
+| Change | Delivery status | Operator impact |
+|---|---|---|
+| Structured database handoff and bounded Entra revocation (#549) | Merged | Do not pass handoff script flags through ambiguous CLI `--args`; require ownership proof before normal revocation. Failed/interrupted transitions still require fail-closed cleanup and may enter recovery hold. |
+| Bounded Azure job names and failure evidence (#550) | Merged | Use Terraform-produced names, not a reconstructed long name. Preserve the first failure independently of cleanup failures. |
+| Billing migrator role membership (#551) | Merged | Authority re-apply must retain migrator membership; migration and runtime readiness remain separate gates. |
+| Pinned PostgreSQL-client sampler and failure-path guards (#552) | Merged | Temporal's image has no `psql`; use the pinned sampler container. Verification/publication must not follow failed apply. |
+| Post-readiness obsolete-revision retirement and scoped framework-log suppression (#553) | Merged | Demo only; retain cleanup evidence. No historical-log purge or mandatory-evidence suppression. |
+| Manual Demo Start/Stop and 22:00 IST shutdown (#554) | Merged | Separate lifecycle workflow; PostgreSQL stays running. UAT is excluded; no scheduled Start or website wake. |
+| gRPC readiness, bounded warmup and supported console capture (#555) | Merged | Five clean observations before the full 60-sample strict window; capture both containers with `--tail 300`. |
+| Direct headroom monitoring and sampler failure diagnostics | Current repair branch; not merged or deployed | Azure A/B and final source-rendered component executions passed. Existing saved job configuration was not updated; a reviewed merge/deployment is still required. |
+
+These are component and workflow changes, not evidence that the full environment deployment
+has succeeded. Run `40660849211` failed before activation on the monitoring contention described
+below; do not report the candidate component PASS as a successful rollout.
+
 ### Source-of-truth hierarchy
 
 | Question | Authoritative source |
@@ -110,7 +130,7 @@ The following are pinned platform dependencies, not additional release members:
 | Temporal | Demo ACA dependency; later-environment contract per ADR-015 | Durable workflow execution |
 | Authentication Redis | Private ACA dependency | Reconstructible abuse-limiter counters only |
 | PostgreSQL Flexible Server | Private environment database | Durable governed state |
-| PgBouncer | Private ACA TCP service | Only application database route |
+| PgBouncer | Private ACA TCP service | Only application database route; separately bounded migration/monitoring exceptions are not application bypasses |
 | Migration jobs | ACA manual Jobs | Keycloak, Temporal, and Billing schema transitions |
 | Verification job | ACA manual Job | Private-context post-deployment checks |
 
@@ -130,6 +150,8 @@ The following are pinned platform dependencies, not additional release members:
 | `wc124_init_chain_lint.py` | Static form check of the Idempotent Init-Chain SQL Standard (Platform IT Expert spec §2.5) | Zero findings required for every `infrastructure/postgres/init/*.sql` change |
 | `wc124_db_handoff.py` | Ownership and recovery verification | Proves ownership, sessions, dependencies, and revocation readiness |
 | `goal006_activation_readiness.py` | Post-activation revision readiness gate | Fails the deployment unless every latest revision is `Running`/`Healthy` and is the latest ready revision; writes `wc124-activation-readiness.json` |
+| `goal006_demo_revision_cleanup.py` | Demo obsolete-revision retirement after readiness | Read-only by default; deployment apply refuses traffic splits/labels, retains the healthy serving revision, verifies inactive/zero replicas, and records `demo-revision-cleanup.json` |
+| `application-lifecycle.yaml` / `goal006_application_lifecycle.py` | Separate Demo application Start/Stop | Standard graceful termination may interrupt unfinished work; DB excluded, UAT excluded, same deployment concurrency |
 | `goal006_capture_aca_execution.sh` / `goal006_aca_execution_evidence.py` | ACA Job execution capture | ARM `Succeeded` is authoritative when Log Analytics system events lag; `Failed`/`Stopped` keep the fail-closed 6-minute event window |
 | `wc124_init_chain_local.sh` / `wc124_billing_migration_local.sh` / `wc124_application_activation_local.sh` / `wc124_temporal_startup_local.sh` | Local pre-qualification of the init chain, database and activation stages | Replay the Demo contracts with the exact release digests before a cloud run |
 | `goal006_bind_demo_managed_certificates.sh` | Idempotent Demo TLS binding | Verifies all required custom domains reach `SniEnabled` |
@@ -202,8 +224,10 @@ timestamps, and released downstream dependencies before diagnosing a scheduler w
 | 11. Activation bundle | Validate foundation and workload plan binaries, JSON, provenance, policy, release, environment, workflow, backend, and state identity | Internal WC-124 activation bundle PASS |
 | 12. Dormant workload apply | Create dependencies, migration jobs, identities, secret references, and applications at zero replicas | No application traffic yet |
 | 13. Migrations | Inventory exact migration jobs, verify version-qualified Key Vault references, prove same-ACA PgBouncer DNS/TCP, reclaim the PostgreSQL connection budget (retire stale active revisions, require measured per-group headroom), run Keycloak and then Demo Temporal as two sequential groups (each re-measured before it starts) and then Billing, and retain executions plus sanitized logs | All required executions `Succeeded`; connection-budget record and persisted migration acceptance PASS |
+| 13a. Temporal qualification | Demo starts the exact pinned Temporal image through session-mode PgBouncer alongside its pinned PostgreSQL-client sampler; require gRPC health, five clean warmup observations within 30, then 60 strict samples | Zero waiting clients, zero wait seconds, minimum PostgreSQL headroom >= 5; failed sampler blocks activation. Direct headroom routing is the current repair, not yet deployed. |
 | 14. Activation plan/apply | Require migration acceptance, set application activation true, create a fresh detailed-exit plan, policy and provenance record, recalculate and compare provenance immediately before apply, and retain the apply log | Only exact authorized activation plan applied with complete evidence |
-| 14a. Activation readiness | Poll every `ca-<environment>-*` application until its latest revision is `Running`/`Healthy` and is the latest ready revision (bounded 600 s), then re-measure the connection budget | `wc124-activation-readiness.json` `passed`; post-activation headroom >= 4 (one migration group) |
+| 14a. Activation readiness | Poll every `ca-<environment>-*` application until its latest revision is `Running`/`Healthy` and is the latest ready revision (bounded 600 s) | `wc124-activation-readiness.json` `passed`; proceed to Demo retirement and post-activation headroom measurement |
+| 14b. Revision and connection budgets | Demo only: retire obsolete active revisions meeting the guarded no-traffic contract. Then measure post-activation connection headroom for the target environment | Demo `demo-revision-cleanup.json`; post-activation headroom >= 4. Previous serving revision is not retired on a failed rollout |
 | 15. TLS and deployment evidence | Bind Demo managed certificates; verify structured SNI inventory; verify live inventory and transition/cleanup evidence; upload retained activation and TLS artifacts | Deployment engine success with no missing required evidence |
 | 16. Always-run cleanup | Runs whenever a broker execution actually started: stop private runner, remove registration/broker material, prove zero active executions (ARM `Succeeded` is authoritative when Log Analytics lags), revoke temporary cleanup federation | No residual runner or temporary trust |
 | 17. Independent verification | Runs only when the private apply reported success: validate trusted caller/control SHA, trusted release, Azure inventory, job, revision, domain, and application probes under verification identity | Independent PASS |
@@ -257,7 +281,11 @@ backend key, state lineage/serial, policy result, plan JSON digest, and saved-pl
    pinned canonical digest and the Python standard library so the private runner does not depend on an
    undeclared package.
 7. Keycloak and Temporal migration jobs use their approved direct PostgreSQL migration contracts.
-   Application runtime traffic continues through PgBouncer.
+   Application runtime traffic continues through PgBouncer. The current monitoring repair also
+   sends only the short-lived headroom query directly to private PostgreSQL with required TLS,
+   using the existing restricted runtime identity; `SHOW POOLS` remains on PgBouncer. This avoids
+   consuming the session-pool slot whose availability is being measured. No new grants or larger
+   pool are required; failure does not fall back to the contended route.
 8. The Keycloak realm import substitutes every secret placeholder inside the job, checks that no
    `${NAME}` placeholder remains, and then imports. Secrets stay in Key Vault-backed ACA secret
    references and are never written to logs or Terraform state.
@@ -289,6 +317,12 @@ backend key, state lineage/serial, policy result, plan JSON digest, and saved-pl
    ownership error, or connection error blocks application activation. The owning workflow step
    emits the ACA execution ID and sanitized container logs before cleanup and artifact retention.
 
+Normal bootstrap revocation requires successful ownership handoff; interrupted handoffs require
+independent verification before revocation. The Terraform Entra-administrator deletion is bounded
+to five minutes. Terminal cleanup remains fail-closed even when earlier steps did not run:
+an empty cleanup input or a retained administrator is not a successful cleanup. Reconcile live
+transition facts before a rerun; do not bypass `RECOVERY_HOLD` or blindly delete a dependent principal.
+
 ### Demo connection budget
 
 The Demo instance is `B_Standard_B1ms` with `max_connections = 50` (Microsoft's documented default
@@ -301,15 +335,16 @@ against 25 usable slots). Azure Flexible Server reserves `superuser_reserved_con
 | Consumer | Route | Bound | Source |
 |---|---|---|---|
 | PgBouncer (all application runtimes, Billing migrator) | server pools | `max_client_conn 40`, `default_pool_size 2`, `reserve_pool_size 0`, `server_idle_timeout 30` (Demo; 8/2/300 measured 26 total in run 39557651135) | `workload/main.tf` PgBouncer env |
-| Temporal runtime | PgBouncer session pools (`pool_size 5` per store) | `SQL_MAX_CONNS 1` / `SQL_MAX_IDLE_CONNS 1` per store per internal service (<= 8 backends; 2 measured 28-29 total in run 39460884155) | `workload/main.tf` Temporal env |
+| Temporal runtime | PgBouncer session pools (`pool_size 8` per store) | `SQL_MAX_CONNS 1` / `SQL_MAX_IDLE_CONNS 1` per store per internal service (<= 8 backends per Temporal process; overlapping processes and sampler connections share pool capacity) | `workload/main.tf` Temporal env |
 | Keycloak migration job (direct) and runtime (PgBouncer) | see Route | Agroal `KC_DB_POOL_INITIAL_SIZE 1`, `MIN_SIZE 1`, `MAX_SIZE 5` (runtime: 2 on Demo) | `workload/main.tf` Keycloak env |
 | CE, BP, web, Billing runtime | PgBouncer transaction pools | one backend each at idle; bounded by `default_pool_size` | observed in local activation |
-| Headroom required before vendor migrations | — | >= 8 free usable slots (measured, not inferred) | workflow gate |
+| Headroom required before each vendor migration group | — | >= 4 free usable slots (measured, not inferred); groups run sequentially | workflow gate |
+| Temporal qualification monitoring (current repair) | Direct private PostgreSQL, required TLS; existing restricted identity | One short-lived backend at a time; counted in measured headroom; strict qualification requires >= 5 spare slots | qualification sampler |
 
 Local activation of the complete Demo estate used 16 of 25 usable slots before the pool
 reduction. Raising `max_connections` is not a substitute for bounding pools: it costs memory on the
 smallest SKU and hides the defect until the next unbounded consumer appears; 50 is the SKU default,
-not a relaxation beyond it. The post-activation budget step (`wc124-post-activation-budget.json`)
+not a relaxation beyond it. The post-activation budget step (`wc124-connection-budget-post-activation.json`)
 records the live steady-state count after each Demo run.
 
 ### Local pre-qualification harnesses
@@ -337,7 +372,7 @@ equivalent because the harness below proves the provisioner path converges to th
 | `scripts/wc124_init_chain_local.sh` | ~35 s | Lint passes; real provisioner ledger logic on a bare pinned instance: run 1 applies all 66 SQL files, run 2 skips all 66, forced run 3 re-applies all 66 with zero `pg_dump --schema-only` drift; the `IdentitySchemaHealthCheck` object set (8 `identity.*` tables, forced RLS on 3) exists | `test-results/wc124/init-chain-local/result.json` |
 | `scripts/wc124_billing_migration_local.sh` | ~15 s | Exact Billing image migrates as restricted `billing_migrator` through transaction-mode PgBouncer, ledger ownership converges, rerun is idempotent | `test-results/wc124/billing-migration-local/` |
 | `scripts/wc124_application_activation_local.sh` | ~90 s | Keycloak migration as `keycloak_migrator` (fails under stale pools, succeeds after reclaim), Temporal migration and runtime with the ACA bind/probe contract (loopback TCP 7233 is the authoritative probe), Billing migration and the Billing runtime as `billing_runtime` through transaction-mode PgBouncer with the Demo `postgresql://...?sslmode=disable` URL, CE/BP/PR/web readiness as their runtime roles, only restricted roles on the instance, >= 5 usable slots spare after activation | `test-results/wc124/application-activation-local/result.json` and per-component logs |
-| `scripts/wc124_temporal_startup_local.sh` | ~80 s | Runs both `job-demo-temporal-startup` container scripts read from the workload module in their pinned images as one replica sharing loopback only (samples return over port 17300, Temporal exit is signalled on 17301): Temporal through session-mode PgBouncer, 60 `SHOW POOLS` samples from the PostgreSQL client sidecar, zero waiting clients and >= 5 usable slots; fails fast when either container fails | `test-results/wc124/temporal-startup-local/result.json` and both container logs |
+| `scripts/wc124_temporal_startup_local.sh` | ~80 s | Runs both qualification scripts in pinned images sharing loopback: sample transfer 17300, exit signal 17301, gRPC-readiness signal 17302; bounded five-clean-observation warmup, then 60 strict `SHOW POOLS` samples, zero waiting and headroom >= 5. Current repair measures headroom directly; disposable local PostgreSQL alone disables TLS. The sampler is a client container, not a database sidecar. | `test-results/wc124/temporal-startup-local/result.json` and both container logs |
 
 Run them with the exact release digests (`WC124_IMAGE_*`, `WC124_BILLING_IMAGE`) before spending a
 deployment run. Defects they surfaced that Azure would otherwise have reported one at a time:
@@ -413,6 +448,8 @@ when deployment cleanup and independent live verification both succeed.
 | Post-activation connection budget record | Steady-state runtimes leave the required headroom for the next migration window |
 | Local pre-qualification results | The exact images passed the database and activation stages against the Demo contracts before the deployment run |
 | Migration job and execution records | Exact effective job, version-qualified secret references, execution/status, and sanitized logs |
+| `wc124-temporal-startup-job.json`, `wc124-temporal-startup-execution.json`, `wc124-temporal-startup.log`, `wc124-temporal-sampler.log` | Exact Temporal qualification job/execution and both container captures; console retrieval is capped at 300 lines per container |
+| `demo-revision-cleanup.json` | Demo post-readiness retirement decisions and verified inactive/zero-replica outcomes |
 | Migration acceptance record | Required migrations, connectivity, and temporary-authority revocation passed before activation |
 | Activation plan, provenance, policy, and apply log | Exact post-migration activation mutation and its retained result |
 | Runner start/cleanup correlation evidence | The runner that started is the runner that was removed |
@@ -461,6 +498,14 @@ producer-consumer contract and execute the smallest real component in its Azure 
 12. Preserve the failed run URL, job/execution ID, exact error, live facts, fix, and successful
     component evidence for the PR.
 
+For Temporal qualification failures, read both containers with `--tail 300` (not `1000`).
+If replicas have expired or a container capture is empty, query the retained execution in
+`ContainerAppConsoleLogs_CL` and correlate PgBouncer events in the same time window. Distinguish:
+early warmup waiting, strict-window queue failures, a sampler `psql` error, and PostgreSQL-wide
+slot exhaustion. `query_wait_timeout` can mean a full eight-slot session pool even with spare
+PostgreSQL connections. The 2026-10-28 A/B rehearsal proved that distinction; do not respond by
+blindly raising limits, lengthening timeouts, or weakening zero-wait assertions.
+
 ### Operator checklist
 
 Before execution:
@@ -472,17 +517,20 @@ Before execution:
   `terraform validate` does not apply azurerm value rules (for example probe
   `failure_count_threshold` 1..30) to count-gated resources; those bounds are proven by the static
   HCL tests and the plan policy, which must never be wider than the provider.
-- All three local pre-qualification harnesses pass with the exact release digests; any change under
+- All applicable local pre-qualification harnesses pass with the exact release digests; any change under
   `infrastructure/postgres/init/` also needs `python scripts/wc124_init_chain_lint.py` at zero findings.
 - `ruff check scripts/`, the staged-precheck gates (`quality:scripts`, `precheck:gitleaks`) and the
   bootstrap manifest validation pass locally; a refreshed manifest must keep the wrapped
   `secret-catalog.json` entry or the gitleaks gate reports a false positive.
 - No non-latest active revision remains on `ca-<environment>-temporal`, `-keycloak`, or `-pgbouncer`.
 - No unresolved blocker, stale plan, destructive change, or unexplained drift remains.
+- For a Temporal repair, run the pinned startup harness as well as deterministic failure tests;
+  verify direct-monitoring failure still blocks qualification and no credentials appear in logs.
 
 Before declaring success:
 
 - Every required migration reached `Succeeded`.
+- Demo Temporal qualification passed all 60 strict samples; warmup or gRPC health alone is not PASS.
 - Application activation used the exact saved plan whose policy/provenance was revalidated.
 - All target apps and revisions are running at the intended digests, and
   `wc124-activation-readiness.json` reports `passed` (never infer readiness from a green apply).
@@ -491,6 +539,8 @@ Before declaring success:
 - Bootstrap administrator, provisioner Key Vault roles, temporary federation, runner executions,
   registrations, and broker tokens are all at their accepted final counts.
 - Evidence artifacts are uploaded and retained.
+- Demo obsolete-revision cleanup evidence passed after readiness; cost/log controls do not prove
+  health and do not authorize a history purge or UAT shutdown.
 - The PR records exact commands/results and the final Actions run URL.
 
 ### Frequently asked questions
@@ -538,7 +588,16 @@ current `main` head, and the check is kept so a divergence is detected rather th
 **Why not connect applications to PostgreSQL directly?**
 
 The accepted application route is PgBouncer with environment-specific credentials and connection
-budgets. Migration-only direct routes are separately bounded.
+budgets. Direct migration routes and the current repair's short-lived headroom-monitoring route
+are separately bounded; neither changes the application route.
+
+**Does Start/Stop deploy a release or stop the database?**
+
+No. The separate `Application Start Stop` workflow only operates Demo applications with native
+ARM Start/Stop. PostgreSQL, networking, storage and retained logs remain running/billable.
+Daily shutdown is 22:00 Asia/Kolkata; Start is manual. Standard graceful shutdown can interrupt
+unfinished work. UAT is excluded because its inspected apps included PostgreSQL sidecars;
+the separately consented one-time UAT stop is not recurring workflow authority.
 
 **Why does ACA use the short PgBouncer name?**
 

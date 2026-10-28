@@ -1,10 +1,12 @@
 # PROJECT_STATE.md
 **State Schema:** 2.0.0
-**State Revision:** 303
+**State Revision:** 304
 **Last Updated:** 2026-10-28 (WC-124 TEMPORAL MONITOR ISOLATION)
 **Purpose:** Current operational snapshot for bootstrap, recovery, and automated sprint controls; keep it below 200 lines, update checkpoints in place, and retain durable detail in the owning Work Contract, Goal, review, evidence artifact, Git history, or archive index.
 ---
 ## Institutional Snapshot
+Deployment handbook refresh: Founder requested updating last week's deployment-job documentation. Located the canonical Deployment Operator Handbook added 2026-10-20 in Azure Deployment Topology. Updated in place for #549-#555, current Azure-proven monitor isolation, phase order, actual 8-slot Temporal pool and 4-slot migration-group bounds, supported log capture, cost controls and Demo-only lifecycle; current repair is explicitly not merged/deployed.
+
 Temporal monitor isolation checkpoint: Founder authorized Azure proof before a separate repair PR. Eight-slot contention execution `g7v73v3` reproduced pooled monitoring timeout despite 22 spare PostgreSQL connections; direct-monitor candidate `oix9u54` passed 60 strict zero-wait samples under equivalent contention, minimum headroom 18. Branch `ib/124/temporal-monitor-isolation` changes only headroom routing to private PostgreSQL with required TLS and existing restricted identity, plus failure diagnostics and local fixture wiring. Focused regressions pass 113/113; pinned real-service local rehearsal passes 60 samples with headroom 24. Final source-rendered Azure execution `13g5ga3` passes 60 samples, headroom 25; marker survives tail 300, saved job template unchanged, PostgreSQL Ready. No full deployment dispatched.
 
 PR #555 precheck repair: completed run `40654097361` failed the Constitutional Engine image scan; QA Campaign blocked only on `build`. Apply the same go-jose v4.1.6 health-probe dependency patch verified for #554 (CVE-2026-116587), independently on the Temporal branch. No scan-policy weakening, business-logic change, or change to Temporal qualification semantics.
