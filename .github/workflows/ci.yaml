@@ -48,9 +48,10 @@ jobs:
       - name: Start isolated PostgreSQL and PgBouncer authority fixtures
         run: docker compose up --detach --wait postgres pgbouncer
       - name: PST authority, topology, runner, lifecycle, security, and rollback gates
+        # Load only the gate's plugins; unrelated AI/HTTP plugins can fail before collection.
         run: |
-          docker compose --profile test-python run --rm \
-            test-runner-python sh -lc 'pytest -q \
+          docker compose --profile test-python run --rm -e PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
+            test-runner-python sh -lc 'pytest -p pytest_asyncio.plugin -p _hypothesis_pytestplugin -o asyncio_default_fixture_loop_scope=function -q \
               tests/billing-engine/test_wc124_billing_authority_schema.py \
               tests/billing-engine/test_wc124_billing_authority.py \
               tests/pipeline/test_wc124_impact_manifest.py \
@@ -66,12 +67,12 @@ jobs:
               tests/pipeline/test_goal006_cloud_platform_finalization.py'
       - name: PST-SEC-EVIDENCE-01 fail-closed evidence contract
         run: |
-          docker compose --profile test-python run --rm test-runner-python sh -lc \
-            'pytest -q tests/pipeline/test_wc124_persistent_state_lifecycle.py::test_transition_skips_and_unsigned_evidence_are_denied'
+          docker compose --profile test-python run --rm -e PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 test-runner-python sh -lc \
+            'pytest -p pytest_asyncio.plugin -p _hypothesis_pytestplugin -o asyncio_default_fixture_loop_scope=function -q tests/pipeline/test_wc124_persistent_state_lifecycle.py::test_transition_skips_and_unsigned_evidence_are_denied'
       - name: PST-SEC-EMERGENCY-01 hold and authority denial
         run: |
-          docker compose --profile test-python run --rm test-runner-python sh -lc \
-            'pytest -q tests/pipeline/test_wc124_persistent_state_lifecycle.py::test_expired_or_cross_environment_authority_fails_before_provider_access'
+          docker compose --profile test-python run --rm -e PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 test-runner-python sh -lc \
+            'pytest -p pytest_asyncio.plugin -p _hypothesis_pytestplugin -o asyncio_default_fixture_loop_scope=function -q tests/pipeline/test_wc124_persistent_state_lifecycle.py::test_expired_or_cross_environment_authority_fails_before_provider_access'
       - name: Retain PostgreSQL logs on failure
         if: failure()
         run: docker compose logs --no-color postgres > wc124-postgres.log

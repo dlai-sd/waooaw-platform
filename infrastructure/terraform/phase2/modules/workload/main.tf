@@ -1560,14 +1560,24 @@ resource "azurerm_container_app_job" "temporal_startup_qualification" {
       args = [<<-EOT
         set -euo pipefail
         log=/tmp/temporal-startup.log
+        # The Temporal image has no psql (run 40542694439 exited 127). The pool-sampler container in
+        # this replica samples PgBouncer and returns the raw samples as a tar stream on loopback
+        # port 17300; this container signals its own exit to the sampler on loopback port 17301.
+        samples=/tmp/pool-samples
+        mkdir -p "$samples"
+        nc -l -p 17300 > /tmp/pool-samples.tar &
+        receiver_pid=$!
         export TEMPORAL_BROADCAST_ADDRESS="$(hostname -i | awk '{print $1}')"
         export TEMPORAL_ADDRESS="127.0.0.1:7233"
         /etc/temporal/entrypoint.sh autosetup >"$log" 2>&1 &
         temporal_pid=$!
         cleanup() {
+          printf 'exited\n' | nc -w 2 127.0.0.1 17301 >/dev/null 2>&1 || true
+          kill "$receiver_pid" 2>/dev/null || true
           kill "$temporal_pid" 2>/dev/null || true
           wait "$temporal_pid" 2>/dev/null || true
           cat "$log"
+          cat "$samples/sampler.log" 2>/dev/null || true
         }
         trap cleanup EXIT
         ready=false
@@ -1580,16 +1590,28 @@ resource "azurerm_container_app_job" "temporal_startup_qualification" {
           sleep 5
         done
         test "$ready" = true
-        samples=/tmp/pgbouncer-pool-samples.csv
+        sampler_finished=false
+        for tick in $(seq 1 180); do
+          kill -0 "$temporal_pid"
+          timeout 3 bash -c 'exec 3<>/dev/tcp/127.0.0.1/7233'
+          if ! kill -0 "$receiver_pid" 2>/dev/null; then
+            sampler_finished=true
+            break
+          fi
+          sleep 1
+        done
+        test "$sampler_finished" = true
+        tar -xf /tmp/pool-samples.tar -C "$samples"
+        if [ -e "$samples/sampler.failed" ]; then
+          echo "WC-124 pool sampler failed with status $(cat "$samples/sampler.failed")" >&2
+          exit 1
+        fi
+        test -e "$samples/sampler.done"
         max_waiting=0
         max_wait_seconds=0
         min_headroom=999
         for sample in $(seq 1 60); do
-          kill -0 "$temporal_pid"
-          timeout 3 bash -c 'exec 3<>/dev/tcp/127.0.0.1/7233'
-          PGPASSWORD="$POSTGRES_PWD" psql --no-psqlrc --set ON_ERROR_STOP=1 \
-            --host "$POSTGRES_SEEDS" --port 5432 --username temporal_runtime \
-            --dbname pgbouncer --csv --command 'SHOW POOLS;' > "$samples"
+          pools="$samples/pools-$sample.csv"
           waiting=$(awk -F, '
             NR == 1 {
               for (i = 1; i <= NF; i++) column[$i] = i
@@ -1600,7 +1622,7 @@ resource "azurerm_container_app_job" "temporal_startup_qualification" {
               if ($(column["cl_waiting"]) > maximum) maximum = $(column["cl_waiting"])
             }
             END {print maximum + 0}
-          ' "$samples")
+          ' "$pools")
           wait_seconds=$(awk -F, '
             NR == 1 {
               for (i = 1; i <= NF; i++) column[$i] = i
@@ -1611,23 +1633,14 @@ resource "azurerm_container_app_job" "temporal_startup_qualification" {
               if ($(column["maxwait"]) > maximum) maximum = $(column["maxwait"])
             }
             END {print maximum + 0}
-          ' "$samples")
-          headroom=$(PGPASSWORD="$POSTGRES_PWD" psql --no-psqlrc --set ON_ERROR_STOP=1 \
-            --host "$POSTGRES_SEEDS" --port 5432 --username temporal_runtime \
-            --dbname waooaw_temporal --tuples-only --no-align --command "
-              SELECT current_setting('max_connections')::int
-                   - current_setting('superuser_reserved_connections')::int
-                   - current_setting('reserved_connections')::int
-                   - count(*)
-              FROM pg_stat_activity
-              WHERE backend_type = 'client backend';
-            ")
+          ' "$pools")
+          headroom=$(cat "$samples/headroom-$sample.txt")
+          [[ "$headroom" =~ ^-?[0-9]+$ ]]
           if (( waiting > max_waiting )); then max_waiting=$waiting; fi
           if (( wait_seconds > max_wait_seconds )); then max_wait_seconds=$wait_seconds; fi
           if (( headroom < min_headroom )); then min_headroom=$headroom; fi
           printf 'WC124_POOL_SAMPLE sample=%d cl_waiting=%d maxwait=%d postgres_headroom=%d\n' \
             "$sample" "$waiting" "$wait_seconds" "$headroom"
-          sleep 1
         done
         test "$max_waiting" = 0
         test "$max_wait_seconds" = 0
@@ -1685,6 +1698,69 @@ resource "azurerm_container_app_job" "temporal_startup_qualification" {
       env {
         name  = "SQL_MAX_IDLE_CONNS"
         value = "1"
+      }
+    }
+
+    container {
+      name    = "pool-sampler"
+      image   = "docker.io/library/postgres@sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab"
+      cpu     = 0.25
+      memory  = "0.5Gi"
+      command = ["/bin/sh", "-c"]
+      args = [<<-EOT
+        set -eu
+        out=/tmp/pool-samples
+        mkdir -p "$out"
+        : > /tmp/temporal-exited
+        nc -l -p 17301 > /tmp/temporal-exited &
+        deliver() {
+          tar -C "$out" -cf - . | nc -w 5 127.0.0.1 17300
+        }
+        trap 'status=$?; if [ "$status" -ne 0 ]; then echo "$status" > "$out/sampler.failed"; deliver || true; fi' EXIT
+        ready=false
+        for attempt in $(seq 1 240); do
+          if [ -s /tmp/temporal-exited ]; then
+            echo "Temporal exited before accepting connections on 7233" >&2
+            exit 1
+          fi
+          if nc -z -w 3 127.0.0.1 7233; then
+            ready=true
+            break
+          fi
+          sleep 1
+        done
+        test "$ready" = true
+        export PGPASSWORD="$POSTGRES_PWD"
+        for sample in $(seq 1 60); do
+          nc -z -w 3 127.0.0.1 7233
+          psql --no-psqlrc --set ON_ERROR_STOP=1 \
+            --host "$POSTGRES_SEEDS" --port 5432 --username temporal_runtime \
+            --dbname pgbouncer --csv --command 'SHOW POOLS;' \
+            > "$out/pools-$sample.csv" 2>> "$out/sampler.log"
+          psql --no-psqlrc --set ON_ERROR_STOP=1 \
+            --host "$POSTGRES_SEEDS" --port 5432 --username temporal_runtime \
+            --dbname waooaw_temporal --tuples-only --no-align --command "
+              SELECT current_setting('max_connections')::int
+                   - current_setting('superuser_reserved_connections')::int
+                   - current_setting('reserved_connections')::int
+                   - count(*)
+              FROM pg_stat_activity
+              WHERE backend_type = 'client backend';
+            " > "$out/headroom-$sample.txt" 2>> "$out/sampler.log"
+          sleep 1
+        done
+        : > "$out/sampler.done"
+        deliver
+      EOT
+      ]
+
+      env {
+        name        = "POSTGRES_PWD"
+        secret_name = "postgres-password"
+      }
+      env {
+        name  = "POSTGRES_SEEDS"
+        value = local.pgbouncer_host
       }
     }
   }

@@ -1772,7 +1772,11 @@ jobs:
 
       - name: Finalize WC-124 PostgreSQL authority handoff
         id: database-handoff
-        if: always() && inputs.apply && steps.database-transition.outputs.handoff_required == 'true'
+        # Transition state resolves before foundation outputs; without them this step has no target.
+        if: >-
+          always() && inputs.apply &&
+          steps.foundation.outcome == 'success' &&
+          steps.database-transition.outputs.handoff_required == 'true'
         env:
           BOOTSTRAP_CLIENT_ID: ${{ steps.foundation.outputs.database_bootstrap_client_id }}
           BOOTSTRAP_IDENTITY_ID: ${{ steps.foundation.outputs.database_bootstrap_identity_id }}
@@ -1977,6 +1981,7 @@ jobs:
       - name: Remove WC-124 Entra bootstrap authority
         if: >-
           always() && inputs.apply &&
+          steps.foundation.outcome == 'success' &&
           steps.database-transition.outputs.revocation_required == 'true' &&
           (steps.database-transition.outputs.handoff_required != 'true' ||
            steps.database-handoff.outcome == 'success') &&
@@ -3113,7 +3118,7 @@ jobs:
         run: |
           set -euo pipefail
           latest_main_sha=$(curl --fail --silent --show-error \
-            --header "Authorization: ******" \
+            --header "Authorization: Bearer $GH_TOKEN" \
             --header 'Accept: application/vnd.github+json' \
             "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" | jq -er '.object.sha')
           test '${{ inputs.release_sha }}' = "$latest_main_sha"
@@ -3324,9 +3329,12 @@ jobs:
         run: az containerapp job delete --name "$SEEDER_JOB" --resource-group "$RESOURCE_GROUP" --yes --output none
 
       - name: Delete WC-124 database provisioner
+        # Without foundation outputs there is no provisioner identity to target; the terminal
+        # authority step removes its Key Vault access from Terraform state instead.
         if: >-
           always() &&
           inputs.apply &&
+          steps.foundation.outcome == 'success' &&
           (inputs.environment == 'demo' || inputs.environment == 'uat')
         env:
           DATABASE_PROVISIONER_IDENTITY_ID: ${{ steps.foundation.outputs.database_provisioner_identity_id }}

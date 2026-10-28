@@ -126,7 +126,8 @@ def test_wc124_live_cli_contracts_match_the_pinned_runner() -> None:
     assert 'expected_role="pgbouncer_auth"' in handoff
     assert '.tags["wc124-role"] // ""' in handoff
     assert "/opt/waooaw/wc124_db_handoff.py" in authority_handoff
-    assert "if: always() && inputs.apply && steps.database-transition.outputs.handoff_required == 'true'" in authority_handoff
+    assert "steps.foundation.outcome == 'success' &&" in authority_handoff
+    assert "steps.database-transition.outputs.handoff_required == 'true'" in authority_handoff
     assert 'test "$actual_identities" = "$expected_identities"' in authority_handoff
     assert '"remaining_bootstrap_dependencies": 0' in authority_handoff
     assert '-var="database_bootstrap_admin_enabled=false"' in bootstrap_removal
@@ -1042,3 +1043,33 @@ def test_deployment_workflows_pin_every_third_party_action_to_a_commit() -> None
             if not stripped.startswith(("uses:", "- uses:")) or "uses: ./" in stripped:
                 continue
             assert pinned.match(line), f"{name}: unpinned action: {stripped}"
+
+
+def test_workflows_carry_no_log_masked_literals() -> None:
+    # PR 522 committed a log-masked "Authorization: ******" header, which fails the main-freshness
+    # check of every application activation; masked text must never be pasted back into a workflow.
+    for path in sorted((ROOT / ".github/workflows").glob("*.y*ml")):
+        assert "******" not in path.read_text(encoding="utf-8"), path.name
+    freshness = WORKFLOW.split('latest_main_sha=$(curl --fail --silent --show-error \\', 1)[1].split(
+        "| jq -er '.object.sha')", 1
+    )[0]
+    assert '--header "Authorization: Bearer $GH_TOKEN" \\' in freshness
+
+
+def test_foundation_output_consumers_on_always_paths_require_resolved_foundation() -> None:
+    # Database transition state resolves before "Resolve foundation outputs"; an earlier failure
+    # would otherwise run these steps with empty Azure IDs. "Ensure zero WC-124 database
+    # authority on terminal path" reads Terraform state directly and still covers that case.
+    steps = yaml.safe_load(WORKFLOW)["jobs"]["terraform"]["steps"]
+    by_name = {step.get("name"): step for step in steps}
+    for name in (
+        "Finalize WC-124 PostgreSQL authority handoff",
+        "Remove WC-124 Entra bootstrap authority",
+        "Delete WC-124 database provisioner",
+    ):
+        condition = str(by_name[name]["if"])
+        assert "always()" in condition, name
+        assert "steps.foundation.outcome == 'success'" in condition, name
+    terminal = by_name["Ensure zero WC-124 database authority on terminal path"]
+    assert "steps.foundation" not in str(terminal["if"]) + str(terminal.get("env", ""))
+    assert "terraform output -raw deployment_client_id" in terminal["run"]
