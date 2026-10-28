@@ -3164,6 +3164,16 @@ jobs:
             --interval-seconds 15 \
             --output wc124-activation-readiness.json
 
+      - name: Retire obsolete Demo revisions after healthy activation
+        if: inputs.apply && inputs.environment == 'demo'
+        env:
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+        run: |
+          python3 scripts/goal006_demo_revision_cleanup.py \
+            --resource-group "$RESOURCE_GROUP" \
+            --apply \
+            --output demo-revision-cleanup.json
+
       - name: Measure PostgreSQL connection budget after activation
         if: inputs.apply
         env:
@@ -3495,6 +3505,7 @@ jobs:
             wc124-connection-budget.json
             wc124-connection-budget-post-activation.json
             wc124-activation-readiness.json
+            demo-revision-cleanup.json
             wc124-vendor-migrations.json
             wc124-keycloak-migration-job.json
             wc124-keycloak-migration-execution.json
