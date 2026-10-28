@@ -28,6 +28,7 @@ def write_provenance(
     plan_json: Path,
     plan_binary: Path,
 ) -> Path:
+    terraform_scope = "workload" if scope.startswith("workload-") else scope
     state = write_json(tmp_path / f"{scope}-state.json", {"lineage": f"{scope}-lineage", "serial": 7})
     policy_result = write_json(
         tmp_path / f"{scope}-plan-policy.json",
@@ -47,14 +48,30 @@ def write_provenance(
         workflow_run_id="5678",
         workflow_run_attempt="1",
         scope=scope,
-        terraform_root=f"infrastructure/terraform/phase2/environments/demo/{scope}",
-        backend_key=f"goal006/demo/{scope}.tfstate",
+        terraform_root=f"infrastructure/terraform/phase2/environments/demo/{terraform_scope}",
+        backend_key=f"goal006/demo/{terraform_scope}.tfstate",
         plan_json=plan_json,
         plan_binary=plan_binary,
         policy_result=policy_result,
         state=state,
     )
     return write_json(tmp_path / f"{scope}-plan-provenance.json", provenance)
+
+
+def test_migration_plan_provenance_keeps_the_workload_state_identity(tmp_path: Path) -> None:
+    plan = write_json(tmp_path / "migration-plan.json", {"resource_changes": []})
+    binary = write_text(tmp_path / "migration.tfplan", "migration plan")
+    provenance_path = write_provenance(
+        tmp_path,
+        scope="workload-migration",
+        plan_json=plan,
+        plan_binary=binary,
+    )
+    provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
+
+    assert provenance["scope"] == "workload-migration"
+    assert provenance["terraform_root"] == "infrastructure/terraform/phase2/environments/demo/workload"
+    assert provenance["backend_key"] == "goal006/demo/workload.tfstate"
 
 
 def bundle_inputs(tmp_path: Path) -> dict[str, object]:

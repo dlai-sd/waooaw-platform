@@ -25,6 +25,7 @@ locals {
     "billing-engine",
   ])
   active_members               = var.workload_enabled ? local.release_members : toset([])
+  runtime_dependencies_enabled = var.dependency_activation_enabled || var.application_activation_enabled
   auth_redis_container_enabled = var.workload_enabled && contains(["demo", "uat"], var.environment)
   auth_redis_host              = "ca-${var.environment}-auth-redis"
   auth_redis_url               = var.environment == "prod" ? var.auth_abuse_redis_url : "redis://${local.auth_redis_host}:6379/0"
@@ -508,6 +509,7 @@ locals {
       BUSINESS_PLATFORM_URL                 = local.service_urls.business_platform
       KEYCLOAK_CLIENT_ID                    = "waooaw-web"
       KEYCLOAK_ISSUER                       = "${local.service_urls.identity_edge}/realms/waooaw"
+      KEYCLOAK_READINESS_ISSUER             = "${local.verification_urls.identity_edge}/realms/waooaw"
       NEXTAUTH_URL                          = local.service_urls.web
       NODE_ENV                              = "production"
       REDIS_URL                             = local.auth_redis_url
@@ -768,7 +770,7 @@ resource "azurerm_container_app" "auth_redis" {
   }
 
   template {
-    min_replicas = var.application_activation_enabled ? 1 : 0
+    min_replicas = local.runtime_dependencies_enabled ? 1 : 0
     max_replicas = 1
 
     container {
@@ -2054,7 +2056,7 @@ resource "azurerm_container_app" "temporal" {
   }
 
   template {
-    min_replicas = var.application_activation_enabled ? 1 : 0
+    min_replicas = local.runtime_dependencies_enabled ? 1 : 0
     max_replicas = 1
 
     container {
@@ -2255,7 +2257,7 @@ resource "azurerm_container_app" "keycloak" {
   }
 
   template {
-    min_replicas = var.application_activation_enabled ? 1 : 0
+    min_replicas = local.runtime_dependencies_enabled ? 1 : 0
     max_replicas = 1
 
     container {
@@ -2437,7 +2439,7 @@ resource "azurerm_container_app" "identity_edge" {
   workload_profile_name = "Consumption"
 
   template {
-    min_replicas = var.application_activation_enabled ? 1 : 0
+    min_replicas = local.runtime_dependencies_enabled ? 1 : 0
     max_replicas = 1
 
     container {

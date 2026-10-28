@@ -27,6 +27,11 @@ variable "application_activation_enabled" {
   default = true
 }
 
+variable "dependency_activation_enabled" {
+  type    = bool
+  default = false
+}
+
 variable "ghcr_packages_public" {
   type        = bool
   description = "Administrator attestation that all exact-seven GHCR packages allow anonymous digest pulls."

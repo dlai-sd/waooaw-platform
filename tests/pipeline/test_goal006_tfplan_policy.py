@@ -150,6 +150,49 @@ def test_workload_plan_accepts_safe_temporal_contract() -> None:
     enforce_plan(temporal_plan(), "workload")
 
 
+def test_migration_plan_rejects_application_revision_changes() -> None:
+    plan = {
+        "resource_changes": [
+            {
+                "address": 'module.workload.azurerm_container_app.member["web"]',
+                "type": "azurerm_container_app",
+                "change": {"actions": ["update"]},
+            },
+        ],
+    }
+
+    with pytest.raises(ValueError, match="out-of-order Container App"):
+        enforce_plan(plan, "workload-migration")
+
+
+def test_migration_plan_allows_only_pgbouncer_app_changes() -> None:
+    plan = {
+        "resource_changes": [
+            {
+                "address": "module.workload.azurerm_container_app.pgbouncer[0]",
+                "type": "azurerm_container_app",
+                "change": {"actions": ["update"]},
+            },
+        ],
+    }
+
+    enforce_plan(plan, "workload-migration")
+
+
+def test_dependency_plan_rejects_exact_seven_application_changes() -> None:
+    plan = temporal_plan()
+    plan["resource_changes"].append(
+        {
+            "address": 'module.workload.azurerm_container_app.member["professional-runtime"]',
+            "type": "azurerm_container_app",
+            "change": {"actions": ["update"]},
+        }
+    )
+
+    with pytest.raises(ValueError, match="out-of-order Container App"):
+        enforce_plan(plan, "workload-dependencies")
+
+
 def test_workload_plan_accepts_dormant_temporal_contract() -> None:
     enforce_plan(temporal_plan(min_replicas=0), "workload")
 

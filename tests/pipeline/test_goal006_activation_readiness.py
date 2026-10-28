@@ -118,6 +118,79 @@ def test_scaled_to_zero_apps_are_ready_but_temporal_must_hold_a_replica():
     assert "ScaledToZero" in result["revisions"][1]["reason"]
 
 
+def test_dependency_scope_waits_for_each_dependency_and_a_ready_replica():
+    dependency_apps = [
+        "ca-demo-auth-redis",
+        "ca-demo-identity-edge",
+        "ca-demo-keycloak",
+        "ca-demo-pgbouncer",
+        "ca-demo-temporal",
+    ]
+    azure = FakeAzure({
+        **{
+            app: [
+                {"latest": f"{app}--r1", "ready": f"{app}--r1", "running": "Running",
+                 "health": "Healthy", "replicas": 1},
+            ]
+            for app in dependency_apps
+        },
+        "ca-demo-web": [
+            {"latest": "ca-demo-web--r1", "ready": "ca-demo-web--r1", "running": "Processing",
+             "health": "None", "replicas": 0},
+        ],
+    })
+    clock, sleep = _clock()
+
+    result = readiness.evaluate(
+        "rg",
+        "demo",
+        timeout_seconds=30,
+        interval_seconds=15,
+        scope="dependencies",
+        run_az=azure,
+        clock=clock,
+        sleep=sleep,
+        log=lambda _: None,
+    )
+
+    assert result["status"] == "passed"
+    assert result["scope"] == "dependencies"
+    assert result["not_ready"] == []
+    assert [revision["app"] for revision in result["revisions"]] == dependency_apps
+    assert azure.calls["ca-demo-web"] == 0
+
+
+def test_dependency_scope_fails_closed_when_dependency_is_missing_or_scaled_to_zero():
+    azure = FakeAzure({
+        "ca-demo-pgbouncer": [
+            {"latest": "ca-demo-pgbouncer--r1", "ready": "ca-demo-pgbouncer--r1",
+             "running": "ScaledToZero", "health": "Healthy", "replicas": 0},
+        ],
+    })
+    clock, sleep = _clock()
+
+    result = readiness.evaluate(
+        "rg",
+        "demo",
+        timeout_seconds=0,
+        interval_seconds=15,
+        scope="dependencies",
+        run_az=azure,
+        clock=clock,
+        sleep=sleep,
+        log=lambda _: None,
+    )
+
+    assert result["status"] == "failed"
+    assert result["missing_apps"] == [
+        "ca-demo-auth-redis",
+        "ca-demo-identity-edge",
+        "ca-demo-keycloak",
+        "ca-demo-temporal",
+    ]
+    assert result["not_ready"] == sorted([*result["missing_apps"], "ca-demo-pgbouncer"])
+
+
 def test_fails_when_the_bounded_wait_expires_while_still_processing():
     azure = FakeAzure({
         "ca-demo-business-platform": [

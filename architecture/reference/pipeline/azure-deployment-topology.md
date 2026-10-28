@@ -95,11 +95,13 @@ its own gate. None of them independently authorizes a new cloud mutation.
 2. **Separate release from control logic.** Deployment always uses trusted workflow logic from
    `main`; the control SHA is the current `main` head and must equal the release SHA. Both
    identities are recorded and verified. There is no break-fix path: deployments never build images.
-3. **Plan before mutation.** Foundation, dormant workload, and application activation each produce
-   saved Terraform plans. Policy and provenance bind authorization to the exact plan binary, JSON
-   representation, state lineage/serial, backend, environment, release, workflow run, and attempt.
-4. **Dependencies before applications.** Network, identity, state, secrets, PostgreSQL, PgBouncer,
-   Keycloak, Temporal, Redis, and migrations become ready before exact-seven applications activate.
+3. **Plan before mutation.** Foundation, migration dependencies, runtime dependencies, and
+   application activation each produce saved Terraform plans. Policy and provenance bind
+   authorization to the exact plan binary, JSON representation, state lineage/serial, backend,
+   environment, release, workflow run, and attempt.
+4. **Dependencies before applications.** Database migrations complete and are accepted before
+   PgBouncer, Keycloak, Temporal, Redis, and Identity Edge are activated and readiness-gated.
+   Only then does the full plan apply the exact-seven application revisions.
 5. **Verify independently.** Deployment success is not acceptance. A distinct environment-scoped
    OIDC identity runs live inventory, revision, endpoint, domain, and functional verification.
 6. **Clean up even on failure.** Private runner execution, registration, broker tokens, temporary
@@ -312,7 +314,14 @@ backend key, state lineage/serial, policy result, plan JSON digest, and saved-pl
     and the second group starts only after the bucket again shows the per-group headroom
     (`groups` in `wc124-vendor-migrations.json`); Demo's 35 usable slots are not assumed to host
     both pools at once.
-13. Keycloak, Temporal, and Billing retain the exact ACA job definition, execution record, and
+13. The dormant workload plan targets PgBouncer and migration/qualification jobs only; it cannot
+    update exact-seven application revisions. After migration evidence is accepted, a separate
+    policy- and provenance-bound plan targets runtime dependencies. The dependency readiness gate
+    requires healthy, active latest revisions with a ready replica before the un-targeted
+    application activation plan is created and applied. Web checks Keycloak through Identity
+    Edge's private ACA hostname during this phase; the public identity hostname is not ready until
+    the later managed-certificate binding step.
+14. Keycloak, Temporal, and Billing retain the exact ACA job definition, execution record, and
     sanitized console log. A timeout, `Failed`, `Stopped`, unknown status, digest mismatch,
     unresolved secret placeholder,
    ownership error, or connection error blocks application activation. The owning workflow step

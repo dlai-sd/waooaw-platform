@@ -26,6 +26,11 @@ DATABASE_BOOTSTRAP_ADMIN_ADDRESS = (
     "module.foundation.azurerm_postgresql_flexible_server_active_directory_administrator.bootstrap[0]"
 )
 DATABASE_PROVISIONER_ROLE_ADDRESS = "module.foundation.azurerm_role_assignment.database_provisioner_vault[0]"
+WORKLOAD_PHASE_APP_RESOURCES = {
+    "workload-migration": frozenset({"pgbouncer"}),
+    "workload-dependencies": frozenset({"auth_redis", "pgbouncer", "temporal", "keycloak", "identity_edge"}),
+}
+WORKLOAD_SCOPES = frozenset({"workload", *WORKLOAD_PHASE_APP_RESOURCES})
 
 
 def destructive_changes(plan: dict[str, Any]) -> list[str]:
@@ -56,7 +61,7 @@ def destructive_changes(plan: dict[str, Any]) -> list[str]:
 def enforce_plan(plan: dict[str, Any], scope: str, transition: str = "standard") -> None:
     """Reject deletion and replacement in an application plan."""
     destructive = destructive_changes(plan)
-    if scope == "workload" and destructive:
+    if scope in WORKLOAD_SCOPES and destructive:
         cutover_violations = temporal_secret_role_cutover_violations(plan)
         destructive = [address for address in destructive if not (address == TEMPORAL_ROLE_ADDRESS and not cutover_violations)]
     if scope == "foundation" and transition in {"wc124-plan-b", "wc124-schema-reconciliation"} and destructive:
@@ -70,11 +75,32 @@ def enforce_plan(plan: dict[str, Any], scope: str, transition: str = "standard")
         ]
     if destructive:
         detail = ""
-        if scope == "workload" and TEMPORAL_ROLE_ADDRESS in destructive:
+        if scope in WORKLOAD_SCOPES and TEMPORAL_ROLE_ADDRESS in destructive:
             detail = "; Temporal cutover rejected: " + ", ".join(temporal_secret_role_cutover_violations(plan))
         raise ValueError(f"{scope.capitalize()} plan contains delete or replacement actions: " + ", ".join(destructive) + detail)
-    if scope == "workload":
+    if scope in WORKLOAD_PHASE_APP_RESOURCES:
+        enforce_workload_phase_app_resources(plan, scope)
+    if scope in {"workload", "workload-dependencies"}:
         enforce_temporal_contract(plan)
+
+
+def enforce_workload_phase_app_resources(plan: dict[str, Any], scope: str) -> None:
+    """Keep migration and dependency plans from changing applications out of activation order."""
+    allowed_resources = WORKLOAD_PHASE_APP_RESOURCES[scope]
+    unexpected = []
+    for resource_change in plan["resource_changes"]:
+        if resource_change.get("type") != "azurerm_container_app":
+            continue
+        address = resource_change.get("address", "")
+        if not address.startswith("module.workload."):
+            continue
+        resource_name = address.removeprefix("module.workload.azurerm_container_app.").split("[", 1)[0]
+        if resource_name not in allowed_resources:
+            unexpected.append(address)
+    if unexpected:
+        raise ValueError(
+            f"{scope.capitalize()} plan contains out-of-order Container App changes: " + ", ".join(sorted(unexpected))
+        )
 
 
 def is_wc124_plan_b_revocation(plan: dict[str, Any], address: str) -> bool:
@@ -237,7 +263,11 @@ def enforce_foundation_plan(plan: dict[str, Any]) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--plan", required=True, type=Path)
-    parser.add_argument("--scope", required=True, choices=("foundation", "workload"))
+    parser.add_argument(
+        "--scope",
+        required=True,
+        choices=("foundation", "workload", "workload-migration", "workload-dependencies"),
+    )
     parser.add_argument(
         "--transition",
         default="standard",
