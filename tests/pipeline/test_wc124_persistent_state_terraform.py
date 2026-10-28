@@ -15,7 +15,7 @@ def read(path: str) -> str:
     return (PHASE2 / path).read_text(encoding="utf-8")
 
 
-def test_persistent_state_gate_excludes_only_the_unrelated_deepeval_plugin() -> None:
+def test_persistent_state_gate_loads_only_its_required_plugins() -> None:
     import yaml
 
     workflow = yaml.safe_load((ROOT / ".github/workflows/ci.yaml").read_text(encoding="utf-8"))
@@ -23,8 +23,9 @@ def test_persistent_state_gate_excludes_only_the_unrelated_deepeval_plugin() -> 
     pytest_commands = [step["run"] for step in steps if "pytest " in step.get("run", "")]
     assert len(pytest_commands) == 3
     for command in pytest_commands:
-        assert "pytest -p no:plugins -q " in command
-        assert "PYTEST_DISABLE_PLUGIN_AUTOLOAD" not in command
+        assert "run --rm -e PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 " in command
+        assert "pytest -p pytest_asyncio.plugin -p _hypothesis_pytestplugin " in command
+        assert "-o asyncio_default_fixture_loop_scope=function -q " in command
         assert "-W ignore" not in command
 
 
