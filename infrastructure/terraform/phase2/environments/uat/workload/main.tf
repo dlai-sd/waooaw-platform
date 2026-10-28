@@ -50,6 +50,7 @@ module "workload" {
   source = "../../../modules/workload"
 
   application_activation_enabled           = var.application_activation_enabled
+  dependency_activation_enabled            = var.dependency_activation_enabled
   environment                              = "uat"
   location                                 = data.terraform_remote_state.foundation.outputs.location
   resource_group_name                      = data.terraform_remote_state.foundation.outputs.resource_group_name

@@ -50,6 +50,7 @@ module "workload" {
   source = "../../../modules/workload"
 
   application_activation_enabled           = var.application_activation_enabled
+  dependency_activation_enabled            = var.dependency_activation_enabled
   auth_preview_origin                      = var.auth_preview_origin
   facebook_login_enabled                   = true
   google_login_enabled                     = true

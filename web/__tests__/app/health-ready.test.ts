@@ -37,6 +37,7 @@ describe('revision readiness', () => {
       ...originalEnvironment,
       BUSINESS_PLATFORM_URL: 'https://api.example',
       KEYCLOAK_ISSUER: 'https://identity.example/realms/waooaw',
+      KEYCLOAK_READINESS_ISSUER: 'https://identity-internal.example/realms/waooaw',
       NODE_ENV: 'production',
     };
     global.fetch = jest.fn().mockResolvedValue({ ok: true });
@@ -63,6 +64,11 @@ describe('revision readiness', () => {
     expect(mockedOidcTransactionStoreReady).toHaveBeenCalledTimes(1);
     expect(mockedSessionStoreReady).not.toHaveBeenCalled();
     expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(global.fetch).toHaveBeenNthCalledWith(
+      1,
+      'https://identity-internal.example/realms/waooaw/.well-known/openid-configuration',
+      expect.objectContaining({ cache: 'no-store' })
+    );
   });
 
   it('fails closed when the authentication limiter is unavailable in disabled session mode', async () => {

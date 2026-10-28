@@ -293,6 +293,7 @@ def test_demo_temporal_lifecycle_and_member_readiness_are_fail_closed() -> None:
     assert 'export TEMPORAL_BROADCAST_ADDRESS="$(hostname -i | awk \'{print $1}\')"' in temporal
     assert 'export TEMPORAL_ADDRESS="127.0.0.1:7233"' in temporal
     assert "exec /etc/temporal/entrypoint.sh autosetup" in temporal
+    assert "min_replicas = local.runtime_dependencies_enabled ? 1 : 0" in temporal
     assert temporal.count("startup_probe {") == 1
     assert temporal.count("readiness_probe {") == 1
     assert temporal.count("liveness_probe {") == 1
@@ -392,7 +393,7 @@ def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
     assert 'value = "xforwarded"' in keycloak
     assert re.search(r"external_enabled\s*=\s*false", keycloak)
     assert "allow_insecure_connections" not in keycloak
-    assert "min_replicas = var.application_activation_enabled ? 1 : 0" in keycloak
+    assert "min_replicas = local.runtime_dependencies_enabled ? 1 : 0" in keycloak
     assert "ip_security_restriction" not in keycloak
     assert "KC_BOOTSTRAP_ADMIN" not in keycloak
 
@@ -414,7 +415,7 @@ def test_identity_edge_exposes_only_customer_authentication_paths() -> None:
 
     assert goal006_live_inventory.IDENTITY_EDGE_IMAGE in identity_edge
     assert "external_enabled = true" in identity_edge
-    assert "min_replicas = var.application_activation_enabled ? 1 : 0" in identity_edge
+    assert "min_replicas = local.runtime_dependencies_enabled ? 1 : 0" in identity_edge
     assert "ip_security_restriction" not in identity_edge
     assert "templatefile(" in contract
     assert "identity-edge.conf.tftpl" in contract
@@ -461,6 +462,28 @@ def test_runtime_uses_public_identity_edge_while_keycloak_stays_internal() -> No
     assert 'keycloak_private      = "https://ca-${var.environment}-keycloak.internal.' in contract
     assert "local.demo_identity_manifest.origins.identity == local.service_urls.identity_edge" in contract
     assert 'KEYCLOAK_ISSUER       = "${local.service_urls.keycloak}' not in contract
+    assert 'KEYCLOAK_READINESS_ISSUER             = "${local.verification_urls.identity_edge}/realms/waooaw"' in contract
+
+
+def test_runtime_dependencies_can_activate_without_release_members() -> None:
+    contract = read_contract("modules/workload/main.tf")
+    variables = read_contract("modules/workload/variables.tf")
+    auth_redis = contract.split('resource "azurerm_container_app" "auth_redis"', 1)[1].split(
+        'resource "azurerm_container_app" "pgbouncer"', 1
+    )[0]
+    dependency_flag = variables.split('variable "dependency_activation_enabled"', 1)[1].split(
+        "variable ", 1
+    )[0]
+
+    assert "runtime_dependencies_enabled = var.dependency_activation_enabled || var.application_activation_enabled" in contract
+    assert re.search(r"default\s*=\s*false", dependency_flag)
+    assert "min_replicas = local.runtime_dependencies_enabled ? 1 : 0" in auth_redis
+
+    for environment in ("demo", "uat"):
+        root = read_contract(f"environments/{environment}/workload/main.tf")
+        root_variables = read_contract(f"environments/{environment}/workload/variables.tf")
+        assert "dependency_activation_enabled            = var.dependency_activation_enabled" in root
+        assert 'variable "dependency_activation_enabled"' in root_variables
 
 
 def test_each_release_member_has_its_own_identity_and_secret_scope() -> None:
@@ -1010,8 +1033,8 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "waooaw-platform-bootstrap" in workflow
     assert "az storage container show" not in workflow
     assert workflow.count('gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main"') == 1
-    assert workflow.count("https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main") == 4
-    assert workflow.count("terraform apply -input=false -auto-approve") == 7
+    assert workflow.count("https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main") == 6
+    assert workflow.count("terraform apply -input=false -auto-approve") == 8
     assert "terraform apply -input=false -auto-approve foundation-bootstrap-removal.tfplan" in workflow
     assert "mcr.microsoft.com/azure-cli@sha256:" in workflow
     assert "https://mcr.microsoft.com/v2/$repository/manifests/$expected_digest" in workflow
@@ -1078,7 +1101,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert 'name  = "SQL_MAX_IDLE_CONNS"\n        value = "1"' in temporal
     for evidence in ("wc124-activation-readiness.json", "wc124-connection-budget-post-activation.json"):
         assert workflow.count(evidence) == 2, evidence  # produced once, uploaded once
-    assert workflow.count("if: inputs.apply") == 32
+    assert workflow.count("if: inputs.apply") == 35
     assert workflow.count("always() && inputs.apply") == 3
     assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
     assert '--context "external_environment=$external_environment"' in workflow
@@ -1115,12 +1138,26 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "resource_group_record=$(az group show" in workflow
     assert 'tags["managed-by"] == "waooaw-platform-bootstrap"' in workflow
     assert "[?location==" not in workflow
-    for apply_command in (
-        "terraform apply -input=false -auto-approve foundation.tfplan",
-        "terraform apply -input=false -auto-approve workload.tfplan",
+    for apply_command, provenance_guard in (
+        (
+            "terraform apply -input=false -auto-approve foundation.tfplan",
+            'test \'${{ inputs.release_sha }}\' = "$latest_main_sha"',
+        ),
+        (
+            "terraform apply -input=false -auto-approve workload-migration.tfplan",
+            "verify_migration_provenance",
+        ),
+        (
+            "terraform apply -input=false -auto-approve workload-dependencies.tfplan",
+            'cmp --silent workload-dependencies-provenance.json "$current_provenance"',
+        ),
+        (
+            "terraform apply -input=false -auto-approve workload-activation.tfplan",
+            'cmp --silent workload-activation-provenance.json "$current_provenance"',
+        ),
     ):
         apply_index = workflow.index(apply_command)
-        assert workflow.rfind("test '${{ inputs.release_sha }}' = \"$latest_main_sha\"", 0, apply_index) != -1
+        assert workflow.rfind(provenance_guard, 0, apply_index) != -1
 
 
 def test_deployment_workflow_fails_closed_when_web_url_is_missing() -> None:

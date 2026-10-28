@@ -357,10 +357,14 @@ def test_pgbouncer_dns_and_tcp_preflight_blocks_migrations() -> None:
 
 def test_application_activation_requires_persisted_migration_acceptance() -> None:
     acceptance_index = WORKFLOW.index("      - name: Verify migration evidence before application activation")
+    dependency_index = WORKFLOW.index("      - name: Activate runtime dependencies before application revisions")
+    dependency_readiness_index = WORKFLOW.index(
+        "      - name: Require runtime dependency revisions before application activation"
+    )
     activation_index = WORKFLOW.index("      - name: Plan application activation after migration")
     acceptance = WORKFLOW[acceptance_index:activation_index]
 
-    assert acceptance_index < activation_index
+    assert acceptance_index < dependency_index < dependency_readiness_index < activation_index
     assert "wc124-pgbouncer-preflight-execution.json" in acceptance
     assert "wc124-billing-migration-execution.json" in acceptance
     assert "temporary-authority-revoked" in acceptance
@@ -368,6 +372,41 @@ def test_application_activation_requires_persisted_migration_acceptance() -> Non
     assert "accepted-for-activation" in acceptance
     assert "wc124-migration-acceptance.json" in acceptance
     assert "wc124-migration-acceptance.json" in WORKFLOW
+
+
+def test_activation_stages_migrations_dependencies_and_application_revisions() -> None:
+    migration = WORKFLOW.split(
+        "      - name: Terraform dormant workload and migration dependency apply", 1
+    )[1].split("      - name: Preflight PgBouncer from private ACA environment", 1)[0]
+    dependencies = WORKFLOW.split(
+        "      - name: Activate runtime dependencies before application revisions", 1
+    )[1].split("      - name: Require runtime dependency revisions before application activation", 1)[0]
+    dependency_readiness = WORKFLOW.split(
+        "      - name: Require runtime dependency revisions before application activation", 1
+    )[1].split("      - name: Plan application activation after migration", 1)[0]
+    activation = WORKFLOW.split("      - name: Plan application activation after migration", 1)[1].split(
+        "      - name: Apply application activation", 1
+    )[0]
+
+    assert "-target=module.workload.azurerm_container_app.pgbouncer[0]" in migration
+    assert "-target=module.workload.azurerm_container_app_job.keycloak_migration[0]" in migration
+    assert "-target=module.workload.azurerm_container_app_job.billing_migration[0]" in migration
+    assert "-target=module.workload.azurerm_container_app_job.temporal_migration[0]" in migration
+    assert "--scope workload-migration" in migration
+    assert "workload-migration.tfplan" in migration
+    assert "terraform apply -input=false -auto-approve workload-migration.tfplan" in migration
+    assert "terraform apply -input=false -auto-approve workload.tfplan" not in migration
+
+    assert ".application_activation_enabled = false | .dependency_activation_enabled = true" in dependencies
+    assert "-target=module.workload.azurerm_container_app.auth_redis[0]" in dependencies
+    assert "-target=module.workload.azurerm_container_app.keycloak[0]" in dependencies
+    assert "-target=module.workload.azurerm_container_app.identity_edge[0]" in dependencies
+    assert "-target=module.workload.azurerm_container_app.temporal[0]" in dependencies
+    assert "--scope workload-dependencies" in dependencies
+    assert "workload-dependencies.tfplan" in dependencies
+    assert "--scope dependencies" in dependency_readiness
+
+    assert ".application_activation_enabled = true | .dependency_activation_enabled = true" in activation
 
 
 def test_activation_and_tls_evidence_are_retained_and_fail_closed() -> None:
@@ -389,6 +428,10 @@ def test_activation_and_tls_evidence_are_retained_and_fail_closed() -> None:
         "workload-activation-provenance.json",
         "workload-activation.tfplan",
         "workload-activation-apply.log",
+        "workload-dependencies-plan.json",
+        "workload-dependencies-provenance.json",
+        "workload-dependencies-apply.log",
+        "wc124-dependency-readiness.json",
         "demo-managed-certificates.json",
         "demo-managed-certificates.log",
     ):
@@ -509,6 +552,7 @@ def test_application_activation_plan_is_policy_and_provenance_bound() -> None:
     assert "terraform plan -detailed-exitcode" in plan_step
     assert '0|2) ;;' in plan_step
     assert "--output workload-activation-policy.json" in plan_step
+    assert ".dependency_activation_enabled = true" in plan_step
     assert "--plan-binary workload-activation.tfplan" in plan_step
     assert "--output workload-activation-provenance.json" in plan_step
     assert "cmp --silent workload-activation-provenance.json" in apply_step

@@ -2208,7 +2208,7 @@ jobs:
             ' workload.auto.tfvars.json > workload.versioned.tfvars.json
             mv workload.versioned.tfvars.json workload.auto.tfvars.json
           fi
-          jq '.application_activation_enabled = false' \
+          jq '.application_activation_enabled = false | .dependency_activation_enabled = false' \
             workload.auto.tfvars.json > workload.dormant.tfvars.json
           mv workload.dormant.tfvars.json workload.auto.tfvars.json
 
@@ -2437,25 +2437,98 @@ jobs:
         env:
           ARM_CLIENT_ID: ${{ steps.foundation.outputs.deployment_client_id }}
           GH_TOKEN: ${{ github.token }}
+          RELEASE_RUN_ID: ${{ inputs.release_run_id }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
           latest_main_sha=$(curl --fail --silent --show-error \
             --header "Authorization: Bearer $GH_TOKEN" \
             --header 'Accept: application/vnd.github+json' \
             "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" | jq -er '.object.sha')
-          test '${{ inputs.release_sha }}' = "$latest_main_sha"
+          test "$RELEASE_SHA" = "$latest_main_sha"
+
+          migration_targets=(
+            "-target=module.workload.azurerm_container_app.pgbouncer[0]"
+            "-target=module.workload.azurerm_container_app_job.keycloak_migration[0]"
+            "-target=module.workload.azurerm_container_app_job.billing_migration[0]"
+          )
+          if [ "$TARGET_ENVIRONMENT" = demo ]; then
+            migration_targets+=(
+              "-target=module.workload.azurerm_container_app_job.temporal_migration[0]"
+              "-target=module.workload.azurerm_container_app_job.temporal_startup_qualification[0]"
+            )
+          fi
+
+          state_snapshot=$(mktemp)
+          current_provenance=$(mktemp)
+          trap 'rm -f "$state_snapshot" "$current_provenance"' EXIT
+
+          plan_migration_dependencies() {
+            set +e
+            terraform plan -detailed-exitcode -input=false -lock-timeout=5m \
+              -out=workload-migration.tfplan "${migration_targets[@]}"
+            plan_exit_code=$?
+            set -e
+            case "$plan_exit_code" in
+              0|2) ;;
+              *) echo "Migration dependency planning failed with exit code $plan_exit_code" >&2; exit "$plan_exit_code" ;;
+            esac
+            terraform show -json workload-migration.tfplan > workload-migration-plan.json
+            python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
+              --scope workload-migration \
+              --plan workload-migration-plan.json \
+              --output workload-migration-policy.json
+            terraform state pull > "$state_snapshot"
+            python3 "$GITHUB_WORKSPACE/scripts/goal006_plan_provenance.py" \
+              --environment "$TARGET_ENVIRONMENT" \
+              --release-sha "$RELEASE_SHA" \
+              --release-run-id "$RELEASE_RUN_ID" \
+              --workflow-run-id "$GITHUB_RUN_ID" \
+              --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
+              --scope workload-migration \
+              --terraform-root "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload" \
+              --backend-key "goal006/$TARGET_ENVIRONMENT/workload.tfstate" \
+              --plan-json workload-migration-plan.json \
+              --plan-binary workload-migration.tfplan \
+              --policy-result workload-migration-policy.json \
+              --state "$state_snapshot" \
+              --output workload-migration-provenance.json
+          }
+
+          verify_migration_provenance() {
+            terraform state pull > "$state_snapshot"
+            python3 "$GITHUB_WORKSPACE/scripts/goal006_plan_provenance.py" \
+              --environment "$TARGET_ENVIRONMENT" \
+              --release-sha "$RELEASE_SHA" \
+              --release-run-id "$RELEASE_RUN_ID" \
+              --workflow-run-id "$GITHUB_RUN_ID" \
+              --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
+              --scope workload-migration \
+              --terraform-root "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload" \
+              --backend-key "goal006/$TARGET_ENVIRONMENT/workload.tfstate" \
+              --plan-json workload-migration-plan.json \
+              --plan-binary workload-migration.tfplan \
+              --policy-result workload-migration-policy.json \
+              --state "$state_snapshot" \
+              --output "$current_provenance"
+            cmp --silent workload-migration-provenance.json "$current_provenance"
+          }
+
+          plan_migration_dependencies
           attempt=1
           max_attempts=3
           while true; do
             apply_log="workload-apply-attempt-${attempt}.log"
-            if terraform apply -input=false -auto-approve workload.tfplan 2>&1 | tee "$apply_log"; then
+            verify_migration_provenance
+            if terraform apply -input=false -auto-approve workload-migration.tfplan 2>&1 | tee "$apply_log"; then
               break
             fi
             if ! python3 "$GITHUB_WORKSPACE/scripts/goal006_keyvault_retry.py" \
               --apply-log "$apply_log" \
               --inventory credential-inventory.json \
-              --plan workload-plan.json; then
-              echo "Workload apply failed outside the bounded Key Vault propagation retry" >&2
+              --plan workload-migration-plan.json; then
+              echo "Migration dependency apply failed outside the bounded Key Vault propagation retry" >&2
               exit 1
             fi
             if [ "$attempt" -ge "$max_attempts" ]; then
@@ -2465,11 +2538,7 @@ jobs:
             delay=$((15 * 2 ** (attempt - 1)))
             echo "Known Key Vault propagation failure; waiting ${delay}s before replanning attempt $((attempt + 1))"
             sleep "$delay"
-            terraform plan -input=false -lock-timeout=5m -out=workload.tfplan
-            terraform show -json workload.tfplan > workload-plan.json
-            python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
-              --scope workload \
-              --plan workload-plan.json
+            plan_migration_dependencies
             attempt=$((attempt + 1))
           done
           web_url=$(terraform output -raw web_url)
@@ -3115,6 +3184,109 @@ jobs:
               }
             }' > wc124-migration-acceptance.json
 
+      - name: Activate runtime dependencies before application revisions
+        if: inputs.apply
+        working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload
+        env:
+          ARM_CLIENT_ID: ${{ steps.foundation.outputs.deployment_client_id }}
+          RELEASE_RUN_ID: ${{ inputs.release_run_id }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          latest_main_sha=$(curl --fail --silent --show-error \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" | jq -er '.object.sha')
+          test "$RELEASE_SHA" = "$latest_main_sha"
+          jq '.application_activation_enabled = false | .dependency_activation_enabled = true' \
+            workload.auto.tfvars.json > workload.dependencies.tfvars.json
+          mv workload.dependencies.tfvars.json workload.auto.tfvars.json
+
+          dependency_targets=(
+            "-target=module.workload.azurerm_container_app.auth_redis[0]"
+            "-target=module.workload.azurerm_container_app.keycloak[0]"
+            "-target=module.workload.azurerm_container_app.identity_edge[0]"
+          )
+          if [ "$TARGET_ENVIRONMENT" = demo ]; then
+            dependency_targets+=(
+              "-target=module.workload.azurerm_container_app.temporal[0]"
+            )
+          fi
+
+          set +e
+          terraform plan -detailed-exitcode -input=false -lock-timeout=5m \
+            -out=workload-dependencies.tfplan "${dependency_targets[@]}"
+          plan_exit_code=$?
+          set -e
+          case "$plan_exit_code" in
+            0|2) ;;
+            *) echo "Runtime dependency planning failed with exit code $plan_exit_code" >&2; exit "$plan_exit_code" ;;
+          esac
+          terraform show -json workload-dependencies.tfplan > workload-dependencies-plan.json
+          python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
+            --scope workload-dependencies \
+            --plan workload-dependencies-plan.json \
+            --output workload-dependencies-policy.json
+
+          state_snapshot=$(mktemp)
+          current_provenance=$(mktemp)
+          trap 'rm -f "$state_snapshot" "$current_provenance"' EXIT
+          terraform state pull > "$state_snapshot"
+          python3 "$GITHUB_WORKSPACE/scripts/goal006_plan_provenance.py" \
+            --environment "$TARGET_ENVIRONMENT" \
+            --release-sha "$RELEASE_SHA" \
+            --release-run-id "$RELEASE_RUN_ID" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --scope workload-dependencies \
+            --terraform-root "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload" \
+            --backend-key "goal006/$TARGET_ENVIRONMENT/workload.tfstate" \
+            --plan-json workload-dependencies-plan.json \
+            --plan-binary workload-dependencies.tfplan \
+            --policy-result workload-dependencies-policy.json \
+            --state "$state_snapshot" \
+            --output workload-dependencies-provenance.json
+
+          test "$(curl --fail --silent --show-error \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" | jq -er '.object.sha')" = "$RELEASE_SHA"
+          terraform state pull > "$state_snapshot"
+          python3 "$GITHUB_WORKSPACE/scripts/goal006_plan_provenance.py" \
+            --environment "$TARGET_ENVIRONMENT" \
+            --release-sha "$RELEASE_SHA" \
+            --release-run-id "$RELEASE_RUN_ID" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --scope workload-dependencies \
+            --terraform-root "infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/workload" \
+            --backend-key "goal006/$TARGET_ENVIRONMENT/workload.tfstate" \
+            --plan-json workload-dependencies-plan.json \
+            --plan-binary workload-dependencies.tfplan \
+            --policy-result workload-dependencies-policy.json \
+            --state "$state_snapshot" \
+            --output "$current_provenance"
+          cmp --silent workload-dependencies-provenance.json "$current_provenance"
+          terraform apply -input=false -auto-approve workload-dependencies.tfplan 2>&1 \
+            | tee workload-dependencies-apply.log
+
+      - name: Require runtime dependency revisions before application activation
+        if: inputs.apply
+        env:
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          python3 scripts/goal006_activation_readiness.py \
+            --resource-group "$RESOURCE_GROUP" \
+            --environment "$TARGET_ENVIRONMENT" \
+            --scope dependencies \
+            --timeout-seconds 600 \
+            --interval-seconds 15 \
+            --output wc124-dependency-readiness.json
+
       - name: Plan application activation after migration
         if: inputs.apply
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload
@@ -3125,7 +3297,7 @@ jobs:
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
-          jq '.application_activation_enabled = true' \
+          jq '.application_activation_enabled = true | .dependency_activation_enabled = true' \
             workload.auto.tfvars.json > workload.active.tfvars.json
           mv workload.active.tfvars.json workload.auto.tfvars.json
           set +e
@@ -3557,6 +3729,7 @@ jobs:
             wc124-db-credential-inventory.json
             wc124-connection-budget.json
             wc124-connection-budget-post-activation.json
+            wc124-dependency-readiness.json
             wc124-activation-readiness.json
             demo-revision-cleanup.json
             wc124-vendor-migrations.json
@@ -3601,6 +3774,15 @@ jobs:
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-state-after-apply-failure.txt
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload.tfplan
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-apply-attempt-*.log
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-migration-plan.json
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-migration-policy.json
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-migration-provenance.json
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-migration.tfplan
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-dependencies-plan.json
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-dependencies-policy.json
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-dependencies-provenance.json
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-dependencies.tfplan
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-dependencies-apply.log
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-activation-plan.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-activation-policy.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-activation-provenance.json

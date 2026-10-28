@@ -12,8 +12,12 @@ from typing import Any
 
 
 FULL_SHA = re.compile(r"[0-9a-f]{40}$")
-SCOPES = {"foundation", "workload"}
+SCOPES = {"foundation", "workload", "workload-migration", "workload-dependencies"}
 SCHEMA = "waooaw.terraform-plan-provenance/v1"
+
+
+def terraform_scope(scope: str) -> str:
+    return "workload" if scope.startswith("workload-") else scope
 
 
 def file_digest(path: Path) -> str:
@@ -47,8 +51,9 @@ def create_provenance(
         raise ValueError("release SHA must be a full lowercase Git SHA")
     if not all(value.isdigit() for value in (release_run_id, workflow_run_id, workflow_run_attempt)):
         raise ValueError("run identities must be numeric")
-    expected_root = f"infrastructure/terraform/phase2/environments/{environment}/{scope}"
-    expected_backend_key = f"goal006/{environment}/{scope}.tfstate"
+    root_scope = terraform_scope(scope)
+    expected_root = f"infrastructure/terraform/phase2/environments/{environment}/{root_scope}"
+    expected_backend_key = f"goal006/{environment}/{root_scope}.tfstate"
     if terraform_root != expected_root:
         raise ValueError(f"{scope} Terraform root is not environment-exact")
     if backend_key != expected_backend_key:
@@ -115,8 +120,8 @@ def validate_provenance(
         "workflow_run_id": workflow_run_id,
         "workflow_run_attempt": workflow_run_attempt,
         "scope": scope,
-        "terraform_root": f"infrastructure/terraform/phase2/environments/{environment}/{scope}",
-        "backend_key": f"goal006/{environment}/{scope}.tfstate",
+        "terraform_root": f"infrastructure/terraform/phase2/environments/{environment}/{terraform_scope(scope)}",
+        "backend_key": f"goal006/{environment}/{terraform_scope(scope)}.tfstate",
         "plan_json_sha256": file_digest(plan_json),
         "plan_binary_sha256": file_digest(plan_binary),
         "policy_result_sha256": file_digest(policy_result),

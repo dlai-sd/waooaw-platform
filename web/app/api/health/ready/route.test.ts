@@ -12,6 +12,7 @@ jest.mock('@/lib/web-session-store', () => ({
 
 const readinessEnvironment = {
   KEYCLOAK_ISSUER: 'https://identity.example/realms/waooaw',
+  KEYCLOAK_READINESS_ISSUER: 'https://identity-internal.example/realms/waooaw',
   BUSINESS_PLATFORM_URL: 'https://business.example',
   WEB_SESSION_CONFIG_DIGEST: 'config-digest',
   WEB_SESSION_EXPECTED_CONFIG_DIGEST: 'config-digest',
@@ -36,8 +37,20 @@ it('reports ready only when configuration, schema, grants, and dependencies pass
   const response = await GET();
   expect(response.status).toBe(204);
   expect(fetch).toHaveBeenCalledTimes(2);
+  expect(fetch).toHaveBeenNthCalledWith(
+    1,
+    'https://identity-internal.example/realms/waooaw/.well-known/openid-configuration',
+    expect.objectContaining({ cache: 'no-store' })
+  );
   expect(oidcTransactionStoreReady).not.toHaveBeenCalled();
   expect(sessionStoreReady).toHaveBeenCalledTimes(1);
+});
+
+it('fails closed without the internal identity readiness issuer', async () => {
+  process.env.KEYCLOAK_READINESS_ISSUER = '';
+  const response = await GET();
+  expect(response.status).toBe(503);
+  expect(fetch).not.toHaveBeenCalled();
 });
 
 it('fails closed without exposing dependency detail', async () => {

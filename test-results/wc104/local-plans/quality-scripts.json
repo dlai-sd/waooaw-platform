@@ -1,22 +1,22 @@
 {
   "authoritative": false,
   "catalog_version": "wc121-selective-validation-v1",
-  "execution_namespace": "wc109-822dbb6f119afd9e",
-  "head_sha": "9899063ee79f7612f2b400e076c4baeb306e45d4",
+  "execution_namespace": "wc109-aac93492205ac43b",
+  "head_sha": "7576892c7b8b6c12859db400730f2a45ad6117bf",
   "machine_checkable": true,
   "mode": "qualification",
   "nodes": [
     {
-      "acceptance_check": "ruff check scripts/ --config pyproject.toml && ruff format --check scripts/ && pytest tests/validation_control/test_unified_execution_contract.py tests/validation_control/test_wc104_rollback.py -q && pytest tests/validation_control/test_pilot.py tests/validation_control/test_wc109_value_pilot.py -q && python scripts/seed-prompts.py --dry-run",
+      "acceptance_check": "ruff check scripts/ --config pyproject.toml && ruff format --check scripts/ && python scripts/ai_resource_governance.py --repository /workspace && pytest tests/scripts/test_ai_resource_governance.py -q && pytest tests/validation_control/test_unified_execution_contract.py tests/validation_control/test_wc104_rollback.py -q && pytest tests/validation_control/test_pilot.py tests/validation_control/test_wc109_value_pilot.py -q && pytest tests/pipeline/test_goal006_runner_bootstrap.py -q && python scripts/seed-prompts.py --dry-run",
       "artifacts": {
         "common": "test-results/validation/build.json",
         "native": []
       },
       "auxiliary_runners": [],
-      "command": "ruff check scripts/ --config pyproject.toml && ruff format --check scripts/ && pytest tests/validation_control/test_unified_execution_contract.py tests/validation_control/test_wc104_rollback.py -q && pytest tests/validation_control/test_pilot.py tests/validation_control/test_wc109_value_pilot.py -q && python scripts/seed-prompts.py --dry-run",
+      "command": "ruff check scripts/ --config pyproject.toml && ruff format --check scripts/ && python scripts/ai_resource_governance.py --repository /workspace && pytest tests/scripts/test_ai_resource_governance.py -q && pytest tests/validation_control/test_unified_execution_contract.py tests/validation_control/test_wc104_rollback.py -q && pytest tests/validation_control/test_pilot.py tests/validation_control/test_wc109_value_pilot.py -q && pytest tests/pipeline/test_goal006_runner_bootstrap.py -q && python scripts/seed-prompts.py --dry-run",
       "command_id": "quality-scripts",
       "components": [],
-      "compose_project": "wc109-822dbb6f119afd9e",
+      "compose_project": "wc109-aac93492205ac43b",
       "compose_service": "test-runner-python",
       "cost_class": "STATIC",
       "direct_prerequisites": [],
@@ -28,7 +28,7 @@
           "common": "test-results/validation/build.json",
           "native": []
         },
-        "directory": "test-results/wc109/runs/wc109-822dbb6f119afd9e/quality-scripts"
+        "directory": "test-results/wc109/runs/wc109-aac93492205ac43b/quality-scripts"
       },
       "gate_id": "quality:scripts",
       "inputs": {
@@ -36,13 +36,17 @@
         "catalog_version": "wc121-selective-validation-v1",
         "command_id": "quality-scripts",
         "environment": [],
-        "head_sha": "9899063ee79f7612f2b400e076c4baeb306e45d4",
+        "head_sha": "7576892c7b8b6c12859db400730f2a45ad6117bf",
         "required_services": [],
         "runner_id": "python"
       },
       "invalidation_rule": {
         "changed_paths": [
           "docker-compose*.yml",
+          "infrastructure/deployment-stacks/goal006-runner/**",
+          "infrastructure/environment-readiness/**",
+          "infrastructure/postgres/init/**",
+          "infrastructure/runner/**",
           "pyproject.toml",
           "requirements*.txt",
           "scripts/**",
@@ -52,6 +56,7 @@
           "scripts/validation_control/orchestrator.py",
           "scripts/validation_control/qualification.py",
           "scripts/validation_control/wc104_rollback.py",
+          "tests/pipeline/test_goal006_runner_bootstrap.py",
           "validation/**",
           "validation/catalog.schema.json",
           "validation/engineering-validation.yaml",
@@ -65,7 +70,7 @@
           "environment"
         ]
       },
-      "output_directory": "test-results/wc109/runs/wc109-822dbb6f119afd9e/quality-scripts",
+      "output_directory": "test-results/wc109/runs/wc109-aac93492205ac43b/quality-scripts",
       "owner": "validation-control",
       "phase": "A_DESIGN",
       "product_image_builds": [],

@@ -21,9 +21,10 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-SCHEMA = "waooaw.wc124-activation-readiness/v1"
+SCHEMA = "waooaw.wc124-activation-readiness/v2"
 # Running states Azure reports for a revision that is no longer converging.
 TERMINAL_FAILURE_STATES = {"ActivationFailed", "Failed", "Degraded", "Deprovisioned"}
+RUNTIME_DEPENDENCY_APPS = {"auth-redis", "identity-edge", "keycloak", "pgbouncer"}
 
 
 def _run_az(args: list[str]) -> Any:
@@ -46,7 +47,13 @@ def list_container_apps(resource_group: str, environment: str, run_az: Callable[
     return sorted(name for name in apps if isinstance(name, str) and name.startswith(prefix))
 
 
-def observe_revision(resource_group: str, app: str, run_az: Callable[[list[str]], Any] | None = None) -> dict[str, Any]:
+def observe_revision(
+    resource_group: str,
+    app: str,
+    run_az: Callable[[list[str]], Any] | None = None,
+    *,
+    require_replica: bool | None = None,
+) -> dict[str, Any]:
     run_az = run_az or _run_az
     shown = (
         run_az(
@@ -99,7 +106,9 @@ def observe_revision(resource_group: str, app: str, run_az: Callable[[list[str]]
     # latestReadyRevisionName; only Temporal must hold a replica.
     settled = running in {"Running", "RunningAtMaxScale"} or (running == "ScaledToZero" and not app.endswith("-temporal"))
     replicas = revision.get("replicas")
-    replica_ready = not app.endswith("-temporal") or (type(replicas) is int and replicas >= 1)
+    if require_replica is None:
+        require_replica = app.endswith("-temporal")
+    replica_ready = not require_replica or (type(replicas) is int and replicas >= 1)
     ready = revision.get("active") is True and settled and replica_ready and health == "Healthy" and shown.get("ready") == latest
     observation.update(
         {
@@ -123,23 +132,50 @@ def evaluate(
     *,
     timeout_seconds: int,
     interval_seconds: int,
+    scope: str = "all",
     run_az: Callable[[list[str]], Any] | None = None,
     clock: Callable[[], float] = time.monotonic,
     sleep: Callable[[float], None] = time.sleep,
     log: Callable[[str], None] = lambda message: print(message, file=sys.stderr),
 ) -> dict[str, Any]:
     run_az = run_az or _run_az
-    apps = list_container_apps(resource_group, environment, run_az)
-    if not apps:
+    available_apps = set(list_container_apps(resource_group, environment, run_az))
+    if scope == "dependencies":
+        required_apps = {f"ca-{environment}-{name}" for name in RUNTIME_DEPENDENCY_APPS}
+        if environment == "demo":
+            required_apps.add("ca-demo-temporal")
+        apps = sorted(required_apps)
+        missing_apps = sorted(required_apps - available_apps)
+    else:
+        apps = sorted(available_apps)
+        missing_apps = []
+    if scope == "all" and not apps:
         raise SystemExit(f"No Container Apps named ca-{environment}-* in {resource_group}")
     deadline = clock() + timeout_seconds
-    pending = set(apps)
-    observations: dict[str, dict[str, Any]] = {}
+    pending = set(apps) - set(missing_apps)
+    observations: dict[str, dict[str, Any]] = {
+        app: {
+            "app": app,
+            "latest_revision": None,
+            "latest_ready_revision": None,
+            "running_state": None,
+            "health_state": None,
+            "replicas": None,
+            "ready": False,
+            "reason": "required runtime dependency app is missing",
+        }
+        for app in missing_apps
+    }
     attempts = 0
     while True:
         attempts += 1
         for app in sorted(pending):
-            observations[app] = observe_revision(resource_group, app, run_az)
+            observations[app] = observe_revision(
+                resource_group,
+                app,
+                run_az,
+                require_replica=True if scope == "dependencies" else None,
+            )
         for app, observation in observations.items():
             if observation["ready"] or observation.get("running_state") in TERMINAL_FAILURE_STATES:
                 pending.discard(app)
@@ -158,10 +194,12 @@ def evaluate(
         "schema": SCHEMA,
         "environment": environment,
         "resource_group": resource_group,
+        "scope": scope,
         "timeout_seconds": timeout_seconds,
         "attempts": attempts,
         "revisions": [observations[app] for app in apps],
         "not_ready": not_ready,
+        "missing_apps": missing_apps,
         "status": "passed" if not not_ready else "failed",
     }
 
@@ -170,6 +208,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--resource-group", required=True)
     parser.add_argument("--environment", required=True)
+    parser.add_argument("--scope", choices=("all", "dependencies"), default="all")
     parser.add_argument("--timeout-seconds", type=int, default=600)
     parser.add_argument("--interval-seconds", type=int, default=15)
     parser.add_argument("--output", type=Path, required=True)
@@ -179,6 +218,7 @@ def main(argv: list[str] | None = None) -> int:
         args.environment,
         timeout_seconds=args.timeout_seconds,
         interval_seconds=args.interval_seconds,
+        scope=args.scope,
     )
     args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     if result["status"] != "passed":

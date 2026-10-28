@@ -14,9 +14,10 @@ async function dependencyReady(url: string, timeoutMs: number): Promise<boolean>
 export async function GET() {
   try {
     const issuer = process.env.KEYCLOAK_ISSUER;
+    const readinessIssuer = process.env.KEYCLOAK_READINESS_ISSUER;
     const businessPlatform = process.env.BUSINESS_PLATFORM_URL;
     const mode = serverSessionMode();
-    if (!issuer || !businessPlatform) throw new Error('Readiness configuration is incomplete');
+    if (!issuer || !readinessIssuer || !businessPlatform) throw new Error('Readiness configuration is incomplete');
     if (mode !== 'disabled') {
       const configDigest = process.env.WEB_SESSION_CONFIG_DIGEST;
       const expectedConfigDigest = process.env.WEB_SESSION_EXPECTED_CONFIG_DIGEST;
@@ -35,7 +36,7 @@ export async function GET() {
     }
 
     const [identity, membership, limiter, transactionStore, sessionStore] = await Promise.all([
-      dependencyReady(`${issuer.replace(/\/$/, '')}/.well-known/openid-configuration`, 5_000),
+      dependencyReady(`${readinessIssuer.replace(/\/$/, '')}/.well-known/openid-configuration`, 5_000),
       dependencyReady(`${businessPlatform.replace(/\/$/, '')}/health/ready`, 3_000),
       authAbuseLimiterReady(),
       mode === 'disabled' ? oidcTransactionStoreReady() : Promise.resolve(true),

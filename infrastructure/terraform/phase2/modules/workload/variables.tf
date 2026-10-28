@@ -81,7 +81,13 @@ variable "database_secret_uris" {
 variable "application_activation_enabled" {
   type        = bool
   default     = true
-  description = "Starts dependencies and application minimum replicas only after migrations pass."
+  description = "Starts application minimum replicas after runtime dependencies are healthy."
+}
+
+variable "dependency_activation_enabled" {
+  type        = bool
+  default     = false
+  description = "Starts runtime dependencies before application revisions are activated."
 }
 
 variable "database_secret_resource_ids" {
