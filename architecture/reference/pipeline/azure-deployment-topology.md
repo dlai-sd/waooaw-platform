@@ -1222,3 +1222,26 @@ At the observed networking rate, the INR 10,000 Demo target leaves roughly INR 3
 compute, storage, the wake endpoint and retained evidence. It is not yet a validated monthly
 estimate. Consolidating private infrastructure requires dependency/security review and separate
 authorization; do not make endpoints public or remove controls to reduce the bill.
+
+### Temporal qualification readiness boundary (2026-10-28 repair)
+
+Deployment run `40646811876`, execution `job-demo-temporal-startup-tzyzdco`, completed all 60
+pool samples but rejected startup samples 1 and 2 (`cl_waiting=1`); samples 3-60 had zero waiting,
+maximum wait was zero seconds and minimum PostgreSQL headroom was 19. Azure system logs show the
+sampler exited 0 and controller exited 1. This was the strict zero-queue assertion, not a missing
+psql executable, suspended subscription or exhausted PostgreSQL connection budget.
+
+TCP 7233 opening is not service readiness or settled PgBouncer backend establishment. The
+controller now verifies Temporal gRPC cluster health and signals the sampler on replica loopback
+17302. The sampler retains up to 30 one-second warmup pool observations and requires five
+consecutive clean observations before starting a separate full 60-sample/60-second qualification.
+Persistent warmup queues fail; any waiting client in the strict window still fails. Pool sizes,
+PostgreSQL limits and acceptance headroom are unchanged. This explicitly qualifies post-readiness
+steady startup operation, not a promise that no client ever queues during initial connection setup.
+
+The workflow's unsupported `--tail 1000` hid the causal error: job console retrieval accepts at
+most 300 lines. Capture both containers with `--tail 300`, retain capture failures explicitly, and
+bound controller shutdown-log output to 150 lines so the 60 samples and result remain retrievable.
+Full Azure history remains available in the existing Log Analytics workspace; this repair does
+not purge it. Local script-driven warmup/strict-window fault regressions and the pinned
+Temporal/PostgreSQL/PgBouncer rehearsal are distinct from later live rollout acceptance.

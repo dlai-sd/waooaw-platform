@@ -1579,6 +1579,7 @@ resource "azurerm_container_app_job" "temporal_startup_qualification" {
         mkdir -p "$samples"
         nc -l -p 17300 > /tmp/pool-samples.tar &
         receiver_pid=$!
+        readiness_pid=
         export TEMPORAL_BROADCAST_ADDRESS="$(hostname -i | awk '{print $1}')"
         export TEMPORAL_ADDRESS="127.0.0.1:7233"
         /etc/temporal/entrypoint.sh autosetup >"$log" 2>&1 &
@@ -1586,24 +1587,28 @@ resource "azurerm_container_app_job" "temporal_startup_qualification" {
         cleanup() {
           printf 'exited\n' | nc -w 2 127.0.0.1 17301 >/dev/null 2>&1 || true
           kill "$receiver_pid" 2>/dev/null || true
+          if [ -n "$readiness_pid" ]; then kill "$readiness_pid" 2>/dev/null || true; fi
           kill "$temporal_pid" 2>/dev/null || true
           wait "$temporal_pid" 2>/dev/null || true
-          cat "$log"
+          # Keep the 60 samples/result inside Azure's 300-line console retrieval limit.
+          tail -n 150 "$log"
           cat "$samples/sampler.log" 2>/dev/null || true
         }
         trap cleanup EXIT
         ready=false
-        for attempt in $(seq 1 36); do
+        for attempt in $(seq 1 30); do
           kill -0 "$temporal_pid"
-          if timeout 3 bash -c 'exec 3<>/dev/tcp/127.0.0.1/7233'; then
+          if timeout 2 temporal operator cluster health --address 127.0.0.1:7233 >>"$log" 2>&1; then
             ready=true
             break
           fi
-          sleep 5
+          sleep 3
         done
         test "$ready" = true
+        nc -l -p 17302 >/dev/null &
+        readiness_pid=$!
         sampler_finished=false
-        for tick in $(seq 1 180); do
+        for tick in $(seq 1 120); do
           kill -0 "$temporal_pid"
           timeout 3 bash -c 'exec 3<>/dev/tcp/127.0.0.1/7233'
           if ! kill -0 "$receiver_pid" 2>/dev/null; then
@@ -1654,6 +1659,8 @@ resource "azurerm_container_app_job" "temporal_startup_qualification" {
           printf 'WC124_POOL_SAMPLE sample=%d cl_waiting=%d maxwait=%d postgres_headroom=%d\n' \
             "$sample" "$waiting" "$wait_seconds" "$headroom"
         done
+        printf 'WC124_POOL_SUMMARY max_waiting=%d max_wait_seconds=%d minimum_headroom=%d\n' \
+          "$max_waiting" "$max_wait_seconds" "$min_headroom"
         test "$max_waiting" = 0
         test "$max_wait_seconds" = 0
         test "$min_headroom" -ge 5
@@ -1735,7 +1742,7 @@ resource "azurerm_container_app_job" "temporal_startup_qualification" {
             echo "Temporal exited before accepting connections on 7233" >&2
             exit 1
           fi
-          if nc -z -w 3 127.0.0.1 7233; then
+          if nc -z -w 3 127.0.0.1 17302; then
             ready=true
             break
           fi
@@ -1743,6 +1750,36 @@ resource "azurerm_container_app_job" "temporal_startup_qualification" {
         done
         test "$ready" = true
         export PGPASSWORD="$POSTGRES_PWD"
+        # A listening Temporal frontend is not a settled PgBouncer pool. Retain every warmup
+        # observation; require five clean seconds within 30 before the separate strict window.
+        clean=0
+        for warmup in $(seq 1 30); do
+          nc -z -w 3 127.0.0.1 7233
+          psql --no-psqlrc --set ON_ERROR_STOP=1 \
+            --host "$POSTGRES_SEEDS" --port 5432 --username temporal_runtime \
+            --dbname pgbouncer --csv --command 'SHOW POOLS;' \
+            > "$out/warmup-$warmup.csv" 2>> "$out/sampler.log"
+          if awk -F, '
+            NR == 1 {for (i=1; i<=NF; i++) column[$i]=i; next}
+            ($1 == "waooaw_temporal" || $1 == "waooaw_temporal_visibility") {
+              seen++
+              if (!("cl_waiting" in column) || !("maxwait" in column) ||
+                  $(column["cl_waiting"]) != 0 || $(column["maxwait"]) != 0) bad=1
+            }
+            END {exit (seen < 2 || bad)}
+          ' "$out/warmup-$warmup.csv"; then
+            clean=$((clean + 1))
+          else
+            clean=0
+          fi
+          sleep 1
+          if [ "$clean" -ge 5 ]; then break; fi
+        done
+        echo "WC124_POOL_WARMUP samples=$warmup clean_seconds=$clean" >> "$out/sampler.log"
+        if [ "$clean" -lt 5 ]; then
+          echo "PgBouncer did not settle within the 30-second warmup" >> "$out/sampler.log"
+          exit 1
+        fi
         for sample in $(seq 1 60); do
           nc -z -w 3 127.0.0.1 7233
           psql --no-psqlrc --set ON_ERROR_STOP=1 \
