@@ -1225,6 +1225,38 @@ authorization; do not make endpoints public or remove controls to reduce the bil
 
 ### Temporal qualification readiness boundary (2026-10-28 repair)
 
+#### Monitoring isolation follow-up (run 40660849211)
+
+The five-clean-observation warmup passed, but the sampler subsequently failed with
+`FATAL: query_wait_timeout`. Headroom measurement used the same eight-slot session pool
+as Temporal. A monitoring query could therefore queue despite spare PostgreSQL capacity.
+
+Founder-authorized Azure execution-only A/B rehearsals confirmed this mechanism:
+`job-demo-temporal-startup-g7v73v3` occupied all eight main-database backend slots using
+four bounded fixture sessions alongside Temporal. Direct monitoring measured 22 spare
+PostgreSQL connections while the old pooled query failed after five seconds.
+Under the same eight-slot contention, `job-demo-temporal-startup-oix9u54` used direct
+monitoring and passed all 60 strict samples with zero waiting and minimum headroom 18.
+These reproduce the failure mechanism; they do not identify the original historical sessions.
+
+Final source-rendered execution `job-demo-temporal-startup-13g5ga3` also succeeded:
+60 strict zero-wait samples, minimum headroom 25, result retrieved within `--tail 300`.
+Before/after saved job templates were identical and Demo PostgreSQL remained Ready.
+No full deployment was dispatched or qualified by this component test.
+
+Only the headroom query now connects directly to the private PostgreSQL hostname, with
+TLS required and a five-second connection timeout. It reuses the existing restricted
+`temporal_runtime` identity and secret reference: no new role, grants, elevated credential
+or pool-size increase. One short-lived monitoring backend is included in each measured
+headroom value. `SHOW POOLS` and all Temporal application traffic still use PgBouncer;
+zero-wait and minimum-headroom-five acceptance remain unchanged. No fallback to a
+pooled measurement occurs if direct monitoring fails.
+
+The sampler records the current sample/query phase, and the controller emits the
+transferred sampler diagnostics on failure rather than only its exit status.
+The local pinned fixture supplies its direct PostgreSQL hostname; only that disposable,
+non-TLS fixture substitutes `PGSSLMODE=disable`. Azure always requires TLS.
+
 Deployment run `40646811876`, execution `job-demo-temporal-startup-tzyzdco`, completed all 60
 pool samples but rejected startup samples 1 and 2 (`cl_waiting=1`); samples 3-60 had zero waiting,
 maximum wait was zero seconds and minimum PostgreSQL headroom was 19. Azure system logs show the

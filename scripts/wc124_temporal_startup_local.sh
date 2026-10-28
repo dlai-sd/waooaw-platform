@@ -54,6 +54,8 @@ CONTROLLER_IMAGE=$(extract temporal-startup-qualification image)
 SAMPLER_IMAGE=$(extract pool-sampler image)
 extract temporal-startup-qualification script > "$EVIDENCE_DIR/temporal-startup-qualification.sh"
 extract pool-sampler script > "$EVIDENCE_DIR/pool-sampler.sh"
+# The disposable PostgreSQL fixture has no TLS; Azure monitoring requires TLS.
+sed -i 's/PGSSLMODE=require/PGSSLMODE=disable/' "$EVIDENCE_DIR/pool-sampler.sh"
 CONTROLLER_SHELL=$(extract temporal-startup-qualification shell)
 SAMPLER_SHELL=$(extract pool-sampler shell)
 
@@ -81,6 +83,7 @@ docker run -d --name "$CONTROLLER" --network "$WC124_NETWORK" \
   --entrypoint "$CONTROLLER_SHELL" "$CONTROLLER_IMAGE" -c "$(cat "$EVIDENCE_DIR/temporal-startup-qualification.sh")" >/dev/null
 docker run -d --name "$SAMPLER" --network "container:$CONTROLLER" \
   -e POSTGRES_PWD="$WC124_ROLE_PASSWORD" -e POSTGRES_SEEDS="$WC124_PGBOUNCER" \
+  -e MONITOR_POSTGRES_HOST="$WC124_POSTGRES" \
   --entrypoint "$SAMPLER_SHELL" "$SAMPLER_IMAGE" -c "$(cat "$EVIDENCE_DIR/pool-sampler.sh")" >/dev/null
 
 # Container Apps replica_timeout_in_seconds is 300 for this job.

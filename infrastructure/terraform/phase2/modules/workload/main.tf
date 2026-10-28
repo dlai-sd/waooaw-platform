@@ -1621,6 +1621,7 @@ resource "azurerm_container_app_job" "temporal_startup_qualification" {
         tar -xf /tmp/pool-samples.tar -C "$samples"
         if [ -e "$samples/sampler.failed" ]; then
           echo "WC-124 pool sampler failed with status $(cat "$samples/sampler.failed")" >&2
+          cat "$samples/sampler.log" >&2
           exit 1
         fi
         test -e "$samples/sampler.done"
@@ -1782,12 +1783,14 @@ resource "azurerm_container_app_job" "temporal_startup_qualification" {
         fi
         for sample in $(seq 1 60); do
           nc -z -w 3 127.0.0.1 7233
+          echo "WC124_POOL_PHASE sample=$sample phase=show_pools" >> "$out/sampler.log"
           psql --no-psqlrc --set ON_ERROR_STOP=1 \
             --host "$POSTGRES_SEEDS" --port 5432 --username temporal_runtime \
             --dbname pgbouncer --csv --command 'SHOW POOLS;' \
             > "$out/pools-$sample.csv" 2>> "$out/sampler.log"
-          psql --no-psqlrc --set ON_ERROR_STOP=1 \
-            --host "$POSTGRES_SEEDS" --port 5432 --username temporal_runtime \
+          echo "WC124_POOL_PHASE sample=$sample phase=direct_headroom" >> "$out/sampler.log"
+          PGSSLMODE=require PGCONNECT_TIMEOUT=5 psql --no-psqlrc --set ON_ERROR_STOP=1 \
+            --host "$MONITOR_POSTGRES_HOST" --port 5432 --username temporal_runtime \
             --dbname waooaw_temporal --tuples-only --no-align --command "
               SELECT current_setting('max_connections')::int
                    - current_setting('superuser_reserved_connections')::int
@@ -1810,6 +1813,10 @@ resource "azurerm_container_app_job" "temporal_startup_qualification" {
       env {
         name  = "POSTGRES_SEEDS"
         value = local.pgbouncer_host
+      }
+      env {
+        name  = "MONITOR_POSTGRES_HOST"
+        value = var.postgresql_server_fqdn
       }
     }
   }

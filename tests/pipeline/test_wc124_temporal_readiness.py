@@ -18,8 +18,8 @@ def script(container):
     return textwrap.dedent(re.search(r"args = \[<<-EOT\n(.*?)\n\s*EOT", block, re.S).group(1))
 
 
-@pytest.mark.parametrize("permanent,expected", [(False, 0), (True, 1)])
-def test_actual_sampler_bounds_warmup_and_keeps_sixty_strict_samples(tmp_path, permanent, expected):
+@pytest.mark.parametrize("permanent,headroom_error,expected", [(False, False, 0), (True, False, 1), (False, True, 2)])
+def test_actual_sampler_bounds_warmup_and_keeps_sixty_strict_samples(tmp_path, permanent, headroom_error, expected):
     commands = tmp_path / "bin"
     commands.mkdir()
     counter = tmp_path / "counter"
@@ -30,13 +30,19 @@ def test_actual_sampler_bounds_warmup_and_keeps_sixty_strict_samples(tmp_path, p
         "psql": f"""#!/bin/sh
 case "$*" in
   *'SHOW POOLS;'*)
+    case "$*" in *'--host fixture '*) ;; *) exit 91 ;; esac
     n=$(cat '{counter}' 2>/dev/null || echo 0)
     n=$((n+1)); echo "$n" > '{counter}'
     waiting=0
     if [ "$n" -le 2 ] || [ "{int(permanent)}" = 1 ]; then waiting=1; fi
     printf 'database,cl_waiting,maxwait\\nwaooaw_temporal,%s,0\\nwaooaw_temporal_visibility,0,0\\n' "$waiting"
     ;;
-  *) echo 19 ;;
+  *)
+    case "$*" in *'--host direct '*) ;; *) exit 92 ;; esac
+    test "$PGSSLMODE" = require || exit 93
+    test "$PGCONNECT_TIMEOUT" = 5 || exit 94
+    if [ "{int(headroom_error)}" = 1 ]; then echo "monitor unavailable" >&2; exit 2; fi
+    echo 19 ;;
 esac
 """,
     }.items():
@@ -51,20 +57,48 @@ esac
     )
     result = subprocess.run(
         ["sh", "-c", body],
-        env={**os.environ, "PATH": f"{commands}:{os.environ['PATH']}", "POSTGRES_PWD": "fixture", "POSTGRES_SEEDS": "fixture"},
+        env={
+            **os.environ,
+            "PATH": f"{commands}:{os.environ['PATH']}",
+            "POSTGRES_PWD": "fixture",
+            "POSTGRES_SEEDS": "fixture",
+            "MONITOR_POSTGRES_HOST": "direct",
+        },
         capture_output=True,
         text=True,
         timeout=10,
     )
     assert result.returncode == expected, result.stderr
-    if not permanent:
+    if expected == 0:
         assert len(list(samples.glob("warmup-*.csv"))) == 7
         assert len(list(samples.glob("pools-*.csv"))) == 60
         assert (samples / "sampler.done").exists()
-    else:
+    elif permanent:
         assert len(list(samples.glob("warmup-*.csv"))) == 30
         assert not list(samples.glob("pools-*.csv"))
         assert (samples / "sampler.failed").exists()
+    else:
+        assert not (samples / "sampler.done").exists()
+        assert (samples / "sampler.failed").read_text().strip() == "2"
+        assert "phase=direct_headroom" in (samples / "sampler.log").read_text()
+        assert "monitor unavailable" in (samples / "sampler.log").read_text()
+
+
+def test_controller_surfaces_sampler_failure_diagnostics(tmp_path):
+    (tmp_path / "sampler.failed").write_text("2\n")
+    (tmp_path / "sampler.log").write_text("phase=direct_headroom\nmonitor unavailable\n")
+    failure_check = script("temporal-startup-qualification").split('if [ -e "$samples/sampler.failed" ]; then', 1)[1]
+    failure_check = 'if [ -e "$samples/sampler.failed" ]; then' + failure_check.split('test -e "$samples/sampler.done"', 1)[0]
+    result = subprocess.run(
+        ["bash", "-c", f"set -euo pipefail\nsamples='{tmp_path}'\n{failure_check}"],
+        text=True,
+        capture_output=True,
+        timeout=10,
+    )
+    assert result.returncode == 1
+    assert "sampler failed with status 2" in result.stderr
+    assert "phase=direct_headroom" in result.stderr
+    assert "monitor unavailable" in result.stderr
 
 
 @pytest.mark.parametrize("bad_sample", [None, 1, 60])
