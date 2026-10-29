@@ -48,8 +48,8 @@ optional_value() {
 }
 
 case ${1:-start} in
-  prepare | start | stop) action=${1:-start} ;;
-  *) fail "usage: $0 [prepare|start|stop]" ;;
+  prepare | start | stop | probe) action=${1:-start} ;;
+  *) fail "usage: $0 [prepare|start|stop|probe]" ;;
 esac
 
 [ -z "${WAOOAW_WEB_IMAGE:-}" ] || printf '%s' "$WAOOAW_WEB_IMAGE" \
@@ -93,6 +93,20 @@ generated_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 if [ "$action" = stop ]; then
   [ -f "$runtime_environment" ] || fail "no prepared preview exists"
   docker compose --project-name "$preview_project" --env-file "$runtime_environment" -f "$compose_file" down
+  exit 0
+fi
+
+# Provider-start (Google/Facebook) reserves an OIDC transaction through web_session SECURITY DEFINER
+# functions before redirecting; prove that write as the runtime role without needing Keycloak.
+oidc_reservation_probe() {
+  docker compose --project-name "$preview_project" --env-file "$runtime_environment" -f "$compose_file" \
+    exec -T postgres psql --no-psqlrc -q -At -U waooaw -d waooaw \
+    <"$repository_root/tests/postgres/oidc_reservation_probe.sql"
+}
+
+if [ "$action" = probe ]; then
+  [ -f "$runtime_environment" ] || fail "no prepared preview exists"
+  oidc_reservation_probe
   exit 0
 fi
 
@@ -185,7 +199,6 @@ if [ "$action" = start ]; then
   fi
   auth_abuse_epoch_ms=$(($(date -u +%s) * 1000 - 3600001))
   $compose exec -T redis redis-cli SET waooaw:auth-preview:auth-abuse:v1:epoch "$auth_abuse_epoch_ms" NX >/dev/null
-  $compose up -d --no-build --wait --wait-timeout 180 auth-preview
   $compose exec -T postgres sh /auth-preview/ensure-wbe-runtime-role.sh
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /auth-preview/ensure-ce-audit-role.sql
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /auth-preview/ensure-business-runtime-grants.sql
@@ -194,6 +207,9 @@ if [ "$action" = start ]; then
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /docker-entrypoint-initdb.d/45-pre-hire-checkout-orders.sql
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /docker-entrypoint-initdb.d/41-relationship-acquisition-mode.sql
   $compose exec -T postgres bash /docker-entrypoint-initdb.d/42-demo-marketplace-admission.sh
+  oidc_reservation_probe || fail "OIDC transaction reservation probe failed; Google/Facebook sign-in would return 503"
+  $compose up -d --no-build --wait --wait-timeout 180 auth-preview \
+    || fail "web readiness failed; check $keycloak_issuer/.well-known/openid-configuration is reachable (Demo Keycloak must be running)"
 fi
 
 web_image=${WAOOAW_WEB_IMAGE:-waooaw/auth-preview-web:$source_tag}
