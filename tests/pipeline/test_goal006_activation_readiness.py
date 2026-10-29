@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import runpy
 import sys
 from pathlib import Path
 
@@ -52,6 +53,29 @@ def _clock():
         now[0] += seconds
 
     return clock, sleep
+
+
+@pytest.mark.parametrize("name", ["..", "%2e%2e", "unknown", "ca-demo-web"])
+def test_emulator_start_only_mutates_preconfigured_app_paths(tmp_path, monkeypatch, name):
+    monkeypatch.syspath_prepend(str(ROOT / "scripts"))
+    emulator = runpy.run_path(str(ROOT / "tests/fixtures/goal006_azure_emulator.py"))
+    handler = object.__new__(emulator["AzureHandler"])
+    stopped = tmp_path / "stopped-ca-demo-web"
+    resumed = tmp_path / "resumed-ca-demo-web.json"
+    stopped.touch()
+    handler.app_state_paths = {"ca-demo-web": (stopped, resumed)}
+    handler.path = f"/subscriptions/local/providers/Microsoft.App/containerApps/{name}/start"
+    responses = []
+    handler.send_json = lambda status, payload: responses.append((status, payload))
+
+    handler.do_POST()
+
+    assert responses[0][0] == (200 if name == "ca-demo-web" else 404)
+    assert stopped.exists() is (name != "ca-demo-web")
+    assert resumed.exists() is (name == "ca-demo-web")
+    assert {path.name for path in tmp_path.iterdir()} == (
+        {"resumed-ca-demo-web.json"} if name == "ca-demo-web" else {"stopped-ca-demo-web"}
+    )
 
 
 def test_passes_once_every_latest_revision_is_running_and_healthy():

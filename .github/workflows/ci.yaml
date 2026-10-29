@@ -66,6 +66,7 @@ jobs:
               tests/pipeline/test_goal006_activation_readiness.py \
               tests/pipeline/test_goal006_application_lifecycle.py \
               tests/pipeline/test_goal006_demo_deployment_workflow.py \
+              tests/pipeline/test_validate_runtime_lifecycle_evidence.py \
               tests/pipeline/test_goal006_data_recovery.py \
               tests/pipeline/test_goal006_dispatch_inputs.py \
               tests/pipeline/test_goal006_cloud_platform_finalization.py'

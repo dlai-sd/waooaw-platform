@@ -173,6 +173,13 @@ def database_provisioner_job() -> dict[str, object]:
 class AzureHandler(BaseHTTPRequestHandler):
     manifest = release_manifest()
     apps = container_apps(manifest)
+    app_state_paths = {
+        app["name"]: (
+            EVIDENCE_DIR / f"stopped-{app['name']}",
+            EVIDENCE_DIR / f"resumed-{app['name']}.json",
+        )
+        for app in apps
+    }
     revision_show_counts: ClassVar[dict[str, int]] = {}
 
     def log_message(self, message: str, *args: object) -> None:
@@ -310,7 +317,8 @@ class AzureHandler(BaseHTTPRequestHandler):
                     },
                 }
             )
-            properties["runningStatus"] = "Stopped" if (EVIDENCE_DIR / f"stopped-{name}").exists() else "Running"
+            stopped_path, _ = self.app_state_paths[name]
+            properties["runningStatus"] = "Stopped" if stopped_path.exists() else "Running"
             self.send_json(200, {"id": path, "name": name, "properties": properties})
             return
         if "/jobs/" in path and "/replicas/" in path and path.endswith("/logstream"):
@@ -383,8 +391,12 @@ class AzureHandler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path.rstrip("/")
         if "/providers/Microsoft.App/containerApps/" in path and path.endswith("/start"):
             name = path.split("/containerApps/", 1)[1].split("/", 1)[0]
-            (EVIDENCE_DIR / f"stopped-{name}").unlink(missing_ok=True)
-            (EVIDENCE_DIR / f"resumed-{name}.json").write_text(json.dumps({"path": path}))
+            if name not in self.app_state_paths:
+                self.send_json(404, {"error": {"code": "ContainerAppNotFound", "message": name}})
+                return
+            stopped_path, resumed_path = self.app_state_paths[name]
+            stopped_path.unlink(missing_ok=True)
+            resumed_path.write_text(json.dumps({"path": path}))
             self.send_json(200, {})
             return
         if path.startswith("/api/auth/signin/keycloak-"):

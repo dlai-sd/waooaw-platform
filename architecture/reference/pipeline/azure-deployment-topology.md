@@ -221,6 +221,15 @@ the revision gate also requires app-level `runningStatus=Running`, not stale hea
 Local qualification covers stop/resume and invalid credentials; live start/execute remains
 separately authorized.
 
+Pre-PR runtime qualification refreshes the runtime image's OS/dependency build layers and scans
+the resulting image with digest-pinned Trivy using the same fixable HIGH/CRITICAL policy as CI.
+An unsuccessful scan stops qualification before lifecycle startup; no passing evidence is emitted.
+Commit-bound runtime evidence includes the immutable runtime image ID, scanner digest, scan-policy
+result and report SHA-256. Existing evidence without these fields must be regenerated.
+This catches native dependencies bundled inside SDK wheels as well as OS and Python packages;
+package-manifest audits alone do not replace the image scan. The Azure emulator resolves app-state
+files from a preconfigured app-name allowlist, never by constructing paths from HTTP input.
+
 The GitHub UI may materialize downstream jobs as `queued` before their dependencies complete.
 `needs` still enforces the order below. A queued job with no runner and no steps normally has not
 executed, but operators must reconcile that projection with downloadable logs, run-scoped artifact
