@@ -51,16 +51,25 @@ def execute(
     clock: Callable[[], float] = time.monotonic,
     sleep: Callable[[float], None] = time.sleep,
     evidence: dict[str, Any] | None = None,
+    component: str | None = None,
 ) -> dict[str, Any]:
     if environment != "demo" or action not in {"Start", "Stop"}:
         raise ValueError("Only Demo Start/Stop is enabled; UAT is excluded by Founder decision")
+    if component is not None and (component != "temporal" or action != "Stop"):
+        raise ValueError("Scoped lifecycle operations only permit stopping Demo Temporal")
     operation_deadline = clock() + 1800
     result = evidence if evidence is not None else {}
     result.update(schema="waooaw.application-lifecycle/v1", environment=environment, action=action, status="failed", apps=[])
     group = f"waooaw-{environment}-rg"
-    members = list(START_ORDER)
+    members = [component] if component else list(START_ORDER)
     expected = {f"ca-{environment}-{member}" for member in members}
     inventory = run_az(["containerapp", "list", "--resource-group", group])
+    if component:
+        inventory = [app for app in inventory if app["name"] in expected]
+        result["component"] = component
+        if not inventory:
+            result.update(status="passed", disposition="not-provisioned")
+            return result
     found = {app["name"] for app in inventory}
     if found != expected:
         raise ValueError(f"App inventory mismatch: missing={sorted(expected - found)} unexpected={sorted(found - expected)}")
@@ -125,11 +134,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--environment", choices=("demo",), required=True)
     parser.add_argument("--action", choices=("Start", "Stop"), required=True)
+    parser.add_argument("--component", choices=("temporal",), help="Stop only Demo Temporal before reset/qualification")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     result: dict[str, Any] = {}
     try:
-        execute(args.environment, args.action, evidence=result)
+        execute(args.environment, args.action, evidence=result, component=args.component)
     except (ValueError, KeyError, TypeError, RuntimeError) as error:
         result.update(status="failed", error=str(error))
         print(f"::error::Application lifecycle failed: {error}", file=sys.stderr)

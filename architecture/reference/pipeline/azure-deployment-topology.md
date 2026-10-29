@@ -221,6 +221,24 @@ the revision gate also requires app-level `runningStatus=Running`, not stale hea
 Local qualification covers stop/resume and invalid credentials; live start/execute remains
 separately authorized.
 
+Run `40825314351` exposed a repeat-deployment ordering defect: existing Demo Temporal remained
+running while qualification started another server against the same session-mode pools. At
+06:06:22.944 UTC PgBouncer's five-second `query_wait_timeout` caused the candidate's identical
+`initialize system namespace ... driver: bad connection` failure. Pinned-image local reproduction
+captured eight occupied main-pool slots and a ninth waiting client; stopping only the incumbent
+made the same candidate healthy. The server-wide headroom gate cannot establish per-pool capacity.
+
+Demo apply now uses the existing native Stop mechanism, scoped only to Temporal, before creating
+the database provisioner. It preserves configuration/revision identity and verifies every revision
+has zero replicas. A first deployment with no Temporal app is explicitly recorded as
+`not-provisioned`; provider errors are not treated as absence. The qualification sampler waits
+boundedly for zero active/waiting clients and active servers in both Temporal pools before sending
+the controller's startup-admission signal. Malformed/unavailable pool observations or undrained
+clients block startup. After qualification, the existing dependency activation/native Start and
+readiness gate resumes the app. Failure leaves it stopped rather than restarting against an
+unqualified/reset database. UAT/Production, pool ceilings, wait timeouts, database capacity and
+the two-minute Demo authentication restart hold are unchanged. No new resource or cost is added.
+
 Pre-PR runtime qualification refreshes the runtime image's OS/dependency build layers and scans
 the resulting image with digest-pinned Trivy using the same fixable HIGH/CRITICAL policy as CI.
 An unsuccessful scan stops qualification before lifecycle startup; no passing evidence is emitted.
@@ -250,7 +268,7 @@ timestamps, and released downstream dependencies before diagnosing a scheduler w
 | 11. Activation bundle | Validate foundation and workload plan binaries, JSON, provenance, policy, release, environment, workflow, backend, and state identity | Internal WC-124 activation bundle PASS |
 | 12. Dormant workload apply | Create dependencies, migration jobs, identities, secret references, and applications at zero replicas | No application traffic yet |
 | 13. Migrations | Inventory exact migration jobs, verify version-qualified Key Vault references, prove same-ACA PgBouncer DNS/TCP, reclaim the PostgreSQL connection budget (retire stale active revisions, require measured per-group headroom), run Keycloak and then Demo Temporal as two sequential groups (each re-measured before it starts) and then Billing, and retain executions plus sanitized logs | All required executions `Succeeded`; connection-budget record and persisted migration acceptance PASS |
-| 13a. Temporal qualification | Demo starts the exact pinned Temporal image through session-mode PgBouncer alongside its pinned PostgreSQL-client sampler; require gRPC health, five clean warmup observations within 30, then 60 strict samples | Zero waiting clients, zero wait seconds, minimum PostgreSQL headroom >= 5; failed sampler blocks activation. Headroom uses private PostgreSQL directly; pool observations still use PgBouncer. |
+| 13a. Temporal qualification | Stop incumbent Demo Temporal before database reset, verify zero replicas, and retain `wc124-temporal-quiescence.json`. The pinned sampler proves both session pools have zero active/waiting clients and active servers before admitting the exact Temporal image; then require gRPC health, five clean warmup observations within 30, and 60 strict samples | Zero waiting clients, zero wait seconds, minimum PostgreSQL headroom >= 5; failed admission/sampler blocks activation. Headroom uses private PostgreSQL directly; pool observations still use PgBouncer. Existing phase-scoped native Start resumes Temporal only after qualification succeeds. |
 | 14. Activation plan/apply | Require migration acceptance, set application activation true, create a fresh detailed-exit plan, policy and provenance record, recalculate and compare provenance immediately before apply, and retain the apply log | Only exact authorized activation plan applied with complete evidence |
 | 14a. Activation readiness | Poll every `ca-<environment>-*` application until its latest revision is `Running`/`Healthy` and is the latest ready revision (bounded 600 s) | `wc124-activation-readiness.json` `passed`; proceed to Demo retirement and post-activation headroom measurement |
 | 14b. Revision and connection budgets | Demo only: retire obsolete active revisions meeting the guarded no-traffic contract. Then measure post-activation connection headroom for the target environment | Demo `demo-revision-cleanup.json`; post-activation headroom >= 4. Previous serving revision is not retired on a failed rollout |
@@ -405,7 +423,7 @@ equivalent because the harness below proves the provisioner path converges to th
 | `scripts/wc124_init_chain_local.sh` | ~35 s | Lint passes; real provisioner ledger logic on a bare pinned instance: run 1 applies all 66 SQL files, run 2 skips all 66, forced run 3 re-applies all 66 with zero `pg_dump --schema-only` drift; the `IdentitySchemaHealthCheck` object set (8 `identity.*` tables, forced RLS on 3) exists | `test-results/wc124/init-chain-local/result.json` |
 | `scripts/wc124_billing_migration_local.sh` | ~15 s | Exact Billing image migrates as restricted `billing_migrator` through transaction-mode PgBouncer, ledger ownership converges, rerun is idempotent | `test-results/wc124/billing-migration-local/` |
 | `scripts/wc124_application_activation_local.sh` | ~90 s | Keycloak migration as `keycloak_migrator` (fails under stale pools, succeeds after reclaim), Temporal migration and runtime with the ACA bind/probe contract (loopback TCP 7233 is the authoritative probe), Billing migration and the Billing runtime as `billing_runtime` through transaction-mode PgBouncer with the Demo `postgresql://...?sslmode=disable` URL, CE/BP/PR/web readiness as their runtime roles, only restricted roles on the instance, >= 5 usable slots spare after activation | `test-results/wc124/application-activation-local/result.json` and per-component logs |
-| `scripts/wc124_temporal_startup_local.sh` | ~80 s | Runs both qualification scripts in pinned images sharing loopback: sample transfer 17300, exit signal 17301, gRPC-readiness signal 17302; bounded five-clean-observation warmup, then 60 strict `SHOW POOLS` samples, zero waiting and headroom >= 5. Current repair measures headroom directly; disposable local PostgreSQL alone disables TLS. The sampler is a client container, not a database sidecar. | `test-results/wc124/temporal-startup-local/result.json` and both container logs |
+| `scripts/wc124_temporal_startup_local.sh` | ~100 s | First reproduces the incumbent-plus-candidate failure with eight occupied main-pool slots and a waiting client, then stops the incumbent and runs both qualification scripts unchanged in pinned images sharing loopback: sample transfer 17300, exit signal 17301, gRPC-readiness signal 17302, pool admission 17303. Proves drained session pools before startup, five clean warmup observations, then 60 strict `SHOW POOLS` samples, zero waiting and headroom >= 5. Headroom is measured directly; disposable local PostgreSQL alone disables TLS. | `test-results/wc124/temporal-startup-local/result.json`, admission/overlap pool captures and container logs |
 
 Run them with the exact release digests (`WC124_IMAGE_*`, `WC124_BILLING_IMAGE`) before spending a
 deployment run. Defects they surfaced that Azure would otherwise have reported one at a time:

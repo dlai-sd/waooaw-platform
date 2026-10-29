@@ -75,23 +75,81 @@ docker run --rm --network "$WC124_NETWORK" -e SQL_PASSWORD="$WC124_ROLE_PASSWORD
     migrate waooaw_temporal_visibility /etc/temporal/schema/postgresql/v12/visibility/versioned
   ' > "$EVIDENCE_DIR/temporal-migration.log" 2>&1 || { cat "$EVIDENCE_DIR/temporal-migration.log" >&2; exit 1; }
 
-docker run -d --name "$CONTROLLER" --network "$WC124_NETWORK" \
-  -e BIND_ON_IP=0.0.0.0 -e DB=postgres12 -e DB_PORT=5432 \
-  -e DBNAME=waooaw_temporal -e VISIBILITY_DBNAME=waooaw_temporal_visibility \
-  -e POSTGRES_USER=temporal_runtime -e POSTGRES_PWD="$WC124_ROLE_PASSWORD" -e POSTGRES_SEEDS="$WC124_PGBOUNCER" \
-  -e SKIP_SCHEMA_SETUP=true -e SKIP_DB_CREATE=true -e SQL_MAX_CONNS=1 -e SQL_MAX_IDLE_CONNS=1 \
-  -e SQL_VIS_MAX_CONNS=1 -e SQL_VIS_MAX_IDLE_CONNS=1 \
-  --entrypoint "$CONTROLLER_SHELL" "$CONTROLLER_IMAGE" -c "$(cat "$EVIDENCE_DIR/temporal-startup-qualification.sh")" >/dev/null
-docker run -d --name "$SAMPLER" --network "container:$CONTROLLER" \
-  -e POSTGRES_PWD="$WC124_ROLE_PASSWORD" -e POSTGRES_SEEDS="$WC124_PGBOUNCER" \
-  -e MONITOR_POSTGRES_HOST="$WC124_POSTGRES" \
-  --entrypoint "$SAMPLER_SHELL" "$SAMPLER_IMAGE" -c "$(cat "$EVIDENCE_DIR/pool-sampler.sh")" >/dev/null
+# Reproduce a repeat deployment, not just an empty-environment cold start.
+start_server() {
+  wc124_track "$1"
+  docker run -d --name "$1" --network "$WC124_NETWORK" \
+    -e BIND_ON_IP=0.0.0.0 -e DB=postgres12 -e DB_PORT=5432 \
+    -e DBNAME=waooaw_temporal -e VISIBILITY_DBNAME=waooaw_temporal_visibility \
+    -e POSTGRES_USER=temporal_runtime -e POSTGRES_PWD="$WC124_ROLE_PASSWORD" -e POSTGRES_SEEDS="$WC124_PGBOUNCER" \
+    -e SKIP_SCHEMA_SETUP=true -e SKIP_DB_CREATE=true -e SQL_MAX_CONNS=1 -e SQL_MAX_IDLE_CONNS=1 \
+    -e SQL_VIS_MAX_CONNS=1 -e SQL_VIS_MAX_IDLE_CONNS=1 \
+    --entrypoint /bin/bash "$CONTROLLER_IMAGE" -c \
+    'export TEMPORAL_BROADCAST_ADDRESS="$(hostname -i | awk "{print \$1}")" TEMPORAL_ADDRESS=127.0.0.1:7233; exec /etc/temporal/entrypoint.sh autosetup' >/dev/null
+}
+incumbent="$RUN_ID-incumbent"
+overlap="$RUN_ID-overlap"
+start_server "$incumbent"
+healthy=false
+for attempt in $(seq 1 40); do
+  if docker exec "$incumbent" temporal operator cluster health --address 127.0.0.1:7233 \
+    > "$EVIDENCE_DIR/incumbent-health.log" 2>&1; then healthy=true; break; fi
+  sleep 2
+done
+if [ "$healthy" != true ]; then docker logs "$incumbent" >&2; exit 1; fi
+start_server "$overlap"
+for attempt in $(seq 1 20); do
+  docker exec -e PGPASSWORD="$WC124_ROLE_PASSWORD" "$WC124_POSTGRES" \
+    psql --no-psqlrc --set ON_ERROR_STOP=1 -h "$WC124_PGBOUNCER" -U temporal_runtime -d pgbouncer \
+    --csv -c 'SHOW POOLS;' >> "$EVIDENCE_DIR/overlap-pools.csv"
+  if [ "$(docker inspect -f '{{.State.Running}}' "$overlap")" != true ]; then break; fi
+  sleep 1
+done
+docker logs "$overlap" > "$EVIDENCE_DIR/overlap.log" 2>&1
+test "$(docker inspect -f '{{.State.ExitCode}}' "$overlap")" = 1
+grep -q 'unable to initialize system namespace: unable to initialize metadata manager: driver: bad connection' \
+  "$EVIDENCE_DIR/overlap.log"
+awk -F, '$1 == "waooaw_temporal" && $7 == 8 && $4 > 0 {seen=1} END {exit !seen}' \
+  "$EVIDENCE_DIR/overlap-pools.csv"
+docker logs "$WC124_PGBOUNCER" > "$EVIDENCE_DIR/overlap-pgbouncer.log" 2>&1
+grep -q 'query_wait_timeout' "$EVIDENCE_DIR/overlap-pgbouncer.log"
+start_qualification() {
+  local controller="$1" sampler="$2"
+  wc124_track "$controller" "$sampler"
+  docker run -d --name "$controller" --network "$WC124_NETWORK" \
+    -e BIND_ON_IP=0.0.0.0 -e DB=postgres12 -e DB_PORT=5432 \
+    -e DBNAME=waooaw_temporal -e VISIBILITY_DBNAME=waooaw_temporal_visibility \
+    -e POSTGRES_USER=temporal_runtime -e POSTGRES_PWD="$WC124_ROLE_PASSWORD" -e POSTGRES_SEEDS="$WC124_PGBOUNCER" \
+    -e SKIP_SCHEMA_SETUP=true -e SKIP_DB_CREATE=true -e SQL_MAX_CONNS=1 -e SQL_MAX_IDLE_CONNS=1 \
+    -e SQL_VIS_MAX_CONNS=1 -e SQL_VIS_MAX_IDLE_CONNS=1 \
+    --entrypoint "$CONTROLLER_SHELL" "$CONTROLLER_IMAGE" -c "$(cat "$EVIDENCE_DIR/temporal-startup-qualification.sh")" >/dev/null
+  docker run -d --name "$sampler" --network "container:$controller" \
+    -e POSTGRES_PWD="$WC124_ROLE_PASSWORD" -e POSTGRES_SEEDS="$WC124_PGBOUNCER" \
+    -e MONITOR_POSTGRES_HOST="$WC124_POSTGRES" \
+    --entrypoint "$SAMPLER_SHELL" "$SAMPLER_IMAGE" -c "$(cat "$EVIDENCE_DIR/pool-sampler.sh")" >/dev/null
+}
+
+guard="$RUN_ID-guard"
+guard_sampler="$RUN_ID-guard-sampler"
+start_qualification "$guard" "$guard_sampler"
+test "$(timeout 120 docker wait "$guard")" = 1
+test "$(timeout 15 docker wait "$guard_sampler")" = 1
+docker logs "$guard" > "$EVIDENCE_DIR/guard-controller.log" 2>&1
+docker logs "$guard_sampler" > "$EVIDENCE_DIR/guard-sampler.log" 2>&1
+grep -q 'refusing overlapping startup' "$EVIDENCE_DIR/guard-sampler.log"
+! grep -q 'Build info' "$EVIDENCE_DIR/guard-controller.log"
+docker stop --time 15 "$incumbent" >/dev/null
+echo "WC-124 overlap reproduced and admission guard denied startup; incumbent now stopped."
+
+start_qualification "$CONTROLLER" "$SAMPLER"
 
 # Container Apps replica_timeout_in_seconds is 300 for this job.
 controller_status=$(timeout 330 docker wait "$CONTROLLER" || echo timeout)
 sampler_status=$(timeout 30 docker wait "$SAMPLER" || echo timeout)
 docker logs "$CONTROLLER" > "$EVIDENCE_DIR/temporal-startup-qualification.log" 2>&1
 docker logs "$SAMPLER" > "$EVIDENCE_DIR/pool-sampler.log" 2>&1
+mkdir -p "$EVIDENCE_DIR/pool-samples"
+docker cp "$SAMPLER:/tmp/pool-samples/." "$EVIDENCE_DIR/pool-samples"
 
 if [ "$controller_status" != 0 ] || [ "$sampler_status" != 0 ]; then
   tail -40 "$EVIDENCE_DIR/temporal-startup-qualification.log" >&2
