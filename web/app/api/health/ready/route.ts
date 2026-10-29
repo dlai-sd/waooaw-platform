@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { authAbuseLimiterReady } from '@/lib/auth-abuse-limiter';
+import { authAbuseLimiterStatus } from '@/lib/auth-abuse-limiter';
 import { serverSessionMode } from '@/lib/server-session-mode';
 import { oidcTransactionStoreReady, sessionStoreReady } from '@/lib/web-session-store';
 
@@ -38,12 +38,25 @@ export async function GET() {
     const [identity, membership, limiter, transactionStore, sessionStore] = await Promise.all([
       dependencyReady(`${readinessIssuer.replace(/\/$/, '')}/.well-known/openid-configuration`, 5_000),
       dependencyReady(`${businessPlatform.replace(/\/$/, '')}/health/ready`, 3_000),
-      authAbuseLimiterReady(),
+      authAbuseLimiterStatus(),
       mode === 'disabled' ? oidcTransactionStoreReady() : Promise.resolve(true),
       mode === 'disabled' ? Promise.resolve(true) : sessionStoreReady(),
     ]);
-    if (!sessionStore || !transactionStore || !limiter || !identity || !membership)
-      throw new Error('A mandatory dependency is unready');
+    if (!sessionStore || !transactionStore || !limiter.ready || !identity || !membership) {
+      return NextResponse.json(
+        {
+          code: 'REVISION_NOT_READY',
+          dependencies: { identity, membership, transactionStore, sessionStore, limiter },
+        },
+        {
+          status: 503,
+          headers: {
+            'Cache-Control': 'no-store',
+            ...(limiter.retryAfterSeconds ? { 'Retry-After': String(limiter.retryAfterSeconds) } : {}),
+          },
+        }
+      );
+    }
     return new NextResponse(null, {
       status: 204,
       headers: { 'Cache-Control': 'no-store' },

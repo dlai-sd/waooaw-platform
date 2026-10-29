@@ -698,9 +698,23 @@ environment-scoped abuse counters; it is never a session, identity, membership, 
 evidence store. Keys use keyed digests and bounded TTLs, never raw identity/contact/network values.
 Authentication start, callback, recovery, link/unlink, resend, and credential operations fail closed
 when the shared limiter is unavailable or its restart epoch is uncertain. A Redis restart imposes a
-hold for the longest applicable quota window rather than resetting callers to an unlimited state.
+hold for the longest applicable quota window rather than resetting callers to an unlimited state,
+except for the temporary Demo-only Founder amendment below.
 Currently valid protected sessions may only use an explicitly qualified bounded degradation policy.
 Production cannot activate until the existing topology's Redis/HA decision satisfies this contract.
+
+**Temporary Demo restart-hold amendment (Founder approved 2026-10-29):** Demo uses a
+120-second Redis restart hold for both authentication admission and Web readiness. UAT,
+Production and other environments retain the longest-quota-window hold. Quota limits,
+counting-window durations, atomic shared-counter enforcement and fail-closed Redis outage
+behavior remain unchanged. This is not durable counter preservation: loss of Redis state
+can replenish an attacker's quota after two minutes instead of the full hourly window.
+The Founder explicitly accepted this Demo-only WAOOAW abuse-protection risk as technical
+debt; it is not an Azure policy exemption. No persistence service, storage allocation or
+additional Azure resource is introduced. Durable counter recovery remains deferred.
+Readiness stays 503 during the hold and exposes only safe dependency status and remaining
+seconds; a healthy limiter becomes ready at elapsed time >=120 seconds. This is a limiter
+recovery threshold, not an end-to-end deployment-duration guarantee.
 
 #### 12.7.1 Founder-aligned Demo/UAT database-route amendment
 

@@ -26,6 +26,12 @@ export interface AuthAbuseDecision {
   retryAfterSeconds?: number;
 }
 
+export interface AuthAbuseReadiness {
+  ready: boolean;
+  reason: 'READY' | 'RESTART_HOLD' | 'LIMITER_UNAVAILABLE';
+  retryAfterSeconds?: number;
+}
+
 const script = `
 local now = redis.call('TIME')
 local now_ms = (tonumber(now[1]) * 1000) + math.floor(tonumber(now[2]) / 1000)
@@ -105,6 +111,13 @@ function environmentName(): string {
   return environment;
 }
 
+function restartHoldMs(environment: string, limits: LimitCatalog): number {
+  // Temporary Founder-approved Demo exception: counter loss can replenish hourly quotas.
+  return environment === 'demo'
+    ? 120_000
+    : Math.max(...Object.values(limits).map((value) => value.windowSeconds)) * 1000;
+}
+
 function requestSubject(request: NextRequest, action: AuthAbuseAction): string {
   const address =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
@@ -117,7 +130,6 @@ export async function checkAuthAbuse(request: NextRequest, action: AuthAbuseActi
   try {
     const limits = catalog();
     const selected = limits[action];
-    const longestWindowMs = Math.max(...Object.values(limits).map((value) => value.windowSeconds)) * 1000;
     const environment = environmentName();
     const subject = createHmac('sha256', digestKey())
       .update(`auth-abuse-v1\0${environment}\0${requestSubject(request, action)}`)
@@ -129,7 +141,7 @@ export async function checkAuthAbuse(request: NextRequest, action: AuthAbuseActi
       '2',
       `${prefix}:epoch`,
       `${prefix}:${action.toLowerCase()}:${subject}`,
-      String(longestWindowMs),
+      String(restartHoldMs(environment, limits)),
       String(selected.windowSeconds * 1000),
       String(selected.limit),
     ]);
@@ -148,23 +160,32 @@ export async function checkAuthAbuse(request: NextRequest, action: AuthAbuseActi
   }
 }
 
-export async function authAbuseLimiterReady(): Promise<boolean> {
+export async function authAbuseLimiterStatus(): Promise<AuthAbuseReadiness> {
   try {
     const limits = catalog();
     digestKey();
     const environment = environmentName();
-    const longestWindowMs = Math.max(...Object.values(limits).map((value) => value.windowSeconds)) * 1000;
     const response = await redisCommand([
       'EVAL',
       readinessScript,
       '1',
       `waooaw:${environment}:auth-abuse:v1:epoch`,
-      String(longestWindowMs),
+      String(restartHoldMs(environment, limits)),
     ]);
-    return Array.isArray(response) && response[0] === 1 && response[1] === 0;
+    if (!Array.isArray(response) || typeof response[1] !== 'number' || !Number.isFinite(response[1]))
+      throw new Error('Redis limiter readiness response is invalid');
+    if (response[0] === 1 && response[1] === 0) return { ready: true, reason: 'READY' };
+    if (response[0] === -2 && response[1] > 0) {
+      return { ready: false, reason: 'RESTART_HOLD', retryAfterSeconds: Math.ceil(response[1] / 1000) };
+    }
+    throw new Error('Redis limiter readiness response is invalid');
   } catch {
-    return false;
+    return { ready: false, reason: 'LIMITER_UNAVAILABLE' };
   }
+}
+
+export async function authAbuseLimiterReady(): Promise<boolean> {
+  return (await authAbuseLimiterStatus()).ready;
 }
 
 export async function enforceAuthAbuse(request: NextRequest, action: AuthAbuseAction): Promise<NextResponse | null> {
