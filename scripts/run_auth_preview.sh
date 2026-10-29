@@ -71,9 +71,10 @@ printf '%s' "$preview_origin" | grep -Eq '^https://[a-z0-9-]+-[0-9]+[.]app[.]git
 # Google/Facebook brokers in the preview so sign-in works without Demo or provider credentials.
 auth_preview_idp=${AUTH_PREVIEW_IDP:-$(existing_setting AUTH_PREVIEW_IDP)}
 auth_preview_idp=${auth_preview_idp:-demo}
-idp_port=${AUTH_PREVIEW_IDP_PORT:-8180}
-idp_host=$(printf '%s' "$preview_origin" | sed -E "s#^https://(.*)-[0-9]+[.]app[.]github[.]dev\$#\1-${idp_port}.app.github.dev#")
-idp_origin="https://$idp_host"
+# Local identity shares the preview origin (Keycloak under /realms) so only one port is forwarded.
+idp_port=$preview_port
+idp_host=${preview_origin#https://}
+idp_origin=$preview_origin
 case $auth_preview_idp in
   demo) keycloak_issuer=${KEYCLOAK_ISSUER:-https://auth.demo.waooaw.com/realms/waooaw} ;;
   local) keycloak_issuer="$idp_origin/realms/waooaw" ;;

@@ -1,5 +1,7 @@
 # Overlay for scripts/run_auth_preview.sh when AUTH_PREVIEW_IDP=local: a local Keycloak with mock
 # Google/Facebook brokers replaces Demo Keycloak so sign-in can be tested end to end in Codespaces.
+# identity-tls takes over the preview port and serves Keycloak and the web app on one origin, so no
+# second Codespaces port needs forwarding.
 services:
   keycloak:
     image: quay.io/keycloak/keycloak@sha256:82c5b7a110456dbd42b86ea572e728878549954cc8bd03cd65410d75328095d2
@@ -24,7 +26,7 @@ services:
   identity-tls:
     image: docker.io/library/nginx@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
     ports:
-      - "${AUTH_PREVIEW_IDP_PORT:?AUTH_PREVIEW_IDP_PORT is required}:8080"
+      - "${AUTH_PREVIEW_PORT:-3100}:8080"
     environment:
       AUTH_PREVIEW_IDP_HOST: ${AUTH_PREVIEW_IDP_HOST:?AUTH_PREVIEW_IDP_HOST is required}
     volumes:
@@ -53,6 +55,7 @@ services:
         condition: service_healthy
 
   auth-preview:
+    ports: !reset []
     environment:
       NODE_EXTRA_CA_CERTS: /run/auth-preview-idp/ca.crt
     volumes:

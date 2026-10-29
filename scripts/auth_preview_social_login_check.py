@@ -131,7 +131,8 @@ def check(provider: str, settings: dict[str, str], browser: Browser) -> str:
     logged_in = False
     for _ in range(20):
         status, location, page = browser.request(method, url, form=form)
-        if location and location.startswith(f"{origin}/"):
+        # Keycloak shares the preview origin under /realms and /resources.
+        if location and location.startswith(f"{origin}/") and not urlsplit(location).path.startswith(("/realms/", "/resources/")):
             url = location
             break
         if location:
