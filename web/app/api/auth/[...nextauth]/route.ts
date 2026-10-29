@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { authOptions } from '@/lib/auth';
 import { enforceAuthAbuse } from '@/lib/auth-abuse-limiter';
+import { databaseErrorDiagnostics } from '@/lib/database-error-diagnostics';
 import { withJourneyTrace } from '@/lib/journey-telemetry';
 import {
   normalizeOidcCallback,
@@ -100,9 +101,7 @@ async function authenticatedResponse(...args: Parameters<typeof handler>) {
         protocolCookies,
       });
     } catch (error) {
-      console.error('OIDC transaction reservation failed', {
-        cause: error instanceof Error ? error.name : 'UnknownError',
-      });
+      console.error('OIDC transaction reservation failed', databaseErrorDiagnostics(error));
       return NextResponse.json(
         { code: 'IDENTITY_DEPENDENCY_UNAVAILABLE' },
         { status: 503, headers: { 'Cache-Control': 'no-store' } }

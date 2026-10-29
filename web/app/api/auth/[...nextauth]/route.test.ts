@@ -121,6 +121,66 @@ describe('NextAuth OIDC transaction boundary', () => {
     expect(response.headers.get('set-cookie')).toBeNull();
   });
 
+  it('logs the safe SQLSTATE of a rejected reservation without payload, message or parameters', async () => {
+    mockNextAuthHandler.mockResolvedValue(initiationResponse());
+    // Shape of the minified postgres.js PostgresError seen in Demo (`cause: 'k'`).
+    const rejection = Object.assign(
+      new Error('new row violates row-level security policy for table "oidc_transactions"'),
+      {
+        name: 'k',
+        code: '42501',
+        severity_local: 'ERROR',
+        severity: 'ERROR',
+        schema_name: 'web_session',
+        table_name: 'oidc_transactions',
+        routine: 'ExecWithCheckOptions',
+        detail: `Failing row contains (${state}, nonce-cookie)`,
+        where: 'SQL function "create_oidc_transaction" statement 1',
+        parameters: [state, 'pkce-cookie'],
+        query: 'SELECT web_session.create_oidc_transaction($1)',
+      }
+    );
+    jest.mocked(createOidcTransaction).mockRejectedValueOnce(rejection);
+    const logged = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const response = await POST(
+      new NextRequest('https://app.example/api/auth/signin/keycloak-google', {
+        method: 'POST',
+        body: new URLSearchParams({ callbackUrl: '/home', waooawIntent: 'LOGIN' }),
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      })
+    );
+
+    expect(response.status).toBe(503);
+    expect(logged).toHaveBeenCalledWith('OIDC transaction reservation failed', {
+      errorClass: 'database',
+      code: '42501',
+      severity: 'ERROR',
+      schema: 'web_session',
+      table: 'oidc_transactions',
+      routine: 'ExecWithCheckOptions',
+    });
+    const serialized = JSON.stringify(logged.mock.calls);
+    for (const secret of [state, 'nonce-cookie', 'pkce-cookie', 'row-level security', 'SELECT'])
+      expect(serialized).not.toContain(secret);
+  });
+
+  it('classifies non-database reservation failures without echoing their message', async () => {
+    mockNextAuthHandler.mockResolvedValue(initiationResponse());
+    jest.mocked(createOidcTransaction).mockRejectedValueOnce(new Error('SESSION_TOKEN_ENVELOPE_KEYS secret=abc'));
+    const logged = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await POST(
+      new NextRequest('https://app.example/api/auth/signin/keycloak-google', {
+        method: 'POST',
+        body: new URLSearchParams({ callbackUrl: '/home', waooawIntent: 'LOGIN' }),
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      })
+    );
+
+    expect(logged).toHaveBeenCalledWith('OIDC transaction reservation failed', { errorClass: 'application' });
+  });
+
   it('consumes the transaction before accepting the callback and enforces its route', async () => {
     jest.mocked(consumeOidcTransaction).mockResolvedValue({
       state,
