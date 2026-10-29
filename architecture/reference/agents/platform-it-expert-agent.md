@@ -177,7 +177,9 @@ and serves Keycloak (`/realms`, `/resources`) and the web app on one origin, so 
 Codespaces port needs forwarding. The mode is remembered in
 `.auth-preview/runtime.env`; `scripts/run_auth_preview.sh verify-social` then drives both providers
 through provider-start, broker login, callback, authenticated session and signed-in landing, and is
-the evidence required before handing a login fix to the Founder.
+the evidence required before handing a login fix to the Founder. Run it in both server-session modes: the default `enforced`, and
+`AUTH_PREVIEW_SESSION_MODE=disabled` (Demo's `web_session_mode`), because the modes use different
+cookies and middleware paths.
 
 Both are form checks, not substitutes for Skill 5 behavioural tests of the schema itself.
 
