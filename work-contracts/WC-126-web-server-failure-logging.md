@@ -34,18 +34,18 @@ or merge are authorized. Do not disturb the existing dirty checkout.
 
 | ID | Requirement | Executable evidence |
 |---|---|---|
-| R1 | Every in-scope server catch logs through `logServerFailure`, directly or through an owning shared error mapper. Invalid-user-input-only rejection stays silent. | AST-based regression gate over server sources and focused migration tests. |
-| R2 | Use stable, static event identifiers and a safe correlation ID. Never log raw request/response data, credentials, personal data or bare/minified error names as the only diagnostic. | Logger tests with hostile errors and metadata. |
-| R3 | `WAOOAW_DIAGNOSTIC_DETAIL=true` enables bounded, redacted diagnostic detail; false/unset does not. Redaction remains active in both modes. | Both flag values, unset/invalid flag, cause/stack/redaction tests. |
-| R4 | In-scope handled 5xx responses include the logged correlation ID; preserve response status and no-store behavior. | Error-mapper and representative route tests, including malformed upstream JSON. |
-| R5 | No new silent catch or bare-error-name logging can pass the existing web test gate. Cover catch clauses and promise rejection handlers. | Guard self-tests and existing Jest CI discovery. |
-| R6 | Validate the completed change in the existing Docker runner, perform author review, and submit an exact-head PR using the repository template and mandatory preparation gate. | Exact commands/results recorded below and in the PR. |
+| WC126-R001 | Every in-scope server catch logs through `logServerFailure`, directly or through an owning shared error mapper. Invalid-user-input-only rejection stays silent. | AST-based regression gate over server sources and focused migration tests. |
+| WC126-R002 | Use stable, static event identifiers and a safe correlation ID. Never log raw request/response data, credentials, personal data or bare/minified error names as the only diagnostic. | Logger tests with hostile errors and metadata. |
+| WC126-R003 | `WAOOAW_DIAGNOSTIC_DETAIL=true` enables bounded, redacted diagnostic detail; false/unset does not. Redaction remains active in both modes. | Both flag values, unset/invalid flag, cause/stack/redaction tests. |
+| WC126-R004 | In-scope handled 5xx responses include the logged correlation ID; preserve response status and no-store behavior. | Error-mapper and representative route tests, including malformed upstream JSON. |
+| WC126-R005 | No new silent catch or bare-error-name logging can pass the existing web test gate. Cover catch clauses and promise rejection handlers. | Guard self-tests and existing Jest CI discovery. |
+| WC126-R006 | Validate the completed change in the existing Docker runner, perform author review, and submit an exact-head PR using the repository template and mandatory preparation gate. | Exact commands/results recorded below and in the PR. |
 
 ## Execution Chunks
 
-1. R2-R3: shared server-only structured logger and safe correlation/response helpers.
-2. R1/R4: migrate callers and upstream response parsing, preserving input rejection.
-3. R5-R6: regression gate, focused tests, impacted Docker web qualification, author
+1. R2-R3 (WC126-R002/R003): shared server-only structured logger and safe correlation/response helpers.
+2. R1/R4 (WC126-R001/R004): migrate callers and upstream response parsing, preserving input rejection.
+3. R5-R6 (WC126-R005/R006): regression gate, focused tests, impacted Docker web qualification, author
    review and Founder-ready PR.
 
 ## Stops And Rollback
