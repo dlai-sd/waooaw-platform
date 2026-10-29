@@ -180,6 +180,12 @@ through provider-start, broker login, callback, authenticated session and signed
 the evidence required before handing a login fix to the Founder. Run it in both server-session modes: the default `enforced`, and
 `AUTH_PREVIEW_SESSION_MODE=disabled` (Demo's `web_session_mode`), because the modes use different
 cookies and middleware paths.
+Web sign-in/session failures are logged by `web/lib/server-diagnostics.ts` as one JSON line
+(`event`, `correlationId` — also returned in the 503 body — real error type, allow-listed database
+fields). `WAOOAW_DIAGNOSTIC_DETAIL=stack` (Terraform `web_diagnostic_detail`: Demo `stack`, others
+`standard`; preview default `stack` via `AUTH_PREVIEW_DIAGNOSTIC_DETAIL`) adds the redacted message,
+cause and stack frames. Search Log Analytics for the event name or the correlation ID; never log
+tokens, cookies or transaction payloads around these calls.
 
 Both are form checks, not substitutes for Skill 5 behavioural tests of the schema itself.
 
@@ -1735,7 +1741,7 @@ are active after R-118 independent EA approval and FA-049 Founder activation.
 | 1.3.8 | 2026-10-17 | Founder / Platform IT Expert | Added live-provider authentication-transition proof, private-network secret execution, structured payload construction, Container Apps identity read-back/recreate rules, and complete PostgreSQL ownership/grantor dependency audits; no capability or Decision Space change |
 | 1.4.0 | 2026-10-19 | Founder / Platform IT Expert | Added Skills 18-23 for workflow state machines, IaC lifecycle propagation, secret consumption, same-context connectivity, failure injection, and automated incident evidence; no new provider authority |
 | 1.4.1 | 2026-10-20 | Founder / Platform IT Expert | Added §2.5 Idempotent Init-Chain SQL Standard with the `wc124_init_chain_lint.py` and `wc124_init_chain_local.sh` executable gates after WC-124 gap B showed 31 of 69 init files failed a second pass; no capability or Decision Space change |
-| 1.4.2 | 2026-10-29 | Founder / Platform IT Expert | Added the §2.5 SECURITY DEFINER ownership-handoff rule, the OIDC reservation probe, the `wc123:session-contract` gate and the `run_auth_preview.sh` local-reproduction procedure (including `AUTH_PREVIEW_IDP=local` and `verify-social`) after the Demo Google sign-in 42501 regression; no capability or Decision Space change |
+| 1.4.2 | 2026-10-29 | Founder / Platform IT Expert | Added the §2.5 SECURITY DEFINER ownership-handoff rule, the OIDC reservation probe, the `wc123:session-contract` gate and the `run_auth_preview.sh` local-reproduction procedure (including `AUTH_PREVIEW_IDP=local` and `verify-social`), plus flag-controlled `WAOOAW_DIAGNOSTIC_DETAIL` failure logging, after the Demo Google sign-in 42501 regression; no capability or Decision Space change |
 
 **Founder approval:** FA-032 authorized the Type 1 lifecycle. FA-033 approves Platform IT Expert v1.2 and activates Skill 16. FA-049 activates v1.3 Skill 17 after R-118. These actions grant no deployment authority; implementation remains bounded by its Work Contract, GOA, Acceptance and local entry criteria.
 

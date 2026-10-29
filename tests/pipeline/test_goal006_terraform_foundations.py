@@ -1460,6 +1460,11 @@ def test_web_session_runtime_contract_is_external_and_fail_closed() -> None:
     assert 'contains(["disabled", "shadow", "enforced"], var.web_session_mode)' in variables
     assert 'var.web_session_mode == "disabled" || can(regex("^sha256:' in variables
     assert re.search(r"WAOOAW_SERVER_SESSION_MODE\s*=\s*var\.web_session_mode", contract)
+    assert 'contains(["standard", "stack"], var.web_diagnostic_detail)' in variables
+    assert re.search(r"WAOOAW_DIAGNOSTIC_DETAIL\s*=\s*var\.web_diagnostic_detail", contract)
+    assert re.search(r'web_diagnostic_detail\s*=\s*"stack"', read_contract("environments/demo/workload/main.tf"))
+    for environment in ("uat", "prod"):
+        assert "web_diagnostic_detail" not in read_contract(f"environments/{environment}/workload/main.tf")
     assert "oidc_transaction_secret_environment" in contract
     assert "active_web_session_secret_environment = merge(" in contract
     assert "web_session_secret_uris = {" in contract

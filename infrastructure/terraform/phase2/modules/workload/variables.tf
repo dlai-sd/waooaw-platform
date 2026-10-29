@@ -280,6 +280,17 @@ variable "web_session_mode" {
   }
 }
 
+variable "web_diagnostic_detail" {
+  type        = string
+  default     = "standard"
+  description = "Web server failure-log detail. stack adds redacted error messages and stack frames; credentials, tokens, cookies and payloads are never logged."
+
+  validation {
+    condition     = contains(["standard", "stack"], var.web_diagnostic_detail)
+    error_message = "Web diagnostic detail must be standard or stack."
+  }
+}
+
 variable "auth_abuse_redis_url" {
   type        = string
   default     = null
