@@ -1,8 +1,9 @@
 import 'server-only';
 
 import { createHmac } from 'node:crypto';
-import { type NextRequest, NextResponse } from 'next/server';
 import { redisCommand } from '@/lib/redis-command';
+import { logServerFailure } from '@/lib/server-diagnostics';
+import { type NextRequest, NextResponse } from 'next/server';
 
 export type AuthAbuseAction =
   | 'AUTH_START'
@@ -152,10 +153,7 @@ export async function checkAuthAbuse(request: NextRequest, action: AuthAbuseActi
     if (response[0] === -2) return { allowed: false, reason: 'RESTART_HOLD', retryAfterSeconds };
     return { allowed: false, reason: 'QUOTA_EXCEEDED', retryAfterSeconds };
   } catch (error) {
-    console.error('Authentication abuse limiter failed', {
-      action,
-      cause: error instanceof Error ? error.name : 'UnknownError',
-    });
+    logServerFailure('identity.abuse_limiter.failed', error, { action });
     return { allowed: false, reason: 'LIMITER_UNAVAILABLE' };
   }
 }
@@ -179,7 +177,8 @@ export async function authAbuseLimiterStatus(): Promise<AuthAbuseReadiness> {
       return { ready: false, reason: 'RESTART_HOLD', retryAfterSeconds: Math.ceil(response[1] / 1000) };
     }
     throw new Error('Redis limiter readiness response is invalid');
-  } catch {
+  } catch (error) {
+    logServerFailure('identity.abuse_limiter.readiness_failed', error, {}, 'warn');
     return { ready: false, reason: 'LIMITER_UNAVAILABLE' };
   }
 }

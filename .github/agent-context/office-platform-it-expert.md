@@ -46,8 +46,13 @@ own PR, access or mutate a provider without exact authority, or invoke another i
    digest changed, so every top-level statement must succeed against a database that already holds
    its effect. Run `python scripts/wc124_init_chain_lint.py` (zero findings) and
    `scripts/wc124_init_chain_local.sh` (run 1 applies all, run 2 skips all, forced run 3 re-applies
-   all with zero schema drift) before opening the PR; never add a `*.sh` init file for a managed
-   environment.
+   all with zero schema drift, then the OIDC reservation probe) and
+   `sh scripts/validation_control/run_wc123_session_contract.sh` before opening the PR; never add a
+   `*.sh` init file for a managed environment. `60-wc124-principal-handoff.sql` must keep
+   SECURITY DEFINER routines owned by the principal their schema's RLS policies admit (its
+   `definer` map); new definer schemas join that map and the probe. Reproduce auth/session faults
+   locally with `scripts/run_auth_preview.sh start|probe|stop` (spec §2.5, fresh volume after
+   init edits); prove login fixes with `AUTH_PREVIEW_IDP=local` start then `verify-social`.
 4. Read the touched engineering files, nearest tests, and only the ADR/claim sections named by the task.
 5. For every build or test, use the catalog-owned four-tier sequence: static contract and exact-container execution contract preflight with no image build;
    stack-specific disposable story execution against mounted source; dependency-complete milestone checks;

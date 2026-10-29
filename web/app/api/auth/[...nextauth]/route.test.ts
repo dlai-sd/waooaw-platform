@@ -117,8 +117,137 @@ describe('NextAuth OIDC transaction boundary', () => {
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
       code: 'IDENTITY_DEPENDENCY_UNAVAILABLE',
+      correlationId: expect.stringMatching(/^[0-9a-f-]{36}$/),
     });
     expect(response.headers.get('set-cookie')).toBeNull();
+  });
+
+  it('logs the safe SQLSTATE of a rejected reservation without payload, message or parameters', async () => {
+    mockNextAuthHandler.mockResolvedValue(initiationResponse());
+    // Shape of the minified postgres.js PostgresError seen in Demo (`cause: 'k'`).
+    const rejection = Object.assign(
+      new Error('new row violates row-level security policy for table "oidc_transactions"'),
+      {
+        name: 'k',
+        code: '42501',
+        severity_local: 'ERROR',
+        severity: 'ERROR',
+        schema_name: 'web_session',
+        table_name: 'oidc_transactions',
+        routine: 'ExecWithCheckOptions',
+        detail: `Failing row contains (${state}, nonce-cookie)`,
+        where: 'SQL function "create_oidc_transaction" statement 1',
+        parameters: [state, 'pkce-cookie'],
+        query: 'SELECT web_session.create_oidc_transaction($1)',
+      }
+    );
+    jest.mocked(createOidcTransaction).mockRejectedValueOnce(rejection);
+    const logged = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const response = await POST(
+      new NextRequest('https://app.example/api/auth/signin/keycloak-google', {
+        method: 'POST',
+        body: new URLSearchParams({ callbackUrl: '/home', waooawIntent: 'LOGIN' }),
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      })
+    );
+
+    expect(response.status).toBe(503);
+    const { correlationId } = (await response.json()) as { correlationId: string };
+    expect(logged).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(logged.mock.calls[0][0]))).toEqual({
+      level: 'error',
+      event: 'identity.oidc_transaction.reserve_failed',
+      provider: 'GOOGLE',
+      correlationId,
+      errorType: 'Error',
+      errorClass: 'database',
+      code: '42501',
+      severity: 'ERROR',
+      schema: 'web_session',
+      table: 'oidc_transactions',
+      routine: 'ExecWithCheckOptions',
+    });
+    const serialized = JSON.stringify(logged.mock.calls);
+    for (const secret of [state, 'nonce-cookie', 'pkce-cookie', 'row-level security', 'SELECT'])
+      expect(serialized).not.toContain(secret);
+  });
+
+  it('adds a redacted message and stack when WAOOAW_DIAGNOSTIC_DETAIL=stack', async () => {
+    process.env.WAOOAW_DIAGNOSTIC_DETAIL = 'stack';
+    mockNextAuthHandler.mockResolvedValue(initiationResponse());
+    const rejection = Object.assign(
+      new Error(`new row violates row-level security policy for table "oidc_transactions" state=${state}`),
+      {
+        code: '42501',
+        detail: `Failing row contains (${state}, nonce-cookie)`,
+        parameters: [state, 'pkce-cookie'],
+        query: 'SELECT web_session.create_oidc_transaction($1)',
+      }
+    );
+    jest.mocked(createOidcTransaction).mockRejectedValueOnce(rejection);
+    const logged = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      await POST(
+        new NextRequest('https://app.example/api/auth/signin/keycloak-google', {
+          method: 'POST',
+          body: new URLSearchParams({ callbackUrl: '/home', waooawIntent: 'LOGIN' }),
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        })
+      );
+    } finally {
+      Reflect.deleteProperty(process.env, 'WAOOAW_DIAGNOSTIC_DETAIL');
+    }
+
+    const record = JSON.parse(String(logged.mock.calls[0][0])) as Record<string, string>;
+    expect(record.code).toBe('42501');
+    expect(record.message).toBe(
+      'new row violates row-level security policy for table "oidc_transactions" state=[redacted]'
+    );
+    expect(record.stack).toMatch(/^at /);
+    const serialized = JSON.stringify(logged.mock.calls);
+    for (const secret of [state, 'nonce-cookie', 'pkce-cookie', 'SELECT']) expect(serialized).not.toContain(secret);
+  });
+
+  it('logs why provider-start produced no redirect instead of failing silently', async () => {
+    mockNextAuthHandler.mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }));
+    const logged = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const response = await POST(
+      new NextRequest('https://app.example/api/auth/signin/keycloak-facebook', {
+        method: 'POST',
+        body: new URLSearchParams({ callbackUrl: '/home', waooawIntent: 'LOGIN' }),
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      })
+    );
+
+    expect(response.status).toBe(503);
+    expect(JSON.parse(String(logged.mock.calls[0][0]))).toMatchObject({
+      event: 'identity.provider_start.redirect_missing',
+      provider: 'FACEBOOK',
+      upstreamStatus: 200,
+      errorType: 'none',
+    });
+  });
+
+  it('classifies non-database reservation failures without echoing their message', async () => {
+    mockNextAuthHandler.mockResolvedValue(initiationResponse());
+    jest.mocked(createOidcTransaction).mockRejectedValueOnce(new Error('SESSION_TOKEN_ENVELOPE_KEYS secret=abc'));
+    const logged = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await POST(
+      new NextRequest('https://app.example/api/auth/signin/keycloak-google', {
+        method: 'POST',
+        body: new URLSearchParams({ callbackUrl: '/home', waooawIntent: 'LOGIN' }),
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      })
+    );
+
+    const record = JSON.parse(String(logged.mock.calls[0][0])) as Record<string, string>;
+    expect(record).toMatchObject({ event: 'identity.oidc_transaction.reserve_failed', errorType: 'Error' });
+    expect(record.errorClass).toBeUndefined();
+    expect(JSON.stringify(logged.mock.calls)).not.toContain('secret=abc');
   });
 
   it('consumes the transaction before accepting the callback and enforces its route', async () => {

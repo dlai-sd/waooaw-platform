@@ -12,6 +12,7 @@ import {
   loadSession,
   revokeSession,
 } from '@/lib/web-session-store';
+import { logServerFailure } from '@/lib/server-diagnostics';
 import { isApprovedShadowSubject, serverSessionMode } from '@/lib/server-session-mode';
 
 // Implements: architecture/reference/ux/hybrid-application-shell.md §Authentication Boundaries
@@ -166,7 +167,8 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       });
       return purgeAuthentication(token);
     }
-  } catch {
+  } catch (error) {
+    logServerFailure('identity.session_refresh.store_failed', error, { correlationId });
     await recordWebIdentitySecurityEvent({
       correlationId,
       eventType: 'REFRESH_FAILURE',
@@ -249,7 +251,8 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
         reasonCode: 'TOKEN_ROTATED',
         assuranceClass: 'AAL2',
       });
-    } catch {
+    } catch (error) {
+      logServerFailure('identity.token_refresh.event_persistence_failed', error, { correlationId });
       await recordWebIdentitySecurityEvent({
         correlationId,
         eventType: 'REFRESH_FAILURE',
@@ -261,7 +264,8 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       return purgeAuthentication(token);
     }
     return token;
-  } catch {
+  } catch (error) {
+    logServerFailure('identity.token_refresh.endpoint_failed', error, { correlationId });
     await recordWebIdentitySecurityEvent({
       correlationId,
       eventType: 'REFRESH_FAILURE',
@@ -348,9 +352,7 @@ export const authOptions: NextAuthOptions = {
             const shadow = await createSession(token, validatedProfile, globalUserId);
             await revokeSession(shadow, 'SHADOW_COMPARISON');
           } catch (error) {
-            console.error('Server-session shadow comparison failed', {
-              cause: error instanceof Error ? error.name : 'UnknownError',
-            });
+            logServerFailure('identity.server_session.shadow_failed', error);
           }
         }
         return token;
@@ -367,4 +369,17 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: { signIn: '/login', error: '/auth/error' },
+  logger: {
+    error(code, metadata) {
+      const failure = metadata instanceof Error ? metadata : (metadata as { error?: unknown } | undefined)?.error;
+      const providerId = (metadata as { providerId?: unknown } | undefined)?.providerId;
+      logServerFailure(`nextauth.${String(code).toLowerCase()}`, failure ?? metadata, {
+        provider: typeof providerId === 'string' && /^[a-z0-9-]{1,40}$/.test(providerId) ? providerId : undefined,
+      });
+    },
+    warn(code) {
+      logServerFailure(`nextauth.${String(code).toLowerCase()}`, undefined, {}, 'warn');
+    },
+    debug() {},
+  },
 };

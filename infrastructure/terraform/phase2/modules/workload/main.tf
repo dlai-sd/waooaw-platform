@@ -517,6 +517,7 @@ locals {
       SESSION_TOKEN_ENVELOPE_WRITE_VERSION  = var.web_session_token_envelope_write_version
       WAOOAW_ENVIRONMENT                    = var.environment
       WAOOAW_SERVER_SESSION_MODE            = var.web_session_mode
+      WAOOAW_DIAGNOSTIC_DETAIL              = var.web_diagnostic_detail
       # web reaches the provisioned instance through in-VNet PgBouncer, which terminates no TLS.
       # Without this, NODE_ENV=production makes postgres.js demand TLS and readiness never passes.
       WEB_SESSION_DATABASE_SSL_MODE = "disable"

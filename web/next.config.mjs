@@ -42,6 +42,8 @@ const nextConfig = {
   output: process.env.BUILD_STANDALONE === 'true' ? 'standalone' : undefined,
   poweredByHeader: false,
   reactStrictMode: true,
+  // Readable server error types and stack frames for WAOOAW_DIAGNOSTIC_DETAIL logs (the 'k' error names).
+  experimental: { serverMinification: false },
   async headers() {
     return [
       {

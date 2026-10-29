@@ -1,0 +1,65 @@
+# Overlay for scripts/run_auth_preview.sh when AUTH_PREVIEW_IDP=local: a local Keycloak with mock
+# Google/Facebook brokers replaces Demo Keycloak so sign-in can be tested end to end in Codespaces.
+# identity-tls takes over the preview port and serves Keycloak and the web app on one origin, so no
+# second Codespaces port needs forwarding.
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak@sha256:82c5b7a110456dbd42b86ea572e728878549954cc8bd03cd65410d75328095d2
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${AUTH_PREVIEW_IDP_ADMIN_PASSWORD:?AUTH_PREVIEW_IDP_ADMIN_PASSWORD is required}
+      KC_HOSTNAME: ${AUTH_PREVIEW_IDP_ORIGIN:?AUTH_PREVIEW_IDP_ORIGIN is required}
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      DEV_TEST_PASSWORD: ${AUTH_PREVIEW_IDP_USER_PASSWORD:?AUTH_PREVIEW_IDP_USER_PASSWORD is required}
+      KEYCLOAK_CLIENT_SECRET: ${AUTH_PREVIEW_IDP_BROKER_SECRET:?AUTH_PREVIEW_IDP_BROKER_SECRET is required}
+    volumes:
+      - ./.auth-preview/local-idp/import:/opt/keycloak/data/import:ro
+    healthcheck:
+      test: ["CMD", "/bin/bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3; grep -q '200 OK' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  identity-tls:
+    image: docker.io/library/nginx@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+    ports:
+      - "${AUTH_PREVIEW_PORT:-3100}:8080"
+    environment:
+      AUTH_PREVIEW_IDP_HOST: ${AUTH_PREVIEW_IDP_HOST:?AUTH_PREVIEW_IDP_HOST is required}
+    volumes:
+      - ./infrastructure/auth-preview/local-idp-nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./.auth-preview/local-idp/tls:/etc/nginx/auth-preview-tls:ro
+    networks:
+      default:
+        aliases:
+          - ${AUTH_PREVIEW_IDP_HOST}
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -o /dev/null http://127.0.0.1:8080/realms/waooaw/.well-known/openid-configuration"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+
+  business-platform:
+    environment:
+      SSL_CERT_FILE: /run/auth-preview-idp/ca-bundle.crt
+    volumes:
+      - ./.auth-preview/local-idp/tls/ca-bundle.crt:/run/auth-preview-idp/ca-bundle.crt:ro
+    depends_on:
+      identity-tls:
+        condition: service_healthy
+
+  auth-preview:
+    ports: !reset []
+    environment:
+      NODE_EXTRA_CA_CERTS: /run/auth-preview-idp/ca.crt
+    volumes:
+      - ./.auth-preview/local-idp/tls/ca.crt:/run/auth-preview-idp/ca.crt:ro
+    depends_on:
+      identity-tls:
+        condition: service_healthy

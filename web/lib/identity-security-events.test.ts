@@ -125,9 +125,10 @@ describe('identity security event transport', () => {
         reasonCode: 'BROKER_REDIRECT_REQUESTED',
       })
     ).resolves.toBeUndefined();
-    expect(error).toHaveBeenCalledWith('Identity security event was not persisted.', {
+    expect(JSON.parse(String(error.mock.calls[0][0]))).toMatchObject({
+      event: 'identity.security_event.persist_failed',
       eventType: 'PROVIDER_HANDOFF',
-      reason: 'TimeoutError',
+      errorType: 'TimeoutError',
     });
   });
 });

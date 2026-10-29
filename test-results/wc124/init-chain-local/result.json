@@ -27,5 +27,6 @@
     "required_tables_present": 8,
     "forced_rls_tables": 3
   },
+  "oidc_reservation_probe": "passed",
   "status": "passed"
 }

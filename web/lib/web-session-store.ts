@@ -16,6 +16,7 @@ interface StoredTokenEnvelope {
   refreshToken?: string;
   idToken?: string;
   founder: boolean;
+  previewDeploymentId?: string;
 }
 
 export interface OidcTransactionEnvelope {
@@ -293,6 +294,7 @@ export async function createSession(token: JWT, profile: Record<string, unknown>
     refreshToken: token.refreshToken,
     idToken: token.idToken,
     founder: token.founder === true,
+    ...(typeof token.previewDeploymentId === 'string' ? { previewDeploymentId: token.previewDeploymentId } : {}),
   };
   await withDatabaseSlot(
     () => database()`
@@ -478,6 +480,7 @@ export async function completeRefresh(token: JWT, leaseOwner: string): Promise<b
     refreshToken: token.refreshToken,
     idToken: token.idToken,
     founder: token.founder === true,
+    ...(typeof token.previewDeploymentId === 'string' ? { previewDeploymentId: token.previewDeploymentId } : {}),
   };
   const rows = await withDatabaseSlot(
     () => database()<[{ completed: boolean }]>`

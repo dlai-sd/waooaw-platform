@@ -7,6 +7,7 @@ import {
   persistWebIdentitySecurityEvent,
 } from '@/lib/identity-security-events';
 import { isSameOriginRequest } from '@/lib/same-origin-request';
+import { logServerFailure } from '@/lib/server-diagnostics';
 import { type NextRequest, NextResponse } from 'next/server';
 
 const providerClasses = new Set<WebIdentityProviderClass>(['GOOGLE', 'FACEBOOK', 'APPLE', 'EMAIL', 'UNKNOWN']);
@@ -63,7 +64,8 @@ export async function POST(request: NextRequest) {
       assuranceClass: eventType === 'CALLBACK_SUCCESS' ? 'AAL2' : 'ANONYMOUS',
     } as WebIdentitySecurityEvent);
     return new NextResponse(null, { status: 204 });
-  } catch {
+  } catch (error) {
+    logServerFailure('identity.transition_event.persist_failed', error, { eventType });
     return NextResponse.json({ code: 'IDENTITY_EVENT_UNAVAILABLE' }, { status: 503 });
   }
 }

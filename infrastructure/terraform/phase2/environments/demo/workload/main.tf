@@ -79,6 +79,7 @@ module "workload" {
   max_replicas                             = 1
   workload_enabled                         = module.lease.workload_enabled
   web_session_mode                         = "disabled"
+  web_diagnostic_detail                    = "stack"
   demo_data_generation_id                  = var.manifest_digest
   demo_fixture_digest = sha256(jsonencode({
     environment_contract = filesha256("../../../../../environment-readiness/demo.rendered.json")

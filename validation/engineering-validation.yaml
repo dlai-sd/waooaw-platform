@@ -358,6 +358,14 @@ scoped_paths:
       - .github/workflows/workload-lease-reconciliation.yaml
       - tests/pipeline/test_goal006_*.py
     gates: [release-qualification]
+  web-session-store:
+    # Init-chain ownership/RLS changes (e.g. the WC-124 handoff) can break SECURITY DEFINER session writes.
+    paths:
+      - infrastructure/postgres/init/**
+      - tests/postgres/wc123_web_session_contract.sql
+      - scripts/validation_control/run_wc123_session_contract.sh
+      - web/lib/web-session-store.ts
+    gates: ["wc123:session-contract"]
 documentation_only:
   - README.md
   - CHANGELOG.md
