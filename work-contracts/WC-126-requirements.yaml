@@ -1,0 +1,77 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-126
+contract_path: work-contracts/WC-126-web-server-failure-logging.md
+contract_digest: 18f100e265e6e4a007c59771a943e9959cd1da2fdfc0d7be36786ef8ec38fabc
+implementation_scope: true
+result: QUALIFIED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Docker web tests, static regression policy and author verification
+  initial_state: expected-fail
+  dependencies: Founder-approved WC-126 and current-session implementation authority
+  residual_risk: Local qualification is not hosted-CI, Azure deployment or Founder acceptance.
+  result: PASS
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC126-R001
+    source: WC-126 Requirements And Definition Of Done, R1
+    observable_outcome: Every non-sign-in server catch logs through the shared sink or owning mapper; expected invalid input remains silent.
+    test_path_or_plan: web/lib/server-failure-policy.test.ts and web/app/api/server-failure-boundaries.test.ts
+    completion_rule: The repository-wide server-source policy and representative runtime boundaries pass.
+    evidence_refs:
+      - web/lib/server-failure-policy.test.ts
+      - web/app/api/server-failure-boundaries.test.ts
+      - work-contracts/WC-126-web-server-failure-logging.md
+
+  - <<: *defaults
+    requirement_id: WC126-R002
+    source: WC-126 Requirements And Definition Of Done, R2
+    observable_outcome: Failure records use static events, safe request-local correlations and allowlisted diagnostics without private data.
+    test_path_or_plan: web/lib/server-failure.test.ts
+    completion_rule: Redaction, hostile error, correlation isolation and upstream-link tests pass.
+    evidence_refs:
+      - web/lib/server-failure.test.ts
+      - web/lib/server-failure.ts
+
+  - <<: *defaults
+    requirement_id: WC126-R003
+    source: WC-126 Requirements And Definition Of Done, R3
+    observable_outcome: Only the exact true diagnostic flag enables bounded locations and causes; both modes remain redacted.
+    test_path_or_plan: web/lib/server-failure.test.ts flag matrix
+    completion_rule: True, false, unset and invalid-flag cases pass with no credential or customer-data leakage.
+    evidence_refs:
+      - web/lib/server-failure.test.ts
+
+  - <<: *defaults
+    requirement_id: WC126-R004
+    source: WC-126 Requirements And Definition Of Done, R4
+    observable_outcome: In-scope handled and uncaught 5xx responses return their logged correlation in JSON and headers while preserving explicit statuses.
+    test_path_or_plan: web/lib/server-failure.test.ts and web/app/api/server-failure-boundaries.test.ts
+    completion_rule: 500/502/503/504, transport, malformed upstream, request-input and SSE pass-through cases pass.
+    evidence_refs:
+      - web/lib/server-failure.test.ts
+      - web/app/api/server-failure-boundaries.test.ts
+      - web/app/api/health/ready/route.test.ts
+
+  - <<: *defaults
+    requirement_id: WC126-R005
+    source: WC-126 Requirements And Definition Of Done, R5
+    observable_outcome: New silent catches, raw console diagnostics and unstable failure events fail the existing Jest CI gate.
+    test_path_or_plan: web/lib/server-failure-policy.test.ts repository scan and hostile fixtures
+    completion_rule: Every scanned server source passes and all negative fixtures are rejected.
+    evidence_refs:
+      - web/lib/server-failure-policy.test.ts
+      - scripts/validation_control/run_web_test_gate.sh
+
+  - <<: *defaults
+    requirement_id: WC126-R006
+    source: WC-126 Requirements And Definition Of Done, R6
+    observable_outcome: Docker qualification and author review precede exact-head PR preparation and Founder-ready submission.
+    test_path_or_plan: scripts/prepare_pr_body.py and the canonical Docker web gate
+    completion_rule: Final pushed-head C-059/C-065 preparation passes and the prepared body is submitted without rewriting it.
+    result: PLANNED
+    evidence_refs:
+      - work-contracts/WC-126-web-server-failure-logging.md
+    residual_risk: Local tests, coverage and production build pass; exact-head preparation and PR publication are still pending at this commit.

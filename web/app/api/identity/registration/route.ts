@@ -1,3 +1,5 @@
+import { readServerResponse, logServerFailure } from '@/lib/server-failure';
+import { withServerFailureBoundary, readRequestJson, InvalidRequestJson } from '@/lib/server-failure-boundary';
 // Implements: architecture/reference/ux/wc-034-implementation-decomposition.md §F2
 // Constitutional basis: C-026 (Tenant Isolation), C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
@@ -26,10 +28,11 @@ const approvedProblemCodes = new Set([
 ]);
 
 async function safeRegistrationProblem(error: ResponseError) {
-  const upstream = (await error.response
-    .clone()
-    .json()
-    .catch(() => undefined)) as { code?: unknown; correlationId?: unknown } | undefined;
+  const upstream = (await readServerResponse(
+    error.response.clone(),
+    'web.identity.registration.response_invalid',
+    undefined
+  )) as { code?: unknown; correlationId?: unknown } | undefined;
   const approved = typeof upstream?.code === 'string' && approvedProblemCodes.has(upstream.code);
   const code = approved ? (upstream.code as string) : 'IDENTITY_DEPENDENCY_UNAVAILABLE';
   const correlationId =
@@ -43,7 +46,11 @@ async function safeRegistrationProblem(error: ResponseError) {
       : 503;
   return {
     status,
-    body: { code, title: 'Identity request could not be completed.', ...(correlationId ? { correlationId } : {}) },
+    body: {
+      code,
+      title: 'Identity request could not be completed.',
+      ...(correlationId ? { correlationId } : {}),
+    },
   };
 }
 
@@ -57,13 +64,16 @@ async function registrationPost(request: NextRequest) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) {
     return NextResponse.json(
-      { code: 'IDENTITY_SESSION_REQUIRED', title: 'Secure sign in is required.' },
+      {
+        code: 'IDENTITY_SESSION_REQUIRED',
+        title: 'Secure sign in is required.',
+      },
       { status: 401 }
     );
   }
 
   try {
-    const body = (await request.json()) as CommandBody;
+    const body = (await readRequestJson(request)) as CommandBody;
     const api = createIdentityApi(accessToken);
     const action = requiredString(body, 'action');
     const idempotencyKey = requiredString(body, 'idempotencyKey');
@@ -91,12 +101,14 @@ async function registrationPost(request: NextRequest) {
           }
           return NextResponse.json({ handoffConfirmed: true }, { headers: { 'Cache-Control': 'no-store' } });
         } catch (error) {
+          logServerFailure('web.identity.registration.start_failed', error);
           const upstream =
             error instanceof ResponseError
-              ? ((await error.response
-                  .clone()
-                  .json()
-                  .catch(() => undefined)) as { code?: unknown } | undefined)
+              ? ((await readServerResponse(
+                  error.response.clone(),
+                  'web.identity.registration.response_invalid',
+                  undefined
+                )) as { code?: unknown } | undefined)
               : undefined;
           if (
             init.signal.aborted ||
@@ -112,7 +124,10 @@ async function registrationPost(request: NextRequest) {
               });
             }
             return NextResponse.json(
-              { code: 'IDENTITY_DEPENDENCY_UNAVAILABLE', title: 'Identity request could not be completed.' },
+              {
+                code: 'IDENTITY_DEPENDENCY_UNAVAILABLE',
+                title: 'Identity request could not be completed.',
+              },
               {
                 status: 503,
                 headers: { 'Cache-Control': 'no-store' },
@@ -124,7 +139,9 @@ async function registrationPost(request: NextRequest) {
           await api.startIdentityRegistration(
             {
               idempotencyKey,
-              startIdentityRegistrationRequest: { languagePreference: requiredString(body, 'languagePreference') },
+              startIdentityRegistrationRequest: {
+                languagePreference: requiredString(body, 'languagePreference'),
+              },
             },
             init
           )
@@ -148,7 +165,9 @@ async function registrationPost(request: NextRequest) {
           await api.startIdentityEmailVerification({
             registrationId: requiredString(body, 'registrationId'),
             idempotencyKey,
-            startEmailVerificationRequest: { email: requiredString(body, 'email') },
+            startEmailVerificationRequest: {
+              email: requiredString(body, 'email'),
+            },
           })
         );
       case 'email-confirm':
@@ -167,7 +186,9 @@ async function registrationPost(request: NextRequest) {
           await api.startIdentityMobileVerification({
             registrationId: requiredString(body, 'registrationId'),
             idempotencyKey,
-            startMobileVerificationRequest: { mobile: requiredString(body, 'mobile') },
+            startMobileVerificationRequest: {
+              mobile: requiredString(body, 'mobile'),
+            },
           })
         );
       case 'mobile-confirm':
@@ -214,6 +235,7 @@ async function registrationPost(request: NextRequest) {
           }
           return NextResponse.json({ handoffConfirmed: true }, { headers: { 'Cache-Control': 'no-store' } });
         } catch (error) {
+          logServerFailure('web.identity.registration.complete_failed', error);
           if (error instanceof ResponseError) {
             const problem = await safeRegistrationProblem(error);
             return NextResponse.json(problem.body, {
@@ -222,7 +244,10 @@ async function registrationPost(request: NextRequest) {
             });
           }
           return NextResponse.json(
-            { code: 'IDENTITY_DEPENDENCY_UNAVAILABLE', title: 'Identity request could not be completed.' },
+            {
+              code: 'IDENTITY_DEPENDENCY_UNAVAILABLE',
+              title: 'Identity request could not be completed.',
+            },
             {
               status: 503,
               headers: { 'Cache-Control': 'no-store' },
@@ -232,27 +257,41 @@ async function registrationPost(request: NextRequest) {
       }
       default:
         return NextResponse.json(
-          { code: 'IDENTITY_REQUEST_INVALID', title: 'Identity request is invalid.' },
+          {
+            code: 'IDENTITY_REQUEST_INVALID',
+            title: 'Identity request is invalid.',
+          },
           { status: 400 }
         );
     }
   } catch (error) {
-    if (error instanceof InvalidRequestError || error instanceof SyntaxError) {
+    if (error instanceof InvalidRequestError || error instanceof InvalidRequestJson) {
       return NextResponse.json(
-        { code: 'IDENTITY_REQUEST_INVALID', title: 'Identity request is invalid.' },
+        {
+          code: 'IDENTITY_REQUEST_INVALID',
+          title: 'Identity request is invalid.',
+        },
         { status: 400 }
       );
     }
+    logServerFailure('web.identity.registration.command_failed', error);
     if (error instanceof ResponseError) {
       const problem = await safeRegistrationProblem(error);
-      return NextResponse.json(problem.body, { status: problem.status, headers: { 'Cache-Control': 'no-store' } });
+      return NextResponse.json(problem.body, {
+        status: problem.status,
+        headers: { 'Cache-Control': 'no-store' },
+      });
     }
     return NextResponse.json(
-      { code: 'IDENTITY_DEPENDENCY_UNAVAILABLE', title: 'Identity request could not be completed.' },
+      {
+        code: 'IDENTITY_DEPENDENCY_UNAVAILABLE',
+        title: 'Identity request could not be completed.',
+      },
       { status: 503, headers: { 'Cache-Control': 'no-store' } }
     );
   }
 }
 
-export const POST = (request: NextRequest) =>
-  withJourneyTrace('identity.registration', () => registrationPost(request));
+export const POST = withServerFailureBoundary('web.identity.registration.post_failed', (request: NextRequest) =>
+  withJourneyTrace('identity.registration', () => registrationPost(request))
+);

@@ -1,4 +1,5 @@
 import 'server-only';
+import { correlateFailureBody, logServerFailure, readServerResponse } from '@/lib/server-failure';
 
 // Implements: architecture/reference/components/conversation-core.md §3 Public Business Platform Contract
 // Constitutional basis: C-026 (Tenant Isolation), C-059 (Implementation Traceability), C-063 (Data Minimisation)
@@ -22,19 +23,33 @@ export function createCanonicalConversationApi(accessToken: string): SharedConve
 }
 
 export async function conversationProblem(error: unknown): Promise<{ status: number; body: unknown }> {
+  const correlationId = logServerFailure('web.conversation.request_failed', error);
   if (error instanceof ResponseError || error instanceof CandidateResponseError) {
-    const body = await error.response.json().catch(() => undefined);
+    const body = await readServerResponse(error.response, 'web.api.conversation.response_invalid', undefined);
     return {
       status: error.response.status,
-      body: body ?? {
-        code: 'CONVERSATION_EXECUTION_UNAVAILABLE',
-        title: 'Conversation request could not be completed.',
-      },
+      body:
+        error.response.status >= 500
+          ? correlateFailureBody(
+              body ?? {
+                code: 'CONVERSATION_EXECUTION_UNAVAILABLE',
+                title: 'Conversation request could not be completed.',
+              },
+              correlationId
+            )
+          : (body ?? {
+              code: 'CONVERSATION_EXECUTION_UNAVAILABLE',
+              title: 'Conversation request could not be completed.',
+            }),
     };
   }
   return {
     status: 503,
-    body: { code: 'CONVERSATION_EXECUTION_UNAVAILABLE', title: 'Conversation request could not be completed.' },
+    body: {
+      code: 'CONVERSATION_EXECUTION_UNAVAILABLE',
+      title: 'Conversation request could not be completed.',
+      correlationId,
+    },
   };
 }
 

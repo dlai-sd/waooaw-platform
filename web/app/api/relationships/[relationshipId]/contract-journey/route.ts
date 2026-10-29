@@ -1,3 +1,5 @@
+import { readServerResponse } from '@/lib/server-failure';
+import { withServerFailureBoundary, readRequestJson } from '@/lib/server-failure-boundary';
 import { type NextRequest, NextResponse } from 'next/server';
 import { accessTokenFromRequest } from '@/lib/server-auth';
 
@@ -6,7 +8,7 @@ const billingEngineUrl = process.env.BILLING_ENGINE_URL ?? 'http://localhost:814
 const scopeConfirmation = 'I_CONFIRM_THE_ACCEPTED_DECISION_SPACE_AND_AUTHORITY_SCOPE';
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
+async function GETHandler(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return NextResponse.json({ title: 'Secure sign in is required.' }, { status: 401 });
   const checkoutIntentId = request.nextUrl.searchParams.get('checkoutIntentId');
@@ -17,15 +19,25 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     `${businessPlatformUrl}/api/v1/employment/relationships/${encodeURIComponent(relationshipId)}/checkout-intents/${encodeURIComponent(checkoutIntentId)}`,
     { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' }
   );
-  const result = await response.json().catch(() => ({ title: 'Checkout reconciliation remains unresolved.' }));
-  return NextResponse.json(result, { status: response.status, headers: { 'Cache-Control': 'no-store' } });
+  const result = await readServerResponse(
+    response,
+    'web.relationships.relationshipid.contract.journey.response_invalid',
+    { title: 'Checkout reconciliation remains unresolved.' }
+  );
+  return NextResponse.json(result, {
+    status: response.status,
+    headers: { 'Cache-Control': 'no-store' },
+  });
 }
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
+async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return NextResponse.json({ title: 'Secure sign in is required.' }, { status: 401 });
   const { relationshipId } = await params;
-  const body = await request.json();
+  const parsed = await readRequestJson(request);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+    return NextResponse.json({ title: 'Contract request is invalid.' }, { status: 400 });
+  const body = parsed as Record<string, unknown>;
   if (body.action === 'confirm') {
     if (
       typeof body.checkoutIntentId !== 'string' ||
@@ -52,7 +64,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         cache: 'no-store',
       }
     );
-    const confirmationResult = await confirmation.json().catch(() => ({ title: 'Payment confirmation failed.' }));
+    const confirmationResult = await readServerResponse(
+      confirmation,
+      'web.relationships.relationshipid.contract.journey.response_invalid',
+      { title: 'Payment confirmation failed.' }
+    );
     if (!confirmation.ok) {
       return NextResponse.json(confirmationResult, {
         status: confirmation.status,
@@ -61,15 +77,25 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
     const reconciliation = await fetch(
       `${businessPlatformUrl}/api/v1/employment/relationships/${encodeURIComponent(relationshipId)}/checkout-intents/${encodeURIComponent(body.checkoutIntentId)}`,
-      { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' }
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: 'no-store',
+      }
     );
-    const result = await reconciliation.json().catch(() => ({ title: 'Payment reconciliation remains unresolved.' }));
+    const result = await readServerResponse(
+      reconciliation,
+      'web.relationships.relationshipid.contract.journey.response_invalid',
+      { title: 'Payment reconciliation remains unresolved.' }
+    );
     return NextResponse.json(result, {
       status: reconciliation.status,
       headers: { 'Cache-Control': 'no-store' },
     });
   }
-  if (body.action !== 'activate' && (!Number.isInteger(body.version) || body.version < 1))
+  if (
+    body.action !== 'activate' &&
+    (typeof body.version !== 'number' || !Number.isInteger(body.version) || body.version < 1)
+  )
     return NextResponse.json({ title: 'Contract request is invalid.' }, { status: 400 });
   const relationshipRoot = `${businessPlatformUrl}/api/v1/employment/relationships/${encodeURIComponent(relationshipId)}`;
   const contractRoot = `${relationshipRoot}/contracts/${encodeURIComponent(String(body.version))}`;
@@ -105,5 +131,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     cache: 'no-store',
   });
   const result = await response.json();
-  return NextResponse.json(result, { status: response.status, headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json(result, {
+    status: response.status,
+    headers: { 'Cache-Control': 'no-store' },
+  });
 }
+
+export const GET = withServerFailureBoundary(
+  'web.relationships.relationshipid.contract.journey.get_failed',
+  GETHandler
+);
+export const POST = withServerFailureBoundary(
+  'web.relationships.relationshipid.contract.journey.post_failed',
+  POSTHandler
+);

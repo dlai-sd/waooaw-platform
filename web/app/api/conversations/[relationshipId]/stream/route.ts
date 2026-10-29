@@ -1,3 +1,5 @@
+import { logServerFailure } from '@/lib/server-failure';
+import { withServerFailureBoundary } from '@/lib/server-failure-boundary';
 // Implements: architecture/reference/components/conversation-core.md §3.3 Stream
 // Constitutional basis: C-026 (Tenant Isolation), C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
@@ -15,16 +17,25 @@ function streamProblem(status: number) {
     };
   }
   if (status === 423) {
-    return { code: 'CONVERSATION_STOPPED', title: 'Conversation execution is stopped.' };
+    return {
+      code: 'CONVERSATION_STOPPED',
+      title: 'Conversation execution is stopped.',
+    };
   }
-  return { code: 'CONVERSATION_EXECUTION_UNAVAILABLE', title: 'Conversation stream is unavailable.' };
+  return {
+    code: 'CONVERSATION_EXECUTION_UNAVAILABLE',
+    title: 'Conversation stream is unavailable.',
+  };
 }
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
+async function GETHandler(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) {
     return NextResponse.json(
-      { code: 'CONVERSATION_SESSION_REQUIRED', title: 'Secure sign in is required.' },
+      {
+        code: 'CONVERSATION_SESSION_REQUIRED',
+        title: 'Secure sign in is required.',
+      },
       { status: 401 }
     );
   }
@@ -39,7 +50,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     );
     if (!upstream.ok || !upstream.body) {
       const status = upstream.status >= 400 && upstream.status < 600 ? upstream.status : 503;
-      return NextResponse.json(streamProblem(status), { status, headers: { 'Cache-Control': 'no-store' } });
+      return NextResponse.json(streamProblem(status), {
+        status,
+        headers: { 'Cache-Control': 'no-store' },
+      });
     }
 
     return new Response(upstream.body, {
@@ -51,10 +65,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         'X-Accel-Buffering': 'no',
       },
     });
-  } catch {
+  } catch (error) {
+    logServerFailure('web.conversations.relationshipid.stream.request_failed', error);
     return NextResponse.json(
-      { code: 'CONVERSATION_EXECUTION_UNAVAILABLE', title: 'Conversation stream is unavailable.' },
+      {
+        code: 'CONVERSATION_EXECUTION_UNAVAILABLE',
+        title: 'Conversation stream is unavailable.',
+      },
       { status: 503, headers: { 'Cache-Control': 'no-store' } }
     );
   }
 }
+
+export const GET = withServerFailureBoundary('web.conversations.relationshipid.stream.get_failed', GETHandler);

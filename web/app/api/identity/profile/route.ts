@@ -1,11 +1,12 @@
+import { withServerFailureBoundary, readRequestJson } from '@/lib/server-failure-boundary';
 import { type NextRequest, NextResponse } from 'next/server';
 import { createIdentityApi, identityProblem } from '@/lib/api/identity';
 import { accessTokenFromRequest } from '@/lib/server-auth';
 
-export async function PUT(request: NextRequest) {
+async function PUTHandler(request: NextRequest) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return NextResponse.json({ title: 'Secure sign in is required.' }, { status: 401 });
-  const body = (await request.json()) as {
+  const body = (await readRequestJson(request)) as {
     displayName?: string;
     organizationDisplayName?: string;
     idempotencyKey?: string;
@@ -25,9 +26,16 @@ export async function PUT(request: NextRequest) {
       },
       { cache: 'no-store' }
     );
-    return NextResponse.json(profile, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json(profile, {
+      headers: { 'Cache-Control': 'no-store' },
+    });
   } catch (error) {
     const problem = await identityProblem(error);
-    return NextResponse.json(problem.body, { status: problem.status, headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json(problem.body, {
+      status: problem.status,
+      headers: { 'Cache-Control': 'no-store' },
+    });
   }
 }
+
+export const PUT = withServerFailureBoundary('web.identity.profile.put_failed', PUTHandler);

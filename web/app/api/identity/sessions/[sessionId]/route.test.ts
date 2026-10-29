@@ -71,6 +71,7 @@ describe('Web-owned single-session route', () => {
     expect(await response.json()).toEqual({
       code: 'SESSION_STORE_UNAVAILABLE',
       title: 'Session revocation could not be confirmed.',
+      correlationId: response.headers.get('x-correlation-id'),
     });
   });
 });

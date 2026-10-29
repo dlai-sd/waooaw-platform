@@ -1,3 +1,4 @@
+import { logServerFailure } from '@/lib/server-failure';
 // Implements: work-contracts/WC-078-public-acquisition-experience-plan.md §Destination And Environment Matrix
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
@@ -10,7 +11,10 @@ export type AcquisitionEvent = Record<string, unknown> & {
 };
 
 type Destination = 'ga4' | 'serverGtm' | 'meta';
-export type DestinationResult = { destination: Destination; result: 'DISABLED' | 'DELIVERED' | 'FAILED' };
+export type DestinationResult = {
+  destination: Destination;
+  result: 'DISABLED' | 'DELIVERED' | 'FAILED';
+};
 type MarketingEnvironment = Readonly<Record<string, string | undefined>>;
 
 function enabled(value: string | undefined): boolean {
@@ -28,7 +32,8 @@ function approvedGtmEndpoint(environment: MarketingEnvironment): string | undefi
         .filter(Boolean)
     );
     return endpoint.protocol === 'https:' && hosts.has(endpoint.hostname) ? endpoint.toString() : undefined;
-  } catch {
+  } catch (error) {
+    logServerFailure('web.marketing.endpoint_configuration_invalid', error);
     return undefined;
   }
 }
@@ -36,8 +41,14 @@ function approvedGtmEndpoint(environment: MarketingEnvironment): string | undefi
 async function deliver(destination: Destination, request: () => Promise<Response>): Promise<DestinationResult> {
   try {
     const response = await request();
+    if (!response.ok) {
+      logServerFailure('web.marketing.delivery_rejected', new Error('Marketing delivery failed'), {
+        status: response.status,
+      });
+    }
     return { destination, result: response.ok ? 'DELIVERED' : 'FAILED' };
-  } catch {
+  } catch (error) {
+    logServerFailure('web.marketing.delivery_failed', error);
     return { destination, result: 'FAILED' };
   }
 }
@@ -80,7 +91,10 @@ export async function dispatchAcquisitionEvent(
       deliver('serverGtm', () =>
         fetcher(gtmEndpoint, {
           method: 'POST',
-          headers: { Authorization: `Bearer ${environment.SERVER_GTM_AUTH_TOKEN}`, 'Content-Type': 'application/json' },
+          headers: {
+            Authorization: `Bearer ${environment.SERVER_GTM_AUTH_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
           body: JSON.stringify(event),
           signal: AbortSignal.timeout(2_000),
         })

@@ -1,3 +1,4 @@
+import { logServerFailure } from '@/lib/server-failure';
 // Implements: architecture/reference/ux/hybrid-application-shell.md §Navigation Contract
 // Constitutional basis: C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
@@ -104,7 +105,8 @@ export default async function ProfilePage() {
         </div>
       </section>
     );
-  } catch {
+  } catch (error) {
+    logServerFailure('web.portal.profile.request_failed', error);
     return (
       <StateView
         actionHref="/home"

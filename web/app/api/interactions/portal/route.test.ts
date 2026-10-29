@@ -6,7 +6,10 @@ import { accessTokenFromRequest } from '@/lib/server-auth';
 import { conversationProblem, createConversationApi } from '@/lib/api/conversation';
 
 jest.mock('@/lib/server-auth', () => ({ accessTokenFromRequest: jest.fn() }));
-jest.mock('@/lib/api/conversation', () => ({ createConversationApi: jest.fn(), conversationProblem: jest.fn() }));
+jest.mock('@/lib/api/conversation', () => ({
+  createConversationApi: jest.fn(),
+  conversationProblem: jest.fn(),
+}));
 
 const mockAccessToken = jest.mocked(accessTokenFromRequest);
 const mockCreateApi = jest.mocked(createConversationApi);
@@ -64,9 +67,11 @@ describe('portal interaction boundary', () => {
     expect(mockCreateApi).not.toHaveBeenCalled();
   });
 
-  it('preserves the downstream problem code and correlation ID', async () => {
+  it('preserves the downstream problem code and binds the logged web correlation ID', async () => {
     const downstream = new Error('synthetic downstream failure');
-    mockCreateApi.mockReturnValue({ listPortalInteractionMessages: jest.fn().mockRejectedValue(downstream) } as never);
+    mockCreateApi.mockReturnValue({
+      listPortalInteractionMessages: jest.fn().mockRejectedValue(downstream),
+    } as never);
     mockConversationProblem.mockResolvedValue({
       status: 503,
       body: {
@@ -80,7 +85,7 @@ describe('portal interaction boundary', () => {
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toEqual({
       code: 'IDENTITY_DEPENDENCY_UNAVAILABLE',
-      correlationId: 'd8f914cf-f258-46f3-a41a-e345d489862a',
+      correlationId: response.headers.get('x-correlation-id'),
     });
     expect(mockConversationProblem).toHaveBeenCalledWith(downstream);
   });

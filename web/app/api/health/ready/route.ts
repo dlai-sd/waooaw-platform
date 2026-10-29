@@ -1,3 +1,5 @@
+import { logServerFailure } from '@/lib/server-failure';
+import { withServerFailureBoundary } from '@/lib/server-failure-boundary';
 import { NextResponse } from 'next/server';
 import { authAbuseLimiterStatus } from '@/lib/auth-abuse-limiter';
 import { serverSessionMode } from '@/lib/server-session-mode';
@@ -11,7 +13,7 @@ async function dependencyReady(url: string, timeoutMs: number): Promise<boolean>
   return response.ok;
 }
 
-export async function GET() {
+async function GETHandler() {
   try {
     const issuer = process.env.KEYCLOAK_ISSUER;
     const readinessIssuer = process.env.KEYCLOAK_READINESS_ISSUER;
@@ -46,7 +48,13 @@ export async function GET() {
       return NextResponse.json(
         {
           code: 'REVISION_NOT_READY',
-          dependencies: { identity, membership, transactionStore, sessionStore, limiter },
+          dependencies: {
+            identity,
+            membership,
+            transactionStore,
+            sessionStore,
+            limiter,
+          },
         },
         {
           status: 503,
@@ -61,7 +69,10 @@ export async function GET() {
       status: 204,
       headers: { 'Cache-Control': 'no-store' },
     });
-  } catch {
+  } catch (error) {
+    logServerFailure('web.health.ready.request_failed', error);
     return NextResponse.json({ code: 'REVISION_NOT_READY' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
   }
 }
+
+export const GET = withServerFailureBoundary('web.health.ready.get_failed', GETHandler);

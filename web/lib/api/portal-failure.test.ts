@@ -20,11 +20,12 @@ describe('portal failure diagnostics', () => {
       reasonCode: 'SERVICE_UNAVAILABLE',
       statusClass: '5xx',
     });
-    expect(console.error).toHaveBeenCalledWith('Portal projection failed.', {
+    expect(JSON.parse(jest.mocked(console.error).mock.calls.at(-1)?.[0])).toEqual({
+      event: 'web.portal.projection_failed',
       correlationId: 'abc-123',
-      reasonCode: 'SERVICE_UNAVAILABLE',
-      statusClass: '5xx',
+      status: 503,
       surface: 'MARKETPLACE',
+      error: { type: 'ResponseError', status: 503 },
     });
     expect(JSON.stringify(jest.mocked(console.error).mock.calls)).not.toContain('private detail');
   });

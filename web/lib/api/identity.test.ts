@@ -22,12 +22,19 @@ const session = {
 };
 
 describe('identity provider projection', () => {
-  beforeEach(() => jest.spyOn(console, 'warn').mockImplementation(() => undefined));
+  beforeEach(() => jest.spyOn(console, 'error').mockImplementation(() => undefined));
   afterEach(() => jest.restoreAllMocks());
 
   it('returns the Business Platform readiness projection', async () => {
     const projection = jest.spyOn(IdentityApi.prototype, 'listIdentityProviders').mockResolvedValue({
-      providers: [{ id: 'GOOGLE', displayName: 'Google', authenticationPath: 'GOOGLE', availability: 'AVAILABLE' }],
+      providers: [
+        {
+          id: 'GOOGLE',
+          displayName: 'Google',
+          authenticationPath: 'GOOGLE',
+          availability: 'AVAILABLE',
+        },
+      ],
     });
 
     await expect(listIdentityProviders()).resolves.toEqual([
@@ -46,7 +53,7 @@ describe('identity provider projection', () => {
     expect(projection).toHaveBeenCalledTimes(2);
     expect(providers).toHaveLength(4);
     expect(providers.every((provider) => provider.availability === 'UNAVAILABLE')).toBe(true);
-    expect(console.warn).toHaveBeenCalledTimes(2);
+    expect(console.error).toHaveBeenCalledTimes(2);
   });
 
   it('recovers when the provider projection becomes available after a transient failure', async () => {
@@ -55,8 +62,18 @@ describe('identity provider projection', () => {
       .mockRejectedValueOnce(new Error('cold start'))
       .mockResolvedValueOnce({
         providers: [
-          { id: 'GOOGLE', displayName: 'Google', authenticationPath: 'GOOGLE', availability: 'AVAILABLE' },
-          { id: 'FACEBOOK', displayName: 'Facebook', authenticationPath: 'META', availability: 'AVAILABLE' },
+          {
+            id: 'GOOGLE',
+            displayName: 'Google',
+            authenticationPath: 'GOOGLE',
+            availability: 'AVAILABLE',
+          },
+          {
+            id: 'FACEBOOK',
+            displayName: 'Facebook',
+            authenticationPath: 'META',
+            availability: 'AVAILABLE',
+          },
         ],
       });
 
@@ -70,7 +87,10 @@ describe('identity provider projection', () => {
   it('returns the current BP-owned session projection without caching', async () => {
     const projection = jest.spyOn(IdentityApi.prototype, 'getIdentitySession').mockResolvedValue(session);
 
-    await expect(getIdentitySession('access-token')).resolves.toEqual({ kind: 'ready', session });
+    await expect(getIdentitySession('access-token')).resolves.toEqual({
+      kind: 'ready',
+      session,
+    });
     expect(projection).toHaveBeenCalledWith({ cache: 'no-store' });
   });
 
@@ -82,7 +102,10 @@ describe('identity provider projection', () => {
       .spyOn(IdentityApi.prototype, 'getIdentitySession')
       .mockRejectedValue(new ResponseError({ status } as Response));
 
-    await expect(getIdentitySession('access-token')).resolves.toEqual({ kind });
+    await expect(getIdentitySession('access-token')).resolves.toEqual({
+      kind,
+      ...(status >= 500 ? { correlationId: expect.any(String) } : {}),
+    });
   });
 
   it.each([
@@ -95,7 +118,10 @@ describe('identity provider projection', () => {
       new ResponseError({
         status: 403,
         clone: () => ({
-          json: async () => ({ code, correlationId: 'd8f914cf-f258-46f3-a41a-e345d489862a' }),
+          json: async () => ({
+            code,
+            correlationId: 'd8f914cf-f258-46f3-a41a-e345d489862a',
+          }),
         }),
       } as Response)
     );
@@ -127,11 +153,15 @@ describe('identity provider projection', () => {
     jest.spyOn(IdentityApi.prototype, 'getIdentitySession').mockRejectedValue(
       new ResponseError({
         status: 409,
-        clone: () => ({ json: async () => ({ code: 'REGISTRATION_REQUIRED' }) }),
+        clone: () => ({
+          json: async () => ({ code: 'REGISTRATION_REQUIRED' }),
+        }),
       } as Response)
     );
 
-    await expect(getIdentitySession('access-token')).resolves.toEqual({ kind: 'registration-required' });
+    await expect(getIdentitySession('access-token')).resolves.toEqual({
+      kind: 'registration-required',
+    });
   });
 
   it('does not treat an expired projection as an active session', async () => {
@@ -140,6 +170,8 @@ describe('identity provider projection', () => {
       expiresAt: new Date('2020-01-01T00:00:00Z'),
     });
 
-    await expect(getIdentitySession('access-token')).resolves.toEqual({ kind: 'expired' });
+    await expect(getIdentitySession('access-token')).resolves.toEqual({
+      kind: 'expired',
+    });
   });
 });

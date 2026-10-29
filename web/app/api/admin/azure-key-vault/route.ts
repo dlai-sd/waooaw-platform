@@ -1,3 +1,4 @@
+import { withServerFailureBoundary, readRequestJson } from '@/lib/server-failure-boundary';
 import { type NextRequest, NextResponse } from 'next/server';
 import {
   isAuthorizedAzureVaultToken,
@@ -39,7 +40,7 @@ function withinWriteLimit(subject: string, now = Date.now()): boolean {
   return true;
 }
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   if (!sameOrigin(request)) {
     return NextResponse.json({ title: 'Request origin is not permitted.' }, { status: 403 });
   }
@@ -56,7 +57,9 @@ export async function POST(request: NextRequest) {
   if (!azureAccessToken || !isAuthorizedAzureVaultToken(azureAccessToken, target)) {
     return NextResponse.json({ title: 'Sign in to Azure with the authorized administrator account.' }, { status: 403 });
   }
-  const body = (await request.json().catch(() => undefined)) as { name?: unknown; value?: unknown } | undefined;
+  const body = (await readRequestJson(request).catch(() => undefined)) as
+    | { name?: unknown; value?: unknown }
+    | undefined;
   const name = typeof body?.name === 'string' ? body.name.trim() : '';
   const value = typeof body?.value === 'string' ? body.value : '';
   if (!isValidSecretName(name) || value.length < 1 || value.length > MAX_SECRET_VALUE_LENGTH) {
@@ -83,7 +86,9 @@ export async function POST(request: NextRequest) {
   });
   if (!response.ok) {
     return NextResponse.json(
-      { title: response.status === 403 ? 'Azure denied this write.' : 'Azure Key Vault could not save the secret.' },
+      {
+        title: response.status === 403 ? 'Azure denied this write.' : 'Azure Key Vault could not save the secret.',
+      },
       { status: response.status === 403 ? 403 : 502 }
     );
   }
@@ -92,3 +97,5 @@ export async function POST(request: NextRequest) {
     { headers: { 'Cache-Control': 'no-store' } }
   );
 }
+
+export const POST = withServerFailureBoundary('web.admin.azure.key.vault.post_failed', POSTHandler);

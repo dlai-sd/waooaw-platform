@@ -1,3 +1,5 @@
+import { readServerResponse, logServerFailure } from '@/lib/server-failure';
+import { withServerFailureBoundary, readRequestJson } from '@/lib/server-failure-boundary';
 // Implements: WC-096 §4.3 Marketplace And Disclosure
 // Constitutional basis: C-023 (Evidence First), C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
@@ -27,7 +29,7 @@ async function continueTrial(request: NextRequest) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return NextResponse.json({ title: 'Secure sign in is required.' }, { status: 401 });
 
-  const body = (await request.json()) as AcquisitionCommand;
+  const body = (await readRequestJson(request)) as AcquisitionCommand;
   if (
     !body.professionalType ||
     !/^[A-Z][A-Z0-9_]{0,63}$/.test(body.professionalType) ||
@@ -54,7 +56,9 @@ async function continueTrial(request: NextRequest) {
     acceptance: body.contractAcceptance,
   });
   if (!persisted.ok) {
-    const payload = await persisted.json().catch(() => ({ title: 'Acquisition intent could not be saved.' }));
+    const payload = await readServerResponse(persisted, 'web.acquisition.continue.response_invalid', {
+      title: 'Acquisition intent could not be saved.',
+    });
     return NextResponse.json(payload, {
       status: persisted.status,
       headers: { 'Cache-Control': 'no-store' },
@@ -64,7 +68,10 @@ async function continueTrial(request: NextRequest) {
   const identity = await getIdentitySession(accessToken);
   if (identity.kind === 'registration-required') {
     return NextResponse.json(
-      { code: 'REGISTRATION_REQUIRED', title: 'Complete registration before starting a professional.' },
+      {
+        code: 'REGISTRATION_REQUIRED',
+        title: 'Complete registration before starting a professional.',
+      },
       { status: 409, headers: { 'Cache-Control': 'no-store' } }
     );
   }
@@ -115,9 +122,15 @@ async function continueTrial(request: NextRequest) {
     });
     return response;
   } catch (error) {
+    logServerFailure('web.acquisition.continue.request_failed', error);
     if (error instanceof ResponseError) {
-      const payload = await error.response.json().catch(() => ({ title: 'Acquisition could not continue.' }));
-      return NextResponse.json(payload, { status: error.response.status, headers: { 'Cache-Control': 'no-store' } });
+      const payload = await readServerResponse(error.response, 'web.acquisition.continue.response_invalid', {
+        title: 'Acquisition could not continue.',
+      });
+      return NextResponse.json(payload, {
+        status: error.response.status,
+        headers: { 'Cache-Control': 'no-store' },
+      });
     }
     return NextResponse.json(
       { title: 'Acquisition could not continue.' },
@@ -126,4 +139,6 @@ async function continueTrial(request: NextRequest) {
   }
 }
 
-export const POST = (request: NextRequest) => withJourneyTrace('trial.continue', () => continueTrial(request));
+export const POST = withServerFailureBoundary('web.acquisition.continue.post_failed', (request: NextRequest) =>
+  withJourneyTrace('trial.continue', () => continueTrial(request))
+);

@@ -1,3 +1,5 @@
+import { readServerResponse, logServerFailure } from '@/lib/server-failure';
+import { withServerFailureBoundary, readRequestJson } from '@/lib/server-failure-boundary';
 import { type NextRequest, NextResponse } from 'next/server';
 import { getIdentitySession } from '@/lib/api/identity';
 import { getProfessionalDisclosure } from '@/lib/api/professionals';
@@ -5,7 +7,7 @@ import { accessTokenFromRequest } from '@/lib/server-auth';
 
 const versionPattern = /^\d+\.\d+\.\d+$/;
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return NextResponse.json({ title: 'Secure sign in is required.' }, { status: 401 });
   const identity = await getIdentitySession(accessToken);
@@ -13,7 +15,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ title: 'Complete registration before hiring a professional.' }, { status: 409 });
   }
 
-  const body = (await request.json()) as {
+  const body = (await readRequestJson(request)) as {
     professionalType?: string;
     professionalVersion?: string;
     couponCode?: string;
@@ -50,12 +52,17 @@ export async function POST(request: NextRequest) {
       }),
       cache: 'no-store',
     });
-    const result = await response.json().catch(() => ({ title: 'Hire commercial preview is unavailable.' }));
+    const result = await readServerResponse(response, 'web.acquisition.hire.preview.response_invalid', {
+      title: 'Hire commercial preview is unavailable.',
+    });
     return NextResponse.json(result, {
       status: response.status,
       headers: { 'Cache-Control': 'no-store' },
     });
-  } catch {
+  } catch (error) {
+    logServerFailure('web.acquisition.hire.preview.request_failed', error);
     return NextResponse.json({ title: 'Hire commercial preview is unavailable.' }, { status: 503 });
   }
 }
+
+export const POST = withServerFailureBoundary('web.acquisition.hire.preview.post_failed', POSTHandler);

@@ -1,8 +1,10 @@
+import { logServerFailure } from '@/lib/server-failure';
+import { withServerFailureBoundary } from '@/lib/server-failure-boundary';
 import { type NextRequest, NextResponse } from 'next/server';
 import { sessionTokenFromRequest } from '@/lib/server-auth';
 import { revokeOneSession } from '@/lib/web-session-store';
 
-export async function DELETE(request: NextRequest, context: { params: Promise<{ sessionId: string }> }) {
+async function DELETEHandler(request: NextRequest, context: { params: Promise<{ sessionId: string }> }) {
   const token = await sessionTokenFromRequest(request);
   if (!token)
     return NextResponse.json(
@@ -20,7 +22,8 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
         { status: 404, headers: { 'Cache-Control': 'no-store' } }
       );
     return NextResponse.json({ scope: 'ONE', revokedCount }, { headers: { 'Cache-Control': 'no-store' } });
-  } catch {
+  } catch (error) {
+    logServerFailure('web.identity.sessions.sessionid.request_failed', error);
     return NextResponse.json(
       {
         code: 'SESSION_STORE_UNAVAILABLE',
@@ -30,3 +33,5 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     );
   }
 }
+
+export const DELETE = withServerFailureBoundary('web.identity.sessions.sessionid.delete_failed', DELETEHandler);

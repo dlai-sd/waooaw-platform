@@ -1,3 +1,4 @@
+import { logServerFailure } from '@/lib/server-failure';
 // Implements: WC-096 §4.3 Marketplace And Disclosure
 // Constitutional basis: C-002 (Evidence Integrity), C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
@@ -13,7 +14,11 @@ import { breadcrumbData, publicMetadata } from '@/lib/public-seo';
 type AcquisitionIntent = 'trial' | 'hire';
 type ProfessionalPageProps = {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ professionalType?: string; version?: string; intent?: string }>;
+  searchParams?: Promise<{
+    professionalType?: string;
+    version?: string;
+    intent?: string;
+  }>;
 };
 
 export const dynamicParams = false;
@@ -46,7 +51,10 @@ export default async function ProfessionalPage({ params, searchParams }: Profess
     notFound();
 
   const disclosure = hasAcquisitionQuery
-    ? await getProfessionalDisclosure(requestedProfessionalType ?? '').catch(() => undefined)
+    ? await getProfessionalDisclosure(requestedProfessionalType ?? '').catch((error) => {
+        logServerFailure('web.public.professionals.slug.load_failed', error);
+        return undefined;
+      })
     : undefined;
   if (
     hasAcquisitionQuery &&

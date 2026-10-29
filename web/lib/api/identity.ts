@@ -1,4 +1,5 @@
 import 'server-only';
+import { correlateFailureBody, readServerResponse, logServerFailure } from '@/lib/server-failure';
 
 // Implements: architecture/reference/components/identity-boundary.md §7 Canonical Public API
 // Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R013, WC105-R017
@@ -33,24 +34,29 @@ type IdentityProblem = { code?: unknown; correlationId?: unknown };
 
 async function readIdentityProblem(response: Response): Promise<IdentityProblem | undefined> {
   if (typeof response.clone !== 'function') return undefined;
-  return (await response
-    .clone()
-    .json()
-    .catch(() => undefined)) as IdentityProblem | undefined;
+  return (await readServerResponse(response.clone(), 'web.api.identity.response_invalid', undefined)) as
+    | IdentityProblem
+    | undefined;
 }
 
 async function loadIdentitySession(accessToken: string): Promise<IdentitySessionResult> {
   try {
-    const session = await createIdentityApi(accessToken).getIdentitySession({ cache: 'no-store' });
+    const session = await createIdentityApi(accessToken).getIdentitySession({
+      cache: 'no-store',
+    });
     return session.expiresAt.getTime() > Date.now() ? { kind: 'ready', session } : { kind: 'expired' };
   } catch (error) {
+    const failureId = logServerFailure('web.identity.session_load_failed', error);
     if (error instanceof ResponseError) {
       if (error.response.status === 401) return { kind: 'unauthorized' };
       const problem = await readIdentityProblem(error.response);
       const correlationId = typeof problem?.correlationId === 'string' ? problem.correlationId : undefined;
       if (error.response.status === 403) {
         if (problem?.code === 'IDENTITY_STEP_UP_REQUIRED') {
-          return { kind: 'step-up', ...(correlationId ? { correlationId } : {}) };
+          return {
+            kind: 'step-up',
+            ...(correlationId ? { correlationId } : {}),
+          };
         }
         return {
           kind: 'forbidden',
@@ -61,28 +67,36 @@ async function loadIdentitySession(accessToken: string): Promise<IdentitySession
       if (error.response.status === 409) {
         if (problem?.code === 'REGISTRATION_REQUIRED') return { kind: 'registration-required' };
       }
-      return { kind: 'unavailable', ...(correlationId ? { correlationId } : {}) };
+      return { kind: 'unavailable', correlationId: failureId };
     }
-    return { kind: 'unavailable' };
+    return { kind: 'unavailable', correlationId: failureId };
   }
 }
 
 export const getIdentitySession = cache(loadIdentitySession);
 
 export async function getCustomerProfile(accessToken: string): Promise<CustomerProfileV1> {
-  return createIdentityApi(accessToken).getCustomerProfile({ cache: 'no-store' });
+  return createIdentityApi(accessToken).getCustomerProfile({
+    cache: 'no-store',
+  });
 }
 
 export async function getCustomerSettings(accessToken: string): Promise<CustomerSettingsV1> {
-  return createIdentityApi(accessToken).getCustomerSettings({ cache: 'no-store' });
+  return createIdentityApi(accessToken).getCustomerSettings({
+    cache: 'no-store',
+  });
 }
 
 export async function getWorkspaceLayoutPreferences(accessToken: string): Promise<WorkspaceLayoutPreferencesV1> {
-  return createIdentityApi(accessToken).getWorkspaceLayoutPreferences({ cache: 'no-store' });
+  return createIdentityApi(accessToken).getWorkspaceLayoutPreferences({
+    cache: 'no-store',
+  });
 }
 
 export async function listCustomerLoginMethods(accessToken: string): Promise<CustomerLoginMethodCollectionV1> {
-  return createIdentityApi(accessToken).listCustomerLoginMethods({ cache: 'no-store' });
+  return createIdentityApi(accessToken).listCustomerLoginMethods({
+    cache: 'no-store',
+  });
 }
 
 const unavailableProviders: IdentityProvider[] = [
@@ -121,28 +135,46 @@ export async function listIdentityProviders(): Promise<IdentityProvider[]> {
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     try {
       const signal = typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(12_000) : undefined;
-      return (await api.listIdentityProviders({ cache: 'no-store', ...(signal ? { signal } : {}) })).providers;
+      return (
+        await api.listIdentityProviders({
+          cache: 'no-store',
+          ...(signal ? { signal } : {}),
+        })
+      ).providers;
     } catch (error) {
-      // biome-ignore lint/suspicious/noConsole: Provider readiness failures must remain observable until structured server logging is available.
-      console.warn('Identity provider readiness projection unavailable.', {
-        attempt,
-        error: error instanceof Error ? error.name : 'UnknownError',
-      });
+      logServerFailure('web.identity.providers_load_failed', error);
     }
   }
   return unavailableProviders;
 }
 
 export async function identityProblem(error: unknown): Promise<{ status: number; body: unknown }> {
+  const correlationId = logServerFailure('web.identity.request_failed', error);
   if (error instanceof ResponseError) {
-    const body = await error.response.json().catch(() => undefined);
+    const body = await readServerResponse(error.response, 'web.api.identity.response_invalid', undefined);
     return {
       status: error.response.status,
-      body: body ?? { code: 'IDENTITY_DEPENDENCY_UNAVAILABLE', title: 'Identity request could not be completed.' },
+      body:
+        error.response.status >= 500
+          ? correlateFailureBody(
+              body ?? {
+                code: 'IDENTITY_DEPENDENCY_UNAVAILABLE',
+                title: 'Identity request could not be completed.',
+              },
+              correlationId
+            )
+          : (body ?? {
+              code: 'IDENTITY_DEPENDENCY_UNAVAILABLE',
+              title: 'Identity request could not be completed.',
+            }),
     };
   }
   return {
     status: 503,
-    body: { code: 'IDENTITY_DEPENDENCY_UNAVAILABLE', title: 'Identity request could not be completed.' },
+    body: {
+      code: 'IDENTITY_DEPENDENCY_UNAVAILABLE',
+      title: 'Identity request could not be completed.',
+      correlationId,
+    },
   };
 }

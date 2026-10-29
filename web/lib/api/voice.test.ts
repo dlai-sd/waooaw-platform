@@ -18,7 +18,11 @@ describe('voice generated client wrapper', () => {
     });
     expect(await voiceProblem(new Error('secret'))).toEqual({
       status: 503,
-      body: { code: 'VOICE_UNAVAILABLE', title: 'Voice contribution could not be completed.' },
+      body: {
+        code: 'VOICE_UNAVAILABLE',
+        title: 'Voice contribution could not be completed.',
+        correlationId: expect.any(String),
+      },
     });
   });
 });

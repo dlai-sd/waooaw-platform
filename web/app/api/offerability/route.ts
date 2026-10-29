@@ -1,3 +1,5 @@
+import { logServerFailure, readServerResponse } from '@/lib/server-failure';
+import { withServerFailureBoundary, readRequestJson } from '@/lib/server-failure-boundary';
 // Implements: WC-065 WC065-05 generated BP-only Founder experience
 // Constitutional basis: C-023, C-059, C-063
 
@@ -15,10 +17,10 @@ type OfferabilityCommand = {
   proposedPricePaise?: number;
 };
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return NextResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 });
-  const body = (await request.json()) as OfferabilityCommand;
+  const body = (await readRequestJson(request)) as OfferabilityCommand;
   if (
     !body.idempotencyKey ||
     !body.relationshipId ||
@@ -30,7 +32,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ code: 'OFFERABILITY_REQUEST_INVALID' }, { status: 400 });
   }
   const api = new EmploymentApi(
-    new Configuration({ basePath: process.env.BUSINESS_PLATFORM_URL ?? 'http://localhost:5001', accessToken })
+    new Configuration({
+      basePath: process.env.BUSINESS_PLATFORM_URL ?? 'http://localhost:5001',
+      accessToken,
+    })
   );
   try {
     const decision = await api.evaluateRelationshipOfferability({
@@ -47,10 +52,15 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json(decision);
   } catch (error) {
+    logServerFailure('web.offerability.request_failed', error);
     if (error instanceof ResponseError) {
-      const payload = await error.response.json().catch(() => ({ code: 'OFFERABILITY_RESPONSE_UNREADABLE' }));
+      const payload = await readServerResponse(error.response, 'web.offerability.response_invalid', {
+        code: 'OFFERABILITY_RESPONSE_UNREADABLE',
+      });
       return NextResponse.json(payload, { status: error.response.status });
     }
     return NextResponse.json({ code: 'OFFERABILITY_UNAVAILABLE' }, { status: 503 });
   }
 }
+
+export const POST = withServerFailureBoundary('web.offerability.post_failed', POSTHandler);
