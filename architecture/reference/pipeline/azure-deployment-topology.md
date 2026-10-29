@@ -155,6 +155,7 @@ The following are pinned platform dependencies, not additional release members:
 | `goal006_activation_readiness.py` | Post-activation revision readiness gate | Fails the deployment unless every latest revision is `Running`/`Healthy` and is the latest ready revision; writes `wc124-activation-readiness.json` |
 | `goal006_demo_revision_cleanup.py` | Demo obsolete-revision retirement after readiness | Read-only by default; deployment apply refuses traffic splits/labels, retains the healthy serving revision, verifies inactive/zero replicas, and records `demo-revision-cleanup.json` |
 | `application-lifecycle.yaml` / `goal006_application_lifecycle.py` | Separate Demo application Start/Stop | Standard graceful termination may interrupt unfinished work; DB excluded, UAT excluded, same deployment concurrency |
+| `goal006_activation_readiness.py --resume-stopped` | Resume operationally stopped apps in the authorized deployment phase | Demo/UAT only; PgBouncer before migrations, runtime dependencies after migration acceptance, applications after activation apply; default invocation remains read-only |
 | `goal006_capture_aca_execution.sh` / `goal006_aca_execution_evidence.py` | ACA Job execution capture | ARM `Succeeded` is authoritative when Log Analytics system events lag; `Failed`/`Stopped` keep the fail-closed 6-minute event window |
 | `wc124_init_chain_local.sh` / `wc124_billing_migration_local.sh` / `wc124_application_activation_local.sh` / `wc124_temporal_startup_local.sh` | Local pre-qualification of the init chain, database and activation stages | Replay the Demo contracts with the exact release digests before a cloud run |
 | `goal006_bind_demo_managed_certificates.sh` | Idempotent Demo TLS binding | Verifies all required custom domains reach `SniEnabled` |
@@ -206,6 +207,19 @@ principal that can read state does not automatically have deployment authority, 
 principal does not automatically have state data-plane access.
 
 ### End-to-end execution sequence
+
+Operational Stop persists independently of Terraform replica settings. Run `40803223614` failed
+because scheduled Stop left PgBouncer stopped even though its template still had `minReplicas=1`.
+After the migration-dependency apply, deployment explicitly resumes PgBouncer and requires a
+healthy latest revision with a replica before running migrations. The private ACA preflight uses
+an execution-only override on the existing Billing migration job: the same digest-pinned image,
+managed identity and versioned database secret run an authenticated, read-only `SELECT 1` as
+`billing_migrator` against `waooaw_application`. A TCP socket handshake is diagnostic only and
+cannot satisfy that gate. The persistent job template and credentials are not changed.
+Runtime dependencies and applications are resumed only after their respective activation applies;
+the revision gate also requires app-level `runningStatus=Running`, not stale healthy metadata.
+Local qualification covers stop/resume and invalid credentials; live start/execute remains
+separately authorized.
 
 The GitHub UI may materialize downstream jobs as `queued` before their dependencies complete.
 `needs` still enforces the order below. A queued job with no runner and no steps normally has not

@@ -136,6 +136,52 @@ fi
 test "$(run_az extension show --name containerapp --query version -o tsv)" = "$CONTAINERAPP_EXTENSION_VERSION"
 test "$(run_az account show --query id -o tsv)" = "00000000-0000-0000-0000-000000000006"
 complete_phase extension-readiness extension_readiness_seconds
+start_phase deployment-resume
+for app in pgbouncer auth-redis keycloak identity-edge temporal web business-platform billing-engine \
+  constitutional-engine professional-runtime ai-runtime dma; do
+  touch "$EVIDENCE_DIR/stopped-ca-demo-$app"
+done
+run_readiness() {
+  docker run --rm \
+    --user "$(id -u):$(id -g)" \
+    --network "$NETWORK" \
+    -e HOME=/tmp \
+    -e AZURE_CONFIG_DIR=/azure-config \
+    -e AZURE_CORE_ONLY_SHOW_ERRORS=true \
+    -e AZURE_POD_IDENTITY_AUTHORITY_HOST=http://goal006-azure-emulator:8080 \
+    -v "$AZURE_CONFIG_DIR:/azure-config" \
+    -v "$REPO_ROOT:/repo:ro" \
+    -v "$EVIDENCE_DIR:/evidence" \
+    "$AZURE_CLI_IMAGE" python3 /repo/scripts/goal006_activation_readiness.py \
+      --resource-group waooaw-demo-rg --environment demo \
+      --timeout-seconds 300 --interval-seconds 1 "$@"
+}
+if run_readiness --scope migration --timeout-seconds 0 --output /evidence/stopped-readiness.json; then
+  echo "Read-only readiness passed for an operationally stopped PgBouncer" >&2
+  exit 1
+fi
+run_readiness --scope migration --resume-stopped --output /evidence/migration-readiness.json
+test "$(find "$EVIDENCE_DIR" -name 'resumed-*.json' | wc -l)" = 1
+test -f "$EVIDENCE_DIR/stopped-ca-demo-web"
+run_az containerapp job show -g waooaw-demo-rg -n job-demo-wc124-billing-migration \
+  > "$EVIDENCE_DIR/billing-preflight-job.json"
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v "$REPO_ROOT:/repo:ro" -v "$EVIDENCE_DIR:/evidence" \
+  "$PYTHON_IMAGE" python /repo/scripts/wc124_pgbouncer_preflight_job.py \
+    --job /evidence/billing-preflight-job.json --environment demo \
+    --subscription-id 00000000-0000-0000-0000-000000000006 \
+    --database-query --output /evidence/database-preflight-template.json
+test "$(run_az containerapp job start -g waooaw-demo-rg -n job-demo-wc124-billing-migration \
+  --yaml /evidence/database-preflight-template.json --query name -o tsv)" = job-demo-database-preflight-local-0001
+jq -e --slurpfile expected "$EVIDENCE_DIR/database-preflight-template.json" \
+  '.containers == $expected[0].containers' "$EVIDENCE_DIR/database-preflight-start-request.json" >/dev/null
+run_readiness --scope dependencies --resume-stopped --output /evidence/dependency-readiness.json
+test -f "$EVIDENCE_DIR/stopped-ca-demo-web"
+run_readiness --scope all --resume-stopped --output /evidence/activation-readiness.json
+test "$(find "$EVIDENCE_DIR" -name 'resumed-*.json' | wc -l)" = 12
+run_readiness --scope all --resume-stopped --output /evidence/activation-readiness-replay.json
+test "$(jq '.resumed_apps | length' "$EVIDENCE_DIR/activation-readiness-replay.json")" = 0
+complete_phase deployment-resume deployment_resume_seconds
 start_phase database-handoff-update
 docker compose --profile test-python run --rm --no-deps test-runner-python \
   python -c '
@@ -314,6 +360,7 @@ jq -n \
   --arg containerapp_extension_version "$CONTAINERAPP_EXTENSION_VERSION" \
   --argjson image_and_emulator_seconds "$image_and_emulator_seconds" \
   --argjson extension_readiness_seconds "$extension_readiness_seconds" \
+  --argjson deployment_resume_seconds "$deployment_resume_seconds" \
   --argjson database_handoff_update_seconds "$database_handoff_update_seconds" \
   --argjson positive_deployment_seconds "$positive_deployment_seconds" \
   --argjson negative_deployment_seconds "$negative_deployment_seconds" \
@@ -329,6 +376,7 @@ jq -n \
     phase_timings_seconds: {
       image_and_emulator: $image_and_emulator_seconds,
       extension_readiness: $extension_readiness_seconds,
+      deployment_resume: $deployment_resume_seconds,
       database_handoff_update: $database_handoff_update_seconds,
       positive_deployment: $positive_deployment_seconds,
       negative_deployment: $negative_deployment_seconds,
@@ -338,6 +386,8 @@ jq -n \
     revision_evidence: $revision_evidence,
     functional_verification: true,
     structured_database_handoff_update: true,
+    deployment_stop_resume_verified: true,
+    database_preflight_template_verified: true,
     unhealthy_revision_failure_proved: true,
     cleanup_stale_source_replaced: true,
     cleanup_request_sha256: $cleanup_request_sha256,

@@ -54,7 +54,8 @@ class Azure:
         app = self.apps[name]
         if args[:2] == ["containerapp", "show"]:
             if "--query" in args:
-                return {"latest": name + "--current", "ready": name + "--current"}
+                return {"latest": name + "--current", "ready": name + "--current",
+                        "status": app["properties"]["runningStatus"]}
             return copy.deepcopy(app)
         properties = {
             "active": True,

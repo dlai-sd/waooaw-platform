@@ -310,7 +310,8 @@ class AzureHandler(BaseHTTPRequestHandler):
                     },
                 }
             )
-            self.send_json(200, {"name": name, "properties": properties})
+            properties["runningStatus"] = "Stopped" if (EVIDENCE_DIR / f"stopped-{name}").exists() else "Running"
+            self.send_json(200, {"id": path, "name": name, "properties": properties})
             return
         if "/jobs/" in path and "/replicas/" in path and path.endswith("/logstream"):
             container = path.rsplit("/containers/", 1)[1].split("/", 1)[0]
@@ -330,6 +331,22 @@ class AzureHandler(BaseHTTPRequestHandler):
             name = path.rsplit("/", 1)[-1]
             if name == "job-demo-wc124-db-provisioner":
                 self.send_json(200, database_provisioner_job())
+            elif name == "job-demo-wc124-billing-migration":
+                job = database_provisioner_job()
+                job["id"] = job["id"].replace("job-demo-wc124-db-provisioner", name)
+                job["name"] = name
+                job["properties"]["configuration"]["secrets"] = [{
+                    "name": "migration-database",
+                    "keyVaultUrl": "https://kv-demo.vault.azure.net/secrets/db-billing-migration/version",
+                }]
+                job["properties"]["template"]["containers"] = [{
+                    "name": "billing-migration",
+                    "image": self.manifest["images"]["billing-engine"],
+                    "command": ["python", "migrate.py"],
+                    "env": [{"name": "DATABASE_URL", "secretRef": "migration-database"}],
+                    "resources": {"cpu": 0.5, "memory": "1Gi"},
+                }]
+                self.send_json(200, job)
             elif name == "goal006-demo-runner-cleanup-broker":
                 self.send_json(200, cleanup_job())
             else:
@@ -364,6 +381,12 @@ class AzureHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path.rstrip("/")
+        if "/providers/Microsoft.App/containerApps/" in path and path.endswith("/start"):
+            name = path.split("/containerApps/", 1)[1].split("/", 1)[0]
+            (EVIDENCE_DIR / f"stopped-{name}").unlink(missing_ok=True)
+            (EVIDENCE_DIR / f"resumed-{name}.json").write_text(json.dumps({"path": path}))
+            self.send_json(200, {})
+            return
         if path.startswith("/api/auth/signin/keycloak-"):
             provider = path.rsplit("keycloak-", 1)[1]
             if provider not in {"google", "facebook"}:
@@ -401,6 +424,9 @@ class AzureHandler(BaseHTTPRequestHandler):
             if job_name == "goal006-demo-runner-cleanup-broker":
                 (EVIDENCE_DIR / "cleanup-start-request.json").write_bytes(body)
                 execution_name = "goal006-demo-runner-cleanup-local-0001"
+            elif job_name == "job-demo-wc124-billing-migration":
+                (EVIDENCE_DIR / "database-preflight-start-request.json").write_bytes(body)
+                execution_name = "job-demo-database-preflight-local-0001"
             else:
                 execution_name = "job-demo-deployment-verification-local-0001"
             self.send_json(200, {"name": execution_name})

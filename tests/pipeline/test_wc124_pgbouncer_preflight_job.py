@@ -9,13 +9,88 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
-from wc124_pgbouncer_preflight_job import build_preflight_patch, validate_patch_schema, verify_effective_job
+from wc124_pgbouncer_preflight_job import (
+    DATABASE_PROBE,
+    build_database_probe_template,
+    build_preflight_patch,
+    validate_patch_schema,
+    verify_effective_job,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
 REAL_SHAPE_FIXTURE = ROOT / "tests/fixtures/wc124/aca-job-get-2024-03-01.sanitized.json"
 PATCH_SCHEMA = ROOT / "infrastructure/environment-readiness/wc124-pgbouncer-preflight-job-patch.schema.json"
 SUBSCRIPTION_ID = "00000000-0000-0000-0000-000000000000"
+
+
+def billing_job_fixture():
+    return {
+        "id": f"/subscriptions/{SUBSCRIPTION_ID}/resourceGroups/waooaw-demo-rg/providers/Microsoft.App/jobs/"
+              "job-demo-wc124-billing-migration",
+        "name": "job-demo-wc124-billing-migration",
+        "resourceGroup": "waooaw-demo-rg",
+        "type": "Microsoft.App/jobs",
+        "properties": {
+            "configuration": {"secrets": [{"name": "migration-database",
+                                          "keyVaultUrl": "https://kv-demo.vault.azure.net/secrets/db-billing-migration/version"}]},
+            "template": {"containers": [{
+                "name": "billing-migration",
+                "image": "ghcr.io/dlai-sd/billing-engine@sha256:" + "a" * 64,
+                "env": [{"name": "DATABASE_URL", "secretRef": "migration-database"}],
+                "resources": {"cpu": 0.5, "memory": "1Gi", "ephemeralStorage": "2Gi"},
+                "command": ["python", "migrate.py"],
+            }]},
+        },
+    }
+
+
+def test_database_probe_reuses_immutable_billing_image_and_secret_without_patching_job():
+    job = billing_job_fixture()
+    before = copy.deepcopy(job)
+    template = build_database_probe_template(job, "demo", SUBSCRIPTION_ID)
+    assert job == before
+    container = template["containers"][0]
+    assert container["image"] == job["properties"]["template"]["containers"][0]["image"]
+    assert container["env"] == [{"name": "DATABASE_URL", "secretRef": "migration-database"}]
+    assert container["command"] == ["python", "-c"]
+    assert container["args"] == [DATABASE_PROBE, "demo"]
+    assert container["resources"] == {"cpu": 0.5, "memory": "1Gi"}
+    assert set(template) == {"containers"}
+    compile(DATABASE_PROBE, "<database-preflight>", "exec")
+    assert "readonly=True" in DATABASE_PROBE
+    assert "statement_cache_size=0" in DATABASE_PROBE
+    assert "SELECT 1" in DATABASE_PROBE
+
+
+@pytest.mark.parametrize("case", ["scope", "image", "plaintext", "unversioned", "sidecar"])
+def test_database_probe_rejects_untrusted_execution_inputs(case):
+    job = billing_job_fixture()
+    container = job["properties"]["template"]["containers"][0]
+    if case == "scope":
+        job["id"] = job["id"].replace("waooaw-demo-rg", "waooaw-uat-rg")
+    elif case == "image":
+        container["image"] = "ghcr.io/dlai-sd/billing-engine:latest"
+    elif case == "plaintext":
+        container["env"] = [{"name": "DATABASE_URL", "value": "must-not-use-inline-credentials"}]
+    elif case == "unversioned":
+        job["properties"]["configuration"]["secrets"][0]["keyVaultUrl"] = "https://kv-demo.vault.azure.net/secrets/db-billing-migration"
+    else:
+        job["properties"]["template"]["containers"].append(copy.deepcopy(container))
+    with pytest.raises(ValueError):
+        build_database_probe_template(job, "demo", SUBSCRIPTION_ID)
+
+
+def test_database_probe_cli_generates_execution_template_without_site_packages(tmp_path):
+    job_path = tmp_path / "job.json"
+    job_path.write_text(json.dumps(billing_job_fixture()))
+    output = tmp_path / "template.json"
+    subprocess.run([
+        sys.executable, "-S", str(ROOT / "scripts/wc124_pgbouncer_preflight_job.py"),
+        "--job", str(job_path), "--environment", "demo", "--subscription-id", SUBSCRIPTION_ID,
+        "--database-query", "--output", str(output),
+    ], check=True)
+    assert json.loads(output.read_text()) == build_database_probe_template(billing_job_fixture(), "demo", SUBSCRIPTION_ID)
 
 
 def job_fixture() -> dict[str, object]:

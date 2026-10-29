@@ -708,7 +708,7 @@ def test_post_deploy_verification_requires_the_exact_latest_revision() -> None:
     assert "RUN_ID=${WORK_DIR##*.}" in rehearsal
     assert "goal006-azure-verification-$$" not in rehearsal
     assert "goal006-azure-emulator-$$" not in rehearsal
-    assert rehearsal.count("-e AZURE_CORE_ONLY_SHOW_ERRORS=true") == 5
+    assert rehearsal.count("-e AZURE_CORE_ONLY_SHOW_ERRORS=true") == 6
 
 
 def test_post_deploy_functional_verification_fails_fast_and_retains_job_contract() -> None:
@@ -1101,7 +1101,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert 'name  = "SQL_MAX_IDLE_CONNS"\n        value = "1"' in temporal
     for evidence in ("wc124-activation-readiness.json", "wc124-connection-budget-post-activation.json"):
         assert workflow.count(evidence) == 2, evidence  # produced once, uploaded once
-    assert workflow.count("if: inputs.apply") == 35
+    assert workflow.count("if: inputs.apply") == 36
     assert workflow.count("always() && inputs.apply") == 3
     assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
     assert '--context "external_environment=$external_environment"' in workflow

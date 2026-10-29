@@ -70,6 +70,61 @@ test "$ledger_entry" = "$expected_digest"
 test "$foreign_owned" = 0
 test "$backend_identity" = billing_migrator
 
+# Exercise the exact deployment preflight across a stopped/resumed PgBouncer.
+psql_admin -c "CREATE DATABASE waooaw_application OWNER billing_owner" >/dev/null
+psql_admin -c "GRANT CONNECT ON DATABASE waooaw_application TO billing_migrator" >/dev/null
+psql_admin -c "ALTER ROLE billing_migrator IN DATABASE waooaw_application SET role TO billing_owner" >/dev/null
+docker network disconnect "$WC124_NETWORK" "$WC124_PGBOUNCER"
+docker network connect --alias ca-demo-pgbouncer "$WC124_NETWORK" "$WC124_PGBOUNCER"
+probe_database() {
+  docker run --rm --network "$WC124_NETWORK" \
+    -v "$ROOT/scripts:/opt/waooaw/scripts:ro" \
+    -e PYTHONPATH=/opt/waooaw/scripts \
+    -e DATABASE_URL="postgresql://billing_migrator:$1@ca-demo-pgbouncer:5432/waooaw_application?sslmode=disable" \
+    "$IMAGE" python -c 'from wc124_pgbouncer_preflight_job import DATABASE_PROBE; exec(DATABASE_PROBE)' demo
+}
+probe_database "$WC124_ROLE_PASSWORD" > "$EVIDENCE_DIR/preflight-before-stop.log" 2>&1
+docker stop "$WC124_PGBOUNCER" >/dev/null
+if probe_database "$WC124_ROLE_PASSWORD" > "$EVIDENCE_DIR/preflight-stopped.log" 2>&1; then
+  echo "database preflight incorrectly passed with PgBouncer stopped" >&2
+  exit 1
+fi
+tcp_listener="$WC124_RUN_ID-tcp-only"
+wc124_track "$tcp_listener"
+docker run -d --name "$tcp_listener" --network "$WC124_NETWORK" --network-alias ca-demo-pgbouncer \
+  "$IMAGE" python -u -c '
+import socket
+with socket.create_server(("0.0.0.0", 5432)) as listener:
+    while True:
+        connection, _ = listener.accept()
+        connection.close()
+' >/dev/null
+for attempt in $(seq 1 15); do
+  if docker exec "$tcp_listener" python -c 'import socket; socket.create_connection(("localhost", 5432), timeout=1).close()'; then break; fi
+  test "$attempt" != 15
+  sleep 1
+done
+if probe_database "$WC124_ROLE_PASSWORD" > "$EVIDENCE_DIR/preflight-tcp-only.log" 2>&1; then
+  echo "database preflight incorrectly passed for a TCP-only listener" >&2
+  exit 1
+fi
+docker rm -f "$tcp_listener" >/dev/null
+docker start "$WC124_PGBOUNCER" >/dev/null
+for attempt in $(seq 1 15); do
+  if probe_database "$WC124_ROLE_PASSWORD" > "$EVIDENCE_DIR/preflight-resumed.log" 2>&1; then break; fi
+  test "$attempt" != 15 || { cat "$EVIDENCE_DIR/preflight-resumed.log" >&2; exit 1; }
+  sleep 1
+done
+if probe_database wrong-local-password > "$EVIDENCE_DIR/preflight-bad-auth.log" 2>&1; then
+  echo "database preflight incorrectly passed with invalid credentials" >&2
+  exit 1
+fi
+grep -q 'Database preflight failed:' "$EVIDENCE_DIR/preflight-bad-auth.log"
+if grep -q 'wrong-local-password' "$EVIDENCE_DIR/preflight-bad-auth.log"; then
+  echo "database preflight leaked credentials" >&2
+  exit 1
+fi
+
 jq -n \
   --arg schema "waooaw.wc124-billing-migration-local/v1" \
   --arg image "$IMAGE" --arg image_id "$image_digest" --arg fixture "$fixture_source" \
@@ -77,5 +132,7 @@ jq -n \
   '{schema: $schema, image: $image, image_id: $image_id, fixture: $fixture, route: "pgbouncer-scram-per-role",
     login: "billing_migrator", backend_identity: $backend, ledger_owner: $ledger_owner,
     recorded_migration_sha256: $digest, idempotent_rerun: true, stale_digest_reapplied: true,
-    migrator_membership_retained: true, provisioner_temporary_membership_revoked: true, status: "passed"}' \
+    migrator_membership_retained: true, provisioner_temporary_membership_revoked: true,
+    database_preflight: {authenticated_query: true, stopped_rejected: true, tcp_only_rejected: true, resumed_query: true,
+      invalid_credentials_rejected: true, credentials_redacted: true}, status: "passed"}' \
   | tee "$EVIDENCE_DIR/result.json"
