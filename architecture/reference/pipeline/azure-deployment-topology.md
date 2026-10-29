@@ -1291,6 +1291,12 @@ to `Warning`. This suppresses the successful request/endpoint messages that domi
 logs, but keeps warnings/errors and application/audit categories unchanged. UAT/Production log
 configuration is unchanged. This does not claim to suppress all successful probe messages.
 
+Demo Business Platform runs its existing entrypoint through `/bin/bash`: the image's default
+`/bin/sh` (dash) discards environment names containing dots, silently removing these category
+settings before `dotnet` starts. The Demo-only command override preserves them without changing
+the image, bootstrap behavior, application/audit levels, or non-Demo entrypoints. Roll back by
+removing the command override; this restores the noisier default entrypoint.
+
 There is no "keep only the current instance" retention mode in the current shared Log Analytics
 console table: it currently retains 30 days. Do not purge this mixed table or reduce shared evidence
 retention to approximate that requirement. A later change must separate mandatory evidence from
