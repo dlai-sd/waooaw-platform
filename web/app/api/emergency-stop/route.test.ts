@@ -44,6 +44,9 @@ describe('Emergency Stop server boundary', () => {
     const response = await POST(request);
 
     expect(response.status).toBe(503);
-    expect(await response.json()).toEqual({ title: 'Evidence unavailable' });
+    expect(await response.json()).toEqual({
+      title: 'Evidence unavailable',
+      correlationId: response.headers.get('x-correlation-id'),
+    });
   });
 });

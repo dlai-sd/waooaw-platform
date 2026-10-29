@@ -1,8 +1,10 @@
+import { logServerFailure } from '@/lib/server-failure';
+import { withServerFailureBoundary } from '@/lib/server-failure-boundary';
 import { type NextRequest, NextResponse } from 'next/server';
 import { sessionTokenFromRequest } from '@/lib/server-auth';
 import { listSessions, revokeAllSessions } from '@/lib/web-session-store';
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   const token = await sessionTokenFromRequest(request);
   if (!token)
     return NextResponse.json(
@@ -11,7 +13,8 @@ export async function GET(request: NextRequest) {
     );
   try {
     return NextResponse.json({ sessions: await listSessions(token) }, { headers: { 'Cache-Control': 'no-store' } });
-  } catch {
+  } catch (error) {
+    logServerFailure('web.identity.sessions.list_failed', error);
     return NextResponse.json(
       {
         code: 'SESSION_STORE_UNAVAILABLE',
@@ -22,7 +25,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+async function DELETEHandler(request: NextRequest) {
   const token = await sessionTokenFromRequest(request);
   if (!token)
     return NextResponse.json(
@@ -43,7 +46,8 @@ export async function DELETE(request: NextRequest) {
       },
       { headers: { 'Cache-Control': 'no-store' } }
     );
-  } catch {
+  } catch (error) {
+    logServerFailure('web.identity.sessions.revoke_all_failed', error);
     return NextResponse.json(
       {
         code: 'SESSION_STORE_UNAVAILABLE',
@@ -53,3 +57,6 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+
+export const GET = withServerFailureBoundary('web.identity.sessions.get_failed', GETHandler);
+export const DELETE = withServerFailureBoundary('web.identity.sessions.delete_failed', DELETEHandler);

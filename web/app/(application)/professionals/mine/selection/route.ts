@@ -1,3 +1,5 @@
+import { logServerFailure } from '@/lib/server-failure';
+import { withServerFailureBoundary } from '@/lib/server-failure-boundary';
 // Implements: WC-107 R015-R016 authoritative My Agents confirmation handoff
 // Constitutional basis: C-023, C-049, C-059, C-063
 
@@ -54,9 +56,13 @@ async function resolveSelection(request: NextRequest) {
         { headers: { 'Cache-Control': 'no-store' } }
       )
     );
-  } catch {
+  } catch (error) {
+    logServerFailure('web.portal.professionals.mine.selection.request_failed', error);
     return clearSelectionCookie(new NextResponse(null, { status: 204 }));
   }
 }
 
-export const POST = (request: NextRequest) => withJourneyTrace('my_agents.selection', () => resolveSelection(request));
+export const POST = withServerFailureBoundary(
+  'web.portal.professionals.mine.selection.post_failed',
+  (request: NextRequest) => withJourneyTrace('my_agents.selection', () => resolveSelection(request))
+);

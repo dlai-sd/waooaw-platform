@@ -1,3 +1,4 @@
+import { withServerFailureBoundary, readRequestJson } from '@/lib/server-failure-boundary';
 // Implements: work-contracts/WC-078-public-acquisition-experience-plan.md §Public Acquisition Runtime Boundary
 // Constitutional basis: C-023 (Evidence First), C-059 (Implementation Traceability), C-063 (Data Minimisation)
 import { NextResponse } from 'next/server';
@@ -14,10 +15,10 @@ function cookieValue(cookieHeader: string | null, name: string): string | undefi
     ?.slice(name.length + 1);
 }
 
-export async function POST(request: Request) {
+async function POSTHandler(request: Request) {
   let input: unknown;
   try {
-    input = await request.json();
+    input = await readRequestJson(request);
   } catch {
     return NextResponse.json({ error: 'INVALID_EVENT' }, { status: 400 });
   }
@@ -58,5 +59,10 @@ export async function POST(request: Request) {
     consent,
   } satisfies AcquisitionEvent;
   await dispatchAcquisitionEvent(event);
-  return new NextResponse(null, { status: 202, headers: { 'Cache-Control': 'no-store' } });
+  return new NextResponse(null, {
+    status: 202,
+    headers: { 'Cache-Control': 'no-store' },
+  });
 }
+
+export const POST = withServerFailureBoundary('web.acquisition.events.post_failed', POSTHandler);

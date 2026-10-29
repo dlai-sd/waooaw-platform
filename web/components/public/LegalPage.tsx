@@ -2,6 +2,7 @@
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import { readFile } from 'node:fs/promises';
+import { logServerFailure } from '@/lib/server-failure';
 import { join } from 'node:path';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -15,8 +16,8 @@ async function legalSource(sourceFile: string): Promise<string> {
   for (const candidate of candidates) {
     try {
       return await readFile(candidate, 'utf8');
-    } catch {
-      /* Try the development or standalone location. */
+    } catch (error) {
+      logServerFailure('web.legal.source_read_failed', error);
     }
   }
   throw new Error(`Approved legal source unavailable: ${sourceFile}`);

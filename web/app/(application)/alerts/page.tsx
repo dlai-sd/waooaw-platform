@@ -1,3 +1,4 @@
+import { logServerFailure } from '@/lib/server-failure';
 // Implements: work-contracts/WC-084-auth-readiness-and-customer-portal-plan.md §8.7 Alerts
 // Constitutional basis: C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
@@ -80,7 +81,8 @@ export default async function AlertsPage() {
         />
       </section>
     );
-  } catch {
+  } catch (error) {
+    logServerFailure('web.portal.alerts.request_failed', error);
     return (
       <StateView
         actionHref="/home"

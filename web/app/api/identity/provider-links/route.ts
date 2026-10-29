@@ -1,3 +1,5 @@
+import { logServerFailure } from '@/lib/server-failure';
+import { withServerFailureBoundary, readRequestJson } from '@/lib/server-failure-boundary';
 import { type NextRequest, NextResponse } from 'next/server';
 import { activeAccessToken } from '@/lib/auth';
 import { createIdentityApi } from '@/lib/api/identity';
@@ -8,7 +10,7 @@ import { enforceAuthAbuse } from '@/lib/auth-abuse-limiter';
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   const limited = await enforceAuthAbuse(request, 'PROVIDER_LINK');
   if (limited) return limited;
   const token = await sessionTokenFromRequest(request);
@@ -18,7 +20,7 @@ export async function POST(request: NextRequest) {
       { code: 'IDENTITY_SESSION_REQUIRED' },
       { status: 401, headers: { 'Cache-Control': 'no-store' } }
     );
-  const body = (await request.json().catch(() => null)) as {
+  const body = (await readRequestJson(request).catch(() => null)) as {
     provider?: unknown;
     stepUpTransactionReference?: unknown;
     idempotencyKey?: unknown;
@@ -62,6 +64,7 @@ export async function POST(request: NextRequest) {
       });
     return response;
   } catch (error) {
+    logServerFailure('web.identity.provider.links.request_failed', error);
     const status = error instanceof ResponseError && error.response.status >= 400 ? error.response.status : 503;
     return NextResponse.json(
       {
@@ -76,3 +79,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withServerFailureBoundary('web.identity.provider.links.post_failed', POSTHandler);

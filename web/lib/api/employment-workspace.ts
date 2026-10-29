@@ -1,4 +1,5 @@
 import 'server-only';
+import { logServerFailure } from '@/lib/server-failure';
 
 import {
   Configuration,
@@ -22,6 +23,7 @@ export async function getEmploymentWorkspace(
     const workspace = await api.getEmploymentWorkspace({ relationshipId }, { cache: 'no-store' });
     return { state: 'available', workspace };
   } catch (error) {
+    logServerFailure('web.api.employment.workspace.request_failed', error);
     if (error instanceof ResponseError && error.response.status === 503)
       return { state: 'unavailable', reason: 'candidate-disabled' };
     if (error instanceof ResponseError && error.response.status === 404)

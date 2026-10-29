@@ -1,4 +1,5 @@
 import 'server-only';
+import { correlateFailureBody, logServerFailure, readServerResponse } from '@/lib/server-failure';
 
 // Implements: architecture/reference/components/wc062-voice-solution-contract.md
 // Constitutional basis: C-026, C-042, C-059, C-063
@@ -13,15 +14,32 @@ export function createVoiceApi(accessToken: string): VoiceContributionsApi {
 }
 
 export async function voiceProblem(error: unknown): Promise<{ status: number; body: unknown }> {
+  const correlationId = logServerFailure('web.voice.request_failed', error);
   if (error instanceof ResponseError) {
-    const body = await error.response.json().catch(() => undefined);
+    const body = await readServerResponse(error.response, 'web.api.voice.response_invalid', undefined);
     return {
       status: error.response.status,
-      body: body ?? { code: 'VOICE_UNAVAILABLE', title: 'Voice contribution could not be completed.' },
+      body:
+        error.response.status >= 500
+          ? correlateFailureBody(
+              body ?? {
+                code: 'VOICE_UNAVAILABLE',
+                title: 'Voice contribution could not be completed.',
+              },
+              correlationId
+            )
+          : (body ?? {
+              code: 'VOICE_UNAVAILABLE',
+              title: 'Voice contribution could not be completed.',
+            }),
     };
   }
   return {
     status: 503,
-    body: { code: 'VOICE_UNAVAILABLE', title: 'Voice contribution could not be completed.' },
+    body: {
+      code: 'VOICE_UNAVAILABLE',
+      title: 'Voice contribution could not be completed.',
+      correlationId,
+    },
   };
 }

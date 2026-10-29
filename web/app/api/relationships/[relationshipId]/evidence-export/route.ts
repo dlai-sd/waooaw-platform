@@ -1,13 +1,17 @@
+import { withServerFailureBoundary, readRequestJson } from '@/lib/server-failure-boundary';
 import { NextResponse } from 'next/server';
 import { getServerAccessToken } from '@/lib/server-auth';
 
 const businessPlatformUrl = process.env.BUSINESS_PLATFORM_URL ?? 'http://localhost:5001';
 
-export async function POST(request: Request, { params }: { params: Promise<{ relationshipId: string }> }) {
+async function POSTHandler(request: Request, { params }: { params: Promise<{ relationshipId: string }> }) {
   const token = await getServerAccessToken();
   if (!token) return NextResponse.json({ title: 'Authentication required' }, { status: 401 });
   const { relationshipId } = await params;
-  const body = await request.json();
+  const parsed = await readRequestJson(request);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+    return NextResponse.json({ title: 'Export request is invalid.' }, { status: 400 });
+  const body = parsed as Record<string, unknown>;
   const root = `${businessPlatformUrl}/api/v1/employment/relationships/${encodeURIComponent(relationshipId)}/workspace/evidence-exports`;
   const created = await fetch(root, {
     method: 'POST',
@@ -27,3 +31,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ rel
   });
   return NextResponse.json(await outcome.json(), { status: outcome.status });
 }
+
+export const POST = withServerFailureBoundary(
+  'web.relationships.relationshipid.evidence.export.post_failed',
+  POSTHandler
+);

@@ -1,4 +1,5 @@
 import 'server-only';
+import { logServerFailure } from '@/lib/server-failure';
 
 import { createConnection, type Socket } from 'node:net';
 import { connect as connectTls, type TLSSocket } from 'node:tls';
@@ -72,8 +73,10 @@ export async function redisCommand(parts: readonly string[]): Promise<RedisValue
       if (settled) return;
       settled = true;
       socket.destroy();
-      if (error) reject(error);
-      else resolve(value ?? null);
+      if (error) {
+        logServerFailure('web.redis.command_failed', error);
+        reject(error);
+      } else resolve(value ?? null);
     };
     const options = {
       host: url.hostname,
@@ -99,6 +102,7 @@ export async function redisCommand(parts: readonly string[]): Promise<RedisValue
         }
         finish(undefined, responses.at(-1));
       } catch (error) {
+        logServerFailure('web.redis.response_invalid', error);
         finish(error instanceof Error ? error : new Error('Redis response failed'));
       }
     });

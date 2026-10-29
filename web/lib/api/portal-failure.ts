@@ -1,4 +1,5 @@
 import 'server-only';
+import { logServerFailure } from '@/lib/server-failure';
 
 import { FetchError, ResponseError } from '@/lib/api/generated/runtime';
 
@@ -20,7 +21,8 @@ async function responseCorrelationId(response: Response): Promise<string | undef
     return typeof body.correlationId === 'string' && safeCorrelationId.test(body.correlationId)
       ? body.correlationId
       : undefined;
-  } catch {
+  } catch (error) {
+    logServerFailure('web.portal.correlation_response_invalid', error);
     return undefined;
   }
 }
@@ -39,6 +41,10 @@ export async function describePortalFailure(error: unknown, surface: PortalSurfa
     reasonCode = 'SERVICE_UNREACHABLE';
   }
 
-  console.error('Portal projection failed.', { correlationId, reasonCode, statusClass, surface });
+  correlationId = logServerFailure('web.portal.projection_failed', error, {
+    correlationId,
+    surface,
+    ...(error instanceof ResponseError ? { status: error.response.status } : {}),
+  });
   return { correlationId, reasonCode, statusClass };
 }

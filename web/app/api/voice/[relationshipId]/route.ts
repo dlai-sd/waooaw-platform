@@ -1,3 +1,4 @@
+import { withServerFailureBoundary, readRequestJson, InvalidRequestJson } from '@/lib/server-failure-boundary';
 // Implements: architecture/reference/components/wc062-voice-solution-contract.md
 // Constitutional basis: C-023, C-026, C-042, C-059, C-063
 
@@ -38,12 +39,15 @@ function sessionRequired() {
 
 function invalidRequest() {
   return NextResponse.json(
-    { code: 'VOICE_REQUEST_INVALID', title: 'Voice contribution request is invalid.' },
+    {
+      code: 'VOICE_REQUEST_INVALID',
+      title: 'Voice contribution request is invalid.',
+    },
     { status: 400 }
   );
 }
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
+async function GETHandler(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return sessionRequired();
   const { relationshipId } = await params;
@@ -53,16 +57,24 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const api = createVoiceApi(accessToken);
     const result =
       request.nextUrl.searchParams.get('resource') === 'transcript'
-        ? await api.getVoiceContributionTranscript({ relationshipId, sessionId })
+        ? await api.getVoiceContributionTranscript({
+            relationshipId,
+            sessionId,
+          })
         : await api.getVoiceContributionSession({ relationshipId, sessionId });
-    return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json(result, {
+      headers: { 'Cache-Control': 'no-store' },
+    });
   } catch (error) {
     const problem = await voiceProblem(error);
-    return NextResponse.json(problem.body, { status: problem.status, headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json(problem.body, {
+      status: problem.status,
+      headers: { 'Cache-Control': 'no-store' },
+    });
   }
 }
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
+async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return sessionRequired();
   const { relationshipId } = await params;
@@ -83,7 +95,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       );
     }
 
-    const body = (await request.json()) as CommandBody;
+    const body = (await readRequestJson(request)) as CommandBody;
     const action = requiredString(body, 'action');
     const idempotencyKey = requiredString(body, 'idempotencyKey');
     switch (action) {
@@ -92,7 +104,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           await api.createVoiceContributionSession({
             relationshipId,
             idempotencyKey,
-            createVoiceContributionSessionRequestV1: { schemaVersion: '1.0.0', locale: requiredLocale(body) },
+            createVoiceContributionSessionRequestV1: {
+              schemaVersion: '1.0.0',
+              locale: requiredLocale(body),
+            },
           }),
           { status: 201 }
         );
@@ -135,8 +150,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         throw new InvalidVoiceRequest();
     }
   } catch (error) {
-    if (error instanceof InvalidVoiceRequest || error instanceof SyntaxError) return invalidRequest();
+    if (error instanceof InvalidVoiceRequest || error instanceof InvalidRequestJson) return invalidRequest();
     const problem = await voiceProblem(error);
-    return NextResponse.json(problem.body, { status: problem.status, headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json(problem.body, {
+      status: problem.status,
+      headers: { 'Cache-Control': 'no-store' },
+    });
   }
 }
+
+export const GET = withServerFailureBoundary('web.voice.relationshipid.get_failed', GETHandler);
+export const POST = withServerFailureBoundary('web.voice.relationshipid.post_failed', POSTHandler);

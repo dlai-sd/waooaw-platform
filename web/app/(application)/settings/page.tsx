@@ -1,3 +1,4 @@
+import { logServerFailure } from '@/lib/server-failure';
 // Implements: architecture/reference/ux/hybrid-application-shell.md §Navigation Contract
 // Constitutional basis: C-042 (Localization), C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
@@ -111,7 +112,8 @@ export default async function SettingsPage() {
         </div>
       </section>
     );
-  } catch {
+  } catch (error) {
+    logServerFailure('web.portal.settings.request_failed', error);
     return (
       <StateView
         actionHref="/home"

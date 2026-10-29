@@ -1,5 +1,7 @@
 import '@testing-library/jest-dom';
 
+jest.mock('server-only', () => ({}));
+
 if (!globalThis.crypto.randomUUID) {
   Object.defineProperty(globalThis.crypto, 'randomUUID', {
     configurable: true,

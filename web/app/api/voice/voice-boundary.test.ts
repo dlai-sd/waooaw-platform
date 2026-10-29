@@ -127,7 +127,13 @@ describe('voice server boundary', () => {
     expect(
       (
         await POST(
-          request({ action: 'correct', sessionId, idempotencyKey, expectedVersion: 1, correctedText: 'corrected' }),
+          request({
+            action: 'correct',
+            sessionId,
+            idempotencyKey,
+            expectedVersion: 1,
+            correctedText: 'corrected',
+          }),
           params
         )
       ).status
@@ -138,7 +144,11 @@ describe('voice server boundary', () => {
     expect((await POST(request({ action: 'cancel', sessionId, idempotencyKey }), params)).status).toBe(200);
     expect(sendVoiceContribution).toHaveBeenCalledWith(
       expect.objectContaining({
-        sendVoiceContributionRequestV1: { schemaVersion: '1.0.0', acceptedTranscriptVersion: 2, explicitSend: true },
+        sendVoiceContributionRequestV1: {
+          schemaVersion: '1.0.0',
+          acceptedTranscriptVersion: 2,
+          explicitSend: true,
+        },
       })
     );
   });
@@ -156,6 +166,9 @@ describe('voice server boundary', () => {
       params
     );
     expect(failed.status).toBe(503);
-    expect(await failed.json()).toEqual({ code: 'VOICE_UNAVAILABLE' });
+    expect(await failed.json()).toEqual({
+      code: 'VOICE_UNAVAILABLE',
+      correlationId: failed.headers.get('x-correlation-id'),
+    });
   });
 });

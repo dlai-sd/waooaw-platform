@@ -1,3 +1,4 @@
+import { withServerFailureBoundary, readRequestJson, InvalidRequestJson } from '@/lib/server-failure-boundary';
 // Implements: architecture/reference/components/identity-boundary.md §7 Canonical Public API
 // Constitutional basis: C-026 (Tenant Isolation), C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
@@ -14,15 +15,18 @@ function requiredString(body: CommandBody, name: string): string {
   return value;
 }
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken)
     return NextResponse.json(
-      { code: 'IDENTITY_SESSION_REQUIRED', title: 'Secure sign in is required.' },
+      {
+        code: 'IDENTITY_SESSION_REQUIRED',
+        title: 'Secure sign in is required.',
+      },
       { status: 401 }
     );
   try {
-    const body = (await request.json()) as CommandBody;
+    const body = (await readRequestJson(request)) as CommandBody;
     const action = requiredString(body, 'action');
     const idempotencyKey = requiredString(body, 'idempotencyKey');
     const api = createIdentityApi(accessToken);
@@ -30,7 +34,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         await api.startAccountMobileVerification({
           idempotencyKey,
-          startMobileVerificationRequest: { mobile: requiredString(body, 'mobile') },
+          startMobileVerificationRequest: {
+            mobile: requiredString(body, 'mobile'),
+          },
         })
       );
     }
@@ -46,16 +52,24 @@ export async function POST(request: NextRequest) {
       );
     }
     return NextResponse.json(
-      { code: 'IDENTITY_REQUEST_INVALID', title: 'Identity request is invalid.' },
+      {
+        code: 'IDENTITY_REQUEST_INVALID',
+        title: 'Identity request is invalid.',
+      },
       { status: 400 }
     );
   } catch (error) {
-    if (error instanceof InvalidRequestError || error instanceof SyntaxError)
+    if (error instanceof InvalidRequestError || error instanceof InvalidRequestJson)
       return NextResponse.json(
-        { code: 'IDENTITY_REQUEST_INVALID', title: 'Identity request is invalid.' },
+        {
+          code: 'IDENTITY_REQUEST_INVALID',
+          title: 'Identity request is invalid.',
+        },
         { status: 400 }
       );
     const problem = await identityProblem(error);
     return NextResponse.json(problem.body, { status: problem.status });
   }
 }
+
+export const POST = withServerFailureBoundary('web.identity.account.post_failed', POSTHandler);

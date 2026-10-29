@@ -1,3 +1,5 @@
+import { readServerResponse, logServerFailure } from '@/lib/server-failure';
+import { withServerFailureBoundary, readRequestJson } from '@/lib/server-failure-boundary';
 import { persistAcquisitionIntent } from '@/lib/api/acquisition-intent';
 import { ProfessionalsApi } from '@/lib/api/generated/apis/ProfessionalsApi';
 import { Configuration, ResponseError } from '@/lib/api/generated/runtime';
@@ -47,7 +49,7 @@ async function hireCheckout(request: NextRequest) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return NextResponse.json({ title: 'Secure sign in is required.' }, { status: 401 });
 
-  const body = (await request.json()) as HireCheckoutCommand;
+  const body = (await readRequestJson(request)) as HireCheckoutCommand;
   if (
     (body.action !== 'start' && body.action !== 'confirm' && body.action !== 'cancel') ||
     !body.professionalType ||
@@ -75,8 +77,13 @@ async function hireCheckout(request: NextRequest) {
     ...(body.couponCode ? { couponCode: body.couponCode.trim().toUpperCase() } : {}),
   });
   if (!persisted.ok) {
-    const payload = await persisted.json().catch(() => ({ title: 'Acquisition intent could not be saved.' }));
-    return NextResponse.json(payload, { status: persisted.status, headers: { 'Cache-Control': 'no-store' } });
+    const payload = await readServerResponse(persisted, 'web.acquisition.hire.checkout.response_invalid', {
+      title: 'Acquisition intent could not be saved.',
+    });
+    return NextResponse.json(payload, {
+      status: persisted.status,
+      headers: { 'Cache-Control': 'no-store' },
+    });
   }
 
   const identity = await getIdentitySession(accessToken);
@@ -107,7 +114,9 @@ async function hireCheckout(request: NextRequest) {
       disclosure.indicativePrice.currency !== 'INR'
     ) {
       return NextResponse.json(
-        { title: 'Professional commercial terms have changed. Review the offer again.' },
+        {
+          title: 'Professional commercial terms have changed. Review the offer again.',
+        },
         { status: 409 }
       );
     }
@@ -116,7 +125,10 @@ async function hireCheckout(request: NextRequest) {
     if (body.action === 'start') {
       const billingResponse = await fetch(`${billingEngineUrl}/payments/hire-checkout`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Correlation-ID': correlationId },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Correlation-ID': correlationId,
+        },
         body: JSON.stringify({
           checkout_intent_id: body.idempotencyKey,
           correlation_id: correlationId,
@@ -134,9 +146,14 @@ async function hireCheckout(request: NextRequest) {
         }),
         cache: 'no-store',
       });
-      const result = await billingResponse.json().catch(() => ({ title: 'Secure checkout is unavailable.' }));
+      const result = await readServerResponse(billingResponse, 'web.acquisition.hire.checkout.response_invalid', {
+        title: 'Secure checkout is unavailable.',
+      });
       if (!billingResponse.ok) {
-        return NextResponse.json(result, { status: billingResponse.status, headers: { 'Cache-Control': 'no-store' } });
+        return NextResponse.json(result, {
+          status: billingResponse.status,
+          headers: { 'Cache-Control': 'no-store' },
+        });
       }
       outcome = result as BillingCheckoutOutcome;
     } else if (body.action === 'confirm') {
@@ -162,9 +179,14 @@ async function hireCheckout(request: NextRequest) {
         }),
         cache: 'no-store',
       });
-      const result = await billingResponse.json().catch(() => ({ title: 'Payment confirmation is unavailable.' }));
+      const result = await readServerResponse(billingResponse, 'web.acquisition.hire.checkout.response_invalid', {
+        title: 'Payment confirmation is unavailable.',
+      });
       if (!billingResponse.ok) {
-        return NextResponse.json(result, { status: billingResponse.status, headers: { 'Cache-Control': 'no-store' } });
+        return NextResponse.json(result, {
+          status: billingResponse.status,
+          headers: { 'Cache-Control': 'no-store' },
+        });
       }
       outcome = result as BillingCheckoutOutcome;
     } else {
@@ -177,7 +199,9 @@ async function hireCheckout(request: NextRequest) {
         }),
         cache: 'no-store',
       });
-      const result = await billingResponse.json().catch(() => ({ title: 'Checkout cancellation is unavailable.' }));
+      const result = await readServerResponse(billingResponse, 'web.acquisition.hire.checkout.response_invalid', {
+        title: 'Checkout cancellation is unavailable.',
+      });
       return NextResponse.json(result, {
         status: billingResponse.status,
         headers: { 'Cache-Control': 'no-store' },
@@ -185,11 +209,16 @@ async function hireCheckout(request: NextRequest) {
     }
 
     if (outcome.outcome_kind !== 'CAPTURED' && outcome.outcome_kind !== 'FULLY_DISCOUNTED') {
-      return NextResponse.json(outcome, { headers: { 'Cache-Control': 'no-store' } });
+      return NextResponse.json(outcome, {
+        headers: { 'Cache-Control': 'no-store' },
+      });
     }
 
     const api = new ProfessionalsApi(
-      new Configuration({ basePath: process.env.BUSINESS_PLATFORM_URL ?? 'http://localhost:5001', accessToken })
+      new Configuration({
+        basePath: process.env.BUSINESS_PLATFORM_URL ?? 'http://localhost:5001',
+        accessToken,
+      })
     );
     const continuation = await api.continueAcquisition(
       {
@@ -219,7 +248,9 @@ async function hireCheckout(request: NextRequest) {
     });
     if (!bindResponse.ok) {
       return NextResponse.json(
-        { title: 'Payment was received, but Hire setup is still being reconciled. Retry the same request.' },
+        {
+          title: 'Payment was received, but Hire setup is still being reconciled. Retry the same request.',
+        },
         { status: 503, headers: { 'Cache-Control': 'no-store' } }
       );
     }
@@ -241,9 +272,15 @@ async function hireCheckout(request: NextRequest) {
     });
     return response;
   } catch (error) {
+    logServerFailure('web.acquisition.hire.checkout.request_failed', error);
     if (error instanceof ResponseError) {
-      const payload = await error.response.json().catch(() => ({ title: 'Hire could not continue.' }));
-      return NextResponse.json(payload, { status: error.response.status, headers: { 'Cache-Control': 'no-store' } });
+      const payload = await readServerResponse(error.response, 'web.acquisition.hire.checkout.response_invalid', {
+        title: 'Hire could not continue.',
+      });
+      return NextResponse.json(payload, {
+        status: error.response.status,
+        headers: { 'Cache-Control': 'no-store' },
+      });
     }
     return NextResponse.json(
       { title: 'Secure Hire checkout is unavailable.' },
@@ -252,4 +289,6 @@ async function hireCheckout(request: NextRequest) {
   }
 }
 
-export const POST = (request: NextRequest) => withJourneyTrace('hire.checkout', () => hireCheckout(request));
+export const POST = withServerFailureBoundary('web.acquisition.hire.checkout.post_failed', (request: NextRequest) =>
+  withJourneyTrace('hire.checkout', () => hireCheckout(request))
+);

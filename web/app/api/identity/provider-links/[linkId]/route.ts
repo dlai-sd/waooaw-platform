@@ -1,3 +1,5 @@
+import { logServerFailure } from '@/lib/server-failure';
+import { withServerFailureBoundary } from '@/lib/server-failure-boundary';
 import { type NextRequest, NextResponse } from 'next/server';
 import { activeAccessToken } from '@/lib/auth';
 import { createIdentityApi } from '@/lib/api/identity';
@@ -8,7 +10,7 @@ import { enforceAuthAbuse } from '@/lib/auth-abuse-limiter';
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ linkId: string }> }) {
+async function DELETEHandler(request: NextRequest, { params }: { params: Promise<{ linkId: string }> }) {
   const limited = await enforceAuthAbuse(request, 'PROVIDER_UNLINK');
   if (limited) return limited;
   const token = await sessionTokenFromRequest(request);
@@ -45,6 +47,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       });
     return response;
   } catch (error) {
+    logServerFailure('web.identity.provider.links.linkid.request_failed', error);
     const status = error instanceof ResponseError && error.response.status >= 400 ? error.response.status : 503;
     return NextResponse.json(
       {
@@ -61,3 +64,5 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     );
   }
 }
+
+export const DELETE = withServerFailureBoundary('web.identity.provider.links.linkid.delete_failed', DELETEHandler);

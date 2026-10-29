@@ -1,26 +1,4 @@
-jest.mock('next/server', () => {
-  class MockNextResponse {
-    readonly status: number;
-    readonly body: unknown;
-    readonly headers: Record<string, string>;
-
-    constructor(body: unknown, init?: { status?: number; headers?: Record<string, string> }) {
-      this.status = init?.status ?? 200;
-      this.body = body;
-      this.headers = init?.headers ?? {};
-    }
-
-    async json() {
-      return this.body;
-    }
-
-    static json(body: unknown, init?: { status?: number; headers?: Record<string, string> }) {
-      return new MockNextResponse(body, init);
-    }
-  }
-
-  return { NextResponse: MockNextResponse };
-});
+/** @jest-environment node */
 
 jest.mock('@/lib/web-session-store', () => ({
   oidcTransactionStoreReady: jest.fn(),
@@ -102,6 +80,7 @@ describe('revision readiness', () => {
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toEqual({
       code: 'REVISION_NOT_READY',
+      correlationId: response.headers.get('x-correlation-id'),
       dependencies: {
         identity: true,
         membership: true,
@@ -110,7 +89,8 @@ describe('revision readiness', () => {
         limiter: { ready: false, reason: 'RESTART_HOLD', retryAfterSeconds: 73 },
       },
     });
-    expect(response.headers).toEqual({ 'Cache-Control': 'no-store', 'Retry-After': '73' });
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
+    expect(response.headers.get('Retry-After')).toBe('73');
   });
 
   it('fails closed when OIDC transaction persistence is unavailable in disabled session mode', async () => {

@@ -72,6 +72,7 @@ describe('Web-owned session collection route', () => {
     expect(await response.json()).toEqual({
       code: 'SESSION_STORE_UNAVAILABLE',
       title: 'Session management is temporarily unavailable.',
+      correlationId: response.headers.get('x-correlation-id'),
     });
   });
 

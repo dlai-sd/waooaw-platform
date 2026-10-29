@@ -1,3 +1,4 @@
+import { logServerFailure } from '@/lib/server-failure';
 // Implements: work-contracts/WC-097-marketplace-acquisition-experience.md A04-A06
 // Constitutional basis: C-023 (Evidence First), C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
@@ -14,7 +15,11 @@ export default async function MarketplaceOfferPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ professionalType?: string; version?: string; intent?: string }>;
+  searchParams: Promise<{
+    professionalType?: string;
+    version?: string;
+    intent?: string;
+  }>;
 }) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
   const intent = query.intent as AcquisitionIntent | undefined;
@@ -27,7 +32,10 @@ export default async function MarketplaceOfferPage({
   )
     notFound();
 
-  const disclosure = await getProfessionalDisclosure(query.professionalType).catch(() => undefined);
+  const disclosure = await getProfessionalDisclosure(query.professionalType).catch((error) => {
+    logServerFailure('web.portal.marketplace.slug.load_failed', error);
+    return undefined;
+  });
   if (
     !disclosure ||
     disclosure.customerRouteSlug !== slug ||

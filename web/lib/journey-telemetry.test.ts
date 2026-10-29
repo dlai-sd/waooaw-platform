@@ -13,6 +13,7 @@ const span = {
 jest.mock('@opentelemetry/api', () => ({
   SpanStatusCode: { ERROR: 2 },
   trace: {
+    getActiveSpan: () => undefined,
     getTracer: () => ({
       startActiveSpan: async (_name: string, callback: (activeSpan: typeof span) => Promise<Response>) =>
         callback(span),
@@ -32,7 +33,10 @@ describe('journey telemetry', () => {
 
     const response = await withJourneyTrace(
       'trial.continue',
-      async () => new Response(JSON.stringify({ relationshipId: sensitive }), { status: 200 })
+      async () =>
+        new Response(JSON.stringify({ relationshipId: sensitive }), {
+          status: 200,
+        })
     );
 
     expect(response.status).toBe(200);

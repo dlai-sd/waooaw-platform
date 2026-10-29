@@ -1,3 +1,4 @@
+import { logServerFailure } from '@/lib/server-failure';
 // Implements: WC-107 R017-R018 privacy-safe journey telemetry
 // Constitutional basis: C-059, C-063
 
@@ -34,6 +35,7 @@ export async function withJourneyTrace(operation: keyof typeof successfulOutcome
       if (response.status >= 500) span.setStatus({ code: SpanStatusCode.ERROR });
       return response;
     } catch (error) {
+      logServerFailure('web.journey.command_failed', error);
       span.setAttribute('waooaw.journey.status_class', 'exception');
       span.setAttribute('waooaw.journey.outcome', 'DEPENDENCY_UNAVAILABLE');
       span.setStatus({ code: SpanStatusCode.ERROR });

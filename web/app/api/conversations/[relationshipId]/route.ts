@@ -1,3 +1,4 @@
+import { withServerFailureBoundary, readRequestJson, InvalidRequestJson } from '@/lib/server-failure-boundary';
 // Implements: architecture/reference/ux/wc-034-implementation-decomposition.md §F3 Conversation Core
 // Constitutional basis: C-023 (Evidence First), C-026 (Tenant Isolation), C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
@@ -21,12 +22,15 @@ function optionalQuery(request: NextRequest, name: string): string | undefined {
 
 function sessionRequired() {
   return NextResponse.json(
-    { code: 'CONVERSATION_SESSION_REQUIRED', title: 'Secure sign in is required.' },
+    {
+      code: 'CONVERSATION_SESSION_REQUIRED',
+      title: 'Secure sign in is required.',
+    },
     { status: 401 }
   );
 }
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
+async function GETHandler(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return sessionRequired();
   const { relationshipId } = await params;
@@ -35,7 +39,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const afterCursor = optionalQuery(request, 'afterCursor');
   if (cursor && afterCursor) {
     return NextResponse.json(
-      { code: 'CONVERSATION_REQUEST_INVALID', title: 'Conversation request is invalid.' },
+      {
+        code: 'CONVERSATION_REQUEST_INVALID',
+        title: 'Conversation request is invalid.',
+      },
       { status: 400 }
     );
   }
@@ -67,26 +74,34 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       afterCursor,
       limit,
     });
-    return NextResponse.json(page, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json(page, {
+      headers: { 'Cache-Control': 'no-store' },
+    });
   } catch (error) {
     if (error instanceof InvalidConversationRequest) {
       return NextResponse.json(
-        { code: 'CONVERSATION_REQUEST_INVALID', title: 'Conversation request is invalid.' },
+        {
+          code: 'CONVERSATION_REQUEST_INVALID',
+          title: 'Conversation request is invalid.',
+        },
         { status: 400 }
       );
     }
     const problem = await conversationProblem(error);
-    return NextResponse.json(problem.body, { status: problem.status, headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json(problem.body, {
+      status: problem.status,
+      headers: { 'Cache-Control': 'no-store' },
+    });
   }
 }
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
+async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return sessionRequired();
   const { relationshipId } = await params;
 
   try {
-    const body = (await request.json()) as CommandBody;
+    const body = (await readRequestJson(request)) as CommandBody;
     const action = requiredString(body, 'action');
     const idempotencyKey = requiredString(body, 'idempotencyKey');
     const api = createConversationApi(accessToken);
@@ -101,7 +116,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
               schemaVersion: '1.0',
               clientMessageId: requiredString(body, 'clientMessageId'),
               skillId: requiredString(body, 'skillId'),
-              content: [{ schemaVersion: '1.0', blockType: 'TEXT', text: requiredString(body, 'text') }],
+              content: [
+                {
+                  schemaVersion: '1.0',
+                  blockType: 'TEXT',
+                  text: requiredString(body, 'text'),
+                },
+              ],
               locale: requiredString(body, 'locale'),
               expectedCursor: typeof body.expectedCursor === 'string' ? body.expectedCursor : undefined,
             },
@@ -139,13 +160,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         throw new InvalidConversationRequest();
     }
   } catch (error) {
-    if (error instanceof InvalidConversationRequest || error instanceof SyntaxError) {
+    if (error instanceof InvalidConversationRequest || error instanceof InvalidRequestJson) {
       return NextResponse.json(
-        { code: 'CONVERSATION_REQUEST_INVALID', title: 'Conversation request is invalid.' },
+        {
+          code: 'CONVERSATION_REQUEST_INVALID',
+          title: 'Conversation request is invalid.',
+        },
         { status: 400 }
       );
     }
     const problem = await conversationProblem(error);
-    return NextResponse.json(problem.body, { status: problem.status, headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json(problem.body, {
+      status: problem.status,
+      headers: { 'Cache-Control': 'no-store' },
+    });
   }
 }
+
+export const GET = withServerFailureBoundary('web.conversations.relationshipid.get_failed', GETHandler);
+export const POST = withServerFailureBoundary('web.conversations.relationshipid.post_failed', POSTHandler);

@@ -57,7 +57,10 @@ it('fails closed without exposing dependency detail', async () => {
   process.env.WEB_SESSION_CONFIG_DIGEST = 'unexpected';
   const response = await GET();
   expect(response.status).toBe(503);
-  await expect(response.json()).resolves.toEqual({ code: 'REVISION_NOT_READY' });
+  await expect(response.json()).resolves.toEqual({
+    code: 'REVISION_NOT_READY',
+    correlationId: response.headers.get('x-correlation-id'),
+  });
   expect(fetch).not.toHaveBeenCalled();
 });
 

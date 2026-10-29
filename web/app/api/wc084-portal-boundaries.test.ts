@@ -70,7 +70,11 @@ describe('WC085 registration handoff', () => {
     return POST(
       new NextRequest('http://localhost/api/identity/registration', {
         method: 'POST',
-        body: JSON.stringify({ action: 'complete', registrationId: 'registration-1', idempotencyKey: 'key-1' }),
+        body: JSON.stringify({
+          action: 'complete',
+          registrationId: 'registration-1',
+          idempotencyKey: 'key-1',
+        }),
       })
     );
   }
@@ -119,6 +123,7 @@ describe('WC085 registration handoff', () => {
     const response = await complete();
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
+      correlationId: response.headers.get('x-correlation-id'),
       code: 'IDENTITY_DEPENDENCY_UNAVAILABLE',
       title: 'Identity request could not be completed.',
     });
@@ -138,6 +143,7 @@ describe('WC085 registration handoff', () => {
     const response = await complete();
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
+      correlationId: response.headers.get('x-correlation-id'),
       code: 'IDENTITY_DEPENDENCY_UNAVAILABLE',
       title: 'Identity request could not be completed.',
     });
@@ -154,6 +160,7 @@ describe('WC085 registration handoff', () => {
     const response = await complete();
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
+      correlationId: response.headers.get('x-correlation-id'),
       code: 'IDENTITY_DEPENDENCY_UNAVAILABLE',
       title: 'Identity request could not be completed.',
     });
@@ -199,7 +206,11 @@ describe('WC085 registration handoff', () => {
         expect(await response.json()).toEqual(
           state === 'matching'
             ? { handoffConfirmed: true }
-            : { code: 'IDENTITY_DEPENDENCY_UNAVAILABLE', title: 'Identity request could not be completed.' }
+            : {
+                correlationId: response.headers.get('x-correlation-id'),
+                code: 'IDENTITY_DEPENDENCY_UNAVAILABLE',
+                title: 'Identity request could not be completed.',
+              }
         );
         expect(fetchMock).toHaveBeenCalledTimes(2);
         expect(fetchMock.mock.calls.map(([, init]) => init?.method)).toEqual(['POST', 'GET']);
@@ -258,6 +269,7 @@ describe('WC085 registration handoff', () => {
       const response = await complete();
       expect(response.status).toBe(503);
       expect(await response.json()).toEqual({
+        correlationId: response.headers.get('x-correlation-id'),
         code: 'IDENTITY_DEPENDENCY_UNAVAILABLE',
         title: 'Identity request could not be completed.',
       });
@@ -275,7 +287,9 @@ describe('WC085 registration handoff', () => {
     );
     startIdentityRegistration.mockRejectedValue(
       new ResponseError(
-        new Response(JSON.stringify({ title: 'private-token private-tenant', accountReference }), { status: 409 })
+        new Response(JSON.stringify({ title: 'private-token private-tenant', accountReference }), {
+          status: 409,
+        })
       )
     );
     const { POST } = await import('./identity/registration/route');
@@ -287,6 +301,7 @@ describe('WC085 registration handoff', () => {
     );
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
+      correlationId: response.headers.get('x-correlation-id'),
       code: 'IDENTITY_DEPENDENCY_UNAVAILABLE',
       title: 'Identity request could not be completed.',
     });
@@ -341,7 +356,7 @@ describe('WC085 registration handoff', () => {
     expect(await response.json()).toEqual({
       code,
       title: 'Identity request could not be completed.',
-      correlationId,
+      correlationId: status >= 500 ? response.headers.get('x-correlation-id') : correlationId,
     });
   });
 
@@ -397,6 +412,7 @@ describe('WC085 registration handoff', () => {
     );
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
+      correlationId: response.headers.get('x-correlation-id'),
       code: 'IDENTITY_DEPENDENCY_UNAVAILABLE',
       title: 'Identity request could not be completed.',
     });
