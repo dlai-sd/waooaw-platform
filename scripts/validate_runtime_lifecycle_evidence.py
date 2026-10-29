@@ -21,6 +21,7 @@ RUNTIME_GATE_PATHS = (
     "scripts/goal006_verify_deployment.sh",
     "scripts/run_goal006_local_azure_verification.sh",
     "scripts/run_goal006_runtime_lifecycle_gate.sh",
+    "scripts/validate_runtime_lifecycle_evidence.py",
 )
 DIGEST_IMAGE = re.compile(r".+@sha256:[0-9a-f]{64}$")
 SHA256 = re.compile(r"[0-9a-f]{64}$")
@@ -89,6 +90,18 @@ def validate_runtime_evidence(
         violations.append("RUNTIME_EVIDENCE_INVALID: runtime image must identify the evidence commit")
     if SHA256.fullmatch(str(evidence.get("professional_runtime_log_sha256", ""))) is None:
         violations.append("RUNTIME_EVIDENCE_INVALID: runtime log SHA-256 is required")
+    if re.fullmatch(r"sha256:[0-9a-f]{64}", str(evidence.get("runtime_image_id", ""))) is None:
+        violations.append("RUNTIME_EVIDENCE_INVALID: runtime image ID is required")
+    scan = evidence.get("image_scan")
+    if not isinstance(scan, dict):
+        violations.append("RUNTIME_EVIDENCE_INVALID: runtime image scan is required")
+    else:
+        if scan.get("passed") is not True or scan.get("policy") != "fixable-high-critical":
+            violations.append("RUNTIME_EVIDENCE_INVALID: runtime image scan must pass fixable-high-critical policy")
+        if DIGEST_IMAGE.fullmatch(str(scan.get("scanner_image", ""))) is None:
+            violations.append("RUNTIME_EVIDENCE_INVALID: scanner image must be digest-pinned")
+        if SHA256.fullmatch(str(scan.get("report_sha256", ""))) is None:
+            violations.append("RUNTIME_EVIDENCE_INVALID: runtime image scan report SHA-256 is required")
     return violations
 
 

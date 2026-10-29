@@ -2545,6 +2545,21 @@ jobs:
           test -n "$web_url"
           echo "web_url=$web_url" >> "$GITHUB_OUTPUT"
 
+      - name: Resume PgBouncer before migration preflight
+        if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
+        env:
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          python3 scripts/goal006_activation_readiness.py \
+            --resource-group "$RESOURCE_GROUP" \
+            --environment "$TARGET_ENVIRONMENT" \
+            --scope migration \
+            --resume-stopped \
+            --timeout-seconds 600 \
+            --interval-seconds 15 \
+            --output wc124-migration-readiness.json
+
       - name: Preflight PgBouncer from private ACA environment
         if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
         env:
@@ -2552,7 +2567,7 @@ jobs:
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
-          job_name="job-${TARGET_ENVIRONMENT}-wc124-db-provisioner"
+          job_name="job-${TARGET_ENVIRONMENT}-wc124-billing-migration"
           az containerapp job show \
             --name "$job_name" \
             --resource-group "$RESOURCE_GROUP" \
@@ -2561,31 +2576,12 @@ jobs:
             --job wc124-pgbouncer-preflight-job.before.json \
             --environment "$TARGET_ENVIRONMENT" \
             --subscription-id "$ARM_SUBSCRIPTION_ID" \
-            --schema infrastructure/environment-readiness/wc124-pgbouncer-preflight-job-patch.schema.json \
-            --output wc124-pgbouncer-preflight-job.patch.json
-          job_id=$(jq -er '.id' wc124-pgbouncer-preflight-job.before.json)
-          az rest \
-            --method patch \
-            --url "https://management.azure.com${job_id}?api-version=2024-03-01" \
-            --body @wc124-pgbouncer-preflight-job.patch.json \
-            --output none
-          az containerapp job show \
-            --name "$job_name" \
-            --resource-group "$RESOURCE_GROUP" \
-            --output json > wc124-pgbouncer-preflight-job.json
-          python3 scripts/wc124_pgbouncer_preflight_job.py \
-            --job wc124-pgbouncer-preflight-job.before.json \
-            --effective-job wc124-pgbouncer-preflight-job.json \
-            --environment "$TARGET_ENVIRONMENT" \
-            --subscription-id "$ARM_SUBSCRIPTION_ID" \
-            --schema infrastructure/environment-readiness/wc124-pgbouncer-preflight-job-patch.schema.json \
-            --output wc124-pgbouncer-preflight-job.verified-patch.json
-          cmp --silent \
-            wc124-pgbouncer-preflight-job.patch.json \
-            wc124-pgbouncer-preflight-job.verified-patch.json
+            --database-query \
+            --output wc124-pgbouncer-preflight-template.json
           execution=$(az containerapp job start \
             --name "$job_name" \
             --resource-group "$RESOURCE_GROUP" \
+            --yaml wc124-pgbouncer-preflight-template.json \
             --query name \
             --output tsv)
           test -n "$execution"
@@ -2599,7 +2595,7 @@ jobs:
               --name "$job_name" \
               --resource-group "$RESOURCE_GROUP" \
               --execution "$execution" \
-              --container "$job_name" \
+              --container billing-migration \
               --tail 100 \
               --format text > wc124-pgbouncer-preflight.log 2>&1 || true
           }
@@ -3283,6 +3279,7 @@ jobs:
             --resource-group "$RESOURCE_GROUP" \
             --environment "$TARGET_ENVIRONMENT" \
             --scope dependencies \
+            --resume-stopped \
             --timeout-seconds 600 \
             --interval-seconds 15 \
             --output wc124-dependency-readiness.json
@@ -3383,6 +3380,7 @@ jobs:
           python3 scripts/goal006_activation_readiness.py \
             --resource-group "$RESOURCE_GROUP" \
             --environment "$TARGET_ENVIRONMENT" \
+            --resume-stopped \
             --timeout-seconds 600 \
             --interval-seconds 15 \
             --output wc124-activation-readiness.json
@@ -3714,10 +3712,8 @@ jobs:
             wc124-db-provisioner-execution.json
             wc124-db-provisioner-evidence.log
             wc124-db-provisioner-result.json
-            wc124-pgbouncer-preflight-job.json
             wc124-pgbouncer-preflight-job.before.json
-            wc124-pgbouncer-preflight-job.patch.json
-            wc124-pgbouncer-preflight-job.verified-patch.json
+            wc124-pgbouncer-preflight-template.json
             wc124-pgbouncer-preflight-execution.json
             wc124-pgbouncer-preflight.log
             wc124-db-handoff-recovery-execution.json
@@ -3730,6 +3726,7 @@ jobs:
             wc124-connection-budget.json
             wc124-connection-budget-post-activation.json
             wc124-dependency-readiness.json
+            wc124-migration-readiness.json
             wc124-activation-readiness.json
             demo-revision-cleanup.json
             wc124-vendor-migrations.json

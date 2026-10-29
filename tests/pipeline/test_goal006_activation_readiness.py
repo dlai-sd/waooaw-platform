@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import runpy
 import sys
 from pathlib import Path
 
@@ -36,7 +37,7 @@ class FakeAzure:
         states = self.timeline[app]
         state = states[min(self.calls[app], len(states) - 1)]
         if args[:2] == ["containerapp", "show"]:
-            return {"latest": state["latest"], "ready": state.get("ready")}
+            return {"latest": state["latest"], "ready": state.get("ready"), "status": state.get("status", "Running")}
         self.calls[app] += 1
         return {"running": state["running"], "health": state["health"], "replicas": state.get("replicas", 1),
                 "active": state.get("active", True)}
@@ -52,6 +53,29 @@ def _clock():
         now[0] += seconds
 
     return clock, sleep
+
+
+@pytest.mark.parametrize("name", ["..", "%2e%2e", "unknown", "ca-demo-web"])
+def test_emulator_start_only_mutates_preconfigured_app_paths(tmp_path, monkeypatch, name):
+    monkeypatch.syspath_prepend(str(ROOT / "scripts"))
+    emulator = runpy.run_path(str(ROOT / "tests/fixtures/goal006_azure_emulator.py"))
+    handler = object.__new__(emulator["AzureHandler"])
+    stopped = tmp_path / "stopped-ca-demo-web"
+    resumed = tmp_path / "resumed-ca-demo-web.json"
+    stopped.touch()
+    handler.app_state_paths = {"ca-demo-web": (stopped, resumed)}
+    handler.path = f"/subscriptions/local/providers/Microsoft.App/containerApps/{name}/start"
+    responses = []
+    handler.send_json = lambda status, payload: responses.append((status, payload))
+
+    handler.do_POST()
+
+    assert responses[0][0] == (200 if name == "ca-demo-web" else 404)
+    assert stopped.exists() is (name != "ca-demo-web")
+    assert resumed.exists() is (name == "ca-demo-web")
+    assert {path.name for path in tmp_path.iterdir()} == (
+        {"resumed-ca-demo-web.json"} if name == "ca-demo-web" else {"stopped-ca-demo-web"}
+    )
 
 
 def test_passes_once_every_latest_revision_is_running_and_healthy():
@@ -189,6 +213,78 @@ def test_dependency_scope_fails_closed_when_dependency_is_missing_or_scaled_to_z
         "ca-demo-temporal",
     ]
     assert result["not_ready"] == sorted([*result["missing_apps"], "ca-demo-pgbouncer"])
+
+
+def test_stopped_app_is_not_ready_even_when_revision_metadata_is_healthy():
+    azure = FakeAzure({
+        "ca-demo-pgbouncer": [
+            {"latest": "pg--r1", "ready": "pg--r1", "running": "Running", "health": "Healthy",
+             "status": "Stopped", "replicas": 1},
+        ],
+    })
+    result = readiness.evaluate("rg", "demo", timeout_seconds=0, interval_seconds=1,
+                                scope="migration", run_az=azure, log=lambda _: None)
+    assert result["status"] == "failed"
+    assert "runningStatus=Stopped" in result["revisions"][0]["reason"]
+
+
+@pytest.mark.parametrize("scope,members", [
+    ("migration", ["pgbouncer"]),
+    ("dependencies", ["auth-redis", "identity-edge", "keycloak", "pgbouncer", "temporal"]),
+    ("all", ["pgbouncer", "web"]),
+])
+def test_deployment_resumes_only_selected_stopped_apps_and_is_idempotent(scope, members):
+    states = {f"ca-demo-{member}": "Stopped" for member in [*members, "unselected"]}
+    starts = []
+
+    def azure(args):
+        if args[:2] == ["containerapp", "list"]:
+            return list(states)
+        if args[0] == "rest":
+            url = args[args.index("--url") + 1]
+            assert args[1:3] == ["--method", "post"]
+            assert url.endswith("/start?api-version=2025-01-01")
+            app = url.split("/containerApps/")[1].split("/")[0]
+            states[app] = "Running"
+            starts.append(app)
+            return None
+        app = args[args.index("--name") + 1]
+        if args[:2] == ["containerapp", "show"]:
+            if args[args.index("--query") + 1] == "{id:id,status:properties.runningStatus}":
+                return {"id": f"/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/"
+                              f"waooaw-demo-rg/providers/Microsoft.App/containerApps/{app}", "status": states[app]}
+            return {"latest": app + "--r1", "ready": app + "--r1", "status": states[app]}
+        return {"running": "Running", "health": "Healthy", "replicas": 1, "active": True}
+
+    if scope == "all":
+        del states["ca-demo-unselected"]
+    for _ in range(2):
+        result = readiness.evaluate("waooaw-demo-rg", "demo", timeout_seconds=0, interval_seconds=1,
+                                    scope=scope, resume_stopped=True, run_az=azure, log=lambda _: None)
+        assert result["status"] == "passed"
+    assert sorted(starts) == [f"ca-demo-{member}" for member in sorted(members)]
+    if scope != "all":
+        assert states["ca-demo-unselected"] == "Stopped"
+
+
+@pytest.mark.parametrize("case", ["wrong-group", "wrong-id", "unknown-state", "denied"])
+def test_resume_fails_closed_on_scope_state_or_provider_error(case):
+    calls = []
+
+    def azure(args):
+        calls.append(args)
+        if args[0] == "rest":
+            raise RuntimeError("Azure operation denied")
+        return {
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/"
+                  f"{'other' if case == 'wrong-id' else 'waooaw-demo-rg'}/providers/Microsoft.App/containerApps/ca-demo-pgbouncer",
+            "status": "Unknown" if case == "unknown-state" else "Stopped",
+        }
+
+    with pytest.raises((ValueError, RuntimeError)):
+        readiness.resume_stopped_app("other" if case == "wrong-group" else "waooaw-demo-rg",
+                                      "demo", "ca-demo-pgbouncer", azure)
+    assert len([args for args in calls if args[0] == "rest"]) == (1 if case == "denied" else 0)
 
 
 def test_fails_when_the_bounded_wait_expires_while_still_processing():

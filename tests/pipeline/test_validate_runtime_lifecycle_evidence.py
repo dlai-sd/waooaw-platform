@@ -1,5 +1,7 @@
 from pathlib import Path
 import json
+import os
+import subprocess
 import sys
 
 
@@ -29,6 +31,13 @@ EVIDENCE = {
     "restart_recovered_http_status": 200,
     "restart_recovered_health": {"temporalConnected": True, "constitutionalEngineReachable": True},
     "professional_runtime_log_sha256": "d" * 64,
+    "runtime_image_id": f"sha256:{'e' * 64}",
+    "image_scan": {
+        "passed": True,
+        "scanner_image": f"aquasec/trivy@sha256:{'f' * 64}",
+        "policy": "fixable-high-critical",
+        "report_sha256": "1" * 64,
+    },
 }
 
 
@@ -47,6 +56,62 @@ def test_database_readiness_uses_the_temporal_network_endpoint() -> None:
     assert 'docker run --rm --network "$NETWORK" "$POSTGRES_IMAGE"' in script
     assert "pg_isready -h postgres -U postgres -d temporal" in script
     assert 'docker exec "$POSTGRES" pg_isready' not in script
+
+
+def test_runtime_gate_refreshes_and_scans_before_starting_application() -> None:
+    script = (ROOT / "scripts/run_goal006_runtime_lifecycle_gate.sh").read_text()
+    assert '--build-arg "SECURITY_REFRESH=$(date +%s%N)"' in script
+    assert "--scanners vuln --severity HIGH,CRITICAL" in script
+    assert "--ignore-unfixed --exit-code 1" in script
+    assert script.index('"$TRIVY_IMAGE" image') < script.index('--name "$RUNTIME"')
+    assert 'rm -f -- "$EVIDENCE_JSON"' in script
+
+
+def test_runtime_evidence_rejects_missing_or_failed_image_scan() -> None:
+    for scan in (None, {}, {**EVIDENCE["image_scan"], "passed": False},
+                 {**EVIDENCE["image_scan"], "scanner_image": "aquasec/trivy:latest"},
+                 {**EVIDENCE["image_scan"], "report_sha256": "missing"}):
+        assert validate_runtime_evidence(body({**EVIDENCE, "image_scan": scan}), HEAD, True)
+
+
+def test_failed_image_scan_stops_before_workloads_and_removes_stale_evidence(tmp_path) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    calls = tmp_path / "calls"
+    docker = bin_dir / "docker"
+    docker.write_text(
+        '#!/bin/sh\nprintf "%s\\n" "$*" >> "$CALLS"\n'
+        'if test "$1" = run; then exit 17; fi\n'
+    )
+    docker.chmod(0o755)
+    python = bin_dir / "python"
+    python.write_text("#!/bin/sh\nexit 0\n")
+    python.chmod(0o755)
+    git = bin_dir / "git"
+    git.write_text(
+        '#!/bin/sh\ncase "$*" in\n'
+        '*--show-toplevel*) printf "%s\\n" "$REPOSITORY_ROOT";;\n'
+        '*) printf "%s\\n" aaaaaaaaaaaa;;\nesac\n'
+    )
+    git.chmod(0o755)
+    evidence = tmp_path / "evidence.json"
+    evidence.write_text('{"passed": true}')
+
+    result = subprocess.run(
+        ["bash", str(ROOT / "scripts/run_goal006_runtime_lifecycle_gate.sh"), str(evidence)],
+        cwd=ROOT,
+        env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}",
+             "CALLS": str(calls), "REPOSITORY_ROOT": str(ROOT)},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 17, result.stderr
+    assert not evidence.exists()
+    commands = calls.read_text()
+    assert "--ignore-unfixed --exit-code 1" in commands
+    assert "--name" not in commands
 
 
 def test_runtime_evidence_accepts_commit_bound_transition() -> None:

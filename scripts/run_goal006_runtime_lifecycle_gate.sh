@@ -13,6 +13,7 @@ PYTHON_IMAGE="python@sha256:b64631e04e4920160c50fbe8d8df828f7f35f06f425cb44aa09b
 CURL_IMAGE="curlimages/curl@sha256:94e9e444bcba979c2ea12e27ae39bee4cd10bc7041a472c4727a558e213744e6"
 TEMPORAL_IMAGE="temporalio/auto-setup@sha256:98cdb6b5e02d64cb933864a9ba91cb66065eb320623a0dafdf44beba535bca88"
 POSTGRES_IMAGE="postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685"
+TRIVY_IMAGE="aquasec/trivy@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c"
 NETWORK="goal006-runtime-lifecycle-$$"
 RUNTIME="goal006-professional-runtime-$$"
 CE_HEALTH="goal006-ce-health-$$"
@@ -29,9 +30,20 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$(dirname "$EVIDENCE_JSON")"
+rm -f -- "$EVIDENCE_JSON"
 docker network create "$NETWORK" >/dev/null
 "$REPO_ROOT/scripts/validation_control/run_docker_build.sh" \
-  docker build --quiet -t "$RUNTIME_IMAGE" -f "$REPO_ROOT/src/professional-runtime/Dockerfile" "$REPO_ROOT" >/dev/null
+  docker build --quiet --build-arg "SECURITY_REFRESH=$(date +%s%N)" \
+  -t "$RUNTIME_IMAGE" -f "$REPO_ROOT/src/professional-runtime/Dockerfile" "$REPO_ROOT" >/dev/null
+docker run --rm \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  "$TRIVY_IMAGE" image --scanners vuln --severity HIGH,CRITICAL \
+  --ignore-unfixed --exit-code 1 --format json "$RUNTIME_IMAGE" > "$WORK_DIR/runtime-scan.json" || {
+    scan_status=$?
+    cat "$WORK_DIR/runtime-scan.json" >&2
+    exit "$scan_status"
+  }
+RUNTIME_IMAGE_ID=$(docker image inspect "$RUNTIME_IMAGE" --format '{{.Id}}')
 docker run -d --rm \
   --name "$CE_HEALTH" \
   --network "$NETWORK" \
@@ -160,6 +172,9 @@ jq -n \
   --arg schema "waooaw.goal006-runtime-lifecycle/v1" \
   --arg commit_sha "$(git -C "$REPO_ROOT" rev-parse HEAD)" \
   --arg runtime_image "$RUNTIME_IMAGE" \
+  --arg runtime_image_id "$RUNTIME_IMAGE_ID" \
+  --arg scanner_image "$TRIVY_IMAGE" \
+  --arg scan_sha256 "$(sha256sum "$WORK_DIR/runtime-scan.json" | cut -d' ' -f1)" \
   --arg temporal_image "$TEMPORAL_IMAGE" \
   --arg postgres_image "$POSTGRES_IMAGE" \
   --argjson initial_health "$initial_body" \
@@ -172,6 +187,13 @@ jq -n \
     passed: true,
     commit_sha: $commit_sha,
     runtime_image: $runtime_image,
+    runtime_image_id: $runtime_image_id,
+    image_scan: {
+      passed: true,
+      scanner_image: $scanner_image,
+      policy: "fixable-high-critical",
+      report_sha256: $scan_sha256
+    },
     temporal_image: $temporal_image,
     postgres_image: $postgres_image,
     initial_http_status: 503,

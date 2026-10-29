@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import time
@@ -25,6 +26,44 @@ SCHEMA = "waooaw.wc124-activation-readiness/v2"
 # Running states Azure reports for a revision that is no longer converging.
 TERMINAL_FAILURE_STATES = {"ActivationFailed", "Failed", "Degraded", "Deprovisioned"}
 RUNTIME_DEPENDENCY_APPS = {"auth-redis", "identity-edge", "keycloak", "pgbouncer"}
+
+
+def resume_stopped_app(resource_group: str, environment: str, app: str, run_az: Callable[[list[str]], Any]) -> bool:
+    if (
+        environment not in {"demo", "uat"}
+        or resource_group != f"waooaw-{environment}-rg"
+        or not app.startswith(f"ca-{environment}-")
+    ):
+        raise ValueError("Deployment resume is restricted to the same-environment Demo/UAT resource group")
+    shown = run_az(
+        [
+            "containerapp",
+            "show",
+            "--resource-group",
+            resource_group,
+            "--name",
+            app,
+            "--query",
+            "{id:id,status:properties.runningStatus}",
+        ]
+    )
+    expected_id = (
+        rf"/subscriptions/[0-9a-f-]{{36}}/resourceGroups/{re.escape(resource_group)}"
+        rf"/providers/Microsoft[.]App/containerApps/{re.escape(app)}"
+    )
+    if (
+        not isinstance(shown, dict)
+        or not isinstance(shown.get("id"), str)
+        or not re.fullmatch(expected_id, shown["id"], re.IGNORECASE)
+    ):
+        raise ValueError(f"{app}: Azure returned an unexpected resource ID")
+    status = shown.get("status")
+    if status == "Running":
+        return False
+    if status != "Stopped":
+        raise RuntimeError(f"{app}: cannot resume unexpected runningStatus={status}")
+    run_az(["rest", "--method", "post", "--url", f"{shown['id']}/start?api-version=2025-01-01"])
+    return True
 
 
 def _run_az(args: list[str]) -> Any:
@@ -65,7 +104,7 @@ def observe_revision(
                 "--name",
                 app,
                 "--query",
-                "properties.{latest: latestRevisionName, ready: latestReadyRevisionName}",
+                "properties.{latest: latestRevisionName, ready: latestReadyRevisionName, status: runningStatus}",
             ]
         )
         or {}
@@ -75,6 +114,7 @@ def observe_revision(
         "app": app,
         "latest_revision": latest,
         "latest_ready_revision": shown.get("ready"),
+        "running_status": shown.get("status"),
     }
     if not latest:
         observation.update(
@@ -109,7 +149,14 @@ def observe_revision(
     if require_replica is None:
         require_replica = app.endswith("-temporal")
     replica_ready = not require_replica or (type(replicas) is int and replicas >= 1)
-    ready = revision.get("active") is True and settled and replica_ready and health == "Healthy" and shown.get("ready") == latest
+    ready = (
+        shown.get("status") == "Running"
+        and revision.get("active") is True
+        and settled
+        and replica_ready
+        and health == "Healthy"
+        and shown.get("ready") == latest
+    )
     observation.update(
         {
             "running_state": running,
@@ -121,7 +168,7 @@ def observe_revision(
     if not ready:
         observation["reason"] = (
             f"runningState={running} healthState={health} active={revision.get('active')} "
-            f"replicas={replicas} latestReady={shown.get('ready')}"
+            f"replicas={replicas} latestReady={shown.get('ready')} runningStatus={shown.get('status')}"
         )
     return observation
 
@@ -133,6 +180,7 @@ def evaluate(
     timeout_seconds: int,
     interval_seconds: int,
     scope: str = "all",
+    resume_stopped: bool = False,
     run_az: Callable[[list[str]], Any] | None = None,
     clock: Callable[[], float] = time.monotonic,
     sleep: Callable[[float], None] = time.sleep,
@@ -140,9 +188,10 @@ def evaluate(
 ) -> dict[str, Any]:
     run_az = run_az or _run_az
     available_apps = set(list_container_apps(resource_group, environment, run_az))
-    if scope == "dependencies":
-        required_apps = {f"ca-{environment}-{name}" for name in RUNTIME_DEPENDENCY_APPS}
-        if environment == "demo":
+    if scope in {"dependencies", "migration"}:
+        members = {"pgbouncer"} if scope == "migration" else RUNTIME_DEPENDENCY_APPS
+        required_apps = {f"ca-{environment}-{name}" for name in members}
+        if scope == "dependencies" and environment == "demo":
             required_apps.add("ca-demo-temporal")
         apps = sorted(required_apps)
         missing_apps = sorted(required_apps - available_apps)
@@ -153,6 +202,12 @@ def evaluate(
         raise SystemExit(f"No Container Apps named ca-{environment}-* in {resource_group}")
     deadline = clock() + timeout_seconds
     pending = set(apps) - set(missing_apps)
+    resumed_apps = []
+    if resume_stopped and not missing_apps:
+        for app in sorted(pending):
+            if resume_stopped_app(resource_group, environment, app, run_az):
+                resumed_apps.append(app)
+                log(f"{app}: requested operational Start")
     observations: dict[str, dict[str, Any]] = {
         app: {
             "app": app,
@@ -174,7 +229,7 @@ def evaluate(
                 resource_group,
                 app,
                 run_az,
-                require_replica=True if scope == "dependencies" else None,
+                require_replica=True if scope in {"dependencies", "migration"} else None,
             )
         for app, observation in observations.items():
             if observation["ready"] or observation.get("running_state") in TERMINAL_FAILURE_STATES:
@@ -195,6 +250,7 @@ def evaluate(
         "environment": environment,
         "resource_group": resource_group,
         "scope": scope,
+        "resumed_apps": resumed_apps,
         "timeout_seconds": timeout_seconds,
         "attempts": attempts,
         "revisions": [observations[app] for app in apps],
@@ -208,18 +264,25 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--resource-group", required=True)
     parser.add_argument("--environment", required=True)
-    parser.add_argument("--scope", choices=("all", "dependencies"), default="all")
+    parser.add_argument("--scope", choices=("all", "dependencies", "migration"), default="all")
+    parser.add_argument("--resume-stopped", action="store_true", help="Start stopped Demo/UAT apps in the selected phase")
     parser.add_argument("--timeout-seconds", type=int, default=600)
     parser.add_argument("--interval-seconds", type=int, default=15)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
-    result = evaluate(
-        args.resource_group,
-        args.environment,
-        timeout_seconds=args.timeout_seconds,
-        interval_seconds=args.interval_seconds,
-        scope=args.scope,
-    )
+    try:
+        result = evaluate(
+            args.resource_group,
+            args.environment,
+            timeout_seconds=args.timeout_seconds,
+            interval_seconds=args.interval_seconds,
+            scope=args.scope,
+            resume_stopped=args.resume_stopped,
+        )
+    except (RuntimeError, ValueError) as error:
+        args.output.write_text(json.dumps({"schema": SCHEMA, "status": "failed", "error": str(error)}) + "\n", encoding="utf-8")
+        print(f"::error::Container Apps readiness failed: {error}", file=sys.stderr)
+        return 1
     args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     if result["status"] != "passed":
         print(

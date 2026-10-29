@@ -334,20 +334,25 @@ def test_vendor_migration_failures_emit_execution_and_sanitized_log_evidence() -
     assert "wc124-keycloak-migration.log" in WORKFLOW
 
 
-def test_pgbouncer_dns_and_tcp_preflight_blocks_migrations() -> None:
+def test_pgbouncer_resume_and_authenticated_preflight_block_migrations() -> None:
+    resume_index = WORKFLOW.index("      - name: Resume PgBouncer before migration preflight")
     preflight_index = WORKFLOW.index("      - name: Preflight PgBouncer from private ACA environment")
     vendor_index = WORKFLOW.index("      - name: Run vendor schema migrations against private PostgreSQL")
     billing_index = WORKFLOW.index("      - name: Run additive Billing authority migration through PgBouncer")
     preflight = WORKFLOW[preflight_index:vendor_index]
 
-    assert preflight_index < vendor_index < billing_index
+    assert resume_index < preflight_index < vendor_index < billing_index
+    resume = WORKFLOW[resume_index:preflight_index]
+    assert "--scope migration" in resume
+    assert "--resume-stopped" in resume
+    assert "wc124-migration-readiness.json" in WORKFLOW
     assert "wc124_pgbouncer_preflight_job.py" in preflight
-    assert "wc124-pgbouncer-preflight-job-patch.schema.json" in preflight
+    assert 'job_name="job-${TARGET_ENVIRONMENT}-wc124-billing-migration"' in preflight
     assert '--subscription-id "$ARM_SUBSCRIPTION_ID"' in preflight
-    assert "--effective-job wc124-pgbouncer-preflight-job.json" in preflight
-    assert "cmp --silent" in preflight
-    assert "--method patch" in preflight
-    assert "--body @wc124-pgbouncer-preflight-job.patch.json" in preflight
+    assert "--database-query" in preflight
+    assert "--yaml wc124-pgbouncer-preflight-template.json" in preflight
+    assert "--container billing-migration" in preflight
+    assert "--method patch" not in preflight
     assert "az containerapp job update" not in preflight
     assert "capture_pgbouncer_preflight_evidence()" in preflight
     assert "PgBouncer private ACA preflight failed" in preflight
@@ -405,6 +410,7 @@ def test_activation_stages_migrations_dependencies_and_application_revisions() -
     assert "--scope workload-dependencies" in dependencies
     assert "workload-dependencies.tfplan" in dependencies
     assert "--scope dependencies" in dependency_readiness
+    assert "--resume-stopped" in dependency_readiness
 
     assert ".application_activation_enabled = true | .dependency_activation_enabled = true" in activation
 
@@ -418,6 +424,7 @@ def test_activation_and_tls_evidence_are_retained_and_fail_closed() -> None:
     )[0]
 
     assert "workload-activation-apply.log" in activation
+    assert "--resume-stopped" in activation
     assert "| tee workload-activation-apply.log" in activation
     assert "demo-managed-certificates.log" in tls
     assert "demo-managed-certificates.json" in tls

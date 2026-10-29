@@ -33,6 +33,84 @@ RESOURCE_FIELDS = {"cpu", "ephemeralStorage", "memory"}
 ENVIRONMENT_FIELDS = {"name", "secretRef", "value"}
 VOLUME_MOUNT_FIELDS = {"mountPath", "subPath", "volumeName"}
 
+DATABASE_PROBE = """
+import asyncio
+import json
+import os
+import sys
+from urllib.parse import urlsplit
+
+import asyncpg
+
+async def probe():
+    environment = sys.argv[1]
+    url = os.environ["DATABASE_URL"]
+    parsed = urlsplit(url)
+    if (parsed.hostname != f"ca-{environment}-pgbouncer" or parsed.port != 5432
+            or parsed.username != "billing_migrator" or parsed.path != "/waooaw_application"):
+        raise ValueError("Database preflight route or login is outside its contract")
+    connection = await asyncpg.connect(url, timeout=10, command_timeout=10, statement_cache_size=0)
+    try:
+        async with connection.transaction(readonly=True):
+            row = await connection.fetchrow("SELECT 1 AS probe, session_user AS login, current_database() AS database")
+            if dict(row) != {"probe": 1, "login": "billing_migrator", "database": "waooaw_application"}:
+                raise ValueError("Database preflight returned an unexpected result")
+        print(json.dumps({"schema": "waooaw.wc124-pgbouncer-query/v1", "environment": environment,
+                          "host": parsed.hostname, "login": row["login"], "database": row["database"],
+                          "query": "SELECT 1", "status": "passed"}))
+    finally:
+        await connection.close(timeout=5)
+
+try:
+    asyncio.run(probe())
+except (OSError, ValueError, KeyError, asyncpg.PostgresError, asyncio.TimeoutError) as error:
+    print(f"Database preflight failed: {type(error).__name__}", file=sys.stderr)
+    sys.exit(1)
+"""
+
+
+def build_database_probe_template(job: dict[str, Any], environment: str, subscription_id: str) -> dict[str, Any]:
+    if environment not in {"demo", "uat"}:
+        raise ValueError("Database preflight is restricted to Demo/UAT")
+    name = f"job-{environment}-wc124-billing-migration"
+    group = f"waooaw-{environment}-rg"
+    expected_id = f"/subscriptions/{subscription_id}/resourceGroups/{group}/providers/Microsoft.App/jobs/{name}"
+    if (
+        job.get("name") != name
+        or job.get("resourceGroup") != group
+        or job.get("type") != "Microsoft.App/jobs"
+        or job.get("id", "").lower() != expected_id.lower()
+    ):
+        raise ValueError("Database preflight job is outside its environment scope")
+    template = job["properties"]["template"]
+    if template.get("initContainers") or template.get("volumes") or len(template["containers"]) != 1:
+        raise ValueError("Database preflight requires exactly one Billing container and no volumes")
+    container = template["containers"][0]
+    if container.get("name") != "billing-migration" or not re.fullmatch(
+        r"ghcr[.]io/dlai-sd/billing-engine@sha256:[0-9a-f]{64}", container.get("image", "")
+    ):
+        raise ValueError("Database preflight requires the immutable Billing migration image")
+    database_env = [record for record in container.get("env", []) if record.get("name") == "DATABASE_URL"]
+    if database_env != [{"name": "DATABASE_URL", "secretRef": "migration-database"}]:
+        raise ValueError("Database preflight requires the existing database secret reference")
+    secrets = [record for record in job["properties"]["configuration"]["secrets"] if record.get("name") == "migration-database"]
+    if len(secrets) != 1 or not re.fullmatch(
+        r"https://[a-z0-9-]+[.]vault[.]azure[.]net/secrets/[^/]+/[^/]+", secrets[0].get("keyVaultUrl", "")
+    ):
+        raise ValueError("Database preflight requires a versioned Key Vault reference")
+    return {
+        "containers": [
+            {
+                "name": container["name"],
+                "image": container["image"],
+                "resources": {key: container["resources"][key] for key in ("cpu", "memory")},
+                "env": database_env,
+                "command": ["python", "-c"],
+                "args": [DATABASE_PROBE, environment],
+            }
+        ]
+    }
+
 
 def _reject_unknown(record: dict[str, Any], allowed: set[str], description: str) -> None:
     unknown = sorted(set(record) - allowed)
@@ -254,13 +332,22 @@ def main() -> int:
     parser.add_argument("--job", type=Path, required=True)
     parser.add_argument("--environment", required=True)
     parser.add_argument("--subscription-id", required=True)
-    parser.add_argument("--schema", type=Path, required=True)
+    parser.add_argument("--schema", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--effective-job", type=Path)
     parser.add_argument("--qualification-job", action="store_true")
+    parser.add_argument("--database-query", action="store_true")
     arguments = parser.parse_args()
     try:
         job = json.loads(arguments.job.read_text(encoding="utf-8"))
+        if arguments.database_query:
+            if arguments.qualification_job or arguments.effective_job or arguments.schema:
+                raise ValueError("Database execution templates cannot be combined with provisioner patch options")
+            template = build_database_probe_template(job, arguments.environment, arguments.subscription_id)
+            arguments.output.write_text(json.dumps(template, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            return 0
+        if arguments.schema is None:
+            raise ValueError("--schema is required for provisioner patches")
         patch = build_preflight_patch(
             job,
             arguments.environment,
