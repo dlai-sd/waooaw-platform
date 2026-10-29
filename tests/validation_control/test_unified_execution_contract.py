@@ -33,6 +33,26 @@ from validation_control.execution_contract import (
 IMAGE_ID = "sha256:" + "b" * 64
 
 
+def test_dependency_scans_run_and_enforce_only_catalog_selected_gates() -> None:
+    root = Path(__file__).parents[2]
+    workflow = yaml.safe_load((root / ".github/workflows/ci.yaml").read_text(encoding="utf-8"))
+    steps = workflow["jobs"]["dep-scan"]["steps"]
+    scans = {step["id"]: step for step in steps if "id" in step}
+    enforcement = next(step for step in steps if step.get("name") == "Enforce catalog dependency scan results")
+    expected_failures = []
+
+    for language in ("python", "dotnet", "typescript"):
+        scan = scans[f"{language}-scan"]
+        selected = f"contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'dep-scan:{language}')"
+        assert scan["if"] == selected
+        assert scan["with"]["gate-id"] == f"dep-scan:{language}"
+        assert scan["continue-on-error"] is True
+        expected_failures.append(f"({selected} && steps.{language}-scan.outcome != 'success')")
+
+    assert " ".join(enforcement["if"].split()) == f"always() && ( {' || '.join(expected_failures)} )"
+    assert enforcement["run"] == "exit 1"
+
+
 def test_prebuild_cleanup_selects_only_disposable_images_and_protects_runners() -> None:
     assert disposable_image_references(
         [

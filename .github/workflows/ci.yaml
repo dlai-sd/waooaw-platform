@@ -796,6 +796,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Execute catalog Python dependency scan
+        if: contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'dep-scan:python')
         uses: ./.github/actions/run-validation-gate
         id: python-scan
         continue-on-error: true
@@ -803,6 +804,7 @@ jobs:
           gate-id: dep-scan:python
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Execute catalog .NET dependency scan
+        if: contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'dep-scan:dotnet')
         uses: ./.github/actions/run-validation-gate
         id: dotnet-scan
         continue-on-error: true
@@ -810,6 +812,7 @@ jobs:
           gate-id: dep-scan:dotnet
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Execute catalog TypeScript dependency scan
+        if: contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'dep-scan:typescript')
         uses: ./.github/actions/run-validation-gate
         id: typescript-scan
         continue-on-error: true
@@ -858,9 +861,14 @@ jobs:
 
       - name: Enforce catalog dependency scan results
         if: >-
-          steps.python-scan.outcome != 'success' ||
-          steps.dotnet-scan.outcome != 'success' ||
-          steps.typescript-scan.outcome != 'success'
+          always() && (
+            (contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'dep-scan:python') &&
+              steps.python-scan.outcome != 'success') ||
+            (contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'dep-scan:dotnet') &&
+              steps.dotnet-scan.outcome != 'success') ||
+            (contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'dep-scan:typescript') &&
+              steps.typescript-scan.outcome != 'success')
+          )
         run: exit 1
 
   # ─── License compliance ───────────────────────────────────────────────────
