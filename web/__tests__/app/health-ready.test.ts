@@ -1,13 +1,21 @@
 jest.mock('next/server', () => {
   class MockNextResponse {
     readonly status: number;
+    readonly body: unknown;
+    readonly headers: Record<string, string>;
 
-    constructor(_body: unknown, init?: { status?: number }) {
+    constructor(body: unknown, init?: { status?: number; headers?: Record<string, string> }) {
       this.status = init?.status ?? 200;
+      this.body = body;
+      this.headers = init?.headers ?? {};
     }
 
-    static json(_body: unknown, init?: { status?: number }) {
-      return new MockNextResponse(null, init);
+    async json() {
+      return this.body;
+    }
+
+    static json(body: unknown, init?: { status?: number; headers?: Record<string, string> }) {
+      return new MockNextResponse(body, init);
     }
   }
 
@@ -19,16 +27,16 @@ jest.mock('@/lib/web-session-store', () => ({
   sessionStoreReady: jest.fn(),
 }));
 jest.mock('@/lib/auth-abuse-limiter', () => ({
-  authAbuseLimiterReady: jest.fn(),
+  authAbuseLimiterStatus: jest.fn(),
 }));
 
 import { GET } from '@/app/api/health/ready/route';
-import { authAbuseLimiterReady } from '@/lib/auth-abuse-limiter';
+import { authAbuseLimiterStatus } from '@/lib/auth-abuse-limiter';
 import { oidcTransactionStoreReady, sessionStoreReady } from '@/lib/web-session-store';
 
 const mockedOidcTransactionStoreReady = jest.mocked(oidcTransactionStoreReady);
 const mockedSessionStoreReady = jest.mocked(sessionStoreReady);
-const mockedAuthAbuseLimiterReady = jest.mocked(authAbuseLimiterReady);
+const mockedAuthAbuseLimiterStatus = jest.mocked(authAbuseLimiterStatus);
 const originalEnvironment = { ...process.env };
 
 describe('revision readiness', () => {
@@ -47,7 +55,7 @@ describe('revision readiness', () => {
     });
     mockedSessionStoreReady.mockReset();
     mockedOidcTransactionStoreReady.mockReset().mockResolvedValue(true);
-    mockedAuthAbuseLimiterReady.mockReset().mockResolvedValue(true);
+    mockedAuthAbuseLimiterStatus.mockReset().mockResolvedValue({ ready: true, reason: 'READY' });
   });
 
   afterAll(() => {
@@ -60,7 +68,7 @@ describe('revision readiness', () => {
     const response = await GET();
 
     expect(response.status).toBe(204);
-    expect(mockedAuthAbuseLimiterReady).toHaveBeenCalledTimes(1);
+    expect(mockedAuthAbuseLimiterStatus).toHaveBeenCalledTimes(1);
     expect(mockedOidcTransactionStoreReady).toHaveBeenCalledTimes(1);
     expect(mockedSessionStoreReady).not.toHaveBeenCalled();
     expect(global.fetch).toHaveBeenCalledTimes(2);
@@ -73,12 +81,36 @@ describe('revision readiness', () => {
 
   it('fails closed when the authentication limiter is unavailable in disabled session mode', async () => {
     process.env.WAOOAW_SERVER_SESSION_MODE = 'disabled';
-    mockedAuthAbuseLimiterReady.mockResolvedValue(false);
+    mockedAuthAbuseLimiterStatus.mockResolvedValue({ ready: false, reason: 'LIMITER_UNAVAILABLE' });
 
     const response = await GET();
 
     expect(response.status).toBe(503);
     expect(mockedSessionStoreReady).not.toHaveBeenCalled();
+  });
+
+  it('reports the restart hold without exposing credentials or bypassing readiness', async () => {
+    process.env.WAOOAW_SERVER_SESSION_MODE = 'disabled';
+    mockedAuthAbuseLimiterStatus.mockResolvedValue({
+      ready: false,
+      reason: 'RESTART_HOLD',
+      retryAfterSeconds: 73,
+    });
+
+    const response = await GET();
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      code: 'REVISION_NOT_READY',
+      dependencies: {
+        identity: true,
+        membership: true,
+        transactionStore: true,
+        sessionStore: true,
+        limiter: { ready: false, reason: 'RESTART_HOLD', retryAfterSeconds: 73 },
+      },
+    });
+    expect(response.headers).toEqual({ 'Cache-Control': 'no-store', 'Retry-After': '73' });
   });
 
   it('fails closed when OIDC transaction persistence is unavailable in disabled session mode', async () => {

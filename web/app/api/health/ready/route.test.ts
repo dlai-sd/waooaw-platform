@@ -1,10 +1,10 @@
 /** @jest-environment node */
 
-import { authAbuseLimiterReady } from '@/lib/auth-abuse-limiter';
+import { authAbuseLimiterStatus } from '@/lib/auth-abuse-limiter';
 import { oidcTransactionStoreReady, sessionStoreReady } from '@/lib/web-session-store';
 import { GET } from './route';
 
-jest.mock('@/lib/auth-abuse-limiter', () => ({ authAbuseLimiterReady: jest.fn() }));
+jest.mock('@/lib/auth-abuse-limiter', () => ({ authAbuseLimiterStatus: jest.fn() }));
 jest.mock('@/lib/web-session-store', () => ({
   oidcTransactionStoreReady: jest.fn(),
   sessionStoreReady: jest.fn(),
@@ -22,7 +22,7 @@ const readinessEnvironment = {
 
 beforeEach(() => {
   Object.assign(process.env, readinessEnvironment);
-  jest.mocked(authAbuseLimiterReady).mockReset().mockResolvedValue(true);
+  jest.mocked(authAbuseLimiterStatus).mockReset().mockResolvedValue({ ready: true, reason: 'READY' });
   jest.mocked(oidcTransactionStoreReady).mockReset().mockResolvedValue(true);
   jest.mocked(sessionStoreReady).mockReset().mockResolvedValue(true);
   jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 204 }));
@@ -59,4 +59,33 @@ it('fails closed without exposing dependency detail', async () => {
   expect(response.status).toBe(503);
   await expect(response.json()).resolves.toEqual({ code: 'REVISION_NOT_READY' });
   expect(fetch).not.toHaveBeenCalled();
+});
+
+it('reports the restart hold without making the revision ready', async () => {
+  jest.mocked(authAbuseLimiterStatus).mockResolvedValue({
+    ready: false,
+    reason: 'RESTART_HOLD',
+    retryAfterSeconds: 120,
+  });
+  const response = await GET();
+  expect(response.status).toBe(503);
+  expect(response.headers.get('Retry-After')).toBe('120');
+  expect(response.headers.get('Cache-Control')).toBe('no-store');
+  await expect(response.json()).resolves.toMatchObject({
+    code: 'REVISION_NOT_READY',
+    dependencies: { limiter: { ready: false, reason: 'RESTART_HOLD', retryAfterSeconds: 120 } },
+  });
+});
+
+it('fails closed without a recovery promise when Redis is unavailable', async () => {
+  jest.mocked(authAbuseLimiterStatus).mockResolvedValue({
+    ready: false,
+    reason: 'LIMITER_UNAVAILABLE',
+  });
+  const response = await GET();
+  expect(response.status).toBe(503);
+  expect(response.headers.has('Retry-After')).toBe(false);
+  await expect(response.json()).resolves.toMatchObject({
+    dependencies: { limiter: { ready: false, reason: 'LIMITER_UNAVAILABLE' } },
+  });
 });

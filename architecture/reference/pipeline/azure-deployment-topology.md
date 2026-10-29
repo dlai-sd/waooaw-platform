@@ -1187,8 +1187,30 @@ All Web replicas and overlapping blue/green revisions use the same environment-l
 Application deployment and rollback must not recreate, flush, retag, or replace Redis. Redis stores
 only keyed, TTL-bounded abuse counters plus restart-epoch metadata; it is never session, identity,
 membership, revocation, recovery, or evidence authority. The current longest quota window and
-mandatory restart hold are 3,600 seconds. Missing configuration, credentials, connectivity,
+mandatory restart hold are 3,600 seconds outside the temporary Demo exception below.
+Missing configuration, credentials, connectivity,
 unexpected epoch, active hold, or failed synthetic validation keeps Web unready and blocks traffic.
+
+**Demo-only temporary exception — 2026-10-29 Founder approval:** run `40816239699`
+initialized Redis's restart epoch at 04:34:24 UTC; the 3,600-second hold could not clear before the deployment's
+600-second readiness deadline. Private diagnostics using the exact Web image proved identity,
+Business Platform, OIDC persistence/schema and session keys healthy, with only the limiter held.
+Demo now waits 120 seconds after the Redis epoch, rather than one hour. Readiness remains
+fail-closed during that interval and returns safe dependency outcomes, limiter reason and
+remaining seconds with `Retry-After`; the deployment's existing ten-minute readiness gate is
+not extended or bypassed. UAT/Production keep the original hold. Hourly request quotas are
+not shortened, but lost counters can grant fresh attempts after two minutes: the Founder
+accepted this Demo-only protection gap as temporary technical debt.
+
+No counter persistence, database changes, new Azure resource or new storage charge is added.
+Redis counters remain disposable. Rollback restores the longest-window Demo hold by reverting
+the application change through a reviewed release; a Redis restart can again require one hour.
+Tests must prove a fresh/missing epoch blocks requests, 119 seconds remains blocked, elapsed
+120 seconds permits readiness, hourly quota enforcement still holds, and UAT/Production do
+not inherit the exception. Other failing dependencies still keep Web unready. Existing Stop
+and Start workflows require no timeout or authentication bypass; native startup already
+initializes the Redis epoch before Web activation. The two-minute target covers limiter
+recovery only, not Azure scheduling, app cold starts or the whole deployment.
 
 Demo/UAT Redis uses private Container Apps TCP ingress, a digest-pinned image, no public ingress,
 no persistent volume, and a Key Vault-backed credential. Production may not fall back to this

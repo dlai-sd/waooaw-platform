@@ -1,7 +1,7 @@
 /** @jest-environment node */
 
 import { NextRequest } from 'next/server';
-import { authAbuseLimiterReady, checkAuthAbuse } from '@/lib/auth-abuse-limiter';
+import { authAbuseLimiterReady, authAbuseLimiterStatus, checkAuthAbuse } from '@/lib/auth-abuse-limiter';
 import { redisCommand } from '@/lib/redis-command';
 
 jest.mock('@/lib/redis-command', () => ({ redisCommand: jest.fn() }));
@@ -45,7 +45,17 @@ describe('authentication abuse limiter', () => {
     expect(command.at(-1)).toBe('20');
   });
 
-  it('fails closed for the longest quota window after a restart', async () => {
+  it('holds Demo for two minutes without shortening hourly quotas', async () => {
+    jest.mocked(redisCommand).mockResolvedValue([-2, 120_000]);
+
+    await expect(checkAuthAbuse(new NextRequest('https://app.example/api/auth/recovery'), 'RECOVERY')).resolves.toEqual(
+      { allowed: false, reason: 'RESTART_HOLD', retryAfterSeconds: 120 }
+    );
+    expect(jest.mocked(redisCommand).mock.calls[0][0].slice(-3)).toEqual(['120000', '3600000', '5']);
+  });
+
+  it.each(['uat', 'prod', 'auth-preview'])('retains the longest-window hold for %s', async (environment) => {
+    process.env.WAOOAW_ENVIRONMENT = environment;
     jest.mocked(redisCommand).mockResolvedValue([-2, 3_600_000]);
 
     await expect(
@@ -55,6 +65,7 @@ describe('authentication abuse limiter', () => {
       reason: 'RESTART_HOLD',
       retryAfterSeconds: 3600,
     });
+    expect(jest.mocked(redisCommand).mock.calls[0][0].at(-3)).toBe('3600000');
   });
 
   it('fails closed when Redis is unavailable', async () => {
@@ -69,9 +80,32 @@ describe('authentication abuse limiter', () => {
   });
 
   it('reports ready only after the restart hold expires', async () => {
-    jest.mocked(redisCommand).mockResolvedValueOnce([-2, 3_600_000]).mockResolvedValueOnce([1, 0]);
+    jest.mocked(redisCommand).mockResolvedValueOnce([-2, 120_000]).mockResolvedValueOnce([1, 0]);
 
     await expect(authAbuseLimiterReady()).resolves.toBe(false);
     await expect(authAbuseLimiterReady()).resolves.toBe(true);
+    expect(jest.mocked(redisCommand).mock.calls[0][0].at(-1)).toBe('120000');
+  });
+
+  it('exposes a safe remaining hold time rounded up to seconds', async () => {
+    jest.mocked(redisCommand).mockResolvedValue([-2, 119_001]);
+    await expect(authAbuseLimiterStatus()).resolves.toEqual({
+      ready: false,
+      reason: 'RESTART_HOLD',
+      retryAfterSeconds: 120,
+    });
+  });
+
+  it.each([null, [1, 5], [-2, 0], [99, 0], [-2, Number.NaN]])(
+    'fails closed for malformed readiness response %j',
+    async (response) => {
+      jest.mocked(redisCommand).mockResolvedValue(response);
+      await expect(authAbuseLimiterStatus()).resolves.toEqual({ ready: false, reason: 'LIMITER_UNAVAILABLE' });
+    }
+  );
+
+  it('reports unavailable Redis without a false recovery estimate', async () => {
+    jest.mocked(redisCommand).mockRejectedValue(new Error('unavailable'));
+    await expect(authAbuseLimiterStatus()).resolves.toEqual({ ready: false, reason: 'LIMITER_UNAVAILABLE' });
   });
 });
