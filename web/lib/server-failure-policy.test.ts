@@ -13,6 +13,7 @@ const signInFiles = new Set([
   'lib/identity-security-events.ts',
   'lib/oidc-transaction.ts',
   'lib/safe-return.ts',
+  'lib/server-diagnostics.ts',
 ]);
 const inputParsers: Record<string, string[]> = {
   'lib/consent.ts': ['parseConsentCookie'],
@@ -161,6 +162,12 @@ function serverSources(directory: string): string[] {
 }
 
 describe('server failure regression policy', () => {
+  it('excludes the existing sign-in diagnostic sink, not other server logging', () => {
+    const text = 'console.error(error.name); console.warn(error);';
+    expect(policyViolations('lib/server-diagnostics.ts', text)).toEqual([]);
+    expect(policyViolations('lib/new-server-module.ts', text)).toHaveLength(2);
+  });
+
   it('covers every non-sign-in app and library catch in the existing Jest CI gate', () => {
     const root = path.resolve(__dirname, '..');
     const files = ['app', 'lib', 'components', 'config'].flatMap((directory) =>
