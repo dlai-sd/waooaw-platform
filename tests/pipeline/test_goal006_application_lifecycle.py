@@ -54,8 +54,7 @@ class Azure:
         app = self.apps[name]
         if args[:2] == ["containerapp", "show"]:
             if "--query" in args:
-                return {"latest": name + "--current", "ready": name + "--current",
-                        "status": app["properties"]["runningStatus"]}
+                return {"latest": name + "--current", "ready": name + "--current", "status": app["properties"]["runningStatus"]}
             return copy.deepcopy(app)
         properties = {
             "active": True,
@@ -139,6 +138,87 @@ def test_configuration_drift_fails_without_continuing():
     with pytest.raises(ValueError, match="identity"):
         execute("demo", "Stop", run_az=azure)
     assert len(azure.mutations) == 1
+
+
+def test_scoped_temporal_stop_preserves_other_apps_and_is_idempotent():
+    azure = Azure()
+    before = copy.deepcopy(azure.apps)
+    evidence = execute("demo", "Stop", component="temporal", run_az=azure)
+    assert evidence["status"] == "passed"
+    assert evidence["component"] == "temporal"
+    assert azure.mutations == [("ca-demo-temporal", "stop")]
+    execute("demo", "Stop", component="temporal", run_az=azure)
+    assert azure.mutations == [("ca-demo-temporal", "stop")]
+    for name in before:
+        if name != "ca-demo-temporal":
+            assert azure.apps[name] == before[name]
+
+
+def test_scoped_temporal_stop_accepts_first_deployment_without_app():
+    azure = Azure()
+    del azure.apps["ca-demo-temporal"]
+    evidence = execute("demo", "Stop", component="temporal", run_az=azure)
+    assert evidence["disposition"] == "not-provisioned"
+    assert evidence["status"] == "passed"
+    assert azure.mutations == []
+
+
+def test_scoped_temporal_stop_does_not_treat_provider_failure_as_first_deployment():
+    def denied(args):
+        raise RuntimeError("Azure inventory denied")
+
+    with pytest.raises(RuntimeError, match="inventory denied"):
+        execute("demo", "Stop", component="temporal", run_az=denied)
+
+
+@pytest.mark.parametrize(
+    "environment,action,component",
+    [
+        ("uat", "Stop", "temporal"),
+        ("prod", "Stop", "temporal"),
+        ("demo", "Start", "temporal"),
+        ("demo", "Stop", "pgbouncer"),
+    ],
+)
+def test_scoped_stop_rejects_other_targets_before_provider_access(environment, action, component):
+    azure = Azure()
+    with pytest.raises(ValueError):
+        execute(environment, action, component=component, run_az=azure)
+    assert azure.calls == []
+
+
+def test_scoped_stop_requires_zero_replicas_including_obsolete_revisions():
+    azure = Azure(state="Stopped")
+
+    def stale_replica(args):
+        response = azure(args)
+        if args[:3] == ["containerapp", "revision", "list"]:
+            response.append({"name": "obsolete", "properties": {"active": False, "replicas": 1}})
+        return response
+
+    with pytest.raises(RuntimeError, match="timed out"):
+        execute("demo", "Stop", component="temporal", run_az=stale_replica, timeout=0)
+
+
+def test_demo_quiescence_precedes_reset_and_qualification_but_resume_follows():
+    workflow = yaml.safe_load((ROOT / ".github/workflows/environment-deployment.yaml").read_text())
+    steps = workflow["jobs"]["terraform"]["steps"]
+    names = [item.get("name") for item in steps]
+    stop = names.index("Quiesce Demo Temporal before database reset")
+    assert stop < names.index("Create WC-124 database provisioner")
+    assert stop < names.index("Run WC-124 database provisioner")
+    assert stop < names.index("Qualify exact Temporal startup through PgBouncer")
+    assert names.index("Qualify exact Temporal startup through PgBouncer") < names.index(
+        "Require runtime dependency revisions before application activation"
+    )
+    assert steps[stop]["if"] == "inputs.apply && inputs.environment == 'demo'"
+    assert "--action Stop --component temporal" in steps[stop]["run"]
+    upload = next(item for item in steps if item.get("name") == "Upload plans and evidence")
+    assert upload["if"] == "always()"
+    assert "wc124-temporal-quiescence.json" in upload["with"]["path"]
+    ci = (ROOT / ".github/workflows/ci.yaml").read_text()
+    assert "tests/pipeline/test_wc124_temporal_readiness.py" in ci
+    assert "tests/pipeline/test_wc124_deployment_path.py" in ci
 
 
 def test_embedded_database_blocks_all_mutations():

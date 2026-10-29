@@ -1584,19 +1584,26 @@ resource "azurerm_container_app_job" "temporal_startup_qualification" {
         readiness_pid=
         export TEMPORAL_BROADCAST_ADDRESS="$(hostname -i | awk '{print $1}')"
         export TEMPORAL_ADDRESS="127.0.0.1:7233"
-        /etc/temporal/entrypoint.sh autosetup >"$log" 2>&1 &
-        temporal_pid=$!
+        : > "$log"
+        temporal_pid=
         cleanup() {
           printf 'exited\n' | nc -w 2 127.0.0.1 17301 >/dev/null 2>&1 || true
           kill "$receiver_pid" 2>/dev/null || true
           if [ -n "$readiness_pid" ]; then kill "$readiness_pid" 2>/dev/null || true; fi
-          kill "$temporal_pid" 2>/dev/null || true
-          wait "$temporal_pid" 2>/dev/null || true
+          if [ -n "$temporal_pid" ]; then
+            kill "$temporal_pid" 2>/dev/null || true
+            wait "$temporal_pid" 2>/dev/null || true
+          fi
           # Keep the 60 samples/result inside Azure's 300-line console retrieval limit.
           tail -n 150 "$log"
           cat "$samples/sampler.log" 2>/dev/null || true
         }
         trap cleanup EXIT
+        # The sampler admits startup only after old session-pool clients have drained.
+        timeout 90 nc -l -p 17303 > /tmp/pool-admission
+        test "$(cat /tmp/pool-admission)" = ready
+        /etc/temporal/entrypoint.sh autosetup >"$log" 2>&1 &
+        temporal_pid=$!
         ready=false
         for attempt in $(seq 1 30); do
           kill -0 "$temporal_pid"
@@ -1746,7 +1753,48 @@ resource "azurerm_container_app_job" "temporal_startup_qualification" {
         deliver() {
           tar -C "$out" -cf - . | nc -w 5 127.0.0.1 17300
         }
-        trap 'status=$?; if [ "$status" -ne 0 ]; then echo "$status" > "$out/sampler.failed"; deliver || true; fi' EXIT
+        trap 'status=$?; if [ "$status" -ne 0 ]; then
+          echo "$status" > "$out/sampler.failed"
+          cat "$out/sampler.log" >&2
+          printf "denied\n" | nc -w 2 127.0.0.1 17303 || true
+          deliver || true
+        fi' EXIT
+        export PGPASSWORD="$POSTGRES_PWD"
+        export PGCONNECT_TIMEOUT=5
+        drained=false
+        for attempt in $(seq 1 12); do
+          psql --no-psqlrc --set ON_ERROR_STOP=1 \
+            --host "$POSTGRES_SEEDS" --port 5432 --username temporal_runtime \
+            --dbname pgbouncer --csv --command 'SHOW POOLS;' \
+            > "$out/admission-$attempt.csv" 2>> "$out/sampler.log"
+          if awk -F, '
+            NR == 1 {
+              for (i=1; i<=NF; i++) column[$i]=i
+              if (!("database" in column) || !("cl_active" in column) ||
+                  !("cl_waiting" in column) || !("sv_active" in column)) exit 2
+              header=1
+              next
+            }
+            ($1 == "waooaw_temporal" || $1 == "waooaw_temporal_visibility") {
+              if ($(column["cl_active"]) !~ /^[0-9]+$/ ||
+                  $(column["cl_waiting"]) !~ /^[0-9]+$/ ||
+                  $(column["sv_active"]) !~ /^[0-9]+$/ ||
+                  $(column["cl_active"]) != 0 || $(column["cl_waiting"]) != 0 ||
+                  $(column["sv_active"]) != 0) bad=1
+            }
+            END {if (!header || bad) exit 1}
+          ' "$out/admission-$attempt.csv"; then
+            drained=true
+            break
+          fi
+          sleep 2
+        done
+        if [ "$drained" != true ]; then
+          echo "Temporal session pools still occupied; refusing overlapping startup" >> "$out/sampler.log"
+          exit 1
+        fi
+        echo "WC124_POOL_ADMISSION drained=true attempts=$attempt" >> "$out/sampler.log"
+        printf 'ready\n' | nc -w 5 127.0.0.1 17303
         ready=false
         for attempt in $(seq 1 240); do
           if [ -s /tmp/temporal-exited ]; then
@@ -1760,7 +1808,6 @@ resource "azurerm_container_app_job" "temporal_startup_qualification" {
           sleep 1
         done
         test "$ready" = true
-        export PGPASSWORD="$POSTGRES_PWD"
         # A listening Temporal frontend is not a settled PgBouncer pool. Retain every warmup
         # observation; require five clean seconds within 30 before the separate strict window.
         clean=0

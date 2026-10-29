@@ -19,7 +19,10 @@ def script(container):
 
 
 @pytest.mark.parametrize("permanent,headroom_error,expected", [(False, False, 0), (True, False, 1), (False, True, 2)])
-def test_actual_sampler_bounds_warmup_and_keeps_sixty_strict_samples(tmp_path, permanent, headroom_error, expected):
+@pytest.mark.parametrize("admission_busy", [False, True])
+def test_actual_sampler_bounds_warmup_and_keeps_sixty_strict_samples(
+    tmp_path, permanent, headroom_error, expected, admission_busy
+):
     commands = tmp_path / "bin"
     commands.mkdir()
     counter = tmp_path / "counter"
@@ -33,8 +36,14 @@ case "$*" in
     case "$*" in *'--host fixture '*) ;; *) exit 91 ;; esac
     n=$(cat '{counter}' 2>/dev/null || echo 0)
     n=$((n+1)); echo "$n" > '{counter}'
+    if [ "$n" -le {1 + 2 * int(admission_busy)} ]; then
+      active=0
+      if [ "$n" -lt {1 + 2 * int(admission_busy)} ]; then active=4; fi
+      printf 'database,cl_active,cl_waiting,sv_active,maxwait\\nwaooaw_temporal,%s,0,%s,0\\n' "$active" "$active"
+      exit 0
+    fi
     waiting=0
-    if [ "$n" -le 2 ] || [ "{int(permanent)}" = 1 ]; then waiting=1; fi
+    if [ "$n" -le {3 + 2 * int(admission_busy)} ] || [ "{int(permanent)}" = 1 ]; then waiting=1; fi
     printf 'database,cl_waiting,maxwait\\nwaooaw_temporal,%s,0\\nwaooaw_temporal_visibility,0,0\\n' "$waiting"
     ;;
   *)
@@ -69,6 +78,7 @@ esac
         timeout=10,
     )
     assert result.returncode == expected, result.stderr
+    assert len(list(samples.glob("admission-*.csv"))) == 1 + 2 * int(admission_busy)
     if expected == 0:
         assert len(list(samples.glob("warmup-*.csv"))) == 7
         assert len(list(samples.glob("pools-*.csv"))) == 60
@@ -134,3 +144,55 @@ def test_grpc_readiness_precedes_sampler_signal_and_diagnostics_are_supported():
     assert "--tail 1000" not in step
     assert step.count("--tail 300") == 2
     assert "--container pool-sampler" in step
+
+
+@pytest.mark.parametrize(
+    "admission",
+    [
+        "database,cl_active,cl_waiting,sv_active\nwaooaw_temporal,4,0,4\n",
+        "database,cl_active,cl_waiting,sv_active\nwaooaw_temporal,0,1,0\n",
+        "database,cl_active,cl_waiting,sv_active\nwaooaw_temporal_visibility,1,0,1\n",
+        "database,cl_active,cl_waiting,sv_active\nwaooaw_temporal,invalid,0,0\n",
+        "database,cl_waiting\nwaooaw_temporal,0\n",
+        "",
+    ],
+)
+def test_actual_sampler_refuses_occupied_or_unproven_pools_before_admitting_startup(tmp_path, admission):
+    commands = tmp_path / "bin"
+    commands.mkdir()
+    calls = tmp_path / "calls"
+    for name, body in {
+        "psql": f"#!/bin/sh\nprintf '%s' '{admission}'\n",
+        "sleep": "#!/bin/sh\nexit 0\n",
+        "tar": "#!/bin/sh\nexit 0\n",
+        "nc": f'#!/bin/sh\necho "$*" >> "{calls}"\nexit 0\n',
+    }.items():
+        target = commands / name
+        target.write_text(body)
+        target.chmod(0o755)
+    samples = tmp_path / "samples"
+    body = (
+        script("pool-sampler")
+        .replace("/tmp/pool-samples", str(samples))
+        .replace("/tmp/temporal-exited", str(tmp_path / "exited"))
+    )
+    result = subprocess.run(
+        ["sh", "-c", body],
+        env={**os.environ, "PATH": f"{commands}:{os.environ['PATH']}", "POSTGRES_PWD": "fixture", "POSTGRES_SEEDS": "fixture"},
+        text=True,
+        capture_output=True,
+        timeout=10,
+    )
+    assert result.returncode == 1, result.stderr
+    assert len(list(samples.glob("admission-*.csv"))) == 12
+    assert not list(samples.glob("warmup-*.csv"))
+    assert "refusing overlapping startup" in (samples / "sampler.log").read_text()
+    assert "refusing overlapping startup" in result.stderr
+    assert "-z" not in calls.read_text()
+
+
+def test_controller_cannot_start_temporal_before_pool_admission():
+    controller = script("temporal-startup-qualification")
+    assert controller.index('test "$(cat /tmp/pool-admission)" = ready') < controller.index(
+        "/etc/temporal/entrypoint.sh autosetup"
+    )

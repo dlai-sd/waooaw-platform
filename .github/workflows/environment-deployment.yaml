@@ -1478,6 +1478,14 @@ jobs:
             echo "ownership=$ownership"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Quiesce Demo Temporal before database reset
+        if: inputs.apply && inputs.environment == 'demo'
+        run: |
+          set -euo pipefail
+          python3 scripts/goal006_application_lifecycle.py \
+            --environment demo --action Stop --component temporal \
+            --output wc124-temporal-quiescence.json
+
       - name: Create WC-124 database provisioner
         if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
         env:
@@ -3712,6 +3720,7 @@ jobs:
             wc124-db-provisioner-execution.json
             wc124-db-provisioner-evidence.log
             wc124-db-provisioner-result.json
+            wc124-temporal-quiescence.json
             wc124-pgbouncer-preflight-job.before.json
             wc124-pgbouncer-preflight-template.json
             wc124-pgbouncer-preflight-execution.json
