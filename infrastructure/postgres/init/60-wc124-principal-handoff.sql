@@ -94,10 +94,22 @@ BEGIN
             );
         END LOOP;
 
+        -- SECURITY DEFINER routines execute as their owner. Schemas whose FORCE RLS policies admit a
+        -- dedicated definer principal keep that principal; handing them to the schema owner makes
+        -- every governed write fail with SQLSTATE 42501 (Demo Google sign-in, 2026-10-29).
         FOR database_object IN
-            SELECT p.oid::regprocedure AS routine_name, p.prokind
+            SELECT
+                p.oid::regprocedure AS routine_name,
+                p.prokind,
+                COALESCE(definer.principal_name, ownership.owner_name) AS target_owner
             FROM pg_proc p
             JOIN pg_namespace n ON n.oid = p.pronamespace
+            LEFT JOIN (
+                VALUES
+                    ('identity', 'identity_resolver_owner'),
+                    ('web_session', 'web_session_operations')
+            ) AS definer(schema_name, principal_name)
+                ON p.prosecdef AND definer.schema_name = n.nspname
             WHERE n.nspname = ownership.schema_name
               AND p.prokind IN ('f', 'p')
         LOOP
@@ -105,7 +117,7 @@ BEGIN
                 'ALTER %s %s OWNER TO %I',
                 CASE database_object.prokind WHEN 'p' THEN 'PROCEDURE' ELSE 'FUNCTION' END,
                 database_object.routine_name,
-                ownership.owner_name
+                database_object.target_owner
             );
         END LOOP;
 

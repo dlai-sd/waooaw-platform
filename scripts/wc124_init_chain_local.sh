@@ -103,6 +103,9 @@ identity_tables=$(docker exec "$WC124_POSTGRES" psql -At -U waooaw -d "$DATABASE
 forced_rls=$(docker exec "$WC124_POSTGRES" psql -At -U waooaw -d "$DATABASE" -c "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'identity' AND c.relname IN ('memberships','lifecycle_operations','provider_link_projections') AND c.relrowsecurity AND c.relforcerowsecurity")
 test "$identity_tables" = 8
 test "$forced_rls" = 3
+# Post-handoff SECURITY DEFINER principals and runtime OIDC reservation (Demo Google sign-in 42501 regression).
+docker exec -i "$WC124_POSTGRES" psql --no-psqlrc -q -At -U waooaw -d "$DATABASE" \
+  < "$ROOT/tests/postgres/oidc_reservation_probe.sql" | grep -qx 'oidc-reservation-probe: passed'
 
 jq -n \
   --arg schema "waooaw.wc124-init-chain-local/v1" --arg image "$WC124_POSTGRES_IMAGE" \
@@ -112,5 +115,6 @@ jq -n \
     sql_files: $files, run1: $run1, run2: $run2, run3_forced: $run3,
     schema_drift_lines_between_run1_and_run3: 0, ledger: "wc124_provisioning.init_chain_ledger",
     identity_health_check: {required_tables_present: $identity_tables, forced_rls_tables: $forced_rls},
+    oidc_reservation_probe: "passed",
     status: "passed"}' \
   | tee "$EVIDENCE_DIR/result.json"
