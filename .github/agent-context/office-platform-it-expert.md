@@ -52,7 +52,7 @@ own PR, access or mutate a provider without exact authority, or invoke another i
    SECURITY DEFINER routines owned by the principal their schema's RLS policies admit (its
    `definer` map); new definer schemas join that map and the probe. Reproduce auth/session faults
    locally with `scripts/run_auth_preview.sh start|probe|stop` (spec §2.5, fresh volume after
-   init edits).
+   init edits); prove login fixes with `AUTH_PREVIEW_IDP=local` start then `verify-social`.
 4. Read the touched engineering files, nearest tests, and only the ADR/claim sections named by the task.
 5. For every build or test, use the catalog-owned four-tier sequence: static contract and exact-container execution contract preflight with no image build;
    stack-specific disposable story execution against mounted source; dependency-complete milestone checks;

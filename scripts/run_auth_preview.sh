@@ -6,6 +6,8 @@ state_directory="$repository_root/.auth-preview"
 runtime_environment="$state_directory/runtime.env"
 release_manifest="$state_directory/release-manifest.json"
 compose_file="$repository_root/docker-compose.auth-preview.yml"
+local_idp_compose_file="$repository_root/docker-compose.auth-preview.local-idp.yml"
+local_idp_directory="$state_directory/local-idp"
 preview_port=${AUTH_PREVIEW_PORT:-3100}
 preview_project=${AUTH_PREVIEW_PROJECT:-waooaw-auth-preview}
 forwarding_domain=${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}
@@ -48,8 +50,8 @@ optional_value() {
 }
 
 case ${1:-start} in
-  prepare | start | stop | probe) action=${1:-start} ;;
-  *) fail "usage: $0 [prepare|start|stop|probe]" ;;
+  prepare | start | stop | probe | verify-social) action=${1:-start} ;;
+  *) fail "usage: $0 [prepare|start|stop|probe|verify-social]" ;;
 esac
 
 [ -z "${WAOOAW_WEB_IMAGE:-}" ] || printf '%s' "$WAOOAW_WEB_IMAGE" \
@@ -65,7 +67,20 @@ fi
 printf '%s' "$preview_origin" | grep -Eq '^https://[a-z0-9-]+-[0-9]+[.]app[.]github[.]dev$' \
   || fail "preview origin must be one exact Codespaces HTTPS origin"
 
-keycloak_issuer=${KEYCLOAK_ISSUER:-https://auth.demo.waooaw.com/realms/waooaw}
+# AUTH_PREVIEW_IDP=demo uses Demo Keycloak; AUTH_PREVIEW_IDP=local runs Keycloak with mock
+# Google/Facebook brokers in the preview so sign-in works without Demo or provider credentials.
+auth_preview_idp=${AUTH_PREVIEW_IDP:-$(existing_setting AUTH_PREVIEW_IDP)}
+auth_preview_idp=${auth_preview_idp:-demo}
+idp_port=${AUTH_PREVIEW_IDP_PORT:-8180}
+idp_host=$(printf '%s' "$preview_origin" | sed -E "s#^https://(.*)-[0-9]+[.]app[.]github[.]dev\$#\1-${idp_port}.app.github.dev#")
+idp_origin="https://$idp_host"
+case $auth_preview_idp in
+  demo) keycloak_issuer=${KEYCLOAK_ISSUER:-https://auth.demo.waooaw.com/realms/waooaw} ;;
+  local) keycloak_issuer="$idp_origin/realms/waooaw" ;;
+  *) fail "AUTH_PREVIEW_IDP must be demo or local" ;;
+esac
+compose_files="-f $compose_file"
+[ "$auth_preview_idp" = local ] && compose_files="$compose_files -f $local_idp_compose_file"
 printf '%s' "$keycloak_issuer" | grep -Eq '^https://[A-Za-z0-9.-]+/realms/waooaw$' \
   || fail "KEYCLOAK_ISSUER must be an HTTPS waooaw realm URL"
 
@@ -92,14 +107,16 @@ generated_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
 if [ "$action" = stop ]; then
   [ -f "$runtime_environment" ] || fail "no prepared preview exists"
-  docker compose --project-name "$preview_project" --env-file "$runtime_environment" -f "$compose_file" down
+  # shellcheck disable=SC2086
+  docker compose --project-name "$preview_project" --env-file "$runtime_environment" $compose_files down
   exit 0
 fi
 
 # Provider-start (Google/Facebook) reserves an OIDC transaction through web_session SECURITY DEFINER
 # functions before redirecting; prove that write as the runtime role without needing Keycloak.
 oidc_reservation_probe() {
-  docker compose --project-name "$preview_project" --env-file "$runtime_environment" -f "$compose_file" \
+  # shellcheck disable=SC2086
+  docker compose --project-name "$preview_project" --env-file "$runtime_environment" $compose_files \
     exec -T postgres psql --no-psqlrc -q -At -U waooaw -d waooaw \
     <"$repository_root/tests/postgres/oidc_reservation_probe.sql"
 }
@@ -108,6 +125,11 @@ if [ "$action" = probe ]; then
   [ -f "$runtime_environment" ] || fail "no prepared preview exists"
   oidc_reservation_probe
   exit 0
+fi
+
+if [ "$action" = verify-social ]; then
+  python3 "$repository_root/scripts/auth_preview_social_login_check.py"
+  exit $?
 fi
 
 nextauth_secret=$(secret_value NEXTAUTH_SECRET 32)
@@ -139,6 +161,34 @@ printf '%s' "$demo_promotion_enabled" | grep -Eq '^(true|false)$' \
 if [ -n "$razorpay_key_id" ]; then
   printf '%s' "$razorpay_key_id" | grep -Eq '^rzp_test_[A-Za-z0-9]+$' \
     || fail "auth preview requires a Razorpay Test Mode key ID"
+fi
+idp_admin_password=$(secret_value AUTH_PREVIEW_IDP_ADMIN_PASSWORD 24)
+idp_broker_secret=$(secret_value AUTH_PREVIEW_IDP_BROKER_SECRET 32)
+idp_user_password=$(secret_value AUTH_PREVIEW_IDP_USER_PASSWORD 12)
+# The imported realm policy requires upper, digit and special characters.
+case "$idp_user_password" in *Aa1!) ;; *) idp_user_password="${idp_user_password}Aa1!" ;; esac
+if [ "$auth_preview_idp" = local ]; then
+  tls_directory="$local_idp_directory/tls"
+  mkdir -p "$tls_directory" "$local_idp_directory/import"
+  chmod 755 "$local_idp_directory" "$tls_directory" "$local_idp_directory/import"
+  if [ ! -f "$tls_directory/ca.crt" ] || [ "$(cat "$tls_directory/host" 2>/dev/null)" != "$idp_host" ]; then
+    openssl req -x509 -newkey rsa:2048 -sha256 -days 30 -nodes -subj '/CN=WAOOAW auth preview local CA' \
+      -keyout "$tls_directory/ca.key" -out "$tls_directory/ca.crt" >/dev/null 2>&1
+    openssl req -newkey rsa:2048 -sha256 -nodes -subj "/CN=$idp_host" \
+      -keyout "$tls_directory/server.key" -out "$tls_directory/server.csr" >/dev/null 2>&1
+    printf 'subjectAltName=DNS:%s\n' "$idp_host" >"$tls_directory/server.ext"
+    openssl x509 -req -sha256 -days 30 -in "$tls_directory/server.csr" -CA "$tls_directory/ca.crt" \
+      -CAkey "$tls_directory/ca.key" -CAcreateserial -extfile "$tls_directory/server.ext" \
+      -out "$tls_directory/server.crt" >/dev/null 2>&1
+    rm -f "$tls_directory/server.csr" "$tls_directory/server.ext" "$tls_directory/ca.srl"
+    printf '%s' "$idp_host" >"$tls_directory/host"
+  fi
+  cat /etc/ssl/certs/ca-certificates.crt "$tls_directory/ca.crt" >"$tls_directory/ca-bundle.crt"
+  chmod 644 "$tls_directory/ca.crt" "$tls_directory/ca-bundle.crt" "$tls_directory/server.crt" "$tls_directory/server.key"
+  chmod 600 "$tls_directory/ca.key"
+  AUTH_PREVIEW_IDP_BROKER_SECRET=$idp_broker_secret AUTH_PREVIEW_IDP_USER_PASSWORD=$idp_user_password \
+    python3 "$repository_root/scripts/auth_preview_local_idp.py" \
+    --origin "$preview_origin" --idp-origin "$idp_origin" --output "$local_idp_directory/import"
 fi
 data_protection_certificate="$state_directory/data-protection.pfx"
 if [ ! -f "$data_protection_certificate" ]; then
@@ -184,9 +234,16 @@ RAZORPAY_KEY_SECRET=$razorpay_key_secret
 RAZORPAY_WEBHOOK_SECRET=$razorpay_webhook_secret
 RAZORPAY_READINESS_STATE=$razorpay_readiness_state
 DEMO_PROMOTION_ENABLED=$demo_promotion_enabled
+AUTH_PREVIEW_IDP=$auth_preview_idp
+AUTH_PREVIEW_IDP_PORT=$idp_port
+AUTH_PREVIEW_IDP_HOST=$idp_host
+AUTH_PREVIEW_IDP_ORIGIN=$idp_origin
+AUTH_PREVIEW_IDP_ADMIN_PASSWORD=$idp_admin_password
+AUTH_PREVIEW_IDP_BROKER_SECRET=$idp_broker_secret
+AUTH_PREVIEW_IDP_USER_PASSWORD=$idp_user_password
 EOF
 
-compose="docker compose --project-name $preview_project --env-file $runtime_environment -f $compose_file"
+compose="docker compose --project-name $preview_project --env-file $runtime_environment $compose_files"
 $compose config --quiet
 
 if [ "$action" = start ]; then
@@ -209,7 +266,7 @@ if [ "$action" = start ]; then
   $compose exec -T postgres bash /docker-entrypoint-initdb.d/42-demo-marketplace-admission.sh
   oidc_reservation_probe || fail "OIDC transaction reservation probe failed; Google/Facebook sign-in would return 503"
   $compose up -d --no-build --wait --wait-timeout 180 auth-preview \
-    || fail "web readiness failed; check $keycloak_issuer/.well-known/openid-configuration is reachable (Demo Keycloak must be running)"
+    || fail "web readiness failed; check $keycloak_issuer/.well-known/openid-configuration is reachable (Demo Keycloak must be running, or use AUTH_PREVIEW_IDP=local)"
 fi
 
 web_image=${WAOOAW_WEB_IMAGE:-waooaw/auth-preview-web:$source_tag}
@@ -230,5 +287,9 @@ EOF
 
 printf 'Prepared %s\n' "$release_manifest"
 [ "$action" = prepare ] && exit 0
+if [ "$auth_preview_idp" = local ]; then
+  printf 'Local identity: %s (mock users google-customer@waooaw.local, facebook-customer@waooaw.local; password AUTH_PREVIEW_IDP_USER_PASSWORD in %s)\n' \
+    "$idp_origin" "$runtime_environment"
+fi
 printf 'WAOOAW portal: %s\nLogin: %s/login\nRegister: %s/register\nMarketplace: %s/marketplace\nMy Agents: %s/professionals/mine\n' \
   "$preview_origin" "$preview_origin" "$preview_origin" "$preview_origin" "$preview_origin"
