@@ -3,6 +3,7 @@
 // Constitutional basis: C-002, C-005, C-059, C-063
 
 import { createHmac } from 'node:crypto';
+import { logServerFailure } from '@/lib/server-diagnostics';
 
 export type WebIdentityEventType =
   | 'AUTHENTICATION_START'
@@ -61,9 +62,6 @@ export async function recordWebIdentitySecurityEvent(event: WebIdentitySecurityE
   try {
     await persistWebIdentitySecurityEvent(event);
   } catch (error) {
-    console.error('Identity security event was not persisted.', {
-      eventType: event.eventType,
-      reason: error instanceof Error || error instanceof DOMException ? error.name : 'UnknownError',
-    });
+    logServerFailure('identity.security_event.persist_failed', error, { eventType: event.eventType });
   }
 }

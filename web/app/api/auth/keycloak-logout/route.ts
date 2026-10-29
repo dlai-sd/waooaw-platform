@@ -5,6 +5,7 @@
 import { recordWebIdentitySecurityEvent } from '@/lib/identity-security-events';
 import { withJourneyTrace } from '@/lib/journey-telemetry';
 import { isSameOriginRequest } from '@/lib/same-origin-request';
+import { logServerFailure } from '@/lib/server-diagnostics';
 import { loadSession, revokeSession } from '@/lib/web-session-store';
 import { getToken } from 'next-auth/jwt';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -72,10 +73,7 @@ async function revokeOwnedSession(request: NextRequest, command: LogoutCommand) 
     await revokeSession(token, command === 'ACCOUNT_SWITCH' ? 'ACCOUNT_SWITCH' : 'CUSTOMER_LOGOUT');
     return 'confirmed' as const;
   } catch (error) {
-    console.error('Web session revocation failed', {
-      cause: error instanceof Error ? error.name : 'UnknownError',
-      command,
-    });
+    logServerFailure('identity.logout.revocation_failed', error, { command });
     return 'unconfirmed' as const;
   }
 }

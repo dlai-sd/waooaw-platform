@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { authOptions } from '@/lib/auth';
 import { enforceAuthAbuse } from '@/lib/auth-abuse-limiter';
-import { databaseErrorDiagnostics } from '@/lib/database-error-diagnostics';
 import { withJourneyTrace } from '@/lib/journey-telemetry';
 import {
   normalizeOidcCallback,
@@ -9,12 +8,20 @@ import {
   protocolCookiesMatch,
   providerClassFromPath,
 } from '@/lib/oidc-transaction';
+import { logServerFailure } from '@/lib/server-diagnostics';
 import { type OidcTransactionEnvelope, consumeOidcTransaction, createOidcTransaction } from '@/lib/web-session-store';
 import NextAuth from 'next-auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 const handler = NextAuth(authOptions);
 const browserBindingCookie = '__Host-waooaw-oidc-browser';
+
+function dependencyUnavailable(correlationId: string) {
+  return NextResponse.json(
+    { code: 'IDENTITY_DEPENDENCY_UNAVAILABLE', correlationId },
+    { status: 503, headers: { 'Cache-Control': 'no-store' } }
+  );
+}
 
 function deniedCallback(applicationOrigin: string) {
   const response = NextResponse.redirect(new URL('/auth/error?error=OAuthCallback', applicationOrigin), 303);
@@ -35,19 +42,47 @@ async function initiationInput(request: NextRequest, applicationOrigin: string) 
     : null;
 }
 
+function transactionDenialReason(
+  transaction: Awaited<ReturnType<typeof consumeOidcTransaction>>,
+  state: string,
+  providerClass: string,
+  request: NextRequest
+) {
+  if (!transaction) return 'TRANSACTION_NOT_FOUND';
+  if (transaction.state !== state) return 'STATE_MISMATCH';
+  if (transaction.providerClass !== providerClass) return 'PROVIDER_MISMATCH';
+  if (!protocolCookiesMatch(transaction.protocolCookies, request.cookies)) return 'PROTOCOL_COOKIES_MISMATCH';
+  return undefined;
+}
+
 async function consumeCallbackTransaction(request: NextRequest): Promise<OidcTransactionEnvelope | null> {
   const state = request.nextUrl.searchParams.get('state');
   const browserBinding = request.cookies.get(browserBindingCookie)?.value;
   const providerClass = providerClassFromPath(request.nextUrl.pathname);
-  if (!state || !browserBinding || !providerClass) return null;
-  const transaction = await consumeOidcTransaction(state, browserBinding);
-  if (
-    !transaction ||
-    transaction.state !== state ||
-    transaction.providerClass !== providerClass ||
-    !protocolCookiesMatch(transaction.protocolCookies, request.cookies)
-  )
+  if (!state || !browserBinding || !providerClass) {
+    logServerFailure(
+      'identity.callback.transaction_denied',
+      undefined,
+      {
+        provider: providerClass ?? 'unknown',
+        reason: state ? 'BROWSER_BINDING_ABSENT' : 'STATE_ABSENT',
+      },
+      'warn'
+    );
     return null;
+  }
+  let transaction: Awaited<ReturnType<typeof consumeOidcTransaction>>;
+  try {
+    transaction = await consumeOidcTransaction(state, browserBinding);
+  } catch (error) {
+    logServerFailure('identity.oidc_transaction.consume_failed', error, { provider: providerClass });
+    return null;
+  }
+  const reason = transactionDenialReason(transaction, state, providerClass, request);
+  if (reason) {
+    logServerFailure('identity.callback.transaction_denied', undefined, { provider: providerClass, reason }, 'warn');
+    return null;
+  }
   return transaction;
 }
 
@@ -81,17 +116,23 @@ async function authenticatedResponse(...args: Parameters<typeof handler>) {
       .json()
       .catch(() => null)) as { url?: unknown } | null;
     if (!result || typeof result.url !== 'string')
-      return NextResponse.json(
-        { code: 'IDENTITY_DEPENDENCY_UNAVAILABLE' },
-        { status: 503, headers: { 'Cache-Control': 'no-store' } }
+      return dependencyUnavailable(
+        logServerFailure('identity.provider_start.redirect_missing', undefined, {
+          provider: providerClass,
+          upstreamStatus: response.status,
+          hint: 'See the preceding nextauth.* record for the identity provider discovery or configuration error',
+        })
       );
     const authorization = new URL(result.url);
     const state = authorization.searchParams.get('state');
     const protocolCookies = oidcProtocolCookies(response.headers);
     if (!state || Object.keys(protocolCookies).length < 2)
-      return NextResponse.json(
-        { code: 'IDENTITY_DEPENDENCY_UNAVAILABLE' },
-        { status: 503, headers: { 'Cache-Control': 'no-store' } }
+      return dependencyUnavailable(
+        logServerFailure('identity.provider_start.protocol_incomplete', undefined, {
+          provider: providerClass,
+          statePresent: Boolean(state),
+          protocolCookieCount: Object.keys(protocolCookies).length,
+        })
       );
     const browserBinding = randomUUID();
     try {
@@ -101,10 +142,8 @@ async function authenticatedResponse(...args: Parameters<typeof handler>) {
         protocolCookies,
       });
     } catch (error) {
-      console.error('OIDC transaction reservation failed', databaseErrorDiagnostics(error));
-      return NextResponse.json(
-        { code: 'IDENTITY_DEPENDENCY_UNAVAILABLE' },
-        { status: 503, headers: { 'Cache-Control': 'no-store' } }
+      return dependencyUnavailable(
+        logServerFailure('identity.oidc_transaction.reserve_failed', error, { provider: providerClass })
       );
     }
     const secured = new NextResponse(response.body, {
