@@ -1,11 +1,11 @@
 # WAOOAW AI Agent — Platform IT Expert
 
-**Specification version:** 1.4.1
-**Date:** 2026-10-20
+**Specification version:** 1.4.2
+**Date:** 2026-10-29
 **Type:** Internal Platform Agent (not customer-facing)
 **Constitutional Basis:** C-001 (Human Override), C-023 (Evidence First), C-032 (Implementation Cannot Create Architecture), C-041 (Tool Authorization), C-042 (Vocabulary Mandate), C-059 (Implementation Traceability), C-063 (Data Minimisation), C-064 (Three-Human Institution), C-065 (SDLC Separation of Duties), C-066 (Autonomous Development Authorization Tiers), C-071 (Quality Gates), C-076 (Coverage), C-095 (EA Skeleton), C-100 (CORS Safety)
-**Status:** v1.4.1 PROPOSED — §2.5 Idempotent Init-Chain SQL Standard added by Founder direction on
-IB-532/WC-124 and pending Founder review and merge; Skills 18-23 (v1.4.0, PR #536) likewise pending;
+**Status:** v1.4.2 PROPOSED — §2.5 Idempotent Init-Chain SQL Standard (v1.4.1, IB-532/WC-124) plus
+the SECURITY DEFINER ownership-handoff rule (v1.4.2, Demo Google login 42501) pending Founder review and merge; Skills 18-23 (v1.4.0, PR #536) likewise pending;
 Skills 1-17 remain active under v1.3.8
 **Implementation tool:** GitHub Copilot (Workspace / Agent mode) operating under this specification
 
@@ -135,6 +135,18 @@ new, higher-numbered file; never put `\connect`, `CREATE DATABASE`, psql meta-co
 environment interpolation in an init file; keep `60-wc124-principal-handoff.sql` the last file so
 ownership is handed to the runtime owner roles after every object exists.
 
+**SECURITY DEFINER ownership through the `60` handoff.** A `SECURITY DEFINER` routine executes as
+its owner, and `FORCE ROW LEVEL SECURITY` applies to table owners too. When a schema's RLS policies
+admit only a dedicated definer principal (`web_session` → `web_session_operations`, `identity` →
+`identity_resolver_owner`), that principal must still own the definer routines after
+`60-wc124-principal-handoff.sql`. The routine loop in `60` keeps them through its
+`definer(schema_name, principal_name)` map; every other routine moves to the schema runtime owner.
+Handing a definer routine to the schema runtime owner yields SQLSTATE 42501 on every write and
+silently empties every read (Evidence: Demo Google sign-in 503 `IDENTITY_DEPENDENCY_UNAVAILABLE`,
+release `f3bf6e04`). Any new schema whose policies bind to a definer principal must be added to
+that map, to `tests/postgres/oidc_reservation_probe.sql` (owner assertion), and covered by a
+behavioural probe executed as the runtime login role.
+
 **Executable gates (both required before PR submission for any init-chain change).**
 
 1. `python scripts/wc124_init_chain_lint.py` — static form check; zero findings required. Any new
@@ -142,8 +154,22 @@ ownership is handed to the runtime owner roles after every object exists.
 2. `scripts/wc124_init_chain_local.sh` — fresh pinned pgvector instance; real provisioner ledger
    logic; asserts run 1 applies every file, run 2 skips every file, forced run 3 re-applies every
    file with zero `pg_dump --schema-only` drift, and the Business Platform
-   `IdentitySchemaHealthCheck` object set exists. Evidence lands in
-   `test-results/wc124/init-chain-local/result.json`.
+   `IdentitySchemaHealthCheck` object set exists, then runs
+   `tests/postgres/oidc_reservation_probe.sql` (definer owners + OIDC reserve/consume as
+   `web_session_app`). Evidence lands in `test-results/wc124/init-chain-local/result.json`.
+3. `sh scripts/validation_control/run_wc123_session_contract.sh` (catalog gate
+   `wc123:session-contract`, selected by `scoped_paths.web-session-store` for every init-chain
+   change) — full `web_session` contract including definer ownership.
+
+**Local reproduction against the full chain.** `scripts/run_auth_preview.sh start` (Codespaces;
+web at `https://${CODESPACE_NAME}-3100.app.github.dev`) initialises a fresh compose PostgreSQL with
+every init file including `00` and `60`, so it mirrors Demo ownership. `start` runs the OIDC
+reservation probe before the web container and fails fast on a 42501 regression;
+`scripts/run_auth_preview.sh probe` re-runs it on demand. Init SQL is applied only on a fresh
+volume: after editing an init file run `scripts/run_auth_preview.sh stop` and
+`docker volume rm waooaw-auth-preview_auth_preview_postgres`, or apply the changed file plus `60`
+with `psql -v ON_ERROR_STOP=1`. Web readiness needs the configured issuer (Demo Keycloak by
+default, or `KEYCLOAK_ISSUER`) to be reachable.
 
 Both are form checks, not substitutes for Skill 5 behavioural tests of the schema itself.
 
@@ -1699,6 +1725,7 @@ are active after R-118 independent EA approval and FA-049 Founder activation.
 | 1.3.8 | 2026-10-17 | Founder / Platform IT Expert | Added live-provider authentication-transition proof, private-network secret execution, structured payload construction, Container Apps identity read-back/recreate rules, and complete PostgreSQL ownership/grantor dependency audits; no capability or Decision Space change |
 | 1.4.0 | 2026-10-19 | Founder / Platform IT Expert | Added Skills 18-23 for workflow state machines, IaC lifecycle propagation, secret consumption, same-context connectivity, failure injection, and automated incident evidence; no new provider authority |
 | 1.4.1 | 2026-10-20 | Founder / Platform IT Expert | Added §2.5 Idempotent Init-Chain SQL Standard with the `wc124_init_chain_lint.py` and `wc124_init_chain_local.sh` executable gates after WC-124 gap B showed 31 of 69 init files failed a second pass; no capability or Decision Space change |
+| 1.4.2 | 2026-10-29 | Founder / Platform IT Expert | Added the §2.5 SECURITY DEFINER ownership-handoff rule, the OIDC reservation probe, the `wc123:session-contract` gate and the `run_auth_preview.sh` local-reproduction procedure after the Demo Google sign-in 42501 regression; no capability or Decision Space change |
 
 **Founder approval:** FA-032 authorized the Type 1 lifecycle. FA-033 approves Platform IT Expert v1.2 and activates Skill 16. FA-049 activates v1.3 Skill 17 after R-118. These actions grant no deployment authority; implementation remains bounded by its Work Contract, GOA, Acceptance and local entry criteria.
 
