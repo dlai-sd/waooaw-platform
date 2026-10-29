@@ -1178,6 +1178,10 @@ resource "azurerm_container_app" "member" {
       image  = var.image_digests[each.key]
       cpu    = 0.5
       memory = "1Gi"
+      # dash drops dotted logging environment names before starting dotnet.
+      command = var.environment == "demo" && each.key == "business-platform" ? [
+        "/bin/bash", "/app/docker-entrypoint.sh"
+      ] : null
 
       env {
         name        = local.credential_environment[each.key]

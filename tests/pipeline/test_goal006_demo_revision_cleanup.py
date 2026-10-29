@@ -1,6 +1,8 @@
 """Demo cost controls preserve serving revisions, evidence and UAT boundaries."""
 
 import copy
+import os
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -157,3 +159,19 @@ def test_probe_log_suppression_is_demo_only_and_not_global():
     assert '"Logging__LogLevel__Microsoft.AspNetCore.Hosting.Diagnostics"' in block
     assert '"Logging__LogLevel__Microsoft.AspNetCore.Routing.EndpointMiddleware"' in block
     assert "Logging__LogLevel__Default" not in block
+
+
+def test_demo_business_platform_preserves_dotted_logging_environment():
+    module = (ROOT / "infrastructure/terraform/phase2/modules/workload/main.tf").read_text()
+    assert 'command = var.environment == "demo" && each.key == "business-platform" ? [' in module
+    assert '"/bin/bash", "/app/docker-entrypoint.sh"' in module
+    key = "Logging__LogLevel__Microsoft.AspNetCore.Hosting.Diagnostics"
+    environment = {**os.environ, key: "Warning"}
+    result = subprocess.run(
+        ["/bin/bash", "-c", f"printenv '{key}'"],
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert result.stdout.strip() == "Warning"
