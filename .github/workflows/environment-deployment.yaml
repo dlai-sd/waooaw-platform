@@ -37,6 +37,10 @@ on:
         required: false
         type: string
         default: ""
+      image_home:
+        required: false
+        type: string
+        default: github
     outputs:
       verification_client_id:
         value: ${{ jobs.terraform.outputs.verification_client_id }}
@@ -98,6 +102,9 @@ jobs:
     environment: ${{ inputs.environment }}
     outputs:
       runner_started: ${{ steps.broker.outputs.runner_started }}
+      image_home: ${{ steps.image-home.outputs.effective_image_home || 'github' }}
+      image_registry_server: ${{ steps.image-home.outputs.registry_server }}
+      image_pull_identity_id: ${{ steps.image-home.outputs.pull_identity_id }}
     env:
       ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
       RUNNER_RESOURCE_GROUP: ${{ needs.resolve-environment.outputs.runner_resource_group }}
@@ -180,6 +187,66 @@ jobs:
           client-id: ${{ env.ARM_CLIENT_ID }}
           tenant-id: ${{ env.ARM_TENANT_ID }}
           subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Select image home and mirror release images to ACR
+        id: image-home
+        if: inputs.apply && inputs.image_home != 'github'
+        env:
+          IMAGE_HOME: ${{ inputs.image_home }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          case "$IMAGE_HOME" in azure|both) ;; *) echo "Unsupported image home: $IMAGE_HOME" >&2; exit 1 ;; esac
+          subscription_compact=${ARM_SUBSCRIPTION_ID//-/}
+          registry_name="acrwaooaw${TARGET_ENVIRONMENT}${subscription_compact:0:6}"
+          login_server="${registry_name}.azurecr.io"
+          resource_group="waooaw-${TARGET_ENVIRONMENT}-rg"
+          pull_identity_id="/subscriptions/${ARM_SUBSCRIPTION_ID}/resourceGroups/${resource_group}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-waooaw-${TARGET_ENVIRONMENT}-image-pull"
+          registry_ready=false
+          if az acr show --name "$registry_name" --resource-group "$resource_group" --only-show-errors --output none 2>/dev/null \
+            && az identity show --ids "$pull_identity_id" --only-show-errors --output none 2>/dev/null \
+            && az acr login --name "$registry_name" --expose-token --only-show-errors --query accessToken --output tsv 2>/dev/null \
+              | docker login "$login_server" --username 00000000-0000-0000-0000-000000000000 --password-stdin >/dev/null 2>&1; then
+            registry_ready=true
+          fi
+          runner_digest=$(python3 scripts/goal006_ghcr_digest.py \
+            --repository dlai-sd/goal006-private-runner \
+            --reference 'sha-${{ inputs.control_sha }}')
+          set +e
+          python3 scripts/goal006_image_mirror.py select \
+            --image-home "$IMAGE_HOME" \
+            --manifest registry-release-manifest.json \
+            --image "goal006-private-runner=ghcr.io/dlai-sd/goal006-private-runner@${runner_digest}" \
+            --login-server "$login_server" \
+            --pull-identity-id "$pull_identity_id" \
+            --registry-ready "$registry_ready" \
+            --output image-home.json
+          mirror_status=$?
+          set -e
+          docker logout "$login_server" >/dev/null 2>&1 || true
+          test "$mirror_status" = 0
+          {
+            echo "effective_image_home=$(jq -er '.effective_image_home' image-home.json)"
+            echo "registry_server=$(jq -r '.registry_server' image-home.json)"
+            echo "pull_identity_id=$(jq -r '.pull_identity_id' image-home.json)"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "### Image home"
+            echo "- Requested: \`$IMAGE_HOME\`"
+            echo "- Effective: \`$(jq -r '.effective_image_home' image-home.json)\`"
+            echo "- Registry: \`$(jq -r '.registry_server // "" | if . == "" then "ghcr.io" else . end' image-home.json)\`"
+            fallback=$(jq -r '.fallback_reason' image-home.json)
+            if test -n "$fallback"; then echo "- Fallback reason: $fallback"; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Retain image home evidence
+        if: always() && steps.image-home.outcome != 'skipped'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: image-home-${{ inputs.environment }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: image-home.json
+          if-no-files-found: warn
+          retention-days: 30
 
       - name: Record batch cost control mode
         env:
@@ -1498,6 +1565,9 @@ jobs:
           POSTGRESQL_SERVER_FQDN: ${{ steps.foundation.outputs.postgresql_server_fqdn }}
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
+          IMAGE_HOME: ${{ needs.start-broker.outputs.image_home }}
+          IMAGE_REGISTRY_SERVER: ${{ needs.start-broker.outputs.image_registry_server }}
+          IMAGE_PULL_IDENTITY_ID: ${{ needs.start-broker.outputs.image_pull_identity_id }}
         run: |
           set -euo pipefail
           recovery_verification='${{ steps.database-transition.outputs.revocation_verification_required }}'
@@ -1509,6 +1579,13 @@ jobs:
             --repository "$repository" \
             --reference "$release_tag")
           runner_image="ghcr.io/${repository}@${runner_digest}"
+          acr_server=
+          acr_pull_identity=
+          if test "${IMAGE_HOME:-github}" = azure; then
+            runner_image="${IMAGE_REGISTRY_SERVER}/${repository}@${runner_digest}"
+            acr_server=$IMAGE_REGISTRY_SERVER
+            acr_pull_identity=$IMAGE_PULL_IDENTITY_ID
+          fi
           pgbouncer_host="ca-${TARGET_ENVIRONMENT}-pgbouncer"
           job_id=$(az containerapp job list \
             --resource-group "$RESOURCE_GROUP" \
@@ -1541,6 +1618,8 @@ jobs:
             --arg provisioner_client_id "$DATABASE_PROVISIONER_CLIENT_ID" \
             --argjson recovery_verification "$recovery_verification" \
             --argjson full_provisioning "$full_provisioning" \
+            --arg image_registry_server "$acr_server" \
+            --arg image_pull_identity_id "$acr_pull_identity" \
             '{
               name: $name,
               identity: {
@@ -1608,7 +1687,12 @@ jobs:
                   }]
                 }
               }
-            }' > wc124-db-provisioner-job-definition.json
+            }
+            | if $image_registry_server == "" then .
+              else
+                .identity.userAssignedIdentities[$image_pull_identity_id] = {}
+                | .properties.configuration.registries = [{server: $image_registry_server, identity: $image_pull_identity_id}]
+              end' > wc124-db-provisioner-job-definition.json
           az containerapp job create \
             --name "$job_name" \
             --resource-group "$RESOURCE_GROUP" \
@@ -1623,7 +1707,9 @@ jobs:
             --arg bootstrap "$BOOTSTRAP_IDENTITY_ID" \
             --arg provisioner "$DATABASE_PROVISIONER_IDENTITY_ID" \
             --argjson full_provisioning "$full_provisioning" \
-            'if $full_provisioning then [$bootstrap, $provisioner] else [$provisioner] end
+            --arg image_pull "$acr_pull_identity" \
+            '(if $full_provisioning then [$bootstrap, $provisioner] else [$provisioner] end)
+             + (if $image_pull == "" then [] else [$image_pull] end)
              | map(ascii_downcase) | sort')
           test "$actual_identities" = "$expected_identities"
 
@@ -1794,6 +1880,8 @@ jobs:
           POSTGRESQL_SERVER_FQDN: ${{ steps.foundation.outputs.postgresql_server_fqdn }}
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
+          IMAGE_HOME: ${{ needs.start-broker.outputs.image_home }}
+          IMAGE_PULL_IDENTITY_ID: ${{ needs.start-broker.outputs.image_pull_identity_id }}
         run: |
           set -euo pipefail
           job_name="job-${TARGET_ENVIRONMENT}-wc124-db-provisioner"
@@ -1832,7 +1920,10 @@ jobs:
           expected_identities=$(jq -cn \
             --arg bootstrap "$BOOTSTRAP_IDENTITY_ID" \
             --arg provisioner "$DATABASE_PROVISIONER_IDENTITY_ID" \
-            '[$bootstrap, $provisioner] | map(ascii_downcase) | sort')
+            --arg image_pull "${IMAGE_PULL_IDENTITY_ID:-}" \
+            --arg image_home "${IMAGE_HOME:-github}" \
+            '[$bootstrap, $provisioner] + (if $image_home == "azure" then [$image_pull] else [] end)
+             | map(ascii_downcase) | sort')
           test "$actual_identities" = "$expected_identities"
           execution_name=$(az containerapp job start \
             --name "$job_name" \
@@ -2191,8 +2282,16 @@ jobs:
 
       - name: Build workload inputs from trusted foundation outputs
         if: inputs.apply
+        env:
+          IMAGE_HOME: ${{ needs.start-broker.outputs.image_home }}
+          IMAGE_REGISTRY_SERVER: ${{ needs.start-broker.outputs.image_registry_server }}
+          IMAGE_PULL_IDENTITY_ID: ${{ needs.start-broker.outputs.image_pull_identity_id }}
         run: |
           set -euo pipefail
+          registry_arguments=()
+          if test "${IMAGE_HOME:-github}" = azure; then
+            registry_arguments=(--image-registry-server "$IMAGE_REGISTRY_SERVER" --image-pull-identity-id "$IMAGE_PULL_IDENTITY_ID")
+          fi
           python3 scripts/goal006_deployment_inputs.py \
             --environment '${{ inputs.environment }}' \
             --manifest registry-release-manifest.json \
@@ -2200,7 +2299,9 @@ jobs:
             --key-vault-id '${{ steps.foundation.outputs.key_vault_id }}' \
             --key-vault-uri '${{ steps.foundation.outputs.key_vault_uri }}' \
             --output workload.auto.tfvars.json \
-            --ghcr-packages-public-verified
+            --ghcr-packages-public-verified \
+            "${registry_arguments[@]}"
+          echo "Workload image home: ${IMAGE_HOME:-github} ${IMAGE_REGISTRY_SERVER:-ghcr.io}"
           if test -f wc124-db-credential-inventory.json; then
             jq --slurpfile inventory wc124-db-credential-inventory.json '
               ($inventory[0].credentials

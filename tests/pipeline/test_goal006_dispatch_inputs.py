@@ -14,6 +14,7 @@ def test_demo_apply_derives_ten_day_lease() -> None:
     assert inputs == {
         "environment": "demo",
         "execution": "apply",
+        "image_home": "github",
         "lease_expires_at": "2026-09-05T10:00:00Z",
     }
 

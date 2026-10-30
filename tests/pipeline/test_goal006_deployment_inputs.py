@@ -61,10 +61,7 @@ def configuration(environment: str = "demo") -> dict[str, Any]:
         if environment == "demo" or principal not in {"temporal", "temporal-migration"}
     }
     values: dict[str, Any] = {
-        "key_vault_secret_uris": {
-            member: f"https://kv-demo.vault.azure.net/secrets/{member}"
-            for member in RELEASE_MEMBERS
-        },
+        "key_vault_secret_uris": {member: f"https://kv-demo.vault.azure.net/secrets/{member}" for member in RELEASE_MEMBERS},
         "key_vault_secret_resource_ids": {
             member: f"/subscriptions/test/resourceGroups/test/providers/Microsoft.KeyVault/vaults/test/secrets/{member}"
             for member in RELEASE_MEMBERS
@@ -74,10 +71,7 @@ def configuration(environment: str = "demo") -> dict[str, Any]:
             for principal, secret_name in database_secret_names.items()
         },
         "database_secret_resource_ids": {
-            principal: (
-                "/subscriptions/test/resourceGroups/test/providers/"
-                f"Microsoft.KeyVault/vaults/test/secrets/{secret_name}"
-            )
+            principal: (f"/subscriptions/test/resourceGroups/test/providers/Microsoft.KeyVault/vaults/test/secrets/{secret_name}")
             for principal, secret_name in database_secret_names.items()
         },
         "planned_incremental_monthly_cost_inr": 1000,
@@ -155,9 +149,7 @@ def test_vault_references_are_derived_from_foundation_outputs() -> None:
     inputs = create_inputs("demo", manifest(), values, True)
     assert inputs["key_vault_secret_uris"]["web"] == "https://kv-demo.vault.azure.net/secrets/web"
     assert inputs["key_vault_secret_resource_ids"]["web"].endswith("/vaults/kv-demo/secrets/web")
-    assert inputs["key_vault_secret_uris"]["agent-runtime-adapter-digital-marketing"].endswith(
-        "/secrets/professional-runtime"
-    )
+    assert inputs["key_vault_secret_uris"]["agent-runtime-adapter-digital-marketing"].endswith("/secrets/professional-runtime")
 
 
 @pytest.mark.parametrize(
@@ -225,3 +217,33 @@ def test_missing_or_negative_cost_assumptions_are_rejected() -> None:
     values["cumulative_one_time_cost_inr"] = -1
     with pytest.raises(ValueError, match="cumulative_one_time_cost_inr"):
         create_inputs("uat", manifest(), values, True)
+
+
+def test_image_registry_inputs_are_environment_bound_and_keep_canonical_ghcr_digests() -> None:
+    server = "acrwaooawdemo2ed118.azurecr.io"
+    pull_identity = (
+        "/subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/resourceGroups/waooaw-demo-rg/providers/"
+        "Microsoft.ManagedIdentity/userAssignedIdentities/id-waooaw-demo-image-pull"
+    )
+    now = datetime(2026, 8, 25, tzinfo=timezone.utc)
+    github = create_inputs("demo", manifest(), configuration(), True, current_time=now)
+    assert "image_registry_server" not in github
+    azure = create_inputs(
+        "demo",
+        manifest(),
+        configuration(),
+        True,
+        current_time=now,
+        image_registry_server=server,
+        image_pull_identity_id=pull_identity,
+    )
+    assert azure["image_registry_server"] == server
+    assert azure["image_pull_identity_id"] == pull_identity
+    assert azure["image_digests"] == github["image_digests"]
+    for arguments in (
+        {"image_registry_server": server},
+        {"image_registry_server": "acrwaooawuat2ed118.azurecr.io", "image_pull_identity_id": pull_identity},
+        {"image_registry_server": server, "image_pull_identity_id": pull_identity.replace("demo-image", "uat-image")},
+    ):
+        with pytest.raises(ValueError, match="image"):
+            create_inputs("demo", manifest(), configuration(), True, current_time=now, **arguments)

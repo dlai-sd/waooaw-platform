@@ -21,6 +21,15 @@ on:
         options:
           - plan
           - apply
+      image_home:
+        description: "Image home: github pulls from GHCR; azure mirrors to ACR and pulls from ACR; both mirrors to ACR and falls back to GHCR"
+        required: true
+        default: github
+        type: choice
+        options:
+          - github
+          - azure
+          - both
 
 permissions:
   contents: read
@@ -41,6 +50,7 @@ jobs:
       lease_expires_at: ${{ steps.dispatch.outputs.lease_expires_at }}
       environment: ${{ steps.dispatch.outputs.environment }}
       execution: ${{ steps.dispatch.outputs.execution }}
+      image_home: ${{ steps.dispatch.outputs.image_home }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -49,15 +59,18 @@ jobs:
         env:
           TARGET_ENVIRONMENT: ${{ inputs.environment || 'demo' }}
           EXECUTION_MODE: ${{ inputs.execution || 'apply' }}
+          IMAGE_HOME: ${{ inputs.image_home || 'github' }}
         run: |
           normalized=$(python3 scripts/goal006_dispatch_inputs.py \
             --environment "$TARGET_ENVIRONMENT" \
-            --execution "$EXECUTION_MODE")
+            --execution "$EXECUTION_MODE" \
+            --image-home "$IMAGE_HOME")
           jq -e . >/dev/null <<< "$normalized"
           {
             echo "lease_expires_at=$(jq -r '.lease_expires_at' <<< "$normalized")"
             echo "environment=$TARGET_ENVIRONMENT"
             echo "execution=$EXECUTION_MODE"
+            echo "image_home=$(jq -r '.image_home' <<< "$normalized")"
           } >> "$GITHUB_OUTPUT"
 
       - name: Select trusted current-main release
@@ -114,6 +127,7 @@ jobs:
       apply: ${{ needs.authorize.outputs.execution == 'apply' }}
       lease_expires_at: ${{ needs.authorize.outputs.lease_expires_at }}
       lifecycle_action: ${{ needs.authorize.outputs.execution == 'apply' && 'activate' || 'plan' }}
+      image_home: ${{ needs.authorize.outputs.image_home }}
     secrets: inherit
 
   verify:
