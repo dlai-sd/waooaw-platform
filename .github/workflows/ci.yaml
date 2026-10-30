@@ -75,6 +75,7 @@ jobs:
               tests/pipeline/test_goal006_image_home.py \
               tests/pipeline/test_goal006_runner_image_source.py \
               tests/pipeline/test_goal006_keycloak_realm_refresh.py \
+              tests/pipeline/test_goal006_az_extensions.py \
               tests/pipeline/test_goal006_cloud_platform_finalization.py'
       - name: PST-SEC-EVIDENCE-01 fail-closed evidence contract
         run: |
