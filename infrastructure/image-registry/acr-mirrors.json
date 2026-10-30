@@ -4,7 +4,7 @@
   "environments": {
     "demo": {
       "login_server": "acrwaooawdemo2ed118.azurecr.io",
-      "publish_client_id": null
+      "publish_client_id": "8894d1b4-758c-498c-9d25-8bac3de0dc68"
     },
     "uat": {
       "login_server": "acrwaooawuat2ed118.azurecr.io",

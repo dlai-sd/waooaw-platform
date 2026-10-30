@@ -220,6 +220,17 @@ def test_committed_mirror_config_is_valid_and_skips_unrecorded_publish_identitie
     assert {target["environment"] for target in targets} == recorded
 
 
+def test_demo_publish_identity_is_recorded_so_ci_fills_the_demo_acr() -> None:
+    _, targets = mirror.load_mirror_targets(MIRROR_CONFIG)
+    assert targets == [
+        {
+            "environment": "demo",
+            "login_server": "acrwaooawdemo2ed118.azurecr.io",
+            "client_id": "8894d1b4-758c-498c-9d25-8bac3de0dc68",
+        }
+    ]
+
+
 def configured(**environments: str | None) -> dict[str, Any]:
     config = json.loads(json.dumps(MIRROR_CONFIG))
     for name, client_id in environments.items():
@@ -282,7 +293,7 @@ def test_mirror_config_rejects_unsafe_targets(mutation: Any) -> None:
 
 def test_publish_cli_skips_with_notice_until_a_publish_identity_is_recorded(tmp_path: Path) -> None:
     config = tmp_path / "config.json"
-    config.write_text(json.dumps(configured()), encoding="utf-8")
+    config.write_text(json.dumps(configured(demo=None)), encoding="utf-8")
     output = tmp_path / "acr-mirror.json"
     result = subprocess.run(
         [

@@ -1,0 +1,54 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-131
+contract_path: work-contracts/WC-131-runner-cli-extensions.md
+contract_digest: d27af789a6527a8bcb23b67031ab667957660483ae17fcc5db75fe87d15bc80a
+implementation_scope: true
+result: QUALIFIED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Docker pipeline tests, runner-image execution and live Azure identity checks
+  initial_state: expected-fail
+  dependencies: Founder-directed WC-131 fix and Release Qualification OFF
+  residual_risk: Proven by tests and runner-image execution, not yet by a completed Demo deployment.
+  result: PASS
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC131-R001
+    source: WC-131 Requirements And Definition Of Done, R1
+    observable_outcome: Pinned extensions are installed with retries before Azure CLI use or the job fails with a named error.
+    test_path_or_plan: tests/pipeline/test_goal006_az_extensions.py
+    completion_rule: Extension tests pass and the script succeeds inside runner image 332cbca.
+    evidence_refs:
+      - scripts/goal006_az_extensions.sh
+      - .github/workflows/environment-deployment.yaml
+
+  - <<: *defaults
+    requirement_id: WC131-R002
+    source: WC-131 Requirements And Definition Of Done, R2
+    observable_outcome: A missing provisioner result fails with a named error and the captured evidence.
+    test_path_or_plan: tests/pipeline/test_goal006_az_extensions.py
+    completion_rule: Workflow contract test passes.
+    evidence_refs:
+      - .github/workflows/environment-deployment.yaml
+
+  - <<: *defaults
+    requirement_id: WC131-R003
+    source: WC-131 Requirements And Definition Of Done, R3
+    observable_outcome: CI targets only the Demo ACR with the recorded publish identity.
+    test_path_or_plan: tests/pipeline/test_goal006_image_home.py
+    completion_rule: Image-home tests pass.
+    evidence_refs:
+      - infrastructure/image-registry/acr-mirrors.json
+
+  - <<: *defaults
+    requirement_id: WC131-R004
+    source: WC-131 Requirements And Definition Of Done, R4
+    observable_outcome: Exact-head PR is prepared with Founder-directed Release Qualification OFF.
+    test_path_or_plan: scripts/prepare_pr_body.py
+    completion_rule: Final pushed-head preparation passes and the prepared body is submitted unchanged.
+    result: PLANNED
+    evidence_refs:
+      - work-contracts/WC-131-runner-cli-extensions.md
+    residual_risk: Hosted CI, Demo deployment and Founder merge remain.

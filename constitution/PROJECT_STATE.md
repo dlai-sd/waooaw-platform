@@ -1,10 +1,12 @@
 # PROJECT_STATE.md
 **State Schema:** 2.0.0
-**State Revision:** 316
-**Last Updated:** 2026-10-30 (WC-130 VERIFY ACR RELEASE DIGEST)
+**State Revision:** 317
+**Last Updated:** 2026-10-30 (WC-131 RUNNER CLI EXTENSIONS)
 **Purpose:** Current operational snapshot for bootstrap, recovery, and automated sprint controls; keep it below 200 lines, update checkpoints in place, and retain durable detail in the owning Work Contract, Goal, review, evidence artifact, Git history, or archive index.
 ---
 ## Institutional Snapshot
+WC-131 runner CLI extensions: Demo run 41042104645 (cb47539, image_home=azure) failed at the WC-124 provisioner step although the execution succeeded. The deploy runner image 332cbca predates the Dockerfile extension pins, so `az containerapp job logs show` relied on an on-demand install that failed ("'logs' is misspelled"), leaving an empty result and a bare jq exit 4. The private runner job now installs the pinned extensions with retries first, a missing provisioner result fails with a named error, and the Demo image-publish identity is recorded so CI fills the Demo ACR. Founder directed Release Qualification OFF. PR review/merge and Demo re-run remain.
+
 WC-130 verify ACR release digest: Demo run 41028762781 (ed77ff4a, image_home=both -> azure) deployed and the Keycloak refresh worked, but independent verification reported seven DIGEST_MISMATCH because live inventory required exact GHCR references. Verification now accepts the same repository and digest from the environment's own ACR; pinned dependencies stay exact. Live dry-run passes where the old check fails; Google and Facebook verifiers pass. Founder directed Release Qualification OFF. PR review/merge and Demo re-run remain.
 
 WC-129 Keycloak realm refresh: Demo run 41014026210 (main 40b53c1) failed at verification. The per-deploy Demo database reset recreated `waooaw_keycloak` and the realm import rebuilt it while the 01:58 Keycloak replica kept stale cached client IDs ("Client not found" for `waooaw-web`, revision still Healthy). Founder authorized a CLI restart (done; Google and Facebook verifiers pass), a PR, and keeping the reset. Apply now restarts Keycloak replicas older than the import before activation; the Google verifier names fixed failure reasons. PR review/merge and Demo re-run remain.

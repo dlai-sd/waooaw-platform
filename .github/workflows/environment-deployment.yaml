@@ -621,6 +621,9 @@ jobs:
           test "$(command -v terraform)" = "/usr/local/bin/terraform"
           test "$(terraform version -json | jq -r '.terraform_version')" = "1.9.8"
 
+      - name: Install pinned Azure CLI extensions
+        run: bash scripts/goal006_az_extensions.sh
+
       - name: Azure login with constrained bootstrap OIDC identity
         uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
         with:
@@ -1808,6 +1811,11 @@ jobs:
           done
           sed -n -E 's/^[^ ]+ stdout F ?//p' wc124-db-provisioner-evidence.log \
             > wc124-db-provisioner-result.json
+          if [ ! -s wc124-db-provisioner-result.json ]; then
+            cat wc124-db-provisioner-evidence.log >&2
+            echo "::error title=WC-124 provisioner result missing::Execution $execution_name ended $status but its console log had no result line; see wc124-db-provisioner-evidence.log" >&2
+            exit 1
+          fi
           jq --arg execution "$execution_name" '. + {execution: $execution}' \
             wc124-db-provisioner-result.json > wc124-db-provisioner-result.bound.json
           mv wc124-db-provisioner-result.bound.json wc124-db-provisioner-result.json
