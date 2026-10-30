@@ -9,9 +9,12 @@ type LoginSearchParams = {
   state?: string | string[];
 };
 
-export default async function LoginPage({ searchParams }: { searchParams?: Promise<LoginSearchParams> }) {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams?: Promise<LoginSearchParams>;
+}) {
   const resolvedSearchParams = await searchParams;
-  if (resolvedSearchParams?.state === 'waooaw-home-after-logout') redirect('/');
   if (resolvedSearchParams?.state === 'waooaw-register-after-logout:GOOGLE')
     redirect('/register?sessionReset=1&provider=GOOGLE');
   if (resolvedSearchParams?.state === 'waooaw-register-after-logout:FACEBOOK')

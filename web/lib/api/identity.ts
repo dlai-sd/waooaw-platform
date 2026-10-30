@@ -46,7 +46,6 @@ async function loadIdentitySession(accessToken: string): Promise<IdentitySession
     });
     return session.expiresAt.getTime() > Date.now() ? { kind: 'ready', session } : { kind: 'expired' };
   } catch (error) {
-    const failureId = logServerFailure('web.identity.session_load_failed', error);
     if (error instanceof ResponseError) {
       if (error.response.status === 401) return { kind: 'unauthorized' };
       const problem = await readIdentityProblem(error.response);
@@ -67,9 +66,11 @@ async function loadIdentitySession(accessToken: string): Promise<IdentitySession
       if (error.response.status === 409) {
         if (problem?.code === 'REGISTRATION_REQUIRED') return { kind: 'registration-required' };
       }
-      return { kind: 'unavailable', correlationId: failureId };
     }
-    return { kind: 'unavailable', correlationId: failureId };
+    return {
+      kind: 'unavailable',
+      correlationId: logServerFailure('web.identity.session_load_failed', error),
+    };
   }
 }
 

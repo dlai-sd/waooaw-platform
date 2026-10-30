@@ -78,7 +78,7 @@ jobs:
       state_storage_account: ${{ steps.config.outputs.state_storage_account }}
       cleanup_evidence_container: ${{ steps.config.outputs.cleanup_evidence_container }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5 (Node 24)
         with:
           ref: ${{ inputs.control_sha }}
 
@@ -122,12 +122,12 @@ jobs:
           test "$GITHUB_REF" = "refs/heads/main"
           test '${{ inputs.control_sha }}' = "$latest_main_sha"
 
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5 (Node 24)
         with:
           ref: ${{ inputs.control_sha }}
 
       - name: Download signed exact-seven tuple
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7 (Node 24)
         with:
           pattern: goal006-exact-seven-release-*
           path: release-input
@@ -181,8 +181,11 @@ jobs:
             --environment '${{ inputs.environment }}' \
             --manifest infrastructure/deployment-stacks/goal006-runner/bootstrap-manifest.json
 
+      - name: Install pinned Azure CLI extensions
+        run: bash scripts/goal006_az_extensions.sh
+
       - name: Azure login with control-plane identity
-        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3 (Node 24)
         with:
           client-id: ${{ env.ARM_CLIENT_ID }}
           tenant-id: ${{ env.ARM_TENANT_ID }}
@@ -241,7 +244,7 @@ jobs:
 
       - name: Retain image home evidence
         if: always() && steps.image-home.outcome != 'skipped'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6 (Node 24)
         with:
           name: image-home-${{ inputs.environment }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: image-home.json
@@ -524,7 +527,7 @@ jobs:
 
       - name: Retain hosted pre-start evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6 (Node 24)
         with:
           name: goal006-private-runner-prestart-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -606,12 +609,12 @@ jobs:
             "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" | jq -er '.object.sha')
           test "$RELEASE_SHA" = "$latest_main_sha"
 
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5 (Node 24)
         with:
           ref: ${{ inputs.control_sha }}
 
       - name: Download pre-start cost evidence
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7 (Node 24)
         with:
           name: goal006-private-runner-prestart-${{ github.run_id }}-${{ github.run_attempt }}
           path: .
@@ -625,7 +628,7 @@ jobs:
         run: bash scripts/goal006_az_extensions.sh
 
       - name: Azure login with constrained bootstrap OIDC identity
-        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3 (Node 24)
         with:
           client-id: ${{ env.ARM_CLIENT_ID }}
           tenant-id: ${{ env.ARM_TENANT_ID }}
@@ -1020,7 +1023,7 @@ jobs:
         if: >-
           inputs.apply &&
           steps.database-transition.outputs.password_auth_enabled == 'true'
-        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3 (Node 24)
         with:
           client-id: ${{ steps.plan-b-foundation-identity.outputs.client_id }}
           tenant-id: ${{ env.ARM_TENANT_ID }}
@@ -1180,7 +1183,7 @@ jobs:
 
       - name: Azure login with environment deployment OIDC identity
         if: inputs.apply || inputs.lifecycle_action == 'sleep'
-        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3 (Node 24)
         with:
           client-id: ${{ steps.foundation.outputs.deployment_client_id }}
           tenant-id: ${{ env.ARM_TENANT_ID }}
@@ -1571,13 +1574,25 @@ jobs:
             echo "ownership=$ownership"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Quiesce Demo Temporal before database reset
+      - name: Quiesce Demo consumers before database reset
+        id: demo-maintenance
         if: inputs.apply && inputs.environment == 'demo'
         run: |
           set -euo pipefail
+          # A previously deployed realm must have its existing recovery job before any reset.
+          existing_keycloak=$(az containerapp list --resource-group waooaw-demo-rg \
+            --query "[?name == 'ca-demo-keycloak'].name | [0]" --output tsv)
+          if [ -n "$existing_keycloak" ]; then
+            az containerapp job show --resource-group waooaw-demo-rg \
+              --name job-demo-keycloak-migration --output json > wc132-recovery-job-preflight.json
+            PYTHONPATH=scripts python3 -c \
+              'import json; from goal006_demo_reset_recovery import validate_job; validate_job(json.load(open("wc132-recovery-job-preflight.json")))'
+          fi
+          rm -f wc124-keycloak-migration-execution.json
+          echo "[demo-reset] state=DEMO_DATABASE_RESET_MAINTENANCE_STARTED time=$(date -u +%FT%TZ)"
           python3 scripts/goal006_application_lifecycle.py \
-            --environment demo --action Stop --component temporal \
-            --output wc124-temporal-quiescence.json
+            --environment demo --action Stop --component database-reset \
+            --output wc132-demo-maintenance.json
 
       - name: Create WC-124 database provisioner
         if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
@@ -1740,6 +1755,7 @@ jobs:
           test "$actual_identities" = "$expected_identities"
 
       - name: Run WC-124 database provisioner
+        id: demo-database-reset
         if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
         env:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
@@ -3085,7 +3101,7 @@ jobs:
       # the first Log Analytics token is required by Temporal qualification.
       - name: Refresh Azure login before Temporal qualification
         if: inputs.apply && inputs.environment == 'demo'
-        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3 (Node 24)
         with:
           client-id: ${{ steps.foundation.outputs.deployment_client_id }}
           tenant-id: ${{ env.ARM_TENANT_ID }}
@@ -3822,7 +3838,7 @@ jobs:
           always() &&
           inputs.lifecycle_action != 'plan' &&
           hashFiles('wc124-deployment-activation-bundle.json', 'wc124-lifecycle-execution.json') != ''
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6 (Node 24)
         with:
           name: wc124-lifecycle-execution-${{ inputs.environment }}-${{ github.run_id }}
           path: |
@@ -3833,11 +3849,47 @@ jobs:
             wc124-lifecycle-execution.json
             wc124-sleep-evidence.json
           if-no-files-found: error
-          retention-days: 400
+          retention-days: 90
+
+      - name: Refresh Azure login for failed Demo reset recovery
+        if: >-
+          always() && inputs.apply && inputs.environment == 'demo' &&
+          (failure() || cancelled()) &&
+          contains(fromJSON('["success","failure","cancelled"]'), steps.demo-database-reset.outcome)
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3 (Node 24)
+        with:
+          client-id: ${{ steps.foundation.outputs.deployment_client_id }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Recover Keycloak after interrupted Demo reset
+        id: demo-realm-recovery
+        if: >-
+          always() && inputs.apply && inputs.environment == 'demo' &&
+          (failure() || cancelled()) &&
+          contains(fromJSON('["success","failure","cancelled"]'), steps.demo-database-reset.outcome)
+        run: |
+          python3 scripts/goal006_demo_reset_recovery.py \
+            --environment demo \
+            --migration-execution wc124-keycloak-migration-execution.json \
+            --output wc132-demo-reset-recovery.json
+
+      - name: Record Demo maintenance window outcome
+        if: always() && inputs.apply && inputs.environment == 'demo' && steps.demo-maintenance.outcome != 'skipped'
+        env:
+          DEPLOY_STATUS: ${{ job.status }}
+          RECOVERY_STATUS: ${{ steps.demo-realm-recovery.outcome }}
+        run: |
+          if [ -f wc132-demo-maintenance.json ]; then
+            echo "[demo-reset] state=DEMO_DATABASE_RESET_MAINTENANCE_ENDED deploy=$DEPLOY_STATUS realm_recovery=${RECOVERY_STATUS:-not-required} time=$(date -u +%FT%TZ)"
+            if [ "$DEPLOY_STATUS" != success ]; then
+              echo "::error title=DEMO_DATABASE_RESET_RECOVERY_HOLD::Deployment failed; application consumers remain quiesced until a successful deployment"
+            fi
+          fi
 
       - name: Upload plans and evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6 (Node 24)
         with:
           name: goal006-${{ inputs.environment }}-${{ inputs.apply && 'apply' || 'plan' }}-${{ inputs.release_run_id }}
           path: |
@@ -3869,7 +3921,9 @@ jobs:
             wc124-db-provisioner-execution.json
             wc124-db-provisioner-evidence.log
             wc124-db-provisioner-result.json
-            wc124-temporal-quiescence.json
+            wc132-demo-maintenance.json
+            wc132-recovery-job-preflight.json
+            wc132-demo-reset-recovery.json
             wc124-pgbouncer-preflight-job.before.json
             wc124-pgbouncer-preflight-template.json
             wc124-pgbouncer-preflight-execution.json
@@ -3969,12 +4023,15 @@ jobs:
       TFSTATE_STORAGE_ACCOUNT: ${{ needs.resolve-environment.outputs.state_storage_account }}
       CLEANUP_EVIDENCE_CONTAINER: ${{ needs.resolve-environment.outputs.cleanup_evidence_container }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5 (Node 24)
         with:
           ref: ${{ inputs.control_sha }}
 
+      - name: Install pinned Azure CLI extensions
+        run: bash scripts/goal006_az_extensions.sh
+
       - name: Azure login with cleanup identity
-        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3 (Node 24)
         with:
           client-id: ${{ env.RUNNER_CLEANUP_CLIENT_ID }}
           tenant-id: ${{ env.ARM_TENANT_ID }}
@@ -4125,7 +4182,7 @@ jobs:
 
       - name: Retain hosted cleanup evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6 (Node 24)
         with:
           name: goal006-private-runner-cleanup-${{ github.run_id }}-${{ github.run_attempt }}
           path: |

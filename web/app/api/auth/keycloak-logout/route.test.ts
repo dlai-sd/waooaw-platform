@@ -1,6 +1,9 @@
 /** @jest-environment node */
 
-jest.mock('next-auth/jwt', () => ({ getToken: jest.fn() }));
+jest.mock('next-auth/jwt', () => ({
+  ...jest.requireActual('next-auth/jwt'),
+  getToken: jest.fn(),
+}));
 jest.mock('@/lib/identity-security-events', () => ({
   recordWebIdentitySecurityEvent: jest.fn(),
 }));
@@ -11,14 +14,23 @@ jest.mock('@/lib/web-session-store', () => ({
 
 import { recordWebIdentitySecurityEvent } from '@/lib/identity-security-events';
 import { revokeSession } from '@/lib/web-session-store';
-import { getToken } from 'next-auth/jwt';
+import { encode, getToken } from 'next-auth/jwt';
 import { NextRequest } from 'next/server';
 import { GET, POST } from './route';
+
+const testSecret = 'test-secret';
 
 function requiredHeader(response: Response, name: string): string {
   const value = response.headers.get(name);
   expect(value).not.toBeNull();
   return value ?? '';
+}
+
+function browserCookies(response: Response): string {
+  return response.headers
+    .getSetCookie()
+    .map((cookie) => cookie.split(';')[0])
+    .join('; ');
 }
 
 describe('Keycloak logout route', () => {
@@ -28,6 +40,7 @@ describe('Keycloak logout route', () => {
     process.env.KEYCLOAK_ISSUER = 'https://identity.example/realms/waooaw';
     process.env.KEYCLOAK_CLIENT_ID = 'waooaw-web';
     process.env.NEXTAUTH_URL = 'https://app.example';
+    process.env.NEXTAUTH_SECRET = testSecret;
     jest.mocked(getToken).mockResolvedValue({ idToken: 'server-held-id-token' });
   });
 
@@ -78,6 +91,10 @@ describe('Keycloak logout route', () => {
     expect(JSON.stringify(result)).not.toContain('server-held-id-token');
     expect(response.headers.get('set-cookie')).toContain('waooaw.logout-continuation=');
     expect(response.headers.get('set-cookie')).toContain('HttpOnly');
+    expect(response.headers.get('set-cookie')).toContain('Secure');
+    expect(response.headers.get('set-cookie')).toContain('SameSite=lax');
+    expect(response.headers.get('set-cookie')).toContain('Max-Age=60');
+    expect(response.headers.get('set-cookie')).not.toContain('server-held-id-token');
     expect(response.headers.get('set-cookie')).not.toContain('next-auth.session-token=;');
     expect(response.headers.get('cache-control')).toBe('no-store');
     expect(getToken).toHaveBeenCalledTimes(1);
@@ -102,7 +119,7 @@ describe('Keycloak logout route', () => {
     const response = await GET(
       new NextRequest(`https://app.example/api/auth/keycloak-logout?nonce=${nonce}`, {
         headers: {
-          cookie: `waooaw.logout-continuation=${nonce}; waooaw.logout-command=ACCOUNT_SWITCH`,
+          cookie: browserCookies(post),
         },
       })
     );
@@ -135,7 +152,7 @@ describe('Keycloak logout route', () => {
     const response = await GET(
       new NextRequest(`https://app.example/api/auth/keycloak-logout?nonce=${nonce}`, {
         headers: {
-          cookie: `waooaw.logout-continuation=${nonce}; waooaw.logout-command=REGISTRATION; waooaw.logout-provider=GOOGLE`,
+          cookie: browserCookies(post),
         },
       })
     );
@@ -287,10 +304,17 @@ describe('Keycloak logout route', () => {
   it('redeems the continuation server-side before clearing the session and redirecting', async () => {
     const nonce = '934aca5d-658e-4672-a555-313e88fa49a6';
     const correlationId = '11111111-1111-4111-8111-111111111111';
+    const hint = await encode({
+      secret: testSecret,
+      salt: 'waooaw.logout-hint',
+      maxAge: 60,
+      token: { nonce, idToken: 'server-held-id-token' },
+    });
+    jest.mocked(getToken).mockResolvedValue(null);
     const response = await GET(
       new NextRequest(`https://app.example/api/auth/keycloak-logout?nonce=${nonce}`, {
         headers: {
-          cookie: `waooaw.logout-continuation=${nonce}; waooaw.logout-correlation=${correlationId}; next-auth.session-token=local-session`,
+          cookie: `waooaw.logout-continuation=${nonce}; waooaw.logout-hint=${hint}; waooaw.logout-correlation=${correlationId}; next-auth.session-token=local-session`,
         },
       })
     );
@@ -299,6 +323,8 @@ describe('Keycloak logout route', () => {
     expect(response.status).toBe(303);
     expect(location.origin).toBe('https://identity.example');
     expect(location.searchParams.get('id_token_hint')).toBe('server-held-id-token');
+    expect(getToken).not.toHaveBeenCalled();
+    expect(response.headers.get('set-cookie')).toContain('waooaw.logout-hint=;');
     expect(response.headers.get('set-cookie')).toContain(
       'waooaw.logout-continuation=; Path=/api/auth/keycloak-logout;'
     );
@@ -313,6 +339,64 @@ describe('Keycloak logout route', () => {
     expect(recordWebIdentitySecurityEvent).not.toHaveBeenCalledWith(
       expect.objectContaining({ eventType: 'LOGOUT_COMPLETION' })
     );
+  });
+
+  it('carries the ID token across POST revocation and consumes the browser continuation', async () => {
+    jest.mocked(revokeSession).mockImplementationOnce(async () => {
+      jest.mocked(getToken).mockResolvedValue(null);
+    });
+    const post = await POST(
+      new NextRequest('https://app.example/api/auth/keycloak-logout', {
+        method: 'POST',
+        headers: { accept: 'application/json', origin: 'https://app.example' },
+      })
+    );
+    const { logoutPath } = await post.json();
+    const redirected = await GET(
+      new NextRequest(new URL(logoutPath, 'https://app.example'), {
+        headers: { cookie: browserCookies(post) },
+      })
+    );
+    expect(new URL(requiredHeader(redirected, 'location')).searchParams.get('id_token_hint')).toBe(
+      'server-held-id-token'
+    );
+    expect(revokeSession).toHaveBeenCalledTimes(1);
+    expect(getToken).toHaveBeenCalledTimes(1);
+    const replay = await GET(
+      new NextRequest(new URL(logoutPath, 'https://app.example'), {
+        headers: { cookie: browserCookies(redirected) },
+      })
+    );
+    expect(replay.status).toBe(403);
+  });
+
+  it.each(['missing', 'expired', 'tampered', 'wrong-nonce'])('rejects a %s hint safely', async (kind) => {
+    const nonce = crypto.randomUUID();
+    const hint =
+      kind === 'missing'
+        ? ''
+        : kind === 'tampered'
+          ? 'invalid'
+          : await encode({
+              secret: testSecret,
+              salt: 'waooaw.logout-hint',
+              maxAge: kind === 'expired' ? -1 : 60,
+              token: {
+                nonce: kind === 'wrong-nonce' ? 'other' : nonce,
+                idToken: 'secret-id-token',
+              },
+            });
+    const response = await GET(
+      new NextRequest(`https://app.example/api/auth/keycloak-logout?nonce=${nonce}`, {
+        headers: {
+          cookie: `waooaw.logout-continuation=${nonce}; waooaw.logout-hint=${hint}`,
+        },
+      })
+    );
+    expect(response.status).toBe(403);
+    expect(response.headers.get('location')).toBeNull();
+    expect(response.headers.get('set-cookie')).toContain('waooaw.logout-hint=;');
+    expect(getToken).not.toHaveBeenCalled();
   });
 
   it('rejects an invalid logout continuation without reading the session', async () => {

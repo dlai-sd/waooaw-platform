@@ -1,17 +1,17 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-132
 contract_path: work-contracts/WC-132-demo-signout-and-runtime-noise.md
-contract_digest: 212941cf45d53f0254c72f7194176844e095e143c043dd60d2a171cabbb22089
+contract_digest: f131b45987ceaf5a653f455740f1860c65b897aa690a8cd5a7c794ccd75d44c2
 implementation_scope: true
-result: PLANNED
+result: QUALIFIED
 
 requirement_defaults: &defaults
   component_owner: Platform IT Expert (INST-010)
-  evidence_class: Unit, pipeline and Demo log evidence
+  evidence_class: Local unit/pipeline/container evidence; deployed acceptance pending
   initial_state: expected-fail
-  dependencies: Founder authorization of the implementing session
-  residual_risk: Not implemented; planned for a later session.
-  result: PLANNED
+  dependencies: Session implementation authorized 2026-10-30; Demo rollout needs separate authority.
+  residual_risk: Real-account Demo acceptance, deployed annotations and one-hour Azure log counts remain pending.
+  result: PASS
 
 requirements:
   - <<: *defaults
@@ -22,6 +22,8 @@ requirements:
     completion_rule: Executable evidence listed for WC132-R001 passes.
     evidence_refs:
       - web/app/api/auth/keycloak-logout/route.ts
+      - web/app/api/auth/keycloak-logout/route.test.ts
+      - web/__tests__/app/auth/login/page.test.tsx
 
   - <<: *defaults
     requirement_id: WC132-R002
@@ -31,6 +33,8 @@ requirements:
     completion_rule: Executable evidence listed for WC132-R002 passes.
     evidence_refs:
       - .github/workflows/environment-deployment.yaml
+      - scripts/goal006_demo_reset_recovery.py
+      - tests/pipeline/test_wc132_demo_reset_recovery.py
 
   - <<: *defaults
     requirement_id: WC132-R003
@@ -40,15 +44,19 @@ requirements:
     completion_rule: Executable evidence listed for WC132-R003 passes.
     evidence_refs:
       - .github/workflows/environment-deployment.yaml
+      - scripts/goal006_application_lifecycle.py
+      - tests/pipeline/test_goal006_application_lifecycle.py
 
   - <<: *defaults
     requirement_id: WC132-R004
     source: WC-132 Requirements And Definition Of Done, R4
-    observable_outcome: Keycloak pool idle removal is shorter than PgBouncer client_idle_timeout.
+    observable_outcome: Demo managed pools own client lifetime without the incompatible PgBouncer client idle cutoff.
     test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
     completion_rule: Executable evidence listed for WC132-R004 passes.
     evidence_refs:
-      - infrastructure/postgres/pgbouncer/pgbouncer.ini
+      - infrastructure/terraform/phase2/modules/workload/main.tf
+      - tests/pipeline/test_wc132_demo_reset_recovery.py
+      - work-contracts/WC-132-demo-signout-and-runtime-noise.md
 
   - <<: *defaults
     requirement_id: WC132-R005
@@ -58,6 +66,7 @@ requirements:
     completion_rule: Executable evidence listed for WC132-R005 passes.
     evidence_refs:
       - web/lib/api/identity.ts
+      - web/lib/api/identity.test.ts
 
   - <<: *defaults
     requirement_id: WC132-R006
@@ -67,6 +76,10 @@ requirements:
     completion_rule: Executable evidence listed for WC132-R006 passes.
     evidence_refs:
       - src/business-platform/Program.cs
+      - src/ai-runtime/employment_patch.py
+      - tests/ai-runtime/test_employment_patch.py
+      - tests/pipeline/test_wc132_demo_reset_recovery.py
+      - work-contracts/WC-132-demo-signout-and-runtime-noise.md
 
   - <<: *defaults
     requirement_id: WC132-R007
@@ -76,6 +89,7 @@ requirements:
     completion_rule: Executable evidence listed for WC132-R007 passes.
     evidence_refs:
       - scripts/goal006_az_extensions.sh
+      - tests/pipeline/test_goal006_az_extensions.py
 
   - <<: *defaults
     requirement_id: WC132-R008
@@ -85,6 +99,7 @@ requirements:
     completion_rule: Executable evidence listed for WC132-R008 passes.
     evidence_refs:
       - .github/workflows/environment-deployment.yaml
+      - tests/pipeline/test_wc132_demo_reset_recovery.py
 
   - <<: *defaults
     requirement_id: WC132-R009

@@ -204,7 +204,7 @@ def test_demo_quiescence_precedes_reset_and_qualification_but_resume_follows():
     workflow = yaml.safe_load((ROOT / ".github/workflows/environment-deployment.yaml").read_text())
     steps = workflow["jobs"]["terraform"]["steps"]
     names = [item.get("name") for item in steps]
-    stop = names.index("Quiesce Demo Temporal before database reset")
+    stop = names.index("Quiesce Demo consumers before database reset")
     assert stop < names.index("Create WC-124 database provisioner")
     assert stop < names.index("Run WC-124 database provisioner")
     assert stop < names.index("Qualify exact Temporal startup through PgBouncer")
@@ -212,10 +212,10 @@ def test_demo_quiescence_precedes_reset_and_qualification_but_resume_follows():
         "Require runtime dependency revisions before application activation"
     )
     assert steps[stop]["if"] == "inputs.apply && inputs.environment == 'demo'"
-    assert "--action Stop --component temporal" in steps[stop]["run"]
+    assert "--action Stop --component database-reset" in steps[stop]["run"]
     upload = next(item for item in steps if item.get("name") == "Upload plans and evidence")
     assert upload["if"] == "always()"
-    assert "wc124-temporal-quiescence.json" in upload["with"]["path"]
+    assert "wc132-demo-maintenance.json" in upload["with"]["path"]
     ci = (ROOT / ".github/workflows/ci.yaml").read_text()
     assert "tests/pipeline/test_wc124_temporal_readiness.py" in ci
     assert "tests/pipeline/test_wc124_deployment_path.py" in ci
@@ -228,6 +228,26 @@ def test_embedded_database_blocks_all_mutations():
     ]
     with pytest.raises(ValueError, match="database exclusion"):
         execute("demo", "Stop", run_az=azure)
+    assert azure.mutations == []
+
+
+def test_database_reset_quiesces_all_existing_consumers_before_touching_data():
+    azure = Azure()
+    execute("demo", "Stop", component="database-reset", run_az=azure)
+    assert {name for name, _ in azure.mutations} == {
+        f"ca-demo-{member}" for member in START_ORDER if member not in {"auth-redis", "identity-edge"}
+    }
+    assert azure.mutations[0] == ("ca-demo-web", "stop")
+    assert all(
+        azure.apps[f"ca-demo-{member}"]["properties"]["runningStatus"] == "Running"
+        for member in ("auth-redis", "identity-edge")
+    )
+
+
+def test_database_reset_accepts_first_deploy_without_consumers():
+    azure = Azure()
+    azure.apps = {}
+    assert execute("demo", "Stop", component="database-reset", run_az=azure)["disposition"] == "not-provisioned"
     assert azure.mutations == []
 
 

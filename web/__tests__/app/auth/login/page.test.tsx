@@ -3,7 +3,9 @@ import { LoginView } from '@/components/auth/LoginView';
 import { redirect } from 'next/navigation';
 
 jest.mock('next/navigation', () => ({ redirect: jest.fn() }));
-jest.mock('@/components/auth/LoginView', () => ({ LoginView: jest.fn(() => null) }));
+jest.mock('@/components/auth/LoginView', () => ({
+  LoginView: jest.fn(() => null),
+}));
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -12,14 +14,12 @@ beforeEach(() => {
   });
 });
 
-it('returns a completed normal logout to the public homepage', async () => {
-  await expect(
-    LoginPage({
-      searchParams: Promise.resolve({ state: 'waooaw-home-after-logout' }),
-    })
-  ).rejects.toThrow('NEXT_REDIRECT');
+it('keeps a completed normal logout on the login page', async () => {
+  await LoginPage({
+    searchParams: Promise.resolve({ state: 'waooaw-home-after-logout' }),
+  });
 
-  expect(redirect).toHaveBeenCalledWith('/');
+  expect(redirect).not.toHaveBeenCalled();
   expect(LoginView).not.toHaveBeenCalled();
 });
 
@@ -35,7 +35,9 @@ it.each(['GOOGLE', 'FACEBOOK'] as const)(
   async (provider) => {
     await expect(
       LoginPage({
-        searchParams: Promise.resolve({ state: `waooaw-register-after-logout:${provider}` }),
+        searchParams: Promise.resolve({
+          state: `waooaw-register-after-logout:${provider}`,
+        }),
       })
     ).rejects.toThrow('NEXT_REDIRECT');
 
@@ -46,7 +48,9 @@ it.each(['GOOGLE', 'FACEBOOK'] as const)(
 
 it('does not trust an unsupported registration reset state', async () => {
   await LoginPage({
-    searchParams: Promise.resolve({ state: 'waooaw-register-after-logout:EMAIL' }),
+    searchParams: Promise.resolve({
+      state: 'waooaw-register-after-logout:EMAIL',
+    }),
   });
 
   expect(redirect).not.toHaveBeenCalled();

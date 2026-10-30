@@ -30,6 +30,7 @@ START_ORDER = (
     "dma",
     "web",
 )
+RESET_COMPONENTS = tuple(member for member in START_ORDER if member not in {"auth-redis", "identity-edge"})
 
 
 def fingerprint(app: dict[str, Any], revisions: list[dict[str, Any]]) -> str:
@@ -55,13 +56,13 @@ def execute(
 ) -> dict[str, Any]:
     if environment != "demo" or action not in {"Start", "Stop"}:
         raise ValueError("Only Demo Start/Stop is enabled; UAT is excluded by Founder decision")
-    if component is not None and (component != "temporal" or action != "Stop"):
-        raise ValueError("Scoped lifecycle operations only permit stopping Demo Temporal")
+    if component is not None and (component not in {"temporal", "database-reset"} or action != "Stop"):
+        raise ValueError("Scoped lifecycle operations only permit stopping Demo reset consumers")
     operation_deadline = clock() + 1800
     result = evidence if evidence is not None else {}
     result.update(schema="waooaw.application-lifecycle/v1", environment=environment, action=action, status="failed", apps=[])
     group = f"waooaw-{environment}-rg"
-    members = [component] if component else list(START_ORDER)
+    members = list(RESET_COMPONENTS) if component == "database-reset" else [component] if component else list(START_ORDER)
     expected = {f"ca-{environment}-{member}" for member in members}
     inventory = run_az(["containerapp", "list", "--resource-group", group])
     if component:
@@ -70,6 +71,9 @@ def execute(
         if not inventory:
             result.update(status="passed", disposition="not-provisioned")
             return result
+        if component == "database-reset":
+            members = [member for member in members if f"ca-{environment}-{member}" in {app["name"] for app in inventory}]
+            expected = {f"ca-{environment}-{member}" for member in members}
     found = {app["name"] for app in inventory}
     if found != expected:
         raise ValueError(f"App inventory mismatch: missing={sorted(expected - found)} unexpected={sorted(found - expected)}")
@@ -134,7 +138,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--environment", choices=("demo",), required=True)
     parser.add_argument("--action", choices=("Start", "Stop"), required=True)
-    parser.add_argument("--component", choices=("temporal",), help="Stop only Demo Temporal before reset/qualification")
+    parser.add_argument(
+        "--component", choices=("temporal", "database-reset"), help="Stop Demo consumers before reset/qualification"
+    )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     result: dict[str, Any] = {}

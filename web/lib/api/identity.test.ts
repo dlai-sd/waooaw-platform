@@ -106,6 +106,7 @@ describe('identity provider projection', () => {
       kind,
       ...(status >= 500 ? { correlationId: expect.any(String) } : {}),
     });
+    expect(console.error).toHaveBeenCalledTimes(status >= 500 ? 1 : 0);
   });
 
   it.each([
@@ -133,6 +134,7 @@ describe('identity provider projection', () => {
       correlationId: 'd8f914cf-f258-46f3-a41a-e345d489862a',
     });
     if (kind === 'forbidden') expect(result).toMatchObject({ code });
+    expect(console.error).not.toHaveBeenCalled();
   });
 
   it('fails an untyped 403 closed as action denied rather than step-up', async () => {
@@ -162,6 +164,21 @@ describe('identity provider projection', () => {
     await expect(getIdentitySession('access-token')).resolves.toEqual({
       kind: 'registration-required',
     });
+    expect(console.error).not.toHaveBeenCalled();
+  });
+
+  it.each([409, 500])('still logs unexpected HTTP %s failures with a correlation ID', async (status) => {
+    jest.spyOn(IdentityApi.prototype, 'getIdentitySession').mockRejectedValue(
+      new ResponseError({
+        status,
+        clone: () => ({ json: async () => ({ code: 'UNEXPECTED_FAILURE' }) }),
+      } as Response)
+    );
+    await expect(getIdentitySession('access-token')).resolves.toEqual({
+      kind: 'unavailable',
+      correlationId: expect.any(String),
+    });
+    expect(console.error).toHaveBeenCalledTimes(1);
   });
 
   it('does not treat an expired projection as an active session', async () => {
