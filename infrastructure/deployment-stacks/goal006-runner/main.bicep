@@ -19,6 +19,8 @@ param cleanupJobOperatorRoleDefinitionId string
 param evidenceWriterRoleDefinitionId string
 param runnerImage string
 param reconcilerImage string
+@description('Principal that copies the runner image into the runner registry before broker starts.')
+param imagePublisherPrincipalId string
 param githubAppId string
 param githubAppInstallationId string
 param githubAppKeyName string
@@ -43,6 +45,16 @@ var keyVaultSecretsUserRoleId = subscriptionResourceId('Microsoft.Authorization/
 var keyVaultCryptoUserRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '12338af0-0e69-4776-bea7-57ae8d297424')
 var keyVaultCryptoOfficerRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '14b46e9e-c2b7-41b4-b07b-48a6ebf60603')
 var stateStorageAccountSegments = split(stateStorageAccountId, '/')
+// Same-region mirror of the immutable runner digest; jobs keep the GHCR reference as their identity.
+var runnerRegistryName = 'acrwaooawrun${environment}${substring(subscription().subscriptionId, 0, 6)}'
+var acrPullRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
+var acrPushRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8311e382-0749-4cb8-b61a-304f252e45ec')
+var runnerRegistries = [
+  {
+    server: runnerRegistry.properties.loginServer
+    identity: imagePullIdentity.id
+  }
+]
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: '${prefix}-logs'
@@ -199,6 +211,54 @@ resource keyImportIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@202
   name: '${prefix}-key-import-identity'
   location: location
   tags: commonTags
+}
+
+resource imagePullIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: '${prefix}-image-pull-identity'
+  location: location
+  tags: commonTags
+}
+
+resource runnerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
+  name: runnerRegistryName
+  location: location
+  tags: commonTags
+  sku: {
+    name: 'Basic'
+  }
+  properties: {
+    adminUserEnabled: false
+  }
+}
+
+resource imagePullAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: runnerRegistry
+  name: guid(runnerRegistry.id, imagePullIdentity.id, acrPullRoleId)
+  properties: {
+    principalId: imagePullIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: acrPullRoleId
+  }
+}
+
+resource cleanupImageReadAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: runnerRegistry
+  name: guid(runnerRegistry.id, cleanupIdentity.id, acrPullRoleId)
+  properties: {
+    principalId: cleanupIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: acrPullRoleId
+  }
+}
+
+resource imagePublishAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: runnerRegistry
+  name: guid(runnerRegistry.id, imagePublisherPrincipalId, acrPushRoleId)
+  properties: {
+    principalId: imagePublisherPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: acrPushRoleId
+  }
 }
 
 resource cleanupFederatedCredential 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2023-01-31' = {
@@ -479,12 +539,14 @@ resource runnerJob 'Microsoft.App/jobs@2024-03-01' = {
     type: 'UserAssigned'
     userAssignedIdentities: {
       '${runnerIdentity.id}': {}
+      '${imagePullIdentity.id}': {}
     }
   }
   properties: {
     environmentId: runnerEnvironment.id
     configuration: {
       triggerType: 'Manual'
+      registries: runnerRegistries
       replicaTimeout: 3600
       replicaRetryLimit: 0
       manualTriggerConfig: {
@@ -588,12 +650,14 @@ resource brokerJob 'Microsoft.App/jobs@2024-03-01' = {
     type: 'UserAssigned'
     userAssignedIdentities: {
       '${brokerIdentity.id}': {}
+      '${imagePullIdentity.id}': {}
     }
   }
   properties: {
     environmentId: runnerEnvironment.id
     configuration: {
       triggerType: 'Manual'
+      registries: runnerRegistries
       replicaTimeout: 600
       replicaRetryLimit: 0
       manualTriggerConfig: {
@@ -644,12 +708,14 @@ resource cleanupBrokerJob 'Microsoft.App/jobs@2024-03-01' = {
     userAssignedIdentities: {
       '${cleanupIdentity.id}': {}
       '${evidenceWriterIdentity.id}': {}
+      '${imagePullIdentity.id}': {}
     }
   }
   properties: {
     environmentId: runnerEnvironment.id
     configuration: {
       triggerType: 'Manual'
+      registries: runnerRegistries
       replicaTimeout: 300
       replicaRetryLimit: 0
       manualTriggerConfig: {
@@ -792,3 +858,6 @@ output brokerJobId string = brokerJob.id
 output cleanupBrokerJobId string = cleanupBrokerJob.id
 output reconcilerJobId string = reconcilerJob.id
 output keyImportAppId string = keyImportApp.id
+output runnerRegistryName string = runnerRegistry.name
+output runnerRegistryLoginServer string = runnerRegistry.properties.loginServer
+output imagePullIdentityId string = imagePullIdentity.id

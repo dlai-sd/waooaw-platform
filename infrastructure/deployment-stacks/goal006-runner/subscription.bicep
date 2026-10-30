@@ -71,6 +71,7 @@ module runnerControlPlane 'main.bicep' = {
     evidenceWriterRoleDefinitionId: evidenceWriterRole.id
     runnerImage: runnerImage
     reconcilerImage: reconcilerImage
+    imagePublisherPrincipalId: bootstrapPrincipalId
     githubAppId: githubAppId
     githubAppInstallationId: githubAppInstallationId
     githubAppKeyName: githubAppKeyName
@@ -100,3 +101,6 @@ output runnerJobId string = runnerControlPlane.outputs.runnerJobId
 output brokerJobId string = runnerControlPlane.outputs.brokerJobId
 output cleanupBrokerJobId string = runnerControlPlane.outputs.cleanupBrokerJobId
 output reconcilerJobId string = runnerControlPlane.outputs.reconcilerJobId
+output runnerRegistryName string = runnerControlPlane.outputs.runnerRegistryName
+output runnerRegistryLoginServer string = runnerControlPlane.outputs.runnerRegistryLoginServer
+output imagePullIdentityId string = runnerControlPlane.outputs.imagePullIdentityId

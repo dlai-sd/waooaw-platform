@@ -405,6 +405,7 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
                     "userAssignedIdentities": {
                         "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/goal006-demo-runner-cleanup-identity": {},
                         "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/goal006-demo-runner-evidence-writer-identity": {},
+                        "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/goal006-demo-runner-image-pull-identity": {},
                     }
                 }
                 if cleanup_broker
