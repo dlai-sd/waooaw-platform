@@ -1,0 +1,79 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-127
+contract_path: work-contracts/WC-127-acr-image-home.md
+contract_digest: 6b5d5b0b296b7ffcc1aaf3708d611263b289a3f76205a6fdbf13ccf5e925f666
+implementation_scope: true
+result: QUALIFIED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Docker pipeline tests, Terraform validation, actionlint and live scratch Azure probe
+  initial_state: expected-fail
+  dependencies: Founder-approved WC-127 Option B and current-session implementation authority
+  residual_risk: Scratch-environment proof is not a Demo deployment or Founder acceptance.
+  result: PASS
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC127-R001
+    source: WC-127 Requirements And Definition Of Done, R1
+    observable_outcome: Dispatch accepts image_home with github default and forwards it to Environment Deployment.
+    test_path_or_plan: tests/pipeline/test_goal006_dispatch_inputs.py and tests/pipeline/test_goal006_image_home.py
+    completion_rule: Dispatch and workflow wiring tests pass.
+    evidence_refs:
+      - scripts/goal006_dispatch_inputs.py
+      - .github/workflows/deploy.yaml
+      - tests/pipeline/test_goal006_image_home.py
+
+  - <<: *defaults
+    requirement_id: WC127-R002
+    source: WC-127 Requirements And Definition Of Done, R2
+    observable_outcome: Foundations declare ACR, pull identity, publish identity and outputs.
+    test_path_or_plan: tests/pipeline/test_goal006_terraform_foundations.py and terraform validate
+    completion_rule: Static tests pass and all six roots validate.
+    evidence_refs:
+      - infrastructure/terraform/phase2/modules/foundation/main.tf
+      - tests/pipeline/test_goal006_terraform_foundations.py
+
+  - <<: *defaults
+    requirement_id: WC127-R003
+    source: WC-127 Requirements And Definition Of Done, R3
+    observable_outcome: CI mirrors images by digest right after publication, idempotently and non-blocking.
+    test_path_or_plan: tests/pipeline/test_goal006_image_home.py and live probe run 41000373132
+    completion_rule: Mirror tests pass; live copy and idempotent rerun succeed for 8 images.
+    evidence_refs:
+      - scripts/goal006_image_mirror.py
+      - .github/workflows/ci.yaml
+      - infrastructure/image-registry/acr-mirrors.json
+
+  - <<: *defaults
+    requirement_id: WC127-R004
+    source: WC-127 Requirements And Definition Of Done, R4
+    observable_outcome: azure requires complete mirrors, both falls back with a reason, github is unchanged.
+    test_path_or_plan: tests/pipeline/test_goal006_image_home.py select tests and live probe
+    completion_rule: Select tests and live assertions pass.
+    evidence_refs:
+      - scripts/goal006_image_mirror.py
+      - .github/workflows/environment-deployment.yaml
+
+  - <<: *defaults
+    requirement_id: WC127-R005
+    source: WC-127 Requirements And Definition Of Done, R5
+    observable_outcome: Workloads and jobs pull from ACR through the pull identity when the home is azure.
+    test_path_or_plan: Terraform static tests, provisioner-script execution test and live Container Apps probe
+    completion_rule: Tests pass; live ACR job succeeds and app revision is healthy.
+    evidence_refs:
+      - infrastructure/terraform/phase2/modules/workload/main.tf
+      - scripts/goal006_deployment_inputs.py
+      - tests/pipeline/test_goal006_image_home.py
+
+  - <<: *defaults
+    requirement_id: WC127-R006
+    source: WC-127 Requirements And Definition Of Done, R6
+    observable_outcome: Local and live qualification precede exact-head PR preparation and Founder-ready submission.
+    test_path_or_plan: scripts/prepare_pr_body.py
+    completion_rule: Final pushed-head preparation passes and the prepared body is submitted unchanged.
+    result: PLANNED
+    evidence_refs:
+      - work-contracts/WC-127-acr-image-home.md
+    residual_risk: Hosted CI, Demo deployment and Founder merge remain.
