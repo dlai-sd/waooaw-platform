@@ -1,0 +1,96 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-132
+contract_path: work-contracts/WC-132-demo-signout-and-runtime-noise.md
+contract_digest: 212941cf45d53f0254c72f7194176844e095e143c043dd60d2a171cabbb22089
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Unit, pipeline and Demo log evidence
+  initial_state: expected-fail
+  dependencies: Founder authorization of the implementing session
+  residual_risk: Not implemented; planned for a later session.
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC132-R001
+    source: WC-132 Requirements And Definition Of Done, R1
+    observable_outcome: Sign-out returns to /login with id_token_hint and no Keycloak confirmation page.
+    test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
+    completion_rule: Executable evidence listed for WC132-R001 passes.
+    evidence_refs:
+      - web/app/api/auth/keycloak-logout/route.ts
+
+  - <<: *defaults
+    requirement_id: WC132-R002
+    source: WC-132 Requirements And Definition Of Done, R2
+    observable_outcome: A failed Demo deploy after reset cannot leave Keycloak without its realm.
+    test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
+    completion_rule: Executable evidence listed for WC132-R002 passes.
+    evidence_refs:
+      - .github/workflows/environment-deployment.yaml
+
+  - <<: *defaults
+    requirement_id: WC132-R003
+    source: WC-132 Requirements And Definition Of Done, R3
+    observable_outcome: The old app revision does not serve as healthy during the Demo database reset.
+    test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
+    completion_rule: Executable evidence listed for WC132-R003 passes.
+    evidence_refs:
+      - .github/workflows/environment-deployment.yaml
+
+  - <<: *defaults
+    requirement_id: WC132-R004
+    source: WC-132 Requirements And Definition Of Done, R4
+    observable_outcome: Keycloak pool idle removal is shorter than PgBouncer client_idle_timeout.
+    test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
+    completion_rule: Executable evidence listed for WC132-R004 passes.
+    evidence_refs:
+      - infrastructure/postgres/pgbouncer/pgbouncer.ini
+
+  - <<: *defaults
+    requirement_id: WC132-R005
+    source: WC-132 Requirements And Definition Of Done, R5
+    observable_outcome: Expected 401/403/409 identity outcomes are not logged as session_load_failed.
+    test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
+    completion_rule: Executable evidence listed for WC132-R005 passes.
+    evidence_refs:
+      - web/lib/api/identity.ts
+
+  - <<: *defaults
+    requirement_id: WC132-R006
+    source: WC-132 Requirements And Definition Of Done, R6
+    observable_outcome: Startup noise in ai-runtime, Temporal, BP DataProtection and PgBouncer is fixed or justified.
+    test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
+    completion_rule: Executable evidence listed for WC132-R006 passes.
+    evidence_refs:
+      - src/business-platform/Program.cs
+
+  - <<: *defaults
+    requirement_id: WC132-R007
+    source: WC-132 Requirements And Definition Of Done, R7
+    observable_outcome: Hosted broker and cleanup jobs install the pinned log-analytics extension with retries.
+    test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
+    completion_rule: Executable evidence listed for WC132-R007 passes.
+    evidence_refs:
+      - scripts/goal006_az_extensions.sh
+
+  - <<: *defaults
+    requirement_id: WC132-R008
+    source: WC-132 Requirements And Definition Of Done, R8
+    observable_outcome: Node 20 deprecation and retention-days warnings are removed from the workflow.
+    test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
+    completion_rule: Executable evidence listed for WC132-R008 passes.
+    evidence_refs:
+      - .github/workflows/environment-deployment.yaml
+
+  - <<: *defaults
+    requirement_id: WC132-R009
+    source: WC-132 Requirements And Definition Of Done, R9
+    observable_outcome: Exact-head PR is prepared with the repository template.
+    test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
+    completion_rule: Executable evidence listed for WC132-R009 passes.
+    evidence_refs:
+      - scripts/prepare_pr_body.py
