@@ -296,28 +296,51 @@ jobs:
 
       - name: Start private signing broker
         id: broker
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -eu
           blueprint_runner_image=$(jq -er '.parameters.runnerImage.value' \
             'infrastructure/deployment-stacks/goal006-runner/${{ inputs.environment }}.parameters.json')
           execution_runner_image="$blueprint_runner_image"
-          execution_control_image="$blueprint_runner_image"
           grep -Eq \
             "^ghcr.io/${GITHUB_REPOSITORY_OWNER}/goal006-private-runner@sha256:[0-9a-f]{64}$" \
             <<< "$execution_runner_image" || {
               echo "Runner execution image is not an immutable repository digest" >&2
               exit 1
             }
-            grep -Eq \
-              "^ghcr.io/${GITHUB_REPOSITORY_OWNER}/goal006-(private-runner|runner-control)@sha256:[0-9a-f]{64}$" \
-              <<< "$execution_control_image" || {
-                echo "Control execution image is not an immutable repository digest" >&2
-                exit 1
-              }
           az containerapp job show \
             --resource-group "$RUNNER_RESOURCE_GROUP" \
             --name "$RUNNER_BROKER_JOB" \
             --output json > broker-job.json
+          subscription_compact=${ARM_SUBSCRIPTION_ID//-/}
+          runner_registry="acrwaooawrun${TARGET_ENVIRONMENT}${subscription_compact:0:6}"
+          runner_login_server="${runner_registry}.azurecr.io"
+          runner_registry_ready=false
+          echo "[$(date +%T)] Resolving control image from ${runner_login_server} (publish)"
+          if az acr login --name "$runner_registry" --expose-token --only-show-errors --query accessToken --output tsv 2>/dev/null \
+            | docker login "$runner_login_server" --username 00000000-0000-0000-0000-000000000000 --password-stdin >/dev/null 2>&1; then
+            runner_registry_ready=true
+          fi
+          execution_control_image=$(timeout 420 python3 scripts/goal006_runner_image_source.py \
+            --mode publish \
+            --blueprint-image "$blueprint_runner_image" \
+            --login-server "$runner_login_server" \
+            --job broker-job.json \
+            --registry-ready "$runner_registry_ready" \
+            --output broker-image-source.json) || execution_control_image="$blueprint_runner_image"
+          docker logout "$runner_login_server" >/dev/null 2>&1 || true
+          echo "[$(date +%T)] Control image: ${execution_control_image}"
+          if test -f broker-image-source.json; then
+            fallback=$(jq -r '.fallback_reason' broker-image-source.json)
+            if test -n "$fallback"; then echo "::warning::Runner ACR not used, pulling control image from GHCR: $fallback"; fi
+          fi
+          grep -Eq \
+            "^(ghcr.io/${GITHUB_REPOSITORY_OWNER}|acrwaooawrun${TARGET_ENVIRONMENT}[0-9a-f]{6}[.]azurecr[.]io/dlai-sd)/goal006-(private-runner|runner-control)@sha256:[0-9a-f]{64}$" \
+            <<< "$execution_control_image" || {
+              echo "Control execution image is not an immutable repository digest" >&2
+              exit 1
+            }
           python scripts/goal006_runner_execution.py broker \
             --job broker-job.json \
             --expected-image "$blueprint_runner_image" \
@@ -3935,16 +3958,38 @@ jobs:
       - name: Start private cleanup broker
         env:
           PRIVATE_JOB_CONCLUSION: ${{ needs.terraform.result }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -eu
           blueprint_runner_image=$(jq -er '.parameters.runnerImage.value' \
             'infrastructure/deployment-stacks/goal006-runner/${{ inputs.environment }}.parameters.json')
           execution_runner_image="$blueprint_runner_image"
-          execution_control_image="$blueprint_runner_image"
           az containerapp job show \
             --resource-group "$RUNNER_RESOURCE_GROUP" \
             --name "$RUNNER_CLEANUP_BROKER_JOB" \
             --output json > cleanup-job.json
+          subscription_compact=${ARM_SUBSCRIPTION_ID//-/}
+          runner_registry="acrwaooawrun${TARGET_ENVIRONMENT}${subscription_compact:0:6}"
+          runner_login_server="${runner_registry}.azurecr.io"
+          runner_registry_ready=false
+          echo "[$(date +%T)] Resolving control image from ${runner_login_server} (verify)"
+          if az acr login --name "$runner_registry" --expose-token --only-show-errors --query accessToken --output tsv 2>/dev/null \
+            | docker login "$runner_login_server" --username 00000000-0000-0000-0000-000000000000 --password-stdin >/dev/null 2>&1; then
+            runner_registry_ready=true
+          fi
+          execution_control_image=$(timeout 420 python3 scripts/goal006_runner_image_source.py \
+            --mode verify \
+            --blueprint-image "$blueprint_runner_image" \
+            --login-server "$runner_login_server" \
+            --job cleanup-job.json \
+            --registry-ready "$runner_registry_ready" \
+            --output cleanup-image-source.json) || execution_control_image="$blueprint_runner_image"
+          docker logout "$runner_login_server" >/dev/null 2>&1 || true
+          echo "[$(date +%T)] Control image: ${execution_control_image}"
+          if test -f cleanup-image-source.json; then
+            fallback=$(jq -r '.fallback_reason' cleanup-image-source.json)
+            if test -n "$fallback"; then echo "::warning::Runner ACR not used, pulling control image from GHCR: $fallback"; fi
+          fi
           python scripts/goal006_runner_execution.py cleanup \
             --job cleanup-job.json \
             --expected-image "$blueprint_runner_image" \

@@ -311,6 +311,7 @@ def _required_resource_names(environment: str) -> dict[str, str]:
         f"{prefix}-broker-identity": "Microsoft.ManagedIdentity/userAssignedIdentities",
         f"{prefix}-cleanup-identity": "Microsoft.ManagedIdentity/userAssignedIdentities",
         f"{prefix}-evidence-writer-identity": "Microsoft.ManagedIdentity/userAssignedIdentities",
+        f"{prefix}-image-pull-identity": "Microsoft.ManagedIdentity/userAssignedIdentities",
         f"waooaw-{environment}-runner-kv": "Microsoft.KeyVault/vaults",
         f"{prefix}-state-pe": "Microsoft.Network/privateEndpoints",
         f"{prefix}-vaultcore-pe": "Microsoft.Network/privateEndpoints",
@@ -519,10 +520,16 @@ def verify_deployment(
         )
     ]
     evidence_identity_id = str(evidence_identity.get("id", "")).lower()
+    image_pull_identity_id = observed[
+        (
+            f"{prefix}-image-pull-identity",
+            "Microsoft.ManagedIdentity/userAssignedIdentities",
+        )
+    ]
     cleanup_job_identities = {
         str(identity_id).lower() for identity_id in cleanup_broker_job.get("identity", {}).get("userAssignedIdentities", {})
     }
-    if cleanup_job_identities != {cleanup_identity_id, evidence_identity_id}:
+    if cleanup_job_identities != {cleanup_identity_id, evidence_identity_id, image_pull_identity_id}:
         raise RuntimeError("cleanup broker identity boundary differs from blueprint")
     if runner_job.get("properties", {}).get("configuration", {}).get("triggerType") != "Manual":
         raise RuntimeError("runner job trigger is not Manual")

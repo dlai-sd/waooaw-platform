@@ -1,10 +1,12 @@
 # PROJECT_STATE.md
 **State Schema:** 2.0.0
-**State Revision:** 313
-**Last Updated:** 2026-10-30 (WC-127 ACR IMAGE HOME)
+**State Revision:** 314
+**Last Updated:** 2026-10-30 (WC-128 RUNNER ACR CONTROL IMAGE)
 **Purpose:** Current operational snapshot for bootstrap, recovery, and automated sprint controls; keep it below 200 lines, update checkpoints in place, and retain durable detail in the owning Work Contract, Goal, review, evidence artifact, Git history, or archive index.
 ---
 ## Institutional Snapshot
+WC-128 runner ACR control image: Demo run 41004512229 failed at broker start (GHCR pull of the 727 MB runner image exceeded the 300 s deadline). Founder chose Option 3 without re-run. Runner stack adds a Basic ACR, image-pull identity and AcrPull/AcrPush roles; broker and cleanup control images resolve from it with GHCR fallback while job images stay GHCR. Demo runner stack redeployed from CLI (succeeded), digest imported, live probe pulled the image in 13.53 s. Pipeline tests, Bicep build, bootstrap validation and actionlint pass. PR review/merge and Demo re-run remain; WC-127 is merged as 45484459.
+
 WC-127 ACR image home: Founder accepted ACR cost and chose CI-time mirroring. `deploy.yaml` gains `image_home` (github default, azure, both); foundations add ACR plus pull/publish identities; CI copies each published image to ACR by digest; workloads and jobs pull from ACR via the pull identity when selected. 1042 pipeline tests, Terraform validate (6 roots) and actionlint pass; live scratch probe copied 8 images (18-90 s each, idempotent rerun) and Container Apps pulled from ACR. Exact-head PR, hosted checks and Founder merge remain; first Demo apply then record publish client ID in acr-mirrors.json.
 
 WC-126 web failure logging: Founder authorized implementation, publication and repair of PR #565 checks. Non-sign-in server catches use redacted structured logging, request-scoped 5xx correlation and a Jest regression gate. Founder-authorized rewording/rebase and the explicit sign-in diagnostic-sink exemption pass hosted commitlint and Web checks; combined Docker qualification passes 701 tests, typecheck, ESLint and coverage thresholds. The remaining dependency job incorrectly attempted an unselected .NET scan without a supplied runner. Each scanner and its failure enforcement now follow catalog selection; selected failures still block, including skipped or interrupted selected scans. Regression coverage is included in the existing quality:scripts test file. Original production build and shared logger/boundary coverage (98.71% lines) passed. Updated exact-head preparation, hosted checks and Founder review/merge remain; no live Azure operation, .NET change or sign-in-flow change is authorized or claimed.

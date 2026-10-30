@@ -1,0 +1,74 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-128
+contract_path: work-contracts/WC-128-runner-acr-control-image.md
+contract_digest: 5893e93f64a6141e1fdb7a8c5c483b8ea6ca27017aa2fd85a64271b42cdf1940
+implementation_scope: true
+result: QUALIFIED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Docker pipeline tests, Bicep build, actionlint and live Demo runner-stack apply
+  initial_state: expected-fail
+  dependencies: Founder-approved WC-128 Option 3 and current-session implementation authority
+  residual_risk: Live proof is a stack apply and pull probe, not a completed Demo deployment or Founder acceptance.
+  result: PASS
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC128-R001
+    source: WC-128 Requirements And Definition Of Done, R1
+    observable_outcome: Runner stack declares ACR, pull identity, least-privilege roles and job registries with the GHCR job image.
+    test_path_or_plan: tests/pipeline/test_goal006_runner_image_source.py, az bicep build and live what-if
+    completion_rule: Static tests pass and live what-if shows only the intended creates and job changes.
+    evidence_refs:
+      - infrastructure/deployment-stacks/goal006-runner/main.bicep
+      - infrastructure/deployment-stacks/goal006-runner/subscription.bicep
+
+  - <<: *defaults
+    requirement_id: WC128-R002
+    source: WC-128 Requirements And Definition Of Done, R2
+    observable_outcome: Resolver publishes or verifies the runner digest and falls back to GHCR with a reason.
+    test_path_or_plan: tests/pipeline/test_goal006_runner_image_source.py
+    completion_rule: Resolver tests pass and live publish and verify select the runner ACR.
+    evidence_refs:
+      - scripts/goal006_runner_image_source.py
+      - tests/pipeline/test_goal006_runner_image_source.py
+
+  - <<: *defaults
+    requirement_id: WC128-R003
+    source: WC-128 Requirements And Definition Of Done, R3
+    observable_outcome: Broker and cleanup steps resolve the control image with bounded timeout and GHCR fallback.
+    test_path_or_plan: tests/pipeline/test_goal006_runner_image_source.py workflow tests and actionlint
+    completion_rule: Workflow tests and actionlint pass.
+    evidence_refs:
+      - .github/workflows/environment-deployment.yaml
+
+  - <<: *defaults
+    requirement_id: WC128-R004
+    source: WC-128 Requirements And Definition Of Done, R4
+    observable_outcome: Deployment verification and bootstrap manifest admit the new identity and digests.
+    test_path_or_plan: tests/pipeline/test_goal006_runner_deployment.py and tests/pipeline/test_goal006_runner_bootstrap.py
+    completion_rule: Tests pass and bootstrap validation reports no violations.
+    evidence_refs:
+      - scripts/goal006_runner_deployment.py
+      - infrastructure/deployment-stacks/goal006-runner/bootstrap-manifest.json
+
+  - <<: *defaults
+    requirement_id: WC128-R005
+    source: WC-128 Requirements And Definition Of Done, R5
+    observable_outcome: Demo runner stack is redeployed and the runner digest pulls from the runner ACR in the runner environment.
+    test_path_or_plan: Live az stack sub create, az acr import and temporary Container Apps job probe
+    completion_rule: Stack succeeded; probe pulled the 727 MB image in 13.53 s and succeeded.
+    evidence_refs:
+      - work-contracts/WC-128-runner-acr-control-image.md
+
+  - <<: *defaults
+    requirement_id: WC128-R006
+    source: WC-128 Requirements And Definition Of Done, R6
+    observable_outcome: Local and live qualification precede exact-head PR preparation and Founder-ready submission.
+    test_path_or_plan: scripts/prepare_pr_body.py
+    completion_rule: Final pushed-head preparation passes and the prepared body is submitted unchanged.
+    result: PLANNED
+    evidence_refs:
+      - work-contracts/WC-128-runner-acr-control-image.md
+    residual_risk: Hosted CI, Demo deployment and Founder merge remain.
