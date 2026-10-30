@@ -108,6 +108,10 @@ def main() -> int:
     args = parser.parse_args()
     try:
         evidence = verify(args.issuer.rstrip("/"), args.web_url.rstrip("/"), args.api_url)
+    except ValueError as error:
+        # verify() raises ValueError only with fixed, non-secret messages such as "Broker returned HTTP 400".
+        print(f"Google deployment verification failed: {error}")
+        return 1
     except Exception as error:
         print("Google deployment verification failed: " + type(error).__name__)
         return 1

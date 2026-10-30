@@ -3416,6 +3416,23 @@ jobs:
             --interval-seconds 15 \
             --output wc124-dependency-readiness.json
 
+      # The realm import overwrites Keycloak's database, but a replica that was already running keeps
+      # stale cached realm/client models ("Client not found") while reporting Healthy (run 41014026210).
+      - name: Refresh Keycloak replicas after realm import
+        if: inputs.apply
+        env:
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          python3 scripts/goal006_keycloak_realm_refresh.py \
+            --resource-group "$RESOURCE_GROUP" \
+            --environment "$TARGET_ENVIRONMENT" \
+            --migration-execution wc124-keycloak-migration-execution.json \
+            --timeout-seconds 420 \
+            --interval-seconds 10 \
+            --output wc124-keycloak-realm-refresh.json
+
       - name: Plan application activation after migration
         if: inputs.apply
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload

@@ -1,0 +1,54 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-129
+contract_path: work-contracts/WC-129-keycloak-realm-refresh.md
+contract_digest: 5bb43b796e98e69e1e32f3f076c725f7a8a5e9215d4ee337f4fa99139289b627
+implementation_scope: true
+result: QUALIFIED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Docker pipeline tests, actionlint and live Demo Keycloak restart with provider verification
+  initial_state: expected-fail
+  dependencies: Founder-approved WC-129 restart, PR and keep-reset decision
+  residual_risk: Workflow gate is proven by tests and the manual restart, not yet by a completed Demo deployment.
+  result: PASS
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC129-R001
+    source: WC-129 Requirements And Definition Of Done, R1
+    observable_outcome: Apply restarts stale Keycloak replicas after the realm import and waits for fresh ready replicas.
+    test_path_or_plan: tests/pipeline/test_goal006_keycloak_realm_refresh.py and actionlint
+    completion_rule: Gate tests and actionlint pass.
+    evidence_refs:
+      - scripts/goal006_keycloak_realm_refresh.py
+      - .github/workflows/environment-deployment.yaml
+
+  - <<: *defaults
+    requirement_id: WC129-R002
+    source: WC-129 Requirements And Definition Of Done, R2
+    observable_outcome: Google verifier prints the fixed failure reason and hides unexpected exception details.
+    test_path_or_plan: tests/pipeline/test_goal006_keycloak_realm_refresh.py
+    completion_rule: Verifier tests pass.
+    evidence_refs:
+      - scripts/verify_google_deployment.py
+
+  - <<: *defaults
+    requirement_id: WC129-R003
+    source: WC-129 Requirements And Definition Of Done, R3
+    observable_outcome: Demo sign-in restored and both provider verifiers pass live.
+    test_path_or_plan: Live az containerapp revision restart and provider verifiers
+    completion_rule: waooaw-web client resolves and Google and Facebook verifiers pass.
+    evidence_refs:
+      - work-contracts/WC-129-keycloak-realm-refresh.md
+
+  - <<: *defaults
+    requirement_id: WC129-R004
+    source: WC-129 Requirements And Definition Of Done, R4
+    observable_outcome: Local qualification precedes exact-head PR preparation and Founder-ready submission.
+    test_path_or_plan: scripts/prepare_pr_body.py
+    completion_rule: Final pushed-head preparation passes and the prepared body is submitted unchanged.
+    result: PLANNED
+    evidence_refs:
+      - work-contracts/WC-129-keycloak-realm-refresh.md
+    residual_risk: Hosted CI, Demo deployment and Founder merge remain.
