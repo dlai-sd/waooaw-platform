@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
+
+import pytest
 
 from goal006_live_inventory import (
     AUTH_REDIS_IMAGE,
@@ -125,9 +128,7 @@ def test_environment_scoped_auth_redis_is_a_pinned_dependency_not_a_release_memb
         live = inventory(environment, release)
         redis = next(item for item in live if item["name"] == f"ca-{environment}-auth-redis")
         redis["image"] = "redis:latest"
-        assert f"ca-{environment}-auth-redis:DIGEST_MISMATCH" in validate_inventory(
-            environment, release, live
-        )
+        assert f"ca-{environment}-auth-redis:DIGEST_MISMATCH" in validate_inventory(environment, release, live)
 
     assert all(item["name"] != "ca-prod-auth-redis" for item in inventory("prod", release))
     assert "auth-redis" not in release["images"]
@@ -165,3 +166,61 @@ def test_incomplete_provisioning_fails() -> None:
     live = inventory("prod", release)
     live[0]["provisioningState"] = "Updating"
     assert any(code.endswith(":PROVISIONING_INCOMPLETE") for code in validate_inventory("prod", release, live))
+
+
+SUBSCRIPTION = "2ed11839-6a0f-4eaa-bd94-44ca96ff5d84"
+
+
+def mirrored(environment: str, release: dict[str, Any], registry: str) -> list[dict[str, str]]:
+    live = inventory(environment, release)
+    release_apps = {release_app_name(environment, member) for member in release["images"]}
+    for item in live:
+        if item["name"] in release_apps:
+            item["image"] = item["image"].replace("ghcr.io/", f"{registry}/", 1)
+    return live
+
+
+def test_release_members_from_the_environment_acr_at_the_same_digest_pass() -> None:
+    # Run 41028762781: image_home=both resolved to azure, so every release app ran the identical digest
+    # from acrwaooawdemo2ed118 and the exact-ghcr comparison reported seven DIGEST_MISMATCH violations.
+    release = manifest()
+    for environment in ("demo", "uat", "prod"):
+        live = mirrored(environment, release, f"acrwaooaw{environment}2ed118.azurecr.io")
+        assert validate_inventory(environment, release, live, SUBSCRIPTION) == []
+        assert any(code.endswith(":DIGEST_MISMATCH") for code in validate_inventory(environment, release, live))
+
+
+def test_acr_release_member_with_another_digest_repository_or_registry_fails() -> None:
+    release = manifest()
+    registry = "acrwaooawdemo2ed118.azurecr.io"
+    web = release_app_name("demo", "web")
+
+    def violations_for(image: str) -> list[str]:
+        live = mirrored("demo", release, registry)
+        next(item for item in live if item["name"] == web)["image"] = image
+        return validate_inventory("demo", release, live, SUBSCRIPTION)
+
+    assert f"{web}:DIGEST_MISMATCH" in violations_for(f"{registry}/dlai-sd/web@sha256:{'f' * 64}")
+    assert f"{web}:DIGEST_MISMATCH" in violations_for(f"{registry}/dlai-sd/ai-runtime@sha256:{'a' * 64}")
+    assert f"{web}:DIGEST_MISMATCH" in violations_for(f"acrwaooawuat2ed118.azurecr.io/dlai-sd/web@sha256:{'a' * 64}")
+    assert f"{web}:DIGEST_MISMATCH" in violations_for(f"acrwaooawdemo999999.azurecr.io/dlai-sd/web@sha256:{'a' * 64}")
+    assert f"{web}:DIGEST_MISMATCH" in violations_for(f"{registry}/dlai-sd/web:latest")
+
+
+def test_pinned_dependencies_stay_exact_when_an_environment_acr_is_known() -> None:
+    release = manifest()
+    live = mirrored("demo", release, "acrwaooawdemo2ed118.azurecr.io")
+    keycloak = next(item for item in live if item["name"] == "ca-demo-keycloak")
+    keycloak["image"] = "acrwaooawdemo2ed118.azurecr.io/" + KEYCLOAK_IMAGE
+    assert "ca-demo-keycloak:DIGEST_MISMATCH" in validate_inventory("demo", release, live, SUBSCRIPTION)
+
+
+def test_subscription_id_must_be_a_guid() -> None:
+    release = manifest()
+    with pytest.raises(ValueError, match="GUID"):
+        validate_inventory("demo", release, inventory("demo", release), "not-a-subscription")
+
+
+def test_verification_script_passes_the_logged_in_subscription() -> None:
+    script = (Path(__file__).resolve().parents[2] / "scripts/goal006_verify_deployment.sh").read_text(encoding="utf-8")
+    assert '--subscription-id "$(az account show --query id -o tsv)"' in script

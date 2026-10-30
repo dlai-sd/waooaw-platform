@@ -23,7 +23,8 @@ az containerapp list --resource-group "$RESOURCE_GROUP" \
 python3 "$(dirname "$0")/goal006_live_inventory.py" \
   --environment "$TARGET_ENVIRONMENT" \
   --manifest "$MANIFEST" \
-  --inventory live-inventory.json
+  --inventory live-inventory.json \
+  --subscription-id "$(az account show --query id -o tsv)"
 
 mkdir -p revision-evidence
 

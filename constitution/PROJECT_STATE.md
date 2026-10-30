@@ -1,10 +1,12 @@
 # PROJECT_STATE.md
 **State Schema:** 2.0.0
-**State Revision:** 315
-**Last Updated:** 2026-10-30 (WC-129 KEYCLOAK REALM REFRESH)
+**State Revision:** 316
+**Last Updated:** 2026-10-30 (WC-130 VERIFY ACR RELEASE DIGEST)
 **Purpose:** Current operational snapshot for bootstrap, recovery, and automated sprint controls; keep it below 200 lines, update checkpoints in place, and retain durable detail in the owning Work Contract, Goal, review, evidence artifact, Git history, or archive index.
 ---
 ## Institutional Snapshot
+WC-130 verify ACR release digest: Demo run 41028762781 (ed77ff4a, image_home=both -> azure) deployed and the Keycloak refresh worked, but independent verification reported seven DIGEST_MISMATCH because live inventory required exact GHCR references. Verification now accepts the same repository and digest from the environment's own ACR; pinned dependencies stay exact. Live dry-run passes where the old check fails; Google and Facebook verifiers pass. Founder directed Release Qualification OFF. PR review/merge and Demo re-run remain.
+
 WC-129 Keycloak realm refresh: Demo run 41014026210 (main 40b53c1) failed at verification. The per-deploy Demo database reset recreated `waooaw_keycloak` and the realm import rebuilt it while the 01:58 Keycloak replica kept stale cached client IDs ("Client not found" for `waooaw-web`, revision still Healthy). Founder authorized a CLI restart (done; Google and Facebook verifiers pass), a PR, and keeping the reset. Apply now restarts Keycloak replicas older than the import before activation; the Google verifier names fixed failure reasons. PR review/merge and Demo re-run remain.
 
 WC-128 runner ACR control image: Demo run 41004512229 failed at broker start (GHCR pull of the 727 MB runner image exceeded the 300 s deadline). Founder chose Option 3 without re-run. Runner stack adds a Basic ACR, image-pull identity and AcrPull/AcrPush roles; broker and cleanup control images resolve from it with GHCR fallback while job images stay GHCR. Demo runner stack redeployed from CLI (succeeded), digest imported, live probe pulled the image in 13.53 s. Pipeline tests, Bicep build, bootstrap validation and actionlint pass. PR review/merge and Demo re-run remain; WC-127 is merged as 45484459.
