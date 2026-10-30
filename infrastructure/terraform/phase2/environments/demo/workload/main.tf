@@ -72,6 +72,8 @@ module "workload" {
   persistent_state_enabled                 = true
   postgresql_server_fqdn                   = data.terraform_remote_state.foundation.outputs.postgresql_server_fqdn
   ghcr_packages_public                     = var.ghcr_packages_public
+  image_registry_server                    = var.image_registry_server
+  image_pull_identity_id                   = var.image_pull_identity_id
   ce_min_replicas                          = 0
   pr_min_replicas                          = 0
   bp_min_replicas                          = 1
@@ -95,6 +97,8 @@ output "lease_reconciliation_inputs" {
     key_vault_secret_uris         = var.key_vault_secret_uris
     key_vault_secret_resource_ids = var.key_vault_secret_resource_ids
     ghcr_packages_public          = var.ghcr_packages_public
+    image_registry_server         = var.image_registry_server
+    image_pull_identity_id        = var.image_pull_identity_id
     lease_purpose                 = var.lease_purpose
     manifest_digest               = var.manifest_digest
     owner_principal_id            = var.owner_principal_id

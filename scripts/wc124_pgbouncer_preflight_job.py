@@ -14,7 +14,10 @@ from typing import Any
 from cli_errors import fail_cli
 
 
-RUNNER_IMAGE = re.compile(r"^ghcr[.]io/dlai-sd/goal006-private-runner@sha256:[0-9a-f]{64}$")
+# Images come from GHCR or, when image_home selects Azure, the environment ACR mirror (WC-127).
+IMAGE_REGISTRY = r"(?:ghcr[.]io|acrwaooaw(?:demo|uat|prod)[0-9a-f]{6}[.]azurecr[.]io)"
+RUNNER_IMAGE = re.compile(rf"^{IMAGE_REGISTRY}/dlai-sd/goal006-private-runner@sha256:[0-9a-f]{{64}}$")
+BILLING_IMAGE = re.compile(rf"{IMAGE_REGISTRY}/dlai-sd/billing-engine@sha256:[0-9a-f]{{64}}")
 PATCH_SCHEMA_SHA256 = "cc0b8f21c01734f35d199ad41c3f8c6113b42e8ed42c6b460e22dafc184f2001"
 JOB_FIELDS = {"id", "identity", "location", "name", "properties", "resourceGroup", "systemData", "type"}
 PROPERTY_FIELDS = {
@@ -86,9 +89,7 @@ def build_database_probe_template(job: dict[str, Any], environment: str, subscri
     if template.get("initContainers") or template.get("volumes") or len(template["containers"]) != 1:
         raise ValueError("Database preflight requires exactly one Billing container and no volumes")
     container = template["containers"][0]
-    if container.get("name") != "billing-migration" or not re.fullmatch(
-        r"ghcr[.]io/dlai-sd/billing-engine@sha256:[0-9a-f]{64}", container.get("image", "")
-    ):
+    if container.get("name") != "billing-migration" or not BILLING_IMAGE.fullmatch(container.get("image", "")):
         raise ValueError("Database preflight requires the immutable Billing migration image")
     database_env = [record for record in container.get("env", []) if record.get("name") == "DATABASE_URL"]
     if database_env != [{"name": "DATABASE_URL", "secretRef": "migration-database"}]:

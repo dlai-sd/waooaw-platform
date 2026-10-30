@@ -99,6 +99,8 @@ def create_inputs(
     configuration: Mapping[str, Any],
     ghcr_packages_public_verified: bool,
     current_time: datetime | None = None,
+    image_registry_server: str = "",
+    image_pull_identity_id: str = "",
 ) -> dict[str, Any]:
     violations = validate_registry_manifest(manifest)
     if violations:
@@ -156,13 +158,31 @@ def create_inputs(
         if not isinstance(value, int | float) or value < 0:
             raise ValueError(f"{field} must be a nonnegative accepted INR value")
 
+    if bool(image_registry_server) != bool(image_pull_identity_id):
+        raise ValueError("image registry server and pull identity must be provided together")
+    image_digests = dict(manifest["images"])
+    if image_registry_server:
+        if (
+            re.fullmatch(rf"acrwaooaw{environment}[0-9a-f]{{6}}[.]azurecr[.]io", image_registry_server) is None
+            or re.fullmatch(
+                rf"/subscriptions/[0-9a-f-]{{36}}/resourceGroups/waooaw-{environment}-rg/providers/"
+                rf"Microsoft[.]ManagedIdentity/userAssignedIdentities/id-waooaw-{environment}-image-pull",
+                image_pull_identity_id,
+            )
+            is None
+        ):
+            raise ValueError("image registry must be the environment ACR with its image-pull identity")
+
     inputs: dict[str, Any] = {
         "dma_admission_content_digest": dma_admission_content_digest,
         "ghcr_packages_public": True,
-        "image_digests": dict(manifest["images"]),
+        "image_digests": image_digests,
         "key_vault_secret_uris": dict(secret_uris),
         "key_vault_secret_resource_ids": dict(secret_resource_ids),
     }
+    if image_registry_server:
+        inputs["image_registry_server"] = image_registry_server
+        inputs["image_pull_identity_id"] = image_pull_identity_id
     if environment in {"demo", "uat"}:
         missing = sorted(field for field in LEASE_FIELDS if not configuration.get(field))
         if missing:
@@ -190,6 +210,8 @@ def main() -> int:
     parser.add_argument("--key-vault-id")
     parser.add_argument("--key-vault-uri")
     parser.add_argument("--ghcr-packages-public-verified", action="store_true")
+    parser.add_argument("--image-registry-server", default="")
+    parser.add_argument("--image-pull-identity-id", default="")
     args = parser.parse_args()
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
     configuration = json.loads(args.configuration.read_text(encoding="utf-8"))
@@ -207,6 +229,8 @@ def main() -> int:
         manifest,
         configuration,
         args.ghcr_packages_public_verified,
+        image_registry_server=args.image_registry_server,
+        image_pull_identity_id=args.image_pull_identity_id,
     )
     args.output.write_text(json.dumps(inputs, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return 0

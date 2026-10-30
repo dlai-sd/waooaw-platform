@@ -264,6 +264,29 @@ variable "identity_hmac_active_version" {
   }
 }
 
+variable "image_registry_server" {
+  type        = string
+  description = "Environment ACR mirror login server; empty pulls release images from GHCR (WC-127)."
+  default     = ""
+  validation {
+    condition     = var.image_registry_server == "" || can(regex("^acrwaooaw${var.environment}[0-9a-f]{6}[.]azurecr[.]io$", var.image_registry_server))
+    error_message = "Image registry server must be empty or this environment's WAOOAW ACR mirror."
+  }
+}
+
+variable "image_pull_identity_id" {
+  type        = string
+  description = "AcrPull user-assigned identity used with image_registry_server."
+  default     = ""
+  validation {
+    condition = (
+      (var.image_pull_identity_id == "") == (var.image_registry_server == "") &&
+      (var.image_pull_identity_id == "" || can(regex("/providers/Microsoft[.]ManagedIdentity/userAssignedIdentities/id-waooaw-${var.environment}-image-pull$", var.image_pull_identity_id)))
+    )
+    error_message = "Image pull identity must accompany the image registry server and be this environment's image-pull identity."
+  }
+}
+
 variable "ghcr_packages_public" {
   type        = bool
   description = "Administrator attestation that all exact-seven GHCR packages allow anonymous digest pulls."

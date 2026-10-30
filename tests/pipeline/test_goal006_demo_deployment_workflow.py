@@ -92,7 +92,8 @@ def test_demo_deployment_never_opens_public_storage_access() -> None:
 def test_private_runner_steps_do_not_require_a_docker_daemon() -> None:
     assert "docker/setup-buildx-action" not in WORKFLOW
     assert "docker buildx" not in WORKFLOW
-    assert WORKFLOW.count("scripts/goal006_ghcr_digest.py") == 2
+    # The third use resolves the runner digest for the WC-127 ACR mirror on the GitHub-hosted start-broker job.
+    assert WORKFLOW.count("scripts/goal006_ghcr_digest.py") == 3
     assert '--expected-digest "$expected_digest"' in WORKFLOW
     assert "https://mcr.microsoft.com/v2/$repository/manifests/$expected_digest" in WORKFLOW
     assert WORKFLOW.count('test "$actual_digest" = "$expected_digest"') == 2

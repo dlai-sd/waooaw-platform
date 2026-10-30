@@ -544,6 +544,58 @@ resource "azurerm_private_dns_a_record" "key_vault_runner" {
   records             = [azurerm_private_endpoint.key_vault_runner.private_service_connection[0].private_ip_address]
 }
 
+data "azurerm_client_config" "image_registry" {}
+
+# Same-region mirror of the immutable GHCR release images (WC-127). Pulls use the
+# dedicated identity below; admin credentials stay disabled.
+resource "azurerm_container_registry" "images" {
+  name                          = "acrwaooaw${var.environment}${substr(replace(data.azurerm_client_config.image_registry.subscription_id, "-", ""), 0, 6)}"
+  location                      = azurerm_resource_group.environment.location
+  resource_group_name           = azurerm_resource_group.environment.name
+  sku                           = "Basic"
+  admin_enabled                 = false
+  public_network_access_enabled = true
+  tags                          = local.tags
+}
+
+resource "azurerm_user_assigned_identity" "image_pull" {
+  name                = "id-${local.name}-image-pull"
+  location            = azurerm_resource_group.environment.location
+  resource_group_name = azurerm_resource_group.environment.name
+  tags                = local.tags
+}
+
+resource "azurerm_role_assignment" "image_pull" {
+  scope                = azurerm_container_registry.images.id
+  role_definition_name = "AcrPull"
+  principal_id         = azurerm_user_assigned_identity.image_pull.principal_id
+  principal_type       = "ServicePrincipal"
+}
+
+# Main-branch CI copies each newly published GHCR image into this registry (WC-127).
+resource "azurerm_user_assigned_identity" "image_publish" {
+  name                = "id-${local.name}-image-publish"
+  location            = azurerm_resource_group.environment.location
+  resource_group_name = azurerm_resource_group.environment.name
+  tags                = local.tags
+}
+
+resource "azurerm_federated_identity_credential" "image_publish" {
+  name                = "github-main-image-publish"
+  resource_group_name = azurerm_resource_group.environment.name
+  parent_id           = azurerm_user_assigned_identity.image_publish.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = "https://token.actions.githubusercontent.com"
+  subject             = "repo:${var.repository_id}:ref:refs/heads/main"
+}
+
+resource "azurerm_role_assignment" "image_publish" {
+  scope                = azurerm_container_registry.images.id
+  role_definition_name = "AcrPush"
+  principal_id         = azurerm_user_assigned_identity.image_publish.principal_id
+  principal_type       = "ServicePrincipal"
+}
+
 resource "azurerm_log_analytics_workspace" "environment" {
   name                = coalesce(var.log_analytics_workspace_name, "law-${local.name}")
   location            = azurerm_resource_group.environment.location
@@ -654,4 +706,27 @@ output "database_provisioner_client_id" {
 
 output "database_provisioner_identity_id" {
   value = var.persistent_state_enabled ? azurerm_user_assigned_identity.database_provisioner[0].id : null
+}
+output "image_registry_name" {
+  value = azurerm_container_registry.images.name
+}
+
+output "image_registry_login_server" {
+  value = azurerm_container_registry.images.login_server
+}
+
+output "image_registry_id" {
+  value = azurerm_container_registry.images.id
+}
+
+output "image_pull_identity_id" {
+  value = azurerm_user_assigned_identity.image_pull.id
+}
+
+output "image_pull_client_id" {
+  value = azurerm_user_assigned_identity.image_pull.client_id
+}
+
+output "image_publish_client_id" {
+  value = azurerm_user_assigned_identity.image_publish.client_id
 }

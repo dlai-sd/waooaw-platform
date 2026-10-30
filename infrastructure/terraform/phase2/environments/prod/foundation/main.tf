@@ -104,3 +104,27 @@ output "auth_abuse_redis_url" {
   value     = module.foundation.auth_abuse_redis_url
   sensitive = true
 }
+
+output "image_registry_name" {
+  value = module.foundation.image_registry_name
+}
+
+output "image_registry_login_server" {
+  value = module.foundation.image_registry_login_server
+}
+
+output "image_registry_id" {
+  value = module.foundation.image_registry_id
+}
+
+output "image_pull_identity_id" {
+  value = module.foundation.image_pull_identity_id
+}
+
+output "image_pull_client_id" {
+  value = module.foundation.image_pull_client_id
+}
+
+output "image_publish_client_id" {
+  value = module.foundation.image_publish_client_id
+}

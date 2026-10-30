@@ -1,0 +1,18 @@
+{
+  "schema": "waooaw.acr-mirrors/v1",
+  "tenant_id": "0471534c-1bbe-40ab-ae65-3f721b62582c",
+  "environments": {
+    "demo": {
+      "login_server": "acrwaooawdemo2ed118.azurecr.io",
+      "publish_client_id": null
+    },
+    "uat": {
+      "login_server": "acrwaooawuat2ed118.azurecr.io",
+      "publish_client_id": null
+    },
+    "prod": {
+      "login_server": "acrwaooawprod2ed118.azurecr.io",
+      "publish_client_id": null
+    }
+  }
+}

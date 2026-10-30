@@ -86,3 +86,15 @@ variable "tfstate_storage_account" {
 variable "tfstate_container" {
   type = string
 }
+
+variable "image_registry_server" {
+  type        = string
+  description = "Environment ACR mirror login server; empty pulls release images from GHCR (WC-127)."
+  default     = ""
+}
+
+variable "image_pull_identity_id" {
+  type        = string
+  description = "AcrPull user-assigned identity used with image_registry_server."
+  default     = ""
+}

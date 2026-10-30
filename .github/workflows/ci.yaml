@@ -71,6 +71,8 @@ jobs:
               tests/pipeline/test_validate_runtime_lifecycle_evidence.py \
               tests/pipeline/test_goal006_data_recovery.py \
               tests/pipeline/test_goal006_dispatch_inputs.py \
+              tests/pipeline/test_goal006_deployment_inputs.py \
+              tests/pipeline/test_goal006_image_home.py \
               tests/pipeline/test_goal006_cloud_platform_finalization.py'
       - name: PST-SEC-EVIDENCE-01 fail-closed evidence contract
         run: |
@@ -302,6 +304,20 @@ jobs:
           mkdir -p release-digest
           printf '%s\n' '${{ steps.image.outputs.digest }}' > "release-digest/${{ matrix.service.name }}.digest"
 
+      # WC-127: copy the exact digest into each environment ACR mirror while the other jobs run, so
+      # deployments with image_home=azure|both pull in-region instead of from GHCR. Never blocks a release.
+      - name: Mirror image to environment ACRs
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        env:
+          IMAGE: ${{ env.REGISTRY_PREFIX }}/${{ matrix.service.name }}@${{ steps.image.outputs.digest }}
+          MEMBER: ${{ matrix.service.name }}
+        run: |
+          python3 scripts/goal006_image_mirror.py publish \
+            --config infrastructure/image-registry/acr-mirrors.json \
+            --image "$MEMBER=$IMAGE" \
+            --output acr-mirror.json
+
       - name: Attest published image digest
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         id: image-attestation-primary
@@ -417,6 +433,16 @@ jobs:
             org.waooaw.purpose=private-ephemeral-runner
           cache-from: type=gha,scope=release-${{ matrix.image.name }}
           cache-to: type=gha,mode=max,scope=release-${{ matrix.image.name }}
+      - name: Mirror runner image to environment ACRs
+        continue-on-error: true
+        env:
+          IMAGE: ${{ env.REGISTRY_PREFIX }}/${{ matrix.image.name }}@${{ steps.image.outputs.digest }}
+          MEMBER: ${{ matrix.image.name }}
+        run: |
+          python3 scripts/goal006_image_mirror.py publish \
+            --config infrastructure/image-registry/acr-mirrors.json \
+            --image "$MEMBER=$IMAGE" \
+            --output acr-mirror.json
       - name: Attest published runner image
         uses: actions/attest-build-provenance@v2
         with:

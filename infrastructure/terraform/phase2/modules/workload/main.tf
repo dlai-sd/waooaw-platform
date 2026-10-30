@@ -10,6 +10,12 @@ terraform {
 }
 
 locals {
+  # WC-127: image_digests stay canonical GHCR references; the ACR mirror keeps the same repository and digest.
+  image_refs = {
+    for member, image in var.image_digests :
+    member => var.image_registry_server == "" ? image : "${var.image_registry_server}/${trimprefix(image, "ghcr.io/")}"
+  }
+  image_pull_identity_ids = var.image_registry_server == "" ? [] : [var.image_pull_identity_id]
   release_members = toset([
     "constitutional-engine",
     "business-platform",
@@ -1062,7 +1068,15 @@ resource "azurerm_container_app" "member" {
 
   identity {
     type         = "UserAssigned"
-    identity_ids = [azurerm_user_assigned_identity.member[each.key].id]
+    identity_ids = concat([azurerm_user_assigned_identity.member[each.key].id], local.image_pull_identity_ids)
+  }
+
+  dynamic "registry" {
+    for_each = local.image_pull_identity_ids
+    content {
+      server   = var.image_registry_server
+      identity = registry.value
+    }
   }
 
   secret {
@@ -1176,7 +1190,7 @@ resource "azurerm_container_app" "member" {
 
     container {
       name   = local.container_names[each.key]
-      image  = var.image_digests[each.key]
+      image  = local.image_refs[each.key]
       cpu    = 0.5
       memory = "1Gi"
       # dash drops dotted logging environment names before starting dotnet.
@@ -2561,7 +2575,15 @@ resource "azurerm_container_app_job" "billing_migration" {
 
   identity {
     type         = "UserAssigned"
-    identity_ids = [azurerm_user_assigned_identity.billing_migration[0].id]
+    identity_ids = concat([azurerm_user_assigned_identity.billing_migration[0].id], local.image_pull_identity_ids)
+  }
+
+  dynamic "registry" {
+    for_each = local.image_pull_identity_ids
+    content {
+      server   = var.image_registry_server
+      identity = registry.value
+    }
   }
 
   secret {
@@ -2578,7 +2600,7 @@ resource "azurerm_container_app_job" "billing_migration" {
   template {
     container {
       name    = "billing-migration"
-      image   = var.image_digests["billing-engine"]
+      image   = local.image_refs["billing-engine"]
       cpu     = 0.5
       memory  = "1Gi"
       command = ["python", "migrate.py"]
@@ -2615,6 +2637,22 @@ resource "azurerm_container_app_job" "verification" {
   container_app_environment_id = var.container_app_environment_id
   replica_retry_limit          = 1
   replica_timeout_in_seconds   = 300
+
+  dynamic "identity" {
+    for_each = length(local.image_pull_identity_ids) == 0 ? [] : [1]
+    content {
+      type         = "UserAssigned"
+      identity_ids = local.image_pull_identity_ids
+    }
+  }
+
+  dynamic "registry" {
+    for_each = local.image_pull_identity_ids
+    content {
+      server   = var.image_registry_server
+      identity = registry.value
+    }
+  }
 
   manual_trigger_config {
     parallelism              = 1
@@ -2686,7 +2724,7 @@ resource "azurerm_container_app_job" "verification" {
 
     container {
       name    = "constitutional-health"
-      image   = var.image_digests["constitutional-engine"]
+      image   = local.image_refs["constitutional-engine"]
       cpu     = 0.25
       memory  = "0.5Gi"
       command = ["/bin/sh", "-c"]
