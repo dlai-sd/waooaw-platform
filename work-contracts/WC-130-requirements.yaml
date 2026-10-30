@@ -1,0 +1,53 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-130
+contract_path: work-contracts/WC-130-verify-acr-release-digest.md
+contract_digest: 6dde64af0cac2aa0d5e3dee13675e9c47dad76b523bcfd3b61c8b36bccf7fd56
+implementation_scope: true
+result: QUALIFIED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Docker pipeline tests and live Demo dry-run of the inventory and sign-in verifiers
+  initial_state: expected-fail
+  dependencies: Founder-directed WC-130 fix and Release Qualification OFF
+  residual_risk: Proven by tests and live dry-run, not yet by a completed Demo verification job.
+  result: PASS
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC130-R001
+    source: WC-130 Requirements And Definition Of Done, R1
+    observable_outcome: Release members at the manifest digest in the environment ACR pass; any other image fails.
+    test_path_or_plan: tests/pipeline/test_goal006_live_inventory.py
+    completion_rule: Inventory tests pass.
+    evidence_refs:
+      - scripts/goal006_live_inventory.py
+
+  - <<: *defaults
+    requirement_id: WC130-R002
+    source: WC-130 Requirements And Definition Of Done, R2
+    observable_outcome: Verification passes the logged-in subscription to the inventory check.
+    test_path_or_plan: tests/pipeline/test_goal006_live_inventory.py
+    completion_rule: Script contract test passes.
+    evidence_refs:
+      - scripts/goal006_verify_deployment.sh
+
+  - <<: *defaults
+    requirement_id: WC130-R003
+    source: WC-130 Requirements And Definition Of Done, R3
+    observable_outcome: New check passes on live Demo where the previous check fails.
+    test_path_or_plan: Live dry-run with the ed77ff4a release manifest
+    completion_rule: Previous check fails with seven DIGEST_MISMATCH and the new check passes.
+    evidence_refs:
+      - work-contracts/WC-130-verify-acr-release-digest.md
+
+  - <<: *defaults
+    requirement_id: WC130-R004
+    source: WC-130 Requirements And Definition Of Done, R4
+    observable_outcome: Exact-head PR is prepared with Founder-directed Release Qualification OFF.
+    test_path_or_plan: scripts/prepare_pr_body.py
+    completion_rule: Final pushed-head preparation passes and the prepared body is submitted unchanged.
+    result: PLANNED
+    evidence_refs:
+      - work-contracts/WC-130-verify-acr-release-digest.md
+    residual_risk: Hosted CI, Demo deployment and Founder merge remain.

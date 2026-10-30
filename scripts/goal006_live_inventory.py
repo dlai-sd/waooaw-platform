@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,8 @@ AUTH_REDIS_IMAGE = "redis@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a3192390
 # WC-124 per-role connection pooler (modules/workload/main.tf azurerm_container_app.pgbouncer).
 PGBOUNCER_IMAGE = "docker.io/pgbouncer/pgbouncer@sha256:e8162131a43c54cd0ac7941e66eaaa802c5e5a49036f41b41260b70b290feea9"
 DMA_MEMBER = "agent-runtime-adapter-digital-marketing"
+GHCR_PREFIX = "ghcr.io/"
+SUBSCRIPTION_ID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
 
 def release_app_name(environment: str, member: str) -> str:
@@ -38,12 +41,37 @@ def expected_dependencies(environment: str) -> dict[str, str]:
     return dependencies
 
 
-def validate_inventory(environment: str, manifest: Mapping[str, Any], inventory: Sequence[Any]) -> list[str]:
+def environment_registry(environment: str, subscription_id: str | None) -> str | None:
+    """Return the environment's own WC-127 image-home ACR login server, if a subscription is known."""
+    if subscription_id is None:
+        return None
+    if not SUBSCRIPTION_ID.fullmatch(subscription_id.lower()):
+        raise ValueError("subscription ID must be a GUID")
+    return f"acrwaooaw{environment}{subscription_id.lower().replace('-', '')[:6]}.azurecr.io"
+
+
+def release_image_matches(actual: object, expected: str, registry: str | None) -> bool:
+    """Accept the exact release reference, or the same repository and digest in the environment ACR."""
+    if actual == expected:
+        return True
+    if registry is None or not isinstance(actual, str) or not expected.startswith(GHCR_PREFIX):
+        return False
+    return actual == f"{registry}/{expected.removeprefix(GHCR_PREFIX)}"
+
+
+def validate_inventory(
+    environment: str,
+    manifest: Mapping[str, Any],
+    inventory: Sequence[Any],
+    subscription_id: str | None = None,
+) -> list[str]:
     violations = validate_registry_manifest(manifest)
     if environment not in {"demo", "uat", "prod"}:
         violations.append("ENVIRONMENT_INVALID")
         return sorted(set(violations))
-    expected = {release_app_name(environment, member): image for member, image in manifest.get("images", {}).items()}
+    registry = environment_registry(environment, subscription_id)
+    release = {release_app_name(environment, member): image for member, image in manifest.get("images", {}).items()}
+    expected = dict(release)
     expected.update(expected_dependencies(environment))
     actual: dict[str, Mapping[str, Any]] = {}
     for item in inventory:
@@ -55,7 +83,10 @@ def validate_inventory(environment: str, manifest: Mapping[str, Any], inventory:
         violations.append("LIVE_MEMBERSHIP_INVALID")
     for name, image in expected.items():
         record = actual.get(name, {})
-        if record.get("image") != image:
+        image_matches = (
+            release_image_matches(record.get("image"), image, registry) if name in release else record.get("image") == image
+        )
+        if not image_matches:
             violations.append(f"{name}:DIGEST_MISMATCH")
         if str(record.get("provisioningState", "")).lower() != "succeeded":
             violations.append(f"{name}:PROVISIONING_INCOMPLETE")
@@ -67,10 +98,14 @@ def main() -> int:
     parser.add_argument("--environment", required=True)
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--inventory", type=Path, required=True)
+    parser.add_argument(
+        "--subscription-id",
+        help="also accept release images at the same digest in this subscription's environment ACR (WC-127 image home)",
+    )
     args = parser.parse_args()
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
     inventory = json.loads(args.inventory.read_text(encoding="utf-8"))
-    violations = validate_inventory(args.environment, manifest, inventory)
+    violations = validate_inventory(args.environment, manifest, inventory, args.subscription_id)
     print(json.dumps({"passed": not violations, "violations": violations}, sort_keys=True))
     return 0 if not violations else 1
 
