@@ -71,6 +71,7 @@ if test "$RELEASE_RUN_TESTS" = true; then
     tests/pipeline/test_goal006_release_simulator.py \
     tests/pipeline/test_goal006_image_home.py \
     tests/pipeline/test_goal006_runner_image_source.py \
+    tests/pipeline/test_goal006_keycloak_realm_refresh.py \
     tests/pipeline/test_goal006_six_member_packaging.py \
     tests/pipeline/test_billing_ce_validator.py \
     tests/pipeline/test_wc091_environment_readiness.py -rA &
