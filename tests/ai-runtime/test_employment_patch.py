@@ -305,3 +305,7 @@ def test_tenant_mismatch_is_indistinguishable_from_missing_proposal() -> None:
     )
     with pytest.raises(EmploymentProposalError, match="AIR_EMPLOYMENT_NOT_FOUND"):
         service.get(receipt.proposal_id, "tenant-2")
+
+
+def test_model_policy_fields_preserve_real_pydantic_method_protection() -> None:
+    assert employment_patch.EmploymentModel.model_config["protected_namespaces"] == ("model_validate", "model_dump")

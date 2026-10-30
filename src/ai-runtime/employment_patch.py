@@ -40,7 +40,12 @@ def _camel(value: str) -> str:
 
 
 class EmploymentModel(BaseModel):
-    model_config = ConfigDict(alias_generator=_camel, populate_by_name=True, extra="forbid")
+    model_config = ConfigDict(
+        alias_generator=_camel,
+        populate_by_name=True,
+        extra="forbid",
+        protected_namespaces=("model_validate", "model_dump"),
+    )
 
 
 class ImmutableContractReference(EmploymentModel):

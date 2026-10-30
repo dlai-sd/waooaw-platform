@@ -1,0 +1,111 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-132
+contract_path: work-contracts/WC-132-demo-signout-and-runtime-noise.md
+contract_digest: f131b45987ceaf5a653f455740f1860c65b897aa690a8cd5a7c794ccd75d44c2
+implementation_scope: true
+result: QUALIFIED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Local unit/pipeline/container evidence; deployed acceptance pending
+  initial_state: expected-fail
+  dependencies: Session implementation authorized 2026-10-30; Demo rollout needs separate authority.
+  residual_risk: Real-account Demo acceptance, deployed annotations and one-hour Azure log counts remain pending.
+  result: PASS
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC132-R001
+    source: WC-132 Requirements And Definition Of Done, R1
+    observable_outcome: Sign-out returns to /login with id_token_hint and no Keycloak confirmation page.
+    test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
+    completion_rule: Executable evidence listed for WC132-R001 passes.
+    evidence_refs:
+      - web/app/api/auth/keycloak-logout/route.ts
+      - web/app/api/auth/keycloak-logout/route.test.ts
+      - web/__tests__/app/auth/login/page.test.tsx
+
+  - <<: *defaults
+    requirement_id: WC132-R002
+    source: WC-132 Requirements And Definition Of Done, R2
+    observable_outcome: A failed Demo deploy after reset cannot leave Keycloak without its realm.
+    test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
+    completion_rule: Executable evidence listed for WC132-R002 passes.
+    evidence_refs:
+      - .github/workflows/environment-deployment.yaml
+      - scripts/goal006_demo_reset_recovery.py
+      - tests/pipeline/test_wc132_demo_reset_recovery.py
+
+  - <<: *defaults
+    requirement_id: WC132-R003
+    source: WC-132 Requirements And Definition Of Done, R3
+    observable_outcome: The old app revision does not serve as healthy during the Demo database reset.
+    test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
+    completion_rule: Executable evidence listed for WC132-R003 passes.
+    evidence_refs:
+      - .github/workflows/environment-deployment.yaml
+      - scripts/goal006_application_lifecycle.py
+      - tests/pipeline/test_goal006_application_lifecycle.py
+
+  - <<: *defaults
+    requirement_id: WC132-R004
+    source: WC-132 Requirements And Definition Of Done, R4
+    observable_outcome: Demo managed pools own client lifetime without the incompatible PgBouncer client idle cutoff.
+    test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
+    completion_rule: Executable evidence listed for WC132-R004 passes.
+    evidence_refs:
+      - infrastructure/terraform/phase2/modules/workload/main.tf
+      - tests/pipeline/test_wc132_demo_reset_recovery.py
+      - work-contracts/WC-132-demo-signout-and-runtime-noise.md
+
+  - <<: *defaults
+    requirement_id: WC132-R005
+    source: WC-132 Requirements And Definition Of Done, R5
+    observable_outcome: Expected 401/403/409 identity outcomes are not logged as session_load_failed.
+    test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
+    completion_rule: Executable evidence listed for WC132-R005 passes.
+    evidence_refs:
+      - web/lib/api/identity.ts
+      - web/lib/api/identity.test.ts
+
+  - <<: *defaults
+    requirement_id: WC132-R006
+    source: WC-132 Requirements And Definition Of Done, R6
+    observable_outcome: Startup noise in ai-runtime, Temporal, BP DataProtection and PgBouncer is fixed or justified.
+    test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
+    completion_rule: Executable evidence listed for WC132-R006 passes.
+    evidence_refs:
+      - src/business-platform/Program.cs
+      - src/ai-runtime/employment_patch.py
+      - tests/ai-runtime/test_employment_patch.py
+      - tests/pipeline/test_wc132_demo_reset_recovery.py
+      - work-contracts/WC-132-demo-signout-and-runtime-noise.md
+
+  - <<: *defaults
+    requirement_id: WC132-R007
+    source: WC-132 Requirements And Definition Of Done, R7
+    observable_outcome: Hosted broker and cleanup jobs install the pinned log-analytics extension with retries.
+    test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
+    completion_rule: Executable evidence listed for WC132-R007 passes.
+    evidence_refs:
+      - scripts/goal006_az_extensions.sh
+      - tests/pipeline/test_goal006_az_extensions.py
+
+  - <<: *defaults
+    requirement_id: WC132-R008
+    source: WC-132 Requirements And Definition Of Done, R8
+    observable_outcome: Node 20 deprecation and retention-days warnings are removed from the workflow.
+    test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
+    completion_rule: Executable evidence listed for WC132-R008 passes.
+    evidence_refs:
+      - .github/workflows/environment-deployment.yaml
+      - tests/pipeline/test_wc132_demo_reset_recovery.py
+
+  - <<: *defaults
+    requirement_id: WC132-R009
+    source: WC-132 Requirements And Definition Of Done, R9
+    observable_outcome: Exact-head PR is prepared with the repository template.
+    test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
+    completion_rule: Executable evidence listed for WC132-R009 passes.
+    evidence_refs:
+      - scripts/prepare_pr_body.py

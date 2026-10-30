@@ -968,8 +968,11 @@ resource "azurerm_container_app" "pgbouncer" {
         value = "5"
       }
       env {
+        # Keycloak 25 retains a minimum Agroal connection indefinitely. Demo's 60 s client
+        # cutoff killed that healthy connection underneath the pool. Let bounded client pools
+        # own their lifecycle; server_idle_timeout still reclaims unlinked backends after 30 s.
         name  = "PGBOUNCER_CLIENT_IDLE_TIMEOUT"
-        value = "60"
+        value = var.environment == "demo" ? "0" : "60"
       }
       env {
         name  = "PGBOUNCER_SERVER_IDLE_TIMEOUT"
@@ -1621,6 +1624,7 @@ resource "azurerm_container_app_job" "temporal_startup_qualification" {
         # The sampler admits startup only after old session-pool clients have drained.
         timeout 90 nc -l -p 17303 > /tmp/pool-admission
         test "$(cat /tmp/pool-admission)" = ready
+        export SKIP_ADD_CUSTOM_SEARCH_ATTRIBUTES=true
         /etc/temporal/entrypoint.sh autosetup >"$log" 2>&1 &
         temporal_pid=$!
         ready=false
@@ -2140,6 +2144,7 @@ resource "azurerm_container_app" "temporal" {
         set -euo pipefail
         export TEMPORAL_BROADCAST_ADDRESS="$(hostname -i | awk '{print $1}')"
         export TEMPORAL_ADDRESS="127.0.0.1:7233"
+        export SKIP_ADD_CUSTOM_SEARCH_ATTRIBUTES=true
         exec /etc/temporal/entrypoint.sh autosetup
       EOT
       ]

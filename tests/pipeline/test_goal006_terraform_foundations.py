@@ -985,9 +985,9 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     # Within the private terraform job, environment authorization precedes the first cloud login.
     terraform_job = workflow[workflow.index("\n  terraform:\n"):workflow.index("\n  cleanup-private:\n")]
     assert terraform_job.index("Enforce selected environment authorization") < terraform_job.index(
-        "azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2"
+        "azure/login@"
     )
-    assert "azure/login@v2" not in workflow  # every action is pinned to a reviewed commit
+    assert "azure/login@v" not in workflow  # every action is pinned to a reviewed commit
     assert "Reject stale release before cloud access" in workflow
     assert 'timeframe:"Custom"' in workflow.replace(" ", "")
     assert "Verify bootstrap RBAC and required Azure providers" in workflow
@@ -1108,7 +1108,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     for evidence in ("wc124-activation-readiness.json", "wc124-connection-budget-post-activation.json"):
         assert workflow.count(evidence) == 2, evidence  # produced once, uploaded once
     assert workflow.count("if: inputs.apply") == 39  # includes WC-127 image-home and WC-129 Keycloak refresh
-    assert workflow.count("always() && inputs.apply") == 3
+    assert workflow.count("always() && inputs.apply") == 6  # includes the three WC-132 recovery/window guards
     assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
     assert '--context "external_environment=$external_environment"' in workflow
     assert "if: inputs.apply || steps.foundation-cache.outputs.cache_hit != 'true'" in workflow

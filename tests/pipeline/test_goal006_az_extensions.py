@@ -5,6 +5,9 @@ import re
 import subprocess
 from pathlib import Path
 
+import pytest
+import yaml
+
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/goal006_az_extensions.sh"
 WORKFLOW = ROOT / ".github/workflows/environment-deployment.yaml"
@@ -117,6 +120,17 @@ def test_private_runner_job_installs_extensions_before_any_azure_cli_use() -> No
     install = job.index("- name: Install pinned Azure CLI extensions\n        run: bash scripts/goal006_az_extensions.sh")
     assert install < job.index("uses: azure/login@")
     assert install < job.index("az containerapp job logs show")
+
+
+@pytest.mark.parametrize("job_name", ["start-broker", "cleanup-private"])
+def test_hosted_jobs_install_pins_before_login_and_queries(job_name: str) -> None:
+    job = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))["jobs"][job_name]
+    assert job["runs-on"] == "ubuntu-latest"
+    steps = job["steps"]
+    install = next(index for index, step in enumerate(steps) if step.get("run") == "bash scripts/goal006_az_extensions.sh")
+    login = next(index for index, step in enumerate(steps) if step.get("uses", "").startswith("azure/login@"))
+    assert install < login
+    assert all("az " not in step.get("run", "") for step in steps[:install])
 
 
 def test_provisioner_reports_a_missing_result_instead_of_a_bare_jq_exit() -> None:
