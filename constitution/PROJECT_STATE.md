@@ -1,10 +1,12 @@
 # PROJECT_STATE.md
 **State Schema:** 2.0.0
-**State Revision:** 317
-**Last Updated:** 2026-10-30 (WC-131 RUNNER CLI EXTENSIONS)
+**State Revision:** 318
+**Last Updated:** 2026-10-31 (WC-132 STORY-COMPLETION CHECKPOINT)
 **Purpose:** Current operational snapshot for bootstrap, recovery, and automated sprint controls; keep it below 200 lines, update checkpoints in place, and retain durable detail in the owning Work Contract, Goal, review, evidence artifact, Git history, or archive index.
 ---
 ## Institutional Snapshot
+WC-132 IN-PROGRESS CHECKPOINT: signed implementation milestone `e78079b4` on `ib/132/story-completion`, based on main `f729a552`, repairs the remaining mode-aware logout/early JWT-cookie clearing and provider-verified Demo recovery-evidence gaps. Existing R003-R008 behavior is preserved and regression-tested; login/registration handlers and non-Demo policy are unchanged. Founder approved the existing development-only follow-redirects 1.16.2 override patch required by mandatory dependency checks. Docker results: 714 web tests pass (3 existing skips), 145 focused Python tests pass, scripts quality passes 215 tests, TypeScript quality and ledger pass, and dependency scan has no high/critical advisories. Mandatory staged prechecks pass. New exact-head PR preparation/publication and Founder review/merge remain; Release Qualification is OFF by explicit Founder direction. No cloud deployment or real-provider acceptance was performed; real Demo logout/recovery and one-hour log observations remain separately authorized acceptance work.
+
 WC-131 runner CLI extensions: Demo run 41042104645 (cb47539, image_home=azure) failed at the WC-124 provisioner step although the execution succeeded. The deploy runner image 332cbca predates the Dockerfile extension pins, so `az containerapp job logs show` relied on an on-demand install that failed ("'logs' is misspelled"), leaving an empty result and a bare jq exit 4. The private runner job now installs the pinned extensions with retries first, a missing provisioner result fails with a named error, and the Demo image-publish identity is recorded so CI fills the Demo ACR. Founder directed Release Qualification OFF. PR review/merge and Demo re-run remain.
 
 WC-130 verify ACR release digest: Demo run 41028762781 (ed77ff4a, image_home=both -> azure) deployed and the Keycloak refresh worked, but independent verification reported seven DIGEST_MISMATCH because live inventory required exact GHCR references. Verification now accepts the same repository and digest from the environment's own ACR; pinned dependencies stay exact. Live dry-run passes where the old check fails; Google and Facebook verifiers pass. Founder directed Release Qualification OFF. PR review/merge and Demo re-run remain.
