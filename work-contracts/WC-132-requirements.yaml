@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-132
 contract_path: work-contracts/WC-132-demo-signout-and-runtime-noise.md
-contract_digest: f131b45987ceaf5a653f455740f1860c65b897aa690a8cd5a7c794ccd75d44c2
+contract_digest: 66736e4079dd7ddfffe0af2824a355621737dd16d5d680fcd74714ec999b1a7a
 implementation_scope: true
 result: QUALIFIED
 
@@ -9,7 +9,7 @@ requirement_defaults: &defaults
   component_owner: Platform IT Expert (INST-010)
   evidence_class: Local unit/pipeline/container evidence; deployed acceptance pending
   initial_state: expected-fail
-  dependencies: Session implementation authorized 2026-10-30; Demo rollout needs separate authority.
+  dependencies: Story-completion implementation authorized 2026-10-31; Demo rollout needs separate authority.
   residual_risk: Real-account Demo acceptance, deployed annotations and one-hour Azure log counts remain pending.
   result: PASS
 
@@ -17,7 +17,7 @@ requirements:
   - <<: *defaults
     requirement_id: WC132-R001
     source: WC-132 Requirements And Definition Of Done, R1
-    observable_outcome: Sign-out returns to /login with id_token_hint and no Keycloak confirmation page.
+    observable_outcome: Sign-out preserves id_token_hint in disabled, shadow and enforced session modes and clears normal-logout legacy cookies on POST.
     test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
     completion_rule: Executable evidence listed for WC132-R001 passes.
     evidence_refs:
@@ -28,7 +28,7 @@ requirements:
   - <<: *defaults
     requirement_id: WC132-R002
     source: WC-132 Requirements And Definition Of Done, R2
-    observable_outcome: A failed Demo deploy after reset cannot leave Keycloak without its realm.
+    observable_outcome: A failed Demo reset recovers the realm using identity-checked, provider-verified migration completion before consumers resume.
     test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
     completion_rule: Executable evidence listed for WC132-R002 passes.
     evidence_refs:
@@ -38,6 +38,7 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC132-R003
+    initial_state: existing-pass
     source: WC-132 Requirements And Definition Of Done, R3
     observable_outcome: The old app revision does not serve as healthy during the Demo database reset.
     test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
@@ -49,6 +50,7 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC132-R004
+    initial_state: existing-pass
     source: WC-132 Requirements And Definition Of Done, R4
     observable_outcome: Demo managed pools own client lifetime without the incompatible PgBouncer client idle cutoff.
     test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
@@ -60,6 +62,7 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC132-R005
+    initial_state: existing-pass
     source: WC-132 Requirements And Definition Of Done, R5
     observable_outcome: Expected 401/403/409 identity outcomes are not logged as session_load_failed.
     test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
@@ -70,6 +73,7 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC132-R006
+    initial_state: existing-pass
     source: WC-132 Requirements And Definition Of Done, R6
     observable_outcome: Startup noise in ai-runtime, Temporal, BP DataProtection and PgBouncer is fixed or justified.
     test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
@@ -83,6 +87,7 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC132-R007
+    initial_state: existing-pass
     source: WC-132 Requirements And Definition Of Done, R7
     observable_outcome: Hosted broker and cleanup jobs install the pinned log-analytics extension with retries.
     test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
@@ -93,6 +98,7 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC132-R008
+    initial_state: existing-pass
     source: WC-132 Requirements And Definition Of Done, R8
     observable_outcome: Node 20 deprecation and retention-days warnings are removed from the workflow.
     test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column

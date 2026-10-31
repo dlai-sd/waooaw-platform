@@ -73,6 +73,48 @@ requirement is independently revertible.
 
 ## Validation And Delivery Evidence
 
+### 2026-10-31 story-completion follow-up
+
+The Founder authorized implementation of all WC-132 stories, impact analysis before editing,
+combined execution chunks, Docker testing after implementation, and a new PR with Release
+Qualification OFF. This session uses `ib/132/story-completion`, based on main `f729a552`.
+It grants no cloud query, deployment, provider mutation, UAT/Production or merge authority.
+The original planning commit `7386dc28` was compared with the implementation already on main;
+existing conforming behavior is preserved rather than duplicated.
+
+| Chunk | Requirements | Impact analysis and disposition |
+|---|---|---|
+| Sign-out | R001 | The logout reader was hard-coded to the enforced opaque cookie, but disabled/shadow mode uses NextAuth JWT cookies. Reuse `sessionTokenFromRequest`; preserve the ID token across revocation and clear only normal-logout legacy session cookies on POST, including chunks, even if GET is never followed. No login/registration handler, provider launch, account-switch target or public preference change. |
+| Reset safety | R002-R003 | Recovery previously trusted a local `Succeeded` file without reading the named execution. Read the exact Demo migration execution, reject mismatched identity, and validate its completion time before resuming any consumer. Preserve existing import reuse, Demo-only quiescence, zero-replica checks, bounded waits, maintenance markers and failure holds. |
+| Runtime and delivery | R004-R008 | Existing Demo pool settings, expected identity-response classification, Pydantic method protection, Temporal example-attribute suppression, pooler drain, extension installer and Node 24/retention pins remain unchanged. The bounded Demo DataProtection disposition below is retained; no error sink is weakened. |
+| Handoff | R009 | New regressions live in already-collected test files. Docker catalog gates and author review supply the new PR evidence; Release Qualification is OFF by the current Founder direction. |
+
+Docker reproduction first failed for disabled/shadow logout cookies and for five invalid
+recovery-evidence cases. Final validation:
+
+- Catalog-owned `test-web` in `--mode focused`: **714 PASS, 3 existing skips**, 109 passing
+  suites; TypeScript and ESLint **PASS**. This includes login, registration, provider-command,
+  account-switch and session regressions without changes to those implementation files.
+- Catalog-owned `quality:scripts` in `--mode focused`: **PASS**, including script lint/format,
+  resource controls and **215 tests** across its four pytest invocations.
+- Mounted-source Docker Python bundle covering recovery, lifecycle, extensions, Terraform,
+  realm refresh and AIR employment models: **145 PASS**.
+- Docker logout route suite: **27 PASS**, **98.09% lines / 84.93% branches** (80% threshold);
+  real encrypted/chunked JWT and opaque cookies, JSON and form POST, no-follow cookie clearing,
+  continuation expiry/tampering, fail-closed revocation, origin and account-switch controls.
+- Author review repaired a nested test declaration and unrelated formatter churn; the final
+  affected web gate passed again. Mandatory commit checks also required a lint-safe test
+  environment restore and a Founder-approved patch of the existing development-only
+  `follow-redirects` override from 1.16.1 to 1.16.2. The lockfile changes only that resolution;
+  Docker `dep-scan:typescript` passed with no high/critical advisories (19 existing low/moderate
+  advisories remain), and the full web gate passed again against the updated lockfile.
+  No new dependencies or changes to login/registration,
+  identity projection, provider configuration, database reset policy or UAT/Production.
+
+These are local Docker results, not real-provider or deployed acceptance. Manual Demo sign-out,
+failure recovery and the one-hour R004/R006 log observations remain separately authorized
+acceptance work. The exact final commit and mandatory PR prechecks are recorded in the new PR.
+
 ### Implementation dispositions
 
 | Requirements | Implemented behavior and evidence |

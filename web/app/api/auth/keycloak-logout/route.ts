@@ -6,8 +6,10 @@ import { recordWebIdentitySecurityEvent } from '@/lib/identity-security-events';
 import { withJourneyTrace } from '@/lib/journey-telemetry';
 import { isSameOriginRequest } from '@/lib/same-origin-request';
 import { logServerFailure } from '@/lib/server-diagnostics';
-import { loadSession, revokeSession } from '@/lib/web-session-store';
-import { decode, encode, getToken } from 'next-auth/jwt';
+import { sessionTokenFromRequest } from '@/lib/server-auth';
+import { serverSessionMode } from '@/lib/server-session-mode';
+import { revokeSession } from '@/lib/web-session-store';
+import { decode, encode } from 'next-auth/jwt';
 import { type NextRequest, NextResponse } from 'next/server';
 
 const sessionCookie = /^(?:__Host-waooaw-session|(?:(?:__Secure-|__Host-)?next-auth\.|waooaw[.-]))/i;
@@ -40,15 +42,6 @@ function reportOriginDenial(request: NextRequest, applicationOrigin: string) {
   });
 }
 
-async function sessionToken(request: NextRequest) {
-  return getToken({
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET,
-    cookieName: '__Host-waooaw-session',
-    decode: async ({ token: handle }) => (handle ? loadSession(handle) : null),
-  });
-}
-
 function keycloakLogoutUrl(
   applicationOrigin: string,
   command: LogoutCommand,
@@ -68,7 +61,7 @@ function keycloakLogoutUrl(
 
 async function revokeOwnedSession(request: NextRequest, command: LogoutCommand) {
   try {
-    const token = await sessionToken(request);
+    const token = await sessionTokenFromRequest(request);
     if (!token) return { status: 'not-applicable' } as const;
     await revokeSession(token, command === 'ACCOUNT_SWITCH' ? 'ACCOUNT_SWITCH' : 'CUSTOMER_LOGOUT');
     return { status: 'confirmed', idToken: token.idToken } as const;
@@ -178,6 +171,12 @@ async function logoutPost(request: NextRequest) {
   const response = NextResponse.json({
     logoutPath: `/api/auth/keycloak-logout?nonce=${encodeURIComponent(nonce)}`,
   });
+  if (command === 'LOCAL_LOGOUT' && serverSessionMode() !== 'enforced') {
+    for (const cookie of request.cookies.getAll()) {
+      if (/^(?:__Secure-|__Host-)?next-auth\.session-token(?:\.\d+)?$/.test(cookie.name))
+        response.cookies.delete(cookie.name);
+    }
+  }
   const continuationCookies = [
     [logoutContinuationCookie, nonce],
     [logoutCorrelationCookie, correlationId],
