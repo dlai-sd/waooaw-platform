@@ -14,7 +14,10 @@ from goal006_application_lifecycle import RESET_COMPONENTS, execute
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/environment-deployment.yaml"
-EXECUTION = {"properties": {"status": "Succeeded", "endTime": "2026-10-30T14:00:00Z"}}
+EXECUTION = {
+    "name": recovery.JOB + "-execution",
+    "properties": {"status": "Succeeded", "endTime": "2026-10-30T14:00:00Z"},
+}
 JOB = {
     "name": recovery.JOB,
     "properties": {
@@ -44,7 +47,10 @@ class Azure:
         if args[:4] == ["containerapp", "job", "execution", "list"]:
             return []
         if args[:4] == ["containerapp", "job", "execution", "show"]:
-            return {"properties": {**EXECUTION["properties"], "status": self.status}}
+            return {
+                "name": args[args.index("--job-execution-name") + 1],
+                "properties": {**EXECUTION["properties"], "status": self.status},
+            }
         raise AssertionError(args)
 
 
@@ -73,8 +79,53 @@ def test_failed_reset_reimports_existing_realm_then_resumes_and_refreshes(ready)
 def test_temporal_or_later_failure_reuses_completed_realm_import(ready):
     azure = Azure()
     recovery.recover(run_az=azure, execution=EXECUTION)
-    assert len(azure.calls) == 1
+    assert any(call[:4] == ["containerapp", "job", "execution", "show"] for call in azure.calls)
+    assert not any(call[:3] == ["containerapp", "job", "start"] for call in azure.calls)
     ready[1].assert_called_once()
+
+
+def test_local_success_evidence_cannot_override_failed_migration(ready):
+    with pytest.raises(RuntimeError, match="realm import failed"):
+        recovery.recover(run_az=Azure("Failed"), execution=EXECUTION)
+    ready[0].assert_not_called()
+    ready[1].assert_not_called()
+
+
+@pytest.mark.parametrize("name", [None, "job-uat-keycloak-migration-execution", recovery.JOB])
+def test_completed_evidence_must_identify_a_demo_migration_execution(name, ready):
+    evidence = {**EXECUTION, "name": name}
+    with pytest.raises(ValueError, match="unexpected migration execution"):
+        recovery.recover(run_az=Azure(), execution=evidence)
+    ready[0].assert_not_called()
+
+
+def test_missing_import_completion_time_never_resumes_consumers(ready):
+    azure = Azure()
+
+    def missing_time(args):
+        if args[:4] == ["containerapp", "job", "execution", "show"]:
+            return {"name": EXECUTION["name"], "properties": {"status": "Succeeded"}}
+        return azure(args)
+
+    with pytest.raises(ValueError, match="endTime is missing"):
+        recovery.recover(run_az=missing_time, execution=EXECUTION)
+    ready[0].assert_not_called()
+    ready[1].assert_not_called()
+
+
+@pytest.mark.parametrize("reuse_evidence", [False, True])
+def test_provider_execution_identity_mismatch_never_resumes_consumers(reuse_evidence, ready):
+    azure = Azure()
+
+    def wrong_execution(args):
+        if args[:4] == ["containerapp", "job", "execution", "show"]:
+            return {**EXECUTION, "name": recovery.JOB + "-different"}
+        return azure(args)
+
+    with pytest.raises(ValueError, match="unexpected migration execution"):
+        recovery.recover(run_az=wrong_execution, execution=EXECUTION if reuse_evidence else None)
+    ready[0].assert_not_called()
+    ready[1].assert_not_called()
 
 
 @pytest.mark.parametrize("status", ["Failed", "Stopped", "unexpected"])

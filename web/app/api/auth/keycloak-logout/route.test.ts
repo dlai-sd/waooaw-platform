@@ -11,14 +11,17 @@ jest.mock('@/lib/web-session-store', () => ({
   loadSession: jest.fn(),
   revokeSession: jest.fn(),
 }));
+jest.mock('server-only', () => ({}));
+jest.mock('@/lib/auth', () => ({ activeAccessToken: jest.fn() }));
 
 import { recordWebIdentitySecurityEvent } from '@/lib/identity-security-events';
-import { revokeSession } from '@/lib/web-session-store';
+import { loadSession, revokeSession } from '@/lib/web-session-store';
 import { encode, getToken } from 'next-auth/jwt';
 import { NextRequest } from 'next/server';
 import { GET, POST } from './route';
 
 const testSecret = 'test-secret';
+const originalEnvironment = process.env;
 
 function requiredHeader(response: Response, name: string): string {
   const value = response.headers.get(name);
@@ -36,13 +39,83 @@ function browserCookies(response: Response): string {
 describe('Keycloak logout route', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env = { ...originalEnvironment };
     global.fetch = jest.fn().mockResolvedValue(new Response('{}', { status: 200 }));
     process.env.KEYCLOAK_ISSUER = 'https://identity.example/realms/waooaw';
     process.env.KEYCLOAK_CLIENT_ID = 'waooaw-web';
     process.env.NEXTAUTH_URL = 'https://app.example';
     process.env.NEXTAUTH_SECRET = testSecret;
+    process.env.WAOOAW_SERVER_SESSION_MODE = 'enforced';
     jest.mocked(getToken).mockResolvedValue({ idToken: 'server-held-id-token' });
   });
+
+  afterEach(() => {
+    process.env = originalEnvironment;
+  });
+
+  it.each(['disabled', 'shadow', 'enforced'] as const)(
+    'preserves the ID token from a real %s session cookie after POST then GET',
+    async (mode) => {
+      process.env.WAOOAW_SERVER_SESSION_MODE = mode;
+      const actualJwt = jest.requireActual<typeof import('next-auth/jwt')>('next-auth/jwt');
+      jest.mocked(getToken).mockImplementation(actualJwt.getToken);
+      jest.mocked(loadSession).mockResolvedValue({
+        sessionFamilyId: 'owned-family',
+        idToken: 'real-cookie-id-token',
+      });
+      const cookieName = mode === 'enforced' ? '__Host-waooaw-session' : '__Secure-next-auth.session-token';
+      const session =
+        mode === 'enforced'
+          ? 'opaque-session-handle'
+          : await encode({
+              secret: testSecret,
+              token: { idToken: 'real-cookie-id-token' },
+            });
+      const sessionCookies =
+        mode === 'enforced'
+          ? `${cookieName}=${session}`
+          : `${cookieName}.0=${session.slice(0, 100)}; ${cookieName}.1=${session.slice(100)}`;
+      const cookie = `${sessionCookies}; waooaw-theme=dark; unrelated=preserve`;
+      const post = await POST(
+        new NextRequest('https://app.example/api/auth/keycloak-logout', {
+          method: 'POST',
+          headers: {
+            accept: 'application/json',
+            origin: 'https://app.example',
+            cookie,
+          },
+          body: JSON.stringify({ command: 'LOCAL_LOGOUT' }),
+        })
+      );
+      expect(post.status).toBe(200);
+      const body = await post.json();
+      expect(JSON.stringify(body)).not.toContain('real-cookie-id-token');
+      if (mode === 'enforced') {
+        expect(revokeSession).toHaveBeenCalledWith(
+          expect.objectContaining({ sessionFamilyId: 'owned-family' }),
+          'CUSTOMER_LOGOUT'
+        );
+      } else {
+        expect(loadSession).not.toHaveBeenCalled();
+        expect(post.headers.get('set-cookie')).toContain(`${cookieName}.0=;`);
+        expect(post.headers.get('set-cookie')).toContain(`${cookieName}.1=;`);
+        expect(post.headers.get('set-cookie')).not.toContain('waooaw-theme=;');
+        expect(post.headers.get('set-cookie')).not.toContain('unrelated=;');
+      }
+      jest.mocked(getToken).mockClear();
+      const get = await GET(
+        new NextRequest(new URL(body.logoutPath, 'https://app.example'), {
+          headers: { cookie: browserCookies(post) },
+        })
+      );
+      expect(get.status).toBe(303);
+      const target = new URL(requiredHeader(get, 'location'));
+      expect(target.searchParams.get('id_token_hint')).toBe('real-cookie-id-token');
+      expect(target.searchParams.get('post_logout_redirect_uri')).toBe('https://app.example/login');
+      expect(getToken).not.toHaveBeenCalled();
+      expect(get.headers.get('set-cookie')).toContain('waooaw.logout-hint=;');
+    }
+  );
 
   it('clears the local session and redirects through Keycloak logout', async () => {
     const request = new NextRequest('https://app.example/api/auth/keycloak-logout', {
@@ -72,6 +145,32 @@ describe('Keycloak logout route', () => {
     expect(response.headers.get('set-cookie')).not.toContain('unrelated=;');
     expect(response.headers.get('cache-control')).toBe('no-store');
   });
+
+  it.each(['disabled', 'shadow', 'enforced'] as const)(
+    'includes the real %s session ID token in a form logout',
+    async (mode) => {
+      process.env.WAOOAW_SERVER_SESSION_MODE = mode;
+      const actualJwt = jest.requireActual<typeof import('next-auth/jwt')>('next-auth/jwt');
+      jest.mocked(getToken).mockImplementation(actualJwt.getToken);
+      jest.mocked(loadSession).mockResolvedValue({ idToken: 'form-session-id-token' });
+      const session =
+        mode === 'enforced'
+          ? 'opaque-session-handle'
+          : await encode({ secret: testSecret, token: { idToken: 'form-session-id-token' } });
+      const cookieName = mode === 'enforced' ? '__Host-waooaw-session' : '__Secure-next-auth.session-token';
+      const response = await POST(
+        new NextRequest('https://app.example/api/auth/keycloak-logout', {
+          method: 'POST',
+          headers: { origin: 'https://app.example', cookie: `${cookieName}=${session}` },
+        })
+      );
+      expect(response.status).toBe(303);
+      const target = new URL(requiredHeader(response, 'location'));
+      expect(target.searchParams.get('id_token_hint')).toBe('form-session-id-token');
+      expect(target.searchParams.get('post_logout_redirect_uri')).toBe('https://app.example/login');
+      expect(response.headers.get('set-cookie')).toContain(`${cookieName}=;`);
+    }
+  );
 
   it('returns an opaque same-origin continuation to JavaScript callers', async () => {
     const response = await POST(

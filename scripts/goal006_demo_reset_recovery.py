@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from goal006_activation_readiness import _run_az, observe_revision, resume_stopped_app
-from goal006_keycloak_realm_refresh import refresh
+from goal006_keycloak_realm_refresh import import_completed_at, refresh
 
 GROUP = "waooaw-demo-rg"
 JOB = "job-demo-keycloak-migration"
@@ -50,6 +50,27 @@ def recover(
     deadline = clock() + timeout
     job = run_az(["containerapp", "job", "show", "--resource-group", GROUP, "--name", JOB])
     validate_job(job)
+    if execution:
+        name = execution.get("name")
+        if not isinstance(name, str) or not name.startswith(JOB + "-"):
+            raise ValueError("Demo recovery returned an unexpected migration execution")
+        result["execution"] = name
+        execution = run_az(
+            [
+                "containerapp",
+                "job",
+                "execution",
+                "show",
+                "--resource-group",
+                GROUP,
+                "--name",
+                JOB,
+                "--job-execution-name",
+                name,
+            ]
+        )
+        if execution.get("name") != name:
+            raise ValueError("Demo recovery returned an unexpected migration execution")
     if not execution or execution.get("properties", {}).get("status") != "Succeeded":
         executions = run_az(["containerapp", "job", "execution", "list", "--resource-group", GROUP, "--name", JOB])
         active = [item for item in executions if item.get("properties", {}).get("status") in {"Processing", "Running", "Unknown"}]
@@ -76,6 +97,8 @@ def recover(
                 ]
             )
             status = execution.get("properties", {}).get("status")
+            if execution.get("name") != name:
+                raise ValueError("Demo recovery returned an unexpected migration execution")
             if status == "Succeeded":
                 break
             if status not in {"Processing", "Running", "Unknown"}:
@@ -83,6 +106,7 @@ def recover(
             if clock() >= deadline:
                 raise RuntimeError("Demo recovery realm import timed out")
             sleep(10)
+    import_completed_at(execution)
     result["migration_execution"] = execution
     resume_stopped_app(GROUP, "demo", "ca-demo-pgbouncer", run_az)
     while not observe_revision(GROUP, "ca-demo-pgbouncer", run_az)["ready"]:
