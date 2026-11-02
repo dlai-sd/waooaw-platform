@@ -792,6 +792,30 @@ def test_uploader_metadata_failure_never_prompts_or_writes(monkeypatch: pytest.M
     assert len(calls) == 1
 
 
+@pytest.mark.parametrize("source", ["platform-generated", "external-operator", "external-managed", "unknown"])
+def test_secret_source_dispatch_assigns_value_or_denies_before_vault(monkeypatch: pytest.MonkeyPatch, source: str) -> None:
+    calls = []
+
+    def fake_az(command, body=None):
+        calls.append((command, body))
+        if body is None:
+            return wc091_secret_provision.subprocess.CompletedProcess(command, 1, "", "SecretNotFound")
+        return wc091_secret_provision.subprocess.CompletedProcess(command, 0, '{"id":"https://vault/secrets/test/new"}', "")
+
+    monkeypatch.setattr(wc091_secret_provision, "_entry", lambda *_: {"source": source, "vaultSecretName": "test"})
+    monkeypatch.setattr(wc091_secret_provision, "_az", fake_az)
+    monkeypatch.setattr(wc091_secret_provision.secrets, "token_urlsafe", lambda _: "generated-test-value")
+    monkeypatch.setattr(wc091_secret_provision.getpass, "getpass", lambda _: "external-test-value")
+    if source in {"external-managed", "unknown"}:
+        with pytest.raises(wc091_secret_provision.ProvisioningError, match="cannot be imported"):
+            wc091_secret_provision.provision("test", "demo", "FA-120")
+        assert calls == []
+    else:
+        result = wc091_secret_provision.provision("test", "demo", "FA-120")
+        assert result["status"] == "CREATED"
+        assert calls[-1][1] == {"value": "generated-test-value" if source == "platform-generated" else "external-test-value"}
+
+
 @pytest.mark.parametrize("source", ["platform-generated", "external-operator"])
 def test_uploader_validity_requires_explicit_rotation_for_existing_secret(monkeypatch: pytest.MonkeyPatch, source: str) -> None:
     monkeypatch.setattr(wc091_secret_provision, "_entry", lambda *_: {"source": source, "vaultSecretName": "existing"})

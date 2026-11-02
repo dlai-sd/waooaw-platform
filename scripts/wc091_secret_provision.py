@@ -68,9 +68,10 @@ def provision(
     if not authorization_id.startswith("FA-"):
         raise ProvisioningError("a Founder Action identifier is required")
     entry = _entry(logical_id, environment)
+    source = entry["source"]
     if logical_id == "whatsapp-media-authority":
         raise ProvisioningError("reserved media authority has no admitted scanner provisioning path")
-    if entry["source"] not in {"platform-generated", "external-operator"}:
+    if source not in {"platform-generated", "external-operator"}:
         raise ProvisioningError("external-managed secrets cannot be imported")
     now = int(datetime.now(timezone.utc).timestamp())
     attributes: dict[str, bool | int] = {}
@@ -100,15 +101,17 @@ def provision(
     elif "SecretNotFound" not in existing.stderr:
         raise ProvisioningError("secret metadata check failed")
 
-    if entry["source"] == "platform-generated":
+    if source == "platform-generated":
         value = secrets.token_urlsafe(48)
-    elif entry["source"] == "external-operator":
+    elif source == "external-operator":
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("error", getpass.GetPassWarning)
                 value = getpass.getpass("Secret value: ")
         except (getpass.GetPassWarning, EOFError) as exc:
             raise ProvisioningError("a protected no-echo terminal is required") from exc
+    else:
+        raise ProvisioningError("external-managed secrets cannot be imported")
     if not value.strip():
         raise ProvisioningError("secret value is empty")
 

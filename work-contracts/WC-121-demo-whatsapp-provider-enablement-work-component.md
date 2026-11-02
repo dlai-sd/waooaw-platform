@@ -1712,3 +1712,22 @@ requirements and terminal cleanup. No additional reviewer office or agent was in
 locally tested, pending new PR/hosted checks and Founder review/merge. Live vault intake,
 trusted-main deployment rerun, Meta registration and bounded activation remain pending;
 this is not evidence that the failed deployment has been repaired in Azure.
+
+### 10.14 PR #575 Hosted CodeQL Correction (2026-11-02)
+
+The Founder requested repair of failed PR checks. On head `b404981c`, the only failed
+reported check was CodeQL: `scripts/wc091_secret_provision.py:112`, "Local variable
+'value' may be used before it is initialized." Other preflight checks were not the cause.
+
+The uploader now snapshots the catalog source once, validates that source before Azure/input,
+and uses an exhaustive value-producing dispatch with explicit denial of unsupported sources.
+No empty-value default, suppression, secret logging or weakened check was added. Four source
+regressions prove platform-generated/external-operator values reach stdin and unsupported
+external-managed/unknown sources fail before vault calls. Existing input protection,
+expiry/new-version semantics and credential/deployment gates are unchanged.
+
+Executed the affected uploader/deployment/input suites plus WC-120 contract/recovery:
+`PYTHONPATH=/workspace:/workspace/scripts pytest -q tests/pipeline/test_wc091_environment_readiness.py tests/pipeline/test_goal006_demo_deployment_workflow.py tests/pipeline/test_goal006_deployment_inputs.py tests/contract/test_wc120_contract_and_recovery.py`
+passed **176 tests** in Docker. Affected Ruff and authoritative formatting pass. Hosted
+CodeQL must rerun on the new pushed head; local pytest is not claimed as a CodeQL run.
+No live secret, vault permission, network, deployment or provider effect was introduced.
