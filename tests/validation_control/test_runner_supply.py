@@ -29,7 +29,7 @@ COMPOSE_RUNNER_BUILD = re.compile(r"docker compose[^\n]*\sbuild\s[^\n]*test-runn
     (
         ("docker compose --profile test-python build test-runner-python", True),
         ("docker compose build --pull test-runner", True),
-        ("docker compose --profile test-python run --no-build --pull never test-runner-python pytest", False),
+        ("docker compose --profile test-python run --pull never test-runner-python pytest", False),
     ),
 )
 def test_consumer_build_check_distinguishes_build_command_from_no_build_option(command: str, builds_runner: bool) -> None:
@@ -213,7 +213,8 @@ def test_persistent_state_consumer_always_receives_verified_python_runner(change
     assert len(commands) == 3
     for index, command in commands:
         assert index > consumer_index
-        assert "--no-build --pull never" in command
+        assert "--pull never" in command
+        assert "--no-build" not in command
 
 
 def test_reusable_validation_plan_preserves_consumer_contract() -> None:

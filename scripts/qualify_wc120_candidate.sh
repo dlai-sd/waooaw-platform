@@ -81,7 +81,7 @@ run_selector() {
   "$@" 2>&1 | tee "${log}"
   local status="${PIPESTATUS[0]}"
   set -e
-  docker compose --profile test-python run --rm --no-build --pull never test-runner-python \
+  docker compose --profile test-python run --rm --pull never test-runner-python \
     python scripts/validation_control/wc120_evidence.py selector \
     --source-commit "${candidate_commit}" \
     --ce-fit-id "${ce_fit_id}" \
@@ -111,7 +111,7 @@ run_summary() {
   "$@" 2>&1 | tee "${log}"
   local status="${PIPESTATUS[0]}"
   set -e
-  docker compose --profile test-python run --rm --no-build --pull never test-runner-python \
+  docker compose --profile test-python run --rm --pull never test-runner-python \
     python scripts/validation_control/wc120_evidence.py summary \
     --source-commit "${candidate_commit}" \
     --name "${name}" \
@@ -128,15 +128,15 @@ run_summary() {
 run_dotnet_container() {
   local docker_socket="${DOCKER_SOCKET:-/var/run/docker.sock}"
   scripts/validation_control/run_with_docker_socket.sh \
-    docker compose --profile test-dotnet run --rm --no-build --pull never \
+    docker compose --profile test-dotnet run --rm --pull never \
     -v "${docker_socket}:/var/run/docker.sock" \
     test-runner-dotnet "$@"
 }
 
 run_final_docker_qualification() {
   run_dotnet_container sh scripts/validation_control/run_wc120_dotnet_test.sh
-  docker compose --profile test-python run --rm --no-build --pull never test-runner-python pytest -q tests/contract
-  docker compose --profile test run --rm --no-build --pull never test-runner sh -lc \
+  docker compose --profile test-python run --rm --pull never test-runner-python pytest -q tests/contract
+  docker compose --profile test run --rm --pull never test-runner sh -lc \
     "rm -rf /tmp/wc120-web && cp -a web /tmp/wc120-web && rm -rf /tmp/wc120-web/node_modules && ln -s /opt/waooaw-web/node_modules /tmp/wc120-web/node_modules && cd /tmp/wc120-web && pnpm test -- --runInBand && pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts --grep 'CE-FIT-10 presents consent and eligibility states accessibly$' && pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts --grep 'CE-FIT-11 presents voice and media states accessibly$' && pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts --grep 'CE-FIT-13 keeps Stop reachable and truthful in degraded states$'"
 }
 
@@ -168,17 +168,17 @@ done
 
 run_selector "CE-FIT-12" "${python_runner_digest}" \
   "tests/contract/test_wc120_environment_isolation.py::test_ce_fit_12_rejects_cross_environment_identity_credentials_hosts_state_and_imports" python \
-  docker compose --profile test-python run --rm --no-build --pull never test-runner-python pytest -q \
+  docker compose --profile test-python run --rm --pull never test-runner-python pytest -q \
   --junitxml test-results/wc120/CE-FIT-12/junit.xml \
   tests/contract/test_wc120_environment_isolation.py::test_ce_fit_12_rejects_cross_environment_identity_credentials_hosts_state_and_imports
 run_selector "CE-FIT-15" "${python_runner_digest}" \
   "tests/contract/test_wc120_second_client.py::test_ce_fit_15_second_generated_client_preserves_public_semantics_and_bp_authority" python \
-  docker compose --profile test-python run --rm --no-build --pull never test-runner-python pytest -q \
+  docker compose --profile test-python run --rm --pull never test-runner-python pytest -q \
   --junitxml test-results/wc120/CE-FIT-15/junit.xml \
   tests/contract/test_wc120_second_client.py::test_ce_fit_15_second_generated_client_preserves_public_semantics_and_bp_authority
 run_selector "CE-FIT-16" "${python_runner_digest}" \
   "tests/contract/test_wc120_demo_teardown.py::test_ce_fit_16_demo_teardown_disables_callback_and_preserves_uat_production_or_denies_open_obligations" python \
-  docker compose --profile test-python run --rm --no-build --pull never test-runner-python pytest -q \
+  docker compose --profile test-python run --rm --pull never test-runner-python pytest -q \
   --junitxml test-results/wc120/CE-FIT-16/junit.xml \
   tests/contract/test_wc120_demo_teardown.py::test_ce_fit_16_demo_teardown_disables_callback_and_preserves_uat_production_or_denies_open_obligations
 
@@ -190,7 +190,7 @@ do
   IFS='|' read -r ce_fit_id node <<<"${entry}"
   run_selector "${ce_fit_id}" "${browser_runner_digest}" \
     "tests/e2e/wc120-product-state-accessibility.spec.ts::${node}" browser \
-    docker compose --profile test run --rm --no-build --pull never \
+    docker compose --profile test run --rm --pull never \
     test-runner sh -lc \
     "rm -rf /tmp/wc120-web && cp -a web /tmp/wc120-web && rm -rf /tmp/wc120-web/node_modules && ln -s /opt/waooaw-web/node_modules /tmp/wc120-web/node_modules && cd /tmp/wc120-web && PLAYWRIGHT_HTML_OPEN=never PLAYWRIGHT_JUNIT_OUTPUT_FILE=/workspace/test-results/wc120/${ce_fit_id}/browser/junit.xml PLAYWRIGHT_HTML_OUTPUT_DIR=/workspace/test-results/wc120/${ce_fit_id}/browser/playwright-report pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts --grep '${node}$' --reporter=html,junit"
 done
@@ -200,7 +200,7 @@ run_summary "targeted-tests" "${result_root}/targeted-test-results.json" \
   sh scripts/validation_control/run_wc120_dotnet_test.sh \
   --filter "FullyQualifiedName~Waooaw.BusinessPlatform.Tests.ConversationWhatsApp"
 run_summary "recovery-tests" "${result_root}/recovery-test-results.json" \
-  docker compose --profile test-python run --rm --no-build --pull never test-runner-python pytest -q \
+  docker compose --profile test-python run --rm --pull never test-runner-python pytest -q \
   tests/contract/test_wc120_contract_and_recovery.py \
   tests/contract/test_wc120_environment_isolation.py \
   tests/contract/test_wc120_second_client.py \
@@ -220,7 +220,7 @@ cat >"${result_root}/image-digests.json" <<EOF
   }
 }
 EOF
-docker compose --profile test-python run --rm --no-build --pull never test-runner-python \
+docker compose --profile test-python run --rm --pull never test-runner-python \
   python scripts/validation_control/wc120_evidence.py candidate \
   --source-commit "${candidate_commit}" \
   --image-digests /workspace/test-results/wc120/image-digests.json \

@@ -158,7 +158,8 @@ def test_qualification_script_preserves_exact_runner_supply_and_browser_reports(
     assert 'export WAOOAW_RUNNER_DOTNET_IMAGE="${dotnet_runner_digest}"' in script
     assert 'export WAOOAW_RUNNER_PYTHON_IMAGE="${python_runner_digest}"' in script
     assert 'export WAOOAW_RUNNER_FULL_IMAGE="${browser_runner_digest}"' in script
-    assert "--no-build --pull never" in script
+    assert "--pull never" in script
+    assert "--no-build" not in script
     assert "PLAYWRIGHT_JUNIT_OUTPUT_FILE=" in script
     assert "supporting=(--supporting)" in script
     assert '"state": "OFF_SKIPPED"' not in (root / "scripts/validation_control/wc120_evidence.py").read_text()

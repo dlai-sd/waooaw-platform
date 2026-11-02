@@ -1462,7 +1462,8 @@ qualification waiver without reading an authority record. Those validation defec
 - Exact source commit, actual report counters, runner image identity and artifact hashes are
   revalidated before the candidate manifest. Required missing inputs and stale/failed summaries
   fail closed. Migration 61 is included in the schema binding.
-- Runner image IDs are frozen before execution; consumers use `--no-build --pull never`.
+- Runner image IDs are frozen before execution; consumers use `--pull never` against those
+  already inspected local images. Section 10.11 records the actual Compose CLI correction.
   Separate release qualification is explicitly pending, with no invented Founder waiver.
 - The bounded XML report parser rejects DTDs before entity declarations; UTF-8/UTF-16 negative
   tests prove rejection. The local Ruff S314 annotation documents this tested custom target
@@ -1474,3 +1475,26 @@ passes **2,689 tests**, followed by scripts Ruff and affected-file formatting. N
 evidence regressions are wired into the actual release tests lane and protected by its selector
 regression. This remains diagnostic evidence until the clean commit is qualified. No live provider
 configuration, credential use, cloud mutation, deployment or activation is claimed.
+
+### 10.11 Signed Milestone And Actual Compose Consumer Verification (2026-11-02)
+
+Signed implementation milestone `43ccfed9` passed all seven staged prechecks and C-059.
+The first hook run correctly rejected two files formatted differently by the authoritative
+Python runner; that runner formatted only those files and 125 related regressions passed.
+The approved local environment supplied GitHub authentication and signing without credential
+printing, copying or persistence. No login/device flow, reviewer identity or unsigned-commit
+exception was used.
+
+The first clean-candidate qualification attempt exposed an introduced command defect:
+Compose `run` supports `--pull never` but not `--no-build`. The qualifier and three persistent-state
+CI commands now omit the unsupported flag. No consumer build is introduced: the supply action
+verifies an existing immutable image, the qualifier freezes inspected local image IDs, pulls
+are forbidden, and no `--build` option or consumer `build` subcommand is permitted. The earlier
+Section 10.8 source-only assertion of `--no-build` is superseded by this runtime observation.
+
+Actual proof: the pinned .NET image executed `dotnet --version` through the corrected Compose
+command; both persistent-state negative tests executed through the corrected real consumer
+syntax and passed. Runner-supply, qualification-evidence and catalog-selector regressions pass
+119 tests; affected Ruff/format, pinned actionlint and Bash syntax checks pass. Clean-candidate
+qualification is retried after this correction. No unsuccessful selector is represented as
+passing, and no cloud/provider action or live acceptance is claimed.
