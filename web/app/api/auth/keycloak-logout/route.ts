@@ -71,6 +71,16 @@ async function revokeOwnedSession(request: NextRequest, command: LogoutCommand) 
   }
 }
 
+function expireLogoutCookie(response: NextResponse, request: NextRequest, name: string, path = '/') {
+  const applicationOrigin = new URL(process.env.NEXTAUTH_URL ?? request.nextUrl.origin);
+  response.cookies.set(name, '', {
+    expires: new Date(0),
+    path,
+    // Browsers reject even expiry headers for prefixed cookies without Secure.
+    secure: applicationOrigin.protocol === 'https:' || /^(?:__Secure-|__Host-)/.test(name),
+  });
+}
+
 function clearSessionCookies(response: NextResponse, request: NextRequest) {
   for (const cookie of request.cookies.getAll()) {
     if (!sessionCookie.test(cookie.name)) continue;
@@ -81,12 +91,9 @@ function clearSessionCookies(response: NextResponse, request: NextRequest) {
       cookie.name === logoutProviderCookie ||
       cookie.name === logoutHintCookie
     ) {
-      response.cookies.set(cookie.name, '', {
-        expires: new Date(0),
-        path: '/api/auth/keycloak-logout',
-      });
+      expireLogoutCookie(response, request, cookie.name, '/api/auth/keycloak-logout');
     } else {
-      response.cookies.delete(cookie.name);
+      expireLogoutCookie(response, request, cookie.name);
     }
   }
   response.headers.set('Cache-Control', 'no-store');
@@ -174,7 +181,7 @@ async function logoutPost(request: NextRequest) {
   if (command === 'LOCAL_LOGOUT' && serverSessionMode() !== 'enforced') {
     for (const cookie of request.cookies.getAll()) {
       if (/^(?:__Secure-|__Host-)?next-auth\.session-token(?:\.\d+)?$/.test(cookie.name))
-        response.cookies.delete(cookie.name);
+        expireLogoutCookie(response, request, cookie.name);
     }
   }
   const continuationCookies = [

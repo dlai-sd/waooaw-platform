@@ -18,6 +18,8 @@ import { recordWebIdentitySecurityEvent } from '@/lib/identity-security-events';
 import { loadSession, revokeSession } from '@/lib/web-session-store';
 import { encode, getToken } from 'next-auth/jwt';
 import { NextRequest } from 'next/server';
+import { execFileSync } from 'node:child_process';
+import { resolve } from 'node:path';
 import { GET, POST } from './route';
 
 const testSecret = 'test-secret';
@@ -36,6 +38,29 @@ function browserCookies(response: Response): string {
     .join('; ');
 }
 
+function browserStep(
+  response: Response,
+  url: string,
+  method: 'POST' | 'GET',
+  absent: string[],
+  present: string[] = [],
+  anonymous = false
+) {
+  return {
+    url,
+    method,
+    status: response.status,
+    headers: [
+      ...[...response.headers].filter(([name]) => name !== 'set-cookie').map(([name, value]) => ({ name, value })),
+      ...response.headers.getSetCookie().map((value) => ({ name: 'set-cookie', value })),
+    ],
+    body: '',
+    absent,
+    present,
+    anonymous,
+  };
+}
+
 describe('Keycloak logout route', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -52,6 +77,146 @@ describe('Keycloak logout route', () => {
   afterEach(() => {
     process.env = originalEnvironment;
   });
+
+  it.each(['chromium', 'firefox', 'webkit'])(
+    'actually removes authentication cookies in %s without losing the ID-token continuation',
+    async (browserName) => {
+      const actualJwt = jest.requireActual<typeof import('next-auth/jwt')>('next-auth/jwt');
+      jest.mocked(getToken).mockImplementation(actualJwt.getToken);
+      const scenarios = [];
+      const endpoint = 'https://app.example/api/auth/keycloak-logout';
+      for (const mode of ['disabled', 'shadow', 'enforced'] as const) {
+        process.env.WAOOAW_SERVER_SESSION_MODE = mode;
+        jest.mocked(loadSession).mockResolvedValue({
+          sessionFamilyId: 'owned-family',
+          idToken: 'browser-id-token',
+        });
+        const jwt = await encode({
+          secret: testSecret,
+          token: { accessToken: 'browser-access-token', idToken: 'browser-id-token' },
+        });
+        const sessionCookies =
+          mode === 'enforced'
+            ? [{ name: '__Host-waooaw-session', value: 'opaque-handle' }]
+            : [
+                { name: '__Secure-next-auth.session-token.0', value: jwt.slice(0, 100) },
+                { name: '__Secure-next-auth.session-token.1', value: jwt.slice(100) },
+              ];
+        const names = sessionCookies.map(({ name }) => name);
+        const cookies = [...sessionCookies, { name: 'unrelated', value: 'preserve' }].map((cookie) => ({
+          ...cookie,
+          domain: 'app.example',
+          path: '/',
+          secure: true,
+          httpOnly: true,
+          sameSite: 'Lax',
+        }));
+        const cookieHeader = cookies.map(({ name, value }) => `${name}=${value}`).join('; ');
+        for (const command of ['LOCAL_LOGOUT', 'ACCOUNT_SWITCH', 'REGISTRATION', 'FORM'] as const) {
+          const post = await POST(
+            new NextRequest(endpoint, {
+              method: 'POST',
+              headers: {
+                origin: 'https://app.example',
+                cookie: cookieHeader,
+                ...(command !== 'FORM' ? { accept: 'application/json' } : {}),
+              },
+              ...(command !== 'FORM' ? { body: JSON.stringify({ command, provider: 'GOOGLE' }) } : {}),
+            })
+          );
+          const earlyClear = command === 'LOCAL_LOGOUT' && mode !== 'enforced';
+          const steps = [
+            browserStep(
+              post,
+              endpoint,
+              'POST',
+              command === 'FORM' || earlyClear ? names : [],
+              command === 'FORM' || earlyClear ? ['unrelated'] : [...names, 'unrelated'],
+              command === 'FORM' || earlyClear
+            ),
+          ];
+          if (command === 'FORM') {
+            expect(new URL(requiredHeader(post, 'location')).searchParams.get('id_token_hint')).toBe(
+              'browser-id-token'
+            );
+          } else {
+            const { logoutPath } = await post.json();
+            const nextCookieHeader = [
+              ...(earlyClear ? [] : sessionCookies.map(({ name, value }) => `${name}=${value}`)),
+              browserCookies(post),
+            ].join('; ');
+            const getUrl = new URL(logoutPath, endpoint).toString();
+            const get = await GET(new NextRequest(getUrl, { headers: { cookie: nextCookieHeader } }));
+            expect(get.status).toBe(303);
+            expect(new URL(requiredHeader(get, 'location')).searchParams.get('id_token_hint')).toBe('browser-id-token');
+            const continuationNames = post.headers
+              .getSetCookie()
+              .map((cookie) => cookie.split('=')[0])
+              .filter((name) => name.startsWith('waooaw.logout-'));
+            steps.push(browserStep(get, getUrl, 'GET', [...names, ...continuationNames], ['unrelated'], true));
+            const repeated = await GET(new NextRequest(getUrl));
+            expect(repeated.status).toBe(403);
+            steps.push(browserStep(repeated, getUrl, 'GET', [...names, ...continuationNames], ['unrelated'], true));
+          }
+          scenarios.push({ name: `${mode}-${command}`, cookies, steps, authenticatedJwt: mode !== 'enforced' });
+        }
+      }
+      process.env.WAOOAW_SERVER_SESSION_MODE = 'enforced';
+      jest.mocked(getToken).mockResolvedValue({ sessionFamilyId: 'owned-family' });
+      jest.mocked(revokeSession).mockRejectedValueOnce(new Error('synthetic revocation failure'));
+      const failed = await POST(
+        new NextRequest(endpoint, {
+          method: 'POST',
+          headers: {
+            origin: 'https://app.example',
+            accept: 'application/json',
+            cookie: '__Host-waooaw-session=opaque',
+          },
+        })
+      );
+      expect(failed.status).toBe(503);
+      scenarios.push({
+        name: 'revocation-failure',
+        cookies: [{ name: '__Host-waooaw-session', value: 'opaque', domain: 'app.example', path: '/', secure: true }],
+        steps: [browserStep(failed, endpoint, 'POST', ['__Host-waooaw-session'], [], true)],
+      });
+      const result = execFileSync(process.execPath, [resolve('tests/e2e/fixtures/logout-cookie-browser.mjs')], {
+        input: JSON.stringify({ browserName, scenarios, secret: testSecret }),
+        encoding: 'utf8',
+        timeout: 90_000,
+      });
+      expect(JSON.parse(result)).toEqual({ browserName, passed: scenarios.length });
+    },
+    120_000
+  );
+
+  it.each(['https://app.example', 'http://localhost:3000'])(
+    'matches cookie prefix and path constraints when expiring sessions from %s',
+    async (origin) => {
+      process.env.NEXTAUTH_URL = origin;
+      const names = [
+        '__Secure-next-auth.session-token.0',
+        '__Host-waooaw-session',
+        '__Host-next-auth.csrf-token',
+        'next-auth.session-token',
+      ];
+      const response = await POST(
+        new NextRequest(`${origin}/api/auth/keycloak-logout`, {
+          method: 'POST',
+          headers: { origin, cookie: names.map((name) => `${name}=synthetic-cookie`).join('; ') },
+        })
+      );
+      expect(response.status).toBe(303);
+      for (const name of names) {
+        const expiry = response.headers.getSetCookie().find((cookie) => cookie.startsWith(`${name}=`));
+        expect(expiry).toContain('Expires=Thu, 01 Jan 1970 00:00:00 GMT');
+        expect(expiry).toContain('Path=/;');
+        expect(expiry).not.toContain('Domain=');
+        if (name.startsWith('__') || origin.startsWith('https:')) expect(expiry).toMatch(/; Secure(?:;|$)/);
+        else expect(expiry).not.toMatch(/; Secure(?:;|$)/);
+      }
+    }
+  );
 
   it.each(['disabled', 'shadow', 'enforced'] as const)(
     'preserves the ID token from a real %s session cookie after POST then GET',

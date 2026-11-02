@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-132
 contract_path: work-contracts/WC-132-demo-signout-and-runtime-noise.md
-contract_digest: 66736e4079dd7ddfffe0af2824a355621737dd16d5d680fcd74714ec999b1a7a
+contract_digest: 380b0f0998c768b29604469fe46f77cdefbe566cf14f2dd2ae62c87eddabcc26
 implementation_scope: true
 result: QUALIFIED
 
@@ -17,12 +17,15 @@ requirements:
   - <<: *defaults
     requirement_id: WC132-R001
     source: WC-132 Requirements And Definition Of Done, R1
-    observable_outcome: Sign-out preserves id_token_hint in disabled, shadow and enforced session modes and clears normal-logout legacy cookies on POST.
+    observable_outcome: Sign-out preserves id_token_hint and browsers accept Secure-prefixed session-cookie expiry in disabled, shadow and enforced modes, including early POST and final/failure cleanup.
+    dependencies: Founder authorized surgical logout correction and PR on 2026-11-02; deployed acceptance remains separate.
+    residual_risk: Chromium/Firefox/WebKit synthetic HTTPS journeys pass; real-account post-fix Demo acceptance remains pending.
     test_path_or_plan: WC-132 Requirements And Definition Of Done, executable evidence column
     completion_rule: Executable evidence listed for WC132-R001 passes.
     evidence_refs:
       - web/app/api/auth/keycloak-logout/route.ts
       - web/app/api/auth/keycloak-logout/route.test.ts
+      - web/tests/e2e/fixtures/logout-cookie-browser.mjs
       - web/__tests__/app/auth/login/page.test.tsx
 
   - <<: *defaults

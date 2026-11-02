@@ -73,6 +73,62 @@ requirement is independently revertible.
 
 ## Validation And Delivery Evidence
 
+### 2026-11-02 browser-accepted logout correction
+
+The Founder reported that real Demo sign-out still failed after PR #572 and authorized
+review, a surgical fix, thorough testing and a new PR in the continuous implementing session.
+Scope is R001 and R009 only; earlier Release Qualification OFF authority remains in force.
+Branch `fix/132/logout-secure-cookie-deletion` starts from main `0f74c0bf`.
+No deployment, provider mutation, realm change or merge is authorized by this correction.
+
+Read-only Azure investigation confirmed all seven live application digests match that
+release, including Web `sha256:0cf88b4931b1e51a17a057fb960a1bfc591cc7c65fa1aff8f4e607947daaa34f`,
+revision `ca-demo-web--0000097`, with `WAOOAW_SERVER_SESSION_MODE=disabled`.
+Both early POST deletion and final/failure cleanup used `cookies.delete(name)`, which emits
+no Secure attribute. Browsers reject those expiry headers for `__Secure-`/`__Host-` cookies.
+The stateless JWT therefore survives; the unchanged LoginView can recognize it and return
+the user to the authenticated application instead of leaving them signed out.
+
+The review identified one product defect shared by both deletion sites and one evidence
+defect: the old tests asserted header text and manually reconstructed cookies, rather than
+checking browser acceptance. A shared expiry helper now retains host-only root scope and
+the required Secure attribute, while preserving the dedicated continuation-cookie path.
+Existing revocation ordering, nonce/expiry validation, ID-token encryption, JSON privacy,
+origin checks, account-switch/registration commands and redirect targets are unchanged.
+No login/registration implementation, deployment workflow, dependency or session-mode change.
+
+Executable evidence:
+
+- The final HTTPS browser harness with the original deployed handler fails in Chromium,
+  Firefox and WebKit because the secure JWT chunk survives POST.
+- With the corrected handler, the catalog-owned Docker `test-web` gate passes **719 tests,
+  3 existing skips**, across **109 passing suites**; TypeScript and ESLint pass.
+- The already-collected logout route suite includes **32 tests**. Three browser tests run
+  **39 synthetic journeys** (13 per engine) against actual handler response headers over
+  disposable loopback HTTPS: disabled/shadow/enforced sessions, chunked JWT and opaque
+  cookies, JSON POST/GET, early clearing without following GET, form logout, account switch,
+  registration reset, repeated GET denial and failed revocation cleanup.
+  Browsers must accept the initial cookies, remove all session/continuation cookies at the
+  correct phase, preserve unrelated cookies, and fail to decode a surviving authentication
+  JWT after cleanup. Initial legacy JWTs must authenticate before each journey.
+- Two additional route tests cover HTTPS and HTTP development origins, root paths, no Domain
+  attribute, Secure prefixes and unprefixed cookie expiry.
+- Catalog-owned Docker `quality:typescript` passes, with pre-existing non-blocking warnings.
+- Production `pnpm build` in the same pinned Docker runner passes. The first isolated
+  `--network none` build failed on existing Google Font downloads; retry with network enabled
+  passes without a source change. Existing build warnings remain.
+
+The Keycloak `LOGOUT_ERROR/session_expired` event at 06:17:21 UTC is not treated as proof
+of an end-session rejection: Keycloak 25.0.6 can record that event and still finish redirecting.
+No real-provider completion or post-fix Demo acceptance is claimed by synthetic browser tests.
+The earlier R008 claim is also not a complete deployed acceptance result: authorization and
+verification jobs in run 41178170289 still emitted Node 20 warnings; those unrelated workflows
+are explicitly outside this logout-only correction.
+
+Rollback is a revert of this correction. The new PR must bind author review and mandatory
+prechecks to its exact final head. Real-account Demo logout remains a separate deployment
+acceptance step, not a result inferred from green CI.
+
 ### 2026-10-31 story-completion follow-up
 
 The Founder authorized implementation of all WC-132 stories, impact analysis before editing,
