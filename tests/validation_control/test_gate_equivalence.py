@@ -4,6 +4,7 @@ from copy import deepcopy
 from pathlib import Path
 
 import yaml
+import pytest
 
 from validation_control.gate_equivalence import validate_gate_equivalence, workflow_catalog_gates
 
@@ -18,6 +19,32 @@ def load_baseline() -> dict[str, object]:
 
 def test_candidate_preserves_authoritative_gate_baseline() -> None:
     assert validate_gate_equivalence(ROOT, load_baseline()) == []
+
+
+@pytest.mark.parametrize(
+    ("flag", "replacement", "violation"),
+    (
+        ("mode", "shadow", "CATALOG_FLAG_CHANGED:mode"),
+        ("release_full_inventory", False, "CATALOG_FLAG_CHANGED:release_full_inventory"),
+        ("main_full_inventory", False, "CATALOG_FLAG_CHANGED:main_full_inventory"),
+        ("enforced_activation", {"founder_approved": False}, "CATALOG_FLAG_CHANGED:enforced_activation.founder_approved"),
+    ),
+)
+def test_changed_catalog_authority_or_full_inventory_is_denied(
+    tmp_path: Path, flag: str, replacement: object, violation: str
+) -> None:
+    baseline = load_baseline()
+    required_files = set(baseline["workflows"]) | set(baseline["thresholds"]) | {"validation/engineering-validation.yaml"}
+    for source in required_files:
+        destination = tmp_path / source
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes((ROOT / source).read_bytes())
+    catalog_path = tmp_path / "validation/engineering-validation.yaml"
+    catalog = yaml.safe_load(catalog_path.read_text(encoding="utf-8"))
+    catalog[flag] = replacement
+    catalog_path.write_text(yaml.safe_dump(catalog), encoding="utf-8")
+
+    assert violation in validate_gate_equivalence(tmp_path, baseline)
 
 
 def test_missing_catalog_gate_fails_equivalence(tmp_path: Path) -> None:

@@ -80,9 +80,11 @@ def test_wc120_external_schema_references_resolve_to_accepted_employment_contrac
 def test_wc120_requirement_ledger_is_bound_to_current_solution_digest() -> None:
     ledger = yaml.safe_load(REQUIREMENTS_PATH.read_text(encoding="utf-8"))
     assert ledger["solution_digest"] == _sha256(SOLUTION_PATH)
+    for source in ("contract", "solution", "api", "crosswalk", "demo_component"):
+        assert ledger[f"{source}_digest"] == _sha256(ROOT / ledger[f"{source}_path"])
     requirements = ledger["requirements"]
-    assert len(requirements) == 44
-    assert [entry["requirement_id"] for entry in requirements] == [f"WC120-R{number:03d}" for number in range(1, 45)]
+    assert len(requirements) == 45
+    assert [entry["requirement_id"] for entry in requirements] == [f"WC120-R{number:03d}" for number in range(1, 46)]
 
 
 def test_wc120_environment_manifests_validate_and_remain_default_off() -> None:

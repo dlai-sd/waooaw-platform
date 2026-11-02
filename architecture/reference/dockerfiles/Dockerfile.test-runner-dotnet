@@ -3,6 +3,14 @@
 
 FROM mcr.microsoft.com/dotnet/sdk:9.0-noble@sha256:d07d5770b2b74717bfe882250e981a4e7a756e0240fc4aefcc0ce93c1e8a9c36
 
+ADD --checksum=sha256:524465a96274831e004326f6e2f2a5f3ef9aaed72c2069cf16c1d64b8b1ec3ca https://temporal.download/assets/temporalio/sdk-java/releases/download/v1.40.0/temporal-test-server_1.40.0_linux_amd64.tar.gz /tmp/temporal-test-server.tar.gz
+RUN tar -xzf /tmp/temporal-test-server.tar.gz -C /opt temporal-test-server_1.40.0_linux_amd64/temporal-test-server \
+    && mv /opt/temporal-test-server_1.40.0_linux_amd64/temporal-test-server /opt/temporal-test-server \
+    && echo "19defb9f7318c7cf249518b3642a735efb79876c2b6918afe312336476b796a5  /opt/temporal-test-server" | sha256sum --check --strict \
+    && chmod 555 /opt/temporal-test-server \
+    && rm /tmp/temporal-test-server.tar.gz \
+    && rmdir /opt/temporal-test-server_1.40.0_linux_amd64
+
 RUN --mount=type=cache,id=wc104-dotnet-apt-lists,target=/var/lib/apt/lists,sharing=locked \
     --mount=type=cache,id=wc104-dotnet-apt-packages,target=/var/cache/apt,sharing=locked \
     apt-get update \

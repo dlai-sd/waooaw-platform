@@ -108,6 +108,16 @@ public sealed class WhatsAppOutboxWorker(
         {
             throw;
         }
+        catch (WhatsAppCapabilityUnavailableException)
+        {
+            var observedAt = timeProvider.GetUtcNow();
+            observation = new WhatsAppDispatchObservation(
+                lease.ReconciliationRequired ? "UNKNOWN" : "NOT_SENT",
+                Sha256($"denied-provider-reference:{lease.OutboxId:D}"),
+                Sha256($"denied-dispatch:{lease.OutboxId:D}:{lease.AttemptNumber}:{observedAt:O}"),
+                observedAt
+            );
+        }
         catch
         {
             var observedAt = timeProvider.GetUtcNow();

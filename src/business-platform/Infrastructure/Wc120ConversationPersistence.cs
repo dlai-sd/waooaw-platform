@@ -37,6 +37,17 @@ public sealed class ConversationOutboxRecord
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class WhatsAppTrafficReservation
+{
+    public Guid TenantId { get; init; }
+    public string ActivationDigest { get; init; } = string.Empty;
+    public string AuthorityDigest { get; init; } = string.Empty;
+    public Guid OutboxId { get; init; }
+    public int AttemptNumber { get; init; }
+    public decimal ReservedCostInr { get; init; }
+    public DateTimeOffset ReservedAt { get; init; }
+}
+
 public sealed class ProviderEventClaim
 {
     public Guid ClaimId { get; init; } = Guid.NewGuid();
@@ -217,6 +228,7 @@ public static class Wc120ConversationModelConfiguration
         ConfigureMigration(modelBuilder);
         ConfigureEmergencyStopLatch(modelBuilder);
         ConfigureOperationalSignal(modelBuilder);
+        ConfigureTrafficReservation(modelBuilder);
         MapColumns<ConversationOutboxRecord>(modelBuilder);
         MapColumns<ProviderEventClaim>(modelBuilder);
         MapColumns<ConversationContextObservation>(modelBuilder);
@@ -227,6 +239,28 @@ public static class Wc120ConversationModelConfiguration
         MapColumns<ConversationMigrationWatermark>(modelBuilder);
         MapColumns<RelationshipEmergencyStopLatch>(modelBuilder);
         MapColumns<ConversationOperationalSignal>(modelBuilder);
+        MapColumns<WhatsAppTrafficReservation>(modelBuilder);
+    }
+
+    private static void ConfigureTrafficReservation(ModelBuilder modelBuilder)
+    {
+        var entity = modelBuilder.Entity<WhatsAppTrafficReservation>();
+        entity.ToTable("whatsapp_traffic_reservations", "business");
+        entity.HasKey(value => new
+        {
+            value.TenantId,
+            value.ActivationDigest,
+            value.OutboxId,
+        });
+        entity.Property(value => value.ActivationDigest).HasMaxLength(64);
+        entity.Property(value => value.AuthorityDigest).HasMaxLength(64);
+        entity.Property(value => value.ReservedCostInr).HasPrecision(18, 6);
+        entity.HasIndex(value => new
+        {
+            value.TenantId,
+            value.ActivationDigest,
+            value.ReservedAt,
+        });
     }
 
     private static void ConfigureOutbox(ModelBuilder modelBuilder)

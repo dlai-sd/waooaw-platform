@@ -494,6 +494,45 @@ def test_readiness_outcomes_are_independent_and_missing_evidence_is_not_proven()
     }
 
 
+def test_optional_whatsapp_gates_do_not_make_baseline_ready_or_require_disabled_media() -> None:
+    rendered = wc091_environment.validate_and_render("demo")
+    optional = [binding for binding in rendered["secretBindings"] if "readinessGate" in binding]
+    assert {binding["id"] for binding in optional} == {
+        "whatsapp-provider-binding", "whatsapp-verify-token", "whatsapp-app-secret",
+        "whatsapp-outbound-authority", "whatsapp-media-authority",
+    }
+    evidence = {
+        "renderDigest": rendered["renderDigest"],
+        "secretMetadata": [
+            {"id": binding["id"], "enabled": True, "expired": False}
+            for binding in rendered["secretBindings"]
+            if "readinessGate" not in binding
+        ],
+    }
+    outcomes = wc091_readiness.evaluate(rendered, evidence)
+    assert outcomes["CONFIGURATION_READY"] == "PASS"
+    assert outcomes["PROVIDER_LOGIN_ACCEPTED"] == "NOT_PROVEN"
+    evidence["secretMetadata"] = []
+    assert wc091_readiness.evaluate(rendered, evidence)["CONFIGURATION_READY"] == "NOT_PROVEN"
+
+
+def test_unknown_secret_readiness_gate_fails_closed() -> None:
+    rendered = wc091_environment.validate_and_render("demo")
+    rendered["secretBindings"][0]["readinessGate"] = "unrecognized"
+    evidence = {
+        "renderDigest": rendered["renderDigest"],
+        "secretMetadata": [
+            {"id": binding["id"], "enabled": True, "expired": False}
+            for binding in rendered["secretBindings"]
+        ],
+    }
+    assert wc091_readiness.evaluate(rendered, evidence)["CONFIGURATION_READY"] == "NOT_PROVEN"
+
+    baseline = next(binding for binding in rendered["secretBindings"] if not binding["id"].startswith("whatsapp-"))
+    baseline["readinessGate"] = "demo-whatsapp-provider"
+    assert wc091_readiness.evaluate(rendered, evidence)["CONFIGURATION_READY"] == "NOT_PROVEN"
+
+
 def test_secret_provisioning_preserves_existing_version_without_reading_value(monkeypatch: pytest.MonkeyPatch) -> None:
     calls = []
 

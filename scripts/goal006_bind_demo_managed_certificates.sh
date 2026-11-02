@@ -4,6 +4,7 @@ set -euo pipefail
 target_environment=${1:?Usage: goal006_bind_demo_managed_certificates.sh ENVIRONMENT RESOURCE_GROUP CONTAINER_APP_ENVIRONMENT}
 resource_group=${2:?Usage: goal006_bind_demo_managed_certificates.sh ENVIRONMENT RESOURCE_GROUP CONTAINER_APP_ENVIRONMENT}
 container_app_environment=${3:?Usage: goal006_bind_demo_managed_certificates.sh ENVIRONMENT RESOURCE_GROUP CONTAINER_APP_ENVIRONMENT}
+whatsapp_callback_host=${4:-}
 
 if [[ "$target_environment" != "demo" ]]; then
   echo "Azure-managed Demo certificate binding is not applicable to $target_environment"
@@ -20,6 +21,13 @@ domains=(
   "ca-demo-business-platform|api.demo.waooaw.com"
   "ca-demo-identity-edge|auth.demo.waooaw.com"
 )
+if [[ -n "$whatsapp_callback_host" ]]; then
+  if [[ ! "$whatsapp_callback_host" =~ ^whatsapp-demo\.([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$ ]]; then
+    echo "WhatsApp callback hostname is not an admitted dedicated Demo hostname" >&2
+    exit 1
+  fi
+  domains+=("ca-demo-business-platform|$whatsapp_callback_host")
+fi
 
 binding_type() {
   local app_name=$1

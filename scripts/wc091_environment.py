@@ -122,6 +122,7 @@ def validate_and_render(environment: str) -> dict[str, Any]:
                 "consumers": entry["consumers"],
                 "principal": entry["principal"],
                 "allowedOperations": entry["allowedOperations"],
+                **({"readinessGate": entry["readinessGate"]} if "readinessGate" in entry else {}),
             }
             for entry in applicable
         ],

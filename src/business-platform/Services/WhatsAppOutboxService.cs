@@ -52,7 +52,10 @@ public sealed record WhatsAppProviderStatusEvent(
     string State,
     DateTimeOffset ObservedAt,
     string PayloadDigest
-);
+)
+{
+    public Guid? OutboxId { get; init; }
+}
 
 public sealed class WhatsAppOutboxService(
     IDbContextFactory<ConversationStoreDbContext> dbFactory,
@@ -195,7 +198,7 @@ public sealed class WhatsAppOutboxService(
                     earlier.Environment == value.Environment
                     && earlier.TenantId == value.TenantId
                     && earlier.RelationshipId == value.RelationshipId
-                    && earlier.AggregateId == value.AggregateId
+                    && earlier.ConversationId == value.ConversationId
                     && earlier.Sequence < value.Sequence
                     && earlier.State != "DELIVERED"
                     && earlier.State != "BLOCKED"
@@ -314,11 +317,17 @@ public sealed class WhatsAppOutboxService(
         record.State = observation.State switch
         {
             "DELIVERED" => "DELIVERED",
+            "PROVIDER_ACCEPTED" => "UNRESOLVED",
             "UNKNOWN" => "UNRESOLVED",
-            "REJECTED" => "BLOCKED",
+            "REJECTED" or "NOT_SENT" => "BLOCKED",
             _ => throw new ArgumentException("Dispatch state is unsupported.", nameof(observation)),
         };
-        record.BlockedReason = observation.State == "REJECTED" ? "PROVIDER_REJECTED" : null;
+        record.BlockedReason = observation.State switch
+        {
+            "REJECTED" => "PROVIDER_REJECTED",
+            "NOT_SENT" => "DISPATCH_AUTHORITY_DENIED",
+            _ => null,
+        };
         record.LeaseOwner = null;
         record.LeaseExpiresAt = null;
         record.HeartbeatAt = null;
@@ -327,7 +336,7 @@ public sealed class WhatsAppOutboxService(
                 ? observation.ObservedAt.Add(Backoff(record.AttemptNumber))
                 : observation.ObservedAt;
         record.UpdatedAt = observation.ObservedAt;
-        if (record.AttemptNumber >= 12 && record.State != "DELIVERED")
+        if (record.AttemptNumber >= 12 && observation.State == "REJECTED")
         {
             record.State = "BLOCKED";
             record.BlockedReason = "ATTEMPT_LIMIT_REACHED";
@@ -487,6 +496,52 @@ public sealed class WhatsAppOutboxService(
             )
             .OrderBy(value => value.ObservedAt)
             .FirstOrDefaultAsync(cancellationToken);
+        if (statusEvent.OutboxId is { } correlatedId)
+        {
+            var correlated = await db
+                .ConversationOutbox.AsNoTracking()
+                .SingleOrDefaultAsync(
+                    value =>
+                        value.OutboxId == correlatedId
+                        && value.Environment == _conversationOptions.Environment
+                        && value.AttemptNumber > 0
+                        && (
+                            value.State == "DISPATCHING"
+                            || value.State == "UNRESOLVED"
+                            || value.State == "LEASED"
+                            || value.State == "DELIVERED"
+                            || value.State == "BLOCKED"
+                        ),
+                    cancellationToken
+                );
+            if (
+                correlated is null
+                || !Guid.TryParse(correlated.AggregateId, out var correlatedMessageId)
+                || !await db.Set<WhatsAppTrafficReservation>()
+                    .AnyAsync(
+                        value =>
+                            value.TenantId == correlated.TenantId
+                            && value.OutboxId == correlated.OutboxId,
+                        cancellationToken
+                    )
+                || (
+                    source is not null
+                    && (
+                        source.TenantId != correlated.TenantId
+                        || source.RelationshipId != correlated.RelationshipId
+                        || source.MessageId != correlatedMessageId
+                    )
+                )
+            )
+                throw new ConversationIdempotencyConflictException();
+            source ??= new ConversationDeliveryObservation
+            {
+                Environment = correlated.Environment,
+                TenantId = correlated.TenantId,
+                RelationshipId = correlated.RelationshipId,
+                MessageId = correlatedMessageId,
+            };
+        }
         if (source is null)
         {
             claim.State = "UNRESOLVED";
@@ -621,7 +676,7 @@ public sealed class WhatsAppOutboxService(
     private static TimeSpan Backoff(int attemptNumber) =>
         TimeSpan.FromSeconds(Math.Min(300, Math.Pow(2, Math.Max(0, attemptNumber - 1))));
 
-    private async Task<bool> IsCurrentlyEligibleAsync(
+    internal async Task<bool> IsCurrentlyEligibleAsync(
         ConversationOutboxRecord record,
         DateTimeOffset now,
         CancellationToken cancellationToken

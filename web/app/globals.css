@@ -5844,6 +5844,10 @@ html[data-header-scrolled="true"] .app-shell-public .top-bar {
 .engagement-focus-navigation button,
 .engagement-progress-list button,
 .customer-engagement-workspace > header button {
+  appearance: none;
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  color: var(--surface);
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;

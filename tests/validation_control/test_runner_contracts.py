@@ -67,7 +67,7 @@ def test_local_catalog_gate_uses_full_runner_and_canonical_socket_authority() ->
 
     assert "run_with_docker_socket.sh" in launcher
     assert "--profile test run --rm --no-deps" in launcher
-    assert "test-runner \"$@\"" in launcher
+    assert 'test-runner "$@"' in launcher
     assert "test-runner-python" not in launcher
     assert '"$repository:$repository:ro"' in launcher
     assert '"$git_common_dir:$git_common_dir:ro"' in launcher
@@ -175,6 +175,23 @@ def test_dotnet_native_and_process_fixtures_use_bounded_executable_tmpfs() -> No
     runner = COMPOSE["services"]["test-runner-dotnet"]
 
     assert runner["tmpfs"] == ["/tmp:size=2g,mode=1777,exec"]
+
+
+def test_temporal_server_is_immutable_in_both_dotnet_capable_runners() -> None:
+    archive_digest = "524465a96274831e004326f6e2f2a5f3ef9aaed72c2069cf16c1d64b8b1ec3ca"
+    server_digest = "19defb9f7318c7cf249518b3642a735efb79876c2b6918afe312336476b796a5"
+    for name in ("Dockerfile.test-runner-dotnet", "Dockerfile.test-runner"):
+        dockerfile = (ROOT / "architecture/reference/dockerfiles" / name).read_text(encoding="utf-8")
+        assert f"ADD --checksum=sha256:{archive_digest} https://temporal.download/assets/" in dockerfile
+        assert "v1.40.0/temporal-test-server_1.40.0_linux_amd64.tar.gz" in dockerfile
+        assert f'{server_digest}  /opt/temporal-test-server" | sha256sum --check --strict' in dockerfile
+        assert "chmod 555 /opt/temporal-test-server" in dockerfile
+    for service in ("test-runner-dotnet", "test-runner"):
+        assert all(":/opt/temporal-test-server" not in volume for volume in COMPOSE["services"][service]["volumes"])
+    helper = (ROOT / "tests/business-platform.Tests/PinnedTemporalTestEnvironment.cs").read_text(encoding="utf-8")
+    assert server_digest in helper
+    assert "ExistingPath = ServerPath" in helper
+    assert "SHA256.HashData(executable)" in helper
 
 
 def test_python_audit_builds_use_bounded_executable_tmpfs() -> None:

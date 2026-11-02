@@ -490,7 +490,7 @@ locals {
         provider_alias     = "facebook"
         provider_namespace = "urn:waooaw:identity:${var.environment}:facebook:customer-login:v1"
       }))
-    } : {}, var.environment == "demo" ? local.demo_identity_runtime : {})
+    } : {}, var.environment == "demo" ? local.demo_identity_runtime : {}, local.whatsapp_provider_runtime)
     "professional-runtime" = merge({
       AIR_TRANSCRIPTION_BASE_URL    = local.service_urls.ai_runtime
       CONSTITUTIONAL_ENGINE_ADDRESS = "ca-${var.environment}-constitutional-engine:80"
@@ -1204,6 +1204,14 @@ resource "azurerm_container_app" "member" {
       env {
         name        = local.credential_environment[each.key]
         secret_name = "runtime-reference"
+      }
+
+      dynamic "env" {
+        for_each = each.key == "business-platform" && var.whatsapp_provider != null ? [1] : []
+        content {
+          name  = "WhatsAppProvider__ManagedIdentityClientId"
+          value = azurerm_user_assigned_identity.member[each.key].client_id
+        }
       }
 
       dynamic "env" {

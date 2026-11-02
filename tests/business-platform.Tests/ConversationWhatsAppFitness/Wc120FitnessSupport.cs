@@ -212,6 +212,35 @@ internal sealed class Wc120FitnessContext
         return conversationId;
     }
 
+    public async Task SeedWhatsAppEligibilityAsync(string recipientDigest, DateTimeOffset now)
+    {
+        await using var db = Relationships.CreateDbContext();
+        db.ChannelBindings.Add(
+            new ChannelBinding
+            {
+                TenantId = TenantId,
+                RelationshipId = RelationshipId,
+                ParticipantId = ParticipantId,
+                ParticipantRole = "EMPLOYER",
+                Channel = "WHATSAPP",
+                ExternalSubjectHash = recipientDigest,
+                ConversationId = Guid.NewGuid().ToString("D"),
+                AssuranceLevel = "AAL1_CHANNEL",
+                Status = "ACTIVE",
+            }
+        );
+        db.WhatsAppJourneyContacts.Add(
+            new WhatsAppJourneyContact
+            {
+                TenantId = TenantId,
+                PhoneHmac = recipientDigest,
+                OptedInAt = now.AddDays(-1),
+                LastInboundAt = now,
+            }
+        );
+        await db.SaveChangesAsync();
+    }
+
     public ConversationOutboundContributionService Outbound() =>
         new(
             Conversations,

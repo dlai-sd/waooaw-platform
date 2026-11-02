@@ -274,6 +274,9 @@ const server = createServer(async (request, response) => {
   const workspaceMatch = url.pathname.match(
     /^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace(?:\/(plan|attention|work|results|usage-budget|rights-controls|evidence))?$/
   );
+  const engagementProgressMatch = url.pathname.match(
+    /^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/engagement-progress$/
+  );
   const configurationMatch = url.pathname.match(
     /^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/configuration$/
   );
@@ -1257,6 +1260,23 @@ const server = createServer(async (request, response) => {
       verifiedGoalIds: verified ? ['goal-1'] : [],
       blockedReasons: verified ? [] : ['Customer goal verification is required.'],
       reassessmentRequired: false,
+    });
+    return;
+  }
+
+  if (request.method === 'GET' && engagementProgressMatch) {
+    json(response, {
+      schemaVersion: '1',
+      relationshipId: decodeURIComponent(engagementProgressMatch[1]),
+      projectionVersion: 'fixture-1',
+      projectionContractVersion: 'cew-progress-1',
+      generatedAt: '2026-08-10T10:00:00Z',
+      projectionSources: [],
+      lifecycleStage: 'OPERATIONS',
+      headline: 'Track work and customer outcomes',
+      summary: 'Synthetic fixture has no owner-confirmed progress items.',
+      items: [],
+      availableFocuses: [],
     });
     return;
   }

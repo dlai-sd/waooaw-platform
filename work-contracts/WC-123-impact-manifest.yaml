@@ -4,13 +4,16 @@ component: AUTH-WC-01
 candidate_head: 8ff4b474e19e3735551aec6d813252af8b0bc405
 status: READY_FOR_AUTH_WC_02
 
+# candidate_head preserves the original AUTH-WC-01 handoff. These maintenance
+# bindings include current-main amendments and the authorized WhatsApp schema
+# update; refreshing them is not new institutional acceptance or qualification.
 accepted_sources:
   architecture/reference/components/authentication-authorization-enterprise-requirements.md: 94f8c120d450319d7b3d7d3532018b3824b8a13b39f77218fa9e385e39cb229b
-  architecture/reference/components/authentication-authorization-simplification-solution-contract.md: bb9b4d59289e255bb2b3cbc219330091056ef892cb0630b042f4468e9d46730c
-  architecture/reference/pipeline/identity-dependency-manifest.md: c0b2d6d596eb9fdbb9266bab128d8783b9a3aaa9f1fb7d2f4506abad2661f606
+  architecture/reference/components/authentication-authorization-simplification-solution-contract.md: 4e4ff1e0d60f84aadb2ca48ab0f6c09b8ac3c4014dfff49e3a139648a550aa8f
+  architecture/reference/pipeline/identity-dependency-manifest.md: 61f237055f1b9dd454bb07276b2cd079828be12c9078606dfacc5a0e7f21772d
   work-contracts/WC-122-authentication-authorization-simplification.md: 8a73e196a90201238729bdcc678452ea06933d3355c751707c93383226357d21
-  work-contracts/WC-123-authentication-authorization-implementation.md: 3573e8c57454a54e4158a7c4aff9585429f450a6dd825501d5f8fac2fd308870
-  work-contracts/WC-123-requirements.yaml: a2b8c0a0654d7cc3cdd53f645ab0018aefc401076f7f4ce2573f72e05e654837
+  work-contracts/WC-123-authentication-authorization-implementation.md: f44be12ea4da8c712481bb41c19fde4f6027da729b3727a52f08b25b41b48b26
+  work-contracts/WC-123-requirements.yaml: 505dfb2e3e57e607abbe646593aae7b0fe3efa3a74da64f5bce01f5427d01b8e
   adr/ADR-003-jwt-claims-multi-tenancy.md: f8c46224671a85269c246e742ee110036af36ffe2e02f229590894c796d2e2f2
   adr/ADR-008-keycloak-identity-broker.md: 63605ab58a568c3f3746247f0a8b661487a3dfd468938e18cdeb828959483593
   adr/ADR-017-web-application-framework.md: 96bb405194dca4c4e17f8b9255b507b2ac6ee0e82d935cdae6e369648e1fd4ab
@@ -20,7 +23,7 @@ accepted_sources:
   infrastructure/identity-config/environments/demo.json: 9e2d4dfacf5f1e6c2a542299a942b0f8355afe6ed90d403c546fff4025b95f0d
   infrastructure/identity-config/environments/uat.json: a5f45f6d25972d3667023d2ee9355ff110adebf0e209c0507489b812512cb3c3
   infrastructure/container-apps/scaling-rules.yaml: 333aae7882b1a4ed04a7ee7b6f917e09585571f68a81ed41b97bf0bacaaf2b11
-  infrastructure/environment-readiness/secret-catalog.schema.json: c757945ffcdb4251d4c242e571085d9309edc54f0dc0a78fead30c0389079ccb # gitleaks:allow - public schema SHA-256
+  infrastructure/environment-readiness/secret-catalog.schema.json: 22215fe3704c0ad461b5ce1e70994e402bb944fc0c0a1ad6f5c011354da74736 # gitleaks:allow - public schema SHA-256
 
 requirement_binding:
   ledger: work-contracts/WC-123-requirements.yaml

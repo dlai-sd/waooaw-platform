@@ -19,11 +19,29 @@ OUTCOMES = (
 
 
 def evaluate(rendered: dict[str, Any], evidence: dict[str, Any]) -> dict[str, str]:
-    expected_bindings = {binding["id"] for binding in rendered["secretBindings"]}
+    independent_gates = {
+        "whatsapp-provider-binding": "demo-whatsapp-provider",
+        "whatsapp-verify-token": "demo-whatsapp-provider",
+        "whatsapp-app-secret": "demo-whatsapp-provider",
+        "whatsapp-outbound-authority": "demo-whatsapp-provider",
+        "whatsapp-media-authority": "demo-whatsapp-media",
+    }
+    known_bindings = all(
+        binding.get("readinessGate", "environment-configuration")
+        == independent_gates.get(binding["id"], "environment-configuration")
+        for binding in rendered["secretBindings"]
+    )
+    expected_bindings = {
+        binding["id"]
+        for binding in rendered["secretBindings"]
+        if binding.get("readinessGate", "environment-configuration") == "environment-configuration"
+    }
     valid_metadata = {
         item["id"] for item in evidence.get("secretMetadata", []) if item.get("enabled") is True and item.get("expired") is False
     }
-    configuration_ready = evidence.get("renderDigest") == rendered["renderDigest"] and expected_bindings.issubset(valid_metadata)
+    configuration_ready = (
+        known_bindings and evidence.get("renderDigest") == rendered["renderDigest"] and expected_bindings.issubset(valid_metadata)
+    )
     generations = evidence.get("demoGenerations", [])
     data_ready = (
         rendered["environment"] == "demo"

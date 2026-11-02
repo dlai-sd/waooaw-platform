@@ -296,6 +296,7 @@ public sealed class WhatsAppJourneyServiceTests
         var (service, _, _) = Create();
         var journey = new WhatsAppJourneyOptions
         {
+            VerificationEnabled = true,
             CallbackAcceptanceEnabled = true,
             CallbackHost = "callback.test",
             VerifyToken = "verify-token",
@@ -332,8 +333,13 @@ public sealed class WhatsAppJourneyServiceTests
         Assert.IsType<StatusCodeResult>(await controller.ReceiveAsync(CancellationToken.None));
 
         conversation.Enabled = false;
-        Assert.IsType<StatusCodeResult>(controller.Verify());
+        Assert.IsType<ContentResult>(controller.Verify());
         Assert.IsType<StatusCodeResult>(await controller.ReceiveAsync(CancellationToken.None));
+        journey.VerificationEnabled = false;
+        Assert.Equal(
+            StatusCodes.Status503ServiceUnavailable,
+            Assert.IsType<StatusCodeResult>(controller.Verify()).StatusCode
+        );
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             service.SetProviderClaimHoldAsync("WHATSAPP", "missing", true, CancellationToken.None)
         );
@@ -344,6 +350,208 @@ public sealed class WhatsAppJourneyServiceTests
                 CancellationToken.None
             )
         );
+    }
+
+    [Fact]
+    public async Task VerificationCanRegisterCallbackWithoutEnablingConversationOrProviderEffects()
+    {
+        var (service, factory, _) = Create();
+        var journey = new WhatsAppJourneyOptions
+        {
+            VerificationEnabled = true,
+            CallbackHost = "callback.test",
+            VerifyToken = "verify-token",
+        };
+        var controller = new WhatsAppJourneyController(
+            service,
+            Options.Create(journey),
+            Options.Create(new Wc120ConversationOptions())
+        );
+        var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("callback.test");
+        context.Request.QueryString = new QueryString(
+            "?hub.mode=subscribe&hub.verify_token=verify-token&hub.challenge=challenge"
+        );
+        controller.ControllerContext = new ControllerContext { HttpContext = context };
+
+        var response = Assert.IsType<ContentResult>(controller.Verify());
+        Assert.Equal("challenge", response.Content);
+        Assert.Equal("text/plain; charset=utf-8", response.ContentType);
+        Assert.Equal(
+            StatusCodes.Status503ServiceUnavailable,
+            Assert
+                .IsType<StatusCodeResult>(await controller.ReceiveAsync(CancellationToken.None))
+                .StatusCode
+        );
+        Assert.False(journey.CallbackAcceptanceEnabled);
+        Assert.False(journey.DispatchEnabled);
+        await using var db = factory.CreateDbContext();
+        Assert.Empty(db.WhatsAppJourneyContacts);
+    }
+
+    [Theory]
+    [InlineData("?hub.mode=subscribe&hub.verify_token=verify-token&hub.challenge=")]
+    [InlineData(
+        "?hub.mode=subscribe&hub.verify_token=verify-token&hub.challenge=one&hub.challenge=two"
+    )]
+    [InlineData(
+        "?hub.mode=subscribe&hub.verify_token=verify-token&hub.challenge=one&unexpected=value"
+    )]
+    [InlineData("?hub.mode=subscribe&hub.verify_token=wrong-token&hub.challenge=one")]
+    [InlineData("?hub.mode=unsubscribe&hub.verify_token=verify-token&hub.challenge=one")]
+    public void VerificationRejectsMissingDuplicateUnexpectedAndInvalidParameters(string query)
+    {
+        var (service, _, _) = Create();
+        var controller = new WhatsAppJourneyController(
+            service,
+            Options.Create(
+                new WhatsAppJourneyOptions
+                {
+                    VerificationEnabled = true,
+                    CallbackHost = "callback.test",
+                    VerifyToken = "verify-token",
+                }
+            ),
+            Options.Create(new Wc120ConversationOptions())
+        );
+        var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("callback.test");
+        context.Request.QueryString = new QueryString(query);
+        controller.ControllerContext = new ControllerContext { HttpContext = context };
+
+        Assert.IsType<UnauthorizedResult>(controller.Verify());
+    }
+
+    [Theory]
+    [InlineData("application/json-extra")]
+    [InlineData("application/json; charset=\"")]
+    [InlineData("text/json")]
+    public async Task CallbackRejectsInvalidJsonMediaTypesBeforeReadingBody(string contentType)
+    {
+        var (service, _, _) = Create();
+        var controller = new WhatsAppJourneyController(
+            service,
+            Options.Create(
+                new WhatsAppJourneyOptions
+                {
+                    CallbackAcceptanceEnabled = true,
+                    CallbackHost = "callback.test",
+                }
+            ),
+            Options.Create(new Wc120ConversationOptions { Enabled = true })
+        );
+        var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("callback.test");
+        context.Request.ContentType = contentType;
+        controller.ControllerContext = new ControllerContext { HttpContext = context };
+
+        Assert.Equal(
+            StatusCodes.Status415UnsupportedMediaType,
+            Assert
+                .IsType<StatusCodeResult>(await controller.ReceiveAsync(CancellationToken.None))
+                .StatusCode
+        );
+    }
+
+    [Theory]
+    [InlineData(1024, true)]
+    [InlineData(1025, false)]
+    public void VerificationEnforcesExactParameterByteLimit(int length, bool accepted)
+    {
+        var (service, _, _) = Create();
+        var controller = new WhatsAppJourneyController(
+            service,
+            Options.Create(
+                new WhatsAppJourneyOptions
+                {
+                    VerificationEnabled = true,
+                    CallbackHost = "callback.test",
+                    VerifyToken = "verify-token",
+                }
+            ),
+            Options.Create(new Wc120ConversationOptions())
+        );
+        var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("callback.test");
+        context.Request.QueryString = new QueryString(
+            "?hub.mode=subscribe&hub.verify_token=verify-token&hub.challenge="
+                + new string('x', length)
+        );
+        controller.ControllerContext = new ControllerContext { HttpContext = context };
+
+        var result = controller.Verify();
+        if (accepted)
+            Assert.IsType<ContentResult>(result);
+        else
+            Assert.IsType<UnauthorizedResult>(result);
+    }
+
+    [Theory]
+    [InlineData(512, true)]
+    [InlineData(513, false)]
+    public void VerificationLimitsDecodedUtf8BytesNotCharacters(int length, bool accepted)
+    {
+        var (service, _, _) = Create();
+        var controller = new WhatsAppJourneyController(
+            service,
+            Options.Create(
+                new WhatsAppJourneyOptions
+                {
+                    VerificationEnabled = true,
+                    CallbackHost = "callback.test",
+                    VerifyToken = "verify-token",
+                }
+            ),
+            Options.Create(new Wc120ConversationOptions())
+        );
+        var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("callback.test");
+        context.Request.QueryString = new QueryString(
+            "?hub.mode=subscribe&hub.verify_token=verify-token&hub.challenge="
+                + Uri.EscapeDataString(new string('\u00e9', length))
+        );
+        controller.ControllerContext = new ControllerContext { HttpContext = context };
+
+        var result = controller.Verify();
+        if (accepted)
+            Assert.IsType<ContentResult>(result);
+        else
+            Assert.IsType<UnauthorizedResult>(result);
+    }
+
+    [Theory]
+    [InlineData(8192, true)]
+    [InlineData(8193, false)]
+    public void VerificationEnforcesCompleteRawTargetLimit(int length, bool accepted)
+    {
+        var (service, _, _) = Create();
+        var controller = new WhatsAppJourneyController(
+            service,
+            Options.Create(
+                new WhatsAppJourneyOptions
+                {
+                    VerificationEnabled = true,
+                    CallbackHost = "callback.test",
+                    VerifyToken = "verify-token",
+                }
+            ),
+            Options.Create(new Wc120ConversationOptions())
+        );
+        var context = new DefaultHttpContext();
+        context.Request.Host = new HostString("callback.test");
+        context.Request.QueryString = new QueryString(
+            "?hub.mode=subscribe&hub.verify_token=verify-token&hub.challenge=challenge"
+        );
+        context.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpRequestFeature>()!.RawTarget =
+            new string('/', length - context.Request.QueryString.Value!.Length)
+            + context.Request.QueryString.Value;
+        controller.ControllerContext = new ControllerContext { HttpContext = context };
+
+        var result = controller.Verify();
+        if (accepted)
+            Assert.IsType<ContentResult>(result);
+        else
+            Assert.IsType<UnauthorizedResult>(result);
     }
 
     [Theory]

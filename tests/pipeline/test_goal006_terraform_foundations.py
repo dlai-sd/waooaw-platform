@@ -1228,7 +1228,8 @@ def test_demo_web_url_uses_managed_custom_domain() -> None:
     assert "203.0.113.10/32" not in rehearsal
 
 
-def test_demo_managed_certificate_binding_is_idempotent(tmp_path: Path) -> None:
+@pytest.mark.parametrize("callback_host", ["", "whatsapp-demo.example.com"])
+def test_demo_managed_certificate_binding_is_idempotent(tmp_path: Path, callback_host: str) -> None:
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     fake_az = fake_bin / "az"
@@ -1237,7 +1238,7 @@ def test_demo_managed_certificate_binding_is_idempotent(tmp_path: Path) -> None:
 set -euo pipefail
 printf '%s\\n' "$*" >> "$AZ_CALL_LOG"
 if [[ "$*" == *"containerapp show"* ]]; then
-  for hostname in cp.demo.waooaw.com api.demo.waooaw.com auth.demo.waooaw.com; do
+  for hostname in cp.demo.waooaw.com api.demo.waooaw.com auth.demo.waooaw.com whatsapp-demo.example.com; do
     if [[ "$*" == *"$hostname"* ]]; then
       if grep -qxF "$hostname" "$AZ_BOUND_DOMAINS" 2>/dev/null; then
         printf 'SniEnabled\\n'
@@ -1281,14 +1282,25 @@ exit 1
         "demo",
         "waooaw-demo-rg",
         "cae-waooaw-demo",
+        callback_host,
     ]
 
     subprocess.run(command, check=True, env=env)
     subprocess.run(command, check=True, env=env)
 
     bind_calls = [line for line in call_log.read_text(encoding="utf-8").splitlines() if "containerapp hostname bind" in line]
-    assert len(bind_calls) == 3
+    assert len(bind_calls) == (4 if callback_host else 3)
     assert all("--validation-method CNAME" in call for call in bind_calls)
+
+
+def test_whatsapp_tls_rejects_non_demo_hostname_before_cloud_use() -> None:
+    completed = subprocess.run(
+        ["bash", str(REPO_ROOT / "scripts/goal006_bind_demo_managed_certificates.sh"),
+         "demo", "synthetic-rg", "synthetic-cae", "api.demo.waooaw.com"],
+        capture_output=True, text=True, check=False,
+    )
+    assert completed.returncode != 0
+    assert "not an admitted dedicated Demo hostname" in completed.stderr
 
 
 def test_release_attestation_has_one_bounded_fail_closed_retry() -> None:

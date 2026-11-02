@@ -13,9 +13,7 @@ from scripts import wc091_environment
 
 ROOT = wc091_environment.ROOT
 CATALOG_PATH = ROOT / "infrastructure/environment-readiness/secret-catalog.json"
-PROFILE_PATH = (
-    ROOT / "architecture/reference/components/authentication-authorization-capacity-profile.v1.yaml"
-)
+PROFILE_PATH = ROOT / "architecture/reference/components/authentication-authorization-capacity-profile.v1.yaml"
 
 
 def load_json(relative_path: str) -> dict:
@@ -65,9 +63,7 @@ def test_session_secrets_are_closed_world_versioned_and_retirement_guarded() -> 
     for environment in ("demo", "uat"):
         manifest = load_json(f"infrastructure/identity-config/environments/{environment}.json")
         assert set(manifest["sessionAuthority"]["requiredSecretIds"]) == required
-        assert required <= {
-            entry["id"] for entry in catalog["entries"] if environment in entry["environments"]
-        }
+        assert required <= {entry["id"] for entry in catalog["entries"] if environment in entry["environments"]}
 
     for secret_id in required - {"web-oidc-client"}:
         entry = entries[secret_id]
@@ -84,15 +80,13 @@ def test_session_secrets_are_closed_world_versioned_and_retirement_guarded() -> 
         "web-session-token-envelope",
     ):
         assert entries[secret_id]["principal"] == "web"
-    assert entries["web-session-database"]["principal"] == "web"
+    assert entries["web-session-database"]["principal"] == "web_session_app"
     assert entries["web-session-database"]["consumers"] == ["web:WEB_SESSION_DATABASE_URL"]
+    assert entries["web-session-database"]["maximumOverlapHours"] == 0
 
 
 def test_authentication_limiter_secrets_are_not_session_mode_gated() -> None:
-    entries = {
-        entry["id"]: entry
-        for entry in load_json("infrastructure/environment-readiness/secret-catalog.json")["entries"]
-    }
+    entries = {entry["id"]: entry for entry in load_json("infrastructure/environment-readiness/secret-catalog.json")["entries"]}
 
     assert entries["auth-abuse-digest-key"]["requiredWhen"] == "web authentication enabled"
     assert entries["auth-abuse-redis-password"]["requiredWhen"] == "web authentication enabled"
@@ -125,9 +119,7 @@ def test_missing_session_secret_and_unknown_contract_version_fail_closed(
         value = original(path)
         if path.name == "secret-catalog.json":
             value = copy.deepcopy(value)
-            value["entries"] = [
-                entry for entry in value["entries"] if entry["id"] != "web-session-token-envelope"
-            ]
+            value["entries"] = [entry for entry in value["entries"] if entry["id"] != "web-session-token-envelope"]
         return value
 
     monkeypatch.setattr(wc091_environment, "_load", load_without_required_secret)
@@ -142,5 +134,5 @@ def test_missing_session_secret_and_unknown_contract_version_fail_closed(
         return value
 
     monkeypatch.setattr(wc091_environment, "_load", load_with_unknown_version)
-    with pytest.raises(wc091_environment.ContractError, match="1.0.0"):
+    with pytest.raises(wc091_environment.ContractError, match=r"1\.0\.0"):
         wc091_environment.validate_and_render("demo")
