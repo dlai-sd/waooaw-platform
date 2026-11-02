@@ -33,8 +33,16 @@ def test_environment_deployment_uses_qualified_private_runner_lifecycle() -> Non
     assert WORKFLOW.count("goal006_runner_execution.py pointer") == 1
     # Deployments never build images: the dispatcher carries no image overrides and the
     # engine runs every execution on the blueprint-pinned runner image.
-    for forbidden in ("break_fix", "break-fix", "runner_image:", "control_image:", "billing_image:",
-                      "docker buildx build", "docker/setup-buildx-action", "packages: write"):
+    for forbidden in (
+        "break_fix",
+        "break-fix",
+        "runner_image:",
+        "control_image:",
+        "billing_image:",
+        "docker buildx build",
+        "docker/setup-buildx-action",
+        "packages: write",
+    ):
         assert forbidden not in DISPATCH_WORKFLOW, forbidden
     for forbidden in ("break_fix", "break-fix", "BREAK_FIX", "runner_image:", "control_image:", "billing_image:"):
         assert forbidden not in WORKFLOW, forbidden
@@ -48,7 +56,10 @@ def test_environment_deployment_uses_qualified_private_runner_lifecycle() -> Non
 
 def test_october_defect_patterns_remain_prevented_or_captured() -> None:
     # D1: expected migration jobs must exist under their exact deployed names.
-    assert 'az containerapp job show \\\n              --resource-group "$RESOURCE_GROUP" \\\n              --name "$job_name"' in WORKFLOW
+    assert (
+        'az containerapp job show \\\n              --resource-group "$RESOURCE_GROUP" \\\n              --name "$job_name"'
+        in WORKFLOW
+    )
     assert 'job_name="job-${TARGET_ENVIRONMENT}-${component}-migration"' in WORKFLOW
     # D2: realm secrets are rendered and unresolved placeholders fail closed.
     assert "replace_secret DEMO_FOUNDER_PASSWORD" in WORKLOAD_MODULE
@@ -71,7 +82,7 @@ def test_october_defect_patterns_remain_prevented_or_captured() -> None:
     assert "await_vault_authorization" in (ROOT / "scripts/wc124_db_provisioner.py").read_text(encoding="utf-8")
     assert "RECOVERY_HOLD" in WORKFLOW
     # D11-D12: effective secret versions and private ACA DNS/TCP are activation prerequisites.
-    assert 'select(.keyVaultUrl != null)' in WORKFLOW
+    assert "select(.keyVaultUrl != null)" in WORKFLOW
     assert "Preflight PgBouncer from private ACA environment" in WORKFLOW
     assert "accepted-for-activation" in WORKFLOW
     # D13: deterministic ownership recovery rejects unknown assignments and verifies absence.
@@ -134,6 +145,31 @@ def test_wc124_live_cli_contracts_match_the_pinned_runner() -> None:
     assert '-var="database_bootstrap_admin_enabled=false"' in bootstrap_removal
     assert '-var="database_provisioner_vault_access_enabled=false"' in bootstrap_removal
     assert "microsoft-entra-admin list" in bootstrap_removal
+
+
+@pytest.mark.parametrize("creation", ["success", "failure", "skipped", ""])
+@pytest.mark.parametrize("handoff_required", ["true", "false"])
+def test_wc124_handoff_requires_verified_job_creation_without_disabling_terminal_cleanup(
+    creation: str, handoff_required: str
+) -> None:
+    steps = yaml.safe_load(WORKFLOW)["jobs"]["terraform"]["steps"]
+    create = next(step for step in steps if step.get("name") == "Create WC-124 database provisioner")
+    assert create["id"] == "database-provisioner"
+    handoff = next(step for step in steps if step.get("id") == "database-handoff")
+    condition = " ".join(handoff["if"].split())
+    facts = {
+        "always()": True,
+        "inputs.apply": True,
+        "steps.foundation.outcome == 'success'": True,
+        "steps.database-provisioner.outcome == 'success'": creation == "success",
+        "steps.database-transition.outputs.handoff_required == 'true'": handoff_required == "true",
+    }
+    assert all(term in facts for term in condition.split(" && "))
+    assert "steps.database-provisioner.outcome == 'success'" in condition
+    assert all(facts[term] for term in condition.split(" && ")) == (creation == "success" and handoff_required == "true")
+    terminal = next(step for step in steps if step.get("name") == "Ensure zero WC-124 database authority on terminal path")
+    assert terminal["if"] == "always() && inputs.apply && steps.database-transition.outputs.revocation_required == 'true'"
+    assert "database-provisioner.outcome" not in terminal["if"]
 
 
 @pytest.mark.parametrize("environment", ["demo", "uat"])
@@ -280,11 +316,11 @@ def test_completed_wc124_transition_still_refreshes_and_rebinds_database_urls() 
     assert "--refresh-existing-urls" in create_step
     assert '"--reset-demo-databases"' in create_step
     assert 'if $target_environment == "demo"' in create_step
-    assert 'if $full_provisioning then [$bootstrap, $provisioner] else [$provisioner] end' in create_step
+    assert "if $full_provisioning then [$bootstrap, $provisioner] else [$provisioner] end" in create_step
     assert "if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')" in run_step
     assert "wc124-db-credential-inventory.json" in input_step
     assert "missing database secret version for " in input_step
-    assert ".value = (.value + \"/\" + $versions[$secret_name])" in input_step
+    assert '.value = (.value + "/" + $versions[$secret_name])' in input_step
     assert "immutable-version database credential references" in WORKLOAD_VARIABLES
     assert "vault[.]azure[.]net/secrets/[^/]+/[^/]+" in WORKLOAD_VARIABLES
 
@@ -374,22 +410,22 @@ def test_application_activation_requires_persisted_migration_acceptance() -> Non
     assert "wc124-pgbouncer-preflight-execution.json" in acceptance
     assert "wc124-billing-migration-execution.json" in acceptance
     assert "temporary-authority-revoked" in acceptance
-    assert "all(.executions[]; .status == \"Succeeded\")" in acceptance
+    assert 'all(.executions[]; .status == "Succeeded")' in acceptance
     assert "accepted-for-activation" in acceptance
     assert "wc124-migration-acceptance.json" in acceptance
     assert "wc124-migration-acceptance.json" in WORKFLOW
 
 
 def test_activation_stages_migrations_dependencies_and_application_revisions() -> None:
-    migration = WORKFLOW.split(
-        "      - name: Terraform dormant workload and migration dependency apply", 1
-    )[1].split("      - name: Preflight PgBouncer from private ACA environment", 1)[0]
-    dependencies = WORKFLOW.split(
-        "      - name: Activate runtime dependencies before application revisions", 1
-    )[1].split("      - name: Require runtime dependency revisions before application activation", 1)[0]
-    dependency_readiness = WORKFLOW.split(
+    migration = WORKFLOW.split("      - name: Terraform dormant workload and migration dependency apply", 1)[1].split(
+        "      - name: Preflight PgBouncer from private ACA environment", 1
+    )[0]
+    dependencies = WORKFLOW.split("      - name: Activate runtime dependencies before application revisions", 1)[1].split(
         "      - name: Require runtime dependency revisions before application activation", 1
-    )[1].split("      - name: Plan application activation after migration", 1)[0]
+    )[0]
+    dependency_readiness = WORKFLOW.split("      - name: Require runtime dependency revisions before application activation", 1)[
+        1
+    ].split("      - name: Plan application activation after migration", 1)[0]
     activation = WORKFLOW.split("      - name: Plan application activation after migration", 1)[1].split(
         "      - name: Apply application activation", 1
     )[0]
@@ -513,7 +549,7 @@ def test_pgbouncer_reconciliation_import_executes_with_runner_module_path() -> N
             (
                 "from wc124_db_provisioner import environment_specs, parse_authfile; "
                 "assert len(environment_specs('demo')) == 17; "
-                "assert parse_authfile('\"role\" \"SCRAM-SHA-256$4096:salt$stored:server\"\\n') == "
+                'assert parse_authfile(\'"role" "SCRAM-SHA-256$4096:salt$stored:server"\\n\') == '
                 "{'role': 'SCRAM-SHA-256$4096:salt$stored:server'}"
             ),
         ],
@@ -558,7 +594,7 @@ def test_application_activation_plan_is_policy_and_provenance_bound() -> None:
     )[0]
 
     assert "terraform plan -detailed-exitcode" in plan_step
-    assert '0|2) ;;' in plan_step
+    assert "0|2) ;;" in plan_step
     assert "--output workload-activation-policy.json" in plan_step
     assert ".dependency_activation_enabled = true" in plan_step
     assert "--plan-binary workload-activation.tfplan" in plan_step
@@ -663,11 +699,8 @@ def test_workload_plan_safely_adopts_keycloak_migration_role_assignments() -> No
     assert 'keycloak_identity_name="id-${TARGET_ENVIRONMENT}-keycloak-migration"' in workload_plan
     assert "az identity list" in workload_plan
     assert "keycloak_identity_count=$(jq 'length'" in workload_plan
-    assert 'web_secret_scope=$(jq -er \'.key_vault_secret_resource_ids.web\'' in workload_plan
-    assert (
-        'bp_secret_scope=$(jq -er \'.key_vault_secret_resource_ids["business-platform"]\''
-        in workload_plan
-    )
+    assert "web_secret_scope=$(jq -er '.key_vault_secret_resource_ids.web'" in workload_plan
+    assert "bp_secret_scope=$(jq -er '.key_vault_secret_resource_ids[\"business-platform\"]'" in workload_plan
     assert 'test "${bp_secret_scope%/secrets/business-platform}" = "$vault_scope"' in workload_plan
     assert "keycloak-role-assignment-adoption.tsv" in workload_plan
     assert "module.workload.azurerm_role_assignment.keycloak_migration_realm_credential[0]" in workload_plan
@@ -685,8 +718,8 @@ def test_workload_plan_safely_adopts_keycloak_migration_role_assignments() -> No
     assert '--assignee-object-id "$keycloak_principal_id"' in workload_plan
     assert '--scope "$assignment_scope"' in workload_plan
     assert "4633458b-17de-408a-b874-0445c86b69e6" in workload_plan
-    assert '(.principalId | ascii_downcase) == $principal_id' in workload_plan
-    assert '(.scope | ascii_downcase) == $scope' in workload_plan
+    assert "(.principalId | ascii_downcase) == $principal_id" in workload_plan
+    assert "(.scope | ascii_downcase) == $scope" in workload_plan
     assert 'terraform import -input=false -lock-timeout=5m "$assignment_address" "$assignment_id"' in workload_plan
     assert "Expected zero or one Keycloak migration role assignment" in workload_plan
     assert workload_plan.index("keycloak-role-assignment-adoption.tsv") < workload_plan.index("terraform plan")
@@ -774,7 +807,7 @@ def test_plan_evidence_is_current_exact_run_and_cache_drift_fails_closed() -> No
     assert "goal006_plan_provenance.py" in foundation_plan
     assert "--output foundation-plan-policy.json" in foundation_plan
     assert "--policy-result foundation-plan-policy.json" in foundation_plan
-    assert '--scope foundation' in foundation_plan
+    assert "--scope foundation" in foundation_plan
     assert '--release-sha "$RELEASE_SHA"' in foundation_plan
     assert '--workflow-run-id "$GITHUB_RUN_ID"' in foundation_plan
     assert "terraform plan -detailed-exitcode" in workload_plan
@@ -903,7 +936,7 @@ def test_completed_transition_uses_deterministic_vault_scoped_reconciliation_aut
     assert '"|wc124-reconciliation"' in authority
     assert '--scope "$KEY_VAULT_ID"' in authority
     assert 'role_id="b86a8fe4-44ce-4948-aee5-eccb2c155cd7"' in authority
-    assert "--assignee-object-id \"$principal_id\"" in authority
+    assert '--assignee-object-id "$principal_id"' in authority
     assert "subscription" not in authority.lower()
     assert "created-by-current-execution" in authority
     assert "adopted-orphaned-reconciliation-authority" in authority
@@ -949,9 +982,7 @@ def test_reconciliation_failure_still_runs_both_cleanup_paths() -> None:
 
     assert "WC-124 database provisioner failed with status" in provisioner
     assert "always() && steps.reconciliation-authority.outputs.assignment_id != ''" in WORKFLOW
-    assert "always() &&" in WORKFLOW.split("      - name: Delete WC-124 database provisioner", 1)[1].split(
-        "        env:", 1
-    )[0]
+    assert "always() &&" in WORKFLOW.split("      - name: Delete WC-124 database provisioner", 1)[1].split("        env:", 1)[0]
 
 
 def test_wc124_database_jobs_emit_unambiguous_poll_progress() -> None:
@@ -979,8 +1010,8 @@ def test_terminal_cleanup_forces_and_verifies_zero_database_authority() -> None:
     )[0]
 
     assert "if: always()" in cleanup
-    assert 'database_bootstrap_admin_enabled=false' in cleanup
-    assert 'database_provisioner_vault_access_enabled=false' in cleanup
+    assert "database_bootstrap_admin_enabled=false" in cleanup
+    assert "database_provisioner_vault_access_enabled=false" in cleanup
     assert 'test "$bootstrap_admin_count" = 0' in cleanup
     assert 'test "$provisioner_vault_role_count" = 0' in cleanup
     assert "wc124-terminal-authority-cleanup.json" in cleanup
@@ -992,7 +1023,7 @@ def test_terminal_cleanup_forces_and_verifies_zero_database_authority() -> None:
         assert "This does not continue the deployment." in step
     assert 'cleanup_mode: (if $deployment_status == "success" then "normal-terminal" else "post-failure-safety" end)' in cleanup
     assert cleanup.index("post-failure safety cleanup") < cleanup.index("terraform init")
-    assert 'all_officer_assignments=$(az role assignment list' in final
+    assert "all_officer_assignments=$(az role assignment list" in final
     assert '[ "$cleanup_failed" = 0 ] && [ -n "$job_id" ]' in final
 
 
@@ -1050,15 +1081,13 @@ def test_runner_retry_is_bounded_and_requires_proven_pre_pull_failure() -> None:
     assert "broker-runner-before-${execution_attempt}.json" in broker
     assert "broker-runner-delta-${execution_attempt}.json" in broker
     assert "broker-attempt-1.classification.json" in broker
-    assert 'child_count=$(jq -er \'.matches | length\'' in broker
+    assert "child_count=$(jq -er '.matches | length'" in broker
     assert "Private broker produced ambiguous child runners" in broker
     assert "Broker failed while child runner is non-terminal" in broker
 
 
 def test_runner_failure_evidence_is_uploaded_even_when_execution_fails() -> None:
-    broker_artifact = WORKFLOW.split("      - name: Retain hosted pre-start evidence", 1)[1].split(
-        "  terraform:", 1
-    )[0]
+    broker_artifact = WORKFLOW.split("      - name: Retain hosted pre-start evidence", 1)[1].split("  terraform:", 1)[0]
     cleanup_artifact = WORKFLOW.split("      - name: Retain hosted cleanup evidence", 1)[1]
 
     assert "if: always()" in broker_artifact
@@ -1080,7 +1109,7 @@ def test_cleanup_verifies_all_private_job_executions_are_terminal() -> None:
 def test_demo_deployment_binds_broker_and_cleanup_to_authorized_control_sha() -> None:
     assert WORKFLOW.count("ref: ${{ inputs.control_sha }}") >= 2
     assert "test '${{ inputs.release_sha }}' = \"$latest_main_sha\"" in WORKFLOW
-    assert 'test "$GITHUB_SHA" = \'${{ inputs.control_sha }}\'' in WORKFLOW
+    assert "test \"$GITHUB_SHA\" = '${{ inputs.control_sha }}'" in WORKFLOW
     assert "ib/532" not in WORKFLOW
 
 
@@ -1102,7 +1131,7 @@ def test_workflows_carry_no_log_masked_literals() -> None:
     # check of every application activation; masked text must never be pasted back into a workflow.
     for path in sorted((ROOT / ".github/workflows").glob("*.y*ml")):
         assert "******" not in path.read_text(encoding="utf-8"), path.name
-    freshness = WORKFLOW.split('latest_main_sha=$(curl --fail --silent --show-error \\', 1)[1].split(
+    freshness = WORKFLOW.split("latest_main_sha=$(curl --fail --silent --show-error \\", 1)[1].split(
         "| jq -er '.object.sha')", 1
     )[0]
     assert '--header "Authorization: Bearer $GH_TOKEN" \\' in freshness
