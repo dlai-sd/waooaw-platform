@@ -1498,3 +1498,109 @@ syntax and passed. Runner-supply, qualification-evidence and catalog-selector re
 119 tests; affected Ruff/format, pinned actionlint and Bash syntax checks pass. Clean-candidate
 qualification is retried after this correction. No unsuccessful selector is represented as
 passing, and no cloud/provider action or live acceptance is claimed.
+
+### 10.12 Meta Setup, Vault Intake, And Deployment Status (2026-11-02)
+
+**Current status: ENGINEERING MERGED; META SETUP PARTIAL; DEPLOYMENT FAILED;
+WHATSAPP NOT ACTIVATED.** This checkpoint supersedes earlier pending-PR statements, not
+the independent provider, traffic, activation, authentication or rollback gates.
+
+PR [#574](https://github.com/dlai-sd/waooaw-platform/pull/574) merged as
+`b8c563b2adff73affb7344309245af9d688af293`. Before merge, exact source candidate
+`8bb63679a3aa2a79f5dff8eff11010d0653a3ec5` passed all 16 primary CE-FIT selectors
+without failures/skips, 15 separately retained browser cases, 96 targeted BP tests, 14
+recovery/contract tests, the complete BP suite (1,202 passed, zero skips), complete contract
+suite (32 passed), and Web (719 passed, three existing skips). Final browser repetition
+passed 15 cases. The BP image built; the independent real-container lifecycle gate passed
+`503 -> 200 -> 503 -> 200`. All seven exact-head prechecks and mandatory PR preparation
+passed. This evidence does not establish a successful deployment or live Meta acceptance.
+
+#### Meta operator progress
+
+The following are Founder-reported dashboard observations, not independently authenticated
+Graph API verification. Raw telephone numbers, secrets, OTPs, recipient identity and protected
+provider-binding values are deliberately not copied into this record.
+
+| Setup item | Recorded status |
+|---|---|
+| Messaging application | Existing `WAOOAW Messaging Service`; Founder reports Published. `WAOOAW Customer Login` was not selected for messaging access. |
+| Public legal settings | Privacy `https://cp.demo.waooaw.com/privacy`, terms `https://cp.demo.waooaw.com/terms`, deletion instructions `https://cp.demo.waooaw.com/data-deletion` are publicly reachable. App domain `cp.demo.waooaw.com` was added; Founder reports settings saved. The earlier suggested privacy fragment was invalid and is not the deletion URL. |
+| Real sender | Existing business account and registered sender identified separately from Meta's test account; Manager reports Connected and shows the business display name. Founder explicitly confirmed this sender is dedicated to WAOOAW Demo. |
+| System user | `WAOOAW Demo Integration`, Employee access, created. Refresh confirmed two assigned assets; the earlier empty list was stale. |
+| App asset permission | `WAOOAW Messaging Service`: Partial access, Develop app / View insights / Test app shown by Meta. No Manage app assignment requested. |
+| WhatsApp asset permission | Dedicated business WhatsApp account: Phone numbers (view only) and Messages. No Everything or number-management assignment requested. |
+| Messaging token | Founder confirmed `whatsapp_business_messaging` selected. A 60-day expiry was recommended but not independently confirmed. Token generation was paused; no token value was received, stored or tested by this session. |
+| Webhook | Callback URL, private verify token, event subscription and account subscription remain pending. No client-certificate option was enabled by this session. |
+| Other gates | Business-verification result, billing readiness and approved-template inventory are not yet verified. Voice/media/scanner authority remains disabled and unprovisioned. |
+
+Meta's label "Production setup" means a real business sender rather than its test sender.
+It is not WAOOAW Production-environment authority. Publishing the Meta app alone does not
+activate WAOOAW, admit recipients, grant traffic, or prove webhook delivery.
+
+#### Remaining protected inputs and source locations
+
+| Input / evidence | Source / next requirement |
+|---|---|
+| Exact app, WABA and Phone Number IDs | Existing Messaging Service / WhatsApp production setup and [WhatsApp Manager](https://business.facebook.com/latest/whatsapp_manager/phone_numbers/). Values already shown by the Founder must be transferred into the protected binding, not confused with the test account. |
+| Supported Graph API version | Confirm against the app's API setup and accepted provider configuration; do not infer it from unrelated Meta integrations. |
+| System-user messaging token | [Business Settings: System users](https://business.facebook.com/settings/system-users). Generate only after approved no-echo vault intake is available; confirm expiry and the selected app/account/scope. Store under `whatsapp-outbound-authority`, separately from App Secret and verify token. |
+| App Secret | Messaging Service, App settings / Basic; protected intake into `whatsapp-app-secret`, never chat, screenshots, source, PR body or command arguments. |
+| Verify token and callback | Private operator-held verification token into `whatsapp-verify-token`; exact dedicated Demo callback DNS/TLS and GET challenge must be deployed and verified before subscription. Do not substitute the Customer Portal URL as the callback. |
+| Provider binding | Closed document in `WhatsAppProviderBinding`: Demo environment, binding version, app/WABA/sender IDs, API version, consenting recipient and digest, authority reference, validity window. Store under `whatsapp-provider-binding`. |
+| Templates and traffic authority | Approved BODY-only templates with locale/category/version, consenting canonical recipient, separate activation and traffic decisions, exact time window, count/rate/spend/cost bounds, Stop/alerts, pricing, rollback and teardown receipts. |
+| Secret admission | Exact enabled versions, validity/expiry metadata, proper workload scopes and current nonrevocation; no placeholder or media token to satisfy ordinary deployment. |
+
+#### Existing reusable Key Vault uploader: reuse decision and limits
+
+Located the existing unchanged uploader
+[`scripts/wc091_secret_provision.py`](../scripts/wc091_secret_provision.py), backed by
+[`secret-catalog.json`](../infrastructure/environment-readiness/secret-catalog.json).
+It takes a catalog logical ID, `--environment demo`, and an approved `FA-` authorization
+identifier. It checks version metadata first, preserves an existing version without reading
+its value, accepts a missing external secret through `getpass`, and sends the REST body on
+stdin (`--body @/dev/stdin`), not in process arguments. It prints only logical ID, version
+and CREATED/PRESERVED status. No replacement uploader or batch utility was created.
+
+**Reuse decision:** reuse this uploader unchanged for initial upload of missing catalog
+entries through the authorized private operator path. It is not a complete WhatsApp admission
+or rotation utility: existing versions are preserved, JSON binding semantics are not validated,
+and PUT supplies only `value`, not expiry/not-before attributes. The WhatsApp runtime explicitly
+requires an enabled, unexpired `exp` attribute. Therefore an approved metadata-setting and
+validation step is still required before version pinning/activation; running the uploader
+alone is insufficient. No claim of end-to-end provisioning or live use is made.
+
+Executed existing uploader regressions in the Docker runner:
+
+```text
+PYTHONPATH=/workspace:/workspace/scripts pytest -q \
+  tests/pipeline/test_wc091_environment_readiness.py::test_secret_provisioning_preserves_existing_version_without_reading_value \
+  tests/pipeline/test_wc091_environment_readiness.py::test_external_secret_value_uses_stdin_body_not_command_arguments \
+  tests/pipeline/test_wc091_environment_readiness.py::test_az_secret_body_is_read_from_stdin
+PASS: 3 tests; mocked transport, not live vault writes.
+```
+
+Read-only Azure CLI inspection confirmed `kv-waooaw-demo`, RBAC enabled and public network
+access Disabled. The current CLI identity's metadata lookup returned `ForbiddenByRbac`
+(`secrets/readMetadata/action`, assignment not found). This proves an RBAC blocker; it does
+not prove that a subsequently authorized identity has a working private network path.
+No role grant, network bypass, secret upload, token generation or credential rotation was
+performed. Next operator step is to identify the approved provisioning identity/private
+execution path, not enable public access or grant the runtime broad vault administration.
+
+#### Failed deployment evidence and proposed repair (not implemented)
+
+[Environment Deployment run 41482319765, job 125405558629](https://github.com/dlai-sd/waooaw-platform/actions/runs/41482319765/job/125405558629)
+used merged commit `b8c563b2adff73affb7344309245af9d688af293`.
+
+| Finding | Evidence | Proposed correction |
+|---|---|---|
+| Primary: optional WhatsApp secrets become unconditional deployment prerequisites | Step 26, Check credential inventory, failed at 16:38:48 UTC: `Required external credential whatsapp-provider-binding is missing`. `required_external_credentials` selects every Demo `external-operator` / `founder-key-vault-admin` entry without considering capability admission. Reproducing the selector with web sessions disabled includes all five WhatsApp entries, including the deliberately unprovisioned media authority. | Select conditional secrets using typed effective capability/configuration authority, not human-readable `requiredWhen` prose. Disabled WhatsApp must not block an ordinary deployment. Registration/callback/outbound gates must each fail closed on their admitted required versions; media stays absent unless its separate scanner boundary is admitted. Preserve unrelated required credential checks. Add enabled/disabled/missing/media-negative execution regressions. |
+| Secondary: finalizer assumes a provisioner exists after earlier failure | Create and Run WC-124 database provisioner (steps 32/33) were skipped after inventory failure. Step 36 still ran because its condition is `always()`, foundation success and `handoff_required`; it failed at 16:38:49 UTC with ResourceNotFound for `job-demo-wc124-db-provisioner`. | Bind handoff to actual provisioner availability and recorded authority/transition progress. Do not run a job-dependent finalizer before creation; preserve terminal revocation/zero-authority checks whenever privileges were actually acquired, including partial failures. Add the pre-creation-failure regression rather than suppressing cleanup errors. |
+
+The ordinary credential gate regression is introduced by this delivery's catalog integration,
+not caused by the Founder delaying token generation. Fabricated secrets or enabling media would
+hide the defect and violate the default-off contract. The local CLI RBAC denial is a separate
+operator-intake blocker: the private deployment runner reached a specific SecretNotFound result.
+Independent deployment verification was skipped; no successful new workload deployment, Demo
+activation, webhook subscription or external traffic is claimed. Implementation repair and a
+new controlled deployment remain proposed, not executed in this documentation checkpoint.
