@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import re
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -35,8 +36,14 @@ def _utc_now() -> str:
 
 def _record_selector(arguments: argparse.Namespace) -> None:
     evidence = ROOT / "test-results" / "wc120" / arguments.ce_fit_id
+    if arguments.supporting:
+        evidence /= "browser"
     evidence.mkdir(parents=True, exist_ok=True)
     log_path = Path(arguments.log).resolve()
+    report_path = Path(arguments.report).resolve()
+    counts = report_counts(report_path)
+    if arguments.exit_status == 0 and (counts["passed"] == 0 or counts["failed"] or counts["skipped"]):
+        raise SystemExit("A qualifying WC-120 selector must execute tests without failures or skips.")
     result = {
         "ce_fit_id": arguments.ce_fit_id,
         "command": arguments.command,
@@ -45,18 +52,41 @@ def _record_selector(arguments: argparse.Namespace) -> None:
         "completed_at_utc": _utc_now(),
         "source_commit": _source_commit(arguments.source_commit),
         "exit_status": arguments.exit_status,
-        "pass_fail_skip_counts": {
-            "passed": 1 if arguments.exit_status == 0 else 0,
-            "failed": 0 if arguments.exit_status == 0 else 1,
-            "skipped": 0,
-        },
+        "pass_fail_skip_counts": counts,
         "candidate_manifest_digest": None,
+        "test_report": str(report_path.relative_to(ROOT)),
         "artifact_digests": {
             str(log_path.relative_to(ROOT)): _sha256(log_path),
+            str(report_path.relative_to(ROOT)): _sha256(report_path),
         },
     }
     (evidence / "selector-result.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     (evidence / "runner-image-digest.txt").write_text(arguments.runner_image_digest + "\n", encoding="utf-8")
+
+
+class _ReportTreeBuilder(ET.TreeBuilder):
+    def doctype(self, name: str, public_id: str | None, system_id: str | None) -> None:
+        raise ValueError("DTD and entity declarations are prohibited in WC-120 reports.")
+
+
+def report_counts(path: Path) -> dict[str, int]:
+    if path.stat().st_size > 32 * 1024 * 1024:
+        raise ValueError("WC-120 test report exceeds the evidence size bound.")
+    parser = ET.XMLParser(target=_ReportTreeBuilder())  # noqa: S314 -- target rejects DTDs before entity declarations
+    parser.feed(path.read_bytes())
+    root = parser.close()
+    counters = root.find(".//{http://microsoft.com/schemas/VisualStudio/TeamTest/2010}Counters")
+    if counters is not None:
+        total, passed, failed = (int(counters.attrib[key]) for key in ("total", "passed", "failed"))
+        counts = {"passed": passed, "failed": failed, "skipped": total - passed - failed}
+    else:
+        cases = list(root.iter("testcase"))
+        failed = sum(case.find("failure") is not None or case.find("error") is not None for case in cases)
+        skipped = sum(case.find("skipped") is not None for case in cases)
+        counts = {"passed": len(cases) - failed - skipped, "failed": failed, "skipped": skipped}
+    if any(value < 0 for value in counts.values()):
+        raise ValueError("Invalid WC-120 test report counters.")
+    return counts
 
 
 def _record_summary(arguments: argparse.Namespace) -> None:
@@ -76,21 +106,34 @@ def _record_summary(arguments: argparse.Namespace) -> None:
     output_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
 
 
-def _digest_or_absent(path: Path) -> str:
-    return _sha256(path) if path.is_file() else "ABSENT"
+def _required_digest(path: Path) -> str:
+    if not path.is_file():
+        raise SystemExit(f"Missing WC-120 candidate input: {path}")
+    return _sha256(path)
 
 
-def _load_result(path_value: str) -> Any:
+def _load_result(path_value: str, source_commit: str) -> Any:
     path = Path(path_value).resolve()
+    result = json.loads(path.read_text(encoding="utf-8"))
+    if result.get("source_commit") != source_commit or result.get("exit_status") != 0:
+        raise SystemExit("WC-120 summary must pass on the exact candidate.")
+    if result.get("log_digest") != _sha256(ROOT / result["log"]):
+        raise SystemExit("WC-120 summary log changed after execution.")
     return {
         "path": str(path.relative_to(ROOT)),
         "digest": _sha256(path),
-        "result": json.loads(path.read_text(encoding="utf-8")),
+        "result": result,
     }
 
 
 def _candidate(arguments: argparse.Namespace) -> None:
     source_commit = _source_commit(arguments.source_commit)
+    image_digests = json.loads(Path(arguments.image_digests).read_text(encoding="utf-8"))
+    if not all(
+        re.fullmatch(r"sha256:[a-f0-9]{64}", digest)
+        for digest in [image_digests["business_platform"], *image_digests["test_runners"].values()]
+    ):
+        raise SystemExit("WC-120 image identities must be exact immutable digests.")
 
     result_root = ROOT / "test-results" / "wc120"
     selectors: dict[str, Any] = {}
@@ -99,7 +142,10 @@ def _candidate(arguments: argparse.Namespace) -> None:
         result_path = result_root / ce_fit_id / "selector-result.json"
         if not result_path.is_file():
             raise SystemExit(f"Missing selector evidence: {result_path}")
-        result = json.loads(result_path.read_text(encoding="utf-8"))
+        runner = "python" if number in (12, 15, 16) else "dotnet"
+        result = _qualified_selector(result_path, source_commit, image_digests["test_runners"][runner])
+        if result["ce_fit_id"] != ce_fit_id:
+            raise SystemExit("WC-120 selector identity differs from its required evidence location.")
         selectors[ce_fit_id] = {
             "result": str(result_path.relative_to(ROOT)),
             "exit_status": result["exit_status"],
@@ -107,26 +153,37 @@ def _candidate(arguments: argparse.Namespace) -> None:
             "failed": result["pass_fail_skip_counts"]["failed"],
             "skipped": result["pass_fail_skip_counts"]["skipped"],
         }
+        if number in (10, 11, 13):
+            supporting_path = result_path.parent / "browser/selector-result.json"
+            supporting = _qualified_selector(supporting_path, source_commit, image_digests["test_runners"]["browser"])
+            selectors[ce_fit_id]["supporting_results"] = [
+                {
+                    "result": str(supporting_path.relative_to(ROOT)),
+                    **supporting["pass_fail_skip_counts"],
+                }
+            ]
 
-    image_digests = json.loads(Path(arguments.image_digests).read_text(encoding="utf-8"))
     manifest = {
         "schema": "waooaw.wc120-candidate-manifest/v1",
         "source_commit": source_commit,
-        "work_contract_digest": _digest_or_absent(ROOT / "work-contracts/WC-120-conversation-engine-whatsapp-implementation.md"),
-        "requirements_ledger_digest": _digest_or_absent(ROOT / "work-contracts/WC-120-requirements.yaml"),
-        "solution_package_digest": _digest_or_absent(
+        "work_contract_digest": _required_digest(ROOT / "work-contracts/WC-120-conversation-engine-whatsapp-implementation.md"),
+        "requirements_ledger_digest": _required_digest(ROOT / "work-contracts/WC-120-requirements.yaml"),
+        "solution_package_digest": _required_digest(
             ROOT / "architecture/reference/components/conversation-engine-whatsapp-solution-work-component.md"
         ),
-        "api_contract_digest": _digest_or_absent(
+        "api_contract_digest": _required_digest(
             ROOT / "architecture/reference/api-specs/channel-neutral-conversation-business-platform.openapi.yaml"
         ),
-        "product_matrix_digest": _digest_or_absent(ROOT / "work-contracts/WC-120-product-acceptance-matrix.yaml"),
-        "fitness_matrix_digest": _digest_or_absent(ROOT / "work-contracts/WC-120-fitness-evidence-matrix.yaml"),
+        "product_matrix_digest": _required_digest(ROOT / "work-contracts/WC-120-product-acceptance-matrix.yaml"),
+        "fitness_matrix_digest": _required_digest(ROOT / "work-contracts/WC-120-fitness-evidence-matrix.yaml"),
         "image_digest": image_digests["business_platform"],
         "test_runner_image_digests": image_digests["test_runners"],
         "schema_version_and_migration_watermark": {
             "schema": "36-wc120-conversation-whatsapp.sql",
-            "schema_digest": _digest_or_absent(ROOT / "infrastructure/postgres/init/36-wc120-conversation-whatsapp.sql"),
+            "schema_digest": _required_digest(ROOT / "infrastructure/postgres/init/36-wc120-conversation-whatsapp.sql"),
+            "traffic_reservation_schema_digest": _required_digest(
+                ROOT / "infrastructure/postgres/init/61-wc120-whatsapp-traffic-reservations.sql"
+            ),
             "backfill": "wc120-conversation-environment-v1",
         },
         "configuration_and_feature_flag_versions": {
@@ -134,13 +191,12 @@ def _candidate(arguments: argparse.Namespace) -> None:
             "feature_flags": "wc120-default-off-1",
             "environments": ["demo", "uat", "production"],
         },
-        "targeted_test_results": _load_result(arguments.targeted_results),
-        "recovery_test_results": _load_result(arguments.recovery_results),
+        "targeted_test_results": _load_result(arguments.targeted_results, source_commit),
+        "recovery_test_results": _load_result(arguments.recovery_results, source_commit),
         "ce_fitness_results": selectors,
-        "final_docker_qualification": _load_result(arguments.final_qualification),
+        "final_docker_qualification": _load_result(arguments.final_qualification, source_commit),
         "release_qualification": {
-            "state": "OFF_SKIPPED",
-            "authority": "Founder authorization in the current WC-120 implementation session",
+            "state": "PENDING_SEPARATE_RELEASE_QUALIFICATION",
         },
         "created_at_utc": _utc_now(),
     }
@@ -154,6 +210,32 @@ def _candidate(arguments: argparse.Namespace) -> None:
         result["candidate_manifest_digest"] = manifest_digest
         result_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
         (evidence / "candidate-manifest-digest.txt").write_text(manifest_digest + "\n", encoding="utf-8")
+        for supporting in selectors[ce_fit_id].get("supporting_results", []):
+            supporting_path = ROOT / supporting["result"]
+            result = json.loads(supporting_path.read_text(encoding="utf-8"))
+            result["candidate_manifest_digest"] = manifest_digest
+            supporting_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+
+
+def _qualified_selector(path: Path, source_commit: str, runner_digest: str) -> dict[str, Any]:
+    result = json.loads(path.read_text(encoding="utf-8"))
+    counts = result["pass_fail_skip_counts"]
+    if (
+        result.get("source_commit") != source_commit
+        or result.get("exit_status") != 0
+        or counts["passed"] <= 0
+        or counts["failed"] != 0
+        or counts["skipped"] != 0
+    ):
+        raise SystemExit("WC-120 selector must pass without skips on the exact candidate.")
+    if counts != report_counts(ROOT / result["test_report"]):
+        raise SystemExit("WC-120 selector counts differ from the actual test report.")
+    if (path.parent / "runner-image-digest.txt").read_text().strip() != runner_digest:
+        raise SystemExit("WC-120 selector runner differs from the immutable candidate runner.")
+    for artifact, digest in result["artifact_digests"].items():
+        if _sha256(ROOT / artifact) != digest:
+            raise SystemExit("WC-120 selector artifact changed after execution.")
+    return result
 
 
 def main() -> None:
@@ -168,6 +250,8 @@ def main() -> None:
     selector.add_argument("--exit-status", required=True, type=int)
     selector.add_argument("--runner-image-digest", required=True)
     selector.add_argument("--log", required=True)
+    selector.add_argument("--report", required=True)
+    selector.add_argument("--supporting", action="store_true")
     selector.set_defaults(handler=_record_selector)
 
     summary = subparsers.add_parser("summary")

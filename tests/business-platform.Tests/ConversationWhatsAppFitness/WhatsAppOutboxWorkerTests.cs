@@ -9,6 +9,44 @@ namespace Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness;
 
 public sealed class WhatsAppOutboxWorkerTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CapabilityDenialDistinguishesUnsentWorkFromUnknownPriorSubmission(
+        bool reconciliation
+    )
+    {
+        var context = await Wc120FitnessContext.CreateAsync();
+        var now = DateTimeOffset.UtcNow;
+        await SeedEligibilityAsync(context, now);
+        var outbox = context.Outbox();
+        await QueueAsync(outbox, context, Guid.NewGuid().ToString("D"), 1, Guid.NewGuid(), now);
+        var provider = new ProviderStub { DispatchState = "UNKNOWN" };
+        var time = new MutableTimeProvider(now);
+        var worker = new WhatsAppOutboxWorker(outbox, provider, time);
+        if (reconciliation)
+        {
+            Assert.True(await worker.ProcessOneAsync("worker", CancellationToken.None));
+            time.Advance(TimeSpan.FromMinutes(10));
+        }
+        provider.DenyCapability = true;
+
+        Assert.True(await worker.ProcessOneAsync("worker", CancellationToken.None));
+
+        await using var db = context.Conversations.CreateDbContext();
+        var record = Assert.Single(db.ConversationOutbox);
+        Assert.Equal(reconciliation ? "UNRESOLVED" : "BLOCKED", record.State);
+        Assert.Equal(reconciliation ? null : "DISPATCH_AUTHORITY_DENIED", record.BlockedReason);
+        Assert.Contains(
+            db.DeliveryObservations,
+            observation => observation.DeliveryState == (reconciliation ? "UNKNOWN" : "NOT_SENT")
+        );
+        Assert.DoesNotContain(
+            db.DeliveryObservations,
+            observation => observation.DeliveryState == "REJECTED"
+        );
+    }
+
     [Fact]
     public async Task WorkerDispatchesEligibleWorkInOrderAndReconcilesUnknownWithoutBlindResend()
     {
@@ -517,34 +555,8 @@ public sealed class WhatsAppOutboxWorkerTests
             UpdatedAt = occurredAt,
         };
 
-    private static async Task SeedEligibilityAsync(Wc120FitnessContext context, DateTimeOffset now)
-    {
-        await using var db = context.Relationships.CreateDbContext();
-        db.ChannelBindings.Add(
-            new ChannelBinding
-            {
-                TenantId = context.TenantId,
-                RelationshipId = context.RelationshipId,
-                ParticipantId = context.ParticipantId,
-                ParticipantRole = "EMPLOYER",
-                Channel = "WHATSAPP",
-                ExternalSubjectHash = new string('c', 64),
-                ConversationId = Guid.NewGuid().ToString("D"),
-                AssuranceLevel = "AAL1_CHANNEL",
-                Status = "ACTIVE",
-            }
-        );
-        db.WhatsAppJourneyContacts.Add(
-            new WhatsAppJourneyContact
-            {
-                TenantId = context.TenantId,
-                PhoneHmac = new string('c', 64),
-                OptedInAt = now.AddDays(-1),
-                LastInboundAt = now,
-            }
-        );
-        await db.SaveChangesAsync();
-    }
+    private static Task SeedEligibilityAsync(Wc120FitnessContext context, DateTimeOffset now) =>
+        context.SeedWhatsAppEligibilityAsync(new string('c', 64), now);
 
     private static Task<ConversationOutboxRecord?> QueueAsync(
         WhatsAppOutboxService outbox,
@@ -585,6 +597,7 @@ public sealed class WhatsAppOutboxWorkerTests
         public int DispatchCount { get; private set; }
         public int ReconcileCount { get; private set; }
         public string DispatchState { get; init; } = "DELIVERED";
+        public bool DenyCapability { get; set; }
 
         public Task<WhatsAppDispatchObservation> DispatchAsync(
             WhatsAppProviderDispatchRequest request,
@@ -592,6 +605,8 @@ public sealed class WhatsAppOutboxWorkerTests
         )
         {
             DispatchCount++;
+            if (DenyCapability)
+                throw new WhatsAppCapabilityUnavailableException("AUTHORITY_DENIED");
             return Task.FromResult(
                 new WhatsAppDispatchObservation(
                     DispatchState,
@@ -608,6 +623,8 @@ public sealed class WhatsAppOutboxWorkerTests
         )
         {
             ReconcileCount++;
+            if (DenyCapability)
+                throw new WhatsAppCapabilityUnavailableException("AUTHORITY_DENIED");
             return Task.FromResult(
                 new WhatsAppDispatchObservation(
                     "DELIVERED",

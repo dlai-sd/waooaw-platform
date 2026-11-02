@@ -354,6 +354,7 @@ def test_business_platform_gate_covers_shared_runtime_and_deployment_paths() -> 
         "src/business-platform/Program.cs",
         "tests/business-platform.Tests/OwnerGatewayCoverageTests.cs",
         "infrastructure/postgres/init/029_identity.sql",
+        "infrastructure/postgres/init/61-wc120-whatsapp-traffic-reservations.sql",
         "architecture/reference/api-specs/business-platform.openapi.yaml",
     ):
         assert business_platform_gate_required([path])
@@ -389,10 +390,7 @@ def test_release_qualification_switch_accepts_default_on() -> None:
 
 
 def test_release_qualification_switch_allows_founder_authorized_off() -> None:
-    body = (
-        "**Release Qualification:** OFF\n"
-        "**Release Qualification Authority:** Founder instruction - WC-111\n"
-    )
+    body = "**Release Qualification:** OFF\n**Release Qualification Authority:** Founder instruction - WC-111\n"
     assert not release_qualification_enabled(body)
 
 
@@ -400,10 +398,7 @@ def test_release_qualification_switch_allows_founder_authorized_off() -> None:
 def test_release_qualification_off_rejects_missing_or_placeholder_authority(
     authority: str,
 ) -> None:
-    body = (
-        "**Release Qualification:** OFF\n"
-        f"**Release Qualification Authority:** {authority}\n"
-    )
+    body = f"**Release Qualification:** OFF\n**Release Qualification Authority:** {authority}\n"
     with pytest.raises(ValueError, match="Founder authority"):
         release_qualification_enabled(body)
 

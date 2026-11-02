@@ -1,29 +1,33 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-120
 contract_path: work-contracts/WC-120-conversation-engine-whatsapp-implementation.md
-contract_digest: 5f3207af794be87d15822716f9bc249ff5f541e89c7ae4b8184b4a288611454f
+contract_digest: 1d53de2b6011aa4555a5fb424966a1c4540d5a22b393d358e94c4a0aa59d8244
 solution_path: architecture/reference/components/conversation-engine-whatsapp-solution-work-component.md
 solution_digest: 7fa8a5f3937c0d412eff7d74e037bc612bd0236a6b840fdf6cbfb91ace3becbc
 api_path: architecture/reference/api-specs/channel-neutral-conversation-business-platform.openapi.yaml
 api_digest: c5b30ab19605d0b82e113a865ee1faf935093c00a5e0eee54116a43233513221 # gitleaks:allow
 crosswalk_path: work-contracts/WC-120-operation-schema-owner-compatibility-crosswalk.md
 crosswalk_digest: f27ca1e9d8bd763b2d47ddc0047531ef6736d13a6ce3fdfadd3190fdc918d462
-contract_status: READY_FOR_STRATEGIC_PLAN_SPECIFICATION_VALIDATED_IMPLEMENTATION_UNAUTHORIZED
+demo_component_path: work-contracts/WC-121-demo-whatsapp-provider-enablement-work-component.md
+demo_component_digest: 2b4459d3ac477dfe51aba94d7dcca664e193ba682e5925096414a27d07753642
+contract_status: SESSION_IMPLEMENTATION_AND_DEMO_SCOPE_AUTHORIZED_EXACT_PROTECTED_INPUTS_PENDING
 implementation_scope: true
 result: PLANNED
-candidate_scope: CHANNEL_NEUTRAL_CONVERSATION_WHATSAPP_DEFAULT_OFF_NO_EXTERNAL_ACTION
+candidate_scope: CHANNEL_NEUTRAL_CONVERSATION_WHATSAPP_AND_BOUNDED_DEMO_LIFECYCLE_DEFAULT_OFF_UNTIL_EXACT_GATES_PASS
 completion_rule: >-
   Every requirement must pass its direct repository-owned oracle on the applicable exact candidate.
   The integrated Core/WC-114/WC-115 crosswalk, seven repaired PR #499 contract findings, and all
   six specialist dispositions are exact-candidate specification inputs. Founder acceptance,
-  Docker-only validation, separate current-session implementation authorization, and every
-  protected external action remain mandatory before their applicable phase.
+  Docker-only validation, current-session implementation authorization recorded on 2026-11-02,
+  and every exact protected-action input remain mandatory before their applicable phase.
+  The Demo component has a separate source digest; it cannot be substituted without
+  invalidating the affected evidence.
 
 requirement_defaults: &defaults
   evidence_class: Repository-owned contract, implementation, journey, security, privacy, migration, or qualification evidence
   initial_state: expected-fail
-  dependencies: Founder acceptance of exact integrated WC-120, successful Docker-only package validation, required protected Legal/Founder/provider/platform decisions for the affected capability, and separate current-session implementation authorization
-  residual_risk: Implementation evidence does not authorize provider actions, deployment, external traffic, Production changes, activation, PR approval, or merge.
+  dependencies: Exact integrated WC-120 and current-session implementation/Demo scope authority recorded on 2026-11-02, successful Docker-only package validation, and required exact protected Legal/Founder/provider/platform inputs for the affected capability
+  residual_risk: Implementation evidence does not satisfy protected-action identity/recipient/window/spend/tuple checks; UAT/Production mutation, PR approval and merge are not authorized.
   evidence_location: "test-results/wc120/<WC120-RNNN>/; exact repository-native artifact names and commands are frozen in CSA-CEWA-001 before implementation."
   failure_and_rollback: "On oracle failure mark BLOCKED and stop dependent stories; apply the cited source-story recovery and WC-120 Section 8, preserve additive data/evidence, and do not represent external provider effects as reversed."
   result: PLANNED
@@ -380,3 +384,12 @@ requirements:
     component_owner: Test Champion and WC-120 qualification
     test_path_or_plan: Test Champion disposition plus structural review of all 16 unique IDs, story links, source predicates, exact planned Docker commands/paths/nodes, quality targets, candidate-manifest fields, native and normalized evidence artifacts, and evidence paths.
     completion_rule: WC120-R044 specification closure passes when all 16 planned selectors are exact and no Test Champion-owned value remains pending. Pre-implementation node absence is expected; at implementation completion every node exists and passes directly, and any candidate change invalidates affected evidence.
+
+  - <<: *defaults
+    requirement_id: WC120-R045
+    source: WC-120 Section 12; CSA-CEWA-018; WC121-C09-S01 through S16
+    observable_outcome: Demo provider enablement, immutable deployment, bounded live acceptance, activation/expiry, rollback and teardown use the existing sixteen-story chain with exact protected references and independent gates; missing inputs deny effects and UAT/Production mutation and protected-value leakage are zero.
+    component_owner: Platform IT Expert within accepted BP, Platform, Security, Data and provider boundaries
+    test_path_or_plan: WC-120 Sections 12.3-12.5 and WC121-C09 Sections 5 and 10 freeze per-story schema/digest, credential-purpose, principal, default-off, callback, real-transport, expiry, revocation, exact-tuple, no-egress, rollback and leakage oracles; preserve direct CE-FIT-09/10/12/13/14/16 selectors and WC-121 Component 08 plus deployed S16 prerequisites. Authored selectors include WhatsAppCapabilityGateTests, WhatsAppDemoProviderTests, WhatsAppTrafficBudgetPostgresTests, WhatsAppJourneyServiceTests, WhatsAppOutboxWorkerTests and tests/pipeline/test_wc091_environment_readiness.py, test_goal006_deployment_inputs.py and test_goal006_terraform_foundations.py. Section 10.6 records executed Docker engineering diagnostics, including real PostgreSQL and five-project accessibility; distributed/cloud, admitted activation, immutable catalog/exact-head qualification and complete fitness/recovery proof remain pending. No PASS is claimed from source inspection or in-memory fixtures.
+    completion_rule: All S01-S16 direct completion predicates pass on the same qualified tuple, exact protected-action inputs and authority are recorded, live receipts are distinguished from emulator evidence, deactivation/rollback and zero UAT/Production delta are proven, and the Founder receives an exact-head tested PR without self-approval or merge.
+    evidence_location: test-results/wc120/WC120-R045/ with digest-bound references to native WC121-C09 story and protected live evidence

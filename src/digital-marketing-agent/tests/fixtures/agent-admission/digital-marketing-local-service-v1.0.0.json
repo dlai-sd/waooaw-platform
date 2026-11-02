@@ -22,7 +22,7 @@
     "constitutionalDna": {
       "path": "architecture/reference/agents/CONSTITUTIONAL_DNA.md",
       "version": "2.0",
-      "digest": "sha256:1d47ffecd0dffee3fc59e32faf0d72ec395e9fce3a805a17efbf20645091f961"
+      "digest": "sha256:487db59e15d1abcb927bba995100190447c0ce5597707acb7a3ba3c3fb28a03a"
     },
     "agentBaseSpec": {
       "path": "architecture/reference/agents/AGENT-BASE-SPEC.md",

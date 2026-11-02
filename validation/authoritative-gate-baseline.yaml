@@ -66,8 +66,10 @@ thresholds:
     - '"${score:-0}" -lt 60'
 required_evidence_classes: [CCT, browser, contract, coverage, integration, release, security, static]
 required_catalog_flags:
-  mode: shadow
+  # Founder merged selective enforcement in #513; freeze that existing authority.
+  # Evidence: validation/evidence/wc121-selective-validation-activation.json.
+  mode: enforced
   release_full_inventory: true
   main_full_inventory: true
   enforced_activation:
-    founder_approved: false
+    founder_approved: true

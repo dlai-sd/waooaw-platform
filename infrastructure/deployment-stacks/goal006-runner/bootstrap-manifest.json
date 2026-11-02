@@ -35,7 +35,7 @@
     "infrastructure/deployment-stacks/goal006-runner/uat.parameters.json": "34f92fcb6684738e1ae9e42622810af35060d5738f89327627a4542304940d7c",
     "infrastructure/deployment-stacks/goal006-runner/uat.prerequisites.parameters.json": "d8bc2a520f658c7c9cda645f498b2d36b14d09df7bac9e364f78f83b741b09f0",
     "infrastructure/environment-readiness/secret-catalog.json":
-      "243c6e0ef506a36e686d583a2d5d2c35f437ccc300f00a2af7c20f7ca76137d4",
+      "5682fd09c2fc753e2ae0a95c78ebb3d365db482556d229b69b7fbc41d1005930",
     "infrastructure/postgres/init/00-wc124-principal-bootstrap.sql": "65053e4669143331be02f4fbe97b7e6785777a13a9eb19fc656673c9dcc6cd7c",
     "infrastructure/postgres/init/01-schemas.sql": "6e24a7ac7db3b812a48ef4b6440ed0c549a1651e8d11aafaf1f8ed44691c1ec0",
     "infrastructure/postgres/init/02-users-and-permissions.sh": "138995d9eb8058559da4b7be575bd8909258272ab786fa9576bab0d571d9cffa",
@@ -105,6 +105,7 @@
     "infrastructure/postgres/init/58-wc123-portal-preference-permissions.sql": "532f9f1b3079b1c876e4e716ee7be4d5aec87ef9eb06959165fa301a44d4241e",
     "infrastructure/postgres/init/59-wc124-billing-authority.sql": "7482e523741ed6307b8dd97bcfe8320d19f1e71b502b121b42746071f0a60443",
     "infrastructure/postgres/init/60-wc124-principal-handoff.sql": "22128833dedf34a37762b79811c43c0b047e4c65d9a1c884a47602da3d733ac4",
+    "infrastructure/postgres/init/61-wc120-whatsapp-traffic-reservations.sql": "e06b750ee3fed04375630134f3f8bdf48cd2dc9bb6985d679c6cc2a965ce91aa",
     "infrastructure/runner/Dockerfile": "abfa2d543f69adbd0ccefda819b93560e5e55f7b3acc3ce861974724fccf4e89",
     "infrastructure/runner/Dockerfile.control": "c3d1c42fb381d9019c32fa2f8936218283f2bca81f6eb8cb8edf151c988f9a9b",
     "infrastructure/runner/entrypoint.sh": "fe467ae6782b0792bdf0e2dfada98e277abd5f8ec11bc817768ccf032cfe62a7",

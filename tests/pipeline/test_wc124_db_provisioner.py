@@ -479,7 +479,11 @@ def test_application_migrations_cover_the_whole_sql_chain_after_the_principal_bo
     assert "00-wc124-principal-bootstrap.sql" not in names
     assert names == sorted(names, key=lambda name: name.encode())
     assert names[0] == "01-schemas.sql"
-    assert names[-2:] == ["59-wc124-billing-authority.sql", "60-wc124-principal-handoff.sql"]
+    assert names[-3:] == [
+        "59-wc124-billing-authority.sql",
+        "60-wc124-principal-handoff.sql",
+        "61-wc120-whatsapp-traffic-reservations.sql",
+    ]
     assert all(name.endswith(".sql") for name in names)
     assert sorted(path.name for path in init_directory.glob("*.sh")) == [
         "02-users-and-permissions.sh",
@@ -615,6 +619,11 @@ def test_provider_registry_migration_owns_forced_rls_reconciliation() -> None:
             "60-wc124-principal-handoff.sql",
             "EXECUTE format('GRANT %I TO %I', owner_name, session_user);",
             "EXECUTE format('REVOKE %I FROM %I', owner_name, session_user);",
+        ),
+        (
+            "61-wc120-whatsapp-traffic-reservations.sql",
+            "GRANT bp_owner TO %I",
+            "REVOKE bp_owner FROM %I",
         ),
     ],
 )

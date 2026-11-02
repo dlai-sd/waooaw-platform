@@ -283,7 +283,7 @@ public sealed class ActivationOrchestrationServiceTests
     {
         var context = await CreateContextAsync();
         context.Billing.FailuresRemaining = 5;
-        await using var environment = await WorkflowEnvironment.StartTimeSkippingAsync();
+        await using var environment = await PinnedTemporalTestEnvironment.StartTimeSkippingAsync();
         using var worker = new TemporalWorker(
             environment.Client,
             new TemporalWorkerOptions("bp-trial-worker")
@@ -322,7 +322,7 @@ public sealed class ActivationOrchestrationServiceTests
     {
         var context = await CreateContextAsync();
         context.Billing.HoldCalls = true;
-        await using var environment = await WorkflowEnvironment.StartTimeSkippingAsync();
+        await using var environment = await PinnedTemporalTestEnvironment.StartTimeSkippingAsync();
         using var worker = new TemporalWorker(
             environment.Client,
             new TemporalWorkerOptions("bp-trial-worker")

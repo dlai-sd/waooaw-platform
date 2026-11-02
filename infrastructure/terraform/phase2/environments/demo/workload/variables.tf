@@ -105,3 +105,17 @@ variable "image_pull_identity_id" {
   description = "AcrPull user-assigned identity used with image_registry_server."
   default     = ""
 }
+variable "whatsapp_provider" {
+  description = "Optional protected Demo registration-only configuration; provider effects remain disabled."
+  type = object({
+    callback_host        = string
+    secret_versions      = map(string)
+    authority_reference  = string
+    verification_enabled = bool
+    release_digest       = string
+    configuration_digest = string
+    catalog_digest       = string
+  })
+  default  = null
+  nullable = true
+}

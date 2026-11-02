@@ -7,7 +7,7 @@
 | Work Contract ID | WC-120 |
 | Authoring office | Chief Solution Architect (INST-005) |
 | Assigned implementation office | Platform IT Expert (INST-010), only after the gates in this contract pass |
-| Status | READY_FOR_STRATEGIC_PLAN - SPECIFICATION INTEGRATED AND DOCKER-VALIDATED; IMPLEMENTATION UNAUTHORIZED |
+| Status | CURRENT-SESSION IMPLEMENTATION AUTHORIZED - DEMO SCOPE INCLUDED; EXACT PROTECTED INPUTS AND CANDIDATE QUALIFICATION PENDING |
 | Current-main baseline | `c2a1baf64cb3b2652ce29ed930ac4a60f14e73bb` |
 | Source PR | PR #499, merged as `c2a1baf64cb3b2652ce29ed930ac4a60f14e73bb` |
 | Candidate solution package | `architecture/reference/components/conversation-engine-whatsapp-solution-work-component.md`, repaired WC-120 version `1.0.0-candidate.2`; pinned PR #499 source blob `224d8f43f2a46e810eb5b13aac35570b6f0ebcda` |
@@ -22,6 +22,30 @@
 | Constitutional basis | C-039, C-059; CE-FIT-01 through CE-FIT-16; ADR-051, ADR-052, ADR-053 |
 
 ### Founder Authorization And Accepted Decisions
+
+#### Current-Session Amendment - 2026-11-02
+
+The Founder assigned Platform IT Expert (INST-010) to implement the existing WhatsApp work
+component, extend this Work Contract to include Demo provider enablement, deployment and activation,
+analyse every story against latest code, group related stories for efficient execution, and submit a
+new tested PR for Founder review. The Founder explicitly confirmed
+`implementation_authorization=true` and selected an isolated worktree from latest `origin/main`,
+preserving the original dirty worktree. The accepted execution baseline is
+`a497cb2f2669d7da90dcb37611badffc4c6953ea`; branch:
+`ib/120/whatsapp-demo-implementation`. No local draft was copied over the newer committed package.
+
+This authorization covers repository implementation and preparation/execution of the bounded Demo
+lifecycle described in Section 12. It is not a claim that the exact provider account, credentials,
+cloud resources, recipient, time window, spend limit, immutable image/configuration tuple, recovery
+policy, or activation evidence has already been supplied or verified. Each existing protected gate
+remains an independent check of those inputs, not a requirement to repeat a blanket authorization
+request. Until the applicable inputs are recorded and its prerequisites pass, the affected protected
+action remains blocked. UAT/Production mutation and traffic, number purchase, unbounded spend,
+PR approval and merge are excluded.
+
+The historical authoring-only statements below describe the earlier authorization state. This
+amendment supersedes their implementation/Demo exclusions for the current bounded assignment only;
+it does not alter architecture, specialist decisions, or prior evidence verdicts.
 
 On 2026-10-12, the Founder explicitly directed that ADR-051, ADR-052, and ADR-053 are
 approved and authorized, and directed that this decision be recorded in this Work Contract.
@@ -54,6 +78,9 @@ and exact Docker-only ledger/OpenAPI validation are complete in this package. Th
 `READY_FOR_STRATEGIC_PLAN`. Founder acceptance of this exact integrated Work Contract and separate
 explicit current-session implementation authorization remain required before implementation;
 protected Legal/Founder/provider/platform decisions remain fail-closed at their named later gates.
+
+For the current session, apply the 2026-11-02 amendment above and Section 12 instead of treating
+this historical strategic-plan status as a new implementation prohibition.
 
 ## 1. Objective And Authority
 
@@ -956,3 +983,142 @@ are complete.
 integrated package and separate explicit current-session implementation authorization remain
 mandatory. Protected Legal/Founder/provider/platform decisions and implementation-phase evidence
 remain fail-closed at their affected implementation, promotion, deployment, or activation gates.
+
+## 12. Demo Scope Extension And Current-Baseline Execution Plan
+
+### 12.1 Scope And Story Ownership
+
+CSA-CEWA-018 now includes the existing
+[WC121-C09 Demo provider enablement stories](WC-121-demo-whatsapp-provider-enablement-work-component.md)
+S01-S16 as its protected-action decomposition. These are reused, not duplicated or renumbered.
+WC-120 continues to own transport and conversation semantics; WC-121 continues to own customer
+workspace parity and Component 08 qualification. Inclusion here does not silently authorize
+reimplementation of all WC-121 workspace components or waive their exact-image dependency.
+The Founder explicitly reaffirmed on 2026-11-02 that WhatsApp, Customer Portal Web and a possible
+future Mobile application reuse the same channel-neutral APIs. Transport adapters must delegate
+to the existing canonical owners; no channel-specific business API, history, command authority or
+client-supplied policy is introduced. A Mobile application itself is not part of this delivery.
+
+The amendment adds the following traceable implementation obligation:
+
+| Requirement ID | Source | Observable outcome and acceptance oracle |
+|---|---|---|
+| WC120-R045 | Section 12; CSA-CEWA-018; WC121-C09-S01 through S16 | Demo provider enablement, deployment, bounded live acceptance, activation/expiry, rollback and teardown use the existing sixteen-story chain; each independent authority is bound to exact protected references and the qualified tuple, missing inputs deny effects, WC-121 Component 08 and deployed authentication qualification remain prerequisites, UAT/Production mutation is zero, and no secret or complete telephone identity enters repository or evidence. |
+
+### 12.2 Baseline And Evidence Classification
+
+Platform IT Expert completed read-only impact inspection at
+`a497cb2f2669d7da90dcb37611badffc4c6953ea`. Process control is `wc100-r033-v1`;
+`origin/main` is an ancestor of the selected HEAD and all three declared source SHA-256 values
+match `validation/process-control.yaml`. The WC-120 contract, solution and channel API baseline
+SHA-256 values are respectively:
+
+- `5f3207af794be87d15822716f9bc249ff5f541e89c7ae4b8184b4a288611454f`;
+- `7fa8a5f3937c0d412eff7d74e037bc612bd0236a6b840fdf6cbfb91ace3becbc`;
+- `c5b30ab19605d0b82e113a865ee1faf935093c00a5e0eee54116a43233513221`.
+
+These are pre-amendment input identities, not the digest of this edited contract. The sibling
+requirement ledger must bind the amended contract before implementation. Baseline WC-120 and
+WC-121 ledgers passed the Docker catalog `requirement-ledger` intake gate. This is metadata
+validation only: it is not application, CE-FIT, recovery, Docker-image, provider, or deployed evidence.
+
+Current code is classified as `PRESENT / REQUALIFICATION REQUIRED`, not PASS. The accepted solution
+Section 25 already records implementation of P1-P5 with execution deferred. Historical declarations,
+fixture tests and local presence cannot establish readiness of the current immutable candidate.
+
+### 12.3 All-Story Impact Inventory
+
+Paths below are relative to the repository. BP paths use `src/business-platform/` unless stated.
+The inventory identifies existing owners and the required delta/oracle; it is not permission to
+change every listed path without a concrete requirement.
+
+| CSA-CEWA story | Current owning surface | Impact and direct acceptance obligation |
+|---|---|---|
+| 001 | This contract, requirement ledger, compatibility crosswalk, process control | Re-pin latest baseline and source/authority inputs; preserve the unrelated dirty worktree; record blocked inputs honestly. |
+| 002 | `architecture/reference/api-specs/channel-neutral-conversation-business-platform.openapi.yaml`; `Controllers/ChannelNeutralConversationController.cs` | Reuse existing additive API; prove 16 paths/17 operations/28 schemas, reference resolution and producer/consumer compatibility. |
+| 003 | `Services/ConversationService.cs`; `Infrastructure/ConversationStoreDbContext.cs`; `Infrastructure/Wc120ConversationPersistence.cs`; `infrastructure/postgres/init/36-wc120-conversation-whatsapp.sql` | Requalify canonical ordering, atomic append/outbox, tenant-complete keys, rollback and 256-way concurrency; no second store. |
+| 004 | `Services/ConversationContextProfileService.cs`; `Controllers/ChannelNeutralConversationController.cs` | Requalify server-resolved context and command discovery, stale/cross-subject denial and no client authority. |
+| 005 | `Services/ConversationContextProfileService.cs`; existing PR/AIR conversation consumers | Verify policy/version/provenance handoff and channel-equivalent semantics; no provider/model choice in the channel. |
+| 006 | `Services/ConversationContextProfileService.cs`; `Infrastructure/Wc120ConversationPersistence.cs` | Verify append-only corrections, CAS, lineage, invalidation and accepted payload lifecycle; Legal gates remain explicit. |
+| 007 | `Services/ChannelContinuityService.cs`; `Controllers/ChannelNeutralConversationController.cs` | Preserve existing handoff/source binding; requalify prepare/activate/revert, expiry, replay and zero-mutation denial. |
+| 008 | `Services/WhatsAppJourneyService.cs`; `Controllers/PhoneIdentityProofController.cs`; `src/phone-identity-service/Program.cs` | Reconcile legacy proof ownership with the accepted BP boundary, current membership and assurance; never deploy the legacy standalone service as an eighth release member. |
+| 009 | `Controllers/WhatsAppJourneyController.cs`; `Services/WhatsAppJourneyService.cs` | Existing GET/POST path requires production-shaped host/config binding and exact-byte HMAC/limits/encoding/freshness tests; separate verification challenge from disabled POST acceptance. |
+| 010 | `Services/WhatsAppJourneyService.cs`; `Infrastructure/Wc120ConversationPersistence.cs` | Requalify durable compound claim, takeover, same-digest delayed replay and divergent conflict with zero additional effect. |
+| 011 | `Services/WhatsAppJourneyService.cs` | Existing Meta envelope parsing must prove bounded message/status normalization and canonical append without provider-supplied tenant authority. |
+| 012 | `Services/WhatsAppOutboxService.cs`; `Services/WhatsAppOutboxWorker.cs`; `Program.cs` | Production DI currently selects `DisabledWhatsAppProviderAdapter`; implement accepted real transport and scheduling only after the credential/identity mapping is resolved. Preserve opaque payload access, no blind resend, lease/heartbeat and reconciliation. |
+| 013 | `Services/WhatsAppOutboxService.cs`; `Services/WhatsAppJourneyService.cs` | Bind approved templates, protected recipient, consent, window, current authority, time/spend and expiry at enqueue and dispatch; fixtures are not provider approval. |
+| 014 | `Services/WhatsAppOutboxService.cs`; `Infrastructure/Wc120ConversationPersistence.cs` | Prove distinct immutable status observations and independent transport/owner/evidence truth through timeout, duplicate and out-of-order callback. |
+| 015 | `Services/WhatsAppMediaQuarantineService.cs`; existing voice/payload gateways | Keep initial supported voice subset and quarantine; real retrieval needs separate media authority and accepted lifecycle/scanner contracts. |
+| 016 | `Services/ConversationStopFence.cs`; existing `RelationshipEmergencyStopService` and PR halt paths | Requalify typed Stop precedence, persistent latch, outage/restart/race and exact latency ceilings; no WhatsApp release. |
+| 017 | Existing BP telemetry, outbox poison and alert owners | Verify closed privacy-safe reasons and zero secret/customer/provider leakage; bind actual Demo alert routing, not only test counters. |
+| 018 | Demo manifest; secret catalog; existing deployment workflows and Terraform; WC121-C09 | Extend through S01-S16 below; live effects blocked on exact inputs and qualified image, not absent blanket session authority. |
+| 019 | `infrastructure/conversation-whatsapp/uat.json`; existing isolation tests | Offline stable-ingress/readiness conformance only; no UAT account, secrets, DNS, apply, traffic or activation. |
+| 020 | `infrastructure/conversation-whatsapp/production.json`; existing isolation tests | Offline Production-dark conformance only; no Production mutation or activation. |
+| 021 | `web/lib/api/conversation.ts`; `web/lib/api/generated/conversation-v1/`; `web/components/conversation/` | Reuse generated-client boundary and existing UI; requalify regression and five-project accessibility rather than fork conversation semantics. |
+| 022 | `src/professional-runtime/clients/generated/conversation_compatibility/`; `tests/contract/test_wc120_second_client.py` | Requalify second-client contract without inventing a Mobile application or channel-specific server behavior. |
+| 023 | `infrastructure/postgres/init/36-wc120-conversation-whatsapp.sql`; `infrastructure/postgres/operations/wc120-*.sql` | Verify idempotent init chain, RLS, backfill, compatible rollback and isolated no-egress restore; numeric recovery/legal decisions remain named dependencies. |
+| 024 | `tests/business-platform.Tests/ConversationWhatsAppFitness/`; `tests/contract/test_wc120_*.py`; `web/tests/e2e/wc120-product-state-accessibility.spec.ts` | Requalify all 16 exact CE-FIT rows and Product boundaries, 100 intent races, coverage and five browser projects on the frozen candidate. |
+| 025 | `scripts/qualify_wc120_candidate.sh`; validation catalog and evidence controller | Reconcile legacy direct-Compose qualification with current catalog-owned execution/evidence before claiming PASS; consolidate final image/E2E qualification. |
+| 026 | Existing solution operational runbook; deployment/verification workflow evidence | Rehearse alert, failure, recovery, rollout and rollback paths; keep live and emulated evidence separate. |
+| 027 | Existing PR template and `scripts/prepare_pr_body.sh` | Exact-head author review, mandatory prepared PR body and Founder handoff only after validation; never self-approve/merge. |
+
+All sixteen protected-action stories, their current owning surfaces, dependencies and acceptance
+gaps are inventoried in WC121-C09 Section 10.1; that section is part of this plan through R045.
+
+### 12.4 Dependency-Ordered Execution Groups
+
+Each group retains individual requirement/story oracles. Work inside a group shares fixtures,
+owning paths and dependency closure; grouping does not turn a blocked obligation into PASS.
+
+| Group | Stories; requirement IDs | Outcome and code surfaces | Validation and Docker/image plan | Dependencies, evidence, exclusions and rollback |
+|---|---|---|---|---|
+| G0 Baseline/contract freeze | 001-002, 027; S01; R001-R003, R027-R028, R030-R037, R043-R045 | Current-source acceptance, contracts, all-story inventory, authority/configuration inputs and owner mapping. | Existing catalog `requirement-ledger`; OpenAPI/reference and generated-client conformance selectors during final qualification. No application image build. | First; input digest evidence in `test-results/wc120/`. Stop on owner conflict. No provider/cloud effects. |
+| G1 Canonical reuse and clients | 003-008, 021-022; R004-R008, R021-R022, R029-R033, R036-R040, R042 | Gap-only changes in BP Core/context/continuity, existing PR/AIR contracts, Web and generated second client. | Existing CE-FIT-01..08 and CE-FIT-15 selectors; BP/PR/AIR/Web impacted gates; no per-story Docker test or product rebuild. | G0; retain old API and additive schema, disable new writers on rollback. No new store/owner or Mobile app. |
+| G2 Provider ingress/delivery | 009-014; S03, S07, S10; R009-R014, R017, R038-R042, R045 | BP webhook, real provider transport, outbox worker, bounded binding/template/recipient authority. | CE-FIT-07..10 and worker tests plus new real-adapter HTTP/emulator and scheduling oracles. BP image only if its inputs change. | G1 and accepted credential/identity mapping; production-shaped protected schema and no-echo references. Provider effects remain off until G6. |
+| G3 Safety/data/recovery | 015-017, 023; S15; R015-R017, R023, R026, R038-R042, R045 | Existing media/voice, Stop, privacy, retry/poison, retention, init-chain and restore owners. | CE-FIT-11/13/14/16; idempotent-init lint/reapply and session contract if init SQL changes; hostile media, no-egress restore and rollback. | G1/G2; accepted lifecycle and Demo recovery parameters required for affected actions. Preserve Stop/tombstones/evidence and forward-only schema. |
+| G4 Demo configuration/infrastructure | 018; S02, S04-S06, S08-S09, S11; R018, R028, R038-R039, R041, R045 | Closed-world environment/catalog, protected identities, stable callback ingress/TLS, provider subscriptions and release/authority binding. | Schema/negative/digest/leakage checks, Terraform plan and exact pinned Azure emulator path. No application rebuild for configuration alone. | G0, G2/G3 contracts; exact cloud/provider resources and approved inputs. Keep callback/dispatch/egress false. Revert compatible configuration without reviving revoked authority. |
+| G5 Consolidated final qualification | 019-020, 024-025; S16; R019-R020, R024-R025, R035, R041-R045 | Freeze complete source/test portfolio and candidate; verify offline UAT/Production isolation and exact Web authentication dependency. | One consolidated Docker qualification campaign after all repository implementation and test sources are complete: exact selectors, impacted suites, lint/type/build, coverage, scans, five Playwright projects, recovery and images. Existing stronger gates remain. | G1-G4 implementation complete; bind all reports and image/runner digests to one immutable candidate. No UAT/Production action; no PASS from source inspection. |
+| G6 Founder handoff then Demo lifecycle | 026; S12-S14, completion of S15; R018, R026-R027, R045 | After G5, submit the tested implementation PR for Founder review. Only after Founder merge and successful trusted-main release publication deploy the qualified tuple inactive, verify privately/independently, execute bounded acceptance and activate with expiry. | Exact-head PR preparation first; then read-back deployed tuple, live callback/template/reply/continuity/Stop/alerts/expiry and native redacted provider/cloud evidence. Promote without rebuild. | G5 and WC-121 Component 08, Founder merge, matching trusted-main control/release SHA, exact deployed S16 and bounded recipient/window/spend/incident/rollback inputs. Never merge or deploy a branch candidate through a parallel path. Keep live obligations pending in the implementation PR; return inactive at expiry. |
+
+**Validation timing:** The Founder explicitly requested no Docker testing after each story.
+Author all grouped implementation and tests first; use read-only inspection, shell syntax and
+`git diff --check` during that phase. Run lint, type/build, focused tests and impacted suites together
+in the final Docker qualification phase, without weakening direct story or CE-FIT evidence.
+Contract/ledger intake is a prerequisite metadata check, not an application test or product build.
+A repair after candidate freeze invalidates affected evidence and requires the bounded dependency
+closure plus stitched final confirmation, not evidence reuse across changed inputs.
+
+**Publication order:** The canonical deployment requires trusted `main` workflow control and a
+matching successful main release. Therefore the requested new PR is an engineering-qualified
+handoff, not proof of pre-merge Demo deployment. The Founder reviews/merges it before S12-S15 live
+execution; record that later evidence in the owning component. Do not bypass main-only promotion,
+self-merge, or describe the full Work Contract as DONE while live obligations remain pending.
+
+**Rollback:** New capability remains default-off until its own gates pass. Retain the previous
+compatible release/configuration tuple and additive records; fence callback/dispatch/egress before
+reconciliation. Application rollback cannot unsend a message, undo DNS/provider changes, erase
+evidence or release Stop. S15 governs protected cleanup and zero UAT/Production delta.
+
+### 12.5 Open Inputs And Execution Boundary
+
+Current-session implementation authority is granted. The following are not established by code
+inspection and must not be fabricated:
+
+1. Dedicated Demo Meta app/WABA/sender and distinct consenting recipient, protected configuration
+   references, supported API version, approved templates and billing readiness.
+2. Exact Demo cloud/DNS scope and effective runtime/configurator/media/verifier grants. The
+   Founder-authorized focused Security contribution reconciled S06/S07: the whole Demo BP workload
+   is the declared provider runtime, with exact-secret reads, separate cross-duty/environment
+   identities and no claimed intra-process isolation. WC121-C09 Section 10.4 records the conditions.
+   Do not add a deployable, grant broad vault access or enable media without its accepted boundary.
+3. Live scenario, recipient allowlist, UTC start/expiry, maximum spend/rate, incident owner,
+   alert delivery route and rollback target.
+4. Accepted material Demo recovery/lifecycle/consent decisions and protected Legal dispositions
+   for affected processing; general implementation authority does not decide Legal policy.
+5. Exact-image WC-121 Component 08 and deployed WC-123/S16 authentication acceptance. S16's
+   historical reopened status must be requalified against latest code, not assumed current or cured.
+
+Founder configuration sources, secure storage names and the all-story protected-action inventory
+are recorded in WC121-C09 Section 10. No provider account, cloud, credential, DNS or message operation
+has been performed by this planning amendment. No application test, live acceptance or go-live PASS
+is claimed.

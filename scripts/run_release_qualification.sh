@@ -75,6 +75,16 @@ if test "$RELEASE_RUN_TESTS" = true; then
     tests/pipeline/test_goal006_az_extensions.py \
     tests/pipeline/test_wc132_demo_reset_recovery.py \
     tests/pipeline/test_goal006_six_member_packaging.py \
+    tests/pipeline/test_goal006_deployment_inputs.py \
+    tests/pipeline/test_wc120_whatsapp_activation.py \
+    tests/validation_control/test_wc120_evidence.py \
+    tests/pipeline/test_auth_preview.py \
+    tests/pipeline/test_prepare_pr_body.py \
+    tests/pipeline/test_wc123_impact_manifest.py \
+    tests/pipeline/test_wc123_session_readiness.py \
+    tests/pipeline/test_wc124_db_provisioner.py \
+    tests/contract/test_agent_admission_schema.py \
+    tests/contract/test_wc120_contract_and_recovery.py \
     tests/pipeline/test_billing_ce_validator.py \
     tests/pipeline/test_wc091_environment_readiness.py -rA &
   tests_pid=$!

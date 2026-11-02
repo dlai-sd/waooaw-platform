@@ -77,7 +77,7 @@ public sealed class TrialExpiryWorkflowTests
     {
         activities ??= new TrackingActivities();
 
-        await using var env = await WorkflowEnvironment.StartTimeSkippingAsync();
+        await using var env = await PinnedTemporalTestEnvironment.StartTimeSkippingAsync();
         using var worker = new TemporalWorker(
             env.Client,
             new TemporalWorkerOptions("test-q")

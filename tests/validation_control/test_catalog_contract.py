@@ -82,6 +82,40 @@ def test_focused_and_qualification_modes_resolve_identical_commands() -> None:
     assert focused["nodes"][0]["components"] == ["web"]
 
 
+def test_authoritative_selectors_include_whatsapp_prerequisite_regressions() -> None:
+    plan = build_execution_plan(
+        load_catalog(),
+        ["quality:scripts", "release-qualification"],
+        mode="qualification",
+        head_sha="a" * 40,
+        run_id="whatsapp-prerequisites",
+    )
+    commands = {node["gate_id"]: node["command"] for node in plan["nodes"]}
+    for filename in (
+        "test_runner_contracts.py",
+        "test_runner_supply.py",
+        "test_catalog_contract.py",
+        "test_gate_equivalence.py",
+    ):
+        assert f"tests/validation_control/{filename}" in commands["quality:scripts"]
+    assert commands["release-qualification"] == "sh scripts/run_release_qualification.sh"
+    release = (ROOT / "scripts/run_release_qualification.sh").read_text(encoding="utf-8")
+    tests_lane = release.split("run_release_lane tests ", 1)[1].split("tests_pid=$!", 1)[0]
+    for path in (
+        "tests/pipeline/test_goal006_deployment_inputs.py",
+        "tests/pipeline/test_wc120_whatsapp_activation.py",
+        "tests/validation_control/test_wc120_evidence.py",
+        "tests/pipeline/test_auth_preview.py",
+        "tests/pipeline/test_prepare_pr_body.py",
+        "tests/pipeline/test_wc123_impact_manifest.py",
+        "tests/pipeline/test_wc123_session_readiness.py",
+        "tests/pipeline/test_wc124_db_provisioner.py",
+        "tests/contract/test_agent_admission_schema.py",
+        "tests/contract/test_wc120_contract_and_recovery.py",
+    ):
+        assert path in tests_lane
+
+
 def test_plan_declares_machine_checkable_component_cost_and_evidence_graph() -> None:
     catalog = load_catalog()
     plan = build_execution_plan(
@@ -474,6 +508,7 @@ def test_full_runner_is_limited_to_cross_stack_orchestration_gates() -> None:
         "spec-lint",
         "e2e:accessibility",
         "e2e:emergency-stop",
+        "wc123:session-contract",
     }
 
 
@@ -725,6 +760,7 @@ def test_only_classified_gates_receive_the_docker_socket() -> None:
         "integration:multi-tenant",
         "integration:dotnet",
         "test-dotnet:business-platform",
+        "wc123:session-contract",
     }
     for gate_id in classified:
         resources = catalog["gates"][gate_id]["resources"]

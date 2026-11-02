@@ -1,4 +1,5 @@
 // Implements: ADR-023 and work-contracts/WC-058-goal005-ae01-discover-trial-configure.md §WC058-06
+// Implements: architecture/reference/components/conversation-engine-whatsapp-solution-work-component.md §25.2 WC120-P2
 // constitutional_basis: C-023, C-026, C-042, C-059, C-063
 
 using System.Security.Cryptography;
@@ -16,10 +17,12 @@ public sealed class WhatsAppJourneyOptions
     public string WebhookSecret { get; set; } = string.Empty;
     public string TenantTokenKey { get; set; } = string.Empty;
     public string VerifyToken { get; set; } = string.Empty;
+    public bool VerificationEnabled { get; set; }
     public bool CallbackAcceptanceEnabled { get; set; }
     public bool DispatchEnabled { get; set; }
     public int MaxBodyBytes { get; set; } = 1_048_576;
     public string[] ApprovedTemplates { get; set; } = [];
+    public WhatsAppTemplateProjection[] TemplateProjections { get; set; } = [];
     public string CallbackHost { get; set; } = string.Empty;
 }
 
@@ -78,8 +81,11 @@ public sealed partial class WhatsAppJourneyService
     private static readonly TimeSpan ProviderClaimLeaseDuration = TimeSpan.FromSeconds(60);
     private readonly IDbContextFactory<EmploymentRelationshipDbContext> _dbFactory;
     private readonly IWhatsAppRegistrationEvidenceGateway _evidenceGateway;
-    private readonly byte[] _webhookSecret;
-    private readonly byte[] _tokenKey;
+    private readonly WhatsAppJourneyOptions _identityOptions;
+    private byte[] _webhookSecret =>
+        RequireKey(_identityOptions.WebhookSecret, nameof(WhatsAppJourneyOptions.WebhookSecret));
+    private byte[] _tokenKey =>
+        RequireKey(_identityOptions.TenantTokenKey, nameof(WhatsAppJourneyOptions.TenantTokenKey));
     private readonly IRelationshipConstitutionalGateway? _relationshipGateway;
     private readonly RelationshipEmergencyStopService? _emergencyStops;
     private readonly IDbContextFactory<ConversationStoreDbContext>? _conversationDbFactory;
@@ -88,6 +94,8 @@ public sealed partial class WhatsAppJourneyService
     private readonly ConversationService? _conversationService;
     private readonly WhatsAppOutboxService? _outboxService;
     private readonly CustomerEngagementWorkspaceService? _engagementWorkspace;
+    private readonly IWhatsAppCapabilityGate? _capabilityGate;
+    private readonly IWhatsAppWebhookCredentials? _webhookCredentials;
 
     public WhatsAppJourneyService(
         IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
@@ -100,16 +108,14 @@ public sealed partial class WhatsAppJourneyService
         ConversationStopFence? stopFence = null,
         ConversationService? conversationService = null,
         WhatsAppOutboxService? outboxService = null,
-        CustomerEngagementWorkspaceService? engagementWorkspace = null
+        CustomerEngagementWorkspaceService? engagementWorkspace = null,
+        IWhatsAppCapabilityGate? capabilityGate = null,
+        IWhatsAppWebhookCredentials? webhookCredentials = null
     )
     {
         _dbFactory = dbFactory;
         _evidenceGateway = evidenceGateway;
-        _webhookSecret = RequireKey(
-            options.Value.WebhookSecret,
-            nameof(options.Value.WebhookSecret)
-        );
-        _tokenKey = RequireKey(options.Value.TenantTokenKey, nameof(options.Value.TenantTokenKey));
+        _identityOptions = options.Value;
         _relationshipGateway = relationshipGateway;
         _emergencyStops = emergencyStops;
         _conversationDbFactory = conversationDbFactory;
@@ -118,6 +124,8 @@ public sealed partial class WhatsAppJourneyService
         _conversationService = conversationService;
         _outboxService = outboxService;
         _engagementWorkspace = engagementWorkspace;
+        _capabilityGate = capabilityGate;
+        _webhookCredentials = webhookCredentials;
     }
 
     public async Task<WhatsAppJourneyReceipt> ReceiveAsync(
@@ -138,7 +146,13 @@ public sealed partial class WhatsAppJourneyService
             )
         )
             throw new WhatsAppWebhookException(503, "WHATSAPP_BINDING_CONFIGURATION_UNAVAILABLE");
-        VerifySignature(rawBody, signatureHeader);
+        var signatureKey = _webhookCredentials is null
+            ? null
+            : RequireKey(
+                await _webhookCredentials.ReadAppSecretAsync(cancellationToken),
+                "ProviderAppSecret"
+            );
+        VerifySignature(rawBody, signatureHeader, signatureKey);
         JsonDocument document;
         try
         {
@@ -150,26 +164,53 @@ public sealed partial class WhatsAppJourneyService
         }
         using (document)
         {
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+                throw new WhatsAppWebhookException(400, "WHATSAPP_PAYLOAD_INVALID");
+            RejectDuplicateProperties(document.RootElement);
+            if (
+                _webhookCredentials is not null
+                && (
+                    !document.RootElement.TryGetProperty("object", out var objectType)
+                    || objectType.ValueKind != JsonValueKind.String
+                    || objectType.GetString() != "whatsapp_business_account"
+                    || !document.RootElement.TryGetProperty("entry", out var entries)
+                    || entries.ValueKind != JsonValueKind.Array
+                    || entries.GetArrayLength() == 0
+                    || document.RootElement.TryGetProperty("eventType", out _)
+                )
+            )
+                throw new WhatsAppWebhookException(400, "WHATSAPP_PROVIDER_ENVELOPE_REQUIRED");
             var statuses = ParseProviderStatuses(document.RootElement, rawBody);
+            var messages = ParseProviderMessages(document.RootElement);
+            foreach (var status in statuses)
+                ValidateEnvironmentBinding(status.WabaId, status.RecipientId);
+            foreach (var message in messages)
+                ValidateEnvironmentBinding(message.WabaId, message.RecipientId);
+            var senderBinding =
+                _webhookCredentials is not null && messages.Count > 0
+                    ? await _webhookCredentials.ReadSenderBindingAsync(cancellationToken)
+                    : null;
+            if (senderBinding is not null)
+                foreach (var message in messages)
+                    if (
+                        senderBinding.WabaId != message.WabaId
+                        || senderBinding.PhoneNumberId != message.RecipientId
+                        || Sha256(senderBinding.AppId) != _conversationOptions!.AppBindingDigest
+                        || (
+                            message.From != senderBinding.RecipientPhoneNumber
+                            && message.From != senderBinding.RecipientPhoneNumber.TrimStart('+')
+                        )
+                    )
+                        throw new WhatsAppWebhookException(403, "WHATSAPP_SENDER_NOT_BOUND");
             if (statuses.Count > 0)
             {
                 if (_outboxService is null)
                     throw new WhatsAppWebhookException(503, "WHATSAPP_STATUS_OWNER_UNAVAILABLE");
                 foreach (var status in statuses)
                 {
-                    ValidateEnvironmentBinding(status.WabaId, status.RecipientId);
                     await _outboxService.RecordProviderStatusAsync(status.Event, cancellationToken);
                 }
-                return new(
-                    statuses[0].Event.ProviderMessageId,
-                    "ACCEPTED",
-                    "DELIVERY_STATUS",
-                    string.Empty,
-                    false,
-                    string.Empty
-                );
             }
-            var messages = ParseProviderMessages(document.RootElement);
             if (messages.Count > 0)
             {
                 var conversationOptions =
@@ -181,11 +222,13 @@ public sealed partial class WhatsAppJourneyService
                 WhatsAppJourneyReceipt? firstReceipt = null;
                 foreach (var message in messages)
                 {
-                    ValidateEnvironmentBinding(message.WabaId, message.RecipientId);
+                    var phoneSubjectHash =
+                        senderBinding?.RecipientBindingDigest
+                        ?? HmacHex(_webhookSecret, message.From);
                     var receipt = await ReceiveVerifiedAsync(
                         new VerifiedPhoneIdentityProof(
                             message.MessageId,
-                            HmacHex(_webhookSecret, message.From),
+                            phoneSubjectHash,
                             message.Text,
                             null,
                             "whatsapp-provider-callback",
@@ -206,8 +249,19 @@ public sealed partial class WhatsAppJourneyService
                 }
                 return firstReceipt!;
             }
+            if (statuses.Count > 0)
+                return new(
+                    statuses[0].Event.ProviderMessageId,
+                    "ACCEPTED",
+                    "DELIVERY_STATUS",
+                    string.Empty,
+                    false,
+                    string.Empty
+                );
         }
 
+        if (_webhookCredentials is not null)
+            throw new WhatsAppWebhookException(400, "WHATSAPP_PROVIDER_ENVELOPE_REQUIRED");
         WhatsAppInbound inbound;
         try
         {
@@ -355,6 +409,11 @@ public sealed partial class WhatsAppJourneyService
             );
             db.WhatsAppJourneyContacts.Add(contact);
         }
+        _capabilityGate?.RequireRecipient(
+            contact.TenantId,
+            proof.PhoneSubjectHash,
+            DateTimeOffset.UtcNow
+        );
         contact.LastInboundAt = receivedAt;
 
         var bindings = await db
@@ -531,20 +590,18 @@ public sealed partial class WhatsAppJourneyService
             );
         }
 
-        var (tenantToken, tokenHash, tokenExpiresAt) = IssueTenantToken(
-            contact.TenantId,
-            proof.PhoneSubjectHash,
-            receivedAt
-        );
+        var tenantToken = string.Empty;
         if (_conversationDbFactory is null)
         {
+            var issued = IssueTenantToken(contact.TenantId, proof.PhoneSubjectHash, receivedAt);
+            tenantToken = issued.Token;
             db.WhatsAppMessageReceipts.Add(
                 new WhatsAppMessageReceipt
                 {
                     MessageId = proof.MessageId,
                     TenantId = contact.TenantId,
-                    SessionTokenHash = tokenHash,
-                    SessionExpiresAt = tokenExpiresAt,
+                    SessionTokenHash = issued.TokenHash,
+                    SessionExpiresAt = issued.ExpiresAt,
                     ReceivedAt = receivedAt,
                     ExpiresAt = receivedAt.AddHours(24),
                 }
@@ -810,7 +867,9 @@ public sealed partial class WhatsAppJourneyService
             foreach (var change in changes.EnumerateArray())
             {
                 if (
-                    !change.TryGetProperty("value", out var value)
+                    change.ValueKind != JsonValueKind.Object
+                    || !change.TryGetProperty("value", out var value)
+                    || value.ValueKind != JsonValueKind.Object
                     || !value.TryGetProperty("metadata", out var metadata)
                     || !TryGetRequiredString(metadata, "phone_number_id", out recipientId)
                     || !value.TryGetProperty("statuses", out var providerStatuses)
@@ -826,6 +885,17 @@ public sealed partial class WhatsAppJourneyService
                         || !long.TryParse(timestampText, out unixTimestamp)
                     )
                         throw new WhatsAppWebhookException(400, "WHATSAPP_STATUS_INVALID");
+                    Guid? outboxId = null;
+                    if (providerStatus.TryGetProperty("biz_opaque_callback_data", out var opaque))
+                    {
+                        if (
+                            opaque.ValueKind != JsonValueKind.String
+                            || !Guid.TryParseExact(opaque.GetString(), "D", out var parsedOutboxId)
+                            || parsedOutboxId == Guid.Empty
+                        )
+                            throw new WhatsAppWebhookException(400, "WHATSAPP_STATUS_INVALID");
+                        outboxId = parsedOutboxId;
+                    }
                     var statusIdentity = Sha256(
                         string.Join(
                             ':',
@@ -846,6 +916,9 @@ public sealed partial class WhatsAppJourneyService
                                 FromProviderTimestamp(unixTimestamp),
                                 Convert.ToHexStringLower(SHA256.HashData(rawBody))
                             )
+                            {
+                                OutboxId = outboxId,
+                            }
                         )
                     );
                 }
@@ -873,7 +946,9 @@ public sealed partial class WhatsAppJourneyService
             foreach (var change in changes.EnumerateArray())
             {
                 if (
-                    !change.TryGetProperty("value", out var value)
+                    change.ValueKind != JsonValueKind.Object
+                    || !change.TryGetProperty("value", out var value)
+                    || value.ValueKind != JsonValueKind.Object
                     || !value.TryGetProperty("metadata", out var metadata)
                     || !TryGetRequiredString(metadata, "phone_number_id", out var recipientId)
                     || !value.TryGetProperty("messages", out var providerMessages)
@@ -942,12 +1017,30 @@ public sealed partial class WhatsAppJourneyService
     {
         value = string.Empty;
         if (
-            !element.TryGetProperty(propertyName, out var property)
+            element.ValueKind != JsonValueKind.Object
+            || !element.TryGetProperty(propertyName, out var property)
             || property.ValueKind != JsonValueKind.String
         )
             return false;
         value = property.GetString() ?? string.Empty;
         return !string.IsNullOrWhiteSpace(value);
+    }
+
+    private static void RejectDuplicateProperties(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var property in element.EnumerateObject())
+            {
+                if (!names.Add(property.Name))
+                    throw new WhatsAppWebhookException(400, "WHATSAPP_PAYLOAD_INVALID");
+                RejectDuplicateProperties(property.Value);
+            }
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+            foreach (var value in element.EnumerateArray())
+                RejectDuplicateProperties(value);
     }
 
     public async Task EnrolMpinAsync(
@@ -1128,7 +1221,11 @@ public sealed partial class WhatsAppJourneyService
         );
     }
 
-    private void VerifySignature(byte[] rawBody, string signatureHeader)
+    private void VerifySignature(
+        byte[] rawBody,
+        string signatureHeader,
+        byte[]? signatureKey = null
+    )
     {
         if (!signatureHeader.StartsWith("sha256=", StringComparison.Ordinal))
             throw new WhatsAppWebhookException(403, "WHATSAPP_SIGNATURE_INVALID");
@@ -1141,7 +1238,7 @@ public sealed partial class WhatsAppJourneyService
         {
             throw new WhatsAppWebhookException(403, "WHATSAPP_SIGNATURE_INVALID");
         }
-        var expected = HMACSHA256.HashData(_webhookSecret, rawBody);
+        var expected = HMACSHA256.HashData(signatureKey ?? _webhookSecret, rawBody);
         if (
             supplied.Length != expected.Length
             || !CryptographicOperations.FixedTimeEquals(supplied, expected)

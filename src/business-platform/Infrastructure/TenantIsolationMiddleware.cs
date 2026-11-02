@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Waooaw.BusinessPlatform.Controllers;
+using Waooaw.BusinessPlatform.Services;
 using Waooaw.ConstitutionalEngine.Grpc;
 
 namespace Waooaw.BusinessPlatform.Infrastructure;
@@ -205,16 +206,19 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<TenantDbConnectionInterceptor> _logger;
+    private readonly WhatsAppTenantExecutionScope? _whatsAppTenantExecution;
     private readonly ConcurrentDictionary<DbCommand, DbTransaction> _ownedTransactions = new();
 
     public TenantDbConnectionInterceptor(
         IHttpContextAccessor httpContextAccessor,
-        ILogger<TenantDbConnectionInterceptor> logger
+        ILogger<TenantDbConnectionInterceptor> logger,
+        WhatsAppTenantExecutionScope? whatsAppTenantExecution = null
     )
     {
         _httpContextAccessor =
             httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _whatsAppTenantExecution = whatsAppTenantExecution;
     }
 
     // ── Synchronous intercepts ───────────────────────────────────────────────
@@ -374,26 +378,9 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
     /// </summary>
     private void SetTenantLocal(DbCommand command)
     {
-        var httpContext = _httpContextAccessor.HttpContext;
-        if (httpContext is null)
-        {
-            // Non-HTTP context (migrations, background jobs) — skip RLS injection.
+        var tenantId = CurrentTenantId();
+        if (tenantId is null)
             return;
-        }
-
-        if (
-            !httpContext.Items.TryGetValue(
-                TenantIsolationMiddleware.TenantIdItemKey,
-                out var tenantObj
-            )
-            || tenantObj is not string tenantId
-            || string.IsNullOrWhiteSpace(tenantId)
-        )
-        {
-            // Tenant not resolved — middleware would have already rejected the request
-            // for API paths. Background/health paths legitimately have no tenant.
-            return;
-        }
 
         if (command.Transaction is null)
         {
@@ -469,7 +456,7 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
             || tenantObj is not string tenantId
             || string.IsNullOrWhiteSpace(tenantId)
         )
-            return null;
+            return _whatsAppTenantExecution?.CurrentTenantId?.ToString("D");
         return tenantId;
     }
 

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 from collections.abc import Mapping
@@ -39,6 +40,66 @@ DATABASE_SECRET_NAMES = {
     "temporal": "db-temporal-runtime-demo",
     "temporal-migration": "db-temporal-migration-demo",
 }
+WHATSAPP_SECRET_NAMES = frozenset(
+    {
+        "whatsapp-provider-binding",
+        "whatsapp-verify-token",
+        "whatsapp-app-secret",
+        "whatsapp-outbound-authority",
+    }
+)
+
+
+def whatsapp_provider_inputs(environment: str, configuration: Mapping[str, Any], manifest: Mapping[str, Any]) -> dict[str, Any]:
+    provider = configuration.get("whatsapp_provider")
+    if provider is None:
+        return {}
+    if environment != "demo":
+        raise ValueError("WhatsApp provider configuration is Demo-only")
+    if not isinstance(provider, dict) or set(provider) != {
+        "callback_host",
+        "secret_versions",
+        "authority_reference",
+        "verification_enabled",
+    }:
+        raise ValueError("WhatsApp provider configuration fields are closed")
+    host = provider["callback_host"]
+    if (
+        not isinstance(host, str)
+        or len(host) > 253
+        or re.fullmatch(r"whatsapp-demo[.](?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?[.])+[a-z]{2,63}", host) is None
+    ):
+        raise ValueError("WhatsApp callback host must be the exact dedicated whatsapp-demo hostname")
+    authority = provider["authority_reference"]
+    if not isinstance(authority, str) or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9:._/-]{0,255}", authority) is None:
+        raise ValueError("WhatsApp provider enablement requires an opaque authority reference")
+    if type(provider["verification_enabled"]) is not bool:
+        raise ValueError("WhatsApp verification_enabled must be a boolean")
+    versions = provider["secret_versions"]
+    if (
+        not isinstance(versions, dict)
+        or set(versions) != WHATSAPP_SECRET_NAMES
+        or not all(isinstance(value, str) and re.fullmatch(r"[a-f0-9]{32}", value) for value in versions.values())
+    ):
+        raise ValueError("WhatsApp requires exactly four pinned secret versions and no media authority")
+    vaults = {uri.split("/secrets/", 1)[0] for uri in configuration["key_vault_secret_uris"].values()}
+    if vaults != {"https://kv-waooaw-demo.vault.azure.net"}:
+        raise ValueError("WhatsApp provider must use the canonical Demo vault")
+    scopes = {value.split("/secrets/", 1)[0] for value in configuration["key_vault_secret_resource_ids"].values()}
+    if len(scopes) != 1 or not next(iter(scopes)).endswith("/vaults/kv-waooaw-demo"):
+        raise ValueError("WhatsApp provider requires a single canonical Demo vault RBAC scope")
+    return {
+        "whatsapp_provider": {
+            **provider,
+            "release_digest": manifest["images"]["business-platform"].split("@", 1)[1],
+            "configuration_digest": "sha256:"
+            + hashlib.sha256(json.dumps(provider, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+            "catalog_digest": "sha256:"
+            + hashlib.sha256(
+                (Path(__file__).resolve().parents[1] / "infrastructure/environment-readiness/secret-catalog.json").read_bytes()
+            ).hexdigest(),
+        }
+    }
 
 
 def parse_key_vault_url(value: Any):
@@ -107,6 +168,8 @@ def create_inputs(
         raise ValueError("invalid release manifest: " + ", ".join(violations))
     if environment not in {"demo", "uat", "prod"}:
         raise ValueError("environment must be demo, uat, or prod")
+    if configuration.get("whatsapp_provider") is not None and environment != "demo":
+        raise ValueError("WhatsApp provider configuration is Demo-only")
     if not ghcr_packages_public_verified:
         raise ValueError("anonymous digest pulls must be verified for all exact-seven GHCR packages")
     secret_uris = configuration.get("key_vault_secret_uris")
@@ -180,6 +243,7 @@ def create_inputs(
         "key_vault_secret_uris": dict(secret_uris),
         "key_vault_secret_resource_ids": dict(secret_resource_ids),
     }
+    inputs.update(whatsapp_provider_inputs(environment, configuration, manifest))
     if image_registry_server:
         inputs["image_registry_server"] = image_registry_server
         inputs["image_pull_identity_id"] = image_pull_identity_id

@@ -10,6 +10,7 @@ import re
 import pytest
 import yaml
 
+from validation_control.hosted_policy import CONTROL_PLANE_INSTALL
 from validation_control.runner_supply import (
     build_supply_manifest,
     create_context,
@@ -17,6 +18,22 @@ from validation_control.runner_supply import (
     runner_specification,
     validate_supply_manifest,
 )
+from validation_control.shadow import build_hosted_execution_plan
+from validation_policy import classify_paths
+
+COMPOSE_RUNNER_BUILD = re.compile(r"docker compose[^\n]*\sbuild\s[^\n]*test-runner")
+
+
+@pytest.mark.parametrize(
+    ("command", "builds_runner"),
+    (
+        ("docker compose --profile test-python build test-runner-python", True),
+        ("docker compose build --pull test-runner", True),
+        ("docker compose --profile test-python run --pull never test-runner-python pytest", False),
+    ),
+)
+def test_consumer_build_check_distinguishes_build_command_from_no_build_option(command: str, builds_runner: bool) -> None:
+    assert bool(COMPOSE_RUNNER_BUILD.search(command)) is builds_runner
 
 
 def fixture_repository(tmp_path: Path) -> tuple[Path, dict[str, object]]:
@@ -170,11 +187,34 @@ def test_hosted_workflows_use_one_supply_graph_and_never_build_in_consumers() ->
                 continue
             for step in job["steps"]:
                 command = step.get("run", "") if isinstance(step, dict) else ""
-                assert re.search(r"docker compose.*\bbuild\b.*test-runner", command) is None, job_id
+                assert COMPOSE_RUNNER_BUILD.search(command) is None, job_id
             needs = job.get("needs", [])
             needs = [needs] if isinstance(needs, str) else needs
             assert "runner-supply" in needs, job_id
             assert "./.github/actions/use-validation-runner" in rendered, job_id
+
+
+@pytest.mark.parametrize("changed_paths", [[], ["README.md"], ["web/app/page.tsx"]])
+def test_persistent_state_consumer_always_receives_verified_python_runner(changed_paths: list[str]) -> None:
+    root = Path(__file__).resolve().parents[2]
+    workflow = yaml.safe_load((root / ".github/workflows/ci.yaml").read_text(encoding="utf-8"))
+    catalog = yaml.safe_load((root / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
+    execution = build_hosted_execution_plan(catalog, classify_paths(catalog, changed_paths))
+    job = workflow["jobs"]["wc124-persistent-state"]
+
+    assert "python" in execution["required_runners"]
+    assert set(job["needs"]) == {"runner-supply", "validation-plan"}
+    assert "if" not in job
+    consumers = [step for step in job["steps"] if step.get("uses") == "./.github/actions/use-validation-runner"]
+    assert len(consumers) == 1
+    assert consumers[0]["with"]["runner-id"] == "python"
+    consumer_index = job["steps"].index(consumers[0])
+    commands = [(index, step["run"]) for index, step in enumerate(job["steps"]) if "test-runner-python" in step.get("run", "")]
+    assert len(commands) == 3
+    for index, command in commands:
+        assert index > consumer_index
+        assert "--pull never" in command
+        assert "--no-build" not in command
 
 
 def test_reusable_validation_plan_preserves_consumer_contract() -> None:
@@ -186,8 +226,14 @@ def test_reusable_validation_plan_preserves_consumer_contract() -> None:
 
     assert "release_required" in workflow[True]["workflow_call"]["outputs"]
     assert plan["outputs"]["release_required"] == "${{ steps.plan.outputs.release_required }}"
-    assert rendered.count("./.github/actions/use-validation-runner") == 1
-    assert '"runner-id": "full"' in rendered
+    assert "./.github/actions/use-validation-runner" not in rendered
+    assert "needs" not in plan
+    setup = next(step for step in plan["steps"] if step.get("uses") == "actions/setup-python@v5")
+    assert setup["with"]["python-version"] == "3.12"
+    assert setup["with"]["cache-dependency-path"] == "requirements-validation-plan.txt"
+    assert any(step.get("run") == CONTROL_PLANE_INSTALL for step in plan["steps"])
+    assert "sha256sum requirements-validation-plan.txt" in source
+    assert plan["outputs"]["required_runners"] == "${{ steps.plan.outputs.required_runners }}"
     assert "wc104-qualification-plan-${{ github.run_id }}" in rendered
     assert "wc109-shadow-plan-${{ github.run_id }}" in rendered
     assert "--all-gates" in rendered
@@ -219,7 +265,9 @@ def test_code_quality_jobs_execute_catalog_gates() -> None:
     }
 
     assert jobs["validation-plan"]["uses"] == "./.github/workflows/validation-plan.yaml"
-    assert jobs["runner-supply"]["needs"] == "static-preflight"
+    assert jobs["validation-plan"]["needs"] == "static-preflight"
+    assert jobs["runner-supply"]["needs"] == "validation-plan"
+    assert jobs["runner-supply"]["with"]["runners"] == "${{ needs.validation-plan.outputs.required_runners }}"
     for job_id in catalog_jobs:
         rendered = json.dumps(jobs[job_id])
         assert jobs[job_id]["needs"] == ["runner-supply", "validation-plan"], job_id

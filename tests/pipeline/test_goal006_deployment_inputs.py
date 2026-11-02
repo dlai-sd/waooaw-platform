@@ -97,6 +97,83 @@ def test_nonproduction_inputs_require_lease_and_preserve_exact_tuple(environment
     assert set(inputs["image_digests"]) == RELEASE_MEMBERS
     assert inputs["lease_state"] == "ACTIVE"
     assert inputs["ghcr_packages_public"] is True
+    assert "whatsapp_provider" not in inputs
+
+
+def whatsapp_configuration() -> dict[str, Any]:
+    values = add_key_vault_references(
+        configuration(),
+        "/subscriptions/test/resourceGroups/demo/providers/Microsoft.KeyVault/vaults/kv-waooaw-demo",
+        "https://kv-waooaw-demo.vault.azure.net/",
+        "demo",
+    )
+    values["whatsapp_provider"] = {
+        "callback_host": "whatsapp-demo.example.com",
+        "secret_versions": {
+            name: "a" * 32
+            for name in (
+                "whatsapp-provider-binding", "whatsapp-verify-token",
+                "whatsapp-app-secret", "whatsapp-outbound-authority",
+            )
+        },
+        "authority_reference": "FA:demo-provider",
+        "verification_enabled": False,
+    }
+    return values
+
+
+def test_whatsapp_deployment_inputs_pin_release_and_remain_registration_only() -> None:
+    values = whatsapp_configuration()
+    first = create_inputs("demo", manifest(), values, True)
+    assert first == create_inputs("demo", manifest(), values, True)
+    provider = first["whatsapp_provider"]
+    assert provider["release_digest"] == "sha256:" + "a" * 64
+    assert provider["configuration_digest"].startswith("sha256:")
+    assert provider["catalog_digest"].startswith("sha256:")
+    assert provider["verification_enabled"] is False
+    assert set(provider) == {
+        "callback_host", "secret_versions", "authority_reference", "verification_enabled",
+        "release_digest", "configuration_digest", "catalog_digest",
+    }
+    values["whatsapp_provider"]["verification_enabled"] = True
+    changed = create_inputs("demo", manifest(), values, True)["whatsapp_provider"]
+    assert changed["configuration_digest"] != provider["configuration_digest"]
+    assert changed["verification_enabled"] is True
+
+
+@pytest.mark.parametrize("environment", ["uat", "prod"])
+def test_whatsapp_configuration_cannot_cross_environments(environment: str) -> None:
+    with pytest.raises(ValueError, match="Demo-only"):
+        create_inputs(environment, manifest(), whatsapp_configuration(), True)
+
+
+@pytest.mark.parametrize("mutation", [
+    "unknown", "media", "missing-secret", "wrong-version", "wrong-host",
+    "url-in-host", "empty-authority", "string-switch", "wrong-vault",
+])
+def test_invalid_whatsapp_configuration_fails_before_terraform(mutation: str) -> None:
+    values = whatsapp_configuration()
+    provider = values["whatsapp_provider"]
+    if mutation == "unknown":
+        provider["dispatch_enabled"] = True
+    elif mutation == "media":
+        provider["secret_versions"]["whatsapp-media-authority"] = "b" * 32
+    elif mutation == "missing-secret":
+        del provider["secret_versions"]["whatsapp-app-secret"]
+    elif mutation == "wrong-version":
+        provider["secret_versions"]["whatsapp-app-secret"] = "latest"
+    elif mutation == "wrong-host":
+        provider["callback_host"] = "cp.demo.waooaw.com"
+    elif mutation == "url-in-host":
+        provider["callback_host"] = "https://whatsapp-demo.example.com/webhook"
+    elif mutation == "empty-authority":
+        provider["authority_reference"] = ""
+    elif mutation == "string-switch":
+        provider["verification_enabled"] = "false"
+    elif mutation == "wrong-vault":
+        values["key_vault_secret_uris"]["web"] = "https://kv-uat.vault.azure.net/secrets/web"
+    with pytest.raises(ValueError, match="WhatsApp"):
+        create_inputs("demo", manifest(), values, True)
 
 
 def test_expired_nonproduction_lease_is_rejected_before_terraform_inputs() -> None:

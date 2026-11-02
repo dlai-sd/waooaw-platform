@@ -24,18 +24,12 @@ def test_demo_preview_client_is_public_pkce_and_exact_origin_only() -> None:
     assert '"pkce.code.challenge.method" = "S256"' in workload
     assert '"${var.auth_preview_origin}/api/auth/callback/keycloak-google"' in workload
     assert '"${var.auth_preview_origin}/api/auth/callback/keycloak-facebook"' in workload
-    assert (
-        '"post.logout.redirect.uris"  = "${var.auth_preview_origin}/login"'
-    ) in workload
-    assert (
-        '"post.logout.redirect.uris"  = "${local.service_urls.web}/login"'
-    ) in workload
+    assert ('"post.logout.redirect.uris"  = "${var.auth_preview_origin}/login"') in workload
+    assert ('"post.logout.redirect.uris"  = "${local.service_urls.web}/login"') in workload
     assert "*" not in demo_variables
-    assert "var.environment == \"demo\"" in variables
+    assert 'var.environment == "demo"' in variables
     assert "auth_preview_origin" in demo_main
-    assert "auth_preview_origin" not in (
-        ROOT / "infrastructure/terraform/phase2/environments/prod/workload/main.tf"
-    ).read_text()
+    assert "auth_preview_origin" not in (ROOT / "infrastructure/terraform/phase2/environments/prod/workload/main.tf").read_text()
 
 
 def test_preview_package_runs_current_source_with_real_local_services() -> None:
@@ -57,7 +51,7 @@ def test_preview_package_runs_current_source_with_real_local_services() -> None:
     assert "auth_preview_data_protection:/var/lib/waooaw/dataprotection-keys" in compose
     assert "data-protection.pfx:/run/secrets/data-protection.pfx:ro" in compose
     assert "ports:" not in compose.split("  postgres:", 1)[1].split("  temporal:", 1)[0]
-    assert "KEYCLOAK_PUBLIC_CLIENT: \"true\"" in compose
+    assert 'KEYCLOAK_PUBLIC_CLIENT: "true"' in compose
     assert "KEYCLOAK_CLIENT_SECRET" not in compose + launcher
     assert "--wait --wait-timeout" in launcher
     assert 'openssl rand -hex "$2"' in launcher
@@ -93,9 +87,10 @@ def test_preview_package_runs_current_source_with_real_local_services() -> None:
     assert "ensure-ce-audit-role.sql:/auth-preview/ensure-ce-audit-role.sql:ro" in compose
     assert "psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /auth-preview/ensure-ce-audit-role.sql" in launcher
     assert "bash /docker-entrypoint-initdb.d/42-demo-marketplace-admission.sh" in launcher
-    assert "GRANT ce_service_role TO constitutional_app" in (
-        ROOT / "infrastructure/postgres/auth-preview/ensure-ce-audit-role.sql"
-    ).read_text()
+    assert (
+        "GRANT ce_service_role TO constitutional_app"
+        in (ROOT / "infrastructure/postgres/auth-preview/ensure-ce-audit-role.sql").read_text()
+    )
     marketplace_seed = (ROOT / "infrastructure/postgres/init/42-demo-marketplace-admission.sh").read_text()
     assert "WHERE membership.status = 'ACTIVE'" in marketplace_seed
     assert "ON CONFLICT (tenant_id, professional_type_id, professional_version) DO NOTHING" in marketplace_seed
@@ -139,7 +134,7 @@ def test_demo_business_platform_bootstraps_dma_admission_with_release_digests() 
     module = (MODULE / "main.tf").read_text()
     dockerfile = (ROOT / "src/business-platform/Dockerfile").read_text()
 
-    assert 'DMA_ADMISSION_CONTENT_DIGEST   = var.dma_admission_content_digest' in module
+    assert "DMA_ADMISSION_CONTENT_DIGEST   = var.dma_admission_content_digest" in module
     assert 'DMA_ARTIFACT_DIGEST            = split("@", var.image_digests[' in module
     assert "infrastructure/postgres/init/ /app/postgres-init/" in dockerfile
     assert (ROOT / "infrastructure/postgres/init/42-demo-marketplace-admission.sh").is_file()
@@ -176,10 +171,18 @@ def test_demo_web_has_a_stable_scaling_target() -> None:
     variables = (MODULE / "variables.tf").read_text()
     demo_main = (DEMO / "main.tf").read_text()
 
-    assert '"web"                                     = var.web_min_replicas' in module
+    replicas = next(block["minimum_replicas"] for block in hcl2.loads(module)["locals"] if "minimum_replicas" in block)
+    web_replicas = next(value for key, value in replicas.items() if key.strip('"') == "web")
+    assert web_replicas == "${var.application_activation_enabled ? var.web_min_replicas : 0}"
     assert 'variable "web_min_replicas"' in variables
-    assert "web_min_replicas                         = 1" in demo_main
-    assert "max_replicas                             = 1" in demo_main
+    demo_workload = next(
+        attributes
+        for block in hcl2.loads(demo_main)["module"]
+        for name, attributes in block.items()
+        if name.strip('"') == "workload"
+    )
+    assert demo_workload["web_min_replicas"] == 1
+    assert demo_workload["max_replicas"] == 1
 
 
 def test_demo_managed_postgres_requires_key_vault_backed_credentials() -> None:
@@ -191,6 +194,21 @@ def test_demo_managed_postgres_requires_key_vault_backed_credentials() -> None:
     assert 'name                = "database-credential"' in workload
     assert 'secret_name = "database-credential"' in workload
     assert "key_vault_secret_id = var.database_secret_uris[each.key]" in workload
-    assert workload.count('secret_name = "postgres-password"') == 1
+    password_owners = {
+        (resource_type.strip('"'), name.strip('"')): secret
+        for block in hcl2.loads(workload)["resource"]
+        for resource_type, resources in block.items()
+        for name, attributes in resources.items()
+        for secret in attributes.get("secret", [])
+        if secret.get("name", "").strip('"') == "postgres-password"
+    }
+    assert set(password_owners) == {
+        ("azurerm_container_app", "temporal"),
+        ("azurerm_container_app_job", "temporal_startup_qualification"),
+    }
+    for secret in password_owners.values():
+        assert secret["key_vault_secret_id"] == '${var.database_secret_uris["temporal"]}'
+        assert secret["identity"] == "${azurerm_user_assigned_identity.temporal[0].id}"
+        assert "value" not in secret
     assert 'resource "azurerm_user_assigned_identity" "temporal"' in workload
     assert 'resource "azurerm_role_assignment" "temporal_secret"' in workload

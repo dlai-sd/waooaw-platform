@@ -5,8 +5,8 @@
 | Field | Value |
 |---|---|
 | Work component | WC121-C09 - Demo WhatsApp Provider Enablement |
-| Version | 0.1.0-candidate.3 |
-| Status | EXECUTION PLAN - S16 REOPENED - SELECTIVE VALIDATION ACTIVATED - PROTECTED ACTIONS UNAUTHORIZED |
+| Version | 0.1.0-candidate.4 |
+| Status | SESSION IMPLEMENTATION AND DEMO SCOPE AUTHORIZED - EXACT INPUTS AND QUALIFICATION PENDING |
 | Parent Work Contract | `work-contracts/WC-121-customer-engagement-workspace-implementation.md` |
 | Controlling component | WC-121 Section 6.9, CEW-WC-09 - Live Demo Provider and Deployment |
 | Upstream transport Work Contract | `work-contracts/WC-120-conversation-engine-whatsapp-implementation.md` |
@@ -16,12 +16,23 @@
 | Environment schema | `infrastructure/conversation-whatsapp/environment.schema.json` |
 | Implementation office | Platform IT Expert |
 | Source baseline | `origin/main` at `6166da3fb516c78143207ac6d4bc9af7c1652c2c` |
-| Result | S16 BLOCKED; S01-S15 PLANNED OR BLOCKED |
+| Result | PLANNING AMENDED; S01-S16 REQUIRE CURRENT-CANDIDATE EVIDENCE AND APPLICABLE PROTECTED INPUTS |
 
 This work component decomposes already accepted WC-120 and WC-121 boundaries into executable
 Platform IT stories. It makes no new architecture decision and does not authorize source changes,
 provider access, credential use, Azure or DNS mutation, deployment, external traffic, activation,
 PR approval, or merge.
+
+**2026-11-02 current-session amendment:** The Founder explicitly authorized implementation and
+inclusion of Demo provider enablement, deployment and activation in WC-120, then confirmed
+`implementation_authorization=true` and a separate latest-main worktree. WC-120 Section 12 is the
+owning scope/impact/grouped-plan amendment, based on
+`a497cb2f2669d7da90dcb37611badffc4c6953ea`. It supersedes the earlier blanket non-authorization
+above and in Section 8 for this assignment, but does not supply missing exact provider/cloud
+identities, protected credentials, recipient/window/spend, qualified tuple or activation inputs.
+Each Section 3 gate must still be recorded and checked independently before its action.
+PR approval/merge and UAT/Production mutation remain excluded. Existing S01-S16 are the required
+Demo stories; do not create a duplicate story chain or infer completion from historical evidence.
 
 If an implementation choice would add a deployable, ingress class, store, queue, public facade,
 identity owner, provider trust model, or cross-environment path not already accepted by the
@@ -327,11 +338,19 @@ verification duties use separate least-privilege identities.
 
 1. Use federated OIDC with no Azure client secret for the authorized Demo deployment identity.
 2. Bind the federated subject to the exact repository, workflow/environment, and Demo scope.
-3. Assign separate adapter runtime, media scanner, deployment/configurator, and independent
-   verification identities.
-4. Grant `get` only on exact secret resources required by each runtime consumer.
-5. Prevent Keycloak, Web, BP, UAT, Production, and unrelated workloads from reading provider
-   credentials.
+3. For Demo, designate the existing Business Platform managed identity as the WhatsApp provider
+   runtime principal. The entire BP application, revisions and processes sharing that identity
+   form the trusted boundary; logical adapter naming provides no intra-BP security isolation.
+   Keep deployment/configurator and independent verifier principals separate.
+4. Grant exact-secret read only on the separate approved provider-binding, verification-token,
+   App Secret and outbound-authority references required by enabled flows. Describe the existing
+   `Key Vault Secrets User` role accurately, including associated metadata access; it is not a
+   custom literal-get-only role. Exclude broader inherited access and enforce version, purpose,
+   environment, revocation and expiry in runtime controls.
+5. Deny provider-secret access to Keycloak, Web, other runtime principals, UAT, Production and
+   unrelated workloads. Do not reuse Facebook-login credentials. Do not grant media credentials
+   to BP: provider media retrieval remains disabled unless the accepted distinct scanner boundary
+   and its environment-bound identity and safety proofs exist.
 6. Validate workload identity, audience, caller, operation, purpose, environment, and delegated
    customer context independently.
 
@@ -372,7 +391,9 @@ without adding an unauthorized service, public facade, or release-tuple member.
 3. Bind startup configuration to canonical references and fail closed on missing mandatory
    dependencies.
 4. Preserve exact-raw-body callback verification before parsing or normalization.
-5. Preserve independently authenticated adapter-to-BP calls with purpose and audience checks.
+5. Authenticate independently deployed callers and enforce the accepted audience, purpose,
+   operation, environment and delegated-context checks. In-process adapter-to-BP calls preserve
+   authorization context but are not an independently authenticated workload boundary.
 6. Add no direct provider-to-owner or client-to-provider business path.
 
 **Executable evidence**
@@ -389,8 +410,10 @@ without adding an unauthorized service, public facade, or release-tuple member.
 
 **Stop**
 
-- New deployable, ingress owner, public facade, shared workload credential, or health probe with an
-  external effect.
+- New deployable, ingress owner, public facade, cross-duty runtime/configurator/verifier identity
+  sharing, credentials shared with another workload, or health probe with an external effect.
+  The explicitly designated Demo BP/provider-runtime identity is permitted; no intra-BP isolation
+  is claimed.
 
 ### WC121-C09-S08 - Stable Demo Callback Ingress, DNS, And TLS
 
@@ -877,6 +900,10 @@ This candidate does not authorize:
 
 Each action begins only after its exact current authority and prerequisites are recorded.
 
+For this session, the authorization amendment in Record Control and Section 10 supersedes the
+historical blanket prohibition for the bounded WC-120/Demo assignment. The independent exact-input
+checks in Section 3 and all story acceptance/stop predicates remain controlling.
+
 ## 9. PR Validation Efficiency Extension
 
 This extension governs delivery efficiency for this component and later work that uses the same
@@ -981,3 +1008,493 @@ Acceptance:
 - The prebuilt Azure image proves Container Apps extension `1.3.0b4` under the runtime user.
 - C# CodeQL has `build-mode: none`, no autobuild step, and unchanged query coverage.
 - Release evidence uploads are conditional on the lane that produces each artifact.
+
+## 10. Current-Session Impact And Founder Configuration Intake
+
+### 10.1 Complete Protected-Action Story Inventory
+
+Baseline: `a497cb2f2669d7da90dcb37611badffc4c6953ea`, branch
+`ib/120/whatsapp-demo-implementation`. All statuses below are inspection findings, not test results.
+The grouped execution order, WC-120 requirement mapping, validation timing, evidence identity and
+rollback boundary are in WC-120 Section 12.4.
+
+| Story | Existing surface / baseline observation | Required delta, direct evidence and dependency |
+|---|---|---|
+| S01 | Existing WC-120/WC-121 contracts, ledgers and source/owner records | Freeze current exact digests and independent action inputs; contract intake passes but image and protected inputs remain pending. No implementation under S01. |
+| S02 | Demo manifest has only `DEMO_SUFFIX_3575` and protected reference placeholders | Verify dedicated app/WABA/sender/billing and a distinct authorized recipient through the protected operator path; never infer live ownership from a manifest. Requires S01. |
+| S03 | Environment schema and BP `Wc120ConversationOptions`/`WhatsAppJourneyOptions` exist | Close the production binding schema, unknown/wrong-environment/expiry/revocation controls and protected resolver mapping; fixtures do not supply credentials. Requires S01-S02. |
+| S04 | `infrastructure/environment-readiness/secret-catalog.json` has no WhatsApp entries; Demo manifest already names five references | Add exact purpose-separated catalog/consumer/rotation records and deterministic rendering; prove zero UAT/Production configuration delta and no values. Requires S03. |
+| S05 | Existing private environment provisioning path and versioned Key Vault pattern | Bind approved no-echo entry, metadata/expiry/rotation/revocation and non-resurrection tests; do not place secrets in CLI arguments, Terraform or chat. Requires S04 and exact credential authority. |
+| S06 | Existing Demo OIDC/private runner and workload identity controls | Apply the bounded Security-owned BP/provider-runtime reconciliation in Section 10.4; prove exact secret/principal/purpose denial and absence of broader inherited grants. Requires S04 and exact environment inputs. |
+| S07 | BP owns webhook and outbox; standalone legacy `src/phone-identity-service/Program.cs` also exists; BP DI selects `DisabledWhatsAppProviderAdapter` | Reuse BP ownership and existing release members, complete real transport/runtime scheduling without a new deployable, and prove startup/raw-byte/authentication and cross-workload/cross-duty secret isolation. Requires S03-S06; the full BP process is the declared provider-runtime trust boundary. |
+| S08 | `callbackHostReference` is `whatsapp-demo.<approved-domain>`; existing protected Demo deployment path | Supply exact approved callback DNS/TLS/route and ingress owner, restrict challenge/POST paths and raw bytes; Portal host is not a fallback. Requires S07 and exact cloud/DNS scope. |
+| S09 | Existing `WhatsAppJourneyController.Verify()` is gated with POST acceptance | Separate authorized GET challenge readiness from disabled business POST/dispatch; register exact Meta URL/subscription only after protected inputs and ingress qualify. Requires S05/S08. |
+| S10 | Existing outbox consent/window/template eligibility, opaque recipient/payload references | Complete real provider credential/template/recipient binding, enqueue/send-time authority/spend/expiry checks and timeout reconciliation; no temporary token or blind resend. Requires S02-S06. |
+| S11 | Default-off Demo manifest and signed exact-seven release path exist | Bind release/config/catalog/policy/provider/authority versions and capability state; credential presence cannot activate. Prove expiry/revocation/Stop and same-image parity. Requires S04/S07/S10. |
+| S12 | `.github/workflows/deploy.yaml`, reusable deployment/verification and phase2 Terraform | Use existing immutable promotion/private runner and independently verify zero-traffic readiness; no rebuild during deployment. Requires S08/S11, exact qualified image and cloud scope. |
+| S16 | Existing WC-123 opaque-session/current-membership code; current main includes logout correction #573 | Requalify exact Web image for direct/intercepted Google/Facebook Login/Register, Logout/Switch, membership and visual/accessibility oracles; old failure text is historical, not current failure evidence. Requires S01/S11/S12. |
+| S13 | Existing canonical conversation, webhook, outbox and Stop test surfaces | Live challenge/template/reply/cross-channel/Stop/alerts/replay/rollback acceptance is still required; emulator and source inspection cannot pass it. Requires S09-S12/S16 plus exact recipient/window/spend. |
+| S14 | Four default-off manifest switches and activation sentinel exist | Implement exact-tuple activation/expiry enforcement at effect boundaries; prove deactivation/revocation and no automatic reactivation. Requires S13 and complete bounded activation inputs. |
+| S15 | Existing outbox, claim/tombstone, Stop and recovery/rollback surfaces | Rehearse fence/reconcile/revoke/retain/erase sequence and zero UAT/Production delta; full resource deletion needs its exact scope and accepted lifecycle decisions. Requires S13-S14 for live rehearsal. |
+
+### 10.2 Founder Inputs And Where To Configure Them
+
+Supply only readiness status and protected references in chat. Complete telephone identities,
+provider IDs bound to telephone identity, tokens, App Secret, verify token, OTPs, payloads and
+customer content must stay in the approved private configuration channel. A reference is not
+proof that a secret exists, is current, or is readable by its intended principal.
+
+| Founder/operator input | Official configuration location | Safe handoff |
+|---|---|---|
+| Dedicated Demo Meta business portfolio and WhatsApp app; App ID and App Secret | [Meta App Dashboard](https://developers.facebook.com/apps/) - select the app, its WhatsApp use case and app settings | Confirm dedicated ownership/status; provision protected binding metadata and `whatsapp-app-secret`, not values in chat. Keep separate from Facebook-login credentials. |
+| WABA, Phone Number ID, sender/display-name verification and selected supported API version | App WhatsApp API Setup; [WhatsApp Manager](https://business.facebook.com/wa/manage/); [official setup guide](https://developers.facebook.com/documentation/business-messaging/whatsapp/get-started) | Resolve identities only through `whatsapp-provider-binding`; confirm the suffix-safe sender label. Do not purchase or migrate a number under general scope authority. |
+| Demo-only system user, assigned app/WABA assets and least-privilege messaging/media permissions | [Meta Business Settings](https://business.facebook.com/settings/) - Users, System users and assigned assets | Provision `whatsapp-outbound-authority` and separately scoped `whatsapp-media-authority`; no temporary Getting Started token or personal token. Operator performs MFA/OTP steps privately. |
+| Consenting distinct Demo recipient, approved scenario and purpose | WhatsApp API Setup/recipient settings and the approved private consent/configuration channel | Provide only an opaque recipient/consent reference and readiness status. Do not assume sender can message itself. |
+| Approved template name, category, locale, variables/version and billing readiness | WhatsApp Manager - Message templates and account payment settings | Provide non-sensitive approved template metadata/policy reference; runtime still validates the current approval and consent. Initial Product locale remains `en-IN`. |
+| Final callback hostname/domain ownership and DNS/TLS scope | Approved DNS provider and [Azure Portal](https://portal.azure.com/) for the existing Demo ingress | Confirm the exact approved hostname and cloud scope through protected configuration; implementation derives the final route from the accepted BP API. Do not register a placeholder or the Portal catch-all. |
+| Webhook callback URL, verify token and message subscriptions | Meta app WhatsApp Configuration; [official webhook guide](https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/overview) | Operator enters the generated `whatsapp-verify-token` privately after exact ingress/challenge qualification. Subscription success does not activate POST acceptance or dispatch. |
+| Five versioned canonical Demo secret references | Existing private-network no-echo provisioning path for `kv-waooaw-demo`; [Azure Key Vault documentation](https://learn.microsoft.com/azure/key-vault/secrets/about-secrets) | `whatsapp-provider-binding`, `whatsapp-verify-token`, `whatsapp-app-secret`, `whatsapp-outbound-authority`, `whatsapp-media-authority`; no portal/public-network bypass or broad vault grant. |
+| Exact Demo subscription/resource group, DNS zone, identities and rollback target | Existing protected environment configuration and approved deployment pipeline | Supply/confirm opaque configuration and authority references; no UAT/Production grant or mutation. |
+| Live UTC start/expiry, maximum spend, message/rate ceiling, recipient set, incident owner and alert destination | Founder decision bound to the exact qualified release/configuration/catalog and previous compatible tuple | Record non-sensitive limits and opaque references; reject absent, expired, wrong-tuple or revoked authority at dispatch, receipt and activation. Image digests are bound after qualification, not guessed now. |
+| Demo recovery and lifecycle/consent policy acceptance | WC-120 Sections 2.3/3.3 and accepted Data/Legal records | Explicit material-risk decision on Demo RPO 24h/RTO 8h and applicable policy references; do not infer Legal decisions or UAT/Production acceptance. |
+
+The implementation office will generate the verify token and validate the safe provisioning
+mechanism; the Founder does not need to invent or paste it. Real account creation, MFA, business
+verification, number registration and template approval may require the authorized human operator
+and provider processing time.
+
+### 10.3 Current Stop And Resume Conditions
+
+No live provider/cloud query or mutation has been performed under this amendment.
+Current-session implementation and bounded Demo scope are authorized, but protected execution
+waits for the exact inputs above, verified credential controls, current exact-image qualification
+and independent deployed-authentication proof. Do not claim S01-S16 completion, live Meta acceptance
+or go-live merely because source code, fixtures, secret references or an earlier deployment exist.
+
+Continue compatible repository work using Section 10.4's S06/S07 clarification; stop on a proposed
+stronger isolation claim that the existing topology cannot enforce. UAT/Production remain untouched. After all repository implementation
+and test sources are complete, run the consolidated Docker qualification required by WC-120
+Section 12.4, perform author review, and prepare the exact-head PR using the existing template and
+mandatory preparation gates. No PR is represented as tested or merge-ready before those checks pass.
+The canonical deployment accepts a matching trusted-main control/release SHA only. Submit the
+engineering-qualified PR first, wait for Founder merge and trusted release publication, then execute
+S12-S15 and retain their live evidence here. No pre-merge branch deployment or self-merge is
+authorized, and pending live stories must remain explicit in the implementation PR.
+
+### 10.4 Focused Technical Dispositions And Shared API Invariant
+
+On 2026-11-02 the Founder authorized focused help from specialized WAOOAW offices rather than
+delegating engineering decisions back to the Founder. Platform Architect assessed the existing BP
+workload mapping and recommended the smallest explicit whole-BP runtime boundary instead of a new
+deployable. Security Architect returned a bounded conditional acceptance within existing security
+owner controls: accepted enterprise architecture Sections 13.6/identity controls already place the
+logical adapter under BP and separate runtime, scanner and configurator duties; ADR-053 separates
+those duties, not processes within BP.
+
+The corrected S06/S07 wording above records that technical reconciliation, not a new independent
+review, proven effective cloud permission, Founder risk exception or deployment approval. The
+Security-owned mandatory conditions remain: exact-secret read and no broad inherited grant;
+separate environment/duty identities; raw-byte authentication; fail-closed authorization and
+privacy-safe evidence; just-in-time secret use with at most five-minute memory lifetime; bounded
+rotation overlap; immediate emergency revocation; and no rollback resurrection. If compromise of
+ordinary BP code must be unable to read the adapter's credentials, this topology cannot provide
+that guarantee and work stops for a separately authorized architecture change.
+
+The Founder also explicitly confirmed API reuse across WhatsApp, Customer Portal Web and a possible
+future Mobile application. All clients use the same channel-neutral BP conversation and command
+semantics, canonical history, identity/relationship authority, idempotency and evidence. WhatsApp
+webhooks/provider transport are adapters to those owners, not another business API or conversation
+engine. Web and future Mobile consume the generated shared public contract; server-only callback
+and provider credentials must never be exposed in a client bundle. This assignment does not create
+a Mobile application.
+
+### 10.5 Current Implementation Authoring Checkpoint - Not Acceptance Evidence
+
+The current isolated implementation branch contains the following source changes. These are
+authored changes, **not cloud permission proof, provider acceptance, deployment,
+activation or completed-story claims**. Section 10.6 records subsequent engineering test execution.
+
+- GET challenge verification has its own default-off switch, exact query-key/multiplicity and
+  UTF-8 byte limits. The asynchronous route reads only the pinned verification secret. POST
+  acceptance remains independently gated and requires the exact JSON media type and raw bytes.
+- The BP provider runtime has fresh, purpose-separated Key Vault reads through its workload
+  identity. Binding, verification, App Secret and outbound reads are distinct; media is never
+  requested. Versions, enabled/not-before/expiry metadata, response size, duplicate JSON members,
+  exact vault/secret identity and the closed binding document are checked. Outbound credentials
+  carry a five-minute maximum usable lifetime. Neither protected HTTP logging nor provider spans
+  may contain values; incoming verification URLs are excluded from callback tracing.
+- `provider-binding.schema.json` describes the private binding value, not a checked-in fixture.
+  Its recipient digest must name an already admitted canonical contact/channel binding. A
+  verified Meta sender is matched to the protected telephone binding and that existing opaque
+  identity; rotating the App Secret does not recalculate identities or create contacts. The
+  production provider path rejects the legacy synthetic envelope and does not mint legacy
+  channel-specific tenant tokens. Legacy service callers retain their existing key-based path.
+- The cloud adapter reads the existing canonical conversation message and matching outbox
+  record. It does not create another message store or public business API. Approved, versioned,
+  body-only templates project the exact canonical text into bounded numbered parameters;
+  unsupported layouts, missing projections and approval mismatches deny rather than alter
+  content. Templates with other components require their own admitted projection.
+- HTTP success records `PROVIDER_ACCEPTED` delivery evidence, **not** `DELIVERED`. The outbox
+  remains `UNRESOLVED` while awaiting verified delivery evidence. Reconciliation never sends.
+  Opaque outbox correlation plus a durable reservation can recover a lost HTTP response or an
+  early status callback without treating unknown submission as permission to resend.
+- The hosted worker derives its single Demo tenant from current activation authority; the
+  existing interceptor supplies transaction-local tenant context for synchronous and
+  asynchronous database operations. No owner, global tenant scan or `BYPASSRLS` path is added.
+- Activation checks match Demo, release/configuration/catalog/rollback digests, independent
+  activation/traffic/consent references, recipient, time window, incident and alert references.
+  Expiry is exclusive and is rechecked immediately before egress. Revocation and tuple drift
+  fence effects. Authority metadata does not prove that alerts or dependencies are healthy;
+  their exact-candidate evidence must still qualify before configuration is admitted.
+- Migration `61-wc120-whatsapp-traffic-reservations.sql` adds tenant-isolated, append-only runtime
+  reservations. Serializable transactions bound message count, a rolling one-minute rate and
+  conservative reserved spend. Reservations are not refunded after an ambiguous outcome.
+  The per-message ceiling still requires accepted provider pricing/billing evidence; this is
+  not a claim that configured numbers can constrain an unknown provider invoice.
+- The five canonical catalog entries declare independent provider/media readiness gates.
+  WC-091 baseline configuration readiness still requires every pre-existing baseline secret
+  and cannot stand in for WhatsApp readiness. Disabled media is not provisioned merely to make
+  the Portal ready. Unknown gates or moving baseline secrets into an optional gate fail closed.
+
+Authored regression selectors are `WhatsAppCapabilityGateTests`, `WhatsAppDemoProviderTests`,
+the existing `WhatsAppJourneyServiceTests`/`WhatsAppOutboxWorkerTests`, and the added WC-091
+pipeline tests. They cover boundary shapes, purpose-separated reads, expiry/revocation, exact
+recipient/tuple denial, canonical projections, unknown outcomes, callback correlation and
+baseline-readiness independence. In-memory tests do not establish PostgreSQL serializability,
+effective RLS or distributed limits; the subsequent real PostgreSQL test is recorded below.
+
+Registration-only protected deployment configuration, exact four-secret RBAC scopes, BP managed
+identity selection, dedicated callback-host routing and the existing managed-certificate binding
+path are now wired. The frozen provider configuration cannot enable business callbacks, dispatch
+or activation. Adding the hostname does not prove DNS, TLS or effective cloud permissions.
+
+Remaining engineering work includes admitted lifecycle/activation input wiring, catalog-owned consolidated
+qualification and evidence binding, privacy/coverage/lint/build/browser/recovery closure, and
+exact-head author review/PR publication. S09 and S12-S15 additionally retain the exact protected
+inputs and trusted-main sequencing in Section 10.3. All production defaults remain off; no live
+provider or cloud mutation has been performed.
+
+### 10.6 Consolidated Engineering Execution Checkpoint - Not Release Or Live Acceptance
+
+These runs exercised the isolated, uncommitted candidate based on main
+`a497cb2f2669d7da90dcb37611badffc4c6953ea`. They are diagnostic engineering results, not
+exact-commit catalog attestations or completed-story declarations. Commands below ran in the
+repository's Docker runners, with the worktree explicitly mounted. No host Python tests or
+per-story Docker campaigns were used.
+
+| Executed command / boundary | Observed result |
+|---|---|
+| `csharpier check src/business-platform tests/business-platform.Tests/ConversationWhatsAppFitness` | PASS, 134 files |
+| `sh scripts/validation_control/run_wc120_dotnet_test.sh -warnaserror --settings tests/coverage.runsettings --collect:"XPlat Code Coverage" --results-directory /workspace/test-results/whatsapp/coverage --logger "console;verbosity=minimal"` | PASS, 1,192 tests, zero failures/skips; 90.41% line and 80.09% branch coverage |
+| `PYTHONPATH="$PWD:$PWD/scripts" pytest -q tests/pipeline tests/contract --junitxml=test-results/whatsapp/pipeline-contracts.xml` | NOT PASS: 2,176 passed; six failures also reproduced against untouched main |
+| `sh scripts/validation_control/run_wc123_session_contract.sh` | PASS after full init-chain startup, session concurrency, restart and sanitized restore |
+| `sh scripts/validation_control/run_web_test_gate.sh` | PASS, TypeScript, ESLint, 719 tests and enforced coverage thresholds; three pre-existing skipped tests remain disclosed |
+| `pnpm exec playwright test tests/e2e/wc120-product-state-accessibility.spec.ts --workers=2 --retries=0 --output=/workspace/test-results/whatsapp/browser-results --reporter=line` | PASS, 15 scenarios across all five projects, no retries/skips; includes axe checks |
+| Terraform 1.9.8 `fmt`, `init -backend=false -input=false`, and `validate -no-color` for Demo workload, with AzureRM 4.14.0 | PASS; no plan/apply or cloud proof |
+| `ruff check` on affected Python implementation/tests | PASS |
+| `actionlint -color -shellcheck= .github/workflows/environment-deployment.yaml` in `rhysd/actionlint:1.7.7` | PASS; shellcheck disabled explicitly, not claimed |
+| `git diff --check` | PASS |
+
+The real PostgreSQL test executes the actual budget service with 24 competing reservations,
+serializable transactions, the runtime principal and tenant interceptor. It verifies count/spend
+ceilings, immutable authority within an activation reference, absent/cross-tenant isolation,
+denied runtime mutation and repeat migration application. Serialization losers produce an
+explicit pre-egress denial. This does not substitute for distributed cloud permission or billing proof.
+The adapter also reuses the owner's current consent/binding/window/template eligibility check
+after protected reads, immediately before egress; opt-out/window-change regressions dispatch zero.
+
+Qualification uncovered and repaired stale catalog/bootstrap/render bindings and migration-tail
+expectations. Migration 61 now acquires/releases only its bounded owner prerequisite. The browser
+fixture was missing the current required engagement-progress route; restoring that synthetic route
+exposed WebKit contrast failures in the progress buttons. Scoped theme-aware colours fixed the
+failure without excluding nodes or weakening axe assertions.
+
+The first full .NET attempt encountered Temporal SDK binary-download contention. Its official
+test-server dependency was fetched through the SDK's own metadata endpoint, then copied to the
+container's executable temporary cache; no tests were disabled and no automatic retry was enabled. The fetched
+test-server is 1.40.0, SHA-256
+`19defb9f7318c7cf249518b3642a735efb79876c2b6918afe312336476b796a5`.
+This additional dependency identity must be incorporated into authoritative runner/evidence
+qualification rather than treating an ad-hoc cached-binary mount as immutable catalog proof.
+
+All six remaining pipeline/contract failures were reproduced in a temporary `git archive HEAD`
+baseline, before changing any baseline files:
+
+- Two `test_auth_preview.py` assertions: scaling-source formatting and obsolete password-reference count.
+- `test_prepare_pr_body.py`: an expected shared PostgreSQL path is not selected.
+- `test_wc123_impact_manifest.py`: a pre-existing accepted-source digest mismatch.
+- `test_wc123_session_readiness.py`: pre-existing missing rotation metadata.
+- `test_agent_admission_schema.py`: a pre-existing DMA content digest mismatch.
+
+They are not waived, edited into apparent success or classified as passing. Unrelated repairs,
+exact-head publication, complete CE-FIT/recovery evidence and protected lifecycle/go-live inputs
+remain unresolved; **no PR-ready, released, deployed or active status is claimed**.
+
+### 10.7 Authorized prerequisite repairs and expanded validation (2026-11-02)
+
+Following Section 10.6, the Founder explicitly authorized the six prerequisite repairs with
+regressions. The two obsolete Terraform assertions now parse HCL: Web has zero replicas before
+application activation and the configured single-replica target afterwards; both Temporal secret
+owners use the exact Key Vault credential and managed identity, without inline secret values.
+The actual validation policy now explicitly selects the BP precheck for its owned migration
+paths, including both `029_identity.sql` and migration 61, even when a global trigger bypasses
+component classification. The PR wrapper is unchanged.
+
+The Web database catalog entry now makes its existing 90-day rotation class explicit, with
+120-day expiry, zero password overlap for the single database login, and retirement blocked until
+replacement uptake and old connection draining. Its regression distinguishes the
+`web_session_app` database principal from the Web secret consumer. Demo/UAT projections and the
+bootstrap catalog hash were regenerated. This metadata repair is not evidence that private
+rotation, retirement or compromise rehearsals have occurred.
+
+Five stale WC-123 source hashes and the DMA fixture's constitutional-DNA hash now match their
+actual sources. The historical AUTH-WC-01 candidate remains unchanged; refreshed content bindings
+are maintenance, not a new institutional acceptance. No agent profession, skill or version
+coordinate was changed. Ruff also corrected formatting and made the touched schema-version
+test's regular expression literal rather than wildcard matching.
+
+Docker execution, using the existing full-runner recipe from this qualification campaign:
+
+```bash
+PYTHONPATH="$PWD:$PWD/scripts" pytest -q tests/pipeline tests/contract
+```
+
+Result: **PASS, 2,182 passed, zero failures**. Diagnostic log:
+`test-results/whatsapp/prerequisite-pipeline-closure.log`.
+
+```bash
+PYTHONPATH="$PWD:$PWD/scripts" pytest -q tests/pipeline/test_auth_preview.py tests/pipeline/test_prepare_pr_body.py tests/pipeline/test_wc123_impact_manifest.py tests/pipeline/test_wc123_session_readiness.py tests/contract/test_agent_admission_schema.py tests/validation_control
+```
+
+Result: **500 passed, six failures**. All original prerequisite regressions pass; the additional
+failures are in the broader validation-control inventory:
+
+- `test_catalog_contract.py`: full-runner inventory and Docker-socket inventory omit the existing
+  `wc123:session-contract` gate.
+- `test_gate_equivalence.py`: existing catalog mode and Founder-approval flags disagree with the
+  authoritative baseline.
+- `test_runner_supply.py`: existing persistent-state runner dependency, reusable-plan runner-use,
+  and quality-job dependency assertions disagree with current workflows.
+
+Each of these exact six selectors also fails against a fresh archive of untouched
+`a497cb2f2669d7da90dcb37611badffc4c6953ea`; no changes to those tests or workflows were made.
+They are not waived. Disposition must preserve accepted validation strength and runner trust;
+changing an approval flag to make an assertion pass is not approval. Further out-of-scope
+repairs require Founder direction. Relevant Ruff checks pass. The full pipeline's nine appended
+synthetic institutional records and generated test source were removed precisely, preserving the
+original records. Activation wiring, exact-head qualification, complete author review and the
+protected live gates from Section 10.6 remain open; no PR-ready or live-readiness claim follows.
+
+### 10.8 Additional validation-control repairs authorized and verified (2026-11-02)
+
+The Founder subsequently authorized investigation and narrow repair of the six additional
+failures, preserving validation strength, runner trust and approval boundaries.
+
+- Runner and socket inventories now include the existing nested-Docker
+  `wc123:session-contract` gate; its existing classification and executable plan remain enforced.
+- The frozen gate baseline now matches the selective-enforcement state already accepted by the
+  Founder in merged PR #513 (`a0af1604`, merged by `dlai-sd` on 2026-10-15). The actual catalog's
+  mode and approval flags were not changed. Its existing activation evidence is
+  `validation/evidence/wc121-selective-validation-activation.json`, SHA-256
+  `33cc214af699408d73abdb3c9f58d046697c9a93c54589f9dff6933a21279fcb`.
+  New negative regressions deny changed mode, removed approval, or reduced main/release inventory.
+- Planning and supply assertions now reflect Founder-merged PR #514 (`54050dfb`, merged by
+  `dlai-sd` on 2026-10-15): hash-pinned host planning precedes selected runner supply. Tests retain
+  the exact installer, dependency-manifest evidence, non-circular planning and output contracts.
+  Host test execution is still prohibited.
+- The persistent-state CI job now depends on runner supply and consumes its verified immutable
+  Python image before all three existing test commands. `--no-build --pull never` prevents
+  consumer-side build or image replacement. No test selector, blocking job or failure evidence
+  was removed. Regressions prove the runner is selected even for empty/documentation/Web-only
+  changes and the job has no selective gate-skipping condition.
+- The consumer-build assertion distinguishes the `build` subcommand from the protective
+  `--no-build` option; positive and negative examples preserve actual build detection.
+
+GitHub CLI authentication was unavailable. The existing GitHub integration confirmed both merged
+PRs and Founder merge identity; no credential lookup, token extraction, new approval or push was
+performed.
+
+Final Docker regression command:
+
+```bash
+PYTHONPATH="$PWD:$PWD/scripts" pytest -q tests/validation_control tests/pipeline tests/contract
+```
+
+Result: **PASS, 2,618 passed, zero failures**. Diagnostic log:
+`test-results/whatsapp/validation-control-prerequisite-closure.log`.
+Affected Python files pass Ruff and formatting; `actionlint -color -shellcheck=`
+passes both affected workflows, with shellcheck explicitly not claimed. Only synthetic records
+and test source generated by these local runs were removed; original institutional records remain
+unchanged. This closes both authorized prerequisite groups, not the remaining WhatsApp
+activation-input, complete CE-FIT/privacy/recovery, immutable exact-head qualification, author
+review, publication or protected live gates.
+
+### 10.9 Immutable Temporal Dependency And Canonical Projection Checkpoint (2026-11-02)
+
+The .NET and full Docker validation images now bake in the official Temporal test server
+`1.40.0` instead of allowing the SDK to download a mutable dependency at test execution.
+Both verify archive SHA-256
+`524465a96274831e004326f6e2f2a5f3ef9aaed72c2069cf16c1d64b8b1ec3ca`
+and executable SHA-256
+`19defb9f7318c7cf249518b3642a735efb79876c2b6918afe312336476b796a5`.
+The shared test helper verifies the fixed `/opt/temporal-test-server` file before selecting
+SDK `ExistingPath`; missing or modified binaries fail without execution or download fallback.
+All three existing time-skipping call sites use that helper. Both images built successfully;
+the local full image ID is
+`sha256:0d785a6687921f8c6ce23f518d188763e474e467a946637b4aa7cda7dc6bf551`.
+This local build is not a trusted published runner manifest or an exact-head qualification receipt.
+
+Direct author checks reproduced and repaired two tightly coupled adapter defects:
+
+- A known pre-send capability denial now records internal `NOT_SENT` and a blocked outbox,
+  not a false provider rejection. Previously unknown submissions remain `UNKNOWN` and are
+  reconciled without resending; actual provider rejection retains its existing meaning.
+- Provider projection now deserializes the existing canonical `ConversationTextBlockV1`
+  with unmapped members prohibited and rejects duplicate properties, wrong schema, non-TEXT
+  blocks, missing type and media/unknown fields before protected reads, reservation or egress.
+  Five new negative cases reproduced the prior attempted HTTP path and now prove zero sends
+  and zero reservations. No parallel conversation DTO, history, business API or engine was added.
+
+WhatsApp still enters the existing `ConversationService.SendAsync`; outbound work reads the
+existing canonical messages and conversation outbox. Customer Portal Web and future Mobile
+retain the same conversation contract, authorization, idempotency, history and evidence.
+`NOT_SENT` is internal provider-observation evidence, not a new public message-state enum.
+
+Executed Docker validation:
+
+```bash
+sh scripts/validation_control/run_wc120_dotnet_test.sh -warnaserror \
+  --settings tests/coverage.runsettings --collect:"XPlat Code Coverage" \
+  --results-directory /workspace/test-results/whatsapp/canonical-guard-coverage \
+  --logger "console;verbosity=minimal"
+PYTHONPATH="$PWD:$PWD/scripts" pytest -q tests/validation_control tests/pipeline tests/contract
+PYTHONPATH="$PWD:$PWD/scripts" pytest -q \
+  tests/validation_control/test_catalog_contract.py \
+  tests/validation_control/test_runner_contracts.py \
+  tests/validation_control/test_runner_supply.py \
+  tests/validation_control/test_gate_equivalence.py
+```
+
+Results: **PASS, BP 1,202 passed, zero failures/skips; coverage 90.45% lines / 80.17%
+branches**. Full Python closure: **2,619 passed**. Subsequent runner/catalog/supply/equivalence
+selector closure: **134 passed**, including a new regression proving the added tests occur in
+the qualification plan and actual release tests lane. The `quality:scripts` and release test
+selectors now execute these relevant prerequisite regressions rather than merely collecting
+them during an ad hoc local run.
+
+CSharpier checked 136 affected source/test files; affected Python Ruff/format checks pass.
+The rebuilt full runner does not contain actionlint; that attempted invocation failed visibly.
+The existing pinned `rhysd/actionlint:1.7.7` image then passed
+`-color -shellcheck= .github/workflows/ci.yaml`; shellcheck is not claimed.
+`sh -n scripts/run_release_qualification.sh` passes. Only the exact synthetic institutional
+records and `src/test/File.cs` generated by the broad Python suite were removed.
+
+These are dirty-candidate diagnostic results, not release, deployment or provider acceptance.
+Admitted activation input/authority wiring, the complete CE-FIT/privacy/recovery closure,
+clean exact-head evidence, final author review, commits and the Founder-review PR remain.
+Protected Meta values, trusted-main deployment, separate bounded traffic authority and
+activation evidence are still absent; all production provider defaults remain off.
+
+### 10.10 Protected Activation Preparation And Author Qualification Repairs (2026-11-02)
+
+The Founder directed continued engineering and PR creation, with actual Meta configuration
+information to follow the PR. No protected values are required to qualify the inactive source
+candidate. Live S09/S12-S15 acceptance remains pending those inputs and the trusted-main release.
+
+`scripts/wc120_whatsapp_activation.py` is a separate protected-operator preparation entry point.
+It is not invoked by ordinary deployment and does not approve evidence or mutate Azure. It
+requires the exact bundle digest from an independent Founder decision; deriving a digest from
+one's own document is not authorization. The approved bundle must contain:
+
+- Schema `waooaw.demo-whatsapp-activation/v1`, the registration configuration digest, and the
+  existing `WhatsAppActivationAuthority` fields, with distinct activation/traffic references,
+  exact release/catalog/rollback digests, canonical tenant, admitted recipient, UTC window,
+  positive bounded count/rate and six-decimal conservative spend/cost limits.
+- `binding_digests`: `AppBindingDigest`, `WabaBindingDigest`, `RecipientBindingDigest`.
+  The last is the existing provider sender Phone Number ID digest, not a new recipient identity.
+  The authority's recipient digest separately names the canonical consenting contact binding.
+- `policies`: the current `PolicyVersion`, `InstitutionalPolicyVersion`,
+  `InteractionPolicyVersion` and `ChannelRenderingPolicyVersion`.
+- One to sixteen approved BODY-only template projections using existing
+  `Name`, `Version`, `Locale`, `Category`, `Body` fields, with no duplicate identity.
+- `prerequisites`: independently accepted qualification, zero-traffic deployment, provider
+  registration, credential-scope, consent, Stop, alert, rollback and pricing receipts. Each
+  includes its opaque reference, exact digest and expiry covering the whole activation window.
+
+The runtime configuration digest binds the registration configuration, provider account/sender
+digests, current policy versions and complete template inventory using the preparer's deterministic
+sorted JSON representation. A changed policy/template or pinned secret version therefore cannot
+reuse the old configuration tuple. The preparer reuses the registration validator and recomputes
+the current catalog binding. It emits only existing BP runtime configuration keys, never tokens,
+App Secret, telephone values or raw provider IDs. Output is mode `0600`, create-only; denials do
+not echo private input. The operator invocation, only after independent exact approval, is:
+
+```bash
+python scripts/wc120_whatsapp_activation.py \
+  --bundle PRIVATE_APPROVED_BUNDLE \
+  --approved-digest EXACT_DIGEST_FROM_FOUNDER_DECISION \
+  --deployment-inputs PRIVATE_REGISTERED_TFVARS \
+  --output PRIVATE_CREATE_ONLY_RUNTIME_SETTINGS
+```
+
+The protected deployment/configurator must independently verify the referenced receipts,
+current nonrevocation, alert/Stop health, effective cloud/provider permissions and the exact
+target revision before admitting these settings. References and a digest are not cryptographic
+proof that those external facts are true. This tool neither introduces a signer trust anchor
+nor grants a new identity permission. The admitted settings require a separately authorized
+same-image revision/configuration change; the normal Terraform registration path still forces
+callback acceptance, dispatch and provider availability off. At expiry/revocation runtime gates
+fence effects. Late callbacks and unresolved work remain quarantined for authorized reconciliation;
+they are never implicitly accepted or blindly resent after authority closes. Live revocation,
+rollback and teardown evidence is still mandatory and is not claimed from this preparer.
+
+Author review reproduced a runtime gate accepting the same record as both activation and traffic
+authority (`ACTIVE` instead of `BLOCKED`); the runtime and preparation path now both reject this.
+The final BP Docker regression remains **1,202 passed, zero skips**, including the negative;
+measured coverage is **90.48% lines / 80.17% branches**.
+
+Author review also found that the existing WC-120 qualification helper synthesized a test count
+from exit status, overwrote three .NET selectors with browser output, and asserted a release
+qualification waiver without reading an authority record. Those validation defects are corrected:
+
+- Actual TRX/JUnit counters are required; zero executed tests, hidden failures or skips cannot
+  qualify. Browser support retains separate reports alongside primary .NET selectors.
+- Exact source commit, actual report counters, runner image identity and artifact hashes are
+  revalidated before the candidate manifest. Required missing inputs and stale/failed summaries
+  fail closed. Migration 61 is included in the schema binding.
+- Runner image IDs are frozen before execution; consumers use `--pull never` against those
+  already inspected local images. Section 10.11 records the actual Compose CLI correction.
+  Separate release qualification is explicitly pending, with no invented Founder waiver.
+- The bounded XML report parser rejects DTDs before entity declarations; UTF-8/UTF-16 negative
+  tests prove rejection. The local Ruff S314 annotation documents this tested custom target
+  rather than adding an unnecessary XML dependency.
+
+Final expanded Docker closure:
+`PYTHONPATH="$PWD:$PWD/scripts" pytest -q tests/validation_control tests/pipeline tests/contract`
+passes **2,689 tests**, followed by scripts Ruff and affected-file formatting. New activation and
+evidence regressions are wired into the actual release tests lane and protected by its selector
+regression. This remains diagnostic evidence until the clean commit is qualified. No live provider
+configuration, credential use, cloud mutation, deployment or activation is claimed.
+
+### 10.11 Signed Milestone And Actual Compose Consumer Verification (2026-11-02)
+
+Signed implementation milestone `43ccfed9` passed all seven staged prechecks and C-059.
+The first hook run correctly rejected two files formatted differently by the authoritative
+Python runner; that runner formatted only those files and 125 related regressions passed.
+The approved local environment supplied GitHub authentication and signing without credential
+printing, copying or persistence. No login/device flow, reviewer identity or unsigned-commit
+exception was used.
+
+The first clean-candidate qualification attempt exposed an introduced command defect:
+Compose `run` supports `--pull never` but not `--no-build`. The qualifier and three persistent-state
+CI commands now omit the unsupported flag. No consumer build is introduced: the supply action
+verifies an existing immutable image, the qualifier freezes inspected local image IDs, pulls
+are forbidden, and no `--build` option or consumer `build` subcommand is permitted. The earlier
+Section 10.8 source-only assertion of `--no-build` is superseded by this runtime observation.
+
+Actual proof: the pinned .NET image executed `dotnet --version` through the corrected Compose
+command; both persistent-state negative tests executed through the corrected real consumer
+syntax and passed. Runner-supply, qualification-evidence and catalog-selector regressions pass
+119 tests; affected Ruff/format, pinned actionlint and Bash syntax checks pass. Clean-candidate
+qualification is retried after this correction. No unsuccessful selector is represented as
+passing, and no cloud/provider action or live acceptance is claimed.

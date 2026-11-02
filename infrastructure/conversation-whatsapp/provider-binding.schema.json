@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://waooaw.com/schemas/demo-whatsapp-provider-binding-1.0.json",
+  "title": "Protected Demo WhatsApp provider binding",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "environment", "bindingVersion", "appId", "wabaId", "phoneNumberId",
+    "recipientPhoneNumber", "recipientBindingDigest", "apiVersion",
+    "authorityReference", "validFrom", "expiresAt"
+  ],
+  "properties": {
+    "environment": { "const": "demo" },
+    "bindingVersion": {
+      "type": "string", "minLength": 1, "maxLength": 256,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+    },
+    "appId": { "type": "string", "pattern": "^[0-9]{1,32}$" },
+    "wabaId": { "type": "string", "pattern": "^[0-9]{1,32}$" },
+    "phoneNumberId": { "type": "string", "pattern": "^[0-9]{1,32}$" },
+    "recipientPhoneNumber": { "type": "string", "pattern": "^\\+[1-9][0-9]{7,14}$" },
+    "recipientBindingDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "apiVersion": { "type": "string", "maxLength": 16, "pattern": "^v[1-9][0-9]*\\.0$" },
+    "authorityReference": {
+      "type": "string", "minLength": 1, "maxLength": 256,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+    },
+    "validFrom": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" }
+  }
+}

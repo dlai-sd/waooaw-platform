@@ -60,7 +60,12 @@ if (Uri.TryCreate(otlpEndpoint, UriKind.Absolute, out var otlpUri))
         )
         .WithTracing(tracing =>
             tracing
-                .AddAspNetCoreInstrumentation()
+                .AddAspNetCoreInstrumentation(options =>
+                    options.Filter = context =>
+                        !context.Request.Path.StartsWithSegments(
+                            "/api/v1/channels/whatsapp/webhook"
+                        )
+                )
                 .AddHttpClientInstrumentation(options =>
                     options.EnrichWithHttpRequestMessage = JourneyHttpTelemetry.ScrubRequestUrl
                 )
@@ -543,7 +548,33 @@ builder.Services.AddScoped<IConversationReferenceResolver>(services =>
 );
 builder.Services.AddScoped<ConversationStopFence>();
 builder.Services.AddScoped<WhatsAppOutboxService>();
-builder.Services.AddSingleton<IWhatsAppProviderAdapter, DisabledWhatsAppProviderAdapter>();
+builder.Services.Configure<WhatsAppCapabilityOptions>(
+    builder.Configuration.GetSection("WhatsAppCapability")
+);
+builder.Services.AddSingleton<IWhatsAppCapabilityGate, WhatsAppCapabilityGate>();
+builder.Services.Configure<WhatsAppProviderOptions>(
+    builder.Configuration.GetSection("WhatsAppProvider")
+);
+builder.Services.AddSingleton<WhatsAppKeyVaultCredentials>();
+builder.Services.AddSingleton<IWhatsAppProviderCredentials>(services =>
+    services.GetRequiredService<WhatsAppKeyVaultCredentials>()
+);
+builder.Services.AddSingleton<IWhatsAppWebhookCredentials>(services =>
+    services.GetRequiredService<WhatsAppKeyVaultCredentials>()
+);
+builder.Services.AddSingleton<WhatsAppTenantExecutionScope>();
+builder.Services.AddScoped<WhatsAppTrafficBudget>();
+builder.Services.AddScoped<IWhatsAppProviderAdapter, WhatsAppCloudProviderAdapter>();
+builder
+    .Services.AddHttpClient(
+        "WhatsAppProtected",
+        client => client.Timeout = TimeSpan.FromSeconds(15)
+    )
+    .RemoveAllLoggers()
+    .ConfigurePrimaryHttpMessageHandler(() =>
+        new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }
+    );
+builder.Services.AddHostedService<WhatsAppOutboxHostedService>();
 builder.Services.AddScoped<WhatsAppOutboxWorker>();
 builder.Services.AddScoped<ConversationOutboundContributionService>();
 builder.Services.AddScoped<WhatsAppMediaQuarantineService>();
@@ -620,6 +651,7 @@ builder.Services.AddScoped<VoiceContributionService>();
 
 // ─────────────────────────────────────────────────────────────────────────────
 var app = builder.Build();
+app.UseMiddleware<WhatsAppCallbackHostMiddleware>();
 
 // ── Middleware pipeline (order is constitutional — do NOT reorder) ────────────
 //   1. Swagger UI (dev only)

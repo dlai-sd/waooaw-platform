@@ -3623,10 +3623,13 @@ jobs:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
           CONTAINER_APP_ENVIRONMENT: ${{ steps.foundation.outputs.container_app_environment_name }}
         run: |
+          whatsapp_callback_host=$(jq -er '.whatsapp_provider.callback_host // ""' \
+            infrastructure/terraform/phase2/environments/demo/workload/workload.auto.tfvars.json)
           bash scripts/goal006_bind_demo_managed_certificates.sh \
             demo \
             "$RESOURCE_GROUP" \
             "$CONTAINER_APP_ENVIRONMENT" \
+            "$whatsapp_callback_host" \
             | tee demo-managed-certificates.log
           jq -n \
             --argjson web "$(az containerapp show --resource-group "$RESOURCE_GROUP" --name ca-demo-web --query properties.configuration.ingress.customDomains --output json)" \
