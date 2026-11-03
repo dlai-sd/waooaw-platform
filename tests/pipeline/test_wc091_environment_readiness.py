@@ -817,6 +817,190 @@ def test_secret_upload_never_falls_back_to_echoed_input(monkeypatch: pytest.Monk
         wc091_secret_provision.provision("facebook-login-client", "demo", "FA-120")
 
 
+def _binding_upload(monkeypatch, values, *, existing=False):
+    calls = []
+    prompts = []
+    inputs = iter(values)
+
+    def fake_az(command, body=None):
+        calls.append((command, body))
+        if body is None:
+            response = '{"value":[{"id":"https://vault/secrets/binding/old"}]}' if existing else '{"value":[]}'
+        else:
+            response = '{"id":"https://kv-waooaw-demo.vault.azure.net/secrets/whatsapp-provider-binding/new"}'
+        return subprocess.CompletedProcess(command, 0, response, "")
+
+    def private_input(prompt):
+        assert len(calls) == 1
+        prompts.append(prompt)
+        return next(inputs)
+
+    monkeypatch.setattr(wc091_secret_provision, "_az", fake_az)
+    monkeypatch.setattr(wc091_secret_provision.getpass, "getpass", private_input)
+    return calls, prompts
+
+
+def test_binding_prompt_builds_closed_schema_with_existing_contact_identity(monkeypatch, capsys) -> None:
+    import jsonschema
+
+    values = ["123456", "234567", "345678", "+15555550101", "a" * 64]
+    calls, prompts = _binding_upload(monkeypatch, values)
+    result = wc091_secret_provision.provision(
+        "whatsapp-provider-binding",
+        "demo",
+        "FA-120-BINDING",
+        expires_at="2099-01-02T00:00:00Z",
+        whatsapp_binding=True,
+        api_version="v25.0",
+    )
+    assert result == {"id": "whatsapp-provider-binding", "version": "new", "status": "CREATED"}
+    binding = json.loads(calls[-1][1]["value"])
+    schema = json.loads(
+        (wc091_environment.ROOT / "infrastructure/conversation-whatsapp/provider-binding.schema.json").read_text()
+    )
+    jsonschema.Draft202012Validator(schema, format_checker=jsonschema.FormatChecker()).validate(binding)
+    assert [
+        binding[key] for key in ("appId", "wabaId", "phoneNumberId", "recipientPhoneNumber", "recipientBindingDigest")
+    ] == values
+    assert binding["apiVersion"] == "v25.0"
+    assert binding["authorityReference"] == "FA-120-BINDING"
+    assert wc091_secret_provision._timestamp(binding["expiresAt"]) == calls[-1][1]["attributes"]["exp"]
+    assert wc091_secret_provision._timestamp(binding["validFrom"]) < calls[-1][1]["attributes"]["exp"]
+    assert len(prompts) == 5
+    assert all(value not in argument for command, _ in calls for argument in command for value in values)
+    assert capsys.readouterr() == ("", "")
+
+
+@pytest.mark.parametrize(
+    ("index", "invalid"),
+    [
+        (0, ""),
+        (0, "１２３"),
+        (0, "1" * 33),
+        (1, "wrong-waba"),
+        (2, "123\n"),
+        (3, "15555550101"),
+        (3, "+05555550101"),
+        (3, "+1555 5550101"),
+        (4, "A" * 64),
+        (4, "a" * 63),
+    ],
+)
+def test_binding_invalid_private_field_never_writes_or_echoes(monkeypatch, capsys, index, invalid) -> None:
+    values = ["123456", "234567", "345678", "+15555550101", "a" * 64]
+    values[index] = invalid
+    calls, prompts = _binding_upload(monkeypatch, values)
+    with pytest.raises(wc091_secret_provision.ProvisioningError, match=r"invalid .*; no binding was written"):
+        wc091_secret_provision.provision(
+            "whatsapp-provider-binding",
+            "demo",
+            "FA-120",
+            expires_at="2099-01-02T00:00:00Z",
+            whatsapp_binding=True,
+            api_version="v25.0",
+        )
+    assert len(calls) == 1
+    assert len(prompts) == index + 1
+    assert capsys.readouterr() == ("", "")
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"logical_id": "whatsapp-app-secret"},
+        {"environment": "uat"},
+        {"authorization_id": "FA-invalid reference"},
+        {"authorization_id": "FA-" + "x" * 254},
+        {"api_version": None},
+        {"api_version": "v25.1"},
+        {"api_version": "v25.0\n"},
+        {"api_version": "v" + "9" * 15 + ".0"},
+        {"whatsapp_binding": False},
+        {"expires_at": None},
+        {"expires_at": "2020-01-01T00:00:00Z"},
+    ],
+)
+def test_binding_mode_invalid_options_fail_before_azure_or_prompt(monkeypatch, overrides) -> None:
+    options = {
+        "logical_id": "whatsapp-provider-binding",
+        "environment": "demo",
+        "authorization_id": "FA-120",
+        "expires_at": "2099-01-02T00:00:00Z",
+        "whatsapp_binding": True,
+        "api_version": "v25.0",
+    }
+    options.update(overrides)
+    monkeypatch.setattr(wc091_secret_provision, "_az", lambda *_: pytest.fail("must deny before Azure"))
+    monkeypatch.setattr(wc091_secret_provision.getpass, "getpass", lambda _: pytest.fail("must deny before input"))
+    with pytest.raises(wc091_secret_provision.ProvisioningError):
+        wc091_secret_provision.provision(**options)
+
+
+def test_binding_prompt_preserves_existing_version_before_input(monkeypatch) -> None:
+    calls, prompts = _binding_upload(monkeypatch, [], existing=True)
+    with pytest.raises(wc091_secret_provision.ProvisioningError, match="existing version preserved"):
+        wc091_secret_provision.provision(
+            "whatsapp-provider-binding",
+            "demo",
+            "FA-120",
+            expires_at="2099-01-02T00:00:00Z",
+            whatsapp_binding=True,
+            api_version="v25.0",
+        )
+    assert len(calls) == 1
+    assert prompts == []
+
+
+@pytest.mark.parametrize("failure_index", range(5))
+def test_every_binding_field_requires_protected_terminal(monkeypatch, failure_index) -> None:
+    calls, _ = _binding_upload(monkeypatch, [])
+    values = iter(["123456", "234567", "345678", "+15555550101", "a" * 64])
+    prompt_count = 0
+
+    def no_echo_or_abort(prompt):
+        nonlocal prompt_count
+        if prompt_count == failure_index:
+            raise wc091_secret_provision.getpass.GetPassWarning("terminal cannot disable echo")
+        prompt_count += 1
+        return next(values)
+
+    monkeypatch.setattr(wc091_secret_provision.getpass, "getpass", no_echo_or_abort)
+    with pytest.raises(wc091_secret_provision.ProvisioningError, match="no-echo terminal"):
+        wc091_secret_provision.provision(
+            "whatsapp-provider-binding",
+            "demo",
+            "FA-120",
+            expires_at="2099-01-02T00:00:00Z",
+            whatsapp_binding=True,
+            api_version="v25.0",
+        )
+    assert len(calls) == 1
+
+
+def test_binding_cli_forwards_protected_mode_without_printing_values(monkeypatch, capsys) -> None:
+    calls, _ = _binding_upload(monkeypatch, ["123456", "234567", "345678", "+15555550101", "a" * 64])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "wc091_secret_provision.py",
+            "whatsapp-provider-binding",
+            "--environment",
+            "demo",
+            "--authorization-id",
+            "FA-120",
+            "--expires-at",
+            "2099-01-02T00:00:00Z",
+            "--whatsapp-binding",
+            "--api-version",
+            "v25.0",
+        ],
+    )
+    assert wc091_secret_provision.main() == 0
+    assert json.loads(capsys.readouterr().out) == {"id": "whatsapp-provider-binding", "version": "new", "status": "CREATED"}
+    assert len(calls) == 2
+
+
 @pytest.mark.parametrize("error", ["ForbiddenByRbac", "ForbiddenByFirewall", "404 ResourceNotFound"])
 def test_uploader_metadata_failure_never_prompts_or_writes(monkeypatch: pytest.MonkeyPatch, error: str) -> None:
     calls = []

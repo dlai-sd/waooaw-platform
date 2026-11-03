@@ -186,6 +186,17 @@ public sealed class ConversationStoreDbContext : DbContext
         ConfigurePortalMessage(modelBuilder.Entity<PortalInteractionMessage>());
         ConfigurePortalIdempotency(modelBuilder.Entity<PortalInteractionIdempotencyOutcome>());
         modelBuilder.ConfigureWc120Conversation();
+        var onboarding = modelBuilder.Entity<Services.PhoneOnboardingIdentity>();
+        onboarding.ToTable("phone_onboarding", "identity");
+        onboarding.HasKey(value => new { value.TenantId, value.BindingDigest });
+        onboarding.Property(value => value.TenantId).HasColumnName("tenant_id");
+        onboarding.Property(value => value.BindingDigest).HasColumnName("binding_digest");
+        onboarding.Property(value => value.ParticipantId).HasColumnName("participant_id");
+        onboarding.Property(value => value.EvidenceId).HasColumnName("evidence_id");
+        onboarding.Property(value => value.FirstObservedAt).HasColumnName("first_observed_at");
+        onboarding.Property(value => value.AdmittedAt).HasColumnName("admitted_at");
+        onboarding.Property(value => value.LastInboundAt).HasColumnName("last_inbound_at");
+        onboarding.Property(value => value.StoppedAt).HasColumnName("stopped_at");
     }
 
     private static void ConfigureConversation(

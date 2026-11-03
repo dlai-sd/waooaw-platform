@@ -1,0 +1,110 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-133
+contract_path: work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md
+contract_digest: 20475f6577911496273623328ab2dca0a0b9ce3ac494b5cb1633fe20714f5e2e
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010), integrating existing authoritative owners
+  evidence_class: Docker production-host and real-PostgreSQL regressions; independently gated live/browser evidence where required
+  initial_state: expected-fail
+  dependencies: Founder-authorized provisional implementation; accepted owner contracts; separate protected setup, deployment and activation gates
+  residual_risk: Local repository evidence is recorded in WC-133 Section 8; deployment, live/provider/browser acceptance and stronger-proof linking are not claimed
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC133-R001
+    source: WC-133 Sections 2, 3 E1-E3 and 5 R001; ADR-023; WC120-R008
+    observable_outcome: A previously unregistered approved pilot starts registration and discovery by inbound WhatsApp TEXT without a portal account, existing relationship or invitation.
+    test_path_or_plan: WC-133 Section 5 R001; production-DI real-provider-envelope integration with empty user state
+    completion_rule: Admission owner invocation, canonical state and eligible reply are asserted; HTTP acknowledgement alone is insufficient.
+    result: PASS
+    evidence_refs: [work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md#8-repository-implementation-and-evidence, tests/business-platform.Tests/ConversationWhatsAppFitness/PhoneOnboardingPostgresTests.cs]
+
+  - <<: *defaults
+    requirement_id: WC133-R002
+    source: WC-133 Sections 2 and 5 R002
+    observable_outcome: Minimal owner-authorized admission is evidence-backed, scoped and idempotent under concurrency, replay and partial failure.
+    test_path_or_plan: WC-133 Section 5 R002; real PostgreSQL concurrent first-contact and evidence/crash recovery cases
+    completion_rule: One logical admission, no orphan or cross-tenant state, no adapter-minted authority and no implicit marketing consent.
+    result: PASS
+    evidence_refs: [work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md#8-repository-implementation-and-evidence, tests/business-platform.Tests/ConversationWhatsAppFitness/PhoneOnboardingPostgresTests.cs]
+
+  - <<: *defaults
+    requirement_id: WC133-R003
+    source: WC-133 Sections 3 E3 and 5 R003
+    observable_outcome: Bounded first-contact authorization precedes contact creation and converges to the canonical binding without requiring pre-registration.
+    test_path_or_plan: WC-133 Section 5 R003; schema, configuration, runtime and activation-preparer positive/negative tests
+    completion_rule: All relevant surfaces agree; unauthorized, ambiguous, revoked, reassigned, expired and wrong-provider/environment identities fail closed.
+    result: PASS
+    evidence_refs: [tests/pipeline/test_wc120_whatsapp_activation.py, tests/pipeline/test_wc091_environment_readiness.py, tests/business-platform.Tests/ConversationWhatsAppFitness/PhoneOnboardingPostgresTests.cs]
+
+  - <<: *defaults
+    requirement_id: WC133-R004
+    source: WC-133 Sections 2 and 5 R004; accepted shared identity and conversation owners
+    observable_outcome: First/returning WhatsApp and proven Portal linking share canonical state while protected operations retain current assurance requirements.
+    test_path_or_plan: WC-133 Section 5 R004; onboarding, continuity, linking and assurance integration cases
+    completion_rule: No duplicate or transferred account/relationship; stale or unproven linking denied; Tier 4 remains portal-only.
+    result: BLOCKED
+    residual_risk: Provisional history and existing assurance controls are locally validated; no provisional-to-full-account linking or cross-channel live acceptance is claimed, and no phone-only account transfer is permitted
+
+  - <<: *defaults
+    requirement_id: WC133-R005
+    source: WC-133 Sections 3 E6 and 5 R005
+    observable_outcome: The real ASP.NET host activates the webhook controller and verifies authorized challenges with independent business gates.
+    test_path_or_plan: WC-133 Section 5 R005; production-host GET/POST tests for disabled flags and challenge/host/query/token cases
+    completion_rule: No constructor HTTP 500; exact valid challenge succeeds; invalid/unavailable/disabled conditions fail closed and dispatch stays off.
+    result: PASS
+    evidence_refs: [tests/business-platform.Tests/WhatsAppWebhookHostTests.cs, work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md#8-repository-implementation-and-evidence]
+
+  - <<: *defaults
+    requirement_id: WC133-R006
+    source: WC-133 Sections 3 E4 and 5 R006
+    observable_outcome: Shared preference initialization converges safely during concurrent reads/writes without weakening actor/tenant scoping, RLS or uniqueness.
+    test_path_or_plan: WC-133 Section 5 R006; actual PostgreSQL first-load and read/write race tests
+    completion_rule: One row and consistent state; no expected-contention 23505/503; existing values/version conflicts preserved; unrelated database errors surfaced.
+    result: PASS
+    evidence_refs: [tests/business-platform.Tests/Identity/IdentityPreferenceConcurrencyTests.cs, work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md#8-repository-implementation-and-evidence]
+
+  - <<: *defaults
+    requirement_id: WC133-R007
+    source: WC-133 Sections 3 E5 and 5 R007
+    observable_outcome: Web exposes a truthful localized recoverable shell error without treating preferences failure as unknown registration or resubmitting completed registration.
+    test_path_or_plan: WC-133 Section 5 R007; Web API/shell unit and browser registration/outage/retry/replay/session cases
+    completion_rule: Fresh registration reaches the application when dependencies work; outage has explicit retry state, no silent fallback and no duplicate registration effects.
+    result: BLOCKED
+    residual_risk: Full Web gate and same-session outage/retry unit regressions pass; fresh-user browser/Demo acceptance remains independently gated
+    evidence_refs: [web/__tests__/app/application/layout.test.tsx, work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md#8-repository-implementation-and-evidence]
+
+  - <<: *defaults
+    requirement_id: WC133-R008
+    initial_state: blocked
+    source: WC-133 Sections 3 E7-E8, 5 R008 and 6 step 5; WC-121 Demo provider component
+    observable_outcome: Dedicated Demo callback DNS/TLS and exact protected configuration support Meta verification and subscription without enabling business traffic.
+    dependencies: Corrected reviewed release; exact DNS/cloud scope authority; four valid protected versions; provider-management authority
+    test_path_or_plan: WC-133 Section 5 R008; infra/config negatives plus independently authorized live hostname, challenge and subscription evidence
+    completion_rule: Dedicated HTTPS callback and exact-token challenge succeed, subscriptions are verified, acceptance/dispatch/egress remain off during registration.
+    residual_risk: Controller repair is locally validated; live DNS/TLS, protected binding, reviewed deployment and Meta subscription remain separately gated
+    result: BLOCKED
+
+  - <<: *defaults
+    requirement_id: WC133-R009
+    initial_state: new
+    source: WC-133 Section 5 R009; existing consent/window/template and Stop controls
+    observable_outcome: Inbound-first service replies do not require a marketing invitation; business initiation and Stop obey their independent authorities.
+    test_path_or_plan: WC-133 Section 5 R009; in/out-of-window, consent/template mismatch, STOP/repeated STOP and no automatic restart tests
+    completion_rule: Direct replies work only under current policy; marketing requires separately verified approval/locale/body/consent/limits; Stop prevents ordinary dispatch.
+    result: PASS
+    evidence_refs: [tests/business-platform.Tests/ConversationWhatsAppFitness/PhoneOnboardingPostgresTests.cs, tests/business-platform.Tests/ConversationWhatsAppFitness/WhatsAppDemoProviderTests.cs, work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md#8-repository-implementation-and-evidence]
+
+  - <<: *defaults
+    requirement_id: WC133-R010
+    initial_state: new
+    source: WC-133 Sections 5 R010, 6 and 7
+    observable_outcome: One Founder-reviewed combined PR has wired exact-head regressions and truthfully separates local qualification from deployment and live acceptance.
+    test_path_or_plan: WC-133 Section 7; mandatory prepared-PR gates, fresh-user Demo/Web acceptance and bounded Stop/rollback/cleanup receipts
+    completion_rule: R001-R009 meet their evidence levels, required gates pass, Founder merges, and separately authorized live scenarios pass before audience expansion.
+    residual_risk: PR, deployment, external effects and additional audience require their own gates; contract creation is not implementation or go-live approval.
+    result: BLOCKED

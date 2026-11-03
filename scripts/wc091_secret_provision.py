@@ -7,6 +7,7 @@ from __future__ import annotations
 import argparse
 import getpass
 import json
+import re
 import secrets
 import shutil
 import subprocess
@@ -56,6 +57,43 @@ def _timestamp(value: str) -> int:
     return int(parsed.timestamp())
 
 
+def _protected_input(prompt: str) -> str:
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", getpass.GetPassWarning)
+            return getpass.getpass(prompt)
+    except (getpass.GetPassWarning, EOFError) as exc:
+        raise ProvisioningError("a protected no-echo terminal is required") from exc
+
+
+def _whatsapp_binding_value(authorization_id: str, expiry: int, now: int, api_version: str) -> str:
+    fields = (
+        ("appId", "Meta App ID: ", r"[0-9]{1,32}"),
+        ("wabaId", "Real WhatsApp Business Account ID: ", r"[0-9]{1,32}"),
+        ("phoneNumberId", "Real sender Phone Number ID: ", r"[0-9]{1,32}"),
+        ("recipientPhoneNumber", "Consenting tester number (E.164, including +): ", r"\+[1-9][0-9]{7,14}"),
+        (
+            "recipientBindingDigest",
+            "Approved pilot binding digest (64 lowercase hex; admission may follow first contact): ",
+            r"[a-f0-9]{64}",
+        ),
+    )
+    binding = {
+        "environment": "demo",
+        "bindingVersion": f"demo-whatsapp:{secrets.token_hex(16)}",
+        "apiVersion": api_version,
+        "authorityReference": authorization_id,
+        "validFrom": datetime.fromtimestamp(now, timezone.utc).isoformat(),
+        "expiresAt": datetime.fromtimestamp(expiry, timezone.utc).isoformat(),
+    }
+    for name, prompt, pattern in fields:
+        value = _protected_input(prompt)
+        if re.fullmatch(pattern, value) is None:
+            raise ProvisioningError(f"invalid {name}; no binding was written")
+        binding[name] = value
+    return json.dumps(binding, separators=(",", ":"))
+
+
 def provision(
     logical_id: str,
     environment: str,
@@ -65,9 +103,20 @@ def provision(
     not_before: str | None = None,
     new_version: bool = False,
     no_expiry: bool = False,
+    whatsapp_binding: bool = False,
+    api_version: str | None = None,
 ) -> dict[str, str]:
     if not authorization_id.startswith("FA-"):
         raise ProvisioningError("a Founder Action identifier is required")
+    if whatsapp_binding:
+        if logical_id != "whatsapp-provider-binding" or environment != "demo":
+            raise ProvisioningError("--whatsapp-binding requires the Demo provider-binding purpose")
+        if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9:._/-]{0,255}", authorization_id) is None:
+            raise ProvisioningError("invalid binding authority reference")
+        if api_version is None or len(api_version) > 16 or re.fullmatch(r"v[1-9][0-9]*\.0", api_version) is None:
+            raise ProvisioningError("--whatsapp-binding requires an explicit valid --api-version")
+    elif api_version is not None:
+        raise ProvisioningError("--api-version requires --whatsapp-binding")
     entry = _entry(logical_id, environment)
     source = entry["source"]
     if logical_id == "whatsapp-media-authority":
@@ -106,19 +155,20 @@ def provision(
     elif "SecretNotFound" not in existing.stderr:
         raise ProvisioningError("secret metadata check failed")
 
-    if source == "platform-generated":
+    if whatsapp_binding:
+        if source != "external-operator" or api_version is None or "exp" not in attributes:
+            raise ProvisioningError("binding requires an external-operator purpose and expiry")
+        value = _whatsapp_binding_value(authorization_id, int(attributes["exp"]), now, api_version)
+    elif source == "platform-generated":
         value = secrets.token_urlsafe(48)
     elif source == "external-operator":
-        try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("error", getpass.GetPassWarning)
-                value = getpass.getpass("Secret value: ")
-        except (getpass.GetPassWarning, EOFError) as exc:
-            raise ProvisioningError("a protected no-echo terminal is required") from exc
+        value = _protected_input("Secret value: ")
     else:
         raise ProvisioningError("external-managed secrets cannot be imported")
     if not value.strip():
         raise ProvisioningError("secret value is empty")
+    if whatsapp_binding and int(attributes["exp"]) <= int(datetime.now(timezone.utc).timestamp()):
+        raise ProvisioningError("binding expired during protected input; no binding was written")
 
     body: dict[str, Any] = {"value": value}
     if attributes:
@@ -140,6 +190,12 @@ def main() -> int:
     parser.add_argument("--not-before", help="ISO-8601 start with timezone, earlier than expiry")
     parser.add_argument("--new-version", action="store_true", help="explicitly create a new version instead of preserving")
     parser.add_argument("--no-expiry", action="store_true", help="omit expiry for the WhatsApp outbound token only")
+    parser.add_argument(
+        "--whatsapp-binding",
+        action="store_true",
+        help="assemble a Demo binding through protected prompts; reserve an approved pilot digest before admission",
+    )
+    parser.add_argument("--api-version", help="explicit Graph API version for --whatsapp-binding, e.g. v25.0")
     args = parser.parse_args()
     try:
         result = provision(
@@ -150,6 +206,8 @@ def main() -> int:
             not_before=args.not_before,
             new_version=args.new_version,
             no_expiry=args.no_expiry,
+            whatsapp_binding=args.whatsapp_binding,
+            api_version=args.api_version,
         )
     except ProvisioningError as exc:
         parser.exit(1, f"Secret provisioning failed: {exc}\n")

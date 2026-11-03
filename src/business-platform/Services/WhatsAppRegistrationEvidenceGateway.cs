@@ -12,6 +12,17 @@ namespace Waooaw.BusinessPlatform.Services;
 
 public interface IWhatsAppRegistrationEvidenceGateway
 {
+    Task<Guid> RecordProvisionalAsync(
+        Guid tenantId,
+        string admissionId,
+        string bindingDigest,
+        DateTimeOffset occurredAt,
+        CancellationToken cancellationToken
+    ) =>
+        throw new NotSupportedException(
+            "Provisional onboarding evidence must be explicitly supported."
+        );
+
     Task RecordAsync(
         Guid tenantId,
         string messageId,
@@ -36,6 +47,26 @@ public sealed class WhatsAppRegistrationEvidenceGateway(
         CancellationToken cancellationToken
     )
     {
+        await RecordCoreAsync(tenantId, messageId, phoneHmac, occurredAt, false, cancellationToken);
+    }
+
+    public Task<Guid> RecordProvisionalAsync(
+        Guid tenantId,
+        string admissionId,
+        string bindingDigest,
+        DateTimeOffset occurredAt,
+        CancellationToken cancellationToken
+    ) => RecordCoreAsync(tenantId, admissionId, bindingDigest, occurredAt, true, cancellationToken);
+
+    private async Task<Guid> RecordCoreAsync(
+        Guid tenantId,
+        string messageId,
+        string phoneHmac,
+        DateTimeOffset occurredAt,
+        bool provisional,
+        CancellationToken cancellationToken
+    )
+    {
         var endpoint =
             configuration["ConstitutionalEngine:GrpcUrl"]
             ?? throw new InvalidOperationException(
@@ -54,27 +85,45 @@ public sealed class WhatsAppRegistrationEvidenceGateway(
                     ActionInstanceId = actionId.ToString("D"),
                     ContractId = tenantId.ToString("D"),
                     ProfessionalId = "PHONE_IDENTITY",
-                    ActionType = "WHATSAPP_AUTO_REGISTRATION",
+                    ActionType = provisional
+                        ? "WHATSAPP_PROVISIONAL_ONBOARDING"
+                        : "WHATSAPP_AUTO_REGISTRATION",
                     State = EvidenceState.Approved,
-                    ProposedContent = JsonSerializer.Serialize(
-                        new
-                        {
-                            phoneHmac,
-                            optedIn = true,
-                            onboardingChannel = "WHATSAPP",
-                            occurredAt,
-                        }
-                    ),
+                    ProposedContent = provisional
+                        ? JsonSerializer.Serialize(
+                            new
+                            {
+                                bindingDigest = phoneHmac,
+                                authenticationAssurance = "AAL1_CHANNEL",
+                                consentScope = "USER_INITIATED_SERVICE",
+                                createsFullAccount = false,
+                                createsEmployment = false,
+                                occurredAt,
+                            }
+                        )
+                        : JsonSerializer.Serialize(
+                            new
+                            {
+                                phoneHmac,
+                                optedIn = true,
+                                onboardingChannel = "WHATSAPP",
+                                occurredAt,
+                            }
+                        ),
                     DecisionSpaceVersion = 1,
                     ConstitutionalBasis = "C-023; C-026; C-042; C-059; ADR-023",
                 },
                 new Metadata { { "x-tenant-id", tenantId.ToString("D") } },
                 cancellationToken: timeout.Token
             );
-            if (!Guid.TryParse(evidence.EvidenceRecordId, out _))
+            if (
+                !Guid.TryParse(evidence.EvidenceRecordId, out var evidenceId)
+                || evidenceId == Guid.Empty
+            )
                 throw new InvalidOperationException(
                     "Constitutional Engine returned an invalid evidence identifier."
                 );
+            return evidenceId;
         }
         catch (Exception exception)
         {

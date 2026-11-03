@@ -1788,6 +1788,27 @@ public sealed class IdentityService
         CancellationToken ct
     )
     {
+        if (db.Database.IsNpgsql())
+        {
+            var preferenceId = Guid.NewGuid();
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                INSERT INTO identity.customer_portal_preferences (preference_id, actor_subject, tenant_id)
+                VALUES ({preferenceId}, {actorSubject}, {tenantId})
+                ON CONFLICT (actor_subject, tenant_id) DO NOTHING
+                """,
+                ct
+            );
+            return await db
+                .CustomerPortalPreferences.FromSqlInterpolated(
+                    $"""
+                    SELECT * FROM identity.customer_portal_preferences
+                    WHERE actor_subject = {actorSubject} AND tenant_id = {tenantId}
+                    FOR UPDATE
+                    """
+                )
+                .SingleAsync(ct);
+        }
         var preference = await db.CustomerPortalPreferences.SingleOrDefaultAsync(
             value => value.ActorSubject == actorSubject && value.TenantId == tenantId,
             ct

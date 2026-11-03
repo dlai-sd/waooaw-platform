@@ -77,14 +77,17 @@ public sealed class PortalInteractionService
     ];
     private readonly IDbContextFactory<ConversationStoreDbContext> _factory;
     private readonly ConversationCursorCodec _cursorCodec;
+    private readonly IProfessionalCatalog? _professionalCatalog;
 
     public PortalInteractionService(
         IDbContextFactory<ConversationStoreDbContext> factory,
-        ConversationCursorCodec cursorCodec
+        ConversationCursorCodec cursorCodec,
+        IProfessionalCatalog? professionalCatalog = null
     )
     {
         _factory = factory;
         _cursorCodec = cursorCodec;
+        _professionalCatalog = professionalCatalog;
     }
 
     public async Task<PortalInteractionTimelinePageV1> ListAsync(
@@ -150,11 +153,30 @@ public sealed class PortalInteractionService
         );
     }
 
-    public async Task<ConversationCommandResult<PortalInteractionSubmissionV1>> SendAsync(
+    public Task<ConversationCommandResult<PortalInteractionSubmissionV1>> SendAsync(
         Guid tenantId,
         Guid participantId,
         Guid idempotencyKey,
         SendPortalInteractionMessageRequestV1 request,
+        CancellationToken cancellationToken
+    ) => SendCoreAsync(tenantId, participantId, idempotencyKey, request, false, cancellationToken);
+
+    internal Task<
+        ConversationCommandResult<PortalInteractionSubmissionV1>
+    > SendPhoneOnboardingAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid idempotencyKey,
+        SendPortalInteractionMessageRequestV1 request,
+        CancellationToken cancellationToken
+    ) => SendCoreAsync(tenantId, participantId, idempotencyKey, request, true, cancellationToken);
+
+    private async Task<ConversationCommandResult<PortalInteractionSubmissionV1>> SendCoreAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid idempotencyKey,
+        SendPortalInteractionMessageRequestV1 request,
+        bool phoneOnboarding,
         CancellationToken cancellationToken
     )
     {
@@ -164,6 +186,14 @@ public sealed class PortalInteractionService
             SHA256.HashData(Encoding.UTF8.GetBytes(requestJson))
         );
         await using var db = await _factory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+        if (transaction is not null)
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock(hashtextextended({$"interaction:{tenantId:D}:{participantId:D}"}, 0))",
+                cancellationToken
+            );
         var replay = await db
             .PortalInteractionIdempotencyOutcomes.AsNoTracking()
             .SingleOrDefaultAsync(
@@ -237,7 +267,11 @@ public sealed class PortalInteractionService
             CurrentSurface = request.CurrentSurface,
             ClientMessageId = request.ClientMessageId,
         };
-        var (guideText, capability) = CreateGuideResponse(request);
+        var (guideText, capability) = CreateGuideResponse(request, phoneOnboarding);
+        if (phoneOnboarding && guideText.Length > 4096)
+            throw new ConversationRequestException(
+                "Onboarding reply exceeds the WhatsApp text bound."
+            );
         var guide = new PortalInteractionMessage
         {
             TenantId = tenantId,
@@ -276,6 +310,8 @@ public sealed class PortalInteractionService
             }
         );
         await db.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
         return new ConversationCommandResult<PortalInteractionSubmissionV1>(submission, false);
     }
 
@@ -302,11 +338,40 @@ public sealed class PortalInteractionService
         }
     }
 
-    private static (string Text, PortalNavigationCapabilityV1 Capability) CreateGuideResponse(
-        SendPortalInteractionMessageRequestV1 request
+    private (string Text, PortalNavigationCapabilityV1 Capability) CreateGuideResponse(
+        SendPortalInteractionMessageRequestV1 request,
+        bool phoneOnboarding
     )
     {
         var text = request.Content[0].Text;
+        if (phoneOnboarding)
+        {
+            var catalog =
+                _professionalCatalog
+                ?? throw new InvalidOperationException(
+                    "The professional catalogue is required for phone onboarding."
+                );
+            var matches = catalog.Discover(text).Take(3).ToList();
+            var discovery =
+                matches.Count > 0
+                    ? "Based on your goal: "
+                        + string.Join(
+                            "; ",
+                            matches.Select(value =>
+                                $"{value.DisplayName}: {string.Join(", ", value.Suitability)}."
+                            )
+                        )
+                        + " "
+                    : "Tell me the outcome you need so I can check the current professional catalogue. ";
+            return (
+                "Welcome to WAOOAW Demo. You can explore digital professionals and discuss the work you need here. "
+                    + "This is phone-verified onboarding, not a completed customer account or an employment contract. "
+                    + discovery
+                    + "What does your business do, and what task would you like help with? "
+                    + "Hiring, payment and account linking require stronger verification. Reply STOP to stop messages.",
+                new("NAVIGATE", "Explore professionals", "/marketplace")
+            );
+        }
         if (
             text.Contains("bill", StringComparison.OrdinalIgnoreCase)
             || text.Contains("payment", StringComparison.OrdinalIgnoreCase)

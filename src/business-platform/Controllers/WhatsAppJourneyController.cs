@@ -18,6 +18,7 @@ namespace Waooaw.BusinessPlatform.Controllers;
 [ApiController]
 [AllowAnonymous]
 [Route("api/v1/channels/whatsapp/webhook")]
+[method: Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
 public sealed class WhatsAppJourneyController(
     WhatsAppJourneyService service,
     IOptions<WhatsAppJourneyOptions> options,
