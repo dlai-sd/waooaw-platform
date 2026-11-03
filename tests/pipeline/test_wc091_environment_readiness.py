@@ -888,7 +888,7 @@ def test_binding_prompt_builds_closed_schema_with_existing_contact_identity(monk
 )
 def test_binding_invalid_private_field_never_writes_or_echoes(monkeypatch, capsys, index, invalid) -> None:
     values = ["123456", "234567", "345678", "+15555550101", "a" * 64]
-    values[index] = invalid
+    values[index:] = [invalid] * 3
     calls, prompts = _binding_upload(monkeypatch, values)
     with pytest.raises(wc091_secret_provision.ProvisioningError, match=r"invalid .*; no binding was written"):
         wc091_secret_provision.provision(
@@ -900,8 +900,30 @@ def test_binding_invalid_private_field_never_writes_or_echoes(monkeypatch, capsy
             api_version="v25.0",
         )
     assert len(calls) == 1
-    assert len(prompts) == index + 1
-    assert capsys.readouterr() == ("", "")
+    assert len(prompts) == index + 3
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err.count("earlier entries are retained") == 3
+
+
+def test_binding_retries_only_the_invalid_digest_without_discarding_private_input(monkeypatch, capsys) -> None:
+    values = ["123456", "234567", "345678", "+15555550101", "invalid-digest", "a" * 64]
+    calls, prompts = _binding_upload(monkeypatch, values)
+    result = wc091_secret_provision.provision(
+        "whatsapp-provider-binding",
+        "demo",
+        "FA-120",
+        expires_at="2099-01-02T00:00:00Z",
+        whatsapp_binding=True,
+        api_version="v25.0",
+    )
+    assert result["status"] == "CREATED"
+    assert len(calls) == 2
+    assert len(prompts) == 6
+    assert prompts[-1] == prompts[-2]
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert all(value not in captured.err for value in values)
 
 
 @pytest.mark.parametrize(

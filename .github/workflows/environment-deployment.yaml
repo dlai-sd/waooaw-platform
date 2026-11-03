@@ -41,6 +41,18 @@ on:
         required: false
         type: string
         default: github
+      provider_operation:
+        required: false
+        type: string
+        default: none
+      provider_document:
+        required: false
+        type: string
+        default: "{}"
+      provider_approved_digest:
+        required: false
+        type: string
+        default: ""
     outputs:
       verification_client_id:
         value: ${{ jobs.terraform.outputs.verification_client_id }}
@@ -555,6 +567,7 @@ jobs:
           retention-days: ${{ env.EVIDENCE_RETENTION_DAYS }}
 
   terraform:
+    if: inputs.provider_operation == 'none'
     name: ${{ inputs.apply && 'Apply' || 'Plan' }} ${{ inputs.environment }}
     needs: [resolve-environment, start-broker]
     runs-on:
@@ -2524,6 +2537,10 @@ jobs:
               exit 1
             fi
           fi
+          if [ "$TARGET_ENVIRONMENT" = demo ]; then
+            python3 "$GITHUB_WORKSPACE/scripts/wc133_whatsapp_operations.py" adopt \
+              --operation register --directory "$PWD" --run "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          fi
           terraform validate
           set +e
           terraform plan -detailed-exitcode -input=false -lock-timeout=5m -out=workload.tfplan
@@ -4041,6 +4058,107 @@ jobs:
         if: always()
         run: echo "result=${{ job.status }}" >> "$GITHUB_OUTPUT"
 
+  provider-operation:
+    if: inputs.provider_operation != 'none'
+    needs: [resolve-environment, start-broker]
+    runs-on: [self-hosted, "${{ needs.resolve-environment.outputs.runner_label }}"]
+    environment: demo
+    timeout-minutes: 20
+    env:
+      OPERATION: ${{ inputs.provider_operation }}
+      CONTROL_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
+      PROVIDER_DOCUMENT: ${{ inputs.provider_document }}
+      APPROVED_DIGEST: ${{ inputs.provider_approved_digest }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5 (Node 24)
+        with:
+          ref: ${{ inputs.control_sha }}
+
+      - name: Require authorized provider-only operation
+        env:
+          CALLER_WORKFLOW_REF: ${{ github.workflow_ref }}
+          EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy.yaml@refs/heads/main
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+          APPLY_REQUESTED: ${{ inputs.apply }}
+        run: |
+          set -euo pipefail
+          test "$CALLER_WORKFLOW_REF" = "$EXPECTED_CALLER_WORKFLOW_REF"
+          test "$TARGET_ENVIRONMENT:$APPLY_REQUESTED" = demo:false
+          case "$GITHUB_ACTOR" in dlai-sd|yk-dlaisd) ;; *) exit 1 ;; esac
+          case "$OPERATION" in register|activate|stop|status|cleanup-intake) ;; *) exit 1 ;; esac
+          test "$OPERATION" = activate || test -z "$APPROVED_DIGEST"
+          mkdir -m 700 "$RUNNER_TEMP/whatsapp-operation"
+          echo "OPERATION_DIRECTORY=$RUNNER_TEMP/whatsapp-operation" >> "$GITHUB_ENV"
+
+      - name: Install pinned Azure CLI extensions
+        run: bash scripts/goal006_az_extensions.sh
+
+      - name: Azure private configuration login
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3 (Node 24)
+        with:
+          client-id: ${{ env.CONTROL_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Prepare and conditionally persist registration metadata
+        if: inputs.provider_operation != 'cleanup-intake'
+        run: |
+          set -euo pipefail
+          umask 077
+          python3 scripts/wc133_whatsapp_operations.py prepare \
+            --operation "$OPERATION" --directory "$OPERATION_DIRECTORY" \
+            --run "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" --approved-digest "$APPROVED_DIGEST"
+          python3 scripts/wc133_whatsapp_operations.py persist \
+            --operation "$OPERATION" --directory "$OPERATION_DIRECTORY" \
+            --run "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          client_id=$(az identity show -g waooaw-demo-rg -n id-waooaw-demo-deployment --query clientId -o tsv)
+          test -n "$client_id"
+          echo "DEPLOYMENT_CLIENT_ID=$client_id" >> "$GITHUB_ENV"
+
+      - name: Revoke temporary intake grants and stop dedicated intake app
+        if: inputs.provider_operation == 'cleanup-intake'
+        run: |
+          python3 scripts/wc133_whatsapp_operations.py cleanup-intake \
+            --operation "$OPERATION" --directory "$OPERATION_DIRECTORY" \
+            --run "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+
+      - name: Azure existing deployment identity login
+        if: inputs.provider_operation != 'cleanup-intake'
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3 (Node 24)
+        with:
+          client-id: ${{ env.DEPLOYMENT_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Apply exact provider runtime settings without redeployment
+        if: inputs.provider_operation != 'cleanup-intake'
+        run: |
+          python3 scripts/wc133_whatsapp_operations.py apply \
+            --operation "$OPERATION" --directory "$OPERATION_DIRECTORY" \
+            --run "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+
+      - name: Retain redacted provider evidence only
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6 (Node 24)
+        with:
+          name: whatsapp-operation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/whatsapp-operation/evidence-*.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Remove private operation files
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          directory = Path(os.environ["RUNNER_TEMP"]) / "whatsapp-operation"
+          if directory.is_dir():
+              for path in directory.iterdir():
+                  if path.is_file():
+                      path.unlink()
+          PY
+
   cleanup-private:
     # Skip when no broker execution was ever started: there is no runner to reconcile
     # (run 39433203446 surfaced this as a misleading AADSTS700213 login failure).
@@ -4048,7 +4166,7 @@ jobs:
       always()
       && needs.resolve-environment.result == 'success'
       && needs.start-broker.outputs.runner_started == 'true'
-    needs: [resolve-environment, start-broker, terraform]
+    needs: [resolve-environment, start-broker, terraform, provider-operation]
     runs-on: ubuntu-latest
     env:
       RUNNER_CLEANUP_CLIENT_ID: ${{ needs.resolve-environment.outputs.cleanup_client_id }}
@@ -4075,7 +4193,7 @@ jobs:
 
       - name: Start private cleanup broker
         env:
-          PRIVATE_JOB_CONCLUSION: ${{ needs.terraform.result }}
+          PRIVATE_JOB_CONCLUSION: ${{ inputs.provider_operation == 'none' && needs.terraform.result || needs.provider-operation.result }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -eu

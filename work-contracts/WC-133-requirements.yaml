@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-133
 contract_path: work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md
-contract_digest: 4126ad05eb2f7f94ce2e3ba6306597ff18a83ed57764a6ff45834286eabfcb8f
+contract_digest: 9270429c6b99138a99e3e9a5270c604414c8bd05ebd5f506794b2d161238b743
 implementation_scope: true
 result: PLANNED
 
@@ -86,7 +86,7 @@ requirements:
     dependencies: Corrected reviewed release; exact DNS/cloud scope authority; four valid protected versions; provider-management authority
     test_path_or_plan: WC-133 Section 5 R008; infra/config negatives plus independently authorized live hostname, challenge and subscription evidence
     completion_rule: Dedicated HTTPS callback and exact-token challenge succeed, subscriptions are verified, acceptance/dispatch/egress remain off during registration.
-    residual_risk: Controller repair is locally validated; live DNS/TLS, protected binding, reviewed deployment and Meta subscription remain separately gated
+    residual_risk: Corrected release is deployed; dedicated DNS/TXT/SNI TLS and all four protected versions are verified. Consolidated operational tooling is locally validated but not applied; exact-token Meta verification/subscription and live/browser acceptance remain separately gated
     result: BLOCKED
 
   - <<: *defaults
