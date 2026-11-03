@@ -5,7 +5,11 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
+
+from goal006_deployment_inputs import WHATSAPP_SECRET_NAMES, whatsapp_provider_configuration
 
 
 RUNTIME_CREDENTIALS = (
@@ -45,14 +49,25 @@ def deployment_credentials(catalog: object, environment: str) -> list[str]:
     return list(dict.fromkeys(credentials))
 
 
-def required_external_credentials(catalog: object, environment: str, web_session_mode: str = "disabled") -> list[str]:
+def required_external_credentials(
+    catalog: object,
+    environment: str,
+    web_session_mode: str = "disabled",
+    *,
+    configuration: Mapping[str, Any] | None = None,
+) -> list[str]:
     if not isinstance(catalog, dict) or not isinstance(catalog.get("entries"), list):
         raise ValueError("secret catalog entries must be a list")
 
+    provider = whatsapp_provider_configuration(environment, configuration if configuration is not None else {})
     credentials = []
     for entry in catalog["entries"]:
         if not isinstance(entry, dict):
             raise ValueError("secret catalog entries must be objects")
+        if entry.get("id") in WHATSAPP_SECRET_NAMES and provider is None:
+            continue
+        if entry.get("id") == "whatsapp-media-authority":
+            continue
         provisioner = entry.get("provisioner")
         required_provisioner = (
             provisioner == FOUNDER_PROVISIONER
@@ -72,6 +87,7 @@ def main() -> int:
     parser.add_argument("--catalog", required=True, type=Path)
     parser.add_argument("--environment", required=True, choices=("demo", "uat", "prod"))
     parser.add_argument("--kind", choices=("managed", "required-external"), default="managed")
+    parser.add_argument("--configuration", type=Path, help="effective workload configuration for optional capabilities")
     parser.add_argument(
         "--web-session-mode",
         choices=("disabled", "shadow", "enforced"),
@@ -82,7 +98,12 @@ def main() -> int:
     credentials = (
         deployment_credentials(catalog, arguments.environment)
         if arguments.kind == "managed"
-        else required_external_credentials(catalog, arguments.environment, arguments.web_session_mode)
+        else required_external_credentials(
+            catalog,
+            arguments.environment,
+            arguments.web_session_mode,
+            configuration=json.loads(arguments.configuration.read_text(encoding="utf-8")) if arguments.configuration else None,
+        )
     )
     print(" ".join(credentials))
     return 0

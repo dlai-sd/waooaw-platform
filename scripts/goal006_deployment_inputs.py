@@ -50,10 +50,10 @@ WHATSAPP_SECRET_NAMES = frozenset(
 )
 
 
-def whatsapp_provider_inputs(environment: str, configuration: Mapping[str, Any], manifest: Mapping[str, Any]) -> dict[str, Any]:
+def whatsapp_provider_configuration(environment: str, configuration: Mapping[str, Any]) -> dict[str, Any] | None:
     provider = configuration.get("whatsapp_provider")
     if provider is None:
-        return {}
+        return None
     if environment != "demo":
         raise ValueError("WhatsApp provider configuration is Demo-only")
     if not isinstance(provider, dict) or set(provider) != {
@@ -88,6 +88,13 @@ def whatsapp_provider_inputs(environment: str, configuration: Mapping[str, Any],
     scopes = {value.split("/secrets/", 1)[0] for value in configuration["key_vault_secret_resource_ids"].values()}
     if len(scopes) != 1 or not next(iter(scopes)).endswith("/vaults/kv-waooaw-demo"):
         raise ValueError("WhatsApp provider requires a single canonical Demo vault RBAC scope")
+    return provider
+
+
+def whatsapp_provider_inputs(environment: str, configuration: Mapping[str, Any], manifest: Mapping[str, Any]) -> dict[str, Any]:
+    provider = whatsapp_provider_configuration(environment, configuration)
+    if provider is None:
+        return {}
     return {
         "whatsapp_provider": {
             **provider,

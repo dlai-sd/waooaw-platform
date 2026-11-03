@@ -1230,20 +1230,49 @@ jobs:
           external_credential_names=$(python3 scripts/goal006_deployment_credentials.py \
             --catalog infrastructure/environment-readiness/secret-catalog.json \
             --environment "$TARGET_ENVIRONMENT" \
+            --configuration workload-configuration.json \
             --web-session-mode disabled \
             --kind required-external)
           credential_schema=$(printf '%s\n%s\n' "$SEEDER_IMAGE" "$credential_names" | sha256sum | cut -d' ' -f1)
           seeding_required=false
           jq -n --arg schema "$credential_schema" '{schema: $schema, credentials: []}' > credential-inventory.json
           for name in $external_credential_names; do
+            version=$(jq -r --arg name "$name" '.whatsapp_provider.secret_versions[$name] // empty' workload-configuration.json)
+            version_arguments=()
+            if test -n "$version"; then
+              version_arguments=(--version "$version")
+            fi
             lookup_error=$(mktemp)
-            if enabled=$(az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name "$name" \
-              --query attributes.enabled -o tsv 2>"$lookup_error"); then
+            if metadata=$(az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name "$name" \
+              "${version_arguments[@]}" --query '{enabled:attributes.enabled,expires:attributes.expires,notBefore:attributes.notBefore}' \
+              -o json 2>"$lookup_error"); then
               rm -f "$lookup_error"
+              enabled=$(jq -r '.enabled' <<< "$metadata")
               test "$enabled" = true || {
                 echo "Required external credential $name is disabled" >&2
                 exit 1
               }
+              if test -n "$version"; then
+                expires=$(jq -r '.expires // empty' <<< "$metadata")
+                not_before=$(jq -r '.notBefore // empty' <<< "$metadata")
+                now=$(date -u +%s)
+                test -n "$expires" || {
+                  echo "Required pinned credential $name is expired or has no expiry" >&2
+                  exit 1
+                }
+                expires_epoch=$(date -u -d "$expires" +%s)
+                test "$expires_epoch" -gt "$now" || {
+                  echo "Required pinned credential $name is expired" >&2
+                  exit 1
+                }
+                if test -n "$not_before"; then
+                  not_before_epoch=$(date -u -d "$not_before" +%s)
+                  if test "$not_before_epoch" -gt "$now"; then
+                    echo "Required pinned credential $name is not yet valid" >&2
+                    exit 1
+                  fi
+                fi
+              fi
             elif grep -q "SecretNotFound" "$lookup_error"; then
               rm -f "$lookup_error"
               echo "Required external credential $name is missing; provision it through the Founder Key Vault admin path" >&2
@@ -1595,6 +1624,7 @@ jobs:
             --output wc132-demo-maintenance.json
 
       - name: Create WC-124 database provisioner
+        id: database-provisioner
         if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
         env:
           BOOTSTRAP_CLIENT_ID: ${{ steps.foundation.outputs.database_bootstrap_client_id }}
@@ -1917,6 +1947,7 @@ jobs:
         if: >-
           always() && inputs.apply &&
           steps.foundation.outcome == 'success' &&
+          steps.database-provisioner.outcome == 'success' &&
           steps.database-transition.outputs.handoff_required == 'true'
         env:
           BOOTSTRAP_CLIENT_ID: ${{ steps.foundation.outputs.database_bootstrap_client_id }}
