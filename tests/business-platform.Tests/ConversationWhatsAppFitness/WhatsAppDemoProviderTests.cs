@@ -21,6 +21,161 @@ public sealed class WhatsAppDemoProviderTests
     private static readonly string TupleDigest = "sha256:" + new string('a', 64);
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ProvisionalGuideRepliesUseCanonicalHistoryBudgetAndCurrentStop(bool stopped)
+    {
+        var fixture = await SeedAsync();
+        fixture.Options.Authority = fixture.Options.Authority! with
+        {
+            AllowProvisionalOnboarding = true,
+        };
+        var context = new PortalInteractionContext
+        {
+            TenantId = fixture.Request.TenantId,
+            ParticipantId = Guid.NewGuid(),
+        };
+        var content = JsonSerializer.Serialize(
+            new[]
+            {
+                new ConversationTextBlockV1("1.0", "TEXT", "Shared onboarding reply", "en-IN"),
+            },
+            new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        );
+        var guide = new PortalInteractionMessage
+        {
+            TenantId = context.TenantId,
+            ParticipantId = context.ParticipantId,
+            ContextId = context.ContextId,
+            Sequence = 1,
+            Actor = "GUIDE",
+            ContentJson = content,
+            CurrentSurface = "ONBOARDING",
+        };
+        await using (var db = fixture.Context.Conversations.CreateDbContext())
+        {
+            db.ConversationOutbox.Remove(await db.ConversationOutbox.SingleAsync());
+            await db.SaveChangesAsync();
+            db.PortalInteractionContexts.Add(context);
+            db.PortalInteractionMessages.Add(guide);
+            db.Set<PhoneOnboardingIdentity>()
+                .Add(
+                    new()
+                    {
+                        TenantId = context.TenantId,
+                        ParticipantId = context.ParticipantId,
+                        BindingDigest = Recipient,
+                        EvidenceId = Guid.NewGuid(),
+                        AdmittedAt = Now,
+                        LastInboundAt = Now,
+                        StoppedAt = stopped ? Now : null,
+                    }
+                );
+            db.ConversationOutbox.Add(
+                new()
+                {
+                    OutboxId = fixture.Request.OutboxId,
+                    Environment = "demo",
+                    TenantId = context.TenantId,
+                    PortalContextId = context.ContextId,
+                    Sequence = 1,
+                    AggregateId = guide.MessageId.ToString("D"),
+                    IdempotencyKey = guide.MessageId,
+                    OperationFamily = "WHATSAPP_OUTBOUND",
+                    PayloadReference = $"portal-message:{guide.MessageId:D}",
+                    PayloadDigest = Hash(content),
+                    Purpose = "PHONE_ONBOARDING",
+                    RecipientBindingDigest = Recipient,
+                    CreatedAt = Now,
+                    UpdatedAt = Now,
+                    State = "DISPATCHING",
+                    AttemptNumber = 1,
+                    LeaseOwner = "fixture",
+                    LeaseExpiresAt = Now.AddSeconds(60),
+                }
+            );
+            await db.SaveChangesAsync();
+        }
+        fixture = fixture with
+        {
+            Request = fixture.Request with
+            {
+                RelationshipId = null,
+                ConversationId = null,
+                PayloadReference = $"portal-message:{guide.MessageId:D}",
+                PayloadDigest = Hash(content),
+            },
+        };
+        var calls = 0;
+        using var factory = new ClientFactory(
+            async (request, ct) =>
+            {
+                calls++;
+                using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
+                Assert.Equal("text", body.RootElement.GetProperty("type").GetString());
+                Assert.Equal(
+                    "Shared onboarding reply",
+                    body.RootElement.GetProperty("text").GetProperty("body").GetString()
+                );
+                return Json(new { messages = new[] { new { id = "wamid.onboarding" } } });
+            }
+        );
+        if (stopped)
+            await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+                Adapter(fixture, factory).DispatchAsync(fixture.Request, CancellationToken.None)
+            );
+        else
+        {
+            var result = await Adapter(fixture, factory)
+                .DispatchAsync(fixture.Request, CancellationToken.None);
+            Assert.Equal("PROVIDER_ACCEPTED", result.State);
+            var replay = await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+                Adapter(fixture, factory).DispatchAsync(fixture.Request, CancellationToken.None)
+            );
+            Assert.Equal("OUTBOUND_ALREADY_RESERVED", replay.ReasonCode);
+            await fixture
+                .Context.Outbox()
+                .RecordResultAsync(
+                    fixture.Request.OutboxId,
+                    "fixture",
+                    result,
+                    CancellationToken.None
+                );
+            await fixture
+                .Context.Outbox()
+                .RecordProviderStatusAsync(
+                    new(
+                        "event:onboarding",
+                        "wamid.onboarding",
+                        "DELIVERED",
+                        Now,
+                        Hash("status:onboarding")
+                    ),
+                    CancellationToken.None
+                );
+            var reconciled = await Adapter(fixture, factory)
+                .ReconcileAsync(fixture.Request, CancellationToken.None);
+            Assert.Equal("DELIVERED", reconciled.State);
+            await using var deliveries = fixture.Context.Conversations.CreateDbContext();
+            var observations = await deliveries.DeliveryObservations.ToListAsync();
+            Assert.Equal(2, observations.Count);
+            Assert.All(
+                observations,
+                value =>
+                {
+                    Assert.Null(value.RelationshipId);
+                    Assert.Null(value.MessageId);
+                    Assert.Equal(context.ContextId, value.PortalContextId);
+                    Assert.Equal(guide.MessageId, value.PortalMessageId);
+                }
+            );
+        }
+        Assert.Equal(stopped ? 0 : 1, calls);
+        await using var saved = fixture.Context.Conversations.CreateDbContext();
+        Assert.Single(await saved.Set<WhatsAppTrafficReservation>().ToListAsync());
+    }
+
+    [Theory]
     [InlineData(
         """[{"SchemaVersion":"1.0","BlockType":"MEDIA","Text":"not an admitted text projection"}]"""
     )]
@@ -735,7 +890,7 @@ public sealed class WhatsAppDemoProviderTests
                 {
                     Environment = "demo",
                     TenantId = fixture.Request.TenantId,
-                    RelationshipId = fixture.Request.RelationshipId,
+                    RelationshipId = fixture.Request.RelationshipId!.Value,
                     State = "LATCHED",
                 }
             );

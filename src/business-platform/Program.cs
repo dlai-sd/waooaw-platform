@@ -374,6 +374,7 @@ builder.Services.AddScoped<
     WhatsAppRegistrationEvidenceGateway
 >();
 builder.Services.AddScoped<WhatsAppJourneyService>();
+builder.Services.AddScoped<PhoneOnboardingService>();
 builder.Services.Configure<ChannelContinuityOptions>(
     builder.Configuration.GetSection("ChannelContinuity")
 );

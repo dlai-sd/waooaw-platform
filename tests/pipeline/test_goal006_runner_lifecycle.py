@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import base64
 import json
+import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
+from scripts import goal006_runner_lifecycle as lifecycle
 from scripts.goal006_runner_lifecycle import (
     HttpStatusError,
     JsonApi,
@@ -449,6 +451,94 @@ def test_runner_start_clones_complete_template_before_binding_correlation() -> N
     assert environment["RUNNER_CORRELATION_ID"] == "goal006:demo:123:2"
     assert environment["RUNNER_TOKEN_SECRET_NAME"] == "runner-token-demo-123-2"
     assert environment["GITHUB_WORKFLOW_RUN_ID"] == "123"
+
+
+@pytest.mark.parametrize("failure", ["connect-timeout", "read-timeout", "wrapped-timeout", "http-503", "http-429"])
+def test_arm_get_retries_transient_failures_without_replaying_mutations(monkeypatch, failure) -> None:
+    calls = []
+    sleeps = []
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def read(self):
+            if failure == "read-timeout" and len(calls) == 1:
+                raise TimeoutError("read timed out")
+            return b'{"value":[]}'
+
+    def urlopen(request, timeout):
+        calls.append((request, timeout))
+        if len(calls) == 1:
+            if failure == "connect-timeout":
+                raise TimeoutError("timed out")
+            if failure == "wrapped-timeout":
+                raise urllib.error.URLError(TimeoutError("timed out"))
+            if failure.startswith("http-"):
+                raise urllib.error.HTTPError(request.full_url, int(failure[5:]), "transient", {}, None)
+        return Response()
+
+    monkeypatch.setattr(lifecycle.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(lifecycle.time, "sleep", sleeps.append)
+    result = JsonApi(lambda _: "test-token").request(
+        "GET", "https://management.azure.com/test", resource=lifecycle.MANAGEMENT_RESOURCE
+    )
+    assert result == {"value": []}
+    assert [timeout for _, timeout in calls] == [30, 30]
+    assert sleeps == [1]
+
+
+@pytest.mark.parametrize("method", ["POST", "PUT", "DELETE", "PATCH"])
+def test_mutation_timeout_is_explicit_and_never_retried(monkeypatch, method) -> None:
+    calls = []
+
+    def urlopen(request, timeout):
+        calls.append(request)
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr(lifecycle.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(lifecycle.time, "sleep", lambda _: pytest.fail("mutation must not retry"))
+    with pytest.raises(LifecycleError, match="timed out"):
+        JsonApi(lambda _: "test-token").request(
+            method, "https://management.azure.com/test", resource=lifecycle.MANAGEMENT_RESOURCE
+        )
+    assert len(calls) == 1
+
+
+def test_arm_get_timeout_exhaustion_is_bounded_and_redacted(monkeypatch, capsys) -> None:
+    calls = []
+    sleeps = []
+
+    def urlopen(request, timeout):
+        calls.append(timeout)
+        raise TimeoutError("sensitive exception detail")
+
+    monkeypatch.setattr(lifecycle.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(lifecycle.time, "sleep", sleeps.append)
+    with pytest.raises(LifecycleError, match="timed out"):
+        JsonApi(lambda _: "test-token").request(
+            "GET", "https://management.azure.com/test", resource=lifecycle.MANAGEMENT_RESOURCE
+        )
+    assert calls == [30, 30, 30]
+    assert sleeps == [1, 2]
+    assert "test-token" not in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("code", [400, 401, 403, 404])
+def test_arm_get_does_not_retry_permanent_http_denials(monkeypatch, code) -> None:
+    def urlopen(request, timeout):
+        raise urllib.error.HTTPError(request.full_url, code, "denied", {}, None)
+
+    monkeypatch.setattr(lifecycle.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(lifecycle.time, "sleep", lambda _: pytest.fail("permanent denial must not retry"))
+    with pytest.raises(HttpStatusError) as error:
+        JsonApi(lambda _: "test-token").request(
+            "GET", "https://management.azure.com/test", resource=lifecycle.MANAGEMENT_RESOURCE
+        )
+    assert error.value.status == code
 
 
 def test_runner_start_serializes_azure_execution_template_at_body_root(monkeypatch) -> None:

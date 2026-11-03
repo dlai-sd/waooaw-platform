@@ -40,6 +40,7 @@ public sealed record WhatsAppActivationAuthority
     public decimal MaximumSpendInr { get; init; }
     public decimal MaximumCostPerMessageInr { get; init; }
     public bool Revoked { get; init; }
+    public bool AllowProvisionalOnboarding { get; init; }
 }
 
 public sealed record WhatsAppCapabilityState(string State, string ReasonCode);

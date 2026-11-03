@@ -29,8 +29,8 @@ public sealed record WhatsAppOutboxLease(
     Guid OutboxId,
     string Environment,
     Guid TenantId,
-    Guid RelationshipId,
-    Guid ConversationId,
+    Guid? RelationshipId,
+    Guid? ConversationId,
     long Sequence,
     string PayloadReference,
     string PayloadDigest,
@@ -69,6 +69,81 @@ public sealed class WhatsAppOutboxService(
     private static readonly TimeSpan LeaseDuration = TimeSpan.FromSeconds(60);
     private readonly Wc120ConversationOptions _conversationOptions = conversationOptions.Value;
     private WhatsAppJourneyOptions WhatsAppOptions => whatsAppOptions.CurrentValue;
+
+    public async Task QueueOnboardingAsync(
+        PhoneOnboardingIdentity identity,
+        PortalInteractionMessageV1 message,
+        DateTimeOffset now,
+        CancellationToken ct
+    )
+    {
+        if (!_conversationOptions.Enabled || !WhatsAppOptions.DispatchEnabled)
+            throw new WhatsAppCapabilityUnavailableException("DISPATCH_DISABLED");
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var context = await db.PortalInteractionContexts.SingleAsync(
+            value =>
+                value.TenantId == identity.TenantId
+                && value.ParticipantId == identity.ParticipantId,
+            ct
+        );
+        if (
+            await db.ConversationOutbox.AnyAsync(
+                value =>
+                    value.TenantId == identity.TenantId
+                    && value.PortalContextId == context.ContextId
+                    && value.IdempotencyKey == message.MessageId,
+                ct
+            )
+        )
+            return;
+        var payload = JsonSerializer.Serialize(
+            message.Content,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        );
+        if (db.Database.IsNpgsql())
+        {
+            var outboxId = Guid.NewGuid();
+            var digest = Sha256(payload);
+            var aggregate = message.MessageId.ToString("D");
+            var reference = $"portal-message:{aggregate}";
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                INSERT INTO business.conversation_outbox
+                    (outbox_id, environment, tenant_id, portal_context_id, sequence, owner,
+                     aggregate_id, operation_family, idempotency_key, payload_digest,
+                     payload_reference, purpose, recipient_binding_digest, state,
+                     attempt_number, next_attempt_at, created_at, updated_at)
+                VALUES ({outboxId}, {_conversationOptions.Environment}, {identity.TenantId}, {context.ContextId},
+                    {message.Sequence}, 'BUSINESS_PLATFORM', {aggregate}, 'WHATSAPP_OUTBOUND',
+                    {message.MessageId}, {digest}, {reference}, 'PHONE_ONBOARDING',
+                    {identity.BindingDigest}, 'PENDING', 0, {now}, {now}, {now})
+                ON CONFLICT DO NOTHING
+                """,
+                ct
+            );
+            return;
+        }
+        db.ConversationOutbox.Add(
+            new()
+            {
+                Environment = _conversationOptions.Environment,
+                TenantId = identity.TenantId,
+                PortalContextId = context.ContextId,
+                Sequence = message.Sequence,
+                AggregateId = message.MessageId.ToString("D"),
+                OperationFamily = "WHATSAPP_OUTBOUND",
+                IdempotencyKey = message.MessageId,
+                PayloadDigest = Sha256(payload),
+                PayloadReference = $"portal-message:{message.MessageId:D}",
+                Purpose = "PHONE_ONBOARDING",
+                RecipientBindingDigest = identity.BindingDigest,
+                CreatedAt = now,
+                UpdatedAt = now,
+                NextAttemptAt = now,
+            }
+        );
+        await db.SaveChangesAsync(ct);
+    }
 
     public async Task<ConversationOutboxRecord?> QueueAsync(
         Guid tenantId,
@@ -199,6 +274,7 @@ public sealed class WhatsAppOutboxService(
                     && earlier.TenantId == value.TenantId
                     && earlier.RelationshipId == value.RelationshipId
                     && earlier.ConversationId == value.ConversationId
+                    && earlier.PortalContextId == value.PortalContextId
                     && earlier.Sequence < value.Sequence
                     && earlier.State != "DELIVERED"
                     && earlier.State != "BLOCKED"
@@ -252,10 +328,13 @@ public sealed class WhatsAppOutboxService(
         var record = await OwnedLeaseAsync(db, outboxId, workerId, cancellationToken);
         if (
             record.LeaseExpiresAt <= now
-            || await stopFence.IsLatchedAsync(
-                record.TenantId,
-                record.RelationshipId,
-                cancellationToken
+            || (
+                record.RelationshipId is { } relationshipId
+                && await stopFence.IsLatchedAsync(
+                    record.TenantId,
+                    relationshipId,
+                    cancellationToken
+                )
             )
             || !await IsCurrentlyEligibleAsync(record, now, cancellationToken)
         )
@@ -371,7 +450,9 @@ public sealed class WhatsAppOutboxService(
                     Environment = record.Environment,
                     TenantId = record.TenantId,
                     RelationshipId = record.RelationshipId,
-                    MessageId = messageId,
+                    PortalContextId = record.PortalContextId,
+                    MessageId = record.PortalContextId is null ? messageId : null,
+                    PortalMessageId = record.PortalContextId is not null ? messageId : null,
                     Provider = "WHATSAPP",
                     ProviderEventIdentity = observation.ObservationDigest,
                     ProviderReferenceDigest = observation.ProviderReferenceDigest,
@@ -529,7 +610,12 @@ public sealed class WhatsAppOutboxService(
                     && (
                         source.TenantId != correlated.TenantId
                         || source.RelationshipId != correlated.RelationshipId
-                        || source.MessageId != correlatedMessageId
+                        || source.PortalContextId != correlated.PortalContextId
+                        || (
+                            source.PortalContextId is null
+                                ? source.MessageId != correlatedMessageId
+                                : source.PortalMessageId != correlatedMessageId
+                        )
                     )
                 )
             )
@@ -539,7 +625,11 @@ public sealed class WhatsAppOutboxService(
                 Environment = correlated.Environment,
                 TenantId = correlated.TenantId,
                 RelationshipId = correlated.RelationshipId,
-                MessageId = correlatedMessageId,
+                PortalContextId = correlated.PortalContextId,
+                MessageId = correlated.PortalContextId is null ? correlatedMessageId : null,
+                PortalMessageId = correlated.PortalContextId is not null
+                    ? correlatedMessageId
+                    : null,
             };
         }
         if (source is null)
@@ -565,6 +655,7 @@ public sealed class WhatsAppOutboxService(
                     && value.TenantId == source.TenantId
                     && value.RelationshipId == source.RelationshipId
                     && value.MessageId == source.MessageId
+                    && value.PortalMessageId == source.PortalMessageId
                     && value.Provider == "WHATSAPP"
                     && value.ProviderEventIdentity == statusEvent.EventIdentity,
                 cancellationToken
@@ -577,7 +668,9 @@ public sealed class WhatsAppOutboxService(
                     Environment = source.Environment,
                     TenantId = source.TenantId,
                     RelationshipId = source.RelationshipId,
+                    PortalContextId = source.PortalContextId,
                     MessageId = source.MessageId,
+                    PortalMessageId = source.PortalMessageId,
                     Provider = "WHATSAPP",
                     ProviderEventIdentity = statusEvent.EventIdentity,
                     ProviderReferenceDigest = providerReferenceDigest,
@@ -683,6 +776,36 @@ public sealed class WhatsAppOutboxService(
     )
     {
         await using var db = await relationshipDbFactory.CreateDbContextAsync(cancellationToken);
+        if (record.PortalContextId is { } contextId)
+        {
+            if (
+                record.RelationshipId is not null
+                || record.ConversationId is not null
+                || record.Purpose != "PHONE_ONBOARDING"
+                || record.TemplateName is not null
+            )
+                return false;
+            await using var interactions = await dbFactory.CreateDbContextAsync(cancellationToken);
+            return await (
+                from context in interactions.PortalInteractionContexts
+                join identity in interactions.Set<PhoneOnboardingIdentity>()
+                    on new { context.TenantId, context.ParticipantId } equals new
+                    {
+                        identity.TenantId,
+                        identity.ParticipantId,
+                    }
+                where
+                    context.ContextId == contextId
+                    && identity.TenantId == record.TenantId
+                    && identity.BindingDigest == record.RecipientBindingDigest
+                    && identity.EvidenceId != null
+                    && identity.AdmittedAt != null
+                    && identity.StoppedAt == null
+                    && identity.LastInboundAt <= now
+                    && identity.LastInboundAt >= now.Subtract(ServiceWindow)
+                select identity.ParticipantId
+            ).AnyAsync(cancellationToken);
+        }
         var relationship = await db
             .EmploymentRelationships.AsNoTracking()
             .SingleOrDefaultAsync(

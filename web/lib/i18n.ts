@@ -93,6 +93,8 @@ const english = {
   offlineDescription: 'The static shell is available, but protected information and changes require a connection.',
   globalErrorTitle: 'Something went wrong',
   globalErrorDescription: 'The outcome is unknown. Try the request again.',
+  workspacePreferencesUnavailable:
+    "We couldn't load your workspace preferences. Retry loading your workspace; you don't need to register again.",
   tryAgain: 'Try again',
 } as const;
 
@@ -185,6 +187,8 @@ export const messages: Record<SupportedLocale, Messages> = {
     offlineDescription: 'स्थिर शेल उपलब्ध है, लेकिन सुरक्षित जानकारी और बदलावों के लिए कनेक्शन आवश्यक है।',
     globalErrorTitle: 'कुछ गलत हो गया',
     globalErrorDescription: 'परिणाम अज्ञात है। अनुरोध फिर आज़माएँ।',
+    workspacePreferencesUnavailable:
+      'कार्यक्षेत्र की प्राथमिकताएँ लोड नहीं हो सकीं। फिर प्रयास करें; दोबारा पंजीकरण की ज़रूरत नहीं है।',
     tryAgain: 'फिर आज़माएँ',
   },
   mr: {
@@ -273,6 +277,7 @@ export const messages: Record<SupportedLocale, Messages> = {
     offlineDescription: 'स्थिर शेल उपलब्ध आहे, पण संरक्षित माहिती आणि बदलांसाठी जोडणी आवश्यक आहे.',
     globalErrorTitle: 'काहीतरी चूक झाली',
     globalErrorDescription: 'परिणाम अज्ञात आहे. विनंती पुन्हा करून पहा.',
+    workspacePreferencesUnavailable: 'कार्यक्षेत्राची प्राधान्ये लोड झाली नाहीत. पुन्हा प्रयत्न करा; पुन्हा नोंदणी करण्याची गरज नाही.',
     tryAgain: 'पुन्हा प्रयत्न करा',
   },
   ta: {
@@ -361,6 +366,7 @@ export const messages: Record<SupportedLocale, Messages> = {
     offlineDescription: 'நிலையான அமைப்பு கிடைக்கிறது; பாதுகாக்கப்பட்ட தகவலுக்கும் மாற்றங்களுக்கும் இணைப்பு தேவை.',
     globalErrorTitle: 'ஏதோ தவறு ஏற்பட்டது',
     globalErrorDescription: 'முடிவு தெரியவில்லை. கோரிக்கையை மீண்டும் முயல்க.',
+    workspacePreferencesUnavailable: 'பணியிட விருப்பங்களை ஏற்ற முடியவில்லை. மீண்டும் முயலவும்; மீண்டும் பதிவு செய்ய வேண்டாம்.',
     tryAgain: 'மீண்டும் முயல்க',
   },
   te: {
@@ -448,6 +454,7 @@ export const messages: Record<SupportedLocale, Messages> = {
     offlineDescription: 'స్థిర షెల్ అందుబాటులో ఉంది, కానీ రక్షిత సమాచారం మరియు మార్పులకు కనెక్షన్ అవసరం.',
     globalErrorTitle: 'ఏదో తప్పు జరిగింది',
     globalErrorDescription: 'ఫలితం తెలియదు. అభ్యర్థనను మళ్లీ ప్రయత్నించండి.',
+    workspacePreferencesUnavailable: 'కార్యస్థల ప్రాధాన్యతలను లోడ్ చేయలేకపోయాము. మళ్లీ ప్రయత్నించండి; మళ్లీ నమోదు అవసరం లేదు.',
     tryAgain: 'మళ్లీ ప్రయత్నించండి',
   },
   kn: {
@@ -535,6 +542,7 @@ export const messages: Record<SupportedLocale, Messages> = {
     offlineDescription: 'ಸ್ಥಿರ ಶೆಲ್ ಲಭ್ಯವಿದೆ, ಆದರೆ ಸಂರಕ್ಷಿತ ಮಾಹಿತಿ ಮತ್ತು ಬದಲಾವಣೆಗಳಿಗೆ ಸಂಪರ್ಕ ಅಗತ್ಯ.',
     globalErrorTitle: 'ಏನೋ ತಪ್ಪಾಗಿದೆ',
     globalErrorDescription: 'ಫಲಿತಾಂಶ ತಿಳಿದಿಲ್ಲ. ವಿನಂತಿಯನ್ನು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+    workspacePreferencesUnavailable: 'ಕಾರ್ಯಕ್ಷೇತ್ರದ ಆದ್ಯತೆಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ; ಮತ್ತೆ ನೋಂದಣಿ ಅಗತ್ಯವಿಲ್ಲ.',
     tryAgain: 'ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ',
   },
   gu: {
@@ -622,6 +630,7 @@ export const messages: Record<SupportedLocale, Messages> = {
     offlineDescription: 'સ્થિર શેલ ઉપલબ્ધ છે, પરંતુ સુરક્ષિત માહિતી અને ફેરફારો માટે જોડાણ જરૂરી છે.',
     globalErrorTitle: 'કંઈક ખોટું થયું',
     globalErrorDescription: 'પરિણામ અજ્ઞાત છે. વિનંતી ફરી અજમાવો.',
+    workspacePreferencesUnavailable: 'કાર્યક્ષેત્રની પસંદગીઓ લોડ થઈ શકી નથી. ફરી પ્રયાસ કરો; ફરી નોંધણી કરવાની જરૂર નથી.',
     tryAgain: 'ફરી અજમાવો',
   },
   bn: {
@@ -709,6 +718,7 @@ export const messages: Record<SupportedLocale, Messages> = {
     offlineDescription: 'স্থির শেল উপলব্ধ, তবে সুরক্ষিত তথ্য ও পরিবর্তনের জন্য সংযোগ প্রয়োজন।',
     globalErrorTitle: 'কিছু ভুল হয়েছে',
     globalErrorDescription: 'ফলাফল অজানা। অনুরোধটি আবার চেষ্টা করুন।',
+    workspacePreferencesUnavailable: 'কর্মক্ষেত্রের পছন্দগুলি লোড করা যায়নি। আবার চেষ্টা করুন; আবার নিবন্ধনের প্রয়োজন নেই।',
     tryAgain: 'আবার চেষ্টা করুন',
   },
   ml: {
@@ -797,6 +807,7 @@ export const messages: Record<SupportedLocale, Messages> = {
     offlineDescription: 'സ്ഥിരമായ ഷെൽ ലഭ്യമാണ്, പക്ഷേ സംരക്ഷിത വിവരങ്ങൾക്കും മാറ്റങ്ങൾക്കും കണക്ഷൻ ആവശ്യമാണ്.',
     globalErrorTitle: 'എന്തോ പിഴവ് സംഭവിച്ചു',
     globalErrorDescription: 'ഫലം അജ്ഞാതമാണ്. അഭ്യർത്ഥന വീണ്ടും ശ്രമിക്കുക.',
+    workspacePreferencesUnavailable: 'പ്രവർത്തനസ്ഥല മുൻഗണനകൾ ലോഡ് ചെയ്യാനായില്ല. വീണ്ടും ശ്രമിക്കുക; വീണ്ടും രജിസ്റ്റർ ചെയ്യേണ്ടതില്ല.',
     tryAgain: 'വീണ്ടും ശ്രമിക്കുക',
   },
   pa: {
@@ -884,6 +895,7 @@ export const messages: Record<SupportedLocale, Messages> = {
     offlineDescription: 'ਸਥਿਰ ਸ਼ੈੱਲ ਉਪਲਬਧ ਹੈ, ਪਰ ਸੁਰੱਖਿਅਤ ਜਾਣਕਾਰੀ ਅਤੇ ਬਦਲਾਵਾਂ ਲਈ ਕਨੈਕਸ਼ਨ ਲੋੜੀਂਦਾ ਹੈ।',
     globalErrorTitle: 'ਕੁਝ ਗਲਤ ਹੋ ਗਿਆ',
     globalErrorDescription: 'ਨਤੀਜਾ ਅਣਜਾਣ ਹੈ। ਬੇਨਤੀ ਦੁਬਾਰਾ ਅਜ਼ਮਾਓ।',
+    workspacePreferencesUnavailable: 'ਕਾਰਜਸਥਾਨ ਦੀਆਂ ਤਰਜੀਹਾਂ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕੀਆਂ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ; ਮੁੜ ਰਜਿਸਟਰ ਕਰਨ ਦੀ ਲੋੜ ਨਹੀਂ ਹੈ।',
     tryAgain: 'ਦੁਬਾਰਾ ਅਜ਼ਮਾਓ',
   },
   ur: {
@@ -973,6 +985,8 @@ export const messages: Record<SupportedLocale, Messages> = {
     offlineDescription: 'جامد شیل دستیاب ہے، لیکن محفوظ معلومات اور تبدیلیوں کے لیے کنکشن درکار ہے۔',
     globalErrorTitle: 'کچھ غلط ہو گیا',
     globalErrorDescription: 'نتیجہ نامعلوم ہے۔ درخواست دوبارہ آزمائیں۔',
+    workspacePreferencesUnavailable:
+      'ورک اسپیس کی ترجیحات لوڈ نہیں ہو سکیں۔ دوبارہ کوشش کریں؛ دوبارہ رجسٹریشن کی ضرورت نہیں ہے۔',
     tryAgain: 'دوبارہ آزمائیں',
   },
 };

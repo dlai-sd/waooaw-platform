@@ -130,7 +130,12 @@ def activation_settings(
     )
     if bundle["schema"] != "waooaw.demo-whatsapp-activation/v1":
         raise ValueError("Unsupported activation bundle schema")
-    authority = _closed(bundle["authority"], AUTHORITY_FIELDS, "Activation authority fields are closed")
+    authority_keys = AUTHORITY_FIELDS
+    if isinstance(bundle["authority"], dict) and "AllowProvisionalOnboarding" in bundle["authority"]:
+        authority_keys = AUTHORITY_FIELDS | {"AllowProvisionalOnboarding"}
+    authority = _closed(bundle["authority"], authority_keys, "Activation authority fields are closed")
+    if type(authority.get("AllowProvisionalOnboarding", False)) is not bool:
+        raise ValueError("Provisional onboarding permission must be an explicit boolean")
     if authority["Environment"] != "demo" or authority["Revoked"] is not False:
         raise ValueError("Activation requires unrevoked Demo authority")
     if not all(_match(authority[key], REFERENCE) for key in REFERENCES):
@@ -146,7 +151,7 @@ def activation_settings(
     if tenant.int == 0 or str(tenant) != authority["TenantId"]:
         raise ValueError("Activation tenant must be a nonempty canonical UUID")
     if not _match(authority["RecipientBindingDigest"], BINDING):
-        raise ValueError("Activation requires an admitted recipient binding")
+        raise ValueError("Activation requires a bounded recipient binding")
     starts, expires = _time(authority["StartsAt"]), _time(authority["ExpiresAt"])
     if now.utcoffset() is None or not starts <= now < expires:
         raise ValueError("Activation window is not currently open")

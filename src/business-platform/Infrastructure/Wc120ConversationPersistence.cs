@@ -11,8 +11,9 @@ public sealed class ConversationOutboxRecord
     public Guid OutboxId { get; init; } = Guid.NewGuid();
     public string Environment { get; init; } = string.Empty;
     public Guid TenantId { get; init; }
-    public Guid RelationshipId { get; init; }
-    public Guid ConversationId { get; init; }
+    public Guid? RelationshipId { get; init; }
+    public Guid? ConversationId { get; init; }
+    public Guid? PortalContextId { get; init; }
     public long Sequence { get; init; }
     public string Owner { get; init; } = "BUSINESS_PLATFORM";
     public string AggregateId { get; init; } = string.Empty;
@@ -112,8 +113,10 @@ public sealed class ConversationDeliveryObservation
     public Guid ObservationId { get; init; } = Guid.NewGuid();
     public string Environment { get; init; } = string.Empty;
     public Guid TenantId { get; init; }
-    public Guid RelationshipId { get; init; }
-    public Guid MessageId { get; init; }
+    public Guid? RelationshipId { get; init; }
+    public Guid? PortalContextId { get; init; }
+    public Guid? MessageId { get; init; }
+    public Guid? PortalMessageId { get; init; }
     public string Provider { get; init; } = string.Empty;
     public string ProviderEventIdentity { get; init; } = string.Empty;
     public string ProviderReferenceDigest { get; init; } = string.Empty;

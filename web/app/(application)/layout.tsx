@@ -2,14 +2,16 @@
 // Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R002, WC105-R013, WC105-R017
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
-import { redirect } from 'next/navigation';
-import type { ReactNode } from 'react';
 import { ProtectedAppShell } from '@/components/shell/ProtectedAppShell';
 import { StateView } from '@/components/system/StateView';
+import type { WorkspaceLayoutPreferencesV1 } from '@/lib/api/generated/models/WorkspaceLayoutPreferencesV1';
 import { getIdentitySession, getWorkspaceLayoutPreferences } from '@/lib/api/identity';
 import { getRequestI18n } from '@/lib/i18n-server';
 import { isKeyVaultPortalAdministrator, keyVaultTarget } from '@/lib/key-vault-admin';
 import { getServerAccessToken } from '@/lib/server-auth';
+import { logServerFailure } from '@/lib/server-failure';
+import { redirect } from 'next/navigation';
+import type { ReactNode } from 'react';
 
 export default async function ApplicationLayout({ children }: { children: ReactNode }) {
   const accessToken = await getServerAccessToken();
@@ -43,7 +45,25 @@ export default async function ApplicationLayout({ children }: { children: ReactN
       </ProtectedAppShell>
     );
   }
-  const workspaceLayout = identity.kind === 'ready' ? await getWorkspaceLayoutPreferences(accessToken) : undefined;
+  let workspaceLayout: WorkspaceLayoutPreferencesV1 | undefined;
+  if (identity.kind === 'ready') {
+    try {
+      workspaceLayout = await getWorkspaceLayoutPreferences(accessToken);
+    } catch (error) {
+      logServerFailure('web.identity.workspace_layout_load_failed', error);
+      return (
+        <ProtectedAppShell locale={locale} messages={messages} variant="customer" identitySession={identity.session}>
+          <StateView
+            actionHref="/home"
+            actionLabel={messages.tryAgain}
+            kind="error"
+            title={messages.globalErrorTitle}
+            description={messages.workspacePreferencesUnavailable}
+          />
+        </ProtectedAppShell>
+      );
+    }
+  }
   return (
     <ProtectedAppShell
       identitySession={identity.kind === 'ready' ? identity.session : undefined}

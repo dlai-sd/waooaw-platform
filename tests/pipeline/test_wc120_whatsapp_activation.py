@@ -102,6 +102,24 @@ def test_activation_binds_existing_runtime_options_without_credentials_or_provid
     assert not any(word in key for key in result for word in ("PhoneNumber", "AccessToken", "AppSecret", "VerifyToken"))
 
 
+def test_provisional_admission_is_default_off_and_requires_exact_bundle_permission() -> None:
+    document = bundle()
+    assert "WhatsAppCapability__Authority__AllowProvisionalOnboarding" not in prepare(document)
+    document["authority"]["AllowProvisionalOnboarding"] = True
+    raw = json.dumps(document).encode()
+    approved = "sha256:" + hashlib.sha256(raw).hexdigest()
+    assert (
+        activation_settings(raw, approved, deployment(), NOW)["WhatsAppCapability__Authority__AllowProvisionalOnboarding"]
+        == "true"
+    )
+    document["authority"]["AllowProvisionalOnboarding"] = False
+    with pytest.raises(ValueError, match="independently approved"):
+        activation_settings(json.dumps(document).encode(), approved, deployment(), NOW)
+    document["authority"]["AllowProvisionalOnboarding"] = "true"
+    with pytest.raises(ValueError, match="boolean"):
+        prepare(document)
+
+
 @pytest.mark.parametrize(
     ("key", "value"),
     [

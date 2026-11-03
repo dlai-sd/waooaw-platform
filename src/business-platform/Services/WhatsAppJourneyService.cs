@@ -96,6 +96,7 @@ public sealed partial class WhatsAppJourneyService
     private readonly CustomerEngagementWorkspaceService? _engagementWorkspace;
     private readonly IWhatsAppCapabilityGate? _capabilityGate;
     private readonly IWhatsAppWebhookCredentials? _webhookCredentials;
+    private readonly PhoneOnboardingService? _onboarding;
 
     public WhatsAppJourneyService(
         IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
@@ -110,7 +111,8 @@ public sealed partial class WhatsAppJourneyService
         WhatsAppOutboxService? outboxService = null,
         CustomerEngagementWorkspaceService? engagementWorkspace = null,
         IWhatsAppCapabilityGate? capabilityGate = null,
-        IWhatsAppWebhookCredentials? webhookCredentials = null
+        IWhatsAppWebhookCredentials? webhookCredentials = null,
+        PhoneOnboardingService? onboarding = null
     )
     {
         _dbFactory = dbFactory;
@@ -126,6 +128,7 @@ public sealed partial class WhatsAppJourneyService
         _engagementWorkspace = engagementWorkspace;
         _capabilityGate = capabilityGate;
         _webhookCredentials = webhookCredentials;
+        _onboarding = onboarding;
     }
 
     public async Task<WhatsAppJourneyReceipt> ReceiveAsync(
@@ -389,6 +392,20 @@ public sealed partial class WhatsAppJourneyService
             item => item.PhoneHmac == proof.PhoneSubjectHash,
             cancellationToken
         );
+        if (contact is null && _conversationOptions is not null && _onboarding is not null)
+        {
+            var admissionClaim = await ClaimProviderEventAsync(proof, cancellationToken);
+            if (admissionClaim.Replay is not null)
+                return admissionClaim.Replay;
+            var admitted = await _onboarding.ReceiveAsync(proof, cancellationToken);
+            await CompleteProviderEventAsync(
+                proof,
+                admissionClaim.LeaseOwner,
+                admitted,
+                cancellationToken
+            );
+            return admitted;
+        }
         if (contact is null)
         {
             if (_conversationOptions is not null)

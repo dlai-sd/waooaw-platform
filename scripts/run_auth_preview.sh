@@ -264,6 +264,7 @@ if [ "$action" = start ]; then
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /docker-entrypoint-initdb.d/44-razorpay-checkout-orders.sql
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /docker-entrypoint-initdb.d/45-pre-hire-checkout-orders.sql
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /docker-entrypoint-initdb.d/41-relationship-acquisition-mode.sql
+  $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /docker-entrypoint-initdb.d/67-wc133-phone-onboarding.sql
   $compose exec -T postgres bash /docker-entrypoint-initdb.d/42-demo-marketplace-admission.sh
   oidc_reservation_probe || fail "OIDC transaction reservation probe failed; Google/Facebook sign-in would return 503"
   $compose up -d --no-build --wait --wait-timeout 180 auth-preview \
