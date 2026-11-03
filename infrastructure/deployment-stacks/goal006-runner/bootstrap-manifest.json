@@ -35,7 +35,7 @@
     "infrastructure/deployment-stacks/goal006-runner/uat.parameters.json": "34f92fcb6684738e1ae9e42622810af35060d5738f89327627a4542304940d7c",
     "infrastructure/deployment-stacks/goal006-runner/uat.prerequisites.parameters.json": "d8bc2a520f658c7c9cda645f498b2d36b14d09df7bac9e364f78f83b741b09f0",
     "infrastructure/environment-readiness/secret-catalog.json":
-      "5682fd09c2fc753e2ae0a95c78ebb3d365db482556d229b69b7fbc41d1005930",
+      "4eae197a81784d04201b06af90ce329c898350d5691be5aeb5108e859579e599",
     "infrastructure/postgres/init/00-wc124-principal-bootstrap.sql": "65053e4669143331be02f4fbe97b7e6785777a13a9eb19fc656673c9dcc6cd7c",
     "infrastructure/postgres/init/01-schemas.sql": "6e24a7ac7db3b812a48ef4b6440ed0c549a1651e8d11aafaf1f8ed44691c1ec0",
     "infrastructure/postgres/init/02-users-and-permissions.sh": "138995d9eb8058559da4b7be575bd8909258272ab786fa9576bab0d571d9cffa",

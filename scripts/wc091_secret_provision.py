@@ -64,6 +64,7 @@ def provision(
     expires_at: str | None = None,
     not_before: str | None = None,
     new_version: bool = False,
+    no_expiry: bool = False,
 ) -> dict[str, str]:
     if not authorization_id.startswith("FA-"):
         raise ProvisioningError("a Founder Action identifier is required")
@@ -75,6 +76,10 @@ def provision(
         raise ProvisioningError("external-managed secrets cannot be imported")
     now = int(datetime.now(timezone.utc).timestamp())
     attributes: dict[str, bool | int] = {}
+    if no_expiry:
+        if logical_id != "whatsapp-outbound-authority" or expires_at is not None:
+            raise ProvisioningError("--no-expiry is exclusive to the WhatsApp outbound token without --expires-at")
+        attributes = {"enabled": True}
     if expires_at is not None:
         expiry = _timestamp(expires_at)
         if expiry <= now:
@@ -134,6 +139,7 @@ def main() -> int:
     parser.add_argument("--expires-at", help="ISO-8601 expiry with timezone; required for WhatsApp")
     parser.add_argument("--not-before", help="ISO-8601 start with timezone, earlier than expiry")
     parser.add_argument("--new-version", action="store_true", help="explicitly create a new version instead of preserving")
+    parser.add_argument("--no-expiry", action="store_true", help="omit expiry for the WhatsApp outbound token only")
     args = parser.parse_args()
     try:
         result = provision(
@@ -143,6 +149,7 @@ def main() -> int:
             expires_at=args.expires_at,
             not_before=args.not_before,
             new_version=args.new_version,
+            no_expiry=args.no_expiry,
         )
     except ProvisioningError as exc:
         parser.exit(1, f"Secret provisioning failed: {exc}\n")

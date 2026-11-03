@@ -1,5 +1,5 @@
 {
-  "catalogDigest": "sha256:20f429fc820461731124e071972495336a6449f86bec206e473da08697a4e76f",
+  "catalogDigest": "sha256:97518c93628a59c338bab54cd49eeef6c0b44ce7a6542d6f058a6e5ff63ac203",
   "configuration": {
     "capacityProfile": {
       "environment": "demo",
@@ -173,7 +173,7 @@
   },
   "environment": "demo",
   "manifestDigest": "sha256:228720c90c3decd509268cdb980a768391916798d2f08317cc93cceb7247246c",
-  "renderDigest": "sha256:6cd011c5014b00237d01cbcca84671f37d4c9170abcac14ffc8a6ffbad9ec8f9",
+  "renderDigest": "sha256:e2c3269fc8a92fe1aafc9c044ad26ea3b24f7d01a4ba7237abe52bd8da6dca88",
   "schemaVersion": "1.0",
   "secretBindings": [
     {

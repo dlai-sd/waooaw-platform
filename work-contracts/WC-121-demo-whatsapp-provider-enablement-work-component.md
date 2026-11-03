@@ -1804,3 +1804,40 @@ running specifically for the imminent operator intake; after intake or cancellat
 back to min replicas 0, remove the staged nonsecret files and revoke the four temporary role
 assignments. Secret versions still require independent validity/admission checks before callback
 registration or traffic activation. Media and normal runtime effects remain disabled.
+
+### 10.17 Founder Amendment: Non-Expiring Outbound Token (2026-11-03)
+
+The Founder reports generating the Meta system-user token with Never expiration and explicitly
+authorizes no expiry on the corresponding Key Vault secret. After disclosure that contract,
+uploader, inventory and runtime changes are required, the Founder authorizes those implementation
+changes for this session. This amends prior blanket credential-expiry requirements only for
+`whatsapp-outbound-authority`; it does not amend immutable constitutional documents or grant
+unbounded activation, traffic, binding, webhook-token or App Secret authority.
+
+The reusable uploader accepts explicit `--no-expiry` only for that outbound secret, writes
+`enabled: true` without `exp`, rejects conflicting expiry/other purposes, and still requires
+explicit `--new-version` for rotation. Deployment and runtime allow absent outbound expiry;
+present expiry remains validated and expired/malformed values denied. All other secrets require
+expiry. Enabled, not-before, exact pinned version, private scope, revocation, separate activation
+and traffic windows remain mandatory. Credential use is still capped at five minutes and the
+binding deadline even when the durable Meta credential has no expiry. No distant-date surrogate,
+automatic rotation, secret-value read permission or provider activation is introduced.
+
+The private staged uploader must be refreshed and checksum-verified before human token intake.
+The generated token has not been supplied to chat or this session and is not yet stored by it.
+
+Operator authority reference `FA-WC120-20261103-OUTBOUND-NOEXP` records the Founder's
+2026-11-03 instruction to store the already-generated outbound token without expiry and the
+subsequent explicit implementation confirmation. It authorizes that protected upload only,
+not traffic or activation. Operator command:
+`python3 /tmp/waooaw-wc120-intake/scripts/wc091_secret_provision.py whatsapp-outbound-authority --environment demo --authorization-id FA-WC120-20261103-OUTBOUND-NOEXP --no-expiry`.
+The human enters the token only into the no-echo prompt; it is not available to agent tools.
+
+Validation: affected Python deployment/uploader/input/contracts/bootstrap selectors pass
+**196 tests**; all conversation WhatsApp runtime fitness tests pass **102 tests**, including
+real PostgreSQL budget serialization, with zero skips. Build has zero warnings/errors.
+Affected Ruff/format, CSharpier and actionlint pass (shellcheck not claimed). First fitness
+attempt lacked the Docker socket for PostgreSQL and failed one case; the correctly mounted
+rerun passed all 102. Catalog Demo/UAT projections and private-runner manifest binding are
+refreshed. Existing deployed runtime still requires expiry until this correction is reviewed,
+merged and deployed; vault storage alone cannot activate it.

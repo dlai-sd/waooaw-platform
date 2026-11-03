@@ -154,6 +154,32 @@ public sealed class WhatsAppDemoProviderTests
         Assert.Equal(nameof(WhatsAppProviderBinding), first.Binding.ToString());
     }
 
+    [Fact]
+    public async Task NonexpiringOutboundTokenRetainsFiveMinuteCredentialLease()
+    {
+        using var factory = new ClientFactory(
+            (request, _) => Task.FromResult(SecretResponse(request, "outbound-no-expiry"))
+        );
+        var credentials = await Reader(factory).ReadAsync(CancellationToken.None);
+        Assert.Equal(Now.AddMinutes(5), credentials.ValidUntil);
+    }
+
+    [Theory]
+    [InlineData("no-expiry")]
+    [InlineData("outbound-expired")]
+    [InlineData("outbound-disabled")]
+    [InlineData("outbound-future")]
+    [InlineData("outbound-invalid-expiry")]
+    public async Task NonexpiringExceptionDoesNotWeakenOtherSecretControls(string failure)
+    {
+        using var factory = new ClientFactory(
+            (request, _) => Task.FromResult(SecretResponse(request, failure))
+        );
+        await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+            Reader(factory).ReadAsync(CancellationToken.None)
+        );
+    }
+
     [Theory]
     [InlineData("disabled")]
     [InlineData("expired")]
@@ -979,6 +1005,28 @@ public sealed class WhatsAppDemoProviderTests
                 new JsonSerializerOptions(JsonSerializerDefaults.Web)
             )
             : new string('p', 40);
+        var outbound = request.RequestUri.AbsolutePath.Contains(
+            "whatsapp-outbound-authority",
+            StringComparison.Ordinal
+        );
+        var attributes = new Dictionary<string, object>
+        {
+            ["enabled"] = failure != "disabled" && !(outbound && failure == "outbound-disabled"),
+            ["nbf"] = (
+                failure == "future" || (outbound && failure == "outbound-future")
+                    ? Now.AddMinutes(1)
+                    : Now
+            ).ToUnixTimeSeconds(),
+        };
+        if (failure != "no-expiry" && !(outbound && failure == "outbound-no-expiry"))
+            attributes["exp"] =
+                outbound && failure == "outbound-invalid-expiry"
+                    ? "invalid"
+                    : (
+                        failure == "expired" || (outbound && failure == "outbound-expired")
+                            ? Now
+                            : Now.AddHours(1)
+                    ).ToUnixTimeSeconds();
         return Json(
             new
             {
@@ -986,12 +1034,7 @@ public sealed class WhatsAppDemoProviderTests
                     ? "https://example.invalid/denied"
                     : request.RequestUri.GetLeftPart(UriPartial.Path),
                 value,
-                attributes = new
-                {
-                    enabled = failure != "disabled",
-                    exp = (failure == "expired" ? Now : Now.AddHours(1)).ToUnixTimeSeconds(),
-                    nbf = (failure == "future" ? Now.AddMinutes(1) : Now).ToUnixTimeSeconds(),
-                },
+                attributes,
             }
         );
     }

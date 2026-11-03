@@ -126,8 +126,8 @@ public sealed partial class WhatsAppKeyVaultCredentials(
                 {
                     now.AddMinutes(5),
                     binding.ExpiresAt,
-                    bindingValue.ExpiresAt,
-                    outbound.ExpiresAt,
+                    bindingValue.ExpiresAt ?? binding.ExpiresAt,
+                    outbound.ExpiresAt ?? now.AddMinutes(5),
                 }.Min(),
             };
         }
@@ -287,7 +287,7 @@ public sealed partial class WhatsAppKeyVaultCredentials(
         return token.GetString()!;
     }
 
-    private static async Task<(string Value, DateTimeOffset ExpiresAt)> ReadSecretAsync(
+    private static async Task<(string Value, DateTimeOffset? ExpiresAt)> ReadSecretAsync(
         HttpClient client,
         WhatsAppProviderOptions options,
         string name,
@@ -302,6 +302,7 @@ public sealed partial class WhatsAppKeyVaultCredentials(
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", identityToken);
         using var document = await ReadJsonAsync(client, request, cancellationToken);
         var root = document.RootElement;
+        DateTimeOffset? secretExpiry = null;
         if (
             root.ValueKind != JsonValueKind.Object
             || !root.TryGetProperty("id", out var id)
@@ -311,10 +312,6 @@ public sealed partial class WhatsAppKeyVaultCredentials(
             || attributes.ValueKind != JsonValueKind.Object
             || !attributes.TryGetProperty("enabled", out var enabled)
             || enabled.ValueKind != JsonValueKind.True
-            || !attributes.TryGetProperty("exp", out var expiry)
-            || expiry.ValueKind != JsonValueKind.Number
-            || !expiry.TryGetInt64(out var expiresAt)
-            || expiresAt <= now.ToUnixTimeSeconds()
             || (
                 attributes.TryGetProperty("nbf", out var notBefore)
                 && (
@@ -323,13 +320,25 @@ public sealed partial class WhatsAppKeyVaultCredentials(
                     || startsAt > now.ToUnixTimeSeconds()
                 )
             )
-            || expiresAt > 253402300799
             || !root.TryGetProperty("value", out var value)
             || value.ValueKind != JsonValueKind.String
             || string.IsNullOrWhiteSpace(value.GetString())
         )
             throw Denied("PROVIDER_SECRET_DENIED");
-        return (value.GetString()!, DateTimeOffset.FromUnixTimeSeconds(expiresAt));
+        if (attributes.TryGetProperty("exp", out var expiry))
+        {
+            if (
+                expiry.ValueKind != JsonValueKind.Number
+                || !expiry.TryGetInt64(out var expiresAt)
+                || expiresAt <= now.ToUnixTimeSeconds()
+                || expiresAt > 253402300799
+            )
+                throw Denied("PROVIDER_SECRET_DENIED");
+            secretExpiry = DateTimeOffset.FromUnixTimeSeconds(expiresAt);
+        }
+        else if (name != "whatsapp-outbound-authority")
+            throw Denied("PROVIDER_SECRET_DENIED");
+        return (value.GetString()!, secretExpiry);
     }
 
     internal static async Task<JsonDocument> ReadJsonAsync(
