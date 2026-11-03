@@ -698,7 +698,8 @@ def test_external_secret_value_uses_stdin_body_not_command_arguments(monkeypatch
     assert calls[1][1] == {"value": "not-logged-secret"}
 
 
-def test_az_secret_body_is_read_from_stdin(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("method", ["get", "put"])
+def test_az_secret_body_is_read_from_stdin(monkeypatch: pytest.MonkeyPatch, method: str) -> None:
     captured = {}
 
     def fake_run(command, **kwargs):
@@ -708,11 +709,17 @@ def test_az_secret_body_is_read_from_stdin(monkeypatch: pytest.MonkeyPatch) -> N
 
     monkeypatch.setattr(wc091_secret_provision.shutil, "which", lambda _: "/usr/bin/az")
     monkeypatch.setattr(wc091_secret_provision.subprocess, "run", fake_run)
-    wc091_secret_provision._az(["--method", "put", "--url", "https://vault.invalid"], {"value": "secret"})
+    body = {"value": "secret"} if method == "put" else None
+    wc091_secret_provision._az(["--method", method, "--url", "https://vault.invalid"], body)
 
-    assert captured["command"][-2:] == ["--body", "@/dev/stdin"]
+    assert captured["command"][:4] == ["/usr/bin/az", "rest", "--resource", "https://vault.azure.net"]
+    if method == "put":
+        assert captured["command"][-2:] == ["--body", "@/dev/stdin"]
+        assert json.loads(captured["input"]) == body
+    else:
+        assert "--body" not in captured["command"]
+        assert captured["input"] is None
     assert "secret" not in captured["command"]
-    assert json.loads(captured["input"]) == {"value": "secret"}
 
 
 def test_whatsapp_secret_upload_sets_validity_and_explicit_new_version(monkeypatch: pytest.MonkeyPatch) -> None:

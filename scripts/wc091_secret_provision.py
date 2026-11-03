@@ -38,7 +38,7 @@ def _az(command: list[str], body: dict[str, Any] | None = None) -> subprocess.Co
         raise ProvisioningError("Azure CLI is unavailable")
     body_arguments = [] if body is None else ["--body", "@/dev/stdin"]
     return subprocess.run(  # noqa: S603 - fixed executable, shell disabled, closed internal arguments
-        [executable, "rest", *command, *body_arguments],
+        [executable, "rest", "--resource", "https://vault.azure.net", *command, *body_arguments],
         input=None if body is None else json.dumps(body),
         capture_output=True,
         text=True,

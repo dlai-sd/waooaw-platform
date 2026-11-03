@@ -1731,3 +1731,36 @@ Executed the affected uploader/deployment/input suites plus WC-120 contract/reco
 passed **176 tests** in Docker. Affected Ruff and authoritative formatting pass. Hosted
 CodeQL must rerun on the new pushed head; local pytest is not claimed as a CodeQL run.
 No live secret, vault permission, network, deployment or provider effect was introduced.
+
+### 10.15 Successful Demo Deployment And Live Intake Prerequisites (2026-11-03)
+
+PR #575 merged as `1020228629ae6568442d46f30de8a83310556c6b`. Environment Deployment
+[41557415854](https://github.com/dlai-sd/waooaw-platform/actions/runs/41557415854)
+completed successfully, including `Apply demo`, private cleanup and independent `verify / verify`.
+This supersedes the failed ordinary-deployment status, not WhatsApp provider registration or
+activation evidence. The Founder confirms the messaging token is still not generated.
+
+Read-only live intake diagnostics found two distinct prerequisites:
+
+- The deployed uploader's `az rest` call without `--resource` received AKV10000 missing-token
+  rejection. Explicit `--resource https://vault.azure.net` reached Key Vault authorization;
+  metadata GET then returned `ForbiddenByRbac` for `secrets/readMetadata/action`.
+- The current operator already has the custom `WAOOAW Key Vault Secret Writer` role, whose only
+  data action is `secrets/setSecret/action`. Neither subscription Owner nor that write-only role
+  supplies the uploader's metadata action. Secret-value read permission is not required.
+- Vault public networking remains Disabled. Both workload and runner private endpoint connections
+  are Approved/Succeeded, but Codespace DNS resolves the vault to a public address. A usable
+  echo-disabled private operator terminal is not yet demonstrated. RBAC denial alone does not
+  prove private-route access.
+
+The Founder explicitly authorized the uploader correction/tests and read-only provisioning
+investigation. The existing `_az` helper now sets the Key Vault token audience for both metadata
+GET and stdin-body PUT. Both new transport assertions failed against deployed source before
+the correction. Docker validation
+`PYTHONPATH=/workspace:/workspace/scripts pytest -q tests/pipeline/test_wc091_environment_readiness.py tests/contract/test_wc120_contract_and_recovery.py`
+passes **76 tests**; affected authoritative Ruff/format pass. No new dependencies or fallback.
+
+Next access proposal is bounded metadata permission on the four admitted WhatsApp secrets,
+using the approved provisioning/operator identity and private terminal, retaining no secret-read
+permission, no media authority and no public-network bypass. Role grants, network changes,
+secret writes, token generation and provider activation have not been executed by this session.
