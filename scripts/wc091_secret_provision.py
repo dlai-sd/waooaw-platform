@@ -136,7 +136,7 @@ def main() -> int:
     parser.add_argument("logical_id")
     parser.add_argument("--environment", required=True, choices=("demo", "uat", "prod"))
     parser.add_argument("--authorization-id", required=True)
-    parser.add_argument("--expires-at", help="ISO-8601 expiry with timezone; required for WhatsApp")
+    parser.add_argument("--expires-at", help="ISO-8601 expiry with timezone; required for WhatsApp unless --no-expiry")
     parser.add_argument("--not-before", help="ISO-8601 start with timezone, earlier than expiry")
     parser.add_argument("--new-version", action="store_true", help="explicitly create a new version instead of preserving")
     parser.add_argument("--no-expiry", action="store_true", help="omit expiry for the WhatsApp outbound token only")

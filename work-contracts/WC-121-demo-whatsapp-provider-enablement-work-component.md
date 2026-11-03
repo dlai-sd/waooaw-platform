@@ -1841,3 +1841,30 @@ attempt lacked the Docker socket for PostgreSQL and failed one case; the correct
 rerun passed all 102. Catalog Demo/UAT projections and private-runner manifest binding are
 refreshed. Existing deployed runtime still requires expiry until this correction is reviewed,
 merged and deployed; vault storage alone cannot activate it.
+
+### 10.18 Protected Credential Intake And PR Delivery Status (2026-11-03)
+
+The Founder entered each value directly into the private uploader's no-echo prompt and reported
+CREATED. Independent metadata-only queries through the private identity confirmed:
+
+| Credential | Verified storage status |
+|---|---|
+| `whatsapp-outbound-authority` | Version exists, enabled, no expiry as explicitly authorized |
+| `whatsapp-app-secret` | Version exists, enabled, expiry `2027-11-03T00:00:00Z` approved by Founder |
+| `whatsapp-verify-token` | Version exists, enabled, same expiry independently approved by Founder |
+
+No credential value was read by the assistant or transferred through agent tools. The generated
+verify token remains privately held by the operator for Meta registration. Raw version identifiers,
+provider identifiers, telephone values and credentials are not included in this record.
+
+The Founder reached Messaging Service's real-sender Production setup webhook form. Live BP domain
+metadata still lists only `api.demo.waooaw.com`; the required dedicated WhatsApp callback hostname
+is not bound. Callback and verify-token fields were left unsubmitted; client certificate was not
+enabled. Provider binding, supported API version, pinned-version configuration, dedicated callback
+DNS/TLS deployment, webhook and account subscription, qualification and activation remain pending.
+No new messaging-token generation, number registration, test message or traffic action was advised.
+
+The Founder directed finishing the current changes and submitting a PR before continuing those
+operator steps. This PR delivers the reusable uploader audience fix, consistent no-expiry outbound
+credential support, regressions and same-component evidence. It does not claim full callback
+registration, live Meta token validation, provider binding completion or WhatsApp go-live.

@@ -1,4 +1,5 @@
 // Implements: architecture/reference/components/conversation-engine-whatsapp-solution-work-component.md §10.2, §25.2 WC120-P2
+// Implements: work-contracts/WC-121-demo-whatsapp-provider-enablement-work-component.md §10.17
 // Constitutional basis: C-014, C-023, C-026, C-059, C-063
 
 using System.Net.Http.Headers;
@@ -126,7 +127,7 @@ public sealed partial class WhatsAppKeyVaultCredentials(
                 {
                     now.AddMinutes(5),
                     binding.ExpiresAt,
-                    bindingValue.ExpiresAt ?? binding.ExpiresAt,
+                    bindingValue.ExpiresAt ?? throw Denied("PROVIDER_SECRET_DENIED"),
                     outbound.ExpiresAt ?? now.AddMinutes(5),
                 }.Min(),
             };
