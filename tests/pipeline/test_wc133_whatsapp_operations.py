@@ -17,14 +17,11 @@ from wc120_whatsapp_activation import activation_configuration_digest
 NOW = datetime(2026, 11, 2, 12, 0, tzinfo=timezone.utc)
 ROOT = Path(__file__).resolve().parents[2]
 IMAGE = "ghcr.io/dlai-sd/business-platform@sha256:" + "a" * 64
+RESOURCE_ROOT = "/subscriptions/12345678-1234-1234-1234-123456789abc/resourceGroups/waooaw-demo-rg"
 
 
 def configuration():
-    return {
-        "key_vault_secret_uris": {"business-platform": "https://kv-waooaw-demo.vault.azure.net/secrets/business-platform"},
-        "key_vault_secret_resource_ids": {
-            "business-platform": "/subscriptions/test/providers/Microsoft.KeyVault/vaults/kv-waooaw-demo/secrets/business-platform"
-        },
+    config = {
         "unrelated": {"preserved": True},
         "whatsapp_provider": {
             "callback_host": operations.HOST,
@@ -33,16 +30,22 @@ def configuration():
             "verification_enabled": True,
         },
     }
+    return operations.add_key_vault_references(
+        config,
+        RESOURCE_ROOT + "/providers/Microsoft.KeyVault/vaults/kv-waooaw-demo",
+        "https://kv-waooaw-demo.vault.azure.net/",
+    )
 
 
 def resource():
     return {
+        "id": RESOURCE_ROOT + "/providers/Microsoft.App/containerApps/" + operations.APP,
         "properties": {
             "configuration": {"ingress": {"customDomains": [{"name": operations.HOST, "bindingType": "SniEnabled"}]}},
             "template": {"containers": [{"image": IMAGE, "env": [{"name": "Unrelated", "value": "keep"}]}]},
             "latestRevisionName": "ready",
             "latestReadyRevisionName": "ready",
-        }
+        },
     }
 
 
@@ -360,7 +363,7 @@ def test_cleanup_targets_only_four_temporary_grants_and_confirms_zero_intake_rep
             return {"id": "/vaults/kv-waooaw-demo"}
         if args[:3] == ("role", "assignment", "list"):
             scope = args[args.index("--scope") + 1]
-            assert args[args.index("--assignee") + 1] == "intake-principal"
+            assert args[args.index("--assignee-object-id") + 1] == "intake-principal"
             return (
                 []
                 if scope in deleted
@@ -399,7 +402,6 @@ def test_next_deployment_adopts_existing_tls_and_scoped_roles_without_recreation
     config = operations.deployment(configuration(), resource())
     operations.private_json(tmp_path / "workload.auto.tfvars.json", config)
     current = resource()
-    current["id"] = "/subscriptions/test/resourceGroups/demo/providers/Microsoft.App/containerApps/ca-demo-business-platform"
     monkeypatch.setattr(operations, "app", lambda: current)
     monkeypatch.setattr(operations, "reconcile_revisions", lambda *args, **kwargs: {})
 
@@ -511,3 +513,317 @@ def test_registration_prepare_preserves_existing_numeric_configuration(monkeypat
     monkeypatch.setattr(operations, "az", az)
     operations.prepare(tmp_path, "register", json.dumps(config["whatsapp_provider"]).encode(), "")
     assert json.loads((tmp_path / "configuration.after.json").read_text())["pricing"] == {"rate": 1.25}
+
+
+def test_registration_prepares_from_stored_configuration_before_foundation_hydration(monkeypatch, tmp_path):
+    stored = {"pricing": {"rate": 1.25}, "unrelated": {"preserved": True}}
+    monkeypatch.setattr(operations, "app", resource)
+
+    def az(*args):
+        if args[:2] == ("identity", "show"):
+            return {"clientId": "client", "principalId": "principal"}
+        if args[:3] == ("storage", "blob", "show"):
+            return {"properties": {"etag": '"old"'}}
+        assert args[:3] == ("storage", "blob", "download")
+        Path(args[args.index("--file") + 1]).write_text(json.dumps(stored))
+        return {}
+
+    monkeypatch.setattr(operations, "az", az)
+    operations.prepare(tmp_path, "register", json.dumps(configuration()["whatsapp_provider"]).encode(), "")
+    assert json.loads((tmp_path / "configuration.before.json").read_text()) == stored
+    after = json.loads((tmp_path / "configuration.after.json").read_text())
+    assert after == {**stored, "whatsapp_provider": configuration()["whatsapp_provider"]}
+    assert json.loads((tmp_path / "plan.json").read_text())["settings"]["WhatsApp__VerificationEnabled"] == "true"
+
+
+@pytest.mark.parametrize("field", ["key_vault_secret_uris", "key_vault_secret_resource_ids"])
+def test_reference_resolution_does_not_replace_conflicting_stored_authority(field):
+    config = configuration()
+    config[field]["business-platform"] = "unexpected-vault"
+    with pytest.raises(ValueError, match="differ from the Demo foundation"):
+        operations.deployment(config, resource())
+
+
+@pytest.mark.parametrize("part", ["waooaw-demo-rg", operations.APP])
+def test_reference_resolution_refuses_another_resource_group_or_application(part):
+    current = resource()
+    current["id"] = current["id"].replace(part, "another")
+    with pytest.raises(ValueError, match="existing Demo Business Platform"):
+        operations.deployment(configuration(), current)
+
+
+class SimulatedAzure:
+    """Stateful, no-network implementation of the exact operation CLI contracts."""
+
+    def __init__(self):
+        self.stored = {"pricing": {"rate": 1.25}, "unrelated": {"preserved": True}}
+        self.current = resource()
+        self.current["properties"]["configuration"]["ingress"]["traffic"] = [{"latestRevision": True, "weight": 100}]
+        self.current["properties"]["template"]["containers"][0]["env"].append(
+            {"name": "Database", "secretRef": "existing-secret"}
+        )
+        self.etag = '"first"'
+        self.backups = []
+        self.calls = []
+        self.roles = {}
+        self.revisions = [
+            {"name": "ready", "properties": {"active": True, "healthState": "Healthy", "replicas": 1, "trafficWeight": 100}}
+        ]
+        self.intake_active = True
+        self.intake_grants = set(operations.WHATSAPP_SECRET_NAMES)
+
+    def __call__(self, *args):
+        self.calls.append(args)
+        if args[:2] == ("identity", "show"):
+            intake = args[args.index("--name") + 1].endswith("-identity")
+            return {"clientId": "client", "principalId": "intake" if intake else "principal"}
+        if args[:2] == ("keyvault", "show"):
+            return {"id": RESOURCE_ROOT + "/providers/Microsoft.KeyVault/vaults/kv-waooaw-demo"}
+        if args[:2] == ("storage", "blob"):
+            assert args[args.index("--auth-mode") + 1] == "login"
+            if args[2] == "show":
+                return {"properties": {"etag": self.etag}}
+            if args[2] == "download":
+                assert args[args.index("--if-match") + 1] == self.etag
+                Path(args[args.index("--file") + 1]).write_text(json.dumps(self.stored))
+                return {}
+            assert args[2] == "upload"
+            value = json.loads(Path(args[args.index("--file") + 1]).read_text())
+            if args[args.index("--name") + 1] != operations.BLOB:
+                assert args[args.index("--overwrite") + 1] == "false"
+                self.backups.append(value)
+            else:
+                assert args[args.index("--if-match") + 1] == self.etag
+                self.stored = value
+                self.etag = '"second"'
+            return {}
+        if args[:2] == ("rest", "--method"):
+            assert args[2] == "get"
+            url = args[args.index("--url") + 1]
+            assert "/versions?api-version=7.4" in url
+            name = url.split("/secrets/")[1].split("/")[0]
+            assert name in operations.WHATSAPP_SECRET_NAMES
+            return {
+                "value": [
+                    {
+                        "id": url.split("/versions?")[0] + "/" + "b" * 32,
+                        "attributes": {"enabled": True, "nbf": None, "exp": 4102444800},
+                    }
+                ]
+            }
+        if args[:2] == ("role", "assignment"):
+            if args[2] == "delete":
+                self.intake_grants.remove(args[-1])
+                return {}
+            scope = args[args.index("--scope") + 1]
+            assert "--assignee" not in args
+            principal = args[args.index("--assignee-object-id") + 1]
+            if args[2] == "list":
+                assert args[args.index("--fill-principal-name") + 1] == "false"
+                if principal == "intake":
+                    name = scope.rsplit("/", 1)[-1]
+                    return (
+                        [{"id": name, "scope": scope, "roleDefinitionName": "WAOOAW Key Vault Declared Secret Provisioner"}]
+                        if name in self.intake_grants
+                        else []
+                    )
+                assert principal == "principal"
+                return [self.roles[scope]] if scope in self.roles else []
+            assert args[2] == "create" and principal == "principal"
+            assert args[args.index("--role") + 1] == "Key Vault Secrets User"
+            assert scope.rsplit("/", 1)[-1] in operations.WHATSAPP_SECRET_NAMES
+            self.roles[scope] = {
+                "id": scope + "/assignment",
+                "scope": scope,
+                "roleDefinitionName": "Key Vault Secrets User",
+                "principalId": principal,
+            }
+            return self.roles[scope]
+        assert args[0] == "containerapp"
+        if args[1] == "list":
+            return [operations.APP, "ca-demo-other"]
+        name = args[args.index("--name") + 1]
+        if name == "goal006-demo-runner-key-import":
+            if args[1] == "update":
+                assert args[args.index("--min-replicas") + 1] == "0"
+                return {}
+            if args[2] == "deactivate":
+                self.intake_active = False
+                return {}
+            revision = {
+                "name": "intake",
+                "properties": {"active": self.intake_active, "replicas": 1 if self.intake_active else 0},
+            }
+            return [revision] if args[2] == "list" else revision
+        assert name == operations.APP
+        if args[1] == "show":
+            return deepcopy(self.current)
+        if args[1] == "update":
+            stop = args.index("--remove-env-vars") if "--remove-env-vars" in args else len(args)
+            updates = dict(value.split("=", 1) for value in args[args.index("--set-env-vars") + 1 : stop])
+            env = self.current["properties"]["template"]["containers"][0]["env"]
+            removed = set(args[stop + 1 :])
+            env[:] = [entry for entry in env if entry["name"] not in updates and entry["name"] not in removed]
+            env.extend({"name": key, "value": value} for key, value in updates.items())
+            for revision in self.revisions:
+                revision["properties"]["trafficWeight"] = 0
+            latest = "revision-" + str(len(self.revisions))
+            self.revisions.append(
+                {"name": latest, "properties": {"active": True, "healthState": "Healthy", "replicas": 1, "trafficWeight": 100}}
+            )
+            self.current["properties"].update(latestRevisionName=latest, latestReadyRevisionName=latest)
+            return {}
+        assert args[1] == "revision"
+        if args[2] == "list":
+            assert "--all" in args
+            return deepcopy(self.revisions)
+        revision = next(value for value in self.revisions if value["name"] == args[args.index("--revision") + 1])
+        if args[2] == "deactivate":
+            revision["properties"].update(active=False, replicas=0)
+        else:
+            assert args[2] == "show"
+        return deepcopy(revision)
+
+
+@pytest.mark.parametrize("activation_failure", [None, "update", "retirement", "containment"])
+def test_simulated_workflow_runs_register_status_activate_stop_adopt_and_intake_cleanup(
+    monkeypatch, tmp_path, activation_failure
+):
+    import sys
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return NOW
+
+    azure = SimulatedAzure()
+    monkeypatch.setattr(operations, "datetime", Clock)
+    monkeypatch.setattr(operations, "az", azure)
+    monkeypatch.setattr(operations.time, "sleep", lambda _: pytest.fail("Simulation should converge immediately"))
+    requests = []
+
+    def urlopen(request, **kwargs):
+        requests.append(request)
+        assert request.full_url.startswith("https://" + operations.HOST + "/api/v1/channels/whatsapp/webhook")
+        raise urllib.error.HTTPError(request.full_url, 503 if request.data else 401, "simulated", {}, None)
+
+    monkeypatch.setattr(operations.urllib.request, "urlopen", urlopen)
+
+    def run(operation, document=b"{}", approved="", apply_result=0):
+        directory = tmp_path / (operation + "-" + str(len(azure.calls)))
+        monkeypatch.setenv("PROVIDER_DOCUMENT", document.decode())
+        phases = ("cleanup-intake",) if operation == "cleanup-intake" else ("prepare", "persist", "apply")
+        for phase in phases:
+            monkeypatch.setattr(
+                sys,
+                "argv",
+                [
+                    "operation",
+                    phase,
+                    "--operation",
+                    operation,
+                    "--directory",
+                    str(directory),
+                    "--run",
+                    "123-1",
+                    "--approved-digest",
+                    approved,
+                ],
+            )
+            expected = apply_result if phase == "apply" else 0
+            assert operations.main() == expected
+            evidence = json.loads((directory / f"evidence-{phase}.json").read_text())
+            assert evidence["status"] == ("FAILED" if expected else "PASS")
+        return directory
+
+    original = deepcopy(azure.stored)
+    run("register", json.dumps(configuration()["whatsapp_provider"]).encode())
+    assert azure.backups == [original]
+    assert azure.stored == {**original, "whatsapp_provider": configuration()["whatsapp_provider"]}
+    assert len(azure.roles) == 4
+    assert all(operations.environment(azure.current)[key] == value for key, value in operations.STOP.items())
+    assert sum(value["properties"]["active"] for value in azure.revisions) == 1
+    # Same registration is idempotent and needs neither another blob write nor new role grants.
+    run("register", json.dumps(configuration()["whatsapp_provider"]).encode())
+    assert len(azure.backups) == 1 and len(azure.roles) == 4
+    start = len(azure.calls)
+    run("status")
+    assert not any(command[:2] in (("storage", "blob"), ("containerapp", "update")) for command in azure.calls[start:])
+    config = operations.deployment(azure.stored, azure.current)
+    value = bundle()
+    provider = config["whatsapp_provider"]
+    value["registration_configuration_digest"] = provider["configuration_digest"]
+    value["authority"].update(
+        ReleaseDigest=provider["release_digest"],
+        CatalogDigest=provider["catalog_digest"],
+        ConfigurationDigest=activation_configuration_digest(
+            provider["configuration_digest"], value["binding_digests"], value["policies"], value["templates"]
+        ),
+    )
+    document = json.dumps(value).encode()
+    fault_triggered = []
+
+    def activation_azure(*args):
+        if args[:2] == ("containerapp", "update"):
+            enabling = "WhatsApp__DispatchEnabled=true" in args
+            if enabling and activation_failure in ("update", "containment"):
+                fault_triggered.append("update")
+                raise RuntimeError("Simulated activation rollout failure")
+            if not enabling and activation_failure == "containment":
+                fault_triggered.append("containment")
+                raise RuntimeError("Simulated containment failure")
+        if args[:3] == ("containerapp", "revision", "deactivate") and activation_failure == "retirement" and not fault_triggered:
+            fault_triggered.append("retirement")
+            raise RuntimeError("Simulated old-worker retirement failure")
+        return azure(*args)
+
+    monkeypatch.setattr(operations, "az", activation_azure)
+    directory = run("activate", document, "sha256:" + hashlib.sha256(document).hexdigest(), 1 if activation_failure else 0)
+    monkeypatch.setattr(operations, "az", azure)
+    if activation_failure:
+        assert fault_triggered
+        evidence = json.loads((directory / "evidence-apply.json").read_text())
+        assert evidence["containment"] == (
+            "UNCONFIRMED_REQUIRES_OPERATOR" if activation_failure == "containment" else "TRAFFIC_CLOSED"
+        )
+        if activation_failure != "containment":
+            assert all(operations.environment(azure.current)[key] == value for key, value in operations.STOP.items())
+            assert sum(value["properties"]["active"] for value in azure.revisions) == 1
+    else:
+        assert all(operations.environment(azure.current)[key] == "true" for key in operations.TRAFFIC)
+        assert operations.environment(azure.current)["WhatsApp__TemplateProjections__0__Body"] == "Hello {{1}}"
+    start = len(azure.calls)
+    run("stop")
+    assert not any(command[:2] == ("storage", "blob") for command in azure.calls[start:])
+    assert all(operations.environment(azure.current)[key] == value for key, value in operations.STOP.items())
+    assert not any(key.startswith("WhatsAppCapability__Authority__") for key in operations.environment(azure.current))
+    assert sum(revision["properties"]["replicas"] for revision in azure.revisions) == 1
+    assert {"name": "Database", "secretRef": "existing-secret"} in azure.current["properties"]["template"]["containers"][0]["env"]
+    run("cleanup-intake")
+    assert not azure.intake_active and not azure.intake_grants and len(azure.roles) == 4
+    directory = tmp_path / "terraform"
+    directory.mkdir()
+    operations.private_json(directory / "workload.auto.tfvars.json", config)
+    imports = []
+    monkeypatch.setattr(operations, "terraform", lambda *args: "" if args[-1] == "list" else imports.append(args))
+    operations.adopt(directory)
+    assert len(imports) == 5
+    assert len(requests) == 5
+
+
+def test_failure_evidence_records_only_source_location_not_private_missing_key(monkeypatch, tmp_path):
+    import sys
+
+    def failed(*args):
+        raise KeyError("PRIVATE_INPUT_MUST_NOT_BE_EXPORTED")
+
+    monkeypatch.setattr(operations, "prepare", failed)
+    monkeypatch.setattr(
+        sys, "argv", ["operation", "prepare", "--operation", "register", "--directory", str(tmp_path), "--run", "123-1"]
+    )
+    assert operations.main() == 1
+    text = (tmp_path / "evidence-prepare.json").read_text()
+    evidence = json.loads(text)
+    assert evidence["failure_location"]["file"] == "wc133_whatsapp_operations.py"
+    assert evidence["failure_location"]["function"] == "main"
+    assert "PRIVATE_INPUT" not in text and "reason" not in evidence
