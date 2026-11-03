@@ -364,3 +364,55 @@ cleanup regressions are wired into the explicit quality-scripts gate.
 No new helper has been executed against live configuration, roles, revisions or Terraform
 state. Meta challenge verification/subscription, actual registration application and bounded
 live/browser acceptance remain gated. No messages, full deployment or database reset occurred.
+
+### Registration Failure RCA And Surgical Recovery - 2026-11-03
+
+The Founder reported registration run
+[41636191635](https://github.com/dlai-sd/waooaw-platform/actions/runs/41636191635)
+failed and explicitly authorized watching terminal cleanup, evidence-backed repair,
+downstream simulation/audit, tests and a new PR. Current-session implementation authority
+was explicitly reconfirmed. The deferred configure-once deployment/activation design review
+is not reopened by this correction.
+
+| Evidence | Observed result / limit |
+|---|---|
+| Completed run at `a380afb089f9573c82fb176223b67713d58568ea` | Authorization, environment resolution and private broker succeeded; provider preparation failed; Terraform, verification and URL publication skipped. |
+| Provider job `125919176046`, failed prepare step | `OPERATION=register`, closed registration metadata, blank activation digest; `KeyError` before persistence/application. No incorrect input or credential value is established. |
+| `whatsapp-operation-41636191635-1/evidence-prepare.json` | `phase=prepare`, `operation=register`, `status=FAILED`, `error_type=KeyError`. The old artifact deliberately omitted the missing key and stack; it does not independently identify the key. |
+| Existing deployment producer | `goal006_deployment_inputs.add_key_vault_references` derives runtime vault maps from foundation metadata before workload input validation; those derived maps are not required in the stored source blob. |
+| New original-code regression with the stored pre-hydration shape | Reproduces `KeyError: key_vault_secret_uris` through `prepare -> planned_settings -> deployment -> whatsapp_provider_inputs -> whatsapp_provider_configuration`. Previous tests supplied already-hydrated maps and missed this producer/consumer boundary. |
+| Terminal cleanup job and `goal006-private-runner-cleanup-41636191635-1/cleanup-record.json` | Cleanup succeeded, `producer_status=Succeeded`, with original private-job conclusion `failure`. No runner cleanup failure is being conflated with registration RCA. |
+
+The proven defect is consuming persisted source configuration as though it were generated
+deployment inputs. The surgical fix reuses `add_key_vault_references` when resolving the
+provider deployment view, deriving only the canonical Demo vault root from the observed
+BP ARM resource ID. It rejects a different group/app or conflicting stored vault maps.
+Derived maps stay in memory: source snapshots, CAS readback and unrelated numeric fields
+remain unchanged, and only the closed provider registration is persisted. The later
+registration RBAC scope also uses the resolved view, preventing the next missing-map
+failure after persistence. Activation revalidation and Terraform adoption use the same path.
+
+Downstream audit also removes implicit Microsoft Graph lookups from all provider role
+queries: use the known principal object ID plus `--fill-principal-name false`. Installed
+Azure CLI help documents this contract; a read-only query on the exact live BP secret scope
+succeeds without Graph (no existing role returned; no role was created). Source-only
+failure file/function/line is now retained in redacted evidence without exception arguments,
+private keys/values or frame locals, so a later structural failure is diagnosable.
+
+Stateful no-network simulations execute the real prepare/persist/apply entry points and
+revision reconciler across raw-source registration, repeat registration, status, separately
+approved synthetic activation, stop, intake cleanup and Terraform adoption. They assert
+four exact role grants, CAS/backups, no Graph query, unchanged source configuration,
+unrelated runtime secret-reference preservation and obsolete-worker zero-replica closure.
+Three additional simulations inject activation-update, old-worker-retirement and
+containment failures, proving explicit failure and confirmed closure versus operator escalation.
+Synthetic authority/receipt fixtures are test-only, not live approvals.
+
+Validation: the original missing-reference regression fails before the fix; **456 focused
+Docker Python regressions pass** afterward, including the four full lifecycle simulations.
+Ruff check/format and diff hygiene pass. Existing explicit quality-scripts wiring already
+collects the changed tests; no new gate or dependency is added. No workflow form, runtime
+source, credential, network policy or live setting is changed. Full Release Qualification
+remains OFF under continuing Founder authority; other mandatory PR checks remain required.
+Actual registration must be retried only after Founder review/merge and separate execution
+authority; Meta Verify/Save/subscription and activation are not completed by these simulations.

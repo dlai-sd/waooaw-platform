@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from goal006_deployment_inputs import WHATSAPP_SECRET_NAMES, whatsapp_provider_inputs
+from goal006_deployment_inputs import WHATSAPP_SECRET_NAMES, add_key_vault_references, whatsapp_provider_inputs
 from goal006_demo_revision_cleanup import reconcile as reconcile_revisions
 from wc120_whatsapp_activation import _read_json, activation_settings
 
@@ -115,11 +115,25 @@ def registration_settings(provider: dict[str, Any], client_id: str) -> dict[str,
 
 
 def deployment(configuration: dict[str, Any], resource: dict[str, Any]) -> dict[str, Any]:
+    resource_id = resource["id"]
+    match = re.fullmatch(
+        rf"(?P<root>/subscriptions/[0-9a-f-]{{36}}/resourceGroups/{GROUP})/providers/Microsoft.App/containerApps/{APP}",
+        resource_id,
+        re.IGNORECASE,
+    )
+    if match is None:
+        raise ValueError("Provider references require the existing Demo Business Platform resource")
+    root = match["root"]
+    vault_id = root + "/providers/Microsoft.KeyVault/vaults/kv-waooaw-demo"
+    resolved = add_key_vault_references(configuration, vault_id, "https://kv-waooaw-demo.vault.azure.net/")
+    for field in ("key_vault_secret_uris", "key_vault_secret_resource_ids"):
+        if field in configuration and configuration[field] != resolved[field]:
+            raise ValueError("Stored vault references differ from the Demo foundation")
     images = {"business-platform": bp_container(resource)["image"]}
     return {
-        **configuration,
+        **resolved,
         "image_digests": images,
-        **whatsapp_provider_inputs("demo", configuration, {"images": images}),
+        **whatsapp_provider_inputs("demo", resolved, {"images": images}),
     }
 
 
@@ -271,15 +285,18 @@ def apply_settings(directory: Path) -> None:
     if plan["operation"] in ("register", "activate"):
         validate_versions(configuration["whatsapp_provider"]["secret_versions"], datetime.now(timezone.utc))
     if plan["operation"] == "register":
-        scope_root = next(iter(configuration["key_vault_secret_resource_ids"].values())).split("/secrets/", 1)[0]
+        resolved = deployment(configuration, resource)
+        scope_root = next(iter(resolved["key_vault_secret_resource_ids"].values())).split("/secrets/", 1)[0]
         for name in sorted(WHATSAPP_SECRET_NAMES):
             scope = f"{scope_root}/secrets/{name}"
             assignments = az(
                 "role",
                 "assignment",
                 "list",
-                "--assignee",
+                "--assignee-object-id",
                 plan["principal_id"],
+                "--fill-principal-name",
+                "false",
                 "--scope",
                 scope,
             )
@@ -398,14 +415,34 @@ def cleanup_intake() -> None:
     vault = az("keyvault", "show", "--resource-group", GROUP, "--name", "kv-waooaw-demo")
     for secret in sorted(WHATSAPP_SECRET_NAMES):
         scope = f"{vault['id']}/secrets/{secret}"
-        assignments = az("role", "assignment", "list", "--assignee", identity["principalId"], "--scope", scope)
+        assignments = az(
+            "role",
+            "assignment",
+            "list",
+            "--assignee-object-id",
+            identity["principalId"],
+            "--fill-principal-name",
+            "false",
+            "--scope",
+            scope,
+        )
         for assignment in assignments:
             if (
                 assignment["roleDefinitionName"] == "WAOOAW Key Vault Declared Secret Provisioner"
                 and assignment["scope"].lower() == scope.lower()
             ):
                 az("role", "assignment", "delete", "--ids", assignment["id"])
-        remaining = az("role", "assignment", "list", "--assignee", identity["principalId"], "--scope", scope)
+        remaining = az(
+            "role",
+            "assignment",
+            "list",
+            "--assignee-object-id",
+            identity["principalId"],
+            "--fill-principal-name",
+            "false",
+            "--scope",
+            scope,
+        )
         if any(value["roleDefinitionName"] == "WAOOAW Key Vault Declared Secret Provisioner" for value in remaining):
             raise RuntimeError("Intake secret grant revocation was not confirmed")
     az("containerapp", "update", "--resource-group", group, "--name", name, "--min-replicas", "0", "--max-replicas", "1")
@@ -493,7 +530,17 @@ def adopt(directory: Path) -> None:
         scope = f"{vault}/secrets/{name}"
         matches = [
             value
-            for value in az("role", "assignment", "list", "--assignee", identity["principalId"], "--scope", scope)
+            for value in az(
+                "role",
+                "assignment",
+                "list",
+                "--assignee-object-id",
+                identity["principalId"],
+                "--fill-principal-name",
+                "false",
+                "--scope",
+                scope,
+            )
             if value["roleDefinitionName"] == "Key Vault Secrets User"
             and value["scope"].lower() == scope.lower()
             and value["principalId"].lower() == identity["principalId"].lower()
@@ -543,6 +590,15 @@ def main() -> int:
         evidence["status"] = "PASS"
     except (ValueError, KeyError, OSError, RuntimeError) as error:
         evidence["error_type"] = type(error).__name__
+        trace = error.__traceback__
+        while trace is not None:
+            if Path(trace.tb_frame.f_code.co_filename).parent == Path(__file__).parent:
+                evidence["failure_location"] = {
+                    "file": Path(trace.tb_frame.f_code.co_filename).name,
+                    "function": trace.tb_frame.f_code.co_name,
+                    "line": trace.tb_lineno,
+                }
+            trace = trace.tb_next
         if isinstance(error, (ValueError, RuntimeError)):
             evidence["reason"] = str(error)
         if args.operation == "activate" and args.phase == "apply":
