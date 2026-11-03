@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-133
 contract_path: work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md
-contract_digest: 8ce948d290bb9a17cac4421fa0e0ac2b92cf36e1cfeb45c7968e8fcf0a68d5ed
+contract_digest: e2d3c39068e093a6ee69f90de21493406a278d451a045f8b2adede82b1a72780
 implementation_scope: true
 result: PLANNED
 
@@ -86,7 +86,7 @@ requirements:
     dependencies: Corrected reviewed release; exact DNS/cloud scope authority; four valid protected versions; provider-management authority
     test_path_or_plan: WC-133 Section 5 R008; infra/config negatives plus independently authorized live hostname, challenge and subscription evidence
     completion_rule: Dedicated HTTPS callback and exact-token challenge succeed, subscriptions are verified, acceptance/dispatch/egress remain off during registration.
-    residual_risk: Dedicated DNS/TXT/SNI TLS and four protected versions are verified. Registration run41636191635 failed prepare and runner cleanup succeeded; missing-reference repair and downstream simulations pass locally but corrected registration, Meta verification/subscription and live acceptance remain gated
+    residual_risk: Registration41669336013 and human exact-token challenge tests pass; WABA app subscription is human-confirmed. Meta callback verification still fails with unproven reason; safe diagnostics pass locally but are not deployed. Live acceptance and activation remain gated
     result: BLOCKED
 
   - <<: *defaults
