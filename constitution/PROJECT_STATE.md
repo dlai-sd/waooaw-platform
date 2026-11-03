@@ -1,11 +1,11 @@
 # PROJECT_STATE.md
 **State Schema:** 2.0.0
-**State Revision:** 337
-**Last Updated:** 2026-11-03 (WC-133 PR577 CODEQL CORRECTION VALIDATED; NO GO-LIVE)
+**State Revision:** 338
+**Last Updated:** 2026-11-03 (WC-133 POST-MERGE MIGRATION TEST CORRECTION; NO GO-LIVE)
 **Purpose:** Current operational snapshot for bootstrap, recovery, and automated sprint controls; keep it below 200 lines, update checkpoints in place, and retain durable detail in the owning Work Contract, Goal, review, evidence artifact, Git history, or archive index.
 ---
 ## Institutional Snapshot
-WC-133 PR577 PRECHECK CORRECTION: Founder requests repair of failed PR prechecks. CodeQL reports delivery-correlation coalescing, disposable test content and import/UUID formatting notes. Explicit scope-based message selection and test-only resource/import/text corrections pass Docker C#112/Python59 plus CSharpier/Ruff. Same PR correction and exact-head preparation pending; Release Qualification remains OFF. No authority, deployment or traffic change. Owning detail: WC-133 Section8 PR577 correction.
+WC-133 POST-MERGE CORRECTION: #577 merged as 2d249ec. Main CI41606247862 fails qualification on one stale migration-tail assertion (557 other tests in that group pass); Test Champion blocks downstream. Founder authorizes repair. Original assertion reproduces red; complete SQL-chain coverage plus explicit WC-133 inclusion and future-file ordering regression pass Docker provisioner41/Ruff/format. Runtime loader/migrations unchanged. Follow-up PR preparation pending. Release Qualification remains OFF for the PR under continuing Founder authority; main qualification remains mandatory. No deployment or traffic change. Owning detail: WC-133 Section8.
 
 WC-133 IMPLEMENTATION CHECKPOINT: Founder explicitly authorizes implementation, thorough tests and one PR with Release Qualification OFF, and selects provisional phone-verified onboarding. Source admits only the independently approved pilot into evidence-backed Identity-owned provisional state and shared pre-employment history/outbox; no full account, OWNER membership, employment or Web session is fabricated. Pending evidence recovery, idempotency, service window, STOP, shared delivery/budget/reconciliation and scoped SQL are implemented. MVC constructor activation and atomic PostgreSQL preference initialization are repaired; Web preserves the session with a localized workspace retry. Full Docker BP1,217 passes (90.49% lines/80.17% branches); Web720 passes/three existing skips; protected intake/activation156 and catalog75 pass. Exact-head author review/signing/prepared-PR checks remain. Previously authorized cleanup retry milestone is retained and separately disclosed. Dedicated callback DNS/TLS, protected binding, reviewed deployment, Meta subscription and fresh-user live/browser acceptance remain pending; no cloud mutation or message sent. Owning detail: WC-133 Section8. Older entries below are historical.
 

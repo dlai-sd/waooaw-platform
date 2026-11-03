@@ -271,3 +271,21 @@ Docker validation: `dotnet test tests/business-platform.Tests/business-platform.
 PASS, 59 tests; focused Ruff PASS. This correction changes neither onboarding authority nor
 traffic configuration. Release Qualification remains OFF. Hosted CodeQL confirmation follows
 the updated head; no passing hosted result is claimed from local tests.
+
+### Post-Merge Migration-Chain Regression
+
+PR #577 merged as `2d249ec`. Main CI run `41606247862` failed Release Qualification:
+`test_application_migrations_cover_the_whole_sql_chain_after_the_principal_bootstrap`
+hardcoded migration 61 as the final SQL file, while the unchanged runtime loader correctly
+included WC-133 migration 67. The group reported 557 passed/1 failed; Test Champion
+blocked downstream. PR qualification OFF does not disable mandatory main qualification.
+
+The Founder authorized this follow-up correction. The original test reproduces red in
+Docker. The corrected test asserts complete SQL-file coverage, bootstrap exclusion,
+byte ordering and required migrations including WC-133, without fixing the final suffix.
+A synthetic future-migration regression verifies later SQL inclusion and non-SQL exclusion.
+`python -m pytest -p no:cacheprovider tests/pipeline/test_wc124_db_provisioner.py -q`
+PASS, 41 tests; focused `ruff check --no-cache` and `ruff format --check --no-cache`
+PASS in the immutable Python runner. No runtime, migration, dependency or workflow changes.
+Full Release Qualification was not rerun locally; the follow-up PR retains Founder OFF
+authority, and post-merge qualification remains mandatory.
