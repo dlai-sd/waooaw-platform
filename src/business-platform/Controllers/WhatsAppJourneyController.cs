@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using Waooaw.BusinessPlatform.Services;
@@ -25,7 +26,8 @@ public sealed class WhatsAppJourneyController(
     IOptions<Wc120ConversationOptions> conversationOptions,
     IWhatsAppCapabilityGate? capabilityGate = null,
     WhatsAppTenantExecutionScope? tenantExecution = null,
-    IWhatsAppWebhookCredentials? webhookCredentials = null
+    IWhatsAppWebhookCredentials? webhookCredentials = null,
+    ILogger<WhatsAppJourneyController>? logger = null
 ) : ControllerBase
 {
     private bool _legacyCompatibility;
@@ -61,6 +63,7 @@ public sealed class WhatsAppJourneyController(
         }
         catch (WhatsAppCapabilityUnavailableException)
         {
+            RecordVerification(StatusCodes.Status503ServiceUnavailable, "CREDENTIAL_UNAVAILABLE");
             return Problem(
                 statusCode: StatusCodes.Status503ServiceUnavailable,
                 title: "WHATSAPP_VERIFICATION_UNAVAILABLE"
@@ -74,39 +77,60 @@ public sealed class WhatsAppJourneyController(
     private IActionResult VerifyCore(string? expected, bool requireToken)
     {
         if (!options.Value.VerificationEnabled)
+        {
+            RecordVerification(StatusCodes.Status503ServiceUnavailable, "VERIFICATION_DISABLED");
             return StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
         if (!HasExpectedCallbackHost())
+        {
+            RecordVerification(StatusCodes.Status403Forbidden, "CALLBACK_HOST_MISMATCH");
             return Forbid();
+        }
         var target =
             HttpContext.Features.Get<IHttpRequestFeature>()?.RawTarget
             ?? Request.GetEncodedPathAndQuery();
         var mode = Request.Query["hub.mode"].ToString();
         var token = Request.Query["hub.verify_token"].ToString();
         var challenge = Request.Query["hub.challenge"].ToString();
-        if (
-            Encoding.UTF8.GetByteCount(target) > 8192
-            || Request.Query.Count != 3
+        var reason =
+            Encoding.UTF8.GetByteCount(target) > 8192 ? "REQUEST_TARGET_TOO_LARGE"
+            : Request.Query.Count != 3
             || Request.Query.Keys.Any(key =>
                 key != "hub.mode" && key != "hub.verify_token" && key != "hub.challenge"
             )
-            || !HasOneBoundedParameter("hub.mode")
-            || !HasOneBoundedParameter("hub.verify_token")
-            || !HasOneBoundedParameter("hub.challenge")
-            || !string.Equals(mode, "subscribe", StringComparison.Ordinal)
-            || (
-                requireToken
-                && (
-                    string.IsNullOrEmpty(expected)
-                    || !CryptographicOperations.FixedTimeEquals(
-                        Encoding.UTF8.GetBytes(token),
-                        Encoding.UTF8.GetBytes(expected)
-                    )
-                )
+                ? "QUERY_SHAPE_INVALID"
+            : !HasOneBoundedParameter("hub.mode") ? "MODE_PARAMETER_INVALID"
+            : !HasOneBoundedParameter("hub.verify_token") ? "TOKEN_PARAMETER_INVALID"
+            : !HasOneBoundedParameter("hub.challenge") ? "CHALLENGE_PARAMETER_INVALID"
+            : !string.Equals(mode, "subscribe", StringComparison.Ordinal) ? "MODE_MISMATCH"
+            : requireToken && string.IsNullOrEmpty(expected) ? "EXPECTED_TOKEN_UNAVAILABLE"
+            : requireToken
+            && !CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(token),
+                Encoding.UTF8.GetBytes(expected!)
             )
-        )
+                ? "TOKEN_MISMATCH"
+            : null;
+        if (reason is not null)
+        {
+            RecordVerification(StatusCodes.Status401Unauthorized, reason);
             return Unauthorized();
+        }
+        if (requireToken)
+            RecordVerification(StatusCodes.Status200OK, "CHALLENGE_RETURNED");
         return Content(challenge, "text/plain", Encoding.UTF8);
     }
+
+    private void RecordVerification(int statusCode, string reason) =>
+        (logger ?? NullLogger<WhatsAppJourneyController>.Instance).LogInformation(
+            "WhatsApp verification: StatusCode={StatusCode} Reason={Reason} QueryCount={QueryCount} ModeCount={ModeCount} TokenCount={TokenCount} ChallengeCount={ChallengeCount}",
+            statusCode,
+            reason,
+            Request.Query.Count,
+            Request.Query["hub.mode"].Count,
+            Request.Query["hub.verify_token"].Count,
+            Request.Query["hub.challenge"].Count
+        );
 
     [HttpPost]
     public async Task<IActionResult> ReceiveAsync(CancellationToken cancellationToken)

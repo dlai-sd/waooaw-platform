@@ -416,3 +416,52 @@ source, credential, network policy or live setting is changed. Full Release Qual
 remains OFF under continuing Founder authority; other mandatory PR checks remain required.
 Actual registration must be retried only after Founder review/merge and separate execution
 authority; Meta Verify/Save/subscription and activation are not completed by these simulations.
+
+### Safe Webhook Verification Diagnostics - 2026-11-03
+
+The Founder explicitly authorizes safe verification diagnostics, disposable local simulation,
+tests and one PR after Meta continues rejecting the callback. Current-session implementation
+authority is confirmed; this does not authorize deployment, activation or weakening validation.
+
+Registration run41669336013 at4fc35e7 succeeded with verification enabled and business traffic
+OFF. Scheduled cost-stop41675256742 later stopped BP; the Founder started applications again.
+The Founder retrieved the exact pinned verify-token value privately through the existing intake
+terminal. The newly granted intake token-read assignment was revoked and absence verified after
+human retrieval; no assistant secret read occurred. WABA subscription POST returned success,
+and the Founder confirmed the app in the subsequent subscription GET.
+
+Two human private tests returned HTTP200 with an exact plain-text challenge; the second also
+confirmed the Meta-field token matched exactly with no surrounding whitespace. Existing Azure
+telemetry shows a fresh verification action at17:26:04 UTC returning ProblemDetails in roughly0.5ms,
+but records no status or rejection reason. ProblemDetails is not proof of503: a dummy-token
+probe also returns401 with ProblemDetails. The earlier credential-unavailable interpretation
+is withdrawn. Exact Meta rejection cause remains unproven; extra query fields are a hypothesis,
+not permission to relax the closed query contract.
+
+The controller now emits one structured verification record per final result, with only
+StatusCode, a fixed safe Reason, distinct QueryCount and counts for the three documented keys.
+Do not log parameter names supplied by callers, values, query/URL, hostname, headers, challenge,
+exception arguments, body, secret length/digest or provider credential data. Safe reasons cover
+disabled verification, host mismatch, oversized target, closed query shape, missing/duplicate/
+empty/oversized parameters, wrong mode, unavailable expected token, token mismatch, credential
+unavailability and successful challenge. Exact host/token comparison, query limits, status
+semantics, response body and business gates are preserved. Successful preflight does not emit
+a misleading success record before credential verification.
+
+Disposable TestServer hosts simulate fifteen synthetic request variants through actual MVC,
+including Meta-style User-Agent/Accept, unknown query/header canaries, duplicates, missing/large
+values, disabled/host gates and credential failure. The oversized-target simulation explicitly
+supplies RawTarget because TestServer does not populate it like live Kestrel. Tests assert exactly
+one log record, the closed seven-field structured payload (including logger format), no private
+canary values or exception, no credential reads after preflight rejection, exact text/plain
+success and callback-disabled POST behavior. These test-only hosts are the throwaway local
+probe; no second public callback or live credential utility is introduced.
+
+Immutable Docker .NET targeted host/provider/journey validation passes131 tests with no skips,
+including fifteen new diagnostic simulations; CSharpier formatting and diff hygiene pass.
+Signed milestone983e5277 passes all six mandatory staged gates, including full Business Platform
+1,233 tests with zero skips/failures and90.49% line/80.19% branch coverage, plus the Web gate.
+GitHub verifies the signature; exact-head preparation passes and PR581 is open for Founder review.
+No live diagnostic code has been deployed. After Founder review/merge/deployment, keep traffic
+OFF, perform one Meta Verify/Save attempt and query only this safe log category to identify the
+actual rejection before deciding on a behavioral correction. Do not enable broad request logs.
