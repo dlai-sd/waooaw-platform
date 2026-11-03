@@ -254,3 +254,20 @@ Release Qualification was NOT run. Exact-head signing, author-review and prepare
 still pass before submission. DNS/TLS, the fourth protected binding, reviewed deployment, Meta
 challenge/subscription, fresh-user Demo/browser acceptance and intake teardown remain independently
 gated and pending. These local results do not authorize go-live or audience expansion.
+
+### PR #577 Precheck Correction
+
+The Founder requested correction of the PR precheck failure. CodeQL reported a useless
+null-coalescing expression in delivery correlation, an undisposed test `StringContent`,
+mixed Python module-import styles and two unformatted UUID string conversions. Correlation
+now selects the message reference explicitly from its declared relationship/Portal scope.
+The test owns/disposes its request content; Python uses consistent from-import syntax; SQL
+tenant parameters retain explicit canonical UUID text rather than changing parameter types.
+
+Docker validation: `dotnet test tests/business-platform.Tests/business-platform.Tests.csproj
+-warnaserror --filter "FullyQualifiedName~ConversationWhatsAppFitness|FullyQualifiedName~WhatsAppWebhookHostTests|FullyQualifiedName~IdentityPreferenceConcurrencyTests"
+--verbosity minimal` PASS, 112 tests; CSharpier check PASS.
+`python -m pytest -p no:cacheprovider tests/pipeline/test_goal006_runner_lifecycle.py -q`
+PASS, 59 tests; focused Ruff PASS. This correction changes neither onboarding authority nor
+traffic configuration. Release Qualification remains OFF. Hosted CodeQL confirmation follows
+the updated head; no passing hosted result is claimed from local tests.

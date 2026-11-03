@@ -611,7 +611,11 @@ public sealed class WhatsAppOutboxService(
                         source.TenantId != correlated.TenantId
                         || source.RelationshipId != correlated.RelationshipId
                         || source.PortalContextId != correlated.PortalContextId
-                        || (source.MessageId ?? source.PortalMessageId) != correlatedMessageId
+                        || (
+                            source.PortalContextId is null
+                                ? source.MessageId != correlatedMessageId
+                                : source.PortalMessageId != correlatedMessageId
+                        )
                     )
                 )
             )

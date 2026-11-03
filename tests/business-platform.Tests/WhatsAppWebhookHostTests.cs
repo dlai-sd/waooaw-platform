@@ -70,10 +70,8 @@ public sealed class WhatsAppWebhookHostTests
         Assert.Equal(expected, response.StatusCode);
         if (expected == HttpStatusCode.OK)
             Assert.Equal("12345", await response.Content.ReadAsStringAsync());
-        using var post = await client.PostAsync(
-            "/api/v1/channels/whatsapp/webhook",
-            new StringContent("{}")
-        );
+        using var content = new StringContent("{}");
+        using var post = await client.PostAsync("/api/v1/channels/whatsapp/webhook", content);
         Assert.Equal(HttpStatusCode.ServiceUnavailable, post.StatusCode);
     }
 

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-import scripts.goal006_runner_lifecycle as lifecycle
+from scripts import goal006_runner_lifecycle as lifecycle
 from scripts.goal006_runner_lifecycle import (
     HttpStatusError,
     JsonApi,

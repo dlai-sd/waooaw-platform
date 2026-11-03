@@ -76,7 +76,7 @@ public sealed class IdentityPreferenceConcurrencyTests
             await using var db = new IdentityDbContext(appOptions);
             await using var transaction = await db.Database.BeginTransactionAsync();
             await db.Database.ExecuteSqlInterpolatedAsync(
-                $"SELECT set_config('app.current_tenant_id', {tenant.ToString()}, true)"
+                $"SELECT set_config('app.current_tenant_id', {tenant.ToString("D")}, true)"
             );
             var preference = await (Task<CustomerPortalPreferenceRecord>)
                 method.Invoke(null, [db, "synthetic-subject", tenant, CancellationToken.None])!;
@@ -101,7 +101,7 @@ public sealed class IdentityPreferenceConcurrencyTests
         await using var denied = new IdentityDbContext(appOptions);
         await using var scope = await denied.Database.BeginTransactionAsync();
         await denied.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT set_config('app.current_tenant_id', {Guid.NewGuid().ToString()}, true)"
+            $"SELECT set_config('app.current_tenant_id', {Guid.NewGuid().ToString("D")}, true)"
         );
         Assert.Empty(await denied.CustomerPortalPreferences.ToListAsync());
     }

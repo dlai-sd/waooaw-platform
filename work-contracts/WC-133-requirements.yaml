@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-133
 contract_path: work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md
-contract_digest: 20475f6577911496273623328ab2dca0a0b9ce3ac494b5cb1633fe20714f5e2e
+contract_digest: 32426687e0173c7c30fe6e2a2ebe6f0f3762f65840559fecfa51902f58c71a0a
 implementation_scope: true
 result: PLANNED
 
