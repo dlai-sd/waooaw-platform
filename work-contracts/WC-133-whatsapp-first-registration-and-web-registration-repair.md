@@ -432,7 +432,7 @@ and the Founder confirmed the app in the subsequent subscription GET.
 
 Two human private tests returned HTTP200 with an exact plain-text challenge; the second also
 confirmed the Meta-field token matched exactly with no surrounding whitespace. Existing Azure
-telemetry shows a fresh verification action at17:26:04 UTC returning ProblemDetails in0.4649ms,
+telemetry shows a fresh verification action at17:26:04 UTC returning ProblemDetails in roughly0.5ms,
 but records no status or rejection reason. ProblemDetails is not proof of503: a dummy-token
 probe also returns401 with ProblemDetails. The earlier credential-unavailable interpretation
 is withdrawn. Exact Meta rejection cause remains unproven; extra query fields are a hypothesis,
@@ -459,6 +459,9 @@ probe; no second public callback or live credential utility is introduced.
 
 Immutable Docker .NET targeted host/provider/journey validation passes131 tests with no skips,
 including fifteen new diagnostic simulations; CSharpier formatting and diff hygiene pass.
+Signed milestone983e5277 passes all six mandatory staged gates, including full Business Platform
+1,233 tests with zero skips/failures and90.49% line/80.19% branch coverage, plus the Web gate.
+GitHub verifies the signature; exact-head preparation passes and PR581 is open for Founder review.
 No live diagnostic code has been deployed. After Founder review/merge/deployment, keep traffic
 OFF, perform one Meta Verify/Save attempt and query only this safe log category to identify the
 actual rejection before deciding on a behavioral correction. Do not enable broad request logs.
