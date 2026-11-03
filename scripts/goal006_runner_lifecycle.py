@@ -10,6 +10,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import tempfile
 import time
 import urllib.error
@@ -293,14 +294,31 @@ class JsonApi:
         request = urllib.request.Request(  # noqa: S310
             url, data=data, headers=request_headers, method=method
         )
-        try:
-            with urllib.request.urlopen(request, timeout=10) as response:  # noqa: S310
-                payload = response.read()
-        except urllib.error.HTTPError as error:
-            raise HttpStatusError(method, url, error.code) from error
-        except urllib.error.URLError as error:
-            raise LifecycleError(f"{method} {url} failed") from error
-        return json.loads(payload) if payload else None
+        retryable_read = method == "GET" and resource == MANAGEMENT_RESOURCE and url.startswith("https://management.azure.com/")
+        attempts = 3 if retryable_read else 1
+        for attempt in range(1, attempts + 1):
+            try:
+                with urllib.request.urlopen(request, timeout=30 if retryable_read else 10) as response:  # noqa: S310
+                    payload = response.read()
+                return json.loads(payload) if payload else None
+            except (urllib.error.URLError, TimeoutError, ConnectionError) as error:
+                transient = isinstance(error, (TimeoutError, ConnectionError))
+                if isinstance(error, urllib.error.HTTPError):
+                    transient = error.code in {408, 429, 500, 502, 503, 504}
+                elif isinstance(error, urllib.error.URLError):
+                    transient = isinstance(error.reason, (TimeoutError, ConnectionError))
+                if transient and attempt < attempts:
+                    print(f"ARM GET transient failure; retry {attempt}/{attempts - 1}", file=sys.stderr)
+                    time.sleep(attempt)
+                    continue
+                if isinstance(error, urllib.error.HTTPError):
+                    raise HttpStatusError(method, url, error.code) from error
+                if isinstance(error, TimeoutError) or (
+                    isinstance(error, urllib.error.URLError) and isinstance(error.reason, TimeoutError)
+                ):
+                    raise LifecycleError(f"{method} {url} timed out") from error
+                raise LifecycleError(f"{method} {url} failed") from error
+        raise LifecycleError("HTTP request attempts exhausted")
 
 
 def azure_access_token(resource: str, client_id: str | None = None) -> str:

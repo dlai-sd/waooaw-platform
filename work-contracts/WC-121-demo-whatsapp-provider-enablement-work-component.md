@@ -1868,3 +1868,39 @@ The Founder directed finishing the current changes and submitting a PR before co
 operator steps. This PR delivers the reusable uploader audience fix, consistent no-expiry outbound
 credential support, regressions and same-component evidence. It does not claim full callback
 registration, live Meta token validation, provider binding completion or WhatsApp go-live.
+
+### 10.19 Deployment Cleanup Reconciled Before Further Setup (2026-11-03)
+
+Deployment 41586625287 at `c9e614715bb98ddcaff72b07c94957d94fa1901e` applied successfully;
+independent verification confirms the exact seven images, dependencies, revisions and functional
+checks. Overall failure was private runner cleanup, not application rollout or the outbound
+no-expiry amendment. Retained Log Analytics console evidence identifies a direct read timeout in
+`JsonApi.request` while `_find_correlated_execution` reads Azure execution details. Delayed system
+events prove the cleanup image pulled and container started, then exited 1. Hosted evidence was
+initially empty and masked this exception as missing scheduling events.
+
+The Founder directed stepwise setup, then explicitly authorized the focused cleanup implementation,
+tests and cleanup-only reconciliation. An unmodified exact-run retry `goal006-demo-runner-cleanup-w5wrhxv`
+reproduced the same timeout before cleanup mutations. The HTTP helper now gives ARM GETs a
+30-second socket timeout and at most three attempts with 1/2-second backoff for timeout/connection
+failures and HTTP 408/429/500/502/503/504. Permanent HTTP denials, other hosts/resources and all
+mutations are not retried. Direct timeouts become explicit lifecycle errors; retry messages omit
+tokens, exception bodies and resource details. Existing correlation and cleanup proof are unchanged.
+
+Fourteen transport regressions yield ten failures/four passes against deployed source. With the
+fix, Docker lifecycle/execution/evidence selectors pass **100 tests**; affected Ruff passes.
+No retry of the full cleanup process on ambiguous mutation outcomes was added.
+
+Using the existing repository execution-template generator, the tested source was supplied to
+the original exact run/attempt through the pinned existing image, without rebuilding an image,
+changing identities/roles/network, or rerunning the application/database deployment.
+Corrected execution `goal006-demo-runner-cleanup-lkcndza` reached Succeeded. The existing receipt
+validator accepts its original-run receipt and confirms `registration_absent: true`,
+`execution_terminal: true`, and `token_secret_deleted: true`. All three deployment/broker/cleanup
+job lists show zero active executions. The historical Actions run remains failed; no status was
+rewritten. This completes step 1 cleanup reconciliation, not callback readiness or activation.
+
+Permanent workflow adoption of the source fix still requires normal PR review/merge. Delayed
+Log Analytics diagnostic fallback is a separate proposed improvement, not implemented here.
+Next is the protected provider binding and registration-only callback configuration; WhatsApp
+traffic remains disabled.
