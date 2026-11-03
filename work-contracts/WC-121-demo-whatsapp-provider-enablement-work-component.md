@@ -1764,3 +1764,43 @@ Next access proposal is bounded metadata permission on the four admitted WhatsAp
 using the approved provisioning/operator identity and private terminal, retaining no secret-read
 permission, no media authority and no public-network bypass. Role grants, network changes,
 secret writes, token generation and provider activation have not been executed by this session.
+
+### 10.16 Authorized Private Intake Setup And Scope Verification (2026-11-03)
+
+After the Section 10.15 proposal, the Founder explicitly authorized access/private-intake setup.
+The existing `goal006-demo-runner-key-import` Container App and its dedicated key-import managed
+identity were reused; deployment and workload principals were not given new secret rights.
+
+Created `WAOOAW Key Vault Declared Secret Provisioner` with only
+`Microsoft.KeyVault/vaults/secrets/setSecret/action` and
+`Microsoft.KeyVault/vaults/secrets/readMetadata/action`. Assigned it to the private import identity
+at exactly these four secret scopes in `kv-waooaw-demo`: `whatsapp-provider-binding`,
+`whatsapp-verify-token`, `whatsapp-app-secret`, `whatsapp-outbound-authority`.
+No vault-wide assignment, secret-value read, media permission, or modification of the existing
+write-only user role was made.
+
+Started the existing import app at min/max replicas 1/1 without changing its pinned image,
+network or identities. An actual `az containerapp exec` shell resolved the vault to private
+address `10.70.0.39`, authenticated using the existing import identity, and successfully listed
+outbound-version metadata (empty). The tested uploader from signed milestone `d8f8a629` and its
+catalog were staged as nonsecret, operator-only files beneath `/tmp/waooaw-wc120-intake`.
+Remote/local SHA-256 values match:
+
+- uploader: `818fa38107c71aa57430830686c8d270383202ba7dd1e2ca6b8d6891e726971c`
+- catalog: `5682fd09c2fc753e2ae0a95c78ebb3d365db482556d229b69b7fbc41d1005930`
+
+The actual staged `_az` helper successfully performed metadata GET for all four declared
+secrets; the same transport to reserved media failed with `ForbiddenByRbac`. These are live
+private-route/metadata-boundary results, not a live secret-write or no-echo token intake result.
+The corrected uploader's protected-input behavior remains covered by the Section 10.15 tests.
+No token, App Secret, private binding or verify-token value was received, written or printed.
+
+Private terminal entry for the human operator:
+`az containerapp exec --resource-group waooaw-demo-runner-rg --name goal006-demo-runner-key-import --container key-import --command bash`.
+Use the staged uploader with the current independently recorded Founder Action reference and
+approved expiry; enter external values only at its no-echo prompt. Do not put values in shell
+arguments, history, files, environment variables, chat, logs or screenshots. The app remains
+running specifically for the imminent operator intake; after intake or cancellation, scale it
+back to min replicas 0, remove the staged nonsecret files and revoke the four temporary role
+assignments. Secret versions still require independent validity/admission checks before callback
+registration or traffic activation. Media and normal runtime effects remain disabled.
