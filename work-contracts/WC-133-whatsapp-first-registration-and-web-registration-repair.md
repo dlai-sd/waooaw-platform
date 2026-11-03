@@ -289,3 +289,78 @@ PASS, 41 tests; focused `ruff check --no-cache` and `ruff format --check --no-ca
 PASS in the immutable Python runner. No runtime, migration, dependency or workflow changes.
 Full Release Qualification was not rerun locally; the follow-up PR retains Founder OFF
 authority, and post-merge qualification remains mandatory.
+
+### Consolidated Provider Completion Authority
+
+After deployment and human credential intake, the Founder explicitly directs one PR to
+find and repair the missing completion steps. All four exact credential versions are
+metadata-confirmed; the dedicated callback CNAME, ownership TXT and Azure-managed TLS
+are verified. These facts do not enable business callbacks or outbound traffic.
+
+The approved repair adds protected Demo-only registration, status, bounded activation,
+stop and intake-cleanup operations through the existing private runner/deployment identities.
+It must reuse runner start/terminal cleanup and the shared activation validator, accept
+only closed non-secret registration/activation documents, pin the deployed image and
+configuration/catalog tuple, conditionally update the private configuration with ETags,
+preserve unrelated configuration and runtime settings, and retain redacted operation evidence.
+Registration must explicitly disable business callbacks, dispatch and provider availability;
+activation still requires the separate independently approved exact bundle digest and all
+existing receipts. No workflow may fabricate receipt completion or send a test message.
+Stop must close runtime traffic without requiring a currently valid activation bundle.
+Intake cleanup must target only the dedicated intake app and four temporary secret grants.
+No database reset, full environment redeployment, new identity/service/network access,
+raw credential export, automatic Meta subscription or new runtime authority is authorized.
+The uploader must retry an invalid field without discarding earlier protected input.
+
+#### Operator Completion Path (one existing Environment Deployment workflow)
+
+Use the existing Founder-dispatched **Environment Deployment** workflow on current main,
+environment `demo`, execution `plan`, with `provider_operation` set as below. The provider
+operation bypasses Terraform/image application and the Demo database-reset lifecycle.
+The existing private broker, environment-bound OIDC identities, deployment concurrency
+and terminal runner cleanup remain mandatory. `none` preserves ordinary plan/apply behavior.
+
+| Operation | Input | Result / independent next gate |
+|---|---|---|
+| `register` | `provider_document`: closed registration object (`callback_host`, four `secret_versions`, `authority_reference`, `verification_enabled: true`); no raw Meta IDs, numbers or credentials | Back up the prior private configuration, ETag-conditionally persist registration only, grant BP read access on the four exact purposes, set its explicit managed-identity client ID and pinned version references; verify ready revision, valid HTTPS, invalid-token GET401 and callback-disabled POST503. Callback, dispatch and provider-availability flags remain OFF. |
+| `status` | `{}`; no approval digest | Inspect current deployed image/flags and TLS/invalid-token rejection; no mutation. It does not assert Meta registration, delivery or live acceptance. |
+| `activate` | Closed existing activation bundle in `provider_document`, exact separately approved `provider_approved_digest` | Reuse the activation validator; require current registration/image/catalog, valid credential-version metadata, distinct traffic/activation approvals, receipts, consent, tenant/pilot, policies, templates, limits/window. Apply only those runtime settings; on failure attempt traffic closure and explicitly mark unconfirmed containment. No test message is sent. |
+| `stop` | `{}`; no approval digest | Disable callback acceptance, dispatch and provider availability and latch revocation; no current activation bundle or private configuration download is required. |
+| `cleanup-intake` | `{}`; no approval digest | Revoke only the dedicated intake identity's four temporary declared-secret-provisioner assignments, set the dedicated intake app minimum to zero and deactivate its revisions; verify grants/revisions closed. It does not remove BP credential access. |
+
+Registration requires the dedicated DNS/TXT/SNI binding already to be present; no automatic
+DNS mutation is added. After registration, the Founder enters the callback URL and retained
+verify token directly into Meta, verifies/saves and subscribes the appropriate webhook field.
+These external-account steps cannot be inferred from GET401 or a registration setting.
+Activation is never implied by registration, subscription, deployment or this PR.
+Activation documents contain only the existing closed authority/evidence/policy/template
+metadata, not secrets or raw provider/contact identifiers. Do not put credentials in Actions
+inputs. Only redacted per-phase evidence is retained as Actions artifacts; private operation
+files are removed on all terminal paths. Partial registration leaves a recoverable staged
+configuration and private before-snapshot, not traffic permission; rerun the same operation
+after correcting the explicit failure. A later full deployment adopts existing callback
+TLS/domain and exact BP secret roles into Terraform state rather than recreating them,
+and deliberately returns runtime traffic to the normal registration-only OFF defaults.
+Reactivation after stop/full deployment must register the current tuple and obtain a fresh
+independently approved activation bundle; do not reuse stale receipts or windows.
+
+#### Consolidated Author Validation
+
+The deployed BP uses Multiple revision mode with latest-revision ingress. Runtime
+operations therefore reuse the existing Demo revision reconciler, restricted to BP,
+and retire zero-traffic obsolete workers before reporting success. Failed activation
+reports traffic closed only after the OFF revision is ready and obsolete workers have
+zero replicas; otherwise containment is explicitly unconfirmed. Intake cleanup likewise
+requires zero replicas. Other Demo apps are not inspected or changed by selected-app cleanup.
+The authoritative configuration is rechecked immediately before runtime application;
+concurrent configuration drift fails before settings are mutated.
+
+Focused immutable Docker Python validation passes **446 tests**, including registration,
+exact activation approval, ETag conflicts/readback/drift, credential metadata validity,
+TLS negative probes, settings preservation, old-worker retirement, containment failures,
+intake closure, Terraform adoption, uploader retries and deployment/gate compatibility.
+Ruff check/format and repository-pinned actionlint pass. New operations and selected-app
+cleanup regressions are wired into the explicit quality-scripts gate.
+No new helper has been executed against live configuration, roles, revisions or Terraform
+state. Meta challenge verification/subscription, actual registration application and bounded
+live/browser acceptance remain gated. No messages, full deployment or database reset occurred.

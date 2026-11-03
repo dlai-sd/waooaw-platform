@@ -52,6 +52,7 @@ def reconcile(
     resource_group: str,
     *,
     apply: bool,
+    selected_apps: list[str] | None = None,
     run_az: Callable[[list[str]], Any] = _run_az,
     timeout_seconds: int = 120,
     clock: Callable[[], float] = time.monotonic,
@@ -60,6 +61,10 @@ def reconcile(
     if resource_group != "waooaw-demo-rg":
         raise ValueError("Revision cleanup is authorized only for waooaw-demo-rg")
     apps = list_container_apps(resource_group, "demo", run_az)
+    if selected_apps is not None:
+        if not selected_apps or len(selected_apps) != len(set(selected_apps)) or not set(selected_apps).issubset(apps):
+            raise ValueError("Selected revisions must belong to existing Demo applications")
+        apps = selected_apps
     if not apps:
         raise ValueError("No Demo apps found; refusing an empty cleanup result")
     # Validate the entire inventory before performing any mutation.

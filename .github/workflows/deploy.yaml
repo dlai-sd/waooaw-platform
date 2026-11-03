@@ -30,6 +30,21 @@ on:
           - github
           - azure
           - both
+      provider_operation:
+        description: "Demo provider only: no Terraform, database reset or image deployment"
+        required: false
+        default: none
+        type: choice
+        options: [none, register, activate, stop, status, cleanup-intake]
+      provider_document:
+        description: "Closed non-secret registration metadata or activation bundle; never credentials, phone numbers or Meta IDs"
+        required: false
+        default: "{}"
+        type: string
+      provider_approved_digest:
+        description: "Activate only: exact bundle digest from separate Founder activation/traffic approval"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -51,6 +66,7 @@ jobs:
       environment: ${{ steps.dispatch.outputs.environment }}
       execution: ${{ steps.dispatch.outputs.execution }}
       image_home: ${{ steps.dispatch.outputs.image_home }}
+      provider_operation: ${{ steps.dispatch.outputs.provider_operation }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -60,17 +76,26 @@ jobs:
           TARGET_ENVIRONMENT: ${{ inputs.environment || 'demo' }}
           EXECUTION_MODE: ${{ inputs.execution || 'apply' }}
           IMAGE_HOME: ${{ inputs.image_home || 'github' }}
+          PROVIDER_OPERATION: ${{ inputs.provider_operation || 'none' }}
         run: |
           normalized=$(python3 scripts/goal006_dispatch_inputs.py \
             --environment "$TARGET_ENVIRONMENT" \
             --execution "$EXECUTION_MODE" \
             --image-home "$IMAGE_HOME")
+          case "$PROVIDER_OPERATION" in
+            none) ;;
+            register|activate|stop|status|cleanup-intake)
+              test "$TARGET_ENVIRONMENT:$EXECUTION_MODE" = demo:plan
+              ;;
+            *) exit 1 ;;
+          esac
           jq -e . >/dev/null <<< "$normalized"
           {
             echo "lease_expires_at=$(jq -r '.lease_expires_at' <<< "$normalized")"
             echo "environment=$TARGET_ENVIRONMENT"
             echo "execution=$EXECUTION_MODE"
             echo "image_home=$(jq -r '.image_home' <<< "$normalized")"
+            echo "provider_operation=$PROVIDER_OPERATION"
           } >> "$GITHUB_OUTPUT"
 
       - name: Select trusted current-main release
@@ -128,6 +153,9 @@ jobs:
       lease_expires_at: ${{ needs.authorize.outputs.lease_expires_at }}
       lifecycle_action: ${{ needs.authorize.outputs.execution == 'apply' && 'activate' || 'plan' }}
       image_home: ${{ needs.authorize.outputs.image_home }}
+      provider_operation: ${{ needs.authorize.outputs.provider_operation }}
+      provider_document: ${{ inputs.provider_document || '{}' }}
+      provider_approved_digest: ${{ inputs.provider_approved_digest || '' }}
     secrets: inherit
 
   verify:

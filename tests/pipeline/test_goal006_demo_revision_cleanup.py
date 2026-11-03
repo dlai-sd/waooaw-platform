@@ -66,6 +66,28 @@ def test_plan_never_mutates_and_apply_retires_only_old_revision():
     assert reconcile("waooaw-demo-rg", apply=True, run_az=azure)["retired"] == []
 
 
+def test_selected_app_cleanup_does_not_inspect_or_mutate_other_demo_apps():
+    azure = Azure()
+
+    def run(args):
+        if args[:2] == ["containerapp", "list"]:
+            return [APP, "ca-demo-other"]
+        assert args[args.index("--name") + 1] == APP
+        return azure(args)
+
+    result = reconcile("waooaw-demo-rg", apply=True, selected_apps=[APP], run_az=run)
+    assert result["status"] == "passed"
+    assert azure.mutations == [f"{APP}--old"]
+
+
+@pytest.mark.parametrize("selection", [[], [APP, APP], ["ca-uat-web"], ["ca-demo-unknown"]])
+def test_selected_app_cleanup_rejects_empty_duplicate_or_unowned_selection(selection):
+    azure = Azure()
+    with pytest.raises(ValueError, match="existing Demo"):
+        reconcile("waooaw-demo-rg", apply=True, selected_apps=selection, run_az=azure)
+    assert azure.mutations == []
+
+
 @pytest.mark.parametrize(
     "traffic",
     [

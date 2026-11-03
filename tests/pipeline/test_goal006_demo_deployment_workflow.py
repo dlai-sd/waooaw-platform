@@ -26,7 +26,7 @@ def test_environment_deployment_uses_qualified_private_runner_lifecycle() -> Non
     assert "${{ needs.resolve-environment.outputs.runner_label }}" in WORKFLOW
     assert "goal006-demo-private" not in WORKFLOW
     assert "  cleanup-private:" in WORKFLOW
-    assert "needs: [resolve-environment, start-broker, terraform]" in WORKFLOW
+    assert "needs: [resolve-environment, start-broker, terraform, provider-operation]" in WORKFLOW
     assert "if: always()" in WORKFLOW
     assert WORKFLOW.count("goal006_runner_execution.py broker") == 1
     assert WORKFLOW.count("goal006_runner_execution.py cleanup") == 1

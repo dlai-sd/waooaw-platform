@@ -11,6 +11,7 @@ import re
 import secrets
 import shutil
 import subprocess
+import sys
 import warnings
 from datetime import datetime, timezone
 from pathlib import Path
@@ -87,8 +88,12 @@ def _whatsapp_binding_value(authorization_id: str, expiry: int, now: int, api_ve
         "expiresAt": datetime.fromtimestamp(expiry, timezone.utc).isoformat(),
     }
     for name, prompt, pattern in fields:
-        value = _protected_input(prompt)
-        if re.fullmatch(pattern, value) is None:
+        for _ in range(3):
+            value = _protected_input(prompt)
+            if re.fullmatch(pattern, value) is not None:
+                break
+            print(f"Invalid {name} format; earlier entries are retained. Try this field again.", file=sys.stderr)
+        else:
             raise ProvisioningError(f"invalid {name}; no binding was written")
         binding[name] = value
     return json.dumps(binding, separators=(",", ":"))
