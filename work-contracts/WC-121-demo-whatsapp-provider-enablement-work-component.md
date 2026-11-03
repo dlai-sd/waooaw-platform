@@ -1731,3 +1731,140 @@ Executed the affected uploader/deployment/input suites plus WC-120 contract/reco
 passed **176 tests** in Docker. Affected Ruff and authoritative formatting pass. Hosted
 CodeQL must rerun on the new pushed head; local pytest is not claimed as a CodeQL run.
 No live secret, vault permission, network, deployment or provider effect was introduced.
+
+### 10.15 Successful Demo Deployment And Live Intake Prerequisites (2026-11-03)
+
+PR #575 merged as `1020228629ae6568442d46f30de8a83310556c6b`. Environment Deployment
+[41557415854](https://github.com/dlai-sd/waooaw-platform/actions/runs/41557415854)
+completed successfully, including `Apply demo`, private cleanup and independent `verify / verify`.
+This supersedes the failed ordinary-deployment status, not WhatsApp provider registration or
+activation evidence. The Founder confirms the messaging token is still not generated.
+
+Read-only live intake diagnostics found two distinct prerequisites:
+
+- The deployed uploader's `az rest` call without `--resource` received AKV10000 missing-token
+  rejection. Explicit `--resource https://vault.azure.net` reached Key Vault authorization;
+  metadata GET then returned `ForbiddenByRbac` for `secrets/readMetadata/action`.
+- The current operator already has the custom `WAOOAW Key Vault Secret Writer` role, whose only
+  data action is `secrets/setSecret/action`. Neither subscription Owner nor that write-only role
+  supplies the uploader's metadata action. Secret-value read permission is not required.
+- Vault public networking remains Disabled. Both workload and runner private endpoint connections
+  are Approved/Succeeded, but Codespace DNS resolves the vault to a public address. A usable
+  echo-disabled private operator terminal is not yet demonstrated. RBAC denial alone does not
+  prove private-route access.
+
+The Founder explicitly authorized the uploader correction/tests and read-only provisioning
+investigation. The existing `_az` helper now sets the Key Vault token audience for both metadata
+GET and stdin-body PUT. Both new transport assertions failed against deployed source before
+the correction. Docker validation
+`PYTHONPATH=/workspace:/workspace/scripts pytest -q tests/pipeline/test_wc091_environment_readiness.py tests/contract/test_wc120_contract_and_recovery.py`
+passes **76 tests**; affected authoritative Ruff/format pass. No new dependencies or fallback.
+
+Next access proposal is bounded metadata permission on the four admitted WhatsApp secrets,
+using the approved provisioning/operator identity and private terminal, retaining no secret-read
+permission, no media authority and no public-network bypass. Role grants, network changes,
+secret writes, token generation and provider activation have not been executed by this session.
+
+### 10.16 Authorized Private Intake Setup And Scope Verification (2026-11-03)
+
+After the Section 10.15 proposal, the Founder explicitly authorized access/private-intake setup.
+The existing `goal006-demo-runner-key-import` Container App and its dedicated key-import managed
+identity were reused; deployment and workload principals were not given new secret rights.
+
+Created `WAOOAW Key Vault Declared Secret Provisioner` with only
+`Microsoft.KeyVault/vaults/secrets/setSecret/action` and
+`Microsoft.KeyVault/vaults/secrets/readMetadata/action`. Assigned it to the private import identity
+at exactly these four secret scopes in `kv-waooaw-demo`: `whatsapp-provider-binding`,
+`whatsapp-verify-token`, `whatsapp-app-secret`, `whatsapp-outbound-authority`.
+No vault-wide assignment, secret-value read, media permission, or modification of the existing
+write-only user role was made.
+
+Started the existing import app at min/max replicas 1/1 without changing its pinned image,
+network or identities. An actual `az containerapp exec` shell resolved the vault to private
+address `10.70.0.39`, authenticated using the existing import identity, and successfully listed
+outbound-version metadata (empty). The tested uploader from signed milestone `d8f8a629` and its
+catalog were staged as nonsecret, operator-only files beneath `/tmp/waooaw-wc120-intake`.
+Remote/local SHA-256 values match:
+
+- uploader: `818fa38107c71aa57430830686c8d270383202ba7dd1e2ca6b8d6891e726971c`
+- catalog: `5682fd09c2fc753e2ae0a95c78ebb3d365db482556d229b69b7fbc41d1005930`
+
+The actual staged `_az` helper successfully performed metadata GET for all four declared
+secrets; the same transport to reserved media failed with `ForbiddenByRbac`. These are live
+private-route/metadata-boundary results, not a live secret-write or no-echo token intake result.
+The corrected uploader's protected-input behavior remains covered by the Section 10.15 tests.
+No token, App Secret, private binding or verify-token value was received, written or printed.
+
+Private terminal entry for the human operator:
+`az containerapp exec --resource-group waooaw-demo-runner-rg --name goal006-demo-runner-key-import --container key-import --command bash`.
+Use the staged uploader with the current independently recorded Founder Action reference and
+approved expiry; enter external values only at its no-echo prompt. Do not put values in shell
+arguments, history, files, environment variables, chat, logs or screenshots. The app remains
+running specifically for the imminent operator intake; after intake or cancellation, scale it
+back to min replicas 0, remove the staged nonsecret files and revoke the four temporary role
+assignments. Secret versions still require independent validity/admission checks before callback
+registration or traffic activation. Media and normal runtime effects remain disabled.
+
+### 10.17 Founder Amendment: Non-Expiring Outbound Token (2026-11-03)
+
+The Founder reports generating the Meta system-user token with Never expiration and explicitly
+authorizes no expiry on the corresponding Key Vault secret. After disclosure that contract,
+uploader, inventory and runtime changes are required, the Founder authorizes those implementation
+changes for this session. This amends prior blanket credential-expiry requirements only for
+`whatsapp-outbound-authority`; it does not amend immutable constitutional documents or grant
+unbounded activation, traffic, binding, webhook-token or App Secret authority.
+
+The reusable uploader accepts explicit `--no-expiry` only for that outbound secret, writes
+`enabled: true` without `exp`, rejects conflicting expiry/other purposes, and still requires
+explicit `--new-version` for rotation. Deployment and runtime allow absent outbound expiry;
+present expiry remains validated and expired/malformed values denied. All other secrets require
+expiry. Enabled, not-before, exact pinned version, private scope, revocation, separate activation
+and traffic windows remain mandatory. Credential use is still capped at five minutes and the
+binding deadline even when the durable Meta credential has no expiry. No distant-date surrogate,
+automatic rotation, secret-value read permission or provider activation is introduced.
+
+The private staged uploader must be refreshed and checksum-verified before human token intake.
+The generated token has not been supplied to chat or this session and is not yet stored by it.
+
+Operator authority reference `FA-WC120-20261103-OUTBOUND-NOEXP` records the Founder's
+2026-11-03 instruction to store the already-generated outbound token without expiry and the
+subsequent explicit implementation confirmation. It authorizes that protected upload only,
+not traffic or activation. Operator command:
+`python3 /tmp/waooaw-wc120-intake/scripts/wc091_secret_provision.py whatsapp-outbound-authority --environment demo --authorization-id FA-WC120-20261103-OUTBOUND-NOEXP --no-expiry`.
+The human enters the token only into the no-echo prompt; it is not available to agent tools.
+
+Validation: affected Python deployment/uploader/input/contracts/bootstrap selectors pass
+**196 tests**; all conversation WhatsApp runtime fitness tests pass **102 tests**, including
+real PostgreSQL budget serialization, with zero skips. Build has zero warnings/errors.
+Affected Ruff/format, CSharpier and actionlint pass (shellcheck not claimed). First fitness
+attempt lacked the Docker socket for PostgreSQL and failed one case; the correctly mounted
+rerun passed all 102. Catalog Demo/UAT projections and private-runner manifest binding are
+refreshed. Existing deployed runtime still requires expiry until this correction is reviewed,
+merged and deployed; vault storage alone cannot activate it.
+
+### 10.18 Protected Credential Intake And PR Delivery Status (2026-11-03)
+
+The Founder entered each value directly into the private uploader's no-echo prompt and reported
+CREATED. Independent metadata-only queries through the private identity confirmed:
+
+| Credential | Verified storage status |
+|---|---|
+| `whatsapp-outbound-authority` | Version exists, enabled, no expiry as explicitly authorized |
+| `whatsapp-app-secret` | Version exists, enabled, expiry `2027-11-03T00:00:00Z` approved by Founder |
+| `whatsapp-verify-token` | Version exists, enabled, same expiry independently approved by Founder |
+
+No credential value was read by the assistant or transferred through agent tools. The generated
+verify token remains privately held by the operator for Meta registration. Raw version identifiers,
+provider identifiers, telephone values and credentials are not included in this record.
+
+The Founder reached Messaging Service's real-sender Production setup webhook form. Live BP domain
+metadata still lists only `api.demo.waooaw.com`; the required dedicated WhatsApp callback hostname
+is not bound. Callback and verify-token fields were left unsubmitted; client certificate was not
+enabled. Provider binding, supported API version, pinned-version configuration, dedicated callback
+DNS/TLS deployment, webhook and account subscription, qualification and activation remain pending.
+No new messaging-token generation, number registration, test message or traffic action was advised.
+
+The Founder directed finishing the current changes and submitting a PR before continuing those
+operator steps. This PR delivers the reusable uploader audience fix, consistent no-expiry outbound
+credential support, regressions and same-component evidence. It does not claim full callback
+registration, live Meta token validation, provider binding completion or WhatsApp go-live.

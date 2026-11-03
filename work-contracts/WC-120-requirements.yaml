@@ -9,7 +9,7 @@ api_digest: c5b30ab19605d0b82e113a865ee1faf935093c00a5e0eee54116a43233513221 # g
 crosswalk_path: work-contracts/WC-120-operation-schema-owner-compatibility-crosswalk.md
 crosswalk_digest: f27ca1e9d8bd763b2d47ddc0047531ef6736d13a6ce3fdfadd3190fdc918d462
 demo_component_path: work-contracts/WC-121-demo-whatsapp-provider-enablement-work-component.md
-demo_component_digest: 2a62e6c07630f7cc1f4ab584e73ccbc1e8d5121437db990d1609cf90b1929102
+demo_component_digest: a55ebf39a0dbe2ed171b1e8bc534e0cfd2d5e04f11581f388a84e956718546a6
 contract_status: SESSION_IMPLEMENTATION_AND_DEMO_SCOPE_AUTHORIZED_EXACT_PROTECTED_INPUTS_PENDING
 implementation_scope: true
 result: PLANNED

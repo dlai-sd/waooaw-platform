@@ -283,6 +283,9 @@ def test_credential_inventory_consumes_effective_configuration_and_pinned_versio
         ("disabled-secret", False),
         ("expired", False),
         ("no-expiry", False),
+        ("outbound-no-expiry", True),
+        ("outbound-expired", False),
+        ("outbound-future", False),
         ("future", False),
         ("invalid-start", False),
         ("forbidden", False),
@@ -316,8 +319,8 @@ def test_actual_credential_inventory_shell_respects_capability_and_validity(
         "        print('SecretNotFound' if mode == 'missing' else 'ForbiddenByRbac', file=sys.stderr)\n"
         "        sys.exit(1)\n"
         "    print(json.dumps({'enabled': mode != 'disabled-secret',\n"
-        "        'expires': None if mode == 'no-expiry' else '2020-01-01T00:00:00Z' if mode == 'expired' else '2099-01-02T00:00:00Z',\n"
-        "        'notBefore': '2099-01-01T00:00:00Z' if mode == 'future' else 'bad' if mode == 'invalid-start' else None}))\n"
+        "        'expires': None if mode == 'no-expiry' or (name == 'whatsapp-outbound-authority' and mode in ('outbound-no-expiry', 'outbound-future')) else '2020-01-01T00:00:00Z' if mode == 'expired' or (name == 'whatsapp-outbound-authority' and mode == 'outbound-expired') else '2099-01-02T00:00:00Z',\n"
+        "        'notBefore': '2099-01-01T00:00:00Z' if mode == 'future' or (name == 'whatsapp-outbound-authority' and mode == 'outbound-future') else 'bad' if mode == 'invalid-start' else None}))\n"
         "elif '--version' in args: sys.exit(98)\n"
         "elif 'attributes' in ' '.join(args): print(json.dumps({'enabled': True}))\n"
         "else: print(json.dumps({'attributes': {'enabled': True}, 'tags': {}, 'value': 'x' * 32}))\n"
@@ -698,7 +701,8 @@ def test_external_secret_value_uses_stdin_body_not_command_arguments(monkeypatch
     assert calls[1][1] == {"value": "not-logged-secret"}
 
 
-def test_az_secret_body_is_read_from_stdin(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("method", ["get", "put"])
+def test_az_secret_body_is_read_from_stdin(monkeypatch: pytest.MonkeyPatch, method: str) -> None:
     captured = {}
 
     def fake_run(command, **kwargs):
@@ -708,11 +712,47 @@ def test_az_secret_body_is_read_from_stdin(monkeypatch: pytest.MonkeyPatch) -> N
 
     monkeypatch.setattr(wc091_secret_provision.shutil, "which", lambda _: "/usr/bin/az")
     monkeypatch.setattr(wc091_secret_provision.subprocess, "run", fake_run)
-    wc091_secret_provision._az(["--method", "put", "--url", "https://vault.invalid"], {"value": "secret"})
+    body = {"value": "secret"} if method == "put" else None
+    wc091_secret_provision._az(["--method", method, "--url", "https://vault.invalid"], body)
 
-    assert captured["command"][-2:] == ["--body", "@/dev/stdin"]
+    assert captured["command"][:4] == ["/usr/bin/az", "rest", "--resource", "https://vault.azure.net"]
+    if method == "put":
+        assert captured["command"][-2:] == ["--body", "@/dev/stdin"]
+        assert json.loads(captured["input"]) == body
+    else:
+        assert "--body" not in captured["command"]
+        assert captured["input"] is None
     assert "secret" not in captured["command"]
-    assert json.loads(captured["input"]) == {"value": "secret"}
+
+
+def test_outbound_token_can_explicitly_omit_expiry(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = []
+
+    def fake_az(command, body=None):
+        calls.append((command, body))
+        response = '{"value":[]}' if body is None else '{"id":"https://vault/secrets/token/version"}'
+        return subprocess.CompletedProcess(command, 0, response, "")
+
+    monkeypatch.setattr(wc091_secret_provision, "_az", fake_az)
+    monkeypatch.setattr(wc091_secret_provision.getpass, "getpass", lambda _: "nonexpiring-test-value")
+    result = wc091_secret_provision.provision("whatsapp-outbound-authority", "demo", "FA-120", no_expiry=True)
+    assert result["status"] == "CREATED"
+    assert calls[-1][1] == {"value": "nonexpiring-test-value", "attributes": {"enabled": True}}
+
+
+@pytest.mark.parametrize(
+    ("name", "expiry"),
+    [
+        ("whatsapp-app-secret", None),
+        ("whatsapp-verify-token", None),
+        ("whatsapp-provider-binding", None),
+        ("whatsapp-outbound-authority", "2099-01-01T00:00:00Z"),
+    ],
+)
+def test_nonexpiring_mode_rejects_other_purposes_and_conflicting_expiry(monkeypatch, name, expiry) -> None:
+    monkeypatch.setattr(wc091_secret_provision, "_az", lambda *_: pytest.fail("must deny before vault"))
+    with pytest.raises(wc091_secret_provision.ProvisioningError, match="exclusive"):
+        wc091_secret_provision.provision(name, "demo", "FA-120", no_expiry=True, expires_at=expiry)
 
 
 def test_whatsapp_secret_upload_sets_validity_and_explicit_new_version(monkeypatch: pytest.MonkeyPatch) -> None:
