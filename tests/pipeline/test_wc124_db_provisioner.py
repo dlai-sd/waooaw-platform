@@ -479,15 +479,40 @@ def test_application_migrations_cover_the_whole_sql_chain_after_the_principal_bo
     assert "00-wc124-principal-bootstrap.sql" not in names
     assert names == sorted(names, key=lambda name: name.encode())
     assert names[0] == "01-schemas.sql"
-    assert names[-3:] == [
+    expected_names = {
+        path.name
+        for path in init_directory.iterdir()
+        if path.is_file() and path.suffix == ".sql" and path.name != "00-wc124-principal-bootstrap.sql"
+    }
+    assert set(names) == expected_names
+    assert {
         "59-wc124-billing-authority.sql",
         "60-wc124-principal-handoff.sql",
         "61-wc120-whatsapp-traffic-reservations.sql",
-    ]
+        "67-wc133-phone-onboarding.sql",
+    }.issubset(names)
     assert all(name.endswith(".sql") for name in names)
     assert sorted(path.name for path in init_directory.glob("*.sh")) == [
         "02-users-and-permissions.sh",
         "42-demo-marketplace-admission.sh",
+    ]
+
+
+def test_application_migrations_include_future_sql_files_in_byte_order(tmp_path: Path) -> None:
+    for name in (
+        "99-future.sql",
+        "00-wc124-principal-bootstrap.sql",
+        "67-phone-onboarding.sql",
+        "01-schemas.sql",
+        "42-local-only.sh",
+        "notes.txt",
+    ):
+        (tmp_path / name).write_text("", encoding="utf-8")
+
+    assert [path.name for path in application_migration_files(tmp_path)] == [
+        "01-schemas.sql",
+        "67-phone-onboarding.sql",
+        "99-future.sql",
     ]
 
 
