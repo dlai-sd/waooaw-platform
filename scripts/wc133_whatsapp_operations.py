@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -19,7 +20,7 @@ from typing import Any
 from goal006_azure_resource_id import canonical_container_app_id
 from goal006_deployment_inputs import WHATSAPP_SECRET_NAMES, add_key_vault_references, whatsapp_provider_inputs
 from goal006_demo_revision_cleanup import reconcile as reconcile_revisions
-from wc120_whatsapp_activation import _read_json, activation_settings
+from wc120_whatsapp_activation import _read_json, activation_settings, assemble_activation_bundle
 
 ACCOUNT = "waooawp3tfstate2ed118"
 CONTAINER = "deployment-config"
@@ -28,7 +29,7 @@ GROUP = "waooaw-demo-rg"
 APP = "ca-demo-business-platform"
 HOST = "whatsapp-demo.waooaw.com"
 IDENTITY = "id-demo-business-platform"
-OPERATIONS = ("register", "activate", "stop", "status", "cleanup-intake")
+OPERATIONS = ("register", "assemble", "activate", "stop", "status", "cleanup-intake")
 TRAFFIC = {
     f"{section}__{flag}": "false"
     for section in ("WhatsApp", "Wc120Conversation")
@@ -189,6 +190,13 @@ def planned_settings(
         return updated, registration_settings(provider, client_id)
     if operation == "activate":
         return updated, activation_settings(document, approved_digest, deployment(updated, resource), now)
+    if operation == "assemble":
+        if approved_digest:
+            raise ValueError("Assembly creates a review candidate, not an activation approval")
+        if any(environment(resource).get(key, "").lower() == "true" for key in TRAFFIC):
+            raise ValueError("Stop existing traffic before assembling a new activation candidate")
+        assemble_activation_bundle(document, deployment(updated, resource), now)
+        return updated, {}
     if document.strip() not in (b"", b"{}") or approved_digest:
         raise ValueError("This operation accepts no configuration document or approval digest")
     return updated, dict(STOP) if operation == "stop" else {}
@@ -198,17 +206,32 @@ def blob_args(name: str = BLOB) -> list[str]:
     return ["--account-name", ACCOUNT, "--container-name", CONTAINER, "--name", name, "--auth-mode", "login"]
 
 
+def candidate_blob(reference: str) -> str:
+    if not isinstance(reference, str) or re.fullmatch(r"[1-9][0-9]*-[1-9][0-9]*", reference) is None:
+        raise ValueError("Activation candidate reference must be an exact operation run and attempt")
+    return f"demo/whatsapp-operations/{reference}/activation.bundle.json"
+
+
 def prepare(directory: Path, operation: str, document: bytes, approved_digest: str) -> None:
     resource = app()
     before = ""
     configuration: dict[str, Any] = {}
-    if operation in ("register", "activate", "status"):
+    if operation in ("register", "assemble", "activate", "status"):
         before = az("storage", "blob", "show", *blob_args())["properties"]["etag"]
         target = directory / "configuration.download.json"
         az("storage", "blob", "download", *blob_args(), "--file", str(target), "--if-match", before)
         target.chmod(0o600)
         _read_json(target.read_bytes())
         configuration = json.loads(target.read_bytes())
+    if operation == "activate":
+        request = _read_json(document)
+        if isinstance(request, dict) and set(request) == {"candidate_reference"}:
+            name = candidate_blob(request["candidate_reference"])
+            etag = az("storage", "blob", "show", *blob_args(name))["properties"]["etag"]
+            target = directory / "candidate.download.json"
+            az("storage", "blob", "download", *blob_args(name), "--file", str(target), "--if-match", etag)
+            target.chmod(0o600)
+            document = target.read_bytes()
     identity = az("identity", "show", "--resource-group", GROUP, "--name", IDENTITY)
     updated, settings = planned_settings(
         operation, document, approved_digest, configuration, resource, identity["clientId"], datetime.now(timezone.utc)
@@ -233,6 +256,17 @@ def prepare(directory: Path, operation: str, document: bytes, approved_digest: s
 
 def persist(directory: Path, run: str) -> None:
     plan = _read_json((directory / "plan.json").read_bytes())
+    if plan["operation"] == "assemble":
+        configuration = _read_json((directory / "configuration.after.json").read_bytes())
+        raw = assemble_activation_bundle(
+            (directory / "document.raw").read_bytes(), deployment(configuration, app()), datetime.now(timezone.utc)
+        )
+        target = directory / "activation.bundle.json"
+        with os.fdopen(os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as stream:
+            stream.write(raw)
+        az("storage", "blob", "upload", *blob_args(candidate_blob(run)), "--file", str(target), "--overwrite", "false")
+        private_json(directory / "candidate.reference.json", {"reference": run})
+        return
     if plan["operation"] != "register":
         return
     before = _read_json((directory / "configuration.before.json").read_bytes())
@@ -283,7 +317,7 @@ def apply_settings(directory: Path) -> None:
     identity = az("identity", "show", "--resource-group", GROUP, "--name", IDENTITY)
     if identity["principalId"] != plan["principal_id"]:
         raise ValueError("Business Platform identity changed after preparation")
-    if plan["operation"] in ("register", "activate", "status"):
+    if plan["operation"] in ("register", "assemble", "activate", "status"):
         etag = az("storage", "blob", "show", *blob_args())["properties"]["etag"]
         target = directory / "configuration.apply.json"
         az("storage", "blob", "download", *blob_args(), "--file", str(target), "--if-match", etag)
@@ -301,17 +335,34 @@ def apply_settings(directory: Path) -> None:
     )
     if settings != plan["settings"]:
         raise ValueError("Prepared runtime settings changed")
-    if plan["operation"] == "activate":
+    if plan["operation"] in ("assemble", "activate"):
         registered = registration_settings(deployment(configuration, resource)["whatsapp_provider"], identity["clientId"])
         current = environment(resource)
         for key, expected in registered.items():
-            if key not in STOP and current.get(key) != expected:
+            if key not in STOP and key != "WhatsAppCapability__ConfigurationDigest" and current.get(key) != expected:
                 raise ValueError("Runtime does not match the registered deployment")
-    if plan["operation"] in ("register", "activate") or (plan["operation"] == "status" and "whatsapp_provider" in configuration):
+    if plan["operation"] in ("register", "assemble", "activate") or (
+        plan["operation"] == "status" and "whatsapp_provider" in configuration
+    ):
         if plan["operation"] == "status":
             deployment(configuration, resource)
         validate_versions(configuration["whatsapp_provider"]["secret_versions"], datetime.now(timezone.utc))
     if plan["operation"] == "status":
+        return
+    if plan["operation"] == "assemble":
+        raw = assemble_activation_bundle(
+            (directory / "document.raw").read_bytes(),
+            deployment(configuration, resource),
+            datetime.now(timezone.utc),
+        )
+        reference = _read_json((directory / "candidate.reference.json").read_bytes())["reference"]
+        name = candidate_blob(reference)
+        etag = az("storage", "blob", "show", *blob_args(name))["properties"]["etag"]
+        target = directory / "candidate.verified.json"
+        az("storage", "blob", "download", *blob_args(name), "--file", str(target), "--if-match", etag)
+        target.chmod(0o600)
+        if target.read_bytes() != raw or (directory / "activation.bundle.json").read_bytes() != raw:
+            raise RuntimeError("Stored activation candidate differs from the validated review bytes")
         return
     if plan["operation"] == "register":
         resolved = deployment(configuration, resource)
@@ -613,12 +664,26 @@ def main() -> int:
         else:
             if _read_json((args.directory / "plan.json").read_bytes())["operation"] != args.operation:
                 raise ValueError("Apply operation differs from its prepared plan")
+            if (
+                args.operation == "assemble"
+                and _read_json((args.directory / "candidate.reference.json").read_bytes())["reference"] != args.run
+            ):
+                raise ValueError("Candidate reference differs from the prepared operation run")
             apply_settings(args.directory)
             probe_callback(args.operation)
             current = app()
             evidence["image"] = bp_container(current)["image"]
             evidence["traffic_flags"] = {key: environment(current).get(key, "false") for key in STOP}
             evidence["verification_enabled"] = environment(current).get("WhatsApp__VerificationEnabled", "false")
+            if args.operation == "assemble":
+                target = args.directory / "activation.bundle.json"
+                raw = target.read_bytes()
+                evidence["candidate"] = {
+                    "reference": args.run,
+                    "digest": "sha256:" + hashlib.sha256(raw).hexdigest(),
+                    "expires_at": _read_json(raw)["authority"]["ExpiresAt"],
+                    "approval_verified": False,
+                }
             if args.operation == "status" and "whatsapp_provider" not in _read_json(
                 (args.directory / "configuration.after.json").read_bytes()
             ):

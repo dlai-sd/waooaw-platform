@@ -11,7 +11,7 @@ import pytest
 import yaml
 
 import wc133_whatsapp_operations as operations
-from test_wc120_whatsapp_activation import bundle
+from test_wc120_whatsapp_activation import assembly_profile, bundle
 from wc120_whatsapp_activation import activation_configuration_digest
 
 NOW = datetime(2026, 11, 2, 12, 0, tzinfo=timezone.utc)
@@ -686,6 +686,7 @@ class SimulatedAzure:
         )
         self.etag = '"first"'
         self.backups = []
+        self.candidates = {}
         self.calls = []
         self.roles = {}
         self.revisions = [
@@ -703,6 +704,20 @@ class SimulatedAzure:
             return {"id": RESOURCE_ROOT + "/providers/Microsoft.KeyVault/vaults/kv-waooaw-demo"}
         if args[:2] == ("storage", "blob"):
             assert args[args.index("--auth-mode") + 1] == "login"
+            name = args[args.index("--name") + 1]
+            if name.endswith("/activation.bundle.json"):
+                if args[2] == "upload":
+                    assert args[args.index("--overwrite") + 1] == "false"
+                    if name in self.candidates:
+                        raise RuntimeError("Candidate already exists")
+                    self.candidates[name] = Path(args[args.index("--file") + 1]).read_bytes()
+                elif args[2] == "show":
+                    assert name in self.candidates
+                    return {"properties": {"etag": '"candidate"'}}
+                else:
+                    assert args[2] == "download" and args[args.index("--if-match") + 1] == '"candidate"'
+                    Path(args[args.index("--file") + 1]).write_bytes(self.candidates[name])
+                return {}
             if args[2] == "show":
                 return {"properties": {"etag": self.etag}}
             if args[2] == "download":
@@ -808,8 +823,9 @@ class SimulatedAzure:
 
 
 @pytest.mark.parametrize("activation_failure", [None, "update", "retirement", "containment"])
+@pytest.mark.parametrize("candidate_reference", [False, True])
 def test_simulated_workflow_runs_register_status_activate_stop_adopt_and_intake_cleanup(
-    monkeypatch, tmp_path, activation_failure
+    monkeypatch, tmp_path, activation_failure, candidate_reference
 ):
     import sys
 
@@ -831,7 +847,7 @@ def test_simulated_workflow_runs_register_status_activate_stop_adopt_and_intake_
 
     monkeypatch.setattr(operations.urllib.request, "urlopen", urlopen)
 
-    def run(operation, document=b"{}", approved="", apply_result=0):
+    def run(operation, document=b"{}", approved="", apply_result=0, reference="123-1"):
         directory = tmp_path / (operation + "-" + str(len(azure.calls)))
         monkeypatch.setenv("PROVIDER_DOCUMENT", document.decode())
         phases = ("cleanup-intake",) if operation == "cleanup-intake" else ("prepare", "persist", "apply")
@@ -847,7 +863,7 @@ def test_simulated_workflow_runs_register_status_activate_stop_adopt_and_intake_
                     "--directory",
                     str(directory),
                     "--run",
-                    "123-1",
+                    reference,
                     "--approved-digest",
                     approved,
                 ],
@@ -874,18 +890,19 @@ def test_simulated_workflow_runs_register_status_activate_stop_adopt_and_intake_
         command[:3] == ("storage", "blob", "upload") or command[:2] == ("containerapp", "update")
         for command in azure.calls[start:]
     )
+    before_assembly = deepcopy(azure.stored), deepcopy(azure.current), deepcopy(azure.roles), deepcopy(azure.revisions)
+    start = len(azure.calls)
+    assembled = run("assemble", json.dumps(assembly_profile()).encode())
+    candidate = json.loads((assembled / "evidence-apply.json").read_text())["candidate"]
+    assert candidate["reference"] == "123-1" and candidate["approval_verified"] is False
+    raw = azure.candidates[operations.candidate_blob(candidate["reference"])]
+    assert candidate["digest"] == "sha256:" + hashlib.sha256(raw).hexdigest()
+    assert (azure.stored, azure.current, azure.roles, azure.revisions) == before_assembly
+    assert not any(command[:2] in (("containerapp", "update"), ("role", "assignment")) for command in azure.calls[start:])
+    document = json.dumps({"candidate_reference": candidate["reference"]}).encode()
+    if not candidate_reference:
+        document = raw
     config = operations.deployment(azure.stored, azure.current)
-    value = bundle()
-    provider = config["whatsapp_provider"]
-    value["registration_configuration_digest"] = provider["configuration_digest"]
-    value["authority"].update(
-        ReleaseDigest=provider["release_digest"],
-        CatalogDigest=provider["catalog_digest"],
-        ConfigurationDigest=activation_configuration_digest(
-            provider["configuration_digest"], value["binding_digests"], value["policies"], value["templates"]
-        ),
-    )
-    document = json.dumps(value).encode()
     fault_triggered = []
 
     def activation_azure(*args):
@@ -903,7 +920,7 @@ def test_simulated_workflow_runs_register_status_activate_stop_adopt_and_intake_
         return azure(*args)
 
     monkeypatch.setattr(operations, "az", activation_azure)
-    directory = run("activate", document, "sha256:" + hashlib.sha256(document).hexdigest(), 1 if activation_failure else 0)
+    directory = run("activate", document, candidate["digest"], 1 if activation_failure else 0)
     monkeypatch.setattr(operations, "az", azure)
     if activation_failure:
         assert fault_triggered
@@ -924,6 +941,14 @@ def test_simulated_workflow_runs_register_status_activate_stop_adopt_and_intake_
     assert not any(key.startswith("WhatsAppCapability__Authority__") for key in operations.environment(azure.current))
     assert sum(revision["properties"]["replicas"] for revision in azure.revisions) == 1
     assert {"name": "Database", "secretRef": "existing-secret"} in azure.current["properties"]["template"]["containers"][0]["env"]
+    if not activation_failure:
+        renewed = assembly_profile()
+        renewed["authority"].update(ActivationReference="FA:renewed", ExternalTrafficReference="FA:renewed-traffic")
+        assembled = run("assemble", json.dumps(renewed).encode(), reference="123-2")
+        candidate = json.loads((assembled / "evidence-apply.json").read_text())["candidate"]
+        run("activate", b'{"candidate_reference":"123-2"}', candidate["digest"])
+        assert all(operations.environment(azure.current)[key] == "true" for key in operations.TRAFFIC)
+        run("stop")
     run("cleanup-intake")
     assert not azure.intake_active and not azure.intake_grants and len(azure.roles) == 4
     directory = tmp_path / "terraform"
@@ -934,6 +959,178 @@ def test_simulated_workflow_runs_register_status_activate_stop_adopt_and_intake_
     operations.adopt(directory)
     assert len(imports) == 5
     assert len(requests) == 5
+
+
+def registered_azure(monkeypatch):
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return NOW
+
+    azure = SimulatedAzure()
+    azure.stored["whatsapp_provider"] = configuration()["whatsapp_provider"]
+    provider = operations.deployment(azure.stored, azure.current)["whatsapp_provider"]
+    azure.current["properties"]["template"]["containers"][0]["env"].extend(
+        {"name": key, "value": value} for key, value in operations.registration_settings(provider, "client").items()
+    )
+    monkeypatch.setattr(operations, "datetime", Clock)
+    monkeypatch.setattr(operations, "az", azure)
+    return azure
+
+
+@pytest.mark.parametrize("reference", ["", "../123-1", "123-1/extra", "01-1", "1-0", 1, None, {}, []])
+def test_candidate_reference_is_closed_to_one_exact_private_run(reference):
+    with pytest.raises(ValueError, match="exact operation run"):
+        operations.candidate_blob(reference)
+
+
+@pytest.mark.parametrize("change", ["active", "approval", "missing", "unknown", "duplicate"])
+def test_assembly_denials_have_no_cloud_writes(monkeypatch, tmp_path, change):
+    azure = registered_azure(monkeypatch)
+    profile, approved = assembly_profile(), ""
+    if change == "active":
+        azure.current["properties"]["template"]["containers"][0]["env"].append(
+            {"name": "WhatsApp__DispatchEnabled", "value": "true"}
+        )
+    elif change == "approval":
+        approved = "sha256:" + "a" * 64
+    elif change == "missing":
+        del profile["prerequisites"]["qualification"]
+    elif change == "unknown":
+        profile["access_token"] = "PRIVATE-CANARY"
+    raw = json.dumps(profile).encode()
+    if change == "duplicate":
+        raw = raw[:-1] + b', "authority": {}}'
+    with pytest.raises(ValueError):
+        operations.prepare(tmp_path, "assemble", raw, approved)
+    assert not azure.candidates
+    assert not any(command[:3] == ("storage", "blob", "upload") for command in azure.calls)
+    assert not any(command[:2] == ("containerapp", "update") for command in azure.calls)
+
+
+@pytest.mark.parametrize("change", ["image", "identity", "source", "runtime", "metadata", "candidate", "profile", "expiry"])
+def test_assembly_revalidates_current_state_and_stored_bytes_before_review_evidence(monkeypatch, tmp_path, change):
+    azure = registered_azure(monkeypatch)
+    operations.prepare(tmp_path, "assemble", json.dumps(assembly_profile()).encode(), "")
+    operations.persist(tmp_path, "123-1")
+    original = deepcopy(azure.stored), deepcopy(azure.current), deepcopy(azure.roles)
+    real_az = azure
+
+    def changed(*args):
+        if change == "identity" and args[:2] == ("identity", "show"):
+            return {"clientId": "client", "principalId": "other"}
+        result = real_az(*args)
+        if change == "metadata" and args[:2] == ("rest", "--method"):
+            result["value"][0]["attributes"]["enabled"] = False
+        return result
+
+    monkeypatch.setattr(operations, "az", changed)
+    if change == "image":
+        azure.current["properties"]["template"]["containers"][0]["image"] = IMAGE.replace("a" * 64, "c" * 64)
+    elif change == "source":
+        azure.stored["unrelated"] = "changed"
+    elif change == "runtime":
+        azure.current["properties"]["template"]["containers"][0]["env"].append(
+            {"name": "WhatsAppProvider__BindingVersion", "value": "wrong"}
+        )
+    elif change == "candidate":
+        azure.candidates[operations.candidate_blob("123-1")] += b" "
+    elif change == "profile":
+        profile = assembly_profile()
+        profile["authority"]["MaximumMessages"] = 6
+        (tmp_path / "document.raw").write_text(json.dumps(profile))
+    elif change == "expiry":
+
+        class Expired(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return NOW.replace(hour=13)
+
+        monkeypatch.setattr(operations, "datetime", Expired)
+    start = len(azure.calls)
+    with pytest.raises((ValueError, RuntimeError)):
+        operations.apply_settings(tmp_path)
+    assert not any(command[:3] == ("storage", "blob", "upload") for command in azure.calls[start:])
+    assert not any(command[:2] == ("containerapp", "update") for command in azure.calls)
+    assert azure.roles == original[2]
+
+
+def test_candidates_are_create_only_and_private_and_do_not_export_input_profile(monkeypatch, tmp_path):
+    import sys
+
+    azure = registered_azure(monkeypatch)
+    monkeypatch.setenv("PROVIDER_DOCUMENT", json.dumps(assembly_profile()).replace("Hello {{1}}", "PRIVATE-CANARY"))
+    for phase in ("prepare", "persist", "apply"):
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["operation", phase, "--operation", "assemble", "--directory", str(tmp_path), "--run", "123-1"],
+        )
+        assert operations.main() == 0
+    evidence = (tmp_path / "evidence-apply.json").read_text()
+    assert "PRIVATE-CANARY" not in evidence
+    assert "TenantId" not in evidence and "binding_digests" not in evidence and "prerequisites" not in evidence
+    assert '"approval_verified": false' in evidence
+    for name in ("activation.bundle.json", "candidate.verified.json", "candidate.reference.json", "document.raw"):
+        assert (tmp_path / name).stat().st_mode & 0o777 == 0o600
+    second = tmp_path / "retry"
+    second.mkdir()
+    operations.prepare(second, "assemble", json.dumps(assembly_profile()).encode(), "")
+    with pytest.raises(RuntimeError, match="already exists"):
+        operations.persist(second, "123-1")
+    assert len(azure.candidates) == 1
+
+
+@pytest.mark.parametrize("change", ["missing_approval", "wrong_digest", "changed_bytes", "expired", "image"])
+def test_candidate_activation_requires_independent_exact_current_approval(monkeypatch, tmp_path, change):
+    azure = registered_azure(monkeypatch)
+    assembly = tmp_path / "assembly"
+    assembly.mkdir()
+    operations.prepare(assembly, "assemble", json.dumps(assembly_profile()).encode(), "")
+    operations.persist(assembly, "123-1")
+    raw = azure.candidates[operations.candidate_blob("123-1")]
+    digest = "sha256:" + hashlib.sha256(raw).hexdigest()
+    if change == "missing_approval":
+        digest = ""
+    elif change == "wrong_digest":
+        digest = "sha256:" + "f" * 64
+    elif change == "changed_bytes":
+        azure.candidates[operations.candidate_blob("123-1")] += b"\n"
+    elif change == "expired":
+
+        class Expired(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return NOW.replace(hour=13)
+
+        monkeypatch.setattr(operations, "datetime", Expired)
+    else:
+        azure.current["properties"]["template"]["containers"][0]["image"] = IMAGE.replace("a" * 64, "f" * 64)
+    activation = tmp_path / "activation"
+    activation.mkdir()
+    start = len(azure.calls)
+    with pytest.raises(ValueError):
+        operations.prepare(activation, "activate", b'{"candidate_reference":"123-1"}', digest)
+    assert not any(command[:3] == ("storage", "blob", "upload") for command in azure.calls[start:])
+    assert not any(command[:2] == ("containerapp", "update") for command in azure.calls)
+
+
+def test_assembly_is_admitted_by_both_workflow_guards_without_changing_database_routing():
+    wrapper = (ROOT / ".github/workflows/deploy.yaml").read_text()
+    workflow = (ROOT / ".github/workflows/environment-deployment.yaml").read_text()
+    assert "options: [none, register, assemble, activate, stop, status, cleanup-intake]" in wrapper
+    assert "register|assemble|activate|stop|status|cleanup-intake)" in wrapper
+    assert 'case "$OPERATION" in register|assemble|activate|stop|status|cleanup-intake)' in workflow
+    jobs = yaml.safe_load(workflow)["jobs"]
+    assert jobs["terraform"]["if"] == "inputs.provider_operation == 'none'"
+    assert jobs["provider-operation"]["if"] == "inputs.provider_operation != 'none'"
+    assert jobs["provider-operation"]["environment"] == "demo"
+    assert "provider-operation" in jobs["cleanup-private"]["needs"]
+    artifact = next(
+        step for step in jobs["provider-operation"]["steps"] if step.get("name") == "Retain redacted provider evidence only"
+    )
+    assert artifact["with"]["path"].endswith("/evidence-*.json")
+    assert "activation.bundle.json" not in artifact["with"]["path"]
 
 
 def test_failure_evidence_records_only_source_location_not_private_missing_key(monkeypatch, tmp_path):

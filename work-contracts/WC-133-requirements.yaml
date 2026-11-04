@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-133
 contract_path: work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md
-contract_digest: f83458ea860c6bdedc570b8f8c382169dd00bff27ad64f9f7d277f000b70123d
+contract_digest: cfbba705cf7927ebf402ef3188190d61c863515f06e9bce77ae9dd9660398340
 implementation_scope: true
 result: PLANNED
 
@@ -86,7 +86,7 @@ requirements:
     dependencies: Corrected reviewed release; exact DNS/cloud scope authority; four valid protected versions; provider-management authority
     test_path_or_plan: WC-133 Section 5 R008; infra/config negatives plus independently authorized live hostname, challenge and subscription evidence
     completion_rule: Dedicated HTTPS callback and exact-token challenge succeed, subscriptions are verified, acceptance/dispatch/egress remain off during registration.
-    residual_risk: Deployment41802328251 at78f3c65 succeeds; Meta save and messages subscription human-confirmed, safe09:30:12 diagnostic proves200 six-key challenge. Private status evidence repair passes275 local regressions but is not yet run live. Personal test consent exists; actual activation package, independent exact approval and live acceptance remain incomplete. No workflow/database handling change
+    residual_risk: Private status41829928432 atd8dce9c9 passes with metadata READY and registration/runtime match; earlier Meta save/messages subscription confirmed. Consolidated candidate assembly/private storage/exact independent approval/activation/Stop path and operator runbook are implemented but not run live. Actual approved policy/template/pilot inputs, all accepted receipts, exact digest decision and live acceptance remain outstanding; no full deployment or database handling change
     result: BLOCKED
 
   - <<: *defaults
