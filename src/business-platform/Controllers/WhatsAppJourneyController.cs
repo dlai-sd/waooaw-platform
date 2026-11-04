@@ -1,6 +1,7 @@
 // Implements: ADR-023 and work-contracts/WC-058-goal005-ae01-discover-trial-configure.md §WC058-06
 // Implements: architecture/reference/components/conversation-engine-whatsapp-solution-work-component.md §25.2 WC120-P2
 // Implements: work-contracts/WC-121-demo-whatsapp-provider-enablement-work-component.md §5 WC121-C09-S09
+// Implements: work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md §Meta Verification Query Compatibility
 // constitutional_basis: C-023, C-026, C-042, C-059, C-063
 
 using System.Security.Cryptography;
@@ -94,11 +95,7 @@ public sealed class WhatsAppJourneyController(
         var challenge = Request.Query["hub.challenge"].ToString();
         var reason =
             Encoding.UTF8.GetByteCount(target) > 8192 ? "REQUEST_TARGET_TOO_LARGE"
-            : Request.Query.Count != 3
-            || Request.Query.Keys.Any(key =>
-                key != "hub.mode" && key != "hub.verify_token" && key != "hub.challenge"
-            )
-                ? "QUERY_SHAPE_INVALID"
+            : Request.Query.Count < 3 ? "QUERY_SHAPE_INVALID"
             : !HasOneBoundedParameter("hub.mode") ? "MODE_PARAMETER_INVALID"
             : !HasOneBoundedParameter("hub.verify_token") ? "TOKEN_PARAMETER_INVALID"
             : !HasOneBoundedParameter("hub.challenge") ? "CHALLENGE_PARAMETER_INVALID"

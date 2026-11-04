@@ -590,3 +590,42 @@ AUTHORIZATION_DENIED, STATE_LOCK_FAILED, REMOTE_OBJECT_NOT_FOUND, RESOURCE_ALREA
 CONFIGURATION_INVALID and COMMAND_FAILED identify bounded alternatives without printing raw
 provider output. Do not retry a full deployment based on COMMAND_FAILED alone. Release
 Qualification stays OFF under continuing Founder authority; other mandatory gates remain.
+
+### Meta Verification Query Compatibility - 2026-11-04
+
+Deployment41787273567 atda79da4 completes successfully, including Demo apply, verification
+and private-runner cleanup. The next human Meta Verify/Save attempt fails. The deployed
+revision ca-demo-business-platform--0000101 logs at08:20:01.9981802 UTC:
+StatusCode=401, Reason=QUERY_SHAPE_INVALID, QueryCount=6, ModeCount=1, TokenCount=1,
+ChallengeCount=1. This proves the closed three-key query rule rejects the actual request
+before protected token matching; it does not establish the token or extra parameter values.
+No raw query, headers or credential values were retrieved.
+
+The Founder explicitly confirms current-session implementation/tests/one-PR authority.
+Allow additional query parameters without maintaining a provider-specific allowlist.
+Ignore their values for verification and never log them. Preserve exactly one nonempty,
+bounded mode/token/challenge; exact subscribe mode, constant-time pinned token comparison,
+expected callback host, the inclusive8192-byte total request-target limit, existing status
+semantics and exact plain-text challenge. Missing or duplicate required fields must still
+fail even if extra keys bring the distinct query count to six. Required values remain
+bounded to1024 UTF-8 bytes. POST authenticity/acceptance/dispatch and all business gates
+remain unchanged. Earlier closed-query diagnostic observations above are historical.
+
+Validate through disposable real MVC/TestServer hosts with synthetic six-key requests,
+additional-key variations, required-field negative cases with extra keys, exact size
+boundaries, private canaries and no credential access on preflight failure. Record actual
+RED/GREEN and mandatory gate results before handoff. No deployment, reset, activation,
+workflow/database change, credential rotation or hosted-check watching is authorized.
+Release Qualification remains OFF under continuing Founder authority. Successful local
+verification does not substitute for a successful later human Meta Verify/Save attempt.
+
+Executable evidence: before the controller change, the new MVC regressions fail14/pass23,
+including the six-key challenge rejected with401 and negative cases masked by the closed
+query rule. After the fix and expanded missing/oversized-field matrix,96 focused
+host/journey/provider tests pass with zero skips. Tests cover8192-byte acceptance and
+8193-byte rejection, repeated/empty unrelated keys, six-key success, required-field
+negative cases with extras and unchanged host/credential/disabled gates. Exact response
+text/plain, one closed diagnostic record, private-canary exclusion and preflight
+credential-read behavior are asserted. CSharpier format/check passes for all three
+changed C# files; build with warnings-as-errors passes. Mandatory gates and exact-head
+PR preparation remain required; no deployment or live Meta success claimed.

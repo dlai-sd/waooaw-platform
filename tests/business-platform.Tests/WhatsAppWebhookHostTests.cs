@@ -26,7 +26,28 @@ public sealed class WhatsAppWebhookHostTests
 
     [Theory]
     [InlineData("valid", 200, "CHALLENGE_RETURNED", 3, 1, 1, 1)]
-    [InlineData("extra", 401, "QUERY_SHAPE_INVALID", 4, 1, 1, 1)]
+    [InlineData("extra", 200, "CHALLENGE_RETURNED", 4, 1, 1, 1)]
+    [InlineData("six-parameters", 200, "CHALLENGE_RETURNED", 6, 1, 1, 1)]
+    [InlineData("repeated-extra", 200, "CHALLENGE_RETURNED", 4, 1, 1, 1)]
+    [InlineData("empty-extra", 200, "CHALLENGE_RETURNED", 4, 1, 1, 1)]
+    [InlineData("target-limit", 200, "CHALLENGE_RETURNED", 4, 1, 1, 1)]
+    [InlineData("target-over-limit", 401, "REQUEST_TARGET_TOO_LARGE", 4, 1, 1, 1)]
+    [InlineData("missing-with-extra", 401, "TOKEN_PARAMETER_INVALID", 6, 1, 0, 1)]
+    [InlineData("missing-mode-with-extra", 401, "MODE_PARAMETER_INVALID", 5, 0, 1, 1)]
+    [InlineData("missing-challenge-with-extra", 401, "CHALLENGE_PARAMETER_INVALID", 5, 1, 1, 0)]
+    [InlineData("empty-challenge-with-extra", 401, "CHALLENGE_PARAMETER_INVALID", 6, 1, 1, 1)]
+    [InlineData("duplicate-token-with-extra", 401, "TOKEN_PARAMETER_INVALID", 6, 1, 2, 1)]
+    [InlineData("duplicate-mode-with-extra", 401, "MODE_PARAMETER_INVALID", 6, 2, 1, 1)]
+    [InlineData("duplicate-challenge-with-extra", 401, "CHALLENGE_PARAMETER_INVALID", 6, 1, 1, 2)]
+    [InlineData("wrong-mode-with-extra", 401, "MODE_MISMATCH", 6, 1, 1, 1)]
+    [InlineData("wrong-token-with-extra", 401, "TOKEN_MISMATCH", 6, 1, 1, 1)]
+    [InlineData("empty-token-with-extra", 401, "TOKEN_PARAMETER_INVALID", 6, 1, 1, 1)]
+    [InlineData("large-token-with-extra", 401, "TOKEN_PARAMETER_INVALID", 6, 1, 1, 1)]
+    [InlineData("large-challenge-with-extra", 401, "CHALLENGE_PARAMETER_INVALID", 6, 1, 1, 1)]
+    [InlineData("large-mode-with-extra", 401, "MODE_PARAMETER_INVALID", 6, 1, 1, 1)]
+    [InlineData("disabled-with-extra", 503, "VERIFICATION_DISABLED", 6, 1, 1, 1)]
+    [InlineData("wrong-host-with-extra", 403, "CALLBACK_HOST_MISMATCH", 6, 1, 1, 1)]
+    [InlineData("credential-failure-with-extra", 503, "CREDENTIAL_UNAVAILABLE", 6, 1, 1, 1)]
     [InlineData("missing", 401, "QUERY_SHAPE_INVALID", 2, 1, 0, 1)]
     [InlineData("duplicate-token", 401, "TOKEN_PARAMETER_INVALID", 3, 1, 2, 1)]
     [InlineData("duplicate-challenge", 401, "CHALLENGE_PARAMETER_INVALID", 3, 1, 1, 2)]
@@ -50,6 +71,8 @@ public sealed class WhatsAppWebhookHostTests
         int challenges
     )
     {
+        var extra = scenario.EndsWith("-with-extra", StringComparison.Ordinal);
+        scenario = extra ? scenario[..^"-with-extra".Length] : scenario;
         var logs = new VerificationLogs();
         var credentials = new VerificationCredentials(scenario);
         var builder = WebApplication.CreateBuilder();
@@ -97,13 +120,39 @@ public sealed class WhatsAppWebhookHostTests
         query = scenario switch
         {
             "extra" => query + "&private-unknown-key=private-unknown-value",
+            "six-parameters" => query
+                + "&private-unknown-key=private-unknown-value&private-other=value&private-third=value",
+            "repeated-extra" => query + "&private-unknown-key=one&private-unknown-key=two",
+            "empty-extra" => query + "&private-unknown-key=",
             "large-target" => query + "&private-unknown-key=" + new string('x', 8192),
             "missing" => "?hub.mode=subscribe&hub.challenge=" + PrivateChallenge,
+            "missing-mode" => $"?hub.verify_token={token}&hub.challenge={PrivateChallenge}",
+            "missing-challenge" => $"?hub.mode=subscribe&hub.verify_token={token}",
+            "empty-challenge" => $"?hub.mode=subscribe&hub.verify_token={token}&hub.challenge=",
+            "large-challenge" => $"?hub.mode=subscribe&hub.verify_token={token}&hub.challenge="
+                + new string('x', 1025),
+            "large-mode" => "?hub.mode="
+                + new string('x', 1025)
+                + $"&hub.verify_token={token}&hub.challenge={PrivateChallenge}",
             "duplicate-token" => query + "&hub.verify_token=" + PrivateToken,
             "duplicate-mode" => query + "&hub.mode=subscribe",
             "duplicate-challenge" => query + "&hub.challenge=" + PrivateChallenge,
             _ => query,
         };
+        if (extra)
+            query +=
+                "&private-unknown-key=private-unknown-value&private-other=value&private-third=value";
+        if (extra && scenario == "missing")
+            query += "&private-fourth=value";
+        if (scenario is "target-limit" or "target-over-limit")
+        {
+            query += "&private-unknown-key=";
+            var targetSize = scenario == "target-limit" ? 8192 : 8193;
+            query += new string(
+                'x',
+                targetSize - "/api/v1/channels/whatsapp/webhook".Length - query.Length
+            );
+        }
         using var request = new HttpRequestMessage(
             HttpMethod.Get,
             "/api/v1/channels/whatsapp/webhook" + query
