@@ -451,7 +451,13 @@ def test_azure_failure_never_exports_cli_output_or_private_inputs(monkeypatch):
     ("tool", "command", "stderr", "stage", "reason"),
     [
         ("terraform", ("-chdir=PRIVATE", "import"), "parsing staticContainerApps PRIVATE", "IMPORT", "RESOURCE_ID_CASE_MISMATCH"),
-        ("terraform", ("-chdir=PRIVATE", "state", "list"), "Error acquiring the state lock PRIVATE", "STATE_LIST", "STATE_LOCK_FAILED"),
+        (
+            "terraform",
+            ("-chdir=PRIVATE", "state", "list"),
+            "Error acquiring the state lock PRIVATE",
+            "STATE_LIST",
+            "STATE_LOCK_FAILED",
+        ),
         ("terraform", ("import",), "Cannot import non-existent remote object PRIVATE", "IMPORT", "REMOTE_OBJECT_NOT_FOUND"),
         ("terraform", ("import",), "Resource already managed by Terraform PRIVATE", "IMPORT", "RESOURCE_ALREADY_MANAGED"),
         ("terraform", ("import",), "Invalid count argument PRIVATE", "IMPORT", "CONFIGURATION_INVALID"),
@@ -469,7 +475,8 @@ def test_adoption_command_failures_retain_only_closed_diagnostics(
 
     monkeypatch.setattr(operations.shutil, "which", lambda name: "/bin/" + name)
     monkeypatch.setattr(
-        operations.subprocess, "run",
+        operations.subprocess,
+        "run",
         lambda *args, **kwargs: subprocess.CompletedProcess(args, 17, "PRIVATE_STDOUT", stderr),
     )
     run = operations.terraform if tool == "terraform" else operations.az
@@ -491,9 +498,7 @@ def test_adoption_command_failures_retain_only_closed_diagnostics(
 
 def test_normal_deployment_retains_adoption_evidence():
     workflow = yaml.safe_load((ROOT / ".github/workflows/environment-deployment.yaml").read_text())
-    upload = next(
-        step for step in workflow["jobs"]["terraform"]["steps"] if step.get("name") == "Upload plans and evidence"
-    )
+    upload = next(step for step in workflow["jobs"]["terraform"]["steps"] if step.get("name") == "Upload plans and evidence")
     assert upload["if"] == "always()"
     assert "workload/evidence-adopt.json" in upload["with"]["path"]
 
@@ -605,6 +610,68 @@ def test_reference_resolution_refuses_another_resource_group_or_application(part
     current["id"] = current["id"].replace(part, "another")
     with pytest.raises(ValueError, match="existing Demo Business Platform"):
         operations.deployment(configuration(), current)
+
+
+@pytest.mark.parametrize("configured", [False, True])
+def test_status_reads_private_configuration_and_metadata_without_any_mutation(monkeypatch, tmp_path, configured):
+    import sys
+
+    cloud = SimulatedAzure()
+    if configured:
+        cloud.stored = configuration()
+        registered = operations.deployment(cloud.stored, cloud.current)["whatsapp_provider"]
+        settings = operations.registration_settings(registered, "client")
+        cloud.current["properties"]["template"]["containers"][0]["env"].extend(
+            {"name": key, "value": value} for key, value in settings.items()
+        )
+    cloud.stored["PRIVATE_CANARY"] = "private-value-never-export"
+    before = deepcopy(cloud.stored), deepcopy(cloud.current)
+    monkeypatch.setattr(operations, "az", cloud)
+    monkeypatch.setattr(operations, "probe_callback", lambda _: None)
+    for phase in ("prepare", "persist", "apply"):
+        monkeypatch.setattr(
+            sys, "argv", ["operation", phase, "--operation", "status", "--directory", str(tmp_path), "--run", "123-1"]
+        )
+        assert operations.main() == 0
+    text = (tmp_path / "evidence-apply.json").read_text()
+    evidence = json.loads(text)
+    assert evidence["status"] == "PASS"
+    assert evidence["activation_approval_verified"] is False
+    assert evidence["credential_metadata"] == ("READY" if configured else "NOT_CONFIGURED")
+    assert evidence["missing_activation_groups"] == (
+        ["AUTHORITY", "POLICIES", "ROLLBACK", "TEMPLATES"] if configured else ["REGISTRATION"]
+    )
+    if configured:
+        assert evidence["registration_runtime_matches"] is True
+        assert set(evidence["registration"]) == {"release_digest", "configuration_digest", "catalog_digest"}
+    assert "PRIVATE_CANARY" not in text and "private-value" not in text
+    assert (cloud.stored, cloud.current) == before
+    assert not cloud.backups and not cloud.roles
+    assert all(
+        command[:3] in {("storage", "blob", "show"), ("storage", "blob", "download")}
+        or command[:2] in {("identity", "show"), ("containerapp", "show"), ("rest", "--method")}
+        for command in cloud.calls
+    )
+    assert (tmp_path / "configuration.download.json").stat().st_mode & 0o777 == 0o600
+
+
+@pytest.mark.parametrize("failure", ["image", "configuration", "metadata"])
+def test_status_rejects_drift_and_invalid_metadata_before_any_mutation(monkeypatch, tmp_path, failure):
+    cloud = SimulatedAzure()
+    cloud.stored = configuration()
+    monkeypatch.setattr(operations, "az", cloud)
+    operations.prepare(tmp_path, "status", b"{}", "")
+    if failure == "image":
+        cloud.current["properties"]["template"]["containers"][0]["image"] = IMAGE.replace("a" * 64, "c" * 64)
+    elif failure == "configuration":
+        cloud.stored["unrelated"] = "changed"
+    else:
+        monkeypatch.setattr(operations, "validate_versions", lambda *args: (_ for _ in ()).throw(ValueError("metadata denied")))
+    before = deepcopy(cloud.stored), deepcopy(cloud.current)
+    with pytest.raises((ValueError, RuntimeError)):
+        operations.apply_settings(tmp_path)
+    assert (cloud.stored, cloud.current) == before
+    assert not cloud.roles and not cloud.backups
 
 
 class SimulatedAzure:
@@ -803,7 +870,10 @@ def test_simulated_workflow_runs_register_status_activate_stop_adopt_and_intake_
     assert len(azure.backups) == 1 and len(azure.roles) == 4
     start = len(azure.calls)
     run("status")
-    assert not any(command[:2] in (("storage", "blob"), ("containerapp", "update")) for command in azure.calls[start:])
+    assert not any(
+        command[:3] == ("storage", "blob", "upload") or command[:2] == ("containerapp", "update")
+        for command in azure.calls[start:]
+    )
     config = operations.deployment(azure.stored, azure.current)
     value = bundle()
     provider = config["whatsapp_provider"]

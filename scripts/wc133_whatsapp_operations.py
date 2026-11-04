@@ -202,7 +202,7 @@ def prepare(directory: Path, operation: str, document: bytes, approved_digest: s
     resource = app()
     before = ""
     configuration: dict[str, Any] = {}
-    if operation in ("register", "activate"):
+    if operation in ("register", "activate", "status"):
         before = az("storage", "blob", "show", *blob_args())["properties"]["etag"]
         target = directory / "configuration.download.json"
         az("storage", "blob", "download", *blob_args(), "--file", str(target), "--if-match", before)
@@ -283,7 +283,7 @@ def apply_settings(directory: Path) -> None:
     identity = az("identity", "show", "--resource-group", GROUP, "--name", IDENTITY)
     if identity["principalId"] != plan["principal_id"]:
         raise ValueError("Business Platform identity changed after preparation")
-    if plan["operation"] in ("register", "activate"):
+    if plan["operation"] in ("register", "activate", "status"):
         etag = az("storage", "blob", "show", *blob_args())["properties"]["etag"]
         target = directory / "configuration.apply.json"
         az("storage", "blob", "download", *blob_args(), "--file", str(target), "--if-match", etag)
@@ -307,8 +307,12 @@ def apply_settings(directory: Path) -> None:
         for key, expected in registered.items():
             if key not in STOP and current.get(key) != expected:
                 raise ValueError("Runtime does not match the registered deployment")
-    if plan["operation"] in ("register", "activate"):
+    if plan["operation"] in ("register", "activate") or (plan["operation"] == "status" and "whatsapp_provider" in configuration):
+        if plan["operation"] == "status":
+            deployment(configuration, resource)
         validate_versions(configuration["whatsapp_provider"]["secret_versions"], datetime.now(timezone.utc))
+    if plan["operation"] == "status":
+        return
     if plan["operation"] == "register":
         resolved = deployment(configuration, resource)
         scope_root = next(iter(resolved["key_vault_secret_resource_ids"].values())).split("/secrets/", 1)[0]
@@ -615,6 +619,43 @@ def main() -> int:
             evidence["image"] = bp_container(current)["image"]
             evidence["traffic_flags"] = {key: environment(current).get(key, "false") for key in STOP}
             evidence["verification_enabled"] = environment(current).get("WhatsApp__VerificationEnabled", "false")
+            if args.operation == "status" and "whatsapp_provider" not in _read_json(
+                (args.directory / "configuration.after.json").read_bytes()
+            ):
+                evidence["credential_metadata"] = "NOT_CONFIGURED"
+                evidence["missing_activation_groups"] = ["REGISTRATION"]
+                evidence["activation_approval_verified"] = False
+            elif args.operation == "status":
+                configuration = _read_json((args.directory / "configuration.after.json").read_bytes())
+                identity = az("identity", "show", "--resource-group", GROUP, "--name", IDENTITY)
+                registered = deployment(configuration, current)["whatsapp_provider"]
+                expected = registration_settings(registered, identity["clientId"])
+                actual = environment(current)
+                evidence["registration"] = {
+                    key: registered[key] for key in ("release_digest", "configuration_digest", "catalog_digest")
+                }
+                evidence["registration_runtime_matches"] = all(
+                    actual.get(key) == value
+                    for key, value in expected.items()
+                    if key not in STOP and key != "WhatsAppCapability__ConfigurationDigest"
+                )
+                evidence["credential_metadata"] = "READY"
+                groups = {
+                    "AUTHORITY": any(key.startswith("WhatsAppCapability__Authority__") for key in actual),
+                    "POLICIES": all(
+                        actual.get(f"Wc120Conversation__{key}")
+                        for key in (
+                            "PolicyVersion",
+                            "InstitutionalPolicyVersion",
+                            "InteractionPolicyVersion",
+                            "ChannelRenderingPolicyVersion",
+                        )
+                    ),
+                    "TEMPLATES": any(key.startswith("WhatsApp__TemplateProjections__") for key in actual),
+                    "ROLLBACK": bool(actual.get("WhatsAppCapability__RollbackDigest")),
+                }
+                evidence["missing_activation_groups"] = sorted(key for key, present in groups.items() if not present)
+                evidence["activation_approval_verified"] = False
         evidence["status"] = "PASS"
     except (ValueError, KeyError, OSError, RuntimeError) as error:
         evidence["error_type"] = type(error).__name__
