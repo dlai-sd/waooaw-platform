@@ -629,3 +629,41 @@ text/plain, one closed diagnostic record, private-canary exclusion and preflight
 credential-read behavior are asserted. CSharpier format/check passes for all three
 changed C# files; build with warnings-as-errors passes. Mandatory gates and exact-head
 PR preparation remain required; no deployment or live Meta success claimed.
+
+### Private Activation Status Evidence - 2026-11-04
+
+Meta verification and messages subscription are now human-confirmed; the deployed revision
+returns200 CHALLENGE_RETURNED with six keys at09:30:12 UTC. The Founder approves a personal
+30-minute test, ten total messages/replies and INR10 spend, then authorizes a narrowly scoped
+tested PR if an actual tool gap requires it. No broader customer consent is implied.
+
+The existing provider-only status route starts the sanctioned private runner but does not
+download registered configuration or validate its exact credential-version metadata. Local
+storage access is denied by expected private networking; no firewall exception is permitted.
+Extend existing status to inspect registered configuration with conditional downloads and
+revalidate its image, identity and metadata at application time without resource mutation.
+Export only verified registration release/configuration/catalog digests, fixed registration
+alignment outcomes, credential metadata readiness and missing activation field groups.
+Never export the stored document, caller-controlled configuration fields, raw Meta IDs,
+telephone/contact/tenant values, tokens, secret values, policies or template bodies.
+
+Status PASS means the read-only inspection completed, never activation or qualification.
+Report absent activation authority, policy inventory, template inventory and rollback tuple
+as explicit missing groups. Counts/presence are not proof of consent, approved templates,
+healthy alert delivery, pricing or rollback effectiveness. Reject configuration/image drift
+and invalid metadata explicitly. No writes to Azure, source blobs, Terraform state, RBAC,
+database schema/data or runtime settings; temporary private files are removed by the existing
+workflow cleanup. Reuse existing status dispatch and artifact upload; no workflow change.
+Do not invent independent receipts or an approved activation-bundle digest. Qualification
+OFF continues for this repair, with mandatory author review/tests/preparation required.
+
+Validation:275 focused Docker provider-operation/activation/readiness tests pass; Ruff
+check/format and diff hygiene pass. New configured/unconfigured status scenarios execute
+prepare/persist/apply through the real entry point, asserting conditional private reads,
+metadata readiness, private-canary exclusion, mode0600 private downloads and no storage,
+runtime or role mutation. Image/configuration drift and invalid metadata are rejected.
+The existing full lifecycle simulation still covers registration, activation, containment,
+Stop, adoption and intake cleanup. Status before registration remains supported, with an
+explicit NOT_CONFIGURED result. No live private status run or activation claimed by these
+local tests; the existing Founder-dispatched provider-only status workflow is the next
+operator step after review/merge, not a full deployment or database reset.
