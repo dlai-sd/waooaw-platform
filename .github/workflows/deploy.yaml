@@ -35,9 +35,9 @@ on:
         required: false
         default: none
         type: choice
-        options: [none, register, activate, stop, status, cleanup-intake]
+        options: [none, register, assemble, activate, stop, status, cleanup-intake]
       provider_document:
-        description: "Closed non-secret registration metadata or activation bundle; never credentials, phone numbers or Meta IDs"
+        description: "Closed non-secret registration, assembly profile, activation bundle or candidate_reference; never credentials, phone numbers or Meta IDs"
         required: false
         default: "{}"
         type: string
@@ -84,7 +84,7 @@ jobs:
             --image-home "$IMAGE_HOME")
           case "$PROVIDER_OPERATION" in
             none) ;;
-            register|activate|stop|status|cleanup-intake)
+            register|assemble|activate|stop|status|cleanup-intake)
               test "$TARGET_ENVIRONMENT:$EXECUTION_MODE" = demo:plan
               ;;
             *) exit 1 ;;

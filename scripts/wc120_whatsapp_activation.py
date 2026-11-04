@@ -123,6 +123,59 @@ def activation_settings(
 ) -> dict[str, str]:
     if not _match(approved_digest, DIGEST) or approved_digest != "sha256:" + hashlib.sha256(bundle_bytes).hexdigest():
         raise ValueError("Activation bundle differs from the independently approved digest")
+    return _validated_settings(bundle_bytes, deployment, now)
+
+
+def _candidate_json(value: Any) -> str:
+    if isinstance(value, dict):
+        return "{" + ",".join(json.dumps(key) + ":" + _candidate_json(value[key]) for key in sorted(value)) + "}"
+    if isinstance(value, list):
+        return "[" + ",".join(_candidate_json(item) for item in value) + "]"
+    if isinstance(value, Decimal):
+        if not value.is_finite():
+            raise ValueError("Activation numbers must be finite")
+        return str(value)
+    return json.dumps(value, allow_nan=False)
+
+
+def assemble_activation_bundle(profile_bytes: bytes, deployment: dict[str, Any], now: datetime) -> bytes:
+    """Build a review candidate, never an approval, from actual operator-supplied evidence."""
+    profile = _closed(
+        _read_json(profile_bytes),
+        {"authority", "binding_digests", "policies", "templates", "prerequisites"},
+        "Activation assembly profile fields are closed",
+    )
+    derived = {"Environment", "ReleaseDigest", "ConfigurationDigest", "CatalogDigest", "Revoked"}
+    authority_keys = AUTHORITY_FIELDS - derived
+    if isinstance(profile["authority"], dict) and "AllowProvisionalOnboarding" in profile["authority"]:
+        authority_keys |= {"AllowProvisionalOnboarding"}
+    authority = _closed(profile["authority"], authority_keys, "Assembly authority must omit derived tuple fields")
+    provider = deployment["whatsapp_provider"]
+    try:
+        configuration_digest = activation_configuration_digest(
+            provider["configuration_digest"], profile["binding_digests"], profile["policies"], profile["templates"]
+        )
+    except (TypeError, ValueError):
+        raise ValueError("Provider bindings, policies and templates must contain valid metadata") from None
+    candidate = {
+        "schema": "waooaw.demo-whatsapp-activation/v1",
+        "registration_configuration_digest": provider["configuration_digest"],
+        **profile,
+        "authority": {
+            **authority,
+            "Environment": "demo",
+            "ReleaseDigest": provider["release_digest"],
+            "CatalogDigest": provider["catalog_digest"],
+            "ConfigurationDigest": configuration_digest,
+            "Revoked": False,
+        },
+    }
+    raw = _candidate_json(candidate).encode()
+    _validated_settings(raw, deployment, now)
+    return raw
+
+
+def _validated_settings(bundle_bytes: bytes, deployment: dict[str, Any], now: datetime) -> dict[str, str]:
     bundle = _closed(
         _read_json(bundle_bytes),
         {"schema", "registration_configuration_digest", "authority", "binding_digests", "policies", "templates", "prerequisites"},
@@ -224,6 +277,7 @@ def activation_settings(
             not _match(template["Name"], r"[a-z0-9_]{1,512}")
             or not _match(template["Version"], REFERENCE)
             or not _match(template["Locale"], r"[a-z]{2,3}(?:_[A-Z]{2})?")
+            or not isinstance(template["Category"], str)
             or template["Category"] not in {"UTILITY", "MARKETING", "AUTHENTICATION"}
             or not isinstance(template["Body"], str)
             or not 1 <= len(template["Body"]) <= 4096

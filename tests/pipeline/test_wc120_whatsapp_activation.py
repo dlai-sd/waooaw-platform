@@ -10,7 +10,14 @@ from pathlib import Path
 import pytest
 
 from goal006_deployment_inputs import WHATSAPP_SECRET_NAMES, whatsapp_provider_inputs
-from wc120_whatsapp_activation import POLICIES, PREREQUISITES, activation_configuration_digest, activation_settings, main
+from wc120_whatsapp_activation import (
+    POLICIES,
+    PREREQUISITES,
+    activation_configuration_digest,
+    activation_settings,
+    assemble_activation_bundle,
+    main,
+)
 
 NOW = datetime(2026, 11, 2, 12, 0, tzinfo=timezone.utc)
 DIGEST = "sha256:" + "a" * 64
@@ -81,6 +88,70 @@ def bundle() -> dict:
 def prepare(value: dict, config: dict | None = None, now: datetime = NOW) -> dict[str, str]:
     raw = json.dumps(value).encode()
     return activation_settings(raw, "sha256:" + hashlib.sha256(raw).hexdigest(), config or deployment(), now)
+
+
+def assembly_profile() -> dict:
+    value = bundle()
+    value.pop("schema")
+    value.pop("registration_configuration_digest")
+    for key in ("Environment", "ReleaseDigest", "ConfigurationDigest", "CatalogDigest", "Revoked"):
+        value["authority"].pop(key)
+    return value
+
+
+def test_assembly_derives_tuple_but_does_not_approve_or_mutate_inputs() -> None:
+    profile, config = assembly_profile(), deployment()
+    before = deepcopy(profile), deepcopy(config)
+    raw = assemble_activation_bundle(json.dumps(profile).encode(), config, NOW)
+    candidate = json.loads(raw)
+    assert candidate == bundle()
+    assert (profile, config) == before
+    with pytest.raises(ValueError, match="independently approved"):
+        activation_settings(raw, "", config, NOW)
+    settings = activation_settings(raw, "sha256:" + hashlib.sha256(raw).hexdigest(), config, NOW)
+    assert settings == prepare(bundle())
+
+
+def test_assembly_preserves_exact_decimal_limits_without_float_rounding() -> None:
+    raw = json.dumps(assembly_profile()).replace('"MaximumSpendInr": 10', '"MaximumSpendInr": 999999999998.123456')
+    candidate = assemble_activation_bundle(raw.encode(), deployment(), NOW)
+    result = activation_settings(candidate, "sha256:" + hashlib.sha256(candidate).hexdigest(), deployment(), NOW)
+    assert result["WhatsAppCapability__Authority__MaximumSpendInr"] == "999999999998.123456"
+
+
+@pytest.mark.parametrize("category", [None, 1, [], {}])
+def test_assembly_malformed_template_metadata_is_explicit_validation_failure(category) -> None:
+    profile = assembly_profile()
+    profile["templates"][0]["Category"] = category
+    with pytest.raises(ValueError):
+        assemble_activation_bundle(json.dumps(profile).encode(), deployment(), NOW)
+
+
+@pytest.mark.parametrize("section", ["authority", "binding_digests", "policies", "templates", "prerequisites"])
+def test_assembly_rejects_all_missing_input_groups(section) -> None:
+    profile = assembly_profile()
+    del profile[section]
+    with pytest.raises(ValueError, match="closed"):
+        assemble_activation_bundle(json.dumps(profile).encode(), deployment(), NOW)
+
+
+@pytest.mark.parametrize("mutation", ["tuple", "policy", "template", "receipt", "expiry", "precision"])
+def test_assembly_reuses_all_activation_validation_before_candidate_output(mutation) -> None:
+    profile = assembly_profile()
+    if mutation == "tuple":
+        profile["authority"]["ReleaseDigest"] = DIGEST
+    elif mutation == "policy":
+        del profile["policies"]["PolicyVersion"]
+    elif mutation == "template":
+        profile["templates"] = []
+    elif mutation == "receipt":
+        del profile["prerequisites"]["alerts"]
+    elif mutation == "expiry":
+        profile["authority"]["ExpiresAt"] = NOW.isoformat()
+    else:
+        profile["authority"]["MaximumCostPerMessageInr"] = 0.0000001
+    with pytest.raises(ValueError):
+        assemble_activation_bundle(json.dumps(profile).encode(), deployment(), NOW)
 
 
 def test_activation_binds_existing_runtime_options_without_credentials_or_provider_ids() -> None:

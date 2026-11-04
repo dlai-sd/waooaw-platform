@@ -4090,7 +4090,7 @@ jobs:
           test "$CALLER_WORKFLOW_REF" = "$EXPECTED_CALLER_WORKFLOW_REF"
           test "$TARGET_ENVIRONMENT:$APPLY_REQUESTED" = demo:false
           case "$GITHUB_ACTOR" in dlai-sd|yk-dlaisd) ;; *) exit 1 ;; esac
-          case "$OPERATION" in register|activate|stop|status|cleanup-intake) ;; *) exit 1 ;; esac
+          case "$OPERATION" in register|assemble|activate|stop|status|cleanup-intake) ;; *) exit 1 ;; esac
           test "$OPERATION" = activate || test -z "$APPROVED_DIGEST"
           mkdir -m 700 "$RUNNER_TEMP/whatsapp-operation"
           echo "OPERATION_DIRECTORY=$RUNNER_TEMP/whatsapp-operation" >> "$GITHUB_ENV"

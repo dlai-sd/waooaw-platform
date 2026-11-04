@@ -667,3 +667,171 @@ Stop, adoption and intake cleanup. Status before registration remains supported,
 explicit NOT_CONFIGURED result. No live private status run or activation claimed by these
 local tests; the existing Founder-dispatched provider-only status workflow is the next
 operator step after review/merge, not a full deployment or database reset.
+
+### Consolidated Activation Package - 2026-11-04
+
+The Founder requests one complete tested PR for remaining preparation and operator steps,
+then approves proceeding. Existing implementation authority continues. Status run41829928432
+passes privately: pinned credential metadata READY and registration matches runtime.
+Authority, policies, rollback and template groups are absent. Do not equate this successful
+inspection, the earlier bounded personal-test consent or passing tests with exact activation
+approval or fabricate real provider templates, policies, pilot identity or readiness receipts.
+
+Provide one existing-provider workflow path from assembly to activation and Stop. Add a
+read-only-runtime assemble operation that takes a closed non-secret input profile containing
+actual authority/consent/limits/window, binding digests, policy versions, approved template
+inventory, rollback digest and all prerequisite receipt references/digests/expiry. Derive
+release, registration configuration, catalog and activation configuration digests from the
+current registered private deployment, not hand-entered guesses. Validate through the same
+activation rules without self-approving the output. Store exact candidate bytes create-only
+under the private operation/run prefix; publish only candidate reference/digest and expiry.
+This is the only new storage write; never change registered configuration or runtime.
+
+Activate may use the private candidate reference plus the independently approved exact digest.
+Resolve with ETag-conditional read; rerun all existing tuple/window/metadata/runtime checks.
+Reject wrong digest, image/configuration/identity drift, malformed references, absent/expired
+receipts, unsupported templates and missing policies before effects. The assembler cannot
+prove external receipt truth, alert delivery, pricing or provider template approval; operator
+instructions must require actual accepted evidence. No sample fixture is live configuration.
+
+Preserve legacy inline activation and registration/status/Stop/cleanup behavior. Expand only
+provider-operation selectors; prove all other workflow jobs/commands/database handling
+structurally unchanged. Runtime source, database handling and schemas remain unchanged.
+Provider secrets are never accessed. Network rules and existing permissions remain unchanged.
+No new public endpoint, application rebuild or full redeployment is permitted. Tests
+must execute assemble/private storage/exact approval/activate/Stop, no-write denials and
+failure containment. Document one complete operator runbook with exact inputs, approval,
+expiry, reply/continuity/Stop evidence and cost review; do not promise live readiness from PR.
+For renewed assembly/activation after Stop, compare actual provider registration fields as
+status already does, excluding the effective `WhatsAppCapability__ConfigurationDigest`
+that a previous activation intentionally overwrote. The activation validator still recomputes
+and binds the exact registration and effective configuration digests; no stale provider,
+release, catalog, secret-version or identity mismatch is accepted. Test a new independently
+approved candidate after Stop without requiring a reset or re-registration.
+
+**Local validation:** Docker-owned immutable Python runner
+`sha256:0e0f86ee4e41c88e983b2d084bef97a6c1fd67b4c5015cb3152c36a634cc832e`
+executes `pytest tests/pipeline/test_goal006_runner_bootstrap.py
+tests/pipeline/test_wc132_demo_reset_recovery.py tests/pipeline/test_wc091_environment_readiness.py
+tests/pipeline/test_wc120_whatsapp_activation.py tests/pipeline/test_wc133_whatsapp_operations.py
+tests/pipeline/test_goal006_demo_revision_cleanup.py -q -p no:cacheprovider
+--junitxml=/evidence/provider-controls.xml`: **380 passed, zero skipped**. Includes activation67
+and operations98, both legacy-inline and candidate-reference activation, simulated Azure
+assembly/create-only storage/conditional exact readback/activation/Stop, rollout/retirement/
+containment failures, expired/wrong approval and image/identity/source/runtime/metadata/input/
+candidate drift, closed malformed references/profiles, numeric precision, no public profile
+export and private0600 files. Simulated cloud/provider paths are not live delivery evidence.
+`ruff check` and `ruff format --check` on the two changed scripts and their two test files
+pass; exact contract/ledger validator passes all ten requirements. Workflow diff changes only
+provider admission selectors and the input description; database/Terraform jobs unchanged.
+Mandatory staged/exact-head prechecks remain separate PR evidence.
+
+#### Complete Operator Sequence (Single PR; Provider-Only)
+
+**Actual baseline:** #585 merged asd8dce9c9; full deployment41823001424 completed.
+Private provider-only status41829928432 passed, cleanup passed, and Terraform/verification/
+publication were skipped. Exact registered BP release is
+`sha256:401545767c9d2546731accbaa6949347a796ef7ff2c8eba402a47f7835dec126`;
+registration configuration is
+`sha256:630580cc2328798bab67e6fbbc1e5ab8938c7b13778794cf9ae22de175f65855`;
+catalog is `sha256:4eae197a81784d04201b06af90ce329c898350d5691be5aeb5108e859579e599`.
+Credential metadata READY, runtime matches registration, verification enabled; missing
+groups AUTHORITY/POLICIES/ROLLBACK/TEMPLATES. Earlier tests and green CI with qualification
+skipped are not an activation qualification receipt for this exact image.
+
+1. **Obtain real inputs once, privately.** Use the accepted conversation/identity/provider
+   owners and current evidence, not test fixtures. The closed assembly profile has exactly
+   `authority`, `binding_digests`, `policies`, `templates`, `prerequisites`. No credentials,
+   complete telephone numbers, raw app/WABA/sender identifiers or personal message bodies.
+   The workflow dispatch document is **not a secret channel**. If approved template BODY
+   text itself is confidential, do not put it in workflow inputs.
+
+   | Group | Required fields and source |
+   |---|---|
+   | authority | `ActivationReference`, distinct `ExternalTrafficReference`, `ConsentReference`, `IncidentOwnerReference`, `AlertRouteReference`, `RollbackDigest`, `TenantId`, `RecipientBindingDigest`, `StartsAt`, `ExpiresAt`, `MaximumMessages`, `MaximumMessagesPerMinute`, `MaximumSpendInr`, `MaximumCostPerMessageInr`; optional explicit boolean `AllowProvisionalOnboarding`. Use actual independent decisions, Identity-owned pilot tenant, canonical consenting-contact digest, current incident/alert route and accepted compatible rollback tuple. Do not invent a tenant or reuse sender digest as contact consent. |
+   | binding_digests | `AppBindingDigest`, `WabaBindingDigest`, `RecipientBindingDigest` from the exact protected environment binding under authorized access; the last is the sender Phone Number ID binding, not authority's contact digest. Never export raw protected binding/credential values. |
+   | policies | Current accepted `PolicyVersion`, `InstitutionalPolicyVersion`, `InteractionPolicyVersion`, `ChannelRenderingPolicyVersion` from conversation owners. Empty runtime defaults are not accepted versions. |
+   | templates | 1-16 actual approved BODY-only `{Name,Version,Locale,Category,Body}` records; Meta name/locale/category and approved body/version must match. No guessed `hello_world`, fabricated approval or fixture `demo_test`. |
+   | prerequisites | Exactly `qualification`, `zero_traffic_deployment`, `provider_registration`, `credential_scope`, `consent`, `stop`, `alerts`, `rollback`, `pricing`, each `{reference,digest,expires_at}`. Digest the actual accepted receipt bytes, record its durable reference and honest validity; cover the entire pilot window. |
+
+   Omit `schema`, `registration_configuration_digest`, and authority's
+   `Environment/ReleaseDigest/ConfigurationDigest/CatalogDigest/Revoked`: assembly derives
+   these from the current registered deployment, policies, bindings and templates. Keep the
+   existing approved boundary: Founder's own recipient only, at most 30 minutes, **10 inbound
+   plus outbound combined**, INR10, no other customer; rate and conservative cost/message
+   within those limits. Provisional onboarding requires explicit permission and its isolated
+   Identity-owned pilot scope. No marketing or business-initiation expansion.
+
+   Verify each receipt's actual truth before submitting it: exact-image qualification,
+   deployed no-traffic tuple, registration, pinned metadata validity, consent, real Stop/
+   recovery evidence, delivered alert test/owner route, compatible rollback and current
+   account/provider/model pricing. Shape/digest checks do not prove these external facts.
+   Current full qualification, approved template inventory/policies, pilot identity/binding,
+   accepted alert/rollback/pricing receipts have **not** been established by the status run.
+   If missing, stop with the complete missing-input list; do not mint success receipts.
+
+2. **Assemble without deploying.** After Founder merge, dispatch trusted `main`, environment
+   `demo`, execution `plan`, image home `azure`, provider operation `assemble`, profile as
+   `provider_document`, **blank** `provider_approved_digest`. Existing private control identity
+   creates the candidate under
+   `deployment-config/demo/whatsapp-operations/{run-id}-{attempt}/activation.bundle.json`
+   with overwrite disabled. Existing deployment identity checks metadata/runtime/source and
+   ETag-conditionally reads back identical candidate bytes. No registered-source, application,
+   database, RBAC or firewall write occurs. Both normal application deployment and database
+   reset are skipped. Redacted `evidence-apply.json` must PASS and report only
+   `candidate.reference/digest/expires_at/approval_verified=false`, plus normal safe fields.
+   Candidate JSON and input profile stay out of public artifacts.
+
+   Example for an authorized operator with an already completed **non-secret** profile:
+
+   ```sh
+   gh workflow run deploy.yaml --ref main \
+     -f environment=demo -f execution=plan -f image_home=azure \
+     -f provider_operation=assemble -F provider_document=@/private/activation-profile.json
+   ```
+
+3. **Independent exact review.** Founder reviews the actual private candidate, accepted
+   receipts, pilot limits, incident/alert route and rollback, then separately authorizes
+   activation and external traffic for its exact published digest. Assembly, prior personal
+   test consent, PR merge and a computed checksum are not this decision. The operator must
+   not manufacture `provider_approved_digest` by hashing the candidate as self-authorization.
+   If the window expires or evidence/configuration changes, reassemble under a new run,
+   obtain the new digest decision and leave the old candidate unactivated. Storage is
+   create-only for this tool, not claimed WORM; changed bytes always invalidate approval.
+
+4. **Activate the same bytes.** Same trusted-main/demo/plan/azure inputs, operation `activate`,
+   `provider_document={"candidate_reference":"<assembly-run-id>-<attempt>"}`, and exact
+   `provider_approved_digest` from that independent decision. The existing private path
+   conditionally downloads the candidate, preserves raw bytes, verifies the approved digest,
+   recomputes registered tuple, checks window/receipts/limits/bindings/templates and pinned
+   metadata, then applies existing runtime environment settings and retires stale workers.
+   No full image deployment or database reset. Legacy inline bundles remain supported.
+   Require apply PASS, expected traffic flags and exactly the intended ready worker.
+   Failed rollout attempts existing fail-closed containment; if containment is unconfirmed,
+   treat as an incident, not a successful activation.
+
+5. **Prove the user's outcome.** Within the approved window, Founder sends fresh `Hi`;
+   confirm signed provider ingress, canonical Identity/conversation admission, one correlated
+   outbound delivery and Founder actually receiving the reply. Continue the conversation and
+   check canonical continuity/authorized channel linkage without duplicate identities.
+   Provider HTTP acknowledgement or an outbox row alone is not delivery. Keep bodies,
+   telephone numbers and tokens out of retained evidence. Verify off-scope contact rejection,
+   replay/idempotency and budget/window behavior under the accepted evidence plan. Stop
+   immediately on failure, unexpected recipient, missing alert or budget risk.
+
+6. **Stop and expiry.** Send conversational `STOP`; verify repeated STOP is idempotent and
+   cannot restart dispatch. Independently dispatch existing operation `stop` with document
+   `{}` and blank approval; require all business traffic/provider flags closed, revoked=true,
+   authority settings removed and obsolete workers retired. STOP works without candidate or
+   private configuration blob. Expiry gates deny work; no claim is made that expiry itself
+   automatically clears environment variables. Re-enable only through a newly reviewed,
+   independently approved unrevoked tuple; never replay a stale authority to roll back.
+   Do not use a normal full deployment as the Stop procedure.
+
+7. **Evidence and actual cost review.** Record run IDs, exact candidate/release/configuration,
+   approval refs, sanitized ingress/delivery/continuity/Stop/alert outcomes, remaining budget
+   and cleanup result. Reconcile Azure runner/application resource duration/usage, Meta
+   delivered-message categories/account billing and actual model tokens/rates; distinguish
+   pilot runtime spend from recurring resources, tax and coding-assistant fees. Estimates
+   are not receipts. Call Demo **ready only after** accepted live exchange, continuity,
+   Stop/recovery/alert evidence and costs; this PR or status PASS alone cannot claim it.
