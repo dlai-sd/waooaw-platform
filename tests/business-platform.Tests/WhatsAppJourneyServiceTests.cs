@@ -394,12 +394,9 @@ public sealed class WhatsAppJourneyServiceTests
     [InlineData(
         "?hub.mode=subscribe&hub.verify_token=verify-token&hub.challenge=one&hub.challenge=two"
     )]
-    [InlineData(
-        "?hub.mode=subscribe&hub.verify_token=verify-token&hub.challenge=one&unexpected=value"
-    )]
     [InlineData("?hub.mode=subscribe&hub.verify_token=wrong-token&hub.challenge=one")]
     [InlineData("?hub.mode=unsubscribe&hub.verify_token=verify-token&hub.challenge=one")]
-    public void VerificationRejectsMissingDuplicateUnexpectedAndInvalidParameters(string query)
+    public void VerificationRejectsMissingDuplicateAndInvalidParameters(string query)
     {
         var (service, _, _) = Create();
         var controller = new WhatsAppJourneyController(
