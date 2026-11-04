@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-133
 contract_path: work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md
-contract_digest: d754d287ceffee11d725986f898edbf9c796c434d21206aba498d31bf1de81c1
+contract_digest: 92ea54a91dace938d4393b36623518a04e6301e4ee594f736dd0d0c00db995d4
 implementation_scope: true
 result: PLANNED
 
@@ -86,7 +86,7 @@ requirements:
     dependencies: Corrected reviewed release; exact DNS/cloud scope authority; four valid protected versions; provider-management authority
     test_path_or_plan: WC-133 Section 5 R008; infra/config negatives plus independently authorized live hostname, challenge and subscription evidence
     completion_rule: Dedicated HTTPS callback and exact-token challenge succeed, subscriptions are verified, acceptance/dispatch/egress remain off during registration.
-    residual_risk: Registration41669336013 and human exact-token challenge tests pass; WABA subscription is human-confirmed. Deployment41769569756 fails inventory before workload apply; raw registered-source regression reproduces the KeyError and in-memory foundation resolution passes309 local tests. Diagnostics remain undeployed; Meta rejection, live acceptance and activation remain gated
+    residual_risk: Deployment41780407025 passes inventory but fails provider adoption before workload plan. Actual AzureRM4.14 local-state imports reproduce raw containerapps casing failure and succeed with canonical containerApps plus four role imports and a no-change five-resource plan. Repair passes302 local regressions; full deployment identity/path and Meta verification remain unproven. Database handling unchanged; activation remains gated
     result: BLOCKED
 
   - <<: *defaults
