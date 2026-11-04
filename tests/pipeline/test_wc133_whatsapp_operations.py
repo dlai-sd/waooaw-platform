@@ -398,10 +398,12 @@ def test_cleanup_targets_only_four_temporary_grants_and_confirms_zero_intake_rep
             assert command[command.index("--name") + 1] == "goal006-demo-runner-key-import"
 
 
-def test_next_deployment_adopts_existing_tls_and_scoped_roles_without_recreation(monkeypatch, tmp_path):
+@pytest.mark.parametrize("app_segment", ["containerApps", "containerapps", "CONTAINERAPPS"])
+def test_next_deployment_adopts_existing_tls_and_scoped_roles_without_recreation(monkeypatch, tmp_path, app_segment):
     config = operations.deployment(configuration(), resource())
     operations.private_json(tmp_path / "workload.auto.tfvars.json", config)
     current = resource()
+    current["id"] = current["id"].replace("containerApps", app_segment)
     monkeypatch.setattr(operations, "app", lambda: current)
     monkeypatch.setattr(operations, "reconcile_revisions", lambda *args, **kwargs: {})
 
@@ -424,6 +426,8 @@ def test_next_deployment_adopts_existing_tls_and_scoped_roles_without_recreation
     operations.adopt(tmp_path)
     assert len(calls) == 6
     assert any(command[-1].endswith("/customDomainName/" + operations.HOST) for command in calls)
+    domain_import = calls[1]
+    assert domain_import[-1] == resource()["id"] + "/customDomainName/" + operations.HOST
     addresses = {command[-2] for command in calls[1:]}
     monkeypatch.setattr(
         operations, "terraform", lambda *args: "\n".join(addresses) if args[-1] == "list" else pytest.fail("Already managed")
@@ -438,9 +442,60 @@ def test_azure_failure_never_exports_cli_output_or_private_inputs(monkeypatch):
     monkeypatch.setattr(
         operations.subprocess, "run", lambda *args, **kwargs: subprocess.CompletedProcess(args, 1, "SECRET", "SECRET")
     )
-    with pytest.raises(RuntimeError, match="Azure operation failed") as failure:
+    with pytest.raises(operations.ProviderCommandError, match="azure AZURE_OPERATION failed") as failure:
         operations.az("containerapp", "update", "--name", operations.APP, "--set-env-vars", "key=SECRET")
     assert "SECRET" not in str(failure.value)
+
+
+@pytest.mark.parametrize(
+    ("tool", "command", "stderr", "stage", "reason"),
+    [
+        ("terraform", ("-chdir=PRIVATE", "import"), "parsing staticContainerApps PRIVATE", "IMPORT", "RESOURCE_ID_CASE_MISMATCH"),
+        ("terraform", ("-chdir=PRIVATE", "state", "list"), "Error acquiring the state lock PRIVATE", "STATE_LIST", "STATE_LOCK_FAILED"),
+        ("terraform", ("import",), "Cannot import non-existent remote object PRIVATE", "IMPORT", "REMOTE_OBJECT_NOT_FOUND"),
+        ("terraform", ("import",), "Resource already managed by Terraform PRIVATE", "IMPORT", "RESOURCE_ALREADY_MANAGED"),
+        ("terraform", ("import",), "Invalid count argument PRIVATE", "IMPORT", "CONFIGURATION_INVALID"),
+        ("terraform", ("import",), "Invalid for_each argument PRIVATE", "IMPORT", "CONFIGURATION_INVALID"),
+        ("azure", ("containerapp", "show"), "AuthorizationFailed PRIVATE", "APP_READ", "AUTHORIZATION_DENIED"),
+        ("azure", ("identity", "show"), "ForbiddenByRbac PRIVATE", "IDENTITY_READ", "AUTHORIZATION_DENIED"),
+        ("azure", ("role", "assignment", "list"), "PRIVATE", "ROLE_ASSIGNMENT", "COMMAND_FAILED"),
+    ],
+)
+def test_adoption_command_failures_retain_only_closed_diagnostics(
+    monkeypatch, tmp_path, capsys, tool, command, stderr, stage, reason
+):
+    import subprocess
+    import sys
+
+    monkeypatch.setattr(operations.shutil, "which", lambda name: "/bin/" + name)
+    monkeypatch.setattr(
+        operations.subprocess, "run",
+        lambda *args, **kwargs: subprocess.CompletedProcess(args, 17, "PRIVATE_STDOUT", stderr),
+    )
+    run = operations.terraform if tool == "terraform" else operations.az
+    monkeypatch.setattr(operations, "adopt", lambda _: run(*command))
+    monkeypatch.setattr(
+        sys, "argv", ["operation", "adopt", "--operation", "register", "--directory", str(tmp_path), "--run", "123-1"]
+    )
+    assert operations.main() == 1
+    evidence_path = tmp_path / "evidence-adopt.json"
+    text = evidence_path.read_text()
+    evidence = json.loads(text)
+    assert evidence["status"] == "FAILED"
+    assert evidence["command_failure"] == {"tool": tool, "stage": stage, "exit_code": 17, "reason": reason}
+    assert evidence_path.stat().st_mode & 0o777 == 0o600
+    output = capsys.readouterr().out
+    assert reason in output
+    assert "PRIVATE" not in text + output
+
+
+def test_normal_deployment_retains_adoption_evidence():
+    workflow = yaml.safe_load((ROOT / ".github/workflows/environment-deployment.yaml").read_text())
+    upload = next(
+        step for step in workflow["jobs"]["terraform"]["steps"] if step.get("name") == "Upload plans and evidence"
+    )
+    assert upload["if"] == "always()"
+    assert "workload/evidence-adopt.json" in upload["with"]["path"]
 
 
 @pytest.mark.parametrize("containment_fails", [False, True, "revisions", "not-ready"])

@@ -4037,6 +4037,7 @@ jobs:
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-plan-policy.json
             workload-plan.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-state-before-plan.txt
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/evidence-adopt.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-state-after-apply-failure.txt
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload.tfplan
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-apply-attempt-*.log

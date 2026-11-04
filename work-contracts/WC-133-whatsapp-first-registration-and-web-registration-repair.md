@@ -532,3 +532,61 @@ Both patched production images build successfully. Trivy0.73.0 image scans with
 The deployment-shaped Business Platform image smoke passes; Constitutional Engine reports
 Microsoft.AspNetCore.App and Microsoft.NETCore.App9.0.22. Packaging regressions pass16 tests.
 Mandatory staged/exact-head checks and hosted rerun remain required before final handoff.
+
+### Provider State Adoption Repair - 2026-11-04
+
+The Founder authorizes the current-session adoption repair, secret-safe retained evidence,
+executable regression validation and one PR. Do not change deployment database handling,
+reset ordering, schema, activation, runner lifecycle or cost policy. No deployment retry,
+remote Terraform state mutation or Azure resource mutation is authorized.
+
+Run41780407025 at04ecb40 fails step43 before actual Terraform validation/plan. The adoption
+helper captures a RuntimeError but discards subprocess stderr and reports only its type;
+evidence-adopt.json is not included in the normal deployment artifact. The four Demo databases
+were already reset, consumers remain quiesced, and terminal database-authority/private-runner
+cleanup succeeds. This repair must not change that workflow's database behavior.
+
+Read-only Azure metadata confirms BP's ID uses Microsoft.App/containerapps, while AzureRM4.14
+custom-domain imports require Microsoft.App/containerApps. Existing adoption forwards the raw
+ID; its tests mock all Terraform imports as successful. The existing
+goal006_azure_resource_id.canonical_container_app_id helper already defines the required
+scope/name validation and canonical static segments. Reuse it for provider-domain imports.
+
+The actual Terraform1.9.8/AzureRM4.14 CLI against an isolated LOCAL backend reproduces the raw
+ID failure: parsing staticContainerApps, expected literal containerApps. Repeating the same
+custom-domain import with the canonical ID succeeds. Existing CLI authentication is copied
+only into ephemeral container storage; these experiments read Azure metadata and write only
+isolated local state, not Azure resources or shared Terraform state. Earlier read-only CLI
+cache mounting failed on local index writes; ephemeral copying resolves that test limitation.
+The original suppressed command output is unavailable, so distinguish this deterministic
+reproduction from a recovered original stderr.
+
+Add typed safe subprocess failure metadata: tool, allowlisted command stage, exit code and
+closed reason class. Never emit raw stderr/stdout, credential values, command arguments,
+access tokens or Terraform variable/state contents. Retain the adoption evidence in the
+normal deployment artifact and print only this closed diagnostic payload. Preserve existing
+fail-closed behavior and independent provider gates. Regression cases must include actual
+Azure casing, scope/name rejection, repeat adoption, import/state/Azure failures, terminal
+evidence privacy and unchanged database-handling workflow steps.
+
+Validation: the new adoption casing regression against original code fails for lower/upper
+Azure static segments (two failures, canonical case passes); the patched focused Docker suite
+passes302 tests across provider operations, shared ID canonicalization, deployment workflow and
+credential inventory. Ruff check/format, actionlint1.7.7 and diff hygiene pass. The sole workflow
+change adds workload/evidence-adopt.json to the existing always-upload artifact list; every
+job/step run command, condition, environment, database reset and ordering remains unchanged.
+
+The isolated real-provider experiment also imports all four existing exact-scope role
+assignments successfully. terraform validate succeeds and terraform plan -detailed-exitcode
+returns0, with no changes for the five adopted resources. This is not a full workload plan,
+not deployment-identity permission validation and not proof of later migration/activation
+stages. Test hosts use the actual Terraform1.9.8/AzureRM4.14 provider, with local-only state
+and provider registration disabled. No remote state write, apply or credential-value read
+occurs. Raw/canonical import and role/plan logs remain in the session evidence.
+
+For future failure diagnosis, inspect evidence-adopt.json command_failure fields and source
+location. RESOURCE_ID_CASE_MISMATCH identifies the verified provider-parser defect;
+AUTHORIZATION_DENIED, STATE_LOCK_FAILED, REMOTE_OBJECT_NOT_FOUND, RESOURCE_ALREADY_MANAGED,
+CONFIGURATION_INVALID and COMMAND_FAILED identify bounded alternatives without printing raw
+provider output. Do not retry a full deployment based on COMMAND_FAILED alone. Release
+Qualification stays OFF under continuing Founder authority; other mandatory gates remain.

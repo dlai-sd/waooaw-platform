@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from goal006_azure_resource_id import canonical_container_app_id
 from goal006_deployment_inputs import WHATSAPP_SECRET_NAMES, add_key_vault_references, whatsapp_provider_inputs
 from goal006_demo_revision_cleanup import reconcile as reconcile_revisions
 from wc120_whatsapp_activation import _read_json, activation_settings
@@ -36,6 +37,26 @@ TRAFFIC = {
 STOP = {**TRAFFIC, "WhatsAppCapability__ProviderAvailable": "false", "WhatsAppCapability__Revoked": "true"}
 
 
+class ProviderCommandError(RuntimeError):
+    def __init__(self, tool: str, stage: str, exit_code: int, stderr: str) -> None:
+        reason = "COMMAND_FAILED"
+        for marker, category in (
+            ("staticcontainerapps", "RESOURCE_ID_CASE_MISMATCH"),
+            ("authorizationfailed", "AUTHORIZATION_DENIED"),
+            ("forbiddenbyrbac", "AUTHORIZATION_DENIED"),
+            ("error acquiring the state lock", "STATE_LOCK_FAILED"),
+            ("cannot import non-existent remote object", "REMOTE_OBJECT_NOT_FOUND"),
+            ("resource already managed by terraform", "RESOURCE_ALREADY_MANAGED"),
+            ("invalid for_each argument", "CONFIGURATION_INVALID"),
+            ("invalid count argument", "CONFIGURATION_INVALID"),
+        ):
+            if marker in stderr.lower():
+                reason = category
+                break
+        self.details = {"tool": tool, "stage": stage, "exit_code": exit_code, "reason": reason}
+        super().__init__(f"{tool} {stage} failed: {reason} (exit {exit_code})")
+
+
 def az(*args: str) -> Any:
     executable = shutil.which("az")
     if executable is None:
@@ -47,8 +68,12 @@ def az(*args: str) -> Any:
         check=False,
     )
     if result.returncode:
-        # CLI output may contain private configuration; retain only the operation class.
-        raise RuntimeError(f"Azure operation failed: {' '.join(args[:3])}")
+        stage = {
+            ("containerapp", "show"): "APP_READ",
+            ("identity", "show"): "IDENTITY_READ",
+            ("role", "assignment"): "ROLE_ASSIGNMENT",
+        }.get(args[:2], "AZURE_OPERATION")
+        raise ProviderCommandError("azure", stage, result.returncode, result.stderr)
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 
@@ -503,7 +528,9 @@ def terraform(*args: str) -> str:
         check=False,
     )
     if result.returncode:
-        raise RuntimeError(f"Terraform provider state adoption failed: {args[0]}")
+        command = args[1:] if args[0].startswith("-chdir=") else args
+        stage = "STATE_LIST" if command[:2] == ("state", "list") else "IMPORT"
+        raise ProviderCommandError("terraform", stage, result.returncode, result.stderr)
     return result.stdout
 
 
@@ -522,8 +549,9 @@ def adopt(directory: Path) -> None:
         value["name"] == provider["callback_host"]
         for value in resource["properties"]["configuration"]["ingress"].get("customDomains", [])
     ):
+        app_id = canonical_container_app_id(resource["id"], expected_resource_group=GROUP, expected_name=APP)
         imports["module.workload.azurerm_container_app_custom_domain.whatsapp_provider[0]"] = (
-            resource["id"] + "/customDomainName/" + provider["callback_host"]
+            app_id + "/customDomainName/" + provider["callback_host"]
         )
     vault = next(iter(configuration["key_vault_secret_resource_ids"].values())).split("/secrets/", 1)[0]
     for name in sorted(WHATSAPP_SECRET_NAMES):
@@ -601,6 +629,9 @@ def main() -> int:
             trace = trace.tb_next
         if isinstance(error, (ValueError, RuntimeError)):
             evidence["reason"] = str(error)
+        if isinstance(error, ProviderCommandError):
+            evidence["command_failure"] = error.details
+            print(json.dumps({"provider_command_failure": error.details}, sort_keys=True))
         if args.operation == "activate" and args.phase == "apply":
             try:
                 az(
