@@ -509,3 +509,26 @@ the repository's dedicated actionlint image succeeds. Existing quality-scripts w
 collects the modified readiness test file. No dependency or gate is added; mandatory signed
 commit and exact-head preparation still apply. Release Qualification remains OFF under the
 continuing Founder authority; main qualification remains unchanged.
+
+### PR582 Image-Scan Precheck Repair - 2026-11-04
+
+The Founder requests repair of PR582 precheck failures. CI41776122680 builds both .NET images,
+then their Trivy steps exit1; Test Champion blocks only on the failed build aggregate. A local
+scan of the existing Business Platform image reproduces HIGH GHSA-p3jp-9v83-76w9 against
+Microsoft.NETCore.App.Runtime.linux-x64 9.0.21, with9.0.22 listed as fixed. Both affected
+Dockerfiles pin the same9.0.21 runtime; direct code-scanning alert retrieval is denied403, so
+do not claim access to the private hosted SARIF details.
+
+Patch only Business Platform and Constitutional Engine runtime pins to ASP.NET9.0.22 at
+registry-resolved immutable manifest digest
+sha256:8bbd3f6fcc157792d96f0932107d9d435df814a2c058ce2891a267fe341dea1a.
+Update the existing packaging regression, rebuild both images and require zero fixable
+HIGH/CRITICAL scan findings. Preserve scanner policy, SDK, business behavior and provider
+gates. This is a patch-runtime refresh within the existing Docker packaging specifications,
+not new functionality, permission, deployment or activation.
+
+Both patched production images build successfully. Trivy0.73.0 image scans with
+--severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 pass with zero findings for both.
+The deployment-shaped Business Platform image smoke passes; Constitutional Engine reports
+Microsoft.AspNetCore.App and Microsoft.NETCore.App9.0.22. Packaging regressions pass16 tests.
+Mandatory staged/exact-head checks and hosted rerun remain required before final handoff.
