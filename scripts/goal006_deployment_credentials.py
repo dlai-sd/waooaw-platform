@@ -9,7 +9,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from goal006_deployment_inputs import WHATSAPP_SECRET_NAMES, whatsapp_provider_configuration
+from goal006_deployment_inputs import WHATSAPP_SECRET_NAMES, add_key_vault_references, whatsapp_provider_configuration
 
 
 RUNTIME_CREDENTIALS = (
@@ -88,13 +88,29 @@ def main() -> int:
     parser.add_argument("--environment", required=True, choices=("demo", "uat", "prod"))
     parser.add_argument("--kind", choices=("managed", "required-external"), default="managed")
     parser.add_argument("--configuration", type=Path, help="effective workload configuration for optional capabilities")
+    parser.add_argument("--key-vault-id", help="trusted foundation Key Vault resource ID")
+    parser.add_argument("--key-vault-uri", help="trusted foundation Key Vault URI")
     parser.add_argument(
         "--web-session-mode",
         choices=("disabled", "shadow", "enforced"),
         default="disabled",
     )
     arguments = parser.parse_args()
+    if bool(arguments.key_vault_id) != bool(arguments.key_vault_uri):
+        parser.error("--key-vault-id and --key-vault-uri must be provided together")
     catalog = json.loads(arguments.catalog.read_text(encoding="utf-8"))
+    configuration = {}
+    if arguments.kind == "required-external":
+        if arguments.configuration:
+            configuration = json.loads(arguments.configuration.read_text(encoding="utf-8"))
+        if arguments.key_vault_id:
+            resolved = add_key_vault_references(
+                configuration, arguments.key_vault_id, arguments.key_vault_uri, arguments.environment
+            )
+            for field in ("key_vault_secret_uris", "key_vault_secret_resource_ids"):
+                if field in configuration and configuration[field] != resolved[field]:
+                    raise ValueError("Stored vault references differ from the trusted foundation")
+            configuration = resolved
     credentials = (
         deployment_credentials(catalog, arguments.environment)
         if arguments.kind == "managed"
@@ -102,7 +118,7 @@ def main() -> int:
             catalog,
             arguments.environment,
             arguments.web_session_mode,
-            configuration=json.loads(arguments.configuration.read_text(encoding="utf-8")) if arguments.configuration else None,
+            configuration=configuration,
         )
     )
     print(" ".join(credentials))

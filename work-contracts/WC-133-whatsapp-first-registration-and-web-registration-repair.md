@@ -465,3 +465,47 @@ GitHub verifies the signature; exact-head preparation passes and PR581 is open f
 No live diagnostic code has been deployed. After Founder review/merge/deployment, keep traffic
 OFF, perform one Meta Verify/Save attempt and query only this safe log category to identify the
 actual rejection before deciding on a behavioral correction. Do not enable broad request logs.
+
+### Registered-Provider Deployment Inventory Repair - 2026-11-04
+
+The Founder authorizes the current-session implementation, regression validation and one PR
+for failed Environment Deployment run41769569756, not a deployment retry or activation.
+At commit a559caf, step26 Check credential inventory fails at03:56:38 UTC:
+goal006_deployment_credentials.py:62 calls whatsapp_provider_configuration, whose line85 reads
+key_vault_secret_uris from the persisted source and raises KeyError. Step42 would generate
+these foundation-derived maps, but cannot run before inventory. Existing shell tests supplied
+already generated maps and therefore missed registered-provider source configuration.
+
+Resolve the inventory's configuration view in memory with the existing add_key_vault_references
+helper and the current job's trusted foundation vault ID/URI. The CLI must accept those inputs
+as a pair, reject inconsistent supplied runtime maps rather than silently overwrite them, and
+preserve the existing closed Demo provider/vault/secret-version validation. Do not persist the
+generated view, change pinned versions, log secrets, seed external credentials, weaken expiry
+checks or infer provider activation. Disabled providers and existing hydrated callers retain
+their established selection behavior. The normal deployment must need neither a prior separate
+WhatsApp deployment nor another provider-registration operation merely to pass inventory.
+
+Regression evidence must exercise the actual workflow inventory shell and Python CLI with raw
+registered source configuration, not mock the parser or hand it generated maps. Cover absent
+and already resolved maps, enabled/disabled verification, invalid/foreign vault/provider
+configuration, missing/disabled/expired credentials, no-expiry outbound rules, argument-pair
+errors, unchanged source bytes, exact pinned reads, and continuation into workload-input
+generation with the same provider version binding and business gates OFF.
+
+The failed run did start the persistent database; reset steps31-33, workload generation,
+Terraform workload plan/apply and activation were skipped. Terminal database-authority cleanup
+and private-runner cleanup succeeded. Diagnostics from PR581 were merged but not deployed.
+This repair does not claim that every possible later live stage has been qualified; fresh
+deployment and Meta verification remain separate Founder actions.
+
+Author regression evidence: the actual inventory shell with raw configured provider reproduces
+the live KeyError before the repair (one selected test fails). After repair, immutable Docker
+validation passes309 tests across environment readiness, workload inputs, Demo deployment
+workflow and provider operations. This includes raw/resolved source, both verification states,
+credential validity and continuation into workload-input generation, plus17 CLI positive/
+negative cases. Ruff check/format, dedicated actionlint1.7.7 and diff hygiene pass. An initial
+actionlint invocation in the general runner failed because it does not contain that binary;
+the repository's dedicated actionlint image succeeds. Existing quality-scripts wiring already
+collects the modified readiness test file. No dependency or gate is added; mandatory signed
+commit and exact-head preparation still apply. Release Qualification remains OFF under the
+continuing Founder authority; main qualification remains unchanged.

@@ -272,6 +272,15 @@ def test_credential_inventory_consumes_effective_configuration_and_pinned_versio
     assert "--configuration workload-configuration.json" in inventory
     assert '--version "$version"' in inventory
     assert "attributes.expires" in inventory
+    step = next(
+        step
+        for step in yaml.safe_load(workflow)["jobs"]["terraform"]["steps"]
+        if step.get("id") == "credential-inventory"
+    )
+    assert step["env"]["KEY_VAULT_ID"] == "${{ steps.foundation.outputs.key_vault_id }}"
+    assert step["env"]["KEY_VAULT_URI"] == "${{ steps.foundation.outputs.key_vault_uri }}"
+    assert '--key-vault-id "$KEY_VAULT_ID"' in inventory
+    assert '--key-vault-uri "$KEY_VAULT_URI"' in inventory
 
 
 @pytest.mark.parametrize(
@@ -291,15 +300,26 @@ def test_credential_inventory_consumes_effective_configuration_and_pinned_versio
         ("forbidden", False),
     ],
 )
+@pytest.mark.parametrize("source_shape", ["raw", "resolved"])
+@pytest.mark.parametrize("verification_enabled", [False, True])
 def test_actual_credential_inventory_shell_respects_capability_and_validity(
-    tmp_path: Path, mode: str, expected_success: bool
+    tmp_path: Path, mode: str, expected_success: bool, source_shape: str, verification_enabled: bool
 ) -> None:
     from test_goal006_deployment_inputs import whatsapp_configuration
 
     configuration = whatsapp_configuration()
+    configuration["whatsapp_provider"]["verification_enabled"] = verification_enabled
+    if source_shape == "raw":
+        for field in (
+            "key_vault_secret_uris", "key_vault_secret_resource_ids",
+            "database_secret_uris", "database_secret_resource_ids",
+        ):
+            del configuration[field]
     if mode == "disabled":
         del configuration["whatsapp_provider"]
-    (tmp_path / "workload-configuration.json").write_text(json.dumps(configuration))
+    source = tmp_path / "workload-configuration.json"
+    source.write_text(json.dumps(configuration))
+    original = source.read_bytes()
     for folder in ("scripts", "infrastructure"):
         (tmp_path / folder).symlink_to(wc091_environment.ROOT / folder, target_is_directory=True)
     bin_dir = tmp_path / "bin"
@@ -339,6 +359,8 @@ def test_actual_credential_inventory_shell_respects_capability_and_validity(
             **os.environ,
             "PATH": f"{bin_dir}:{os.environ['PATH']}",
             "KEY_VAULT_NAME": "kv-waooaw-demo",
+            "KEY_VAULT_ID": "/subscriptions/test/resourceGroups/demo/providers/Microsoft.KeyVault/vaults/kv-waooaw-demo",
+            "KEY_VAULT_URI": "https://kv-waooaw-demo.vault.azure.net/",
             "TARGET_ENVIRONMENT": "demo",
             "SEEDER_IMAGE": "test-pinned-seeder",
             "INVENTORY_MODE": mode,
@@ -347,12 +369,119 @@ def test_actual_credential_inventory_shell_respects_capability_and_validity(
         },
     )
     assert (result.returncode == 0) == expected_success, result.stderr
+    assert source.read_bytes() == original
     calls = [json.loads(line) for line in (tmp_path / "calls.jsonl").read_text().splitlines()]
     names = {args[args.index("--name") + 1] for args in calls}
     assert "whatsapp-media-authority" not in names
     if mode == "disabled":
         assert not any(name.startswith("whatsapp-") for name in names)
         assert "razorpay-test-key-secret" in names
+    elif expected_success:
+        assert {name for name in names if name.startswith("whatsapp-")} == set(
+            configuration["whatsapp_provider"]["secret_versions"]
+        )
+        from test_goal006_deployment_inputs import manifest
+
+        (tmp_path / "manifest.json").write_text(json.dumps(manifest()))
+        generated = subprocess.run(
+            [
+                sys.executable, str(wc091_environment.ROOT / "scripts/goal006_deployment_inputs.py"),
+                "--environment", "demo", "--manifest", "manifest.json",
+                "--configuration", str(source), "--output", "workload.auto.tfvars.json",
+                "--key-vault-id", "/subscriptions/test/resourceGroups/demo/providers/Microsoft.KeyVault/vaults/kv-waooaw-demo",
+                "--key-vault-uri", "https://kv-waooaw-demo.vault.azure.net/",
+                "--ghcr-packages-public-verified",
+            ],
+            cwd=tmp_path, capture_output=True, text=True,
+        )
+        assert generated.returncode == 0, generated.stderr
+        inputs = json.loads((tmp_path / "workload.auto.tfvars.json").read_text())
+        assert inputs["whatsapp_provider"]["secret_versions"] == configuration["whatsapp_provider"]["secret_versions"]
+        assert inputs["whatsapp_provider"]["verification_enabled"] is verification_enabled
+        assert "callback_acceptance_enabled" not in inputs["whatsapp_provider"]
+        assert "dispatch_enabled" not in inputs["whatsapp_provider"]
+        assert source.read_bytes() == original
+
+
+@pytest.mark.parametrize(
+    ("case", "error"),
+    [
+        ("raw", None),
+        ("resolved", None),
+        ("legacy-resolved", None),
+        ("id-only", "must be provided together"),
+        ("uri-only", "must be provided together"),
+        ("invalid-id", "Azure Key Vault resource ID"),
+        ("invalid-uri", "Azure Key Vault URI"),
+        ("foreign-uri", "canonical Demo vault"),
+        ("foreign-id", "canonical Demo vault RBAC scope"),
+        ("conflicting-uri-map", "differ from the trusted foundation"),
+        ("conflicting-id-map", "differ from the trusted foundation"),
+        ("uat", "Demo-only"),
+        ("prod", "Demo-only"),
+        ("latest", "exactly four pinned"),
+        ("media", "exactly four pinned"),
+        ("missing-version", "exactly four pinned"),
+        ("host", "exact dedicated"),
+    ],
+)
+def test_credential_inventory_cli_resolves_trusted_foundation_without_rewriting_source(
+    tmp_path: Path, case: str, error: str | None
+) -> None:
+    from test_goal006_deployment_inputs import whatsapp_configuration
+
+    configuration = whatsapp_configuration()
+    if case not in {"resolved", "legacy-resolved", "conflicting-uri-map", "conflicting-id-map"}:
+        for field in ("key_vault_secret_uris", "key_vault_secret_resource_ids"):
+            del configuration[field]
+    vault_id = "/subscriptions/test/resourceGroups/demo/providers/Microsoft.KeyVault/vaults/kv-waooaw-demo"
+    vault_uri = "https://kv-waooaw-demo.vault.azure.net/"
+    environment = case if case in {"uat", "prod"} else "demo"
+    if case == "invalid-id":
+        vault_id = "not-a-resource-id"
+    elif case == "invalid-uri":
+        vault_uri = "http://kv-waooaw-demo.vault.azure.net/"
+    elif case == "foreign-uri":
+        vault_uri = "https://kv-other.vault.azure.net/"
+    elif case == "foreign-id":
+        vault_id = vault_id.replace("kv-waooaw-demo", "kv-other")
+    elif case == "conflicting-uri-map":
+        configuration["key_vault_secret_uris"]["business-platform"] = "https://kv-other.vault.azure.net/secrets/x"
+    elif case == "conflicting-id-map":
+        configuration["key_vault_secret_resource_ids"]["business-platform"] = vault_id.replace("demo", "other")
+    elif case == "latest":
+        configuration["whatsapp_provider"]["secret_versions"]["whatsapp-verify-token"] = "latest"
+    elif case == "media":
+        configuration["whatsapp_provider"]["secret_versions"]["whatsapp-media-authority"] = "a" * 32
+    elif case == "missing-version":
+        del configuration["whatsapp_provider"]["secret_versions"]["whatsapp-verify-token"]
+    elif case == "host":
+        configuration["whatsapp_provider"]["callback_host"] = "api.demo.example.com"
+    source = tmp_path / "source.json"
+    source.write_text(json.dumps(configuration))
+    original = source.read_bytes()
+    arguments = [
+        sys.executable, str(wc091_environment.ROOT / "scripts/goal006_deployment_credentials.py"),
+        "--catalog", str(wc091_environment.ROOT / "infrastructure/environment-readiness/secret-catalog.json"),
+        "--environment", environment, "--configuration", str(source), "--kind", "required-external",
+    ]
+    if case not in {"uri-only", "legacy-resolved"}:
+        arguments.extend(["--key-vault-id", vault_id])
+    if case not in {"id-only", "legacy-resolved"}:
+        arguments.extend(["--key-vault-uri", vault_uri])
+    result = subprocess.run(arguments, capture_output=True, text=True)
+    assert source.read_bytes() == original
+    if error is not None:
+        assert result.returncode != 0
+        assert error in result.stderr
+        assert result.stdout == ""
+    else:
+        assert result.returncode == 0, result.stderr
+        required = result.stdout.split()
+        assert len(required) == len(set(required))
+        assert {name for name in required if name.startswith("whatsapp-")} == set(
+            configuration["whatsapp_provider"]["secret_versions"]
+        )
 
 
 def test_demo_deployment_requires_external_razorpay_credentials_before_apply() -> None:
