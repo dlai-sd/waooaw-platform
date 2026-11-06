@@ -122,6 +122,7 @@ validity/version defect requires it. Do not rotate or regenerate secrets as a tr
 | WC133-R009 | A user-initiated conversation does not require the Marketing invitation template. Reply eligibility respects consent, the actual service window and current provider policy. Business-initiated invitations separately require approval, exact locale/body/version, marketing opt-in and bounded spend/traffic authority. STOP prevents further ordinary messages; release remains protected. | In-window reply without invitation, expired-window denial/template path, unapproved or mismatched template and absent marketing consent tests; inbound STOP, repeated STOP and no automatic restart/dispatch. No claim that all operations can complete within WhatsApp. |
 | WC133-R010 | One combined PR delivers these repairs with exact-head author review, traceable requirements and wired Docker-only regressions. Provider preparation, deployment, activation and live acceptance remain distinct. All claims name their actual evidence level. | Prepared repository PR template/prechecks, focused tests and required selected gates; separate deployed fresh-user scenario and Web registration acceptance, exact release/configuration evidence and cleanup/rollback receipts before go-live. |
 | WC133-R011 | Explicitly authorized 2026-11-06 runner recovery pins supported version 2.338.2, enforces a fail-fast exact-version check, refreshes bootstrap hashes and preserves the existing toolchain/private lifecycle. | Original-pin regression failure, rebuilt exact-container toolchain/Terraform/Storage lease checks, runner lifecycle tests and wired catalog regression. Main-only attested publication, actual environment-pin adoption and live job/cleanup acceptance remain separate downstream steps; no application deployment or database reset. |
+| WC133-R012 | Adopt the verified main-published runner image in the Demo/UAT/Prod repository pins and matching bootstrap hashes; preserve template drift rejection and separate environment authority. | Exact publication manifest/provenance and container version checks, stale-pin regression and bootstrap/execution/lifecycle tests. Demo infrastructure preview, reviewed apply, qualification and provider-only status are required before live recovery; no UAT/Prod mutation or application/database redeployment. |
 
 The existing invitation's preview includes `Hello,` before the invitation text. Do not reconstruct
 its content or infer an API locale from the display label "English"; retrieve approved metadata
@@ -883,3 +884,54 @@ broker/provisioner/handoff/qualification entrypoints. Terraform foundation init/
 existing real Azurite lease/stale-probe workflow pass. A deliberately mismatched version fails
 with exit 1 before subsequent commands. No live GitHub runner acceptance or Azure deployment
 qualification was executed.
+
+#### Published Runner Digest Adoption (WC133-R012) - 2026-11-06
+
+The Founder directs completion of the authorized runner repair after #587 merged as
+`643008c19e30dfaeab97ee3ec188c80423e15ef2`. Successful main CI
+[42162694765](https://github.com/dlai-sd/waooaw-platform/actions/runs/42162694765)
+published the immutable artifact
+`goal006-runner-image-goal006-private-runner-643008c19e30dfaeab97ee3ec188c80423e15ef2`.
+Its source commit and run ID match; `gh attestation verify` confirms the image was produced
+by `.github/workflows/ci.yaml` at trusted main with that exact source commit. The published
+image is
+`ghcr.io/dlai-sd/goal006-private-runner@sha256:371007f6247abd2e21bbd98c8c7d46c4faed80147ad5455c5c5ddbff78d494c6`.
+Execution of those exact registry bytes confirms runner 2.338.2, Terraform 1.9.8, Azure CLI
+2.79.0 and the lifecycle entrypoint. This adoption performs no runner or application rebuild.
+
+New run42164149563 was independently traced to Azure execution
+`goal006-demo-runner-job-3wovkgy`: it selected old digest332cbca, created a session and then
+reported the deprecated2.336.0 rejection at 04:46:20 UTC before exiting at 04:46:22. This is
+current-run evidence, not inference from the earlier failure. Live broker and cleanup job
+templates also retain digest332cbca. The execution-template builder deliberately rejects
+any live job image that differs from the immutable repository parameters; do not weaken
+this guard or mutate job images ad hoc to make status pass.
+
+This follow-up adopts the verified digest in all three environment parameter files and
+refreshes exactly their bootstrap-manifest hashes. No activation states, identities, network,
+roles, tools, application images or database inputs change. Existing catalog-wired tests now
+assert all consumers select the actual publication; ordinary template-drift rejection and
+correlated child/cleanup execution remain covered by their existing tests.
+
+**Required live sequence after Founder merge (separate dispatch authority):**
+
+1. Cancel the queued old-image run normally and verify `cleanup-private` passes; no orphan
+   runner may remain before the next operation.
+2. Use **Private Runner Infrastructure** on trusted `main`, environment `demo`, operation
+   `preview`, blank `reviewed_plan_run_id`, remarks identifying WC133-R012 and digest371007f.
+   Review the resulting plan for the runner-only image adoption and unexpected effects.
+3. Only after Founder approval of that exact successful preview, use the same workflow/ref
+   and `demo`, operation `apply`, with its run ID as `reviewed_plan_run_id`. The workflow
+   requires the preview source commit to equal the apply commit; changed main requires a
+   new preview. Preserve existing cost/plan/identity checks; no full Environment Deployment.
+4. Use **Private Runner Infrastructure**, `demo`, operation `qualify`, blank reviewed plan
+   ID, with the same source. Require runner online/job acceptance, private-path qualification
+   and correlated terminal cleanup. Read back broker, runner and cleanup image templates.
+5. Only then retry **Environment Deployment** on `main`, `demo`, `plan`, `azure`, operation
+   `status`, document `{}`, approval digest blank. Terraform/application/database paths must
+   remain skipped. Status success still does not authorize WhatsApp activation.
+
+UAT/Prod repository pins are synchronized only; neither environment is deployed or activated
+by this PR. Local checks and verified publication are not live adoption or Demo-readiness
+receipts. Rollback must not re-enable the deprecated image; leave operations closed if
+qualification or containment cannot be verified.

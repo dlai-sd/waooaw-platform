@@ -1,5 +1,6 @@
 """Contracts for the GOAL-006 private runner image supply chain."""
 
+import json
 from pathlib import Path
 
 WORKFLOW = Path(".github/workflows/private-runner-image.yaml").read_text(encoding="utf-8")
@@ -12,6 +13,14 @@ def test_runner_base_pins_supported_release_and_qualification_checks_same_versio
     )
     assert 'set -euo pipefail\n            /home/runner/bin/Runner.Listener --version | grep -Fxq "2.338.2"' in WORKFLOW
     assert "2.336.0" not in WORKFLOW
+
+
+def test_environment_pins_adopt_verified_main_runner_publication() -> None:
+    image = "ghcr.io/dlai-sd/goal006-private-runner@sha256:371007f6247abd2e21bbd98c8c7d46c4faed80147ad5455c5c5ddbff78d494c6"
+    stack = Path("infrastructure/deployment-stacks/goal006-runner")
+    for environment in ("demo", "uat", "prod"):
+        parameters = json.loads((stack / f"{environment}.parameters.json").read_text(encoding="utf-8"))
+        assert parameters["parameters"]["runnerImage"]["value"] == image
 
 
 def test_runner_image_is_separate_from_exact_six_release() -> None:
