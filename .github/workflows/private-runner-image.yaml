@@ -51,7 +51,8 @@ jobs:
       - name: Verify runner toolchain
         run: |
           docker run --rm --volume "$GITHUB_WORKSPACE:/workspace" --entrypoint /bin/bash '${{ env.IMAGE }}:sha-${{ github.sha }}' -lc '
-            /home/runner/bin/Runner.Listener --version | grep -Fxq "2.336.0"
+            set -euo pipefail
+            /home/runner/bin/Runner.Listener --version | grep -Fxq "2.338.2"
             test "$(terraform version -json | jq -r .terraform_version)" = "1.9.8"
             test "$(az version --query "\"azure-cli\"" -o tsv)" = "2.79.0"
             test "$(az extension show --name containerapp --query version -o tsv)" = "1.2.0b5"

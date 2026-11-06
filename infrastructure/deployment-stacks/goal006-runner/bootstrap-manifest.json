@@ -18,7 +18,7 @@
     }
   },
   "files": {
-    ".github/workflows/private-runner-image.yaml": "dd05dc30d1727b344fab1a25c52a2833674dfaa1451cd271eac155fc9cd78afd",
+    ".github/workflows/private-runner-image.yaml": "f5c77eba7b9f010861150cb769e6365459a60cf09190e9ec9fb58fa62e1686fc",
     ".github/workflows/private-runner-infrastructure.yaml": "e03fd3dd6a39a3243b2379cc1d2dde7e612ecf78c88271e8237745c5f4204a2e",
     "architecture/reference/pipeline/github-runner-app-manifest.json": "c7d2e2d953509e23076406b2a12abf7b01538f8dd49de2f40b9855f019e1a552",
     "infrastructure/deployment-stacks/goal006-runner/blob-diagnostics.bicep": "34d2c762628ebf0833cf9735ab186bf63a6cd991613a1430f5221be72d846ec5",
@@ -106,7 +106,7 @@
     "infrastructure/postgres/init/59-wc124-billing-authority.sql": "7482e523741ed6307b8dd97bcfe8320d19f1e71b502b121b42746071f0a60443",
     "infrastructure/postgres/init/60-wc124-principal-handoff.sql": "22128833dedf34a37762b79811c43c0b047e4c65d9a1c884a47602da3d733ac4",
     "infrastructure/postgres/init/61-wc120-whatsapp-traffic-reservations.sql": "e06b750ee3fed04375630134f3f8bdf48cd2dc9bb6985d679c6cc2a965ce91aa",
-    "infrastructure/runner/Dockerfile": "abfa2d543f69adbd0ccefda819b93560e5e55f7b3acc3ce861974724fccf4e89",
+    "infrastructure/runner/Dockerfile": "9f997db63a50df3d20f0705643f6e85136848972a42bb42281b44f5f115d6e42",
     "infrastructure/runner/Dockerfile.control": "c3d1c42fb381d9019c32fa2f8936218283f2bca81f6eb8cb8edf151c988f9a9b",
     "infrastructure/runner/entrypoint.sh": "fe467ae6782b0792bdf0e2dfada98e277abd5f8ec11bc817768ccf032cfe62a7",
     "infrastructure/runner/import-app-signing-material.sh": "e308e88ba3b70ea923e92f9840bb1fa4f25a462556f1b9b65e13fd0c54376e94",

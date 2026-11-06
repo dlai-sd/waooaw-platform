@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-133
 contract_path: work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md
-contract_digest: cfbba705cf7927ebf402ef3188190d61c863515f06e9bce77ae9dd9660398340
+contract_digest: 54e26c75284b3f2620ca4df354ac14523c7b19d63a3a0154bd7beb975f2392f1
 implementation_scope: true
 result: PLANNED
 
@@ -14,6 +14,16 @@ requirement_defaults: &defaults
   result: PLANNED
 
 requirements:
+  - <<: *defaults
+    requirement_id: WC133-R011
+    source: WC-133 Section 8 Private Runner Version Recovery; ADR-047
+    observable_outcome: The immutable private runner build contains supported version 2.338.2, its qualification rejects version mismatch, and the existing toolchain and lifecycle contracts remain compatible.
+    test_path_or_plan: tests/pipeline/test_goal006_runner_image_workflow.py; existing runner image workflow toolchain and real Storage lease checks; runner source, delivery, execution and lifecycle tests
+    completion_rule: Docker build and exact-container toolchain/lease validation pass; catalog executes the pin regression; attested publication, environment-pin adoption and live job/cleanup acceptance remain separate downstream steps.
+    residual_risk: This first PR changes the build input only. Environment pins still reference the deprecated image until a follow-up PR adopts the actual attested main-publication digest. No live runner recovery or application deployment is claimed.
+    result: PASS
+    evidence_refs: [work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md#private-runner-version-recovery-wc133-r011---2026-11-06, tests/pipeline/test_goal006_runner_image_workflow.py, .github/workflows/private-runner-image.yaml]
+
   - <<: *defaults
     requirement_id: WC133-R001
     source: WC-133 Sections 2, 3 E1-E3 and 5 R001; ADR-023; WC120-R008
