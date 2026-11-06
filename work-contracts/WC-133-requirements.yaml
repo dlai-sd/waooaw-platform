@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-133
 contract_path: work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md
-contract_digest: 54e26c75284b3f2620ca4df354ac14523c7b19d63a3a0154bd7beb975f2392f1
+contract_digest: 147aef085594ddafc4064395f04a4bc4c99416f7b696a99497c3e00faba53920
 implementation_scope: true
 result: PLANNED
 
@@ -14,6 +14,16 @@ requirement_defaults: &defaults
   result: PLANNED
 
 requirements:
+  - <<: *defaults
+    requirement_id: WC133-R012
+    source: WC-133 Section 8 Published Runner Digest Adoption; ADR-047
+    observable_outcome: All three repository runner pins select the verified main-published 2.338.2 image and bootstrap hashes match while live template drift remains fail-closed.
+    test_path_or_plan: tests/pipeline/test_goal006_runner_image_workflow.py; bootstrap, execution-template, delivery, image-source and lifecycle tests; exact publication attestation and container checks
+    completion_rule: Published source/digest provenance and exact-container version are verified; stale-pin regression fails before adoption and the affected dependency closure passes afterwards. Live Demo preview/reviewed apply/qualification/status remain separately gated.
+    residual_risk: Azure broker/runner/cleanup templates still require governed Demo runner-stack adoption after Founder merge. No live UAT/Prod operation, application/database deployment or WhatsApp activation is claimed.
+    result: PASS
+    evidence_refs: [tests/pipeline/test_goal006_runner_image_workflow.py, work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md#published-runner-digest-adoption-wc133-r012---2026-11-06]
+
   - <<: *defaults
     requirement_id: WC133-R011
     source: WC-133 Section 8 Private Runner Version Recovery; ADR-047
