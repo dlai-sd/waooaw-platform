@@ -21,7 +21,8 @@ requirements:
     test_path_or_plan: tests/pipeline/test_goal006_runner_image_workflow.py; existing runner image workflow toolchain and real Storage lease checks; runner source, delivery, execution and lifecycle tests
     completion_rule: Docker build and exact-container toolchain/lease validation pass; catalog executes the pin regression; attested publication, environment-pin adoption and live job/cleanup acceptance remain separate downstream steps.
     residual_risk: This first PR changes the build input only. Environment pins still reference the deprecated image until a follow-up PR adopts the actual attested main-publication digest. No live runner recovery or application deployment is claimed.
-    result: PLANNED
+    result: PASS
+    evidence_refs: [work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md#private-runner-version-recovery-wc133-r011---2026-11-06, tests/pipeline/test_goal006_runner_image_workflow.py, .github/workflows/private-runner-image.yaml]
 
   - <<: *defaults
     requirement_id: WC133-R001
