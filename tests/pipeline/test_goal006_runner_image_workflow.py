@@ -6,6 +6,14 @@ WORKFLOW = Path(".github/workflows/private-runner-image.yaml").read_text(encodin
 DOCKERFILE = Path("infrastructure/runner/Dockerfile").read_text(encoding="utf-8")
 
 
+def test_runner_base_pins_supported_release_and_qualification_checks_same_version() -> None:
+    assert DOCKERFILE.splitlines()[0] == (
+        "FROM ghcr.io/actions/actions-runner@sha256:759a1d94a15b05941aba5196974ff43fe15b4cbba29b694b35cbc32a1166b232"
+    )
+    assert 'set -euo pipefail\n            /home/runner/bin/Runner.Listener --version | grep -Fxq "2.338.2"' in WORKFLOW
+    assert "2.336.0" not in WORKFLOW
+
+
 def test_runner_image_is_separate_from_exact_six_release() -> None:
     assert "goal006-private-runner" in WORKFLOW
     assert "goal006-exact-six-release" not in WORKFLOW
@@ -40,7 +48,9 @@ def test_runner_image_executes_qualification_contract_and_terraform_root() -> No
     assert "python3 /workspace/scripts/goal006_runner_qualification.py --help" in WORKFLOW
     assert "az storage blob lease acquire --help" in WORKFLOW
     assert "az storage blob lease release --help" in WORKFLOW
-    assert "terraform -chdir=/workspace/infrastructure/terraform/phase2/environments/demo/foundation init -backend=false" in WORKFLOW
+    assert (
+        "terraform -chdir=/workspace/infrastructure/terraform/phase2/environments/demo/foundation init -backend=false" in WORKFLOW
+    )
     assert "terraform -chdir=/workspace/infrastructure/terraform/phase2/environments/demo/foundation validate" in WORKFLOW
 
 

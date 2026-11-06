@@ -99,7 +99,8 @@ Out of scope: media/voice enablement, a new identity service or conversation eng
 users/unbounded traffic, Production/UAT mutation, credential-read expansion, automatic account
 merging, payment/contract/Stop-release completion through WhatsApp, new marketing infrastructure,
 deployment-performance redesign, and unrelated application defects. The earlier cleanup retry
-milestone remains separately tracked; this contract does not silently expand into runner work.
+milestone remains separately tracked; runner work requires separate explicit authority, recorded
+for WC133-R011 in Section 8 below.
 
 Existing local uploader-helper edits are paused, unqualified work, not a deployed feature or an
 accepted prerequisite. Reuse only if necessary for the corrected binding model, after validation.
@@ -120,6 +121,7 @@ validity/version defect requires it. Do not rotate or regenerate secrets as a tr
 | WC133-R008 | Dedicated Demo callback DNS, ownership verification and TLS bind the approved hostname to BP through the existing managed path. Four required protected versions/configuration are validated consistently with the repaired admission model; no public-vault bypass or secret disclosure. | Configuration/infra negative tests; separately authorized live DNS/TLS and exact-version metadata evidence, valid Meta challenge and subscription receipt. Keep POST acceptance, dispatch and provider egress off during registration-only setup. |
 | WC133-R009 | A user-initiated conversation does not require the Marketing invitation template. Reply eligibility respects consent, the actual service window and current provider policy. Business-initiated invitations separately require approval, exact locale/body/version, marketing opt-in and bounded spend/traffic authority. STOP prevents further ordinary messages; release remains protected. | In-window reply without invitation, expired-window denial/template path, unapproved or mismatched template and absent marketing consent tests; inbound STOP, repeated STOP and no automatic restart/dispatch. No claim that all operations can complete within WhatsApp. |
 | WC133-R010 | One combined PR delivers these repairs with exact-head author review, traceable requirements and wired Docker-only regressions. Provider preparation, deployment, activation and live acceptance remain distinct. All claims name their actual evidence level. | Prepared repository PR template/prechecks, focused tests and required selected gates; separate deployed fresh-user scenario and Web registration acceptance, exact release/configuration evidence and cleanup/rollback receipts before go-live. |
+| WC133-R011 | Explicitly authorized 2026-11-06 runner recovery pins supported version 2.338.2, enforces a fail-fast exact-version check, refreshes bootstrap hashes and preserves the existing toolchain/private lifecycle. | Original-pin regression failure, rebuilt exact-container toolchain/Terraform/Storage lease checks, runner lifecycle tests and wired catalog regression. Main-only attested publication, actual environment-pin adoption and live job/cleanup acceptance remain separate downstream steps; no application deployment or database reset. |
 
 The existing invitation's preview includes `Hello,` before the invitation text. Do not reconstruct
 its content or infer an API locale from the display label "English"; retrieve approved metadata
@@ -835,3 +837,49 @@ skipped are not an activation qualification receipt for this exact image.
    pilot runtime spend from recurring resources, tax and coding-assistant fees. Estimates
    are not receipts. Call Demo **ready only after** accepted live exchange, continuity,
    Stop/recovery/alert evidence and costs; this PR or status PASS alone cannot claim it.
+
+#### Private Runner Version Recovery (WC133-R011) - 2026-11-06
+
+Founder authorizes the runner infrastructure repair, Docker validation and a new PR in the
+current session. Provider-only status run
+[42157701546](https://github.com/dlai-sd/waooaw-platform/actions/runs/42157701546)
+queued after successful broker startup. Its exact Azure runner execution registered and
+created a GitHub session, then reported
+`Runner version v2.336.0 is deprecated and cannot receive messages.` The listener terminated
+and Azure marked the execution Succeeded at 03:41:01 UTC; this process-level result was not
+runner readiness. Normal cancellation completed `cleanup-private` successfully; no provider
+operation, application deployment or database reset executed.
+
+The authorized repair pins the official `actions/actions-runner` 2.338.2 OCI index
+`sha256:759a1d94a15b05941aba5196974ff43fe15b4cbba29b694b35cbc32a1166b232`,
+updates the existing real-container version assertion with fail-fast shell behavior, refreshes
+the two affected bootstrap-manifest hashes, and wires its regression into
+`quality:scripts`. Exact upstream container execution confirms version 2.338.2 and Ubuntu
+24.04. The existing Azure CLI, extension and Terraform pins, private identities, command
+entrypoint, ephemeral registration, disabled self-update and cleanup boundaries are preserved.
+Validate the complete built runner toolchain and runner lifecycle/lease contracts; version
+output alone does not prove GitHub job acceptance or Azure deployment compatibility.
+
+Application builds/publication use GitHub-hosted runners and application base images are
+unchanged. Private Azure deployment/qualification and provider-operation jobs depend on this
+runner. Broker, cleanup and reconciler consumers share its blueprint image, so the replacement
+must preserve their tools and scripts as well. UAT/Prod carry the old pin but their activation
+and deployment authorities do not change.
+
+Publication remains restricted to `ci.yaml` on merge to trusted main. This first PR upgrades
+and qualifies the runner build; it does not fabricate a published digest or change the
+environment pins to a local image ID. After merge and successful attested publication, use
+the exact `goal006-runner-image-goal006-private-runner-<merge-sha>` manifest and verify its
+source/digest attestation. Prepare the follow-up environment-pin PR using those actual bytes,
+then perform separately authorized runner-infrastructure qualification and retry provider-only
+status. A new runner must be online, accept the exact job and pass terminal cleanup before
+claiming operational recovery. Do not retry the deprecated image, merge either PR yourself,
+redeploy applications or reset databases as part of this repair.
+
+Local validation: the original pin fails the new regression; the repaired dependency closure
+passes 211 tests. The repaired private image builds and verifies runner 2.338.2, Azure CLI 2.79.0,
+containerapp extension 1.2.0b5, log-analytics, Terraform 1.9.8, PostgreSQL client and required
+broker/provisioner/handoff/qualification entrypoints. Terraform foundation init/validate and the
+existing real Azurite lease/stale-probe workflow pass. A deliberately mismatched version fails
+with exit 1 before subsequent commands. No live GitHub runner acceptance or Azure deployment
+qualification was executed.
