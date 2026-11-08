@@ -2102,3 +2102,15 @@ These targeted repairs do not yet establish a full scripts-gate pass, and do not
 clear BP coverage or overall WC-134 delivery. The implementation milestone and
 Founder-review PR remain blocked; all earlier no-activation/no-spend boundaries
 remain intact.
+
+The exact current `commands.quality-scripts.shell` from
+`validation/engineering-validation.yaml` was subsequently executed inside the
+cached Docker Python runner: **PASS**. Ruff lint and formatting, AI-resource
+governance, all four pytest selectors (**57 + 222 + 35 + 468 = 782 passed**) and
+dry-run prompt seeding passed; seeding performed zero database writes and
+reported zero errors. This supersedes the pending full scripts rerun, not the
+failed commit or unresolved BP coverage thresholds. Signed checkpoint
+`f5faa68d` persisted the hook failure/repair evidence with active documentation
+hooks and an embedded GPG signature. The original bounded selector/test index is
+restored; remaining implementation is not blindly staged. No validation helper,
+provider traffic or cloud operation remains running.
