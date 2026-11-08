@@ -1967,3 +1967,90 @@ configured signing; implementation remains independently gated. Remaining
 implementation, coverage qualification, durable separate-webhook batching,
 WBE-owned offering/component metering and final PR gates remain open. No provider
 request, download, activation, deployment, cloud mutation or spend occurred.
+
+## Generation Source, Signed CE And PostgreSQL Meter Qualification Checkpoint
+
+Continuous-session authority remains unchanged. This evidence does not activate
+a provider, select prices, grant a customer allowance or clear the overall item.
+
+Migration-backed generation source/receipt tests reuse the current admitted
+operational-mandate fixture, including its real referenced contract version.
+Direct `FOR SHARE` on SELECT-only inference bindings failed with PostgreSQL
+42501. Migration98 introduces an exact tenant/relationship owner read-lock
+function instead of granting application UPDATE. Tests cover migration replay,
+foreign-tenant denial, no application mutation privilege and concurrent
+revocation fencing. Source/receipt and existing mandate selector: **51 passed**.
+Strict Docker SQL lint for migration98: **PASS**.
+
+The subsequent full Docker BP gate passed **2041 tests**, zero failed/skipped,
+and its warnings-as-errors build passed with zero warnings/errors. Coverage
+improved to **88.90% line / 78.35% branch** but remained below **90% / 80%**:
+the gate **FAILED**, not release clearance. Cobertura source:
+`test-results/coverage/business-platform/93007cb1-6ccc-47cf-9c42-effd406fda69/coverage.cobertura.xml`.
+A newer measurement is running; its assembled snapshot includes the seven new
+CE transport cases but not the subsequently added controller class.
+
+The additional CE fixture uses generated synthetic workload certificates,
+mutual TLS with the exact BP client certificate, the generated intermediate CA
+chain and signed envelopes verified against the BP delegation public key.
+The real production client validates the CE CA/SPIFFE identity. The fixture
+checks protobuf body digest, tenant, actor, execution, purpose, envelope validity,
+Decision Space and approved evidence shape. It exercises reservation, settlement,
+release, immutable receipt/replay, full overrun usage, CE denial/invalid evidence
+and budget/concurrency denial without calling an inference provider.
+The initial fixture omitted the intermediate chain; its TLS rejection was
+correct. The fixture now supplies the chain rather than relaxing client trust.
+
+Exact commands inside the Docker .NET runner, with cached NuGet packages:
+
+- `dotnet test tests/business-platform.Tests/business-platform.Tests.csproj --artifacts-path /tmp/artifacts/wc134-mtls-generation-2 -warnaserror --filter "FullyQualifiedName~GovernedReservationAndSettlement|FullyQualifiedName~ReservationEvidenceAndSharedBudget" --logger "console;verbosity=minimal"`:
+  **7 passed**, zero failed/skipped.
+- `dotnet test tests/business-platform.Tests/business-platform.Tests.csproj --artifacts-path /tmp/artifacts/wc134-private-inference -warnaserror --filter "FullyQualifiedName~ConversationInferenceControllerTests" --logger "console;verbosity=minimal"`:
+  **30 passed**, zero failed/skipped. All six private endpoints use actual
+  synthetic AI-runtime client identity/signature verification; exact owner
+  arguments, closed bodies, forbidden transport/delegation/replay and
+  privacy-safe 403/409/423/503/queued responses are covered.
+
+WBE's meter now resolves actual `institutional.thread_catalog.thread_id` through
+an explicit provider-account FK rather than inferring machine identity from
+friendly provider names. Migration99 adds the nullable FK under `bp_owner`; it
+does not backfill mappings or invent approval. Missing/inactive/unapproved
+catalogue/provider eligibility explicitly fails. Raw cost and marked-up cost are
+separate nonnegative integer paise values, not assumed equal.
+
+Real PostgreSQL qualification uses actual migrations12/99 (including replay)
+and the nonowner `wbe_app` inherited by `billing_runtime`. The application cannot
+change the mapping or mutate the append-only cost ledger. It exposed two defects
+that SQLite shape tests could not prove: untyped string binding emitted VARCHAR
+for UUID columns, and PostgreSQL forbids `ON CONFLICT` on tables with UPDATE rules.
+The meter now supplies dialect-correct UUID and zoned timestamp parameter types,
+takes a transaction-level lock on the exact attributed invocation, and performs
+an immutable conditional INSERT. Four concurrent exact retries append one row;
+changed costs are rejected and all original attribution/raw/marked-up values
+remain unchanged. Temporary database connections close before targeted cleanup.
+
+Exact Docker Python-runner commands, with a dedicated synthetic PostgreSQL
+container supplied through `WC134_METER_POSTGRES_ADMIN_URL`:
+
+- `pytest tests/billing-engine/test_meter.py tests/billing-engine/test_service.py tests/billing-engine/test_router.py -q`:
+  **90 passed**, zero failed/skipped, including five actual PostgreSQL cases.
+- `ruff check src/billing-engine/meter/service.py src/billing-engine/skeleton/wbe_interfaces.py tests/billing-engine/test_meter.py --select E9,F63,F7,F82`:
+  **PASS**.
+- `pytest tests/validation_control/test_catalog_contract.py tests/validation_control/test_local_catalog_gate.py -q`:
+  **84 passed**.
+- `sqlfluff lint infrastructure/postgres/init/99-wc134-thread-provider-account-mapping.sql --config .sqlfluff`:
+  **PASS**, with existing configuration warnings only.
+
+The `integration-postgres-migrations` catalog command now explicitly runs the
+five `postgres_meter` cases against unique temporary databases on its provisioned
+PostgreSQL server; it requires database-create/drop validation authority and
+already provisioned application/owner roles. Tests do not modify the server's
+existing application database. Ordinary unit runs skip these cases with an
+explicit integration-gate reason; a unit pass alone is not PostgreSQL evidence.
+
+This completes the tested metering foundation, not accepted-offering/trial
+authority or component transport integration. Durable separate-webhook batching,
+environment-wide budget continuity across service-tenant changes, those WBE
+integrations, final exact-tree coverage qualification, signed implementation
+milestones and Founder-review PR remain open. No hook/signing bypass or overall
+completion is claimed; provider traffic, cloud mutation and spend remain off.
