@@ -1791,3 +1791,50 @@ Its outbox fixture grants the UPDATE privilege needed for row locking. Productio
 grants, RLS and tenant-interceptor precedence are unchanged. Full staged-tree
 hooks, release qualification, batching and WBE offering integration are not
 established by these targeted results.
+
+#### Identity qualification and commit-gate repair checkpoint
+
+Mandatory implementation hooks exposed unqualified Identity and attachment paths.
+Focused Docker execution identified omitted canonical migration 47 in the HTTP
+fixtures, an unverified manually started registration, and missing account-link
+subject migration 77. Fixtures now retain the real verification grants and require
+their own destination-bound proof. No production authority check was bypassed.
+
+Runtime defects corrected during qualification:
+
+- Account-link creation's `Location` now resolves to its explicit MVC action name.
+  The integration fixture follows the returned URI and verifies the same link.
+- New links store the verified plain actor subject. Owned reads, relationship
+  attachment revalidation and phone replacement cancellation accept existing
+  issuer-qualified links only for the matching verified actor and current authority.
+- EF records the immediate challenge-to-phone-change dependency. Consumed proof
+  and completed replacement evidence are saved before updating the contact, within
+  the same original transaction; original completion snapshots remain immutable.
+- Migration 96 permits current Identity organisation row locks without writes,
+  restricts link updates to transition columns, and enforces canonical 32-hex
+  Identity matching. Replay and source-column privilege regressions pass.
+- Migration 73 creates the completed-contact index before registration backfills,
+  avoiding pending deferred-trigger events during index creation on replay.
+
+Docker evidence, without provider calls, deployment or activation:
+
+- `csharpier check src/business-platform`: **PASS, 139 files checked**.
+- `sh scripts/validation_control/run_dotnet_quality_gate.sh src/business-platform/business-platform.csproj wc134-identity-quality`:
+  **PASS, build zero warnings/errors**. The separate directory check above covers
+  C# source, not merely the project manifest.
+- `dotnet test tests/business-platform.Tests/business-platform.Tests.csproj --artifacts-path /tmp/artifacts/wc134-identity-final -warnaserror --filter "FullyQualifiedName~CustomerPhoneChangePostgresTests|FullyQualifiedName~IdentityCompletionPostgresTests|FullyQualifiedName~CustomerIdentityJourneyHttpPostgresTests|FullyQualifiedName~CustomerIdentityProgramHostTests" --logger "console;verbosity=minimal"`:
+  **63 passed, zero failed/skipped**.
+- After final SQL formatting,
+  `dotnet test tests/business-platform.Tests/business-platform.Tests.csproj --artifacts-path /tmp/artifacts/wc134-identity-resume-acceptance -warnaserror --filter "FullyQualifiedName~CustomerPhoneChangePostgresTests|FullyQualifiedName~WhatsAppAccountLinkConfirmationTests|FullyQualifiedName~ConversationResumeContextReaderTests|FullyQualifiedName~Program_RegistrationMobile_DestinationBindingAndCooldownPersistInPostgres" --logger "console;verbosity=minimal"`:
+  **76 passed, zero failed/skipped**. This includes both canonical and legacy link
+  cancellation, immutable snapshots, restricted grants, migration replay and
+  exact bounded resume selection.
+- `sqlfluff lint infrastructure/postgres/init/73-wc134-required-verified-whatsapp-registration.sql infrastructure/postgres/init/94-wc134-customer-phone-change.sql infrastructure/postgres/init/96-wc134-runtime-identity-row-lock-policy.sql --config .sqlfluff`:
+  **PASS**. Existing deprecated/unknown configuration warnings remain; no lint
+  suppression or success-shaped shell fallback was used. Actor columns retain
+  their declared canonical `C` collation.
+
+These results do not clear the entire implementation commit gate. The relational
+attachment fixture still needs genuine Identity authority rather than missing
+service/actor/membership inputs. Other WhatsApp fixture failures, durable batching,
+WBE offering metering, full qualification and PR submission remain open.
