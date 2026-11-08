@@ -2054,3 +2054,51 @@ environment-wide budget continuity across service-tenant changes, those WBE
 integrations, final exact-tree coverage qualification, signed implementation
 milestones and Founder-review PR remain open. No hook/signing bypass or overall
 completion is claimed; provider traffic, cloud mutation and spend remain off.
+
+### Active Implementation-Hook Result And Script Repairs
+
+Signed evidence milestone `95589252` passed active documentation hooks. The
+subsequent scoped WBE foundation implementation commit was **rejected**; no new
+implementation commit, hook bypass or signing bypass occurred. Candidate
+`9edc9e37810557480f56e17e9aca5243959c8ba1` ran five active prechecks. Gitleaks,
+TypeScript dependency scan and Web tests passed. First causal failure:
+`scripts_quality`; BP also failed its coverage thresholds.
+
+BP exact Docker gate command:
+`sh scripts/validation_control/run_dotnet_test_gate.sh business-platform tests/business-platform.Tests/business-platform.Tests.csproj`:
+**2078 passed**, zero failed/skipped; warnings-as-errors build **PASS**.
+Coverage: **89.70% line / 78.69% branch**, still below unchanged **90% / 80%**.
+This newer assembled snapshot includes all thirty controller regressions.
+Report:
+`test-results/coverage/business-platform/59375f8c-d6cb-4d9b-b0c3-550ad12fe8b9/coverage.cobertura.xml`.
+
+Scripts quality originally reported **10 failed / 458 passed** in its final
+pipeline selector: one stale bootstrap-manifest source-binding assertion, one
+status assertion and eight simulated activation/containment/Stop workflows.
+The latter are local Azure simulators; these tests do not invoke Azure.
+
+Registration now includes three explicitly disabled optional admission flags.
+Counting any authority-prefixed setting as an activation record produced a false
+status signal. Status now requires an actual activation reference, while still
+reporting approval as unverified. Activation fixtures distinguish the four
+traffic switches from optional registration verification, which remains false
+without a separately approved verification template. Stop fixtures verify only
+the three explicit false permission flags remain; active authority is removed.
+
+Four inherited WC-134 source changes were author-reviewed: the dormant stable
+sender-key catalogue entry, verification/Identity columns, exact recognizer-owner
+handoff for registration and phone-change functions, and provisioning-policy
+validation. Their stale bootstrap artifact digests were refreshed. No environment
+activation states or deployment/traffic authority were changed. The provisioning
+test now checks the exact two-function, SECURITY DEFINER, Identity-schema owner
+exception rather than its superseded single-function SQL spelling.
+
+Exact Docker Python command:
+`pytest tests/pipeline/test_wc133_whatsapp_operations.py tests/pipeline/test_goal006_runner_bootstrap.py tests/pipeline/test_wc124_db_provisioner.py -q`:
+**153 passed**, zero failed/skipped. Docker
+`ruff format scripts/wc133_whatsapp_operations.py` left the file unchanged;
+`ruff check scripts/wc133_whatsapp_operations.py`: **PASS**.
+These targeted repairs do not yet establish a full scripts-gate pass, and do not
+clear BP coverage or overall WC-134 delivery. The implementation milestone and
+Founder-review PR remain blocked; all earlier no-activation/no-spend boundaries
+remain intact.
