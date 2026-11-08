@@ -1,0 +1,248 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-134
+contract_path: work-contracts/WC-134-whatsapp-demo-complete-rollout-work-component.md
+contract_digest: f60687a2a0d0fd7fb2ce479f4d3eb5b9761df82faea592eb0b9ede03bd9b9443
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010), integrating existing authoritative owners
+  source: WC-134 Section 4 matching requirement row; Sections 6-8 delivery and live acceptance
+  evidence_class: Production-DI and real-PostgreSQL integration; exact-image qualification; independently authorized live provider/browser and operational evidence
+  initial_state: expected-fail
+  dependencies: Explicit implementation authorization; accepted identity and conversation contracts; precise cloud, cost, provider and activation decisions
+  completion_rule: Matching Section 4 measurable acceptance passes with immutable evidence; applicable Section 7 own-number and public-Demo scenarios pass; no unresolved required dependency
+  residual_risk: Implementation is in progress; focused local qualification is partial, and exact-image, cloud/configuration, public-budget, alert, provider, and live-message acceptance remains outstanding
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC134-R001
+    observable_outcome: Each verified WhatsApp sender receives a distinct channel-scoped guest participant/session inside the dedicated Demo service tenant; first contact creates no WAOOAW customer Identity/account, customer tenant, membership, relationship, or employment, while the own-number cohort remains supported.
+    test_path_or_plan: WhatsAppGuestSessionPostgresTests and provider-envelope production-host coverage for two unknown senders, replay, guest-scope isolation, migration from the legacy onboarding table, disabled-public denial, and independent STOP; focused real-PostgreSQL and provider tests pass, with production deployment qualification still open.
+    result: BLOCKED
+    residual_risk: First contact now persists as a sender-scoped Business Platform guest session, with idempotent migration of legacy provisional rows. R004's shared guest Conversation API and public live qualification remain open, so full R001 acceptance is not yet demonstrated.
+
+  - <<: *defaults
+    requirement_id: WC134-R002
+    observable_outcome: Webhook, authority, workers, outbox, budgets, delivery status, and provider egress resolve the sender's guest scope within the Demo service tenant; account/relationship access additionally requires Identity session and current membership, with no global-pilot leakage or unscoped scan.
+    test_path_or_plan: WhatsAppAttachmentPostgresTests authors distinct customer/guest forced-RLS attachment cases with late relationship, participant, withdrawal, guest-STOP and competing-binding changes, proof expiry after binding save and before commit, a two-sender concurrency case using an evidence barrier, and sender-index migration replay and row-lock privileges against production migrations 19 and 22. WhatsAppJourneyServiceTests authors rejection of already-ambiguous same-tenant attachments, a binding added during evidence recording, and proof expiry and freshness boundaries, including expiry during a replay lock wait. WhatsAppDemoProviderTests authors ingress denial with payload-free identity security evidence for tenant-visible ambiguous sender bindings, fail-closed behavior when the evidence dependency is missing, denial for a revoked or role-changed participant while preserving recipient STOP, and egress denial for a replaced bound conversation before and during protected reads. WhatsAppOutboxWorkerTests authors same-tenant ambiguous-binding denial across participants and relationships before dispatch. Extend production-schema concurrency, tenant-scope and RLS tests for concurrent two-user inbound, reply and status correlation; ingress participant revalidation is not yet atomic with protected mutations, and cross-tenant ambiguity remains open.
+    result: BLOCKED
+    residual_risk: >-
+      Cross-tenant signed ingress, safety controls, callbacks, owner-indexed worker discovery,
+      exact customer leasing, service-ledger message accounting and fresh provider admission
+      are implemented through restricted owners without widening the service recipient gate.
+      Canonical Send, routed Retry and reply contributions revalidate current routing inside
+      their owning commit; webhook replay cannot restart failed or unknown original work.
+      Evidence-bound channel End and same-owner renewal now retain immutable original outbox
+      correlation, block retired unsent work and preserve receipt-only unknown convergence.
+      Protected timelines, execution/events, retained replies and command replays now use
+      current routing locks through materialization and recheck activation at release.
+      Direct exact customer leasing independently checks original indexed binding; read-position
+      and cancellation revalidate authority after evidence and before canonical persistence.
+      Signed ingress now rechecks routing after Journey/provider-claim replay, before receipt
+      release; service receipt release also rejects activation/recipient/new-route drift.
+      The routing closure inventory records exact entries and policy/qualification blockers.
+      Different actor/account/tenant/relationship/conversation renewal is denied; withdrawal,
+      guest STOP and relationship Emergency Stop cannot be reset by linking.
+      The Founder-approved same-account phone-change API/BFF/portal flow now binds fresh
+      OWNER authentication, destination OTP and versioned explicit consent to atomic
+      profile/proof replacement and old link/channel revocation. Original history/outbox
+      recipients do not move; new LINK and relationship approvals remain required.
+      Foreign-number ownership is denied; full-schema rollback/replay/concurrency and
+      browser recovery/closed-input regressions are authored but unexecuted.
+      Docker compilation and init-chain static lint pass, but authored route/lifecycle and
+      migration regressions remain unexecuted. Production-schema protected-read/race/restart
+      qualification, combined model monetary limits, privacy retention/reassignment, exact-image
+      integration and actual provider delivery remain open. No remote cancellation or R002
+      acceptance is claimed.
+
+  - <<: *defaults
+    requirement_id: WC134-R003
+    observable_outcome: First contact creates a bounded guest session and returns a fixed Privacy-Notice-linked service-consent prompt without storing customer text or performing discovery. Only an exact affirmative reply records versioned consent evidence and enables subsequent discovery; STOP remains immediate. No customer registration, account, membership, employment, or marketing consent is implied.
+    test_path_or_plan: WhatsAppGuestSessionPostgresTests covers signed first-contact consent, invalid replies, CE evidence outage through the signed provider-envelope path, immediate provider-event claim release/retry, consent replay, consented discovery, and sender isolation; extend for concurrent consent and retention/withdrawal.
+    result: BLOCKED
+    residual_risk: Exact YES requires versioned CE-backed consent before discovery. Shared discovery writes and guest timeline reads independently check current WhatsApp guest admission/consent evidence/version/Stop under the ingress sender lock; queueing validates current admitted sender and canonical GUIDE content. Discovery replies also require current consent at queue and dispatch, while a narrow fixed set of service, capacity and unsupported-content notices remains available before consent. Admission/consent evidence now runs outside the sender lock with fresh post-evidence Stop/authority/notice checks, preventing slow CE from blocking STOP or late evidence from restoring admission. Consent-notice publication reacquires the sender lock and rereads state before recording its reference, so a delayed concurrent notice cannot replace an already recorded notice; both verified receipt and signed message send time must be later than notice queueing before affirmative consent is recorded. A stale notice version now starts a fresh prompt and preserves prior consent references in tenant-scoped history before a later YES can record new evidence. Authored renewal and concurrency regressions have not been executed. Queueing alone does not prove prompt delivery. Registered-number/link control notices are explicitly admitted and guide-only. Paused-evidence and lock-wait PostgreSQL regressions, including timeline reads, plus direct-owner/notice/queue/dispatch tests are authored, not executed. Consent expiry, delivery verification, retention, reassignment and full lifecycle qualification remain open.
+
+  - <<: *defaults
+    requirement_id: WC134-R004
+    observable_outcome: WhatsApp guests can browse offerings and use an approved, bounded agent-preview/interview experience through the same BP-owned Conversation layer and catalogue facts as Web and future Mobile, without a relationship or private customer context.
+    test_path_or_plan: PortalInteractionServiceTests exercise the additive IGuestConversation send/timeline contract, Marketplace-only guest scope, participant isolation, catalogue-backed follow-ups, bounded recent-turn context, explicit correction/reset and browse behavior, and disclosure-based skills, limitations and trial questions; ambiguous selections, multiple topics and stale catalogue versions fail closed. New cases author matching Web Marketplace/guest owner responses with separate histories, private-surface interruption and replay without guest creation. PortalGuideExperience tests author honest Marketplace preview disclosure and retained portal API boundary. Extend for visitor admission, more natural corrections, actual agent-preview capability and Mobile adapter parity. Behavioral execution remains deferred.
+    result: BLOCKED
+    residual_risk: BP exposes IGuestConversation over shared participant-scoped portal-interaction storage; WhatsApp consumes it, and existing Web Marketplace interactions now reuse the same catalogue discovery/preview owner logic while retaining PORTAL scope and current membership. Their distinct histories are not copied. At most three Marketplace customer turns since the latest other-surface turn can seed a follow-up, so private account/billing/settings/relationship text cannot select or revive a catalogue context. Explicit correction/reset words, browsing and unrelated turns interrupt earlier selections; only a conservative set of follow-up phrases can reuse context. These lexical controls do not interpret every possible correction or follow-up. A bounded text-only catalogue preview answers published skills, limitations and trial questions, identifies itself as a catalogue preview rather than professional work, and rejects ambiguity/mismatched versions. New parity, isolation, private-surface interruption, replay and Web disclosure regressions are authored; Docker compilation/type-check pass but behavior remains unexecuted. This is not a professional interview or agent-runtime execution. Web visitor admission without completed registration, natural corrections, future Mobile adapter integration and owner-approved governed preview execution remain incomplete, so R004 is not accepted.
+
+  - <<: *defaults
+    requirement_id: WC134-R005
+    observable_outcome: Web registration requires a customer-requested, purpose-bound OTP to verify a WhatsApp number before completion. A verified-number match may recognize a completed registration but does not authenticate an account session or grant relationship access. Trial/Hire and WhatsApp channel binding continue to require the separate Identity session, assurance, and current-membership checks.
+    test_path_or_plan: RegistrationFlow covers required number entry, explicit OTP request, corrected-code retries, cooldown, browser non-retention and verified completion. Identity API/PostgreSQL tests cover required destination-bound verification, resend/guess limits, purpose isolation and migration replay. WhatsAppRegistrationRecognitionPostgresTests covers Boolean-only recognition, RLS/permissions, role drift, rotation and malformed candidates; CustomerIdentityProgramHostTests covers real registration, production-DI recognition and account linking, foreign proof/actor denial, current membership and legacy-link retirement/constraint validation, and authors expiry after an account-link row-lock wait and rollback after the write but before commit. WhatsAppAccountLinkConfirmationTests and IdentityControllerTests cover destination binding, single-use encrypted instructions, rotation/retirement, malformed/stale tokens, revoked proofs before/during evidence, explicit cancellation/replay, evidence failure and expiry; the new confirmation proof freshness regressions are authored but not executed. WhatsAppGuestSessionPostgresTests covers signed guest and relationship-bound control routing, transient verified destination, guide-only non-retention, recovery/replay, closed hours and Stop. WhatsAppJourneyServiceTests cover trial/active lifecycle enforcement, guest-STOP and opt-out refusal, cross-tenant denial, explicit consent, activation changes during evidence, and binding replay. WhatsAppAccountLink and account-links BFF tests cover explicit approval/cancellation, stable uncertain retries, same-origin/session/shared limiter checks and no browser persistence. Complete with final Docker execution, relationship attachment, safe return and protected Meta delivery.
+    result: BLOCKED
+    residual_risk: Required registration verification and Boolean-only consent-gated recognition are implemented, preserving actor RLS and protected default-off activation. Authenticated account association includes current owner membership, server-selected owned proof, encrypted expiring instruction, signed destination confirmation, evidence-first single-use completion, explicit cancellation and legacy unproven-link retirement. Relationship binding requires fresh step-up, explicit consent, a trial-active or active relationship, and a non-stopped guest session under its own tenant scope; replay cannot reset STOP. After evidence and guest-lock waits, Identity now joins the customer binding transaction and locks current actor/login/account/OWNER membership/organisation, then registration/link/mobile proof. The exact confirmed sender, current registration/proof and membership are rechecked before relationship/participant/contact/binding locks and commit. New binding and replay both use this owner guard; earlier controller reads are not commit authority. Identity tables/RLS permissions are not widened. Owner mutation, attachment-service evidence/replay and production-DI Identity/PostgreSQL revocation/lock-retention regressions are authored, not executed; the PostgreSQL fixture applies actual Identity migrations plus migration 88 against a minimal execution table and is not full runtime/init-chain qualification. Instructions remain excluded from customer transcript/runtime input. Cross-tenant sender routing, forced-RLS full attachment races, integrated return journey, exact locale/protected readback and separately authorized live traffic/cost/delivery acceptance remain open. No account access or live continuity is claimed from recognition or association alone. All behavioral qualification remains deferred until scoped implementation is complete.
+
+  - <<: *defaults
+    requirement_id: WC134-R006
+    observable_outcome: Existing relationships use correct runtime skills and deliver canonical professional, system and intended journey responses to WhatsApp.
+    test_path_or_plan: CeFit09WebhookIngressTests covers actual-skill routing, replay, shared Web context, ambiguity, absent/revoked authority, retired context and actor-scoped accepted-send retry. WhatsAppDemoProviderTests and WhatsAppGuestSessionPostgresTests cover canonical guidance and delivery claims. AI Runtime cases author disabled-interpreter restart recovery, unknown claim refusal, keyed persisted/absent/conflicting/stopped outcomes and in-flight result suppression. PR cases author lost responses, late authority checks, legacy read-only result lookup and result replay convergence; test_conversation_dispatch_temporal.py authors actual Temporal retry and history replay including legacy inputs without dispatch. EmploymentDispatchStopPostgresTests authors real PostgreSQL Stop/admission lock ordering, restart persistence, UUID normalization, tenant RLS and evidence-column privileges. CE tests author explicit pending signal targets and absent workflow containment. test_wc134_dispatch_rollout.py is wired into the scripts gate and authors exact-image old-replica exclusion and drain failure. Behavioral execution remains deferred. Complete with production-DI runtime-to-provider and Web continuity, actual provider replies and customer-visible Stop policy.
+    result: BLOCKED
+    residual_risk: >-
+      Durable dispatch, Stop barriers, original-source recovery and deduplicated
+      events remain candidate code, not behavioral acceptance. PROFESSIONAL_RESPONSE
+      now has its own agent-specific AIR generation contract, authenticated BP
+      resolve/reserve/settle/release owner, signed CE evidence, CTG boundary and
+      durable admission/dispatch/result claims. Current confirmed trial/hire,
+      full original mandate, accepted text/language and admitted skill are checked;
+      no generic shared profession skill is introduced. Concurrent duplicate
+      admission cannot replace the original result. Completed original-owner
+      replay revalidates authority. The tag-addressed Ollama adapter is explicitly
+      unavailable before reservation/traffic because its immutable invocation is
+      unproven. Approved binding publication/provenance and mandatory policy/plan
+      materialization remain open. Fresh-owner recovery of AIR-only completed
+      output is now connected through separate persisted BP read permission,
+      PR retained original-source lookup and AIR before/after current authority
+      checks. The original execution deadline and actor are not renewed or
+      impersonated. Original membership/participant, source/projection, Stop and
+      WhatsApp binding/consent fences remain controlling; missing legacy source
+      identity, partial runtime output and competing results require operator
+      recovery. Bounded owner-checked canonical resume is wired, limited to
+      twelve completed same-conversation/agent-skill turns, seven days before
+      original acceptance, and 8000 UTF-16 units. An admitted history wrapper and
+      exact context digest are required; no inference runs during idle time.
+      Durable separate-webhook batching and WBE offering integration remain open.
+      Docker compilation/static checks pass, but authored
+      behavior, production TLS/DI, PostgreSQL/Temporal, canonical ingestion,
+      provider delivery, Stop lifecycle and both live cohorts remain unqualified.
+
+  - <<: *defaults
+    requirement_id: WC134-R007
+    observable_outcome: Ordered durable dispatch and delivery-status reconciliation converge without duplicate sends under restart, early callbacks or ambiguous responses.
+    test_path_or_plan: WhatsAppOutboxWorkerTests covers a lost dispatch response and expired DISPATCHING lease reconciling without redispatch, an early status callback retained until submission evidence arrives and callback idempotency. Authored WhatsAppGuestSessionPostgresTests covers relationship owner-context failure with immediate same-event retry and interrupted provider completion after canonical journey commit without duplicate message/outbox/event. WhatsAppDeliveryRetentionPostgresTests authors status-claim identity collision recovery, non-collision database-error propagation and webhook claim completion races against a synthetic PostgreSQL table; these cases have not run. Full provider crash, lease-loss and callback-reordering qualification remains required.
+    result: BLOCKED
+    residual_risk: >-
+      Existing delivery workers retain original message/recipient/purpose identity,
+      distinguish unknown from unsent work and correlate persisted callbacks.
+      Claims complete only for their current unexpired owner; prior canonical
+      effects are not thereby made atomic. Generation now separates admission
+      ownership from monotonic dispatch claims, retries only known pre-reservation
+      queue denial, and persists unknown provider/reservation outcomes without
+      redispatch. Authored duplicate-admission, queue and lost-receipt regressions
+      remain unexecuted. Lost model reservation receipts now have an authenticated
+      read-only BP financial reconciliation route, using an immutable
+      customer-scoped mapping to the original budget tenant. AIR recovery may
+      attach original financial coordinates without changing its stored result,
+      releasing funds, renewing authority or dispatching again. Missing receipts
+      remain unresolved, not proof that a call never ran. AIR-only retained
+      completed output now has fresh-owner canonical recovery with an immutable
+      result timestamp and stable event identities; no Temporal signal, new
+      inference, reservation or fund release is performed. Current runtime
+      source changes or partial output prevent synthesis; canonical ingestion
+      retains its atomic permission and duplicate-projection protections.
+      Production PostgreSQL/Temporal/provider crash, callback ordering and
+      full-chain restart qualification remain open.
+
+  - <<: *defaults
+    requirement_id: WC134-R008
+    observable_outcome: Pilot combined inbound/outbound count and public per-user/global rate, concurrency and priced spend limits are enforced idempotently.
+    test_path_or_plan: WhatsAppGuestSessionPostgresTests covers ten combined guest events, replay, 100-new-session IST-day ceiling and protected guide-only session-cap notices/Stop. WhatsAppDemoProviderTests authors relationship-inbound/provider combined exhaustion, stable replay after exhaustion, shared minute decisions, foreign-sender collisions and provider-authority drift, alongside outbound guest contributions. CeFit09WebhookIngressTests authors signed recipient STOP after exhausted relationship inbound without runtime/outbox work. WhatsAppGuestTrafficBudgetTests authors shared relationship/OTP/guest minute and activation accounting, legacy unmatched provider reservations, guest dispatch deduplication, foreign-tenant/time-boundary checks and final notice slot. WhatsAppTrafficBudgetPostgresTests authors forced-RLS mixed guest-inbound/relationship-reply/OTP and relationship-inbound/relationship-reply/OTP contention, plus migration replay after an activation-limit event exists. GuestOperatingHours/PortalInteractionService coverage retains the approved 09:00-21:00 IST fixed response without discovery. Behavioral execution remains deferred until all scoped implementation is complete.
+    result: BLOCKED
+    residual_risk: >-
+      Existing combined-message, IST-day guest admission, rolling-minute, final-slot
+      notice and Stop controls remain candidate implementation. Cross-sender replay
+      and unmatched legacy reservations do not gain new allowance. The new model
+      ledger shares the original service-tenant lock and messaging owner's rolling
+      24-hour priced spend window with OTP and customer/ordinary outbound admission;
+      min(INR500, approved MaximumSpendInr) is not a second pool or midnight reset.
+      Unknown usage holds full conservative funds and one attempt slot. Full
+      component-ceiling settlement and overruns are persisted without clamping;
+      terminal usage is database-immutable and overrun halts subsequent admission.
+      Direct customer replies retain zero provider-message cost, not zero model
+      compute cost; guest discovery does not invoke a model. Migration-backed
+      midnight, expired/foreign ledger row, settlement/replacement and large-use
+      arithmetic regressions are authored, not executed. Original settlement
+      tenancy is now persisted atomically with each reservation and does not
+      depend on current activation options. Customer/execution/reservation
+      mismatches and inconsistent budget mappings are denied; authored migration,
+      RLS and financial receipt recovery regressions are unexecuted.
+      Environment-wide budget continuity across service-tenant changes,
+      integration with existing agent-specific offering allowances and metering,
+      approved rate/binding publication and production shared contention remain
+      open. No backend/provider is activated;
+      PostgreSQL/provider, exact-image and live qualification remain required.
+
+  - <<: *defaults
+    requirement_id: WC134-R009
+    observable_outcome: Recipient STOP, relationship Emergency Stop, operator channel Stop, expiry and re-consent preserve scoped containment.
+    test_path_or_plan: WhatsAppGuestSessionPostgresTests covers exact STOP before limit-notice dispatch, repeated case-insensitive/trimmed STOP, sender isolation, and suppression of queued guest delivery. WhatsAppJourneyServiceTests.RecipientStopOptsOutChannelWithoutStoppingRelationship covers incidental STOP wording, exact/repeated recipient STOP persistence, no reply/session token, distinct explicit Emergency Stop, and suppression of later commands. WhatsAppDemoProviderTests covers both pre-queue and final dispatch denial when a linked relationship contact has opted out but a guest session/outbox item remains. RelationshipEmergencyStopPersistenceTests authors CE evidence-reference parsing, gateway outage, latch collision, unrelated failure, interrupted confirmed-evidence replay, original-actor and invalid-evidence cases; these have not run. Complete with concurrent queued/in-flight Stop, operator channel Stop, expiry, re-consent, and acknowledgement-policy coverage.
+    result: BLOCKED
+    residual_risk: Exact relationship-channel STOP now records recipient opt-out without stopping the employment relationship, while exact EMERGENCY STOP invokes relationship Emergency Stop; incidental STOP wording does neither. Opt-out produces no reply, internal session token, or later ordinary outbound contribution, and its tenant/sender digest also blocks queued or newly queued guest-channel egress. BP now parses CE's documented EMERGENCY_STOP evidence reference and surfaces gateway timeout or failure as pending rather than confirmed; customer text no longer claims that all sessions halted because CE tolerates signalling failures. Confirmed Emergency Stop evidence can be retried by its original participant after an interrupted relationship transition but cannot be reused after a later relationship transition. Conditional PostgreSQL evidence confirmation retains the first confirmed evidence; relationship and current participant rows are locked for Stop commit. RelationshipEmergencyStopConcurrencyPostgresTests authors concurrent confirmation and participant-revocation regressions using EF-generated schemas, not the production migration chain; full-chain lock privilege checks are authored separately. Concurrent calls may still reach CE separately, and release/latch lifecycle requires further investigation. Regression execution is deferred until all stories are implemented. Concurrent queued/in-flight race, operator channel Stop, bounded expiry/re-consent, and final customer-visible acknowledgement policy qualification remain unresolved.
+
+  - <<: *defaults
+    requirement_id: WC134-R010
+    observable_outcome: Operational signals are evaluated, exported, delivered and acknowledged within accepted deadlines; missing signals fail readiness.
+    test_path_or_plan: WhatsAppOutboxWorkerTests authors threshold, stable breach timestamp, isolated signal, Stop evidence, heartbeat payload and changed-environment/candidate checks. Catalog-selected test_goal006_deployment_inputs.py authors monitoring default-off, exact tuple, query digest, wrong-environment/resource/receiver/window and rule wiring contracts. Complete with executable KQL missing-heartbeat and stale-candidate cases, real-PostgreSQL tenant scope, receiver-delivery and acknowledgement evidence.
+    result: BLOCKED
+    residual_risk: The earlier Demo action-group sample email was received, not proof of runtime alert delivery. Repository wiring now includes a default-absent one-minute Demo scheduled-query rule forwarding exact-candidate operational breaches or two-minute missing heartbeats to the existing receiver, closed deployment inputs with an exact query digest, machine-readable payload-free observations and an acknowledgement/escalation runbook. Nothing was applied and no monitoring spend is approved. Query execution, actual rule-health/receiver delivery, latency, acknowledgement and escalation remain unqualified. Outbox RLS still restricts evaluation to the active authority tenant; cross-tenant coverage, restore-egress producer/automatic fence and mobile-push receipt remain open. Authored cases are not yet executed; R010 remains BLOCKED.
+
+  - <<: *defaults
+    requirement_id: WC134-R011
+    observable_outcome: Current Meta registration, subscription, business sender, scopes, credential versions, template inventory and billing are privately verified.
+    test_path_or_plan: Existing protected operator preflight plus current provider metadata, valid challenge and signed inbound/status correlation; redacted evidence only.
+
+  - <<: *defaults
+    requirement_id: WC134-R012
+    observable_outcome: Direct replies to customer messages remain limited to the valid free service window. The sole proactive exception is a purpose-bound authentication OTP sent only after a registrant explicitly requests it and only through a privately verified, Meta-approved authentication template. Alerts, marketing, unsolicited OTPs, and all other template initiation remain disabled.
+    test_path_or_plan: Generic WhatsAppOutboxWorkerTests continue rejecting templates and non-response purposes; WhatsAppDemoProviderTests proves generic approved templates fail closed before provider egress. WhatsAppIdentityVerificationTests covers approved authentication-template readback, registration-only dispatch, missing authority, provider failures and rejection of additional numbered body parameters; complete integrated rate-limit and live-provider qualification. Existing guest provider tests cover canonical inbound replies.
+    result: BLOCKED
+    residual_risk: The dedicated authentication-template path and its tests are implemented locally, including rejection of unsupported additional body parameters. Tests are authored and compile but remain unexecuted; Meta approval, cost authority, integrated qualification and separately approved live provider evidence remain outstanding.
+
+  - <<: *defaults
+    requirement_id: WC134-R013
+    observable_outcome: Webhook batches preserve valid events and unsupported content receives truthful bounded behavior without unqualified media processing.
+    test_path_or_plan: WhatsAppGuestSessionPostgresTests submits a signed mixed status/text/image batch, then retries a changed batch containing the same status and image events; it asserts both inbound events are handled, one fixed text-only explanation is queued, no media reference or customer media turn is persisted, and event-level replay remains idempotent. It also checks a signed 4096 UTF-16-code-unit text with multibyte Unicode is persisted unchanged and 4097 is rejected before effects. CeFit09WebhookIngressTests.SignedUnsupportedRelationshipMessageCreatesCanonicalSystemReply exercises a signed unsupported image from a relationship-bound sender, canonical SYSTEM contribution, no media persistence and provider-message replay. SignedRelationshipTextEntersCanonicalConversationAndStartsRuntimeOnce covers ordinary signed relationship-text ingress. WhatsAppDemoProviderTests.UnsupportedRelationshipContentCreatesOnlyAnIdempotentSystemReply covers contribution idempotency. Tests are authored but deferred until all stories are implemented. Exact-image qualification remains before acceptance.
+    result: BLOCKED
+    residual_risk: Public guests and existing relationship contacts now have fixed text-only replies for non-text provider messages without media retrieval or fabricated customer-text persistence; the relationship response is neutral rather than Demo-branded. Parser enforcement and regression coverage specify the 4096 UTF-16-code-unit text ceiling and no-effects rejection at 4097. PostgreSQL-backed mixed-batch/status replay, signed relationship media handling, relationship idempotency, and Unicode/length cases have not been executed; final exact-image qualification remains open.
+
+  - <<: *defaults
+    requirement_id: WC134-R014
+    observable_outcome: Exact live data/schema/RLS, evidence, runtime/context/catalogue and connection dependencies qualify without resets or ad-hoc privilege expansion.
+    test_path_or_plan: Idempotent init-chain and session contract gates; private exact-image migration/RLS/grant and dependency preflight; repeat with zero unintended drift.
+
+  - <<: *defaults
+    requirement_id: WC134-R015
+    observable_outcome: Protected activation installs the independently approved exact authority, policy, binding, template and evidence tuple for its full valid window.
+    test_path_or_plan: Activation/operator regressions cover explicit public/guest permission, required pinned sender key, exact candidate assembly and independent digest approval, legacy-permission closure and registration/Stop default-off behavior. Existing cases retain current readiness receipts, authority window and exact deployment tuple checks. Complete with protected live readback and independent candidate approval.
+    result: BLOCKED
+    residual_risk: Closed protected schemas and operator runtime settings now support public admission only with explicit guest permission and a pinned sender pseudonymization key. Registration-only setup installs the exact key version but cannot activate traffic; deployment, Stop and legacy activation close stale optional permissions. New regressions are authored and Python static gates pass, but execution remains deferred. No live key intake, deployment/readback, readiness receipt acceptance, digest approval, public activation or spend is claimed.
+
+  - <<: *defaults
+    requirement_id: WC134-R016
+    observable_outcome: Activation preparation, review, Stop, rollback and recovery fit the usable window and contain failed partial changes without unsafe resend.
+    test_path_or_plan: Exact-image operator rehearsal for expiry, delayed approval, partial revision failure, old-worker retirement and compatible rollback.
+
+  - <<: *defaults
+    requirement_id: WC134-R017
+    observable_outcome: Published Demo number and entry instructions match an approved available operating window with healthy dependencies and incident ownership.
+    test_path_or_plan: Second-device entry validation, runtime/dependency health, scheduled stop/start and deployment revalidation; outside-window behavior.
+
+  - <<: *defaults
+    requirement_id: WC134-R018
+    observable_outcome: Provisional and linked identity data have tested minimization, retention, withdrawal, erasure/legal-hold and reassignment behavior.
+    test_path_or_plan: Identity/conversation lifecycle integration, protected recipient resolution and log/artifact redaction tests; revoked and reassigned phone cases. CustomerPhoneChangePostgresTests authors the approved same-account replacement, atomic rollback, unchanged pending/unknown recipients, new linking proof, foreign-number/challenge denial, OTP limits/replay, cancellation, delivery uncertainty, post-evidence membership revocation and concurrent confirmation against the full init schema. CustomerWorkspaceFullSchemaPostgresTests authors migration 94 RLS, immutable-column grants and conflict-definer ownership assertions. Portal WhatsAppPhoneChange and phone-changes BFF regressions cover explicit consent, authentication, closed commands, no sensitive storage and uncertain-result recovery. All phone-change behavioral cases remain unexecuted. WhatsAppDeliveryRetentionPostgresTests authors claim and delivery hold races at deletion, retention extension during deletion and concurrent closure extension against synthetic PostgreSQL tables. CeFit09WebhookIngressTests authors provider, app and environment isolation for claim purge. CeFit11MediaVoiceSafetyTests authors sequential derivative preservation/erasure and concurrent PostgreSQL registration with a row-lock barrier. These cases do not establish full lifecycle acceptance; different-customer reassignment, carrier recycling, media payload erasure and legal-hold serialization remain open.
+
+  - <<: *defaults
+    requirement_id: WC134-R019
+    observable_outcome: All changed behavior is catalog-tested and qualified against immutable source, runner, application and configuration identities.
+    test_path_or_plan: Catalog registration checks, focused production-DI and PostgreSQL selectors, dependency milestones, exact-candidate final qualification and hosted evidence. Authored test_conversation_service_identity.py is collected by the existing test-python:professional-runtime directory gate; BP gateway, workload-client and owner-DI regressions are in the existing full Business Platform project gate. Migration 82 adds forced-RLS-scoped outbox read and write, Stop-latch read and insert with evidence-column updates only, and delivery-observation read and insert. Composite foreign keys validate the relationship observation message and outbox conversation against environment, tenant and relationship. CustomerWorkspaceFullSchemaPostgresTests authors full-chain privilege, migration replay, legacy mismatch rejection, forced-RLS guard, cross-tenant isolation and observation scope checks, not yet executed. Delivery hold and retention mutation still require an authority boundary. Verify all remaining production runtime access and isolation through the full migration chain. Migration 36 creates provider claim and operational signal tables without explicit business_app grants in the init migrations searched; these tables lack tenant RLS, so access must not be broadened without an appropriate boundary.
+
+  - <<: *defaults
+    requirement_id: WC134-R020
+    observable_outcome: Runner stack, monitoring and activation configuration have durable reproducible ownership with unrelated resources preserved.
+    test_path_or_plan: Reviewed stack what-if and exact invariant readback; deployment/status/cleanup integration; reproduce monitoring/configuration from durable controlled inputs.
+
+  - <<: *defaults
+    requirement_id: WC134-R021
+    observable_outcome: Both own-number and public-Demo live acceptance scripts pass with actual delivery, continuity, scoped Stop and cost reconciliation.
+    test_path_or_plan: Execute WC-134 Section 7 A and B under separately approved windows/counts/spend; retain redacted timestamped actual outcome evidence.
+
+  - <<: *defaults
+    requirement_id: WC134-R022
+    observable_outcome: One complete evidence matrix and runbook close every required dependency; no partial or green-workflow-only completion claim.
+    test_path_or_plan: Validate complete contract digest and ledger coverage; author acceptance audit of all requirements, discovered gaps, operational runbook and Founder release decision.
