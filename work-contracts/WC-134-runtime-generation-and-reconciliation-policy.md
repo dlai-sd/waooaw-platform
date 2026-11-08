@@ -1834,7 +1834,136 @@ Docker evidence, without provider calls, deployment or activation:
   suppression or success-shaped shell fallback was used. Actor columns retain
   their declared canonical `C` collation.
 
-These results do not clear the entire implementation commit gate. The relational
-attachment fixture still needs genuine Identity authority rather than missing
-service/actor/membership inputs. Other WhatsApp fixture failures, durable batching,
-WBE offering metering, full qualification and PR submission remain open.
+These Identity results alone do not clear the entire implementation commit gate.
+The subsequent attachment and budget/reply qualification below supersedes the
+earlier missing-authority fixture status. Durable batching, WBE offering metering,
+full qualification and PR submission remain open.
+
+#### Attachment and remaining budget/reply qualification checkpoint
+
+Relational attachment now uses the canonical full-schema Identity service,
+verified actor, current OWNER membership and original confirmed account link.
+Missing/revoked Identity and foreign-link cases remain denied. Migration 97
+repairs the missing contact tenant policy exposed by migration 60's FORCE RLS:
+`business_app` and `bp_owner` can read/update only their current tenant's contacts,
+and neither can retarget a contact to another tenant. No bypass privilege or
+replacement Identity authority is introduced.
+
+The remaining focused WhatsApp failures were fixture mismatches, not permission
+to weaken production guards. Tests now use the admitted guest recipient, isolate
+per-guest limits from activation/minute limits, assert final-reply slot reservation,
+bind callbacks to their actual app/WABA/recipient, and provide the canonical
+outbound contribution owner. The exhausted-budget/STOP regression uses PostgreSQL
+so provider-claim lease release executes against a relational database. Invalid
+sender admission is denied before borrowing a recorded event. Reply assertions
+deserialize canonical text instead of comparing JSON-escaped source text.
+
+Docker evidence:
+
+- `dotnet test tests/business-platform.Tests/business-platform.Tests.csproj --artifacts-path /tmp/artifacts/wc134-attachment-negative -warnaserror --filter "FullyQualifiedName~WhatsAppAttachmentPostgresTests" --logger "console;verbosity=minimal"`:
+  **18 passed, zero failed/skipped**, including policy replay, own-tenant updates,
+  foreign reads/writes and retarget denial for both application and table owner.
+- `sqlfluff lint infrastructure/postgres/init/97-wc134-whatsapp-contact-tenant-policy.sql --config .sqlfluff`:
+  **PASS**, with only the existing configuration warnings.
+- `dotnet test tests/business-platform.Tests/business-platform.Tests.csproj --artifacts-path /tmp/artifacts/wc134-budget-reply-repair-4 -warnaserror --filter "FullyQualifiedName~WhatsAppGuestTrafficBudgetTests|FullyQualifiedName~WhatsAppDemoProviderTests|FullyQualifiedName~CeFit09WebhookIngressTests|FullyQualifiedName~Wc121_StatusUsesSharedTruthAndEndSessionLeavesRelationshipActive" --logger "console;verbosity=minimal"`:
+  **134 passed, zero failed/skipped**. Compilation uses warnings as errors.
+
+The full Docker BP test/coverage commit gate,
+`sh scripts/validation_control/run_dotnet_test_gate.sh business-platform tests/business-platform.Tests/business-platform.Tests.csproj`,
+completed with **1966 passed, 37 failed, zero skipped, 2003 total**. Coverage
+acceptance was not reached because test execution failed. The focused passes
+above are not full-gate clearance.
+
+Additional qualification corrected a legacy contact fixture's missing migration
+76 and used the sender's original progress timestamp when checking destination
+verification across replays. Both signed-account-link variants pass in the
+subsequent five-test selector; three other cases remained failing at that point.
+The full-schema failure is specifically an unexpected table-level UPDATE grant
+on `conversation_delivery_observations`; do not broaden privileges or weaken its
+assertion. The first-contact fixture now reaches consent evidence/retry checks
+with a genuinely later sender timestamp and asserts exact provider event IDs,
+including unsupported input. Its later budget/timeline expectations still need
+qualification. The latest five-test diagnostic run completed before shutdown:
+**two passed, three failed**. Both signed-account-link variants pass. Delivery
+observations remain owned by `bp_owner`, but `business_app` has table-level
+UPDATE/DELETE. First-contact exact provider IDs pass; its timeline assertion
+expects five messages and receives six. These are unresolved failures, not PASS.
+
+Founder requested parking for Codespace restart. Implementation commits, durable
+batching, WBE-owned offering metering, release qualification and PR submission
+remain open. No provider call, activation, deployment, cloud mutation or spend
+was performed. Signing and implementation hooks remain active.
+
+#### Resumed BP qualification and public recovery evidence
+
+Founder direction "resume WC-134" continues the existing office, bootstrap and
+implementation/testing/commit/PR authority; no bootstrap repetition or new
+activation authority is implied.
+
+The original 37 full-suite failures have been repaired and qualified in their
+owning selectors. Migration 82 explicitly revokes delivery-observation
+UPDATE/DELETE and outbox/Stop-latch DELETE inherited from migration 02's default
+future-table grants. Migration 85 grants `ai_runtime_app` schema USAGE for its
+already admitted Stop-lock functions. Neither grants a Stop bypass. Strict Docker
+SQL lint for both migrations passes.
+
+Relational fixtures now preserve actual tenant/Identity/role/evidence admission,
+schema-qualified deferred constraints, exact row-lock privileges, canonical
+original SEND evidence and early owner-gateway configuration. First-contact
+assertions cover exact provider event IDs, immutable consent replays, unsupported
+media's GUIDE-only limitation and final-reply-slot-aware per-sender budgets.
+Focused qualification passed 134 cases plus the final two first-contact cases in
+separate runs; the last guest fixture edit was formatted in Docker.
+
+Full Docker command:
+`sh scripts/validation_control/run_dotnet_test_gate.sh business-platform tests/business-platform.Tests/business-platform.Tests.csproj`
+through the `waooaw-wc134` Compose runner and Docker socket wrapper:
+**2003 passed, zero failed/skipped**; warnings-as-errors build: **PASS**, zero
+warnings/errors. **The gate still FAILS:** line coverage **87.31%**, branch coverage
+**77.03%**, below the unchanged **90% / 80%** acceptance thresholds.
+Cobertura source:
+`test-results/coverage/business-platform/3c78e93f-a243-4834-9982-90fb0fb09eaa/coverage.cobertura.xml`.
+This supersedes the parked test-failure status, not the incomplete delivery status.
+
+Coverage diagnosis found unexecuted public reconciliation admission/recheck and
+generation-owner reserve/source/settle paths. New public recovery regressions use
+the real migration-backed tenant application role and current Identity, rather
+than directly calling only the projection helper. They cover a fresh different
+reader after original mandate expiry, completion replay without a second CE or
+runtime call, UNKNOWN reread without renewed evidence or a false projection,
+changed idempotent requests, unavailable/denied/empty CE evidence, owner/projection
+drift after CE or remote read, shared Stop and malformed remote coordinates.
+The initial test run exposed invalid UNKNOWN fixture digests; the fixture now
+omits result/request digests as required by the closed wire contract.
+
+Docker targeted command:
+`dotnet test tests/business-platform.Tests/business-platform.Tests.csproj --artifacts-path /tmp/artifacts/wc134-public-recovery-final -warnaserror --filter "FullyQualifiedName~PublicRecovery" --logger "console;verbosity=minimal"`:
+**12 passed, zero failed/skipped**. These targeted passes do not establish the
+full coverage thresholds. No coverage exclusion or threshold reduction was made.
+
+The scoped bounded-resume selector commit attempt was **blocked by active
+implementation hooks**. The first causal failure was WC-134 Web TypeScript lint;
+the hook's BP snapshot also contained the initial three new recovery fixture
+failures, before the targeted correction above. No commit or hook bypass is
+claimed. Gitleaks, TypeScript dependency scan and BP static quality passed in
+that attempt. Hook manifest:
+`5b50ab4d1daa084a3e07449bd3b886bf1ea428ac/precheck-manifest.json` in the shared Git
+precheck cache.
+
+The Web repairs are restricted to WC-134 Identity surfaces: native semantic
+`output` status elements retain paragraph layout; optional command keys reset
+without deleting object properties; test environment cleanup uses the existing
+repository `Reflect.deleteProperty` pattern. Account-link tests now assert that
+only the recovery link UUID, not the encrypted instruction, is stored in session
+storage and await completed approval/status responses before relationship
+selection. Docker `biome lint` on the five changed source/test files: **PASS**,
+two existing style warnings. Docker
+`jest --runInBand --runTestsByPath app/api/identity/account-links/route.test.ts app/api/identity/phone-changes/route.test.ts components/portal/WhatsAppAccountLink.test.tsx components/portal/WhatsAppPhoneChange.test.tsx`:
+**35 passed, four suites passed**. Docker `tsc --noEmit --incremental false` on
+the complete Web snapshot: **PASS**.
+
+The evidence checkpoint is committed separately with documentation hooks and
+configured signing; implementation remains independently gated. Remaining
+implementation, coverage qualification, durable separate-webhook batching,
+WBE-owned offering/component metering and final PR gates remain open. No provider
+request, download, activation, deployment, cloud mutation or spend occurred.
