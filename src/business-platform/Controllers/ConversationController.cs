@@ -35,6 +35,99 @@ public sealed class ConversationController : ControllerBase
         _service = service;
     }
 
+    [HttpPost("executions/{executionId:guid}/reconcile")]
+    public async Task<IActionResult> ReconcileExecutionAsync(
+        Guid relationshipId,
+        Guid executionId,
+        [FromBody] ReconcileConversationExecutionRequestV1 request,
+        [FromServices] ConversationReconciliationService reconciliation,
+        CancellationToken cancellationToken
+    )
+    {
+        var correlationId = Guid.TryParse(Request.Headers["X-Correlation-Id"], out var supplied)
+            ? supplied
+            : Guid.Empty;
+        if (!TryGetAuthority(out var tenantId, out var participantId))
+            return ConversationProblem(
+                401,
+                "CONVERSATION_SESSION_REQUIRED",
+                "Authenticated session required.",
+                Guid.NewGuid()
+            );
+        if (!TryGetIdempotencyKey(out var key) || correlationId == Guid.Empty)
+            return ConversationProblem(
+                400,
+                "CONVERSATION_REQUEST_INVALID",
+                "UUID Idempotency-Key and X-Correlation-Id headers are required.",
+                Guid.NewGuid()
+            );
+        try
+        {
+            var result = await reconciliation.ReconcileAsync(
+                tenantId,
+                participantId,
+                relationshipId,
+                executionId,
+                key,
+                correlationId,
+                request,
+                cancellationToken
+            );
+            Response.Headers.CacheControl = "no-store";
+            return Ok(result);
+        }
+        catch (Exception exception)
+            when (exception
+                    is ConversationNotAccessibleException
+                        or ConversationStateConflictException
+                        or ConversationIdempotencyConflictException
+                        or ConversationStoppedException
+                        or ConversationExecutionUnavailableException
+                        or ConversationRequestException
+                        or ConstitutionalActionDeniedException
+                        or Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException
+            )
+        {
+            return MapProblem(exception, correlationId);
+        }
+    }
+
+    [HttpGet("messages/{messageId:guid}/execution")]
+    public async Task<IActionResult> GetMessageExecutionAsync(
+        Guid relationshipId,
+        Guid messageId,
+        CancellationToken cancellationToken
+    )
+    {
+        var correlationId = Guid.NewGuid();
+        Response.Headers.CacheControl = "no-store";
+        if (!TryGetAuthority(out var tenantId, out var participantId))
+            return ConversationProblem(
+                401,
+                "CONVERSATION_SESSION_REQUIRED",
+                "Authenticated session required.",
+                correlationId
+            );
+        try
+        {
+            var execution = await _service.GetMessageExecutionAsync(
+                tenantId,
+                participantId,
+                relationshipId,
+                messageId,
+                cancellationToken
+            );
+            return execution is null
+                ? MapProblem(new ConversationNotAccessibleException(), correlationId)
+                : Ok(execution);
+        }
+        catch (Exception exception)
+            when (exception is ConversationNotAccessibleException or ConversationStoppedException)
+        {
+            return MapProblem(exception, correlationId);
+        }
+    }
+
     [HttpGet("messages")]
     public async Task<IActionResult> ListMessagesAsync(
         Guid relationshipId,
@@ -407,7 +500,8 @@ public sealed class ConversationController : ControllerBase
                 "Idempotency identity conflicts with a prior request.",
                 correlationId
             ),
-            ConversationStateConflictException => ConversationProblem(
+            ConversationStateConflictException
+            or Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException => ConversationProblem(
                 StatusCodes.Status409Conflict,
                 "CONVERSATION_STATE_CONFLICT",
                 "Authoritative conversation state must be reconciled.",

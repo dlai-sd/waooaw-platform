@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Headers;
@@ -11,7 +12,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
@@ -32,6 +36,7 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
         .Build();
     private readonly RSA _signer = RSA.Create(2048);
     private readonly GoogleWorkspaceProofAdapterTests.SyntheticKeycloakHandler _broker = new();
+    private readonly CapturingVerificationDispatcher _verificationDispatcher = new();
     private readonly IdentityBrokerReadOptions _configuration =
         GoogleWorkspaceProofAdapterTests.Configuration();
     private WebApplicationFactory<Program>? _baseFactory;
@@ -79,6 +84,13 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
         await OwnerAsync(
             await File.ReadAllTextAsync(
                 RepositoryPaths.Resolve(
+                    "infrastructure/postgres/init/73-wc134-required-verified-whatsapp-registration.sql"
+                )
+            )
+        );
+        await OwnerAsync(
+            await File.ReadAllTextAsync(
+                RepositoryPaths.Resolve(
                     "infrastructure/postgres/init/38-identity-security-events.sql"
                 )
             )
@@ -92,6 +104,20 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
             await File.ReadAllTextAsync(
                 RepositoryPaths.Resolve(
                     "infrastructure/postgres/init/40-identity-account-link-evidence.sql"
+                )
+            )
+        );
+        var linkMigration = await File.ReadAllTextAsync(
+            RepositoryPaths.Resolve(
+                "infrastructure/postgres/init/75-wc134-whatsapp-account-link-confirmation.sql"
+            )
+        );
+        await OwnerAsync(linkMigration);
+        await OwnerAsync(linkMigration);
+        await OwnerAsync(
+            await File.ReadAllTextAsync(
+                RepositoryPaths.Resolve(
+                    "infrastructure/postgres/init/77-wc134-confirmed-whatsapp-subject.sql"
                 )
             )
         );
@@ -112,7 +138,28 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
         await OwnerAsync(
             await File.ReadAllTextAsync(
                 RepositoryPaths.Resolve(
+                    "infrastructure/postgres/init/47-identity-verification-permissions.sql"
+                )
+            )
+        );
+        await OwnerAsync(
+            await File.ReadAllTextAsync(
+                RepositoryPaths.Resolve(
+                    "infrastructure/postgres/init/74-wc134-whatsapp-registration-recognition.sql"
+                )
+            )
+        );
+        await OwnerAsync(
+            await File.ReadAllTextAsync(
+                RepositoryPaths.Resolve(
                     "infrastructure/postgres/init/57-wc123-identity-lifecycle.sql"
+                )
+            )
+        );
+        await OwnerAsync(
+            await File.ReadAllTextAsync(
+                RepositoryPaths.Resolve(
+                    "infrastructure/postgres/init/56-wc123-current-membership.sql"
                 )
             )
         );
@@ -208,7 +255,8 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
     private void StartHost(
         bool brokerEnabled = true,
         bool googleEnabled = true,
-        bool previewClaimsEnabled = false
+        bool previewClaimsEnabled = false,
+        TestIdentityConstitutionalGateway? identityGateway = null
     )
     {
         _oidc = new SyntheticOidcHandler(_configuration.ActorIssuer, _signer);
@@ -273,6 +321,13 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
                 services
                     .AddHttpClient<GoogleWorkspaceProofAdapter>()
                     .ConfigurePrimaryHttpMessageHandler(() => _broker);
+                services.RemoveAll<IIdentityVerificationDispatcher>();
+                services.AddSingleton<IIdentityVerificationDispatcher>(_verificationDispatcher);
+                if (identityGateway is not null)
+                {
+                    services.RemoveAll<IIdentityConstitutionalGateway>();
+                    services.AddSingleton<IIdentityConstitutionalGateway>(identityGateway);
+                }
             });
         });
         _client = _factory.CreateClient(
@@ -351,8 +406,18 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
             }
         );
         Assert.Equal(
-            "READY_TO_COMPLETE",
+            "MOBILE_VERIFICATION_REQUIRED",
             (await ExpectAsync(profile, HttpStatusCode.OK)).GetProperty("state").GetString()
+        );
+        await VerifyRegistrationMobileAsync(token, registration);
+        using var recognitionScope = _factory.Services.CreateScope();
+        var recognition =
+            recognitionScope.ServiceProvider.GetRequiredService<IWhatsAppRegistrationRecognition>();
+        Assert.False(
+            await recognition.IsVerifiedRegistrationAsync(
+                _verificationDispatcher.LastDestination,
+                CancellationToken.None
+            )
         );
         using var completed = await SendAsync(
             HttpMethod.Post,
@@ -362,6 +427,15 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
         var account = (await ExpectAsync(completed, HttpStatusCode.OK))
             .GetProperty("accountReference")
             .GetGuid();
+        Assert.True(
+            await recognition.IsVerifiedRegistrationAsync(
+                _verificationDispatcher.LastDestination,
+                CancellationToken.None
+            )
+        );
+        Assert.False(
+            await recognition.IsVerifiedRegistrationAsync("+14155559999", CancellationToken.None)
+        );
         using var response = await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token);
         var session = await ExpectAsync(response, HttpStatusCode.OK);
         Assert.Equal(account, session.GetProperty("accountReference").GetGuid());
@@ -396,6 +470,129 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
             1L,
             await OwnerScalarAsync(
                 "SELECT count(*) FROM identity.memberships WHERE roles = ARRAY['OWNER']::text[]"
+            )
+        );
+        await AssertRestrictedPoolAsync();
+    }
+
+    [Fact]
+    public async Task Program_RegistrationMobile_DestinationBindingAndCooldownPersistInPostgres()
+    {
+        StartHost();
+        var token = Token();
+        using var started = await SendAsync(
+            HttpMethod.Post,
+            "/api/v1/identity/registrations",
+            token,
+            new { languagePreference = "en" }
+        );
+        var registration = (await ExpectAsync(started, HttpStatusCode.Created))
+            .GetProperty("registrationId")
+            .GetGuid();
+        await OwnerAsync(
+            """
+            UPDATE identity.registrations
+            SET mobile_verified = true, mobile_hmac_key = 'unbound-legacy-key',
+                mobile_hmac_domain = 'mobile', mobile_hmac_version = 'v1',
+                state = 'ReadyToComplete'
+            """
+        );
+        var migration = await File.ReadAllTextAsync(
+            RepositoryPaths.Resolve(
+                "infrastructure/postgres/init/73-wc134-required-verified-whatsapp-registration.sql"
+            )
+        );
+        await OwnerAsync(migration);
+        Assert.Equal(
+            1L,
+            await OwnerScalarAsync(
+                "SELECT count(*) FROM identity.registrations WHERE NOT mobile_verified AND state = 'MobileVerificationRequired'"
+            )
+        );
+        var path = $"/api/v1/identity/registrations/{registration}/mobile-verifications";
+        using var first = await SendAsync(
+            HttpMethod.Post,
+            path,
+            token,
+            new { mobile = "+14155550100" }
+        );
+        var firstChallengeId = (await ExpectAsync(first, HttpStatusCode.Accepted))
+            .GetProperty("challengeId")
+            .GetGuid();
+        var firstCode = _verificationDispatcher.LastCode;
+        using var limited = await SendAsync(
+            HttpMethod.Post,
+            path,
+            token,
+            new { mobile = "+14155550101" }
+        );
+        Assert.Equal(
+            "IDENTITY_RATE_LIMITED",
+            (await ExpectAsync(limited, HttpStatusCode.TooManyRequests))
+                .GetProperty("code")
+                .GetString()
+        );
+        Assert.NotNull(limited.Headers.RetryAfter);
+        Assert.Equal(
+            1L,
+            await OwnerScalarAsync("SELECT count(*) FROM identity.verification_challenges")
+        );
+        Assert.Equal(
+            0L,
+            await OwnerScalarAsync(
+                "SELECT count(*) FROM identity.registrations WHERE mobile_verified OR mobile_hmac_key IS NOT NULL"
+            )
+        );
+
+        await OwnerAsync(
+            "UPDATE identity.verification_challenges SET resend_after = now() - interval '1 second'"
+        );
+        using var second = await SendAsync(
+            HttpMethod.Post,
+            path,
+            token,
+            new { mobile = "+14155550101" }
+        );
+        var secondChallengeId = (await ExpectAsync(second, HttpStatusCode.Accepted))
+            .GetProperty("challengeId")
+            .GetGuid();
+        var secondCode = _verificationDispatcher.LastCode;
+        using var confirmed = await SendAsync(
+            HttpMethod.Post,
+            path + "/confirm",
+            token,
+            new { challengeId = firstChallengeId, code = firstCode }
+        );
+        Assert.True(
+            (await ExpectAsync(confirmed, HttpStatusCode.OK))
+                .GetProperty("mobileVerified")
+                .GetBoolean()
+        );
+        Assert.Equal(
+            1L,
+            await OwnerScalarAsync(
+                """
+                SELECT count(*) FROM identity.registrations AS r
+                JOIN identity.verification_challenges AS c ON c.registration_id = r.registration_id
+                WHERE r.mobile_verified AND c.state = 'Consumed'
+                  AND r.mobile_hmac_key = c.destination_hmac_key
+                  AND r.mobile_hmac_version = c.destination_hmac_version
+                  AND r.mobile_hmac_domain = c.destination_hmac_domain
+                """
+            )
+        );
+        using var stale = await SendAsync(
+            HttpMethod.Post,
+            path + "/confirm",
+            token,
+            new { challengeId = secondChallengeId, code = secondCode }
+        );
+        await ExpectAsync(stale, HttpStatusCode.Gone);
+        await OwnerAsync(migration);
+        Assert.Equal(
+            1L,
+            await OwnerScalarAsync(
+                "SELECT count(*) FROM identity.registrations WHERE mobile_verified"
             )
         );
         await AssertRestrictedPoolAsync();
@@ -638,23 +835,565 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
+    [Fact]
+    public async Task Program_AccountLinkMigration_ExpiresUnprovenLegacyLinksAndValidatesConstraint()
+    {
+        await OwnerAsync(
+            """
+            ALTER TABLE identity.account_links DROP CONSTRAINT account_links_confirmed_evidence_check;
+            ALTER TABLE identity.account_links DROP CONSTRAINT account_links_confirmed_phone_subject_check;
+            INSERT INTO identity.account_links
+                (actor_subject, tenant_id, state, masked_mobile, verified_mobile_proof_id, start_evidence_id)
+            VALUES ('synthetic-legacy', gen_random_uuid(), 'Linked', '***0100', gen_random_uuid(), gen_random_uuid());
+            """
+        );
+        var migration = await File.ReadAllTextAsync(
+            RepositoryPaths.Resolve(
+                "infrastructure/postgres/init/75-wc134-whatsapp-account-link-confirmation.sql"
+            )
+        );
+        await OwnerAsync(migration);
+        await OwnerAsync(migration);
+        Assert.Equal(
+            1L,
+            await OwnerScalarAsync(
+                "SELECT count(*) FROM identity.account_links WHERE actor_subject = 'synthetic-legacy' AND state = 'Expired'"
+            )
+        );
+        Assert.Equal(
+            1L,
+            await OwnerScalarAsync(
+                """
+                SELECT count(*) FROM pg_constraint
+                WHERE conrelid = 'identity.account_links'::regclass
+                  AND conname = 'account_links_confirmed_evidence_check' AND convalidated
+                """
+            )
+        );
+        await OwnerAsync(
+            """
+            UPDATE identity.account_links
+            SET state = 'Linked',
+                confirmation_evidence_id = gen_random_uuid(),
+                confirmation_message_digest = repeat('a', 64),
+                confirmed_at = clock_timestamp(),
+                approval_evidence_id = gen_random_uuid(),
+                start_evidence_id = gen_random_uuid(),
+                created_at = clock_timestamp() - interval '1 day',
+                expires_at = clock_timestamp() + interval '1 day'
+            WHERE actor_subject = 'synthetic-legacy';
+            """
+        );
+        var confirmedSubjectMigration = await File.ReadAllTextAsync(
+            RepositoryPaths.Resolve(
+                "infrastructure/postgres/init/77-wc134-confirmed-whatsapp-subject.sql"
+            )
+        );
+        await OwnerAsync(confirmedSubjectMigration);
+        await OwnerAsync(confirmedSubjectMigration);
+        Assert.Equal(
+            1L,
+            await OwnerScalarAsync(
+                "SELECT count(*) FROM identity.account_links WHERE actor_subject = 'synthetic-legacy' AND state = 'Expired'"
+            )
+        );
+        Assert.Equal(
+            1L,
+            await OwnerScalarAsync(
+                """
+                SELECT count(*) FROM pg_constraint
+                WHERE conrelid = 'identity.account_links'::regclass
+                  AND conname = 'account_links_confirmed_phone_subject_check' AND convalidated
+                """
+            )
+        );
+    }
+
+    [Fact]
+    public async Task Program_AccountLink_RequiresOwnedVerifiedProofAndCurrentMembership()
+    {
+        var gateway = new TestIdentityConstitutionalGateway();
+        StartHost(identityGateway: gateway);
+        var firstToken = Token(subject: "link-owner");
+        var secondToken = Token(subject: "link-other");
+        var account = await CompleteAsync(firstToken, "Link Owner");
+        var ownedPhone = _verificationDispatcher.LastDestination;
+        var otherAccount = await CompleteAsync(secondToken, "Other Owner");
+        const string proofQuery = """
+            SELECT challenge.challenge_id
+            FROM identity.verification_challenges AS challenge
+            JOIN identity.registrations AS registration USING (registration_id)
+            WHERE registration.account_id = @id AND challenge.purpose = 'Mobile'
+              AND challenge.state = 'Consumed' AND challenge.delivery_state = 'SUBMITTED'
+            """;
+        var proofId = await OwnerGuidAsync(proofQuery, account);
+        var foreignProofId = await OwnerGuidAsync(proofQuery, otherAccount);
+        using var foreignProof = await SendAsync(
+            HttpMethod.Post,
+            "/api/v1/identity/account-links",
+            firstToken,
+            new { verifiedMobileProofId = foreignProofId }
+        );
+        await ExpectAsync(foreignProof, HttpStatusCode.NotFound);
+        Assert.Empty(gateway.Calls);
+        var key = Guid.NewGuid();
+        var body = new { };
+        using var started = await SendAsync(
+            HttpMethod.Post,
+            "/api/v1/identity/account-links",
+            firstToken,
+            body,
+            idempotencyKey: key
+        );
+        var linkId = (await ExpectAsync(started, HttpStatusCode.Created))
+            .GetProperty("linkId")
+            .GetGuid();
+        Assert.EndsWith(
+            $"/api/v1/identity/account-links/{linkId:D}",
+            started.Headers.Location!.ToString()
+        );
+        using var replayed = await SendAsync(
+            HttpMethod.Post,
+            "/api/v1/identity/account-links",
+            firstToken,
+            body,
+            idempotencyKey: key
+        );
+        Assert.Equal(
+            linkId,
+            (await ExpectAsync(replayed, HttpStatusCode.OK)).GetProperty("linkId").GetGuid()
+        );
+        Assert.Single(gateway.Calls);
+        using var crossActor = await SendAsync(
+            HttpMethod.Get,
+            $"/api/v1/identity/account-links/{linkId}",
+            secondToken
+        );
+        await ExpectAsync(crossActor, HttpStatusCode.NotFound);
+        using var approved = await SendAsync(
+            HttpMethod.Post,
+            $"/api/v1/identity/account-links/{linkId}/approve",
+            firstToken
+        );
+        var approvalBody = await ExpectAsync(approved, HttpStatusCode.OK);
+        Assert.Equal(
+            "PENDING_WHATSAPP_CONFIRMATION",
+            approvalBody.GetProperty("state").GetString()
+        );
+        Assert.Equal(2, gateway.Calls.Count);
+        Assert.Equal(1L, await OwnerScalarAsync("SELECT count(*) FROM identity.account_links"));
+        Assert.Equal(
+            0L,
+            await OwnerScalarAsync(
+                "SELECT count(*) FROM identity.account_links WHERE state = 'Linked'"
+            )
+        );
+        var instruction = approvalBody.GetProperty("whatsAppConfirmation").GetString()!;
+        var now = DateTimeOffset.UtcNow;
+        var signedProof = new VerifiedPhoneIdentityProof(
+            "synthetic-production-di-link",
+            new string('b', 64),
+            instruction,
+            null,
+            "synthetic-app",
+            "AAL1_CHANNEL",
+            now,
+            now,
+            now.AddMinutes(5),
+            Guid.NewGuid()
+        )
+        {
+            Environment = "demo",
+        };
+        using var confirmationScope = _factory!.Services.CreateScope();
+        var confirmation =
+            confirmationScope.ServiceProvider.GetRequiredService<IWhatsAppAccountLinkConfirmation>();
+        var clock = new ConfirmationClock { Now = now };
+        var confirmationFactory = new PooledDbContextFactory<IdentityDbContext>(
+            new DbContextOptionsBuilder<IdentityDbContext>()
+                .UseNpgsql(AppConnection)
+                .AddInterceptors(new ExpireProofAfterSave(clock))
+                .Options
+        );
+        var expiringConfirmation = new IdentityService(
+            confirmationFactory,
+            confirmationScope.ServiceProvider.GetRequiredService<IOptions<IdentityHmacOptions>>(),
+            _verificationDispatcher,
+            gateway,
+            clock
+        );
+        await Assert.ThrowsAsync<IdentityActionDeniedException>(() =>
+            expiringConfirmation.ConfirmAsync(
+                instruction[5..],
+                ownedPhone,
+                signedProof,
+                CancellationToken.None
+            )
+        );
+        Assert.Equal(
+            0L,
+            await OwnerScalarAsync(
+                "SELECT count(*) FROM identity.account_links WHERE state = 'Linked'"
+            )
+        );
+        var lockClock = new ConfirmationClock { Now = now };
+        var lockBarrier = new AccountLinkLockBarrier();
+        var lockFactory = new PooledDbContextFactory<IdentityDbContext>(
+            new DbContextOptionsBuilder<IdentityDbContext>()
+                .UseNpgsql(AppConnection)
+                .AddInterceptors(lockBarrier)
+                .Options
+        );
+        var lockConfirmation = new IdentityService(
+            lockFactory,
+            confirmationScope.ServiceProvider.GetRequiredService<IOptions<IdentityHmacOptions>>(),
+            _verificationDispatcher,
+            gateway,
+            lockClock
+        );
+        await using (var owner = new NpgsqlConnection(_postgres.GetConnectionString()))
+        {
+            await owner.OpenAsync();
+            await using var heldLock = await owner.BeginTransactionAsync();
+            await using var lockCommand = new NpgsqlCommand(
+                "SELECT link_id FROM identity.account_links WHERE link_id = @id FOR UPDATE",
+                owner,
+                heldLock
+            );
+            lockCommand.Parameters.AddWithValue("id", linkId);
+            Assert.Equal(linkId, await lockCommand.ExecuteScalarAsync());
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var waiting = lockConfirmation.ConfirmAsync(
+                instruction[5..],
+                ownedPhone,
+                signedProof,
+                timeout.Token
+            );
+            try
+            {
+                await lockBarrier.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                lockClock.Now = signedProof.ExpiresAt;
+            }
+            finally
+            {
+                if (!lockBarrier.Entered.Task.IsCompletedSuccessfully)
+                    timeout.Cancel();
+                await heldLock.RollbackAsync();
+            }
+            await Assert.ThrowsAsync<IdentityActionDeniedException>(async () =>
+                await waiting.WaitAsync(TimeSpan.FromSeconds(10))
+            );
+        }
+        Assert.Equal(3, gateway.Calls.Count);
+        await Assert.ThrowsAsync<IdentityActionDeniedException>(() =>
+            confirmation.ConfirmAsync(
+                instruction[5..],
+                _verificationDispatcher.LastDestination,
+                signedProof,
+                CancellationToken.None
+            )
+        );
+        Assert.False(
+            await confirmation.ConfirmAsync(
+                instruction[5..],
+                ownedPhone,
+                signedProof,
+                CancellationToken.None
+            )
+        );
+        Assert.True(
+            await confirmation.ConfirmAsync(
+                instruction[5..],
+                ownedPhone,
+                signedProof,
+                CancellationToken.None
+            )
+        );
+        Assert.Equal(4, gateway.Calls.Count);
+        using var linked = await SendAsync(
+            HttpMethod.Get,
+            $"/api/v1/identity/account-links/{linkId}",
+            firstToken
+        );
+        Assert.Equal(
+            "LINKED",
+            (await ExpectAsync(linked, HttpStatusCode.OK)).GetProperty("state").GetString()
+        );
+        await OwnerAsync(
+            $"UPDATE identity.memberships SET status = 'SUSPENDED' WHERE account_id = '{account:D}';"
+        );
+        using var revoked = await SendAsync(
+            HttpMethod.Get,
+            $"/api/v1/identity/account-links/{linkId}",
+            firstToken
+        );
+        await ExpectAsync(revoked, HttpStatusCode.Forbidden);
+        await Assert.ThrowsAsync<IdentityResourceNotFoundException>(() =>
+            confirmation.ConfirmAsync(
+                instruction[5..],
+                ownedPhone,
+                signedProof,
+                CancellationToken.None
+            )
+        );
+        Assert.Equal(4, gateway.Calls.Count);
+    }
+
     private async Task<HttpResponseMessage> SendAsync(
         HttpMethod method,
         string path,
         string? token,
         object? body = null,
-        string? header = null
+        string? header = null,
+        Guid? idempotencyKey = null
     )
     {
         using var request = new HttpRequestMessage(method, path);
         if (token is not null)
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        request.Headers.Add("Idempotency-Key", (idempotencyKey ?? Guid.NewGuid()).ToString());
         if (header is not null)
             request.Headers.Add(header, Guid.NewGuid().ToString());
         if (body is not null)
             request.Content = JsonContent.Create(body);
         return await _client.SendAsync(request);
+    }
+
+    [Theory]
+    [InlineData("membership")]
+    [InlineData("role")]
+    [InlineData("account")]
+    [InlineData("link")]
+    [InlineData("proof")]
+    [InlineData("registration")]
+    public async Task RelationshipLinkGuardDeniesOwnerRevocationAfterAnEarlierConfirmedRead(
+        string change
+    )
+    {
+        var (identity, actor, membership, linkId, digest) = await PrepareLinkedAuthorityAsync();
+        Assert.Equal(
+            digest,
+            await identity.GetConfirmedPhoneSubjectHashAsync(
+                linkId,
+                actor.Subject,
+                membership.TenantId,
+                CancellationToken.None,
+                actor,
+                membership
+            )
+        );
+        var mutation = change switch
+        {
+            "membership" =>
+                $"UPDATE identity.memberships SET status = 'SUSPENDED' WHERE membership_id = '{membership.MembershipId:D}'",
+            "role" =>
+                $"UPDATE identity.memberships SET roles = ARRAY['MANAGER'] WHERE membership_id = '{membership.MembershipId:D}'",
+            "account" =>
+                $"UPDATE identity.accounts SET status = 'INACTIVE' WHERE account_id = '{membership.AccountId:D}'",
+            "link" =>
+                $"UPDATE identity.account_links SET state = 'Cancelled' WHERE link_id = '{linkId:D}'",
+            "proof" =>
+                $"UPDATE identity.verification_challenges SET state = 'Expired' WHERE challenge_id = (SELECT verified_mobile_proof_id FROM identity.account_links WHERE link_id = '{linkId:D}')",
+            "registration" => $"""
+                -- Simulate owner-only corruption, not an allowed registration transition.
+                ALTER TABLE identity.registrations DISABLE TRIGGER ALL;
+                UPDATE identity.registrations SET mobile_verified = false WHERE account_id = '{membership.AccountId:D}';
+                ALTER TABLE identity.registrations ENABLE TRIGGER ALL;
+                """,
+            _ => throw new InvalidOperationException("Unknown mutation."),
+        };
+        await OwnerAsync(mutation);
+        await using var db = new EmploymentRelationshipDbContext(
+            new DbContextOptionsBuilder<EmploymentRelationshipDbContext>()
+                .UseNpgsql(AppConnection)
+                .Options
+        );
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        await Assert.ThrowsAsync<IdentityResourceNotFoundException>(() =>
+            identity.RequireRelationshipChannelLinkAsync(
+                db,
+                linkId,
+                digest,
+                actor,
+                membership,
+                CancellationToken.None
+            )
+        );
+        await transaction.RollbackAsync();
+    }
+
+    [Fact]
+    public async Task RelationshipLinkGuardRetainsIdentityLocksUntilTheCallingBindingTransactionEnds()
+    {
+        var (identity, actor, membership, linkId, digest) = await PrepareLinkedAuthorityAsync();
+        await using var db = new EmploymentRelationshipDbContext(
+            new DbContextOptionsBuilder<EmploymentRelationshipDbContext>()
+                .UseNpgsql(AppConnection)
+                .Options
+        );
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        await identity.RequireRelationshipChannelLinkAsync(
+            db,
+            linkId,
+            digest,
+            actor,
+            membership,
+            CancellationToken.None
+        );
+        Assert.Same(transaction, db.Database.CurrentTransaction);
+        foreach (
+            var sql in new[]
+            {
+                $"UPDATE identity.memberships SET status = 'SUSPENDED' WHERE membership_id = '{membership.MembershipId:D}'",
+                $"UPDATE identity.account_links SET state = 'Cancelled' WHERE link_id = '{linkId:D}'",
+                $"UPDATE identity.verification_challenges SET state = 'Expired' WHERE challenge_id = (SELECT verified_mobile_proof_id FROM identity.account_links WHERE link_id = '{linkId:D}')",
+                $"UPDATE identity.registrations SET mobile_verified = false WHERE account_id = '{membership.AccountId:D}'",
+            }
+        )
+        {
+            await using var revoker = new NpgsqlConnection(_postgres.GetConnectionString());
+            await revoker.OpenAsync();
+            await using (var timeout = new NpgsqlCommand("SET lock_timeout = '250ms'", revoker))
+                await timeout.ExecuteNonQueryAsync();
+            await using var revoke = new NpgsqlCommand(sql, revoker);
+            var blocked = await Assert.ThrowsAsync<PostgresException>(() =>
+                revoke.ExecuteNonQueryAsync()
+            );
+            Assert.Equal(PostgresErrorCodes.LockNotAvailable, blocked.SqlState);
+        }
+        await transaction.RollbackAsync();
+        await OwnerAsync(
+            $"UPDATE identity.account_links SET state = 'Cancelled' WHERE link_id = '{linkId:D}'"
+        );
+        Assert.Equal(
+            1L,
+            await OwnerScalarAsync(
+                $"SELECT count(*) FROM identity.account_links WHERE link_id = '{linkId:D}' AND state = 'Cancelled'"
+            )
+        );
+    }
+
+    private async Task<(
+        IdentityService Identity,
+        VerifiedCustomerActor Actor,
+        CustomerWorkspaceMembership Membership,
+        Guid LinkId,
+        string Digest
+    )> PrepareLinkedAuthorityAsync()
+    {
+        await OwnerAsync(
+            """
+            CREATE ROLE bp_owner NOLOGIN NOBYPASSRLS;
+            CREATE ROLE web_session_owner NOLOGIN NOBYPASSRLS;
+            CREATE TABLE business.conversation_executions (execution_id uuid PRIMARY KEY);
+            """
+        );
+        await OwnerAsync(
+            await File.ReadAllTextAsync(
+                RepositoryPaths.Resolve(
+                    "infrastructure/postgres/init/88-wc134-runtime-identity-authority.sql"
+                )
+            )
+        );
+        foreach (
+            var migration in new[]
+            {
+                "94-wc134-customer-phone-change.sql",
+                "96-wc134-runtime-identity-row-lock-policy.sql",
+            }
+        )
+        {
+            await OwnerAsync(
+                await File.ReadAllTextAsync(
+                    RepositoryPaths.Resolve($"infrastructure/postgres/init/{migration}")
+                )
+            );
+        }
+        StartHost(identityGateway: new TestIdentityConstitutionalGateway());
+        var subject = Guid.NewGuid().ToString("D");
+        var token = Token(subject: subject);
+        var account = await CompleteAsync(token, "Channel Owner");
+        var phone = _verificationDispatcher.LastDestination;
+        var tenant = await OwnerGuidAsync(
+            "SELECT tenant_id FROM identity.memberships WHERE account_id = @id",
+            account
+        );
+        var membershipId = await OwnerGuidAsync(
+            "SELECT membership_id FROM identity.memberships WHERE account_id = @id",
+            account
+        );
+        var membership = new CustomerWorkspaceMembership(account, tenant, membershipId, ["OWNER"]);
+        var actor = new VerifiedCustomerActor(_configuration.ActorIssuer, subject);
+        using var started = await SendAsync(
+            HttpMethod.Post,
+            "/api/v1/identity/account-links",
+            token,
+            new { }
+        );
+        var linkId = (await ExpectAsync(started, HttpStatusCode.Created))
+            .GetProperty("linkId")
+            .GetGuid();
+        Assert.NotNull(started.Headers.Location);
+        Assert.EndsWith(
+            $"/api/v1/identity/account-links/{linkId:D}",
+            started.Headers.Location.ToString(),
+            StringComparison.Ordinal
+        );
+        using var read = await SendAsync(
+            HttpMethod.Get,
+            started.Headers.Location.ToString(),
+            token
+        );
+        Assert.Equal(
+            linkId,
+            (await ExpectAsync(read, HttpStatusCode.OK)).GetProperty("linkId").GetGuid()
+        );
+        using var approved = await SendAsync(
+            HttpMethod.Post,
+            $"/api/v1/identity/account-links/{linkId}/approve",
+            token
+        );
+        var instruction = (await ExpectAsync(approved, HttpStatusCode.OK))
+            .GetProperty("whatsAppConfirmation")
+            .GetString()!;
+        var now = DateTimeOffset.UtcNow;
+        var digest = new string('b', 64);
+        using var scope = _factory!.Services.CreateScope();
+        var identity = scope.ServiceProvider.GetRequiredService<IdentityService>();
+        Assert.False(
+            await identity.ConfirmAsync(
+                instruction[5..],
+                phone,
+                new VerifiedPhoneIdentityProof(
+                    "synthetic-binding-owner-confirmation",
+                    digest,
+                    instruction,
+                    null,
+                    "synthetic-app",
+                    "AAL1_CHANNEL",
+                    now,
+                    now,
+                    now.AddMinutes(5),
+                    Guid.NewGuid()
+                )
+                {
+                    Environment = "demo",
+                },
+                CancellationToken.None
+            )
+        );
+        Assert.Equal(
+            1L,
+            await OwnerScalarAsync(
+                $"""
+                SELECT count(*) FROM identity.account_links
+                WHERE link_id = '{linkId:D}' AND actor_subject = '{subject}'
+                    AND tenant_id = '{tenant:D}' AND state = 'Linked'
+                    AND confirmed_phone_subject_hash = '{digest}'
+                """
+            )
+        );
+        return (identity, actor, membership, linkId, digest);
     }
 
     private static async Task<JsonElement> ExpectAsync(
@@ -710,6 +1449,7 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
             }
         );
         await ExpectAsync(profile, HttpStatusCode.OK);
+        await VerifyRegistrationMobileAsync(token, registration);
         using var completed = await SendAsync(
             HttpMethod.Post,
             $"/api/v1/identity/registrations/{registration}/complete",
@@ -718,6 +1458,51 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
         return (await ExpectAsync(completed, HttpStatusCode.OK))
             .GetProperty("accountReference")
             .GetGuid();
+    }
+
+    private async Task VerifyRegistrationMobileAsync(string token, Guid registrationId)
+    {
+        var mobile = Interlocked.Increment(ref _mobileSequence);
+        var challenge = await SendAsync(
+            HttpMethod.Post,
+            $"/api/v1/identity/registrations/{registrationId}/mobile-verifications",
+            token,
+            new { mobile = $"+1555{mobile:D7}" }
+        );
+        var challengeBody = await ExpectAsync(challenge, HttpStatusCode.Accepted);
+        var challengeId = challengeBody.GetProperty("challengeId").GetGuid();
+        using var confirmation = await SendAsync(
+            HttpMethod.Post,
+            $"/api/v1/identity/registrations/{registrationId}/mobile-verifications/confirm",
+            token,
+            new { challengeId, code = _verificationDispatcher.LastCode }
+        );
+        Assert.Equal(
+            "READY_TO_COMPLETE",
+            (await ExpectAsync(confirmation, HttpStatusCode.OK)).GetProperty("state").GetString()
+        );
+    }
+
+    private static int _mobileSequence;
+
+    private sealed class CapturingVerificationDispatcher : IIdentityVerificationDispatcher
+    {
+        public string LastCode { get; private set; } = string.Empty;
+        public string LastDestination { get; private set; } = string.Empty;
+
+        public Task DispatchAsync(
+            IdentityVerificationPurpose purpose,
+            string destination,
+            string code,
+            CancellationToken ct
+        )
+        {
+            Assert.Equal(IdentityVerificationPurpose.Mobile, purpose);
+            Assert.StartsWith("+", destination);
+            LastCode = code;
+            LastDestination = destination;
+            return Task.CompletedTask;
+        }
     }
 
     private async Task<Guid> OwnerGuidAsync(string sql, Guid id)
@@ -781,6 +1566,47 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
         Assert.False(reader.GetBoolean(2));
         for (var index = 3; index < 7; index++)
             Assert.Equal("EMPTY", reader.GetString(index));
+    }
+
+    private sealed class ConfirmationClock : TimeProvider
+    {
+        public DateTimeOffset Now { get; set; }
+
+        public override DateTimeOffset GetUtcNow() => Now;
+    }
+
+    private sealed class ExpireProofAfterSave(ConfirmationClock clock) : SaveChangesInterceptor
+    {
+        public override ValueTask<int> SavedChangesAsync(
+            SaveChangesCompletedEventData eventData,
+            int result,
+            CancellationToken cancellationToken = default
+        )
+        {
+            clock.Now = clock.Now.AddMinutes(5);
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    private sealed class AccountLinkLockBarrier : DbCommandInterceptor
+    {
+        public TaskCompletionSource Entered { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default
+        )
+        {
+            if (
+                command.CommandText.Contains("identity.account_links", StringComparison.Ordinal)
+                && command.CommandText.Contains("FOR UPDATE", StringComparison.OrdinalIgnoreCase)
+            )
+                Entered.TrySetResult();
+            return ValueTask.FromResult(result);
+        }
     }
 
     private sealed class SyntheticOidcHandler(string issuer, RSA signer) : HttpMessageHandler

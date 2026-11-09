@@ -212,16 +212,19 @@ builder.Services.AddSingleton<IProfessionalCatalog, ProfessionalCatalog>();
 
 var workloadCredentials = builder.Configuration["WAOOAW_WORKLOAD_CREDENTIALS"];
 WorkloadIdentityClient? workloadIdentity = null;
+if (!string.IsNullOrWhiteSpace(workloadCredentials))
+{
+    workloadIdentity = WorkloadIdentityClient.Load(workloadCredentials);
+    builder.Services.AddSingleton(workloadIdentity);
+}
 var prWorkspaceBaseUrl = builder.Configuration["ProfessionalRuntime:RelationshipWorkspaceBaseUrl"];
 var wbeWorkspaceBaseUrl = builder.Configuration["BillingEngine:RelationshipWorkspaceBaseUrl"];
 if (
-    !string.IsNullOrWhiteSpace(workloadCredentials)
+    workloadIdentity is not null
     && Uri.TryCreate(prWorkspaceBaseUrl, UriKind.Absolute, out var prWorkspaceUri)
     && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var wbeWorkspaceUri)
 )
 {
-    workloadIdentity = WorkloadIdentityClient.Load(workloadCredentials);
-    builder.Services.AddSingleton(workloadIdentity);
     builder.Services.AddSingleton<IRelationshipWorkspaceOwnerGateway>(
         new AuthenticatedRelationshipWorkspaceOwnerGateway(
             workloadIdentity,
@@ -348,6 +351,18 @@ else
         IActivationBillingGateway,
         UnconfiguredActivationBillingGateway
     >();
+if (
+    workloadIdentity is not null
+    && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var offeringWbeUri)
+)
+    builder.Services.AddSingleton<IAuthenticatedOfferingUsageGateway>(
+        new AuthenticatedOfferingUsageGateway(workloadIdentity, offeringWbeUri)
+    );
+else
+    builder.Services.AddSingleton<
+        IAuthenticatedOfferingUsageGateway,
+        UnconfiguredOfferingUsageGateway
+    >();
 builder.Services.AddScoped<IOfferabilityGuard, PersistentOfferabilityGuard>();
 builder.Services.AddScoped<OfferabilityService>();
 if (
@@ -374,7 +389,7 @@ builder.Services.AddScoped<
     WhatsAppRegistrationEvidenceGateway
 >();
 builder.Services.AddScoped<WhatsAppJourneyService>();
-builder.Services.AddScoped<PhoneOnboardingService>();
+builder.Services.AddScoped<WhatsAppGuestSessionService>();
 builder.Services.Configure<ChannelContinuityOptions>(
     builder.Configuration.GetSection("ChannelContinuity")
 );
@@ -486,11 +501,25 @@ if (localIdentityVerificationEnabled)
         Waooaw.BusinessPlatform.Services.LocalIdentityVerificationDispatcher
     >();
 else
-    builder.Services.AddSingleton<
+    builder.Services.AddScoped<
         Waooaw.BusinessPlatform.Services.IIdentityVerificationDispatcher,
-        Waooaw.BusinessPlatform.Services.UnconfiguredVerificationDispatcher
+        Waooaw.BusinessPlatform.Services.WhatsAppIdentityVerificationDispatcher
     >();
+builder.Services.Configure<WhatsAppAuthenticationTemplateOptions>(
+    builder.Configuration.GetSection("IdentityVerification:WhatsApp")
+);
+builder.Services.AddScoped<
+    IWhatsAppAuthenticationTemplateVerifier,
+    WhatsAppAuthenticationTemplateVerifier
+>();
+builder.Services.AddScoped<IWhatsAppRegistrationVerificationBudget>(services =>
+    services.GetRequiredService<WhatsAppTrafficBudget>()
+);
 builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.IdentityService>();
+builder.Services.AddScoped<IWhatsAppRegistrationRecognition, WhatsAppRegistrationRecognition>();
+builder.Services.AddScoped<IWhatsAppAccountLinkConfirmation>(services =>
+    services.GetRequiredService<IdentityService>()
+);
 builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.IdentityLifecycleService>();
 builder.Services.AddScoped<
     Waooaw.BusinessPlatform.Services.IIdentityConstitutionalGateway,
@@ -522,22 +551,77 @@ builder
     .Services.AddOptions<ConversationCursorOptions>()
     .Bind(builder.Configuration.GetSection("Conversation"))
     .ValidateOnStart();
+builder.Services.AddSingleton<
+    IValidateOptions<ConversationBatchingOptions>,
+    ConversationBatchingOptionsValidator
+>();
+builder
+    .Services.AddOptions<ConversationBatchingOptions>()
+    .Bind(
+        builder.Configuration.GetSection("ConversationBatching"),
+        options => options.ErrorOnUnknownConfiguration = true
+    )
+    .ValidateOnStart();
 builder.Services.AddSingleton<ConversationCursorCodec>();
 var conversationPrBaseUrl =
     builder.Configuration["Conversation:ProfessionalRuntimeBaseUrl"]
-    ?? "http://professional-runtime:5003";
-builder.Services.AddHttpClient(
-    "ConversationProfessionalRuntime",
-    client =>
-    {
-        client.BaseAddress = new Uri(conversationPrBaseUrl);
-        client.Timeout = TimeSpan.FromSeconds(10);
-    }
+    ?? "https://professional-runtime:5443";
+builder
+    .Services.AddHttpClient(
+        "ConversationProfessionalRuntime",
+        client =>
+        {
+            var address = new Uri(conversationPrBaseUrl);
+            if (address.Scheme != Uri.UriSchemeHttps)
+                throw new InvalidOperationException("Conversation runtime requires HTTPS.");
+            client.BaseAddress = address;
+            client.Timeout = TimeSpan.FromSeconds(10);
+        }
+    )
+    .ConfigurePrimaryHttpMessageHandler(services =>
+        services.GetRequiredService<WorkloadIdentityClient>().CreateHandler("professional-runtime")
+    );
+builder.Services.AddScoped<HttpConversationExecutionGateway>();
+builder.Services.AddScoped<IConversationExecutionGateway>(services =>
+    services.GetRequiredService<HttpConversationExecutionGateway>()
 );
-builder.Services.AddScoped<IConversationExecutionGateway, HttpConversationExecutionGateway>();
-builder.Services.AddScoped<IOperationalMandateResolver, OperationalMandateResolver>();
+builder.Services.AddScoped<IConversationBatchExecutionGateway>(services =>
+    services.GetRequiredService<HttpConversationExecutionGateway>()
+);
+builder.Services.AddScoped<IConversationExecutionEventSource>(services =>
+    services.GetRequiredService<HttpConversationExecutionGateway>()
+);
+builder.Services.AddScoped<OperationalMandateResolver>();
+builder.Services.AddScoped<IOperationalMandateResolver>(services =>
+    services.GetRequiredService<OperationalMandateResolver>()
+);
+builder.Services.AddScoped<IConversationBatchTaskResolver, ConversationBatchTaskResolver>();
 builder.Services.AddScoped<PerformanceReviewService>();
 builder.Services.AddScoped<ConversationService>();
+builder.Services.AddScoped<ConversationRuntimeEventIngestion>();
+builder.Services.AddSingleton<InferenceWorkloadAuthority>();
+builder.Services.AddSingleton<Waooaw.WorkloadIdentity.InferenceWorkloadValidator>();
+Waooaw.WorkloadIdentity.InferenceWorkloadValidator.ConfigureTransport(
+    builder,
+    "business-platform",
+    "ai-runtime"
+);
+builder.Services.AddScoped<ConversationInferenceEvidence>();
+builder.Services.AddScoped<ConversationEnvironmentSpendOwner>();
+builder.Services.AddScoped<IConversationInferenceOwner, ConversationInferenceOwner>();
+builder.Services.AddScoped<ConversationRuntimeIdentityAuthority>();
+builder.Services.AddScoped<ConversationReconciliationService>();
+builder.Services.AddScoped<IConversationExecutionReconciliationGateway>(services =>
+    services.GetRequiredService<HttpConversationExecutionGateway>()
+);
+builder.Services.AddSingleton<ConversationRuntimeWorkScope>();
+builder.Services.AddScoped<ConversationRuntimeWorkDirectory>();
+builder.Services.AddScoped<ConversationRuntimeEventWorker>();
+builder.Services.AddHostedService<ConversationRuntimeEventHostedService>();
+builder.Services.AddSingleton<ConversationBatchWorkScope>();
+builder.Services.AddScoped<ConversationBatchWorkDirectory>();
+builder.Services.AddScoped<ConversationBatchDispatchWorker>();
+builder.Services.AddHostedService<ConversationBatchDispatchHostedService>();
 builder.Services.AddScoped<CustomerEngagementWorkspaceService>();
 builder.Services.AddScoped<CustomerEngagementAdmissionService>();
 builder.Services.Configure<Wc120ConversationOptions>(
@@ -565,6 +649,9 @@ builder.Services.AddSingleton<IWhatsAppWebhookCredentials>(services =>
 );
 builder.Services.AddSingleton<WhatsAppTenantExecutionScope>();
 builder.Services.AddScoped<WhatsAppTrafficBudget>();
+builder.Services.AddScoped<WhatsAppRelationshipRouting>();
+builder.Services.AddScoped<WhatsAppDeliveryObservationRouting>();
+builder.Services.AddScoped<WhatsAppGuestTrafficBudget>();
 builder.Services.AddScoped<IWhatsAppProviderAdapter, WhatsAppCloudProviderAdapter>();
 builder
     .Services.AddHttpClient(
@@ -577,10 +664,15 @@ builder
     );
 builder.Services.AddHostedService<WhatsAppOutboxHostedService>();
 builder.Services.AddScoped<WhatsAppOutboxWorker>();
+builder.Services.AddScoped<WhatsAppOutboxWorkDirectory>();
 builder.Services.AddScoped<ConversationOutboundContributionService>();
 builder.Services.AddScoped<WhatsAppMediaQuarantineService>();
 builder.Services.AddScoped<ConversationOperationsService>();
+builder.Services.AddHostedService<WhatsAppOperationsHostedService>();
 builder.Services.AddScoped<PortalInteractionService>();
+builder.Services.AddScoped<IGuestConversation>(provider =>
+    provider.GetRequiredService<PortalInteractionService>()
+);
 builder.Services.AddSingleton<
     IValidateOptions<EmploymentProtocolOptions>,
     EmploymentProtocolOptionsValidator

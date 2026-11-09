@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS identity.registrations (
         'Started', 'FederatedIdentityAccepted', 'CredentialIdentityAccepted',
         'WhatsAppIdentityAccepted', 'EmailVerificationRequired',
         'DuplicateResolutionRequired', 'ProfileCompletionRequired',
-        'ReadyToComplete', 'Completed', 'Expired', 'Cancelled'
+        'MobileVerificationRequired', 'ReadyToComplete', 'Completed', 'Expired', 'Cancelled'
     ))
 );
 
@@ -52,7 +52,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS registrations_email_match_key_idx
     WHERE email_hmac_key IS NOT NULL AND state = 'Completed';
 CREATE UNIQUE INDEX IF NOT EXISTS registrations_mobile_match_key_idx
     ON identity.registrations (mobile_hmac_domain, mobile_hmac_version, mobile_hmac_key)
-    WHERE mobile_hmac_key IS NOT NULL AND state = 'Completed';
+    WHERE mobile_hmac_key IS NOT NULL AND mobile_verified = TRUE AND state = 'Completed';
 
 -- State transitions are recorded here as append-only evidence; registrations remain mutable snapshots.
 CREATE TABLE IF NOT EXISTS identity.registration_events (
@@ -78,6 +78,11 @@ CREATE TABLE IF NOT EXISTS identity.verification_challenges (
     state                VARCHAR(16)  NOT NULL DEFAULT 'Pending' CHECK (state IN ('Pending', 'Verified', 'Expired', 'Consumed')),
     code_hmac            VARCHAR(128) NOT NULL,
     code_hmac_version    VARCHAR(32)  NOT NULL DEFAULT 'v1',
+    destination_hmac_key     VARCHAR(128),
+    destination_hmac_version VARCHAR(32),
+    destination_hmac_domain  VARCHAR(16),
+    failed_attempts       INTEGER NOT NULL DEFAULT 0 CHECK (failed_attempts BETWEEN 0 AND 5),
+    delivery_state        VARCHAR(16) CHECK (delivery_state IN ('DISPATCHING', 'SUBMITTED', 'UNAVAILABLE')),
     masked_destination   VARCHAR(254) NOT NULL,
     expires_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW() + INTERVAL '15 minutes',
     resend_after         TIMESTAMPTZ  NOT NULL DEFAULT NOW() + INTERVAL '1 minute',
@@ -100,6 +105,10 @@ CREATE TABLE IF NOT EXISTS identity.account_links (
     )),
     masked_mobile            VARCHAR(32)  NOT NULL,
     verified_mobile_proof_id UUID         NOT NULL,
+    confirmation_evidence_id UUID,
+    cancellation_evidence_id UUID,
+    confirmation_message_digest VARCHAR(64),
+    confirmed_at             TIMESTAMPTZ,
     expires_at               TIMESTAMPTZ  NOT NULL DEFAULT NOW() + INTERVAL '15 minutes',
     created_at               TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at               TIMESTAMPTZ  NOT NULL DEFAULT NOW()

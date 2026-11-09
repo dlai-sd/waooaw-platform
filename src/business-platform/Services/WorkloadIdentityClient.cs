@@ -1,7 +1,6 @@
 // Implements: ADR-046 sections 3, 4.1, 5, 6, and 7.2
 // constitutional_basis: C-002, C-023, C-026, C-059, C-063, C-083, C-084, C-085
 
-using System.Formats.Asn1;
 using System.Net.Security;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -114,15 +113,23 @@ public sealed class WorkloadIdentityClient : IDisposable
     {
         if (baseAddress.Scheme != Uri.UriSchemeHttps)
             throw new InvalidOperationException("Private owner clients require HTTPS");
-        var handler = new HttpClientHandler();
-        handler.ClientCertificates.Add(_clientCertificate);
-        handler.ServerCertificateCustomValidationCallback = (_, certificate, chain, errors) =>
-            ValidateTargetCertificate(certificate, chain, errors, targetIdentityUri);
-        return new HttpClient(handler)
+        return new HttpClient(CreateHandlerForIdentity(targetIdentityUri))
         {
             BaseAddress = baseAddress,
             Timeout = TimeSpan.FromSeconds(10),
         };
+    }
+
+    public HttpMessageHandler CreateHandler(string targetName) =>
+        CreateHandlerForIdentity(GetTarget(targetName).IdentityUri);
+
+    private HttpClientHandler CreateHandlerForIdentity(string targetIdentityUri)
+    {
+        var handler = new HttpClientHandler { AllowAutoRedirect = false };
+        handler.ClientCertificates.Add(_clientCertificate);
+        handler.ServerCertificateCustomValidationCallback = (_, certificate, chain, errors) =>
+            ValidateTargetCertificate(certificate, chain, errors, targetIdentityUri);
+        return handler;
     }
 
     public string Sign(
@@ -199,28 +206,11 @@ public sealed class WorkloadIdentityClient : IDisposable
         return HasExactUriSan(certificate, targetIdentityUri);
     }
 
-    private static bool HasExactUriSan(X509Certificate2 certificate, string targetIdentityUri)
-    {
-        var extension = certificate.Extensions["2.5.29.17"];
-        if (extension is null)
-            return false;
-        var names = new AsnReader(extension.RawData, AsnEncodingRules.DER).ReadSequence();
-        var uriTag = new Asn1Tag(TagClass.ContextSpecific, 6);
-        while (names.HasData)
-        {
-            if (names.PeekTag().HasSameClassAndValue(uriTag))
-            {
-                var uri = names.ReadCharacterString(UniversalTagNumber.IA5String, uriTag);
-                if (uri.Equals(targetIdentityUri, StringComparison.Ordinal))
-                    return true;
-            }
-            else
-            {
-                names.ReadEncodedValue();
-            }
-        }
-        return false;
-    }
+    internal static bool HasExactUriSan(X509Certificate2 certificate, string targetIdentityUri) =>
+        Waooaw.WorkloadIdentity.InferenceWorkloadValidator.HasExactUriSan(
+            certificate,
+            targetIdentityUri
+        );
 
     private static string Base64Url(byte[] value) =>
         Convert.ToBase64String(value).TrimEnd('=').Replace('+', '-').Replace('/', '_');

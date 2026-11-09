@@ -38,7 +38,7 @@ BP_CONTROLLER_SCOPES = {
     "VoiceContributionsController.cs": {
         "product": (r"^/api/v1/employment/relationships/[^/]+/voice-contributions(?:/|$)",),
     },
-    "WhatsAppJourneyController.cs": {"service": (r"^/api/v1/whatsapp/webhook$",)},
+    "WhatsAppJourneyController.cs": {"service": (r"^/api/v1/channels/whatsapp/webhook$",)},
 }
 
 PR_ROUTE_SCOPES = {

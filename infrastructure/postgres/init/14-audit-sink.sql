@@ -46,10 +46,10 @@ END $$;
 
 DROP POLICY IF EXISTS evidence_insert_only ON audit_sink.evidence_records;
 CREATE POLICY evidence_insert_only ON audit_sink.evidence_records
-  FOR INSERT TO ce_service_role
+  FOR INSERT TO ce_service_role, constitutional_app
   WITH CHECK (true);
 
-GRANT USAGE ON SCHEMA audit_sink TO ce_service_role;
-GRANT INSERT, SELECT ON audit_sink.evidence_records TO ce_service_role;
+GRANT USAGE ON SCHEMA audit_sink TO ce_service_role, constitutional_app;
+GRANT INSERT, SELECT ON audit_sink.evidence_records TO ce_service_role, constitutional_app;
 GRANT ce_service_role TO constitutional_app;
 -- No UPDATE or DELETE granted — structural WORM enforcement.

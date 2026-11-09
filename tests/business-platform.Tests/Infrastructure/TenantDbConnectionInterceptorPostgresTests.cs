@@ -1,13 +1,14 @@
 // Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R019
 // Constitutional basis: C-005, C-026, C-059, C-063
 
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
-using System.Security.Claims;
 using Testcontainers.PostgreSql;
 using Waooaw.BusinessPlatform.Infrastructure;
+using Waooaw.BusinessPlatform.Services;
 using Xunit;
 
 namespace Waooaw.BusinessPlatform.Tests.Infrastructure;
@@ -47,6 +48,34 @@ public sealed class TenantDbConnectionInterceptorPostgresTests : IAsyncLifetime
     }
 
     public async Task DisposeAsync() => await _postgres.DisposeAsync();
+
+    [Fact]
+    public async Task RuntimeWorkCapabilityScopesRlsWithoutHttpAndCannotOverrideHttpAuthority()
+    {
+        var tenant = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        await SeedAsync(tenant, other);
+        var accessor = new HttpContextAccessor();
+        var workScope = new ConversationRuntimeWorkScope();
+        var interceptor = new TenantDbConnectionInterceptor(
+            accessor, NullLogger<TenantDbConnectionInterceptor>.Instance, runtimeWork: workScope);
+        var appConnection = new NpgsqlConnectionStringBuilder(_postgres.GetConnectionString())
+        {
+            Username = "tenant_app", Password = AppPassword,
+        }.ConnectionString;
+        await using var db = new TenantProbeDbContext(new DbContextOptionsBuilder<TenantProbeDbContext>()
+            .UseNpgsql(appConnection).AddInterceptors(interceptor).Options);
+        using (workScope.Begin(new ConversationRuntimeWork(tenant, Guid.NewGuid())))
+        {
+            Assert.Equal(new[] { tenant }, await db.TenantProbes.AsNoTracking().Select(row => row.TenantId).ToArrayAsync());
+            accessor.HttpContext = new DefaultHttpContext();
+            accessor.HttpContext.Items[TenantIsolationMiddleware.TenantIdItemKey] = other.ToString("D");
+            await Assert.ThrowsAsync<InvalidOperationException>(() => db.TenantProbes.AsNoTracking().ToListAsync());
+            accessor.HttpContext = null;
+        }
+        Assert.Null(workScope.Current);
+        Assert.Empty(await db.TenantProbes.AsNoTracking().ToListAsync());
+    }
 
     [Fact]
     public async Task TenantScopedRead_OwnsTransactionWithoutWarningOrSessionLeak()
@@ -169,6 +198,106 @@ public sealed class TenantDbConnectionInterceptorPostgresTests : IAsyncLifetime
         Assert.Equal(2, await db.TenantProbes.CountAsync());
     }
 
+    [Fact]
+    public async Task ExplicitWhatsAppDatabaseTenantOverridePrecedesAuthenticatedRequestTenant()
+    {
+        var requestTenant = Guid.NewGuid();
+        var guestTenant = Guid.NewGuid();
+        await SeedAsync(requestTenant, guestTenant);
+        var accessor = new HttpContextAccessor { HttpContext = new DefaultHttpContext() };
+        accessor.HttpContext.Items[TenantIsolationMiddleware.TenantIdItemKey] =
+            requestTenant.ToString("D");
+        var execution = new WhatsAppTenantExecutionScope(
+            new FixedCapabilityGate(guestTenant),
+            TimeProvider.System
+        );
+        var interceptor = new TenantDbConnectionInterceptor(
+            accessor,
+            NullLogger<TenantDbConnectionInterceptor>.Instance,
+            execution
+        );
+        var appConnection = new NpgsqlConnectionStringBuilder(_postgres.GetConnectionString())
+        {
+            Username = "tenant_app",
+            Password = AppPassword,
+        }.ConnectionString;
+        var options = new DbContextOptionsBuilder<TenantProbeDbContext>()
+            .UseNpgsql(appConnection)
+            .AddInterceptors(interceptor)
+            .Options;
+
+        using var authority = execution.Begin();
+        await using var guestDb = new TenantProbeDbContext(options);
+        await using var guestTransaction = await guestDb.Database.BeginTransactionAsync();
+        using (execution.BeginDatabaseTenantOverride(guestTenant))
+        {
+            var guestVisibleTenants = await guestDb.TenantProbes
+                .AsNoTracking()
+                .Select(row => row.TenantId)
+                .ToArrayAsync();
+
+            Assert.Equal([guestTenant], guestVisibleTenants);
+            Assert.Throws<InvalidOperationException>(() =>
+                execution.BeginDatabaseTenantOverride(requestTenant)
+            );
+        }
+        await using var customerDb = new TenantProbeDbContext(options);
+        customerDb.TenantProbes.Add(
+            new TenantProbe { Id = Guid.NewGuid(), TenantId = requestTenant, Value = "linked" }
+        );
+        Assert.Equal(1, await customerDb.SaveChangesAsync());
+        var customerVisibleTenants = await customerDb.TenantProbes
+            .AsNoTracking()
+            .Select(row => row.TenantId)
+            .ToArrayAsync();
+        Assert.Equal([requestTenant, requestTenant], customerVisibleTenants);
+        await guestTransaction.CommitAsync();
+    }
+
+    [Fact]
+    public async Task RelationshipRoutingSelectsOnlyCandidateTenantAndCannotOverrideAnotherHttpTenant()
+    {
+        var serviceTenant = Guid.NewGuid();
+        var customerTenant = Guid.NewGuid();
+        await SeedAsync(serviceTenant, customerTenant);
+        var accessor = new HttpContextAccessor { HttpContext = new DefaultHttpContext() };
+        var gate = new FixedCapabilityGate(serviceTenant);
+        var execution = new WhatsAppTenantExecutionScope(gate, TimeProvider.System);
+        var interceptor = new TenantDbConnectionInterceptor(
+            accessor, NullLogger<TenantDbConnectionInterceptor>.Instance, execution);
+        var connectionString = new NpgsqlConnectionStringBuilder(_postgres.GetConnectionString())
+        {
+            Username = "tenant_app", Password = AppPassword,
+        }.ConnectionString;
+        var options = new DbContextOptionsBuilder<TenantProbeDbContext>()
+            .UseNpgsql(connectionString).AddInterceptors(interceptor).Options;
+        var candidate = new WhatsAppRelationshipRoute
+        {
+            ServiceTenantId = serviceTenant, TenantId = customerTenant,
+            BindingId = Guid.NewGuid(), ActorId = Guid.NewGuid(), SenderHash = new string('a', 64),
+        };
+        using var service = execution.Begin();
+        await using var db = new TenantProbeDbContext(options);
+        Assert.Equal([serviceTenant], await db.TenantProbes.Select(value => value.TenantId).ToArrayAsync());
+        using (execution.BeginRelationshipValidation(candidate))
+        {
+            var authority = gate.RequireActive(DateTimeOffset.UtcNow);
+            var route = new WhatsAppCurrentRelationshipRoute(
+                serviceTenant, authority.Environment, candidate.SenderHash, customerTenant,
+                candidate.BindingId, Guid.NewGuid(), candidate.ActorId, "EMPLOYER", Guid.NewGuid(), 1);
+            execution.ConfirmRelationshipRoute(route);
+            Assert.Equal([customerTenant], await db.TenantProbes.Select(value => value.TenantId).ToArrayAsync());
+            db.Add(new TenantProbe { Id = Guid.NewGuid(), TenantId = customerTenant, Value = "route-owned" });
+            Assert.Equal(1, await db.SaveChangesAsync());
+            accessor.HttpContext.Items[TenantIsolationMiddleware.TenantIdItemKey] = serviceTenant.ToString("D");
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => db.TenantProbes.AsNoTracking().ToArrayAsync());
+            accessor.HttpContext.Items.Remove(TenantIsolationMiddleware.TenantIdItemKey);
+            Assert.Equal(2, await db.TenantProbes.CountAsync());
+        }
+        Assert.Equal([serviceTenant], await db.TenantProbes.Select(value => value.TenantId).ToArrayAsync());
+    }
+
     private async Task SeedAsync(Guid tenantA, Guid tenantB)
     {
         await using var connection = new NpgsqlConnection(_postgres.GetConnectionString());
@@ -223,5 +352,22 @@ public sealed class TenantDbConnectionInterceptorPostgresTests : IAsyncLifetime
                 entity.Property(row => row.Value).HasColumnName("value");
             });
         }
+    }
+
+    private sealed class FixedCapabilityGate(Guid tenantId) : IWhatsAppCapabilityGate
+    {
+        private readonly WhatsAppActivationAuthority _authority = new()
+        {
+            TenantId = tenantId,
+            Environment = "test",
+            StartsAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+            ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(1),
+        };
+        public WhatsAppCapabilityState Evaluate(DateTimeOffset now) =>
+            new("ACTIVE", "AUTHORIZED");
+
+        public WhatsAppActivationAuthority RequireActive(DateTimeOffset now) => _authority;
+
+        public void RequireRecipient(Guid tenantId, string recipientBindingDigest, DateTimeOffset now) { }
     }
 }

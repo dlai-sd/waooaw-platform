@@ -59,6 +59,33 @@
         "digest": { "$ref": "#/$defs/digest" }
       }
     },
+    "conversationPolicyReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "version", "digest"],
+      "properties": {
+        "ref": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "version": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "conversationOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "governedAction", "inputSchemaDigest", "outputSchemaDigest", "promptPolicy", "modelPolicy"],
+      "properties": {
+        "kind": { "enum": ["PROFESSIONAL_RESPONSE", "EMPLOYMENT_CONTRIBUTION_INTERPRETATION"] },
+        "governedAction": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "inputSchemaDigest": { "$ref": "#/$defs/digest" },
+        "outputSchemaDigest": { "$ref": "#/$defs/digest" },
+        "promptPolicy": { "$ref": "#/$defs/conversationPolicyReference" },
+        "modelPolicy": { "$ref": "#/$defs/conversationPolicyReference" },
+        "patchType": { "enum": ["INDUCTION_CONTEXT", "GOAL", "PLAN", "CALENDAR", "DEPENDENCY", "OPERATING_CYCLE", "CORRECTIVE_PROPOSAL"] }
+      },
+      "if": { "properties": { "kind": { "const": "EMPLOYMENT_CONTRIBUTION_INTERPRETATION" } } },
+      "then": { "required": ["patchType"] },
+      "else": { "not": { "required": ["patchType"] } }
+    },
     "runtimeAdapter": {
       "type": "object",
       "additionalProperties": false,
@@ -252,7 +279,8 @@
         "trialBehavior": { "type": "string", "minLength": 1 },
         "degradationBehavior": { "type": "string", "minLength": 1 },
         "compatibility": { "$ref": "#/$defs/schemaReference" },
-        "nonGoalExemption": { "$ref": "#/$defs/nonGoalExemption" }
+        "nonGoalExemption": { "$ref": "#/$defs/nonGoalExemption" },
+        "conversationOperation": { "$ref": "#/$defs/conversationOperation" }
       }
     }
   }

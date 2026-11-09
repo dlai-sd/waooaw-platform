@@ -48,6 +48,16 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   try {
+    const messageExecutionId = optionalQuery(request, 'messageExecutionId');
+    if (messageExecutionId) {
+      return NextResponse.json(
+        await createConversationApi(accessToken).getConversationMessageExecution({
+          relationshipId,
+          messageId: messageExecutionId,
+        }),
+        { headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
     const requestedLimit = optionalQuery(request, 'limit');
     const limit = requestedLimit ? Number.parseInt(requestedLimit, 10) : undefined;
     if (limit !== undefined && (!Number.isInteger(limit) || limit < 1 || limit > 100)) {
@@ -107,6 +117,24 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
     const api = createConversationApi(accessToken);
 
     switch (action) {
+      case 'reconcile': {
+        if (!Number.isSafeInteger(body.expectedProjectionVersion) || Number(body.expectedProjectionVersion) < 0)
+          throw new InvalidConversationRequest();
+        return NextResponse.json(
+          await api.reconcileConversationExecution({
+            relationshipId,
+            executionId: requiredString(body, 'executionId'),
+            idempotencyKey,
+            xCorrelationId: crypto.randomUUID(),
+            reconcileConversationExecutionRequestV1: {
+              schemaVersion: '1.0',
+              expectedMessageId: requiredString(body, 'messageId'),
+              expectedProjectionVersion: Number(body.expectedProjectionVersion),
+            },
+          }),
+          { headers: { 'Cache-Control': 'no-store' } }
+        );
+      }
       case 'send':
         return NextResponse.json(
           await api.sendConversationMessage({

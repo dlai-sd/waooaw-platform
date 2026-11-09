@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from cryptography.x509.oid import NameOID
 from starlette.requests import Request
@@ -67,8 +67,9 @@ def _request(certificate: x509.Certificate, token: str) -> Request:
     )
 
 
-def test_signed_air_envelope_is_exactly_bound_and_single_use() -> None:
-    key = ec.generate_private_key(ec.SECP256R1())
+@pytest.mark.parametrize("algorithm", ["ecdsa", "ed25519"])
+def test_signed_air_envelope_is_exactly_bound_and_single_use(algorithm: str) -> None:
+    key = ec.generate_private_key(ec.SECP256R1()) if algorithm == "ecdsa" else ed25519.Ed25519PrivateKey.generate()
     identity = "spiffe://waooaw.test/workload/professional-runtime"
     audience = "urn:waooaw:service:ai-runtime"
     route = "/internal/v1/employment-patch-proposals"
@@ -106,8 +107,9 @@ def test_signed_air_envelope_is_exactly_bound_and_single_use() -> None:
         separators=(",", ":"),
         sort_keys=True,
     ).encode()
-    token = f"{_encode(payload)}.{_encode(key.sign(payload, ec.ECDSA(hashes.SHA256())))}"
-    certificate = _certificate(key, identity)
+    signature = key.sign(payload) if isinstance(key, ed25519.Ed25519PrivateKey) else key.sign(payload, ec.ECDSA(hashes.SHA256()))
+    token = f"{_encode(payload)}.{_encode(signature)}"
+    certificate = _certificate(ec.generate_private_key(ec.SECP256R1()), identity)
     auth = EmploymentWorkloadAuth(
         frozenset(
             {
@@ -126,6 +128,17 @@ def test_signed_air_envelope_is_exactly_bound_and_single_use() -> None:
         audience,
         now=lambda: now,
     )
+
+    invalid_signature = bytes([signature[0] ^ 1]) + signature[1:]
+    with pytest.raises(EmploymentAuthError, match="AIR_EMPLOYMENT_UNAUTHORIZED"):
+        auth.authorize(
+            _request(certificate, f"{_encode(payload)}.{_encode(invalid_signature)}"),
+            route,
+            "proposeEmploymentPatch",
+            digest,
+            "relationship-1",
+            context.idempotency_key,
+        )
 
     accepted = auth.authorize(
         _request(certificate, token),
@@ -189,8 +202,10 @@ def test_air_auth_rejects_missing_or_malformed_transport(
         )
 
 
+@pytest.mark.parametrize("algorithm", ["ecdsa", "ed25519"])
 def test_auth_loads_exact_pr_to_air_grants_from_generated_credentials(
     tmp_path: Path,
+    algorithm: str,
 ) -> None:
     repository = Path(__file__).resolve().parents[2]
     credentials = tmp_path / "credentials"
@@ -199,14 +214,32 @@ def test_auth_loads_exact_pr_to_air_grants_from_generated_credentials(
         "ci",
         credentials,
     )
-    auth = EmploymentWorkloadAuth.from_credentials(credentials)
     caller = manifest["workloads"]["professional-runtime"]
     target = manifest["workloads"]["ai-runtime"]
-    private_key = load_pem_private_key(
-        (credentials / "workloads" / "professional-runtime" / "delegation-key.pem").read_bytes(),
-        password=None,
-    )
-    assert isinstance(private_key, ec.EllipticCurvePrivateKey)
+    if algorithm == "ed25519":
+        private_key = ed25519.Ed25519PrivateKey.generate()
+        now_dt = datetime.now(timezone.utc)
+        name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "test-delegation")])
+        delegation_certificate = (
+            x509.CertificateBuilder()
+            .subject_name(name)
+            .issuer_name(name)
+            .public_key(private_key.public_key())
+            .serial_number(x509.random_serial_number())
+            .not_valid_before(now_dt - timedelta(minutes=1))
+            .not_valid_after(now_dt + timedelta(minutes=5))
+            .sign(private_key, None)
+        )
+        (credentials / "workloads" / "professional-runtime" / "delegation-cert.pem").write_bytes(
+            delegation_certificate.public_bytes(serialization.Encoding.PEM)
+        )
+    else:
+        private_key = load_pem_private_key(
+            (credentials / "workloads" / "professional-runtime" / "delegation-key.pem").read_bytes(),
+            password=None,
+        )
+        assert isinstance(private_key, ec.EllipticCurvePrivateKey)
+    auth = EmploymentWorkloadAuth.from_credentials(credentials)
     certificate = x509.load_pem_x509_certificate(
         (credentials / "workloads" / "professional-runtime" / "tls-cert.pem").read_bytes()
     )
@@ -244,7 +277,12 @@ def test_auth_loads_exact_pr_to_air_grants_from_generated_credentials(
         separators=(",", ":"),
         sort_keys=True,
     ).encode()
-    token = f"{_encode(payload)}.{_encode(private_key.sign(payload, ec.ECDSA(hashes.SHA256())))}"
+    signature = (
+        private_key.sign(payload)
+        if isinstance(private_key, ed25519.Ed25519PrivateKey)
+        else private_key.sign(payload, ec.ECDSA(hashes.SHA256()))
+    )
+    token = f"{_encode(payload)}.{_encode(signature)}"
     request = Request(
         {
             "type": "http",

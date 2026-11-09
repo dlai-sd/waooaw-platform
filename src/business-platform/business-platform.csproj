@@ -14,6 +14,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile
+            Include="../shared/InferenceWorkloadValidator.cs"
+            Link="Infrastructure/InferenceWorkloadValidator.cs"
+        />
         <!-- REST API + OpenAPI spec-first (ADR-002) -->
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
@@ -61,6 +65,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="business-platform.Tests" />
         <Compile Remove="Clients/Generated/**/*.cs" />
         <ProjectReference Include="Clients/Generated/EmploymentWbe/src/Waooaw.Generated.WbeEmployment/Waooaw.Generated.WbeEmployment.csproj" />
         <ProjectReference Include="Clients/Generated/EmploymentDomainAdapter/src/Waooaw.Generated.DomainEmployment/Waooaw.Generated.DomainEmployment.csproj" />

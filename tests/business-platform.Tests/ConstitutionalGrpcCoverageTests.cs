@@ -3,13 +3,15 @@
 using System.Buffers.Binary;
 using System.Net;
 using System.Security.Claims;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using Google.Protobuf;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -33,13 +35,22 @@ public sealed class ConstitutionalGrpcCoverageTests
                 Decision = ValidationDecision.Allow,
                 ConstitutionalBasis = "C-023; C-059",
             },
-            _ => new RecordEvidenceResponse { EvidenceRecordId = evidenceId.ToString("D") });
+            _ => new RecordEvidenceResponse { EvidenceRecordId = evidenceId.ToString("D") }
+        );
         var gateway = new RelationshipConstitutionalGateway(
-            Configuration(server.Address), NullLogger<RelationshipConstitutionalGateway>.Instance);
+            Configuration(server.Address),
+            NullLogger<RelationshipConstitutionalGateway>.Instance
+        );
 
         var result = await gateway.AuthorizeAndRecordAsync(
-            Guid.NewGuid(), Guid.NewGuid(), "DMA", "TEST_ACTION", Guid.NewGuid(),
-            new { value = "canonical" }, CancellationToken.None);
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "DMA",
+            "TEST_ACTION",
+            Guid.NewGuid(),
+            new { value = "canonical" },
+            CancellationToken.None
+        );
 
         Assert.Equal(evidenceId, result);
         Assert.Equal(1, server.ValidateCalls);
@@ -52,18 +63,29 @@ public sealed class ConstitutionalGrpcCoverageTests
     public async Task RelationshipGateway_RejectsNonAllowDecision(
         ValidationDecision decision,
         string reason,
-        string expected)
+        string expected
+    )
     {
         await using var server = await RawConstitutionalServer.StartAsync(
             _ => new ValidateActionResponse { Decision = decision, Reason = reason },
-            _ => new RecordEvidenceResponse { EvidenceRecordId = Guid.NewGuid().ToString("D") });
+            _ => new RecordEvidenceResponse { EvidenceRecordId = Guid.NewGuid().ToString("D") }
+        );
         var gateway = new RelationshipConstitutionalGateway(
-            Configuration(server.Address), NullLogger<RelationshipConstitutionalGateway>.Instance);
+            Configuration(server.Address),
+            NullLogger<RelationshipConstitutionalGateway>.Instance
+        );
 
         var exception = await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() =>
             gateway.AuthorizeAndRecordAsync(
-                Guid.NewGuid(), Guid.NewGuid(), "DMA", "TEST_ACTION", Guid.NewGuid(),
-                new { }, CancellationToken.None));
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                "DMA",
+                "TEST_ACTION",
+                Guid.NewGuid(),
+                new { },
+                CancellationToken.None
+            )
+        );
 
         Assert.Contains(expected, exception.Message);
         Assert.Equal(0, server.RecordCalls);
@@ -74,13 +96,24 @@ public sealed class ConstitutionalGrpcCoverageTests
     {
         await using var server = await RawConstitutionalServer.StartAsync(
             _ => new ValidateActionResponse { Decision = ValidationDecision.Allow },
-            _ => new RecordEvidenceResponse { EvidenceRecordId = "invalid" });
+            _ => new RecordEvidenceResponse { EvidenceRecordId = "invalid" }
+        );
         var gateway = new RelationshipConstitutionalGateway(
-            Configuration(server.Address), NullLogger<RelationshipConstitutionalGateway>.Instance);
+            Configuration(server.Address),
+            NullLogger<RelationshipConstitutionalGateway>.Instance
+        );
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => gateway.AuthorizeAndRecordAsync(
-            Guid.NewGuid(), Guid.NewGuid(), "DMA", "TEST_ACTION", Guid.NewGuid(),
-            new { }, CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            gateway.AuthorizeAndRecordAsync(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                "DMA",
+                "TEST_ACTION",
+                Guid.NewGuid(),
+                new { },
+                CancellationToken.None
+            )
+        );
     }
 
     [Fact]
@@ -106,17 +139,20 @@ public sealed class ConstitutionalGrpcCoverageTests
                 Assert.Equal(actionInstanceId.ToString("D"), request.ActionInstanceId);
                 Assert.Equal("C-023; C-026", request.ConstitutionalBasis);
                 return new RecordEvidenceResponse { EvidenceRecordId = evidenceId.ToString("D") };
-            });
+            }
+        );
         var gateway = new GrpcIdentityConstitutionalGateway(
             Configuration(server.Address),
-            NullLogger<GrpcIdentityConstitutionalGateway>.Instance);
+            NullLogger<GrpcIdentityConstitutionalGateway>.Instance
+        );
 
         var result = await gateway.AuthorizeAndRecordAsync(
             tenantId,
             actionInstanceId,
             "IDENTITY_LOGIN",
             new { value = "canonical" },
-            CancellationToken.None);
+            CancellationToken.None
+        );
 
         Assert.Equal(evidenceId, result);
         Assert.Equal(1, server.ValidateCalls);
@@ -137,19 +173,28 @@ public sealed class ConstitutionalGrpcCoverageTests
             {
                 Assert.Equal("C-023; C-026; WC-103", request.ConstitutionalBasis);
                 return new RecordEvidenceResponse { EvidenceRecordId = evidenceId.ToString("D") };
-            });
+            }
+        );
         var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["ConstitutionalEngine:Address"] = server.Address.ToString(),
-            })
+            .AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["ConstitutionalEngine:Address"] = server.Address.ToString(),
+                }
+            )
             .Build();
         var gateway = new GrpcIdentityConstitutionalGateway(
             configuration,
-            NullLogger<GrpcIdentityConstitutionalGateway>.Instance);
+            NullLogger<GrpcIdentityConstitutionalGateway>.Instance
+        );
 
         var result = await gateway.AuthorizeAndRecordAsync(
-            Guid.NewGuid(), Guid.NewGuid(), "IDENTITY_LOGOUT", new { }, CancellationToken.None);
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "IDENTITY_LOGOUT",
+            new { },
+            CancellationToken.None
+        );
 
         Assert.Equal(evidenceId, result);
     }
@@ -160,18 +205,27 @@ public sealed class ConstitutionalGrpcCoverageTests
     public async Task IdentityGateway_RejectsNonAllowDecision(
         ValidationDecision decision,
         string reason,
-        string expected)
+        string expected
+    )
     {
         await using var server = await RawConstitutionalServer.StartAsync(
             _ => new ValidateActionResponse { Decision = decision, Reason = reason },
-            _ => new RecordEvidenceResponse { EvidenceRecordId = Guid.NewGuid().ToString("D") });
+            _ => new RecordEvidenceResponse { EvidenceRecordId = Guid.NewGuid().ToString("D") }
+        );
         var gateway = new GrpcIdentityConstitutionalGateway(
             Configuration(server.Address),
-            NullLogger<GrpcIdentityConstitutionalGateway>.Instance);
+            NullLogger<GrpcIdentityConstitutionalGateway>.Instance
+        );
 
         var exception = await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() =>
             gateway.AuthorizeAndRecordAsync(
-                Guid.NewGuid(), Guid.NewGuid(), "IDENTITY_LOGIN", new { }, CancellationToken.None));
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                "IDENTITY_LOGIN",
+                new { },
+                CancellationToken.None
+            )
+        );
 
         Assert.Contains(expected, exception.Message);
         Assert.Equal(0, server.RecordCalls);
@@ -182,14 +236,22 @@ public sealed class ConstitutionalGrpcCoverageTests
     {
         await using var server = await RawConstitutionalServer.StartAsync(
             _ => new ValidateActionResponse { Decision = ValidationDecision.Allow },
-            _ => new RecordEvidenceResponse { EvidenceRecordId = "invalid" });
+            _ => new RecordEvidenceResponse { EvidenceRecordId = "invalid" }
+        );
         var gateway = new GrpcIdentityConstitutionalGateway(
             Configuration(server.Address),
-            NullLogger<GrpcIdentityConstitutionalGateway>.Instance);
+            NullLogger<GrpcIdentityConstitutionalGateway>.Instance
+        );
 
         var exception = await Assert.ThrowsAsync<IdentityConstitutionalUnavailableException>(() =>
             gateway.AuthorizeAndRecordAsync(
-                Guid.NewGuid(), Guid.NewGuid(), "IDENTITY_LOGIN", new { }, CancellationToken.None));
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                "IDENTITY_LOGIN",
+                new { },
+                CancellationToken.None
+            )
+        );
 
         Assert.IsType<InvalidOperationException>(exception.InnerException);
     }
@@ -199,11 +261,18 @@ public sealed class ConstitutionalGrpcCoverageTests
     {
         var gateway = new GrpcIdentityConstitutionalGateway(
             new ConfigurationBuilder().Build(),
-            NullLogger<GrpcIdentityConstitutionalGateway>.Instance);
+            NullLogger<GrpcIdentityConstitutionalGateway>.Instance
+        );
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             gateway.AuthorizeAndRecordAsync(
-                Guid.NewGuid(), Guid.NewGuid(), "IDENTITY_LOGIN", new { }, CancellationToken.None));
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                "IDENTITY_LOGIN",
+                new { },
+                CancellationToken.None
+            )
+        );
     }
 
     [Fact]
@@ -211,19 +280,26 @@ public sealed class ConstitutionalGrpcCoverageTests
     {
         await using var server = await RawConstitutionalServer.StartAsync(
             _ => new ValidateActionResponse { Decision = ValidationDecision.Allow },
-            _ => new RecordEvidenceResponse());
+            _ => new RecordEvidenceResponse()
+        );
         var options = new DbContextOptionsBuilder<SkillCatalogDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
             .Options;
         var controller = new SkillsController(
             new DbFactory<SkillCatalogDbContext>(options),
             Configuration(server.Address),
-            NullLogger<SkillsController>.Instance)
+            NullLogger<SkillsController>.Instance
+        )
         {
             ControllerContext = FounderContext(),
         };
         var request = new PublishSkillRequest(
-            "skill", "1", "Skill", JsonDocument.Parse("{\"schema\":1}").RootElement, ["CCT-1"]);
+            "skill",
+            "1",
+            "Skill",
+            JsonDocument.Parse("{\"schema\":1}").RootElement,
+            ["CCT-1"]
+        );
 
         var created = await controller.PublishSkillAsync(request, CancellationToken.None);
         var duplicate = await controller.PublishSkillAsync(request, CancellationToken.None);
@@ -244,22 +320,32 @@ public sealed class ConstitutionalGrpcCoverageTests
                 Reason = "outside authority",
                 ConstitutionalBasis = "C-036",
             },
-            _ => new RecordEvidenceResponse());
+            _ => new RecordEvidenceResponse()
+        );
         var options = new DbContextOptionsBuilder<SkillCatalogDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
             .Options;
         var controller = new SkillsController(
             new DbFactory<SkillCatalogDbContext>(options),
             Configuration(server.Address),
-            NullLogger<SkillsController>.Instance)
+            NullLogger<SkillsController>.Instance
+        )
         {
             ControllerContext = FounderContext(),
         };
 
-        var result = Assert.IsType<ObjectResult>(await controller.PublishSkillAsync(
-            new PublishSkillRequest(
-                "skill", "1", "Skill", JsonDocument.Parse("{}").RootElement, ["CCT-1"]),
-            CancellationToken.None));
+        var result = Assert.IsType<ObjectResult>(
+            await controller.PublishSkillAsync(
+                new PublishSkillRequest(
+                    "skill",
+                    "1",
+                    "Skill",
+                    JsonDocument.Parse("{}").RootElement,
+                    ["CCT-1"]
+                ),
+                CancellationToken.None
+            )
+        );
 
         Assert.Equal(403, result.StatusCode);
     }
@@ -270,17 +356,24 @@ public sealed class ConstitutionalGrpcCoverageTests
     [InlineData(ValidationDecision.Unspecified, 503)]
     public async Task CustomerRegistration_MapsConstitutionalDecision(
         ValidationDecision decision,
-        int expectedStatus)
+        int expectedStatus
+    )
     {
         await using var server = await RawConstitutionalServer.StartAsync(
             _ => new ValidateActionResponse { Decision = decision },
-            _ => new RecordEvidenceResponse());
+            _ => new RecordEvidenceResponse()
+        );
         var fixture = RelationshipFixture();
         var controller = CustomerController(fixture, server.Address);
 
         var result = await controller.RegisterCustomerAsync(
-            new RegisterCustomerRequest("Customer", "customer@example.com", fixture.TenantId.ToString("D")),
-            CancellationToken.None);
+            new RegisterCustomerRequest(
+                "Customer",
+                "customer@example.com",
+                fixture.TenantId.ToString("D")
+            ),
+            CancellationToken.None
+        );
 
         var actualStatus = result switch
         {
@@ -296,7 +389,8 @@ public sealed class ConstitutionalGrpcCoverageTests
     [InlineData(ValidationDecision.Deny, 403)]
     public async Task SkillAmendment_MapsConstitutionalDecision(
         ValidationDecision decision,
-        int expectedStatus)
+        int expectedStatus
+    )
     {
         await using var server = await RawConstitutionalServer.StartAsync(
             _ => new ValidateActionResponse
@@ -305,13 +399,15 @@ public sealed class ConstitutionalGrpcCoverageTests
                 Reason = "policy",
                 ConstitutionalBasis = "C-036",
             },
-            _ => new RecordEvidenceResponse());
+            _ => new RecordEvidenceResponse()
+        );
         var fixture = RelationshipFixture();
         var controller = CustomerController(fixture, server.Address);
 
         var result = await controller.AmendContractAsync(
             new AmendContractRequest("contract", "skill", "1", "REMOVE"),
-            CancellationToken.None);
+            CancellationToken.None
+        );
 
         Assert.Equal(expectedStatus, Assert.IsAssignableFrom<ObjectResult>(result).StatusCode);
     }
@@ -321,20 +417,30 @@ public sealed class ConstitutionalGrpcCoverageTests
     [InlineData(ValidationDecision.Deny, false)]
     public async Task EmploymentService_MapsRegistrationAndHireDecisions(
         ValidationDecision decision,
-        bool expectedSuccess)
+        bool expectedSuccess
+    )
     {
         await using var server = await RawConstitutionalServer.StartAsync(
             _ => new ValidateActionResponse { Decision = decision, Reason = "policy" },
-            _ => new RecordEvidenceResponse());
+            _ => new RecordEvidenceResponse()
+        );
         var service = new EmploymentService(
-            Configuration(server.Address), NullLogger<EmploymentService>.Instance);
+            Configuration(server.Address),
+            NullLogger<EmploymentService>.Instance
+        );
 
         var registration = await service.RegisterCustomerAsync(
-            new RegisterCustomerRequest("Name\nQuoted", "customer\\\"@example.com", Guid.NewGuid().ToString()),
-            CancellationToken.None);
+            new RegisterCustomerRequest(
+                "Name\nQuoted",
+                "customer\\\"@example.com",
+                Guid.NewGuid().ToString()
+            ),
+            CancellationToken.None
+        );
         var hire = await service.HireAgentAsync(
             new HireAgentRequest("contract", "DMA\t", "publish", "invalid", 100, "1\r"),
-            CancellationToken.None);
+            CancellationToken.None
+        );
 
         Assert.Equal(expectedSuccess, registration.Success);
         Assert.Equal(expectedSuccess, hire.Success);
@@ -354,7 +460,8 @@ public sealed class ConstitutionalGrpcCoverageTests
             request => new RecordErasureResponse
             {
                 RecordsUpdated = request.TenantId == tenantId.ToString("D") ? 2 : 0,
-            });
+            }
+        );
         var options = new DbContextOptionsBuilder<PayloadStoreDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
             .Options;
@@ -363,58 +470,81 @@ public sealed class ConstitutionalGrpcCoverageTests
             db.OperationalPayloads.AddRange(
                 Payload(tenantId),
                 Payload(tenantId),
-                Payload(Guid.NewGuid()));
+                Payload(Guid.NewGuid())
+            );
             await db.SaveChangesAsync();
         }
         var controller = new CustomerDataController(
             new DbFactory<PayloadStoreDbContext>(options),
-            new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["ConstitutionalEngine:GrpcAddress"] = server.Address.ToString(),
-            }).Build(),
-            NullLogger<CustomerDataController>.Instance)
+            new ConfigurationBuilder()
+                .AddInMemoryCollection(
+                    new Dictionary<string, string?>
+                    {
+                        ["ConstitutionalEngine:GrpcAddress"] = server.Address.ToString(),
+                    }
+                )
+                .Build(),
+            NullLogger<CustomerDataController>.Instance
+        )
         {
             ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext
                 {
-                    User = new ClaimsPrincipal(new ClaimsIdentity(
-                        [new Claim(ClaimTypes.Role, "founder")], "Test")),
+                    User = new ClaimsPrincipal(
+                        new ClaimsIdentity([new Claim(ClaimTypes.Role, "founder")], "Test")
+                    ),
                 },
             },
         };
 
-        var result = Assert.IsType<OkObjectResult>(await controller.EraseCustomerDataAsync(
-            tenantId, erasureOrderId, CancellationToken.None));
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.EraseCustomerDataAsync(
+                tenantId,
+                erasureOrderId,
+                CancellationToken.None
+            )
+        );
 
         var certificate = JsonSerializer.SerializeToElement(result.Value);
         Assert.Equal(2, certificate.GetProperty("records_wiped").GetInt32());
         Assert.Equal(2, certificate.GetProperty("ce_records_marked").GetInt32());
         await using var check = new PayloadStoreDbContext(options);
         Assert.All(
-            await check.OperationalPayloads.Where(value => value.TenantId == tenantId).ToListAsync(),
+            await check
+                .OperationalPayloads.Where(value => value.TenantId == tenantId)
+                .ToListAsync(),
             value =>
             {
                 Assert.Null(value.PayloadJson);
                 Assert.NotNull(value.ErasedAt);
-            });
-        Assert.Single(await check.OperationalPayloads.Where(value => value.ErasedAt == null).ToListAsync());
+            }
+        );
+        Assert.Single(
+            await check.OperationalPayloads.Where(value => value.ErasedAt == null).ToListAsync()
+        );
     }
 
-    private static IConfiguration Configuration(Uri address) => new ConfigurationBuilder()
-        .AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            ["ConstitutionalEngine:GrpcUrl"] = address.ToString(),
-        })
-        .Build();
+    private static IConfiguration Configuration(Uri address) =>
+        new ConfigurationBuilder()
+            .AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["ConstitutionalEngine:GrpcUrl"] = address.ToString(),
+                }
+            )
+            .Build();
 
-    private static ControllerContext FounderContext() => new()
-    {
-        HttpContext = new DefaultHttpContext
+    private static ControllerContext FounderContext() =>
+        new()
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("role", "founder")], "Test")),
-        },
-    };
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(
+                    new ClaimsIdentity([new Claim("role", "founder")], "Test")
+                ),
+            },
+        };
 
     private static RelationshipTestFixture RelationshipFixture()
     {
@@ -423,12 +553,17 @@ public sealed class ConstitutionalGrpcCoverageTests
             new EmploymentRelationshipService(
                 factory,
                 new RecordingRelationshipConstitutionalGateway(),
-                NullLogger<EmploymentRelationshipService>.Instance),
+                NullLogger<EmploymentRelationshipService>.Instance
+            ),
             Guid.NewGuid(),
-            Guid.NewGuid());
+            Guid.NewGuid()
+        );
     }
 
-    private static CustomersController CustomerController(RelationshipTestFixture fixture, Uri address)
+    private static CustomersController CustomerController(
+        RelationshipTestFixture fixture,
+        Uri address
+    )
     {
         var skillOptions = new DbContextOptionsBuilder<SkillCatalogDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
@@ -437,32 +572,39 @@ public sealed class ConstitutionalGrpcCoverageTests
             Configuration(address),
             new DbFactory<SkillCatalogDbContext>(skillOptions),
             fixture.Service,
-            NullLogger<CustomersController>.Instance);
+            NullLogger<CustomersController>.Instance
+        );
         var context = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim("participant_id", fixture.ParticipantId.ToString("D"))], "Test")),
+            User = new ClaimsPrincipal(
+                new ClaimsIdentity(
+                    [new Claim("participant_id", fixture.ParticipantId.ToString("D"))],
+                    "Test"
+                )
+            ),
         };
         context.Items[TenantIsolationMiddleware.TenantIdItemKey] = fixture.TenantId.ToString("D");
         controller.ControllerContext = new ControllerContext { HttpContext = context };
         return controller;
     }
 
-    private static OperationalPayload Payload(Guid tenantId) => new()
-    {
-        Id = Guid.NewGuid(),
-        PayloadRefId = Guid.NewGuid(),
-        TenantId = tenantId,
-        AgentInstanceId = "agent",
-        ActionType = "TEST",
-        PayloadJson = "{\"personal\":true}",
-        PayloadBlobRef = "payload-ref",
-    };
+    private static OperationalPayload Payload(Guid tenantId) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            PayloadRefId = Guid.NewGuid(),
+            TenantId = tenantId,
+            AgentInstanceId = "agent",
+            ActionType = "TEST",
+            PayloadJson = "{\"personal\":true}",
+            PayloadBlobRef = "payload-ref",
+        };
 
     private sealed record RelationshipTestFixture(
         EmploymentRelationshipService Service,
         Guid TenantId,
-        Guid ParticipantId);
+        Guid ParticipantId
+    );
 
     private sealed class DbFactory<TContext>(DbContextOptions<TContext> options)
         : IDbContextFactory<TContext>
@@ -477,11 +619,17 @@ internal sealed class RawConstitutionalServer : IAsyncDisposable
 {
     private const string ServicePath = "/constitutional.v1.ConstitutionalService/";
     private readonly WebApplication _application;
+    private readonly Action<HttpContext, byte[]>? _inspect;
 
-    private RawConstitutionalServer(WebApplication application, Uri address)
+    private RawConstitutionalServer(
+        WebApplication application,
+        Uri address,
+        Action<HttpContext, byte[]>? inspect
+    )
     {
         _application = application;
         Address = address;
+        _inspect = inspect;
     }
 
     public Uri Address { get; }
@@ -491,39 +639,84 @@ internal sealed class RawConstitutionalServer : IAsyncDisposable
     public static async Task<RawConstitutionalServer> StartAsync(
         Func<ValidateActionRequest, ValidateActionResponse> validate,
         Func<RecordEvidenceRequest, RecordEvidenceResponse> record,
-        Func<RecordErasureRequest, RecordErasureResponse>? erase = null)
+        Func<RecordErasureRequest, RecordErasureResponse>? erase = null,
+        X509Certificate2? serverCertificate = null,
+        X509Certificate2? clientCertificate = null,
+        Action<HttpContext, byte[]>? inspect = null,
+        X509Certificate2Collection? serverCertificateChain = null
+    )
     {
         var listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
         listener.Start();
         var port = ((IPEndPoint)listener.LocalEndpoint).Port;
         listener.Stop();
         var builder = WebApplication.CreateSlimBuilder();
-        builder.WebHost.ConfigureKestrel(options => options.Listen(
-            IPAddress.Loopback,
-            port,
-            listen => listen.Protocols = HttpProtocols.Http2));
+        builder.WebHost.ConfigureKestrel(options =>
+            options.Listen(
+                IPAddress.Loopback,
+                port,
+                listen =>
+                {
+                    listen.Protocols = HttpProtocols.Http2;
+                    if (serverCertificate is not null)
+                        listen.UseHttps(
+                            new HttpsConnectionAdapterOptions
+                            {
+                                ServerCertificate = serverCertificate,
+                                ServerCertificateChain = serverCertificateChain,
+                                ClientCertificateMode = ClientCertificateMode.RequireCertificate,
+                                ClientCertificateValidation = (certificate, _, _) =>
+                                    clientCertificate is not null
+                                    && certificate
+                                        .RawData.AsSpan()
+                                        .SequenceEqual(clientCertificate.RawData),
+                            }
+                        );
+                }
+            )
+        );
         var application = builder.Build();
-        var server = new RawConstitutionalServer(application, new Uri($"http://127.0.0.1:{port}"));
-        application.MapPost(ServicePath + "ValidateAction", context => server.ReplyAsync(
-            context,
-            ValidateActionRequest.Parser,
-            request =>
-            {
-                server.ValidateCalls++;
-                return validate(request);
-            }));
-        application.MapPost(ServicePath + "RecordEvidence", context => server.ReplyAsync(
-            context,
-            RecordEvidenceRequest.Parser,
-            request =>
-            {
-                server.RecordCalls++;
-                return record(request);
-            }));
-        application.MapPost(ServicePath + "RecordErasure", context => server.ReplyAsync(
-            context,
-            RecordErasureRequest.Parser,
-            request => erase?.Invoke(request) ?? new RecordErasureResponse()));
+        var scheme = serverCertificate is null ? "http" : "https";
+        var server = new RawConstitutionalServer(
+            application,
+            new Uri($"{scheme}://127.0.0.1:{port}"),
+            inspect
+        );
+        application.MapPost(
+            ServicePath + "ValidateAction",
+            context =>
+                server.ReplyAsync(
+                    context,
+                    ValidateActionRequest.Parser,
+                    request =>
+                    {
+                        server.ValidateCalls++;
+                        return validate(request);
+                    }
+                )
+        );
+        application.MapPost(
+            ServicePath + "RecordEvidence",
+            context =>
+                server.ReplyAsync(
+                    context,
+                    RecordEvidenceRequest.Parser,
+                    request =>
+                    {
+                        server.RecordCalls++;
+                        return record(request);
+                    }
+                )
+        );
+        application.MapPost(
+            ServicePath + "RecordErasure",
+            context =>
+                server.ReplyAsync(
+                    context,
+                    RecordErasureRequest.Parser,
+                    request => erase?.Invoke(request) ?? new RecordErasureResponse()
+                )
+        );
         await application.StartAsync();
         return server;
     }
@@ -531,7 +724,8 @@ internal sealed class RawConstitutionalServer : IAsyncDisposable
     private async Task ReplyAsync<TRequest, TResponse>(
         HttpContext context,
         MessageParser<TRequest> parser,
-        Func<TRequest, TResponse> responseFactory)
+        Func<TRequest, TResponse> responseFactory
+    )
         where TRequest : IMessage<TRequest>
         where TResponse : IMessage<TResponse>
     {
@@ -539,6 +733,7 @@ internal sealed class RawConstitutionalServer : IAsyncDisposable
         await context.Request.Body.ReadExactlyAsync(header);
         var payload = new byte[BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(1))];
         await context.Request.Body.ReadExactlyAsync(payload);
+        _inspect?.Invoke(context, payload);
         var response = responseFactory(parser.ParseFrom(payload)).ToByteArray();
         var frame = new byte[response.Length + 5];
         BinaryPrimitives.WriteInt32BigEndian(frame.AsSpan(1, 4), response.Length);

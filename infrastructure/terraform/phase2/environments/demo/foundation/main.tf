@@ -65,6 +65,10 @@ output "resource_group_name" {
   value = module.foundation.resource_group_name
 }
 
+output "log_analytics_workspace_id" {
+  value = module.foundation.log_analytics_workspace_id
+}
+
 output "container_app_environment_id" {
   value = module.foundation.container_app_environment_id
 }

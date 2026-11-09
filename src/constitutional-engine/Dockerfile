@@ -5,6 +5,7 @@ WORKDIR /src
 COPY src/constitutional-engine/constitutional-engine.csproj .
 RUN dotnet restore --runtime linux-musl-x64
 COPY src/constitutional-engine/ .
+COPY src/shared/InferenceWorkloadValidator.cs /shared/InferenceWorkloadValidator.cs
 RUN dotnet publish --configuration Release --runtime linux-musl-x64 \
     --self-contained false --no-restore --output /app/publish
 

@@ -1,9 +1,28 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-134
 contract_path: work-contracts/WC-134-whatsapp-demo-complete-rollout-work-component.md
-contract_digest: f60687a2a0d0fd7fb2ce479f4d3eb5b9761df82faea592eb0b9ede03bd9b9443
+contract_digest: 5d406ac3341f0950adea397b649e70a68bc7f0521ed3bb143a98ae99d4056d2b
 implementation_scope: true
-result: PLANNED
+result: QUALIFIED
+
+qualification_summary:
+  status: repository-qualified-live-acceptance-pending
+  evidence:
+    - Business Platform 2358 tests passed with 90.01% line and 80.00% branch coverage.
+    - Professional Runtime 396 tests passed with 90.90% line and 81.36% branch coverage.
+    - AI Runtime 296 tests passed with 93.47% line and 80.05% branch coverage.
+    - Digital Marketing Agent 104 tests passed with 94.98% line and 82.64% branch coverage.
+    - Billing passed 479 tests with 14 intentional integration skips; PostgreSQL migration/offering passed 72 tests.
+    - Web quality, build, tests and coverage passed; OpenAPI, protobuf and generated-client gates passed.
+    - Real-container REST Business Platform lanes passed; final PR repairs passed 214 runtime and 36 validation-control tests.
+    - Release preflight passed 82 tests; release tests passed 664 tests; PostgreSQL, Demo-data and simulator lanes passed.
+    - WC-123 impact/session validation passed 14 tests.
+    - GOAL-006 Docker Azure CLI end-to-end positive, negative, recovery and cleanup phases passed.
+  remaining_acceptance:
+    - Protected current Meta configuration and credential readback.
+    - Independently authorized exact-candidate activation and approved spend window.
+    - Working operator-alert receipt and acknowledgement.
+    - Own-number and eligible-public-sender live message cohorts.
 
 requirement_defaults: &defaults
   component_owner: Platform IT Expert (INST-010), integrating existing authoritative owners
@@ -12,8 +31,8 @@ requirement_defaults: &defaults
   initial_state: expected-fail
   dependencies: Explicit implementation authorization; accepted identity and conversation contracts; precise cloud, cost, provider and activation decisions
   completion_rule: Matching Section 4 measurable acceptance passes with immutable evidence; applicable Section 7 own-number and public-Demo scenarios pass; no unresolved required dependency
-  residual_risk: Implementation is in progress; focused local qualification is partial, and exact-image, cloud/configuration, public-budget, alert, provider, and live-message acceptance remains outstanding
-  result: PLANNED
+  residual_risk: Repository implementation, exact-image integration and controlled Azure deployment behavior are qualified. Provider activation, public traffic, alert receipt, approved spend and live-message acceptance remain separately gated and outstanding.
+  result: BLOCKED
 
 requirements:
   - <<: *defaults

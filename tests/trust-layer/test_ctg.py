@@ -61,12 +61,21 @@ def _make_gateway(
     registry_config: ProviderConfig | None = None,
 ) -> ConstitutionalToolGateway:
     """Build a gateway with all external dependencies mocked."""
+
+    async def offering_authorizer(tool_name, args, session_ctx):
+        return {
+            "state": "RESERVED",
+            "reservationId": "synthetic-wbe-reservation",
+            "requestDigest": "a" * 64,
+        }
+
     gw = ConstitutionalToolGateway(
         bp_base_url="http://bp:5003",
         vault_base_url="http://vault:8130",
         ce_client=ce_client,
         audit_sink=audit_sink,
         executor=executor,
+        offering_authorizer=offering_authorizer,
     )
     # Replace registry client with a mock that returns registry_config
     mock_registry = AsyncMock()

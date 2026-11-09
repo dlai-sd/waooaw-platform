@@ -2,14 +2,15 @@
 
 ## Properties
 
-| Name                | Type                                                    |
-| ------------------- | ------------------------------------------------------- |
-| `linkId`            | string                                                  |
-| `state`             | [IdentityAccountLinkState](IdentityAccountLinkState.md) |
-| `requiredAssurance` | [IdentityAssuranceLevel](IdentityAssuranceLevel.md)     |
-| `maskedMobile`      | string                                                  |
-| `expiresAt`         | Date                                                    |
-| `updatedAt`         | Date                                                    |
+| Name                   | Type                                                    |
+| ---------------------- | ------------------------------------------------------- |
+| `linkId`               | string                                                  |
+| `state`                | [IdentityAccountLinkState](IdentityAccountLinkState.md) |
+| `requiredAssurance`    | [IdentityAssuranceLevel](IdentityAssuranceLevel.md)     |
+| `maskedMobile`         | string                                                  |
+| `expiresAt`            | Date                                                    |
+| `updatedAt`            | Date                                                    |
+| `whatsAppConfirmation` | string                                                  |
 
 ## Example
 
@@ -24,6 +25,7 @@ const example = {
   maskedMobile: null,
   expiresAt: null,
   updatedAt: null,
+  whatsAppConfirmation: null,
 } satisfies IdentityAccountLink;
 
 console.log(example);

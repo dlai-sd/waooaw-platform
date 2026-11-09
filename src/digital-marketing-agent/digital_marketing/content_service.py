@@ -53,6 +53,8 @@ class AirProposalClient(Protocol):
 
 
 class WbeUsageClient(Protocol):
+    owner_authenticated: bool
+
     def reserve(self, *, tenant_ref: str, relationship_ref: str, cost_unit: str) -> str: ...
 
     def reconcile(self, reservation_ref: str, *, actual_units: int) -> str: ...
@@ -106,6 +108,8 @@ class ContentProductionService:
             raise ContentContractError("CHANNEL_UNSUPPORTED")
         if set(request.channels) - set(request.inputs.channels):
             raise ContentContractError("CHANNEL_NOT_CUSTOMER_APPROVED")
+        if not getattr(self._wbe, "owner_authenticated", False):
+            raise ContentContractError("WBE_COMPONENT_OWNER_REQUIRED")
 
         assets = {rights.asset_ref: rights for rights in request.asset_rights}
         for rights in assets.values():

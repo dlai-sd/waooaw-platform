@@ -24,13 +24,51 @@ public sealed class WhatsAppCloudProviderAdapter(
     WhatsAppTrafficBudget budget,
     TimeProvider clock,
     IOptionsMonitor<WhatsAppJourneyOptions> channelOptions,
-    IOptions<Wc120ConversationOptions> conversationOptions
+    IOptions<Wc120ConversationOptions> conversationOptions,
+    IWhatsAppWebhookCredentials? webhookCredentials = null,
+    WhatsAppTenantExecutionScope? execution = null,
+    WhatsAppRelationshipRouting? relationshipRouting = null
 ) : IWhatsAppProviderAdapter
 {
-    private static readonly JsonSerializerOptions CanonicalBlockJson = new()
+    private static readonly JsonSerializerOptions CanonicalBlockJson = new(
+        JsonSerializerDefaults.Web
+    )
     {
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
     };
+
+    private WhatsAppCurrentRelationshipRoute RequireCustomerRoute(
+        WhatsAppProviderDispatchRequest request
+    )
+    {
+        if (execution is null || relationshipRouting is null)
+            throw new WhatsAppCapabilityUnavailableException("CUSTOMER_EGRESS_OWNER_UNAVAILABLE");
+        var route = execution.RequireConfirmedRelationshipRoute();
+        if (
+            route.TenantId != request.TenantId
+            || route.Environment != request.Environment
+            || route.RelationshipId != request.RelationshipId
+            || route.ConversationId != request.ConversationId
+        )
+            throw new WhatsAppCapabilityUnavailableException("CUSTOMER_EGRESS_ROUTE_DENIED");
+        return route;
+    }
+
+    private void RequireRecipient(
+        WhatsAppProviderDispatchRequest request,
+        string senderHash,
+        WhatsAppCurrentRelationshipRoute? route
+    )
+    {
+        if (route is null)
+            capability.RequireRecipient(request.TenantId, senderHash, clock.GetUtcNow());
+        else
+        {
+            execution!.RequireRelationshipRoute(route);
+            if (senderHash != route.SenderHash)
+                throw new WhatsAppCapabilityUnavailableException("CUSTOMER_EGRESS_ROUTE_DENIED");
+        }
+    }
 
     public async Task<WhatsAppDispatchObservation> DispatchAsync(
         WhatsAppProviderDispatchRequest request,
@@ -39,8 +77,17 @@ public sealed class WhatsAppCloudProviderAdapter(
     {
         RequireDispatchEnabled();
         var authority = capability.RequireActive(clock.GetUtcNow());
-        if (request.Environment != authority.Environment || request.TenantId != authority.TenantId)
+        WhatsAppCurrentRelationshipRoute? customerRoute = null;
+        if (request.Environment != authority.Environment)
             throw new WhatsAppCapabilityUnavailableException("TENANT_DENIED");
+        if (request.TenantId != authority.TenantId)
+        {
+            customerRoute = RequireCustomerRoute(request);
+            await relationshipRouting!.RequireCurrentEgressRouteAsync(
+                customerRoute,
+                cancellationToken
+            );
+        }
 
         await using var db = await conversations.CreateDbContextAsync(cancellationToken);
         var outbox = await db
@@ -61,24 +108,32 @@ public sealed class WhatsAppCloudProviderAdapter(
             );
         if (outbox is null || !Guid.TryParse(outbox.AggregateId, out var messageId))
             throw new WhatsAppCapabilityUnavailableException("CANONICAL_MESSAGE_REQUIRED");
+        if (
+            outbox.TemplateName is not null
+            || outbox.TemplateVersion is not null
+            || outbox.TemplateLocale is not null
+            || outbox.TemplateCategory is not null
+        )
+            throw new WhatsAppCapabilityUnavailableException("PROACTIVE_MESSAGING_DISABLED");
         if (outbox.CreatedAt < authority.StartsAt || outbox.CreatedAt >= authority.ExpiresAt)
             throw new WhatsAppCapabilityUnavailableException("OUTBOUND_AUTHORITY_WINDOW_DENIED");
-        capability.RequireRecipient(
-            request.TenantId,
-            outbox.RecipientBindingDigest,
-            clock.GetUtcNow()
-        );
-
         string contentJson;
+        string? protectedDestination = null;
         if (outbox.PortalContextId is { } contextId)
         {
+            var admissionLimitNotice = outbox.Purpose == "WHATSAPP_GUEST_SESSION_LIMIT_NOTICE";
+            if (admissionLimitNotice && !authority.AllowPublicAdmission)
+                throw new WhatsAppCapabilityUnavailableException("GUEST_ADMISSION_DENIED");
             if (
                 request.RelationshipId is not null
                 || request.ConversationId is not null
-                || outbox.Purpose != "PHONE_ONBOARDING"
+                || outbox.Purpose
+                    is not ("WHATSAPP_GUEST_DISCOVERY" or "WHATSAPP_GUEST_SESSION_LIMIT_NOTICE")
                 || !authority.AllowProvisionalOnboarding
             )
-                throw new WhatsAppCapabilityUnavailableException("ONBOARDING_AUTHORITY_DENIED");
+                throw new WhatsAppCapabilityUnavailableException(
+                    "GUEST_DISCOVERY_AUTHORITY_DENIED"
+                );
             var guide = await db
                 .PortalInteractionMessages.AsNoTracking()
                 .SingleOrDefaultAsync(
@@ -93,6 +148,47 @@ public sealed class WhatsAppCloudProviderAdapter(
             contentJson =
                 guide?.ContentJson
                 ?? throw new WhatsAppCapabilityUnavailableException("CANONICAL_MESSAGE_REQUIRED");
+            var guestContext = await db.PortalInteractionContexts.SingleOrDefaultAsync(
+                value => value.TenantId == request.TenantId && value.ContextId == contextId,
+                cancellationToken
+            );
+            if (admissionLimitNotice)
+            {
+                if (
+                    guestContext is null
+                    || await db.Set<WhatsAppGuestSession>()
+                        .AnyAsync(
+                            value =>
+                                value.TenantId == request.TenantId
+                                && value.BindingDigest == outbox.RecipientBindingDigest,
+                            cancellationToken
+                        )
+                )
+                    throw new WhatsAppCapabilityUnavailableException("GUEST_ADMISSION_DENIED");
+                protectedDestination =
+                    outbox.ProtectedRecipientDestination
+                    ?? throw new WhatsAppCapabilityUnavailableException(
+                        "PHONE_DESTINATION_UNAVAILABLE"
+                    );
+            }
+            else
+            {
+                var guest = guestContext is null
+                    ? null
+                    : await db.Set<WhatsAppGuestSession>()
+                        .SingleOrDefaultAsync(
+                            value =>
+                                value.TenantId == request.TenantId
+                                && value.BindingDigest == outbox.RecipientBindingDigest
+                                && value.ParticipantId == guestContext.ParticipantId,
+                            cancellationToken
+                        );
+                protectedDestination =
+                    guest?.ProtectedDestination
+                    ?? throw new WhatsAppCapabilityUnavailableException(
+                        "PHONE_DESTINATION_UNAVAILABLE"
+                    );
+            }
         }
         else
         {
@@ -111,6 +207,11 @@ public sealed class WhatsAppCloudProviderAdapter(
             if (message is null)
                 throw new WhatsAppCapabilityUnavailableException("CANONICAL_MESSAGE_REQUIRED");
             contentJson = message.ContentJson;
+            protectedDestination = await outboxService.ResolveRelationshipDestinationAsync(
+                outbox,
+                clock.GetUtcNow(),
+                cancellationToken
+            );
         }
         string text;
         try
@@ -127,7 +228,7 @@ public sealed class WhatsAppCloudProviderAdapter(
                 || block
                     .EnumerateObject()
                     .Select(property => property.Name)
-                    .Distinct(StringComparer.Ordinal)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
                     .Count() != block.EnumerateObject().Count()
             )
                 throw new WhatsAppCapabilityUnavailableException("MESSAGE_PROJECTION_DENIED");
@@ -144,10 +245,16 @@ public sealed class WhatsAppCloudProviderAdapter(
                 || canonical.SchemaVersion != "1.0"
                 || canonical.BlockType != "TEXT"
                 || string.IsNullOrWhiteSpace(canonical.Text)
+                || canonical.Text.Contains('\0')
                 || canonical.Text.Length > 4096
             )
                 throw new WhatsAppCapabilityUnavailableException("MESSAGE_PROJECTION_DENIED");
             text = canonical.Text;
+            if (
+                outbox.Purpose == "WHATSAPP_GUEST_SESSION_LIMIT_NOTICE"
+                && text != WhatsAppGuestTrafficBudget.SessionLimitNotice
+            )
+                throw new WhatsAppCapabilityUnavailableException("MESSAGE_PROJECTION_DENIED");
             if (
                 outbox.PortalContextId is not null
                 && Hash(
@@ -164,6 +271,8 @@ public sealed class WhatsAppCloudProviderAdapter(
             throw new WhatsAppCapabilityUnavailableException("MESSAGE_PROJECTION_DENIED");
         }
 
+        if (customerRoute is not null && protectedDestination is null)
+            throw new WhatsAppCapabilityUnavailableException("PHONE_DESTINATION_UNAVAILABLE");
         var protectedValues = await credentials.ReadAsync(cancellationToken);
         var configured = conversationOptions.Value;
         if (
@@ -173,6 +282,24 @@ public sealed class WhatsAppCloudProviderAdapter(
             || configured.RecipientBindingDigest != Hash(protectedValues.Binding.PhoneNumberId)
         )
             throw new WhatsAppCapabilityUnavailableException("PROVIDER_BINDING_DENIED");
+        if (
+            protectedDestination is null
+            && outbox.RecipientBindingDigest != protectedValues.Binding.RecipientBindingDigest
+        )
+            throw new WhatsAppCapabilityUnavailableException("RECIPIENT_DESTINATION_MISMATCH");
+        var recipientPhoneNumber = protectedValues.Binding.RecipientPhoneNumber;
+        string? phoneSubjectKey = null;
+        if (protectedDestination is not null)
+        {
+            if (webhookCredentials is null)
+                throw new WhatsAppCapabilityUnavailableException("PHONE_DESTINATION_UNAVAILABLE");
+            phoneSubjectKey = await webhookCredentials.ReadPhoneSubjectKeyAsync(cancellationToken);
+            recipientPhoneNumber = WhatsAppPhoneDestinationProtector.Unprotect(
+                phoneSubjectKey,
+                protectedDestination,
+                outbox.RecipientBindingDigest
+            );
+        }
         WhatsAppTemplateProjection? template = null;
         string[] parameters = [];
         if (outbox.TemplateName is not null)
@@ -201,11 +328,15 @@ public sealed class WhatsAppCloudProviderAdapter(
             template = candidates[0];
             parameters = template.Project(text);
         }
-        capability.RequireRecipient(
-            request.TenantId,
-            protectedValues.Binding.RecipientBindingDigest,
-            clock.GetUtcNow()
-        );
+        if (
+            !await outboxService.IsCurrentlyEligibleAsync(
+                outbox,
+                clock.GetUtcNow(),
+                cancellationToken
+            )
+        )
+            throw new WhatsAppCapabilityUnavailableException("RECIPIENT_ELIGIBILITY_REVOKED");
+        RequireRecipient(request, outbox.RecipientBindingDigest, customerRoute);
         if (request.RelationshipId is { } relationshipId)
             await stopFence.ThrowIfLatchedAsync(
                 request.TenantId,
@@ -214,11 +345,13 @@ public sealed class WhatsAppCloudProviderAdapter(
             );
         if (protectedValues.ValidUntil <= clock.GetUtcNow())
             throw new WhatsAppCapabilityUnavailableException("PROVIDER_AUTHORITY_EXPIRED");
-        var reservedAuthority = await budget.ReserveAsync(
-            request,
-            protectedValues.Binding.RecipientBindingDigest,
-            cancellationToken
-        );
+        var reservedAuthority = customerRoute is null
+            ? await budget.ReserveAsync(request, outbox.RecipientBindingDigest, cancellationToken)
+            : await budget.ReserveRelationshipOutboundAsync(
+                request,
+                customerRoute,
+                cancellationToken
+            );
 
         using var suppression = SuppressInstrumentationScope.Begin();
         using var client = clients.CreateClient("WhatsAppProtected");
@@ -237,7 +370,7 @@ public sealed class WhatsAppCloudProviderAdapter(
                 {
                     messaging_product = "whatsapp",
                     recipient_type = "individual",
-                    to = protectedValues.Binding.RecipientPhoneNumber.TrimStart('+'),
+                    to = recipientPhoneNumber.TrimStart('+'),
                     type = "text",
                     text = new { preview_url = false, body = text },
                     biz_opaque_callback_data = request.OutboxId.ToString("D"),
@@ -248,7 +381,7 @@ public sealed class WhatsAppCloudProviderAdapter(
                 {
                     messaging_product = "whatsapp",
                     recipient_type = "individual",
-                    to = protectedValues.Binding.RecipientPhoneNumber.TrimStart('+'),
+                    to = recipientPhoneNumber.TrimStart('+'),
                     type = "template",
                     template = new
                     {
@@ -272,21 +405,19 @@ public sealed class WhatsAppCloudProviderAdapter(
             );
         // Re-evaluate the exact authority after protected reads and immediately before egress.
         RequireDispatchEnabled();
-        capability.RequireRecipient(
-            request.TenantId,
-            protectedValues.Binding.RecipientBindingDigest,
-            clock.GetUtcNow()
-        );
+        RequireRecipient(request, outbox.RecipientBindingDigest, customerRoute);
         if (capability.RequireActive(clock.GetUtcNow()) != reservedAuthority)
             throw new WhatsAppCapabilityUnavailableException("ACTIVATION_CHANGED");
-        if (request.RelationshipId is { } currentRelationshipId)
-            await stopFence.ThrowIfLatchedAsync(
-                request.TenantId,
-                currentRelationshipId,
-                cancellationToken
-            );
-        if (protectedValues.ValidUntil <= clock.GetUtcNow())
-            throw new WhatsAppCapabilityUnavailableException("PROVIDER_AUTHORITY_EXPIRED");
+        if (
+            outbox.PortalContextId is null
+            && protectedDestination
+                != await outboxService.ResolveRelationshipDestinationAsync(
+                    outbox,
+                    clock.GetUtcNow(),
+                    cancellationToken
+                )
+        )
+            throw new WhatsAppCapabilityUnavailableException("RECIPIENT_DESTINATION_CHANGED");
         if (
             !await outboxService.IsCurrentlyEligibleAsync(
                 outbox,
@@ -295,6 +426,102 @@ public sealed class WhatsAppCloudProviderAdapter(
             )
         )
             throw new WhatsAppCapabilityUnavailableException("RECIPIENT_ELIGIBILITY_REVOKED");
+        if (request.RelationshipId is { } currentRelationshipId)
+            await stopFence.ThrowIfLatchedAsync(
+                request.TenantId,
+                currentRelationshipId,
+                cancellationToken
+            );
+        if (
+            !await outboxService.IsCurrentlyEligibleAsync(
+                outbox,
+                clock.GetUtcNow(),
+                cancellationToken
+            )
+        )
+            throw new WhatsAppCapabilityUnavailableException("RECIPIENT_ELIGIBILITY_REVOKED");
+        if (outbox.Purpose == "WHATSAPP_GUEST_DISCOVERY")
+        {
+            var currentDestination = await (
+                from context in db.PortalInteractionContexts.AsNoTracking()
+                join guest in db.Set<WhatsAppGuestSession>().AsNoTracking()
+                    on new { context.TenantId, context.ParticipantId } equals new
+                    {
+                        guest.TenantId,
+                        guest.ParticipantId,
+                    }
+                where
+                    context.TenantId == request.TenantId
+                    && context.ContextId == outbox.PortalContextId
+                    && guest.BindingDigest == outbox.RecipientBindingDigest
+                select guest.ProtectedDestination
+            ).SingleOrDefaultAsync(cancellationToken);
+            if (
+                currentDestination is null
+                || phoneSubjectKey is null
+                || WhatsAppPhoneDestinationProtector.Unprotect(
+                    phoneSubjectKey,
+                    currentDestination,
+                    outbox.RecipientBindingDigest
+                ) != recipientPhoneNumber
+            )
+                throw new WhatsAppCapabilityUnavailableException("RECIPIENT_DESTINATION_CHANGED");
+        }
+        if (protectedValues.ValidUntil <= clock.GetUtcNow())
+            throw new WhatsAppCapabilityUnavailableException("PROVIDER_AUTHORITY_EXPIRED");
+        if (!await outboxService.AuthorizeRuntimeEgressAsync(outbox, clock, cancellationToken))
+            throw new WhatsAppCapabilityUnavailableException("RECIPIENT_ELIGIBILITY_REVOKED");
+        RequireDispatchEnabled();
+        if (customerRoute is not null)
+        {
+            await relationshipRouting!.RequireCurrentEgressRouteAsync(
+                customerRoute,
+                cancellationToken
+            );
+            RequireRecipient(request, outbox.RecipientBindingDigest, customerRoute);
+            if (
+                protectedDestination
+                != await outboxService.ResolveRelationshipDestinationAsync(
+                    outbox,
+                    clock.GetUtcNow(),
+                    cancellationToken
+                )
+            )
+                throw new WhatsAppCapabilityUnavailableException("RECIPIENT_DESTINATION_CHANGED");
+            await stopFence.ThrowIfLatchedAsync(
+                customerRoute.TenantId,
+                customerRoute.RelationshipId,
+                cancellationToken
+            );
+            var finalNow = clock.GetUtcNow();
+            if (
+                !await db
+                    .ConversationOutbox.AsNoTracking()
+                    .AnyAsync(
+                        value =>
+                            value.OutboxId == request.OutboxId
+                            && value.TenantId == request.TenantId
+                            && value.Environment == request.Environment
+                            && value.RelationshipId == request.RelationshipId
+                            && value.ConversationId == request.ConversationId
+                            && value.Sequence == request.Sequence
+                            && value.PayloadReference == request.PayloadReference
+                            && value.PayloadDigest == request.PayloadDigest
+                            && value.RecipientBindingDigest == customerRoute.SenderHash
+                            && value.AttemptNumber == request.AttemptNumber
+                            && value.State == "DISPATCHING"
+                            && value.LeaseExpiresAt > finalNow
+                            && value.LeaseOwner == outbox.LeaseOwner,
+                        cancellationToken
+                    )
+            )
+                throw new WhatsAppCapabilityUnavailableException("OUTBOUND_LEASE_EXPIRED");
+        }
+        if (
+            capability.RequireActive(clock.GetUtcNow()) != reservedAuthority
+            || protectedValues.ValidUntil <= clock.GetUtcNow()
+        )
+            throw new WhatsAppCapabilityUnavailableException("PROVIDER_AUTHORITY_EXPIRED");
         try
         {
             using var response = await WhatsAppKeyVaultCredentials.ReadJsonAsync(
@@ -340,7 +567,11 @@ public sealed class WhatsAppCloudProviderAdapter(
         CancellationToken cancellationToken
     )
     {
-        capability.RequireActive(clock.GetUtcNow());
+        var authority = capability.RequireActive(clock.GetUtcNow());
+        var customerRoute =
+            request.TenantId == authority.TenantId ? null : RequireCustomerRoute(request);
+        if (request.Environment != authority.Environment)
+            throw new WhatsAppCapabilityUnavailableException("TENANT_DENIED");
         await using var db = await conversations.CreateDbContextAsync(cancellationToken);
         var outbox =
             await db
@@ -350,15 +581,22 @@ public sealed class WhatsAppCloudProviderAdapter(
                         value.OutboxId == request.OutboxId
                         && value.Environment == request.Environment
                         && value.TenantId == request.TenantId
-                        && value.RelationshipId == request.RelationshipId,
+                        && value.RelationshipId == request.RelationshipId
+                        && (
+                            customerRoute == null
+                            || (
+                                value.ConversationId == request.ConversationId
+                                && value.Sequence == request.Sequence
+                                && value.PayloadDigest == request.PayloadDigest
+                                && value.PayloadReference == request.PayloadReference
+                                && value.AttemptNumber == request.AttemptNumber
+                                && value.RecipientBindingDigest == customerRoute.SenderHash
+                            )
+                        ),
                     cancellationToken
                 )
             ?? throw new WhatsAppCapabilityUnavailableException("CANONICAL_MESSAGE_REQUIRED");
-        capability.RequireRecipient(
-            request.TenantId,
-            outbox.RecipientBindingDigest,
-            clock.GetUtcNow()
-        );
+        RequireRecipient(request, outbox.RecipientBindingDigest, customerRoute);
         if (!Guid.TryParse(outbox.AggregateId, out var messageId))
             throw new WhatsAppCapabilityUnavailableException("CANONICAL_MESSAGE_REQUIRED");
         var observations = await db

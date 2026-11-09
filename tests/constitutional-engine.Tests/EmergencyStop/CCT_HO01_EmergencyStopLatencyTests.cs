@@ -208,6 +208,75 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
             because: "session was in the active_session_ids list — must be signalled and reported");
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task TriggerEmergencyStop_OnlyRecordsSignalCompletionWhenAllSignalsSucceed(
+        bool allSucceed
+    )
+    {
+        var (constitutionalFactory, emergencyStopFactory) = BuildInMemoryFactories();
+        var failedSession = Guid.NewGuid().ToString();
+        var temporalClient = new Mock<ITemporalClient>();
+        temporalClient
+            .Setup(t => t.GetWorkflowHandle(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>()))
+            .Returns((string id, string? _, string? _) =>
+            {
+                var handle = new Mock<WorkflowHandle>();
+                handle
+                    .Setup(h => h.SignalAsync(
+                        It.IsAny<string>(), It.IsAny<object[]>(), It.IsAny<WorkflowSignalOptions?>()))
+                    .Returns(id == failedSession && !allSucceed
+                        ? Task.FromException(new InvalidOperationException("signal unavailable"))
+                        : Task.CompletedTask);
+                return handle.Object;
+            });
+        var sut = new ConstitutionalEngineService(
+            BuildEmptyRegistry(),
+            NullLogger<ConstitutionalEngineService>.Instance,
+            constitutionalFactory,
+            emergencyStopFactory,
+            temporalClient.Object);
+        var request = new EmergencyStopRequest
+        {
+            ContractId = Guid.NewGuid().ToString(),
+            StoppedBy = "customer"
+        };
+        request.ActiveSessionIds.Add(Guid.NewGuid().ToString());
+        request.ActiveSessionIds.Add(failedSession);
+        var response = await sut.TriggerEmergencyStop(request, BuildCallContext(Guid.NewGuid().ToString()));
+        response.PendingSessions.Should().BeEquivalentTo(
+            allSucceed ? Array.Empty<string>() : new[] { failedSession });
+        var persistedId = Guid.Parse(response.EmergencyStopRecordId["EMERGENCY_STOP:".Length..]);
+        await using var db = await emergencyStopFactory.CreateDbContextAsync();
+        var persisted = await db.EmergencyStopEvents.SingleAsync(e => e.Id == persistedId);
+        persisted.TemporalSignalledAt.HasValue.Should().Be(allSucceed);
+    }
+
+    [Fact]
+    public async Task TriggerEmergencyStop_AbsentWorkflowIsContainedByDurableFence()
+    {
+        var (constitutionalFactory, emergencyStopFactory) = BuildInMemoryFactories();
+        var handle = new Mock<WorkflowHandle>();
+        handle.Setup(h => h.SignalAsync(
+            It.IsAny<string>(), It.IsAny<object[]>(), It.IsAny<WorkflowSignalOptions?>()))
+            .ThrowsAsync(new Temporalio.Exceptions.RpcException(
+                Temporalio.Exceptions.RpcException.StatusCode.NotFound, "Workflow absent", null));
+        var temporal = new Mock<ITemporalClient>();
+        temporal.Setup(t => t.GetWorkflowHandle(
+            It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>())).Returns(handle.Object);
+        var service = new ConstitutionalEngineService(
+            BuildEmptyRegistry(), NullLogger<ConstitutionalEngineService>.Instance,
+            constitutionalFactory, emergencyStopFactory, temporal.Object);
+        var request = new EmergencyStopRequest
+        {
+            ContractId = Guid.NewGuid().ToString(), StoppedBy = "customer"
+        };
+        request.ActiveSessionIds.Add(Guid.NewGuid().ToString());
+        var response = await service.TriggerEmergencyStop(request, BuildCallContext(Guid.NewGuid().ToString()));
+        response.PendingSessions.Should().BeEmpty();
+    }
+
     // CCT-HO-01c: C-001 — Emergency Stop record ID follows the constitutional format
     [Fact]
     public async Task TriggerEmergencyStop_RecordId_HasConstitutionalPrefix()

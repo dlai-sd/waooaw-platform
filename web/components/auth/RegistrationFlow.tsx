@@ -16,21 +16,43 @@ import type { IdentityRegistration, IdentityVerificationChallenge } from '@/lib/
 import type { IdentityMessages } from '@/lib/identity-messages';
 import type { SupportedLocale } from '@/lib/preferences';
 
-type Draft = { displayName: string; businessName: string; businessDomain: string };
+type Draft = {
+  displayName: string;
+  businessName: string;
+  businessDomain: string;
+};
 type Command = Record<string, string> & { action: string };
-type ErrorKind = '' | 'expired' | 'lost' | 'rejected' | 'restart' | 'step-up' | 'unavailable';
+type ErrorKind =
+  | ''
+  | 'expired'
+  | 'invalid-code'
+  | 'rate-limited'
+  | 'lost'
+  | 'rejected'
+  | 'restart'
+  | 'step-up'
+  | 'unavailable';
 const draftKey = 'waooaw:identity:registration-draft';
 
 export function RegistrationFlow({
   locale,
   messages,
   returnTo = '/home',
-}: { locale: SupportedLocale; messages: IdentityMessages; returnTo?: string }) {
+}: {
+  locale: SupportedLocale;
+  messages: IdentityMessages;
+  returnTo?: string;
+}) {
   const router = useRouter();
   const journey = useAuthJourney();
   const [registration, setRegistration] = useState<IdentityRegistration>();
   const [challenge, setChallenge] = useState<IdentityVerificationChallenge>();
-  const [draft, setDraft] = useState<Draft>({ displayName: '', businessName: '', businessDomain: '' });
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [draft, setDraft] = useState<Draft>({
+    displayName: '',
+    businessName: '',
+    businessDomain: '',
+  });
   const [pending, setPending] = useState(true);
   const [error, setError] = useState<ErrorKind>('');
   const keys = useRef(new Map<string, string>());
@@ -57,6 +79,7 @@ export function RegistrationFlow({
       if (controller.signal.aborted) throw new Error();
       if (!response.ok) {
         const code = typeof body?.code === 'string' ? body.code : '';
+        if (response.status >= 400 && response.status < 500) keys.current.delete(commandBody.action);
         if (response.status === 401 || code === 'IDENTITY_SESSION_REQUIRED') {
           setChallenge(undefined);
           setRegistration(undefined);
@@ -78,6 +101,14 @@ export function RegistrationFlow({
           setError('step-up');
           return;
         }
+        if (response.status === 429 && code === 'IDENTITY_RATE_LIMITED') {
+          setError('rate-limited');
+          return;
+        }
+        if (commandBody.action === 'mobile-confirm' && response.status === 403 && code === 'IDENTITY_ACTION_DENIED') {
+          setError('invalid-code');
+          return;
+        }
         if (response.status === 403 || code === 'IDENTITY_ACTION_DENIED') {
           setError('rejected');
           return;
@@ -93,8 +124,10 @@ export function RegistrationFlow({
       }
       if (commandBody.action === 'complete') throw new Error();
       keys.current.delete(commandBody.action);
-      if ('challengeId' in body) setChallenge(body as IdentityVerificationChallenge);
-      else {
+      if ('challengeId' in body) {
+        setChallenge(body as IdentityVerificationChallenge);
+        if (commandBody.action === 'mobile-start') setWhatsappNumber('');
+      } else {
         setChallenge(undefined);
         setRegistration(body as IdentityRegistration);
       }
@@ -148,7 +181,11 @@ export function RegistrationFlow({
 
   function registrationCommand(action: string, fields: Record<string, string> = {}) {
     if (!registration) return Promise.resolve(undefined);
-    return command({ action, registrationId: registration.registrationId, ...fields });
+    return command({
+      action,
+      registrationId: registration.registrationId,
+      ...fields,
+    });
   }
 
   function cancelRegistration() {
@@ -170,9 +207,13 @@ export function RegistrationFlow({
           ? messages.registrationLost
           : error === 'expired'
             ? messages.verificationExpired
-            : error === 'unavailable'
-              ? messages.unavailable
-              : '';
+            : error === 'invalid-code'
+              ? messages.verificationRejected
+              : error === 'rate-limited'
+                ? messages.verificationRateLimited
+                : error === 'unavailable'
+                  ? messages.unavailable
+                  : '';
 
   function emailVerificationForm() {
     if (!challenge)
@@ -182,7 +223,9 @@ export function RegistrationFlow({
           onSubmit={(event) => {
             event.preventDefault();
             const form = new FormData(event.currentTarget);
-            void registrationCommand('email-start', { email: String(form.get('email') ?? '') });
+            void registrationCommand('email-start', {
+              email: String(form.get('email') ?? ''),
+            });
           }}
         >
           <label>
@@ -202,9 +245,10 @@ export function RegistrationFlow({
           const formElement = event.currentTarget;
           const form = new FormData(formElement);
           const code = String(form.get('code') ?? '');
-          void registrationCommand('email-confirm', { challengeId: challenge.challengeId, code }).finally(() =>
-            formElement.reset()
-          );
+          void registrationCommand('email-confirm', {
+            challengeId: challenge.challengeId,
+            code,
+          }).finally(() => formElement.reset());
         }}
       >
         <p>
@@ -229,6 +273,92 @@ export function RegistrationFlow({
     );
   }
 
+  function whatsappVerificationForm() {
+    if (!challenge)
+      return (
+        <form
+          className="identity-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void registrationCommand('mobile-start', {
+              mobile: whatsappNumber,
+            });
+          }}
+        >
+          <label>
+            {messages.whatsappNumber}
+            <input
+              autoComplete="tel"
+              inputMode="tel"
+              maxLength={16}
+              name="whatsapp-number"
+              pattern="\+[1-9][0-9]{7,14}"
+              placeholder="+12345678900"
+              required
+              type="tel"
+              value={whatsappNumber}
+              onChange={(event) => setWhatsappNumber(event.target.value)}
+            />
+          </label>
+          <p>{messages.whatsappRegistrationPrompt}</p>
+          {error === 'unavailable' ? <p>{messages.whatsappDeliveryUnresolved}</p> : null}
+          <button className="primary-command" disabled={pending} type="submit">
+            {error === 'unavailable' ? messages.retry : messages.requestWhatsappCode}{' '}
+            <Smartphone aria-hidden="true" size={18} />
+          </button>
+          {error === 'unavailable' ? (
+            <button
+              className="text-command"
+              disabled={pending}
+              onClick={() => keys.current.delete('mobile-start')}
+              type="submit"
+            >
+              {messages.requestNewWhatsappCode}
+            </button>
+          ) : null}
+        </form>
+      );
+    return (
+      <form
+        className="identity-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const formElement = event.currentTarget;
+          const form = new FormData(formElement);
+          const code = String(form.get('code') ?? '');
+          void registrationCommand('mobile-confirm', {
+            challengeId: challenge.challengeId,
+            code,
+          }).finally(() => formElement.reset());
+        }}
+      >
+        <p>
+          {messages.whatsappVerificationSent} <strong>{challenge.maskedDestination}</strong>.
+        </p>
+        <label>
+          {messages.code}
+          <input
+            autoComplete="one-time-code"
+            inputMode="numeric"
+            maxLength={6}
+            minLength={6}
+            name="code"
+            pattern="[0-9]{6}"
+            required
+          />
+        </label>
+        <div className="command-row">
+          <button className="text-command" disabled={pending} onClick={() => setChallenge(undefined)} type="button">
+            {messages.changeWhatsappNumber}
+          </button>
+          <button className="primary-command" disabled={pending} type="submit">
+            {messages.verifyCode} <CheckCircle2 aria-hidden="true" size={18} />
+          </button>
+        </div>
+      </form>
+    );
+  }
+
   if (!registration)
     return (
       <>
@@ -245,7 +375,9 @@ export function RegistrationFlow({
               onClick={() =>
                 void signIn(
                   'keycloak-google',
-                  { callbackUrl: `/register?returnTo=${encodeURIComponent(returnTo)}` },
+                  {
+                    callbackUrl: `/register?returnTo=${encodeURIComponent(returnTo)}`,
+                  },
                   { max_age: '0', prompt: 'select_account' }
                 )
               }
@@ -306,7 +438,10 @@ export function RegistrationFlow({
             className="identity-form"
             onSubmit={(event) => {
               event.preventDefault();
-              void registrationCommand('profile', { ...draft, languagePreference: locale });
+              void registrationCommand('profile', {
+                ...draft,
+                languagePreference: locale,
+              });
             }}
           >
             <label>
@@ -345,35 +480,29 @@ export function RegistrationFlow({
           </form>
         ) : null}
         {action === 'VERIFY_EMAIL' ? emailVerificationForm() : null}
-        {action === 'VERIFY_MOBILE' ? (
-          <p className="identity-error" role="alert">
-            {messages.smsUnavailable}
-          </p>
-        ) : null}
+        {action === 'VERIFY_MOBILE' ? whatsappVerificationForm() : null}
         {action === 'COMPLETE_REGISTRATION' ? (
-          <div className="identity-choice">
-            <Smartphone aria-hidden="true" size={28} />
-            <p>
-              <strong>{messages.optionalMobile}</strong>
-            </p>
-            <p>{messages.smsUnavailable}</p>
-            <div className="command-row">
-              <button className="secondary-command" disabled type="button">
-                {messages.optionalMobile}
-              </button>
-              <button className="text-command" disabled={pending} onClick={cancelRegistration} type="button">
-                {messages.cancel}
-              </button>
-              <button
-                className="primary-command"
-                disabled={pending}
-                type="button"
-                onClick={() => void registrationCommand('complete')}
-              >
-                {messages.complete}
-              </button>
+          registration.mobileVerified ? (
+            <div className="identity-choice">
+              <Smartphone aria-hidden="true" size={28} />
+              <p>{messages.whatsappVerified}</p>
+              <div className="command-row">
+                <button className="text-command" disabled={pending} onClick={cancelRegistration} type="button">
+                  {messages.cancel}
+                </button>
+                <button
+                  className="primary-command"
+                  disabled={pending}
+                  type="button"
+                  onClick={() => void registrationCommand('complete')}
+                >
+                  {messages.complete}
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            whatsappVerificationForm()
+          )
         ) : null}
         {action === 'RESOLVE_DUPLICATE' ? <output>{messages.duplicate}</output> : null}
         {action === 'CONTINUE_TO_DEFAULT_TARGET' || action === 'NONE' ? (

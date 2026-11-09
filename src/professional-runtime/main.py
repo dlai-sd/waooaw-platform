@@ -24,7 +24,11 @@ from temporalio.service import RPCError
 from temporalio.worker import Worker
 
 from constitutional_gateway import GrpcConversationConstitutionalGateway
-from routers.conversation_execution import TEMPORAL_TASK_QUEUE
+from routers.conversation_execution import (
+    TEMPORAL_TASK_QUEUE,
+    ExecutionProblemCode,
+    problem_response,
+)
 from routers.conversation_execution import router as conversation_execution_router
 from routers.conversation_models import HealthResponse
 from routers.emergency_stop import KeycloakJWTValidator
@@ -41,6 +45,7 @@ from relationship_workspace import configure_relationship_workspace
 from relationship_workspace import router as relationship_workspace_router
 from employment_protocol import configure_employment_protocol
 from employment_air_gateway import EmploymentAirGateway
+from activities.conversation_dispatch import ConversationDispatchActivity
 from workflows.conversation_execution_workflow import ConversationExecutionWorkflow
 
 logger = logging.getLogger(__name__)
@@ -94,6 +99,7 @@ async def recover_temporal_worker(application: FastAPI, stop: asyncio.Event) -> 
                 temporal,
                 task_queue=TEMPORAL_TASK_QUEUE,
                 workflows=[ConversationExecutionWorkflow],
+                activities=[ConversationDispatchActivity(application).dispatch],
             )
             worker_task = asyncio.create_task(worker.run(), name="conversation-execution-worker")
             application.state.temporal_client = temporal
@@ -204,6 +210,32 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+@app.middleware("http")
+async def require_conversation_execution_authorization(
+    request: Request, call_next: Any
+) -> Response:
+    if request.method == "POST" and (
+        request.url.path.endswith("/executions")
+        or request.url.path.endswith("/batch-executions")
+    ):
+        authorization = request.headers.get("Authorization", "")
+        if not authorization.startswith("Bearer ") or not authorization[7:].strip():
+            try:
+                correlation_id = uuid.UUID(
+                    request.headers.get("X-Correlation-Id", "")
+                )
+            except ValueError:
+                correlation_id = uuid.uuid4()
+            return problem_response(
+                401,
+                ExecutionProblemCode.NOT_ACCESSIBLE,
+                "Execution is not accessible",
+                correlation_id,
+            )
+    return await call_next(request)
+
+
 app.include_router(sessions_router)
 app.include_router(emergency_stop_router)
 app.include_router(conversation_execution_router)
@@ -260,6 +292,17 @@ def canonical_openapi() -> dict[str, Any]:
                 "paths, and headers cannot override tenant or relationship authorization.\n"
             ),
         }
+        security_schemes["DelegatedContextAuth"] = {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "ADR-046 signed delegated context",
+            "description": "Single-use BP workload envelope bound to the mutual-TLS peer, audience, operation, "
+            "canonical body digest, actor, tenant, relationship and original execution context.",
+        }
+        security_schemes["WorkloadMutualTLS"] = {
+            "type": "mutualTLS",
+            "description": "Environment-scoped BP workload certificate; exact registered SPIFFE identity required.",
+        }
         components.setdefault("parameters", {}).update(
             {
                 "ConversationId": {
@@ -296,7 +339,8 @@ def canonical_openapi() -> dict[str, Any]:
         )
         problem_responses = {
             "ExecutionInvalidRequest": "Internal execution request or schema version is invalid",
-            "ExecutionUnauthorized": "BP service assertion is missing, invalid, expired, or lacks required scoped claims",
+            "ExecutionUnauthorized": "Mutual-TLS BP workload identity or bound delegated context is missing, "
+            "invalid, expired or replayed",
             "ExecutionNotFound": "Conversation or execution is absent or inaccessible to the asserted context",
             "ExecutionConflict": "Idempotency identity, schema, sequence, or execution state conflicts",
             "ExecutionCursorExpired": "Event cursor expired; BP must reconcile from its canonical persisted state",
@@ -358,6 +402,7 @@ def canonical_openapi() -> dict[str, Any]:
                         "execution.accepted",
                         "processing.started",
                         "response.delta",
+                        "response.system",
                         "card.proposed",
                         "evidence.pending",
                         "evidence.recorded",
@@ -395,6 +440,7 @@ def canonical_openapi() -> dict[str, Any]:
                         "data": {
                             "oneOf": [
                                 {"$ref": "#/components/schemas/ProfessionalDeltaV1"},
+                                {"$ref": "#/components/schemas/ProfessionalSystemResponseV1"},
                                 {"$ref": "#/components/schemas/ProfessionalCardProposalV1"},
                                 {"$ref": "#/components/schemas/ProfessionalEvidenceEventV1"},
                                 {"$ref": "#/components/schemas/ProfessionalTerminalEventV1"},
@@ -414,12 +460,57 @@ def canonical_openapi() -> dict[str, Any]:
                         "activePAASSessions": {"type": "integer"},
                     },
                 },
+                "ProfessionalSystemResponseV1": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "description": "Explicit non-professional limitation; never evidence of completed professional work",
+                    "required": ["text", "code"],
+                    "properties": {
+                        "text": {"type": "string", "minLength": 1, "maxLength": 8000},
+                        "code": {
+                            "type": "string",
+                            "enum": [
+                                "MODEL_UNAVAILABLE",
+                                "OPERATION_UNSUPPORTED",
+                                "MATERIAL_UNCERTAINTY",
+                                "SEMANTIC_PATH_UNREPRESENTABLE",
+                                "POLICY_REJECTED",
+                                "INTERNAL_FAILURE",
+                            ],
+                        },
+                    },
+                },
             }
         )
 
+        for name in ("ReconcileConversationExecutionRequestV1", "ConversationExecutionReconciliationV1"):
+            schemas[name].pop("title", None)
+            for value in schemas[name]["properties"].values():
+                value.pop("title", None)
+        recovery_schema = schemas["ConversationExecutionReconciliationV1"]
+        for name in ("originalRequestDigest", "resultDigest"):
+            recovery_schema["properties"][name] = {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        recovery_schema["oneOf"] = [
+            {
+                "properties": {
+                    "state": {"const": "UNKNOWN"},
+                    "events": {"maxItems": 0},
+                    "nextAction": {"const": "OPERATOR_RECONCILIATION_REQUIRED"},
+                },
+                "not": {"anyOf": [{"required": ["resultDigest"]}, {"required": ["originalRequestDigest"]}]},
+            },
+            {
+                "required": ["originalRequestDigest", "resultDigest"],
+                "properties": {
+                    "state": {"enum": ["COMPLETED", "FAILED", "CANCELLED"]},
+                    "nextAction": {"const": "RECONCILE_CANONICAL_PROJECTION"},
+                },
+            },
+        ]
+
         start = schema["paths"]["/api/v1/internal/conversations/{conversationId}/executions"]["post"]
         start["x-internal"] = True
-        start["security"] = [{"ServiceBearerAuth": []}]
+        start["security"] = [{"WorkloadMutualTLS": [], "DelegatedContextAuth": []}]
         start["tags"] = ["Conversation Execution"]
         start["parameters"] = [
             {"$ref": "#/components/parameters/ConversationId"},
@@ -447,9 +538,42 @@ def canonical_openapi() -> dict[str, Any]:
             "503": _execution_problem_response("ExecutionUnavailable"),
         }
 
+        batch = schema["paths"]["/api/v1/internal/conversations/{conversationId}/batch-executions"]["post"]
+        batch["x-internal"] = True
+        batch["security"] = [{"WorkloadMutualTLS": [], "DelegatedContextAuth": []}]
+        batch["tags"] = ["Conversation Execution"]
+        batch["parameters"] = [
+            {"$ref": "#/components/parameters/ConversationId"},
+            {"$ref": "#/components/parameters/IdempotencyKey"},
+            {"$ref": "#/components/parameters/CorrelationId"},
+        ]
+        schemas["StartBatchConversationExecutionRequestV1"] = schemas["StartBatchExecutionRequestV1"]
+        batch["requestBody"] = {
+            "required": True,
+            "content": {
+                "application/json": {"schema": {"$ref": "#/components/schemas/StartBatchConversationExecutionRequestV1"}}
+            },
+        }
+        batch["responses"] = {
+            "202": {
+                "description": "Durable batch execution accepted",
+                "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BatchExecutionReceiptV1"}}},
+            },
+            "200": {
+                "description": "Exact durable batch execution replayed",
+                "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BatchExecutionReceiptV1"}}},
+            },
+            "400": _execution_problem_response("ExecutionInvalidRequest"),
+            "401": _execution_problem_response("ExecutionUnauthorized"),
+            "404": _execution_problem_response("ExecutionNotFound"),
+            "409": _execution_problem_response("ExecutionConflict"),
+            "423": _execution_problem_response("ExecutionStopped"),
+            "503": _execution_problem_response("ExecutionUnavailable"),
+        }
+
         stream = schema["paths"]["/api/v1/internal/conversations/{conversationId}/executions/{executionId}/stream"]["get"]
         stream["x-internal"] = True
-        stream["security"] = [{"ServiceBearerAuth": []}]
+        stream["security"] = [{"WorkloadMutualTLS": [], "DelegatedContextAuth": []}]
         stream["tags"] = ["Conversation Execution"]
         stream["parameters"] = [
             {"$ref": "#/components/parameters/ConversationId"},
@@ -473,7 +597,7 @@ def canonical_openapi() -> dict[str, Any]:
 
         cancel = schema["paths"]["/api/v1/internal/conversations/{conversationId}/executions/{executionId}"]["delete"]
         cancel["x-internal"] = True
-        cancel["security"] = [{"ServiceBearerAuth": []}]
+        cancel["security"] = [{"WorkloadMutualTLS": [], "DelegatedContextAuth": []}]
         cancel["tags"] = ["Conversation Execution"]
         cancel["parameters"] = [
             {"$ref": "#/components/parameters/ConversationId"},
@@ -489,6 +613,35 @@ def canonical_openapi() -> dict[str, Any]:
             "200": {
                 "description": "Existing terminal outcome replayed",
                 "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProfessionalExecutionV1"}}},
+            },
+            "400": _execution_problem_response("ExecutionInvalidRequest"),
+            "401": _execution_problem_response("ExecutionUnauthorized"),
+            "404": _execution_problem_response("ExecutionNotFound"),
+            "409": _execution_problem_response("ExecutionConflict"),
+            "423": _execution_problem_response("ExecutionStopped"),
+            "503": _execution_problem_response("ExecutionUnavailable"),
+        }
+        reconcile = schema["paths"]["/api/v1/internal/conversations/{conversationId}/executions/{executionId}/reconcile"]["post"]
+        reconcile["x-internal"] = True
+        reconcile["security"] = [{"WorkloadMutualTLS": [], "DelegatedContextAuth": []}]
+        reconcile["tags"] = ["Conversation Execution"]
+        reconcile["parameters"] = [
+            {"$ref": "#/components/parameters/ConversationId"},
+            {"$ref": "#/components/parameters/ProfessionalExecutionId"},
+            {"$ref": "#/components/parameters/IdempotencyKey"},
+            {"$ref": "#/components/parameters/CorrelationId"},
+        ]
+        reconcile["responses"] = {
+            "200": {
+                "description": "Bound terminal result or explicit unknown outcome",
+                "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}},
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ConversationExecutionReconciliationV1",
+                        }
+                    }
+                },
             },
             "400": _execution_problem_response("ExecutionInvalidRequest"),
             "401": _execution_problem_response("ExecutionUnauthorized"),
@@ -593,7 +746,7 @@ async def health(request: Request, response: Response) -> HealthResponse:
         ce_reachable = gateway is not None and await gateway.is_ready()
     except Exception:
         ce_reachable = False
-    bp_auth_configured = bool(getattr(request.app.state, "bp_service_jwt_secret", None))
+    bp_auth_configured = getattr(request.app.state, "relationship_workload_auth", None) is not None
     health_status: Literal["healthy", "degraded", "unhealthy"]
     if not temporal_connected:
         health_status = "unhealthy"

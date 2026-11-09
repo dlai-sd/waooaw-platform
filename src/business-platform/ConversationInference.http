@@ -1,0 +1,57 @@
+# Private capability actions, not customer endpoints.
+# Obtain originalRequest and fresh signed delegatedContext from the governed AIR owner.
+# A matching client workload certificate is also required. Do not run without activation authorization.
+@baseUrl = https://business-platform.internal.waooaw
+@delegatedContext = replace-with-fresh-route-and-body-bound-envelope
+@originalRequest = replace-with-original-InferenceOwnerRequest-JSON
+@usageRequest = replace-with-original-request-plus-reservationId-inputTokens-outputTokens-JSON
+@releaseRequest = replace-with-original-request-plus-reservationId-JSON
+@contentReadRequest = replace-with-original-InferenceOwnerRequest-and-persisted-fresh-owner-permission-JSON
+
+### Resolve the original agent-specific admitted binding
+POST {{baseUrl}}/internal/v1/conversation-inference/resolve
+Authorization: Bearer {{delegatedContext}}
+Content-Type: application/json
+
+{{originalRequest}}
+
+### Fresh owner content read; requires a separate route/body-bound recovery envelope
+POST {{baseUrl}}/internal/v1/conversation-inference/read-content
+Authorization: Bearer {{delegatedContext}}
+Content-Type: application/json
+
+{{contentReadRequest}}
+
+### Reserve through the combined messaging/model owner
+POST {{baseUrl}}/internal/v1/conversation-inference/reserve
+Authorization: Bearer {{delegatedContext}}
+Content-Type: application/json
+
+{{originalRequest}}
+
+### Settle full reported usage, including overruns
+POST {{baseUrl}}/internal/v1/conversation-inference/settle
+Authorization: Bearer {{delegatedContext}}
+Content-Type: application/json
+
+{{usageRequest}}
+
+### Recover only the original financial receipt, without reserving or dispatching again
+POST {{baseUrl}}/internal/v1/conversation-inference/reconcile
+Authorization: Bearer {{delegatedContext}}
+Content-Type: application/json
+
+{{originalRequest}}
+
+### Release a known pre-provider-dispatch failure only
+POST {{baseUrl}}/internal/v1/conversation-inference/release
+Authorization: Bearer {{delegatedContext}}
+Content-Type: application/json
+
+{{releaseRequest}}
+
+### Missing delegated authority must be rejected; never triggers generation
+POST {{baseUrl}}/internal/v1/conversation-inference/resolve
+Content-Type: application/json
+
+{}

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from goal006_deployment_inputs import WHATSAPP_SECRET_NAMES, whatsapp_provider_inputs
+from goal006_deployment_inputs import WHATSAPP_PUBLIC_SUBJECT_KEY_NAME, WHATSAPP_SECRET_NAMES, whatsapp_provider_inputs
 from wc120_whatsapp_activation import (
     POLICIES,
     PREREQUISITES,
@@ -88,6 +88,77 @@ def bundle() -> dict:
 def prepare(value: dict, config: dict | None = None, now: datetime = NOW) -> dict[str, str]:
     raw = json.dumps(value).encode()
     return activation_settings(raw, "sha256:" + hashlib.sha256(raw).hexdigest(), config or deployment(), now)
+
+
+def registration_verification_bundle() -> dict:
+    value = bundle()
+    value["authority"]["AllowRegistrationVerification"] = True
+    value["registration_verification"] = {
+        "TemplateId": "1476143084372706",
+        "TemplateName": "waooaw_registration_otp",
+        "Locale": "en_US",
+        "ApprovalReference": "FA:authentication-template",
+    }
+    value["authority"]["ConfigurationDigest"] = activation_configuration_digest(
+        value["registration_configuration_digest"],
+        value["binding_digests"],
+        value["policies"],
+        value["templates"],
+        value["registration_verification"],
+    )
+    return value
+
+
+def test_registration_verification_is_separately_permitted_and_digest_bound() -> None:
+    value = registration_verification_bundle()
+    settings = prepare(value)
+    assert settings["IdentityVerification__WhatsApp__Enabled"] == "true"
+    assert settings["IdentityVerification__WhatsApp__Locale"] == "en_US"
+    assert settings["IdentityVerification__WhatsApp__TemplateId"] == "1476143084372706"
+    assert settings["WhatsAppCapability__Authority__AllowRegistrationVerification"] == "true"
+    value["registration_verification"]["Locale"] = "en"
+    with pytest.raises(ValueError, match="configuration digest"):
+        prepare(value)
+
+
+def test_legacy_activation_explicitly_disables_previous_registration_dispatch() -> None:
+    settings = prepare(bundle())
+    assert settings["IdentityVerification__WhatsApp__Enabled"] == "false"
+    assert settings["WhatsAppCapability__Authority__AllowRegistrationVerification"] == "false"
+
+
+@pytest.mark.parametrize("mutation", ["permission", "missing", "null", "locale", "reference", "extra", "type"])
+def test_registration_verification_rejects_incomplete_or_unapproved_metadata(mutation: str) -> None:
+    value = registration_verification_bundle()
+    if mutation == "permission":
+        value["authority"]["AllowRegistrationVerification"] = False
+    elif mutation == "missing":
+        del value["registration_verification"]
+    elif mutation == "null":
+        value["registration_verification"] = None
+    elif mutation == "locale":
+        value["registration_verification"]["Locale"] = "English"
+    elif mutation == "reference":
+        value["registration_verification"]["ApprovalReference"] = ""
+    elif mutation == "type":
+        value["authority"]["AllowRegistrationVerification"] = "true"
+    else:
+        value["registration_verification"]["AccessToken"] = "synthetic-rejected"
+    with pytest.raises(ValueError, match="Registration verification"):
+        prepare(value)
+
+
+def test_assembly_preserves_registration_verification_and_its_exact_digest() -> None:
+    value = registration_verification_bundle()
+    profile = deepcopy(value)
+    del profile["schema"]
+    del profile["registration_configuration_digest"]
+    for key in ("Environment", "ReleaseDigest", "ConfigurationDigest", "CatalogDigest", "Revoked"):
+        del profile["authority"][key]
+    raw = assemble_activation_bundle(json.dumps(profile).encode(), deployment(), NOW)
+    assert json.loads(raw) == value
+    settings = activation_settings(raw, "sha256:" + hashlib.sha256(raw).hexdigest(), deployment(), NOW)
+    assert settings["IdentityVerification__WhatsApp__Enabled"] == "true"
 
 
 def assembly_profile() -> dict:
@@ -175,7 +246,7 @@ def test_activation_binds_existing_runtime_options_without_credentials_or_provid
 
 def test_provisional_admission_is_default_off_and_requires_exact_bundle_permission() -> None:
     document = bundle()
-    assert "WhatsAppCapability__Authority__AllowProvisionalOnboarding" not in prepare(document)
+    assert prepare(document)["WhatsAppCapability__Authority__AllowProvisionalOnboarding"] == "false"
     document["authority"]["AllowProvisionalOnboarding"] = True
     raw = json.dumps(document).encode()
     approved = "sha256:" + hashlib.sha256(raw).hexdigest()
@@ -189,6 +260,82 @@ def test_provisional_admission_is_default_off_and_requires_exact_bundle_permissi
     document["authority"]["AllowProvisionalOnboarding"] = "true"
     with pytest.raises(ValueError, match="boolean"):
         prepare(document)
+
+
+def public_activation() -> tuple[dict, dict]:
+    config = deployment()
+    provider = {
+        key: value
+        for key, value in config["whatsapp_provider"].items()
+        if key in {"callback_host", "secret_versions", "authority_reference", "verification_enabled"}
+    }
+    provider["secret_versions"] = {**provider["secret_versions"], WHATSAPP_PUBLIC_SUBJECT_KEY_NAME: "e" * 32}
+    config["whatsapp_provider"] = provider
+    config.update(whatsapp_provider_inputs("demo", config, {"images": config["image_digests"]}))
+    document = bundle()
+    registered = config["whatsapp_provider"]
+    document["registration_configuration_digest"] = registered["configuration_digest"]
+    document["authority"].update(
+        AllowProvisionalOnboarding=True,
+        AllowPublicAdmission=True,
+        CatalogDigest=registered["catalog_digest"],
+        ReleaseDigest=registered["release_digest"],
+    )
+    document["authority"]["ConfigurationDigest"] = activation_configuration_digest(
+        registered["configuration_digest"],
+        document["binding_digests"],
+        document["policies"],
+        document["templates"],
+    )
+    return document, config
+
+
+def test_public_admission_requires_explicit_approval_and_pinned_key() -> None:
+    document, config = public_activation()
+    settings = prepare(document, config)
+    assert settings["WhatsAppCapability__Authority__AllowPublicAdmission"] == "true"
+    assert settings["WhatsAppCapability__PublicAdmissionIdentityKeyAvailable"] == "true"
+    assert settings["IdentityVerification__WhatsApp__Enabled"] == "false"
+    raw = json.dumps(document).encode()
+    approved = "sha256:" + hashlib.sha256(raw).hexdigest()
+    document["authority"]["AllowPublicAdmission"] = False
+    with pytest.raises(ValueError, match="independently approved"):
+        activation_settings(json.dumps(document).encode(), approved, config, NOW)
+
+
+def test_assembly_keeps_public_admission_bound_to_exact_registered_key_catalog() -> None:
+    document, config = public_activation()
+    profile = deepcopy(document)
+    del profile["schema"]
+    del profile["registration_configuration_digest"]
+    for key in ("Environment", "ReleaseDigest", "ConfigurationDigest", "CatalogDigest", "Revoked"):
+        del profile["authority"][key]
+    raw = assemble_activation_bundle(json.dumps(profile).encode(), config, NOW)
+    assert json.loads(raw) == document
+    settings = activation_settings(raw, "sha256:" + hashlib.sha256(raw).hexdigest(), config, NOW)
+    assert settings["WhatsAppCapability__Authority__AllowPublicAdmission"] == "true"
+
+
+@pytest.mark.parametrize("mutation", ["key", "guest-permission", "type"])
+def test_public_admission_fails_closed_for_incomplete_authority(mutation: str) -> None:
+    document, config = public_activation()
+    if mutation == "key":
+        document = bundle()
+        document["authority"].update(AllowPublicAdmission=True, AllowProvisionalOnboarding=True)
+        config = deployment()
+    elif mutation == "guest-permission":
+        document["authority"]["AllowProvisionalOnboarding"] = False
+    else:
+        document["authority"]["AllowPublicAdmission"] = "true"
+    with pytest.raises(ValueError, match="Public admission"):
+        prepare(document, config)
+
+
+def test_legacy_activation_closes_all_prior_optional_permissions() -> None:
+    settings = prepare(bundle())
+    for permission in ("AllowPublicAdmission", "AllowProvisionalOnboarding", "AllowRegistrationVerification"):
+        assert settings[f"WhatsAppCapability__Authority__{permission}"] == "false"
+    assert settings["WhatsAppCapability__PublicAdmissionIdentityKeyAvailable"] == "false"
 
 
 @pytest.mark.parametrize(

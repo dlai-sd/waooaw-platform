@@ -60,8 +60,49 @@ public sealed record PortalInteractionSubmissionV1(
     bool Replayed
 );
 
-public sealed class PortalInteractionService
+public interface IGuestConversation
 {
+    Task<PortalInteractionTimelinePageV1> ListGuestDiscoveryAsync(
+        Guid tenantId,
+        Guid participantId,
+        string? cursor,
+        int limit,
+        CancellationToken cancellationToken
+    );
+
+    Task<ConversationCommandResult<PortalInteractionSubmissionV1>> SendGuestDiscoveryAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid idempotencyKey,
+        SendPortalInteractionMessageRequestV1 request,
+        CancellationToken cancellationToken
+    );
+
+    Task<ConversationCommandResult<PortalInteractionSubmissionV1>> SendGuestNoticeAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid idempotencyKey,
+        SendPortalInteractionMessageRequestV1 request,
+        string notice,
+        CancellationToken cancellationToken
+    );
+
+    Task<ConversationCommandResult<PortalInteractionMessageV1>> SendGuestFixedNoticeAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid idempotencyKey,
+        string notice,
+        CancellationToken cancellationToken
+    );
+}
+
+public sealed class PortalInteractionService : IGuestConversation
+{
+    private sealed record PortalInteractionCoreResult(
+        PortalInteractionSubmissionV1? Submission,
+        PortalInteractionMessageV1 GuideMessage
+    );
+
     private const string SchemaVersion = "1.0";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly HashSet<string> SupportedSurfaces =
@@ -98,13 +139,25 @@ public sealed class PortalInteractionService
         CancellationToken cancellationToken
     )
     {
+        await using var db = await _factory.CreateDbContextAsync(cancellationToken);
+        return await ListCoreAsync(db, tenantId, participantId, cursor, limit, cancellationToken);
+    }
+
+    private async Task<PortalInteractionTimelinePageV1> ListCoreAsync(
+        ConversationStoreDbContext db,
+        Guid tenantId,
+        Guid participantId,
+        string? cursor,
+        int limit,
+        CancellationToken cancellationToken
+    )
+    {
         if (limit is < 1 or > 100)
             throw new ConversationRequestException("limit must be between 1 and 100.");
         if (cursor is not null && cursor.Length is < 16 or > 2048)
             throw new ConversationRequestException(
                 "cursor must be between 16 and 2048 characters."
             );
-        await using var db = await _factory.CreateDbContextAsync(cancellationToken);
         var context = await GetOrCreateContextAsync(db, tenantId, participantId, cancellationToken);
         var query = db
             .PortalInteractionMessages.AsNoTracking()
@@ -153,42 +206,187 @@ public sealed class PortalInteractionService
         );
     }
 
-    public Task<ConversationCommandResult<PortalInteractionSubmissionV1>> SendAsync(
+    public async Task<PortalInteractionTimelinePageV1> ListGuestDiscoveryAsync(
+        Guid tenantId,
+        Guid participantId,
+        string? cursor,
+        int limit,
+        CancellationToken cancellationToken
+    )
+    {
+        await using var db = await _factory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+        await GuardWhatsAppGuestAsync(db, tenantId, participantId, true, cancellationToken);
+        var page = await ListCoreAsync(
+            db,
+            tenantId,
+            participantId,
+            cursor,
+            limit,
+            cancellationToken
+        );
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
+        return page with { Scope = "GUEST_DISCOVERY" };
+    }
+
+    public async Task<ConversationCommandResult<PortalInteractionSubmissionV1>> SendAsync(
         Guid tenantId,
         Guid participantId,
         Guid idempotencyKey,
         SendPortalInteractionMessageRequestV1 request,
         CancellationToken cancellationToken
-    ) => SendCoreAsync(tenantId, participantId, idempotencyKey, request, false, cancellationToken);
+    )
+    {
+        var result = await SendCoreAsync(
+            tenantId,
+            participantId,
+            idempotencyKey,
+            request,
+            false,
+            null,
+            true,
+            cancellationToken
+        );
+        return new(result.Value.Submission!, result.Replayed);
+    }
 
-    internal Task<
+    public async Task<
         ConversationCommandResult<PortalInteractionSubmissionV1>
-    > SendPhoneOnboardingAsync(
+    > SendGuestDiscoveryAsync(
         Guid tenantId,
         Guid participantId,
         Guid idempotencyKey,
         SendPortalInteractionMessageRequestV1 request,
         CancellationToken cancellationToken
-    ) => SendCoreAsync(tenantId, participantId, idempotencyKey, request, true, cancellationToken);
+    )
+    {
+        var result = await SendCoreAsync(
+            tenantId,
+            participantId,
+            idempotencyKey,
+            request,
+            true,
+            null,
+            true,
+            cancellationToken
+        );
+        return new(result.Value.Submission!, result.Replayed);
+    }
 
-    private async Task<ConversationCommandResult<PortalInteractionSubmissionV1>> SendCoreAsync(
+    public async Task<
+        ConversationCommandResult<PortalInteractionSubmissionV1>
+    > SendGuestNoticeAsync(
         Guid tenantId,
         Guid participantId,
         Guid idempotencyKey,
         SendPortalInteractionMessageRequestV1 request,
-        bool phoneOnboarding,
+        string notice,
+        CancellationToken cancellationToken
+    )
+    {
+        if (string.IsNullOrWhiteSpace(notice) || notice.Length > 4096)
+            throw new ConversationRequestException("Guest notice is malformed or unsupported.");
+        var result = await SendCoreAsync(
+            tenantId,
+            participantId,
+            idempotencyKey,
+            request,
+            true,
+            notice,
+            true,
+            cancellationToken
+        );
+        return new(result.Value.Submission!, result.Replayed);
+    }
+
+    public async Task<
+        ConversationCommandResult<PortalInteractionMessageV1>
+    > SendGuestFixedNoticeAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid idempotencyKey,
+        string notice,
+        CancellationToken cancellationToken
+    )
+    {
+        if (
+            notice
+            is not (
+                WhatsAppGuestTrafficBudget.SessionLimitNotice
+                or WhatsAppGuestTrafficBudget.UnsupportedContentNotice
+                or WhatsAppGuestTrafficBudget.MessageLimitNotice
+                or WhatsAppGuestTrafficBudget.GlobalRateLimitNotice
+                or WhatsAppGuestTrafficBudget.ActivationLimitNotice
+                or WhatsAppGuestOperatingHours.ClosedNotice
+                or WhatsAppGuestConsent.Notice
+                or WhatsAppGuestConsent.RenewalUnavailable
+                or WhatsAppGuestConsent.Accepted
+                or WhatsAppGuestConsent.RegisteredNumberAccepted
+                or WhatsAppAccountLinkInstruction.ConfirmedNotice
+                or WhatsAppAccountLinkInstruction.DeniedNotice
+            )
+        )
+            throw new ConversationRequestException("Guest fixed notice is unsupported.");
+        var request = new SendPortalInteractionMessageRequestV1(
+            SchemaVersion,
+            idempotencyKey,
+            [new(SchemaVersion, "TEXT", "Guest session admission notice", "en-IN")],
+            "en-IN",
+            "MARKETPLACE"
+        );
+        var result = await SendCoreAsync(
+            tenantId,
+            participantId,
+            idempotencyKey,
+            request,
+            true,
+            notice,
+            false,
+            cancellationToken
+        );
+        return new(result.Value.GuideMessage, result.Replayed);
+    }
+
+    private async Task<ConversationCommandResult<PortalInteractionCoreResult>> SendCoreAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid idempotencyKey,
+        SendPortalInteractionMessageRequestV1 request,
+        bool guestDiscovery,
+        string? guestNotice,
+        bool persistCustomerMessage,
         CancellationToken cancellationToken
     )
     {
         Validate(request);
+        var catalogueDiscovery = guestDiscovery || request.CurrentSurface == "MARKETPLACE";
+        if (guestDiscovery && request.CurrentSurface != "MARKETPLACE")
+            throw new ConversationRequestException(
+                "Guest discovery is limited to the public marketplace surface."
+            );
         var requestJson = JsonSerializer.Serialize(request, JsonOptions);
+        var idempotencyInput =
+            guestNotice is null && persistCustomerMessage
+                ? requestJson
+                : $"{requestJson}\n{guestNotice}\n{persistCustomerMessage}";
         var requestHash = Convert.ToHexStringLower(
-            SHA256.HashData(Encoding.UTF8.GetBytes(requestJson))
+            SHA256.HashData(Encoding.UTF8.GetBytes(idempotencyInput))
         );
         await using var db = await _factory.CreateDbContextAsync(cancellationToken);
         await using var transaction = db.Database.IsRelational()
             ? await db.Database.BeginTransactionAsync(cancellationToken)
             : null;
+        if (catalogueDiscovery)
+            await GuardWhatsAppGuestAsync(
+                db,
+                tenantId,
+                participantId,
+                persistCustomerMessage,
+                cancellationToken
+            );
         if (transaction is not null)
             await db.Database.ExecuteSqlInterpolatedAsync(
                 $"SELECT pg_advisory_xact_lock(hashtextextended({$"interaction:{tenantId:D}:{participantId:D}"}, 0))",
@@ -207,17 +405,29 @@ public sealed class PortalInteractionService
         {
             if (replay.RequestHash != requestHash)
                 throw new ConversationIdempotencyConflictException();
+            if (!persistCustomerMessage)
+            {
+                var replayedGuide =
+                    JsonSerializer.Deserialize<PortalInteractionMessageV1>(
+                        replay.ResponseJson,
+                        JsonOptions
+                    ) ?? throw new ConversationStateConflictException();
+                return new(new PortalInteractionCoreResult(null, replayedGuide), true);
+            }
             var replayed =
                 JsonSerializer.Deserialize<PortalInteractionSubmissionV1>(
                     replay.ResponseJson,
                     JsonOptions
                 ) ?? throw new ConversationStateConflictException();
-            return new ConversationCommandResult<PortalInteractionSubmissionV1>(
-                replayed with
-                {
-                    Outcome = "REPLAYED",
-                    Replayed = true,
-                },
+            return new(
+                new PortalInteractionCoreResult(
+                    replayed with
+                    {
+                        Outcome = "REPLAYED",
+                        Replayed = true,
+                    },
+                    replayed.GuideMessage
+                ),
                 true
             );
         }
@@ -235,6 +445,34 @@ public sealed class PortalInteractionService
             throw new ConversationIdempotencyConflictException();
 
         var context = await GetOrCreateContextAsync(db, tenantId, participantId, cancellationToken);
+        var lastOtherSurfaceSequence = catalogueDiscovery
+            ? await db
+                .PortalInteractionMessages.AsNoTracking()
+                .Where(value =>
+                    value.TenantId == tenantId
+                    && value.ParticipantId == participantId
+                    && value.Actor == "CUSTOMER"
+                    && value.CurrentSurface != "MARKETPLACE"
+                )
+                .MaxAsync(value => (long?)value.Sequence, cancellationToken)
+                ?? 0
+            : 0;
+        List<string> priorGuestTurns = catalogueDiscovery
+            ? await db
+                .PortalInteractionMessages.AsNoTracking()
+                .Where(value =>
+                    value.TenantId == tenantId
+                    && value.ParticipantId == participantId
+                    && value.Actor == "CUSTOMER"
+                    && value.CurrentSurface == "MARKETPLACE"
+                    && value.Sequence > lastOtherSurfaceSequence
+                )
+                .OrderByDescending(value => value.Sequence)
+                .Take(3)
+                .Select(value => value.ContentJson)
+                .ToListAsync(cancellationToken)
+            : [];
+        var isFirstGuestTurn = priorGuestTurns.Count == 0;
         var maximumSequence =
             await db
                 .PortalInteractionMessages.Where(value =>
@@ -256,19 +494,30 @@ public sealed class PortalInteractionService
             throw new ConversationStateConflictException();
         }
 
-        var customer = new PortalInteractionMessage
-        {
-            TenantId = tenantId,
-            ContextId = context.ContextId,
-            ParticipantId = participantId,
-            Sequence = context.NextMessageSequence++,
-            Actor = "CUSTOMER",
-            ContentJson = JsonSerializer.Serialize(request.Content, JsonOptions),
-            CurrentSurface = request.CurrentSurface,
-            ClientMessageId = request.ClientMessageId,
-        };
-        var (guideText, capability) = CreateGuideResponse(request, phoneOnboarding);
-        if (phoneOnboarding && guideText.Length > 4096)
+        var customer = persistCustomerMessage
+            ? new PortalInteractionMessage
+            {
+                TenantId = tenantId,
+                ContextId = context.ContextId,
+                ParticipantId = participantId,
+                Sequence = context.NextMessageSequence++,
+                Actor = "CUSTOMER",
+                ContentJson = JsonSerializer.Serialize(request.Content, JsonOptions),
+                CurrentSurface = request.CurrentSurface,
+                ClientMessageId = request.ClientMessageId,
+            }
+            : null;
+        var (guideText, capability) = guestNotice is null
+            ? CreateGuideResponse(request, catalogueDiscovery, isFirstGuestTurn, priorGuestTurns)
+            : (
+                guestNotice,
+                new PortalNavigationCapabilityV1(
+                    "NAVIGATE",
+                    "Explore professionals",
+                    "/marketplace"
+                )
+            );
+        if (guestDiscovery && guideText.Length > 4096)
             throw new ConversationRequestException(
                 "Onboarding reply exceeds the WhatsApp text bound."
             );
@@ -289,16 +538,22 @@ public sealed class PortalInteractionService
             CurrentSurface = request.CurrentSurface,
         };
         context.UpdatedAt = DateTimeOffset.UtcNow;
-        var submission = new PortalInteractionSubmissionV1(
-            SchemaVersion,
-            "PORTAL",
-            "ACCEPTED",
-            ToContract(customer),
-            ToContract(guide),
-            _cursorCodec.Encode(tenantId, context.ContextId, "portal-timeline", guide.Sequence),
-            false
-        );
-        db.PortalInteractionMessages.AddRange(customer, guide);
+        var guideContract = ToContract(guide);
+        var submission = customer is null
+            ? null
+            : new PortalInteractionSubmissionV1(
+                SchemaVersion,
+                guestDiscovery ? "GUEST_DISCOVERY" : "PORTAL",
+                "ACCEPTED",
+                ToContract(customer),
+                guideContract,
+                _cursorCodec.Encode(tenantId, context.ContextId, "portal-timeline", guide.Sequence),
+                false
+            );
+        if (customer is null)
+            db.PortalInteractionMessages.Add(guide);
+        else
+            db.PortalInteractionMessages.AddRange(customer, guide);
         db.PortalInteractionIdempotencyOutcomes.Add(
             new PortalInteractionIdempotencyOutcome
             {
@@ -306,13 +561,60 @@ public sealed class PortalInteractionService
                 ParticipantId = participantId,
                 IdempotencyKey = idempotencyKey,
                 RequestHash = requestHash,
-                ResponseJson = JsonSerializer.Serialize(submission, JsonOptions),
+                ResponseJson = submission is null
+                    ? JsonSerializer.Serialize(guideContract, JsonOptions)
+                    : JsonSerializer.Serialize(submission, JsonOptions),
             }
         );
         await db.SaveChangesAsync(cancellationToken);
         if (transaction is not null)
             await transaction.CommitAsync(cancellationToken);
-        return new ConversationCommandResult<PortalInteractionSubmissionV1>(submission, false);
+        return new(new PortalInteractionCoreResult(submission, guideContract), false);
+    }
+
+    private static async Task GuardWhatsAppGuestAsync(
+        ConversationStoreDbContext db,
+        Guid tenantId,
+        Guid participantId,
+        bool requireConsent,
+        CancellationToken cancellationToken
+    )
+    {
+        var guest = await db.Set<WhatsAppGuestSession>()
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                value => value.TenantId == tenantId && value.ParticipantId == participantId,
+                cancellationToken
+            );
+        if (guest is null)
+            return;
+        if (db.Database.IsRelational())
+        {
+            var guestLock = WhatsAppGuestSession.LockKey(tenantId, guest.BindingDigest);
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock(hashtextextended({guestLock}, 0))",
+                cancellationToken
+            );
+            guest = await db.Set<WhatsAppGuestSession>()
+                .AsNoTracking()
+                .SingleAsync(
+                    value => value.TenantId == tenantId && value.ParticipantId == participantId,
+                    cancellationToken
+                );
+        }
+        if (guest.StoppedAt is not null)
+            throw new ConversationStoppedException();
+        if (
+            requireConsent
+            && (
+                guest.EvidenceId is null
+                || guest.AdmittedAt is null
+                || guest.ServiceConsentAt is null
+                || guest.ServiceConsentEvidenceId is null
+                || guest.ServiceConsentNoticeVersion != WhatsAppGuestConsent.NoticeVersion
+            )
+        )
+            throw new ConversationNotAccessibleException();
     }
 
     private static void Validate(SendPortalInteractionMessageRequestV1 request)
@@ -340,21 +642,57 @@ public sealed class PortalInteractionService
 
     private (string Text, PortalNavigationCapabilityV1 Capability) CreateGuideResponse(
         SendPortalInteractionMessageRequestV1 request,
-        bool phoneOnboarding
+        bool guestDiscovery,
+        bool isFirstGuestTurn,
+        IReadOnlyList<string> priorGuestTurns
     )
     {
         var text = request.Content[0].Text;
-        if (phoneOnboarding)
+        if (guestDiscovery)
         {
             var catalog =
                 _professionalCatalog
                 ?? throw new InvalidOperationException(
-                    "The professional catalogue is required for phone onboarding."
+                    "The professional catalogue is required for guest discovery."
                 );
-            var matches = catalog.Discover(text).Take(3).ToList();
+            var correction = IsGuestContextCorrection(text);
+            var browseRequested = IsBrowseRequest(text);
+            var matches =
+                correction || browseRequested ? [] : catalog.Discover(text).Take(3).ToList();
+            if (
+                !correction
+                && !browseRequested
+                && matches.Count == 0
+                && IsGuestContextFollowUp(text)
+            )
+            {
+                var previousTurns = priorGuestTurns
+                    .SelectMany(value =>
+                        JsonSerializer.Deserialize<IReadOnlyList<ConversationTextBlockV1>>(
+                            value,
+                            JsonOptions
+                        ) ?? []
+                    )
+                    .Where(value => value.BlockType == "TEXT")
+                    .Select(value => value.Text);
+                foreach (var previousTurn in previousTurns)
+                {
+                    if (IsGuestContextCorrection(previousTurn) || IsBrowseRequest(previousTurn))
+                        break;
+                    matches = catalog.Discover(previousTurn).Take(3).ToList();
+                    if (matches.Count > 0 || !IsGuestContextFollowUp(previousTurn))
+                        break;
+                }
+            }
+            var previewTopic = correction ? null : GuestPreviewTopic(text);
+            var browse =
+                !correction && browseRequested ? catalog.Browse(null, null).Take(3).ToList() : [];
             var discovery =
-                matches.Count > 0
-                    ? "Based on your goal: "
+                correction
+                    ? "I will not use the earlier selection. Please describe the outcome you want instead. "
+                : previewTopic is not null ? DescribeGuestPreview(catalog, matches, previewTopic)
+                : matches.Count > 0
+                    ? "The current catalogue suggests: "
                         + string.Join(
                             "; ",
                             matches.Select(value =>
@@ -362,13 +700,32 @@ public sealed class PortalInteractionService
                             )
                         )
                         + " "
-                    : "Tell me the outcome you need so I can check the current professional catalogue. ";
+                : browse.Count > 0
+                    ? "You can explore: "
+                        + string.Join(
+                            "; ",
+                            browse.Select(value =>
+                                $"{value.DisplayName}: {string.Join(", ", value.Suitability)}."
+                            )
+                        )
+                        + " "
+                : "Tell me the outcome you need so I can check the current professional catalogue. ";
+            var introduction = isFirstGuestTurn
+                ? "Welcome to WAOOAW Demo. You can browse professionals and ask me to narrow the public catalogue. "
+                    + "This discovery conversation does not create a customer account, membership, trial, or hiring relationship. "
+                : string.Empty;
+            var handoff = isFirstGuestTurn
+                ? "Trial or hire starts on the web portal and may require registration and verification. "
+                : string.Empty;
             return (
-                "Welcome to WAOOAW Demo. You can explore digital professionals and discuss the work you need here. "
-                    + "This is phone-verified onboarding, not a completed customer account or an employment contract. "
+                introduction
                     + discovery
-                    + "What does your business do, and what task would you like help with? "
-                    + "Hiring, payment and account linking require stronger verification. Reply STOP to stop messages.",
+                    + handoff
+                    + (
+                        isFirstGuestTurn
+                            ? "If you are using WhatsApp, reply STOP to stop messages."
+                            : "What would you like to explore next?"
+                    ),
                 new("NAVIGATE", "Explore professionals", "/marketplace")
             );
         }
@@ -415,6 +772,115 @@ public sealed class PortalInteractionService
             "I am the WAOOAW Guide. I can help you navigate and explain portal information, but I cannot impersonate a professional or execute relationship commands.",
             capability
         );
+    }
+
+    private static bool IsBrowseRequest(string text) =>
+        text.Contains("browse", StringComparison.OrdinalIgnoreCase)
+        || text.Contains("list professionals", StringComparison.OrdinalIgnoreCase)
+        || text.Contains("show offerings", StringComparison.OrdinalIgnoreCase)
+        || text.Contains("show professionals", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsGuestContextCorrection(string text) =>
+        System.Text.RegularExpressions.Regex.IsMatch(
+            text,
+            @"\b(?:no|not|don'?t|instead|different|change|reset|restart|cancel|wrong|rather|start\s+over)\b",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase
+                | System.Text.RegularExpressions.RegexOptions.CultureInvariant
+        );
+
+    private static bool IsGuestContextFollowUp(string text) =>
+        System.Text.RegularExpressions.Regex.IsMatch(
+            text.Trim(),
+            @"^(?:tell me more|what (?:skills|capabilities) (?:are available|are offered)|what (?:skills|capabilities|limitations|trial)|what are the (?:skills|capabilities|limitations)|what is the trial)[?.!]*$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase
+                | System.Text.RegularExpressions.RegexOptions.CultureInvariant
+        );
+
+    private static string? GuestPreviewTopic(string text)
+    {
+        var topics = new List<string>();
+        if (
+            text.Contains("skill", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("capabilit", StringComparison.OrdinalIgnoreCase)
+        )
+            topics.Add("skills");
+        if (
+            text.Contains("limitation", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("cannot", StringComparison.OrdinalIgnoreCase)
+        )
+            topics.Add("limitations");
+        if (text.Contains("trial", StringComparison.OrdinalIgnoreCase))
+            topics.Add("trial");
+        return topics.Count switch
+        {
+            0 => null,
+            1 => topics[0],
+            _ => "ambiguous",
+        };
+    }
+
+    private static string DescribeGuestPreview(
+        IProfessionalCatalog catalog,
+        IReadOnlyList<ProfessionalDiscoveryResult> matches,
+        string topic
+    )
+    {
+        if (topic == "ambiguous")
+            return "Please ask about skills, limitations, or the trial one at a time. ";
+        if (matches.Count != 1)
+            return "Please identify one professional or describe the outcome you need before asking about its preview. ";
+        var match = matches[0];
+        var disclosure = catalog.GetDisclosure(match.ProfessionalType);
+        if (
+            !match.Eligibility.Eligible
+            || disclosure is null
+            || !disclosure.Eligibility.Eligible
+            || !string.Equals(
+                disclosure.ProfessionalType,
+                match.ProfessionalType,
+                StringComparison.OrdinalIgnoreCase
+            )
+            || disclosure.ProjectionVersion != match.ProjectionVersion
+        )
+            return "That professional's current catalogue disclosure is unavailable. Please browse the marketplace. ";
+        var details = topic switch
+        {
+            "skills" when disclosure.Skills.Count > 0 => "Published skills: "
+                + string.Join(
+                    "; ",
+                    disclosure.Skills.Select(skill =>
+                        skill.DisplayName
+                        + (
+                            skill.ApplicableInTrial
+                                ? " (listed for trial"
+                                : " (not listed for trial"
+                        )
+                        + (
+                            string.IsNullOrWhiteSpace(skill.ActivationCondition)
+                                ? ")"
+                                : $"; condition: {skill.ActivationCondition})"
+                        )
+                    )
+                ),
+            "limitations" when disclosure.Limitations.Count > 0 => "Published limitations: "
+                + string.Join("; ", disclosure.Limitations),
+            "trial" when disclosure.Trial.Available =>
+                $"The published trial lasts {disclosure.Trial.DurationDays} days. "
+                    + (
+                        disclosure.Trial.PaidApiCallsAllowed
+                            ? "Paid API calls may be allowed under its terms. "
+                            : "Paid API calls are not allowed in the trial. "
+                    )
+                    + (
+                        disclosure.Trial.ExternalActionsAllowed
+                            ? "External actions may be allowed under its terms"
+                            : "External actions are not allowed in the trial"
+                    )
+                    + ". Starting a trial requires the web portal and its separate admission checks",
+            "trial" => "The published catalogue does not currently offer a trial",
+            _ => "No published details are available for this topic",
+        };
+        return $"{disclosure.DisplayName} (catalogue preview, not an employed professional): {details}. ";
     }
 
     private static PortalInteractionMessageV1 ToContract(PortalInteractionMessage value) =>

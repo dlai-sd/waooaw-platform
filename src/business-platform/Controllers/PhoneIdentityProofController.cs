@@ -90,6 +90,13 @@ public sealed class PhoneIdentityProofController(
         {
             return Problem(statusCode: exception.StatusCode, title: exception.Code);
         }
+        catch (EmergencyStopReconciliationPendingException)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "EMERGENCY_STOP_RECONCILIATION_PENDING"
+            );
+        }
     }
 
     private bool IsValidSignature(string rawBody, string suppliedSignature)

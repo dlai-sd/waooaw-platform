@@ -22,6 +22,7 @@ workloads:
   business-platform:
     identity_path: business-platform
     owner: INST-010
+    audience: urn:waooaw:service:business-platform
     tls_usages: [client_auth, server_auth]
     delegation_signer: true
   billing-engine:
@@ -39,6 +40,12 @@ workloads:
     identity_path: ai-runtime
     owner: INST-010
     audience: urn:waooaw:service:ai-runtime
+    tls_usages: [client_auth, server_auth]
+    delegation_signer: true
+  constitutional-engine:
+    identity_path: constitutional-engine
+    owner: INST-010
+    audience: urn:waooaw:service:constitutional-engine
     tls_usages: [server_auth]
   domain-adapter-dma:
     identity_path: domain-adapter/dma
@@ -62,6 +69,26 @@ workloads:
     tls_usages: [server_auth]
 
 route_grants:
+  - { caller: professional-runtime, target: ai-runtime, method: POST, route: "/internal/v1/conversation-generations", operation: generateConversation, contract_major: 1 }
+  - { caller: professional-runtime, target: ai-runtime, method: POST, route: "/internal/v1/conversation-generations/reconcile", operation: reconcileConversationGeneration, contract_major: 1 }
+  - { caller: professional-runtime, target: ai-runtime, method: POST, route: "/internal/v1/conversation-generations/recover-content", operation: recoverConversationGenerationContent, contract_major: 1 }
+  - { caller: ai-runtime, target: business-platform, method: POST, route: "/internal/v1/conversation-inference/resolve", operation: resolveConversationInference, contract_major: 1 }
+  - { caller: ai-runtime, target: business-platform, method: POST, route: "/internal/v1/conversation-inference/reserve", operation: reserveConversationInference, contract_major: 1 }
+  - { caller: ai-runtime, target: business-platform, method: POST, route: "/internal/v1/conversation-inference/reconcile", operation: reconcileConversationInference, contract_major: 1 }
+  - { caller: ai-runtime, target: business-platform, method: POST, route: "/internal/v1/conversation-inference/read-content", operation: readConversationInferenceContent, contract_major: 1 }
+  - { caller: ai-runtime, target: business-platform, method: POST, route: "/internal/v1/conversation-inference/settle", operation: settleConversationInference, contract_major: 1 }
+  - { caller: ai-runtime, target: business-platform, method: POST, route: "/internal/v1/conversation-inference/release", operation: releaseConversationInference, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/relationships/{relationshipId}/offering-usage/reserve", operation: reserveOfferingComponentUsage, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/relationships/{relationshipId}/offering-usage/settle", operation: settleOfferingComponentUsage, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/relationships/{relationshipId}/offering-usage/release", operation: releaseOfferingComponentUsage, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/relationships/{relationshipId}/offering-usage/reconcile", operation: reconcileOfferingComponentUsage, contract_major: 1 }
+  - { caller: business-platform, target: constitutional-engine, method: POST, route: "/constitutional.v1.ConstitutionalService/ValidateAction", operation: ValidateAction, contract_major: 1 }
+  - { caller: business-platform, target: constitutional-engine, method: POST, route: "/constitutional.v1.ConstitutionalService/RecordEvidence", operation: RecordEvidence, contract_major: 1 }
+  - { caller: business-platform, target: professional-runtime, method: POST, route: "/api/v1/internal/conversations/{conversationId}/executions", operation: startConversationExecution, contract_major: 1 }
+  - { caller: business-platform, target: professional-runtime, method: POST, route: "/api/v1/internal/conversations/{conversationId}/batch-executions", operation: startConversationBatchExecution, contract_major: 1 }
+  - { caller: business-platform, target: professional-runtime, method: GET, route: "/api/v1/internal/conversations/{conversationId}/executions/{executionId}/stream", operation: streamConversationExecution, contract_major: 1 }
+  - { caller: business-platform, target: professional-runtime, method: DELETE, route: "/api/v1/internal/conversations/{conversationId}/executions/{executionId}", operation: cancelConversationExecutionInternal, contract_major: 1 }
+  - { caller: business-platform, target: professional-runtime, method: POST, route: "/api/v1/internal/conversations/{conversationId}/executions/{executionId}/reconcile", operation: reconcileConversationExecutionInternal, contract_major: 1 }
   - { caller: professional-runtime, target: agent-runtime-adapter-digital-marketing, method: GET, route: "/internal/v1/descriptor", operation: describeAdapter, contract_major: 1 }
   - { caller: professional-runtime, target: agent-runtime-adapter-digital-marketing, method: GET, route: "/internal/v1/health/ready", operation: getAdapterReadiness, contract_major: 1 }
   - { caller: professional-runtime, target: agent-runtime-adapter-digital-marketing, method: POST, route: "/internal/v1/configurations:validate", operation: validateAdapterConfiguration, contract_major: 1 }
@@ -97,6 +124,7 @@ route_grants:
   - { caller: business-platform, target: professional-runtime, method: POST, route: "/api/v1/paas/sessions", operation: startPAASSession, contract_major: 1 }
   - { caller: professional-runtime, target: ai-runtime, method: POST, route: "/internal/v1/employment-patch-proposals", operation: proposeEmploymentPatch, contract_major: 1 }
   - { caller: professional-runtime, target: ai-runtime, method: GET, route: "/internal/v1/employment-patch-proposals/{proposalId}", operation: getEmploymentPatchProposal, contract_major: 1 }
+  - { caller: professional-runtime, target: ai-runtime, method: POST, route: "/internal/v1/employment-patch-proposals/reconcile", operation: reconcileEmploymentPatchProposal, contract_major: 1 }
   - { caller: business-platform, target: domain-adapter-dma, method: GET, route: "/internal/v1/relationships/{relationshipId}/domain-outcomes/projection", operation: getDomainOutcomeProjection, contract_major: 1 }
   - { caller: business-platform, target: domain-adapter-dma, method: POST, route: "/internal/v1/relationships/{relationshipId}/domain-outcomes/goal-change-validation", operation: validateDomainGoalChange, contract_major: 1 }
   - { caller: business-platform, target: domain-adapter-dma, method: GET, route: "/internal/v1/relationships/{relationshipId}/domain-outcomes/commands/{ownerCommandId}", operation: getDomainCommandOutcome, contract_major: 1 }

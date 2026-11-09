@@ -1,0 +1,31 @@
+let StartsAt = datetime(${starts_at});
+let ExpiresAt = datetime(${expires_at});
+let ActiveWindow = now() >= StartsAt and now() < ExpiresAt;
+let Observations = materialize(
+    union isfuzzy=true ContainerAppConsoleLogs, ContainerAppConsoleLogs_CL
+    | where TimeGenerated >= ago(5m)
+    | extend AppName = tostring(column_ifexists("ContainerAppName", column_ifexists("ContainerAppName_s", ""))),
+        Line = tostring(column_ifexists("Log", column_ifexists("Log_s", "")))
+    | where AppName == "ca-demo-business-platform"
+    | extend Marker = indexof(Line, "WC134_OBSERVATION=")
+    | where Marker >= 0
+    | extend Observation = parse_json(substring(Line, Marker + strlen("WC134_OBSERVATION=")))
+    | where Observation.schemaVersion == "1.0" and Observation.environment == "demo"
+    | where Observation.activationDigest == "${activation_digest}"
+        and Observation.releaseDigest == "${release_digest}"
+        and Observation.configurationDigest == "${configuration_digest}"
+    | extend ObservedAt = todatetime(Observation.observedAt)
+    | where ObservedAt >= StartsAt and ObservedAt < ExpiresAt
+        and ObservedAt >= ago(2m) and ObservedAt <= now()
+);
+let Heartbeats = toscalar(Observations | where Observation.kind == "HEARTBEAT" | count);
+union
+    (print Reason = "OPERATIONS_HEARTBEAT_MISSING"
+        | where ActiveWindow and now() >= StartsAt + 2m and Heartbeats == 0),
+    (Observations | where ActiveWindow and Observation.kind == "ALERT"
+        | extend Reason = tostring(Observation.code)
+        | where Reason in ("OUTBOUND_QUEUE_AGE_BREACH", "OUTBOUND_RECONCILIATION_BREACH",
+            "DEAD_LETTER_AGE_BREACH", "DEAD_LETTER_ACTION_REQUIRED",
+            "IMMEDIATE_FENCE_REQUIRED", "STOP_EVIDENCE_RECONCILIATION_REQUIRED")
+        | project Reason)
+| distinct Reason

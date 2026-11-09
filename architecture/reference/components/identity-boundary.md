@@ -560,6 +560,15 @@ scope afterward. This neither creates a customer allowance nor admits ingress:
 current Identity/consent/Stop validation and staged ingress integration remain
 separate prerequisites.
 
+Migration 97 supplies the missing current-tenant policy for WhatsApp contacts
+after the principal-handoff migration enables FORCE RLS. `business_app` and
+`bp_owner` are admitted only when the contact tenant matches
+`app.current_tenant_id`, for both existing-row access and resulting-row checks.
+It adds no privileges, does not disable FORCE RLS and cannot retarget contacts
+across tenants. Real PostgreSQL attachment qualification covers policy replay,
+own updates, foreign isolation and owner-principal enforcement alongside current
+Identity, membership and confirmed-link attachment authority.
+
 Customer outbox leasing is an internal exact-item operation requiring the entire
 confirmed route snapshot. The outbox owner refuses generic customer-scope
 inventory, locks only the given canonical customer outbox row and preserves

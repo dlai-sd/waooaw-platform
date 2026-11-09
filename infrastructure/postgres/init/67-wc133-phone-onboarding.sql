@@ -33,8 +33,7 @@ ADD COLUMN IF NOT EXISTS portal_context_id UUID,
 ALTER COLUMN relationship_id DROP NOT NULL,
 ALTER COLUMN conversation_id DROP NOT NULL;
 ALTER TABLE business.conversation_outbox
-DROP CONSTRAINT IF EXISTS conversation_outbox_scope_check;
-ALTER TABLE business.conversation_outbox
+DROP CONSTRAINT IF EXISTS conversation_outbox_scope_check,
 ADD CONSTRAINT conversation_outbox_scope_check CHECK (
     (portal_context_id IS NULL AND relationship_id IS NOT NULL AND conversation_id IS NOT NULL)
     OR (
@@ -44,8 +43,7 @@ ADD CONSTRAINT conversation_outbox_scope_check CHECK (
     )
 );
 ALTER TABLE business.conversation_outbox
-DROP CONSTRAINT IF EXISTS conversation_outbox_portal_fk;
-ALTER TABLE business.conversation_outbox
+DROP CONSTRAINT IF EXISTS conversation_outbox_portal_fk,
 ADD CONSTRAINT conversation_outbox_portal_fk FOREIGN KEY (tenant_id, portal_context_id)
 REFERENCES business.portal_interaction_contexts (tenant_id, context_id);
 CREATE UNIQUE INDEX IF NOT EXISTS conversation_outbox_portal_identity
@@ -58,8 +56,7 @@ ADD COLUMN IF NOT EXISTS portal_message_id UUID,
 ALTER COLUMN relationship_id DROP NOT NULL,
 ALTER COLUMN message_id DROP NOT NULL;
 ALTER TABLE business.conversation_delivery_observations
-DROP CONSTRAINT IF EXISTS conversation_delivery_scope_check;
-ALTER TABLE business.conversation_delivery_observations
+DROP CONSTRAINT IF EXISTS conversation_delivery_scope_check,
 ADD CONSTRAINT conversation_delivery_scope_check CHECK (
     (portal_context_id IS NULL AND portal_message_id IS NULL AND relationship_id IS NOT NULL AND message_id IS NOT NULL)
     OR (
@@ -70,8 +67,7 @@ ADD CONSTRAINT conversation_delivery_scope_check CHECK (
     )
 );
 ALTER TABLE business.conversation_delivery_observations
-DROP CONSTRAINT IF EXISTS conversation_delivery_portal_fk;
-ALTER TABLE business.conversation_delivery_observations
+DROP CONSTRAINT IF EXISTS conversation_delivery_portal_fk,
 ADD CONSTRAINT conversation_delivery_portal_fk FOREIGN KEY (tenant_id, portal_context_id, portal_message_id)
 REFERENCES business.portal_interaction_messages (tenant_id, context_id, message_id);
 CREATE UNIQUE INDEX IF NOT EXISTS conversation_delivery_portal_identity

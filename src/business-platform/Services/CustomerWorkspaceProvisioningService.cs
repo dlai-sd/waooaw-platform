@@ -806,6 +806,7 @@ public sealed class CustomerWorkspaceProvisioningService
             || registration.State != IdentityRegistrationState.Completed
                 && (
                     registration.State != IdentityRegistrationState.ReadyToComplete
+                    || !registration.MobileVerified
                     || registration.ExpiresAt <= _time.GetUtcNow()
                 )
         )

@@ -1,5 +1,5 @@
 {
-  "catalogDigest": "sha256:97518c93628a59c338bab54cd49eeef6c0b44ce7a6542d6f058a6e5ff63ac203",
+  "catalogDigest": "sha256:26b1655d13038446918ebfa645a16db8659080f43a8fc3cea4ea0ef9efb41d9d",
   "configuration": {
     "capacityProfile": {
       "environment": "demo",
@@ -173,7 +173,7 @@
   },
   "environment": "demo",
   "manifestDigest": "sha256:228720c90c3decd509268cdb980a768391916798d2f08317cc93cceb7247246c",
-  "renderDigest": "sha256:e2c3269fc8a92fe1aafc9c044ad26ea3b24f7d01a4ba7237abe52bd8da6dca88",
+  "renderDigest": "sha256:86b81440fc7d96c00ba9b91c2c441578d6f478543c9d91df5d5793e6477f170f",
   "schemaVersion": "1.0",
   "secretBindings": [
     {
@@ -211,6 +211,18 @@
       "principal": "business-platform",
       "readinessGate": "demo-whatsapp-provider",
       "reference": "kv://kv-waooaw-demo/secrets/whatsapp-app-secret"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "business-platform:jit-whatsapp-phone-subject-hmac"
+      ],
+      "id": "whatsapp-phone-subject-hmac",
+      "principal": "business-platform",
+      "readinessGate": "demo-whatsapp-public-admission",
+      "reference": "kv://kv-waooaw-demo/secrets/whatsapp-phone-subject-hmac"
     },
     {
       "allowedOperations": [

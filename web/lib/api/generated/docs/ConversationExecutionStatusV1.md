@@ -2,14 +2,15 @@
 
 ## Properties
 
-| Name               | Type                                                            |
-| ------------------ | --------------------------------------------------------------- |
-| `schemaVersion`    | [ConversationSchemaVersion](ConversationSchemaVersion.md)       |
-| `executionId`      | string                                                          |
-| `state`            | [ConversationProcessingState](ConversationProcessingState.md)   |
-| `partial`          | boolean                                                         |
-| `completionReason` | [ConversationCompletionReason](ConversationCompletionReason.md) |
-| `updatedAt`        | Date                                                            |
+| Name                | Type                                                            |
+| ------------------- | --------------------------------------------------------------- |
+| `schemaVersion`     | [ConversationSchemaVersion](ConversationSchemaVersion.md)       |
+| `executionId`       | string                                                          |
+| `state`             | [ConversationProcessingState](ConversationProcessingState.md)   |
+| `partial`           | boolean                                                         |
+| `completionReason`  | [ConversationCompletionReason](ConversationCompletionReason.md) |
+| `updatedAt`         | Date                                                            |
+| `projectionVersion` | number                                                          |
 
 ## Example
 
@@ -24,6 +25,7 @@ const example = {
   partial: null,
   completionReason: null,
   updatedAt: null,
+  projectionVersion: null,
 } satisfies ConversationExecutionStatusV1;
 
 console.log(example);

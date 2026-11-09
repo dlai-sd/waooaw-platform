@@ -163,6 +163,8 @@ class GrpcConversationConstitutionalGateway:
                 timeout=min(self._timeout_seconds, 0.2),
             )
             recorded_at = response.recorded_at.ToDatetime(tzinfo=timezone.utc)
+            if response.pending_sessions:
+                raise ConstitutionalGatewayUnavailableError("Emergency Stop propagation is pending")
         except Exception as error:
             raise ConstitutionalGatewayUnavailableError from error
         if not response.emergency_stop_record_id or recorded_at is None:

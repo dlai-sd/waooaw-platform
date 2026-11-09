@@ -61,6 +61,7 @@ public sealed class IdentityCompletionPostgresTests : IAsyncLifetime
             ActorSubject = "postgres-completion-test",
             State = IdentityRegistrationState.ReadyToComplete,
             EmailVerified = true,
+            MobileVerified = true,
             DisplayName = "Test Customer",
             BusinessName = "Test Business",
             BusinessDomain = "Consulting",

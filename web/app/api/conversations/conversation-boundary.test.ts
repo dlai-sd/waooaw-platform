@@ -6,16 +6,23 @@ const accessTokenFromRequest = jest.fn();
 const listConversationMessages = jest.fn();
 const sendConversationMessage = jest.fn();
 const openConversationStream = jest.fn();
+const getConversationMessageExecution = jest.fn();
+const reconcileConversationExecution = jest.fn();
 
 jest.mock('@/lib/server-auth', () => ({ accessTokenFromRequest }));
 jest.mock('@/lib/api/conversation', () => ({
-  conversationProblem: jest.fn(async () => ({ status: 503, body: { code: 'CONVERSATION_EXECUTION_UNAVAILABLE' } })),
+  conversationProblem: jest.fn(async () => ({
+    status: 503,
+    body: { code: 'CONVERSATION_EXECUTION_UNAVAILABLE' },
+  })),
   createConversationApi: jest.fn(() => ({
     listConversationMessages,
     sendConversationMessage,
     retryConversationMessage: jest.fn(),
     updateConversationReadPosition: jest.fn(),
     cancelConversationExecution: jest.fn(),
+    getConversationMessageExecution,
+    reconcileConversationExecution,
   })),
   openConversationStream,
 }));
@@ -93,6 +100,82 @@ describe('conversation server boundary', () => {
     );
   });
 
+  it('reads original execution identity without browser-local authority and disables caching', async () => {
+    const messageId = crypto.randomUUID();
+    getConversationMessageExecution.mockResolvedValue({
+      executionId: crypto.randomUUID(),
+      projectionVersion: 7,
+    });
+    const { GET } = await import('./[relationshipId]/route');
+    const response = await GET(
+      new NextRequest(`http://localhost/api/conversations/${relationshipId}?messageExecutionId=${messageId}`),
+      params
+    );
+    expect(getConversationMessageExecution).toHaveBeenCalledWith({
+      relationshipId,
+      messageId,
+    });
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
+    expect(sendConversationMessage).not.toHaveBeenCalled();
+  });
+
+  it('forwards read-only recovery through BP with a separate correlation identity', async () => {
+    const messageId = crypto.randomUUID();
+    const executionId = crypto.randomUUID();
+    const idempotencyKey = crypto.randomUUID();
+    reconcileConversationExecution.mockResolvedValue({ state: 'UNRESOLVED' });
+    const { POST } = await import('./[relationshipId]/route');
+    const response = await POST(
+      new NextRequest(`http://localhost/api/conversations/${relationshipId}`, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'reconcile',
+          messageId,
+          executionId,
+          expectedProjectionVersion: 7,
+          idempotencyKey,
+        }),
+      }),
+      params
+    );
+    expect(response.status).toBe(200);
+    expect(reconcileConversationExecution).toHaveBeenCalledWith({
+      relationshipId,
+      executionId,
+      idempotencyKey,
+      xCorrelationId: expect.any(String),
+      reconcileConversationExecutionRequestV1: {
+        schemaVersion: '1.0',
+        expectedMessageId: messageId,
+        expectedProjectionVersion: 7,
+      },
+    });
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
+    expect(sendConversationMessage).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, -1, 1.5, '1', Number.MAX_SAFE_INTEGER + 1])(
+    'rejects unsafe recovery version %s before any owner call',
+    async (expectedProjectionVersion) => {
+      const { POST } = await import('./[relationshipId]/route');
+      const response = await POST(
+        new NextRequest(`http://localhost/api/conversations/${relationshipId}`, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'reconcile',
+            messageId: crypto.randomUUID(),
+            executionId: crypto.randomUUID(),
+            expectedProjectionVersion,
+            idempotencyKey: crypto.randomUUID(),
+          }),
+        }),
+        params
+      );
+      expect(response.status).toBe(400);
+      expect(reconcileConversationExecution).not.toHaveBeenCalled();
+    }
+  );
+
   it('rejects send without an explicit Skill identity', async () => {
     const { POST } = await import('./[relationshipId]/route');
     const request = new NextRequest(`http://localhost/api/conversations/${relationshipId}`, {
@@ -113,7 +196,10 @@ describe('conversation server boundary', () => {
   it('proxies SSE with resume identity and strips upstream private headers', async () => {
     openConversationStream.mockResolvedValue(
       new Response('event: heartbeat\ndata: {}\n\n', {
-        headers: { 'Content-Type': 'text/event-stream', 'X-Internal-Provider': 'private' },
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'X-Internal-Provider': 'private',
+        },
       })
     );
     const { GET } = await import('./[relationshipId]/stream/route');

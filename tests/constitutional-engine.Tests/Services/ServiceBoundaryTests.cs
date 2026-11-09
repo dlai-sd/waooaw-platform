@@ -228,6 +228,25 @@ public sealed class ServiceBoundaryTests
         error.Which.StatusCode.Should().Be(StatusCode.Unauthenticated);
     }
 
+    [Theory]
+    [InlineData("CONVERSATION_EXECUTION")]
+    [InlineData("CONVERSATION_MODEL_RESERVATION")]
+    public async Task ValidateAction_RejectsMalformedConversationParameters(string actionType)
+    {
+        var service = Service(
+            emergencyFactory: new Factory<EmergencyStopDbContext>(Options<EmergencyStopDbContext>()));
+        var act = () => service.ValidateAction(
+            new ValidateActionRequest
+            {
+                ContractId = Guid.NewGuid().ToString(),
+                ActionType = actionType,
+                ActionParameters = "{",
+            },
+            FakeServerCallContext.Create(Guid.NewGuid().ToString()));
+        var error = await act.Should().ThrowAsync<RpcException>();
+        error.Which.StatusCode.Should().Be(StatusCode.InvalidArgument);
+    }
+
     [Fact]
     public async Task ValidateAction_HonestLimitation_ReturnsEscalate()
     {

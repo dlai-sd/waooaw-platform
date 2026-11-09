@@ -1,0 +1,54 @@
+# Implements: WC-134 R005; identity-boundary.md Section 6.3.
+# constitutional_basis: C-023, C-026, C-059, C-063
+# Use the local Compose Business Platform address and fresh owning-account token.
+@baseUrl = http://localhost:5001
+@accessToken = replace-with-fresh-owning-account-access-token
+@linkId = replace-with-returned-link-id
+@relationshipId = replace-with-currently-authorized-relationship-id
+@ineligibleRelationshipId = replace-with-discovered-or-terminated-relationship-id
+
+### Start with the server-selected verified registration proof
+POST {{baseUrl}}/api/v1/identity/account-links
+Authorization: Bearer {{accessToken}}
+Idempotency-Key: 00000000-0000-4000-8000-000000000001
+Content-Type: application/json
+
+{}
+
+### Explicitly approve; send the returned instruction from the verified WhatsApp number
+POST {{baseUrl}}/api/v1/identity/account-links/{{linkId}}/approve
+Authorization: Bearer {{accessToken}}
+Idempotency-Key: 00000000-0000-4000-8000-000000000002
+
+### Check status without granting a session or relationship
+GET {{baseUrl}}/api/v1/identity/account-links/{{linkId}}
+Authorization: Bearer {{accessToken}}
+
+### Cancel before signed confirmation; repeat this key only to replay this cancellation
+POST {{baseUrl}}/api/v1/identity/account-links/{{linkId}}/cancel
+Authorization: Bearer {{accessToken}}
+Idempotency-Key: 00000000-0000-4000-8000-000000000003
+
+### Explicitly grant the linked WhatsApp identity access to one relationship
+POST {{baseUrl}}/api/v1/employment/relationships/{{relationshipId}}/workspace/channels/whatsapp
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "identityAccountLinkId": "{{linkId}}",
+  "consentToRelationshipChannel": true
+}
+
+### A discovered or terminated relationship is denied with 403
+POST {{baseUrl}}/api/v1/employment/relationships/{{ineligibleRelationshipId}}/workspace/channels/whatsapp
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "identityAccountLinkId": "{{linkId}}",
+  "consentToRelationshipChannel": true
+}
+
+### Missing or inaccessible challenges disclose no other account
+GET {{baseUrl}}/api/v1/identity/account-links/00000000-0000-4000-8000-000000000099
+Authorization: Bearer {{accessToken}}

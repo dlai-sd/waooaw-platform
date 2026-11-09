@@ -6,12 +6,14 @@ specification=/workspace/architecture/reference/api-specs/professional-runtime.o
 base_url=http://professional-runtime:5003
 service_all='^/(?!health$).*'
 health='^/health$'
+export SCHEMATHESIS_HOOKS=/workspace/scripts/validation_control/schemathesis_hooks.py
 
 rm -f /workspace/test-results/schemathesis-pr*.xml
 service_smoke_status=0
 health_smoke_status=0
 sh "$runner" /workspace/test-results/schemathesis-pr-service-smoke.xml \
-    "$specification" "$base_url" "$service_all" - smoke &
+    "$specification" "$base_url" "$service_all" - smoke standard \
+    startConversationBatchExecution &
 service_smoke_pid=$!
 sh "$runner" /workspace/test-results/schemathesis-pr-health-smoke.xml \
     "$specification" "$base_url" "$health" - smoke health &
@@ -27,7 +29,8 @@ fi
 reports='/workspace/test-results/schemathesis-pr-service-smoke.xml /workspace/test-results/schemathesis-pr-health-smoke.xml'
 if test -n "$REST_PR_SERVICE_REGEX"; then
     sh "$runner" /workspace/test-results/schemathesis-pr-service-focused.xml \
-        "$specification" "$base_url" "$REST_PR_SERVICE_REGEX" - deep
+        "$specification" "$base_url" "$REST_PR_SERVICE_REGEX" - deep standard \
+        startConversationBatchExecution
     reports="$reports /workspace/test-results/schemathesis-pr-service-focused.xml"
 fi
 

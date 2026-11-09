@@ -38,7 +38,8 @@ def test_ce_fit_12_rejects_cross_environment_identity_credentials_hosts_state_an
         assert manifest["activationAuthority"] == "SEPARATE_FOUNDER_AUTHORITY_REQUIRED"
         secret_references = manifest["secretReferences"]
         assert isinstance(secret_references, dict)
-        assert len(set(secret_references.values())) == 4
+        expected_secret_count = 5 if manifest["environment"] == "demo" else 4
+        assert len(set(secret_references.values())) == expected_secret_count
 
     production = manifests[2]
     assert production["telephoneReference"] == "PRODUCTION_PENDING_PURCHASE"

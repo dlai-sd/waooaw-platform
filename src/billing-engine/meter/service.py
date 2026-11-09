@@ -1,4 +1,4 @@
-# Implements: <spec-path> §<section>
+# Implements: work-contracts/WC-134-runtime-generation-and-reconciliation-policy.md §9.3
 # constitutional_basis: C-059 (Implementation Traceability)
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
 import asyncpg
-from sqlalchemy import text
+from sqlalchemy import DateTime, String, Uuid, bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from skeleton.wbe_interfaces import (
@@ -29,9 +29,8 @@ from meter.alert_policy import (
 )
 
 logger = logging.getLogger(__name__)
+_UUID_BIND = String(36).with_variant(Uuid(as_uuid=False), "postgresql")
 
-# text().bindparams() does not auto-coerce UUID objects in SQLite; use this at
-# every UUID bind site so queries work identically across backends.
 def _sid(v: UUID | str) -> str:
     """Convert UUID or string to string representation for SQL binding."""
     return str(v)
@@ -75,7 +74,20 @@ class UsageAttribution:
     invocation_id: UUID
 
     def __post_init__(self) -> None:
-        if not self.skill_id or not self.skill_version:
+        identifiers = (
+            self.tenant_id,
+            self.relationship_id,
+            self.agent_instance_id,
+            self.work_item_id,
+            self.invocation_id,
+        )
+        if (
+            any(not isinstance(value, UUID) or value.int == 0 for value in identifiers)
+            or not isinstance(self.skill_id, str)
+            or not self.skill_id.strip()
+            or not isinstance(self.skill_version, str)
+            or not self.skill_version.strip()
+        ):
             raise ValueError("DMA_USAGE_ATTRIBUTION_INVALID")
 
 
@@ -106,6 +118,8 @@ class MeterService(IMeterService):
         thread_type: str,
         amount_paise: int,
         attribution: UsageAttribution | None = None,
+        *,
+        raw_cost_paise: int | None = None,
     ) -> None:
         """
         Record one usage event.
@@ -116,7 +130,14 @@ class MeterService(IMeterService):
         C-063: customer_id logged only as UUID string (no name/email).
         """
         if thread_type == "DMA" and attribution is None:
+            logger.error("DMA usage attribution is required")
             raise ValueError("DMA_USAGE_ATTRIBUTION_REQUIRED")
+        if (
+            type(amount_paise) is not int or amount_paise < 0
+            or type(raw_cost_paise) is not int or raw_cost_paise < 0
+        ):
+            logger.error("Metered raw and marked-up costs must be non-negative integer paise")
+            raise ValueError("USAGE_COST_INVALID")
         try:
             async with self._session_factory() as session:
                 # 1. Resolve provider_account_id
@@ -124,46 +145,69 @@ class MeterService(IMeterService):
                     text(
                         """
                         SELECT pa.id AS provider_account_id
-                        FROM   thread_catalog tc
-                        JOIN   provider_accounts pa
+                        FROM   institutional.thread_catalog tc
+                        JOIN   institutional.provider_accounts pa
                                ON pa.id = tc.provider_account_id
-                        WHERE  tc.thread_type = :thread_type
-                        LIMIT  1
+                        WHERE  tc.thread_id = :thread_type
+                               AND tc.status = 'ACTIVE'
+                               AND tc.founder_authorized_at IS NOT NULL
+                               AND pa.is_active = TRUE
                         """
                     ).bindparams(thread_type=thread_type)
                 )
                 result_row = row.fetchone()
                 if result_row is None:
                     logger.error(
-                        "provider_account not found for thread_type=%s -- usage not recorded",
+                        "Authorized provider account not found for thread_type=%s",
                         thread_type,
                     )
-                    return
+                    raise ValueError("USAGE_PROVIDER_UNAVAILABLE")
 
                 provider_account_id: str = str(result_row.provider_account_id)
+                if attribution is not None and session.get_bind().dialect.name == "postgresql":
+                    await session.execute(
+                        text("SELECT pg_advisory_xact_lock(hashtextextended(:identity, 0))"),
+                        {"identity": ":".join((
+                            "wbe-usage", _sid(attribution.tenant_id), _sid(attribution.relationship_id),
+                            _sid(attribution.agent_instance_id), _sid(attribution.invocation_id),
+                        ))},
+                    )
 
                 # 2. Write to platform_cost_ledger
                 now_utc = datetime.now(timezone.utc)
-                await session.execute(
+                written = await session.execute(
                     text(
                         """
-                        INSERT INTO platform_cost_ledger
+                        INSERT INTO institutional.platform_cost_ledger
                             (id, customer_id, thread_type, provider_account_id,
-                             marked_up_cost_inr_paise, recorded_at, billing_period_start,
+                             raw_cost_inr_paise, marked_up_cost_inr_paise, recorded_at, billing_period_start,
                              tenant_id, relationship_id, agent_instance_id, skill_id,
                              skill_version, work_item_id, invocation_id)
-                        VALUES
-                            (:id, :customer_id, :thread_type, :provider_account_id,
-                             :amount_paise, :recorded_at, :billing_period_start,
+                        SELECT
+                             :id, :customer_id, :thread_type, :provider_account_id,
+                             :raw_cost_paise, :amount_paise, :recorded_at, :billing_period_start,
                              :tenant_id, :relationship_id, :agent_instance_id, :skill_id,
-                             :skill_version, :work_item_id, :invocation_id)
+                             :skill_version, :work_item_id, :invocation_id
+                        WHERE NOT EXISTS (
+                            SELECT 1 FROM institutional.platform_cost_ledger
+                            WHERE tenant_id = :tenant_id AND relationship_id = :relationship_id
+                                AND agent_instance_id = :agent_instance_id AND invocation_id = :invocation_id
+                        )
+                        RETURNING id
                         """
+                    ).bindparams(
+                        *(bindparam(name, type_=_UUID_BIND) for name in (
+                            "id", "customer_id", "provider_account_id", "tenant_id",
+                            "relationship_id", "agent_instance_id", "work_item_id", "invocation_id",
+                        )),
+                        bindparam("recorded_at", type_=DateTime(timezone=True)),
                     ).bindparams(
                         id=_sid(uuid4()),
                         customer_id=_sid(customer_id),
                         thread_type=thread_type,
                         provider_account_id=provider_account_id,
                         amount_paise=amount_paise,
+                        raw_cost_paise=raw_cost_paise,
                         recorded_at=now_utc,
                         billing_period_start=_current_billing_period_start(now_utc),
                         tenant_id=_sid(attribution.tenant_id) if attribution else None,
@@ -175,6 +219,46 @@ class MeterService(IMeterService):
                         invocation_id=_sid(attribution.invocation_id) if attribution else None,
                     )
                 )
+                if written.fetchone() is None:
+                    if attribution is None:
+                        raise ValueError("USAGE_IDEMPOTENCY_CONFLICT")
+                    original = (
+                        await session.execute(
+                            text(
+                                """
+                                SELECT customer_id, thread_type, provider_account_id,
+                                       raw_cost_inr_paise, marked_up_cost_inr_paise,
+                                       skill_id, skill_version, work_item_id
+                                FROM institutional.platform_cost_ledger
+                                WHERE tenant_id = :tenant_id AND relationship_id = :relationship_id
+                                      AND agent_instance_id = :agent_instance_id
+                                      AND invocation_id = :invocation_id
+                                """
+                            ).bindparams(
+                                *(bindparam(name, type_=_UUID_BIND) for name in (
+                                    "tenant_id", "relationship_id", "agent_instance_id", "invocation_id",
+                                ))
+                            ),
+                            {
+                                "tenant_id": _sid(attribution.tenant_id),
+                                "relationship_id": _sid(attribution.relationship_id),
+                                "agent_instance_id": _sid(attribution.agent_instance_id),
+                                "invocation_id": _sid(attribution.invocation_id),
+                            },
+                        )
+                    ).mappings().one()
+                    expected = {
+                        "customer_id": customer_id,
+                        "thread_type": thread_type,
+                        "provider_account_id": provider_account_id,
+                        "raw_cost_inr_paise": raw_cost_paise,
+                        "marked_up_cost_inr_paise": amount_paise,
+                        "skill_id": attribution.skill_id,
+                        "skill_version": attribution.skill_version,
+                        "work_item_id": attribution.work_item_id,
+                    }
+                    if any(str(original[key]) != str(value) for key, value in expected.items()):
+                        raise ValueError("USAGE_IDEMPOTENCY_CONFLICT")
                 await session.commit()
                 logger.info(
                     "record_usage committed customer=%s thread_type=%s paise=%d",

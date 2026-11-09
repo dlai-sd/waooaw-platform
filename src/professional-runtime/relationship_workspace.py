@@ -212,6 +212,32 @@ class RelationshipExecutionStore:
                 items=sorted(items, key=lambda value: str(value.work_item_id)),
             )
 
+    def is_current_work_item(
+        self,
+        tenant_id: str,
+        relationship_id: uuid.UUID,
+        work_item_id: uuid.UUID,
+        revision: int,
+        invocation_id: uuid.UUID,
+        agent_instance_id: uuid.UUID | str,
+        skill_id: str,
+        skill_version: str,
+    ) -> bool:
+        with self._lock:
+            projection = self._projections.get((tenant_id, relationship_id))
+            item = self._work.get((tenant_id, relationship_id, work_item_id))
+            return bool(
+                projection is not None
+                and projection.state == "CURRENT"
+                and item is not None
+                and item.revision == revision
+                and item.invocation_id == invocation_id
+                and str(item.agent_instance_id) == str(agent_instance_id)
+                and item.skill_id == skill_id
+                and item.skill_version == skill_version
+                and item.state in {"PENDING", "RUNNING", "PARTIAL"}
+            )
+
     def submit(
         self,
         context: DelegatedContext,
@@ -378,10 +404,11 @@ async def _authorize(
     request: Request,
     route: str,
     operation: str,
-    relationship_id: uuid.UUID,
+    relationship_id: uuid.UUID | None,
     body: object | None = None,
     idempotency_key: str | None = None,
     expected_tenant_id: str | None = None,
+    request_digest: str | None = None,
 ) -> DelegatedContext:
     correlation_id = request.headers.get("X-Correlation-ID", "00000000-0000-0000-0000-000000000000")
     auth: WorkloadAuth | None = getattr(request.app.state, "relationship_workload_auth", None)
@@ -391,7 +418,7 @@ async def _authorize(
         raise ServiceAuthError("SERVICE_AUTHENTICATION_FAILED")
     certificate = x509.load_der_x509_certificate(certificate_der)
     peer_identity = extract_peer_identity(certificate, auth.trust_domain)
-    digest = _canonical_digest(body)
+    digest = request_digest if request_digest is not None else _canonical_digest(body)
     return auth.verifier.verify(
         authorization.removeprefix("Bearer "),
         peer_identity,
@@ -402,7 +429,8 @@ async def _authorize(
         1,
         digest,
         lambda context: (
-            context.relationship_id == str(relationship_id)
+            bool(context.relationship_id)
+            and (relationship_id is None or context.relationship_id == str(relationship_id))
             and bool(context.tenant_id)
             and (expected_tenant_id is None or context.tenant_id == expected_tenant_id)
             and bool(context.actor_subject)

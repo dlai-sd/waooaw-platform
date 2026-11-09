@@ -15,6 +15,7 @@ public sealed class Wc120ConversationOptions
     public bool Enabled { get; set; }
     public bool CallbackAcceptanceEnabled { get; set; }
     public bool DispatchEnabled { get; set; }
+    public bool RuntimeEventIngestionEnabled { get; set; }
     public string Environment { get; set; } = "local";
     public string AppBindingDigest { get; set; } = string.Empty;
     public string WabaBindingDigest { get; set; } = string.Empty;

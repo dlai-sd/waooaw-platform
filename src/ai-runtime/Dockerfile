@@ -18,6 +18,7 @@ RUN test -n "$SECURITY_REFRESH" \
 WORKDIR /app
 COPY --from=dependencies /install/packages /usr/local
 COPY --chown=waooaw:waooaw src/ai-runtime/ .
+COPY --chown=waooaw:waooaw src/trust-layer/ctg/governed_inference.py ./ctg/governed_inference.py
 USER waooaw
 RUN python -c "import main"
 EXPOSE 5004

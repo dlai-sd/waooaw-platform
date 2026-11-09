@@ -7,12 +7,15 @@
 | Work Contract | WC-134 |
 | Authoring office / accountable delivery owner | Platform IT Expert (INST-010) |
 | Founder assignment | Current conversation, 2026-11-06: prepare the complete work component for own-number and anyone-on-Demo rollout |
-| Status | IMPLEMENTATION IN PROGRESS; PUBLIC/LIVE ACCEPTANCE NOT COMPLETE |
+| Status | REPOSITORY IMPLEMENTATION QUALIFIED; PUBLIC/LIVE ACCEPTANCE NOT COMPLETE |
 | Baseline reviewed | Main `8cf1e38bd0c45c44dab0ff911f2f8808558aed11`; deployed BP digest `sha256:401545767c9d2546731accbaa6949347a796ef7ff2c8eba402a47f7835dec126` |
 | Related owners/contracts | WC-120 conversation; WC-121 provider enablement; WC-133 first contact; WC-123 identity; WC-115 employment; WC-124 data/runtime lifecycle |
 | Requirement ledger | [WC-134-requirements.yaml](./WC-134-requirements.yaml) |
 | Constitutional basis | C-023, C-026, C-039, C-042, C-059, C-062, C-063; accepted identity, tenant isolation, consent and Stop controls |
 | Delivery model | One integrated correction scope and coordinated PR where feasible, followed by exact-image configuration and live acceptance |
+
+The prioritized remaining implementation for batching, offering metering and shared spend is
+specified in the [batching, offering and spend work component](./WC-134-batching-offering-and-spend-work-component.md).
 
 **Completion means the customer journey works, not that code merged or a workflow turned green.**
 All dependencies necessary for the supported Demo journey are delivery obligations of this component.
@@ -72,11 +75,10 @@ enable a paid model or proactive send path without separate cost instrumentation
 This is a target policy, not live activation or spend authority. Obtain separate exact-candidate
 live approval before public traffic. A human-confirmed operator alert route remains a release
 requirement; it is not a customer-message channel.
-Tests are authored with each story; per the Founder's current execution instruction, test execution
-is deferred until all stories are implemented. Compilation, type checking, formatting and static
-validation may run during implementation. Final integrated Docker qualification follows implementation. No new
-institutional reviewer is invoked without Founder direction. No direct-main push, self-approval or
-self-merge is permitted.
+Tests were authored with each story and then executed through consolidated Docker qualification
+after implementation. Section 3 records the final repository evidence and the remaining live
+acceptance boundary. No new institutional reviewer is invoked without Founder direction. No
+direct-main push, self-approval or self-merge is permitted.
 
 ## 2. Required Customer Outcome
 
@@ -144,6 +146,35 @@ service use, not blanket permission for marketing or unsolicited contact.
 The Founder previously reported Meta callback save/messages subscription and an approved Marketing
 template. Reconcile this with current provider metadata; do not ask for repeated setup or assume a
 negative-token probe proves subscription. No live message exchange is accepted yet.
+
+### 3.1 Final repository qualification evidence
+
+The consolidated WC-134 repository candidate is qualified for Founder review. All commands below
+ran in Docker; no host interpreter or virtual environment was used.
+
+| Qualification surface | Result |
+|---|---|
+| Business Platform | PASS: 2,358 tests; 90.01% line and 80.00% branch coverage |
+| Professional Runtime | PASS: 396 tests; 90.90% line and 81.36% branch coverage |
+| AI Runtime | PASS: 296 tests; 93.47% line and 80.05% branch coverage |
+| Digital Marketing Agent | PASS: 104 tests; 94.98% line and 82.64% branch coverage |
+| Billing and offering usage | PASS: 479 tests with 14 intentional integration skips |
+| PostgreSQL migration/offering gate | PASS: 72 tests |
+| Web quality, build, unit and coverage gates | PASS |
+| OpenAPI, protobuf and generated-client specification gate | PASS |
+| Real-container REST reconciliation | PASS for every Business Platform lane; final PR-only repairs separately passed 214 Professional Runtime conversation-execution tests and 36 REST validation-control tests without repeating the complete expensive gate |
+| Release preflight | PASS: 82 tests |
+| Release test lane | PASS: 664 tests |
+| Release PostgreSQL, Demo-data and simulator lanes | PASS |
+| WC-123 impact/session validation | PASS: 14 tests |
+| GOAL-006 Docker Azure CLI end-to-end verification | PASS: image/emulator, extension readiness, stopped-service recovery, database handoff, positive deployment, negative deployment and broker cleanup |
+
+This evidence qualifies repository implementation, migrations, contracts, exact-image integration
+and controlled Azure deployment behavior. It does not activate WhatsApp traffic or authorize
+provider/cloud mutation, public traffic, recurring spend or customer communication. Full WC-134
+DONE remains blocked on protected current Meta readback, independently authorized exact-candidate
+activation, actual alert receipt, and successful own-number and eligible-public-sender live message
+cohorts. Those actions require separate Founder authority and immutable evidence.
 
 ## 4. Complete Requirement And Acceptance Matrix
 

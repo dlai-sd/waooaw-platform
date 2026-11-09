@@ -14,7 +14,7 @@ from threading import Lock
 from cryptography import x509
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519
 from fastapi import Request
 
 PEER_CERTIFICATE_STATE_KEY = "adr046.peer_certificate_der"  # gitleaks:allow - ASGI scope key, not a credential
@@ -91,7 +91,7 @@ class EmploymentWorkloadAuth:
     def __init__(
         self,
         grants: frozenset[RouteGrant],
-        public_keys: Mapping[tuple[str, str], ec.EllipticCurvePublicKey],
+        public_keys: Mapping[tuple[str, str], ec.EllipticCurvePublicKey | ed25519.Ed25519PublicKey],
         trust_domain: str,
         audience: str,
         replay_store: ReplayStore | None = None,
@@ -113,8 +113,8 @@ class EmploymentWorkloadAuth:
             (credentials / "workloads" / "professional-runtime" / "delegation-cert.pem").read_bytes()
         )
         public_key = certificate.public_key()
-        if not isinstance(public_key, ec.EllipticCurvePublicKey):
-            raise ValueError("BP delegation certificate must contain an ECDSA public key")
+        if not isinstance(public_key, (ec.EllipticCurvePublicKey, ed25519.Ed25519PublicKey)):
+            raise ValueError("PR delegation certificate must contain an ECDSA or Ed25519 public key")
         grants = frozenset(
             RouteGrant(
                 caller_uri=manifest["workloads"][grant["caller"]]["identity_uri"],
@@ -164,7 +164,11 @@ class EmploymentWorkloadAuth:
         if public_key is None:
             raise EmploymentAuthError("AIR_EMPLOYMENT_UNAUTHORIZED")
         try:
-            public_key.verify(_decode(signature_part), payload, ec.ECDSA(hashes.SHA256()))
+            signature = _decode(signature_part)
+            if isinstance(public_key, ed25519.Ed25519PublicKey):
+                public_key.verify(signature, payload)
+            else:
+                public_key.verify(signature, payload, ec.ECDSA(hashes.SHA256()))
         except InvalidSignature as error:
             raise EmploymentAuthError("AIR_EMPLOYMENT_UNAUTHORIZED") from error
         grant = RouteGrant(peer_identity, self.audience, request.method, route, operation, 1)

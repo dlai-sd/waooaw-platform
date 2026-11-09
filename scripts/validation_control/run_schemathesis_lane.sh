@@ -8,6 +8,8 @@ path_regex=$4
 authorization_token=$5
 depth=$6
 check_profile=${7:-standard}
+excluded_operation_id=${8:-}
+second_excluded_operation_id=${9:-}
 
 set -- schemathesis --config-file /workspace/validation/schemathesis.toml run "$specification" \
     --url "$base_url" \
@@ -27,6 +29,12 @@ else
 fi
 if test "$check_profile" = health; then
     set -- "$@" --exclude-checks not_a_server_error
+fi
+if test -n "$excluded_operation_id"; then
+    set -- "$@" --exclude-operation-id "$excluded_operation_id"
+fi
+if test -n "$second_excluded_operation_id"; then
+    set -- "$@" --exclude-operation-id "$second_excluded_operation_id"
 fi
 
 cd /tmp

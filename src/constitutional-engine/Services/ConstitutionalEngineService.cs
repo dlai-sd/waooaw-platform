@@ -313,6 +313,39 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
         try
         {
             var evalCtx = EvaluationContext.FromRequest(req, rawTenantId);
+            if (req.ActionType is "CONVERSATION_EXECUTION" or "CONVERSATION_MODEL_RESERVATION")
+            {
+                if (_emergencyStopDbContextFactory is null || !Guid.TryParse(rawTenantId, out var tenant))
+                    throw new RpcException(new Status(StatusCode.Unavailable, "Conversation Stop authority is unavailable."));
+                using var parameters = System.Text.Json.JsonDocument.Parse(req.ActionParameters);
+                if (parameters.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object
+                    || !parameters.RootElement.TryGetProperty("relationship_id", out var relationship)
+                    || relationship.ValueKind != System.Text.Json.JsonValueKind.String
+                    || !Guid.TryParse(relationship.GetString(), out var relationshipId))
+                    throw new RpcException(new Status(StatusCode.InvalidArgument, "Conversation relationship must be a UUID."));
+                if (req.ActionType == "CONVERSATION_MODEL_RESERVATION" && req.ContractId != relationshipId.ToString("D"))
+                    throw new RpcException(new Status(StatusCode.InvalidArgument, "Inference relationship does not match its contract."));
+                await using var stopDb = await _emergencyStopDbContextFactory.CreateDbContextAsync(cts.Token);
+                if (stopDb.Database.IsRelational())
+                {
+                    await using var transaction = await stopDb.Database.BeginTransactionAsync(cts.Token);
+                    await stopDb.Database.ExecuteSqlInterpolatedAsync(
+                        $"SELECT set_config('app.current_tenant_id', {tenant.ToString("D")}, true)", cts.Token);
+                    var stopped = await stopDb.Database.SqlQuery<int>(
+                        $"SELECT 1 AS \"Value\" FROM constitutional.employment_dispatch_stops WHERE tenant_id = {tenant} AND relationship_ref = {relationshipId.ToString("D")}")
+                        .AnyAsync(cts.Token);
+                    if (stopped)
+                    {
+                        await WriteAuditSinkRecordAsync(req, rawTenantId, "DENIED", "C-001", cts.Token);
+                        return new ValidateActionResponse
+                        {
+                            Decision = ValidationDecision.Deny,
+                            ConstitutionalBasis = "C-001",
+                            Reason = "Emergency Stop is active.",
+                        };
+                    }
+                }
+            }
             var results = await _registry.EvaluateAllAsync(evalCtx, cts.Token);
 
             // Any Deny verdict overrides; Escalate is returned if no Deny but escalation needed.
@@ -395,6 +428,11 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
         catch (RpcException)
         {
             throw;
+        }
+        catch (System.Text.Json.JsonException ex) when (req.ActionType is "CONVERSATION_EXECUTION" or "CONVERSATION_MODEL_RESERVATION")
+        {
+            _logger.LogWarning(ex, "Conversation authorization rejected malformed action parameters.");
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "Conversation action parameters must be valid JSON."));
         }
         catch (OperationCanceledException)
             when (cts.IsCancellationRequested && !ctx.CancellationToken.IsCancellationRequested)
@@ -824,6 +862,7 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
             var stopEvent = new EmergencyStopEvent
             {
                 Id = stopEventId,
+                TenantId = tenantGuid,
                 ContractId = contractGuid,
                 InitiatedByUserId = req.StoppedBy,
                 AffectedSessionIds = affectedSessions.ToArray(),
@@ -836,8 +875,25 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
                 cts.Token
             );
 
-            await emergencyDb.Set<EmergencyStopEvent>().AddAsync(stopEvent, cts.Token);
-            await emergencyDb.SaveChangesAsync(cts.Token);
+            if (emergencyDb.Database.IsRelational())
+            {
+                await using var transaction = await emergencyDb.Database.BeginTransactionAsync(cts.Token);
+                await emergencyDb.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT set_config('app.current_tenant_id', {tenantGuid.ToString("D")}, true)", cts.Token);
+                await emergencyDb.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT ai_runtime.lock_employment_dispatch({tenantGuid}, {contractGuid.ToString("D")})", cts.Token);
+                await emergencyDb.Database.ExecuteSqlInterpolatedAsync(
+                    $"INSERT INTO constitutional.employment_dispatch_stops (tenant_id, relationship_ref) VALUES ({tenantGuid}, {contractGuid.ToString("D")}) ON CONFLICT DO NOTHING",
+                    cts.Token);
+                await emergencyDb.Set<EmergencyStopEvent>().AddAsync(stopEvent, cts.Token);
+                await emergencyDb.SaveChangesAsync(cts.Token);
+                await transaction.CommitAsync(cts.Token);
+            }
+            else
+            {
+                await emergencyDb.Set<EmergencyStopEvent>().AddAsync(stopEvent, cts.Token);
+                await emergencyDb.SaveChangesAsync(cts.Token);
+            }
 
             _logger.LogInformation(
                 "TriggerEmergencyStop: EmergencyStopEvent persisted. "
@@ -851,9 +907,11 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
             // Temporal signal failures are tolerated — DB record is source of truth.
             // Each failure is logged (C-082: never swallow silently).
             var temporalSignalledAt = default(DateTimeOffset?);
+            var pendingSessions = new List<string>();
 
             if (_temporalClient is not null && affectedSessions.Count > 0)
             {
+                var allSignalsDelivered = true;
                 foreach (var sessionId in affectedSessions)
                 {
                     try
@@ -861,11 +919,18 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
                         var handle = _temporalClient.GetWorkflowHandle(sessionId);
                         await handle.SignalAsync("EmergencyStop", Array.Empty<object>());
                     }
+                    catch (Temporalio.Exceptions.RpcException ex)
+                        when (ex.Code == Temporalio.Exceptions.RpcException.StatusCode.NotFound)
+                    {
+                        _logger.LogInformation(
+                            "Emergency Stop target has no active workflow; durable dispatch fence remains latched. StopEventId={StopEventId} SessionId={SessionId}",
+                            stopEventId, sessionId);
+                    }
                     catch (Exception ex)
                     {
+                        allSignalsDelivered = false;
+                        pendingSessions.Add(sessionId);
                         // C-082 ERROR HANDLING RULE 1: log; do not swallow silently.
-                        // The DB record guarantees constitutional enforcement regardless
-                        // of Temporal signal outcome.
                         _logger.LogError(
                             ex,
                             "TriggerEmergencyStop: Temporal signal failed for session. "
@@ -877,10 +942,14 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
                     }
                 }
 
-                temporalSignalledAt = DateTimeOffset.UtcNow;
+                if (allSignalsDelivered)
+                {
+                    temporalSignalledAt = DateTimeOffset.UtcNow;
+                }
             }
             else if (_temporalClient is null)
             {
+                pendingSessions.AddRange(affectedSessions);
                 _logger.LogWarning(
                     "TriggerEmergencyStop: ITemporalClient is null; Temporal signals skipped. "
                         + "StopEventId={StopEventId} ContractId={ContractId}",
@@ -897,7 +966,16 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
                 try
                 {
                     stopEvent.TemporalSignalledAt = temporalSignalledAt;
-                    await emergencyDb.SaveChangesAsync(CancellationToken.None);
+                    if (emergencyDb.Database.IsRelational())
+                    {
+                        await using var transaction = await emergencyDb.Database.BeginTransactionAsync(cts.Token);
+                        await emergencyDb.Database.ExecuteSqlInterpolatedAsync(
+                            $"SELECT set_config('app.current_tenant_id', {tenantGuid.ToString("D")}, true)", cts.Token);
+                        await emergencyDb.SaveChangesAsync(cts.Token);
+                        await transaction.CommitAsync(cts.Token);
+                    }
+                    else
+                        await emergencyDb.SaveChangesAsync(CancellationToken.None);
                 }
                 catch (Exception ex)
                 {
@@ -926,6 +1004,7 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
             {
                 EmergencyStopRecordId = $"EMERGENCY_STOP:{stopEventId}",
                 AffectedSessions = { affectedSessions },
+                PendingSessions = { pendingSessions },
                 RecordedAt = Timestamp.FromDateTimeOffset(triggeredAt),
             };
         }

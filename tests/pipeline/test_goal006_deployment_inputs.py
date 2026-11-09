@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import hashlib
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -10,6 +12,7 @@ from goal006_deployment_inputs import (
     LEASE_FIELDS,
     add_key_vault_references,
     create_inputs,
+    whatsapp_monitoring_inputs,
 )
 from goal006_registry_manifest import RELEASE_MEMBERS
 
@@ -85,6 +88,109 @@ def configuration(environment: str = "demo") -> dict[str, Any]:
     return values
 
 
+def monitoring_configuration() -> dict[str, Any]:
+    prefix = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/waooaw-demo-rg/providers/"
+    query = Path(__file__).parents[2] / "infrastructure/operations/wc134-whatsapp-monitor.kql"
+    return {
+        "workspace_id": prefix + "Microsoft.OperationalInsights/workspaces/law-waooaw-demo-validation",
+        "action_group_id": prefix + "Microsoft.Insights/actionGroups/approved-demo-receiver",
+        "approval_reference": "test:reviewed-monitor-plan",
+        "query_digest": "sha256:" + hashlib.sha256(query.read_bytes()).hexdigest(),
+        "activation_digest": "d" * 64,
+        "release_digest": "sha256:" + "a" * 64,
+        "configuration_digest": "sha256:" + "b" * 64,
+        "starts_at": "2026-11-07T09:00:00Z",
+        "expires_at": "2026-11-07T09:30:00Z",
+    }
+
+
+def test_monitoring_defaults_off_and_preserves_exact_reviewed_tuple() -> None:
+    values = configuration()
+    assert "whatsapp_monitoring" not in create_inputs("demo", manifest(), values, True)
+    values["whatsapp_monitoring"] = monitoring_configuration()
+    inputs = create_inputs("demo", manifest(), values, True)
+    assert inputs["whatsapp_monitoring"] == values["whatsapp_monitoring"]
+    assert "whatsapp_provider" not in inputs
+
+
+@pytest.mark.parametrize("environment", ["uat", "prod"])
+def test_monitoring_does_not_admit_other_environments(environment: str) -> None:
+    with pytest.raises(ValueError, match="Demo-only"):
+        whatsapp_monitoring_inputs(environment, {"whatsapp_monitoring": monitoring_configuration()}, manifest())
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("approval_reference", ""),
+        ("query_digest", "sha256:" + "0" * 64),
+        ("release_digest", "sha256:" + "c" * 64),
+        ("configuration_digest", "latest"),
+        ("activation_digest", "opaque-activation-reference"),
+        ("starts_at", "2026-11-07T09:00:00"),
+        ("starts_at", "2026-13-07T09:00:00Z"),
+        ("expires_at", "2026-11-07T09:00:00Z"),
+        ("workspace_id", "/unrelated/workspace"),
+        ("action_group_id", "/unrelated/receiver"),
+        ("activation_digest", None),
+    ],
+)
+def test_monitoring_rejects_invalid_plan_before_terraform(field: str, value: Any) -> None:
+    monitoring = monitoring_configuration()
+    monitoring[field] = value
+    with pytest.raises(ValueError):
+        whatsapp_monitoring_inputs("demo", {"whatsapp_monitoring": monitoring}, manifest())
+
+
+def test_monitoring_rejects_unknown_fields_and_cross_subscription_receiver() -> None:
+    monitoring = monitoring_configuration()
+    monitoring["phone_number"] = "not-an-approved-field"
+    with pytest.raises(ValueError, match="closed"):
+        whatsapp_monitoring_inputs("demo", {"whatsapp_monitoring": monitoring}, manifest())
+    del monitoring["phone_number"]
+    monitoring["action_group_id"] = monitoring["action_group_id"].replace(
+        "00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002"
+    )
+    with pytest.raises(ValueError, match="subscription/group"):
+        whatsapp_monitoring_inputs("demo", {"whatsapp_monitoring": monitoring}, manifest())
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("starts_at", "2025-11-07T09:00:00Z"),
+        ("expires_at", "2100-11-07T09:30:00Z"),
+    ],
+)
+def test_monitoring_window_cannot_extend_workload_lease(field: str, value: str) -> None:
+    values = configuration()
+    monitoring = monitoring_configuration()
+    monitoring[field] = value
+    values["whatsapp_monitoring"] = monitoring
+    with pytest.raises(ValueError, match="contained"):
+        create_inputs("demo", manifest(), values, True)
+
+
+def test_monitoring_rule_uses_exact_machine_observation_and_existing_receiver() -> None:
+    root = Path(__file__).parents[2]
+    query = (root / "infrastructure/operations/wc134-whatsapp-monitor.kql").read_text()
+    rule = (root / "infrastructure/terraform/phase2/modules/workload/whatsapp-monitoring.tf").read_text()
+    entry = (root / "infrastructure/terraform/phase2/environments/demo/workload/main.tf").read_text()
+    for field in ("activationDigest", "releaseDigest", "configurationDigest"):
+        assert "Observation." + field in query
+    assert 'Observation.kind == "HEARTBEAT"' in query
+    assert "ObservedAt >= ago(2m) and ObservedAt <= now()" in query
+    assert "now() >= StartsAt + 2m and Heartbeats == 0" in query
+    assert "now() >= StartsAt and now() < ExpiresAt" in query
+    assert "OPERATIONS_HEARTBEAT_MISSING" in query
+    assert "var.workload_enabled && var.whatsapp_monitoring != null ? 1 : 0" in rule
+    assert "evaluation_frequency" in rule and '"PT1M"' in rule
+    assert "action_groups = [var.whatsapp_monitoring.action_group_id]" in rule
+    assert 'resource "azurerm_monitor_action_group"' not in rule
+    assert "whatsapp_monitoring" in entry
+    assert "log_analytics_workspace_id" in entry
+
+
 @pytest.mark.parametrize("environment", ["demo", "uat"])
 def test_nonproduction_inputs_require_lease_and_preserve_exact_tuple(environment: str) -> None:
     inputs = create_inputs(
@@ -112,8 +218,10 @@ def whatsapp_configuration() -> dict[str, Any]:
         "secret_versions": {
             name: "a" * 32
             for name in (
-                "whatsapp-provider-binding", "whatsapp-verify-token",
-                "whatsapp-app-secret", "whatsapp-outbound-authority",
+                "whatsapp-provider-binding",
+                "whatsapp-verify-token",
+                "whatsapp-app-secret",
+                "whatsapp-outbound-authority",
             )
         },
         "authority_reference": "FA:demo-provider",
@@ -132,13 +240,22 @@ def test_whatsapp_deployment_inputs_pin_release_and_remain_registration_only() -
     assert provider["catalog_digest"].startswith("sha256:")
     assert provider["verification_enabled"] is False
     assert set(provider) == {
-        "callback_host", "secret_versions", "authority_reference", "verification_enabled",
-        "release_digest", "configuration_digest", "catalog_digest",
+        "callback_host",
+        "secret_versions",
+        "authority_reference",
+        "verification_enabled",
+        "release_digest",
+        "configuration_digest",
+        "catalog_digest",
     }
     values["whatsapp_provider"]["verification_enabled"] = True
     changed = create_inputs("demo", manifest(), values, True)["whatsapp_provider"]
     assert changed["configuration_digest"] != provider["configuration_digest"]
     assert changed["verification_enabled"] is True
+    values = whatsapp_configuration()
+    values["whatsapp_provider"]["secret_versions"]["whatsapp-phone-subject-hmac"] = "e" * 32
+    public = create_inputs("demo", manifest(), values, True)["whatsapp_provider"]
+    assert public["secret_versions"]["whatsapp-phone-subject-hmac"] == "e" * 32
 
 
 @pytest.mark.parametrize("environment", ["uat", "prod"])
@@ -147,10 +264,20 @@ def test_whatsapp_configuration_cannot_cross_environments(environment: str) -> N
         create_inputs(environment, manifest(), whatsapp_configuration(), True)
 
 
-@pytest.mark.parametrize("mutation", [
-    "unknown", "media", "missing-secret", "wrong-version", "wrong-host",
-    "url-in-host", "empty-authority", "string-switch", "wrong-vault",
-])
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "unknown",
+        "media",
+        "missing-secret",
+        "wrong-version",
+        "wrong-host",
+        "url-in-host",
+        "empty-authority",
+        "string-switch",
+        "wrong-vault",
+    ],
+)
 def test_invalid_whatsapp_configuration_fails_before_terraform(mutation: str) -> None:
     values = whatsapp_configuration()
     provider = values["whatsapp_provider"]

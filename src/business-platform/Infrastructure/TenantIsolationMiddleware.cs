@@ -207,18 +207,24 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<TenantDbConnectionInterceptor> _logger;
     private readonly WhatsAppTenantExecutionScope? _whatsAppTenantExecution;
+    private readonly ConversationRuntimeWorkScope? _runtimeWork;
+    private readonly ConversationBatchWorkScope? _batchWork;
     private readonly ConcurrentDictionary<DbCommand, DbTransaction> _ownedTransactions = new();
 
     public TenantDbConnectionInterceptor(
         IHttpContextAccessor httpContextAccessor,
         ILogger<TenantDbConnectionInterceptor> logger,
-        WhatsAppTenantExecutionScope? whatsAppTenantExecution = null
+        WhatsAppTenantExecutionScope? whatsAppTenantExecution = null,
+        ConversationRuntimeWorkScope? runtimeWork = null,
+        ConversationBatchWorkScope? batchWork = null
     )
     {
         _httpContextAccessor =
             httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _whatsAppTenantExecution = whatsAppTenantExecution;
+        _runtimeWork = runtimeWork;
+        _batchWork = batchWork;
     }
 
     // ── Synchronous intercepts ───────────────────────────────────────────────
@@ -446,6 +452,44 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
 
     private string? CurrentTenantId()
     {
+        if (_batchWork?.Current is { } batch)
+            return batch.TenantId.ToString("D");
+        if (_runtimeWork?.Current is { } runtime)
+        {
+            if (
+                _whatsAppTenantExecution?.CurrentTenantId is { } whatsAppTenant
+                && whatsAppTenant != runtime.TenantId
+            )
+                throw new InvalidOperationException(
+                    "Runtime work cannot override another tenant authority."
+                );
+            if (
+                _httpContextAccessor.HttpContext?.Items[TenantIsolationMiddleware.TenantIdItemKey]
+                    is string httpTenant
+                && httpTenant != runtime.TenantId.ToString("D")
+            )
+                throw new InvalidOperationException(
+                    "Runtime work cannot override HTTP tenant authority."
+                );
+            return runtime.TenantId.ToString("D");
+        }
+        if (_whatsAppTenantExecution?.DatabaseTenantOverrideId is Guid overrideTenantId)
+            return overrideTenantId.ToString("D");
+        if (
+            _whatsAppTenantExecution?.CurrentTenantId is { } executionTenant
+            && _whatsAppTenantExecution.ServiceTenantId != executionTenant
+        )
+        {
+            if (
+                _httpContextAccessor.HttpContext?.Items[TenantIsolationMiddleware.TenantIdItemKey]
+                    is string requestTenant
+                && requestTenant != executionTenant.ToString("D")
+            )
+                throw new InvalidOperationException(
+                    "WhatsApp routing cannot override HTTP tenant authority."
+                );
+            return executionTenant.ToString("D");
+        }
         var httpContext = _httpContextAccessor.HttpContext;
         if (
             httpContext is null

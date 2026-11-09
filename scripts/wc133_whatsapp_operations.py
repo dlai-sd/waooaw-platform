@@ -18,7 +18,12 @@ from pathlib import Path
 from typing import Any
 
 from goal006_azure_resource_id import canonical_container_app_id
-from goal006_deployment_inputs import WHATSAPP_SECRET_NAMES, add_key_vault_references, whatsapp_provider_inputs
+from goal006_deployment_inputs import (
+    WHATSAPP_PUBLIC_SUBJECT_KEY_NAME,
+    WHATSAPP_SECRET_NAMES,
+    add_key_vault_references,
+    whatsapp_provider_inputs,
+)
 from goal006_demo_revision_cleanup import reconcile as reconcile_revisions
 from wc120_whatsapp_activation import _read_json, activation_settings, assemble_activation_bundle
 
@@ -35,7 +40,29 @@ TRAFFIC = {
     for section in ("WhatsApp", "Wc120Conversation")
     for flag in ("CallbackAcceptanceEnabled", "DispatchEnabled")
 }
-STOP = {**TRAFFIC, "WhatsAppCapability__ProviderAvailable": "false", "WhatsAppCapability__Revoked": "true"}
+TRAFFIC["IdentityVerification__WhatsApp__Enabled"] = "false"
+
+
+def provider_secret_names(configuration: dict[str, Any]) -> list[str]:
+    names = set(WHATSAPP_SECRET_NAMES)
+    provider = configuration.get("whatsapp_provider")
+    if (
+        isinstance(provider, dict)
+        and isinstance(provider.get("secret_versions"), dict)
+        and WHATSAPP_PUBLIC_SUBJECT_KEY_NAME in provider["secret_versions"]
+    ):
+        names.add(WHATSAPP_PUBLIC_SUBJECT_KEY_NAME)
+    return sorted(names)
+
+
+STOP = {
+    **TRAFFIC,
+    "WhatsAppCapability__ProviderAvailable": "false",
+    "WhatsAppCapability__Revoked": "true",
+    "WhatsAppCapability__Authority__AllowRegistrationVerification": "false",
+    "WhatsAppCapability__Authority__AllowProvisionalOnboarding": "false",
+    "WhatsAppCapability__Authority__AllowPublicAdmission": "false",
+}
 
 
 class ProviderCommandError(RuntimeError):
@@ -116,6 +143,10 @@ def registration_settings(provider: dict[str, Any], client_id: str) -> dict[str,
         "WhatsAppProvider__Environment": "demo",
         "WhatsAppProvider__VaultHost": "kv-waooaw-demo.vault.azure.net",
         "WhatsAppProvider__ManagedIdentityClientId": client_id,
+        "WhatsAppProvider__PhoneSubjectKeyVersion": provider["secret_versions"].get(WHATSAPP_PUBLIC_SUBJECT_KEY_NAME, ""),
+        "WhatsAppCapability__PublicAdmissionIdentityKeyAvailable": (
+            "true" if WHATSAPP_PUBLIC_SUBJECT_KEY_NAME in provider["secret_versions"] else "false"
+        ),
         **{
             f"WhatsAppProvider__{key}Version": provider["secret_versions"][name]
             for key, name in (
@@ -367,7 +398,7 @@ def apply_settings(directory: Path) -> None:
     if plan["operation"] == "register":
         resolved = deployment(configuration, resource)
         scope_root = next(iter(resolved["key_vault_secret_resource_ids"].values())).split("/secrets/", 1)[0]
-        for name in sorted(WHATSAPP_SECRET_NAMES):
+        for name in provider_secret_names(configuration):
             scope = f"{scope_root}/secrets/{name}"
             assignments = az(
                 "role",
@@ -609,7 +640,7 @@ def adopt(directory: Path) -> None:
             app_id + "/customDomainName/" + provider["callback_host"]
         )
     vault = next(iter(configuration["key_vault_secret_resource_ids"].values())).split("/secrets/", 1)[0]
-    for name in sorted(WHATSAPP_SECRET_NAMES):
+    for name in provider_secret_names(configuration):
         scope = f"{vault}/secrets/{name}"
         matches = [
             value
@@ -706,7 +737,7 @@ def main() -> int:
                 )
                 evidence["credential_metadata"] = "READY"
                 groups = {
-                    "AUTHORITY": any(key.startswith("WhatsAppCapability__Authority__") for key in actual),
+                    "AUTHORITY": bool(actual.get("WhatsAppCapability__Authority__ActivationReference")),
                     "POLICIES": all(
                         actual.get(f"Wc120Conversation__{key}")
                         for key in (

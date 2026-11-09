@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import type { ConversationMessageV1 } from '@/lib/api/generated/models/ConversationMessageV1';
+import { ConversationExecutionStatusV1FromJSON } from '@/lib/api/generated/models/ConversationExecutionStatusV1';
+import { ConversationReconciliationOutcomeV1FromJSON } from '@/lib/api/generated/models/ConversationReconciliationOutcomeV1';
 import type { ConversationStreamEventV1 } from '@/lib/api/generated/models/ConversationStreamEventV1';
 import { ConversationSubmissionV1FromJSON } from '@/lib/api/generated/models/ConversationSubmissionV1';
 import {
@@ -174,18 +176,28 @@ function MessageStatus({ message }: { message: ConversationMessageV1 }) {
       ? { icon: CircleCheck, label: 'Accepted by WAOOAW' }
       : message.deliveryState === 'LOCAL_ONLY'
         ? { icon: Clock3, label: 'Unsent on this device' }
-        : { icon: CircleAlert, label: message.deliveryState === 'FAILED' ? 'Send failed' : 'Send outcome unresolved' };
+        : {
+            icon: CircleAlert,
+            label: message.deliveryState === 'FAILED' ? 'Send failed' : 'Send outcome unresolved',
+          };
   const processing =
     message.processingState === 'RUNNING' || message.processingState === 'QUEUED'
       ? { icon: LoaderCircle, label: 'Professional processing' }
       : message.processingState === 'COMPLETED'
         ? { icon: Check, label: 'Professional response complete' }
-        : { icon: Ban, label: `Professional processing ${message.processingState.toLowerCase()}` };
+        : {
+            icon: Ban,
+            label: `Professional processing ${message.processingState.toLowerCase()}`,
+          };
   const evidence =
     message.evidenceState === 'RECORDED' && Boolean(message.evidenceRecordId)
       ? { icon: CircleCheck, label: 'Evidence recorded', className: 'recorded' }
       : message.evidenceState === 'RECORDED'
-        ? { icon: CircleAlert, label: 'Evidence pending verification', className: 'pending' }
+        ? {
+            icon: CircleAlert,
+            label: 'Evidence pending verification',
+            className: 'pending',
+          }
         : message.evidenceState === 'PENDING'
           ? { icon: Clock3, label: 'Evidence pending', className: 'pending' }
           : {
@@ -225,6 +237,7 @@ export function ConversationExperience({
   const [connection, setConnection] = useState<ConnectionState>(relationshipStopped ? 'stopped' : 'connecting');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [recoveringMessageId, setRecoveringMessageId] = useState<string>();
   const [error, setError] = useState('');
   const [announcement, setAnnouncement] = useState('');
 
@@ -305,7 +318,12 @@ export function ConversationExperience({
         const response = await fetch(`/api/conversations/${encodeURIComponent(relationshipId)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'send', ...contribution, locale, expectedCursor: cursor || undefined }),
+          body: JSON.stringify({
+            action: 'send',
+            ...contribution,
+            locale,
+            expectedCursor: cursor || undefined,
+          }),
         });
         if (!response.ok) throw new Error(await readProblem(response));
         const submission = ConversationSubmissionV1FromJSON(await response.json());
@@ -431,7 +449,11 @@ export function ConversationExperience({
       const headers = new Headers({ Accept: 'text/event-stream' });
       if (lastEventId) headers.set('Last-Event-ID', lastEventId);
       try {
-        const response = await fetch(streamUrl, { cache: 'no-store', headers, signal: controller.signal });
+        const response = await fetch(streamUrl, {
+          cache: 'no-store',
+          headers,
+          signal: controller.signal,
+        });
         if (response.status === 410) {
           if (cursorExpiryReconciled) {
             setError('Conversation stream history remains unavailable after reconciliation.');
@@ -527,7 +549,9 @@ export function ConversationExperience({
       setConnection('offline');
       return;
     }
-    const page = await fetchTimeline({ afterCursor: authoritativeCursor || undefined }).catch(() => undefined);
+    const page = await fetchTimeline({
+      afterCursor: authoritativeCursor || undefined,
+    }).catch(() => undefined);
     if (page) await reconcileContribution(contribution, page);
   }
 
@@ -543,7 +567,11 @@ export function ConversationExperience({
       const response = await fetch(`/api/conversations/${encodeURIComponent(relationshipId)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'retry', messageId: message.messageId, idempotencyKey }),
+        body: JSON.stringify({
+          action: 'retry',
+          messageId: message.messageId,
+          idempotencyKey,
+        }),
       });
       if (!response.ok) throw new Error(await readProblem(response));
       const submission = ConversationSubmissionV1FromJSON(await response.json());
@@ -552,6 +580,45 @@ export function ConversationExperience({
       setAnnouncement('Retry accepted for the original message.');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Retry outcome is unknown.');
+    }
+  }
+
+  async function recover(message: ConversationMessageV1) {
+    if (recoveringMessageId || connection === 'stopped') return;
+    setRecoveringMessageId(message.messageId);
+    setError('');
+    try {
+      const status = await fetch(
+        `/api/conversations/${encodeURIComponent(relationshipId)}?messageExecutionId=${encodeURIComponent(message.messageId)}`,
+        { cache: 'no-store' }
+      );
+      if (!status.ok) throw new Error(await readProblem(status));
+      const execution = ConversationExecutionStatusV1FromJSON(await status.json());
+      if (!Number.isSafeInteger(execution.projectionVersion) || execution.projectionVersion === undefined)
+        throw new Error('Recovery version is unavailable. Refresh before checking this result.');
+      const response = await fetch(`/api/conversations/${encodeURIComponent(relationshipId)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reconcile',
+          executionId: execution.executionId,
+          messageId: message.messageId,
+          expectedProjectionVersion: execution.projectionVersion,
+          idempotencyKey: crypto.randomUUID(),
+        }),
+      });
+      if (!response.ok) throw new Error(await readProblem(response));
+      const outcome = ConversationReconciliationOutcomeV1FromJSON(await response.json());
+      await fetchTimeline();
+      setAnnouncement(
+        outcome.state === 'UNRESOLVED'
+          ? 'The original runtime result is still unknown. Operator reconciliation is required. No work was restarted.'
+          : 'The original runtime result was recovered. No work was restarted.'
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Recovery outcome is unknown. No work was restarted.');
+    } finally {
+      setRecoveringMessageId(undefined);
     }
   }
 
@@ -570,7 +637,9 @@ export function ConversationExperience({
       return;
     }
     setAnnouncement('Cancellation requested. Accepted partial content remains incomplete.');
-    await fetchTimeline({ afterCursor: authoritativeCursor || undefined }).catch(() => undefined);
+    await fetchTimeline({
+      afterCursor: authoritativeCursor || undefined,
+    }).catch(() => undefined);
   }
 
   let previousDate = '';
@@ -649,6 +718,18 @@ export function ConversationExperience({
                   />
                 ))}
                 <MessageStatus message={message} />
+                {message.actor === 'CUSTOMER' &&
+                (['QUEUED', 'RUNNING', 'UNRESOLVED'].includes(message.processingState) ||
+                  message.deliveryState === 'UNRESOLVED') ? (
+                  <button
+                    className="retry-command"
+                    disabled={Boolean(recoveringMessageId) || connection === 'stopped'}
+                    onClick={() => void recover(message)}
+                    type="button"
+                  >
+                    Check original runtime result
+                  </button>
+                ) : null}
                 {message.deliveryState === 'FAILED' || message.deliveryState === 'UNRESOLVED' ? (
                   <button className="retry-command" onClick={() => void retry(message)} type="button">
                     <RotateCcw aria-hidden="true" size={16} />
@@ -728,9 +809,9 @@ export function ConversationExperience({
           {error}
         </p>
       ) : null}
-      <p className="visually-hidden" aria-live="polite" aria-atomic="true">
+      <output className="visually-hidden" aria-live="polite" aria-atomic="true">
         {announcement}
-      </p>
+      </output>
     </section>
   );
 }

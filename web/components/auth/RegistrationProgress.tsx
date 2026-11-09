@@ -18,7 +18,7 @@ const letters = [
 const progressState: Record<IdentityNextAction, { active: number; label: string }> = {
   COMPLETE_PROFILE: { active: 1, label: 'Profile details' },
   VERIFY_EMAIL: { active: 2, label: 'Email verification' },
-  VERIFY_MOBILE: { active: 3, label: 'Optional mobile verification' },
+  VERIFY_MOBILE: { active: 3, label: 'WhatsApp number verification' },
   COMPLETE_REGISTRATION: { active: 4, label: 'Registration review' },
   RESOLVE_DUPLICATE: { active: 4, label: 'Identity confirmation' },
   CONTINUE_TO_DEFAULT_TARGET: { active: 6, label: 'Registration complete' },

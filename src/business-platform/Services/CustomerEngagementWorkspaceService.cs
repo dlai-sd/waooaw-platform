@@ -385,16 +385,62 @@ public sealed class CustomerEngagementWorkspaceService
         );
         if (binding is null)
             throw new CustomerEngagementNotAccessibleException();
+        if (
+            !Enum.TryParse<RelationshipParticipantRole>(
+                binding.ParticipantRole,
+                true,
+                out var boundRole
+            )
+        )
+            throw new CustomerEngagementNotAccessibleException();
+        var participantBindingId = await db
+            .RelationshipParticipants.Where(value =>
+                value.TenantId == tenantId
+                && value.RelationshipId == relationshipId
+                && value.ParticipantId == participantId
+                && value.Role == boundRole
+                && value.Status == "ACTIVE"
+                && value.RevokedAt == null
+            )
+            .Select(value => (Guid?)value.BindingId)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (participantBindingId is null)
+            throw new CustomerEngagementNotAccessibleException();
         if (existing is not null || binding.Status == "ENDED")
+        {
+            if (
+                binding.Status != "ENDED"
+                || binding.RevokedAt is null
+                || binding.RevokedEvidenceId is not { } recordedEvidence
+                || recordedEvidence == Guid.Empty
+            )
+                throw new CustomerEngagementNotAccessibleException();
             return new(
                 channelSessionId,
                 binding.Channel,
                 1,
-                binding.RevokedAt ?? binding.BoundAt ?? binding.CreatedAt,
+                binding.RevokedAt.Value,
                 true,
-                binding.RevokedEvidenceId ?? Guid.Empty
+                recordedEvidence
             );
+        }
+        if (binding.Status != "ACTIVE" || binding.RevokedAt is not null)
+            throw new CustomerEngagementNotAccessibleException();
         ValidateChannelSessionVersion(expectedVersion);
+        var originalRelationship = (
+            relationship.State,
+            relationship.StateVersion,
+            relationship.ProfessionalType
+        );
+        var originalBinding = (
+            binding.Channel,
+            binding.ExternalSubjectHash,
+            binding.ConversationId,
+            binding.ParticipantRole,
+            binding.BoundAt,
+            binding.BoundEvidenceId,
+            binding.AssuranceLevel
+        );
 
         var evidenceId = await _constitutionalGateway.AuthorizeAndRecordAsync(
             tenantId,
@@ -411,6 +457,90 @@ public sealed class CustomerEngagementWorkspaceService
             cancellationToken
         );
         var endedAt = DateTimeOffset.UtcNow;
+        await using var transaction = db.Database.IsNpgsql()
+            ? await db.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+        if (transaction is not null)
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT relationship_id FROM business.employment_relationships WHERE tenant_id = {tenantId} AND relationship_id = {relationshipId} FOR SHARE",
+                cancellationToken
+            );
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT binding_id FROM business.relationship_participants WHERE tenant_id = {tenantId} AND relationship_id = {relationshipId} AND participant_id = {participantId} FOR SHARE",
+                cancellationToken
+            );
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT binding_id FROM business.channel_bindings WHERE tenant_id = {tenantId} AND binding_id = {channelSessionId} FOR UPDATE",
+                cancellationToken
+            );
+        }
+        await db.Entry(relationship).ReloadAsync(cancellationToken);
+        await db.Entry(binding).ReloadAsync(cancellationToken);
+        if (
+            db.Entry(relationship).State == EntityState.Detached
+            || (relationship.State, relationship.StateVersion, relationship.ProfessionalType)
+                != originalRelationship
+            || db.Entry(binding).State == EntityState.Detached
+            || binding.RelationshipId != relationshipId
+            || binding.ParticipantId != participantId
+            || (
+                binding.Channel,
+                binding.ExternalSubjectHash,
+                binding.ConversationId,
+                binding.ParticipantRole,
+                binding.BoundAt,
+                binding.BoundEvidenceId,
+                binding.AssuranceLevel
+            ) != originalBinding
+            || !await db.RelationshipParticipants.AnyAsync(
+                value =>
+                    value.TenantId == tenantId
+                    && value.RelationshipId == relationshipId
+                    && value.ParticipantId == participantId
+                    && value.Status == "ACTIVE"
+                    && value.BindingId == participantBindingId
+                    && value.Role == boundRole
+                    && value.RevokedAt == null,
+                cancellationToken
+            )
+        )
+            throw new CustomerEngagementNotAccessibleException();
+        var committedReplay = await db
+            .RelationshipIdempotency.AsNoTracking()
+            .SingleOrDefaultAsync(
+                value =>
+                    value.TenantId == tenantId
+                    && value.Purpose == purpose
+                    && value.IdempotencyKey == idempotencyKey,
+                cancellationToken
+            );
+        if (
+            committedReplay is not null
+            && committedReplay.MaterialRequestHash != materialRequestHash
+        )
+            throw new CustomerEngagementIdempotencyConflictException();
+        if (binding.Status == "ENDED")
+        {
+            if (
+                binding.RevokedAt is null
+                || binding.RevokedEvidenceId is not { } recordedEvidence
+                || recordedEvidence == Guid.Empty
+            )
+                throw new CustomerEngagementNotAccessibleException();
+            if (transaction is not null)
+                await transaction.CommitAsync(cancellationToken);
+            return new(
+                channelSessionId,
+                binding.Channel,
+                1,
+                binding.RevokedAt.Value,
+                true,
+                recordedEvidence
+            );
+        }
+        if (binding.Status != "ACTIVE" || binding.RevokedAt is not null || evidenceId == Guid.Empty)
+            throw new CustomerEngagementNotAccessibleException();
         binding.Status = "ENDED";
         binding.RevokedAt = endedAt;
         binding.RevokedEvidenceId = evidenceId;
@@ -428,6 +558,8 @@ public sealed class CustomerEngagementWorkspaceService
             }
         );
         await db.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
         return new(channelSessionId, binding.Channel, 1, endedAt, false, evidenceId);
     }
 

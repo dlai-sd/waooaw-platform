@@ -3511,6 +3511,17 @@ jobs:
             --interval-seconds 10 \
             --output wc124-keycloak-realm-refresh.json
 
+      - name: Exclude old Demo dispatch replicas before candidate activation
+        if: inputs.apply && inputs.environment == 'demo'
+        env:
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+        run: |
+          set -euo pipefail
+          python3 scripts/wc134_dispatch_rollout.py \
+            --resource-group "$RESOURCE_GROUP" \
+            --tfvars infrastructure/terraform/phase2/environments/demo/workload/workload.auto.tfvars.json \
+            --output wc134-dispatch-rollout.json
+
       - name: Plan application activation after migration
         if: inputs.apply
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload

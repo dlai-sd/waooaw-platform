@@ -1,3 +1,20 @@
+variable "whatsapp_monitoring" {
+  description = "Reviewed bounded operational alert tuple; null preserves the existing no-monitoring default."
+  type = object({
+    workspace_id         = string
+    action_group_id      = string
+    approval_reference   = string
+    query_digest         = string
+    activation_digest    = string
+    release_digest       = string
+    configuration_digest = string
+    starts_at            = string
+    expires_at           = string
+  })
+  default  = null
+  nullable = true
+}
+
 variable "image_digests" {
   type = map(string)
 }

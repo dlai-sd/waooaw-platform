@@ -7,14 +7,22 @@ using Waooaw.BusinessPlatform.Services;
 
 namespace Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness;
 
-internal sealed class ConversationFitnessDbFactory(string databaseName)
-    : IDbContextFactory<ConversationStoreDbContext>
+internal sealed class ConversationFitnessDbFactory : IDbContextFactory<ConversationStoreDbContext>
 {
-    private readonly DbContextOptions<ConversationStoreDbContext> _options =
-        new DbContextOptionsBuilder<ConversationStoreDbContext>()
-            .UseInMemoryDatabase(databaseName)
-            .ConfigureWarnings(value => value.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
+    private readonly DbContextOptions<ConversationStoreDbContext> _options;
+
+    public ConversationFitnessDbFactory(string databaseName)
+        : this(
+            new DbContextOptionsBuilder<ConversationStoreDbContext>()
+                .UseInMemoryDatabase(databaseName)
+                .ConfigureWarnings(value => value.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+                .Options
+        ) { }
+
+    public ConversationFitnessDbFactory(DbContextOptions<ConversationStoreDbContext> options)
+    {
+        _options = options;
+    }
 
     public ConversationStoreDbContext CreateDbContext() => new(_options);
 }
@@ -79,6 +87,7 @@ internal sealed class Wc120FitnessContext
     public Guid TenantId { get; }
     public Guid ParticipantId { get; }
     public Guid RelationshipId { get; }
+    public Guid WhatsAppConversationId { get; } = Guid.NewGuid();
     public ConversationFitnessDbFactory Conversations { get; }
     public RelationshipFitnessDbFactory Relationships { get; }
     public PayloadFitnessDbFactory Payloads { get; }
@@ -88,14 +97,17 @@ internal sealed class Wc120FitnessContext
     public ConversationStopFence StopFence { get; }
 
     public static async Task<Wc120FitnessContext> CreateAsync(
-        string workspaceVersion = "workspace-1"
+        string workspaceVersion = "workspace-1",
+        ConversationFitnessDbFactory? conversationFactory = null
     )
     {
         var tenantId = Guid.NewGuid();
         var participantId = Guid.NewGuid();
         var relationshipId = Guid.NewGuid();
         var suffix = Guid.NewGuid().ToString("N");
-        var conversations = new ConversationFitnessDbFactory($"wc120-conversations-{suffix}");
+        var conversations =
+            conversationFactory
+            ?? new ConversationFitnessDbFactory($"wc120-conversations-{suffix}");
         var relationships = new RelationshipFitnessDbFactory($"wc120-relationships-{suffix}");
         var payloads = new PayloadFitnessDbFactory($"wc120-payloads-{suffix}");
         var options = new Wc120ConversationOptions
@@ -214,6 +226,19 @@ internal sealed class Wc120FitnessContext
 
     public async Task SeedWhatsAppEligibilityAsync(string recipientDigest, DateTimeOffset now)
     {
+        await using (var conversations = Conversations.CreateDbContext())
+        {
+            conversations.Conversations.Add(
+                new ConversationProjection
+                {
+                    Environment = Options.Environment,
+                    TenantId = TenantId,
+                    RelationshipId = RelationshipId,
+                    ConversationId = WhatsAppConversationId,
+                }
+            );
+            await conversations.SaveChangesAsync();
+        }
         await using var db = Relationships.CreateDbContext();
         db.ChannelBindings.Add(
             new ChannelBinding
@@ -224,7 +249,7 @@ internal sealed class Wc120FitnessContext
                 ParticipantRole = "EMPLOYER",
                 Channel = "WHATSAPP",
                 ExternalSubjectHash = recipientDigest,
-                ConversationId = Guid.NewGuid().ToString("D"),
+                ConversationId = WhatsAppConversationId.ToString("D"),
                 AssuranceLevel = "AAL1_CHANNEL",
                 Status = "ACTIVE",
             }
@@ -265,7 +290,7 @@ internal sealed class Wc120FitnessContext
             StopFence
         );
 
-    private static EmploymentWorkspaceSnapshot Workspace(
+    internal static EmploymentWorkspaceSnapshot Workspace(
         Guid tenantId,
         Guid relationshipId,
         string workspaceVersion

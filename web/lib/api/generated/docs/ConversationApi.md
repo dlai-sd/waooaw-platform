@@ -2,17 +2,19 @@
 
 All URIs are relative to _http://localhost:5001_
 
-| Method                                                                                  | HTTP request                                                                                                    | Description                                                             |
-| --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| [**cancelConversationExecution**](ConversationApi.md#cancelconversationexecution)       | **DELETE** /api/v1/employment/relationships/{relationshipId}/conversation/executions/{executionId}              | Request cancellation of one professional response execution             |
-| [**endConversationChannelSession**](ConversationApi.md#endconversationchannelsession)   | **POST** /api/v1/employment/relationships/{relationshipId}/conversation/channel-sessions/{channelSessionId}/end | End one conversation channel session without ending the relationship    |
-| [**listConversationMessages**](ConversationApi.md#listconversationmessages)             | **GET** /api/v1/employment/relationships/{relationshipId}/conversation/messages                                 | Read the authoritative durable conversation timeline                    |
-| [**listPortalInteractionMessages**](ConversationApi.md#listportalinteractionmessages)   | **GET** /api/v1/customer-portal/interactions/portal/messages                                                    | Read the authenticated participant\&#39;s durable WAOOAW Guide timeline |
-| [**retryConversationMessage**](ConversationApi.md#retryconversationmessage)             | **POST** /api/v1/employment/relationships/{relationshipId}/conversation/messages/{messageId}/retry              | Reconcile and retry one failed or unresolved contribution               |
-| [**sendConversationMessage**](ConversationApi.md#sendconversationmessage)               | **POST** /api/v1/employment/relationships/{relationshipId}/conversation/messages                                | Send or replay one customer text contribution                           |
-| [**sendPortalInteractionMessage**](ConversationApi.md#sendportalinteractionmessage)     | **POST** /api/v1/customer-portal/interactions/portal/messages                                                   | Send one durable contribution to the WAOOAW Guide                       |
-| [**streamConversation**](ConversationApi.md#streamconversation)                         | **GET** /api/v1/employment/relationships/{relationshipId}/conversation/stream                                   | Stream canonical conversation state as Server-Sent Events               |
-| [**updateConversationReadPosition**](ConversationApi.md#updateconversationreadposition) | **PUT** /api/v1/employment/relationships/{relationshipId}/conversation/read-position                            | Advance the authenticated participant\&#39;s unread position            |
+| Method                                                                                    | HTTP request                                                                                                    | Description                                                               |
+| ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| [**cancelConversationExecution**](ConversationApi.md#cancelconversationexecution)         | **DELETE** /api/v1/employment/relationships/{relationshipId}/conversation/executions/{executionId}              | Request cancellation of one professional response execution               |
+| [**endConversationChannelSession**](ConversationApi.md#endconversationchannelsession)     | **POST** /api/v1/employment/relationships/{relationshipId}/conversation/channel-sessions/{channelSessionId}/end | End one conversation channel session without ending the relationship      |
+| [**getConversationMessageExecution**](ConversationApi.md#getconversationmessageexecution) | **GET** /api/v1/employment/relationships/{relationshipId}/conversation/messages/{messageId}/execution           | Read the canonical execution identity and version for an original message |
+| [**listConversationMessages**](ConversationApi.md#listconversationmessages)               | **GET** /api/v1/employment/relationships/{relationshipId}/conversation/messages                                 | Read the authoritative durable conversation timeline                      |
+| [**listPortalInteractionMessages**](ConversationApi.md#listportalinteractionmessages)     | **GET** /api/v1/customer-portal/interactions/portal/messages                                                    | Read the authenticated participant\&#39;s durable WAOOAW Guide timeline   |
+| [**reconcileConversationExecution**](ConversationApi.md#reconcileconversationexecution)   | **POST** /api/v1/employment/relationships/{relationshipId}/conversation/executions/{executionId}/reconcile      | Recover an existing runtime result under fresh owner permission           |
+| [**retryConversationMessage**](ConversationApi.md#retryconversationmessage)               | **POST** /api/v1/employment/relationships/{relationshipId}/conversation/messages/{messageId}/retry              | Reconcile and retry one failed or unresolved contribution                 |
+| [**sendConversationMessage**](ConversationApi.md#sendconversationmessage)                 | **POST** /api/v1/employment/relationships/{relationshipId}/conversation/messages                                | Send or replay one customer text contribution                             |
+| [**sendPortalInteractionMessage**](ConversationApi.md#sendportalinteractionmessage)       | **POST** /api/v1/customer-portal/interactions/portal/messages                                                   | Send one durable contribution to the WAOOAW Guide                         |
+| [**streamConversation**](ConversationApi.md#streamconversation)                           | **GET** /api/v1/employment/relationships/{relationshipId}/conversation/stream                                   | Stream canonical conversation state as Server-Sent Events                 |
+| [**updateConversationReadPosition**](ConversationApi.md#updateconversationreadposition)   | **PUT** /api/v1/employment/relationships/{relationshipId}/conversation/read-position                            | Advance the authenticated participant\&#39;s unread position              |
 
 ## cancelConversationExecution
 
@@ -177,6 +179,83 @@ example().catch(console.error);
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
+## getConversationMessageExecution
+
+> ConversationExecutionStatusV1 getConversationMessageExecution(relationshipId, messageId)
+
+Read the canonical execution identity and version for an original message
+
+Shared tenant-authorized BP projection read. Resolves the original message to its execution without relying on browser-local dispatch state or exposing PR internals. It does not contact the runtime or authorize recovery. Responses are never cached.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ConversationApi,
+} from '';
+import type { GetConversationMessageExecutionRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new ConversationApi(config);
+
+  const body = {
+    // string | Tenant-scoped durable employment relationship UUID
+    relationshipId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string | Opaque BP canonical message UUID, authorized within the relationship
+    messageId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetConversationMessageExecutionRequest;
+
+  try {
+    const data = await api.getConversationMessageExecution(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name               | Type     | Description                                                          | Notes                     |
+| ------------------ | -------- | -------------------------------------------------------------------- | ------------------------- |
+| **relationshipId** | `string` | Tenant-scoped durable employment relationship UUID                   | [Defaults to `undefined`] |
+| **messageId**      | `string` | Opaque BP canonical message UUID, authorized within the relationship | [Defaults to `undefined`] |
+
+### Return type
+
+[**ConversationExecutionStatusV1**](ConversationExecutionStatusV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                                                                          | Response headers        |
+| ----------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| **200**     | Current canonical execution projection                                                                               | \* Cache-Control - <br> |
+| **401**     | Authenticated customer session is missing, invalid, or expired                                                       | -                       |
+| **403**     | Identity action is not available to the authenticated actor                                                          | -                       |
+| **404**     | Relationship or message is absent, inaccessible, or cross-tenant; one normalized shape prevents existence disclosure | -                       |
+| **423**     | Relationship execution is stopped; ordinary reconnect, retry, or cancellation cannot release it                      | -                       |
+| **503**     | Professional execution or constitutional dependency is unavailable and the outcome remains explicit                  | -                       |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
 ## listConversationMessages
 
 > ConversationTimelinePageV1 listConversationMessages(relationshipId, cursor, afterCursor, limit)
@@ -335,6 +414,94 @@ example().catch(console.error);
 | **404**     | Relationship or message is absent, inaccessible, or cross-tenant; one normalized shape prevents existence disclosure | -                |
 | **410**     | Cursor can no longer be resumed; fetch a fresh authoritative timeline snapshot                                       | -                |
 | **414**     | Request target exceeds server limits                                                                                 | -                |
+| **503**     | Professional execution or constitutional dependency is unavailable and the outcome remains explicit                  | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## reconcileConversationExecution
+
+> ConversationReconciliationOutcomeV1 reconcileConversationExecution(relationshipId, executionId, idempotencyKey, xCorrelationId, reconcileConversationExecutionRequestV1)
+
+Recover an existing runtime result under fresh owner permission
+
+Shared BP recovery command for authenticated Web, WhatsApp handoff and future mobile clients. Requires current OWNER/MANAGER membership and relationship access plus fresh CE READ_EXISTING_RUNTIME_RESULT evidence. Never starts, retries or cancels inference. Original execution authority is preserved. Unknown results remain unresolved.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ConversationApi,
+} from '';
+import type { ReconcileConversationExecutionRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new ConversationApi(config);
+
+  const body = {
+    // string | Tenant-scoped durable employment relationship UUID
+    relationshipId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string | Opaque professional execution UUID, authorized within the relationship
+    executionId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts.
+    idempotencyKey: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    xCorrelationId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // ReconcileConversationExecutionRequestV1
+    reconcileConversationExecutionRequestV1: ...,
+  } satisfies ReconcileConversationExecutionRequest;
+
+  try {
+    const data = await api.reconcileConversationExecution(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name                                        | Type                                                                                  | Description                                                                              | Notes                     |
+| ------------------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------- |
+| **relationshipId**                          | `string`                                                                              | Tenant-scoped durable employment relationship UUID                                       | [Defaults to `undefined`] |
+| **executionId**                             | `string`                                                                              | Opaque professional execution UUID, authorized within the relationship                   | [Defaults to `undefined`] |
+| **idempotencyKey**                          | `string`                                                                              | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts. | [Defaults to `undefined`] |
+| **xCorrelationId**                          | `string`                                                                              |                                                                                          | [Defaults to `undefined`] |
+| **reconcileConversationExecutionRequestV1** | [ReconcileConversationExecutionRequestV1](ReconcileConversationExecutionRequestV1.md) |                                                                                          |                           |
+
+### Return type
+
+[**ConversationReconciliationOutcomeV1**](ConversationReconciliationOutcomeV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                                                                          | Response headers |
+| ----------- | -------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| **200**     | Bound canonical result or explicit unresolved outcome                                                                | -                |
+| **400**     | Conversation request or schema version is malformed or unsupported                                                   | -                |
+| **401**     | Authenticated customer session is missing, invalid, or expired                                                       | -                |
+| **403**     | Identity action is not available to the authenticated actor                                                          | -                |
+| **404**     | Relationship or message is absent, inaccessible, or cross-tenant; one normalized shape prevents existence disclosure | -                |
+| **409**     | Idempotency identity conflicts or authoritative state must be reconciled                                             | -                |
+| **423**     | Relationship execution is stopped; ordinary reconnect, retry, or cancellation cannot release it                      | -                |
 | **503**     | Professional execution or constitutional dependency is unavailable and the outcome remains explicit                  | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

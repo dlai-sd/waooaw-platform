@@ -24,6 +24,7 @@ def evaluate(rendered: dict[str, Any], evidence: dict[str, Any]) -> dict[str, st
         "whatsapp-verify-token": "demo-whatsapp-provider",
         "whatsapp-app-secret": "demo-whatsapp-provider",
         "whatsapp-outbound-authority": "demo-whatsapp-provider",
+        "whatsapp-phone-subject-hmac": "demo-whatsapp-public-admission",
         "whatsapp-media-authority": "demo-whatsapp-media",
     }
     known_bindings = all(

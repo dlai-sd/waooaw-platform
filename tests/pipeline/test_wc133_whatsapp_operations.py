@@ -70,7 +70,18 @@ def test_registration_is_closed_preserves_configuration_and_explicitly_denies_tr
     assert settings["WhatsApp__VerificationEnabled"] == "true"
     assert settings["WhatsAppProvider__ManagedIdentityClientId"] == "client"
     assert all(settings[key] == value for key, value in operations.STOP.items())
-    assert not any(key.startswith("WhatsAppCapability__Authority__") for key in settings)
+    assert settings["IdentityVerification__WhatsApp__Enabled"] == "false"
+    assert settings["WhatsAppCapability__Authority__AllowRegistrationVerification"] == "false"
+    assert not any(
+        key.startswith("WhatsAppCapability__Authority__")
+        and key
+        not in {
+            "WhatsAppCapability__Authority__AllowRegistrationVerification",
+            "WhatsAppCapability__Authority__AllowProvisionalOnboarding",
+            "WhatsAppCapability__Authority__AllowPublicAdmission",
+        }
+        for key in settings
+    )
 
 
 @pytest.mark.parametrize("field", ["appId", "phoneNumber", "token", "extra"])
@@ -81,7 +92,7 @@ def test_registration_rejects_raw_identity_credentials_and_unknown_fields(field)
         plan(doc=doc)
 
 
-@pytest.mark.parametrize("change", ["active", "tls", "host", "version", "verification", "approval"])
+@pytest.mark.parametrize("change", ["active", "otp-active", "tls", "host", "version", "verification", "approval"])
 def test_registration_preflights_every_gate_before_mutation(change):
     app = resource()
     doc = configuration()["whatsapp_provider"]
@@ -89,6 +100,10 @@ def test_registration_preflights_every_gate_before_mutation(change):
     if change == "active":
         app["properties"]["template"]["containers"][0]["env"].append(
             {"name": "Wc120Conversation__DispatchEnabled", "value": "true"}
+        )
+    elif change == "otp-active":
+        app["properties"]["template"]["containers"][0]["env"].append(
+            {"name": "IdentityVerification__WhatsApp__Enabled", "value": "true"}
         )
     elif change == "tls":
         app["properties"]["configuration"]["ingress"]["customDomains"] = []
@@ -132,6 +147,28 @@ def test_stop_and_status_require_no_valid_registration_or_activation(operation):
     assert settings == (operations.STOP if operation == "stop" else {})
     with pytest.raises(ValueError, match="accepts no"):
         plan(operation, doc={"secret": "rejected"})
+
+
+def test_stop_explicitly_disables_registration_otp_egress():
+    _, settings = plan("stop", doc={})
+    assert settings["IdentityVerification__WhatsApp__Enabled"] == "false"
+    assert settings["WhatsAppCapability__Authority__AllowRegistrationVerification"] == "false"
+    assert settings["WhatsAppCapability__Authority__AllowPublicAdmission"] == "false"
+    assert settings["WhatsAppCapability__Authority__AllowProvisionalOnboarding"] == "false"
+
+
+def test_registration_pins_public_sender_key_without_enabling_public_traffic():
+    doc = configuration()["whatsapp_provider"]
+    key = operations.WHATSAPP_PUBLIC_SUBJECT_KEY_NAME
+    doc["secret_versions"][key] = "e" * 32
+    _, settings = plan(doc=doc)
+    assert settings["WhatsAppProvider__PhoneSubjectKeyVersion"] == "e" * 32
+    assert settings["WhatsAppCapability__PublicAdmissionIdentityKeyAvailable"] == "true"
+    assert settings["WhatsAppCapability__Authority__AllowPublicAdmission"] == "false"
+    assert all(settings[name] == "false" for name in operations.TRAFFIC)
+    _, legacy = plan()
+    assert legacy["WhatsAppProvider__PhoneSubjectKeyVersion"] == ""
+    assert legacy["WhatsAppCapability__PublicAdmissionIdentityKeyAvailable"] == "false"
 
 
 def test_stop_preparation_does_not_depend_on_storage(monkeypatch, tmp_path):
@@ -932,13 +969,26 @@ def test_simulated_workflow_runs_register_status_activate_stop_adopt_and_intake_
             assert all(operations.environment(azure.current)[key] == value for key, value in operations.STOP.items())
             assert sum(value["properties"]["active"] for value in azure.revisions) == 1
     else:
-        assert all(operations.environment(azure.current)[key] == "true" for key in operations.TRAFFIC)
+        assert all(
+            operations.environment(azure.current)[key] == "true"
+            for key in operations.TRAFFIC
+            if key != "IdentityVerification__WhatsApp__Enabled"
+        )
+        assert operations.environment(azure.current)["IdentityVerification__WhatsApp__Enabled"] == "false"
         assert operations.environment(azure.current)["WhatsApp__TemplateProjections__0__Body"] == "Hello {{1}}"
     start = len(azure.calls)
     run("stop")
     assert not any(command[:2] == ("storage", "blob") for command in azure.calls[start:])
     assert all(operations.environment(azure.current)[key] == value for key, value in operations.STOP.items())
-    assert not any(key.startswith("WhatsAppCapability__Authority__") for key in operations.environment(azure.current))
+    assert {
+        key: value
+        for key, value in operations.environment(azure.current).items()
+        if key.startswith("WhatsAppCapability__Authority__")
+    } == {
+        "WhatsAppCapability__Authority__AllowRegistrationVerification": "false",
+        "WhatsAppCapability__Authority__AllowProvisionalOnboarding": "false",
+        "WhatsAppCapability__Authority__AllowPublicAdmission": "false",
+    }
     assert sum(revision["properties"]["replicas"] for revision in azure.revisions) == 1
     assert {"name": "Database", "secretRef": "existing-secret"} in azure.current["properties"]["template"]["containers"][0]["env"]
     if not activation_failure:
@@ -947,7 +997,12 @@ def test_simulated_workflow_runs_register_status_activate_stop_adopt_and_intake_
         assembled = run("assemble", json.dumps(renewed).encode(), reference="123-2")
         candidate = json.loads((assembled / "evidence-apply.json").read_text())["candidate"]
         run("activate", b'{"candidate_reference":"123-2"}', candidate["digest"])
-        assert all(operations.environment(azure.current)[key] == "true" for key in operations.TRAFFIC)
+        assert all(
+            operations.environment(azure.current)[key] == "true"
+            for key in operations.TRAFFIC
+            if key != "IdentityVerification__WhatsApp__Enabled"
+        )
+        assert operations.environment(azure.current)["IdentityVerification__WhatsApp__Enabled"] == "false"
         run("stop")
     run("cleanup-intake")
     assert not azure.intake_active and not azure.intake_grants and len(azure.roles) == 4

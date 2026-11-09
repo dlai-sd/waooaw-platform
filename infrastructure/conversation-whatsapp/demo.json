@@ -9,10 +9,11 @@
     "verifyToken": "kv://kv-waooaw-demo/secrets/whatsapp-verify-token",
     "appSecret": "kv://kv-waooaw-demo/secrets/whatsapp-app-secret",
     "outboundAuthority": "kv://kv-waooaw-demo/secrets/whatsapp-outbound-authority",
-    "mediaAuthority": "kv://kv-waooaw-demo/secrets/whatsapp-media-authority"
+    "mediaAuthority": "kv://kv-waooaw-demo/secrets/whatsapp-media-authority",
+    "phoneSubjectHmacKey": "kv://kv-waooaw-demo/secrets/whatsapp-phone-subject-hmac"
   },
   "namespace": "conversation-whatsapp-demo",
-  "configurationVersion": "wc120-candidate-1",
+  "configurationVersion": "wc134-candidate-1",
   "featureFlagVersion": "wc120-default-off-1",
   "policyReferences": {
     "institutional": "sha256:fbeea62b60bd67690d2c75b08a8db052ce9ebe2999405cd6a6c92a52bd62b202",

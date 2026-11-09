@@ -37,11 +37,12 @@
         "verifyToken": { "type": "string", "pattern": "^kv://[^/]+/secrets/[^/]+$" },
         "appSecret": { "type": "string", "pattern": "^kv://[^/]+/secrets/[^/]+$" },
         "outboundAuthority": { "type": "string", "pattern": "^kv://[^/]+/secrets/[^/]+$" },
-        "mediaAuthority": { "type": "string", "pattern": "^kv://[^/]+/secrets/[^/]+$" }
+        "mediaAuthority": { "type": "string", "pattern": "^kv://[^/]+/secrets/[^/]+$" },
+        "phoneSubjectHmacKey": { "type": "string", "pattern": "^kv://[^/]+/secrets/[^/]+$" }
       }
     },
     "namespace": { "type": "string", "minLength": 1 },
-    "configurationVersion": { "const": "wc120-candidate-1" },
+    "configurationVersion": { "enum": ["wc120-candidate-1", "wc134-candidate-1"] },
     "featureFlagVersion": { "const": "wc120-default-off-1" },
     "policyReferences": {
       "type": "object",
