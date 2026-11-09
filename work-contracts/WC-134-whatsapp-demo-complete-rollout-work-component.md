@@ -154,7 +154,7 @@ ran in Docker; no host interpreter or virtual environment was used.
 
 | Qualification surface | Result |
 |---|---|
-| Business Platform | PASS: 2,358 tests; 90.01% line and 80.00% branch coverage |
+| Business Platform | PASS: 2,373 tests; 90.01% line and 80.11% branch coverage |
 | Professional Runtime | PASS: 396 tests; 90.90% line and 81.36% branch coverage |
 | AI Runtime | PASS: 296 tests; 93.47% line and 80.05% branch coverage |
 | Digital Marketing Agent | PASS: 104 tests; 94.98% line and 82.64% branch coverage |
