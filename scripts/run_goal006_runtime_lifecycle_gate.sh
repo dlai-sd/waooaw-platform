@@ -21,16 +21,23 @@ POSTGRES="goal006-temporal-postgres-$$"
 TEMPORAL="goal006-temporal-$$"
 RUNTIME_IMAGE="goal006-professional-runtime-lifecycle:$(git -C "$REPO_ROOT" rev-parse --short=12 HEAD)"
 WORK_DIR=$(mktemp -d)
+WORKLOAD_CREDENTIALS="$(dirname "$EVIDENCE_JSON")/.goal006-runtime-workload-identity-$$"
 
 cleanup() {
   docker rm -f "$RUNTIME" "$CE_HEALTH" "$TEMPORAL" "$POSTGRES" >/dev/null 2>&1 || true
   docker network rm "$NETWORK" >/dev/null 2>&1 || true
+  rm -rf "$WORKLOAD_CREDENTIALS"
   rm -rf "$WORK_DIR"
 }
 trap cleanup EXIT
 
 mkdir -p "$(dirname "$EVIDENCE_JSON")"
 rm -f -- "$EVIDENCE_JSON"
+rm -rf "$WORKLOAD_CREDENTIALS"
+python "$REPO_ROOT/scripts/bootstrap_workload_identity.py" \
+  --registry "$REPO_ROOT/infrastructure/workload-identity/registry.yaml" \
+  --environment ci \
+  --output "$WORKLOAD_CREDENTIALS"
 docker network create "$NETWORK" >/dev/null
 "$REPO_ROOT/scripts/validation_control/run_docker_build.sh" \
   docker build --quiet --build-arg "SECURITY_REFRESH=$(date +%s%N)" \
@@ -52,14 +59,17 @@ docker run -d --rm \
   "$RUNTIME_IMAGE" python /tmp/grpc_health_server.py >/dev/null
 docker run -d --rm \
   --name "$RUNTIME" \
+  --user "$(id -u):$(id -g)" \
   --network "$NETWORK" \
   --network-alias professional-runtime \
+  -v "$WORKLOAD_CREDENTIALS:/run/waooaw/workload-identity:ro" \
   -e BP_SERVICE_JWT_SECRET=goal006-local-lifecycle-secret \
   -e CONSTITUTIONAL_ENGINE_ADDRESS=ce-health:5002 \
   -e TEMPORAL_ADDRESS=temporal:7233 \
   -e TEMPORAL_NAMESPACE=default \
   -e TEMPORAL_STARTUP_ATTEMPTS=90 \
   -e TEMPORAL_STARTUP_INTERVAL_SECONDS=2 \
+  -e WAOOAW_WORKLOAD_CREDENTIALS=/run/waooaw/workload-identity \
   "$RUNTIME_IMAGE" >/dev/null
 
 initial_status=""
