@@ -2055,6 +2055,41 @@ integrations, final exact-tree coverage qualification, signed implementation
 milestones and Founder-review PR remain open. No hook/signing bypass or overall
 completion is claimed; provider traffic, cloud mutation and spend remain off.
 
+### BP Coverage Continuation
+
+The Founder directed removal of stale images before BP coverage work and then
+durable batching and full offering integration. Only two unused superseded .NET
+validation images were deleted; available disk space increased from 5.1 GB to
+8.0 GB. Existing containers, volumes, pinned images and the current runner were
+preserved.
+
+The full Docker BP gate passed **2092 tests**, with zero failures or skips,
+but measured **89.82% line / 78.83% branch**. After operation-binding and
+runtime event payload/framing regressions, the targeted Docker selector passed
+**72 tests**, and the full BP gate passed **2164 tests**, with zero failures or
+skips, but measured **89.87% line / 79.55% branch**. Both measurements fail the
+unchanged 90% line / 80% branch requirements.
+
+Additional canonical conversation state mapping and proposed-card authority
+regressions passed **22 targeted Docker tests**. They exercise retained state
+mapping, original relationship and contribution binding, invalid proposal
+shapes, and the review-only projection. The subsequent full Docker BP gate passed
+**2186 tests**, zero failed or skipped, with **90.06% line / 80.17% branch**
+coverage and a zero-warning warnings-as-errors build. The exact gate was
+`sh scripts/validation_control/run_dotnet_test_gate.sh business-platform
+tests/business-platform.Tests/business-platform.Tests.csproj` in the Compose
+.NET runner with its Docker socket mounted. This is snapshot evidence, not
+qualification of later changes or the complete release. The targeted invocation
+used `dotnet test tests/business-platform.Tests/business-platform.Tests.csproj
+--artifacts-path /tmp/artifacts/coverage-proposals --filter
+'FullyQualifiedName~ProposalCardsRejectUnboundOrInvalidAuthority|FullyQualifiedName~BoundProposalRemainsAReviewOnlyDecision|FullyQualifiedName~CanonicalHistoryMapsEachRetainedState'
+-warnaserror` in the Compose .NET runner.
+
+No hook or signing bypass, provider action, cloud mutation, spend, push or PR
+occurred. The implementation and the new tests remain uncommitted; separate
+webhook batching, accepted-offering/component integration and environment-wide
+budget continuity remain incomplete.
+
 ### Active Implementation-Hook Result And Script Repairs
 
 Signed evidence milestone `95589252` passed active documentation hooks. The
