@@ -2057,6 +2057,31 @@ completion is claimed; provider traffic, cloud mutation and spend remain off.
 
 ### BP Coverage Continuation
 
+#### Batching selection foundation
+
+The Founder froze the sequence: durable batching, full offering metering,
+shared spend continuity, Docker qualification and Founder-review PR. A
+bounded selection primitive now chooses only a contiguous canonical-message
+prefix within supplied message, text-length and time limits. It stops before
+a different environment, tenant, relationship, conversation, participant,
+role, channel binding, recipient, skill/version, language or authority digest;
+invalid identities, duplicate source identities and out-of-order inputs fail
+closed. The primitive does not authorize or persist a batch. It is not connected
+to ingress or dispatch, and its authority digest is not a substitute for
+validating each source and its current mandate.
+
+Docker Compose .NET runner command
+`dotnet test tests/business-platform.Tests/business-platform.Tests.csproj
+--artifacts-path /tmp/artifacts/wc134-batch-window --filter
+FullyQualifiedName~ConversationBatchWindowTests -warnaserror`: **17 passed**.
+The signed selector milestone attempt was rejected by active hooks: the
+assembled snapshot's TypeScript quality check reported 17 formatter errors.
+The same attempt's BP gate passed **2203 tests**, with **90.06% line / 80.22%
+branch** coverage. No hooks or signing were bypassed; the earlier staged
+bounded-resume files were restored and this selector remains uncommitted.
+No customer-facing batching behavior, full offering metering or shared-spend
+continuity is claimed.
+
 The Founder directed removal of stale images before BP coverage work and then
 durable batching and full offering integration. Only two unused superseded .NET
 validation images were deleted; available disk space increased from 5.1 GB to
