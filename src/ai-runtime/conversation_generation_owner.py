@@ -1,3 +1,4 @@
+# Implements: work-contracts/WC-134-batching-offering-and-spend-work-component.md §9.2
 """AIR accesses inference authority only through the authenticated BP owner."""
 
 from __future__ import annotations

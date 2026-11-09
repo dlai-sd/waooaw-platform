@@ -1,4 +1,4 @@
-// WC-134: stable environment-wide model and messaging monetary authority.
+// Implements: work-contracts/WC-134-batching-offering-and-spend-work-component.md §9.4
 using Microsoft.EntityFrameworkCore;
 using Waooaw.BusinessPlatform.Infrastructure;
 

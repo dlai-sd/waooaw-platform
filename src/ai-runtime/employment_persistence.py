@@ -1,3 +1,4 @@
+# Implements: architecture/reference/components/conversational-employment-ai-runtime-solution.md §Persistence
 """Tenant-scoped PostgreSQL persistence for AIR employment proposals."""
 
 from __future__ import annotations

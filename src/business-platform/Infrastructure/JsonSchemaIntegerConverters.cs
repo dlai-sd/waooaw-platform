@@ -1,3 +1,4 @@
+// Implements: work-contracts/WC-134-whatsapp-demo-complete-rollout-work-component.md §5
 using System.Text.Json;
 using System.Text.Json.Serialization;
 

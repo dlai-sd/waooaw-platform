@@ -1,3 +1,4 @@
+# Implements: work-contracts/WC-134-batching-offering-and-spend-work-component.md §9.3
 """WBE-owned component allowance reservation and immutable settlement."""
 
 from __future__ import annotations

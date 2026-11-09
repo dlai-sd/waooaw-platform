@@ -1,3 +1,4 @@
+# Implements: work-contracts/WC-134-batching-offering-and-spend-work-component.md §9.2
 """Candidate institutional Ollama socket; tag-addressed dispatch remains unavailable."""
 
 from __future__ import annotations

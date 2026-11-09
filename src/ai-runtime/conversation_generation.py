@@ -1,3 +1,4 @@
+# Implements: work-contracts/WC-134-batching-offering-and-spend-work-component.md §9.2
 """Agent-bound bounded inference; dispatch claims are never replay permission."""
 
 from __future__ import annotations

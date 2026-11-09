@@ -1,3 +1,4 @@
+// Implements: work-contracts/WC-134-batching-offering-and-spend-work-component.md §9.1
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;

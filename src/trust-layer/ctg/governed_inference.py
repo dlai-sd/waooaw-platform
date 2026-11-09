@@ -1,3 +1,4 @@
+# Implements: architecture/reference/components/ai-runtime.md §Governed inference
 """Inference CTG boundary with mandatory current-owner and durable-usage callbacks."""
 
 from __future__ import annotations

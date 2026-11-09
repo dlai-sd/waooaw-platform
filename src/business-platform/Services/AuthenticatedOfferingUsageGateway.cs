@@ -1,4 +1,4 @@
-// WC-134: authenticated BP-to-WBE component allowance owner boundary.
+// Implements: work-contracts/WC-134-batching-offering-and-spend-work-component.md §9.3
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;

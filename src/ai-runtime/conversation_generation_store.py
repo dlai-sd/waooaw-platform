@@ -1,3 +1,4 @@
+# Implements: work-contracts/WC-134-batching-offering-and-spend-work-component.md §9.2
 """AIR-only durable generation claims, with the existing constitutional Stop barrier."""
 
 from __future__ import annotations

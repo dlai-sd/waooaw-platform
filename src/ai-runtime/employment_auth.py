@@ -1,3 +1,4 @@
+# Implements: architecture/reference/components/conversational-employment-ai-runtime-solution.md §Security
 """ADR-046 authentication for the AIR employment proposal boundary."""
 
 from __future__ import annotations

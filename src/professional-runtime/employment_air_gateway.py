@@ -1,3 +1,4 @@
+# Implements: architecture/reference/components/professional-runtime.md §Conversation execution
 """Signed PR-to-AIR transport for proposal-only employment interpretation."""
 
 from __future__ import annotations

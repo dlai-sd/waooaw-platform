@@ -1,3 +1,4 @@
+// Implements: work-contracts/WC-134-whatsapp-demo-complete-rollout-work-component.md §8
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
