@@ -14,6 +14,7 @@ from scripts.goal006_runner_prerequisites import (
     reject_deletes,
     verify,
     verify_custom_role,
+    verify_foundation,
     verify_with_retry,
     verify_role_catalogue,
 )
@@ -93,6 +94,8 @@ def test_cleanup_role_verifier_requires_system_log_read() -> None:
     data_permissions = CUSTOM_ROLE_PERMISSIONS["Cleanup Job Operator"]["dataActions"]
 
     assert "Microsoft.App/managedEnvironments/read" in permissions
+    assert "Microsoft.App/jobs/stop/action" in permissions
+    assert "Microsoft.App/jobs/stop/execution/action" not in permissions
     assert "Microsoft.OperationalInsights/workspaces/query/read" in permissions
     assert "Microsoft.OperationalInsights/workspaces/query/ContainerAppSystemLogs/read" in permissions
     assert data_permissions == frozenset(
@@ -305,6 +308,86 @@ def test_verify_requires_all_current_custom_roles(
     )
 
     assert result["environment"] == "demo"
+
+
+def test_preview_foundation_does_not_require_future_deployment_outputs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runner_scope = "/subscriptions/sub/resourceGroups/demo-rg"
+
+    def live_foundation(*arguments: str):
+        if arguments[:2] == ("group", "show"):
+            return {"id": runner_scope}
+        if arguments[:3] == ("role", "assignment", "list"):
+            return [
+                {"roleDefinitionName": "Azure Deployment Stack Owner", "scope": "/subscriptions/sub"},
+                {"roleDefinitionName": "Contributor", "scope": runner_scope},
+                {"roleDefinitionName": "Role Based Access Control Administrator", "scope": runner_scope},
+            ]
+        if arguments[:1] == ("rest",) and "budgets/" in arguments[-1]:
+            return {"properties": {"amount": 10000}}
+        raise AssertionError(arguments)
+
+    monkeypatch.setattr("scripts.goal006_runner_prerequisites._az", live_foundation)
+    result = verify_foundation(
+        {
+            "environment": "demo",
+            "runnerResourceGroupName": "demo-rg",
+            "bootstrapPrincipalId": "principal",
+            "monthlyBudgetInr": 10000,
+        },
+        "sub",
+    )
+
+    assert result["environment"] == "demo"
+
+
+def test_post_apply_verification_reports_missing_new_role_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runner_scope = "/subscriptions/sub/resourceGroups/demo-rg"
+
+    def old_live_deployment(*arguments: str):
+        if arguments[:2] == ("group", "show"):
+            return {"id": runner_scope}
+        if arguments[:3] == ("role", "assignment", "list"):
+            return [
+                {"roleDefinitionName": "Azure Deployment Stack Owner", "scope": "/subscriptions/sub"},
+                {"roleDefinitionName": "Contributor", "scope": runner_scope},
+                {"roleDefinitionName": "Role Based Access Control Administrator", "scope": runner_scope},
+            ]
+        if arguments[:3] == ("deployment", "sub", "show"):
+            return {
+                "properties": {
+                    "outputs": {
+                        "brokerWriterRoleDefinitionId": {"value": "broker-writer"},
+                        "brokerJobOperatorRoleDefinitionId": {"value": "broker-operator"},
+                        "cleanupDeleterRoleDefinitionId": {"value": "cleanup-deleter"},
+                        "cleanupJobOperatorRoleDefinitionId": {"value": "cleanup-operator"},
+                        "evidenceWriterRoleDefinitionId": {"value": "evidence-writer"},
+                    }
+                }
+            }
+        if arguments[:1] == ("rest",) and "budgets/" in arguments[-1]:
+            return {"properties": {"amount": 10000}}
+        raise AssertionError(arguments)
+
+    monkeypatch.setattr("scripts.goal006_runner_prerequisites._az", old_live_deployment)
+    with pytest.raises(
+        RuntimeError,
+        match="prerequisite deployment output missing: cleanupJobOverrideWriterRoleDefinitionId",
+    ):
+        verify(
+            {
+                "environment": "demo",
+                "runnerResourceGroupName": "demo-rg",
+                "bootstrapPrincipalId": "principal",
+                "monthlyBudgetInr": 10000,
+                "stateStorageAccountId": "state",
+            },
+            "sub",
+            "goal006-demo-runner-prerequisites",
+        )
 
 
 def test_post_apply_verification_retries_control_plane_propagation(

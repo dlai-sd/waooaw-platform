@@ -11,6 +11,7 @@ from scripts.goal006_runner_deployment import (
     _canonical,
     _digest_bytes,
     _required_resource_names,
+    apply_reviewed_plan,
     environment_contract,
     main,
     normalize_changes,
@@ -217,6 +218,58 @@ def test_reviewed_plan_digest_is_fail_closed() -> None:
     valid = deepcopy(plan)
     valid["plan_digest"] = _digest_bytes(_canonical(payload))
     assert validate_reviewed_plan(valid) == payload
+
+
+def test_apply_strictly_verifies_prerequisites_after_stack_update(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[str] = []
+    current_plan = {"plan_digest": "reviewed-digest"}
+    contract = {
+        "stack_name": "goal006-demo-private-runner",
+        "location": "centralindia",
+        "template_path": Path("subscription.bicep"),
+        "parameter_path": Path("demo.parameters.json"),
+        "prerequisite_path": Path("demo.prerequisites.parameters.json"),
+        "prerequisite_deployment_name": "goal006-demo-runner-prerequisites",
+    }
+
+    monkeypatch.setattr(
+        "scripts.goal006_runner_deployment.revalidate_reviewed_plan",
+        lambda **arguments: current_plan,
+    )
+    monkeypatch.setattr(
+        "scripts.goal006_runner_deployment.environment_contract",
+        lambda *arguments: contract,
+    )
+    monkeypatch.setattr(
+        "scripts.goal006_runner_deployment._run",
+        lambda *arguments, **options: events.append("stack-updated"),
+    )
+    monkeypatch.setattr(
+        "scripts.goal006_runner_deployment._parameters",
+        lambda path: {"environment": "demo"},
+    )
+    monkeypatch.setattr(
+        "scripts.goal006_runner_deployment.verify_prerequisites",
+        lambda *arguments: events.append("prerequisites-verified"),
+    )
+    monkeypatch.setattr(
+        "scripts.goal006_runner_deployment.verify_deployment",
+        lambda **arguments: events.append("deployment-verified") or {"verified": True},
+    )
+
+    result = apply_reviewed_plan(
+        reviewed_plan={"payload": {}},
+        repository_root=REPOSITORY_ROOT,
+        manifest_path=MANIFEST,
+        environment="demo",
+        subscription_id="sub",
+        source_commit="b" * 40,
+    )
+
+    assert result == {"verified": True}
+    assert events == ["stack-updated", "prerequisites-verified", "deployment-verified"]
 
 
 def test_live_plan_rejects_unauthorized_environment() -> None:

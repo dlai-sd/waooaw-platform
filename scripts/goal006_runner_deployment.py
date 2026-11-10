@@ -16,6 +16,7 @@ from typing import Any
 from goal006_runner_bootstrap import validate_bootstrap_manifest
 from goal006_runner_prerequisites import (
     _parameters,
+    verify_foundation as verify_prerequisite_foundation,
     verify_with_retry as verify_prerequisites,
 )
 
@@ -162,10 +163,9 @@ def create_plan(
     contract = environment_contract(repository_root, manifest_path, environment)
     _compile(contract["template_path"])
     prerequisite_parameters = _parameters(contract["prerequisite_path"])
-    verify_prerequisites(
+    verify_prerequisite_foundation(
         prerequisite_parameters,
         subscription_id,
-        contract["prerequisite_deployment_name"],
     )
     _az(
         "stack",
@@ -269,6 +269,12 @@ def apply_reviewed_plan(
             "-o",
             "none",
         ]
+    )
+    prerequisite_parameters = _parameters(contract["prerequisite_path"])
+    verify_prerequisites(
+        prerequisite_parameters,
+        subscription_id,
+        contract["prerequisite_deployment_name"],
     )
     return verify_deployment(
         repository_root=repository_root,

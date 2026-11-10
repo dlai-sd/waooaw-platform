@@ -110,7 +110,7 @@ resource cleanupJobOperatorRole 'Microsoft.Authorization/roleDefinitions@2022-04
           'Microsoft.App/jobs/executions/read'
           'Microsoft.App/jobs/getAuthToken/action'
           'Microsoft.App/jobs/start/action'
-          'Microsoft.App/jobs/stop/execution/action'
+          'Microsoft.App/jobs/stop/action'
           'Microsoft.OperationalInsights/workspaces/read'
           'Microsoft.OperationalInsights/workspaces/query/read'
           'Microsoft.OperationalInsights/workspaces/analytics/query/action'

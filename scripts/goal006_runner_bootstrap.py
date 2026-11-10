@@ -71,7 +71,7 @@ REQUIRED_PREREQUISITE_TERMS = {
     "Microsoft.KeyVault/vaults/secrets/setSecret/action",
     "Microsoft.KeyVault/vaults/secrets/delete",
     "Microsoft.App/jobs/start/action",
-    "Microsoft.App/jobs/stop/execution/action",
+    "Microsoft.App/jobs/stop/action",
     "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/write",
     "goal006-cumulative-monthly",
     "adb29209-aa1d-457b-a786-c913953d2891",
