@@ -2090,14 +2090,11 @@ public sealed partial class WhatsAppJourneyService
     )
     {
         ValidateFreshPortalProof(proof);
-        if ( // lgtm[cs/user-controlled-bypass] Consent enables binding; it never bypasses identity validation.
-            identityLinkId == Guid.Empty
-            || !IsLowerHexDigest(phoneSubjectHash)
-            || !consentToRelationshipChannel
-        )
-            throw new ConstitutionalActionDeniedException(
-                "A verified WhatsApp identity and explicit channel consent are required."
-            );
+        ValidatePhoneAttachmentInput(
+            identityLinkId,
+            phoneSubjectHash,
+            consentToRelationshipChannel
+        );
         if (
             _relationshipGateway is null
             || _conversationService is null
@@ -2844,6 +2841,22 @@ public sealed partial class WhatsAppJourneyService
     private static bool IsLowerHexDigest(string value) =>
         value.Length == 64
         && value.All(character => character is >= '0' and <= '9' or >= 'a' and <= 'f');
+
+    private static void ValidatePhoneAttachmentInput(
+        Guid identityLinkId,
+        string phoneSubjectHash,
+        bool consentToRelationshipChannel
+    )
+    {
+        if (
+            identityLinkId == Guid.Empty
+            || !IsLowerHexDigest(phoneSubjectHash)
+            || !consentToRelationshipChannel
+        )
+            throw new ConstitutionalActionDeniedException(
+                "A verified WhatsApp identity and explicit channel consent are required."
+            );
+    }
 
     private static string HmacHex(byte[] key, string value) =>
         Convert.ToHexStringLower(HMACSHA256.HashData(key, Encoding.UTF8.GetBytes(value)));

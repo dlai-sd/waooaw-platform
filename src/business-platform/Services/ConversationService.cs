@@ -1493,6 +1493,12 @@ public sealed class ConversationService
         }
     }
 
+    private static void ValidateReadPositionSchema(string schemaVersion)
+    {
+        if (schemaVersion != SchemaVersion)
+            throw new ConversationRequestException("Unsupported schemaVersion.");
+    }
+
     public async Task<
         ConversationCommandResult<ConversationReadPositionV1>
     > UpdateReadPositionAsync(
@@ -1505,10 +1511,7 @@ public sealed class ConversationService
     )
     {
         using var activity = StartActivity("bp.conversation.read_position", relationshipId);
-        if (request.SchemaVersion != SchemaVersion) // lgtm[cs/user-controlled-bypass] Exact allowlist validation.
-        {
-            throw new ConversationRequestException("Unsupported schemaVersion.");
-        }
+        ValidateReadPositionSchema(request.SchemaVersion);
 
         var relationship = await EnsureAccessAsync(
             tenantId,

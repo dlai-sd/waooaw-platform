@@ -896,7 +896,10 @@ def test_release_qualification_retains_docker_azure_cli_runtime_evidence() -> No
         "run_release_lane preflight"
     )
     assert "goal006-local-azure-runtime-${{ github.run_id }}" in workflow
-    assert "test-results/wc109/runs/*/goal006-local-azure-runtime/" in workflow
+    assert (
+        "test-results/wc109/runs/*/release-qualification/goal006-local-azure-runtime/"
+        in workflow
+    )
     assert "if-no-files-found: error" in workflow
 
 
