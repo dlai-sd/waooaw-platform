@@ -873,6 +873,7 @@ def test_local_rehearsal_is_offline_pinned_and_covers_the_full_goal006_path() ->
     assert "hashicorp/terraform:1.9.8" in rehearsal
     assert "for environment in demo uat prod" in rehearsal
     assert "for root in foundation workload" in rehearsal
+    assert "cp -R /repo/infrastructure/operations /tmp/infrastructure/operations" in rehearsal
     assert "terraform plan: lease-controlled workload membership" in rehearsal
     assert "for_each = module.lease.workload_enabled" in rehearsal
     assert "rhysd/actionlint:1.7.7" in rehearsal

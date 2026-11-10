@@ -27,6 +27,7 @@ var brokerSecretWriterRoleName = guid(subscription().id, brokerSecretWriterRoleS
 var cleanupSecretDeleterRoleName = guid(subscription().id, cleanupSecretDeleterRoleSeed)
 var brokerJobOperatorRoleName = guid(subscription().id, 'goal006-${environment}-broker-job-operator')
 var cleanupJobOperatorRoleName = guid(subscription().id, 'goal006-${environment}-cleanup-job-operator')
+var cleanupJobOverrideWriterRoleName = guid(subscription().id, 'goal006-${environment}-cleanup-job-override-writer')
 var evidenceWriterRoleName = guid(subscription().id, 'goal006-${environment}-evidence-writer')
 var deploymentStackOwnerRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'adb29209-aa1d-457b-a786-c913953d2891')
 
@@ -66,6 +67,7 @@ resource brokerJobOperatorRole 'Microsoft.Authorization/roleDefinitions@2022-04-
           'Microsoft.App/jobs/read'
           'Microsoft.App/jobs/executions/read'
           'Microsoft.App/jobs/start/action'
+          'Microsoft.App/jobs/write'
         ]
         notActions: []
         dataActions: []
@@ -119,6 +121,26 @@ resource cleanupJobOperatorRole 'Microsoft.Authorization/roleDefinitions@2022-04
         dataActions: [
           'Microsoft.OperationalInsights/workspaces/tables/data/read'
         ]
+        notDataActions: []
+      }
+    ]
+    assignableScopes: [runnerResourceGroup.id]
+  }
+}
+
+resource cleanupJobOverrideWriterRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' = {
+  name: cleanupJobOverrideWriterRoleName
+  properties: {
+    roleName: 'GOAL-006 ${environment} Cleanup Job Override Writer'
+    description: 'Override only the exact cleanup broker execution template selected by its job-scoped assignment.'
+    type: 'CustomRole'
+    permissions: [
+      {
+        actions: [
+          'Microsoft.App/jobs/write'
+        ]
+        notActions: []
+        dataActions: []
         notDataActions: []
       }
     ]
@@ -208,4 +230,5 @@ output brokerWriterRoleDefinitionId string = brokerSecretWriterRole.id
 output brokerJobOperatorRoleDefinitionId string = brokerJobOperatorRole.id
 output cleanupDeleterRoleDefinitionId string = cleanupSecretDeleterRole.id
 output cleanupJobOperatorRoleDefinitionId string = cleanupJobOperatorRole.id
+output cleanupJobOverrideWriterRoleDefinitionId string = cleanupJobOverrideWriterRole.id
 output evidenceWriterRoleDefinitionId string = evidenceWriterRole.id

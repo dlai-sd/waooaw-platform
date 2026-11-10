@@ -62,6 +62,7 @@ def test_cleanup_role_grants_only_exact_job_and_durable_log_actions() -> None:
     )[0]
 
     assert "Microsoft.OperationalInsights/workspaces/tables/data/read" not in broker_role
+    assert "Microsoft.App/jobs/write" in broker_role
     assert "Microsoft.App/managedEnvironments/read" in cleanup_role
     assert "Microsoft.App/jobs/getAuthToken/action" in cleanup_role
     assert "Microsoft.App/jobs/logstream/action" not in cleanup_role
@@ -78,6 +79,13 @@ def test_cleanup_role_grants_only_exact_job_and_durable_log_actions() -> None:
     )
     assert "Microsoft.OperationalInsights/workspaces/tables/data/read" in cleanup_role
     assert "Microsoft.OperationalInsights/*" not in cleanup_role
+
+
+def test_cleanup_override_writer_grants_only_job_write() -> None:
+    permissions = CUSTOM_ROLE_PERMISSIONS["Cleanup Job Override Writer"]
+
+    assert permissions["actions"] == frozenset({"Microsoft.App/jobs/write"})
+    assert permissions["dataActions"] == frozenset()
 
 
 def test_cleanup_role_verifier_requires_system_log_read() -> None:
@@ -229,6 +237,7 @@ def test_verify_requires_all_current_custom_roles(
         "broker-operator": "GOAL-006 demo Broker Job Operator",
         "cleanup-deleter": "GOAL-006 demo Cleanup Secret Deleter",
         "cleanup-operator": "GOAL-006 demo Cleanup Job Operator",
+        "cleanup-override-writer": "GOAL-006 demo Cleanup Job Override Writer",
         "evidence-writer": "GOAL-006 demo Cleanup Evidence Writer",
     }
 
@@ -249,6 +258,9 @@ def test_verify_requires_all_current_custom_roles(
                         "brokerJobOperatorRoleDefinitionId": {"value": f"{runner_scope}/broker-operator"},
                         "cleanupDeleterRoleDefinitionId": {"value": f"{runner_scope}/cleanup-deleter"},
                         "cleanupJobOperatorRoleDefinitionId": {"value": f"{runner_scope}/cleanup-operator"},
+                        "cleanupJobOverrideWriterRoleDefinitionId": {
+                            "value": f"{runner_scope}/cleanup-override-writer"
+                        },
                         "evidenceWriterRoleDefinitionId": {"value": f"{runner_scope}/evidence-writer"},
                     }
                 }

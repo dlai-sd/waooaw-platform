@@ -80,16 +80,34 @@ def test_reviewed_bootstrap_manifest_passes() -> None:
         assert validate_bootstrap_manifest(REPOSITORY_ROOT, MANIFEST_PATH, environment) == []
 
 
-def test_cleanup_operator_can_start_only_governed_job_operations() -> None:
+def test_job_override_permissions_remain_job_scoped() -> None:
     template = (STACK_ROOT / "prerequisites.bicep").read_text(encoding="utf-8")
+    broker_role = template.split("resource brokerJobOperatorRole", 1)[1].split(
+        "resource cleanupSecretDeleterRole", 1
+    )[0]
     cleanup_role = template.split("resource cleanupJobOperatorRole", 1)[1].split(
-        "resource monthlyBudget", 1
+        "resource cleanupJobOverrideWriterRole", 1
+    )[0]
+    cleanup_override_role = template.split(
+        "resource cleanupJobOverrideWriterRole", 1
+    )[1].split(
+        "resource evidenceWriterRole", 1
     )[0]
 
+    assert "Microsoft.App/jobs/write" in broker_role
     assert "Microsoft.App/jobs/start/action" in cleanup_role
     assert "Microsoft.App/jobs/stop/execution/action" in cleanup_role
     assert "Microsoft.App/jobs/write" not in cleanup_role
+    assert cleanup_override_role.count("Microsoft.App/jobs/write") == 1
+    assert "Microsoft.App/jobs/start/action" not in cleanup_override_role
     assert "Microsoft.App/jobs/delete" not in cleanup_role
+    assert "Microsoft.App/jobs/delete" not in cleanup_override_role
+
+    control_plane = (STACK_ROOT / "main.bicep").read_text(encoding="utf-8")
+    cleanup_override_assignment = control_plane.split(
+        "resource cleanupJobOverrideControl", 1
+    )[1].split("resource reconcilerJob", 1)[0]
+    assert "scope: cleanupBrokerJob" in cleanup_override_assignment
 
 
 def test_digest_drift_fails_closed(tmp_path: Path) -> None:
