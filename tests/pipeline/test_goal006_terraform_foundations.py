@@ -888,10 +888,12 @@ def test_release_qualification_retains_docker_azure_cli_runtime_evidence() -> No
     assert 'release-qualification: {shell: "sh scripts/run_release_qualification.sh"' in catalog
     assert "bash scripts/run_goal006_local_azure_verification.sh" in release_runner
     assert (
-        "GOAL006_EVIDENCE_DIR=${GOAL006_EVIDENCE_DIR:-${WAOOAW_VALIDATION_OUTPUT_DIRECTORY:-test-results}/"
+        "goal006_evidence_dir=${GOAL006_EVIDENCE_DIR:-${WAOOAW_VALIDATION_OUTPUT_DIRECTORY:-test-results}/"
         "goal006-local-azure-runtime}" in release_runner
     )
+    assert 'mkdir -p "$goal006_evidence_dir"' in release_runner
     assert "goal006-local-azure-runtime-${{ github.run_id }}" in workflow
+    assert "test-results/wc109/runs/*/goal006-local-azure-runtime/" in workflow
     assert "if-no-files-found: error" in workflow
 
 

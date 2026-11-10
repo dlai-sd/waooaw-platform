@@ -834,7 +834,7 @@ async def test_fresh_owner_reads_one_retained_snapshot_without_original_imperson
         conversation_router.RECONCILIATION_ROUTE,
         conversation_router.RECONCILIATION_OPERATION,
     )
-    assert authorization.kwargs["idempotency_key"] == str(DEFAULT_IDEMPOTENCY_KEY)
+    assert authorization.args[5] == str(DEFAULT_IDEMPOTENCY_KEY)
 
 
 @pytest.mark.parametrize(

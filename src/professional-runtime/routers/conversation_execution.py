@@ -1013,8 +1013,10 @@ async def get_conversation_service_context(request: Request) -> BPServiceContext
             route,
             operation,
             None,
-            idempotency_key=request.headers.get("Idempotency-Key"),
-            request_digest=hashlib.sha256(canonical).hexdigest(),
+            None,
+            request.headers.get("Idempotency-Key"),
+            None,
+            hashlib.sha256(canonical).hexdigest(),
         )
         body = json.loads(canonical) if request.method == "POST" else None
         conversation_id = str(uuid.UUID(str(request.path_params["conversationId"])))
@@ -1100,8 +1102,10 @@ async def get_reconciliation_service_context(
             RECONCILIATION_ROUTE,
             RECONCILIATION_OPERATION,
             None,
-            idempotency_key=key,
-            request_digest=hashlib.sha256(await request.body()).hexdigest(),
+            None,
+            key,
+            None,
+            hashlib.sha256(await request.body()).hexdigest(),
         )
         if not isinstance(context.expected_versions, Mapping):
             raise ServiceAuthError("DELEGATED_CONTEXT_INVALID")
