@@ -96,7 +96,8 @@ def test_job_override_permissions_remain_job_scoped() -> None:
 
     assert "Microsoft.App/jobs/write" in broker_role
     assert "Microsoft.App/jobs/start/action" in cleanup_role
-    assert "Microsoft.App/jobs/stop/execution/action" in cleanup_role
+    assert "Microsoft.App/jobs/stop/action" in cleanup_role
+    assert "Microsoft.App/jobs/stop/execution/action" not in cleanup_role
     assert "Microsoft.App/jobs/write" not in cleanup_role
     assert cleanup_override_role.count("Microsoft.App/jobs/write") == 1
     assert "Microsoft.App/jobs/start/action" not in cleanup_override_role

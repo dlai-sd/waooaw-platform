@@ -47,7 +47,7 @@ CUSTOM_ROLE_PERMISSIONS = {
                 "Microsoft.App/jobs/executions/read",
                 "Microsoft.App/jobs/getAuthToken/action",
                 "Microsoft.App/jobs/start/action",
-                "Microsoft.App/jobs/stop/execution/action",
+                "Microsoft.App/jobs/stop/action",
                 "Microsoft.OperationalInsights/workspaces/read",
                 "Microsoft.OperationalInsights/workspaces/query/read",
                 "Microsoft.OperationalInsights/workspaces/analytics/query/action",
@@ -224,13 +224,12 @@ def verify_custom_role(
         raise RuntimeError(f"custom role permissions mismatch: {expected_name}")
 
 
-def verify(parameters: dict[str, Any], subscription_id: str, deployment_name: str) -> dict[str, Any]:
+def verify_foundation(parameters: dict[str, Any], subscription_id: str) -> dict[str, Any]:
     environment = str(parameters["environment"])
     resource_group = str(parameters["runnerResourceGroupName"])
     principal_id = str(parameters["bootstrapPrincipalId"])
     subscription_scope = f"/subscriptions/{subscription_id}"
     runner_scope = f"{subscription_scope}/resourceGroups/{resource_group}"
-    evidence_scope = str(parameters["stateStorageAccountId"])
     group = _az("group", "show", "--name", resource_group)
     assignments = _az(
         "role",
@@ -260,31 +259,55 @@ def verify(parameters: dict[str, Any], subscription_id: str, deployment_name: st
     )
     if float(budget["properties"]["amount"]) != float(parameters["monthlyBudgetInr"]):
         raise RuntimeError("cumulative budget amount mismatch")
+    return {
+        "environment": environment,
+        "resource_group_id": group["id"],
+        "verified_roles": sorted(role for role, _ in required),
+        "budget_inr": parameters["monthlyBudgetInr"],
+    }
+
+
+def _deployment_output(outputs: Mapping[str, Any], name: str) -> str:
+    output = outputs.get(name)
+    if not isinstance(output, Mapping) or not isinstance(output.get("value"), str):
+        raise RuntimeError(f"prerequisite deployment output missing: {name}")
+    return output["value"]
+
+
+def verify(parameters: dict[str, Any], subscription_id: str, deployment_name: str) -> dict[str, Any]:
+    result = verify_foundation(parameters, subscription_id)
+    environment = str(parameters["environment"])
+    resource_group = str(parameters["runnerResourceGroupName"])
+    subscription_scope = f"/subscriptions/{subscription_id}"
+    runner_scope = f"{subscription_scope}/resourceGroups/{resource_group}"
+    evidence_scope = str(parameters["stateStorageAccountId"])
     deployment = _az("deployment", "sub", "show", "--name", deployment_name)
-    outputs = deployment["properties"]["outputs"]
+    outputs = deployment.get("properties", {}).get("outputs", {})
+    if not isinstance(outputs, Mapping):
+        raise RuntimeError("prerequisite deployment outputs missing")
     custom_roles = {
         "Broker Secret Writer": (
-            outputs["brokerWriterRoleDefinitionId"]["value"],
+            _deployment_output(outputs, "brokerWriterRoleDefinitionId"),
             runner_scope,
         ),
         "Broker Job Operator": (
-            outputs["brokerJobOperatorRoleDefinitionId"]["value"],
+            _deployment_output(outputs, "brokerJobOperatorRoleDefinitionId"),
             runner_scope,
         ),
         "Cleanup Secret Deleter": (
-            outputs["cleanupDeleterRoleDefinitionId"]["value"],
+            _deployment_output(outputs, "cleanupDeleterRoleDefinitionId"),
             runner_scope,
         ),
         "Cleanup Job Operator": (
-            outputs["cleanupJobOperatorRoleDefinitionId"]["value"],
+            _deployment_output(outputs, "cleanupJobOperatorRoleDefinitionId"),
             runner_scope,
         ),
         "Cleanup Job Override Writer": (
-            outputs["cleanupJobOverrideWriterRoleDefinitionId"]["value"],
+            _deployment_output(outputs, "cleanupJobOverrideWriterRoleDefinitionId"),
             runner_scope,
         ),
         "Cleanup Evidence Writer": (
-            outputs["evidenceWriterRoleDefinitionId"]["value"],
+            _deployment_output(outputs, "evidenceWriterRoleDefinitionId"),
             evidence_scope,
         ),
     }
@@ -295,12 +318,7 @@ def verify(parameters: dict[str, Any], subscription_id: str, deployment_name: st
             assignable_scope,
             CUSTOM_ROLE_PERMISSIONS[suffix],
         )
-    return {
-        "environment": environment,
-        "resource_group_id": group["id"],
-        "verified_roles": sorted(role for role, _ in required),
-        "budget_inr": parameters["monthlyBudgetInr"],
-    }
+    return {**result, "verified_custom_roles": sorted(custom_roles)}
 
 
 def verify_with_retry(parameters: dict[str, Any], subscription_id: str, deployment_name: str) -> dict[str, Any]:
