@@ -1,11 +1,15 @@
 """Contracts for protected inactive Demo runner preview and apply."""
 
+import hashlib
+import json
 from pathlib import Path
 
-WORKFLOW = Path(".github/workflows/private-runner-infrastructure.yaml").read_text(
-    encoding="utf-8"
-)
+WORKFLOW_PATH = Path(".github/workflows/private-runner-infrastructure.yaml")
+WORKFLOW = WORKFLOW_PATH.read_text(encoding="utf-8")
 QUALIFICATION_WORKFLOW = WORKFLOW.split("  resolve-environment:", 1)[1]
+BOOTSTRAP_MANIFEST = Path(
+    "infrastructure/deployment-stacks/goal006-runner/bootstrap-manifest.json"
+)
 
 
 def test_workflow_exposes_each_protected_environment() -> None:
@@ -52,6 +56,13 @@ def test_private_runner_cost_gate_is_warning_only() -> None:
     assert WORKFLOW.count(warning_only_gate) == 2
     assert "Enforce cumulative cost gate" not in WORKFLOW
     assert WORKFLOW.count("python scripts/goal006_cost_gate.py") == 2
+
+
+def test_private_runner_workflow_matches_bootstrap_digest() -> None:
+    manifest = json.loads(BOOTSTRAP_MANIFEST.read_text(encoding="utf-8"))
+    expected_digest = manifest["files"][str(WORKFLOW_PATH)]
+
+    assert hashlib.sha256(WORKFLOW_PATH.read_bytes()).hexdigest() == expected_digest
 
 
 def test_private_qualification_uses_environment_scoped_brokers_and_runner() -> None:

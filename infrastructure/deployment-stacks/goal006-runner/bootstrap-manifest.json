@@ -19,7 +19,7 @@
   },
   "files": {
     ".github/workflows/private-runner-image.yaml": "50ebb64ebdc06ff6420d81172b7c51d127e014f7d36525a3cdb3891e2bbb7924",
-    ".github/workflows/private-runner-infrastructure.yaml": "e03fd3dd6a39a3243b2379cc1d2dde7e612ecf78c88271e8237745c5f4204a2e",
+    ".github/workflows/private-runner-infrastructure.yaml": "df50c0f2a9998fcfbeb829f9d9557195f81ee9e775447b1a53fa6fea36fe1e8e",
     "architecture/reference/pipeline/github-runner-app-manifest.json": "c7d2e2d953509e23076406b2a12abf7b01538f8dd49de2f40b9855f019e1a552",
     "infrastructure/deployment-stacks/goal006-runner/blob-diagnostics.bicep": "34d2c762628ebf0833cf9735ab186bf63a6cd991613a1430f5221be72d846ec5",
     "infrastructure/deployment-stacks/goal006-runner/cleanup-evidence-storage.bicep": "875a48d5c147cd7f75c52ac2ec292a716fbe2ff9de1dae67177ab87d9204c415",
