@@ -106,7 +106,7 @@
     "infrastructure/postgres/init/59-wc124-billing-authority.sql": "7482e523741ed6307b8dd97bcfe8320d19f1e71b502b121b42746071f0a60443",
     "infrastructure/postgres/init/60-wc124-principal-handoff.sql": "f284de93364a10616588bc56fe653222866d310d1140d9267ce02611fa627a61",
     "infrastructure/postgres/init/61-wc120-whatsapp-traffic-reservations.sql": "e06b750ee3fed04375630134f3f8bdf48cd2dc9bb6985d679c6cc2a965ce91aa",
-    "infrastructure/runner/Dockerfile": "9f997db63a50df3d20f0705643f6e85136848972a42bb42281b44f5f115d6e42",
+    "infrastructure/runner/Dockerfile": "c44fbb0579c69ae5421fdbaf53be9182c874b49810abd6a97bb3df7f80dbbcce",
     "infrastructure/runner/Dockerfile.control": "c3d1c42fb381d9019c32fa2f8936218283f2bca81f6eb8cb8edf151c988f9a9b",
     "infrastructure/runner/entrypoint.sh": "fe467ae6782b0792bdf0e2dfada98e277abd5f8ec11bc817768ccf032cfe62a7",
     "infrastructure/runner/import-app-signing-material.sh": "e308e88ba3b70ea923e92f9840bb1fa4f25a462556f1b9b65e13fd0c54376e94",

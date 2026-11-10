@@ -46,7 +46,8 @@ def test_runner_image_is_scanned_for_fixable_os_vulnerabilities() -> None:
 
 def test_runner_image_retries_transient_apt_download_failures() -> None:
     assert "ARG APT_ACQUIRE_RETRIES=5" in DOCKERFILE
-    assert DOCKERFILE.count('-o Acquire::Retries="${APT_ACQUIRE_RETRIES}"') == 4
+    assert DOCKERFILE.count('-o Acquire::Retries="${APT_ACQUIRE_RETRIES}"') == 6
+    assert "rm -rf /var/lib/apt/lists/*; sleep 5;" in DOCKERFILE
     remove_ppa = "rm -f /etc/apt/sources.list.d/git-core-ubuntu-ppa-noble.sources"
     assert remove_ppa in DOCKERFILE
     assert DOCKERFILE.index(remove_ppa) < DOCKERFILE.index("apt-get -o Acquire::Retries")

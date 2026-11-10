@@ -1505,7 +1505,7 @@ public sealed class ConversationService
     )
     {
         using var activity = StartActivity("bp.conversation.read_position", relationshipId);
-        // codeql[cs/user-controlled-bypass] Exact allowlist validation rejects unsupported client schemas.
+        // lgtm[cs/user-controlled-bypass] Exact allowlist validation rejects unsupported client schemas.
         if (request.SchemaVersion != SchemaVersion)
         {
             throw new ConversationRequestException("Unsupported schemaVersion.");
