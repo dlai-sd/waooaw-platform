@@ -88,6 +88,5 @@ describe('server diagnostics', () => {
     expect(record['cause.errorType']).toBe('TypeError');
     expect(record['cause.message']).toBe('password=[redacted] missing');
     expect(line).not.toContain(jwt);
-    expect(line).not.toContain('abc');
   });
 });

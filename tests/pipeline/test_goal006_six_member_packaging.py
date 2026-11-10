@@ -28,6 +28,10 @@ DEBIAN_RUNTIME_DOCKERFILES = (
     "src/ai-runtime/Dockerfile",
     "src/billing-engine/Dockerfile",
 )
+ALPINE_RUNTIME_DOCKERFILES = (
+    "src/digital-marketing-agent/Dockerfile",
+    "web/Dockerfile",
+)
 PYTHON_DEPENDENCY_DOCKERFILES = (
     "src/professional-runtime/Dockerfile",
     "src/ai-runtime/Dockerfile",
@@ -124,7 +128,7 @@ def test_ci_has_deterministic_spec_and_fixable_vulnerability_gates() -> None:
     assert workflow.count("exit-code: 1") >= 2
 
 
-def test_hosted_builds_refresh_debian_runtime_security_layers() -> None:
+def test_hosted_builds_refresh_runtime_security_layers() -> None:
     workflow = CI_WORKFLOW.read_text(encoding="utf-8")
     assert workflow.count("SECURITY_REFRESH=${{ github.run_id }}") == 2
 
@@ -134,6 +138,14 @@ def test_hosted_builds_refresh_debian_runtime_security_layers() -> None:
         assert 'RUN test -n "$SECURITY_REFRESH"' in content
         assert content.index('RUN test -n "$SECURITY_REFRESH"') < content.index(
             "apt-get update"
+        )
+
+    for dockerfile in ALPINE_RUNTIME_DOCKERFILES:
+        content = (REPO_ROOT / dockerfile).read_text(encoding="utf-8")
+        assert "ARG SECURITY_REFRESH=local" in content
+        assert 'RUN test -n "$SECURITY_REFRESH"' in content
+        assert content.index('RUN test -n "$SECURITY_REFRESH"') < content.index(
+            "apk upgrade"
         )
 
     for dockerfile in PYTHON_DEPENDENCY_DOCKERFILES:
