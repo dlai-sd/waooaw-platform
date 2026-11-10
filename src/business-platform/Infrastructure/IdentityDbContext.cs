@@ -15,6 +15,7 @@ public enum IdentityRegistrationState
     EmailVerificationRequired,
     DuplicateResolutionRequired,
     ProfileCompletionRequired,
+    MobileVerificationRequired,
     ReadyToComplete,
     Completed,
     Expired,
@@ -105,6 +106,11 @@ public sealed class IdentityVerificationChallengeRecord
     // OTP code stored as HMAC — raw code never persisted
     public string CodeHmac { get; init; } = string.Empty;
     public string CodeHmacVersion { get; init; } = "v1";
+    public string? DestinationHmacKey { get; init; }
+    public string? DestinationHmacVersion { get; init; }
+    public string? DestinationHmacDomain { get; init; }
+    public int FailedAttempts { get; set; }
+    public string? DeliveryState { get; set; }
     public string MaskedDestination { get; init; } = string.Empty;
     public DateTimeOffset? VerifiedAt { get; set; }
     public DateTimeOffset ExpiresAt { get; init; } = DateTimeOffset.UtcNow.AddMinutes(15);
@@ -123,9 +129,32 @@ public sealed class IdentityAccountLinkRecord
     public Guid VerifiedMobileProofId { get; init; }
     public Guid StartEvidenceId { get; init; }
     public Guid? ApprovalEvidenceId { get; set; }
+    public Guid? CancellationEvidenceId { get; set; }
+    public Guid? ConfirmationEvidenceId { get; set; }
+    public string? ConfirmationMessageDigest { get; set; }
+    public string? ConfirmedPhoneSubjectHash { get; set; }
+    public DateTimeOffset? ConfirmedAt { get; set; }
     public DateTimeOffset ExpiresAt { get; init; } = DateTimeOffset.UtcNow.AddMinutes(15);
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class IdentityPhoneChangeRecord
+{
+    public Guid ChallengeId { get; init; }
+    public Guid RegistrationId { get; init; }
+    public string ActorIssuer { get; init; } = string.Empty;
+    public string ActorSubject { get; init; } = string.Empty;
+    public Guid AccountId { get; init; }
+    public Guid TenantId { get; init; }
+    public Guid MembershipId { get; init; }
+    public string PreviousMobileKey { get; init; } = string.Empty;
+    public string PreviousMobileVersion { get; init; } = string.Empty;
+    public string DestinationCandidates { get; init; } = "{}";
+    public Guid StartEvidenceId { get; init; }
+    public Guid? CompletionEvidenceId { get; set; }
+    public DateTimeOffset CreatedAt { get; init; }
+    public DateTimeOffset? CompletedAt { get; set; }
 }
 
 public sealed class IdentityIdempotencyEntry
@@ -287,6 +316,7 @@ public sealed class IdentityDbContext : DbContext
     public DbSet<IdentityVerificationChallengeRecord> VerificationChallenges =>
         Set<IdentityVerificationChallengeRecord>();
     public DbSet<IdentityAccountLinkRecord> AccountLinks => Set<IdentityAccountLinkRecord>();
+    public DbSet<IdentityPhoneChangeRecord> PhoneChanges => Set<IdentityPhoneChangeRecord>();
     public DbSet<IdentityIdempotencyEntry> IdempotencyLedger => Set<IdentityIdempotencyEntry>();
     public DbSet<CustomerPortalPreferenceRecord> CustomerPortalPreferences =>
         Set<CustomerPortalPreferenceRecord>();
@@ -307,6 +337,37 @@ public sealed class IdentityDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<IdentityPhoneChangeRecord>(entity =>
+        {
+            entity.ToTable("phone_changes", "identity");
+            entity.HasKey(value => value.ChallengeId);
+            entity
+                .HasOne<IdentityVerificationChallengeRecord>()
+                .WithOne()
+                .HasForeignKey<IdentityPhoneChangeRecord>(value => value.ChallengeId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.Property(value => value.ChallengeId).HasColumnName("challenge_id");
+            entity.Property(value => value.RegistrationId).HasColumnName("registration_id");
+            entity.Property(value => value.ActorIssuer).HasColumnName("actor_issuer");
+            entity.Property(value => value.ActorSubject).HasColumnName("actor_subject");
+            entity.Property(value => value.AccountId).HasColumnName("account_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.MembershipId).HasColumnName("membership_id");
+            entity.Property(value => value.PreviousMobileKey).HasColumnName("previous_mobile_key");
+            entity
+                .Property(value => value.PreviousMobileVersion)
+                .HasColumnName("previous_mobile_version");
+            entity
+                .Property(value => value.DestinationCandidates)
+                .HasColumnName("destination_candidates")
+                .HasColumnType("jsonb");
+            entity.Property(value => value.StartEvidenceId).HasColumnName("start_evidence_id");
+            entity
+                .Property(value => value.CompletionEvidenceId)
+                .HasColumnName("completion_evidence_id");
+            entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+            entity.Property(value => value.CompletedAt).HasColumnName("completed_at");
+        });
         modelBuilder.HasDefaultSchema("identity");
 
         modelBuilder.Entity<IdentityRegistrationRecord>(e =>
@@ -380,6 +441,17 @@ public sealed class IdentityDbContext : DbContext
             e.Property(c => c.State).HasColumnName("state").HasConversion<string>();
             e.Property(c => c.CodeHmac).HasColumnName("code_hmac").HasMaxLength(128);
             e.Property(c => c.CodeHmacVersion).HasColumnName("code_hmac_version").HasMaxLength(32);
+            e.Property(c => c.FailedAttempts).HasColumnName("failed_attempts");
+            e.Property(c => c.DeliveryState).HasColumnName("delivery_state").HasMaxLength(16);
+            e.Property(c => c.DestinationHmacKey)
+                .HasColumnName("destination_hmac_key")
+                .HasMaxLength(128);
+            e.Property(c => c.DestinationHmacVersion)
+                .HasColumnName("destination_hmac_version")
+                .HasMaxLength(32);
+            e.Property(c => c.DestinationHmacDomain)
+                .HasColumnName("destination_hmac_domain")
+                .HasMaxLength(16);
             e.Property(c => c.MaskedDestination)
                 .HasColumnName("masked_destination")
                 .HasMaxLength(254);
@@ -401,6 +473,15 @@ public sealed class IdentityDbContext : DbContext
             e.Property(l => l.VerifiedMobileProofId).HasColumnName("verified_mobile_proof_id");
             e.Property(l => l.StartEvidenceId).HasColumnName("start_evidence_id");
             e.Property(l => l.ApprovalEvidenceId).HasColumnName("approval_evidence_id");
+            e.Property(l => l.CancellationEvidenceId).HasColumnName("cancellation_evidence_id");
+            e.Property(l => l.ConfirmationEvidenceId).HasColumnName("confirmation_evidence_id");
+            e.Property(l => l.ConfirmationMessageDigest)
+                .HasColumnName("confirmation_message_digest")
+                .HasMaxLength(64);
+            e.Property(l => l.ConfirmedPhoneSubjectHash)
+                .HasColumnName("confirmed_phone_subject_hash")
+                .HasMaxLength(64);
+            e.Property(l => l.ConfirmedAt).HasColumnName("confirmed_at");
             e.Property(l => l.ExpiresAt).HasColumnName("expires_at");
             e.Property(l => l.CreatedAt).HasColumnName("created_at");
             e.Property(l => l.UpdatedAt).HasColumnName("updated_at");

@@ -1,7 +1,9 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,25 +12,575 @@ using Microsoft.Extensions.Options;
 using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
+using Waooaw.BusinessPlatform.Tests.Conversation;
+using Waooaw.BusinessPlatform.Tests.Identity;
 using Xunit;
 
 namespace Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness;
 
 public sealed class WhatsAppDemoProviderTests
 {
+    [Theory]
+    [InlineData("UNRESOLVED", true)]
+    [InlineData("FAILED", true)]
+    [InlineData("UNRESOLVED", false)]
+    public async Task RelationshipWebhookReplayNeverRestartsFailedProfessionalWork(
+        string deliveryState,
+        bool contributionAvailable
+    )
+    {
+        var context = await Wc120FitnessContext.CreateAsync();
+        var now = DateTimeOffset.UtcNow;
+        await context.SeedWhatsAppEligibilityAsync(Recipient, now);
+        await using (var relationships = context.Relationships.CreateDbContext())
+        {
+            relationships.RelationshipSkillConfigurations.Add(
+                new RelationshipSkillConfiguration
+                {
+                    TenantId = context.TenantId,
+                    RelationshipId = context.RelationshipId,
+                    SkillId = "INDUCTION",
+                    SkillVersion = "1.0",
+                    Status = "ACCEPTED",
+                    Applicability = "APPLICABLE",
+                    AuthorityState = "GRANTED",
+                }
+            );
+            await relationships.SaveChangesAsync();
+        }
+        var runtime = new ConversationExecutionGatewayStub { FailStart = true };
+        var evidence = new ConversationConstitutionalGatewayStub();
+        var mandate = new OperationalMandateResolverStub();
+        var canonical = new ConversationService(
+            context.Conversations,
+            context.Relationships,
+            evidence,
+            runtime,
+            mandate,
+            new ConversationCursorCodec(
+                Options.Create(new ConversationCursorOptions { HmacKey = new string('p', 48) })
+            ),
+            conversationOptions: Options.Create(context.Options)
+        );
+        var journey = new WhatsAppJourneyService(
+            context.Relationships,
+            new ForbiddenEvidence(),
+            Options.Create(new WhatsAppJourneyOptions()),
+            conversationDbFactory: context.Conversations,
+            conversationOptions: Options.Create(context.Options),
+            conversationService: canonical,
+            outboundContributions: contributionAvailable ? context.Outbound() : null
+        );
+        var proof = new VerifiedPhoneIdentityProof(
+            "unknown-original",
+            Recipient,
+            "Please help with this task",
+            null,
+            "verified-test",
+            "AAL1_CHANNEL",
+            now,
+            now,
+            now.AddMinutes(5),
+            Guid.NewGuid()
+        );
+        await Assert.ThrowsAsync<ConversationExecutionUnavailableException>(() =>
+            journey.ReceiveVerifiedAsync(proof, CancellationToken.None)
+        );
+        var originalExecution = runtime.LastExecutionId;
+        var originalMandate = runtime.LastMandate;
+        if (deliveryState == "FAILED")
+        {
+            await using var db = context.Conversations.CreateDbContext();
+            (await db.Messages.SingleAsync()).DeliveryState = "FAILED";
+            (await db.IdempotencyOutcomes.SingleAsync()).Outcome = "FAILED";
+            await db.SaveChangesAsync();
+        }
+        runtime.FailStart = false;
+        for (var replay = 0; replay < 2; replay++)
+        {
+            if (!contributionAvailable)
+                await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                    journey.ReceiveVerifiedAsync(proof, CancellationToken.None)
+                );
+            else
+            {
+                var receipt = await journey.ReceiveVerifiedAsync(proof, CancellationToken.None);
+                Assert.Equal(
+                    deliveryState == "UNRESOLVED"
+                        ? "RECONCILIATION_REQUIRED"
+                        : "SECURE_PORTAL_REQUIRED",
+                    receipt.Status
+                );
+                Assert.Contains("No new professional work was started.", receipt.Reply);
+                Assert.Equal(replay == 1, receipt.Replayed);
+                Assert.Empty(receipt.InternalTenantToken);
+            }
+        }
+        Assert.Equal(1, runtime.StartCount);
+        Assert.Equal(1, evidence.CallCount);
+        Assert.Equal(1, mandate.ResolveCount);
+        Assert.Equal(originalExecution, runtime.LastExecutionId);
+        Assert.Same(originalMandate, runtime.LastMandate);
+        await using var verify = context.Conversations.CreateDbContext();
+        var original = await verify.Messages.SingleAsync(value => value.Actor == "CUSTOMER");
+        Assert.Equal(deliveryState, original.DeliveryState);
+        Assert.Equal("FAILED", original.ProcessingState);
+        Assert.Single(verify.Executions);
+        Assert.Equal(contributionAvailable ? 1 : 0, verify.ConversationOutbox.Count());
+        Assert.Equal(
+            contributionAvailable ? 1 : 0,
+            verify.Messages.Count(value => value.Actor == "SYSTEM")
+        );
+        Assert.Single(verify.IdempotencyOutcomes.Where(value => value.OperationFamily == "SEND"));
+    }
+
+    [Theory]
+    [InlineData("STOP", false)]
+    [InlineData("EMERGENCY STOP", false)]
+    [InlineData("STOP", true)]
+    [InlineData("EMERGENCY STOP", true)]
+    public async Task SignedSafetyIngressRequiresRoutingOwnerAndNeverFallsIntoOrdinaryJourney(
+        string text,
+        bool ownerAvailable
+    )
+    {
+        var fixture = await SeedAsync();
+        var scope = new WhatsAppTenantExecutionScope(fixture.Gate, fixture.Clock);
+        var secrets = new WebhookCredentials();
+        var identity = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var routing = new WhatsAppRelationshipRouting(
+            fixture.Context.Relationships,
+            fixture.Context.Conversations,
+            IdentityTestHelpers.CreateService(identity),
+            scope,
+            fixture.Gate,
+            new ConfigurationBuilder().Build(),
+            fixture.Clock
+        );
+        var journey = new WhatsAppJourneyService(
+            fixture.Context.Relationships,
+            new ForbiddenEvidence(),
+            Options.Create(new WhatsAppJourneyOptions()),
+            conversationOptions: Options.Create(fixture.Context.Options),
+            webhookCredentials: secrets,
+            capabilityGate: fixture.Gate,
+            clock: fixture.Clock,
+            tenantExecutionScope: scope,
+            relationshipRouting: ownerAvailable ? routing : null
+        );
+        var body = Encoding.UTF8.GetBytes(
+            JsonSerializer.Serialize(
+                new
+                {
+                    @object = "whatsapp_business_account",
+                    entry = new[]
+                    {
+                        new
+                        {
+                            id = "1002",
+                            changes = new[]
+                            {
+                                new
+                                {
+                                    value = new
+                                    {
+                                        metadata = new { phone_number_id = "1003" },
+                                        messages = new[]
+                                        {
+                                            new
+                                            {
+                                                id = "safety-owner",
+                                                from = Binding()
+                                                    .RecipientPhoneNumber.TrimStart('+'),
+                                                timestamp = Now.ToUnixTimeSeconds().ToString(),
+                                                type = "text",
+                                                text = new { body = text },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                }
+            )
+        );
+        var signature =
+            "sha256="
+            + Convert.ToHexStringLower(
+                HMACSHA256.HashData(Encoding.UTF8.GetBytes(secrets.AppSecret), body)
+            );
+        using (scope.Begin())
+        {
+            if (ownerAvailable)
+            {
+                var failure = await Assert.ThrowsAsync<WhatsAppChannelBindingUnavailableException>(
+                    () =>
+                        journey.ReceiveAsync(body, signature, Now, CancellationToken.None)
+                );
+                Assert.Equal("Safety routing requires PostgreSQL.", failure.Message);
+            }
+            else
+            {
+                var failure = await Assert.ThrowsAsync<WhatsAppWebhookException>(() =>
+                    journey.ReceiveAsync(body, signature, Now, CancellationToken.None)
+                );
+                Assert.Equal("WHATSAPP_ROUTING_OWNER_UNAVAILABLE", failure.Code);
+            }
+            Assert.Equal(fixture.Request.TenantId, scope.CurrentTenantId);
+        }
+        await using var db = fixture.Context.Conversations.CreateDbContext();
+        Assert.Empty(db.Set<WhatsAppGuestSession>());
+        Assert.Empty(db.EmergencyStopLatches);
+        await using var relationships = fixture.Context.Relationships.CreateDbContext();
+        Assert.Empty(relationships.WhatsAppMessageReceipts);
+    }
+
+    [Fact]
+    public async Task CustomerDispatchWithoutFreshRoutingOwnerCannotReadSecretsOrOpenProviderSocket()
+    {
+        var fixture = await SeedAsync();
+        var reads = 0;
+        var clients = new ClientFactory(
+            (_, _) =>
+            {
+                reads++;
+                throw new InvalidOperationException(
+                    "Customer route denial must precede any provider socket."
+                );
+            }
+        );
+        var adapter = Adapter(fixture, clients);
+        var denied = await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+            adapter.DispatchAsync(
+                fixture.Request with
+                {
+                    TenantId = Guid.NewGuid(),
+                },
+                CancellationToken.None
+            )
+        );
+        Assert.Equal("CUSTOMER_EGRESS_OWNER_UNAVAILABLE", denied.ReasonCode);
+        Assert.Equal(0, reads);
+        await using var db = fixture.Context.Conversations.CreateDbContext();
+        Assert.Empty(await db.Set<WhatsAppTrafficReservation>().ToListAsync());
+    }
+
     private static readonly DateTimeOffset Now = new(2026, 11, 2, 9, 0, 0, TimeSpan.Zero);
     private static readonly string Recipient = new('b', 64);
     private static readonly string TupleDigest = "sha256:" + new string('a', 64);
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ProvisionalGuideRepliesUseCanonicalHistoryBudgetAndCurrentStop(bool stopped)
+    [InlineData("valid")]
+    [InlineData("altered")]
+    [InlineData("foreign")]
+    [InlineData("customer")]
+    [InlineData("collision")]
+    [InlineData("stopped")]
+    [InlineData("channel-stopped")]
+    public async Task GuestQueueUsesCurrentAdmissionAndCanonicalGuideNotCallerSuppliedText(
+        string scenario
+    )
+    {
+        var context = await Wc120FitnessContext.CreateAsync();
+        var interactions = new PortalInteractionService(
+            context.Conversations,
+            new ConversationCursorCodec(
+                Options.Create(new ConversationCursorOptions { HmacKey = new string('p', 48) })
+            )
+        );
+        var participant = Guid.NewGuid();
+        var submitted = await interactions.SendGuestFixedNoticeAsync(
+            context.TenantId,
+            participant,
+            Guid.NewGuid(),
+            WhatsAppGuestConsent.Notice,
+            CancellationToken.None
+        );
+        var guest = new WhatsAppGuestSession
+        {
+            TenantId = context.TenantId,
+            ParticipantId = participant,
+            BindingDigest = Recipient,
+            EvidenceId = Guid.NewGuid(),
+            AdmittedAt = Now,
+        };
+        await using (var db = context.Conversations.CreateDbContext())
+        {
+            db.Add(guest);
+            await db.SaveChangesAsync();
+            if (scenario == "stopped")
+            {
+                guest.StoppedAt = Now;
+                await db.SaveChangesAsync();
+            }
+        }
+        if (scenario == "channel-stopped")
+        {
+            await using var relationshipDb = context.Relationships.CreateDbContext();
+            relationshipDb.WhatsAppJourneyContacts.Add(
+                new WhatsAppJourneyContact
+                {
+                    TenantId = context.TenantId,
+                    PhoneHmac = Recipient,
+                    OptedInAt = Now.AddDays(-1),
+                    OptedOutAt = Now,
+                    LastInboundAt = Now,
+                }
+            );
+            await relationshipDb.SaveChangesAsync();
+        }
+        var reply = submitted.Value;
+        reply = scenario switch
+        {
+            "altered" => reply with { Content = [new("1.0", "TEXT", "unowned text", "en")] },
+            "foreign" => reply with { MessageId = Guid.NewGuid() },
+            "customer" => reply with { Actor = "CUSTOMER" },
+            _ => reply,
+        };
+        var outbox = context.Outbox(new WhatsAppJourneyOptions { DispatchEnabled = true });
+        if (scenario == "collision")
+        {
+            await outbox.QueueGuestDiscoveryAsync(guest, reply, Now, CancellationToken.None);
+            await using (var db = context.Conversations.CreateDbContext())
+            {
+                var existing = await db.ConversationOutbox.SingleAsync();
+                db.Entry(existing).Property(value => value.RecipientBindingDigest).CurrentValue =
+                    new string('c', 64);
+                await db.SaveChangesAsync();
+            }
+            await Assert.ThrowsAsync<ConversationIdempotencyConflictException>(() =>
+                outbox.QueueGuestDiscoveryAsync(guest, reply, Now, CancellationToken.None)
+            );
+            await using var saved = context.Conversations.CreateDbContext();
+            Assert.Single(await saved.ConversationOutbox.ToListAsync());
+        }
+        else if (scenario == "valid")
+        {
+            await outbox.QueueGuestDiscoveryAsync(guest, reply, Now, CancellationToken.None);
+            await outbox.QueueGuestDiscoveryAsync(guest, reply, Now, CancellationToken.None);
+            await using var db = context.Conversations.CreateDbContext();
+            var row = Assert.Single(await db.ConversationOutbox.ToListAsync());
+            Assert.Equal(reply.MessageId.ToString("D"), row.AggregateId);
+            Assert.Equal(reply.Sequence, row.Sequence);
+        }
+        else
+        {
+            if (scenario is "stopped" or "channel-stopped")
+                await Assert.ThrowsAsync<ConversationStoppedException>(() =>
+                    outbox.QueueGuestDiscoveryAsync(guest, reply, Now, CancellationToken.None)
+                );
+            else
+                await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+                    outbox.QueueGuestDiscoveryAsync(guest, reply, Now, CancellationToken.None)
+                );
+            await using var db = context.Conversations.CreateDbContext();
+            Assert.Empty(await db.ConversationOutbox.ToListAsync());
+        }
+    }
+
+    [Fact]
+    public async Task GuestDiscoveryReplyRequiresCurrentConsentAtQueueAndDispatch()
+    {
+        var context = await Wc120FitnessContext.CreateAsync();
+        var guest = new WhatsAppGuestSession
+        {
+            TenantId = context.TenantId,
+            BindingDigest = Recipient,
+            EvidenceId = Guid.NewGuid(),
+            AdmittedAt = Now,
+            LastInboundAt = Now,
+            ServiceConsentAt = Now,
+            ServiceConsentEvidenceId = Guid.NewGuid(),
+            ServiceConsentNoticeVersion = WhatsAppGuestConsent.NoticeVersion,
+        };
+        await using (var db = context.Conversations.CreateDbContext())
+        {
+            db.Add(guest);
+            await db.SaveChangesAsync();
+        }
+        var interactions = new PortalInteractionService(
+            context.Conversations,
+            new ConversationCursorCodec(
+                Options.Create(new ConversationCursorOptions { HmacKey = new string('p', 48) })
+            )
+        );
+        var messageId = Guid.NewGuid();
+        var submission = await interactions.SendGuestNoticeAsync(
+            guest.TenantId,
+            guest.ParticipantId,
+            messageId,
+            new(
+                "1.0",
+                messageId,
+                [new("1.0", "TEXT", "question", "en-IN")],
+                "en-IN",
+                "MARKETPLACE"
+            ),
+            "Private discovery response",
+            CancellationToken.None
+        );
+        var outbox = context.Outbox(new WhatsAppJourneyOptions { DispatchEnabled = true });
+        await using (var db = context.Conversations.CreateDbContext())
+        {
+            (await db.Set<WhatsAppGuestSession>().SingleAsync()).ServiceConsentNoticeVersion =
+                "old";
+            await db.SaveChangesAsync();
+        }
+        await Assert.ThrowsAsync<ConversationNotAccessibleException>(() =>
+            outbox.QueueGuestDiscoveryAsync(
+                guest,
+                submission.Value.GuideMessage,
+                Now,
+                CancellationToken.None
+            )
+        );
+        await using (var db = context.Conversations.CreateDbContext())
+        {
+            (await db.Set<WhatsAppGuestSession>().SingleAsync()).ServiceConsentNoticeVersion =
+                WhatsAppGuestConsent.NoticeVersion;
+            await db.SaveChangesAsync();
+        }
+        await outbox.QueueGuestDiscoveryAsync(
+            guest,
+            submission.Value.GuideMessage,
+            Now,
+            CancellationToken.None
+        );
+        await using (var db = context.Conversations.CreateDbContext())
+        {
+            (await db.Set<WhatsAppGuestSession>().SingleAsync()).ServiceConsentNoticeVersion =
+                "old";
+            await db.SaveChangesAsync();
+        }
+        var lease = Assert.IsType<WhatsAppOutboxLease>(
+            await outbox.LeaseNextAsync("consent-check", Now, CancellationToken.None)
+        );
+        Assert.False(
+            await outbox.BeginDispatchAsync(
+                lease.OutboxId,
+                "consent-check",
+                Now,
+                CancellationToken.None
+            )
+        );
+    }
+
+    [Theory]
+    [InlineData(WhatsAppGuestConsent.Notice)]
+    [InlineData(WhatsAppGuestTrafficBudget.UnsupportedContentNotice)]
+    [InlineData(WhatsAppGuestTrafficBudget.MessageLimitNotice)]
+    [InlineData(WhatsAppGuestTrafficBudget.GlobalRateLimitNotice)]
+    [InlineData(WhatsAppGuestOperatingHours.ClosedNotice)]
+    public async Task FixedServiceNoticesRemainAvailableBeforeConsent(string notice)
+    {
+        var context = await Wc120FitnessContext.CreateAsync();
+        var guest = new WhatsAppGuestSession
+        {
+            TenantId = context.TenantId,
+            BindingDigest = Recipient,
+            EvidenceId = Guid.NewGuid(),
+            AdmittedAt = Now,
+            LastInboundAt = Now,
+        };
+        await using (var db = context.Conversations.CreateDbContext())
+        {
+            db.Add(guest);
+            await db.SaveChangesAsync();
+        }
+        var interactions = new PortalInteractionService(
+            context.Conversations,
+            new ConversationCursorCodec(
+                Options.Create(new ConversationCursorOptions { HmacKey = new string('p', 48) })
+            )
+        );
+        var reply = await interactions.SendGuestFixedNoticeAsync(
+            guest.TenantId,
+            guest.ParticipantId,
+            Guid.NewGuid(),
+            notice,
+            CancellationToken.None
+        );
+        var outbox = context.Outbox(new WhatsAppJourneyOptions { DispatchEnabled = true });
+        await outbox.QueueGuestDiscoveryAsync(guest, reply.Value, Now, CancellationToken.None);
+        var lease = Assert.IsType<WhatsAppOutboxLease>(
+            await outbox.LeaseNextAsync("pre-consent", Now, CancellationToken.None)
+        );
+        Assert.True(
+            await outbox.BeginDispatchAsync(
+                lease.OutboxId,
+                "pre-consent",
+                Now,
+                CancellationToken.None
+            )
+        );
+    }
+
+    [Fact]
+    public void GuestReplyDestinationIsEncryptedAndBoundToItsSenderDigest()
+    {
+        var protectedDestination = WhatsAppPhoneDestinationProtector.Protect(
+            Credentials.SubjectKey,
+            "+14155552671",
+            Recipient
+        );
+
+        Assert.DoesNotContain("+14155552671", protectedDestination, StringComparison.Ordinal);
+        Assert.Equal(
+            "+14155552671",
+            WhatsAppPhoneDestinationProtector.Unprotect(
+                Credentials.SubjectKey,
+                protectedDestination,
+                Recipient
+            )
+        );
+        Assert.Throws<WhatsAppCapabilityUnavailableException>(() =>
+            WhatsAppPhoneDestinationProtector.Unprotect(
+                Credentials.SubjectKey,
+                protectedDestination,
+                new string('c', 64)
+            )
+        );
+        var tampered = protectedDestination.Split('.');
+        var tag = Convert.FromBase64String(tampered[2]);
+        tag[0] ^= 0x01;
+        tampered[2] = Convert.ToBase64String(tag);
+        Assert.Throws<WhatsAppCapabilityUnavailableException>(() =>
+            WhatsAppPhoneDestinationProtector.Unprotect(
+                Credentials.SubjectKey,
+                string.Join('.', tampered),
+                Recipient
+            )
+        );
+    }
+
+    [Theory]
+    [InlineData(false, false, false, false, false, false, false)]
+    [InlineData(true, false, false, false, false, false, false)]
+    [InlineData(false, true, false, false, false, false, false)]
+    [InlineData(false, false, true, false, false, false, false)]
+    [InlineData(false, false, false, true, false, false, false)]
+    [InlineData(false, false, false, false, true, false, false)]
+    [InlineData(false, false, false, false, false, true, false)]
+    [InlineData(false, false, false, false, false, false, true)]
+    public async Task GuestGuideRepliesUseSenderRouteAndCurrentStop(
+        bool stopped,
+        bool missingDestination,
+        bool relationshipContactOptedOut,
+        bool staleConsent,
+        bool changedDestination,
+        bool renewedDestination,
+        bool removedDestination
+    )
     {
         var fixture = await SeedAsync();
+        var guestSubject = new string('c', 64);
         fixture.Options.Authority = fixture.Options.Authority! with
         {
             AllowProvisionalOnboarding = true,
+            RecipientBindingDigest = guestSubject,
+            MaximumMessages = 20,
+            MaximumMessagesPerMinute = 20,
         };
         var context = new PortalInteractionContext
         {
@@ -50,7 +602,7 @@ public sealed class WhatsAppDemoProviderTests
             Sequence = 1,
             Actor = "GUIDE",
             ContentJson = content,
-            CurrentSurface = "ONBOARDING",
+            CurrentSurface = "MARKETPLACE",
         };
         await using (var db = fixture.Context.Conversations.CreateDbContext())
         {
@@ -58,15 +610,27 @@ public sealed class WhatsAppDemoProviderTests
             await db.SaveChangesAsync();
             db.PortalInteractionContexts.Add(context);
             db.PortalInteractionMessages.Add(guide);
-            db.Set<PhoneOnboardingIdentity>()
+            db.Set<WhatsAppGuestSession>()
                 .Add(
                     new()
                     {
                         TenantId = context.TenantId,
                         ParticipantId = context.ParticipantId,
-                        BindingDigest = Recipient,
+                        BindingDigest = guestSubject,
+                        ProtectedDestination = missingDestination
+                            ? null
+                            : WhatsAppPhoneDestinationProtector.Protect(
+                                Credentials.SubjectKey,
+                                "+14155552671",
+                                guestSubject
+                            ),
                         EvidenceId = Guid.NewGuid(),
                         AdmittedAt = Now,
+                        ServiceConsentAt = Now,
+                        ServiceConsentEvidenceId = Guid.NewGuid(),
+                        ServiceConsentNoticeVersion = staleConsent
+                            ? "retired"
+                            : WhatsAppGuestConsent.NoticeVersion,
                         LastInboundAt = Now,
                         StoppedAt = stopped ? Now : null,
                     }
@@ -84,8 +648,8 @@ public sealed class WhatsAppDemoProviderTests
                     OperationFamily = "WHATSAPP_OUTBOUND",
                     PayloadReference = $"portal-message:{guide.MessageId:D}",
                     PayloadDigest = Hash(content),
-                    Purpose = "PHONE_ONBOARDING",
-                    RecipientBindingDigest = Recipient,
+                    Purpose = "WHATSAPP_GUEST_DISCOVERY",
+                    RecipientBindingDigest = guestSubject,
                     CreatedAt = Now,
                     UpdatedAt = Now,
                     State = "DISPATCHING",
@@ -95,6 +659,21 @@ public sealed class WhatsAppDemoProviderTests
                 }
             );
             await db.SaveChangesAsync();
+        }
+        if (relationshipContactOptedOut)
+        {
+            await using var relationshipDb = fixture.Context.Relationships.CreateDbContext();
+            relationshipDb.WhatsAppJourneyContacts.Add(
+                new WhatsAppJourneyContact
+                {
+                    TenantId = fixture.Request.TenantId,
+                    PhoneHmac = guestSubject,
+                    OptedInAt = Now.AddDays(-1),
+                    OptedOutAt = Now,
+                    LastInboundAt = Now,
+                }
+            );
+            await relationshipDb.SaveChangesAsync();
         }
         fixture = fixture with
         {
@@ -117,18 +696,86 @@ public sealed class WhatsAppDemoProviderTests
                     "Shared onboarding reply",
                     body.RootElement.GetProperty("text").GetProperty("body").GetString()
                 );
+                Assert.Equal("14155552671", body.RootElement.GetProperty("to").GetString());
                 return Json(new { messages = new[] { new { id = "wamid.onboarding" } } });
             }
         );
-        if (stopped)
-            await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
-                Adapter(fixture, factory).DispatchAsync(fixture.Request, CancellationToken.None)
+        var credentials = new Credentials(async () =>
+        {
+            if (!changedDestination && !renewedDestination && !removedDestination)
+                return;
+            await using var db = fixture.Context.Conversations.CreateDbContext();
+            var guest = await db.Set<WhatsAppGuestSession>().SingleAsync();
+            guest.ProtectedDestination = removedDestination
+                ? null
+                : WhatsAppPhoneDestinationProtector.Protect(
+                    Credentials.SubjectKey,
+                    changedDestination ? "+14155552672" : "+14155552671",
+                    guestSubject
+                );
+            await db.SaveChangesAsync();
+        });
+        if (
+            stopped
+            || missingDestination
+            || relationshipContactOptedOut
+            || staleConsent
+            || changedDestination
+            || removedDestination
+        )
+        {
+            var failure = await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+                Adapter(fixture, factory, credentials: credentials)
+                    .DispatchAsync(fixture.Request, CancellationToken.None)
             );
+            Assert.Equal(
+                missingDestination && !relationshipContactOptedOut ? "PHONE_DESTINATION_UNAVAILABLE"
+                    : changedDestination || removedDestination ? "RECIPIENT_DESTINATION_CHANGED"
+                    : "RECIPIENT_ELIGIBILITY_REVOKED",
+                failure.ReasonCode
+            );
+        }
         else
         {
-            var result = await Adapter(fixture, factory)
+            var result = await Adapter(fixture, factory, credentials: credentials)
                 .DispatchAsync(fixture.Request, CancellationToken.None);
             Assert.Equal("PROVIDER_ACCEPTED", result.State);
+            await using (var budgetDb = fixture.Context.Conversations.CreateDbContext())
+            {
+                var reserved = Assert.Single(
+                    await budgetDb.WhatsAppGuestTrafficEvents.ToListAsync()
+                );
+                Assert.Equal("OUTBOUND", reserved.EventType);
+                Assert.Equal(guestSubject, reserved.BindingDigest);
+            }
+            var guestBudget = new WhatsAppGuestTrafficBudget(
+                fixture.Context.Conversations,
+                fixture.Gate,
+                fixture.Clock
+            );
+            foreach (var index in Enumerable.Range(0, 8))
+                Assert.Equal(
+                    index == 7
+                        ? WhatsAppGuestTrafficNotice.GuestMessageLimit
+                        : WhatsAppGuestTrafficNotice.None,
+                    await guestBudget.ReserveInboundAsync(
+                        fixture.Request.TenantId,
+                        guestSubject,
+                        $"inbound-{index}",
+                        false,
+                        CancellationToken.None
+                    )
+                );
+            var exhausted = await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+                guestBudget.ReserveInboundAsync(
+                    fixture.Request.TenantId,
+                    guestSubject,
+                    "inbound-limit",
+                    false,
+                    CancellationToken.None
+                )
+            );
+            Assert.Equal("GUEST_MESSAGE_LIMIT_REACHED", exhausted.ReasonCode);
             var replay = await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
                 Adapter(fixture, factory).DispatchAsync(fixture.Request, CancellationToken.None)
             );
@@ -170,9 +817,22 @@ public sealed class WhatsAppDemoProviderTests
                 }
             );
         }
-        Assert.Equal(stopped ? 0 : 1, calls);
+        Assert.Equal(
+            stopped
+            || missingDestination
+            || relationshipContactOptedOut
+            || staleConsent
+            || changedDestination
+            || removedDestination
+                ? 0
+                : 1,
+            calls
+        );
         await using var saved = fixture.Context.Conversations.CreateDbContext();
-        Assert.Single(await saved.Set<WhatsAppTrafficReservation>().ToListAsync());
+        Assert.Equal(
+            stopped || missingDestination || relationshipContactOptedOut || staleConsent ? 0 : 1,
+            await saved.Set<WhatsAppTrafficReservation>().CountAsync()
+        );
     }
 
     [Theory]
@@ -187,6 +847,10 @@ public sealed class WhatsAppDemoProviderTests
     [InlineData(
         """[{"SchemaVersion":"1.0","BlockType":"TEXT","Text":"body","MediaUrl":"https://example.test"}]"""
     )]
+    [InlineData(
+        """[{"schemaVersion":"1.0","blockType":"TEXT","text":"first","Text":"overridden"}]"""
+    )]
+    [InlineData("""[{"schemaVersion":"1.0","blockType":"TEXT","text":"body\u0000"}]""")]
     public async Task UnsupportedCanonicalBlocksCannotBecomeProviderText(string contentJson)
     {
         var fixture = await SeedAsync();
@@ -217,6 +881,43 @@ public sealed class WhatsAppDemoProviderTests
         Assert.Empty(saved.Set<WhatsAppTrafficReservation>());
     }
 
+    [Fact]
+    public async Task SharedCamelCaseCanonicalTextReachesTheExistingProviderTransport()
+    {
+        var fixture = await SeedAsync();
+        await using (var db = fixture.Context.Conversations.CreateDbContext())
+        {
+            var message = await db.Messages.SingleAsync();
+            var content = JsonSerializer.Deserialize<ConversationTextBlockV1[]>(
+                message.ContentJson
+            )!;
+            message.ContentJson = JsonSerializer.Serialize(
+                content,
+                new JsonSerializerOptions(JsonSerializerDefaults.Web)
+            );
+            await db.SaveChangesAsync();
+        }
+        var calls = 0;
+        using var factory = new ClientFactory(
+            (_, _) =>
+            {
+                calls++;
+                return Task.FromResult(
+                    new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = JsonContent.Create(
+                            new { messages = new[] { new { id = "wamid.shared-text-contract" } } }
+                        ),
+                    }
+                );
+            }
+        );
+        var outcome = await Adapter(fixture, factory)
+            .DispatchAsync(fixture.Request, CancellationToken.None);
+        Assert.Equal("PROVIDER_ACCEPTED", outcome.State);
+        Assert.Equal(1, calls);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -243,6 +944,45 @@ public sealed class WhatsAppDemoProviderTests
                 contact.LastInboundAt = Now.AddHours(-25);
             await db.SaveChangesAsync();
         });
+        var failure = await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+            Adapter(fixture, factory, credentials: credentials)
+                .DispatchAsync(fixture.Request, CancellationToken.None)
+        );
+        Assert.Equal("RECIPIENT_ELIGIBILITY_REVOKED", failure.ReasonCode);
+        Assert.Equal(0, calls);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ChangedBoundConversationPreventsProviderDispatch(
+        bool changeDuringProtectedRead
+    )
+    {
+        var fixture = await SeedAsync();
+        async Task ReplaceBindingConversation()
+        {
+            await using var db = fixture.Context.Relationships.CreateDbContext();
+            var binding = await db.ChannelBindings.SingleAsync();
+            binding.ConversationId = Guid.NewGuid().ToString("D");
+            await db.SaveChangesAsync();
+        }
+
+        if (!changeDuringProtectedRead)
+            await ReplaceBindingConversation();
+        var calls = 0;
+        using var factory = new ClientFactory(
+            (_, _) =>
+            {
+                calls++;
+                throw new InvalidOperationException(
+                    "Stale conversation must not reach provider egress."
+                );
+            }
+        );
+        var credentials = new Credentials(
+            changeDuringProtectedRead ? ReplaceBindingConversation : null
+        );
         var failure = await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
             Adapter(fixture, factory, credentials: credentials)
                 .DispatchAsync(fixture.Request, CancellationToken.None)
@@ -417,8 +1157,9 @@ public sealed class WhatsAppDemoProviderTests
         var reader = Reader(factory);
         await reader.ReadVerifyTokenAsync(CancellationToken.None);
         await reader.ReadAppSecretAsync(CancellationToken.None);
+        await reader.ReadPhoneSubjectKeyAsync(CancellationToken.None);
         await reader.ReadSenderBindingAsync(CancellationToken.None);
-        Assert.Equal(6, paths.Count);
+        Assert.Equal(8, paths.Count);
         Assert.Single(
             paths,
             value => value.Contains("/whatsapp-verify-token/", StringComparison.Ordinal)
@@ -430,6 +1171,10 @@ public sealed class WhatsAppDemoProviderTests
         Assert.Single(
             paths,
             value => value.Contains("/whatsapp-provider-binding/", StringComparison.Ordinal)
+        );
+        Assert.Single(
+            paths,
+            value => value.Contains("/whatsapp-phone-subject-hmac/", StringComparison.Ordinal)
         );
         Assert.DoesNotContain(
             paths,
@@ -474,14 +1219,651 @@ public sealed class WhatsAppDemoProviderTests
         Assert.Equal("challenge", Assert.IsType<ContentResult>(response).Content);
         Assert.Equal(1, protectedSecrets.VerifyReads);
         Assert.Equal(0, protectedSecrets.AppReads);
+        var body = Encoding.UTF8.GetBytes("{}");
+        controller.Request.ContentType = "application/json";
+        controller.Request.Body = new MemoryStream(body);
+        controller.Request.Headers["X-Hub-Signature-256"] =
+            "sha256="
+            + Convert.ToHexStringLower(
+                HMACSHA256.HashData(Encoding.UTF8.GetBytes(protectedSecrets.AppSecret), body)
+            );
         Assert.Equal(
             503,
             Assert
                 .IsType<StatusCodeResult>(await controller.ReceiveAsync(CancellationToken.None))
                 .StatusCode
         );
+        Assert.Equal(1, protectedSecrets.AppReads);
         await using var db = context.Relationships.CreateDbContext();
         Assert.Empty(await db.WhatsAppJourneyContacts.ToListAsync());
+    }
+
+    [Fact]
+    public async Task CanonicalProgressReachesProviderAsOneSystemReplyWithoutExecution()
+    {
+        var fixture = await SeedAsync();
+        await using (var db = fixture.Context.Conversations.CreateDbContext())
+        {
+            db.Messages.RemoveRange(await db.Messages.ToListAsync());
+            db.ConversationOutbox.RemoveRange(await db.ConversationOutbox.ToListAsync());
+            await db.SaveChangesAsync();
+        }
+        var journey = new WhatsAppJourneyService(
+            fixture.Context.Relationships,
+            new ForbiddenEvidence(),
+            Options.Create(new WhatsAppJourneyOptions()),
+            conversationDbFactory: fixture.Context.Conversations,
+            conversationOptions: Options.Create(fixture.Context.Options),
+            stopFence: fixture.Context.StopFence,
+            engagementWorkspace: new CustomerEngagementWorkspaceService(
+                fixture.Context.Relationships,
+                new EphemeralDataProtectionProvider(),
+                new ConversationConstitutionalGatewayStub()
+            ),
+            outboundContributions: fixture.Context.Outbound(),
+            clock: fixture.Clock
+        );
+        var proof = new VerifiedPhoneIdentityProof(
+            "progress-provider",
+            Recipient,
+            "Show my progress",
+            null,
+            "signed-test",
+            "AAL1_CHANNEL",
+            Now,
+            Now,
+            Now.AddMinutes(1),
+            Guid.NewGuid()
+        )
+        {
+            Environment = "demo",
+            AppBindingDigest = fixture.Context.Options.AppBindingDigest,
+            PayloadDigest = Hash("progress-provider-payload"),
+        };
+        var receipt = await journey.ReceiveVerifiedAsync(proof, CancellationToken.None);
+        Assert.True((await journey.ReceiveVerifiedAsync(proof, CancellationToken.None)).Replayed);
+        var outbox = fixture.Context.Outbox();
+        var lease = Assert.IsType<WhatsAppOutboxLease>(
+            await outbox.LeaseNextAsync("guidance-worker", Now, CancellationToken.None)
+        );
+        Assert.True(
+            await outbox.BeginDispatchAsync(
+                lease.OutboxId,
+                "guidance-worker",
+                Now,
+                CancellationToken.None
+            )
+        );
+        var request = new WhatsAppProviderDispatchRequest(
+            lease.OutboxId,
+            lease.Environment,
+            lease.TenantId,
+            lease.RelationshipId,
+            lease.ConversationId,
+            lease.Sequence,
+            lease.PayloadReference,
+            lease.PayloadDigest,
+            lease.AttemptNumber
+        );
+        var calls = 0;
+        using var clients = new ClientFactory(
+            async (submission, token) =>
+            {
+                calls++;
+                using var body = JsonDocument.Parse(
+                    await submission.Content!.ReadAsStringAsync(token)
+                );
+                Assert.Equal(
+                    receipt.Reply,
+                    body.RootElement.GetProperty("text").GetProperty("body").GetString()
+                );
+                Assert.Equal(
+                    Binding().RecipientPhoneNumber.TrimStart('+'),
+                    body.RootElement.GetProperty("to").GetString()
+                );
+                return Json(new { messages = new[] { new { id = "wamid.guidance" } } });
+            }
+        );
+        var result = await Adapter(fixture, clients).DispatchAsync(request, CancellationToken.None);
+        Assert.Equal("PROVIDER_ACCEPTED", result.State);
+        await outbox.RecordResultAsync(
+            lease.OutboxId,
+            "guidance-worker",
+            result,
+            CancellationToken.None
+        );
+        Assert.Null(await outbox.LeaseNextAsync("another-worker", Now, CancellationToken.None));
+        Assert.Equal(1, calls);
+        await using var check = fixture.Context.Conversations.CreateDbContext();
+        Assert.Equal("SYSTEM", (await check.Messages.SingleAsync()).Actor);
+        Assert.Empty(await check.Executions.ToListAsync());
+        Assert.Single(await check.Events.ToListAsync());
+        Assert.Single(await check.ConversationOutbox.ToListAsync());
+    }
+
+    [Fact]
+    public async Task RelationshipReplyCannotFallBackToAnotherRecipientsPilotDestination()
+    {
+        var fixture = await SeedAsync(recipient: new string('c', 64));
+        using var clients = new ClientFactory(
+            (_, _) => throw new InvalidOperationException("No provider request is permitted.")
+        );
+        var denied = await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+            Adapter(fixture, clients).DispatchAsync(fixture.Request, CancellationToken.None)
+        );
+        Assert.Equal("RECIPIENT_DESTINATION_MISMATCH", denied.ReasonCode);
+        await using var check = fixture.Context.Conversations.CreateDbContext();
+        Assert.Empty(await check.Set<WhatsAppTrafficReservation>().ToListAsync());
+    }
+
+    [Theory]
+    [InlineData("valid")]
+    [InlineData("missing")]
+    [InlineData("expired")]
+    [InlineData("future")]
+    [InlineData("tampered")]
+    [InlineData("replaced")]
+    [InlineData("revoked")]
+    [InlineData("member-revoked")]
+    [InlineData("pilot-only")]
+    public async Task PublicRelationshipRepliesUseOnlyFreshVerifiedOwnedDestinations(
+        string scenario
+    )
+    {
+        var phone = "+14155552671";
+        var recipient = Convert.ToHexStringLower(
+            HMACSHA256.HashData(
+                Encoding.UTF8.GetBytes(Credentials.SubjectKey),
+                Encoding.UTF8.GetBytes(phone)
+            )
+        );
+        var fixture = await SeedAsync(recipient: recipient);
+        fixture.Options.PublicAdmissionIdentityKeyAvailable = true;
+        fixture.Options.Authority = fixture.Options.Authority! with
+        {
+            AllowPublicAdmission = scenario != "pilot-only",
+            AllowProvisionalOnboarding = true,
+        };
+        await using (var db = fixture.Context.Relationships.CreateDbContext())
+        {
+            var contact = await db.WhatsAppJourneyContacts.SingleAsync();
+            if (scenario != "missing")
+            {
+                contact.ProtectedDestination = WhatsAppPhoneDestinationProtector.Protect(
+                    Credentials.SubjectKey,
+                    phone,
+                    scenario == "tampered" ? Recipient : recipient
+                );
+                contact.DestinationVerifiedAt = scenario switch
+                {
+                    "expired" => Now.AddHours(-25),
+                    "future" => Now.AddSeconds(1),
+                    _ => Now,
+                };
+            }
+            await db.SaveChangesAsync();
+        }
+        var calls = 0;
+        using var clients = new ClientFactory(
+            async (request, ct) =>
+            {
+                calls++;
+                var body = await request.Content!.ReadAsStringAsync(ct);
+                using var document = JsonDocument.Parse(body);
+                Assert.Equal(
+                    phone.TrimStart('+'),
+                    document.RootElement.GetProperty("to").GetString()
+                );
+                Assert.Equal(
+                    "Canonical shared-API reply",
+                    document.RootElement.GetProperty("text").GetProperty("body").GetString()
+                );
+                return Json(new { messages = new[] { new { id = "synthetic-provider-reply" } } });
+            }
+        );
+        var credentials = new Credentials(async () =>
+        {
+            if (scenario is not ("replaced" or "revoked" or "member-revoked"))
+                return;
+            await using var db = fixture.Context.Relationships.CreateDbContext();
+            if (scenario == "replaced")
+            {
+                var contact = await db.WhatsAppJourneyContacts.SingleAsync();
+                contact.ProtectedDestination = WhatsAppPhoneDestinationProtector.Protect(
+                    Credentials.SubjectKey,
+                    phone,
+                    recipient
+                );
+            }
+            else if (scenario == "member-revoked")
+                (await db.RelationshipParticipants.SingleAsync()).Status = "REVOKED";
+            else
+                (await db.ChannelBindings.SingleAsync()).Status = "REVOKED";
+            await db.SaveChangesAsync();
+        });
+        if (scenario == "valid")
+        {
+            var result = await Adapter(fixture, clients, credentials: credentials)
+                .DispatchAsync(fixture.Request, CancellationToken.None);
+            Assert.Equal("PROVIDER_ACCEPTED", result.State);
+            Assert.Equal(1, calls);
+            await using var db = fixture.Context.Conversations.CreateDbContext();
+            Assert.Single(await db.Set<WhatsAppTrafficReservation>().ToListAsync());
+        }
+        else
+        {
+            await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+                Adapter(fixture, clients, credentials: credentials)
+                    .DispatchAsync(fixture.Request, CancellationToken.None)
+            );
+            Assert.Equal(0, calls);
+        }
+    }
+
+    [Fact]
+    public async Task PublicReservationCannotSubstituteAnotherSenderOrAnotherDispatchTuple()
+    {
+        var recipient = new string('c', 64);
+        var fixture = await SeedAsync(recipient: recipient);
+        fixture.Options.PublicAdmissionIdentityKeyAvailable = true;
+        fixture.Options.Authority = fixture.Options.Authority! with
+        {
+            AllowPublicAdmission = true,
+            AllowProvisionalOnboarding = true,
+        };
+        var budget = new WhatsAppTrafficBudget(
+            fixture.Context.Conversations,
+            fixture.Gate,
+            fixture.Clock
+        );
+        var wrongSender = await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+            budget.ReserveAsync(fixture.Request, Recipient, CancellationToken.None)
+        );
+        Assert.Equal("RECIPIENT_DENIED", wrongSender.ReasonCode);
+        var wrongTuple = await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+            budget.ReserveAsync(
+                fixture.Request with
+                {
+                    RelationshipId = Guid.NewGuid(),
+                },
+                recipient,
+                CancellationToken.None
+            )
+        );
+        Assert.Equal("OUTBOUND_LEASE_EXPIRED", wrongTuple.ReasonCode);
+        await using var check = fixture.Context.Conversations.CreateDbContext();
+        Assert.Empty(await check.Set<WhatsAppTrafficReservation>().ToListAsync());
+    }
+
+    [Fact]
+    public async Task RelationshipProgressIsCanonicalOutboundWithoutProfessionalExecution()
+    {
+        var context = await Wc120FitnessContext.CreateAsync(
+            workspaceVersion: "current-workspace-42"
+        );
+        var now = DateTimeOffset.UtcNow;
+        await context.SeedWhatsAppEligibilityAsync(Recipient, now);
+        var service = new WhatsAppJourneyService(
+            context.Relationships,
+            new ForbiddenEvidence(),
+            Options.Create(new WhatsAppJourneyOptions()),
+            conversationDbFactory: context.Conversations,
+            conversationOptions: Options.Create(context.Options),
+            stopFence: context.StopFence,
+            engagementWorkspace: new CustomerEngagementWorkspaceService(
+                context.Relationships,
+                new EphemeralDataProtectionProvider(),
+                new ConversationConstitutionalGatewayStub()
+            ),
+            outboundContributions: context.Outbound()
+        );
+        var proof = new VerifiedPhoneIdentityProof(
+            "progress-canonical",
+            Recipient,
+            "Show my progress",
+            null,
+            "signed-test",
+            "AAL1_CHANNEL",
+            now,
+            now,
+            now.AddMinutes(5),
+            Guid.NewGuid()
+        )
+        {
+            Environment = context.Options.Environment,
+            AppBindingDigest = context.Options.AppBindingDigest,
+            PayloadDigest = Hash("progress canonical signed payload"),
+        };
+        var first = await service.ReceiveVerifiedAsync(proof, CancellationToken.None);
+        Assert.True((await service.ReceiveVerifiedAsync(proof, CancellationToken.None)).Replayed);
+        await using var db = context.Conversations.CreateDbContext();
+        var message = await db.Messages.SingleAsync();
+        Assert.Equal("SYSTEM", message.Actor);
+        Assert.Equal(
+            first.Reply,
+            Assert
+                .Single(
+                    Assert.IsType<ConversationTextBlockV1[]>(
+                        JsonSerializer.Deserialize<ConversationTextBlockV1[]>(message.ContentJson)
+                    )
+                )
+                .Text
+        );
+        Assert.Equal("INFORM", message.DialogueAct);
+        Assert.Equal(context.WhatsAppConversationId, message.ConversationId);
+        Assert.Empty(await db.Executions.ToListAsync());
+        var queued = await db.ConversationOutbox.SingleAsync();
+        Assert.Equal(message.MessageId.ToString("D"), queued.AggregateId);
+        Assert.Equal(context.WhatsAppConversationId, queued.ConversationId);
+        var completed = await db.Events.SingleAsync();
+        Assert.Equal("message.completed", completed.EventType);
+        Assert.Equal(message.MessageId, completed.MessageId);
+        Assert.Equal(
+            "WHATSAPP",
+            JsonDocument
+                .Parse(completed.DataJson)
+                .RootElement.GetProperty("message")
+                .GetProperty("channel")
+                .GetString()
+        );
+    }
+
+    [Theory]
+    [InlineData("TIER_3_HIGH_RISK", "PORTAL_STEP_UP_REQUIRED")]
+    [InlineData("TIER_4_CONSEQUENTIAL", "SECURE_PORTAL_REQUIRED")]
+    [InlineData("TIER_2_MEDIUM_RISK", "CONFIRMATION_REQUIRED")]
+    public async Task AssuranceGuidanceCommitsOnlyOneSystemReplyAndTimelineEvent(
+        string risk,
+        string expectedStatus
+    )
+    {
+        var context = await Wc120FitnessContext.CreateAsync(workspaceVersion: "workspace-97");
+        var now = DateTimeOffset.UtcNow;
+        await context.SeedWhatsAppEligibilityAsync(Recipient, now);
+        var service = new WhatsAppJourneyService(
+            context.Relationships,
+            new ForbiddenEvidence(),
+            Options.Create(new WhatsAppJourneyOptions()),
+            conversationDbFactory: context.Conversations,
+            conversationOptions: Options.Create(context.Options),
+            stopFence: context.StopFence,
+            outboundContributions: context.Outbound()
+        );
+        var proof = new VerifiedPhoneIdentityProof(
+            "assurance-canonical",
+            Recipient,
+            "A consequential request",
+            risk,
+            "signed-test",
+            "AAL1_CHANNEL",
+            now,
+            now,
+            now.AddMinutes(5),
+            Guid.NewGuid()
+        )
+        {
+            Environment = context.Options.Environment,
+            AppBindingDigest = context.Options.AppBindingDigest,
+            PayloadDigest = Hash("assurance signed payload"),
+        };
+        var first = await service.ReceiveVerifiedAsync(proof, CancellationToken.None);
+        Assert.Equal(expectedStatus, first.Status);
+        Assert.True((await service.ReceiveVerifiedAsync(proof, CancellationToken.None)).Replayed);
+        await using var db = context.Conversations.CreateDbContext();
+        var message = await db.Messages.SingleAsync();
+        Assert.Equal("SYSTEM", message.Actor);
+        Assert.Equal(
+            first.Reply,
+            Assert
+                .Single(
+                    Assert.IsType<ConversationTextBlockV1[]>(
+                        JsonSerializer.Deserialize<ConversationTextBlockV1[]>(message.ContentJson)
+                    )
+                )
+                .Text
+        );
+        Assert.Equal("PENDING", message.EvidenceState);
+        Assert.Empty(await db.Executions.ToListAsync());
+        Assert.Single(await db.ConversationOutbox.ToListAsync());
+        Assert.Single(await db.Events.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AmbiguousSenderBindingsDenyIngressWithoutProtectedMutation(
+        bool securityEventsAvailable
+    )
+    {
+        var context = await Wc120FitnessContext.CreateAsync();
+        var now = DateTimeOffset.UtcNow;
+        await context.SeedWhatsAppEligibilityAsync(Recipient, now);
+        await using (var db = context.Relationships.CreateDbContext())
+        {
+            var otherRelationshipId = Guid.NewGuid();
+            db.EmploymentRelationships.Add(
+                new EmploymentRelationship
+                {
+                    TenantId = context.TenantId,
+                    RelationshipId = otherRelationshipId,
+                    State = EmploymentRelationshipState.Active,
+                }
+            );
+            db.ChannelBindings.Add(
+                new ChannelBinding
+                {
+                    TenantId = context.TenantId,
+                    RelationshipId = otherRelationshipId,
+                    ParticipantId = Guid.NewGuid(),
+                    ParticipantRole = "EMPLOYER",
+                    Channel = "WHATSAPP",
+                    ExternalSubjectHash = Recipient,
+                    ConversationId = Guid.NewGuid().ToString("D"),
+                    AssuranceLevel = "AAL1_CHANNEL",
+                    Status = "ACTIVE",
+                }
+            );
+            await db.SaveChangesAsync();
+        }
+        var proof = new VerifiedPhoneIdentityProof(
+            "ambiguous-sender",
+            Recipient,
+            "Show my progress",
+            null,
+            "signed-test",
+            "AAL1_CHANNEL",
+            now.AddSeconds(1),
+            now.AddSeconds(1),
+            now.AddMinutes(5),
+            Guid.NewGuid()
+        )
+        {
+            Environment = context.Options.Environment,
+            AppBindingDigest = context.Options.AppBindingDigest,
+            PayloadDigest = Hash("ambiguous-sender"),
+        };
+        var identity = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var securityEvents = new IdentitySecurityEventService(
+            identity,
+            Options.Create(new IdentityHmacOptions { Key = new string('k', 32) }),
+            Options.Create(new IdentityEnvironmentOptions { Environment = "local" })
+        );
+        var service = new WhatsAppJourneyService(
+            context.Relationships,
+            new ForbiddenEvidence(),
+            Options.Create(new WhatsAppJourneyOptions()),
+            conversationDbFactory: context.Conversations,
+            conversationOptions: Options.Create(context.Options),
+            stopFence: context.StopFence,
+            outboundContributions: context.Outbound(),
+            securityEvents: securityEventsAvailable ? securityEvents : null
+        );
+
+        if (securityEventsAvailable)
+        {
+            var failure = await Assert.ThrowsAsync<WhatsAppWebhookException>(() =>
+                service.ReceiveVerifiedAsync(proof, CancellationToken.None)
+            );
+            Assert.Equal("WHATSAPP_IDENTITY_NOT_BOUND", failure.Code);
+        }
+        else
+        {
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.ReceiveVerifiedAsync(proof, CancellationToken.None)
+            );
+        }
+        await using (var identityDb = identity.CreateDbContext())
+        {
+            var events = await identityDb.SecurityEvents.ToListAsync();
+            if (securityEventsAvailable)
+            {
+                var recorded = Assert.Single(events);
+                Assert.Equal("AUTHORIZATION_DENIAL", recorded.EventType);
+                Assert.Equal("WHATSAPP_BINDING_AMBIGUOUS", recorded.ReasonCode);
+                Assert.Equal(proof.CorrelationId, recorded.CorrelationId);
+                Assert.Null(recorded.ActorRef);
+                Assert.Null(recorded.SessionRef);
+                Assert.DoesNotContain(proof.MessageId, recorded.SourceEventId);
+                Assert.DoesNotContain(proof.PhoneSubjectHash, recorded.SourceEventId);
+            }
+            else
+                Assert.Empty(events);
+        }
+        await using (var saved = context.Relationships.CreateDbContext())
+            Assert.Equal(now, (await saved.WhatsAppJourneyContacts.SingleAsync()).LastInboundAt);
+        await using var conversations = context.Conversations.CreateDbContext();
+        Assert.Empty(await conversations.Messages.ToListAsync());
+        Assert.Empty(await conversations.ConversationOutbox.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData("revoked")]
+    [InlineData("role-changed")]
+    [InlineData("revoked-stop")]
+    public async Task IngressRechecksParticipantButStillAcceptsRecipientStop(string scenario)
+    {
+        var context = await Wc120FitnessContext.CreateAsync();
+        var now = DateTimeOffset.UtcNow;
+        await context.SeedWhatsAppEligibilityAsync(Recipient, now);
+        await using (var db = context.Relationships.CreateDbContext())
+        {
+            var participant = await db.RelationshipParticipants.SingleAsync();
+            if (scenario == "role-changed")
+                db.Entry(participant).Property(value => value.Role).CurrentValue =
+                    RelationshipParticipantRole.Evaluator;
+            else
+                participant.Status = "REVOKED";
+            await db.SaveChangesAsync();
+        }
+        var proof = new VerifiedPhoneIdentityProof(
+            $"participant-{scenario}",
+            Recipient,
+            scenario == "revoked-stop" ? "STOP" : "Show my progress",
+            null,
+            "signed-test",
+            "AAL1_CHANNEL",
+            now,
+            now,
+            now.AddMinutes(5),
+            Guid.NewGuid()
+        )
+        {
+            Environment = context.Options.Environment,
+            AppBindingDigest = context.Options.AppBindingDigest,
+            PayloadDigest = Hash($"signed-{scenario}"),
+        };
+        var service = new WhatsAppJourneyService(
+            context.Relationships,
+            new ForbiddenEvidence(),
+            Options.Create(new WhatsAppJourneyOptions()),
+            conversationDbFactory: context.Conversations,
+            conversationOptions: Options.Create(context.Options),
+            stopFence: context.StopFence,
+            outboundContributions: context.Outbound()
+        );
+        if (scenario == "revoked-stop")
+        {
+            var receipt = await service.ReceiveVerifiedAsync(proof, CancellationToken.None);
+            Assert.Equal("STOPPED", receipt.Status);
+            await using var saved = context.Relationships.CreateDbContext();
+            Assert.NotNull((await saved.WhatsAppJourneyContacts.SingleAsync()).OptedOutAt);
+        }
+        else
+        {
+            var failure = await Assert.ThrowsAsync<WhatsAppWebhookException>(() =>
+                service.ReceiveVerifiedAsync(proof, CancellationToken.None)
+            );
+            Assert.Equal("WHATSAPP_IDENTITY_NOT_BOUND", failure.Code);
+            await using var saved = context.Conversations.CreateDbContext();
+            Assert.Empty(await saved.Messages.ToListAsync());
+            Assert.Empty(await saved.ConversationOutbox.ToListAsync());
+        }
+    }
+
+    [Fact]
+    public async Task UnsupportedRelationshipContentCreatesOnlyAnIdempotentSystemReply()
+    {
+        var context = await Wc120FitnessContext.CreateAsync();
+        var now = DateTimeOffset.UtcNow;
+        await context.SeedWhatsAppEligibilityAsync(Recipient, now);
+        var proof = new VerifiedPhoneIdentityProof(
+            "wamid-unsupported-relationship",
+            Recipient,
+            string.Empty,
+            null,
+            "whatsapp-provider-callback",
+            "AAL1_CHANNEL",
+            now,
+            now,
+            now.AddMinutes(5),
+            Guid.NewGuid()
+        )
+        {
+            Environment = context.Options.Environment,
+            AppBindingDigest = context.Options.AppBindingDigest,
+            PayloadDigest = Hash("signed unsupported relationship message"),
+            UnsupportedContent = true,
+        };
+        var service = new WhatsAppJourneyService(
+            context.Relationships,
+            new ForbiddenEvidence(),
+            Options.Create(new WhatsAppJourneyOptions()),
+            conversationDbFactory: context.Conversations,
+            conversationOptions: Options.Create(context.Options),
+            stopFence: context.StopFence,
+            outboundContributions: context.Outbound()
+        );
+
+        var first = await service.ReceiveVerifiedAsync(proof, CancellationToken.None);
+        var replay = await service.ReceiveVerifiedAsync(proof, CancellationToken.None);
+
+        Assert.Equal("UNSUPPORTED_CONTENT", first.Status);
+        const string expectedReply =
+            "I can't read attachments in WhatsApp. Please send your question as text.";
+        Assert.Equal(expectedReply, first.Reply);
+        Assert.True(replay.Replayed);
+        await using var db = context.Conversations.CreateDbContext();
+        var message = Assert.Single(await db.Messages.ToListAsync());
+        Assert.Equal("SYSTEM", message.Actor);
+        Assert.Equal("WHATSAPP", message.Channel);
+        Assert.Equal(
+            expectedReply,
+            Assert
+                .Single(
+                    JsonSerializer.Deserialize<ConversationTextBlockV1[]>(
+                        message.ContentJson,
+                        new JsonSerializerOptions(JsonSerializerDefaults.Web)
+                    )!
+                )
+                .Text
+        );
+        Assert.DoesNotContain("media-reference", message.ContentJson, StringComparison.Ordinal);
+        var outbox = Assert.Single(await db.ConversationOutbox.ToListAsync());
+        Assert.Equal(context.RelationshipId, outbox.RelationshipId);
+        Assert.Equal("CUSTOMER_REQUEST", outbox.Purpose);
+        Assert.Equal(Recipient, outbox.RecipientBindingDigest);
+        Assert.Null(outbox.TemplateName);
+        Assert.Single(await db.ProviderEventClaims.ToListAsync());
     }
 
     [Fact]
@@ -548,6 +1930,28 @@ public sealed class WhatsAppDemoProviderTests
             CancellationToken.None
         );
         Assert.Equal(3, secrets.AppReads);
+        foreach (var recipientJson in new[] { "null", "7", "true", "\"\"", "\"not-a-phone\"" })
+        {
+            var malformed = Encoding.UTF8.GetBytes(
+                Encoding
+                    .UTF8.GetString(body)
+                    .Replace(
+                        "\"status\":\"delivered\"",
+                        "\"status\":\"delivered\",\"recipient_id\":" + recipientJson,
+                        StringComparison.Ordinal
+                    )
+            );
+            Assert.NotEqual(body, malformed);
+            var rejected = await Assert.ThrowsAsync<WhatsAppWebhookException>(() =>
+                service.ReceiveAsync(
+                    malformed,
+                    Sign(malformed, secrets.AppSecret),
+                    Now,
+                    CancellationToken.None
+                )
+            );
+            Assert.Equal(400, rejected.StatusCode);
+        }
         await using var db = fixture.Context.Relationships.CreateDbContext();
         var unchanged = Assert.Single(await db.WhatsAppJourneyContacts.ToListAsync());
         Assert.Equal(Recipient, unchanged.PhoneHmac);
@@ -728,7 +2132,7 @@ public sealed class WhatsAppDemoProviderTests
     }
 
     [Fact]
-    public async Task ApprovedBodyOnlyTemplateUsesExactVersionAndCanonicalParameterProjection()
+    public async Task ApprovedTemplateCannotBeUsedForProactiveDeliveryInThisRelease()
     {
         var fixture = await SeedAsync("report");
         var channel = new WhatsAppJourneyOptions
@@ -777,14 +2181,12 @@ public sealed class WhatsAppDemoProviderTests
             Adapter(fixture, factory).DispatchAsync(fixture.Request, CancellationToken.None)
         );
         Assert.Equal(0, calls);
-        Assert.Equal(
-            "PROVIDER_ACCEPTED",
-            (
-                await Adapter(fixture, factory, channel)
-                    .DispatchAsync(fixture.Request, CancellationToken.None)
-            ).State
+        var proactive = await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+            Adapter(fixture, factory, channel)
+                .DispatchAsync(fixture.Request, CancellationToken.None)
         );
-        Assert.Equal(1, calls);
+        Assert.Equal("PROACTIVE_MESSAGING_DISABLED", proactive.ReasonCode);
+        Assert.Equal(0, calls);
     }
 
     [Fact]
@@ -831,6 +2233,13 @@ public sealed class WhatsAppDemoProviderTests
                     OutboxId = Guid.NewGuid(),
                     TenantId = fixture.Request.TenantId,
                     Environment = "demo",
+                    RelationshipId = fixture.Request.RelationshipId,
+                    ConversationId = fixture.Request.ConversationId,
+                    Sequence = fixture.Request.Sequence,
+                    PayloadReference = fixture.Request.PayloadReference,
+                    PayloadDigest = fixture.Request.PayloadDigest,
+                    RecipientBindingDigest = Recipient,
+                    Purpose = "CUSTOMER_REQUEST",
                     State = "DISPATCHING",
                     AttemptNumber = 1,
                     LeaseExpiresAt = Now.AddMinutes(1),
@@ -864,6 +2273,182 @@ public sealed class WhatsAppDemoProviderTests
             )
         );
         Assert.Single(await check.Set<WhatsAppTrafficReservation>().ToListAsync());
+    }
+
+    [Fact]
+    public async Task RelationshipInboundAndProviderReplyConsumeOneCombinedActivationAllowance()
+    {
+        var fixture = await SeedAsync();
+        fixture.Options.Authority = fixture.Options.Authority! with
+        {
+            MaximumMessages = 2,
+            MaximumMessagesPerMinute = 2,
+        };
+        var budget = new WhatsAppTrafficBudget(
+            fixture.Context.Conversations,
+            fixture.Gate,
+            fixture.Clock
+        );
+        Assert.Equal(
+            WhatsAppGuestTrafficNotice.ActivationLimit,
+            await budget.ReserveRelationshipInboundAsync(
+                fixture.Request.TenantId,
+                Recipient,
+                "original-inbound",
+                CancellationToken.None
+            )
+        );
+        await budget.ReserveAsync(fixture.Request, Recipient, CancellationToken.None);
+        Assert.Equal(
+            WhatsAppGuestTrafficNotice.ActivationLimit,
+            await budget.ReserveRelationshipInboundAsync(
+                fixture.Request.TenantId,
+                Recipient,
+                "original-inbound",
+                CancellationToken.None
+            )
+        );
+        var failure = await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+            budget.ReserveRelationshipInboundAsync(
+                fixture.Request.TenantId,
+                Recipient,
+                "next-inbound",
+                CancellationToken.None
+            )
+        );
+        Assert.Equal("TRAFFIC_BUDGET_EXHAUSTED", failure.ReasonCode);
+        await using var db = fixture.Context.Conversations.CreateDbContext();
+        Assert.Equal(
+            2,
+            await WhatsAppTrafficBudget.CountActivationMessagesAsync(
+                db,
+                fixture.Request.TenantId,
+                WhatsAppGuestTrafficEventIdentity.Activation(
+                    fixture.Options.Authority.ActivationReference
+                ),
+                CancellationToken.None
+            )
+        );
+        Assert.Single(await db.WhatsAppGuestTrafficEvents.ToListAsync());
+        Assert.Single(await db.Set<WhatsAppTrafficReservation>().ToListAsync());
+    }
+
+    [Fact]
+    public async Task RelationshipInboundRateDecisionIsReplaySafeAndCannotBorrowAnotherSender()
+    {
+        var fixture = await SeedAsync(guest: true);
+        fixture.Options.Authority = fixture.Options.Authority! with
+        {
+            MaximumMessagesPerMinute = 3,
+        };
+        var budget = new WhatsAppTrafficBudget(
+            fixture.Context.Conversations,
+            fixture.Gate,
+            fixture.Clock
+        );
+        Assert.Equal(
+            WhatsAppGuestTrafficNotice.None,
+            await budget.ReserveRelationshipInboundAsync(
+                fixture.Request.TenantId,
+                Recipient,
+                "first",
+                CancellationToken.None
+            )
+        );
+        Assert.Equal(
+            WhatsAppGuestTrafficNotice.GlobalRateLimit,
+            await budget.ReserveRelationshipInboundAsync(
+                fixture.Request.TenantId,
+                Recipient,
+                "second",
+                CancellationToken.None
+            )
+        );
+        Assert.Equal(
+            WhatsAppGuestTrafficNotice.None,
+            await budget.ReserveRelationshipInboundAsync(
+                fixture.Request.TenantId,
+                Recipient,
+                "first",
+                CancellationToken.None
+            )
+        );
+        var conflict = await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+            budget.ReserveRelationshipInboundAsync(
+                fixture.Request.TenantId,
+                Hash("different-sender"),
+                "first",
+                CancellationToken.None
+            )
+        );
+        Assert.Equal("RECIPIENT_DENIED", conflict.ReasonCode);
+        await using var db = fixture.Context.Conversations.CreateDbContext();
+        Assert.Equal(2, await db.WhatsAppGuestTrafficEvents.CountAsync());
+    }
+
+    [Fact]
+    public async Task RelationshipInboundCannotResetExistingProviderAuthority()
+    {
+        var fixture = await SeedAsync();
+        var budget = new WhatsAppTrafficBudget(
+            fixture.Context.Conversations,
+            fixture.Gate,
+            fixture.Clock
+        );
+        await budget.ReserveAsync(fixture.Request, Recipient, CancellationToken.None);
+        fixture.Options.Authority = fixture.Options.Authority! with { MaximumMessages = 20 };
+        var failure = await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+            budget.ReserveRelationshipInboundAsync(
+                fixture.Request.TenantId,
+                Recipient,
+                "after-authority-change",
+                CancellationToken.None
+            )
+        );
+        Assert.Equal("ACTIVATION_RECORD_CHANGED", failure.ReasonCode);
+        await using var db = fixture.Context.Conversations.CreateDbContext();
+        Assert.Empty(await db.WhatsAppGuestTrafficEvents.ToListAsync());
+    }
+
+    [Fact]
+    public async Task GuestOutboundSharesTheActivationConfiguredTenantWideRollingMinuteLimit()
+    {
+        var fixture = await SeedAsync(guest: true);
+        fixture.Options.Authority = fixture.Options.Authority! with
+        {
+            MaximumMessagesPerMinute = 2,
+            AllowProvisionalOnboarding = true,
+        };
+        var guestBudget = new WhatsAppGuestTrafficBudget(
+            fixture.Context.Conversations,
+            fixture.Gate,
+            fixture.Clock
+        );
+        await guestBudget.ReserveInboundAsync(
+            fixture.Request.TenantId,
+            Hash("another-guest"),
+            "prior-guest-message",
+            false,
+            CancellationToken.None
+        );
+        var budget = new WhatsAppTrafficBudget(
+            fixture.Context.Conversations,
+            fixture.Gate,
+            fixture.Clock
+        );
+
+        await budget.ReserveAsync(fixture.Request, Recipient, CancellationToken.None);
+
+        var limited = await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+            guestBudget.ReserveInboundAsync(
+                fixture.Request.TenantId,
+                Hash("third-guest"),
+                "third-guest-message",
+                false,
+                CancellationToken.None
+            )
+        );
+        Assert.Equal("GUEST_GLOBAL_RATE_LIMIT_REACHED", limited.ReasonCode);
     }
 
     [Fact]
@@ -973,14 +2558,19 @@ public sealed class WhatsAppDemoProviderTests
         WhatsAppProviderDispatchRequest Request
     );
 
-    private static async Task<Fixture> SeedAsync(string? template = null)
+    private static async Task<Fixture> SeedAsync(
+        string? template = null,
+        bool guest = false,
+        string? recipient = null
+    )
     {
+        recipient ??= Recipient;
         var context = await Wc120FitnessContext.CreateAsync();
         context.Options.Environment = "demo";
         context.Options.AppBindingDigest = Hash("1001");
         context.Options.WabaBindingDigest = Hash("1002");
         context.Options.RecipientBindingDigest = Hash("1003");
-        await context.SeedWhatsAppEligibilityAsync(Recipient, Now);
+        await context.SeedWhatsAppEligibilityAsync(recipient, Now);
         var options = new WhatsAppCapabilityOptions
         {
             Configured = true,
@@ -1022,7 +2612,7 @@ public sealed class WhatsAppDemoProviderTests
             Environment = "demo",
             TenantId = context.TenantId,
             RelationshipId = context.RelationshipId,
-            ConversationId = Guid.NewGuid(),
+            ConversationId = context.WhatsAppConversationId,
             Sequence = 1,
             ContentJson = JsonSerializer.Serialize(
                 new[] { new ConversationTextBlockV1("1.0", "TEXT", "Canonical shared-API reply") }
@@ -1034,9 +2624,11 @@ public sealed class WhatsAppDemoProviderTests
             TenantId = context.TenantId,
             RelationshipId = context.RelationshipId,
             ConversationId = message.ConversationId,
+            PortalContextId = guest ? Guid.NewGuid() : null,
             Sequence = 1,
             AggregateId = message.MessageId.ToString("D"),
-            RecipientBindingDigest = Recipient,
+            Purpose = guest ? "WHATSAPP_GUEST_DISCOVERY" : "CUSTOMER_REQUEST",
+            RecipientBindingDigest = recipient,
             TemplateName = template,
             TemplateVersion = template is null ? null : "1",
             TemplateLocale = template is null ? null : "en_IN",
@@ -1090,7 +2682,8 @@ public sealed class WhatsAppDemoProviderTests
             new StaticOptionsMonitor<WhatsAppJourneyOptions>(
                 channel ?? new WhatsAppJourneyOptions { DispatchEnabled = true }
             ),
-            Options.Create(fixture.Context.Options)
+            Options.Create(fixture.Context.Options),
+            credentials as IWhatsAppWebhookCredentials ?? new Credentials()
         );
 
     private static WhatsAppKeyVaultCredentials Reader(
@@ -1124,6 +2717,7 @@ public sealed class WhatsAppDemoProviderTests
             OutboundAuthorityVersion = new string('b', 32),
             VerifyTokenVersion = new string('c', 32),
             AppSecretVersion = new string('d', 32),
+            PhoneSubjectKeyVersion = new string('e', 32),
         };
 
     private static HttpResponseMessage SecretResponse(
@@ -1210,8 +2804,12 @@ public sealed class WhatsAppDemoProviderTests
             ExpiresAt = Now.AddHours(1),
         };
 
-    private sealed class Credentials(Func<Task>? beforeReturn = null) : IWhatsAppProviderCredentials
+    private sealed class Credentials(Func<Task>? beforeReturn = null)
+        : IWhatsAppProviderCredentials,
+            IWhatsAppWebhookCredentials
     {
+        public static string SubjectKey { get; } = new('h', 40);
+
         public async Task<WhatsAppProviderCredentials> ReadAsync(
             CancellationToken cancellationToken
         )
@@ -1225,6 +2823,19 @@ public sealed class WhatsAppDemoProviderTests
                 ValidUntil = Now.AddMinutes(5),
             };
         }
+
+        public Task<string> ReadVerifyTokenAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(new string('v', 40));
+
+        public Task<string> ReadAppSecretAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(new string('s', 40));
+
+        public Task<string> ReadPhoneSubjectKeyAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(SubjectKey);
+
+        public Task<WhatsAppProviderBinding> ReadSenderBindingAsync(
+            CancellationToken cancellationToken
+        ) => Task.FromResult(Binding());
     }
 
     private sealed class WebhookCredentials : IWhatsAppWebhookCredentials
@@ -1244,6 +2855,9 @@ public sealed class WhatsAppDemoProviderTests
             AppReads++;
             return Task.FromResult(AppSecret);
         }
+
+        public Task<string> ReadPhoneSubjectKeyAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(new string('h', 40));
 
         public Task<WhatsAppProviderBinding> ReadSenderBindingAsync(
             CancellationToken cancellationToken

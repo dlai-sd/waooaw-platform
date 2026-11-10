@@ -83,7 +83,7 @@ internal sealed class FailingVerificationDispatcher : IIdentityVerificationDispa
 
 internal static class IdentityTestHelpers
 {
-    private const string TestHmacKey = "test-only-identity-hmac-key-32-bytes-minimum";
+    internal const string TestHmacKey = "test-only-identity-hmac-key-32-bytes-minimum";
     internal static IConfiguration EmptyConfiguration { get; } = new ConfigurationBuilder().Build();
 
     internal static readonly IdentityEnvironmentOptions TestEnvironment = new()
@@ -231,6 +231,70 @@ internal static class IdentityTestHelpers
     // Sets a fresh idempotency key for each call
     public static void RefreshIdempotencyKey(ControllerBase controller) =>
         controller.Request.Headers["Idempotency-Key"] = Guid.NewGuid().ToString();
+
+    public static async Task<StartAccountLinkRequest> AccountLinkRequestAsync(
+        IDbContextFactory<IdentityDbContext> factory,
+        ControllerBase controller
+    )
+    {
+        var issuer = controller.User.FindFirstValue("iss") ?? "keycloak-local";
+        var subject = controller.User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var actorSubject = $"{issuer}\u001f{subject}";
+        await using var db = factory.CreateDbContext();
+        var registration = await db.Registrations.SingleOrDefaultAsync(value =>
+            value.ActorSubject == actorSubject && value.State == IdentityRegistrationState.Completed
+        );
+        if (registration is null)
+        {
+            registration = new IdentityRegistrationRecord
+            {
+                ActorSubject = actorSubject,
+                State = IdentityRegistrationState.Completed,
+                AccountId = Guid.NewGuid(),
+                MobileVerified = true,
+                MobileHmacDomain = "mobile",
+                MobileHmacVersion = "v1",
+                MobileHmacKey = CreateService(factory)
+                    .ComputeMatchCandidates("mobile", "+14155550100")["v1"],
+                MaskedMobile = "+1******0100",
+            };
+            db.Registrations.Add(registration);
+        }
+        var proof = new IdentityVerificationChallengeRecord
+        {
+            ActorSubject = actorSubject,
+            RegistrationId = registration.RegistrationId,
+            Purpose = IdentityVerificationPurpose.Mobile,
+            State = IdentityVerificationState.Consumed,
+            VerifiedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+            DeliveryState = "SUBMITTED",
+            DestinationHmacDomain = registration.MobileHmacDomain,
+            DestinationHmacVersion = registration.MobileHmacVersion,
+            DestinationHmacKey = registration.MobileHmacKey,
+            MaskedDestination = registration.MaskedMobile!,
+        };
+        db.VerificationChallenges.Add(proof);
+        await db.SaveChangesAsync();
+        return new StartAccountLinkRequest(proof.ChallengeId);
+    }
+
+    public static async Task MarkMobileVerifiedAsync(
+        IDbContextFactory<IdentityDbContext> factory,
+        Guid registrationId
+    )
+    {
+        await using var db = factory.CreateDbContext();
+        var registration =
+            await db.Registrations.FindAsync(registrationId)
+            ?? throw new InvalidOperationException("Test registration was not found.");
+        registration.MobileVerified = true;
+        registration.MobileHmacDomain = "mobile";
+        registration.MobileHmacVersion = "test";
+        registration.MobileHmacKey = Guid.NewGuid().ToString("N");
+        registration.MaskedMobile = "+1******1234";
+        registration.State = IdentityRegistrationState.ReadyToComplete;
+        await db.SaveChangesAsync();
+    }
 
     // Creates a controller with an arbitrary dispatcher (e.g. FailingVerificationDispatcher)
     public static IdentityController CreateControllerWithDispatcher(
@@ -1085,6 +1149,7 @@ public sealed class IdentitySessionProjectionTests
             new UpdateRegistrationProfileRequest("Owner", "Acme", "Retail", "en"),
             CancellationToken.None
         );
+        await IdentityTestHelpers.MarkMobileVerifiedAsync(factory, registrationId);
         IdentityTestHelpers.RefreshIdempotencyKey(controller);
         await controller.CompleteRegistrationAsync(registrationId, CancellationToken.None);
 
@@ -1159,6 +1224,7 @@ public sealed class CustomerPortalIdentityTests
             new UpdateRegistrationProfileRequest("Original", "Original Org", "Retail", "en"),
             CancellationToken.None
         );
+        await IdentityTestHelpers.MarkMobileVerifiedAsync(factory, registrationId);
         IdentityTestHelpers.RefreshIdempotencyKey(controller);
         await controller.CompleteRegistrationAsync(registrationId, CancellationToken.None);
         IdentityTestHelpers.RefreshIdempotencyKey(controller);
@@ -1729,7 +1795,53 @@ public sealed class IdentityRegistrationTests
 
         var ok = Assert.IsType<OkObjectResult>(update);
         var updJson = JsonSerializer.SerializeToElement(ok.Value);
-        Assert.Equal("READY_TO_COMPLETE", updJson.GetProperty("State").GetString());
+        Assert.Equal("MOBILE_VERIFICATION_REQUIRED", updJson.GetProperty("State").GetString());
+        Assert.Equal("VERIFY_MOBILE", updJson.GetProperty("NextAction").GetString());
+    }
+
+    [Fact]
+    public async Task F2_CompleteRegistration_RequiresVerifiedWhatsAppNumber()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var ctrl = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "mobile-required-sub",
+            identityProvider: "google",
+            email: "mobile@example.com",
+            emailVerified: true
+        );
+
+        var created = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationAsync(
+                new StartRegistrationRequest("en"),
+                CancellationToken.None
+            )
+        );
+        var registrationId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("RegistrationId")
+            .GetGuid();
+        IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
+        await ctrl.UpdateProfileAsync(
+            registrationId,
+            new UpdateRegistrationProfileRequest("Test User", "Acme", "Retail", "en"),
+            CancellationToken.None
+        );
+
+        IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
+        var result = await ctrl.CompleteRegistrationAsync(registrationId, CancellationToken.None);
+
+        var problem = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(409, problem.StatusCode);
+        Assert.Equal(
+            "IDENTITY_VERIFICATION_REQUIRED",
+            Assert.IsType<IdentityProblemResponse>(problem.Value).Code
+        );
+        await using var db = factory.CreateDbContext();
+        Assert.Equal(
+            IdentityRegistrationState.MobileVerificationRequired,
+            (await db.Registrations.FindAsync(registrationId))!.State
+        );
     }
 
     [Fact]
@@ -1794,6 +1906,7 @@ public sealed class IdentityRegistrationTests
             new UpdateRegistrationProfileRequest("Full Name", "Corp", "Consulting", "en"),
             CancellationToken.None
         );
+        await IdentityTestHelpers.MarkMobileVerifiedAsync(factory, regId);
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var result = await ctrl.CompleteRegistrationAsync(regId, CancellationToken.None);
@@ -1833,6 +1946,7 @@ public sealed class IdentityRegistrationTests
                     ActorSubject = "existing-account-sub",
                     State = IdentityRegistrationState.Completed,
                     AccountId = existingAccountId,
+                    MobileVerified = true,
                     MobileHmacDomain = "mobile",
                     MobileHmacVersion = "v1",
                     MobileHmacKey = "shared-mobile-key",
@@ -1857,6 +1971,57 @@ public sealed class IdentityRegistrationTests
             IdentityRegistrationState.DuplicateResolutionRequired,
             (await persisted.Registrations.FindAsync(pending.RegistrationId))!.State
         );
+    }
+
+    [Fact]
+    public async Task F2_CompleteRegistration_IgnoresUnverifiedMobileMatch()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var oldAccountId = Guid.NewGuid();
+        var registration = new IdentityRegistrationRecord
+        {
+            ActorSubject = "unverified-mobile-match-sub",
+            State = IdentityRegistrationState.ReadyToComplete,
+            EmailVerified = true,
+            MobileVerified = true,
+            MobileHmacDomain = "mobile",
+            MobileHmacVersion = "v1",
+            MobileHmacKey = "shared-unverified-mobile-key",
+            DisplayName = "Test User",
+            BusinessName = "Test Business",
+            BusinessDomain = "Consulting",
+        };
+        await using (var seed = factory.CreateDbContext())
+        {
+            seed.Registrations.AddRange(
+                new IdentityRegistrationRecord
+                {
+                    ActorSubject = "old-unverified-account-sub",
+                    State = IdentityRegistrationState.Completed,
+                    AccountId = oldAccountId,
+                    MobileVerified = false,
+                    MobileHmacDomain = "mobile",
+                    MobileHmacVersion = "v1",
+                    MobileHmacKey = "shared-unverified-mobile-key",
+                },
+                registration
+            );
+            await seed.SaveChangesAsync();
+        }
+
+        var (completed, isNew) = await IdentityTestHelpers
+            .CreateService(factory)
+            .CompleteRegistrationAsync(
+                registration.RegistrationId,
+                registration.ActorSubject,
+                Guid.NewGuid(),
+                "unverified-mobile-match-request",
+                CancellationToken.None
+            );
+
+        Assert.True(isNew);
+        Assert.Equal("ACCOUNT_CREATED", completed.Outcome);
+        Assert.NotEqual(oldAccountId, completed.AccountReference);
     }
 
     [Fact]
@@ -1888,6 +2053,7 @@ public sealed class IdentityRegistrationTests
             new UpdateRegistrationProfileRequest("Name", "Co", "Domain", "en"),
             CancellationToken.None
         );
+        await IdentityTestHelpers.MarkMobileVerifiedAsync(factory, regId);
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         var first = Assert.IsType<OkObjectResult>(
@@ -1923,6 +2089,7 @@ public sealed class IdentityRegistrationTests
             ActorSubject = "completion-save-failure",
             State = IdentityRegistrationState.ReadyToComplete,
             EmailVerified = true,
+            MobileVerified = true,
             DisplayName = "Test Customer",
             BusinessName = "Test Business",
             BusinessDomain = "Consulting",
@@ -2374,11 +2541,11 @@ public sealed class IdentityAccountLinkTests
         );
 
         var result = await ctrl.StartAccountLinkAsync(
-            new StartAccountLinkRequest(Guid.NewGuid()),
+            await IdentityTestHelpers.AccountLinkRequestAsync(factory, ctrl),
             CancellationToken.None
         );
 
-        var obj = Assert.IsType<ObjectResult>(result);
+        var obj = Assert.IsType<CreatedAtActionResult>(result);
         Assert.Equal(201, obj.StatusCode);
         var json = JsonSerializer.SerializeToElement(obj.Value);
         Assert.Contains("LinkId", json.ToString());
@@ -2401,11 +2568,11 @@ public sealed class IdentityAccountLinkTests
         );
 
         var result = await controller.StartAccountLinkAsync(
-            new StartAccountLinkRequest(Guid.NewGuid()),
+            await IdentityTestHelpers.AccountLinkRequestAsync(factory, controller),
             CancellationToken.None
         );
 
-        Assert.Equal(201, Assert.IsType<ObjectResult>(result).StatusCode);
+        Assert.Equal(201, Assert.IsType<CreatedAtActionResult>(result).StatusCode);
         var call = Assert.Single(gateway.Calls);
         Assert.Equal(tenantId, call.TenantId);
         Assert.Equal("IDENTITY_ACCOUNT_LINK_START", call.ActionType);
@@ -2432,7 +2599,7 @@ public sealed class IdentityAccountLinkTests
         );
 
         var result = await controller.StartAccountLinkAsync(
-            new StartAccountLinkRequest(Guid.NewGuid()),
+            await IdentityTestHelpers.AccountLinkRequestAsync(factory, controller),
             CancellationToken.None
         );
 
@@ -2465,6 +2632,215 @@ public sealed class IdentityAccountLinkTests
         Assert.Equal("IDENTITY_STEP_UP_REQUIRED", json.GetProperty("code").GetString());
     }
 
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("other-actor")]
+    [InlineData("email")]
+    [InlineData("pending")]
+    [InlineData("no-verification")]
+    [InlineData("future-verification")]
+    [InlineData("undelivered")]
+    [InlineData("no-registration")]
+    [InlineData("wrong-destination")]
+    [InlineData("wrong-version")]
+    [InlineData("wrong-domain")]
+    [InlineData("incomplete-registration")]
+    [InlineData("unverified-registration")]
+    public async Task F2_StartAccountLink_InvalidProof_DeniesBeforeEvidenceAndMutation(
+        string scenario
+    )
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var gateway = new TestIdentityConstitutionalGateway();
+        var controller = IdentityTestHelpers.CreateController(
+            factory,
+            tenantId: Guid.NewGuid().ToString(),
+            authTimestamp: DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            constitutionalGateway: gateway
+        );
+        var request = await IdentityTestHelpers.AccountLinkRequestAsync(factory, controller);
+        await using (var db = factory.CreateDbContext())
+        {
+            var proof = (await db.VerificationChallenges.FindAsync(request.VerifiedMobileProofId))!;
+            var registration = (await db.Registrations.FindAsync(proof.RegistrationId))!;
+            switch (scenario)
+            {
+                case "missing":
+                    db.VerificationChallenges.Remove(proof);
+                    break;
+                case "other-actor":
+                    db.Entry(proof).Property(value => value.ActorSubject).CurrentValue =
+                        "another-actor";
+                    break;
+                case "email":
+                    db.Entry(proof).Property(value => value.Purpose).CurrentValue =
+                        IdentityVerificationPurpose.Email;
+                    break;
+                case "pending":
+                    proof.State = IdentityVerificationState.Pending;
+                    break;
+                case "no-verification":
+                    proof.VerifiedAt = null;
+                    break;
+                case "future-verification":
+                    proof.VerifiedAt = DateTimeOffset.UtcNow.AddMinutes(1);
+                    break;
+                case "undelivered":
+                    proof.DeliveryState = "DISPATCHING";
+                    break;
+                case "no-registration":
+                    db.Entry(proof).Property(value => value.RegistrationId).CurrentValue = null;
+                    break;
+                case "wrong-destination":
+                    db.Entry(proof).Property(value => value.DestinationHmacKey).CurrentValue =
+                        new string('0', 32);
+                    break;
+                case "wrong-version":
+                    db.Entry(proof).Property(value => value.DestinationHmacVersion).CurrentValue =
+                        "other-version";
+                    break;
+                case "wrong-domain":
+                    db.Entry(proof).Property(value => value.DestinationHmacDomain).CurrentValue =
+                        "email";
+                    break;
+                case "incomplete-registration":
+                    registration.State = IdentityRegistrationState.ReadyToComplete;
+                    break;
+                case "unverified-registration":
+                    registration.MobileVerified = false;
+                    break;
+            }
+            await db.SaveChangesAsync();
+        }
+        var response = Assert.IsType<ObjectResult>(
+            await controller.StartAccountLinkAsync(request, CancellationToken.None)
+        );
+        Assert.Equal(404, response.StatusCode);
+        Assert.Empty(gateway.Calls);
+        await using var saved = factory.CreateDbContext();
+        Assert.Empty(await saved.AccountLinks.ToListAsync());
+        Assert.Empty(await saved.IdempotencyLedger.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData(IdentityAccountLinkState.Cancelled)]
+    [InlineData(IdentityAccountLinkState.Linked)]
+    [InlineData(IdentityAccountLinkState.DuplicateResolutionRequired)]
+    [InlineData(IdentityAccountLinkState.PendingWhatsAppConfirmation)]
+    public async Task F2_ApproveAccountLink_TerminalOrAlreadyApprovedStateCannotBeReopened(
+        IdentityAccountLinkState state
+    )
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var gateway = new TestIdentityConstitutionalGateway();
+        var controller = IdentityTestHelpers.CreateController(
+            factory,
+            tenantId: Guid.NewGuid().ToString(),
+            authTimestamp: DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            constitutionalGateway: gateway
+        );
+        var request = await IdentityTestHelpers.AccountLinkRequestAsync(factory, controller);
+        var created = Assert.IsType<CreatedAtActionResult>(
+            await controller.StartAccountLinkAsync(request, CancellationToken.None)
+        );
+        var linkId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("LinkId")
+            .GetGuid();
+        await using (var db = factory.CreateDbContext())
+        {
+            (await db.AccountLinks.FindAsync(linkId))!.State = state;
+            await db.SaveChangesAsync();
+        }
+        IdentityTestHelpers.RefreshIdempotencyKey(controller);
+        var denied = Assert.IsType<ObjectResult>(
+            await controller.ApproveAccountLinkAsync(linkId, CancellationToken.None)
+        );
+        Assert.Equal(403, denied.StatusCode);
+        Assert.Single(gateway.Calls);
+        await using var saved = factory.CreateDbContext();
+        Assert.Equal(state, (await saved.AccountLinks.FindAsync(linkId))!.State);
+    }
+
+    [Fact]
+    public async Task F2_ApproveAccountLink_ProofRevokedAfterStart_DeniesBeforeApprovalEvidence()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var gateway = new TestIdentityConstitutionalGateway();
+        var controller = IdentityTestHelpers.CreateController(
+            factory,
+            tenantId: Guid.NewGuid().ToString(),
+            authTimestamp: DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            constitutionalGateway: gateway
+        );
+        var request = await IdentityTestHelpers.AccountLinkRequestAsync(factory, controller);
+        var created = Assert.IsType<CreatedAtActionResult>(
+            await controller.StartAccountLinkAsync(request, CancellationToken.None)
+        );
+        var linkId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("LinkId")
+            .GetGuid();
+        await using (var db = factory.CreateDbContext())
+        {
+            (await db.VerificationChallenges.FindAsync(request.VerifiedMobileProofId))!.State =
+                IdentityVerificationState.Expired;
+            await db.SaveChangesAsync();
+        }
+        IdentityTestHelpers.RefreshIdempotencyKey(controller);
+        var denied = Assert.IsType<ObjectResult>(
+            await controller.ApproveAccountLinkAsync(linkId, CancellationToken.None)
+        );
+        Assert.Equal(404, denied.StatusCode);
+        Assert.Single(gateway.Calls);
+        await using var saved = factory.CreateDbContext();
+        Assert.Equal(
+            IdentityAccountLinkState.PendingPortalApproval,
+            (await saved.AccountLinks.FindAsync(linkId))!.State
+        );
+    }
+
+    [Fact]
+    public async Task F2_GetAccountLink_ExpiredPendingConfirmationReturnsExplicitExpiredState()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var controller = IdentityTestHelpers.CreateController(
+            factory,
+            tenantId: Guid.NewGuid().ToString(),
+            authTimestamp: DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+        );
+        var created = Assert.IsType<CreatedAtActionResult>(
+            await controller.StartAccountLinkAsync(
+                await IdentityTestHelpers.AccountLinkRequestAsync(factory, controller),
+                CancellationToken.None
+            )
+        );
+        var linkId = JsonSerializer
+            .SerializeToElement(created.Value)
+            .GetProperty("LinkId")
+            .GetGuid();
+        await using (var db = factory.CreateDbContext())
+        {
+            var link = (await db.AccountLinks.FindAsync(linkId))!;
+            link.State = IdentityAccountLinkState.PendingWhatsAppConfirmation;
+            link.ApprovalEvidenceId = Guid.NewGuid();
+            db.Entry(link).Property(value => value.ExpiresAt).CurrentValue =
+                DateTimeOffset.UtcNow.AddSeconds(-1);
+            await db.SaveChangesAsync();
+        }
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.GetAccountLinkAsync(linkId, CancellationToken.None)
+        );
+        var body = JsonSerializer.SerializeToElement(result.Value);
+        Assert.Equal("EXPIRED", body.GetProperty("State").GetString());
+        Assert.Equal(JsonValueKind.Null, body.GetProperty("WhatsAppConfirmation").ValueKind);
+        await using var saved = factory.CreateDbContext();
+        Assert.Equal(
+            IdentityAccountLinkState.Expired,
+            (await saved.AccountLinks.FindAsync(linkId))!.State
+        );
+    }
+
     [Fact]
     public async Task F2_GetAccountLink_CrossTenant_Returns404NotAccessible()
     {
@@ -2480,9 +2856,9 @@ public sealed class IdentityAccountLinkTests
             authTimestamp: authTs.ToUnixTimeSeconds()
         );
 
-        var created = Assert.IsType<ObjectResult>(
+        var created = Assert.IsType<CreatedAtActionResult>(
             await ctrlA.StartAccountLinkAsync(
-                new StartAccountLinkRequest(Guid.NewGuid()),
+                await IdentityTestHelpers.AccountLinkRequestAsync(factory, ctrlA),
                 CancellationToken.None
             )
         );
@@ -2624,7 +3000,7 @@ public sealed class IdentityProgressiveMobileTests
     }
 
     [Fact]
-    public async Task F2_RegistrationMobile_StoresMatchKeyAndRejectsCrossRegistrationChallenge()
+    public async Task F2_RegistrationMobile_StoresChallengeKeyAndRejectsCrossRegistrationChallenge()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var dispatcher = new CapturingVerificationDispatcher();
@@ -2665,8 +3041,10 @@ public sealed class IdentityProgressiveMobileTests
         await using (var db = factory.CreateDbContext())
         {
             var registration = await db.Registrations.FindAsync(reg1);
-            Assert.NotNull(registration!.MobileHmacKey);
-            Assert.DoesNotContain("+911234567890", registration.MobileHmacKey!);
+            Assert.Null(registration!.MobileHmacKey);
+            var challenge = await db.VerificationChallenges.FindAsync(challengeId);
+            Assert.NotNull(challenge!.DestinationHmacKey);
+            Assert.DoesNotContain("+911234567890", challenge.DestinationHmacKey!);
         }
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
@@ -3824,6 +4202,10 @@ public sealed class IdentityRegistrationMobileVerificationTests
             "IDENTITY_DEPENDENCY_UNAVAILABLE",
             JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString()
         );
+        await using var db = factory.CreateDbContext();
+        var registration = await db.Registrations.FindAsync(regId);
+        Assert.False(registration!.MobileVerified);
+        Assert.Null(registration.MobileHmacKey);
     }
 
     [Fact]
@@ -3880,6 +4262,254 @@ public sealed class IdentityRegistrationMobileVerificationTests
         Assert.True(json.GetProperty("MobileVerified").GetBoolean());
         Assert.Equal(regId, json.GetProperty("RegistrationId").GetGuid());
         Assert.DoesNotContain("+911234567890", json.ToString());
+    }
+
+    [Fact]
+    public async Task F2_ConfirmRegistrationMobileVerification_BindsVerifiedNumberToItsChallenge()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var dispatcher = new CapturingVerificationDispatcher();
+        var (ctrl, regId) = await CreateRegistrationAsync(
+            factory,
+            "crmv-destination-binding",
+            dispatcher
+        );
+
+        var firstStarted = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationMobileVerificationAsync(
+                regId,
+                new("+14155550100"),
+                CancellationToken.None
+            )
+        );
+        var firstChallengeId = JsonSerializer
+            .SerializeToElement(firstStarted.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
+        var firstCode = dispatcher.LatestCode!;
+
+        await using (var cooldownDb = factory.CreateDbContext())
+        {
+            var pendingChallenge = await cooldownDb.VerificationChallenges.FindAsync(
+                firstChallengeId
+            );
+            cooldownDb.Entry(pendingChallenge!).Property(value => value.ResendAfter).CurrentValue =
+                DateTimeOffset.UtcNow.AddSeconds(-1);
+            await cooldownDb.SaveChangesAsync();
+        }
+
+        IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
+        var secondStarted = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationMobileVerificationAsync(
+                regId,
+                new("+14155550101"),
+                CancellationToken.None
+            )
+        );
+        var secondChallengeId = JsonSerializer
+            .SerializeToElement(secondStarted.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
+        var secondCode = dispatcher.LatestCode!;
+
+        IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
+        var confirmed = Assert.IsType<OkObjectResult>(
+            await ctrl.ConfirmRegistrationMobileVerificationAsync(
+                regId,
+                new(firstChallengeId, firstCode),
+                CancellationToken.None
+            )
+        );
+        Assert.True(
+            JsonSerializer
+                .SerializeToElement(confirmed.Value)
+                .GetProperty("MobileVerified")
+                .GetBoolean()
+        );
+
+        await using var db = factory.CreateDbContext();
+        var registration = await db.Registrations.FindAsync(regId);
+        var firstChallenge = await db.VerificationChallenges.FindAsync(firstChallengeId);
+        var secondChallenge = await db.VerificationChallenges.FindAsync(secondChallengeId);
+        Assert.Equal(firstChallenge!.DestinationHmacKey, registration!.MobileHmacKey);
+        Assert.NotEqual(secondChallenge!.DestinationHmacKey, registration.MobileHmacKey);
+        Assert.Equal(IdentityVerificationState.Expired, secondChallenge.State);
+
+        IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
+        var staleConfirmation = await ctrl.ConfirmRegistrationMobileVerificationAsync(
+            regId,
+            new(secondChallengeId, secondCode),
+            CancellationToken.None
+        );
+        Assert.Equal(410, Assert.IsType<ObjectResult>(staleConfirmation).StatusCode);
+    }
+
+    [Fact]
+    public async Task F2_RegistrationMobile_ResendCooldownReturns429WithoutCreatingChallenge()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var (ctrl, regId) = await CreateRegistrationAsync(factory, "rmv-cooldown");
+        var first = await ctrl.StartRegistrationMobileVerificationAsync(
+            regId,
+            new("+14155550100"),
+            CancellationToken.None
+        );
+        Assert.Equal(202, Assert.IsType<ObjectResult>(first).StatusCode);
+
+        var replay = await ctrl.StartRegistrationMobileVerificationAsync(
+            regId,
+            new("+14155550100"),
+            CancellationToken.None
+        );
+        Assert.Equal(202, Assert.IsType<ObjectResult>(replay).StatusCode);
+
+        IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
+        var limited = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationMobileVerificationAsync(
+                regId,
+                new("+14155550101"),
+                CancellationToken.None
+            )
+        );
+        Assert.Equal(429, limited.StatusCode);
+        Assert.Equal(
+            "IDENTITY_RATE_LIMITED",
+            JsonSerializer.SerializeToElement(limited.Value).GetProperty("code").GetString()
+        );
+        Assert.InRange(int.Parse(ctrl.Response.Headers.RetryAfter.ToString()), 1, 60);
+        await using var db = factory.CreateDbContext();
+        Assert.Equal(1, await db.VerificationChallenges.CountAsync());
+    }
+
+    [Fact]
+    public async Task F2_RegistrationMobile_FiveWrongCodesExpireChallenge()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var dispatcher = new CapturingVerificationDispatcher();
+        var (ctrl, regId) = await CreateRegistrationAsync(factory, "rmv-attempts", dispatcher);
+        var started = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationMobileVerificationAsync(
+                regId,
+                new("+14155550100"),
+                CancellationToken.None
+            )
+        );
+        var challengeId = JsonSerializer
+            .SerializeToElement(started.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
+        var code = dispatcher.LatestCode!;
+        var wrongCode = code == "000000" ? "111111" : "000000";
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
+            var rejected = await ctrl.ConfirmRegistrationMobileVerificationAsync(
+                regId,
+                new(challengeId, wrongCode),
+                CancellationToken.None
+            );
+            Assert.Equal(403, Assert.IsType<ObjectResult>(rejected).StatusCode);
+            var replay = await ctrl.ConfirmRegistrationMobileVerificationAsync(
+                regId,
+                new(challengeId, wrongCode),
+                CancellationToken.None
+            );
+            Assert.Equal(403, Assert.IsType<ObjectResult>(replay).StatusCode);
+        }
+
+        IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
+        var exhausted = await ctrl.ConfirmRegistrationMobileVerificationAsync(
+            regId,
+            new(challengeId, code),
+            CancellationToken.None
+        );
+        Assert.Equal(410, Assert.IsType<ObjectResult>(exhausted).StatusCode);
+        await using var db = factory.CreateDbContext();
+        var challenge = await db.VerificationChallenges.FindAsync(challengeId);
+        Assert.Equal(5, challenge!.FailedAttempts);
+        Assert.Equal(IdentityVerificationState.Expired, challenge.State);
+        Assert.False((await db.Registrations.FindAsync(regId))!.MobileVerified);
+    }
+
+    [Fact]
+    public async Task F2_RegistrationMobile_ChallengeCannotBeConsumedByAccountVerification()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var dispatcher = new CapturingVerificationDispatcher();
+        var (ctrl, regId) = await CreateRegistrationAsync(factory, "rmv-purpose", dispatcher);
+        var started = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationMobileVerificationAsync(
+                regId,
+                new("+14155550100"),
+                CancellationToken.None
+            )
+        );
+        var challengeId = JsonSerializer
+            .SerializeToElement(started.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
+        var service = IdentityTestHelpers.CreateService(factory, dispatcher);
+        await Assert.ThrowsAsync<IdentityResourceNotFoundException>(() =>
+            service.ConfirmMobileVerificationAsync(
+                null,
+                "rmv-purpose",
+                Guid.NewGuid(),
+                "account-verification",
+                challengeId,
+                dispatcher.LatestCode!,
+                CancellationToken.None
+            )
+        );
+        await using var db = factory.CreateDbContext();
+        Assert.Equal(
+            IdentityVerificationState.Pending,
+            (await db.VerificationChallenges.FindAsync(challengeId))!.State
+        );
+    }
+
+    [Theory]
+    [InlineData(IdentityRegistrationState.Cancelled)]
+    [InlineData(IdentityRegistrationState.Expired)]
+    [InlineData(IdentityRegistrationState.Completed)]
+    public async Task F2_RegistrationMobile_TerminalRegistrationCannotVerifyOrRequestCode(
+        IdentityRegistrationState state
+    )
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var dispatcher = new CapturingVerificationDispatcher();
+        var (ctrl, regId) = await CreateRegistrationAsync(factory, "rmv-terminal", dispatcher);
+        var started = Assert.IsType<ObjectResult>(
+            await ctrl.StartRegistrationMobileVerificationAsync(
+                regId,
+                new("+14155550100"),
+                CancellationToken.None
+            )
+        );
+        var challengeId = JsonSerializer
+            .SerializeToElement(started.Value)
+            .GetProperty("ChallengeId")
+            .GetGuid();
+        await using (var db = factory.CreateDbContext())
+        {
+            var registration = await db.Registrations.FindAsync(regId);
+            registration!.State = state;
+            await db.SaveChangesAsync();
+        }
+
+        IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
+        var confirmed = await ctrl.ConfirmRegistrationMobileVerificationAsync(
+            regId,
+            new(challengeId, dispatcher.LatestCode!),
+            CancellationToken.None
+        );
+        Assert.Equal(404, Assert.IsType<ObjectResult>(confirmed).StatusCode);
+        IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
+        var resend = await ctrl.StartRegistrationMobileVerificationAsync(
+            regId,
+            new("+14155550101"),
+            CancellationToken.None
+        );
+        Assert.Equal(404, Assert.IsType<ObjectResult>(resend).StatusCode);
     }
 
     [Fact]
@@ -4412,6 +5042,7 @@ public sealed class IdentityCompleteRegistrationErrorTests
             new UpdateRegistrationProfileRequest("Name", "Co", "Domain", "en"),
             CancellationToken.None
         );
+        await IdentityTestHelpers.MarkMobileVerifiedAsync(factory, reg1Id);
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         await ctrl.UpdateProfileAsync(
@@ -4515,9 +5146,9 @@ public sealed class IdentityAccountLinkFullFlowTests
             authTimestamp: FreshAuthTs
         );
 
-        // First call with proofId A
+        // First call with a caller-owned verified proof.
         await ctrl.StartAccountLinkAsync(
-            new StartAccountLinkRequest(Guid.NewGuid()),
+            await IdentityTestHelpers.AccountLinkRequestAsync(factory, ctrl),
             CancellationToken.None
         );
 
@@ -4545,8 +5176,10 @@ public sealed class IdentityAccountLinkFullFlowTests
             authTimestamp: FreshAuthTs
         );
 
-        var proofId = Guid.NewGuid();
-        var first = Assert.IsType<ObjectResult>(
+        var proofId = (
+            await IdentityTestHelpers.AccountLinkRequestAsync(factory, ctrl)
+        ).VerifiedMobileProofId;
+        var first = Assert.IsType<CreatedAtActionResult>(
             await ctrl.StartAccountLinkAsync(
                 new StartAccountLinkRequest(proofId),
                 CancellationToken.None
@@ -4605,9 +5238,9 @@ public sealed class IdentityAccountLinkFullFlowTests
             authTimestamp: FreshAuthTs
         );
 
-        var created = Assert.IsType<ObjectResult>(
+        var created = Assert.IsType<CreatedAtActionResult>(
             await ctrl.StartAccountLinkAsync(
-                new StartAccountLinkRequest(Guid.NewGuid()),
+                await IdentityTestHelpers.AccountLinkRequestAsync(factory, ctrl),
                 CancellationToken.None
             )
         );
@@ -4638,9 +5271,9 @@ public sealed class IdentityAccountLinkFullFlowTests
             tenantId: tenantId,
             authTimestamp: FreshAuthTs
         );
-        var created = Assert.IsType<ObjectResult>(
+        var created = Assert.IsType<CreatedAtActionResult>(
             await ctrl.StartAccountLinkAsync(
-                new StartAccountLinkRequest(Guid.NewGuid()),
+                await IdentityTestHelpers.AccountLinkRequestAsync(factory, ctrl),
                 CancellationToken.None
             )
         );
@@ -4680,9 +5313,9 @@ public sealed class IdentityAccountLinkFullFlowTests
         );
 
         // Create two links
-        var link1 = Assert.IsType<ObjectResult>(
+        var link1 = Assert.IsType<CreatedAtActionResult>(
             await ctrl.StartAccountLinkAsync(
-                new StartAccountLinkRequest(Guid.NewGuid()),
+                await IdentityTestHelpers.AccountLinkRequestAsync(factory, ctrl),
                 CancellationToken.None
             )
         );
@@ -4692,9 +5325,9 @@ public sealed class IdentityAccountLinkFullFlowTests
             .GetGuid();
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
-        var link2 = Assert.IsType<ObjectResult>(
+        var link2 = Assert.IsType<CreatedAtActionResult>(
             await ctrl.StartAccountLinkAsync(
-                new StartAccountLinkRequest(Guid.NewGuid()),
+                await IdentityTestHelpers.AccountLinkRequestAsync(factory, ctrl),
                 CancellationToken.None
             )
         );
@@ -4733,9 +5366,9 @@ public sealed class IdentityAccountLinkFullFlowTests
             tenantId: tenantA,
             authTimestamp: FreshAuthTs
         );
-        var created = Assert.IsType<ObjectResult>(
+        var created = Assert.IsType<CreatedAtActionResult>(
             await ctrlA.StartAccountLinkAsync(
-                new StartAccountLinkRequest(Guid.NewGuid()),
+                await IdentityTestHelpers.AccountLinkRequestAsync(factory, ctrlA),
                 CancellationToken.None
             )
         );
@@ -4774,9 +5407,9 @@ public sealed class IdentityAccountLinkFullFlowTests
             authTimestamp: FreshAuthTs
         );
 
-        var created = Assert.IsType<ObjectResult>(
+        var created = Assert.IsType<CreatedAtActionResult>(
             await ctrl.StartAccountLinkAsync(
-                new StartAccountLinkRequest(Guid.NewGuid()),
+                await IdentityTestHelpers.AccountLinkRequestAsync(factory, ctrl),
                 CancellationToken.None
             )
         );
@@ -4824,9 +5457,9 @@ public sealed class IdentityAccountLinkFullFlowTests
             authTimestamp: FreshAuthTs
         );
 
-        var created = Assert.IsType<ObjectResult>(
+        var created = Assert.IsType<CreatedAtActionResult>(
             await ctrl.StartAccountLinkAsync(
-                new StartAccountLinkRequest(Guid.NewGuid()),
+                await IdentityTestHelpers.AccountLinkRequestAsync(factory, ctrl),
                 CancellationToken.None
             )
         );
@@ -4877,6 +5510,7 @@ public sealed class IdentityRegistrationStateAdditionalTests
             new UpdateRegistrationProfileRequest("Name", "Co", "Domain", "en"),
             CancellationToken.None
         );
+        await IdentityTestHelpers.MarkMobileVerifiedAsync(factory, regId);
 
         IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
         await ctrl.CompleteRegistrationAsync(regId, CancellationToken.None);

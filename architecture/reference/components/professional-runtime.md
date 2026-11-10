@@ -94,6 +94,37 @@ contract is `architecture/reference/api-specs/professional-runtime.openapi.yaml`
 These operations are not browser-accessible. PR events become customer-visible only after BP
 validates and persists the canonical conversation projection.
 
+**WC-134 dispatch recovery candidate:** new workflow inputs durably carry the original dispatch
+identity and schedule a bounded retryable activity. Lost replies replay the persisted AIR result
+with the same tenant, relationship, idempotency key and request digest. Legacy workflows and
+executions already marked reconciliation-required use AIR's read-only keyed reconciliation
+operation; they never infer that an absent result means it is safe to dispatch again. A later
+persisted result can resolve an earlier unknown outcome without duplicating the proposal event.
+
+AIR reserves a durable claim before interpretation. Only the built-in, versioned, local disabled
+interpreter is safe to replay after process loss; an unknown external interpretation is retained
+as reconciliation-required, not retried or reported as successful. No paid interpreter is enabled
+by this candidate. Enabling a real provider requires durable provider-side idempotency/result
+reconciliation and the separate cost and release acceptance evidence.
+
+The CE-owned PostgreSQL Stop barrier serializes admission and result writes with BP's local Stop
+latch and CE's evidence transaction. AIR has read-only access to that barrier. In-flight remote
+computation admitted before Stop may finish, but a result write or read ordered after the
+barrier is rejected. A response released before the barrier may already be in transit; PR
+rechecks CE and mandate authority before emitting a proposal, and the workflow rejects events
+after its Stop signal. Activity
+heartbeats support Temporal cancellation but are not proof of remote cancellation. Pending
+Temporal signal targets are explicit in the CE response and cannot produce a halt confirmation.
+Stop remains latched; recovery never restarts a stopped invocation or clears consent withdrawal.
+
+Demo deployment excludes all noncandidate BP, PR, AIR and CE revisions and requires zero old
+replicas before application activation. Apply migrations 83-86 before activating the candidate;
+do not roll back to a claim-unaware interpreter or overlap versions. Rollback must quiesce the
+dispatch path and preserve Stop barriers and unknown claims. These are candidate implementation
+rules pending the final Docker PostgreSQL/Temporal behavioral qualification. Migration backfill
+uses a temporary policy restricted to the migration principal, removes it in the same transaction,
+and retains CE ownership of Stop tables and AIR ownership of execution lock utilities.
+
 ### 7. Generic Agent Runtime Adapter Gateway (WC-080 Founder-Accepted Amendment)
 
 **State:** FOUNDER ACCEPTED - 2026-08-31. Implementation still requires the accepted commit to be

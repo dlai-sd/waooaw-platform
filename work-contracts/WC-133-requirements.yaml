@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-133
 contract_path: work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md
-contract_digest: 147aef085594ddafc4064395f04a4bc4c99416f7b696a99497c3e00faba53920
+contract_digest: f32d7a561fd28c3c000e6d120f4c317363b62cdfe5f175113da94841f22dc8df
 implementation_scope: true
 result: PLANNED
 
@@ -37,36 +37,39 @@ requirements:
   - <<: *defaults
     requirement_id: WC133-R001
     source: WC-133 Sections 2, 3 E1-E3 and 5 R001; ADR-023; WC120-R008
-    observable_outcome: A previously unregistered approved pilot starts registration and discovery by inbound WhatsApp TEXT without a portal account, existing relationship or invitation.
-    test_path_or_plan: WC-133 Section 5 R001; production-DI real-provider-envelope integration with empty user state
-    completion_rule: Admission owner invocation, canonical state and eligible reply are asserted; HTTP acknowledgement alone is insufficient.
-    result: PASS
+    observable_outcome: A previously unseen sender starts a bounded WhatsApp guest-discovery session by inbound TEXT without a WAOOAW account, existing relationship or invitation; first contact is not customer registration.
+    test_path_or_plan: WC-134 R001-R004; production-DI real-provider-envelope integration with empty guest state and no Identity/account/membership writes
+    completion_rule: Sender-scoped guest session and approved discovery reply are asserted; no customer identity/account, tenant, membership, relationship, employment, or HTTP-ack-only success is accepted.
+    result: BLOCKED
+    residual_risk: Existing evidence passes for the superseded provisional-Identity onboarding path only. Replace that path with the Founder-approved guest-session contract before claiming this requirement.
     evidence_refs: [work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md#8-repository-implementation-and-evidence, tests/business-platform.Tests/ConversationWhatsAppFitness/PhoneOnboardingPostgresTests.cs]
 
   - <<: *defaults
     requirement_id: WC133-R002
     source: WC-133 Sections 2 and 5 R002
-    observable_outcome: Minimal owner-authorized admission is evidence-backed, scoped and idempotent under concurrency, replay and partial failure.
-    test_path_or_plan: WC-133 Section 5 R002; real PostgreSQL concurrent first-contact and evidence/crash recovery cases
-    completion_rule: One logical admission, no orphan or cross-tenant state, no adapter-minted authority and no implicit marketing consent.
-    result: PASS
+    observable_outcome: Minimal guest-session admission is bounded, sender-scoped and idempotent under concurrency, replay and partial failure without creating a customer Identity.
+    test_path_or_plan: WC-134 R001-R003; real PostgreSQL concurrent guest-session, isolation, expiry, consent, and recovery cases
+    completion_rule: One logical guest session, no orphan or cross-sender/tenant state, no adapter-minted authority, customer registration, or implicit marketing consent.
+    result: BLOCKED
+    residual_risk: Existing evidence covers replay and isolation in the provisional Identity schema, not the corrected guest-session owner/API.
     evidence_refs: [work-contracts/WC-133-whatsapp-first-registration-and-web-registration-repair.md#8-repository-implementation-and-evidence, tests/business-platform.Tests/ConversationWhatsAppFitness/PhoneOnboardingPostgresTests.cs]
 
   - <<: *defaults
     requirement_id: WC133-R003
     source: WC-133 Sections 3 E3 and 5 R003
-    observable_outcome: Bounded first-contact authorization precedes contact creation and converges to the canonical binding without requiring pre-registration.
-    test_path_or_plan: WC-133 Section 5 R003; schema, configuration, runtime and activation-preparer positive/negative tests
-    completion_rule: All relevant surfaces agree; unauthorized, ambiguous, revoked, reassigned, expired and wrong-provider/environment identities fail closed.
-    result: PASS
+    observable_outcome: Bounded first-contact guest authorization precedes guest-session effects and never performs WAOOAW account registration, membership admission, or employment creation.
+    test_path_or_plan: WC-134 R001-R003; schema, configuration, runtime, consent, retention, sender-binding and activation-preparer positive/negative tests
+    completion_rule: Guest-session owner and all surfaces agree; unauthorized, ambiguous, revoked, reassigned, expired, wrong-provider/environment, and public-admission-without-guest-contract cases fail closed.
+    result: BLOCKED
+    residual_risk: Current configuration can gate a public admission path, but it does not yet prove the corrected guest Conversation contract.
     evidence_refs: [tests/pipeline/test_wc120_whatsapp_activation.py, tests/pipeline/test_wc091_environment_readiness.py, tests/business-platform.Tests/ConversationWhatsAppFitness/PhoneOnboardingPostgresTests.cs]
 
   - <<: *defaults
     requirement_id: WC133-R004
     source: WC-133 Sections 2 and 5 R004; accepted shared identity and conversation owners
-    observable_outcome: First/returning WhatsApp and proven Portal linking share canonical state while protected operations retain current assurance requirements.
-    test_path_or_plan: WC-133 Section 5 R004; onboarding, continuity, linking and assurance integration cases
-    completion_rule: No duplicate or transferred account/relationship; stale or unproven linking denied; Tier 4 remains portal-only.
+    observable_outcome: WhatsApp guest discovery can continue through Web-owned account registration/login; an authenticated user can bind WhatsApp by Identity-verified OTP while protected operations retain current assurance and membership requirements.
+    test_path_or_plan: WC-134 R004-R005; shared guest Conversation, portal safe handoff, Identity OTP, continuity, linking and assurance integration cases
+    completion_rule: OTP proves channel possession only; no duplicate/transferred account or relationship; stale, replayed or unproven linking denied; registration alone does not admit a relationship.
     result: BLOCKED
     residual_risk: Provisional history and existing assurance controls are locally validated; no provisional-to-full-account linking or cross-channel live acceptance is claimed, and no phone-only account transfer is permitted
 

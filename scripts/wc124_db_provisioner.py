@@ -66,6 +66,7 @@ ACTOR_SUBJECT_POLICY_EXPRESSION = (
     "''::text) COLLATE \"C\")) AND ((actor_subject)::text = "
     "(NULLIF(current_setting('app.identity_subject'::text, true), ''::text) COLLATE \"C\")))"
 )
+WHATSAPP_RECOGNITION_POLICY_EXPRESSION = "(((state)::text = 'Completed'::text) AND mobile_verified AND (account_id IS NOT NULL))"
 
 
 @dataclass(frozen=True)
@@ -577,7 +578,16 @@ SELECT required.relname,
        (SELECT count(*) FROM pg_policies
         WHERE schemaname = 'identity' AND tablename = required.relname AND policyname = 'actor_scope'),
        (SELECT count(*) FROM pg_policies
-        WHERE schemaname = 'identity' AND tablename = required.relname),
+        WHERE schemaname = 'identity' AND tablename = required.relname
+          AND NOT COALESCE((
+              required.relname = 'registrations'
+              AND policyname = 'whatsapp_verified_registration_recognition'
+              AND permissive = 'PERMISSIVE' AND cmd = 'SELECT'
+              AND roles = ARRAY['identity_whatsapp_recognizer_owner']::name[]
+              AND regexp_replace(qual, E'[\\t\\n\\r ]+', ' ', 'g')
+                  = {sql_literal(WHATSAPP_RECOGNITION_POLICY_EXPRESSION)}
+              AND with_check IS NULL
+          ), false)),
        COALESCE(policy.permissive, ''),
        COALESCE(policy.cmd, ''),
        COALESCE(array_to_string(policy.roles, ','), ''),

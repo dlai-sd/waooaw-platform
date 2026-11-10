@@ -67,6 +67,16 @@ def test_runtime_gate_refreshes_and_scans_before_starting_application() -> None:
     assert 'rm -f -- "$EVIDENCE_JSON"' in script
 
 
+def test_runtime_gate_mounts_ephemeral_workload_credentials() -> None:
+    script = (ROOT / "scripts/run_goal006_runtime_lifecycle_gate.sh").read_text()
+    assert 'python "$REPO_ROOT/scripts/bootstrap_workload_identity.py"' in script
+    assert '--environment ci \\' in script
+    assert '--user "$(id -u):$(id -g)"' in script
+    assert '-v "$WORKLOAD_CREDENTIALS:/run/waooaw/workload-identity:ro"' in script
+    assert "-e WAOOAW_WORKLOAD_CREDENTIALS=/run/waooaw/workload-identity" in script
+    assert 'rm -rf "$WORKLOAD_CREDENTIALS"' in script
+
+
 def test_runtime_evidence_rejects_missing_or_failed_image_scan() -> None:
     for scan in (None, {}, {**EVIDENCE["image_scan"], "passed": False},
                  {**EVIDENCE["image_scan"], "scanner_image": "aquasec/trivy:latest"},

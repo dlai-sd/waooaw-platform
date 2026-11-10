@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 from uuid import UUID
 
@@ -62,6 +63,8 @@ async def test_gateway_signs_exact_pr_air_route_and_preserves_trusted_context() 
     payload = {
         "relationshipRef": "relationship-1",
         "requestDigest": "b" * 64,
+        "contribution": {"text": "नमस्ते café", "locale": "en-IN"},
+        "boundedContext": None,
     }
 
     response = await gateway.propose(
@@ -81,7 +84,12 @@ async def test_gateway_signs_exact_pr_air_route_and_preserves_trusted_context() 
     assert envelope["target_audience"] == "urn:waooaw:service:ai-runtime"
     assert envelope["relationship_id"] == "relationship-1"
     assert envelope["tenant_id"] == _trusted_context().tenant_id
+    assert envelope["actor_source"] == "BP_SESSION"
     assert envelope["operation"] == "proposeEmploymentPatch"
+    expected_body = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
+    assert request.content == expected_body
+    assert request.headers["Content-Type"] == "application/json"
+    assert envelope["request_digest"] == hashlib.sha256(expected_body).hexdigest()
     await gateway.close()
 
 
@@ -101,4 +109,34 @@ async def test_gateway_rejects_caller_supplied_relationship_rebinding() -> None:
             UUID("00000000-0000-0000-0000-000000000009"),
             {"relationshipRef": "relationship-2"},
         )
+    await gateway.close()
+
+
+@pytest.mark.asyncio
+async def test_keyed_reconciliation_signs_original_identity_on_readonly_operation() -> None:
+    requests = []
+
+    async def handler(request):
+        requests.append(request)
+        return httpx.Response(503, json={"code": "AIR_EMPLOYMENT_RECONCILIATION_REQUIRED"})
+
+    gateway = EmploymentAirGateway(
+        "https://air.test",
+        httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        "spiffe://waooaw.test/workload/professional-runtime",
+        "pr-key",
+        "urn:waooaw:service:ai-runtime",
+        ec.generate_private_key(ec.SECP256R1()),
+    )
+    key = UUID("00000000-0000-0000-0000-000000000009")
+    payload = {"relationshipRef": "relationship-1", "requestDigest": "b" * 64}
+    await gateway.reconcile(_trusted_context(), key, payload)
+    request = requests[0]
+    encoded = request.headers["Authorization"].removeprefix("Bearer ").split(".")[0]
+    context = json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
+    assert request.url.path.endswith("/reconcile")
+    assert context["operation"] == "reconcileEmploymentPatchProposal"
+    assert context["purpose"] == "EMPLOYMENT_PATCH_RECONCILIATION"
+    assert context["idempotency_key"] == str(key)
+    assert context["request_digest"] == hashlib.sha256(request.content).hexdigest()
     await gateway.close()

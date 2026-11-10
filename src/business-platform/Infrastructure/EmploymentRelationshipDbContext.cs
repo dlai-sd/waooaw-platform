@@ -522,6 +522,8 @@ public sealed class WhatsAppJourneyContact
     public DateTimeOffset OptedInAt { get; init; }
     public DateTimeOffset? OptedOutAt { get; set; }
     public DateTimeOffset LastInboundAt { get; set; }
+    public string? ProtectedDestination { get; set; }
+    public DateTimeOffset? DestinationVerifiedAt { get; set; }
     public string JourneyStage { get; set; } = "DISCOVER";
     public bool PendingMediumRiskConfirmation { get; set; }
     public string? MpinHash { get; set; }
@@ -533,6 +535,7 @@ public sealed class WhatsAppMessageReceipt
 {
     public string MessageId { get; init; } = string.Empty;
     public Guid TenantId { get; init; }
+    public Guid ContactId { get; init; }
     public string SessionTokenHash { get; init; } = string.Empty;
     public DateTimeOffset SessionExpiresAt { get; init; }
     public DateTimeOffset ReceivedAt { get; init; }
@@ -559,6 +562,21 @@ public sealed class ChannelBinding
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? BoundAt { get; set; }
     public DateTimeOffset? RevokedAt { get; set; }
+}
+
+public sealed class WhatsAppRelationshipRoute
+{
+    public Guid ServiceTenantId { get; init; }
+    public string SenderHash { get; init; } = string.Empty;
+    public Guid TenantId { get; init; }
+    public Guid BindingId { get; init; }
+    public Guid IdentityLinkId { get; init; }
+    public string ActorIssuer { get; init; } = string.Empty;
+    public Guid ActorId { get; init; }
+    public Guid AccountId { get; init; }
+    public Guid MembershipId { get; init; }
+    public Guid BoundEvidenceId { get; init; }
+    public DateTimeOffset PublishedAt { get; init; }
 }
 
 public sealed class ContinuityCheckpoint
@@ -1175,7 +1193,10 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.ConversationId).HasColumnName("conversation_id");
             entity.Property(value => value.EngagementIntent).HasColumnName("engagement_intent");
             entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
-            entity.Property(value => value.OutcomeJson).HasColumnName("outcome_json");
+            entity
+                .Property(value => value.OutcomeJson)
+                .HasColumnName("outcome_json")
+                .HasColumnType("jsonb");
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
             entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
             entity.Property(value => value.CompletedAt).HasColumnName("completed_at");
@@ -1969,12 +1990,24 @@ public sealed class EmploymentRelationshipDbContext : DbContext
         {
             entity.ToTable("whatsapp_journey_contacts", "business");
             entity.HasKey(value => value.ContactId);
+            entity
+                .HasAlternateKey(value => new { value.TenantId, value.ContactId })
+                .HasName("whatsapp_journey_contacts_tenant_contact_key");
             entity.HasIndex(value => value.PhoneHmac).IsUnique();
             entity.Property(value => value.ContactId).HasColumnName("contact_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.PhoneHmac).HasColumnName("phone_hmac");
             entity.Property(value => value.OptedInAt).HasColumnName("opted_in_at");
+            entity.Property(value => value.OptedOutAt).HasColumnName("opted_out_at");
             entity.Property(value => value.LastInboundAt).HasColumnName("last_inbound_at");
+            entity
+                .Property(value => value.ProtectedDestination)
+                .HasColumnName("protected_destination")
+                .HasMaxLength(256);
+            entity
+                .Property(value => value.DestinationVerifiedAt)
+                .HasColumnName("destination_verified_at")
+                .IsConcurrencyToken();
             entity.Property(value => value.JourneyStage).HasColumnName("journey_stage");
             entity
                 .Property(value => value.PendingMediumRiskConfirmation)
@@ -1994,8 +2027,15 @@ public sealed class EmploymentRelationshipDbContext : DbContext
         {
             entity.ToTable("whatsapp_message_receipts", "business");
             entity.HasKey(value => value.MessageId);
+            entity
+                .HasOne<WhatsAppJourneyContact>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.ContactId })
+                .HasPrincipalKey(value => new { value.TenantId, value.ContactId })
+                .HasConstraintName("whatsapp_message_receipts_tenant_contact_fk");
             entity.Property(value => value.MessageId).HasColumnName("message_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.ContactId).HasColumnName("contact_id");
             entity.Property(value => value.SessionTokenHash).HasColumnName("session_token_hash");
             entity.Property(value => value.SessionExpiresAt).HasColumnName("session_expires_at");
             entity.Property(value => value.ReceivedAt).HasColumnName("received_at");
@@ -2041,6 +2081,33 @@ public sealed class EmploymentRelationshipDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
+        modelBuilder.Entity<WhatsAppRelationshipRoute>(entity =>
+        {
+            entity.ToTable("whatsapp_relationship_routes", "business");
+            entity.HasKey(value => new { value.ServiceTenantId, value.SenderHash });
+            entity.HasIndex(value => new { value.TenantId, value.BindingId }).IsUnique();
+            entity.Property(value => value.ServiceTenantId).HasColumnName("service_tenant_id");
+            entity
+                .Property(value => value.SenderHash)
+                .HasColumnName("sender_hash")
+                .HasMaxLength(64)
+                .IsFixedLength();
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.BindingId).HasColumnName("binding_id");
+            entity.Property(value => value.IdentityLinkId).HasColumnName("identity_link_id");
+            entity.Property(value => value.ActorIssuer).HasColumnName("actor_issuer");
+            entity.Property(value => value.ActorId).HasColumnName("actor_id");
+            entity.Property(value => value.AccountId).HasColumnName("account_id");
+            entity.Property(value => value.MembershipId).HasColumnName("membership_id");
+            entity.Property(value => value.BoundEvidenceId).HasColumnName("bound_evidence_id");
+            entity.Property(value => value.PublishedAt).HasColumnName("published_at");
+            entity
+                .HasOne<ChannelBinding>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.BindingId })
+                .HasPrincipalKey(value => new { value.TenantId, value.BindingId });
         });
 
         modelBuilder.Entity<ContinuityCheckpoint>(entity =>

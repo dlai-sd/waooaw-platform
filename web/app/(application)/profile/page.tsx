@@ -4,9 +4,12 @@ import { logServerFailure } from '@/lib/server-failure';
 
 import { BadgeCheck, CircleAlert, CreditCard, Mail, Smartphone } from 'lucide-react';
 import { ProfileEditor } from '@/components/portal/ProfileEditor';
+import { WhatsAppAccountLink } from '@/components/portal/WhatsAppAccountLink';
 import { StateView } from '@/components/system/StateView';
 import { getRequestI18n } from '@/lib/i18n-server';
 import { getCustomerProfile, getIdentitySession, listCustomerLoginMethods } from '@/lib/api/identity';
+import { listEmploymentRelationships } from '@/lib/api/relationships';
+import type { EmploymentRelationshipSummaryV1 } from '@/lib/api/generated/models/EmploymentRelationshipSummaryV1';
 import { getServerAccessToken } from '@/lib/server-auth';
 
 export default async function ProfilePage() {
@@ -41,6 +44,31 @@ export default async function ProfilePage() {
       getCustomerProfile(accessToken),
       listCustomerLoginMethods(accessToken),
     ]);
+    let whatsappRelationships: { relationshipId: string; label: string }[] = [];
+    let whatsappRelationshipsUnavailable = false;
+    if (identity.session.roles.has('OWNER') && profile.mobileVerified) {
+      try {
+        const relationshipItems: EmploymentRelationshipSummaryV1[] = [];
+        let cursor: string | undefined;
+        for (let page = 0; page < 20; page += 1) {
+          const relationships = await listEmploymentRelationships(accessToken, cursor);
+          relationshipItems.push(...relationships.items);
+          cursor = relationships.nextCursor;
+          if (!cursor) break;
+        }
+        if (cursor) throw new Error('Relationship list exceeded the supported page bound.');
+        const attachableStates = new Set(['TRIAL_ACTIVE', 'ACTIVE']);
+        whatsappRelationships = relationshipItems
+          .filter((item) => attachableStates.has(item.lifecycleState))
+          .map((item) => ({
+            relationshipId: item.relationshipId,
+            label: `${item.professionalDisplayName} - ${item.lifecycleState.replaceAll('_', ' ').toLowerCase()}`,
+          }));
+      } catch (error) {
+        logServerFailure('web.portal.profile.whatsapp_relationships_failed', error);
+        whatsappRelationshipsUnavailable = true;
+      }
+    }
     return (
       <section className="portal-page" aria-labelledby="profile-title">
         <header className="portal-heading">
@@ -77,6 +105,13 @@ export default async function ProfilePage() {
               </div>
             </dl>
           </section>
+          {identity.session.roles.has('OWNER') && profile.mobileVerified ? (
+            <WhatsAppAccountLink
+              key={identity.session.accountReference}
+              relationships={whatsappRelationships}
+              relationshipsUnavailable={whatsappRelationshipsUnavailable}
+            />
+          ) : null}
           <section aria-labelledby="login-methods-heading">
             <h2 id="login-methods-heading">Login methods</h2>
             <ul className="method-list">

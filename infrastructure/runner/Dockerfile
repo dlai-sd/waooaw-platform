@@ -15,7 +15,10 @@ USER root
 
 RUN rm -f /etc/apt/sources.list.d/git-core-ubuntu-ppa-noble.sources \
   && apt-get -o Acquire::Retries="${APT_ACQUIRE_RETRIES}" update \
-  && apt-get -o Acquire::Retries="${APT_ACQUIRE_RETRIES}" upgrade -y \
+  && (apt-get -o Acquire::Retries="${APT_ACQUIRE_RETRIES}" upgrade -y \
+    || { rm -rf /var/lib/apt/lists/*; sleep 5; \
+      apt-get -o Acquire::Retries="${APT_ACQUIRE_RETRIES}" update; \
+      apt-get -o Acquire::Retries="${APT_ACQUIRE_RETRIES}" upgrade -y; }) \
     && apt-get -o Acquire::Retries="${APT_ACQUIRE_RETRIES}" install -y --no-install-recommends ca-certificates dnsutils jq openssl postgresql-client unzip \
     && curl --fail --location --silent --show-error \
       --output /tmp/azure-cli.deb \

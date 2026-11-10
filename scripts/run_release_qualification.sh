@@ -22,6 +22,12 @@ if test "$RELEASE_RUN_TESTS" = false \
   exit 0
 fi
 
+goal006_evidence_dir=
+if test "$RELEASE_RUN_AZURE" = true; then
+  goal006_evidence_dir=${GOAL006_EVIDENCE_DIR:-${WAOOAW_VALIDATION_OUTPUT_DIRECTORY:-test-results}/goal006-local-azure-runtime}
+  mkdir -p "$goal006_evidence_dir"
+fi
+
 if test "$RELEASE_RUN_TESTS" = true \
   || test "$RELEASE_RUN_POSTGRES" = true \
   || test "$RELEASE_RUN_SIMULATOR" = true \
@@ -106,7 +112,7 @@ if test "$RELEASE_RUN_SIMULATOR" = true; then
   simulator_pid=$!
 fi
 if test "$RELEASE_RUN_AZURE" = true; then
-  GOAL006_EVIDENCE_DIR=${GOAL006_EVIDENCE_DIR:-goal006-local-azure-runtime} \
+  GOAL006_EVIDENCE_DIR=$goal006_evidence_dir \
     run_release_lane azure bash scripts/run_goal006_local_azure_verification.sh &
   azure_pid=$!
 fi

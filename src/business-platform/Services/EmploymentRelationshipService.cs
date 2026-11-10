@@ -889,6 +889,14 @@ public sealed class EmploymentRelationshipService
     )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = db.Database.IsNpgsql()
+            ? await db.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+        if (transaction is not null)
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT relationship_id FROM business.employment_relationships WHERE tenant_id = {tenantId} AND relationship_id = {relationshipId} FOR UPDATE",
+                cancellationToken
+            );
         var relationship = await db.EmploymentRelationships.SingleOrDefaultAsync(
             value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
             cancellationToken
@@ -898,6 +906,19 @@ public sealed class EmploymentRelationshipService
         if (relationship.State == EmploymentRelationshipState.StoppedEmergency)
             return relationship;
         if (
+            await db.RelationshipStateHistory.AnyAsync(
+                value =>
+                    value.TenantId == tenantId
+                    && value.RelationshipId == relationshipId
+                    && value.ToState == EmploymentRelationshipState.StoppedEmergency
+                    && value.EvidenceId == stopEvidenceId,
+                cancellationToken
+            )
+        )
+            throw new ConstitutionalActionDeniedException(
+                "Emergency Stop evidence cannot be reused after a relationship transition."
+            );
+        if (
             !LegalTransitions[relationship.State]
                 .Contains(EmploymentRelationshipState.StoppedEmergency)
         )
@@ -905,6 +926,14 @@ public sealed class EmploymentRelationshipService
                 relationship.State,
                 EmploymentRelationshipState.StoppedEmergency
             );
+        if (transaction is not null)
+        {
+            var role = RelationshipRoleCodec.ToDatabase(actorRole);
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT binding_id FROM business.relationship_participants WHERE tenant_id = {tenantId} AND relationship_id = {relationshipId} AND participant_id = {actorParticipantId} AND role = {role} AND status = 'ACTIVE' FOR UPDATE",
+                cancellationToken
+            );
+        }
         var bound = await db.RelationshipParticipants.AnyAsync(
             value =>
                 value.TenantId == tenantId
@@ -940,6 +969,8 @@ public sealed class EmploymentRelationshipService
             }
         );
         await db.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
         return relationship;
     }
 

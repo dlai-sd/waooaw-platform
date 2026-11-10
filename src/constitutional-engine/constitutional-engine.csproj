@@ -16,6 +16,10 @@
 
     <!-- gRPC: proto compilation + server-side code generation -->
     <ItemGroup>
+        <Compile
+            Include="../shared/InferenceWorkloadValidator.cs"
+            Link="Services/InferenceWorkloadValidator.cs"
+        />
         <Protobuf Include="Protos/constitutional_service.proto" GrpcServices="Server" />
     </ItemGroup>
 

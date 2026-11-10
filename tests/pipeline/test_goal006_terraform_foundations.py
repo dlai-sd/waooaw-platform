@@ -156,6 +156,8 @@ def test_all_foundation_roots_publish_the_same_workload_contract() -> None:
                     "database_provisioner_identity_id",
                 }
             )
+        if environment == "demo":
+            environment_outputs.add("log_analytics_workspace_id")
         assert set(re.findall(r'^output "([^"]+)"', foundation, re.MULTILINE)) == environment_outputs
 
 
@@ -885,8 +887,19 @@ def test_release_qualification_retains_docker_azure_cli_runtime_evidence() -> No
     assert "gate-id: release-qualification" in workflow
     assert 'release-qualification: {shell: "sh scripts/run_release_qualification.sh"' in catalog
     assert "bash scripts/run_goal006_local_azure_verification.sh" in release_runner
-    assert "GOAL006_EVIDENCE_DIR=${GOAL006_EVIDENCE_DIR:-goal006-local-azure-runtime}" in release_runner
+    assert (
+        "goal006_evidence_dir=${GOAL006_EVIDENCE_DIR:-${WAOOAW_VALIDATION_OUTPUT_DIRECTORY:-test-results}/"
+        "goal006-local-azure-runtime}" in release_runner
+    )
+    assert 'mkdir -p "$goal006_evidence_dir"' in release_runner
+    assert release_runner.index('mkdir -p "$goal006_evidence_dir"') < release_runner.index(
+        "run_release_lane preflight"
+    )
     assert "goal006-local-azure-runtime-${{ github.run_id }}" in workflow
+    assert (
+        "test-results/wc109/runs/*/release-qualification/goal006-local-azure-runtime/"
+        in workflow
+    )
     assert "if-no-files-found: error" in workflow
 
 
@@ -1107,7 +1120,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert 'name  = "SQL_MAX_IDLE_CONNS"\n        value = "1"' in temporal
     for evidence in ("wc124-activation-readiness.json", "wc124-connection-budget-post-activation.json"):
         assert workflow.count(evidence) == 2, evidence  # produced once, uploaded once
-    assert workflow.count("if: inputs.apply") == 39  # includes WC-127 image-home and WC-129 Keycloak refresh
+    assert workflow.count("if: inputs.apply") == 40  # includes WC-134 dispatch rollout fencing
     assert workflow.count("always() && inputs.apply") == 6  # includes the three WC-132 recovery/window guards
     assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
     assert '--context "external_environment=$external_environment"' in workflow

@@ -99,7 +99,9 @@ export function PortalGuideExperience({
         <span>{currentSurface.replaceAll('_', ' ').toLowerCase()}</span>
       </header>
       <p className="scope-disclosure">
-        Navigation and explanations only. The Guide cannot act as an employed professional.
+        {currentSurface === 'MARKETPLACE'
+          ? 'Public catalogue discovery and catalogue previews only. The Guide cannot perform professional work or start a trial.'
+          : 'Navigation and explanations only. The Guide cannot act as an employed professional.'}
       </p>
       <div className="portal-guide-timeline" aria-busy={loading} aria-live="polite">
         {loading ? (
@@ -108,7 +110,11 @@ export function PortalGuideExperience({
           </p>
         ) : null}
         {!loading && messages.length === 0 ? (
-          <p>Ask where to find agents, alerts, billing or account settings.</p>
+          <p>
+            {currentSurface === 'MARKETPLACE'
+              ? 'Describe the outcome you need, browse professionals, or ask about published skills, limitations and trial terms.'
+              : 'Ask where to find agents, alerts, billing or account settings.'}
+          </p>
         ) : null}
         {messages.map((message) => (
           <article className={`guide-message guide-message-${message.actor.toLowerCase()}`} key={message.messageId}>

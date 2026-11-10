@@ -21,6 +21,7 @@ public sealed class WhatsAppProviderOptions
     public string OutboundAuthorityVersion { get; set; } = string.Empty;
     public string VerifyTokenVersion { get; set; } = string.Empty;
     public string AppSecretVersion { get; set; } = string.Empty;
+    public string PhoneSubjectKeyVersion { get; set; } = string.Empty;
 }
 
 public sealed class WhatsAppProviderBinding
@@ -58,6 +59,7 @@ public interface IWhatsAppWebhookCredentials
 {
     Task<string> ReadVerifyTokenAsync(CancellationToken cancellationToken);
     Task<string> ReadAppSecretAsync(CancellationToken cancellationToken);
+    Task<string> ReadPhoneSubjectKeyAsync(CancellationToken cancellationToken);
     Task<WhatsAppProviderBinding> ReadSenderBindingAsync(CancellationToken cancellationToken);
 }
 
@@ -152,6 +154,9 @@ public sealed partial class WhatsAppKeyVaultCredentials(
     public Task<string> ReadAppSecretAsync(CancellationToken cancellationToken) =>
         ReadPurposeAsync("whatsapp-app-secret", cancellationToken);
 
+    public Task<string> ReadPhoneSubjectKeyAsync(CancellationToken cancellationToken) =>
+        ReadPurposeAsync("whatsapp-phone-subject-hmac", cancellationToken);
+
     public async Task<WhatsAppProviderBinding> ReadSenderBindingAsync(
         CancellationToken cancellationToken
     )
@@ -199,6 +204,7 @@ public sealed partial class WhatsAppKeyVaultCredentials(
         {
             "whatsapp-verify-token" => current.VerifyTokenVersion,
             "whatsapp-app-secret" => current.AppSecretVersion,
+            "whatsapp-phone-subject-hmac" => current.PhoneSubjectKeyVersion,
             "whatsapp-provider-binding" => current.BindingVersion,
             _ => throw Denied("PROVIDER_SECRET_DENIED"),
         };

@@ -228,6 +228,105 @@ public sealed class ServiceBoundaryTests
         error.Which.StatusCode.Should().Be(StatusCode.Unauthenticated);
     }
 
+    [Theory]
+    [InlineData("CONVERSATION_EXECUTION")]
+    [InlineData("CONVERSATION_MODEL_RESERVATION")]
+    public async Task ValidateAction_RejectsMalformedConversationParameters(string actionType)
+    {
+        var service = Service(
+            emergencyFactory: new Factory<EmergencyStopDbContext>(Options<EmergencyStopDbContext>())
+        );
+        var act = () =>
+            service.ValidateAction(
+                new ValidateActionRequest
+                {
+                    ContractId = Guid.NewGuid().ToString(),
+                    ActionType = actionType,
+                    ActionParameters = "{",
+                },
+                FakeServerCallContext.Create(Guid.NewGuid().ToString())
+            );
+        var error = await act.Should().ThrowAsync<RpcException>();
+        error.Which.StatusCode.Should().Be(StatusCode.InvalidArgument);
+    }
+
+    [Fact]
+    public async Task ValidateAction_RequiresConversationStopAuthority()
+    {
+        var relationship = Guid.NewGuid();
+        var act = () =>
+            Service()
+                .ValidateAction(
+                    ConversationRequest("CONVERSATION_EXECUTION", relationship, relationship),
+                    FakeServerCallContext.Create(Guid.NewGuid().ToString("D"))
+                );
+
+        var error = await act.Should().ThrowAsync<RpcException>();
+        error.Which.StatusCode.Should().Be(StatusCode.Unavailable);
+    }
+
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("{\"relationship_id\":7}")]
+    [InlineData("{\"relationship_id\":\"not-a-uuid\"}")]
+    public async Task ValidateAction_RequiresConversationRelationshipUuid(string parameters)
+    {
+        var service = Service(
+            emergencyFactory: new Factory<EmergencyStopDbContext>(Options<EmergencyStopDbContext>())
+        );
+        var act = () =>
+            service.ValidateAction(
+                new ValidateActionRequest
+                {
+                    ContractId = Guid.NewGuid().ToString("D"),
+                    ActionType = "CONVERSATION_EXECUTION",
+                    ActionParameters = parameters,
+                },
+                FakeServerCallContext.Create(Guid.NewGuid().ToString("D"))
+            );
+
+        var error = await act.Should().ThrowAsync<RpcException>();
+        error.Which.StatusCode.Should().Be(StatusCode.InvalidArgument);
+    }
+
+    [Fact]
+    public async Task ValidateAction_RequiresReservationContractToMatchRelationship()
+    {
+        var relationship = Guid.NewGuid();
+        var service = Service(
+            emergencyFactory: new Factory<EmergencyStopDbContext>(Options<EmergencyStopDbContext>())
+        );
+        var act = () =>
+            service.ValidateAction(
+                ConversationRequest("CONVERSATION_MODEL_RESERVATION", Guid.NewGuid(), relationship),
+                FakeServerCallContext.Create(Guid.NewGuid().ToString("D"))
+            );
+
+        var error = await act.Should().ThrowAsync<RpcException>();
+        error.Which.StatusCode.Should().Be(StatusCode.InvalidArgument);
+    }
+
+    [Theory]
+    [InlineData("CONVERSATION_EXECUTION")]
+    [InlineData("CONVERSATION_MODEL_RESERVATION")]
+    public async Task ValidateAction_AllowsConversationWhenStopIsInactive(string actionType)
+    {
+        var relationship = Guid.NewGuid();
+        var service = Service(
+            emergencyFactory: new Factory<EmergencyStopDbContext>(
+                Options<EmergencyStopDbContext>()
+            ),
+            registry: new EvaluatorRegistry([], NullLogger<EvaluatorRegistry>.Instance)
+        );
+
+        var response = await service.ValidateAction(
+            ConversationRequest(actionType, relationship, relationship),
+            FakeServerCallContext.Create(Guid.NewGuid().ToString("D"))
+        );
+
+        response.Decision.Should().Be(ValidationDecision.Allow);
+    }
+
     [Fact]
     public async Task ValidateAction_HonestLimitation_ReturnsEscalate()
     {
@@ -246,6 +345,18 @@ public sealed class ServiceBoundaryTests
         response.Decision.Should().Be(ValidationDecision.Escalate);
         response.ConstitutionalBasis.Should().Be("C-049");
     }
+
+    private static ValidateActionRequest ConversationRequest(
+        string actionType,
+        Guid contract,
+        Guid relationship
+    ) =>
+        new()
+        {
+            ContractId = contract.ToString("D"),
+            ActionType = actionType,
+            ActionParameters = $"{{\"relationship_id\":\"{relationship:D}\"}}",
+        };
 
     [Fact]
     public async Task ValidateAction_WhenEvaluatorFails_ReturnsInternal()

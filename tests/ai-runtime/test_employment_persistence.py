@@ -7,7 +7,7 @@ from uuid import UUID
 
 import pytest
 
-from employment_persistence import EmploymentPatchRepository
+from employment_persistence import EmploymentDispatchStoppedError, EmploymentPatchRepository
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 PROPOSAL_ID = UUID("00000000-0000-0000-0000-000000000002")
@@ -39,6 +39,8 @@ class FakeConnection:
 
     async def fetchrow(self, statement: str, *values: object) -> dict[str, Any] | None:
         self.executions.append((statement, values))
+        if "employment_dispatch_stops" in statement:
+            return None
         return self.row
 
 
@@ -116,6 +118,95 @@ async def test_repository_writes_identity_and_terminal_event_atomically() -> Non
     assert any("employment_patch_proposals" in statement for statement in statements)
     assert any("employment_patch_proposal_events" in statement for statement in statements)
     assert pool.closed is True
+
+
+@pytest.mark.asyncio
+async def test_serialized_proposal_holds_tenant_scoped_lock_for_read_and_write() -> None:
+    connection = FakeConnection(_row(_proposal()))
+    repository = EmploymentPatchRepository(FakePool(connection))
+
+    async with repository.serialize_proposal(TENANT_ID, "relationship-1", IDEMPOTENCY_KEY) as transaction:
+        found = await transaction.find_by_idempotency(TENANT_ID, "relationship-1", IDEMPOTENCY_KEY)
+        assert found is not None
+        await transaction.save(
+            TENANT_ID,
+            "relationship-1",
+            IDEMPOTENCY_KEY,
+            "b" * 64,
+            {"proposalId": str(PROPOSAL_ID)},
+            _proposal(),
+        )
+
+    statements = [statement for statement, _ in connection.executions]
+    assert "set_config" in statements[0]
+    assert "lock_employment_dispatch" in statements[1]
+    assert "employment_dispatch_stops" in statements[2]
+    assert "pg_advisory_xact_lock" in statements[3]
+    assert "SELECT tenant_id" in statements[4]
+    assert "employment_patch_proposals" in statements[5]
+    assert "employment_patch_proposal_events" in statements[6]
+
+
+@pytest.mark.asyncio
+async def test_dispatch_claim_uses_tenant_relationship_and_key() -> None:
+    connection = FakeConnection({"request_digest": "b" * 64, "recovery_mode": "UNKNOWN"})
+    repository = EmploymentPatchRepository(FakePool(connection))
+    async with repository.serialize_proposal(TENANT_ID, "relationship-1", IDEMPOTENCY_KEY) as transaction:
+        claimed, digest, mode = await transaction.claim_dispatch(
+            TENANT_ID, "relationship-1", IDEMPOTENCY_KEY, "b" * 64, "UNKNOWN"
+        )
+    assert claimed
+    assert digest == "b" * 64
+    assert mode == "UNKNOWN"
+    statement, values = connection.executions[-1]
+    assert "employment_patch_dispatch_claims" in statement
+    assert "ON CONFLICT" in statement
+    assert values == (TENANT_ID, "relationship-1", IDEMPOTENCY_KEY, "b" * 64, "UNKNOWN")
+
+
+@pytest.mark.asyncio
+async def test_dispatch_claim_recovers_exact_conflict_and_rejects_missing_claim() -> None:
+    class ConflictingConnection(FakeConnection):
+        def __init__(self, existing: dict[str, Any] | None) -> None:
+            super().__init__()
+            self.existing = existing
+
+        async def fetchrow(self, statement: str, *values: object) -> dict[str, Any] | None:
+            self.executions.append((statement, values))
+            return self.existing if "SELECT request_digest" in statement else None
+
+    existing = {"request_digest": "b" * 64, "recovery_mode": "UNKNOWN"}
+    repository = EmploymentPatchRepository(FakePool(ConflictingConnection(existing)))
+    async with repository.serialize_proposal(TENANT_ID, "relationship-1", IDEMPOTENCY_KEY) as transaction:
+        claimed, digest, mode = await transaction.claim_dispatch(
+            TENANT_ID, "relationship-1", IDEMPOTENCY_KEY, "b" * 64, "UNKNOWN"
+        )
+    assert not claimed
+    assert (digest, mode) == ("b" * 64, "UNKNOWN")
+
+    repository = EmploymentPatchRepository(FakePool(ConflictingConnection(None)))
+    with pytest.raises(RuntimeError, match="disappeared during serialization"):
+        async with repository.serialize_proposal(TENANT_ID, "relationship-1", IDEMPOTENCY_KEY) as transaction:
+            await transaction.claim_dispatch(TENANT_ID, "relationship-1", IDEMPOTENCY_KEY, "b" * 64, "UNKNOWN")
+
+
+@pytest.mark.asyncio
+async def test_stop_is_checked_under_shared_lock_before_claim_or_save() -> None:
+    class StoppedConnection(FakeConnection):
+        async def fetchrow(self, statement, *values):
+            if "employment_dispatch_stops" in statement:
+                self.executions.append((statement, values))
+                return {"relationship_ref": "relationship-1"}
+            return await super().fetchrow(statement, *values)
+
+    connection = StoppedConnection()
+    repository = EmploymentPatchRepository(FakePool(connection))
+    with pytest.raises(EmploymentDispatchStoppedError):
+        await repository.save(TENANT_ID, "relationship-1", IDEMPOTENCY_KEY, "b" * 64, {}, _proposal())
+    statements = [statement for statement, _ in connection.executions]
+    assert "lock_employment_dispatch" in statements[1]
+    assert "employment_dispatch_stops" in statements[2]
+    assert not any("INSERT" in statement for statement in statements)
 
 
 @pytest.mark.asyncio

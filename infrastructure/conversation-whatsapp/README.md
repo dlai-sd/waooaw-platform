@@ -40,6 +40,25 @@ The migration is forward-only and restartable. It never removes legacy columns, 
 or payload lineage. Legacy messages receive explicit `STALE` legacy context/policy snapshots; they
 are not represented as current context.
 
+For WC-134, apply the ordered PostgreSQL init migrations through
+`infrastructure/postgres/init/82-wc134-tenant-conversation-runtime-grants.sql` before running the updated
+Business Platform. This includes the activation-limit notice migration and the tenant-scoped
+consent-history table used to preserve previous consent references when a stale notice is renewed,
+as well as the active sender lookup index. The subsequent outbox, Stop-latch and delivery-observation
+runtime grants require forced tenant RLS. Stop-latch updates are limited to evidence confirmation
+columns, so the runtime cannot move a latch to another scope. Delivery observations receive only read and insert access;
+relationship observations also require a matching environment, tenant, relationship and message,
+and relationship outbox rows require a matching environment, tenant, relationship and conversation.
+Existing inconsistent rows cause the migration to fail. Hold and retention mutations need a separate
+authority boundary. The migration does not grant access to tenantless provider claims or operational
+signals, whose production access remains unresolved.
+The guest traffic replay migration leaves earlier append-only reservations unchanged. A retry of a
+legacy inbound reservation whose original limit decision is unknown fails with
+`GUEST_BUDGET_REPLAY_UNRESOLVED`; do not delete the reservation or guess a decision to force a
+replay. Reconcile the original provider event and any canonical reply before a separately
+authorized recovery. Legacy session-limit events remain replayable because their decision is
+explicitly recorded by their event type.
+
 ## Isolated restore
 
 Restore only under separate recovery authority into a non-routable environment with:
@@ -103,4 +122,16 @@ evidence reconciliation, recovery, privacy, isolation, and Production-dark viola
 - Dead letter over 15 minutes: notify within 5 minutes; at 30 minutes, page.
 - Any privacy, isolation, Production-dark, restore-egress, or Stop hard-ceiling event: detect within
   1 minute, page within 5 minutes, acknowledge within 10 minutes, and fence within 30 minutes.
+- An open Stop evidence-reconciliation signal emits a separate local page-level alert with its
+  original signal time and a five-minute response deadline. This does not itself establish a Stop
+  propagation breach or confirm a halt.
 - Missing signal or alert delivery is a failed oracle, never success by silence.
+
+The local evaluator's `TriggeredAt` represents the underlying breach time (the oldest relevant
+event plus its threshold, or the oldest open critical signal time), not the evaluation time.
+Repeated evaluations do not restart the response deadline. The Business Platform worker evaluates
+the current activation tenant every 30 seconds and emits a payload-free heartbeat and structured
+alerts. Inactive capability and database failures emit warnings or errors instead of a success
+heartbeat. This is not an environment-wide cross-tenant oracle: tenant RLS limits outbox visibility
+to the active authority tenant. External alert delivery, acknowledgement, escalation, and
+missing-heartbeat detection are not provided by this worker and remain release requirements.

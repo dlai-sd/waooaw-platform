@@ -430,6 +430,7 @@ message EmergencyStopResponse {
   // recorded_at is when the Emergency Stop event record was written.
   // The caller MUST NOT return halt confirmation until this timestamp is set.
   google.protobuf.Timestamp recorded_at = 3;
+  repeated string pending_sessions = 4;
 }
 
 // ─── RecordErasure (ADR-044 §4) ────────────────────────────────────────────────

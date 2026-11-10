@@ -2,41 +2,48 @@
 
 All URIs are relative to _http://localhost:5001_
 
-| Method                                                                                        | HTTP request                                                                          | Description                                                          |
-| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| [**approveIdentityAccountLink**](IdentityApi.md#approveidentityaccountlink)                   | **POST** /api/v1/identity/account-links/{linkId}/approve                              | Explicitly approve a WhatsApp-to-web account link                    |
-| [**completeIdentityRegistration**](IdentityApi.md#completeidentityregistration)               | **POST** /api/v1/identity/registrations/{registrationId}/complete                     | Complete registration by minting or reusing one account              |
-| [**confirmAccountMobileVerification**](IdentityApi.md#confirmaccountmobileverification)       | **POST** /api/v1/identity/mobile-verifications/confirm                                | Confirm progressive mobile verification                              |
-| [**confirmIdentityEmailVerification**](IdentityApi.md#confirmidentityemailverification)       | **POST** /api/v1/identity/registrations/{registrationId}/email-verifications/confirm  | Confirm mandatory email verification                                 |
-| [**confirmIdentityMobileVerification**](IdentityApi.md#confirmidentitymobileverification)     | **POST** /api/v1/identity/registrations/{registrationId}/mobile-verifications/confirm | Confirm optional mobile verification during registration             |
-| [**createIdentityProviderLink**](IdentityApi.md#createidentityproviderlink)                   | **POST** /api/v1/identity/provider-links                                              | Start provider-neutral proof-of-control linking                      |
-| [**createIdentitySessionRevocation**](IdentityApi.md#createidentitysessionrevocation)         | **POST** /api/v1/identity/session-revocations                                         | Record a provider-neutral application-session revocation intent      |
-| [**deleteIdentityProviderLink**](IdentityApi.md#deleteidentityproviderlink)                   | **DELETE** /api/v1/identity/provider-links/{linkId}                                   | Unlink one provider-neutral authentication method                    |
-| [**getCustomerProfile**](IdentityApi.md#getcustomerprofile)                                   | **GET** /api/v1/identity/profile                                                      | Get the current customer profile projection for the portal           |
-| [**getCustomerSettings**](IdentityApi.md#getcustomersettings)                                 | **GET** /api/v1/identity/settings                                                     | Get customer portal settings                                         |
-| [**getIdentityAccountLink**](IdentityApi.md#getidentityaccountlink)                           | **GET** /api/v1/identity/account-links/{linkId}                                       | Get caller-bound account-link status                                 |
-| [**getIdentityRegistration**](IdentityApi.md#getidentityregistration)                         | **GET** /api/v1/identity/registrations/{registrationId}                               | Get the caller-bound registration state                              |
-| [**getIdentitySession**](IdentityApi.md#getidentitysession)                                   | **GET** /api/v1/identity/session                                                      | Get the current customer identity session projection                 |
-| [**getWorkspaceLayoutPreferences**](IdentityApi.md#getworkspacelayoutpreferences)             | **GET** /api/v1/identity/settings/workspace-layout                                    | Get account-wide customer engagement workspace layout                |
-| [**listCustomerLoginMethods**](IdentityApi.md#listcustomerloginmethods)                       | **GET** /api/v1/identity/login-methods                                                | List minimised login-method summaries for the authenticated customer |
-| [**listIdentityMemberships**](IdentityApi.md#listidentitymemberships)                         | **GET** /api/v1/identity/memberships                                                  | List current customer memberships visible to the validated actor     |
-| [**listIdentityProviders**](IdentityApi.md#listidentityproviders)                             | **GET** /api/v1/identity/providers                                                    | List customer authentication choices for this environment            |
-| [**replaceWorkspaceLayoutPreferences**](IdentityApi.md#replaceworkspacelayoutpreferences)     | **PUT** /api/v1/identity/settings/workspace-layout                                    | Replace account-wide customer engagement workspace layout            |
-| [**startAccountMobileVerification**](IdentityApi.md#startaccountmobileverification)           | **POST** /api/v1/identity/mobile-verifications                                        | Start or replay progressive mobile verification                      |
-| [**startIdentityAccountLink**](IdentityApi.md#startidentityaccountlinkoperation)              | **POST** /api/v1/identity/account-links                                               | Start or replay a WhatsApp-to-web account link                       |
-| [**startIdentityEmailVerification**](IdentityApi.md#startidentityemailverification)           | **POST** /api/v1/identity/registrations/{registrationId}/email-verifications          | Start or replay mandatory email verification                         |
-| [**startIdentityMobileVerification**](IdentityApi.md#startidentitymobileverification)         | **POST** /api/v1/identity/registrations/{registrationId}/mobile-verifications         | Optionally start or replay mobile verification during registration   |
-| [**startIdentityRegistration**](IdentityApi.md#startidentityregistrationoperation)            | **POST** /api/v1/identity/registrations                                               | Start or replay a customer registration                              |
-| [**updateCustomerProfile**](IdentityApi.md#updatecustomerprofile)                             | **PUT** /api/v1/identity/profile                                                      | Update customer profile fields allowed within the portal             |
-| [**updateCustomerSettings**](IdentityApi.md#updatecustomersettings)                           | **PUT** /api/v1/identity/settings                                                     | Update customer portal settings                                      |
-| [**updateIdentityRegistrationProfile**](IdentityApi.md#updateidentityregistrationprofile)     | **PUT** /api/v1/identity/registrations/{registrationId}/profile                       | Set the minimum registration profile                                 |
-| [**validateIdentityMembershipSelection**](IdentityApi.md#validateidentitymembershipselection) | **POST** /api/v1/identity/membership-selections/validate                              | Validate one current membership for application-session selection    |
+| Method                                                                                        | HTTP request                                                                          | Description                                                                           |
+| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| [**approveIdentityAccountLink**](IdentityApi.md#approveidentityaccountlink)                   | **POST** /api/v1/identity/account-links/{linkId}/approve                              | Explicitly approve a WhatsApp-to-web account link                                     |
+| [**cancelIdentityAccountLink**](IdentityApi.md#cancelidentityaccountlink)                     | **POST** /api/v1/identity/account-links/{linkId}/cancel                               | Cancel a pending WhatsApp account link                                                |
+| [**cancelIdentityPhoneChange**](IdentityApi.md#cancelidentityphonechange)                     | **POST** /api/v1/identity/phone-changes/{challengeId}/cancel                          | Cancel an uncompleted phone change without changing the current number                |
+| [**completeIdentityRegistration**](IdentityApi.md#completeidentityregistration)               | **POST** /api/v1/identity/registrations/{registrationId}/complete                     | Complete registration by minting or reusing one account                               |
+| [**confirmAccountMobileVerification**](IdentityApi.md#confirmaccountmobileverification)       | **POST** /api/v1/identity/mobile-verifications/confirm                                | Confirm progressive mobile verification                                               |
+| [**confirmIdentityEmailVerification**](IdentityApi.md#confirmidentityemailverification)       | **POST** /api/v1/identity/registrations/{registrationId}/email-verifications/confirm  | Confirm mandatory email verification                                                  |
+| [**confirmIdentityMobileVerification**](IdentityApi.md#confirmidentitymobileverification)     | **POST** /api/v1/identity/registrations/{registrationId}/mobile-verifications/confirm | Confirm required WhatsApp-number verification during registration                     |
+| [**confirmIdentityPhoneChange**](IdentityApi.md#confirmidentityphonechange)                   | **POST** /api/v1/identity/phone-changes/confirm                                       | Confirm OTP and explicit consent; atomically replace the number and revoke old access |
+| [**createIdentityProviderLink**](IdentityApi.md#createidentityproviderlink)                   | **POST** /api/v1/identity/provider-links                                              | Start provider-neutral proof-of-control linking                                       |
+| [**createIdentitySessionRevocation**](IdentityApi.md#createidentitysessionrevocation)         | **POST** /api/v1/identity/session-revocations                                         | Record a provider-neutral application-session revocation intent                       |
+| [**deleteIdentityProviderLink**](IdentityApi.md#deleteidentityproviderlink)                   | **DELETE** /api/v1/identity/provider-links/{linkId}                                   | Unlink one provider-neutral authentication method                                     |
+| [**getCustomerProfile**](IdentityApi.md#getcustomerprofile)                                   | **GET** /api/v1/identity/profile                                                      | Get the current customer profile projection for the portal                            |
+| [**getCustomerSettings**](IdentityApi.md#getcustomersettings)                                 | **GET** /api/v1/identity/settings                                                     | Get customer portal settings                                                          |
+| [**getIdentityAccountLink**](IdentityApi.md#getidentityaccountlink)                           | **GET** /api/v1/identity/account-links/{linkId}                                       | Get caller-bound account-link status                                                  |
+| [**getIdentityPhoneChange**](IdentityApi.md#getidentityphonechange)                           | **GET** /api/v1/identity/phone-changes                                                | Recover the current owner\&#39;s latest phone-change state without resending          |
+| [**getIdentityRegistration**](IdentityApi.md#getidentityregistration)                         | **GET** /api/v1/identity/registrations/{registrationId}                               | Get the caller-bound registration state                                               |
+| [**getIdentitySession**](IdentityApi.md#getidentitysession)                                   | **GET** /api/v1/identity/session                                                      | Get the current customer identity session projection                                  |
+| [**getWorkspaceLayoutPreferences**](IdentityApi.md#getworkspacelayoutpreferences)             | **GET** /api/v1/identity/settings/workspace-layout                                    | Get account-wide customer engagement workspace layout                                 |
+| [**listCustomerLoginMethods**](IdentityApi.md#listcustomerloginmethods)                       | **GET** /api/v1/identity/login-methods                                                | List minimised login-method summaries for the authenticated customer                  |
+| [**listIdentityMemberships**](IdentityApi.md#listidentitymemberships)                         | **GET** /api/v1/identity/memberships                                                  | List current customer memberships visible to the validated actor                      |
+| [**listIdentityProviders**](IdentityApi.md#listidentityproviders)                             | **GET** /api/v1/identity/providers                                                    | List customer authentication choices for this environment                             |
+| [**replaceWorkspaceLayoutPreferences**](IdentityApi.md#replaceworkspacelayoutpreferences)     | **PUT** /api/v1/identity/settings/workspace-layout                                    | Replace account-wide customer engagement workspace layout                             |
+| [**startAccountMobileVerification**](IdentityApi.md#startaccountmobileverification)           | **POST** /api/v1/identity/mobile-verifications                                        | Start or replay progressive mobile verification                                       |
+| [**startIdentityAccountLink**](IdentityApi.md#startidentityaccountlinkoperation)              | **POST** /api/v1/identity/account-links                                               | Start or replay a WhatsApp-to-web account link                                        |
+| [**startIdentityEmailVerification**](IdentityApi.md#startidentityemailverification)           | **POST** /api/v1/identity/registrations/{registrationId}/email-verifications          | Start or replay mandatory email verification                                          |
+| [**startIdentityMobileVerification**](IdentityApi.md#startidentitymobileverification)         | **POST** /api/v1/identity/registrations/{registrationId}/mobile-verifications         | Start or replay required WhatsApp-number verification during registration             |
+| [**startIdentityPhoneChange**](IdentityApi.md#startidentityphonechange)                       | **POST** /api/v1/identity/phone-changes                                               | Start customer-initiated destination-bound verification of a replacement number       |
+| [**startIdentityRegistration**](IdentityApi.md#startidentityregistrationoperation)            | **POST** /api/v1/identity/registrations                                               | Start or replay a customer registration                                               |
+| [**updateCustomerProfile**](IdentityApi.md#updatecustomerprofile)                             | **PUT** /api/v1/identity/profile                                                      | Update customer profile fields allowed within the portal                              |
+| [**updateCustomerSettings**](IdentityApi.md#updatecustomersettings)                           | **PUT** /api/v1/identity/settings                                                     | Update customer portal settings                                                       |
+| [**updateIdentityRegistrationProfile**](IdentityApi.md#updateidentityregistrationprofile)     | **PUT** /api/v1/identity/registrations/{registrationId}/profile                       | Set the minimum registration profile                                                  |
+| [**validateIdentityMembershipSelection**](IdentityApi.md#validateidentitymembershipselection) | **POST** /api/v1/identity/membership-selections/validate                              | Validate one current membership for application-session selection                     |
 
 ## approveIdentityAccountLink
 
 > IdentityAccountLink approveIdentityAccountLink(linkId, idempotencyKey)
 
 Explicitly approve a WhatsApp-to-web account link
+
+Returns an encrypted, expiring LINK instruction for the verified WhatsApp number. Only a fresh signed inbound message after this approval can complete the link. Completion rechecks the verified destination and current membership, records evidence, and grants no portal session, relationship, or transcript access.
 
 ### Example
 
@@ -105,6 +112,162 @@ example().catch(console.error);
 | **404**     | Identity resource is absent, inaccessible, or cross-tenant; one normalized shape and timing class prevents existence disclosure | -                |
 | **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path                                                      | -                |
 | **410**     | Verification or link challenge is no longer usable                                                                              | -                |
+| **503**     | Identity dependency is unavailable and the outcome remains unresolved                                                           | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## cancelIdentityAccountLink
+
+> IdentityAccountLink cancelIdentityAccountLink(linkId, idempotencyKey)
+
+Cancel a pending WhatsApp account link
+
+Requires the current owning account and fresh portal authentication. Records evidence and irrevocably cancels this pending challenge. Concurrent signed confirmation and cancellation serialize on the same row. This does not unlink a completed association or change relationship access.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  IdentityApi,
+} from '';
+import type { CancelIdentityAccountLinkRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new IdentityApi(config);
+
+  const body = {
+    // string | Opaque account-link challenge identifier bound to the authenticated account
+    linkId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts.
+    idempotencyKey: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies CancelIdentityAccountLinkRequest;
+
+  try {
+    const data = await api.cancelIdentityAccountLink(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name               | Type     | Description                                                                              | Notes                     |
+| ------------------ | -------- | ---------------------------------------------------------------------------------------- | ------------------------- |
+| **linkId**         | `string` | Opaque account-link challenge identifier bound to the authenticated account              | [Defaults to `undefined`] |
+| **idempotencyKey** | `string` | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts. | [Defaults to `undefined`] |
+
+### Return type
+
+[**IdentityAccountLink**](IdentityAccountLink.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                                                                                     | Response headers |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| **200**     | Pending challenge cancelled or identical cancellation replayed                                                                  | -                |
+| **400**     | Identity request is malformed or unsupported; no submitted secret is echoed                                                     | -                |
+| **401**     | Identity session is missing, invalid, or expired                                                                                | -                |
+| **403**     | Identity action is not available to the authenticated actor                                                                     | -                |
+| **404**     | Identity resource is absent, inaccessible, or cross-tenant; one normalized shape and timing class prevents existence disclosure | -                |
+| **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path                                                      | -                |
+| **410**     | Verification or link challenge is no longer usable                                                                              | -                |
+| **503**     | Identity dependency is unavailable and the outcome remains unresolved                                                           | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## cancelIdentityPhoneChange
+
+> IdentityPhoneChangeV1 cancelIdentityPhoneChange(challengeId, idempotencyKey)
+
+Cancel an uncompleted phone change without changing the current number
+
+### Example
+
+```ts
+import {
+  Configuration,
+  IdentityApi,
+} from '';
+import type { CancelIdentityPhoneChangeRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new IdentityApi(config);
+
+  const body = {
+    // string
+    challengeId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts.
+    idempotencyKey: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies CancelIdentityPhoneChangeRequest;
+
+  try {
+    const data = await api.cancelIdentityPhoneChange(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name               | Type     | Description                                                                              | Notes                     |
+| ------------------ | -------- | ---------------------------------------------------------------------------------------- | ------------------------- |
+| **challengeId**    | `string` |                                                                                          | [Defaults to `undefined`] |
+| **idempotencyKey** | `string` | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts. | [Defaults to `undefined`] |
+
+### Return type
+
+[**IdentityPhoneChangeV1**](IdentityPhoneChangeV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                                                                                     | Response headers |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| **200**     | Challenge expired with constitutional cancellation evidence                                                                     | -                |
+| **400**     | Identity request is malformed or unsupported; no submitted secret is echoed                                                     | -                |
+| **401**     | Identity session is missing, invalid, or expired                                                                                | -                |
+| **403**     | Fresh or stronger Keycloak assurance is required before the command can run                                                     | -                |
+| **404**     | Identity resource is absent, inaccessible, or cross-tenant; one normalized shape and timing class prevents existence disclosure | -                |
+| **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path                                                      | -                |
+| **503**     | Identity dependency is unavailable and the outcome remains unresolved                                                           | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
@@ -114,7 +277,7 @@ example().catch(console.error);
 
 Complete registration by minting or reusing one account
 
-Requires confirmed email and the approved minimum profile; mobile verification is optional until a server-classified consequential action. Duplicate resolution is deterministic and proof-gated. ACCOUNT_CREATED and ACCOUNT_REUSED have the same customer-facing success treatment. No Employment Relationship is created.
+Requires confirmed email, the approved minimum profile, and verified WhatsApp number. Duplicate resolution is deterministic and proof-gated. ACCOUNT_CREATED and ACCOUNT_REUSED have the same customer-facing success treatment. No Employment Relationship is created.
 
 ### Example
 
@@ -348,7 +511,9 @@ example().catch(console.error);
 
 > IdentityRegistration confirmIdentityMobileVerification(registrationId, idempotencyKey, confirmIdentityVerificationRequest)
 
-Confirm optional mobile verification during registration
+Confirm required WhatsApp-number verification during registration
+
+Confirms only the destination bound to this registration challenge. Five incorrect code submissions expire the challenge. Successful verification expires competing pending mobile challenges; registration proof cannot be consumed by account-level verification.
 
 ### Example
 
@@ -417,10 +582,90 @@ example().catch(console.error);
 | **200**     | Mobile proof accepted or replayed                                                                                               | -                     |
 | **400**     | Identity request is malformed or unsupported; no submitted secret is echoed                                                     | -                     |
 | **401**     | Identity session is missing, invalid, or expired                                                                                | -                     |
+| **403**     | Identity action is not available to the authenticated actor                                                                     | -                     |
 | **404**     | Identity resource is absent, inaccessible, or cross-tenant; one normalized shape and timing class prevents existence disclosure | -                     |
 | **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path                                                      | -                     |
 | **410**     | Verification or link challenge is no longer usable                                                                              | -                     |
 | **429**     | Identity operation is rate limited without disclosing account existence                                                         | \* Retry-After - <br> |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## confirmIdentityPhoneChange
+
+> IdentityPhoneChangeV1 confirmIdentityPhoneChange(idempotencyKey, confirmIdentityPhoneChangeRequestV1)
+
+Confirm OTP and explicit consent; atomically replace the number and revoke old access
+
+Revalidates current account, membership, registration source and challenge after constitutional evidence. Five failed codes expire the challenge. Old account links and participant WhatsApp channel bindings are revoked in one owning PostgreSQL transaction. Existing history stays with the account; no outbox work is retargeted and possibly submitted originals remain receipt-only. New signed LINK confirmation and explicit approval of each professional relationship remain required.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  IdentityApi,
+} from '';
+import type { ConfirmIdentityPhoneChangeRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new IdentityApi(config);
+
+  const body = {
+    // string | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts.
+    idempotencyKey: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // ConfirmIdentityPhoneChangeRequestV1
+    confirmIdentityPhoneChangeRequestV1: ...,
+  } satisfies ConfirmIdentityPhoneChangeRequest;
+
+  try {
+    const data = await api.confirmIdentityPhoneChange(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name                                    | Type                                                                          | Description                                                                              | Notes                     |
+| --------------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------- |
+| **idempotencyKey**                      | `string`                                                                      | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts. | [Defaults to `undefined`] |
+| **confirmIdentityPhoneChangeRequestV1** | [ConfirmIdentityPhoneChangeRequestV1](ConfirmIdentityPhoneChangeRequestV1.md) |                                                                                          |                           |
+
+### Return type
+
+[**IdentityPhoneChangeV1**](IdentityPhoneChangeV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                                                                                     | Response headers |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| **200**     | Change committed or original completed outcome recovered                                                                        | -                |
+| **400**     | Identity request is malformed or unsupported; no submitted secret is echoed                                                     | -                |
+| **401**     | Identity session is missing, invalid, or expired                                                                                | -                |
+| **403**     | Fresh or stronger Keycloak assurance is required before the command can run                                                     | -                |
+| **404**     | Identity resource is absent, inaccessible, or cross-tenant; one normalized shape and timing class prevents existence disclosure | -                |
+| **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path                                                      | -                |
+| **410**     | Verification or link challenge is no longer usable                                                                              | -                |
+| **503**     | Identity dependency is unavailable and the outcome remains unresolved                                                           | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
@@ -850,6 +1095,68 @@ example().catch(console.error);
 | **401**     | Identity session is missing, invalid, or expired                                                                                | -                |
 | **403**     | Identity action is not available to the authenticated actor                                                                     | -                |
 | **404**     | Identity resource is absent, inaccessible, or cross-tenant; one normalized shape and timing class prevents existence disclosure | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## getIdentityPhoneChange
+
+> IdentityPhoneChangeV1 getIdentityPhoneChange()
+
+Recover the current owner\&#39;s latest phone-change state without resending
+
+### Example
+
+```ts
+import { Configuration, IdentityApi } from "";
+import type { GetIdentityPhoneChangeRequest } from "";
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new IdentityApi(config);
+
+  try {
+    const data = await api.getIdentityPhoneChange();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**IdentityPhoneChangeV1**](IdentityPhoneChangeV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                                                                                     | Response headers |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| **200**     | Current owning account request state                                                                                            | -                |
+| **204**     | No phone-change request exists for this owner                                                                                   | -                |
+| **401**     | Identity session is missing, invalid, or expired                                                                                | -                |
+| **403**     | Identity action is not available to the authenticated actor                                                                     | -                |
+| **404**     | Identity resource is absent, inaccessible, or cross-tenant; one normalized shape and timing class prevents existence disclosure | -                |
+| **503**     | Identity dependency is unavailable and the outcome remains unresolved                                                           | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
@@ -1450,16 +1757,18 @@ example().catch(console.error);
 
 ### HTTP response details
 
-| Status code | Description                                                                 | Response headers      |
-| ----------- | --------------------------------------------------------------------------- | --------------------- |
-| **415**     | Request content type is not supported                                       | -                     |
-| **201**     | Link challenge started                                                      | -                     |
-| **200**     | Prior identical link outcome replayed                                       | -                     |
-| **400**     | Identity request is malformed or unsupported; no submitted secret is echoed | -                     |
-| **401**     | Identity session is missing, invalid, or expired                            | -                     |
-| **403**     | Fresh or stronger Keycloak assurance is required before the command can run | -                     |
-| **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path  | -                     |
-| **429**     | Identity operation is rate limited without disclosing account existence     | \* Retry-After - <br> |
+| Status code | Description                                                                                                                     | Response headers      |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| **415**     | Request content type is not supported                                                                                           | -                     |
+| **201**     | Link challenge started                                                                                                          | -                     |
+| **200**     | Prior identical link outcome replayed                                                                                           | -                     |
+| **400**     | Identity request is malformed or unsupported; no submitted secret is echoed                                                     | -                     |
+| **401**     | Identity session is missing, invalid, or expired                                                                                | -                     |
+| **403**     | Fresh or stronger Keycloak assurance is required before the command can run                                                     | -                     |
+| **404**     | Identity resource is absent, inaccessible, or cross-tenant; one normalized shape and timing class prevents existence disclosure | -                     |
+| **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path                                                      | -                     |
+| **429**     | Identity operation is rate limited without disclosing account existence                                                         | \* Retry-After - <br> |
+| **503**     | Identity dependency is unavailable and the outcome remains unresolved                                                           | -                     |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
@@ -1550,9 +1859,9 @@ example().catch(console.error);
 
 > IdentityVerificationChallenge startIdentityMobileVerification(registrationId, idempotencyKey, startMobileVerificationRequest)
 
-Optionally start or replay mobile verification during registration
+Start or replay required WhatsApp-number verification during registration
 
-Uses an approved OTP path when no ADR-023 Meta-verified proof is already bound. Returns no account-existence information.
+Sends a purpose-bound code only after the registrant explicitly requests it. Delivery requires the approved WhatsApp authentication-template path. Returns no account-existence information. New requests enforce the challenge\&#39;s one-minute resend boundary; same-key replay does not send another code.
 
 ### Example
 
@@ -1621,6 +1930,85 @@ example().catch(console.error);
 | **202**     | Challenge accepted or replayed without identity-existence disclosure                                                            | -                     |
 | **400**     | Identity request is malformed or unsupported; no submitted secret is echoed                                                     | -                     |
 | **401**     | Identity session is missing, invalid, or expired                                                                                | -                     |
+| **404**     | Identity resource is absent, inaccessible, or cross-tenant; one normalized shape and timing class prevents existence disclosure | -                     |
+| **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path                                                      | -                     |
+| **429**     | Identity operation is rate limited without disclosing account existence                                                         | \* Retry-After - <br> |
+| **503**     | Identity dependency is unavailable and the outcome remains unresolved                                                           | -                     |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## startIdentityPhoneChange
+
+> IdentityPhoneChangeV1 startIdentityPhoneChange(idempotencyKey, startIdentityPhoneChangeRequestV1)
+
+Start customer-initiated destination-bound verification of a replacement number
+
+Requires current OWNER membership and nonfuture portal authentication no older than five minutes. OTP proves new number control, not account ownership or recovery. Dispatch uses the existing activation-gated authentication template and shared budget. Unknown delivery is never resent implicitly. Numbers held by another account require separate governed recovery.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  IdentityApi,
+} from '';
+import type { StartIdentityPhoneChangeRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new IdentityApi(config);
+
+  const body = {
+    // string | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts.
+    idempotencyKey: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // StartIdentityPhoneChangeRequestV1
+    startIdentityPhoneChangeRequestV1: ...,
+  } satisfies StartIdentityPhoneChangeRequest;
+
+  try {
+    const data = await api.startIdentityPhoneChange(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name                                  | Type                                                                      | Description                                                                              | Notes                     |
+| ------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------- |
+| **idempotencyKey**                    | `string`                                                                  | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts. | [Defaults to `undefined`] |
+| **startIdentityPhoneChangeRequestV1** | [StartIdentityPhoneChangeRequestV1](StartIdentityPhoneChangeRequestV1.md) |                                                                                          |                           |
+
+### Return type
+
+[**IdentityPhoneChangeV1**](IdentityPhoneChangeV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                                                                                     | Response headers      |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| **200**     | Verification submitted or identical submitted challenge recovered                                                               | -                     |
+| **400**     | Identity request is malformed or unsupported; no submitted secret is echoed                                                     | -                     |
+| **401**     | Identity session is missing, invalid, or expired                                                                                | -                     |
+| **403**     | Fresh or stronger Keycloak assurance is required before the command can run                                                     | -                     |
 | **404**     | Identity resource is absent, inaccessible, or cross-tenant; one normalized shape and timing class prevents existence disclosure | -                     |
 | **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path                                                      | -                     |
 | **429**     | Identity operation is rate limited without disclosing account existence                                                         | \* Retry-After - <br> |

@@ -136,6 +136,50 @@ async def test_air_lifespan_without_database_remains_fail_closed(
         assert application.state.employment_patch_repository is None
 
 
+@pytest.mark.asyncio
+async def test_air_lifespan_configures_and_closes_governed_generation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    closed: list[str] = []
+
+    async def close_repository() -> None:
+        closed.append("repository")
+
+    async def close_owner() -> None:
+        closed.append("owner")
+
+    async def close_provider() -> None:
+        closed.append("provider")
+
+    repository = SimpleNamespace(pool=object(), close=close_repository)
+    owner = SimpleNamespace(close=close_owner)
+    provider_client = SimpleNamespace(aclose=close_provider)
+    service = object()
+
+    async def connect(_database_url: str):
+        return repository
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql://air@postgres/waooaw")
+    monkeypatch.setenv("AIR_CONVERSATION_GENERATION_OWNER_URL", "https://business-platform")
+    monkeypatch.setenv("WAOOAW_WORKLOAD_CREDENTIALS", "/credentials")
+    monkeypatch.setenv("AIR_CONVERSATION_TOKENIZER_DIRECTORY", "/tokenizers")
+    monkeypatch.setattr(main.EmploymentPatchRepository, "connect", connect)
+    monkeypatch.setattr(main, "BusinessPlatformGenerationOwner", lambda *_args: owner)
+    monkeypatch.setattr(main.ssl, "create_default_context", lambda **_kwargs: MagicMock())
+    monkeypatch.setattr(main.httpx, "AsyncClient", lambda **_kwargs: provider_client)
+    monkeypatch.setattr(main, "ConversationGenerationStore", lambda pool: pool)
+    monkeypatch.setattr(main, "InstitutionalOllamaProvider", lambda directory, client: (directory, client))
+    monkeypatch.setattr(main, "GovernedInferenceToolGateway", lambda provider: provider)
+    monkeypatch.setattr(main, "GovernedGenerationService", lambda *_args: service)
+    application = SimpleNamespace(state=SimpleNamespace())
+
+    async with main.lifespan(application):
+        assert application.state.conversation_generation_service is service
+
+    assert application.state.conversation_generation_service is None
+    assert closed == ["provider", "owner", "repository"]
+
+
 def test_air_private_listener_rejects_missing_tls_configuration(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

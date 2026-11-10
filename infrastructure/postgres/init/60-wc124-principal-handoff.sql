@@ -20,6 +20,12 @@ BEGIN
     LOOP
         EXECUTE format('GRANT %I TO %I', owner_name, session_user);
     END LOOP;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'identity_whatsapp_recognizer_owner') THEN
+        IF NOT pg_has_role(session_user, 'identity_whatsapp_recognizer_owner', 'SET') THEN
+            EXECUTE format('GRANT identity_whatsapp_recognizer_owner TO %I', session_user);
+            PERFORM set_config('waooaw.wc134_handoff_recognizer_granted', 'true', true);
+        END IF;
+    END IF;
 END
 $bootstrap_memberships$;
 
@@ -101,7 +107,13 @@ BEGIN
             SELECT
                 p.oid::regprocedure AS routine_name,
                 p.prokind,
-                COALESCE(definer.principal_name, ownership.owner_name) AS target_owner
+                CASE
+                    WHEN p.prosecdef
+                        AND n.nspname = 'identity'
+                        AND p.proname IN ('has_verified_whatsapp_registration', 'phone_change_conflicts')
+                        THEN 'identity_whatsapp_recognizer_owner'
+                    ELSE COALESCE(definer.principal_name, ownership.owner_name)
+                END AS target_owner
             FROM pg_proc p
             JOIN pg_namespace n ON n.oid = p.pronamespace
             LEFT JOIN (
@@ -151,6 +163,8 @@ GRANT air_owner TO air_migrator;
 GRANT billing_owner TO billing_migrator;
 GRANT web_session_owner TO web_session_migrator;
 
+GRANT USAGE ON SCHEMA constitutional TO constitutional_app;
+GRANT SELECT, INSERT ON ALL TABLES IN SCHEMA constitutional TO constitutional_app;
 GRANT USAGE ON SCHEMA constitutional TO ce_verifier;
 GRANT SELECT ON ALL TABLES IN SCHEMA constitutional TO ce_verifier;
 GRANT USAGE ON SCHEMA business, institutional TO bp_verifier;
@@ -245,6 +259,9 @@ BEGIN
     LOOP
         EXECUTE format('REVOKE %I FROM %I', owner_name, session_user);
     END LOOP;
+    IF current_setting('waooaw.wc134_handoff_recognizer_granted', true) = 'true' THEN
+        EXECUTE format('REVOKE identity_whatsapp_recognizer_owner FROM %I', session_user);
+    END IF;
 END
 $bootstrap_memberships$;
 

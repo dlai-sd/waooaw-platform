@@ -80,6 +80,92 @@ If a DPDPA-compliant Indian provider with better cost/performance emerges, the P
 - Applies constitutional prompt wrapper: Decision Space boundaries are injected into system prompt
 - Returns generated content to Professional Runtime
 
+### 1.1 WC-134 Bounded Generation Wire Contract
+
+**Status:** SELECTED UNDER FOUNDER-DELEGATED DESIGN AUTHORITY, 2026-11-08; NOT ACTIVATED.
+**Authority:** [Approved WC-134 runtime policy](../../../work-contracts/WC-134-runtime-generation-and-reconciliation-policy.md),
+sections 2-5; ADR-029, ADR-042 and ADR-046 remain controlling.
+
+This additive PR-only contract is separate from employment-patch interpretation. It grants AIR
+bounded inference responsibility, not professional, budget, customer or constitutional authority.
+
+| Operation | Result |
+|---|---|
+| `POST /internal/v1/professional-generations` | `202` after a durable queued receipt; same immutable request identity replays that receipt/result |
+| `GET /internal/v1/professional-generations/{generationId}` | Read the original durable receipt/result; never schedule inference from a read |
+| `POST /internal/v1/professional-generations/reconcile` | Read-only lookup by original request/idempotency identity; absent or unknown results never authorize redispatch |
+
+Every operation requires ADR-046 mTLS and a single-use signed PR delegated envelope registered
+for its exact audience/route/operation/purpose. Tenant, actor, relationship, execution, original
+message, CE decision, budget authority and idempotency are bound to that envelope.
+Generation requests have purpose `PROFESSIONAL_RESPONSE_GENERATION`; reconciliation has purpose
+`READ_EXISTING_RUNTIME_RESULT`. The browser and BP cannot invoke generation directly.
+
+The closed `ProfessionalGenerationRequestV1` contains `schemaVersion: "1.0"`, `executionId`,
+`messageId`, `requestDigest`, `skillId`, `skillVersion`, `inputSchemaDigest`, `outputSchemaDigest`,
+`promptPolicy`, `modelPolicy`, `contribution`, and the original `operationalMandate`.
+`contribution` contains bounded text and locale. Immutable policy references contain `ref`,
+`version`, and `digest`. AIR independently resolves and validates those exact references through
+their approved owners; receiving a reference does not prove admission. The request digest binds
+the canonical request excluding the digest field. Divergent same-key reuse is a conflict.
+
+A `ProfessionalGenerationReceiptV1` returns `schemaVersion`, `generationId`, original
+`executionId`/`messageId`/`requestDigest`, `state: "QUEUED"`, `acceptedAt`, and a private
+`reconciliationUri`. Durable attempt state is `QUEUED`, `DISPATCHING`, `COMPLETED`, `FAILED`,
+`UNKNOWN`, or `STOPPED`. A terminal `ProfessionalGenerationResultV1` binds the same identity plus
+`attemptId`, `promptPolicy`, `modelPolicy`, `providerBindingDigest`, `state`, `text`,
+`outputDigest`, `inputTokens`, `outputTokens`, `usageEvidenceRef`, `auditEvidenceRef`, `reasonCode`,
+`nextAction`, and `producedAt`. A complete result requires nonempty bounded text, exact digests,
+verified usage and durable owner evidence. Non-success states cannot carry success-shaped text.
+Any known charges and usage are still recorded in full for failed/stopped attempts; unknown usage
+remains unknown, not zero, and cannot be settled. Unknown/unavailable outcomes expose an operator
+next action using the original generation/attempt identity. No failure result proves a business effect.
+
+PSE intersects mandatory rules with immutable admitted policy. The registry selects a declared
+PAL adapter and approved endpoint/authentication binding; CTG owns CE validation, vault retrieval,
+socket credential injection and durable audit. Production dependencies are explicitly injected:
+insecure transport, logging-only audit, environment model keys and stub PSE calls are prohibited.
+External dispatch requires the existing C-078 scrubber; self-hosted exemption requires a registered
+deployment within the institutional boundary. No provider/model is activated by this contract.
+
+The exact activation binding includes provider/configuration, immutable model/artifact, region,
+tokenizer/version, prompt and model-policy references, rate schedule and validity interval.
+Missing coordinates deny admission. Enforce at most 8,192 total prompt tokens using the bound
+tokenizer, 2,048 output tokens, 32,000 canonical text characters and a 30-second attempt deadline.
+Initial concurrency is one active attempt per environment and tenant; queued responsibility is
+durable. WhatsApp retains its separate 4,096-character rendering bound and full Web projection.
+
+The existing monetary owner reserves the conservatively rounded maximum integer-paise cost
+before dispatch against the same approved environment/day allowance as messaging, at most
+INR 500 for Demo, not a separate model pool. Reservations serialize with messaging reservations.
+Known usage settles at actual full cost; unknown usage retains the full reservation. Overrun is
+recorded without clamping and halts new dispatch. Local provider billing does not erase compute
+cost. CE must explicitly allow the action and owner-confirmed bound.
+
+Persist `DISPATCHING`, reservation and admission evidence before the socket call, and persist
+provider output/digest/usage before returning or signaling success. Queued recovery requires proof
+of non-dispatch. Unknown attempts cannot retry, fallback or settle to zero. Any permitted fallback
+is a separately admitted/reserved attempt, only after a known primary outcome. Stop and caller
+cancellation propagate and suppress late result release without claiming the provider did not act.
+
+Wire OpenAPI, generated consumers, grants, owner persistence and qualification selectors together.
+Compilation is not behavioral evidence; regression execution remains
+deferred until all WC-134 stories are implemented.
+
+### 1.2 WC-134 Private Owner Resolution Contracts
+
+The Founder authorized drafting and approved the internal interface detail on 2026-11-08.
+[WC-134 runtime policy section 9](../../../work-contracts/WC-134-runtime-generation-and-reconciliation-policy.md#9-private-owner-contract-selection)
+defines the closed BP binding resolver, exact immutable prompt/model artifact content,
+protected credential resolution, CE-owned durable audit acknowledgement and shared monetary
+reservation/settlement contracts. These extend existing owners; AIR acquires no ledger or
+approval authority. Public provider DTOs remain unchanged.
+
+Internal transport must register its exact workload, route, operation and delegated purpose
+before use. Unimplemented owner capabilities, missing approved artifacts or missing activation
+are unavailable, not permission to use current CTG/PSE defaults. Contract approval does not
+enable a provider, credential, tariff or deployment.
+
 ### 7. PII Scrubber (C-078 — RATIFIED 2026-07-23)
 **Responsibility:**
 - Intercepts every prompt before dispatch to any external LLM provider (Vertex AI, Azure OpenAI, Sarvam AI)

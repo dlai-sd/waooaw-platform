@@ -2,10 +2,14 @@
 # constitutional_basis: C-001, C-023, C-025, C-059; ADR-015, ADR-018, ADR-031
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Any
 
 from temporalio import workflow
+from temporalio.common import RetryPolicy
+from temporalio.exceptions import ActivityError
 
 
 @dataclass(frozen=True)
@@ -26,6 +30,9 @@ class ConversationExecutionInput:
     active_goal_context_id: str | None
     request_hash: str
     accepted_at: str
+    dispatch: dict[str, Any] | None = None
+    batch_id: str | None = None
+    source_list_digest: str | None = None
 
 
 @dataclass(frozen=True)
@@ -40,11 +47,12 @@ class ExecutionEventSignal:
     event_type: str
     data: dict[str, Any]
     occurred_at: str
+    dispatch_result_key: str | None = None
 
 
 @workflow.defn(name="ConversationExecutionWorkflow")
 class ConversationExecutionWorkflow:
-    """Durable execution responsibility; model dispatch remains outside WC034-09."""
+    """Durable execution responsibility and bounded proposal dispatch."""
 
     def __init__(self) -> None:
         self._input: ConversationExecutionInput | None = None
@@ -54,7 +62,10 @@ class ConversationExecutionWorkflow:
         self._terminal = False
         self._updated_at: str | None = None
         self._events: list[dict[str, Any]] = []
+        self._pending_events: list[tuple[str, dict[str, Any], str]] = []
         self._cancellation_requests: dict[str, str] = {}
+        self._dispatch_results: dict[str, tuple[str, dict[str, Any]]] = {}
+        self._dispatch_task: Any = None
 
     def _append_event(
         self,
@@ -63,6 +74,7 @@ class ConversationExecutionWorkflow:
         occurred_at: str,
     ) -> None:
         if self._input is None:
+            self._pending_events.append((event_type, data, occurred_at))
             return
         sequence = len(self._events) + 1
         self._events.append(
@@ -92,6 +104,8 @@ class ConversationExecutionWorkflow:
         self._partial = any(event["eventType"] == "response.delta" for event in self._events)
         self._completion_reason = "CANCELLED"
         self._terminal = True
+        if self._dispatch_task is not None:
+            self._dispatch_task.cancel()
         self._append_event(
             "execution.cancelled",
             {
@@ -111,6 +125,8 @@ class ConversationExecutionWorkflow:
         self._partial = any(event["eventType"] == "response.delta" for event in self._events)
         self._completion_reason = "EMERGENCY_STOPPED"
         self._terminal = True
+        if self._dispatch_task is not None:
+            self._dispatch_task.cancel()
         self._append_event(
             "execution.stopped",
             {
@@ -123,8 +139,60 @@ class ConversationExecutionWorkflow:
 
     @workflow.signal(name="AppendConversationExecutionEvent")
     async def append_event(self, signal: ExecutionEventSignal) -> None:
-        if not self._terminal:
-            self._append_event(signal.event_type, signal.data, signal.occurred_at)
+        if self._terminal or self._input is None:
+            return
+        if signal.dispatch_result_key == f"legacy-dispatch-reconciliation:{self._input.execution_id}" and any(
+            event["eventType"] in {"card.proposed", "reconciliation.required"} for event in self._events
+        ):
+            return
+        if signal.dispatch_result_key is not None:
+            result = (signal.event_type, signal.data)
+            prior = self._dispatch_results.get(signal.dispatch_result_key)
+            if prior is not None:
+                if prior == result:
+                    return
+                if prior[0] == "card.proposed" and signal.event_type == "reconciliation.required":
+                    return
+                if prior[0] != "reconciliation.required" or signal.event_type != "card.proposed":
+                    self._append_event(
+                        "reconciliation.required",
+                        {"reason": "STATE_CONFLICT"},
+                        signal.occurred_at,
+                    )
+                    return
+            self._dispatch_results[signal.dispatch_result_key] = result
+        terminal_states = {
+            "execution.completed": ("COMPLETED", "COMPLETE"),
+            "execution.failed": ("FAILED", "PARTIAL_FAILURE"),
+        }
+        terminal = terminal_states.get(signal.event_type)
+        if terminal is not None:
+            state, reason = terminal
+            if (
+                signal.data.get("state") != state
+                or signal.data.get("completionReason") != reason
+                or not isinstance(signal.data.get("partial"), bool)
+            ):
+                self._append_event(
+                    "reconciliation.required",
+                    {"reason": "STATE_CONFLICT"},
+                    signal.occurred_at,
+                )
+                return
+            self._state = state
+            self._partial = signal.data["partial"]
+            self._completion_reason = reason
+            self._terminal = True
+        elif signal.event_type in {"processing.started", "response.delta"}:
+            self._state = "RUNNING"
+        elif signal.event_type in {"execution.cancelled", "execution.stopped"}:
+            self._append_event(
+                "reconciliation.required",
+                {"reason": "STATE_CONFLICT"},
+                signal.occurred_at,
+            )
+            return
+        self._append_event(signal.event_type, signal.data, signal.occurred_at)
 
     @workflow.query(name="GetConversationExecutionState")
     def state(self) -> dict[str, Any]:
@@ -144,6 +212,22 @@ class ConversationExecutionWorkflow:
             "partial": self._partial,
             "completionReason": self._completion_reason,
             "requestHash": self._input.request_hash if self._input is not None else None,
+            "batchId": self._input.batch_id if self._input is not None else None,
+            "sourceListDigest": self._input.source_list_digest if self._input is not None else None,
+            "legacyDispatchNeedsReconciliation": (
+                self._input is not None
+                and self._input.dispatch is None
+                and not self._terminal
+                and not any(event["eventType"] == "card.proposed" for event in self._events)
+            ),
+            "dispatchNeedsReconciliation": (
+                not self._terminal
+                and any(event["eventType"] == "reconciliation.required" for event in self._events)
+                and not any(event["eventType"] == "card.proposed" for event in self._events)
+            ),
+            "dispatchNeedsCompletion": (
+                not self._terminal and any(event["eventType"] in {"card.proposed", "response.system"} for event in self._events)
+            ),
             "acceptedAt": self._input.accepted_at if self._input is not None else None,
             "updatedAt": self._updated_at,
             "cancellationRequests": dict(self._cancellation_requests),
@@ -152,6 +236,21 @@ class ConversationExecutionWorkflow:
     @workflow.query(name="GetConversationExecutionEvents")
     def events(self) -> list[dict[str, Any]]:
         return list(self._events)
+
+    @workflow.query(name="GetConversationExecutionTerminalSnapshot")
+    def terminal_snapshot(self) -> dict[str, Any]:
+        return {
+            "state": self.state(),
+            "events": list(self._events) if self._terminal else [],
+        }
+
+    @workflow.query(name="GetConversationGenerationRecoverySource")
+    def generation_recovery_source(self) -> dict[str, Any]:
+        return {
+            "state": self.state(),
+            "events": list(self._events),
+            "dispatch": self._input.dispatch if self._input is not None else None,
+        }
 
     @workflow.run
     async def run(self, execution_input: ConversationExecutionInput) -> dict[str, Any]:
@@ -162,5 +261,30 @@ class ConversationExecutionWorkflow:
             {"serverTime": execution_input.accepted_at},
             execution_input.accepted_at,
         )
+        for event_type, data, occurred_at in self._pending_events:
+            self._append_event(event_type, data, occurred_at)
+        self._pending_events.clear()
+        if execution_input.dispatch is not None and not self._terminal:
+            self._dispatch_task = workflow.start_activity(
+                "DispatchConversationEmploymentProposal",
+                execution_input,
+                start_to_close_timeout=timedelta(seconds=60),
+                schedule_to_close_timeout=timedelta(minutes=10),
+                heartbeat_timeout=(timedelta(seconds=6) if workflow.patched("wc134-dispatch-heartbeats") else None),
+                retry_policy=RetryPolicy(maximum_attempts=3),
+                cancellation_type=workflow.ActivityCancellationType.TRY_CANCEL,
+            )
+            try:
+                await self._dispatch_task
+            except asyncio.CancelledError:
+                if not self._terminal:
+                    raise
+            except ActivityError:
+                if not self._terminal and f"employment-proposal:{execution_input.execution_id}" not in self._dispatch_results:
+                    self._append_event(
+                        "reconciliation.required",
+                        {"reason": "STATE_CONFLICT"},
+                        workflow.now().isoformat(),
+                    )
         await workflow.wait_condition(lambda: self._terminal)
         return self.state()

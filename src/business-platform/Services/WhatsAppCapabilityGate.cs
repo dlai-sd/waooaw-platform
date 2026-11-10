@@ -10,6 +10,7 @@ public sealed class WhatsAppCapabilityOptions
 {
     public bool Configured { get; set; }
     public bool ProviderAvailable { get; set; }
+    public bool PublicAdmissionIdentityKeyAvailable { get; set; }
     public bool Revoked { get; set; }
     public string Environment { get; set; } = string.Empty;
     public string ReleaseDigest { get; set; } = string.Empty;
@@ -41,6 +42,8 @@ public sealed record WhatsAppActivationAuthority
     public decimal MaximumCostPerMessageInr { get; init; }
     public bool Revoked { get; init; }
     public bool AllowProvisionalOnboarding { get; init; }
+    public bool AllowPublicAdmission { get; init; }
+    public bool AllowRegistrationVerification { get; init; }
 }
 
 public sealed record WhatsAppCapabilityState(string State, string ReasonCode);
@@ -114,6 +117,14 @@ public sealed partial class WhatsAppCapabilityGate(
             || authority.MaximumCostPerMessageInr > 999_999_999_999m
             || decimal.Round(authority.MaximumCostPerMessageInr, 6)
                 != authority.MaximumCostPerMessageInr
+            || (
+                authority.AllowPublicAdmission
+                && (
+                    authority.Environment != "demo"
+                    || !authority.AllowProvisionalOnboarding
+                    || !current.PublicAdmissionIdentityKeyAvailable
+                )
+            )
         )
             return new("BLOCKED", "AUTHORITY_DENIED");
         if (now < authority.StartsAt || now >= authority.ExpiresAt)
@@ -136,10 +147,16 @@ public sealed partial class WhatsAppCapabilityGate(
         var authority = RequireActive(now);
         if (
             tenantId != authority.TenantId
-            || !string.Equals(
-                recipientBindingDigest,
-                authority.RecipientBindingDigest,
-                StringComparison.Ordinal
+            || (
+                !string.Equals(
+                    recipientBindingDigest,
+                    authority.RecipientBindingDigest,
+                    StringComparison.Ordinal
+                )
+                && !(
+                    authority.AllowPublicAdmission
+                    && Matches(BindingDigest(), recipientBindingDigest)
+                )
             )
         )
             throw new WhatsAppCapabilityUnavailableException("RECIPIENT_DENIED");

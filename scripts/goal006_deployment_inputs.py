@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from goal006_lease import validate_active_lease
+from goal006_lease import parse_lease_timestamp, validate_active_lease
 from goal006_registry_manifest import RELEASE_MEMBERS, validate_registry_manifest
 
 LEASE_FIELDS = frozenset(
@@ -48,6 +48,7 @@ WHATSAPP_SECRET_NAMES = frozenset(
         "whatsapp-outbound-authority",
     }
 )
+WHATSAPP_PUBLIC_SUBJECT_KEY_NAME = "whatsapp-phone-subject-hmac"
 
 
 def whatsapp_provider_configuration(environment: str, configuration: Mapping[str, Any]) -> dict[str, Any] | None:
@@ -78,10 +79,17 @@ def whatsapp_provider_configuration(environment: str, configuration: Mapping[str
     versions = provider["secret_versions"]
     if (
         not isinstance(versions, dict)
-        or set(versions) != WHATSAPP_SECRET_NAMES
+        or set(versions)
+        not in {
+            WHATSAPP_SECRET_NAMES,
+            WHATSAPP_SECRET_NAMES | {WHATSAPP_PUBLIC_SUBJECT_KEY_NAME},
+        }
         or not all(isinstance(value, str) and re.fullmatch(r"[a-f0-9]{32}", value) for value in versions.values())
     ):
-        raise ValueError("WhatsApp requires exactly four pinned secret versions and no media authority")
+        raise ValueError(
+            "WhatsApp requires four pinned provider secret versions, with only the optional "
+            "public subject HMAC key permitted in addition"
+        )
     vaults = {uri.split("/secrets/", 1)[0] for uri in configuration["key_vault_secret_uris"].values()}
     if vaults != {"https://kv-waooaw-demo.vault.azure.net"}:
         raise ValueError("WhatsApp provider must use the canonical Demo vault")
@@ -107,6 +115,61 @@ def whatsapp_provider_inputs(environment: str, configuration: Mapping[str, Any],
             ).hexdigest(),
         }
     }
+
+
+def whatsapp_monitoring_inputs(environment: str, configuration: Mapping[str, Any], manifest: Mapping[str, Any]) -> dict[str, Any]:
+    monitoring = configuration.get("whatsapp_monitoring")
+    if monitoring is None:
+        return {}
+    fields = {
+        "workspace_id",
+        "action_group_id",
+        "approval_reference",
+        "query_digest",
+        "activation_digest",
+        "release_digest",
+        "configuration_digest",
+        "starts_at",
+        "expires_at",
+    }
+    if environment != "demo" or not isinstance(monitoring, dict) or set(monitoring) != fields:
+        raise ValueError("WhatsApp monitoring is a closed Demo-only configuration")
+    if not all(isinstance(value, str) for value in monitoring.values()):
+        raise ValueError("WhatsApp monitoring fields must be strings")
+    workspace = re.fullmatch(
+        r"/subscriptions/([0-9a-f-]{36})/resourceGroups/waooaw-demo-rg/providers/"
+        r"Microsoft[.]OperationalInsights/workspaces/[A-Za-z0-9_-]+",
+        monitoring["workspace_id"],
+    )
+    group = re.fullmatch(
+        r"/subscriptions/([0-9a-f-]{36})/resourceGroups/waooaw-demo-rg/providers/"
+        r"Microsoft[.]Insights/actionGroups/[A-Za-z0-9_-]+",
+        monitoring["action_group_id"],
+    )
+    if workspace is None or group is None or workspace[1] != group[1]:
+        raise ValueError("WhatsApp monitoring resources must share the canonical Demo subscription/group")
+    if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9:._/-]{0,255}", monitoring["approval_reference"]) is None:
+        raise ValueError("WhatsApp monitoring requires an opaque reviewed-plan reference")
+    query = Path(__file__).resolve().parents[1] / "infrastructure/operations/wc134-whatsapp-monitor.kql"
+    if monitoring["query_digest"] != "sha256:" + hashlib.sha256(query.read_bytes()).hexdigest():
+        raise ValueError("WhatsApp monitoring approval must bind the exact repository query")
+    if (
+        re.fullmatch(r"[0-9a-f]{64}", monitoring["activation_digest"]) is None
+        or any(
+            re.fullmatch(r"sha256:[0-9a-f]{64}", monitoring[field]) is None
+            for field in ("release_digest", "configuration_digest")
+        )
+        or monitoring["release_digest"] != manifest["images"]["business-platform"].split("@", 1)[1]
+    ):
+        raise ValueError("WhatsApp monitoring must bind the exact release/configuration/activation digests")
+    for field in ("starts_at", "expires_at"):
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", monitoring[field]) is None:
+            raise ValueError("WhatsApp monitoring requires canonical UTC timestamps")
+    starts = parse_lease_timestamp("monitoring.starts_at", monitoring["starts_at"])
+    expires = parse_lease_timestamp("monitoring.expires_at", monitoring["expires_at"])
+    if starts >= expires:
+        raise ValueError("WhatsApp monitoring requires a bounded activation window")
+    return {"whatsapp_monitoring": dict(monitoring)}
 
 
 def parse_key_vault_url(value: Any):
@@ -251,6 +314,7 @@ def create_inputs(
         "key_vault_secret_resource_ids": dict(secret_resource_ids),
     }
     inputs.update(whatsapp_provider_inputs(environment, configuration, manifest))
+    inputs.update(whatsapp_monitoring_inputs(environment, configuration, manifest))
     if image_registry_server:
         inputs["image_registry_server"] = image_registry_server
         inputs["image_pull_identity_id"] = image_pull_identity_id
@@ -259,6 +323,14 @@ def create_inputs(
         if missing:
             raise ValueError("missing lease fields: " + ", ".join(missing))
         validate_active_lease(configuration, current_time or datetime.now(timezone.utc))
+        if "whatsapp_monitoring" in inputs:
+            monitoring = inputs["whatsapp_monitoring"]
+            lease_start = parse_lease_timestamp("lease_issued_at", configuration["lease_issued_at"])
+            lease_end = parse_lease_timestamp("lease_expires_at", configuration["lease_expires_at"])
+            monitor_start = parse_lease_timestamp("monitoring.starts_at", monitoring["starts_at"])
+            monitor_end = parse_lease_timestamp("monitoring.expires_at", monitoring["expires_at"])
+            if monitor_start < lease_start or monitor_end > lease_end:
+                raise ValueError("WhatsApp monitoring window must be contained in the active workload lease")
         inputs.update({field: configuration[field] for field in LEASE_FIELDS})
         inputs["lease_revoked_at"] = configuration.get("lease_revoked_at")
         inputs["database_secret_uris"] = dict(database_secret_uris)

@@ -1,3 +1,4 @@
+# Implements: architecture/reference/components/professional-runtime.md §Conversation execution
 """Signed PR-to-AIR transport for proposal-only employment interpretation."""
 
 from __future__ import annotations
@@ -74,12 +75,50 @@ class EmploymentAirGateway:
         idempotency_key: UUID,
         payload: dict[str, object],
     ) -> httpx.Response:
+        return await self._post(trusted_context, idempotency_key, payload, self.route, self.operation)
+
+    async def reconcile(
+        self,
+        trusted_context: DelegatedContext,
+        idempotency_key: UUID,
+        payload: dict[str, object],
+    ) -> httpx.Response:
+        return await self._post(
+            trusted_context,
+            idempotency_key,
+            payload,
+            "/internal/v1/employment-patch-proposals/reconcile",
+            "reconcileEmploymentPatchProposal",
+        )
+
+    async def generate(self, context: DelegatedContext, key: UUID, payload: dict[str, object]) -> httpx.Response:
+        return await self._post(context, key, payload, "/internal/v1/conversation-generations", "generateConversation")
+
+    async def reconcile_generation(self, context: DelegatedContext, key: UUID, payload: dict[str, object]) -> httpx.Response:
+        return await self._post(
+            context, key, payload, "/internal/v1/conversation-generations/reconcile", "reconcileConversationGeneration"
+        )
+
+    async def recover_generation_content(
+        self, context: DelegatedContext, key: UUID, payload: dict[str, object]
+    ) -> httpx.Response:
+        return await self._post(
+            context, key, payload, "/internal/v1/conversation-generations/recover-content", "recoverConversationGenerationContent"
+        )
+
+    async def _post(
+        self,
+        trusted_context: DelegatedContext,
+        idempotency_key: UUID,
+        payload: dict[str, object],
+        route: str,
+        operation: str,
+    ) -> httpx.Response:
         relationship_id = str(payload.get("relationshipRef", ""))
         if not relationship_id or relationship_id != trusted_context.relationship_id:
             raise ValueError("AIR relationship binding does not match trusted context")
         canonical = json.dumps(
             payload,
-            ensure_ascii=False,
             separators=(",", ":"),
             sort_keys=True,
             allow_nan=False,
@@ -93,15 +132,21 @@ class EmploymentAirGateway:
             issuer_uri=self._issuer_uri,
             target_audience=self._audience,
             method="POST",
-            route=self.route,
-            operation=self.operation,
+            route=route,
+            operation=operation,
             contract_major=1,
             actor_subject=trusted_context.actor_subject,
             actor_source=trusted_context.actor_source,
             effective_role=trusted_context.effective_role,
             tenant_id=trusted_context.tenant_id,
             relationship_id=relationship_id,
-            purpose="EMPLOYMENT_PATCH_PROPOSAL",
+            purpose={
+                "proposeEmploymentPatch": "EMPLOYMENT_PATCH_PROPOSAL",
+                "reconcileEmploymentPatchProposal": "EMPLOYMENT_PATCH_RECONCILIATION",
+                "generateConversation": "CONVERSATION_GENERATION",
+                "reconcileConversationGeneration": "CONVERSATION_GENERATION_RECONCILIATION",
+                "recoverConversationGenerationContent": "CONVERSATION_CONTENT_RECOVERY",
+            }[operation],
             subject_reference=trusted_context.subject_reference,
             request_digest=digest,
             command_id=trusted_context.command_id,
@@ -114,13 +159,15 @@ class EmploymentAirGateway:
             correlation_id=correlation_id,
         )
         response = await self._client.post(
-            f"{self._base_url}{self.route}",
-            json=payload,
+            f"{self._base_url}{route}",
+            content=canonical,
             headers={
+                "Content-Type": "application/json",
                 "Authorization": f"Bearer {sign_delegated_context(context, self._private_key)}",
                 "Idempotency-Key": str(idempotency_key),
                 "X-Correlation-Id": correlation_id,
             },
+            timeout=55.0 if operation == "generateConversation" else 15.0,
         )
         return response
 

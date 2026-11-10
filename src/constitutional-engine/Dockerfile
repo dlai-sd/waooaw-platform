@@ -5,13 +5,14 @@ WORKDIR /src
 COPY src/constitutional-engine/constitutional-engine.csproj .
 RUN dotnet restore --runtime linux-musl-x64
 COPY src/constitutional-engine/ .
+COPY src/shared/InferenceWorkloadValidator.cs /shared/InferenceWorkloadValidator.cs
 RUN dotnet publish --configuration Release --runtime linux-musl-x64 \
     --self-contained false --no-restore --output /app/publish
 
 FROM golang:1.26.10-alpine@sha256:9ce231b28998b32e116927c61aa5c406183061d4f3f2d61b292c88e7f6bdf7ca AS health-probe
 ARG GRPC_HEALTH_PROBE_COMMIT=b5fef775b4ec749eefb19fb00787089ec9a772d5
 ARG GRPC_GO_VERSION=v1.83.2
-ARG GOLANG_X_NET_VERSION=v0.60.0
+ARG GOLANG_X_NET_VERSION=v0.62.0
 ARG GO_JOSE_VERSION=v4.1.6
 RUN apk add --no-cache git \
     && git clone https://github.com/grpc-ecosystem/grpc-health-probe.git /src/grpc-health-probe \

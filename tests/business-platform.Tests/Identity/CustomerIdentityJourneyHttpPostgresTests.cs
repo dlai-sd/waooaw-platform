@@ -33,6 +33,7 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
 {
     private readonly RSA _signer = RSA.Create(2048);
     private readonly GoogleWorkspaceProofAdapterTests.SyntheticKeycloakHandler _broker = new();
+    private readonly CapturingVerificationDispatcher _verificationDispatcher = new();
     private readonly IdentityBrokerReadOptions _configuration =
         GoogleWorkspaceProofAdapterTests.Configuration();
     private WebApplication _app = null!;
@@ -75,6 +76,13 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
         await OwnerAsync(
             await File.ReadAllTextAsync(
                 RepositoryPaths.Resolve(
+                    "infrastructure/postgres/init/73-wc134-required-verified-whatsapp-registration.sql"
+                )
+            )
+        );
+        await OwnerAsync(
+            await File.ReadAllTextAsync(
+                RepositoryPaths.Resolve(
                     "infrastructure/postgres/init/38-identity-security-events.sql"
                 )
             )
@@ -102,6 +110,14 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
             await File.ReadAllTextAsync(
                 RepositoryPaths.Resolve(
                     "infrastructure/postgres/init/29-customer-workspace-provisioning.sql"
+                )
+            )
+        );
+
+        await OwnerAsync(
+            await File.ReadAllTextAsync(
+                RepositoryPaths.Resolve(
+                    "infrastructure/postgres/init/47-identity-verification-permissions.sql"
                 )
             )
         );
@@ -135,10 +151,7 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
         builder.Services.Configure<IdentityHmacOptions>(options =>
             options.Key = "synthetic-http-test-hmac-key-at-least-32-characters"
         );
-        builder.Services.AddSingleton<
-            IIdentityVerificationDispatcher,
-            UnconfiguredVerificationDispatcher
-        >();
+        builder.Services.AddSingleton<IIdentityVerificationDispatcher>(_verificationDispatcher);
         builder.Services.AddScoped<IdentityService>();
         builder.Services.AddScoped<IdentitySecurityEventService>();
         builder.Services.AddSingleton(
@@ -369,9 +382,9 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
             owner,
             new { mobile = "+911234567890" }
         );
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, own.StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, own.StatusCode);
         Assert.Equal(
-            "IDENTITY_DEPENDENCY_UNAVAILABLE",
+            "IDENTITY_RATE_LIMITED",
             (await JsonAsync(own)).GetProperty("code").GetString()
         );
 
@@ -786,6 +799,7 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
                 )
             ).StatusCode
         );
+        await VerifyRegistrationMobileAsync(token, registration);
         await CompleteAsync(token, registration);
         Assert.Equal(
             HttpStatusCode.Forbidden,
@@ -865,10 +879,56 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
         );
         Assert.Equal(HttpStatusCode.OK, profile.StatusCode);
         Assert.Equal(
-            "READY_TO_COMPLETE",
+            "MOBILE_VERIFICATION_REQUIRED",
             (await JsonAsync(profile)).GetProperty("state").GetString()
         );
+        await VerifyRegistrationMobileAsync(token, registrationId);
         return registrationId;
+    }
+
+    private async Task VerifyRegistrationMobileAsync(string token, Guid registrationId)
+    {
+        var mobile = Interlocked.Increment(ref _mobileSequence);
+        var mobileNumber = $"+1555{mobile:D7}";
+        var challenge = await SendAsync(
+            HttpMethod.Post,
+            $"/api/v1/identity/registrations/{registrationId}/mobile-verifications",
+            token,
+            new { mobile = mobileNumber }
+        );
+        Assert.Equal(HttpStatusCode.Accepted, challenge.StatusCode);
+        var challengeId = (await JsonAsync(challenge)).GetProperty("challengeId").GetGuid();
+        var confirmation = await SendAsync(
+            HttpMethod.Post,
+            $"/api/v1/identity/registrations/{registrationId}/mobile-verifications/confirm",
+            token,
+            new { challengeId, code = _verificationDispatcher.LastCode }
+        );
+        Assert.Equal(HttpStatusCode.OK, confirmation.StatusCode);
+        Assert.Equal(
+            "READY_TO_COMPLETE",
+            (await JsonAsync(confirmation)).GetProperty("state").GetString()
+        );
+    }
+
+    private static int _mobileSequence;
+
+    private sealed class CapturingVerificationDispatcher : IIdentityVerificationDispatcher
+    {
+        public string LastCode { get; private set; } = string.Empty;
+
+        public Task DispatchAsync(
+            IdentityVerificationPurpose purpose,
+            string destination,
+            string code,
+            CancellationToken ct
+        )
+        {
+            Assert.Equal(IdentityVerificationPurpose.Mobile, purpose);
+            Assert.StartsWith("+", destination);
+            LastCode = code;
+            return Task.CompletedTask;
+        }
     }
 
     private async Task<JsonElement> CompleteAsync(string token, Guid registrationId)

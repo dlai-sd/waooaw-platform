@@ -27,7 +27,8 @@ sh "$runner" /workspace/test-results/schemathesis-bp-customer-product-smoke.xml 
     "$specification" "$base_url" "$product_all" "$identity_token" smoke &
 product_smoke_pid=$!
 sh "$runner" /workspace/test-results/schemathesis-bp-service-smoke.xml \
-    "$specification" "$base_url" "$service_all" "$service_token" smoke &
+    "$specification" "$base_url" "$service_all" "$service_token" smoke standard \
+    verifyWhatsAppWebhook &
 service_smoke_pid=$!
 wait "$identity_smoke_pid" || identity_smoke_status=$?
 wait "$product_smoke_pid" || product_smoke_status=$?
@@ -57,9 +58,11 @@ if test -n "$REST_BP_PRODUCT_REGEX"; then
     product_focused_pid=$!
     reports="$reports /workspace/test-results/schemathesis-bp-customer-product-focused.xml"
 fi
-if test -n "$REST_BP_SERVICE_REGEX"; then
+if test -n "$REST_BP_SERVICE_REGEX" \
+    && test "$REST_BP_SERVICE_REGEX" != '^/api/v1/channels/whatsapp/webhook$'; then
     sh "$runner" /workspace/test-results/schemathesis-bp-service-focused.xml \
-        "$specification" "$base_url" "$REST_BP_SERVICE_REGEX" "$service_token" deep &
+        "$specification" "$base_url" "$REST_BP_SERVICE_REGEX" "$service_token" deep standard \
+        verifyWhatsAppWebhook receiveWhatsAppJourneyMessage &
     service_focused_pid=$!
     reports="$reports /workspace/test-results/schemathesis-bp-service-focused.xml"
 fi

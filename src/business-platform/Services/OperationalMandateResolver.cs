@@ -145,7 +145,60 @@ public sealed class OperationalMandateResolver(
         CancellationToken cancellationToken
     )
     {
+        if (constitutionalEvidenceId == Guid.Empty)
+            throw new OperationalMandateUnavailableException();
         await using var db = await relationshipFactory.CreateDbContextAsync(cancellationToken);
+        return await ResolveCoreAsync(
+            db,
+            tenantId,
+            participantId,
+            relationshipId,
+            idempotencyKey,
+            constitutionalEvidenceId,
+            skillId,
+            operationalPurpose,
+            requireExisting: false,
+            cancellationToken
+        );
+    }
+
+    internal Task<OperationalMandateV1> ValidateExistingAsync(
+        EmploymentRelationshipDbContext db,
+        Guid tenantId,
+        Guid participantId,
+        Guid relationshipId,
+        Guid idempotencyKey,
+        Guid constitutionalEvidenceId,
+        string skillId,
+        string operationalPurpose,
+        CancellationToken cancellationToken
+    ) =>
+        ResolveCoreAsync(
+            db,
+            tenantId,
+            participantId,
+            relationshipId,
+            idempotencyKey,
+            constitutionalEvidenceId,
+            skillId,
+            operationalPurpose,
+            requireExisting: true,
+            cancellationToken
+        );
+
+    private static async Task<OperationalMandateV1> ResolveCoreAsync(
+        EmploymentRelationshipDbContext db,
+        Guid tenantId,
+        Guid participantId,
+        Guid relationshipId,
+        Guid idempotencyKey,
+        Guid constitutionalEvidenceId,
+        string skillId,
+        string operationalPurpose,
+        bool requireExisting,
+        CancellationToken cancellationToken
+    )
+    {
         var replay = await db
             .OperationalMandateSnapshots.AsNoTracking()
             .SingleOrDefaultAsync(
@@ -155,9 +208,12 @@ public sealed class OperationalMandateResolver(
                     && value.IdempotencyIdentity == idempotencyKey,
                 cancellationToken
             );
+        if (requireExisting && replay is null)
+            throw new OperationalMandateUnavailableException();
+        OperationalMandateV1? replayMandate = null;
         if (replay is not null)
         {
-            var replayMandate =
+            replayMandate =
                 JsonSerializer.Deserialize<OperationalMandateV1>(replay.MandateJson, JsonOptions)
                 ?? throw new OperationalMandateUnavailableException();
             if (
@@ -172,7 +228,6 @@ public sealed class OperationalMandateResolver(
             {
                 throw new ConversationIdempotencyConflictException();
             }
-            return replayMandate;
         }
 
         var relationship = await db.EmploymentRelationships.SingleOrDefaultAsync(
@@ -254,6 +309,7 @@ public sealed class OperationalMandateResolver(
             || runtimeBinding is null
             || skill is null
             || skill.SkillVersion != runtimeBinding.SkillVersion
+            || skill.Applicability != "APPLICABLE"
             || skill.AuthorityState is not ("GRANTED" or "CONSTRAINED")
             || !skill.GoalId.HasValue
         )
@@ -352,6 +408,19 @@ public sealed class OperationalMandateResolver(
             throw new OperationalMandateUnavailableException();
         }
 
+        ConversationOperationBindingV1? conversationOperation = null;
+        if (admittedSkill.TryGetProperty("conversationOperation", out var operationJson))
+        {
+            try
+            {
+                conversationOperation = ConversationOperationBindingV1.Parse(operationJson);
+            }
+            catch (JsonException)
+            {
+                throw new OperationalMandateUnavailableException();
+            }
+        }
+
         var mandateId = Guid.NewGuid();
         var deadline = DateTimeOffset.UtcNow.AddMinutes(5);
         deadline = new DateTimeOffset(
@@ -421,8 +490,52 @@ public sealed class OperationalMandateResolver(
             $"ce-decision:{constitutionalEvidenceId:D}",
             $"ce-evidence:{constitutionalEvidenceId:D}",
             null,
-            null
+            null,
+            conversationOperation
         );
+        if (
+            conversationOperation is not null
+            && !conversationOperation.Matches(
+                draft.PermittedActions,
+                draft.Exclusions,
+                draft.InputSchemaDigest,
+                draft.OutputSchemaDigest,
+                draft.PromptVersion,
+                draft.PromptDigest
+            )
+        )
+            throw new OperationalMandateUnavailableException();
+        if (replayMandate is not null && replay is not null)
+        {
+            var current = draft with
+            {
+                MandateId = replayMandate.MandateId,
+                Deadline = replayMandate.Deadline,
+                ConstitutionalDecisionRef = replayMandate.ConstitutionalDecisionRef,
+                ConstitutionalEvidenceRef = replayMandate.ConstitutionalEvidenceRef,
+            };
+            if (
+                replayMandate.Deadline <= DateTimeOffset.UtcNow
+                || replay.MandateId != replayMandate.MandateId
+                || replay.MandateDigest != replayMandate.MandateDigest
+                || replay.Deadline != replayMandate.Deadline
+                || replay.ActorParticipantId != participantId
+                || replay.AgentInstanceId != relationship.AgentInstanceId
+                || replay.AdmissionId != admission.AdmissionId
+                || replay.RuntimeBindingId != runtimeBinding.BindingId
+                || replay.ContractId != acceptance.ContractId
+                || replay.DecisionSpaceSnapshotId != decisionSpace.SnapshotId
+                || replay.ConstitutionalEvidenceId == Guid.Empty
+                || replayMandate.ConstitutionalDecisionRef
+                    != $"ce-decision:{replay.ConstitutionalEvidenceId:D}"
+                || replayMandate.ConstitutionalEvidenceRef
+                    != $"ce-evidence:{replay.ConstitutionalEvidenceId:D}"
+                || Digest(replayMandate) != replayMandate.MandateDigest
+                || Digest(current) != replayMandate.MandateDigest
+            )
+                throw new OperationalMandateUnavailableException();
+            return replayMandate;
+        }
         var mandate = draft with { MandateDigest = Digest(draft) };
         var mandateJson = JsonSerializer.Serialize(mandate, JsonOptions);
         db.OperationalMandateSnapshots.Add(

@@ -31,7 +31,17 @@ public sealed record StartMobileVerificationRequest(string Mobile);
 
 public sealed record ConfirmVerificationRequest(Guid ChallengeId, string Code);
 
-public sealed record StartAccountLinkRequest(Guid VerifiedMobileProofId);
+public sealed record StartAccountLinkRequest(Guid VerifiedMobileProofId = default);
+
+[System.Text.Json.Serialization.JsonUnmappedMemberHandling(
+    System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow
+)]
+public sealed record StartPhoneChangeRequest(string Mobile);
+
+[System.Text.Json.Serialization.JsonUnmappedMemberHandling(
+    System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow
+)]
+public sealed record ConfirmPhoneChangeRequest(Guid ChallengeId, string Code, bool Consent);
 
 public sealed record UpdateCustomerProfileRequest(
     string SchemaVersion,
@@ -55,7 +65,11 @@ public sealed record UpdateCustomerSettingsRequest(
 );
 
 public sealed record ReplaceWorkspaceLayoutPreferencesRequest(
-    int ExpectedVersion,
+    [property:
+        System.Text.Json.Serialization.JsonRequired,
+        System.Text.Json.Serialization.JsonConverter(typeof(JsonSchemaInt32Converter))
+    ]
+        int ExpectedVersion,
     string NavigationVisibility,
     string ProgressVisibility,
     int ConversationWidthPercent,
@@ -108,7 +122,8 @@ public sealed record IdentityAccountLinkResponse(
     string RequiredAssurance,
     string MaskedMobile,
     DateTimeOffset ExpiresAt,
-    DateTimeOffset UpdatedAt
+    DateTimeOffset UpdatedAt,
+    string? WhatsAppConfirmation = null
 );
 
 public sealed record IdentityMobileStatusResponse(
@@ -197,7 +212,7 @@ public sealed record CustomerProfileResponse(
     string SchemaVersion,
     string DisplayName,
     string OrganizationDisplayName,
-    string Email,
+    string? Email,
     bool EmailVerified,
     bool MobileVerified,
     string ActiveRole,
@@ -524,6 +539,7 @@ public sealed class IdentityController(
             or IdentityRegistrationState.CredentialIdentityAccepted
             or IdentityRegistrationState.EmailVerificationRequired => "VERIFY_EMAIL",
             IdentityRegistrationState.ProfileCompletionRequired => "COMPLETE_PROFILE",
+            IdentityRegistrationState.MobileVerificationRequired => "VERIFY_MOBILE",
             IdentityRegistrationState.ReadyToComplete => "COMPLETE_REGISTRATION",
             IdentityRegistrationState.DuplicateResolutionRequired => "RESOLVE_DUPLICATE",
             IdentityRegistrationState.Completed => "CONTINUE_TO_DEFAULT_TARGET",
@@ -568,14 +584,22 @@ public sealed class IdentityController(
             c.ResendAfter
         );
 
-    private static IdentityAccountLinkResponse ToResponse(IdentityAccountLinkRecord l) =>
+    private IdentityAccountLinkResponse ToResponse(IdentityAccountLinkRecord l) =>
         new(
             l.LinkId,
             ToScreamingSnakeCase(l.State.ToString()),
             "AAL3_FRESH",
             l.MaskedMobile,
             l.ExpiresAt,
-            l.UpdatedAt
+            l.UpdatedAt,
+            identityService.CreateAccountLinkConfirmationToken(
+                l,
+                customerJourney?.ValidateActor(User),
+                CurrentMembership
+            )
+                is { } token
+                ? $"LINK {token}"
+                : null
         );
 
     private string? EmailClaim => User.FindFirstValue("email");
@@ -601,7 +625,7 @@ public sealed class IdentityController(
             CustomerPortalSchemaVersion,
             state.DisplayName,
             state.OrganizationDisplayName,
-            EmailClaim ?? string.Empty,
+            EmailClaim,
             state.EmailVerified,
             state.MobileVerified,
             ActiveCustomerRole,
@@ -826,7 +850,7 @@ public sealed class IdentityController(
             || string.IsNullOrWhiteSpace(req.DisplayName)
             || req.DisplayName.Length > 200
             || string.IsNullOrWhiteSpace(req.OrganizationDisplayName)
-            || req.OrganizationDisplayName.Length > 200
+            || req.OrganizationDisplayName.Length > 160
         )
             return IdentityProblem(400, "IDENTITY_REQUEST_INVALID", "Profile fields are invalid.");
         try
@@ -1076,6 +1100,14 @@ public sealed class IdentityController(
                 409,
                 "IDENTITY_IDEMPOTENCY_CONFLICT",
                 "The idempotency key was already used with a different request."
+            );
+        }
+        catch (ArgumentException)
+        {
+            return IdentityProblem(
+                400,
+                "IDENTITY_REQUEST_INVALID",
+                "A valid Idempotency-Key header is required."
             );
         }
     }
@@ -1551,6 +1583,19 @@ public sealed class IdentityController(
                 );
 
             return StatusCode(202, ToResponse(challenge));
+        }
+        catch (IdentityVerificationRateLimitedException exception)
+        {
+            Response.Headers.RetryAfter = Math.Max(
+                    1,
+                    (int)Math.Ceiling((exception.RetryAfter - DateTimeOffset.UtcNow).TotalSeconds)
+                )
+                .ToString(System.Globalization.CultureInfo.InvariantCulture);
+            return IdentityProblem(
+                429,
+                "IDENTITY_RATE_LIMITED",
+                "Wait before requesting another verification code."
+            );
         }
         catch (IdentityIdempotencyConflict)
         {
@@ -2086,6 +2131,179 @@ public sealed class IdentityController(
 
     // ── POST /api/v1/identity/account-links ───────────────────────────────────
 
+    [HttpPost("phone-changes")]
+    [CustomerIdentityRoute(requiresMembership: true)]
+    public Task<IActionResult> StartPhoneChangeAsync(
+        [FromBody] StartPhoneChangeRequest req,
+        CancellationToken ct
+    ) =>
+        PhoneChangeCommandAsync(
+            async (actor, membership) =>
+                await identityService.StartPhoneChangeAsync(
+                    actor,
+                    membership,
+                    req.Mobile,
+                    IdempotencyKey,
+                    AuthTime,
+                    ct
+                )
+        );
+
+    [HttpPost("phone-changes/confirm")]
+    [CustomerIdentityRoute(requiresMembership: true)]
+    public Task<IActionResult> ConfirmPhoneChangeAsync(
+        [FromBody] ConfirmPhoneChangeRequest req,
+        CancellationToken ct
+    ) =>
+        PhoneChangeCommandAsync(
+            async (actor, membership) =>
+                await identityService.ConfirmPhoneChangeAsync(
+                    actor,
+                    membership,
+                    req.ChallengeId,
+                    req.Code,
+                    req.Consent,
+                    IdempotencyKey,
+                    AuthTime,
+                    ct
+                )
+        );
+
+    [HttpPost("phone-changes/{challengeId:guid}/cancel")]
+    [CustomerIdentityRoute(requiresMembership: true)]
+    public Task<IActionResult> CancelPhoneChangeAsync(Guid challengeId, CancellationToken ct) =>
+        PhoneChangeCommandAsync(
+            async (actor, membership) =>
+                await identityService.CancelPhoneChangeAsync(
+                    actor,
+                    membership,
+                    challengeId,
+                    IdempotencyKey,
+                    AuthTime,
+                    ct
+                )
+        );
+
+    [HttpGet("phone-changes")]
+    [CustomerIdentityRoute(requiresMembership: true)]
+    public Task<IActionResult> GetPhoneChangeAsync(CancellationToken ct) =>
+        PhoneChangeCommandAsync(
+            (actor, membership) => identityService.GetPhoneChangeAsync(actor, membership, ct)
+        );
+
+    private async Task<IActionResult> PhoneChangeCommandAsync(
+        Func<
+            VerifiedCustomerActor,
+            CustomerWorkspaceMembership,
+            Task<IdentityPhoneChangeResult?>
+        > command
+    )
+    {
+        if (CurrentMembership is not { } membership || customerJourney is null)
+            return IdentityProblem(
+                401,
+                "IDENTITY_SESSION_REQUIRED",
+                "Authenticated account session required."
+            );
+        if (!IsOwner)
+            return IdentityProblem(
+                403,
+                "IDENTITY_ACTION_DENIED",
+                "Owner authorization is required."
+            );
+        try
+        {
+            var result = await command(customerJourney.ValidateActor(User), membership);
+            return result is null ? NoContent() : Ok(result);
+        }
+        catch (IdentityStepUpRequiredException ex)
+        {
+            return IdentityProblem(
+                403,
+                "IDENTITY_STEP_UP_REQUIRED",
+                "Fresh sign-in is required.",
+                ex.IntentId
+            );
+        }
+        catch (IdentityResourceNotFoundException)
+        {
+            return IdentityProblem(
+                404,
+                "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
+                "Phone-change request not accessible."
+            );
+        }
+        catch (IdentityActionDeniedException)
+        {
+            return IdentityProblem(403, "IDENTITY_ACTION_DENIED", "Phone change is not permitted.");
+        }
+        catch (IdentityIdempotencyConflict)
+        {
+            return IdentityProblem(
+                409,
+                "IDENTITY_IDEMPOTENCY_CONFLICT",
+                "The request key was reused."
+            );
+        }
+        catch (IdentityDuplicateResolutionRequiredException)
+        {
+            return IdentityProblem(
+                409,
+                "IDENTITY_ACTION_DENIED",
+                "Number reassignment requires separate recovery."
+            );
+        }
+        catch (IdentityChallengeExpiredException)
+        {
+            return IdentityProblem(
+                410,
+                "IDENTITY_CHALLENGE_EXPIRED",
+                "Phone-change verification has expired."
+            );
+        }
+        catch (IdentityVerificationRateLimitedException ex)
+        {
+            Response.Headers.RetryAfter = Math.Max(
+                    1,
+                    (int)Math.Ceiling((ex.RetryAfter - DateTimeOffset.UtcNow).TotalSeconds)
+                )
+                .ToString();
+            return IdentityProblem(
+                429,
+                "IDENTITY_RATE_LIMITED",
+                "Phone-change verification is temporarily limited."
+            );
+        }
+        catch (ConstitutionalActionDeniedException)
+        {
+            return IdentityProblem(
+                403,
+                "IDENTITY_ACTION_DENIED",
+                "Constitutional authorization denied."
+            );
+        }
+        catch (Exception ex)
+            when (ex
+                    is IdentityConstitutionalUnavailableException
+                        or IdentityDeliveryUnavailableException
+            )
+        {
+            return IdentityProblem(
+                503,
+                "IDENTITY_DEPENDENCY_UNAVAILABLE",
+                "Phone-change evidence or delivery is unavailable."
+            );
+        }
+        catch (ArgumentException)
+        {
+            return IdentityProblem(
+                400,
+                "IDENTITY_REQUEST_INVALID",
+                "Invalid or missing request key."
+            );
+        }
+    }
+
     [HttpPost("account-links")]
     [CustomerIdentityRoute(requiresMembership: true)]
     public async Task<IActionResult> StartAccountLinkAsync(
@@ -2119,10 +2337,18 @@ public sealed class IdentityController(
                 hash,
                 req.VerifiedMobileProofId,
                 AuthTime,
-                ct
+                ct,
+                customerJourney?.ValidateActor(User),
+                CurrentMembership
             );
 
-            return isNew ? StatusCode(201, ToResponse(link)) : Ok(ToResponse(link));
+            return isNew
+                ? CreatedAtAction(
+                    nameof(GetAccountLinkAsync),
+                    new { linkId = link.LinkId },
+                    ToResponse(link)
+                )
+                : Ok(ToResponse(link));
         }
         catch (IdentityStepUpRequiredException ex)
         {
@@ -2131,6 +2357,22 @@ public sealed class IdentityController(
                 "IDENTITY_STEP_UP_REQUIRED",
                 "A freshly authenticated session is required.",
                 ex.IntentId
+            );
+        }
+        catch (IdentityResourceNotFoundException)
+        {
+            return IdentityProblem(
+                404,
+                "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
+                "Verified mobile proof not accessible."
+            );
+        }
+        catch (IdentityActionDeniedException)
+        {
+            return IdentityProblem(
+                403,
+                "IDENTITY_ACTION_DENIED",
+                "Account linking is not permitted."
             );
         }
         catch (IdentityIdempotencyConflict)
@@ -2171,7 +2413,19 @@ public sealed class IdentityController(
 
     [HttpPost("account-links/{linkId:guid}/approve")]
     [CustomerIdentityRoute(requiresMembership: true)]
-    public async Task<IActionResult> ApproveAccountLinkAsync(Guid linkId, CancellationToken ct)
+    public Task<IActionResult> ApproveAccountLinkAsync(Guid linkId, CancellationToken ct) =>
+        TransitionAccountLinkAsync(linkId, true, ct);
+
+    [HttpPost("account-links/{linkId:guid}/cancel")]
+    [CustomerIdentityRoute(requiresMembership: true)]
+    public Task<IActionResult> CancelAccountLinkAsync(Guid linkId, CancellationToken ct) =>
+        TransitionAccountLinkAsync(linkId, false, ct);
+
+    private async Task<IActionResult> TransitionAccountLinkAsync(
+        Guid linkId,
+        bool approve,
+        CancellationToken ct
+    )
     {
         var tenantId = TenantIdFromContext;
         if (tenantId is null)
@@ -2192,15 +2446,30 @@ public sealed class IdentityController(
             var idempotencyKey = IdempotencyKey;
             var hash = ComputeHash(new { linkId });
 
-            var (link, _) = await identityService.ApproveAccountLinkAsync(
-                linkId,
-                ActorSubject,
-                tenantId.Value,
-                idempotencyKey,
-                hash,
-                AuthTime,
-                ct
-            );
+            var actor = customerJourney?.ValidateActor(User);
+            var (link, _) = approve
+                ? await identityService.ApproveAccountLinkAsync(
+                    linkId,
+                    ActorSubject,
+                    tenantId.Value,
+                    idempotencyKey,
+                    hash,
+                    AuthTime,
+                    ct,
+                    actor,
+                    CurrentMembership
+                )
+                : await identityService.CancelAccountLinkAsync(
+                    linkId,
+                    ActorSubject,
+                    tenantId.Value,
+                    idempotencyKey,
+                    hash,
+                    AuthTime,
+                    ct,
+                    actor,
+                    CurrentMembership
+                );
 
             return Ok(ToResponse(link));
         }
@@ -2211,6 +2480,14 @@ public sealed class IdentityController(
                 "IDENTITY_STEP_UP_REQUIRED",
                 "A freshly authenticated session is required.",
                 ex.IntentId
+            );
+        }
+        catch (IdentityActionDeniedException)
+        {
+            return IdentityProblem(
+                403,
+                "IDENTITY_ACTION_DENIED",
+                "Account linking is not permitted."
             );
         }
         catch (IdentityIdempotencyConflict)
@@ -2266,6 +2543,7 @@ public sealed class IdentityController(
     // ── GET /api/v1/identity/account-links/{linkId} ───────────────────────────
 
     [HttpGet("account-links/{linkId:guid}")]
+    [ActionName(nameof(GetAccountLinkAsync))]
     [CustomerIdentityRoute(requiresMembership: true)]
     public async Task<IActionResult> GetAccountLinkAsync(Guid linkId, CancellationToken ct)
     {
@@ -2289,7 +2567,9 @@ public sealed class IdentityController(
                 linkId,
                 ActorSubject,
                 tenantId.Value,
-                ct
+                ct,
+                customerJourney?.ValidateActor(User),
+                CurrentMembership
             );
             return Ok(ToResponse(link));
         }
@@ -2299,6 +2579,14 @@ public sealed class IdentityController(
                 404,
                 "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
                 "Link not found or not accessible."
+            );
+        }
+        catch (IdentityActionDeniedException)
+        {
+            return IdentityProblem(
+                403,
+                "IDENTITY_ACTION_DENIED",
+                "Account linking is not permitted."
             );
         }
     }

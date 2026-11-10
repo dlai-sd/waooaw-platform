@@ -472,10 +472,13 @@ public sealed class CustomerEngagementWorkspaceControllerTests
                         BindingId = channelSessionId,
                         RelationshipId = relationshipId,
                         ParticipantId = participantId,
+                        ParticipantRole = "EMPLOYER",
                         Channel = "WHATSAPP",
                         ConversationId = Guid.NewGuid().ToString("D"),
                         AssuranceLevel = "OTP",
                         Status = channelStatus,
+                        RevokedAt = channelStatus == "ENDED" ? DateTimeOffset.UtcNow : null,
+                        RevokedEvidenceId = channelStatus == "ENDED" ? evidenceId : null,
                     }
                 );
             }

@@ -5,6 +5,7 @@ All URIs are relative to _http://localhost:5001_
 | Method                                                                                                             | HTTP request                                                                                    | Description                                                            |
 | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | [**admitEmploymentRelationship**](RelationshipWorkspaceApi.md#admitemploymentrelationshipoperation)                | **POST** /api/v1/employment/relationships                                                       | Admit or replay an employment relationship                             |
+| [**attachRelationshipWhatsAppChannel**](RelationshipWorkspaceApi.md#attachrelationshipwhatsappchannel)             | **POST** /api/v1/employment/relationships/{relationshipId}/workspace/channels/whatsapp          | Approve the verified WhatsApp identity for this relationship           |
 | [**getCustomerEngagementProgress**](RelationshipWorkspaceApi.md#getcustomerengagementprogress)                     | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/engagement-progress         | Get owner-composed customer engagement progress                        |
 | [**getRelationshipAttention**](RelationshipWorkspaceApi.md#getrelationshipattention)                               | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/attention                   | Read authoritative needs-your-attention items in BP-owned order        |
 | [**getRelationshipBusinessOutcomes**](RelationshipWorkspaceApi.md#getrelationshipbusinessoutcomes)                 | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/business-outcomes           | Read relationship business outcomes with explicit traceability         |
@@ -105,6 +106,83 @@ example().catch(console.error);
 | **403**     | Authenticated identity lacks tenant or participant authority                                        | -                |
 | **409**     | Professional admission is inactive, mismatched, or conflicts with the existing relationship binding | -                |
 | **503**     | Constitutional validation or evidence commitment is unavailable                                     | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## attachRelationshipWhatsAppChannel
+
+> AttachWhatsAppChannelResponseV1 attachRelationshipWhatsAppChannel(relationshipId, attachWhatsAppChannelRequestV1)
+
+Approve the verified WhatsApp identity for this relationship
+
+Requires a fresh Tier-4 portal step-up, current owner membership, an Identity-owned confirmed WhatsApp account link, explicit relationship-channel consent, and a trial-active or active relationship. It refuses to attach a sender with a stopped guest session or withdrawn channel; linking cannot clear STOP. It creates only a channel binding to the canonical relationship Conversation; guest history is not copied, and the sender hash is never returned.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  RelationshipWorkspaceApi,
+} from '';
+import type { AttachRelationshipWhatsAppChannelRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new RelationshipWorkspaceApi(config);
+
+  const body = {
+    // string | Tenant-scoped durable employment relationship UUID
+    relationshipId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // AttachWhatsAppChannelRequestV1
+    attachWhatsAppChannelRequestV1: ...,
+  } satisfies AttachRelationshipWhatsAppChannelRequest;
+
+  try {
+    const data = await api.attachRelationshipWhatsAppChannel(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name                               | Type                                                                | Description                                        | Notes                     |
+| ---------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------- | ------------------------- |
+| **relationshipId**                 | `string`                                                            | Tenant-scoped durable employment relationship UUID | [Defaults to `undefined`] |
+| **attachWhatsAppChannelRequestV1** | [AttachWhatsAppChannelRequestV1](AttachWhatsAppChannelRequestV1.md) |                                                    |                           |
+
+### Return type
+
+[**AttachWhatsAppChannelResponseV1**](AttachWhatsAppChannelResponseV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                             | Response headers |
+| ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **200**     | The WhatsApp channel is bound to the relationship                       | -                |
+| **400**     | Workspace request is malformed or unsupported                           | -                |
+| **401**     | Workspace session is missing, invalid, or expired                       | -                |
+| **403**     | Identity action is not available to the authenticated actor             | -                |
+| **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
+| **503**     | Required owner projection or constitutional dependency is unavailable   | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

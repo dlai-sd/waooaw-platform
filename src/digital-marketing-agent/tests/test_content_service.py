@@ -18,6 +18,8 @@ NOW = datetime(2026, 10, 9, 12, 0, tzinfo=timezone.utc)
 
 
 class Usage:
+    owner_authenticated = True
+
     def __init__(self) -> None:
         self.reservations = 0
         self.reconciliations = 0
@@ -92,6 +94,20 @@ def test_b1_is_default_off() -> None:
     subject = ContentProductionService(DeterministicAirEmulator({"FACEBOOK": "Text"}), Usage(), Evidence())
 
     with pytest.raises(ContentContractError, match="B1_LOCKED"):
+        subject.create_draft(request())
+
+
+def test_b1_fails_closed_without_authenticated_wbe_component_owner() -> None:
+    usage = Usage()
+    usage.owner_authenticated = False
+    subject = ContentProductionService(
+        DeterministicAirEmulator({"FACEBOOK": "Text"}),
+        usage,
+        Evidence(),
+        b1_enabled=True,
+    )
+
+    with pytest.raises(ContentContractError, match="WBE_COMPONENT_OWNER_REQUIRED"):
         subject.create_draft(request())
 
 

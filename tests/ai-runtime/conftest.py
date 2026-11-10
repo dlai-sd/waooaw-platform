@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 # ai-runtime uses flat imports (WORKDIR=/app in Docker)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src" / "trust-layer"))
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src" / "ai-runtime"))
 
 import pytest

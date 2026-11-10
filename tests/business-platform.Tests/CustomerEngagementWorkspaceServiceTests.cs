@@ -479,6 +479,78 @@ public sealed class CustomerEngagementWorkspaceServiceTests
         );
     }
 
+    [Theory]
+    [InlineData("participant-revoked")]
+    [InlineData("relationship-version")]
+    [InlineData("binding-source")]
+    [InlineData("binding-revoked")]
+    [InlineData("empty-evidence")]
+    [InlineData("concurrent-end")]
+    public async Task ChannelEndRevalidatesAuthorityAfterEvidenceWithoutOverwritingConcurrentOutcome(string change)
+    {
+        var fixture = await CreateAsync(addChannelBinding: true);
+        var originalEvidence = Guid.NewGuid();
+        var gateway = new ChannelEndGateway(async () =>
+        {
+            await using var db = fixture.Factory.CreateDbContext();
+            switch (change)
+            {
+                case "participant-revoked":
+                    (await db.RelationshipParticipants.SingleAsync()).RevokedAt = DateTimeOffset.UtcNow;
+                    break;
+                case "relationship-version":
+                    (await db.EmploymentRelationships.SingleAsync()).StateVersion++;
+                    break;
+                case "binding-source":
+                    (await db.ChannelBindings.SingleAsync()).ConversationId = Guid.NewGuid().ToString("D");
+                    break;
+                case "binding-revoked":
+                    (await db.ChannelBindings.SingleAsync()).Status = "REVOKED";
+                    break;
+                case "concurrent-end":
+                    var binding = await db.ChannelBindings.SingleAsync();
+                    binding.Status = "ENDED";
+                    binding.RevokedAt = DateTimeOffset.UtcNow;
+                    binding.RevokedEvidenceId = originalEvidence;
+                    break;
+            }
+            await db.SaveChangesAsync();
+        }, change == "empty-evidence" ? Guid.Empty : Guid.NewGuid());
+        var service = new CustomerEngagementWorkspaceService(
+            fixture.Factory, fixture.DataProtectionProvider, gateway);
+        Task<ConversationChannelSessionResult> End() => service.EndChannelSessionAsync(
+            fixture.TenantId, fixture.ParticipantId, fixture.RelationshipId, fixture.ChannelSessionId,
+            "channel-end-evidence-race", "channel-end-request", 0, Guid.NewGuid(), CancellationToken.None);
+        if (change == "concurrent-end")
+        {
+            var replay = await End();
+            Assert.True(replay.Replayed);
+            Assert.Equal(originalEvidence, replay.EvidenceId);
+        }
+        else
+            await Assert.ThrowsAsync<CustomerEngagementNotAccessibleException>(End);
+        await using var verify = fixture.Factory.CreateDbContext();
+        var saved = await verify.ChannelBindings.SingleAsync();
+        Assert.Equal(change == "concurrent-end" ? originalEvidence : (Guid?)null, saved.RevokedEvidenceId);
+        Assert.Empty(verify.RelationshipIdempotency);
+        Assert.Equal(1, gateway.CallCount);
+    }
+
+    private sealed class ChannelEndGateway(Func<Task> beforeEvidence, Guid evidence)
+        : IRelationshipConstitutionalGateway
+    {
+        public int CallCount { get; private set; }
+
+        public async Task<Guid> AuthorizeAndRecordAsync(Guid tenantId, Guid relationshipId,
+            string professionalType, string actionType, Guid correlationId, object actionParameters,
+            CancellationToken cancellationToken)
+        {
+            CallCount++;
+            await beforeEvidence();
+            return evidence;
+        }
+    }
+
     private static async Task<Fixture> CreateAsync(bool addChannelBinding = false)
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
@@ -541,6 +613,7 @@ public sealed class CustomerEngagementWorkspaceServiceTests
                     BindingId = channelSessionId,
                     RelationshipId = relationshipId,
                     ParticipantId = participantId,
+                    ParticipantRole = "EMPLOYER",
                     Channel = "WHATSAPP",
                     ConversationId = Guid.NewGuid().ToString("D"),
                     AssuranceLevel = "OTP",

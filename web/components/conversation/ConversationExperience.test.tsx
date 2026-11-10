@@ -24,7 +24,10 @@ function streamEvent(eventType: string, overrides: Record<string, unknown> = {})
 function pendingStream(signal?: AbortSignal | null, events: unknown[] = []) {
   const queued = events.map((event) => Buffer.from(`data: ${JSON.stringify(event)}\n\n`));
   let pending:
-    | { resolve: (result: ReadableStreamReadResult<Uint8Array>) => void; reject: (reason: unknown) => void }
+    | {
+        resolve: (result: ReadableStreamReadResult<Uint8Array>) => void;
+        reject: (reason: unknown) => void;
+      }
     | undefined;
   signal?.addEventListener('abort', () => pending?.reject(new DOMException('Aborted', 'AbortError')), { once: true });
   return {
@@ -71,7 +74,9 @@ function installFetch(
 ): FetchMock {
   const mock = jest.fn((input: RequestInfo | URL, init?: RequestInit) => {
     if (String(input).endsWith('/skill-decisions'))
-      return jsonResponse({ skills: [{ skillId: 'campaign_planning', skillVersion: '1.0.0' }] });
+      return jsonResponse({
+        skills: [{ skillId: 'campaign_planning', skillVersion: '1.0.0' }],
+      });
     return String(input).endsWith('/stream') ? streamHandler(input, init) : apiHandler(input, init);
   }) as FetchMock;
   global.fetch = mock;
@@ -153,7 +158,13 @@ const governedCards = [
     commands: [],
     decisionState: 'CUSTOMER_INPUT_REQUIRED',
     authorityImpact: 'No work starts before selection.',
-    alternatives: [{ alternativeId: 'A', label: 'Continue', effect: 'Uses the current approved brief.' }],
+    alternatives: [
+      {
+        alternativeId: 'A',
+        label: 'Continue',
+        effect: 'Uses the current approved brief.',
+      },
+    ],
   },
 ];
 
@@ -165,7 +176,13 @@ function message(overrides: Partial<ConversationMessageV1> = {}): ConversationMe
     sequence: 1,
     actor: 'PROFESSIONAL',
     channel: 'WEB',
-    content: [{ schemaVersion: '1.0', blockType: 'TEXT', text: 'Here is the current plan.' }],
+    content: [
+      {
+        schemaVersion: '1.0',
+        blockType: 'TEXT',
+        text: 'Here is the current plan.',
+      },
+    ],
     cards: governedCards,
     deliveryState: 'ACCEPTED',
     processingState: 'RUNNING',
@@ -202,10 +219,69 @@ function setOnline(value: boolean) {
 }
 
 describe('ConversationExperience', () => {
+  it.each(['COMPLETED', 'UNRESOLVED'])(
+    'checks original results from a fresh device without restarting work: %s',
+    async (state) => {
+      const input = message({
+        actor: 'CUSTOMER',
+        processingState: 'RUNNING',
+        deliveryState: 'ACCEPTED',
+        cards: [],
+      });
+      const executionId = '3ead2d21-f908-40b5-9510-b1e77f516d7e';
+      const fetchMock = installFetch(async (url, init) => {
+        if (String(url).includes('messageExecutionId='))
+          return jsonResponse({
+            schemaVersion: '1.0',
+            executionId,
+            projectionVersion: 12,
+            state: 'RUNNING',
+            partial: true,
+            updatedAt: '2026-08-10T10:01:00Z',
+          });
+        if (init?.method === 'POST')
+          return jsonResponse({
+            schemaVersion: '1.0',
+            executionId,
+            state,
+            projectionVersion: 13,
+            replayed: false,
+            nextAction: state === 'UNRESOLVED' ? 'OPERATOR_RECONCILIATION_REQUIRED' : 'RECONCILE_CANONICAL_PROJECTION',
+          });
+        return jsonResponse(timeline([input]));
+      });
+      render(<ConversationExperience relationshipId={relationshipId} />);
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Check original runtime result',
+        })
+      );
+      await waitFor(() =>
+        expect(screen.getByRole('status')).toHaveTextContent(
+          state === 'UNRESOLVED' ? 'Operator reconciliation is required' : 'The original runtime result was recovered'
+        )
+      );
+      const commands = apiCalls(fetchMock).filter(([, init]) => init?.method === 'POST');
+      expect(commands).toHaveLength(1);
+      expect(JSON.parse(String(commands[0][1]?.body))).toEqual(
+        expect.objectContaining({
+          action: 'reconcile',
+          executionId,
+          messageId,
+          expectedProjectionVersion: 12,
+        })
+      );
+      expect(localStorage.getItem(`waooaw:conversation:${relationshipId}:retry:${messageId}`)).toBeNull();
+    }
+  );
+
   beforeEach(() => {
     localStorage.clear();
     setOnline(true);
-    Object.defineProperty(global, 'TextDecoder', { configurable: true, value: NodeTextDecoder });
+    Object.defineProperty(global, 'TextDecoder', {
+      configurable: true,
+      value: NodeTextDecoder,
+    });
     Object.defineProperty(global.crypto, 'randomUUID', {
       configurable: true,
       value: jest
@@ -243,7 +319,15 @@ describe('ConversationExperience', () => {
 
   it('never reports recorded evidence without a non-null evidence record identity', async () => {
     installFetch(() =>
-      jsonResponse(timeline([message({ evidenceState: 'RECORDED', evidenceRecordId: undefined, cards: [] })]))
+      jsonResponse(
+        timeline([
+          message({
+            evidenceState: 'RECORDED',
+            evidenceRecordId: undefined,
+            cards: [],
+          }),
+        ])
+      )
     );
     render(<ConversationExperience relationshipId={relationshipId} />);
 
@@ -275,7 +359,9 @@ describe('ConversationExperience', () => {
     render(<ConversationExperience relationshipId={relationshipId} />);
 
     const composer = await screen.findByLabelText('Message your professional');
-    fireEvent.change(composer, { target: { value: 'Please summarize today.' } });
+    fireEvent.change(composer, {
+      target: { value: 'Please summarize today.' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
     await waitFor(() => expect(apiCalls(requestMock)).toHaveLength(3));
@@ -336,7 +422,12 @@ describe('ConversationExperience', () => {
   });
 
   it('reuses the original retry identity only after timeline reconciliation', async () => {
-    const unresolved = message({ deliveryState: 'UNRESOLVED', processingState: 'FAILED', cards: [], partial: false });
+    const unresolved = message({
+      deliveryState: 'UNRESOLVED',
+      processingState: 'FAILED',
+      cards: [],
+      partial: false,
+    });
     localStorage.setItem(`waooaw:conversation:${relationshipId}:retry:${messageId}`, 'original-idempotency-key');
     const fetchMock = jest
       .fn()
@@ -380,10 +471,22 @@ describe('ConversationExperience', () => {
           replayed: false,
         })
       )
-      .mockImplementationOnce(() => jsonResponse({ schemaVersion: '1.0', state: 'CANCELLED', partial: true }))
+      .mockImplementationOnce(() =>
+        jsonResponse({
+          schemaVersion: '1.0',
+          state: 'CANCELLED',
+          partial: true,
+        })
+      )
       .mockImplementationOnce(() =>
         jsonResponse(
-          timeline([message({ processingState: 'CANCELLED', partial: true, completionReason: 'CANCELLED' })])
+          timeline([
+            message({
+              processingState: 'CANCELLED',
+              partial: true,
+              completionReason: 'CANCELLED',
+            }),
+          ])
         )
       );
     const requestMock = installFetch(fetchMock);
@@ -419,7 +522,11 @@ describe('ConversationExperience', () => {
       .fn()
       .mockImplementationOnce(() => jsonResponse(timeline([newer], { nextCursor: 'older-page-cursor' })))
       .mockImplementationOnce(() =>
-        jsonResponse(timeline([older], { authoritativeCursor: 'authoritative-cursor-0001' }))
+        jsonResponse(
+          timeline([older], {
+            authoritativeCursor: 'authoritative-cursor-0001',
+          })
+        )
       );
     const stream = controllableStream();
     const requestMock = installFetch(fetchMock, async (_input, init) => stream.response(init?.signal));
@@ -452,7 +559,11 @@ describe('ConversationExperience', () => {
     };
     localStorage.setItem(`waooaw:conversation:${relationshipId}:draft`, contribution.text);
     localStorage.setItem(`waooaw:conversation:${relationshipId}:outbox`, JSON.stringify(contribution));
-    const canonical = message({ clientMessageId: contribution.clientMessageId, cards: [], partial: false });
+    const canonical = message({
+      clientMessageId: contribution.clientMessageId,
+      cards: [],
+      partial: false,
+    });
     const fetchMock = jest.fn(() => jsonResponse(timeline([canonical])));
     const requestMock = installFetch(fetchMock);
 
@@ -562,7 +673,13 @@ describe('ConversationExperience', () => {
   it('invokes an approved retry operation for an enabled typed-card command', async () => {
     const retryCard = {
       ...governedCards[1],
-      commands: [{ commandId: 'RETRY_MESSAGE', label: 'Retry governed work', availability: 'AVAILABLE' as const }],
+      commands: [
+        {
+          commandId: 'RETRY_MESSAGE',
+          label: 'Retry governed work',
+          availability: 'AVAILABLE' as const,
+        },
+      ],
     };
     const unresolved = message({
       deliveryState: 'UNRESOLVED',
@@ -602,13 +719,25 @@ describe('ConversationExperience', () => {
       .fn()
       .mockImplementationOnce(() => jsonResponse(timeline([message({ processingState: 'RUNNING', cards: [] })])))
       .mockImplementationOnce(() => jsonResponse(timeline([message({ processingState: 'RUNNING', cards: [] })])))
-      .mockImplementationOnce(() => jsonResponse({ schemaVersion: '1.0', state: 'CANCELLED', partial: true }))
+      .mockImplementationOnce(() =>
+        jsonResponse({
+          schemaVersion: '1.0',
+          state: 'CANCELLED',
+          partial: true,
+        })
+      )
       .mockImplementationOnce(() => jsonResponse(timeline([message({ processingState: 'RUNNING', cards: [] })])));
     installFetch(fetchMock, async (_input, init) => stream.response(init?.signal));
     render(<ConversationExperience relationshipId={relationshipId} />);
 
     await screen.findByText('Here is the current plan.');
-    await act(async () => stream.push(streamEvent('processing.started', { executionId: 'reloaded-execution' })));
+    await act(async () =>
+      stream.push(
+        streamEvent('processing.started', {
+          executionId: 'reloaded-execution',
+        })
+      )
+    );
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel response' }));
     await waitFor(() =>
       expect(localStorage.getItem(`waooaw:conversation:${relationshipId}:cancel:reloaded-execution`)).not.toBeNull()
@@ -616,7 +745,12 @@ describe('ConversationExperience', () => {
     expect(screen.getByRole('button', { name: 'Cancel response' })).toBeVisible();
 
     await act(async () =>
-      stream.push(streamEvent('stream.cancelled', { eventId: 'terminal-event', executionId: 'reloaded-execution' }))
+      stream.push(
+        streamEvent('stream.cancelled', {
+          eventId: 'terminal-event',
+          executionId: 'reloaded-execution',
+        })
+      )
     );
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Cancel response' })).not.toBeInTheDocument());
     expect(localStorage.getItem(`waooaw:conversation:${relationshipId}:cancel:reloaded-execution`)).toBeNull();

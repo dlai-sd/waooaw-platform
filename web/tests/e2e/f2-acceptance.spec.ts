@@ -21,7 +21,14 @@ async function addSession(context: BrowserContext) {
     },
   });
   await context.addCookies([
-    { name: 'next-auth.session-token', value, domain: '127.0.0.1', httpOnly: true, path: '/', sameSite: 'Lax' },
+    {
+      name: 'next-auth.session-token',
+      value,
+      domain: '127.0.0.1',
+      httpOnly: true,
+      path: '/',
+      sameSite: 'Lax',
+    },
   ]);
 }
 
@@ -44,7 +51,10 @@ test('UX-AUTH-01 UX-PRIV-01: registration is broker-gated and the browser sessio
   await addSession(context);
   const browserSession = await page.request.get('/api/auth/session');
   const sessionBody = await browserSession.text();
-  expect(JSON.parse(sessionBody)).toMatchObject({ authenticated: true, founder: false });
+  expect(JSON.parse(sessionBody)).toMatchObject({
+    authenticated: true,
+    founder: false,
+  });
   expect(sessionBody).not.toContain('fixture-access-token');
 });
 
@@ -63,14 +73,24 @@ test('UX-AUTH-01: an expired broker token cannot retain an authenticated browser
     },
   });
   await context.addCookies([
-    { name: 'next-auth.session-token', value, domain: '127.0.0.1', httpOnly: true, path: '/', sameSite: 'Lax' },
+    {
+      name: 'next-auth.session-token',
+      value,
+      domain: '127.0.0.1',
+      httpOnly: true,
+      path: '/',
+      sameSite: 'Lax',
+    },
   ]);
 
   await page.goto('/home');
 
   await expect(page).toHaveURL(/\/login$/);
   const session = await page.request.get('/api/auth/session');
-  await expect(session.json()).resolves.toMatchObject({ authenticated: false, founder: false });
+  await expect(session.json()).resolves.toMatchObject({
+    authenticated: false,
+    founder: false,
+  });
 });
 
 test('UX-AUTH-02 UX-AUTH-06 UX-PWA-04: verified broker state renders a private, responsive registration step', async ({
@@ -120,7 +140,7 @@ test('WC098-D04/D07: registration completion is truthful, accessible, and respon
       body: JSON.stringify({
         registrationId: '8f6f7550-98c7-4a8f-bd63-36f07ee15c9d',
         state: 'REGISTRATION_COMPLETION_REQUIRED',
-        nextAction: 'COMPLETE_REGISTRATION',
+        nextAction: 'VERIFY_MOBILE',
         authenticationPath: 'GOOGLE',
         providerLabel: 'google',
         maskedEmail: 'a***@example.com',
@@ -138,8 +158,9 @@ test('WC098-D04/D07: registration completion is truthful, accessible, and respon
   await expect(page.getByLabel('Verified email')).toHaveValue('a***@example.com');
   await expect(page.getByLabel('Verified email')).toHaveAttribute('readonly', '');
   await expect(page.getByText('Verified by Google')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Mobile verification (optional)' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Complete registration' })).toBeEnabled();
+  await expect(page.getByLabel('WhatsApp number')).toHaveAttribute('required', '');
+  await expect(page.getByRole('button', { name: 'Send WhatsApp verification code' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Register' })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(
     true
   );

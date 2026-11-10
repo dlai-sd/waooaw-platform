@@ -183,25 +183,19 @@ public sealed class CustomerWorkspaceProvisioningPostgresTests(
         );
 
         Assert.Equal(0, layout.PreferenceVersion);
-        await using (var owner = new WorkspaceDbContextFactory(
-            _ownerConnectionString
-        ).CreateDbContext())
+        await using (
+            var owner = new WorkspaceDbContextFactory(_ownerConnectionString).CreateDbContext()
+        )
         {
             var preference = await owner.CustomerPortalPreferences.SingleAsync(value =>
-                value.ActorSubject == proof.Actor.Subject
-                && value.TenantId == membership.TenantId
+                value.ActorSubject == proof.Actor.Subject && value.TenantId == membership.TenantId
             );
             Assert.Equal(0, preference.WorkspaceLayoutVersion);
         }
 
         var otherProof = SyntheticProof("other-portal-owner", "other-portal-google");
         var otherRegistration = await SeedAsync(otherProof);
-        await provisioning.CompleteAsync(
-            otherProof,
-            otherRegistration,
-            Guid.NewGuid(),
-            Hash
-        );
+        await provisioning.CompleteAsync(otherProof, otherRegistration, Guid.NewGuid(), Hash);
         var otherMembership = await provisioning.ResolveAsync(otherProof.Actor);
 
         await Assert.ThrowsAsync<IdentityResourceNotFoundException>(() =>
@@ -1242,6 +1236,20 @@ public sealed class CustomerWorkspaceProvisioningPostgresTests(
     }
 
     [Fact]
+    public async Task UnverifiedMobile_DeniesEvenWhenRegistrationStateIsReady()
+    {
+        var proof = SyntheticProof("unverified-mobile", "unverified-mobile-google");
+        var registration = await SeedAsync(proof, mobileVerified: false);
+
+        var failure = await Assert.ThrowsAsync<CustomerWorkspaceException>(() =>
+            Service().CompleteAsync(proof, registration, Guid.NewGuid(), Hash)
+        );
+
+        Assert.Equal(CustomerWorkspaceError.RegistrationIneligible, failure.Error);
+        await AssertCountsAsync(0, 0, 0);
+    }
+
+    [Fact]
     public async Task LegacyCompletedRows_AreRetainedButCannotResolveOrReplay_AndNewNullIssuerDenied()
     {
         var proof = SyntheticProof("legacy", "legacy-google");
@@ -1560,7 +1568,8 @@ public sealed class CustomerWorkspaceProvisioningPostgresTests(
         IdentityRegistrationState state = IdentityRegistrationState.ReadyToComplete,
         bool emailVerified = true,
         DateTimeOffset? expiresAt = null,
-        string businessDomain = "Consulting"
+        string businessDomain = "Consulting",
+        bool mobileVerified = true
     )
     {
         await using var db = new WorkspaceDbContextFactory(AppConnectionString()).CreateDbContext();
@@ -1580,6 +1589,7 @@ public sealed class CustomerWorkspaceProvisioningPostgresTests(
             AuthenticationPath = IdentityAuthenticationPath.Google,
             ProviderIssuer = proof.ProviderIssuer,
             EmailVerified = emailVerified,
+            MobileVerified = mobileVerified,
             DisplayName = "Synthetic Customer",
             BusinessName = businessName,
             BusinessDomain = businessDomain,

@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-from goal006_deployment_inputs import whatsapp_provider_inputs
+from goal006_deployment_inputs import WHATSAPP_PUBLIC_SUBJECT_KEY_NAME, whatsapp_provider_inputs
 
 REFERENCE = r"[A-Za-z0-9][A-Za-z0-9:._/-]{0,255}"
 DIGEST = r"sha256:[a-f0-9]{64}"
@@ -32,6 +32,7 @@ REFERENCES = {
 }
 TUPLE = {"Environment", "ReleaseDigest", "ConfigurationDigest", "CatalogDigest", "RollbackDigest"}
 LIMITS = {"MaximumMessages", "MaximumMessagesPerMinute", "MaximumSpendInr", "MaximumCostPerMessageInr"}
+OPTIONAL_PERMISSIONS = {"AllowProvisionalOnboarding", "AllowPublicAdmission", "AllowRegistrationVerification"}
 AUTHORITY_FIELDS = (
     REFERENCES
     | TUPLE
@@ -104,7 +105,11 @@ def _read_json(value: bytes) -> Any:
 
 
 def activation_configuration_digest(
-    registration_digest: str, bindings: dict[str, str], policies: dict[str, str], templates: list[dict[str, str]]
+    registration_digest: str,
+    bindings: dict[str, str],
+    policies: dict[str, str],
+    templates: list[dict[str, str]],
+    registration_verification: dict[str, str] | None = None,
 ) -> str:
     value = {
         "registration_configuration_digest": registration_digest,
@@ -112,6 +117,8 @@ def activation_configuration_digest(
         "policies": policies,
         "templates": templates,
     }
+    if registration_verification is not None:
+        value["registration_verification"] = registration_verification
     return "sha256:" + hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
@@ -140,20 +147,26 @@ def _candidate_json(value: Any) -> str:
 
 def assemble_activation_bundle(profile_bytes: bytes, deployment: dict[str, Any], now: datetime) -> bytes:
     """Build a review candidate, never an approval, from actual operator-supplied evidence."""
+    document = _read_json(profile_bytes)
+    optional = {"registration_verification"} if isinstance(document, dict) and "registration_verification" in document else set()
     profile = _closed(
-        _read_json(profile_bytes),
-        {"authority", "binding_digests", "policies", "templates", "prerequisites"},
+        document,
+        {"authority", "binding_digests", "policies", "templates", "prerequisites"} | optional,
         "Activation assembly profile fields are closed",
     )
     derived = {"Environment", "ReleaseDigest", "ConfigurationDigest", "CatalogDigest", "Revoked"}
     authority_keys = AUTHORITY_FIELDS - derived
-    if isinstance(profile["authority"], dict) and "AllowProvisionalOnboarding" in profile["authority"]:
-        authority_keys |= {"AllowProvisionalOnboarding"}
+    if isinstance(profile["authority"], dict):
+        authority_keys |= OPTIONAL_PERMISSIONS & profile["authority"].keys()
     authority = _closed(profile["authority"], authority_keys, "Assembly authority must omit derived tuple fields")
     provider = deployment["whatsapp_provider"]
     try:
         configuration_digest = activation_configuration_digest(
-            provider["configuration_digest"], profile["binding_digests"], profile["policies"], profile["templates"]
+            provider["configuration_digest"],
+            profile["binding_digests"],
+            profile["policies"],
+            profile["templates"],
+            profile.get("registration_verification"),
         )
     except (TypeError, ValueError):
         raise ValueError("Provider bindings, policies and templates must contain valid metadata") from None
@@ -176,19 +189,45 @@ def assemble_activation_bundle(profile_bytes: bytes, deployment: dict[str, Any],
 
 
 def _validated_settings(bundle_bytes: bytes, deployment: dict[str, Any], now: datetime) -> dict[str, str]:
+    document = _read_json(bundle_bytes)
+    optional = {"registration_verification"} if isinstance(document, dict) and "registration_verification" in document else set()
     bundle = _closed(
-        _read_json(bundle_bytes),
-        {"schema", "registration_configuration_digest", "authority", "binding_digests", "policies", "templates", "prerequisites"},
+        document,
+        {"schema", "registration_configuration_digest", "authority", "binding_digests", "policies", "templates", "prerequisites"}
+        | optional,
         "Activation bundle fields are closed",
     )
     if bundle["schema"] != "waooaw.demo-whatsapp-activation/v1":
         raise ValueError("Unsupported activation bundle schema")
     authority_keys = AUTHORITY_FIELDS
-    if isinstance(bundle["authority"], dict) and "AllowProvisionalOnboarding" in bundle["authority"]:
-        authority_keys = AUTHORITY_FIELDS | {"AllowProvisionalOnboarding"}
+    if isinstance(bundle["authority"], dict):
+        authority_keys = AUTHORITY_FIELDS | (OPTIONAL_PERMISSIONS & bundle["authority"].keys())
     authority = _closed(bundle["authority"], authority_keys, "Activation authority fields are closed")
     if type(authority.get("AllowProvisionalOnboarding", False)) is not bool:
         raise ValueError("Provisional onboarding permission must be an explicit boolean")
+    if type(authority.get("AllowRegistrationVerification", False)) is not bool:
+        raise ValueError("Registration verification permission must be an explicit boolean")
+    if type(authority.get("AllowPublicAdmission", False)) is not bool:
+        raise ValueError("Public admission permission must be an explicit boolean")
+    if authority.get("AllowPublicAdmission", False) and not authority.get("AllowProvisionalOnboarding", False):
+        raise ValueError("Public admission requires explicit guest-session admission permission")
+    verification = None
+    if "registration_verification" in bundle:
+        verification = _closed(
+            bundle["registration_verification"],
+            {"TemplateId", "TemplateName", "Locale", "ApprovalReference"},
+            "Registration verification template fields are closed",
+        )
+        if (
+            authority.get("AllowRegistrationVerification") is not True
+            or not _match(verification["TemplateId"], r"[0-9]{1,32}")
+            or not _match(verification["TemplateName"], r"[a-z0-9_]{1,512}")
+            or not _match(verification["Locale"], r"en(?:_[A-Z]{2})?")
+            or not _match(verification["ApprovalReference"], REFERENCE)
+        ):
+            raise ValueError("Registration verification requires explicit permission and exact approved Authentication metadata")
+    elif authority.get("AllowRegistrationVerification") is True:
+        raise ValueError("Registration verification requires exact approved Authentication metadata")
     if authority["Environment"] != "demo" or authority["Revoked"] is not False:
         raise ValueError("Activation requires unrevoked Demo authority")
     if not all(_match(authority[key], REFERENCE) for key in REFERENCES):
@@ -244,6 +283,8 @@ def _validated_settings(bundle_bytes: bytes, deployment: dict[str, Any], now: da
         )
     ):
         raise ValueError("Activation differs from the exact registered deployment tuple")
+    if authority.get("AllowPublicAdmission", False) and WHATSAPP_PUBLIC_SUBJECT_KEY_NAME not in provider["secret_versions"]:
+        raise ValueError("Public admission requires a pinned sender pseudonymization key")
     if bundle["registration_configuration_digest"] != provider["configuration_digest"]:
         raise ValueError("Activation registration configuration differs from the deployed tuple")
     if not provider["verification_enabled"]:
@@ -289,7 +330,7 @@ def _validated_settings(bundle_bytes: bytes, deployment: dict[str, Any], now: da
         identities.add(identity)
 
     if authority["ConfigurationDigest"] != activation_configuration_digest(
-        provider["configuration_digest"], bindings, policies, templates
+        provider["configuration_digest"], bindings, policies, templates, verification
     ):
         raise ValueError("Activation configuration digest does not bind provider, policies and templates")
     settings = {
@@ -299,7 +340,17 @@ def _validated_settings(bundle_bytes: bytes, deployment: dict[str, Any], now: da
         "WhatsAppCapability__Revoked": "false",
         "Wc120Conversation__Enabled": "true",
         "Wc120Conversation__Environment": "demo",
+        "IdentityVerification__WhatsApp__Enabled": "true" if verification is not None else "false",
+        "WhatsAppCapability__Authority__AllowRegistrationVerification": "true" if verification is not None else "false",
+        "WhatsAppCapability__Authority__AllowProvisionalOnboarding": "false",
+        "WhatsAppCapability__Authority__AllowPublicAdmission": "false",
+        "WhatsAppCapability__PublicAdmissionIdentityKeyAvailable": (
+            "true" if WHATSAPP_PUBLIC_SUBJECT_KEY_NAME in provider["secret_versions"] else "false"
+        ),
     }
+    if verification is not None:
+        for key, value in verification.items():
+            settings[f"IdentityVerification__WhatsApp__{key}"] = value
     for section in ("WhatsApp", "Wc120Conversation"):
         for flag in ("CallbackAcceptanceEnabled", "DispatchEnabled"):
             settings[f"{section}__{flag}"] = "true"

@@ -8,6 +8,66 @@ namespace Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness;
 public sealed class ConversationContextProfileBoundaryTests
 {
     [Fact]
+    public async Task CanonicalHistoryMapsEachRetainedStateWithoutPromotingUnknownValues()
+    {
+        var context = await Wc120FitnessContext.CreateAsync();
+        var conversationId = await context.SeedConversationAsync();
+        var states = new[]
+        {
+            ("DELIVERED", "RUNNING", "RECORDED", "DELIVERED", "RUNNING", "RECORDED"),
+            ("READ", "COMPLETED", "BUFFERED_CE_UNAVAILABLE", "READ", "SUCCEEDED", "BUFFERED_CE_UNAVAILABLE"),
+            ("FAILED", "SUCCEEDED", "FAILED", "FAILED", "SUCCEEDED", "FAILED"),
+            ("REJECTED", "FAILED", "OTHER", "FAILED", "FAILED", "PENDING"),
+            ("EXPIRED", "CANCELLED", "OTHER", "EXPIRED", "CANCELLED", "PENDING"),
+            ("UNKNOWN", "STOPPED", "OTHER", "UNKNOWN", "STOPPED", "PENDING"),
+            ("SUBMITTED", "UNAVAILABLE", "OTHER", "SUBMITTED", "UNAVAILABLE", "PENDING"),
+            ("PROVIDER_ACCEPTED", "OTHER", "OTHER", "PROVIDER_ACCEPTED", "QUEUED", "PENDING"),
+            ("OTHER", "OTHER", "OTHER", "QUEUED", "QUEUED", "PENDING"),
+        };
+        await using (var db = context.Conversations.CreateDbContext())
+        {
+            for (var index = 0; index < states.Length; index++)
+            {
+                var (delivery, execution, evidence, _, _, _) = states[index];
+                db.Messages.Add(
+                    new ConversationMessage
+                    {
+                        Environment = context.Options.Environment,
+                        TenantId = context.TenantId,
+                        RelationshipId = context.RelationshipId,
+                        ConversationId = conversationId,
+                        Sequence = index + 1,
+                        SkillId = "INDUCTION",
+                        Channel = "WEB",
+                        ContentJson = "[]",
+                        DeliveryState = delivery,
+                        ProcessingState = execution,
+                        EvidenceState = evidence,
+                    }
+                );
+            }
+            await db.SaveChangesAsync();
+        }
+
+        var result = await context.Profiles.GetCanonicalAsync(
+            context.TenantId,
+            context.ParticipantId,
+            context.RelationshipId,
+            0,
+            100,
+            CancellationToken.None
+        );
+        Assert.Equal(states.Length, result.Messages.Count);
+        for (var index = 0; index < states.Length; index++)
+        {
+            var (_, _, _, delivery, execution, evidence) = states[index];
+            Assert.Equal(delivery, result.Messages[index].States.Delivery);
+            Assert.Equal(execution, result.Messages[index].States.Execution);
+            Assert.Equal(evidence, result.Messages[index].States.ConstitutionalEvidence);
+        }
+    }
+
+    [Fact]
     public async Task ContextCorrectionsAndDataRightsEnforceVersionAndIdempotency()
     {
         var context = await Wc120FitnessContext.CreateAsync();

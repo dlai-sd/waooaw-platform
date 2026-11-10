@@ -2,6 +2,8 @@
 // constitutional_basis: C-001, C-005, C-023, C-026, C-059, C-063, C-083, C-084, C-085
 
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,6 +13,22 @@ using Waooaw.BusinessPlatform.Services;
 namespace Waooaw.BusinessPlatform.Controllers;
 
 public sealed record RequestRelationshipEvidenceExport(string SchemaVersion, string Purpose);
+
+/// <summary>Explicitly approves a verified WhatsApp identity for one relationship.</summary>
+public sealed record AttachWhatsAppChannelRequest(
+    Guid IdentityAccountLinkId,
+    bool ConsentToRelationshipChannel
+);
+
+/// <summary>Confirms the authenticated WhatsApp channel binding for a relationship.</summary>
+public sealed record AttachWhatsAppChannelResponse(
+    string SchemaVersion,
+    Guid RelationshipId,
+    Guid BindingId,
+    string Channel,
+    string Status,
+    string Assurance
+);
 
 public sealed record RelationshipOnboardRequest(
     string SchemaVersion,
@@ -30,7 +48,10 @@ public sealed class RelationshipWorkspaceController(
     RelationshipEvidenceService? evidence = null,
     RelationshipConfigurationService? configuration = null,
     IOperationalMandateResolver? mandateResolver = null,
-    PerformanceReviewService? performanceReviews = null
+    PerformanceReviewService? performanceReviews = null,
+    IdentityService? identity = null,
+    CustomerIdentityJourneyService? customerJourney = null,
+    WhatsAppJourneyService? whatsAppJourney = null
 ) : ControllerBase
 {
     private static readonly string[] SectionTypes =
@@ -42,6 +63,96 @@ public sealed class RelationshipWorkspaceController(
         "USAGE_BUDGET",
         "RIGHTS_CONTROLS",
     ];
+
+    [HttpPost("channels/whatsapp")]
+    public async Task<IActionResult> AttachWhatsAppChannelAsync(
+        Guid relationshipId,
+        [FromBody] AttachWhatsAppChannelRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+        if (identity is null || customerJourney is null || whatsAppJourney is null)
+            return WorkspaceProblem(503, "WHATSAPP_CHANNEL_BINDING_UNAVAILABLE");
+        if (!HasFreshAal3())
+            return WorkspaceProblem(403, "IDENTITY_STEP_UP_REQUIRED");
+        if (request.IdentityAccountLinkId == Guid.Empty || !request.ConsentToRelationshipChannel)
+            return WorkspaceProblem(400, "WHATSAPP_CHANNEL_CONSENT_REQUIRED");
+
+        var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
+        if (relationship is null)
+            return NotFoundProblem();
+        if (
+            HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]
+                is not CustomerWorkspaceMembership membership
+            || membership.TenantId != relationship.TenantId
+            || !TryGetParticipantId(out var participantId)
+            || !long.TryParse(User.FindFirstValue("auth_time"), out var authTime)
+        )
+            return WorkspaceProblem(403, "IDENTITY_ACTION_DENIED");
+
+        var actor = customerJourney.ValidateActor(User);
+        try
+        {
+            var phoneSubjectHash = await identity.GetConfirmedPhoneSubjectHashAsync(
+                request.IdentityAccountLinkId,
+                actor.Subject,
+                relationship.TenantId,
+                cancellationToken,
+                actor,
+                membership
+            );
+            var resolution = await whatsAppJourney.AttachLinkedPhoneAsync(
+                relationship.TenantId,
+                relationshipId,
+                request.IdentityAccountLinkId,
+                phoneSubjectHash,
+                request.ConsentToRelationshipChannel,
+                new PortalPhoneAttachProof(
+                    participantId,
+                    "TIER_4_PORTAL_FRESH",
+                    DateTimeOffset.FromUnixTimeSeconds(authTime),
+                    ChannelBindingCorrelationId(
+                        relationshipId,
+                        request.IdentityAccountLinkId,
+                        participantId
+                    ),
+                    actor,
+                    membership
+                ),
+                cancellationToken
+            );
+            return Ok(
+                new AttachWhatsAppChannelResponse(
+                    "1.0",
+                    resolution.RelationshipId,
+                    resolution.BindingId,
+                    "WHATSAPP",
+                    "ACTIVE",
+                    resolution.AuthenticationAssurance
+                )
+            );
+        }
+        catch (IdentityResourceNotFoundException)
+        {
+            return WorkspaceProblem(404, "IDENTITY_RESOURCE_NOT_ACCESSIBLE");
+        }
+        catch (IdentityActionDeniedException)
+        {
+            return WorkspaceProblem(404, "IDENTITY_RESOURCE_NOT_ACCESSIBLE");
+        }
+        catch (ConstitutionalActionDeniedException)
+        {
+            return WorkspaceProblem(403, "IDENTITY_ACTION_DENIED");
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFoundProblem();
+        }
+        catch (WhatsAppChannelBindingUnavailableException)
+        {
+            return WorkspaceProblem(503, "WHATSAPP_CHANNEL_BINDING_UNAVAILABLE");
+        }
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetWorkspaceAsync(
@@ -1392,6 +1503,20 @@ public sealed class RelationshipWorkspaceController(
             correlationId,
             relationship.AgentInstanceId
         );
+    }
+
+    private static Guid ChannelBindingCorrelationId(
+        Guid relationshipId,
+        Guid identityAccountLinkId,
+        Guid participantId
+    )
+    {
+        var digest = SHA256.HashData(
+            Encoding.UTF8.GetBytes(
+                $"wc134:whatsapp-channel:{relationshipId:D}:{identityAccountLinkId:D}:{participantId:D}"
+            )
+        );
+        return new Guid(digest.AsSpan(0, 16));
     }
 
     private bool TryGetEvidenceContext(out Guid tenantId, out Guid participantId)

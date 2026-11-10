@@ -332,9 +332,9 @@ def test_actual_credential_inventory_shell_respects_capability_and_validity(
         "name = args[args.index('--name') + 1]\n"
         "with open(os.environ['AZ_CALLS'], 'a') as log: log.write(json.dumps(args) + '\\n')\n"
         "mode = os.environ['INVENTORY_MODE']\n"
-        "if name.startswith('whatsapp-'):\n"
+        "if name.startswith('whatsapp-') and name != 'whatsapp-phone-subject-hmac':\n"
         "    if name == 'whatsapp-media-authority': sys.exit(99)\n"
-        "    assert args[args.index('--version') + 1] == 'a' * 32\n"
+        "    assert '--version' in args and args[args.index('--version') + 1] == 'a' * 32, (name, args)\n"
         "    if mode in ('missing', 'forbidden'):\n"
         "        print('SecretNotFound' if mode == 'missing' else 'ForbiddenByRbac', file=sys.stderr)\n"
         "        sys.exit(1)\n"
@@ -373,13 +373,15 @@ def test_actual_credential_inventory_shell_respects_capability_and_validity(
     calls = [json.loads(line) for line in (tmp_path / "calls.jsonl").read_text().splitlines()]
     names = {args[args.index("--name") + 1] for args in calls}
     assert "whatsapp-media-authority" not in names
+    provider_names = {name for name in names if name.startswith("whatsapp-") and name != "whatsapp-phone-subject-hmac"}
     if mode == "disabled":
-        assert not any(name.startswith("whatsapp-") for name in names)
+        assert not provider_names
         assert "razorpay-test-key-secret" in names
     elif expected_success:
-        assert {name for name in names if name.startswith("whatsapp-")} == set(
+        assert provider_names == set(
             configuration["whatsapp_provider"]["secret_versions"]
         )
+        assert "whatsapp-phone-subject-hmac" in names
         from test_goal006_deployment_inputs import manifest
 
         (tmp_path / "manifest.json").write_text(json.dumps(manifest()))
@@ -419,9 +421,9 @@ def test_actual_credential_inventory_shell_respects_capability_and_validity(
         ("conflicting-id-map", "differ from the trusted foundation"),
         ("uat", "Demo-only"),
         ("prod", "Demo-only"),
-        ("latest", "exactly four pinned"),
-        ("media", "exactly four pinned"),
-        ("missing-version", "exactly four pinned"),
+        ("latest", "four pinned"),
+        ("media", "four pinned"),
+        ("missing-version", "four pinned"),
         ("host", "exact dedicated"),
     ],
 )
@@ -761,6 +763,7 @@ def test_optional_whatsapp_gates_do_not_make_baseline_ready_or_require_disabled_
         "whatsapp-verify-token",
         "whatsapp-app-secret",
         "whatsapp-outbound-authority",
+        "whatsapp-phone-subject-hmac",
         "whatsapp-media-authority",
     }
     evidence = {

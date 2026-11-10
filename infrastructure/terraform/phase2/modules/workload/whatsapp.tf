@@ -17,10 +17,16 @@ variable "whatsapp_provider" {
       var.environment == "demo" &&
       can(regex("^whatsapp-demo[.]([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?[.])+[a-z]{2,63}$", var.whatsapp_provider.callback_host)) &&
       can(regex("^[A-Za-z0-9][A-Za-z0-9:._/-]{0,255}$", var.whatsapp_provider.authority_reference)) &&
-      toset(keys(var.whatsapp_provider.secret_versions)) == toset([
-        "whatsapp-provider-binding", "whatsapp-verify-token",
-        "whatsapp-app-secret", "whatsapp-outbound-authority"
-      ]) &&
+      (
+        toset(keys(var.whatsapp_provider.secret_versions)) == toset([
+          "whatsapp-provider-binding", "whatsapp-verify-token",
+          "whatsapp-app-secret", "whatsapp-outbound-authority"
+        ]) || toset(keys(var.whatsapp_provider.secret_versions)) == toset([
+          "whatsapp-provider-binding", "whatsapp-verify-token",
+          "whatsapp-app-secret", "whatsapp-outbound-authority",
+          "whatsapp-phone-subject-hmac"
+        ])
+      ) &&
       alltrue([for version in values(var.whatsapp_provider.secret_versions) : can(regex("^[a-f0-9]{32}$", version))]) &&
       alltrue([for digest in [
         var.whatsapp_provider.release_digest, var.whatsapp_provider.configuration_digest,
@@ -28,7 +34,7 @@ variable "whatsapp_provider" {
       ] : can(regex("^sha256:[a-f0-9]{64}$", digest))]) &&
       endswith(var.image_digests["business-platform"], "@${var.whatsapp_provider.release_digest}")
     )
-    error_message = "WhatsApp registration requires a Demo-only dedicated hostname, authority reference, four exact secret versions and immutable matching image/configuration/catalog digests."
+    error_message = "WhatsApp registration requires a Demo-only dedicated hostname, authority reference, four exact provider secret versions, and an optional pinned sender pseudonymization/routing-protection key with immutable matching image/configuration/catalog digests."
   }
 }
 
@@ -41,14 +47,20 @@ locals {
     WhatsAppProvider__VerifyTokenVersion         = var.whatsapp_provider.secret_versions["whatsapp-verify-token"]
     WhatsAppProvider__AppSecretVersion           = var.whatsapp_provider.secret_versions["whatsapp-app-secret"]
     WhatsAppProvider__OutboundAuthorityVersion   = var.whatsapp_provider.secret_versions["whatsapp-outbound-authority"]
+    WhatsAppProvider__PhoneSubjectKeyVersion     = lookup(var.whatsapp_provider.secret_versions, "whatsapp-phone-subject-hmac", "")
     WhatsApp__CallbackHost                       = var.whatsapp_provider.callback_host
     WhatsApp__VerificationEnabled                = tostring(var.whatsapp_provider.verification_enabled)
     WhatsApp__CallbackAcceptanceEnabled          = "false"
     WhatsApp__DispatchEnabled                    = "false"
     Wc120Conversation__CallbackAcceptanceEnabled = "false"
     Wc120Conversation__DispatchEnabled           = "false"
+    IdentityVerification__WhatsApp__Enabled      = "false"
+    WhatsAppCapability__Authority__AllowRegistrationVerification = "false"
+    WhatsAppCapability__Authority__AllowProvisionalOnboarding = "false"
+    WhatsAppCapability__Authority__AllowPublicAdmission = "false"
     WhatsAppCapability__Configured               = "true"
     WhatsAppCapability__ProviderAvailable        = "false"
+    WhatsAppCapability__PublicAdmissionIdentityKeyAvailable = tostring(contains(keys(var.whatsapp_provider.secret_versions), "whatsapp-phone-subject-hmac"))
     WhatsAppCapability__Environment              = "demo"
     WhatsAppCapability__ReleaseDigest            = var.whatsapp_provider.release_digest
     WhatsAppCapability__ConfigurationDigest      = var.whatsapp_provider.configuration_digest

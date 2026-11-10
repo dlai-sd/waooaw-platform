@@ -8,6 +8,7 @@ COPY src/business-platform/Clients/Generated/EmploymentDomainAdapter/src/Waooaw.
 RUN dotnet restore --runtime linux-musl-x64
 COPY src/digital-marketing-agent/integration/business-platform/ /digital-marketing-agent/integration/business-platform/
 COPY src/business-platform/ .
+COPY src/shared/InferenceWorkloadValidator.cs /shared/InferenceWorkloadValidator.cs
 RUN dotnet publish --configuration Release --runtime linux-musl-x64 \
     --self-contained false --no-restore --output /app/publish
 

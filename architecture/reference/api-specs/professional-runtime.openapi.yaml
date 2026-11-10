@@ -254,7 +254,8 @@ paths:
         Internal-only operation called by Business Platform after it has authenticated the
         participant, authorized the relationship, persisted the canonical customer message,
         and accepted idempotent responsibility. PR derives tenant and relationship context
-        from the signed BP service assertion; neither is accepted from the body.
+        from the ADR-046 signed BP delegated envelope and verified mutual-TLS workload peer;
+        neither is accepted as caller-provided authority from the body.
 
         A 202 response means Temporal accepted durable execution responsibility. PR does not
         dispatch to AI Runtime while Emergency Stop is active, Decision Space is stale, or
@@ -262,7 +263,8 @@ paths:
       operationId: startConversationExecution
       x-internal: true
       security:
-        - ServiceBearerAuth: []
+        - WorkloadMutualTLS: []
+          DelegatedContextAuth: []
       parameters:
         - $ref: "#/components/parameters/ConversationId"
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -293,6 +295,47 @@ paths:
         "423": { $ref: "#/components/responses/ExecutionStopped" }
         "503": { $ref: "#/components/responses/ExecutionUnavailable" }
 
+  /api/v1/internal/conversations/{conversationId}/batch-executions:
+    post:
+      tags: [Conversation Execution]
+      summary: Start or replay one frozen ordered conversation batch
+      description: |
+        Internal authenticated command for a BP-frozen batch. PR validates every original
+        mandate and evidence binding, exact ordering and digest, common current PR-owned work
+        item, Decision Space and Stop before accepting one durable Temporal execution.
+      operationId: startConversationBatchExecution
+      x-internal: true
+      security:
+        - WorkloadMutualTLS: []
+          DelegatedContextAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ConversationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartBatchConversationExecutionRequestV1"
+      responses:
+        "202":
+          description: Durable batch execution accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BatchExecutionReceiptV1" }
+        "200":
+          description: Exact durable batch execution replayed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BatchExecutionReceiptV1" }
+        "400": { $ref: "#/components/responses/ExecutionInvalidRequest" }
+        "401": { $ref: "#/components/responses/ExecutionUnauthorized" }
+        "404": { $ref: "#/components/responses/ExecutionNotFound" }
+        "409": { $ref: "#/components/responses/ExecutionConflict" }
+        "423": { $ref: "#/components/responses/ExecutionStopped" }
+        "503": { $ref: "#/components/responses/ExecutionUnavailable" }
+
   /api/v1/internal/conversations/{conversationId}/executions/{executionId}/stream:
     get:
       tags: [Conversation Execution]
@@ -304,7 +347,8 @@ paths:
       operationId: streamConversationExecution
       x-internal: true
       security:
-        - ServiceBearerAuth: []
+        - WorkloadMutualTLS: []
+          DelegatedContextAuth: []
       parameters:
         - $ref: "#/components/parameters/ConversationId"
         - $ref: "#/components/parameters/ProfessionalExecutionId"
@@ -337,7 +381,8 @@ paths:
       operationId: cancelConversationExecutionInternal
       x-internal: true
       security:
-        - ServiceBearerAuth: []
+        - WorkloadMutualTLS: []
+          DelegatedContextAuth: []
       parameters:
         - $ref: "#/components/parameters/ConversationId"
         - $ref: "#/components/parameters/ProfessionalExecutionId"
@@ -357,6 +402,47 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProfessionalExecutionV1"
+        "401": { $ref: "#/components/responses/ExecutionUnauthorized" }
+        "404": { $ref: "#/components/responses/ExecutionNotFound" }
+        "409": { $ref: "#/components/responses/ExecutionConflict" }
+        "423": { $ref: "#/components/responses/ExecutionStopped" }
+        "503": { $ref: "#/components/responses/ExecutionUnavailable" }
+
+  /api/v1/internal/conversations/{conversationId}/executions/{executionId}/reconcile:
+    post:
+      tags: [Conversation Execution]
+      summary: Read an existing terminal result under fresh owner permission
+      description: |
+        BP-only, read-only recovery. Fresh OWNER/MANAGER permission and CE evidence are
+        bound to a signed READ_EXISTING_RUNTIME_RESULT envelope and original source digest.
+        One retained Temporal snapshot is read. No Start, signal, cancellation, inference
+        or provider dispatch is allowed. Missing/malformed results are unavailable;
+        nonterminal results are UNKNOWN, never fabricated failure or success.
+      operationId: reconcileConversationExecutionInternal
+      x-internal: true
+      security:
+        - WorkloadMutualTLS: []
+          DelegatedContextAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ConversationId"
+        - $ref: "#/components/parameters/ProfessionalExecutionId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReconcileConversationExecutionRequestV1" }
+      responses:
+        "200":
+          description: Bound terminal result or explicit unknown outcome
+          headers:
+            Cache-Control:
+              schema: { type: string, const: "no-store" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConversationExecutionReconciliationV1" }
+        "400": { $ref: "#/components/responses/ExecutionInvalidRequest" }
         "401": { $ref: "#/components/responses/ExecutionUnauthorized" }
         "404": { $ref: "#/components/responses/ExecutionNotFound" }
         "409": { $ref: "#/components/responses/ExecutionConflict" }
@@ -554,6 +640,14 @@ paths:
 components:
 
   securitySchemes:
+    DelegatedContextAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: ADR-046 signed delegated context
+      description: Single-use BP workload envelope bound to the mutual-TLS peer, audience, operation, canonical body digest, actor, tenant, relationship and original execution context.
+    WorkloadMutualTLS:
+      type: mutualTLS
+      description: Environment-scoped BP workload certificate; exact registered SPIFFE identity required.
     BearerAuth:
       type: http
       scheme: bearer
@@ -681,7 +775,7 @@ components:
         application/problem+json:
           schema: { $ref: "#/components/schemas/ExecutionProblemDetail" }
     ExecutionUnauthorized:
-      description: BP service assertion is missing, invalid, expired, or lacks required scoped claims
+      description: Mutual-TLS BP workload identity or bound delegated context is missing, invalid, expired or replayed
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/ExecutionProblemDetail" }
@@ -712,6 +806,52 @@ components:
           schema: { $ref: "#/components/schemas/ExecutionProblemDetail" }
 
   schemas:
+    ReconcileConversationExecutionRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, originalMessageId, originalSourceDigest, afterSequence, reconciliationAuthorityId, permissionExpiresAt, expectedProjectionVersion]
+      properties:
+        schemaVersion: { type: string, const: "1.0" }
+        originalMessageId: { type: string, format: uuid }
+        originalSourceDigest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        afterSequence: { type: integer, minimum: 0 }
+        reconciliationAuthorityId: { type: string, format: uuid }
+        permissionExpiresAt: { type: string, format: date-time }
+        expectedProjectionVersion: { type: integer, minimum: 0 }
+
+    ConversationExecutionReconciliationV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, conversationId, executionId, originalMessageId, originalSourceDigest, reconciliationAuthorityId, state, events, nextAction]
+      properties:
+        schemaVersion: { type: string, const: "1.0" }
+        conversationId: { type: string, format: uuid }
+        executionId: { type: string, format: uuid }
+        originalMessageId: { type: string, format: uuid }
+        originalSourceDigest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        reconciliationAuthorityId: { type: string, format: uuid }
+        state: { type: string, enum: [COMPLETED, FAILED, CANCELLED, UNKNOWN] }
+        events:
+          type: array
+          maxItems: 4096
+          items: { $ref: "#/components/schemas/ProfessionalExecutionEventV1" }
+        originalRequestDigest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        resultDigest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        nextAction: { type: string, enum: [RECONCILE_CANONICAL_PROJECTION, OPERATOR_RECONCILIATION_REQUIRED] }
+      oneOf:
+        - properties:
+            state: { const: UNKNOWN }
+            events: { maxItems: 0 }
+            nextAction: { const: OPERATOR_RECONCILIATION_REQUIRED }
+          not:
+            anyOf:
+              - required: [resultDigest]
+              - required: [originalRequestDigest]
+        - required: [originalRequestDigest, resultDigest]
+          properties:
+            state: { enum: [COMPLETED, FAILED, CANCELLED] }
+            nextAction: { const: RECONCILE_CANONICAL_PROJECTION }
+
     StartVoiceOrchestrationRequestV1:
       type: object
       additionalProperties: false
@@ -821,6 +961,39 @@ components:
         constitutionalEvidenceRef: { type: string, minLength: 1 }
         billingReservationRef: { type: [string, 'null'] }
         billingAttributionRef: { type: [string, 'null'] }
+        conversationOperation: { $ref: "#/components/schemas/ConversationOperationBindingV1" }
+
+    ConversationInferencePolicyReferenceV1:
+      type: object
+      additionalProperties: false
+      required: [ref, version, digest]
+      properties:
+        ref: { type: string, minLength: 1, maxLength: 200 }
+        version: { type: string, minLength: 1, maxLength: 64 }
+        digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+
+    ConversationOperationBindingV1:
+      type: object
+      additionalProperties: false
+      required: [kind, governedAction, inputSchemaDigest, outputSchemaDigest, promptPolicy, modelPolicy]
+      properties:
+        kind: { type: string, enum: [PROFESSIONAL_RESPONSE, EMPLOYMENT_CONTRIBUTION_INTERPRETATION] }
+        governedAction: { type: string, minLength: 1, maxLength: 200 }
+        inputSchemaDigest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        outputSchemaDigest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        promptPolicy: { $ref: "#/components/schemas/ConversationInferencePolicyReferenceV1" }
+        modelPolicy: { $ref: "#/components/schemas/ConversationInferencePolicyReferenceV1" }
+        patchType:
+          type: string
+          enum: [INDUCTION_CONTEXT, GOAL, PLAN, CALENDAR, DEPENDENCY, OPERATING_CYCLE, CORRECTIVE_PROPOSAL]
+      if:
+        properties:
+          kind: { const: EMPLOYMENT_CONTRIBUTION_INTERPRETATION }
+      then:
+        required: [patchType]
+      else:
+        not:
+          required: [patchType]
 
     StartConversationExecutionRequestV1:
       type: object
@@ -834,6 +1007,65 @@ components:
         operationalMandate: { $ref: "#/components/schemas/OperationalMandateV1" }
         content: { $ref: "#/components/schemas/ConversationExecutionTextV1" }
         activeGoalContextId: { type: string, format: uuid }
+
+    BatchExecutionSourceV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, messageId, executionId, sequence, workItemId, workItemRevision, workItemInvocationId, idempotencyKey, evidenceId, text, language, operationalMandate]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationExecutionSchemaVersion" }
+        messageId: { type: string, format: uuid, description: BP canonical source message ID }
+        executionId: { type: string, format: uuid, description: Original single-source execution identity }
+        sequence: { type: integer, minimum: 1, description: Canonical conversation sequence; sources must be contiguous and ordered }
+        workItemId: { type: string, format: uuid, description: PR-owned task/work-item identity for this source }
+        workItemRevision: { type: integer, minimum: 1, description: PR-owned work-item revision verified for this source }
+        workItemInvocationId: { type: string, format: uuid, description: Immutable PR invocation binding carried by this source }
+        idempotencyKey: { type: string, format: uuid }
+        evidenceId: { type: string, format: uuid, description: Original constitutional evidence identity }
+        text: { type: string, minLength: 1, maxLength: 2000, description: Canonical admitted source text; aggregate UTF-16 bound is validated by the model }
+        language: { type: string, minLength: 2, maxLength: 35 }
+        operationalMandate: { $ref: "#/components/schemas/OperationalMandateV1" }
+
+    StartBatchConversationExecutionRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, batchId, decisionSpaceVersion, locale, sourceListDigest, sources, content]
+      description: |
+        Versioned multi-source contract. This schema does not authorize dispatch by itself.
+        Every source must identify the same PR-owned work item and revision; the owner must verify
+        that binding against current work-item state before dispatch.
+        BP must revalidate every source and exact PR-owned work-item association before dispatch.
+        The existing single-message execution endpoint and request remain unchanged.
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationExecutionSchemaVersion" }
+        batchId: { type: string, format: uuid, description: Stable aggregate execution identity }
+        decisionSpaceVersion: { type: integer, minimum: 1 }
+        locale: { type: string, minLength: 2, maxLength: 35 }
+        sourceListDigest: { type: string, pattern: '^sha256:[0-9a-f]{64}$', description: Digest of exact ordered source records including mandate, task identity and canonical text }
+        sources:
+          type: array
+          minItems: 2
+          maxItems: 3
+          items: { $ref: "#/components/schemas/BatchExecutionSourceV1" }
+        content:
+          allOf:
+            - $ref: "#/components/schemas/ConversationExecutionTextV1"
+          description: Exact newline-joined ordered source text; maximum 2,000 UTF-16 code units.
+
+    BatchExecutionReceiptV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, batchId, executionId, conversationId, sourceListDigest, requestDigest, state, replayed, acceptedAt]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationExecutionSchemaVersion" }
+        batchId: { type: string, format: uuid }
+        executionId: { type: string, format: uuid }
+        conversationId: { type: string, format: uuid }
+        sourceListDigest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        requestDigest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        state: { type: string, const: ACCEPTED }
+        replayed: { type: boolean }
+        acceptedAt: { type: string, format: date-time }
 
     ProfessionalExecutionState:
       type: string
@@ -861,7 +1093,7 @@ components:
 
     ProfessionalExecutionEventType:
       type: string
-      enum: [execution.accepted, processing.started, response.delta, card.proposed, evidence.pending, evidence.recorded, execution.completed, execution.failed, execution.cancelled, execution.stopped, reconciliation.required, heartbeat]
+      enum: [execution.accepted, processing.started, response.delta, response.system, card.proposed, evidence.pending, evidence.recorded, execution.completed, execution.failed, execution.cancelled, execution.stopped, reconciliation.required, heartbeat]
 
     ProfessionalDeltaV1:
       type: object
@@ -920,6 +1152,15 @@ components:
       properties:
         serverTime: { type: string, format: date-time }
 
+    ProfessionalSystemResponseV1:
+      type: object
+      additionalProperties: false
+      description: Explicit non-professional limitation; never evidence of completed professional work
+      required: [text, code]
+      properties:
+        text: { type: string, minLength: 1, maxLength: 8000 }
+        code: { type: string, enum: [MODEL_UNAVAILABLE, OPERATION_UNSUPPORTED, MATERIAL_UNCERTAINTY, SEMANTIC_PATH_UNREPRESENTABLE, POLICY_REJECTED, INTERNAL_FAILURE] }
+
     ProfessionalExecutionEventV1:
       type: object
       additionalProperties: false
@@ -936,6 +1177,7 @@ components:
         data:
           oneOf:
             - $ref: "#/components/schemas/ProfessionalDeltaV1"
+            - $ref: "#/components/schemas/ProfessionalSystemResponseV1"
             - $ref: "#/components/schemas/ProfessionalCardProposalV1"
             - $ref: "#/components/schemas/ProfessionalEvidenceEventV1"
             - $ref: "#/components/schemas/ProfessionalTerminalEventV1"

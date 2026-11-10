@@ -17,13 +17,13 @@ accepted_sources:
   adr/ADR-003-jwt-claims-multi-tenancy.md: f8c46224671a85269c246e742ee110036af36ffe2e02f229590894c796d2e2f2
   adr/ADR-008-keycloak-identity-broker.md: 63605ab58a568c3f3746247f0a8b661487a3dfd468938e18cdeb828959483593
   adr/ADR-017-web-application-framework.md: 96bb405194dca4c4e17f8b9255b507b2ac6ee0e82d935cdae6e369648e1fd4ab
-  architecture/reference/api-specs/business-platform.openapi.yaml: 2c612884b15d5fb5a6b1c9dee6c88d20848512fbb87aa14f38640ec5d535e2a7 # gitleaks:allow - public API contract SHA-256
+  architecture/reference/api-specs/business-platform.openapi.yaml: f95df86ca8f40148cffd85afce0cf754c09f48df6a8835f7275946140db90a2b # gitleaks:allow - public API contract SHA-256
   architecture/reference/components/authentication-authorization-capacity-profile.v1.yaml: 71e103de28dd94708f07afcd1b8b802f76c3a8566c4f78a8b953f659fcc3163d
   infrastructure/environment-readiness/environment-manifest.schema.json: e608ba71aa90d021b50903e1811c7f87876bc3b235b8bf0a4b0d1b4f2c986fb6
   infrastructure/identity-config/environments/demo.json: 9e2d4dfacf5f1e6c2a542299a942b0f8355afe6ed90d403c546fff4025b95f0d
   infrastructure/identity-config/environments/uat.json: a5f45f6d25972d3667023d2ee9355ff110adebf0e209c0507489b812512cb3c3
   infrastructure/container-apps/scaling-rules.yaml: 333aae7882b1a4ed04a7ee7b6f917e09585571f68a81ed41b97bf0bacaaf2b11
-  infrastructure/environment-readiness/secret-catalog.schema.json: 22215fe3704c0ad461b5ce1e70994e402bb944fc0c0a1ad6f5c011354da74736 # gitleaks:allow - public schema SHA-256
+  infrastructure/environment-readiness/secret-catalog.schema.json: e46cc68c63773ef922c188445dea3e0b024ff6c86c37863bdfc6c7ebaa5e7bc9 # gitleaks:allow - public schema SHA-256
 
 requirement_binding:
   ledger: work-contracts/WC-123-requirements.yaml

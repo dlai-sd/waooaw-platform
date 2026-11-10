@@ -261,7 +261,21 @@ CREATE POLICY actor_scope ON identity.idempotency_ledger TO business_app
 DROP POLICY IF EXISTS tenant_isolation ON business.organisations;
 DROP POLICY IF EXISTS resolver_actor_scope ON business.organisations;
 CREATE POLICY resolver_actor_scope ON business.organisations FOR SELECT TO identity_resolver_owner
-    USING (EXISTS (SELECT 1 FROM identity.accounts AS account WHERE account.initial_tenant_id = organisations.tenant_id));
+    USING (
+        identity_managed
+        AND identity_status = 'ACTIVE'
+        AND (
+            (
+                NULLIF(pg_catalog.current_setting('app.identity_issuer', true), '') IS NULL
+                AND NULLIF(pg_catalog.current_setting('app.identity_subject', true), '') IS NULL
+            )
+            OR EXISTS (
+                SELECT 1
+                FROM identity.accounts AS account
+                WHERE account.initial_tenant_id = organisations.tenant_id
+            )
+        )
+    );
 DROP POLICY IF EXISTS bp_select ON business.organisations;
 CREATE POLICY bp_select ON business.organisations FOR SELECT TO business_app USING (true);
 DROP POLICY IF EXISTS bp_insert ON business.organisations;
@@ -348,6 +362,24 @@ $guard$;
 CREATE OR REPLACE TRIGGER guard_registration_identity BEFORE INSERT OR UPDATE ON identity.registrations
     FOR EACH ROW EXECUTE FUNCTION identity.guard_registration_identity();
 
+CREATE OR REPLACE FUNCTION identity.is_active_managed_organisation(target_tenant uuid)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = pg_catalog
+SET row_security = on
+AS $organisation$
+    SELECT EXISTS (
+        SELECT 1
+        FROM business.organisations AS organisation
+        WHERE organisation.tenant_id = target_tenant
+          AND organisation.identity_managed
+          AND organisation.identity_status = 'ACTIVE'
+    );
+$organisation$;
+ALTER FUNCTION identity.is_active_managed_organisation(uuid) OWNER TO identity_resolver_owner;
+REVOKE ALL ON FUNCTION identity.is_active_managed_organisation(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION identity.is_active_managed_organisation(uuid) TO business_app;
+
 CREATE OR REPLACE FUNCTION identity.assert_completed_cohort() RETURNS trigger
 LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog AS $cohort$
 DECLARE
@@ -368,17 +400,27 @@ BEGIN
     IF registration_row.state <> 'Completed' THEN
         RAISE EXCEPTION 'completion invariant failed' USING ERRCODE = '23514';
     END IF;
-    SELECT account.origin_registration_id, actor.verified_at, actor.auth_time INTO STRICT cohort
+    SELECT account.origin_registration_id, actor.verified_at, actor.auth_time INTO cohort
         FROM identity.accounts AS account
         JOIN identity.actor_bindings AS actor ON actor.account_id = account.account_id
         JOIN identity.login_methods AS login ON login.login_method_id = actor.login_method_id AND login.account_id = account.account_id
         JOIN identity.memberships AS membership ON membership.account_id = account.account_id AND membership.tenant_id = account.initial_tenant_id
-        JOIN business.organisations AS organisation ON organisation.tenant_id = account.initial_tenant_id
         WHERE account.account_id = registration_row.account_id AND actor.actor_binding_id = registration_row.actor_binding_id
           AND actor.actor_issuer = registration_row.actor_issuer COLLATE "C" AND actor.actor_subject = registration_row.actor_subject COLLATE "C"
           AND actor.status = 'ACTIVE' AND login.status = 'ACTIVE' AND account.status = 'ACTIVE'
-          AND organisation.identity_managed AND organisation.id = organisation.tenant_id AND organisation.identity_status = 'ACTIVE'
+          AND identity.is_active_managed_organisation(account.initial_tenant_id)
           AND membership.status = 'ACTIVE' AND membership.roles = ARRAY['OWNER']::text[];
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'completion cohort missing (account=%, actor=%, login=%, membership=%, organisation=%)',
+            EXISTS (SELECT 1 FROM identity.accounts WHERE account_id = registration_row.account_id),
+            EXISTS (SELECT 1 FROM identity.actor_bindings WHERE actor_binding_id = registration_row.actor_binding_id),
+            EXISTS (SELECT 1 FROM identity.login_methods WHERE account_id = registration_row.account_id),
+            EXISTS (SELECT 1 FROM identity.memberships WHERE account_id = registration_row.account_id),
+            identity.is_active_managed_organisation((
+                SELECT initial_tenant_id FROM identity.accounts WHERE account_id = registration_row.account_id
+            ))
+            USING ERRCODE = '23514';
+    END IF;
     SELECT registration.* INTO STRICT root_row FROM identity.registrations AS registration
         WHERE registration.registration_id = cohort.origin_registration_id;
     IF root_row.state <> 'Completed' OR root_row.origin_registration_id IS DISTINCT FROM root_row.registration_id
@@ -439,5 +481,6 @@ CREATE CONSTRAINT TRIGGER registration_completed_cohort AFTER INSERT OR UPDATE O
 DROP TRIGGER IF EXISTS replay_completed_cohort ON identity.idempotency_ledger;
 CREATE CONSTRAINT TRIGGER replay_completed_cohort AFTER INSERT ON identity.idempotency_ledger DEFERRABLE INITIALLY DEFERRED
     FOR EACH ROW EXECUTE FUNCTION identity.assert_completed_cohort();
-REVOKE ALL ON FUNCTION identity.guard_registration_identity(), identity.assert_completed_cohort() FROM PUBLIC;
+REVOKE ALL ON FUNCTION identity.guard_registration_identity(), identity.assert_completed_cohort(),
+    identity.is_active_managed_organisation(uuid) FROM PUBLIC;
 COMMIT;

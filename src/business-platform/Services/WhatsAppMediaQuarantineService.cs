@@ -231,13 +231,26 @@ public sealed class WhatsAppMediaQuarantineService(
     )
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+        if (db.Database.IsNpgsql())
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT media_id FROM business.whatsapp_media WHERE environment = {options.Value.Environment} AND tenant_id = {tenantId} AND relationship_id = {relationshipId} AND media_id = {mediaId} FOR UPDATE",
+                cancellationToken
+            );
         var record = await LoadAsync(db, tenantId, relationshipId, mediaId, cancellationToken);
         if (record.State != "CLEAN")
             throw new ConversationStateConflictException();
+        var existing =
+            JsonSerializer.Deserialize<Guid[]>(record.DerivativePayloadReferencesJson)
+            ?? throw new ConversationStateConflictException();
         record.DerivativePayloadReferencesJson = JsonSerializer.Serialize(
-            derivativePayloadReferences.Distinct().OrderBy(value => value)
+            existing.Concat(derivativePayloadReferences).Distinct().OrderBy(value => value)
         );
         await db.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+            await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task SetLegalHoldAsync(

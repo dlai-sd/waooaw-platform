@@ -101,4 +101,15 @@ describe('PortalGuideExperience', () => {
     expect(alert).toHaveTextContent('d8f914cf-f258-46f3-a41a-e345d489862a');
     expect(alert).not.toHaveTextContent('Sensitive downstream detail');
   });
+
+  it('discloses the bounded Marketplace preview while retaining the existing portal API', async () => {
+    render(<PortalGuideExperience currentSurface="MARKETPLACE" />);
+    expect(screen.getByText(/Public catalogue discovery and catalogue previews only/)).toBeVisible();
+    expect(await screen.findByText(/Describe the outcome you need/)).toBeVisible();
+    expect(jest.mocked(global.fetch).mock.calls[0]).toEqual([
+      '/api/interactions/portal?limit=40',
+      { cache: 'no-store' },
+    ]);
+    expect(screen.queryByText(/Ask where to find agents/)).not.toBeInTheDocument();
+  });
 });

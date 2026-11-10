@@ -7,6 +7,7 @@ namespace Waooaw.ConstitutionalEngine.EmergencyStop;
 public sealed class EmergencyStopEvent
 {
     public Guid Id { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
     public Guid ContractId { get; init; }
     public string InitiatedByUserId { get; init; } = string.Empty;
     public string[] AffectedSessionIds { get; init; } = Array.Empty<string>();

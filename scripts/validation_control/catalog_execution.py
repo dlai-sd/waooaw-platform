@@ -277,8 +277,11 @@ def main() -> int:
         return verification.returncode
     environment = runner_environment(arguments.image_id)
     environment["COMPOSE_PROJECT_NAME"] = node["compose_project"]
-    environment["WAOOAW_VALIDATION_OUTPUT_DIRECTORY"] = "/workspace/test-results"
-    environment["WAOOAW_HOST_VALIDATION_OUTPUT_DIRECTORY"] = str(artifact_root.resolve())
+    host_output_directory = str(artifact_root.resolve())
+    environment["WAOOAW_VALIDATION_OUTPUT_DIRECTORY"] = (
+        host_output_directory if node.get("execution", "container") == "host" else "/workspace/test-results"
+    )
+    environment["WAOOAW_HOST_VALIDATION_OUTPUT_DIRECTORY"] = host_output_directory
     required_services = node.get("required_services", [])
     if required_services:
         environment = required_service_environment(node, environment)

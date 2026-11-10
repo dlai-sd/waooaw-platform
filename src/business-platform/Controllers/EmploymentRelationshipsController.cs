@@ -478,15 +478,19 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         {
             if (request.ClientIntentId.HasValue)
             {
+                var admissionIdempotencyKey = Request.Headers.TryGetValue(
+                    "Idempotency-Key",
+                    out var idempotencyKey
+                )
+                    ? idempotencyKey.ToString()
+                    : request.ClientIntentId.Value.ToString("D");
                 if (
                     _customerEngagementAdmission is null
-                    || request.EvaluationIntentId != request.ClientIntentId.Value
                     || request.EngagementIntent is not ("TRIAL" or "HIRE")
                     || string.IsNullOrWhiteSpace(request.DisclosureVersion)
                     || request.DisclosureVersion.Length > 128
                     || request.SafeReturnTarget?.Length > 512
-                    || !Request.Headers.TryGetValue("Idempotency-Key", out var idempotencyKey)
-                    || idempotencyKey.ToString().Length is < 16 or > 128
+                    || admissionIdempotencyKey.Length is < 16 or > 128
                 )
                     return ValidationProblem("Customer engagement admission fields are invalid.");
                 var canonicalHash = Convert.ToHexStringLower(
@@ -512,7 +516,7 @@ public sealed class EmploymentRelationshipsController : ControllerBase
                     tenantId,
                     participantId,
                     request.ClientIntentId.Value,
-                    idempotencyKey.ToString(),
+                    admissionIdempotencyKey,
                     canonicalHash,
                     request.EngagementIntent,
                     request.ProfessionalType,

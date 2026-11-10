@@ -2,7 +2,7 @@ openapi: "3.1.0"
 
 info:
   title: WAOOAW Business Platform API
-  version: "1.11.0"
+  version: "1.12.0"
   description: |
     External customer-facing API for the WAOOAW Business Platform.
     Manages the employment lifecycle, approval workflows, evidence reading,
@@ -152,6 +152,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IdentityMembershipCollectionV1"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "403": { $ref: "#/components/responses/IdentityForbidden" }
         "503": { $ref: "#/components/responses/IdentityUnavailable" }
@@ -173,6 +174,7 @@ paths:
             schema:
               $ref: "#/components/schemas/IdentityMembershipSelectionRequestV1"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: The membership is currently eligible for selection
           content:
@@ -204,6 +206,7 @@ paths:
             schema:
               $ref: "#/components/schemas/IdentitySessionRevocationRequestV1"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "202":
           description: Revocation intent was already recorded or is now durably recorded
           content:
@@ -233,6 +236,7 @@ paths:
             schema:
               $ref: "#/components/schemas/IdentityProviderLinkRequestV1"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "202":
           description: Link proof operation started or replayed idempotently
           content:
@@ -390,6 +394,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/ReplaceWorkspaceLayoutPreferencesRequestV1" }
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Layout replaced or replayed without changing business authority
           content:
@@ -580,10 +585,12 @@ paths:
   /api/v1/identity/registrations/{registrationId}/mobile-verifications:
     post:
       tags: [Identity]
-      summary: Optionally start or replay mobile verification during registration
+      summary: Start or replay required WhatsApp-number verification during registration
       description: |
-        Uses an approved OTP path when no ADR-023 Meta-verified proof is already bound.
-        Returns no account-existence information.
+        Sends a purpose-bound code only after the registrant explicitly requests it.
+        Delivery requires the approved WhatsApp authentication-template path. Returns no
+        account-existence information. New requests enforce the challenge's one-minute
+        resend boundary; same-key replay does not send another code.
       operationId: startIdentityMobileVerification
       security:
         - PreAccountBearerAuth: []
@@ -614,7 +621,12 @@ paths:
   /api/v1/identity/registrations/{registrationId}/mobile-verifications/confirm:
     post:
       tags: [Identity]
-      summary: Confirm optional mobile verification during registration
+      summary: Confirm required WhatsApp-number verification during registration
+      description: |
+        Confirms only the destination bound to this registration challenge. Five incorrect
+        code submissions expire the challenge. Successful verification expires competing
+        pending mobile challenges; registration proof cannot be consumed by account-level
+        verification.
       operationId: confirmIdentityMobileVerification
       security:
         - PreAccountBearerAuth: []
@@ -637,6 +649,7 @@ paths:
                 $ref: "#/components/schemas/IdentityRegistration"
         "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "404": { $ref: "#/components/responses/IdentityNotFound" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
         "410": { $ref: "#/components/responses/IdentityChallengeExpired" }
@@ -647,9 +660,8 @@ paths:
       tags: [Identity]
       summary: Complete registration by minting or reusing one account
       description: |
-        Requires confirmed email and the approved minimum profile; mobile verification is optional
-        until a server-classified consequential action. Duplicate
-        resolution is deterministic and proof-gated. ACCOUNT_CREATED and ACCOUNT_REUSED have
+        Requires confirmed email, the approved minimum profile, and verified WhatsApp number.
+        Duplicate resolution is deterministic and proof-gated. ACCOUNT_CREATED and ACCOUNT_REUSED have
         the same customer-facing success treatment. No Employment Relationship is created.
       operationId: completeIdentityRegistration
       security:
@@ -664,6 +676,107 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IdentityCompletion"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
+        "404": { $ref: "#/components/responses/IdentityNotFound" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+
+  /api/v1/identity/phone-changes:
+    get:
+      tags: [Identity]
+      operationId: getIdentityPhoneChange
+      summary: Recover the current owner's latest phone-change state without resending
+      responses:
+        "200":
+          description: Current owning account request state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IdentityPhoneChangeV1" }
+        "204": { description: No phone-change request exists for this owner }
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
+        "404": { $ref: "#/components/responses/IdentityNotFound" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+    post:
+      tags: [Identity]
+      operationId: startIdentityPhoneChange
+      summary: Start customer-initiated destination-bound verification of a replacement number
+      description: |
+        Requires current OWNER membership and nonfuture portal authentication no older than five minutes.
+        OTP proves new number control, not account ownership or recovery. Dispatch uses the existing
+        activation-gated authentication template and shared budget. Unknown delivery is never resent
+        implicitly. Numbers held by another account require separate governed recovery.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StartIdentityPhoneChangeRequestV1" }
+      responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "200":
+          description: Verification submitted or identical submitted challenge recovered
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IdentityPhoneChangeV1" }
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
+        "404": { $ref: "#/components/responses/IdentityNotFound" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "429": { $ref: "#/components/responses/IdentityRateLimited" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+
+  /api/v1/identity/phone-changes/confirm:
+    post:
+      tags: [Identity]
+      operationId: confirmIdentityPhoneChange
+      summary: Confirm OTP and explicit consent; atomically replace the number and revoke old access
+      description: |
+        Revalidates current account, membership, registration source and challenge after constitutional
+        evidence. Five failed codes expire the challenge. Old account links and participant WhatsApp
+        channel bindings are revoked in one owning PostgreSQL transaction. Existing history stays with
+        the account; no outbox work is retargeted and possibly submitted originals remain receipt-only.
+        New signed LINK confirmation and explicit approval of each professional relationship remain required.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConfirmIdentityPhoneChangeRequestV1" }
+      responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "200":
+          description: Change committed or original completed outcome recovered
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IdentityPhoneChangeV1" }
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
+        "404": { $ref: "#/components/responses/IdentityNotFound" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "410": { $ref: "#/components/responses/IdentityChallengeExpired" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+
+  /api/v1/identity/phone-changes/{challengeId}/cancel:
+    post:
+      tags: [Identity]
+      operationId: cancelIdentityPhoneChange
+      summary: Cancel an uncompleted phone change without changing the current number
+      parameters:
+        - { name: challengeId, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Challenge expired with constitutional cancellation evidence
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IdentityPhoneChangeV1" }
         "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
@@ -704,13 +817,20 @@ paths:
         "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
+        "404": { $ref: "#/components/responses/IdentityNotFound" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
         "429": { $ref: "#/components/responses/IdentityRateLimited" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
 
   /api/v1/identity/account-links/{linkId}/approve:
     post:
       tags: [Identity]
       summary: Explicitly approve a WhatsApp-to-web account link
+      description: |
+        Returns an encrypted, expiring LINK instruction for the verified WhatsApp number.
+        Only a fresh signed inbound message after this approval can complete the link.
+        Completion rechecks the verified destination and current membership, records evidence,
+        and grants no portal session, relationship, or transcript access.
       operationId: approveIdentityAccountLink
       parameters:
         - $ref: "#/components/parameters/LinkId"
@@ -728,6 +848,35 @@ paths:
         "404": { $ref: "#/components/responses/IdentityNotFound" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
         "410": { $ref: "#/components/responses/IdentityChallengeExpired" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+
+  /api/v1/identity/account-links/{linkId}/cancel:
+    post:
+      tags: [Identity]
+      summary: Cancel a pending WhatsApp account link
+      description: |
+        Requires the current owning account and fresh portal authentication.
+        Records evidence and irrevocably cancels this pending challenge.
+        Concurrent signed confirmation and cancellation serialize on the same row.
+        This does not unlink a completed association or change relationship access.
+      operationId: cancelIdentityAccountLink
+      parameters:
+        - $ref: "#/components/parameters/LinkId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Pending challenge cancelled or identical cancellation replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityAccountLink"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
+        "404": { $ref: "#/components/responses/IdentityNotFound" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "410": { $ref: "#/components/responses/IdentityChallengeExpired" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
 
   /api/v1/identity/account-links/{linkId}:
     get:
@@ -897,6 +1046,7 @@ paths:
         "201": { description: Acquisition Intent persisted, content: { application/json: { schema: { $ref: "#/components/schemas/AcquisitionIntent" } } } }
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
 
@@ -955,7 +1105,7 @@ paths:
         - name: professionalType
           in: query
           required: false
-          schema: { type: string, minLength: 1, maxLength: 100 }
+          schema: { type: string, minLength: 1, maxLength: 100, pattern: '.*\S.*' }
         - name: q
           in: query
           required: false
@@ -1120,7 +1270,34 @@ paths:
       requestBody: { $ref: "#/components/requestBodies/AdmissionTransition" }
       responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "403": { $ref: "#/components/responses/AdmissionForbidden" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "415": { $ref: "#/components/responses/UnsupportedMediaType" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
 
-  /api/v1/whatsapp/webhook:
+  /api/v1/channels/whatsapp/webhook:
+    get:
+      tags: [WhatsApp Journey]
+      summary: Complete the environment-bound Meta subscription challenge
+      operationId: verifyWhatsAppWebhook
+      security: []
+      parameters:
+        - name: hub.mode
+          in: query
+          required: true
+          schema: { type: string, const: subscribe }
+        - name: hub.verify_token
+          in: query
+          required: true
+          schema: { type: string, minLength: 1 }
+        - name: hub.challenge
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 512 }
+      responses:
+        "200":
+          description: Exact challenge text after all predicates pass
+          content:
+            text/plain:
+              schema: { type: string, maxLength: 512 }
+        "403":
+          description: Non-reflective verification denial
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
     post:
       tags: [WhatsApp Journey]
       summary: Receive a signed WhatsApp journey message
@@ -1155,7 +1332,9 @@ paths:
         "400": { $ref: "#/components/responses/ValidationError" }
         "403":
           description: Founder role is required
+        "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
 
   # ─── Employment ───────────────────────────────────────────────────────────
 
@@ -1203,7 +1382,7 @@ paths:
         - name: Idempotency-Key
           in: header
           required: false
-          description: Required for the customer-engagement admission shape; omitted only by legacy callers.
+          description: Optional override; customer-engagement admission derives a stable key from clientIntentId when omitted.
           schema: { type: string, minLength: 16, maxLength: 128 }
       requestBody:
         required: true
@@ -1253,6 +1432,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/RelationshipWorkspacePreferencesV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/IdentityForbidden" }
         "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
     put:
@@ -1265,6 +1445,8 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/ReplaceRelationshipWorkspacePreferencesRequestV1" }
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "200":
           description: Preferences replaced without changing relationship authority
           content:
@@ -1288,6 +1470,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CustomerEngagementProgressV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/IdentityForbidden" }
         "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
 
@@ -1304,6 +1487,8 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/ResolveWorkspaceFocusRequestV1" }
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "200":
           description: Current authorized canonical destination
           content:
@@ -1336,6 +1521,8 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/EndConversationChannelSessionRequestV1" }
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "200":
           description: Channel session ended or original outcome replayed
           content:
@@ -3506,6 +3693,67 @@ paths:
         "423": { $ref: "#/components/responses/ConversationStopped" }
         "503": { $ref: "#/components/responses/ConversationUnavailable" }
 
+  /api/v1/employment/relationships/{relationshipId}/conversation/messages/{messageId}/execution:
+    get:
+      tags: [Conversation]
+      summary: Read the canonical execution identity and version for an original message
+      description: |
+        Shared tenant-authorized BP projection read. Resolves the original message to its
+        execution without relying on browser-local dispatch state or exposing PR internals.
+        It does not contact the runtime or authorize recovery. Responses are never cached.
+      operationId: getConversationMessageExecution
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/ConversationMessageId"
+      responses:
+        "200":
+          description: Current canonical execution projection
+          headers:
+            Cache-Control: { schema: { type: string, const: "no-store" } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConversationExecutionStatusV1" }
+        "401": { $ref: "#/components/responses/ConversationUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
+        "404": { $ref: "#/components/responses/ConversationNotFound" }
+        "423": { $ref: "#/components/responses/ConversationStopped" }
+        "503": { $ref: "#/components/responses/ConversationUnavailable" }
+
+  /api/v1/employment/relationships/{relationshipId}/conversation/executions/{executionId}/reconcile:
+    post:
+      tags: [Conversation]
+      summary: Recover an existing runtime result under fresh owner permission
+      description: |
+        Shared BP recovery command for authenticated Web, WhatsApp handoff and future mobile
+        clients. Requires current OWNER/MANAGER membership and relationship access plus fresh
+        CE READ_EXISTING_RUNTIME_RESULT evidence. Never starts, retries or cancels inference.
+        Original execution authority is preserved. Unknown results remain unresolved.
+      operationId: reconcileConversationExecution
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/ConversationExecutionId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - { name: X-Correlation-Id, in: header, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReconcileConversationExecutionRequestV1" }
+      responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "200":
+          description: Bound canonical result or explicit unresolved outcome
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConversationReconciliationOutcomeV1" }
+        "400": { $ref: "#/components/responses/ConversationInvalidRequest" }
+        "401": { $ref: "#/components/responses/ConversationUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
+        "404": { $ref: "#/components/responses/ConversationNotFound" }
+        "409": { $ref: "#/components/responses/ConversationConflict" }
+        "423": { $ref: "#/components/responses/ConversationStopped" }
+        "503": { $ref: "#/components/responses/ConversationUnavailable" }
+
   /api/v1/employment/relationships/{relationshipId}/conversation/read-position:
     put:
       tags: [Conversation]
@@ -3623,6 +3871,40 @@ paths:
                 $ref: "#/components/schemas/RelationshipWorkspaceV1"
         "400": { $ref: "#/components/responses/RelationshipWorkspaceInvalidRequest" }
         "401": { $ref: "#/components/responses/RelationshipWorkspaceUnauthorized" }
+        "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
+        "503": { $ref: "#/components/responses/RelationshipWorkspaceUnavailable" }
+
+  /api/v1/employment/relationships/{relationshipId}/workspace/channels/whatsapp:
+    post:
+      tags: [Relationship Workspace]
+      summary: Approve the verified WhatsApp identity for this relationship
+      description: |
+        Requires a fresh Tier-4 portal step-up, current owner membership, an Identity-owned
+        confirmed WhatsApp account link, explicit relationship-channel consent, and a
+        trial-active or active relationship. It refuses to attach a sender with a stopped guest
+        session or withdrawn channel; linking cannot clear STOP. It creates only a channel binding
+        to the canonical relationship Conversation; guest history is not copied, and the sender
+        hash is never returned.
+      operationId: attachRelationshipWhatsAppChannel
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttachWhatsAppChannelRequestV1"
+      responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "200":
+          description: The WhatsApp channel is bound to the relationship
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttachWhatsAppChannelResponseV1"
+        "400": { $ref: "#/components/responses/RelationshipWorkspaceInvalidRequest" }
+        "401": { $ref: "#/components/responses/RelationshipWorkspaceUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
         "503": { $ref: "#/components/responses/RelationshipWorkspaceUnavailable" }
 
@@ -5164,7 +5446,7 @@ components:
 
     IdentityRegistrationState:
       type: string
-      enum: [STARTED, FEDERATED_IDENTITY_ACCEPTED, CREDENTIAL_IDENTITY_ACCEPTED, WHATSAPP_IDENTITY_ACCEPTED, EMAIL_VERIFICATION_REQUIRED, DUPLICATE_RESOLUTION_REQUIRED, PROFILE_COMPLETION_REQUIRED, READY_TO_COMPLETE, COMPLETED, EXPIRED, CANCELLED]
+      enum: [STARTED, FEDERATED_IDENTITY_ACCEPTED, CREDENTIAL_IDENTITY_ACCEPTED, WHATSAPP_IDENTITY_ACCEPTED, EMAIL_VERIFICATION_REQUIRED, DUPLICATE_RESOLUTION_REQUIRED, PROFILE_COMPLETION_REQUIRED, MOBILE_VERIFICATION_REQUIRED, READY_TO_COMPLETE, COMPLETED, EXPIRED, CANCELLED]
 
     IdentityNextAction:
       type: string
@@ -5196,7 +5478,7 @@ components:
 
     IdentityProblemCode:
       type: string
-      enum: [IDENTITY_REQUEST_INVALID, IDENTITY_SESSION_REQUIRED, IDENTITY_STEP_UP_REQUIRED, REGISTRATION_REQUIRED, IDENTITY_ACTION_DENIED, IDENTITY_RESOURCE_NOT_ACCESSIBLE, IDENTITY_IDEMPOTENCY_CONFLICT, DUPLICATE_RESOLUTION_REQUIRED, IDENTITY_CHALLENGE_EXPIRED, IDENTITY_VERIFICATION_REQUIRED, IDENTITY_RATE_LIMITED, IDENTITY_DEPENDENCY_UNAVAILABLE]
+      enum: [IDENTITY_REQUEST_INVALID, IDENTITY_SESSION_REQUIRED, IDENTITY_STEP_UP_REQUIRED, REGISTRATION_REQUIRED, IDENTITY_ACTION_DENIED, IDENTITY_RESOURCE_NOT_ACCESSIBLE, IDENTITY_IDEMPOTENCY_CONFLICT, IDENTITY_VERSION_CONFLICT, DUPLICATE_RESOLUTION_REQUIRED, IDENTITY_CHALLENGE_EXPIRED, IDENTITY_VERIFICATION_REQUIRED, IDENTITY_RATE_LIMITED, IDENTITY_DEPENDENCY_UNAVAILABLE]
 
     EmploymentState:
       type: string
@@ -5911,12 +6193,36 @@ components:
     StartIdentityAccountLinkRequest:
       type: object
       additionalProperties: false
-      required: [verifiedMobileProofId]
       properties:
         verifiedMobileProofId:
           type: string
           format: uuid
-          description: Opaque server-issued proof; raw mobile and client-generated hashes are prohibited
+          description: Optional opaque server-issued proof. When omitted, the server selects the caller's completed-registration mobile proof. Raw mobile and client-generated hashes are prohibited.
+
+    StartIdentityPhoneChangeRequestV1:
+      type: object
+      additionalProperties: false
+      required: [mobile]
+      properties:
+        mobile: { type: string, pattern: '^\+[1-9][0-9]{7,14}$', maxLength: 16 }
+    ConfirmIdentityPhoneChangeRequestV1:
+      type: object
+      additionalProperties: false
+      required: [challengeId, code, consent]
+      properties:
+        challengeId: { type: string, format: uuid }
+        code: { type: string, pattern: '^[0-9]{6}$', minLength: 6, maxLength: 6 }
+        consent: { type: boolean, enum: [true] }
+    IdentityPhoneChangeV1:
+      type: object
+      additionalProperties: false
+      required: [challengeId, state, maskedMobile, expiresAt, relationshipApprovalRequired]
+      properties:
+        challengeId: { type: string, format: uuid }
+        state: { type: string, enum: [OTP_REQUIRED, DELIVERY_UNRESOLVED, EXPIRED, COMPLETED] }
+        maskedMobile: { type: string, maxLength: 32 }
+        expiresAt: { type: string, format: date-time }
+        relationshipApprovalRequired: { type: boolean, enum: [true] }
 
     IdentityAccountLink:
       type: object
@@ -5931,6 +6237,14 @@ components:
         maskedMobile: { type: string, maxLength: 32 }
         expiresAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+        whatsAppConfirmation:
+          type: string
+          nullable: true
+          maxLength: 3077
+          description: |
+            Present only while awaiting fresh WhatsApp confirmation. Send this exact LINK
+            instruction from the verified number. Contains no readable account or phone data;
+            never log, persist in browser storage, or submit as a portal authentication token.
 
     IdentityProblemDetail:
       type: object
@@ -5961,6 +6275,13 @@ components:
       type: object
       additionalProperties: false
       required: [evaluationIntentId, professionalType, professionalAdmissionId, professionalVersion]
+      dependentSchemas:
+        clientIntentId:
+          required: [engagementIntent, disclosureVersion]
+          properties:
+            clientIntentId: { type: string, format: uuid }
+            engagementIntent: { type: string, enum: [TRIAL, HIRE] }
+            disclosureVersion: { type: string, minLength: 1, maxLength: 128 }
       properties:
         evaluationIntentId:
           type: string
@@ -6020,7 +6341,7 @@ components:
       additionalProperties: false
       required: [expectedVersion, navigationVisibility, progressVisibility, conversationWidthPercent]
       properties:
-        expectedVersion: { type: integer, minimum: 0 }
+        expectedVersion: { type: integer, format: int32, minimum: 0, maximum: 2147483647 }
         navigationVisibility: { $ref: "#/components/schemas/PaneVisibilityV1" }
         progressVisibility: { $ref: "#/components/schemas/PaneVisibilityV1" }
         conversationWidthPercent: { type: integer, minimum: 35, maximum: 75 }
@@ -6043,7 +6364,7 @@ components:
       additionalProperties: false
       required: [expectedVersion, defaultFocus, openProgressOnConversationFocus]
       properties:
-        expectedVersion: { type: integer, minimum: 0 }
+        expectedVersion: { type: integer, format: int32, minimum: 0, maximum: 2147483647 }
         defaultFocus:
           type: string
           enum: [LIFECYCLE, INDUCTION, SKILLS_GOALS, OPERATIONS, PERFORMANCE, BUDGET, RIGHTS]
@@ -6192,7 +6513,7 @@ components:
       additionalProperties: false
       required: [expectedVersion, confirmation]
       properties:
-        expectedVersion: { type: integer, minimum: 0 }
+        expectedVersion: { type: integer, format: int32, minimum: 0, maximum: 2147483647 }
         confirmation: { type: string, const: END_CHANNEL_SESSION }
         reason: { type: string, maxLength: 500, nullable: true }
 
@@ -6895,7 +7216,7 @@ components:
         schemaVersion: { $ref: "#/components/schemas/CustomerPortalSchemaVersion" }
         displayName: { type: string, minLength: 1, maxLength: 200 }
         organizationDisplayName: { type: string, minLength: 1, maxLength: 200 }
-        email: { type: string, format: email }
+        email: { type: string, format: email, nullable: true }
         emailVerified: { type: boolean }
         mobileVerified: { type: boolean }
         activeRole:
@@ -6919,7 +7240,7 @@ components:
       properties:
         schemaVersion: { $ref: "#/components/schemas/CustomerPortalSchemaVersion" }
         displayName: { type: string, minLength: 1, maxLength: 200 }
-        organizationDisplayName: { type: string, minLength: 1, maxLength: 200 }
+        organizationDisplayName: { type: string, minLength: 1, maxLength: 160 }
 
     CustomerSettingsV1:
       type: object
@@ -6927,7 +7248,7 @@ components:
       required: [schemaVersion, locale, theme, timestampVisibility, notificationPreferences, updatedAt]
       properties:
         schemaVersion: { $ref: "#/components/schemas/CustomerPortalSchemaVersion" }
-        locale: { type: string, minLength: 2, maxLength: 16 }
+        locale: { type: string, minLength: 2, maxLength: 16, pattern: '^[a-z]{2}(-[A-Z]{2})?$' }
         theme:
           type: string
           enum: [SYSTEM, LIGHT, DARK]
@@ -6949,7 +7270,7 @@ components:
       required: [schemaVersion, locale, theme, timestampVisibility, notificationPreferences]
       properties:
         schemaVersion: { $ref: "#/components/schemas/CustomerPortalSchemaVersion" }
-        locale: { type: string, minLength: 2, maxLength: 16 }
+        locale: { type: string, minLength: 2, maxLength: 16, pattern: '^[a-z]{2}(-[A-Z]{2})?$' }
         theme:
           type: string
           enum: [LIGHT, DARK]
@@ -6970,7 +7291,7 @@ components:
         state:
           type: string
           enum: [ACTIVE, AVAILABLE_TO_LINK, REQUIRES_STEP_UP, BLOCKED]
-        maskedIdentifier: { type: string, minLength: 1, maxLength: 254 }
+        maskedIdentifier: { type: string, minLength: 1, maxLength: 254, nullable: true }
 
     CustomerLoginMethodCollectionV1:
       type: object
@@ -8489,6 +8810,17 @@ components:
           items: { $ref: "#/components/schemas/ConversationTextBlockV1" }
         locale: { $ref: "#/components/schemas/ConversationLanguageTag" }
         expectedCursor: { type: string, minLength: 16, maxLength: 2048 }
+        workItem: { $ref: "#/components/schemas/ConversationWorkItemReferenceV1" }
+
+    ConversationWorkItemReferenceV1:
+      type: object
+      additionalProperties: false
+      required: [owner, workItemId, revision, invocationId]
+      properties:
+        owner: { type: string, const: professional-runtime }
+        workItemId: { type: string, format: uuid }
+        revision: { type: integer, minimum: 1, maximum: 2147483647 }
+        invocationId: { type: string, format: uuid }
 
     ConversationSubmissionV1:
       type: object
@@ -8532,6 +8864,28 @@ components:
         partial: { type: boolean }
         completionReason: { $ref: "#/components/schemas/ConversationCompletionReason" }
         updatedAt: { type: string, format: date-time }
+        projectionVersion: { type: integer, format: int64, minimum: 0 }
+
+    ReconcileConversationExecutionRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, expectedMessageId, expectedProjectionVersion]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
+        expectedMessageId: { type: string, format: uuid }
+        expectedProjectionVersion: { type: integer, format: int64, minimum: 0 }
+
+    ConversationReconciliationOutcomeV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, executionId, state, nextAction, projectionVersion, replayed]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
+        executionId: { type: string, format: uuid }
+        state: { type: string, enum: [COMPLETED, FAILED, CANCELLED, UNRESOLVED] }
+        nextAction: { type: string, enum: [RECONCILE_CANONICAL_PROJECTION, OPERATOR_RECONCILIATION_REQUIRED] }
+        projectionVersion: { type: integer, format: int64, minimum: 0 }
+        replayed: { type: boolean }
 
     ConversationStreamEventType:
       type: string
@@ -8625,6 +8979,28 @@ components:
         retryAfterSeconds: { type: integer, minimum: 1 }
 
     # ── Relationship Workspace (WC-034 F4) ─────────────────────────────────
+
+    AttachWhatsAppChannelRequestV1:
+      type: object
+      additionalProperties: false
+      required: [identityAccountLinkId, consentToRelationshipChannel]
+      properties:
+        identityAccountLinkId: { type: string, format: uuid }
+        consentToRelationshipChannel:
+          type: boolean
+          const: true
+
+    AttachWhatsAppChannelResponseV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, relationshipId, bindingId, channel, status, assurance]
+      properties:
+        schemaVersion: { type: string, const: "1.0" }
+        relationshipId: { type: string, format: uuid }
+        bindingId: { type: string, format: uuid }
+        channel: { type: string, const: WHATSAPP }
+        status: { type: string, const: ACTIVE }
+        assurance: { type: string, const: TIER_4_PORTAL_FRESH }
 
     RelationshipWorkspaceSchemaVersion:
       type: string
@@ -9498,12 +9874,19 @@ components:
         RELATIONSHIP_WORKSPACE_SESSION_REQUIRED,
         IDENTITY_SESSION_REQUIRED,
         RELATIONSHIP_WORKSPACE_NOT_ACCESSIBLE,
+        CONVERSATION_NOT_ACCESSIBLE,
         RELATIONSHIP_STATE_CONFLICT,
         RELATIONSHIP_IDEMPOTENCY_CONFLICT,
         RELATIONSHIP_WORKSPACE_BLOCKED,
         RELATIONSHIP_WORKSPACE_CURSOR_EXPIRED,
         RELATIONSHIP_WORKSPACE_OWNER_UNAVAILABLE,
         CONSTITUTIONAL_ENGINE_UNAVAILABLE,
+        IDENTITY_ACTION_DENIED,
+        IDENTITY_RESOURCE_NOT_ACCESSIBLE,
+        IDENTITY_STEP_UP_REQUIRED,
+        CEW_RESOURCE_NOT_ACCESSIBLE,
+        WHATSAPP_CHANNEL_BINDING_UNAVAILABLE,
+        WHATSAPP_CHANNEL_CONSENT_REQUIRED,
         RELATIONSHIP_SCHEMA_UNSUPPORTED
       ]
 
@@ -9520,6 +9903,7 @@ components:
         code: { $ref: "#/components/schemas/RelationshipWorkspaceProblemCodeV1" }
         correlationId: { type: string, format: uuid }
         reconciliationRequired: { type: boolean }
+        retryable: { type: boolean }
         retryAfterSeconds: { type: integer, minimum: 1 }
 
     # ── Conversational Configuration (C-039) ─────────────────────────────────

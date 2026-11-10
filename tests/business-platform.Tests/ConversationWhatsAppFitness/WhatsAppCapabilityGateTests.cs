@@ -96,6 +96,54 @@ public sealed class WhatsAppCapabilityGateTests
     }
 
     [Fact]
+    public void PublicRecipientAuthorityAcceptsOnlyValidSenderDigestsInsideTheApprovedTenant()
+    {
+        var options = Configuration();
+        options.PublicAdmissionIdentityKeyAvailable = true;
+        options.Authority = options.Authority! with
+        {
+            AllowPublicAdmission = true,
+            AllowProvisionalOnboarding = true,
+        };
+        var gate = Gate(options);
+        gate.RequireRecipient(Tenant, new string('c', 64), Now);
+        foreach (
+            var invalid in new[] { "", new string('c', 63), new string('C', 64), "synthetic-phone" }
+        )
+            Assert.Throws<WhatsAppCapabilityUnavailableException>(() =>
+                gate.RequireRecipient(Tenant, invalid, Now)
+            );
+        Assert.Throws<WhatsAppCapabilityUnavailableException>(() =>
+            gate.RequireRecipient(Guid.NewGuid(), new string('c', 64), Now)
+        );
+        options.Authority = options.Authority with { AllowPublicAdmission = false };
+        Assert.Throws<WhatsAppCapabilityUnavailableException>(() =>
+            gate.RequireRecipient(Tenant, new string('c', 64), Now)
+        );
+    }
+
+    [Fact]
+    public void PublicAdmissionRequiresProvisionalOnboardingAndDemoAuthority()
+    {
+        var options = Configuration();
+        options.Authority = options.Authority! with { AllowPublicAdmission = true };
+        Assert.Equal("BLOCKED", Gate(options).Evaluate(Now).State);
+
+        options.Authority = options.Authority! with { AllowProvisionalOnboarding = true };
+        Assert.Equal("BLOCKED", Gate(options).Evaluate(Now).State);
+
+        options.PublicAdmissionIdentityKeyAvailable = true;
+        Assert.Equal("ACTIVE", Gate(options).Evaluate(Now).State);
+
+        options.Authority = options.Authority! with
+        {
+            Environment = "uat",
+            AllowProvisionalOnboarding = true,
+        };
+        Assert.Equal("BLOCKED", Gate(options).Evaluate(Now).State);
+    }
+
+    [Fact]
     public void EveryIndependentAuthorityAndTupleDimensionIsMandatory()
     {
         var valid = Configuration().Authority!;

@@ -25,6 +25,12 @@ from pydantic import BaseModel, ConfigDict, Field
 from config import Settings
 from database import get_session_factory
 from markup.bundle_engine import BundleEngine
+from meter.allowance_service import (
+    AllowanceConflict,
+    AllowanceDenied,
+    AllowanceIdentity,
+    OfferingAllowanceService,
+)
 from payment.models import PaidActivationRequest, ZeroPriceActivationRequest
 from payment.paid_activation import PaidActivationService
 from payment.zero_price_activation import ZeroPriceActivationService
@@ -176,6 +182,37 @@ class OfferabilityValidationResult(CamelStrictModel):
     produced_at: datetime
 
 
+class OfferingUsageCommand(CamelStrictModel):
+    schema_version: Literal["1.0"]
+    agent_instance_id: uuid.UUID
+    professional_type: str = Field(min_length=1, max_length=64)
+    professional_version: str = Field(min_length=1, max_length=64)
+    skill_id: str = Field(min_length=1, max_length=100)
+    skill_version: str = Field(min_length=1, max_length=64)
+    work_item_id: uuid.UUID
+    invocation_id: uuid.UUID
+    component_id: str = Field(min_length=1, max_length=50)
+    request_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    owner_evidence_id: uuid.UUID
+    maximum_units: int | None = Field(default=None, gt=0)
+    reservation_id: uuid.UUID | None = None
+    actual_units: int | None = Field(default=None, ge=0)
+    outcome_evidence_id: uuid.UUID | None = None
+
+
+class OfferingUsageReceipt(CamelStrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    reservation_id: uuid.UUID
+    state: Literal["RESERVED", "SETTLED", "RELEASED"]
+    maximum_units: int
+    reserved_raw_paise: int
+    reserved_marked_up_paise: int
+    catalogue_thread_id: str
+    provider_account_id: uuid.UUID
+    rate_version: str
+    replayed: bool
+
+
 @dataclass(frozen=True)
 class StoredCommand:
     tenant_id: str
@@ -324,6 +361,177 @@ def _rebind_offerability_validation(
     )
     if not exact:
         raise ServiceAuthError("SERVICE_AUTHORIZATION_DENIED")
+
+
+def _offering_identity(
+    context: DelegatedContext,
+    relationship_id: uuid.UUID,
+    idempotency_key: str,
+    body: OfferingUsageCommand,
+) -> AllowanceIdentity:
+    if (
+        context.effective_role not in {"SYSTEM", "PROFESSIONAL"}
+        or context.purpose != "OFFERING_COMPONENT_USAGE"
+        or context.relationship_id != str(relationship_id)
+        or context.idempotency_key != idempotency_key
+        or context.command_id != str(body.invocation_id)
+        or context.subject_reference != body.component_id
+        or context.expected_versions
+        != {
+            "component": body.component_id,
+            "professional": body.professional_version,
+            "skill": body.skill_version,
+        }
+    ):
+        raise ServiceAuthError("SERVICE_AUTHORIZATION_DENIED")
+    return AllowanceIdentity(
+        tenant_id=uuid.UUID(context.tenant_id),
+        relationship_id=relationship_id,
+        agent_instance_id=body.agent_instance_id,
+        professional_type=body.professional_type,
+        professional_version=body.professional_version,
+        skill_id=body.skill_id,
+        skill_version=body.skill_version,
+        work_item_id=body.work_item_id,
+        invocation_id=body.invocation_id,
+        component_id=body.component_id,
+        idempotency_key=uuid.UUID(idempotency_key),
+        request_digest=body.request_digest,
+        owner_evidence_id=body.owner_evidence_id,
+    )
+
+
+def _usage_response(receipt: object) -> OfferingUsageReceipt:
+    return OfferingUsageReceipt.model_validate(
+        {"schemaVersion": "1.0", **receipt.__dict__}
+    )
+
+
+async def _offering_command(
+    action: Literal["reserve", "settle", "release", "reconcile"],
+    relationship_id: uuid.UUID,
+    body: OfferingUsageCommand,
+    request: Request,
+    idempotency_key: str,
+) -> OfferingUsageReceipt:
+    route = f"/internal/v1/relationships/{{relationshipId}}/offering-usage/{action}"
+    operation = f"{action}OfferingComponentUsage"
+    payload = body.model_dump(by_alias=True, mode="json")
+    try:
+        context = _authorize(
+            request, route, operation, relationship_id, payload, idempotency_key
+        )
+        identity = _offering_identity(context, relationship_id, idempotency_key, body)
+        service = OfferingAllowanceService(get_session_factory())
+        if action == "reserve":
+            if (
+                body.maximum_units is None
+                or body.reservation_id is not None
+                or body.actual_units is not None
+                or body.outcome_evidence_id is not None
+            ):
+                raise AllowanceConflict("ALLOWANCE_RESERVE_SHAPE_INVALID")
+            receipt = await service.reserve(identity, body.maximum_units)
+        elif action == "settle":
+            if (
+                body.reservation_id is None
+                or body.actual_units is None
+                or body.outcome_evidence_id is None
+                or body.maximum_units is not None
+            ):
+                raise AllowanceConflict("ALLOWANCE_SETTLEMENT_SHAPE_INVALID")
+            receipt = await service.settle(
+                identity, body.reservation_id, body.actual_units, body.outcome_evidence_id
+            )
+        elif action == "release":
+            if (
+                body.reservation_id is None
+                or body.actual_units is not None
+                or body.outcome_evidence_id is None
+                or body.maximum_units is not None
+            ):
+                raise AllowanceConflict("ALLOWANCE_RELEASE_SHAPE_INVALID")
+            receipt = await service.release(
+                identity, body.reservation_id, body.outcome_evidence_id
+            )
+        else:
+            if (
+                body.maximum_units is not None
+                or body.actual_units is not None
+                or body.outcome_evidence_id is not None
+            ):
+                raise AllowanceConflict("ALLOWANCE_RECONCILE_SHAPE_INVALID")
+            receipt = await service.reconcile(identity)
+            if receipt is None:
+                raise HTTPException(status_code=404, detail="ALLOWANCE_RESERVATION_UNKNOWN")
+        return _usage_response(receipt)
+    except ServiceAuthError as exc:
+        logger.warning(
+            "service_auth decision=deny target=billing-engine operation=%s reason_class=%s",
+            operation,
+            exc.code,
+        )
+        raise HTTPException(status_code=401, detail="WBE_OFFERING_USAGE_UNAUTHORIZED") from None
+    except AllowanceConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from None
+    except AllowanceDenied as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+
+
+@router.post(
+    "/{relationship_id}/offering-usage/reserve",
+    response_model=OfferingUsageReceipt,
+    response_model_by_alias=True,
+)
+async def reserve_offering_usage(
+    relationship_id: uuid.UUID,
+    body: OfferingUsageCommand,
+    request: Request,
+    idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
+) -> OfferingUsageReceipt:
+    return await _offering_command("reserve", relationship_id, body, request, idempotency_key)
+
+
+@router.post(
+    "/{relationship_id}/offering-usage/settle",
+    response_model=OfferingUsageReceipt,
+    response_model_by_alias=True,
+)
+async def settle_offering_usage(
+    relationship_id: uuid.UUID,
+    body: OfferingUsageCommand,
+    request: Request,
+    idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
+) -> OfferingUsageReceipt:
+    return await _offering_command("settle", relationship_id, body, request, idempotency_key)
+
+
+@router.post(
+    "/{relationship_id}/offering-usage/release",
+    response_model=OfferingUsageReceipt,
+    response_model_by_alias=True,
+)
+async def release_offering_usage(
+    relationship_id: uuid.UUID,
+    body: OfferingUsageCommand,
+    request: Request,
+    idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
+) -> OfferingUsageReceipt:
+    return await _offering_command("release", relationship_id, body, request, idempotency_key)
+
+
+@router.post(
+    "/{relationship_id}/offering-usage/reconcile",
+    response_model=OfferingUsageReceipt,
+    response_model_by_alias=True,
+)
+async def reconcile_offering_usage(
+    relationship_id: uuid.UUID,
+    body: OfferingUsageCommand,
+    request: Request,
+    idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
+) -> OfferingUsageReceipt:
+    return await _offering_command("reconcile", relationship_id, body, request, idempotency_key)
 
 
 @router.get("/{relationship_id}/commercial-projection", response_model=CommercialProjection, response_model_by_alias=True)

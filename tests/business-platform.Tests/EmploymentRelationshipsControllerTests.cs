@@ -669,6 +669,34 @@ public sealed class EmploymentRelationshipsControllerTests
     }
 
     [Fact]
+    public async Task StopGatewayOutageReturns503WhileLocalLatchRemainsActive()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var relationships = new EmploymentRelationshipService(factory, new RecordingRelationshipConstitutionalGateway(), NullLogger<EmploymentRelationshipService>.Instance);
+        var tenantId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        var admitted = await relationships.AdmitAsync(tenantId, participantId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
+        var conversations = new InMemoryConversationStoreFactory(Guid.NewGuid().ToString("N"));
+        var stops = new RelationshipEmergencyStopService(conversations, relationships, new TimeoutStopGateway());
+        var controller = new EmploymentRelationshipsController(relationships, emergencyStops: stops) { ControllerContext = CreateControllerContext(tenantId, participantId) };
+
+        var response = Assert.IsType<ObjectResult>(
+            await controller.StopAsync(admitted.Relationship.RelationshipId, new StopEmploymentRelationshipRequest(), CancellationToken.None));
+
+        Assert.Equal(503, response.StatusCode);
+        await using var db = conversations.CreateDbContext();
+        Assert.Equal("LATCHED", (await db.EmergencyStopLatches.SingleAsync()).State);
+    }
+
+    private sealed class TimeoutStopGateway : IRelationshipEmergencyStopGateway
+    {
+        public Task<RelationshipEmergencyStopDispatch> StopAsync(
+            Guid tenantId, Guid relationshipId, Guid participantId,
+            IReadOnlyCollection<Guid> executionIds, CancellationToken cancellationToken) =>
+            Task.FromException<RelationshipEmergencyStopDispatch>(new TimeoutException("synthetic timeout"));
+    }
+
+    [Fact]
     public async Task CctAe01StopRelease_StalePortalAuthenticationLeavesStopActive()
     {
         var fixture = await CreateStoppedEmployerAsync(DateTimeOffset.UtcNow.AddMinutes(-6));

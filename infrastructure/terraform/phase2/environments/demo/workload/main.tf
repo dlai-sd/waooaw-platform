@@ -53,6 +53,8 @@ module "workload" {
   dependency_activation_enabled            = var.dependency_activation_enabled
   auth_preview_origin                      = var.auth_preview_origin
   whatsapp_provider                        = var.whatsapp_provider
+  whatsapp_monitoring                      = var.whatsapp_monitoring
+  whatsapp_monitoring_workspace_id         = try(data.terraform_remote_state.foundation.outputs.log_analytics_workspace_id, "")
   facebook_login_enabled                   = true
   google_login_enabled                     = true
   environment                              = "demo"
@@ -109,6 +111,7 @@ output "lease_reconciliation_inputs" {
     lease_revoked_at              = var.lease_revoked_at
     cost_centre                   = var.cost_centre
     evidence_digest               = var.evidence_digest
+    whatsapp_monitoring           = var.whatsapp_monitoring
   }
 }
 

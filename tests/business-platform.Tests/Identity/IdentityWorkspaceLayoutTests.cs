@@ -1,6 +1,7 @@
 // Implements: WC-121 Component 01 Identity-owned workspace layout evidence
 // constitutional_basis: C-005, C-007, C-023, C-026, C-059
 
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Waooaw.BusinessPlatform.Controllers;
@@ -12,6 +13,17 @@ namespace Waooaw.BusinessPlatform.Tests.Identity;
 
 public sealed class IdentityWorkspaceLayoutTests
 {
+    [Fact]
+    public void RequestRejectsNonIntegralSchemaNumber()
+    {
+        const string payload =
+            """{"expectedVersion":2.5890419884777833e-42,"navigationVisibility":"HIDDEN","progressVisibility":"HIDDEN","conversationWidthPercent":35,"reduceMotion":false}""";
+
+        Assert.Throws<JsonException>(() =>
+            JsonSerializer.Deserialize<ReplaceWorkspaceLayoutPreferencesRequest>(payload)
+        );
+    }
+
     [Fact]
     public async Task ControllerValidatesPersistsAndReportsReplayAndVersionConflicts()
     {

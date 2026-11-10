@@ -1,3 +1,8 @@
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Npgsql;
+using Testcontainers.PostgreSql;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
 using Xunit;
@@ -6,6 +11,106 @@ namespace Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness;
 
 public sealed class CeFit11MediaVoiceSafetyTests
 {
+    [Fact]
+    public async Task ConcurrentDerivativeRegistrationsPreserveBothBatches()
+    {
+        await using var postgres = new PostgreSqlBuilder("pgvector/pgvector:pg16").Build();
+        await postgres.StartAsync();
+        var connectionString = postgres.GetConnectionString();
+        var appConnection = new NpgsqlConnectionStringBuilder(connectionString)
+        {
+            ApplicationName = "wc134-media-registration",
+        }.ConnectionString;
+        var factory = new PostgresConversationFactory(
+            new DbContextOptionsBuilder<ConversationStoreDbContext>()
+                .UseNpgsql(appConnection)
+                .Options
+        );
+        var tenantId = Guid.NewGuid();
+        var relationshipId = Guid.NewGuid();
+        var media = new WhatsAppMediaRecord
+        {
+            Environment = "test",
+            TenantId = tenantId,
+            RelationshipId = relationshipId,
+            ProviderReferenceDigest = new string('a', 64),
+            DeclaredMediaType = "audio/mpeg",
+            DetectedMediaType = "audio/mpeg",
+            Locale = "en-IN",
+            State = "CLEAN",
+        };
+        await using (var db = factory.CreateDbContext())
+        {
+            await db.Database.EnsureCreatedAsync();
+            db.WhatsAppMedia.Add(media);
+            await db.SaveChangesAsync();
+        }
+        var options = Options.Create(new Wc120ConversationOptions { Environment = "test" });
+        var service = new WhatsAppMediaQuarantineService(
+            factory,
+            new PayloadFitnessDbFactory(Guid.NewGuid().ToString("N")),
+            options,
+            new ConversationStopFence(factory, options)
+        );
+        await using var blocker = new NpgsqlConnection(connectionString);
+        await blocker.OpenAsync();
+        await using var transaction = await blocker.BeginTransactionAsync();
+        await using (
+            var takeLock = new NpgsqlCommand(
+                "SELECT media_id FROM business.whatsapp_media WHERE media_id = @id FOR UPDATE",
+                blocker,
+                transaction
+            )
+        )
+        {
+            takeLock.Parameters.AddWithValue("id", media.MediaId);
+            Assert.Equal(media.MediaId, await takeLock.ExecuteScalarAsync());
+        }
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var registration1 = service.RegisterDerivativesAsync(
+            tenantId,
+            relationshipId,
+            media.MediaId,
+            [first],
+            timeout.Token
+        );
+        var registration2 = service.RegisterDerivativesAsync(
+            tenantId,
+            relationshipId,
+            media.MediaId,
+            [second],
+            timeout.Token
+        );
+        await using var observer = new NpgsqlConnection(connectionString);
+        await observer.OpenAsync(timeout.Token);
+        await using (
+            var waiters = new NpgsqlCommand(
+                "SELECT count(*) FROM pg_stat_activity WHERE application_name = 'wc134-media-registration' AND wait_event_type = 'Lock'",
+                observer
+            )
+        )
+        {
+            while ((long)(await waiters.ExecuteScalarAsync(timeout.Token))! < 2)
+                await Task.Delay(50, timeout.Token);
+        }
+        await transaction.CommitAsync(timeout.Token);
+        await Task.WhenAll(registration1, registration2).WaitAsync(timeout.Token);
+        await using var verify = factory.CreateDbContext();
+        var saved = await verify.WhatsAppMedia.SingleAsync(timeout.Token);
+        var references = JsonSerializer.Deserialize<Guid[]>(saved.DerivativePayloadReferencesJson);
+        Assert.NotNull(references);
+        Assert.Equal(new[] { first, second }.OrderBy(value => value), references);
+    }
+
+    private sealed class PostgresConversationFactory(
+        DbContextOptions<ConversationStoreDbContext> options
+    ) : IDbContextFactory<ConversationStoreDbContext>
+    {
+        public ConversationStoreDbContext CreateDbContext() => new(options);
+    }
+
     [Fact]
     public async Task MediaCorpus_ScansBeforeReasoning_AndRequiresCorrectedTranscriptConfirmationAndSendConsent()
     {
@@ -233,11 +338,35 @@ public sealed class CeFit11MediaVoiceSafetyTests
             CancellationToken.None
         );
         var derivative = Guid.NewGuid();
+        var laterDerivative = Guid.NewGuid();
+        await using (var payloadDb = context.Payloads.CreateDbContext())
+        {
+            foreach (var reference in new[] { derivative, laterDerivative })
+                payloadDb.OperationalPayloads.Add(
+                    new OperationalPayload
+                    {
+                        PayloadRefId = reference,
+                        TenantId = context.TenantId,
+                        AgentInstanceId = Guid.NewGuid().ToString("D"),
+                        ActionType = "WHATSAPP_MEDIA",
+                        PayloadJson = "{}",
+                        PiiPresent = true,
+                    }
+                );
+            await payloadDb.SaveChangesAsync();
+        }
         await service.RegisterDerivativesAsync(
             context.TenantId,
             context.RelationshipId,
             clean.MediaId,
             new[] { derivative, derivative },
+            CancellationToken.None
+        );
+        await service.RegisterDerivativesAsync(
+            context.TenantId,
+            context.RelationshipId,
+            clean.MediaId,
+            new[] { laterDerivative, derivative },
             CancellationToken.None
         );
         await service.ApplyRelationshipClosureAsync(
@@ -278,7 +407,8 @@ public sealed class CeFit11MediaVoiceSafetyTests
         );
         await using (var payloadDb = context.Payloads.CreateDbContext())
         {
-            Assert.NotNull(payloadDb.OperationalPayloads.Single().ErasedAt);
+            Assert.Equal(3, payloadDb.OperationalPayloads.Count());
+            Assert.All(payloadDb.OperationalPayloads, payload => Assert.NotNull(payload.ErasedAt));
         }
 
         var rejected = await service.QuarantineAsync(

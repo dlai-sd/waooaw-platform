@@ -278,7 +278,8 @@ public sealed class AgentAdmissionValidator
                     .Select((value, index) => (value, index))
             )
             {
-                RequireSkill(skill, index, findings);
+                if (skill.ValueKind == JsonValueKind.Object)
+                    RequireSkill(skill, index, findings);
             }
         }
 
@@ -475,7 +476,8 @@ public sealed class AgentAdmissionValidator
                 "trialBehavior",
                 "degradationBehavior",
                 "compatibility",
-                "nonGoalExemption"
+                "nonGoalExemption",
+                "conversationOperation"
             );
             foreach (var name in new[] { "configurationSchema", "goalSchema", "compatibility" })
                 KnownChild(
@@ -648,6 +650,34 @@ public sealed class AgentAdmissionValidator
                 "cadence, review, trial, and degradation policies",
                 "SKILL_POLICY_INCOMPLETE"
             );
+        if (skill.TryGetProperty("conversationOperation", out var operationJson))
+        {
+            try
+            {
+                var operation = ConversationOperationBindingV1.Parse(operationJson);
+                if (
+                    Array(skill, "constitutionalActions") is not { } actions
+                    || !actions
+                        .EnumerateArray()
+                        .Any(value =>
+                            value.ValueKind == JsonValueKind.String
+                            && value.GetString() == operation.GovernedAction
+                        )
+                )
+                    throw new JsonException("Conversation operation action is not admitted.");
+            }
+            catch (JsonException)
+            {
+                Add(
+                    findings,
+                    "AAV-010",
+                    $"{path}/conversationOperation",
+                    "C-003, C-023, C-059",
+                    "closed operation declaration with immutable policies and an admitted action",
+                    "CONVERSATION_OPERATION_INVALID"
+                );
+            }
+        }
     }
 
     private static void Require(

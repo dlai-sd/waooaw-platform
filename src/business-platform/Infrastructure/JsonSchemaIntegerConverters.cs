@@ -1,3 +1,4 @@
+// Implements: work-contracts/WC-134-whatsapp-demo-complete-rollout-work-component.md §5
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -13,6 +14,8 @@ public sealed class JsonSchemaInt32Converter : JsonConverter<int>
     {
         if (
             reader.TokenType != JsonTokenType.Number
+            || !reader.TryGetDouble(out var floatingValue)
+            || floatingValue != Math.Truncate(floatingValue)
             || !reader.TryGetDecimal(out var value)
             || value != decimal.Truncate(value)
             || value < int.MinValue
@@ -37,6 +40,8 @@ public sealed class JsonSchemaInt64Converter : JsonConverter<long>
     {
         if (
             reader.TokenType != JsonTokenType.Number
+            || !reader.TryGetDouble(out var floatingValue)
+            || floatingValue != Math.Truncate(floatingValue)
             || !reader.TryGetDecimal(out var value)
             || value != decimal.Truncate(value)
             || value < long.MinValue

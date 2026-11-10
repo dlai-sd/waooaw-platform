@@ -141,6 +141,7 @@ class _LoggingAuditSinkWriter:
 # --- Tool executor type alias -------------------------------------------------
 
 ToolExecutor = Callable[[str, dict[str, Any], str | None, ProviderConfig], Awaitable[dict[str, Any]]]
+OfferingAuthorizer = Callable[[str, dict[str, Any], SessionContext], Awaitable[dict[str, Any]]]
 
 
 # --- Gateway ------------------------------------------------------------------
@@ -172,6 +173,7 @@ class ConstitutionalToolGateway:
         ce_client: CEClient | None = None,
         audit_sink: AuditSinkWriter | None = None,
         internal_jwt: str = "",
+        offering_authorizer: OfferingAuthorizer | None = None,
     ) -> None:
         self._registry = ProviderRegistryClient(bp_base_url, internal_jwt)
         self._vault_base_url = vault_base_url.rstrip("/")
@@ -181,6 +183,7 @@ class ConstitutionalToolGateway:
             ce_address or os.getenv("CONSTITUTIONAL_ENGINE_ADDRESS", "constitutional-engine:7000")
         )
         self._audit_sink: AuditSinkWriter = audit_sink or _LoggingAuditSinkWriter()
+        self._offering_authorizer = offering_authorizer
 
     async def call(
         self,
@@ -194,6 +197,15 @@ class ConstitutionalToolGateway:
         Raises:
             ConstitutionalBlockError: CE returned DENY or ESCALATE.
         """
+        if self._offering_authorizer is None:
+            raise RuntimeError("WBE_COMPONENT_OWNER_REQUIRED")
+        receipt = await self._offering_authorizer(tool_name, args, session_ctx)
+        if (
+            receipt.get("state") != "RESERVED"
+            or not receipt.get("reservationId")
+            or not receipt.get("requestDigest")
+        ):
+            raise RuntimeError("WBE_COMPONENT_OWNER_REQUIRED")
         provider_name = args.get("provider", tool_name.split(".")[0])
 
         # Step 1 — fetch ProviderConfig (60 s TTL cache)

@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import json
@@ -29,7 +30,7 @@ from employment_auth import (
     EmploymentWorkloadAuth,
     request_digest,
 )
-from employment_persistence import EmploymentPatchRepository
+from employment_persistence import EmploymentDispatchStoppedError, EmploymentPatchRepository
 
 router = APIRouter(tags=["Employment Interpretation"])
 
@@ -183,6 +184,16 @@ class ProposalInterpretation(EmploymentModel):
     model_decision_ref: str = Field(min_length=1, max_length=200)
 
 
+def _unavailable_interpreter(request: EmploymentPatchProposalRequest) -> ProposalInterpretation:
+    # DISABLED_INTERPRETER_V1 must remain local, deterministic, and free of external effects.
+    return ProposalInterpretation(
+        confidence=0,
+        unresolved_questions=("The configured interpretation provider is unavailable.",),
+        source_refs=(request.contribution_ref,),
+        model_decision_ref="employment-interpreter-unavailable",
+    )
+
+
 class SemanticCatalogue:
     def __init__(
         self,
@@ -216,10 +227,48 @@ class EmploymentPatchProposalService:
         self._proposals: dict[UUID, EmploymentPatchProposal] = {}
         self._proposal_tenants: dict[UUID, str] = {}
         self._idempotency: dict[
-            tuple[str, str, UUID],
+            tuple[str, str, str, UUID],
             tuple[str, UUID],
         ] = {}
         self._lock = Lock()
+
+    @property
+    def recovery_mode(self) -> str:
+        return "DISABLED_INTERPRETER_V1" if self._interpreter is _unavailable_interpreter else "UNKNOWN"
+
+    def validate_request(self, request: EmploymentPatchProposalRequest) -> SemanticCatalogue:
+        if not hmac.compare_digest(self.request_digest(request), request.request_digest):
+            raise EmploymentProposalError("AIR_EMPLOYMENT_INVALID", 400)
+        if not self._injection_guard.scan(request.contribution.text):
+            raise EmploymentProposalError("AIR_EMPLOYMENT_UNREPRESENTABLE", 422)
+        catalogue = self._catalogues.get(
+            (request.semantic_catalogue.ref, request.semantic_catalogue.version, request.semantic_catalogue.digest)
+        )
+        if catalogue is None:
+            raise EmploymentProposalError("AIR_EMPLOYMENT_UNREPRESENTABLE", 422)
+        return catalogue
+
+    def find_cached_proposal(
+        self,
+        workload_identity: str,
+        tenant_id: str,
+        idempotency_key: UUID,
+        request: EmploymentPatchProposalRequest,
+    ) -> EmploymentPatchProposal | None:
+        identity = (tenant_id, workload_identity, request.relationship_ref, idempotency_key)
+        digest = self.request_digest(request)
+        if not self._lock.acquire(blocking=False):
+            raise EmploymentProposalError("AIR_EMPLOYMENT_RECONCILIATION_REQUIRED", 503)
+        try:
+            existing = self._idempotency.get(identity)
+            if existing is None:
+                return None
+            prior_digest, proposal_id = existing
+            if not hmac.compare_digest(prior_digest, digest):
+                raise EmploymentProposalError("AIR_EMPLOYMENT_CONFLICT", 409)
+            return self._proposals[proposal_id]
+        finally:
+            self._lock.release()
 
     def propose(
         self,
@@ -232,7 +281,8 @@ class EmploymentPatchProposalService:
         digest = self.request_digest(request)
         if not hmac.compare_digest(digest, request.request_digest):
             raise EmploymentProposalError("AIR_EMPLOYMENT_INVALID", 400)
-        identity = (workload_identity, request.relationship_ref, idempotency_key)
+        proposal_tenant = tenant_id or workload_identity
+        identity = (proposal_tenant, workload_identity, request.relationship_ref, idempotency_key)
         with self._lock:
             existing = self._idempotency.get(identity)
             if existing is not None:
@@ -240,17 +290,7 @@ class EmploymentPatchProposalService:
                 if not hmac.compare_digest(prior_digest, digest):
                     raise EmploymentProposalError("AIR_EMPLOYMENT_CONFLICT", 409)
                 return self._proposals[proposal_id], True
-            if not self._injection_guard.scan(request.contribution.text):
-                raise EmploymentProposalError("AIR_EMPLOYMENT_UNREPRESENTABLE", 422)
-            catalogue_key = (
-                request.semantic_catalogue.ref,
-                request.semantic_catalogue.version,
-                request.semantic_catalogue.digest,
-            )
-            catalogue = self._catalogues.get(catalogue_key)
-            if catalogue is None:
-                raise EmploymentProposalError("AIR_EMPLOYMENT_UNREPRESENTABLE", 422)
-
+            catalogue = self.validate_request(request)
             interpretation = self._interpreter(request)
             operations = interpretation.operations
             if interpretation.unresolved_questions:
@@ -260,7 +300,9 @@ class EmploymentPatchProposalService:
 
             proposal_id = uuid4()
             state: Literal["PROPOSED", "UNREPRESENTABLE"] = "PROPOSED" if operations else "UNREPRESENTABLE"
-            reason_code: ProposalReasonCode | None = None if operations else "MATERIAL_UNCERTAINTY"
+            reason_code: ProposalReasonCode | None = None
+            if not operations:
+                reason_code = "MODEL_UNAVAILABLE" if self._interpreter is _unavailable_interpreter else "MATERIAL_UNCERTAINTY"
             now = datetime.now(timezone.utc)
             proposal = EmploymentPatchProposal(
                 proposal_id=proposal_id,
@@ -285,7 +327,7 @@ class EmploymentPatchProposalService:
                 produced_at=now,
             )
             self._proposals[proposal_id] = proposal
-            self._proposal_tenants[proposal_id] = tenant_id or workload_identity
+            self._proposal_tenants[proposal_id] = proposal_tenant
             self._idempotency[identity] = (digest, proposal_id)
             receipt = EmploymentPatchProposalReceipt(
                 proposal_id=proposal_id,
@@ -380,27 +422,50 @@ async def propose_employment_patch(
             idempotency_key,
         )
         repository = _repository(request)
-        stored = await repository.find_by_idempotency(
-            context.tenant_id,
-            payload.relationship_ref,
-            idempotency_key,
-        )
-        if stored is not None:
-            if not hmac.compare_digest(stored.request_digest, payload.request_digest):
-                raise EmploymentProposalError("AIR_EMPLOYMENT_CONFLICT", 409)
-            replay = EmploymentPatchProposal.model_validate(stored.proposal_json)
-            return JSONResponse(
-                status_code=200,
-                content=json.loads(replay.model_dump_json(by_alias=True)),
-            )
-        result, replayed = _service(request).propose(
-            context.issuer_uri,
-            idempotency_key,
-            payload,
-            tenant_id=context.tenant_id,
-        )
-        proposal = _service(request).get(result.proposal_id, context.tenant_id)
+        if not hmac.compare_digest(EmploymentPatchProposalService.request_digest(payload), payload.request_digest):
+            raise EmploymentProposalError("AIR_EMPLOYMENT_INVALID", 400)
         try:
+            async with repository.serialize_proposal(context.tenant_id, payload.relationship_ref, idempotency_key) as transaction:
+                stored = await transaction.find_by_idempotency(context.tenant_id, payload.relationship_ref, idempotency_key)
+                if stored is not None:
+                    if not hmac.compare_digest(stored.request_digest, payload.request_digest):
+                        raise EmploymentProposalError("AIR_EMPLOYMENT_CONFLICT", 409)
+                    replay = EmploymentPatchProposal.model_validate(stored.proposal_json)
+                    return JSONResponse(
+                        status_code=200,
+                        content=json.loads(replay.model_dump_json(by_alias=True)),
+                    )
+                _service(request).validate_request(payload)
+                service = _service(request)
+                claimed, claim_digest, recovery_mode = await transaction.claim_dispatch(
+                    context.tenant_id,
+                    payload.relationship_ref,
+                    idempotency_key,
+                    payload.request_digest,
+                    service.recovery_mode,
+                )
+                if not hmac.compare_digest(claim_digest, payload.request_digest):
+                    raise EmploymentProposalError("AIR_EMPLOYMENT_CONFLICT", 409)
+                recovered = None
+                if not claimed:
+                    recovered = _service(request).find_cached_proposal(
+                        context.issuer_uri, context.tenant_id, idempotency_key, payload
+                    )
+                    if recovered is None and not (
+                        recovery_mode == "DISABLED_INTERPRETER_V1" and service.recovery_mode == recovery_mode
+                    ):
+                        raise EmploymentProposalError("AIR_EMPLOYMENT_RECONCILIATION_REQUIRED", 503)
+            if recovered is None:
+                result, replayed = await asyncio.to_thread(
+                    _service(request).propose,
+                    context.issuer_uri,
+                    idempotency_key,
+                    payload,
+                    tenant_id=context.tenant_id,
+                )
+                proposal = _service(request).get(result.proposal_id, context.tenant_id)
+            else:
+                result, proposal, replayed = recovered, recovered, True
             await repository.save(
                 context.tenant_id,
                 payload.relationship_ref,
@@ -426,6 +491,8 @@ async def propose_employment_patch(
             status_code=200 if replayed else 202,
             content=json.loads(result.model_dump_json(by_alias=True)),
         )
+    except EmploymentDispatchStoppedError:
+        return _problem(EmploymentProposalError("AIR_EMPLOYMENT_STOPPED", 423), correlation_id)
     except EmploymentProposalError as error:
         return _problem(error, correlation_id)
 
@@ -445,21 +512,52 @@ async def get_employment_patch_proposal(
             None,
             None,
         )
-        try:
-            result = _service(request).get(proposal_id, context.tenant_id)
-        except EmploymentProposalError as error:
-            if error.status != 404:
-                raise
-            stored = await _repository(request).get(context.tenant_id, proposal_id)
-            if stored is None:
-                raise
-            result = EmploymentPatchProposal.model_validate(stored.proposal_json)
+        stored = await _repository(request).get(context.tenant_id, proposal_id)
+        if stored is None:
+            raise EmploymentProposalError("AIR_EMPLOYMENT_NOT_FOUND", 404)
+        result = EmploymentPatchProposal.model_validate(stored.proposal_json)
         if result.relationship_ref != context.relationship_id:
             raise EmploymentProposalError("AIR_EMPLOYMENT_NOT_FOUND", 404)
         return JSONResponse(
             status_code=200,
             content=json.loads(result.model_dump_json(by_alias=True)),
         )
+    except EmploymentDispatchStoppedError:
+        return _problem(EmploymentProposalError("AIR_EMPLOYMENT_STOPPED", 423), correlation_id)
+    except EmploymentProposalError as error:
+        return _problem(error, correlation_id)
+
+
+@router.post("/internal/v1/employment-patch-proposals/reconcile")
+async def reconcile_employment_patch(
+    payload: EmploymentPatchProposalRequest,
+    request: Request,
+    idempotency_key: UUID = Header(alias="Idempotency-Key"),
+    correlation_id: UUID = Header(alias="X-Correlation-Id"),
+) -> JSONResponse:
+    """Look up the original outcome without claiming or interpreting new work."""
+    try:
+        context = _authorize(
+            request,
+            "/internal/v1/employment-patch-proposals/reconcile",
+            "reconcileEmploymentPatchProposal",
+            request_digest(payload.model_dump(mode="json", by_alias=True)),
+            payload.relationship_ref,
+            idempotency_key,
+        )
+        if not hmac.compare_digest(EmploymentPatchProposalService.request_digest(payload), payload.request_digest):
+            raise EmploymentProposalError("AIR_EMPLOYMENT_INVALID", 400)
+        stored = await _repository(request).find_by_idempotency(context.tenant_id, payload.relationship_ref, idempotency_key)
+        if stored is None:
+            raise EmploymentProposalError("AIR_EMPLOYMENT_RECONCILIATION_REQUIRED", 503)
+        if not hmac.compare_digest(stored.request_digest, payload.request_digest):
+            raise EmploymentProposalError("AIR_EMPLOYMENT_CONFLICT", 409)
+        result = EmploymentPatchProposal.model_validate(stored.proposal_json)
+        if result.relationship_ref != context.relationship_id:
+            raise EmploymentProposalError("AIR_EMPLOYMENT_NOT_FOUND", 404)
+        return JSONResponse(status_code=200, content=json.loads(result.model_dump_json(by_alias=True)))
+    except EmploymentDispatchStoppedError:
+        return _problem(EmploymentProposalError("AIR_EMPLOYMENT_STOPPED", 423), correlation_id)
     except EmploymentProposalError as error:
         return _problem(error, correlation_id)
 
@@ -504,17 +602,7 @@ def configure_employment_patch(
     except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
         raise RuntimeError("EMPLOYMENT_SEMANTIC_CATALOGUE_JSON is invalid.") from error
 
-    def unavailable_interpreter(
-        request: EmploymentPatchProposalRequest,
-    ) -> ProposalInterpretation:
-        return ProposalInterpretation(
-            confidence=0,
-            unresolved_questions=("The configured interpretation provider is unavailable.",),
-            source_refs=(request.contribution_ref,),
-            model_decision_ref="employment-interpreter-unavailable",
-        )
-
     application.state.employment_patch_service = EmploymentPatchProposalService(
         (catalogue,),
-        interpreter or unavailable_interpreter,
+        interpreter or _unavailable_interpreter,
     )

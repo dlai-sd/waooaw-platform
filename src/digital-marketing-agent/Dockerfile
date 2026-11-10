@@ -3,7 +3,9 @@
 
 FROM python:3.12-alpine@sha256:4c47124a8391cb7a9f571164147d154777cf012a4ece5f86097130d7a4478111
 
-RUN apk upgrade --no-cache \
+ARG SECURITY_REFRESH=local
+RUN test -n "$SECURITY_REFRESH" \
+    && apk upgrade --no-cache \
     && addgroup -S adapter && adduser -S -G adapter -h /app adapter \
     && pip install --no-cache-dir fastapi==0.135.1 uvicorn==0.34.0
 

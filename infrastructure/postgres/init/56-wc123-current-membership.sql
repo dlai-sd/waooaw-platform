@@ -45,17 +45,23 @@ FOR SELECT TO identity_resolver_owner
 USING (
     identity_managed
     AND identity_status = 'ACTIVE'
-    AND EXISTS (
-        SELECT 1
-        FROM identity.memberships AS membership
-        JOIN identity.actor_bindings AS actor
-          ON actor.account_id = membership.account_id
-        WHERE membership.tenant_id = organisations.tenant_id
-          AND actor.actor_issuer =
-              NULLIF(pg_catalog.current_setting('app.identity_issuer', true), '') COLLATE "C"
-          AND actor.actor_subject =
-              NULLIF(pg_catalog.current_setting('app.identity_subject', true), '') COLLATE "C"
-          AND actor.status = 'ACTIVE'
+    AND (
+        (
+            NULLIF(pg_catalog.current_setting('app.identity_issuer', true), '') IS NULL
+            AND NULLIF(pg_catalog.current_setting('app.identity_subject', true), '') IS NULL
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM identity.memberships AS membership
+            JOIN identity.actor_bindings AS actor
+              ON actor.account_id = membership.account_id
+            WHERE membership.tenant_id = organisations.tenant_id
+              AND actor.actor_issuer =
+                  NULLIF(pg_catalog.current_setting('app.identity_issuer', true), '') COLLATE "C"
+              AND actor.actor_subject =
+                  NULLIF(pg_catalog.current_setting('app.identity_subject', true), '') COLLATE "C"
+              AND actor.status = 'ACTIVE'
+        )
     )
 );
 

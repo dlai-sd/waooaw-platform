@@ -22,6 +22,54 @@ security:
   - ServiceBearerAuth: []
 
 paths:
+  /internal/v1/relationships/{relationshipId}/offering-usage/reserve:
+    post: &offeringUsageCommand
+      tags: [Relationship Commercial Projection]
+      operationId: reserveOfferingComponentUsage
+      x-internal: true
+      summary: Reserve, settle, release, or reconcile an owner-resolved component allowance
+      description: |
+        The concrete action route is separately workload-granted. The signed delegated context
+        binds tenant, relationship, caller, operation, idempotency key and canonical body digest.
+        WBE resolves the accepted immutable offering version or active trial and authorized
+        catalogue/provider/rate; callers cannot supply allowance or price authority.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WbeOfferingUsageCommandV1" }
+      responses:
+        "200":
+          description: Exact stored component allowance receipt
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WbeOfferingUsageReceiptV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/BadRequest" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /internal/v1/relationships/{relationshipId}/offering-usage/settle:
+    post:
+      <<: *offeringUsageCommand
+      operationId: settleOfferingComponentUsage
+      summary: Settle exact actual usage without repricing the stored reservation
+  /internal/v1/relationships/{relationshipId}/offering-usage/release:
+    post:
+      <<: *offeringUsageCommand
+      operationId: releaseOfferingComponentUsage
+      summary: Release only with owner evidence that provider dispatch did not occur
+  /internal/v1/relationships/{relationshipId}/offering-usage/reconcile:
+    post:
+      <<: *offeringUsageCommand
+      operationId: reconcileOfferingComponentUsage
+      summary: Read the exact reservation outcome without creating new authority
+
   /internal/v1/relationships/{relationshipId}/offerability-validation:
     post:
       tags: [Relationship Commercial Projection]
@@ -226,6 +274,62 @@ components:
           schema: { $ref: "#/components/schemas/WbeCommercialProblemDetailV1" }
 
   schemas:
+    WbeOfferingUsageCommandV1:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - agentInstanceId
+        - professionalType
+        - professionalVersion
+        - skillId
+        - skillVersion
+        - workItemId
+        - invocationId
+        - componentId
+        - requestDigest
+        - ownerEvidenceId
+      properties:
+        schemaVersion: { type: string, const: "1.0" }
+        agentInstanceId: { type: string, format: uuid }
+        professionalType: { type: string, minLength: 1, maxLength: 64 }
+        professionalVersion: { type: string, minLength: 1, maxLength: 64 }
+        skillId: { type: string, minLength: 1, maxLength: 100 }
+        skillVersion: { type: string, minLength: 1, maxLength: 64 }
+        workItemId: { type: string, format: uuid }
+        invocationId: { type: string, format: uuid }
+        componentId: { type: string, minLength: 1, maxLength: 50 }
+        requestDigest: { type: string, pattern: "^[0-9a-f]{64}$" }
+        ownerEvidenceId: { type: string, format: uuid }
+        maximumUnits: { type: integer, minimum: 1 }
+        reservationId: { type: string, format: uuid }
+        actualUnits: { type: integer, minimum: 0 }
+        outcomeEvidenceId: { type: string, format: uuid }
+    WbeOfferingUsageReceiptV1:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - reservationId
+        - state
+        - maximumUnits
+        - reservedRawPaise
+        - reservedMarkedUpPaise
+        - catalogueThreadId
+        - providerAccountId
+        - rateVersion
+        - replayed
+      properties:
+        schemaVersion: { type: string, const: "1.0" }
+        reservationId: { type: string, format: uuid }
+        state: { type: string, enum: [RESERVED, SETTLED, RELEASED] }
+        maximumUnits: { type: integer, minimum: 1 }
+        reservedRawPaise: { type: integer, minimum: 0 }
+        reservedMarkedUpPaise: { type: integer, minimum: 0 }
+        catalogueThreadId: { type: string }
+        providerAccountId: { type: string, format: uuid }
+        rateVersion: { type: string, pattern: "^[0-9a-f]{64}$" }
+        replayed: { type: boolean }
     WbeCommercialSchemaVersion:
       type: string
       const: "1.0"

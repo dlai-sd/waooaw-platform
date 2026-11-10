@@ -24,6 +24,7 @@ export const IdentityRegistrationState = {
   EmailVerificationRequired: "EMAIL_VERIFICATION_REQUIRED",
   DuplicateResolutionRequired: "DUPLICATE_RESOLUTION_REQUIRED",
   ProfileCompletionRequired: "PROFILE_COMPLETION_REQUIRED",
+  MobileVerificationRequired: "MOBILE_VERIFICATION_REQUIRED",
   ReadyToComplete: "READY_TO_COMPLETE",
   Completed: "COMPLETED",
   Expired: "EXPIRED",

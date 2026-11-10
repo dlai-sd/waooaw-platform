@@ -26,6 +26,15 @@ public sealed class IdentityHmacOptions
 
 public interface IIdentityVerificationDispatcher
 {
+    Task DispatchRegistrationMobileAsync(
+        Guid registrationId,
+        Guid challengeId,
+        DateTimeOffset expiresAt,
+        string destination,
+        string code,
+        CancellationToken ct
+    ) => DispatchAsync(IdentityVerificationPurpose.Mobile, destination, code, ct);
+
     Task DispatchAsync(
         IdentityVerificationPurpose purpose,
         string destination,
@@ -124,6 +133,12 @@ public sealed class IdentityResourceNotFoundException(string reason) : Exception
 
 public sealed class IdentityChallengeExpiredException(string reason) : Exception(reason);
 
+public sealed class IdentityVerificationRateLimitedException(DateTimeOffset retryAfter)
+    : Exception("Verification requests are temporarily limited.")
+{
+    public DateTimeOffset RetryAfter { get; } = retryAfter;
+}
+
 public sealed class IdentityVerificationRequiredException(string reason) : Exception(reason);
 
 public sealed class IdentityDuplicateResolutionRequiredException(string reason) : Exception(reason);
@@ -136,26 +151,31 @@ public sealed class IdentityStepUpRequiredException(string reason, Guid intentId
     public Guid IntentId { get; } = intentId;
 }
 
-public sealed class IdentityService
+public sealed partial class IdentityService : IWhatsAppAccountLinkConfirmation
 {
     private readonly IDbContextFactory<IdentityDbContext> _dbFactory;
     private readonly string _activeHmacVersion;
     private readonly IReadOnlyDictionary<string, byte[]> _hmacKeys;
     private readonly IIdentityVerificationDispatcher _dispatcher;
     private readonly IIdentityConstitutionalGateway? _constitutionalGateway;
+    private readonly TimeProvider _clock;
 
     private const int Aal3FreshWindowMinutes = 5;
+    private const int MaximumMobileVerificationAttempts = 5;
+    private const string MobileVerificationDeniedReplay = "verification:denied";
 
     public IdentityService(
         IDbContextFactory<IdentityDbContext> dbFactory,
         IOptions<IdentityHmacOptions> hmacOptions,
         IIdentityVerificationDispatcher dispatcher,
-        IIdentityConstitutionalGateway? constitutionalGateway = null
+        IIdentityConstitutionalGateway? constitutionalGateway = null,
+        TimeProvider? clock = null
     )
     {
         _dbFactory = dbFactory ?? throw new ArgumentNullException(nameof(dbFactory));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         _constitutionalGateway = constitutionalGateway;
+        _clock = clock ?? TimeProvider.System;
         var options = hmacOptions?.Value;
         var key = options?.Key;
         if (string.IsNullOrEmpty(key) || key.Length < IdentityHmacOptions.MinKeyLength)
@@ -940,21 +960,26 @@ public sealed class IdentityService
     )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
-        await using var transaction = actor is null
-            ? null
-            : await db.Database.BeginTransactionAsync(ct);
+        await using var transaction =
+            actor is null && !db.Database.IsRelational()
+                ? null
+                : await db.Database.BeginTransactionAsync(ct);
         if (actor is not null)
             await SetActorContextAsync(db, actor, ct);
 
         IdentityRegistrationRecord? reg = null;
         if (registrationId.HasValue)
         {
-            reg = await db.Registrations.FindAsync([registrationId.Value], ct);
+            reg = await FindRegistrationForMobileVerificationAsync(db, registrationId.Value, ct);
             if (
                 reg is null
                 || reg.ActorSubject != actorSubject
                 || actor is not null && reg.ActorIssuer != actor.Issuer
-                || reg.State == IdentityRegistrationState.Completed
+                || reg.State
+                    is IdentityRegistrationState.Completed
+                        or IdentityRegistrationState.Cancelled
+                        or IdentityRegistrationState.Expired
+                || reg.ExpiresAt <= DateTimeOffset.UtcNow
             )
                 throw new IdentityResourceNotFoundException(
                     "Registration not found or not accessible."
@@ -980,23 +1005,32 @@ public sealed class IdentityService
             );
             if (transaction is not null)
                 await transaction.CommitAsync(ct);
+            if (reg is not null && replayChallenge?.DeliveryState != "SUBMITTED")
+                throw new IdentityDeliveryUnavailableException(
+                    "Verification delivery is unresolved."
+                );
             return (replayChallenge!, false);
+        }
+
+        if (reg is not null)
+        {
+            var now = DateTimeOffset.UtcNow;
+            var retryAfter = await db
+                .VerificationChallenges.Where(value =>
+                    value.RegistrationId == reg.RegistrationId
+                    && value.Purpose == IdentityVerificationPurpose.Mobile
+                    && value.ResendAfter > now
+                )
+                .Select(value => (DateTimeOffset?)value.ResendAfter)
+                .MaxAsync(ct);
+            if (retryAfter is { } nextRequest)
+                throw new IdentityVerificationRateLimitedException(nextRequest);
         }
 
         // Generate cryptographically secure 6-digit OTP; raw code must never be persisted
         var rawCode = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
         var codeHmac = ComputeHmac("otp", rawCode, _activeHmacVersion);
         var masked = MaskMobile(mobile);
-
-        // Store normalized HMAC key and masked mobile on registration; never raw mobile
-        if (reg is not null)
-        {
-            reg.MobileHmacKey = ComputeHmac("mobile", mobile, _activeHmacVersion);
-            reg.MobileHmacVersion = _activeHmacVersion;
-            reg.MobileHmacDomain = "mobile";
-            reg.MaskedMobile = masked;
-            reg.UpdatedAt = DateTimeOffset.UtcNow;
-        }
 
         var challenge = new IdentityVerificationChallengeRecord
         {
@@ -1005,27 +1039,78 @@ public sealed class IdentityService
             Purpose = IdentityVerificationPurpose.Mobile,
             CodeHmac = codeHmac,
             CodeHmacVersion = _activeHmacVersion,
+            DestinationHmacKey = reg is null
+                ? null
+                : ComputeHmac("mobile", mobile, _activeHmacVersion),
+            DestinationHmacVersion = reg is null ? null : _activeHmacVersion,
+            DestinationHmacDomain = reg is null ? null : "mobile",
+            DeliveryState = reg is null ? null : "DISPATCHING",
             MaskedDestination = masked,
         };
 
         db.VerificationChallenges.Add(challenge);
         await db.SaveChangesAsync(ct);
+        if (reg is not null)
+        {
+            await RecordIdempotencyAsync(
+                db,
+                actorSubject,
+                idempotencyKey,
+                "StartMobileVerification",
+                canonicalHash,
+                202,
+                challenge.ChallengeId.ToString(),
+                ct,
+                actor?.Issuer
+            );
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(ct);
+                await transaction.DisposeAsync();
+            }
+        }
         try
         {
-            await _dispatcher.DispatchAsync(
-                IdentityVerificationPurpose.Mobile,
-                mobile,
-                rawCode,
-                ct
-            );
+            if (reg is not null)
+            {
+                await _dispatcher.DispatchRegistrationMobileAsync(
+                    reg.RegistrationId,
+                    challenge.ChallengeId,
+                    challenge.ExpiresAt,
+                    mobile,
+                    rawCode,
+                    ct
+                );
+            }
+            else
+                await _dispatcher.DispatchAsync(
+                    IdentityVerificationPurpose.Mobile,
+                    mobile,
+                    rawCode,
+                    ct
+                );
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             challenge.State = IdentityVerificationState.Expired;
-            await db.SaveChangesAsync(ct);
-            if (transaction is not null)
-                await transaction.CommitAsync(ct);
+            if (reg is not null)
+            {
+                challenge.DeliveryState = "UNAVAILABLE";
+                await SaveRegistrationMobileDeliveryAsync(db, actor, ct);
+            }
+            else
+            {
+                await db.SaveChangesAsync(ct);
+                if (transaction is not null)
+                    await transaction.CommitAsync(ct);
+            }
             throw new IdentityDeliveryUnavailableException("Verification delivery is unavailable.");
+        }
+        if (reg is not null)
+        {
+            challenge.DeliveryState = "SUBMITTED";
+            await SaveRegistrationMobileDeliveryAsync(db, actor, ct);
+            return (challenge, true);
         }
         await RecordIdempotencyAsync(
             db,
@@ -1044,6 +1129,22 @@ public sealed class IdentityService
         return (challenge, true);
     }
 
+    private static async Task SaveRegistrationMobileDeliveryAsync(
+        IdentityDbContext db,
+        VerifiedCustomerActor? actor,
+        CancellationToken ct
+    )
+    {
+        await using var transaction = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(ct)
+            : null;
+        if (actor is not null)
+            await SetActorContextAsync(db, actor, ct);
+        await db.SaveChangesAsync(ct);
+        if (transaction is not null)
+            await transaction.CommitAsync(ct);
+    }
+
     public async Task<(object result, bool isNew)> ConfirmMobileVerificationAsync(
         Guid? registrationId,
         string actorSubject,
@@ -1056,11 +1157,27 @@ public sealed class IdentityService
     )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
-        await using var transaction = actor is null
-            ? null
-            : await db.Database.BeginTransactionAsync(ct);
+        await using var transaction =
+            actor is null && !db.Database.IsRelational()
+                ? null
+                : await db.Database.BeginTransactionAsync(ct);
         if (actor is not null)
             await SetActorContextAsync(db, actor, ct);
+
+        var reg = registrationId.HasValue
+            ? await FindRegistrationForMobileVerificationAsync(db, registrationId.Value, ct)
+            : null;
+        if (
+            registrationId.HasValue
+            && (
+                reg is null
+                || reg.ActorSubject != actorSubject
+                || actor is not null && reg.ActorIssuer != actor.Issuer
+            )
+        )
+            throw new IdentityResourceNotFoundException(
+                "Registration not found or not accessible."
+            );
 
         var (replay, conflict) = await CheckIdempotencyAsync(
             db,
@@ -1077,6 +1194,8 @@ public sealed class IdentityService
         // Replay returns original outcome before any state validation
         if (replay is not null)
         {
+            if (replay == MobileVerificationDeniedReplay)
+                throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
             if (registrationId.HasValue)
             {
                 var replayReg = await db.Registrations.FindAsync([registrationId.Value], ct);
@@ -1105,40 +1224,100 @@ public sealed class IdentityService
         )
             throw new IdentityResourceNotFoundException("Challenge not found or not accessible.");
 
-        // Challenge must belong to this registration
-        if (registrationId.HasValue && challenge.RegistrationId != registrationId.Value)
+        if (challenge.RegistrationId != registrationId)
             throw new IdentityResourceNotFoundException(
-                "Challenge does not belong to this registration."
+                "Challenge does not belong to this verification flow."
             );
+
+        if (registrationId.HasValue)
+        {
+            if (
+                reg!.State
+                    is IdentityRegistrationState.Completed
+                        or IdentityRegistrationState.Cancelled
+                        or IdentityRegistrationState.Expired
+                || reg.ExpiresAt <= DateTimeOffset.UtcNow
+            )
+                throw new IdentityResourceNotFoundException(
+                    "Registration not found or not accessible."
+                );
+
+            if (
+                challenge.DestinationHmacKey is null
+                || challenge.DestinationHmacVersion is null
+                || challenge.DestinationHmacDomain != "mobile"
+                || challenge.DeliveryState != "SUBMITTED"
+            )
+                throw new IdentityChallengeExpiredException(
+                    "Challenge is not bound to a verified destination."
+                );
+        }
 
         if (challenge.State != IdentityVerificationState.Pending)
             throw new IdentityChallengeExpiredException("Challenge is no longer usable.");
 
-        if (challenge.ExpiresAt < DateTimeOffset.UtcNow)
+        if (challenge.ExpiresAt <= DateTimeOffset.UtcNow)
         {
             challenge.State = IdentityVerificationState.Expired;
             await db.SaveChangesAsync(ct);
+            if (transaction is not null)
+                await transaction.CommitAsync(ct);
             throw new IdentityChallengeExpiredException("Challenge has expired.");
         }
 
-        // Constant-time HMAC comparison; wrong code returns privacy-safe denial without consuming
+        // The registration row lock serializes confirmation and failed-attempt accounting.
         if (!VerifyCode(code, challenge.CodeHmac, challenge.CodeHmacVersion))
+        {
+            if (reg is not null)
+            {
+                challenge.FailedAttempts = Math.Min(
+                    challenge.FailedAttempts + 1,
+                    MaximumMobileVerificationAttempts
+                );
+                if (challenge.FailedAttempts >= MaximumMobileVerificationAttempts)
+                    challenge.State = IdentityVerificationState.Expired;
+                await RecordIdempotencyAsync(
+                    db,
+                    actorSubject,
+                    idempotencyKey,
+                    "ConfirmMobileVerification",
+                    canonicalHash,
+                    403,
+                    MobileVerificationDeniedReplay,
+                    ct,
+                    actor?.Issuer
+                );
+                if (transaction is not null)
+                    await transaction.CommitAsync(ct);
+            }
             throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
+        }
 
         var verifiedAt = DateTimeOffset.UtcNow;
         challenge.State = IdentityVerificationState.Consumed;
         challenge.VerifiedAt = verifiedAt;
 
-        if (registrationId.HasValue)
+        if (reg is not null)
         {
-            var reg = await db.Registrations.FindAsync([registrationId.Value], ct);
-            if (reg is not null && reg.ActorSubject == actorSubject)
-            {
-                reg.MobileVerified = true;
-                reg.MaskedMobile = challenge.MaskedDestination;
-                reg.UpdatedAt = DateTimeOffset.UtcNow;
-                reg.State = ComputeRegistrationState(reg);
-            }
+            reg.MobileVerified = true;
+            reg.MobileHmacKey = challenge.DestinationHmacKey;
+            reg.MobileHmacVersion = challenge.DestinationHmacVersion;
+            reg.MobileHmacDomain = challenge.DestinationHmacDomain;
+            reg.MaskedMobile = challenge.MaskedDestination;
+            reg.UpdatedAt = DateTimeOffset.UtcNow;
+            reg.State = ComputeRegistrationState(reg);
+
+            var otherPendingChallenges = await db
+                .VerificationChallenges.Where(c =>
+                    c.RegistrationId == reg.RegistrationId
+                    && c.Purpose == IdentityVerificationPurpose.Mobile
+                    && c.State == IdentityVerificationState.Pending
+                    && c.ChallengeId != challenge.ChallengeId
+                )
+                .ToListAsync(ct);
+            foreach (var otherChallenge in otherPendingChallenges)
+                otherChallenge.State = IdentityVerificationState.Expired;
+
             await db.SaveChangesAsync(ct);
             await RecordIdempotencyAsync(
                 db,
@@ -1176,6 +1355,21 @@ public sealed class IdentityService
             true
         );
     }
+
+    private static async Task<IdentityRegistrationRecord?> FindRegistrationForMobileVerificationAsync(
+        IdentityDbContext db,
+        Guid registrationId,
+        CancellationToken ct
+    ) =>
+        db.Database.IsRelational()
+            ? (
+                await db
+                    .Registrations.FromSqlInterpolated(
+                        $"SELECT * FROM identity.registrations WHERE registration_id = {registrationId} FOR UPDATE"
+                    )
+                    .ToListAsync(ct)
+            ).SingleOrDefault()
+            : await db.Registrations.FindAsync([registrationId], ct);
 
     // ── Registration Completion ──────────────────────────────────────────────
 
@@ -1226,6 +1420,11 @@ public sealed class IdentityService
                 "Email verification must be completed before registration can be finalized."
             );
 
+        if (!reg.MobileVerified)
+            throw new IdentityVerificationRequiredException(
+                "WhatsApp number verification must be completed before registration can be finalized."
+            );
+
         // Require minimum profile fields
         if (
             string.IsNullOrWhiteSpace(reg.DisplayName)
@@ -1251,12 +1450,13 @@ public sealed class IdentityService
                 .FirstOrDefaultAsync(ct);
 
         Guid? mobileAccountId = null;
-        if (reg.MobileHmacKey is not null)
+        if (reg.MobileVerified && reg.MobileHmacKey is not null)
             mobileAccountId = await db
                 .Registrations.Where(value =>
                     value.RegistrationId != registrationId
                     && value.State == IdentityRegistrationState.Completed
                     && value.AccountId != null
+                    && value.MobileVerified
                     && value.MobileHmacDomain == reg.MobileHmacDomain
                     && value.MobileHmacVersion == reg.MobileHmacVersion
                     && value.MobileHmacKey == reg.MobileHmacKey
@@ -1438,7 +1638,8 @@ public sealed class IdentityService
             idempotencyKey,
             $"UpdateCustomerProfile:{tenantId}",
             canonicalHash,
-            ct
+            ct,
+            actorIssuer
         );
         if (conflict)
             throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
@@ -1463,7 +1664,8 @@ public sealed class IdentityService
                 canonicalHash,
                 200,
                 preference.PreferenceId.ToString(),
-                ct
+                ct,
+                actorIssuer
             );
         }
 
@@ -1585,14 +1787,15 @@ public sealed class IdentityService
             ct
         );
         var portalActorSubject = registration.ActorSubject;
-        var operation = $"ReplaceWorkspaceLayoutPreferences:{tenantId}";
+        var operation = $"ReplaceWorkspaceLayout:{tenantId}";
         var (replay, conflict) = await CheckIdempotencyAsync(
             db,
             portalActorSubject,
             idempotencyKey,
             operation,
             canonicalHash,
-            ct
+            ct,
+            actorIssuer
         );
         if (conflict)
             throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
@@ -1616,6 +1819,7 @@ public sealed class IdentityService
             db.IdempotencyLedger.Add(
                 new IdentityIdempotencyEntry
                 {
+                    ActorIssuer = actorIssuer,
                     ActorSubject = portalActorSubject,
                     IdempotencyKey = idempotencyKey.ToString(),
                     OperationFamily = operation,
@@ -1672,7 +1876,8 @@ public sealed class IdentityService
             idempotencyKey,
             operation,
             canonicalHash,
-            ct
+            ct,
+            actorIssuer
         );
         if (conflict)
             throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
@@ -1702,7 +1907,8 @@ public sealed class IdentityService
                 canonicalHash,
                 200,
                 preference.PreferenceId.ToString(),
-                ct
+                ct,
+                actorIssuer
             );
         }
         var result = ToSettings(preference, locale, preference.UpdatedAt);
@@ -1867,43 +2073,82 @@ public sealed class IdentityService
         string canonicalHash,
         Guid verifiedMobileProofId,
         DateTimeOffset authTime,
-        CancellationToken ct
+        CancellationToken ct,
+        VerifiedCustomerActor? actor = null,
+        CustomerWorkspaceMembership? membership = null
     )
     {
         EnforceAal3Fresh(authTime);
 
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
+        await using var transaction = await BeginAccountLinkContextAsync(
+            db,
+            actor,
+            membership,
+            tenantId,
+            ct
+        );
 
         var (replay, conflict) = await CheckIdempotencyAsync(
             db,
-            actorSubject,
+            actor?.Subject ?? actorSubject,
             idempotencyKey,
             "StartAccountLink",
             canonicalHash,
-            ct
+            ct,
+            actor?.Issuer
         );
         if (conflict)
             throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
         if (replay is not null)
         {
             var replayLink = await db.AccountLinks.FindAsync([Guid.Parse(replay)], ct);
-            return (replayLink!, false);
+            if (
+                replayLink is null
+                || !AccountLinkMatchesActor(replayLink, actorSubject, actor)
+                || replayLink.TenantId != tenantId
+            )
+                throw new IdentityResourceNotFoundException("Link not found or not accessible.");
+            if (transaction is not null)
+                await transaction.CommitAsync(ct);
+            return (replayLink, false);
         }
 
+        var proof = await RequireAccountLinkProofAsync(
+            db,
+            verifiedMobileProofId,
+            actorSubject,
+            actor,
+            membership,
+            ct
+        );
         var startEvidenceId = await RequireConstitutionalEvidenceAsync(
             tenantId,
             idempotencyKey,
             "IDENTITY_ACCOUNT_LINK_START",
-            new { verifiedMobileProofId },
+            new { verifiedMobileProofId = proof.ChallengeId },
+            ct
+        );
+        if (startEvidenceId == Guid.Empty)
+            throw new IdentityConstitutionalUnavailableException(
+                "Account-link evidence is unavailable."
+            );
+        EnforceAal3Fresh(authTime);
+        await RequireAccountLinkProofAsync(
+            db,
+            proof.ChallengeId,
+            actorSubject,
+            actor,
+            membership,
             ct
         );
 
         var link = new IdentityAccountLinkRecord
         {
-            ActorSubject = actorSubject,
+            ActorSubject = actor?.Subject ?? actorSubject,
             TenantId = tenantId,
-            MaskedMobile = "***",
-            VerifiedMobileProofId = verifiedMobileProofId,
+            MaskedMobile = proof.MaskedDestination,
+            VerifiedMobileProofId = proof.ChallengeId,
             StartEvidenceId = startEvidenceId,
         };
 
@@ -1911,81 +2156,204 @@ public sealed class IdentityService
         await db.SaveChangesAsync(ct);
         await RecordIdempotencyAsync(
             db,
-            actorSubject,
+            actor?.Subject ?? actorSubject,
             idempotencyKey,
             "StartAccountLink",
             canonicalHash,
             201,
             link.LinkId.ToString(),
-            ct
+            ct,
+            actor?.Issuer
         );
+        if (transaction is not null)
+            await transaction.CommitAsync(ct);
 
         return (link, true);
     }
 
-    public async Task<(IdentityAccountLinkRecord link, bool isNew)> ApproveAccountLinkAsync(
+    public Task<(IdentityAccountLinkRecord link, bool isNew)> ApproveAccountLinkAsync(
         Guid linkId,
         string actorSubject,
         Guid tenantId,
         Guid idempotencyKey,
         string canonicalHash,
         DateTimeOffset authTime,
-        CancellationToken ct
+        CancellationToken ct,
+        VerifiedCustomerActor? actor = null,
+        CustomerWorkspaceMembership? membership = null
+    ) =>
+        TransitionAccountLinkAsync(
+            linkId,
+            actorSubject,
+            tenantId,
+            idempotencyKey,
+            canonicalHash,
+            authTime,
+            true,
+            ct,
+            actor,
+            membership
+        );
+
+    public Task<(IdentityAccountLinkRecord link, bool isNew)> CancelAccountLinkAsync(
+        Guid linkId,
+        string actorSubject,
+        Guid tenantId,
+        Guid idempotencyKey,
+        string canonicalHash,
+        DateTimeOffset authTime,
+        CancellationToken ct,
+        VerifiedCustomerActor? actor = null,
+        CustomerWorkspaceMembership? membership = null
+    ) =>
+        TransitionAccountLinkAsync(
+            linkId,
+            actorSubject,
+            tenantId,
+            idempotencyKey,
+            canonicalHash,
+            authTime,
+            false,
+            ct,
+            actor,
+            membership
+        );
+
+    private async Task<(IdentityAccountLinkRecord link, bool isNew)> TransitionAccountLinkAsync(
+        Guid linkId,
+        string actorSubject,
+        Guid tenantId,
+        Guid idempotencyKey,
+        string canonicalHash,
+        DateTimeOffset authTime,
+        bool approve,
+        CancellationToken ct,
+        VerifiedCustomerActor? actor,
+        CustomerWorkspaceMembership? membership
     )
     {
         EnforceAal3Fresh(authTime);
+        var operation = approve ? "ApproveAccountLink" : "CancelAccountLink";
 
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
+        await using var transaction = await BeginAccountLinkContextAsync(
+            db,
+            actor,
+            membership,
+            tenantId,
+            ct
+        );
 
-        var link = await db.AccountLinks.FindAsync([linkId], ct);
-        if (link is null || link.ActorSubject != actorSubject || link.TenantId != tenantId)
+        var link = await FindAccountLinkForUpdateAsync(db, linkId, ct);
+        if (
+            link is null
+            || !AccountLinkMatchesActor(link, actorSubject, actor)
+            || link.TenantId != tenantId
+        )
             throw new IdentityResourceNotFoundException("Link not found or not accessible.");
 
         var (replay, conflict) = await CheckIdempotencyAsync(
             db,
-            actorSubject,
+            actor?.Subject ?? actorSubject,
             idempotencyKey,
-            "ApproveAccountLink",
+            operation,
             canonicalHash,
-            ct
+            ct,
+            actor?.Issuer
         );
         if (conflict)
             throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
         if (replay is not null)
+        {
+            if (transaction is not null)
+                await transaction.CommitAsync(ct);
             return (link, false);
-
-        var approvalEvidenceId = await RequireConstitutionalEvidenceAsync(
-            tenantId,
-            idempotencyKey,
-            "IDENTITY_ACCOUNT_LINK_APPROVE",
-            new { linkId },
-            ct
-        );
+        }
 
         if (
             link.State == IdentityAccountLinkState.Expired
-            || link.ExpiresAt < DateTimeOffset.UtcNow
+            || (
+                link.State
+                is IdentityAccountLinkState.PendingPortalApproval
+                    or IdentityAccountLinkState.PendingWhatsAppConfirmation
+            )
+                && link.ExpiresAt <= DateTimeOffset.UtcNow
         )
         {
             link.State = IdentityAccountLinkState.Expired;
             await db.SaveChangesAsync(ct);
+            if (transaction is not null)
+                await transaction.CommitAsync(ct);
             throw new IdentityChallengeExpiredException("Link challenge has expired.");
         }
 
-        link.State = IdentityAccountLinkState.PendingWhatsAppConfirmation;
-        link.ApprovalEvidenceId = approvalEvidenceId;
+        if (
+            approve
+                ? link.State != IdentityAccountLinkState.PendingPortalApproval
+                : link.State
+                    is not (
+                        IdentityAccountLinkState.PendingPortalApproval
+                        or IdentityAccountLinkState.PendingWhatsAppConfirmation
+                    )
+        )
+            throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
+        if (approve)
+            await RequireAccountLinkProofAsync(
+                db,
+                link.VerifiedMobileProofId,
+                actorSubject,
+                actor,
+                membership,
+                ct
+            );
+        var approvalEvidenceId = await RequireConstitutionalEvidenceAsync(
+            tenantId,
+            idempotencyKey,
+            approve ? "IDENTITY_ACCOUNT_LINK_APPROVE" : "IDENTITY_ACCOUNT_LINK_CANCEL",
+            new { linkId },
+            ct
+        );
+        if (approvalEvidenceId == Guid.Empty)
+            throw new IdentityConstitutionalUnavailableException(
+                "Account-link evidence is unavailable."
+            );
+        EnforceAal3Fresh(authTime);
+        if (approve)
+            await RequireAccountLinkProofAsync(
+                db,
+                link.VerifiedMobileProofId,
+                actorSubject,
+                actor,
+                membership,
+                ct
+            );
+        else if (membership is not null)
+            await RequireAccountLinkMembershipAsync(db, membership, ct);
+        if (link.ExpiresAt <= DateTimeOffset.UtcNow)
+            throw new IdentityChallengeExpiredException("Link challenge has expired.");
+
+        link.State = approve
+            ? IdentityAccountLinkState.PendingWhatsAppConfirmation
+            : IdentityAccountLinkState.Cancelled;
+        if (approve)
+            link.ApprovalEvidenceId = approvalEvidenceId;
+        else
+            link.CancellationEvidenceId = approvalEvidenceId;
         link.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(ct);
         await RecordIdempotencyAsync(
             db,
-            actorSubject,
+            actor?.Subject ?? actorSubject,
             idempotencyKey,
-            "ApproveAccountLink",
+            operation,
             canonicalHash,
             200,
             link.LinkId.ToString(),
-            ct
+            ct,
+            actor?.Issuer
         );
+        if (transaction is not null)
+            await transaction.CommitAsync(ct);
 
         return (link, false);
     }
@@ -1994,16 +2362,199 @@ public sealed class IdentityService
         Guid linkId,
         string actorSubject,
         Guid tenantId,
-        CancellationToken ct
+        CancellationToken ct,
+        VerifiedCustomerActor? actor = null,
+        CustomerWorkspaceMembership? membership = null
     )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
+        await using var transaction = await BeginAccountLinkContextAsync(
+            db,
+            actor,
+            membership,
+            tenantId,
+            ct
+        );
 
-        var link = await db.AccountLinks.FindAsync([linkId], ct);
-        if (link is null || link.ActorSubject != actorSubject || link.TenantId != tenantId)
+        var link = await FindAccountLinkForUpdateAsync(db, linkId, ct);
+        if (
+            link is null
+            || !AccountLinkMatchesActor(link, actorSubject, actor)
+            || link.TenantId != tenantId
+        )
             throw new IdentityResourceNotFoundException("Link not found or not accessible.");
 
+        if (
+            link.State
+                is IdentityAccountLinkState.PendingPortalApproval
+                    or IdentityAccountLinkState.PendingWhatsAppConfirmation
+            && link.ExpiresAt <= DateTimeOffset.UtcNow
+        )
+        {
+            link.State = IdentityAccountLinkState.Expired;
+            link.UpdatedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync(ct);
+        }
+        if (transaction is not null)
+            await transaction.CommitAsync(ct);
         return link;
+    }
+
+    private static bool AccountLinkMatchesActor(
+        IdentityAccountLinkRecord link,
+        string actorSubject,
+        VerifiedCustomerActor? actor
+    ) =>
+        link.ActorSubject == (actor?.Subject ?? actorSubject)
+        || (actor is not null && link.ActorSubject == $"{actor.Issuer}\u001f{actor.Subject}");
+
+    private static async Task<IdentityAccountLinkRecord?> FindAccountLinkForUpdateAsync(
+        IdentityDbContext db,
+        Guid linkId,
+        CancellationToken ct
+    ) =>
+        db.Database.IsRelational()
+            ? (
+                await db
+                    .AccountLinks.FromSqlInterpolated(
+                        $"SELECT * FROM identity.account_links WHERE link_id = {linkId} FOR UPDATE"
+                    )
+                    .ToListAsync(ct)
+            ).SingleOrDefault()
+            : await db.AccountLinks.FindAsync([linkId], ct);
+
+    private static async Task<IDbContextTransaction?> BeginAccountLinkContextAsync(
+        IdentityDbContext db,
+        VerifiedCustomerActor? actor,
+        CustomerWorkspaceMembership? membership,
+        Guid tenantId,
+        CancellationToken ct
+    )
+    {
+        if (actor is null || membership is null)
+        {
+            if (db.Database.IsRelational())
+                throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
+            return null;
+        }
+        if (membership.TenantId != tenantId || !membership.Roles.Contains("OWNER"))
+            throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
+        var transaction = await BeginPortalContextAsync(
+            db,
+            actor.Issuer,
+            actor.Subject,
+            membership,
+            ct
+        );
+        try
+        {
+            await RequireAccountLinkMembershipAsync(db, membership, ct);
+            var registration = await GetPortalRegistrationAsync(
+                db,
+                actor.Issuer,
+                actor.Subject,
+                membership,
+                ct
+            );
+            if (db.Database.IsRelational())
+                await db
+                    .Registrations.FromSqlInterpolated(
+                        $"SELECT * FROM identity.registrations WHERE registration_id = {registration.RegistrationId} FOR UPDATE"
+                    )
+                    .ToListAsync(ct);
+            return transaction;
+        }
+        catch
+        {
+            if (transaction is not null)
+                await transaction.DisposeAsync();
+            throw;
+        }
+    }
+
+    private static async Task<IdentityVerificationChallengeRecord> RequireAccountLinkProofAsync(
+        IdentityDbContext db,
+        Guid proofId,
+        string actorSubject,
+        VerifiedCustomerActor? actor,
+        CustomerWorkspaceMembership? membership,
+        CancellationToken ct
+    )
+    {
+        if (membership is not null)
+            await RequireAccountLinkMembershipAsync(db, membership, ct);
+        var registration =
+            actor is not null && membership is not null
+                ? await GetPortalRegistrationAsync(db, actor.Issuer, actor.Subject, membership, ct)
+                : await GetCompletedRegistrationAsync(db, string.Empty, actorSubject, ct);
+        var proof =
+            proofId != Guid.Empty
+                ? await db
+                    .VerificationChallenges.AsNoTracking()
+                    .SingleOrDefaultAsync(value => value.ChallengeId == proofId, ct)
+                : await db
+                    .VerificationChallenges.AsNoTracking()
+                    .Where(value =>
+                        value.RegistrationId == registration.RegistrationId
+                        && value.ActorSubject == registration.ActorSubject
+                        && value.Purpose == IdentityVerificationPurpose.Mobile
+                        && value.State == IdentityVerificationState.Consumed
+                        && value.VerifiedAt != null
+                        && value.DeliveryState == "SUBMITTED"
+                        && value.DestinationHmacDomain == registration.MobileHmacDomain
+                        && value.DestinationHmacVersion == registration.MobileHmacVersion
+                        && value.DestinationHmacKey == registration.MobileHmacKey
+                    )
+                    .OrderByDescending(value => value.VerifiedAt)
+                    .FirstOrDefaultAsync(ct);
+        if (
+            proof is null
+            || proof.ActorSubject != (actor?.Subject ?? actorSubject)
+            || proof.Purpose != IdentityVerificationPurpose.Mobile
+            || proof.State != IdentityVerificationState.Consumed
+            || proof.VerifiedAt is null
+            || proof.VerifiedAt > DateTimeOffset.UtcNow
+            || proof.DeliveryState != "SUBMITTED"
+            || proof.RegistrationId is null
+            || proof.DestinationHmacDomain != "mobile"
+            || string.IsNullOrEmpty(proof.DestinationHmacKey)
+            || string.IsNullOrEmpty(proof.DestinationHmacVersion)
+        )
+            throw new IdentityResourceNotFoundException("Verified mobile proof not accessible.");
+        if (
+            registration.RegistrationId != proof.RegistrationId
+            || !registration.MobileVerified
+            || registration.MobileHmacDomain != proof.DestinationHmacDomain
+            || registration.MobileHmacVersion != proof.DestinationHmacVersion
+            || registration.MobileHmacKey != proof.DestinationHmacKey
+        )
+            throw new IdentityResourceNotFoundException("Verified mobile proof not accessible.");
+        return proof;
+    }
+
+    private static async Task RequireAccountLinkMembershipAsync(
+        IdentityDbContext db,
+        CustomerWorkspaceMembership membership,
+        CancellationToken ct
+    )
+    {
+        if (!db.Database.IsRelational())
+            return;
+        var current = await db
+            .Database.SqlQuery<bool>(
+                $"""
+                SELECT EXISTS (
+                    SELECT 1 FROM identity.resolve_customer_membership() AS membership
+                    WHERE membership.account_id = {membership.AccountId}
+                      AND membership.tenant_id = {membership.TenantId}
+                      AND membership.membership_id = {membership.MembershipId}
+                      AND 'OWNER' = ANY(membership.roles)
+                ) AS "Value"
+                """
+            )
+            .SingleAsync(ct);
+        if (!current)
+            throw new IdentityResourceNotFoundException("Active account membership not found.");
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -2046,6 +2597,9 @@ public sealed class IdentityService
             && !string.IsNullOrWhiteSpace(reg.BusinessDomain);
         if (!hasMinProfile)
             return IdentityRegistrationState.ProfileCompletionRequired;
+
+        if (!reg.MobileVerified)
+            return IdentityRegistrationState.MobileVerificationRequired;
 
         return IdentityRegistrationState.ReadyToComplete;
     }

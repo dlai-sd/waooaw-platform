@@ -3,6 +3,8 @@
 
 using System.Collections.Concurrent;
 using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -209,6 +211,9 @@ public sealed class WhatsAppWebhookHostTests
         public Task<string> ReadAppSecretAsync(CancellationToken cancellationToken) =>
             throw new InvalidOperationException("Verification must not read the app secret.");
 
+        public Task<string> ReadPhoneSubjectKeyAsync(CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Verification must not read the phone subject key.");
+
         public Task<WhatsAppProviderBinding> ReadSenderBindingAsync(
             CancellationToken cancellationToken
         ) => throw new InvalidOperationException("Verification must not read the sender binding.");
@@ -303,18 +308,44 @@ public sealed class WhatsAppWebhookHostTests
         Assert.Equal(expected, response.StatusCode);
         if (expected == HttpStatusCode.OK)
             Assert.Equal("12345", await response.Content.ReadAsStringAsync());
-        using var content = new StringContent("{}");
-        using var post = await client.PostAsync("/api/v1/channels/whatsapp/webhook", content);
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, post.StatusCode);
+        using var content = new StringContent("{}", Encoding.UTF8, "application/json");
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            "/api/v1/channels/whatsapp/webhook"
+        )
+        {
+            Content = content,
+        };
+        request.Headers.Add(
+            "X-Hub-Signature-256",
+            "sha256="
+                + Convert.ToHexStringLower(
+                    HMACSHA256.HashData(
+                        Encoding.UTF8.GetBytes(WhatsAppTestFactory.WebhookSecret),
+                        Encoding.UTF8.GetBytes("{}")
+                    )
+                )
+        );
+        using var post = await client.SendAsync(request);
+        Assert.Equal(
+            expected == HttpStatusCode.Forbidden
+                ? HttpStatusCode.Forbidden
+                : HttpStatusCode.ServiceUnavailable,
+            post.StatusCode
+        );
     }
 
     private sealed class WhatsAppTestFactory
     {
+        public static string WebhookSecret { get; } = new('s', 40);
+
         public WhatsAppJourneyService Service { get; } =
             new(
                 new UnusedEmploymentFactory(),
                 new Evidence(),
-                Microsoft.Extensions.Options.Options.Create(new WhatsAppJourneyOptions())
+                Microsoft.Extensions.Options.Options.Create(
+                    new WhatsAppJourneyOptions { WebhookSecret = WebhookSecret }
+                )
             );
     }
 

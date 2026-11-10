@@ -62,15 +62,19 @@ public sealed class OwnerGatewayIdentityFixture : IDisposable
 public sealed class OwnerGatewayCoverageTests(OwnerGatewayIdentityFixture fixture)
     : IClassFixture<OwnerGatewayIdentityFixture>
 {
-    [Fact]
-    public async Task ConfiguredApplication_ComposesAuthenticatedOwnerGateways()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ConfiguredApplication_ComposesConversationIdentityIndependentlyOfWorkspaceUrls(
+        bool workspaceConfigured
+    )
     {
         using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseSetting("WAOOAW_WORKLOAD_CREDENTIALS", fixture.CredentialsPath);
             builder.UseSetting(
                 "ProfessionalRuntime:RelationshipWorkspaceBaseUrl",
-                "https://runtime.test"
+                workspaceConfigured ? "https://runtime.test" : string.Empty
             );
             builder.UseSetting(
                 "BillingEngine:RelationshipWorkspaceBaseUrl",
@@ -86,8 +90,10 @@ public sealed class OwnerGatewayCoverageTests(OwnerGatewayIdentityFixture fixtur
                             ["Keycloak:RequireHttpsMetadata"] = "false",
                             ["WAOOAW_WORKLOAD_CREDENTIALS"] = fixture.CredentialsPath,
                             ["ProfessionalRuntime:RelationshipWorkspaceBaseUrl"] =
-                                "https://runtime.test",
-                            ["BillingEngine:RelationshipWorkspaceBaseUrl"] = "https://billing.test",
+                                workspaceConfigured ? "https://runtime.test" : null,
+                            ["BillingEngine:RelationshipWorkspaceBaseUrl"] = workspaceConfigured
+                                ? "https://billing.test"
+                                : null,
                             ["BillingEngine:BaseUrl"] = "https://billing-public.test",
                             ["BillingEngine:OpsAuthToken"] = "test-ops-token",
                             ["ProfessionalRuntime:VoiceBaseUrl"] = "https://runtime.test",
@@ -100,16 +106,29 @@ public sealed class OwnerGatewayCoverageTests(OwnerGatewayIdentityFixture fixtur
             );
         });
         using var client = factory.CreateClient();
+        using var runtimeClient = factory
+            .Services.GetRequiredService<IHttpClientFactory>()
+            .CreateClient("ConversationProfessionalRuntime");
+        Assert.Equal(Uri.UriSchemeHttps, runtimeClient.BaseAddress!.Scheme);
 
         var response = await client.GetAsync("/health/live");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.IsType<AuthenticatedRelationshipWorkspaceOwnerGateway>(
-            factory.Services.GetRequiredService<IRelationshipWorkspaceOwnerGateway>()
-        );
-        Assert.IsType<HttpRelationshipTrialOwnerGateway>(
-            factory.Services.GetRequiredService<IRelationshipTrialOwnerGateway>()
-        );
+        if (workspaceConfigured)
+        {
+            Assert.IsType<AuthenticatedRelationshipWorkspaceOwnerGateway>(
+                factory.Services.GetRequiredService<IRelationshipWorkspaceOwnerGateway>()
+            );
+            Assert.IsType<HttpRelationshipTrialOwnerGateway>(
+                factory.Services.GetRequiredService<IRelationshipTrialOwnerGateway>()
+            );
+        }
+        else
+        {
+            Assert.IsType<UnconfiguredRelationshipWorkspaceOwnerGateway>(
+                factory.Services.GetRequiredService<IRelationshipWorkspaceOwnerGateway>()
+            );
+        }
         Assert.IsType<AuthenticatedOfferabilityOwnerGateway>(
             factory.Services.GetRequiredService<IOfferabilityOwnerGateway>()
         );
@@ -543,6 +562,205 @@ public sealed class OwnerGatewayCoverageTests(OwnerGatewayIdentityFixture fixtur
             )
         );
     }
+
+    [Fact]
+    public async Task OfferingUsageOwner_SignsAndReturnsEveryCanonicalReceipt()
+    {
+        var reservationId = Guid.NewGuid();
+        var identityValue = OfferingIdentity();
+        var actions = new List<string>();
+        using var identity = fixture.CreateIdentity();
+        using var gateway = new AuthenticatedOfferingUsageGateway(
+            identity,
+            new Uri("https://billing.test")
+        );
+        ReplaceClient(
+            gateway,
+            "_client",
+            Handler(
+                (request, _) =>
+                {
+                    actions.Add(request.RequestUri!.Segments[^1]);
+                    Assert.StartsWith("Bearer ", request.Headers.Authorization?.ToString());
+                    Assert.True(request.Headers.Contains("Idempotency-Key"));
+                    return Json(
+                        HttpStatusCode.OK,
+                        $$"""
+                        {
+                          "reservationId": "{{reservationId:D}}",
+                          "state": "RESERVED",
+                          "maximumUnits": 8192,
+                          "reservedRawPaise": 9,
+                          "reservedMarkedUpPaise": 12,
+                          "catalogueThreadId": "thread-1",
+                          "providerAccountId": "{{Guid.NewGuid():D}}",
+                          "rateVersion": "rate-1",
+                          "replayed": false
+                        }
+                        """
+                    );
+                }
+            )
+        );
+
+        Assert.Equal(
+            reservationId,
+            (
+                await gateway.ReserveAsync(
+                    identityValue,
+                    8192,
+                    CancellationToken.None
+                )
+            ).ReservationId
+        );
+        await gateway.SettleAsync(
+            identityValue,
+            reservationId,
+            4,
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
+        await gateway.ReleaseAsync(
+            identityValue,
+            reservationId,
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
+        Assert.NotNull(
+            await gateway.ReconcileAsync(
+                identityValue,
+                reservationId,
+                CancellationToken.None
+            )
+        );
+        Assert.Equal(["reserve", "settle", "release", "reconcile"], actions);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.NotFound, true)]
+    [InlineData(HttpStatusCode.BadGateway, false)]
+    [InlineData(HttpStatusCode.OK, false)]
+    public async Task OfferingUsageOwner_FailsClosedForUnresolvedOutcomes(
+        HttpStatusCode status,
+        bool reconcileReturnsNull
+    )
+    {
+        using var identity = fixture.CreateIdentity();
+        using var gateway = new AuthenticatedOfferingUsageGateway(
+            identity,
+            new Uri("https://billing.test")
+        );
+        ReplaceClient(
+            gateway,
+            "_client",
+            Handler((_, _) => Json(status, status == HttpStatusCode.OK ? "null" : "{}"))
+        );
+
+        if (reconcileReturnsNull)
+        {
+            Assert.Null(
+                await gateway.ReconcileAsync(
+                    OfferingIdentity(),
+                    null,
+                    CancellationToken.None
+                )
+            );
+        }
+        else
+        {
+            await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(
+                () =>
+                    gateway.ReserveAsync(
+                        OfferingIdentity(),
+                        1,
+                        CancellationToken.None
+                    )
+            );
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OfferingUsageOwner_TranslatesTransportFailures(bool cancelled)
+    {
+        using var identity = fixture.CreateIdentity();
+        using var gateway = new AuthenticatedOfferingUsageGateway(
+            identity,
+            new Uri("https://billing.test")
+        );
+        ReplaceClient(
+            gateway,
+            "_client",
+            Handler(
+                (_, _) =>
+                {
+                    if (cancelled)
+                        throw new TaskCanceledException("timeout");
+                    throw new HttpRequestException("offline");
+                }
+            )
+        );
+
+        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(
+            () =>
+                gateway.ReserveAsync(
+                    OfferingIdentity(),
+                    1,
+                    CancellationToken.None
+                )
+        );
+    }
+
+    [Fact]
+    public async Task UnconfiguredOfferingUsageOwner_DeniesEveryOperation()
+    {
+        var gateway = new UnconfiguredOfferingUsageGateway();
+        var value = OfferingIdentity();
+        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(
+            () => gateway.ReserveAsync(value, 1, CancellationToken.None)
+        );
+        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(
+            () =>
+                gateway.SettleAsync(
+                    value,
+                    Guid.NewGuid(),
+                    1,
+                    Guid.NewGuid(),
+                    CancellationToken.None
+                )
+        );
+        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(
+            () =>
+                gateway.ReleaseAsync(
+                    value,
+                    Guid.NewGuid(),
+                    Guid.NewGuid(),
+                    CancellationToken.None
+                )
+        );
+        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(
+            () => gateway.ReconcileAsync(value, null, CancellationToken.None)
+        );
+    }
+
+    private static OfferingUsageIdentity OfferingIdentity() =>
+        new(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "DMA",
+            "1.0.0",
+            "content",
+            "1.0.0",
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "inference",
+            Guid.NewGuid(),
+            new string('a', 64),
+            Guid.NewGuid()
+        );
 
     private static OfferabilityEvaluationRequest OfferabilityRequest() =>
         new(

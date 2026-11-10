@@ -28,7 +28,8 @@ public sealed class WhatsAppJourneyController(
     IWhatsAppCapabilityGate? capabilityGate = null,
     WhatsAppTenantExecutionScope? tenantExecution = null,
     IWhatsAppWebhookCredentials? webhookCredentials = null,
-    ILogger<WhatsAppJourneyController>? logger = null
+    ILogger<WhatsAppJourneyController>? logger = null,
+    TimeProvider? clock = null
 ) : ControllerBase
 {
     private bool _legacyCompatibility;
@@ -132,17 +133,6 @@ public sealed class WhatsAppJourneyController(
     [HttpPost]
     public async Task<IActionResult> ReceiveAsync(CancellationToken cancellationToken)
     {
-        if (!options.Value.CallbackAcceptanceEnabled || !conversationOptions.Value.Enabled)
-            return StatusCode(StatusCodes.Status503ServiceUnavailable);
-        if (capabilityGate is not null)
-        {
-            var state = capabilityGate.Evaluate(DateTimeOffset.UtcNow);
-            if (state.State != "ACTIVE")
-                return Problem(
-                    statusCode: StatusCodes.Status503ServiceUnavailable,
-                    title: "WHATSAPP_CAPABILITY_INACTIVE"
-                );
-        }
         if (!HasExpectedCallbackHost())
             return Forbid();
         if (
@@ -178,13 +168,38 @@ public sealed class WhatsAppJourneyController(
             await body.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
         }
         var signature = Request.Headers["X-Hub-Signature-256"].ToString();
+        if (string.IsNullOrWhiteSpace(signature))
+            return Problem(
+                statusCode: StatusCodes.Status403Forbidden,
+                title: "WHATSAPP_SIGNATURE_REQUIRED"
+            );
+        var rawBody = body.ToArray();
+        try
+        {
+            await service.ValidateSignatureAsync(rawBody, signature, cancellationToken);
+        }
+        catch (WhatsAppWebhookException exception)
+        {
+            return Problem(statusCode: exception.StatusCode, title: exception.Code);
+        }
+        if (!options.Value.CallbackAcceptanceEnabled || !conversationOptions.Value.Enabled)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
+        if (capabilityGate is not null)
+        {
+            var state = capabilityGate.Evaluate((clock ?? TimeProvider.System).GetUtcNow());
+            if (state.State != "ACTIVE")
+                return Problem(
+                    statusCode: StatusCodes.Status503ServiceUnavailable,
+                    title: "WHATSAPP_CAPABILITY_INACTIVE"
+                );
+        }
         try
         {
             using var tenant = tenantExecution?.Begin();
             var receipt = await service.ReceiveAsync(
-                body.ToArray(),
+                rawBody,
                 signature,
-                DateTimeOffset.UtcNow,
+                (clock ?? TimeProvider.System).GetUtcNow(),
                 cancellationToken
             );
             if (!_legacyCompatibility && webhookCredentials is not null)
@@ -210,6 +225,17 @@ public sealed class WhatsAppJourneyController(
                 statusCode: StatusCodes.Status503ServiceUnavailable,
                 title: "WHATSAPP_CAPABILITY_INACTIVE"
             );
+        }
+        catch (EmergencyStopReconciliationPendingException)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "EMERGENCY_STOP_RECONCILIATION_PENDING"
+            );
+        }
+        catch (ConversationContextConflictException exception)
+        {
+            return Problem(statusCode: StatusCodes.Status409Conflict, title: exception.Code);
         }
     }
 

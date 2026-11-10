@@ -23,6 +23,7 @@ public sealed class ConversationOutboxRecord
     public string PayloadReference { get; init; } = string.Empty;
     public string Purpose { get; init; } = string.Empty;
     public string RecipientBindingDigest { get; init; } = string.Empty;
+    public string? ProtectedRecipientDestination { get; init; }
     public string? TemplateName { get; init; }
     public string? TemplateVersion { get; init; }
     public string? TemplateLocale { get; init; }
@@ -65,6 +66,17 @@ public sealed class ProviderEventClaim
     public DateTimeOffset? TerminalAt { get; set; }
     public DateTimeOffset? ExpiresAt { get; set; }
     public bool LegalHold { get; set; }
+}
+
+internal static class ProviderEventClaimConflict
+{
+    public static bool IsIdentityCollision(DbUpdateException exception) =>
+        exception.InnerException
+            is Npgsql.PostgresException
+            {
+                SqlState: Npgsql.PostgresErrorCodes.UniqueViolation,
+                ConstraintName: "provider_event_claim_identity_unique",
+            };
 }
 
 public sealed class ConversationContextObservation
@@ -295,6 +307,10 @@ public static class Wc120ConversationModelConfiguration
         entity.Property(value => value.PayloadDigest).HasMaxLength(64);
         entity.Property(value => value.PayloadReference).HasMaxLength(256);
         entity.Property(value => value.RecipientBindingDigest).HasMaxLength(64);
+        entity
+            .Property(value => value.ProtectedRecipientDestination)
+            .HasColumnName("protected_recipient_destination")
+            .HasMaxLength(512);
     }
 
     private static void ConfigureProviderClaim(ModelBuilder modelBuilder)

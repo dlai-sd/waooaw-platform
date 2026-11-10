@@ -82,7 +82,8 @@ class IMeterService(ABC):
 
     @abstractmethod
     async def record_usage(
-        self, customer_id: UUID, thread_type: str, amount_paise: int, attribution: object | None = None
+        self, customer_id: UUID, thread_type: str, amount_paise: int, attribution: object | None = None,
+        *, raw_cost_paise: int | None = None
     ) -> None: ...
 
     @abstractmethod
@@ -92,6 +93,26 @@ class IMeterService(ABC):
     async def run_daily_scan(self) -> DailyScanResult:
         # Runs at 06:00 IST: projection + threshold checks + proactive offers
         ...
+
+
+class IOfferingAllowanceService(ABC):
+    """Exact accepted-offering/trial component reservation owner."""
+
+    @abstractmethod
+    async def reserve(self, identity: object, maximum_units: int) -> object: ...
+
+    @abstractmethod
+    async def settle(
+        self, identity: object, reservation_id: UUID, actual_units: int, evidence_id: UUID
+    ) -> object: ...
+
+    @abstractmethod
+    async def release(
+        self, identity: object, reservation_id: UUID, non_dispatch_evidence_id: UUID
+    ) -> object: ...
+
+    @abstractmethod
+    async def reconcile(self, identity: object) -> object | None: ...
 
 
 @dataclass(frozen=True)

@@ -26,6 +26,35 @@ agent without Founder direction. Do not amend immutable constitutional documents
 If an accepted owner contract cannot support the required admission path, stop only that
 conflicting action and present the exact conflict for Founder disposition; do not invent policy.
 
+### Current Founder Amendment - 2026-11-06
+
+This amendment controls all WC-134 and subsequent WhatsApp user journeys and supersedes the
+2026-11-03 choice of WhatsApp-first provisional customer-identity onboarding as the product
+registration path. A first WhatsApp message starts only a sender-scoped guest discovery session;
+it does not register a WAOOAW customer or create a customer Identity/account, tenant, membership,
+relationship, or employment. Guests may browse offerings and use an explicitly approved bounded
+agent preview. Trial/Hire and any required full registration continue through the Web portal and
+Identity-owned login/registration flow. Mobile is optional for portal registration. A sufficiently
+assured portal account may bind its WhatsApp channel through an Identity-owned, purpose-bound
+single-use OTP; that OTP proves channel possession only and is not transcript content.
+
+### Current Founder Amendment - 2026-11-06 - WhatsApp Registration Verification
+
+This amendment supersedes only the preceding statement that mobile is optional for portal
+registration. Web registration must collect a WhatsApp number and require a short-lived,
+single-use OTP explicitly requested by the registrant before registration completes. This OTP
+proves possession of that WhatsApp number only; it does not authenticate an account session,
+establish membership/employment, or authorize private relationship access. A verified-number
+match may identify an existing registration internally, but any account/relationship access still
+requires the existing authenticated Identity, current-membership, assurance, and channel-binding
+controls. This is a narrow exception to the no-proactive-message policy: no code is sent until the
+registrant asks for it, and delivery requires a separately approved WhatsApp authentication
+template. Alerts, marketing, unsolicited OTPs, and other proactive messages remain disabled.
+
+Web, WhatsApp, and future mobile reuse the BP-owned Conversation layer and business projections.
+Guest discovery is a distinct bounded scope, not the canonical relationship conversation. This
+amendment does not expand cloud, provider, public-traffic, deployment, or live-acceptance authority.
+
 ## 2. Objective And Non-Negotiable User Journey
 
 ### Current-Session Founder Amendment - 2026-11-03

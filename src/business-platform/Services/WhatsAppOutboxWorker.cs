@@ -47,21 +47,59 @@ public sealed class DisabledWhatsAppProviderAdapter : IWhatsAppProviderAdapter
 public sealed class WhatsAppOutboxWorker(
     WhatsAppOutboxService outbox,
     IWhatsAppProviderAdapter provider,
-    TimeProvider timeProvider
+    TimeProvider timeProvider,
+    WhatsAppOutboxWorkDirectory? customerDirectory = null,
+    WhatsAppRelationshipRouting? customerRouting = null,
+    WhatsAppDeliveryObservationRouting? historicalRouting = null
 )
 {
     private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(20);
 
-    public async Task<bool> ProcessOneAsync(string workerId, CancellationToken cancellationToken)
+    public async Task<bool> ProcessOneAsync(
+        string workerId,
+        CancellationToken cancellationToken,
+        bool preferCustomer = false
+    )
     {
+        if (preferCustomer && await ProcessCustomerAsync(workerId, cancellationToken))
+            return true;
         var lease = await outbox.LeaseNextAsync(
             workerId,
             timeProvider.GetUtcNow(),
             cancellationToken
         );
         if (lease is null)
-            return false;
+            return !preferCustomer && await ProcessCustomerAsync(workerId, cancellationToken);
+        return await ProcessLeaseAsync(lease, workerId, cancellationToken);
+    }
 
+    private async Task<bool> ProcessCustomerAsync(string workerId, CancellationToken ct)
+    {
+        if (customerDirectory is null && customerRouting is null && historicalRouting is null)
+            return false;
+        if (customerDirectory is null || customerRouting is null || historicalRouting is null)
+            throw new WhatsAppCapabilityUnavailableException("CUSTOMER_WORKER_OWNER_UNAVAILABLE");
+        var candidate = await customerDirectory.ClaimAsync(ct);
+        if (candidate is null)
+            return false;
+        if (await historicalRouting.ReconcileHistoricalWorkAsync(candidate, ct))
+            return true;
+        var work = await customerRouting.LeaseCustomerOutboxAsync(candidate, outbox, workerId, ct);
+        if (work is null)
+            return false;
+        return await customerRouting.ExecuteLeasedCustomerWorkAsync(
+            work,
+            (lease, token) => ProcessLeaseAsync(lease, workerId, token),
+            ct
+        );
+    }
+
+    private async Task<bool> ProcessLeaseAsync(
+        WhatsAppOutboxLease lease,
+        string workerId,
+        CancellationToken cancellationToken
+    )
+    {
         var request = new WhatsAppProviderDispatchRequest(
             lease.OutboxId,
             lease.Environment,

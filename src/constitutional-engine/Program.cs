@@ -21,6 +21,13 @@ if (!string.IsNullOrWhiteSpace(postgresPassword))
     builder.Configuration["ConnectionStrings:DefaultConnection"] = connection.ConnectionString;
 }
 builder.Services.AddGrpc();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<Waooaw.WorkloadIdentity.InferenceWorkloadValidator>();
+Waooaw.WorkloadIdentity.InferenceWorkloadValidator.ConfigureTransport(
+    builder,
+    "constitutional-engine",
+    "business-platform"
+);
 builder.Services.AddSingleton<IClaimEvaluator, C041ToolAuthorizationEvaluator>();
 builder.Services.AddSingleton<IClaimEvaluator, C043BudgetCeilingEvaluator>();
 builder.Services.AddSingleton<IClaimEvaluator, C048NonExploitationEvaluator>();
@@ -55,6 +62,7 @@ var auditSinkConn = builder.Configuration.GetConnectionString("AuditSink") ?? de
 builder.Services.AddDbContextFactory<AuditSinkDbContext>(opts => opts.UseNpgsql(auditSinkConn));
 
 var app = builder.Build();
+app.UseMiddleware<ConversationInferenceWorkloadMiddleware>();
 app.MapGrpcService<ConstitutionalEngineService>();
 app.MapGrpcHealthChecksService();
 app.Run();

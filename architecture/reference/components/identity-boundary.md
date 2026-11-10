@@ -29,14 +29,14 @@ authority is changed.
 
 ## 1. Outcome and Invariants
 
-F2 lets a person register with confirmed email, enter and explore without mandatory mobile verification, sign in through an approved Keycloak-brokered path, progressively verify mobile before a consequential action, link an existing WhatsApp identity to the web account without duplication, and safely resume the authorized application context.
+F2 lets a person sign in through an approved Keycloak-brokered path and explore without completing customer registration. Under the Founder-approved WC-134 amendment, completing registration requires confirmed email and a customer-requested WhatsApp OTP. Linking a WhatsApp channel remains a separate authenticated action; number recognition never grants account or relationship access.
 
 The following invariants are mandatory:
 
 1. Keycloak is the only web credential authority. WAOOAW applications never verify passwords or call Google, Meta, or Apple identity APIs directly.
 2. ADR-023 is the authority for Meta-verified WhatsApp identity. A WhatsApp session token is not a Keycloak session and cannot become one without a Keycloak round trip.
-3. A complete basic customer account requires confirmed email. Mobile verification is optional during registration and must be completed before hiring, WhatsApp connection, payment, recovery activation, sensitive account changes, or another server-classified consequential action.
-4. Registration collects no more than display name, confirmed email, optional verified mobile, business name, business domain, and confirmed language preference. Language is presentation preference, not an additional identity field.
+3. A complete basic customer account requires confirmed email and verified WhatsApp contact under WC-134. Verification is not account authentication or channel linking; hiring, WhatsApp connection, payment, recovery activation, sensitive account changes, and other consequential actions retain their separate assurance requirements.
+4. Registration collects no more than display name, confirmed email, verified WhatsApp number, business name, business domain, and confirmed language preference. Language is presentation preference, not an additional identity field.
 5. Registration does not create an Employment Relationship, contract, payment intent, professional authority, or trial entitlement.
 6. Duplicate detection is server-side and proof-gated. No public operation answers whether an arbitrary email or mobile exists.
 7. For WC-085, tenant identity is BP-minted and sourced only from current authoritative membership keyed by validated Keycloak issuer/subject. A JWT tenant claim, request body, query, URL, browser store, header or provider callback cannot select it. Other identity paths retain their separate contracts.
@@ -376,6 +376,11 @@ insufficient publication permissions.
 
 - Email match key: canonicalized mailbox value transformed to a keyed, versioned HMAC. Provider-specific alias rewriting is prohibited.
 - Mobile match key: canonical E.164 number transformed to a separate keyed, versioned HMAC.
+- A registration mobile challenge retains its destination HMAC until its own OTP is confirmed. Only that confirmation copies the destination key to the registration; successful confirmation expires competing pending mobile challenges.
+- Registration mobile-code requests enforce the returned one-minute resend boundary. Five incorrect code submissions expire the challenge; registration-row locking serializes these transitions with account completion. Cancelled, expired, or completed registrations cannot consume a new mobile proof.
+- Before registration OTP egress, commit the destination-bound challenge and idempotency outcome as `DISPATCHING`. Only provider submission followed by durable persistence marks it `SUBMITTED`; unresolved/cancelled or unavailable delivery cannot be confirmed or redispatched by replaying the same request. Database failure after submission remains unresolved, never a successful delivery.
+- Production registration OTPs use a dedicated Identity dispatcher, not the conversation template adapter. The protected activation bundle must explicitly permit registration verification and bind the exact Authentication template ID/name/API locale and approval reference into its configuration digest. A fresh approved Copy-code/15-minute template readback must match the pinned provider account; reserve shared message/rate/spend capacity before submission. Generic templates, account-level OTP initiation, and unsolicited messages remain denied. Registration-only deployment and operator Stop explicitly disable the OTP path.
+- After signed sender validation, explicit guest service consent, and traffic/operating-hours checks, Identity may recognize a completed registration using only keyed mobile-match candidates. The narrow `has_verified_whatsapp_registration` database capability returns a Boolean and additionally requires a submitted, consumed destination-bound mobile proof. Its dedicated non-login, non-bypass-RLS owner cannot expose actor/account identifiers to the channel. The ordinary application role retains actor-scoped registration access. Recognition supplies only an unlinked-registration notice, is not persisted as authority, and never creates a session, membership, account link, relationship or transcript transfer. STOP, unsupported content, closed-hours notices and limit notices do not depend on this lookup.
 - Raw email and mobile are encrypted customer payload. Match keys are never returned to the browser, URLs, logs, analytics, or telemetry.
 - Provider subject key: configured provider trust namespace plus broker alias plus stable upstream
   subject (Sections 3.1/5.3). Actor key is separately Keycloak issuer plus Keycloak subject. Neither
@@ -398,12 +403,294 @@ There is no `/duplicate-check` endpoint. The public contract exposes only the ne
 
 ### 6.3 WhatsApp-to-web linking
 
-1. The portal actor holds a valid Keycloak session and completes `AAL3_FRESH` step-up.
-2. BP starts a link challenge using an opaque verified-mobile proof or a server-selected pending WhatsApp identity. The browser never submits a raw mobile as authority.
+1. The portal actor holds a valid Keycloak session, current `OWNER` membership and completed registration, and completes `AAL3_FRESH` step-up.
+2. BP starts a link challenge using an opaque verified-mobile proof or the server-selected consumed, submitted registration proof for that account's currently verified destination. It re-resolves membership and verifies proof ownership and registration binding. The browser never submits a raw mobile as authority.
 3. BP returns an opaque challenge ID, masked destination, expiry, and next action.
-4. The customer explicitly approves the link in the portal.
-5. The next inbound WhatsApp message is freshly validated by ADR-023 HMAC, timestamp, and message-ID replay controls and confirms the challenge.
-6. The Identity Boundary atomically binds the Keycloak subject and WhatsApp identity to one account, records correlation, invalidates the challenge, and returns the existing account.
+4. The customer explicitly approves the link in the portal. BP returns an encrypted, expiring `LINK ...` instruction. Its authenticated payload carries the actor, membership snapshot and challenge identifiers, not a raw phone number; retained read-only key versions permit rotation without extending challenge expiry.
+5. The customer sends that exact instruction from the verified WhatsApp number after approval. ADR-023 HMAC, business-sender binding, timestamp and replay checks precede confirmation. Explicit service consent, operating hours and guest traffic limits still apply. Existing relationship-bound contacts use this same control path rather than archiving the instruction or sending it to the professional runtime; withdrawn consent and relationship Stop fences deny it.
+6. The Identity Boundary re-resolves current membership and verifies the signed sender against the owned destination proof. It records nonempty constitutional evidence before atomically marking the account association `Linked`, recording only a message digest and confirmation time. Only the same signed message can replay that completion; another message cannot reuse it. This creates no portal session, employment relationship, `ChannelBinding`, private access or transcript transfer. The browser receives link status only.
+7. An explicit, fresh, owner-authenticated cancellation records evidence and makes a pending challenge unusable. Cancellation and confirmation serialize on the same row; a completed association cannot be cancelled by this command. Status reads persist pending expiry without reopening terminal states or extending expiry.
+
+The profile UI keeps link identifiers, retry keys and instructions only in component memory. It
+requires explicit approval, preserves the same command key after uncertain results, and cancels a
+pending server challenge before offering a replacement. Link control messages, including malformed
+whitespace variants, are never stored as customer conversation turns. Only fixed guide responses
+are archived. Migration 75 expires legacy `Linked` labels lacking valid confirmation evidence and
+validates the evidence constraint; it does not grandfather an unproven binding.
+
+#### Customer-initiated phone replacement (WC-134)
+
+The authenticated OWNER starts a separate phone-change request; registration OTP
+and generic progressive verification are not account-recovery authority. Start,
+confirmation and cancellation require nonfuture fresh portal authentication within
+five minutes. A destination-bound six-digit OTP expires after five minutes and
+five wrong codes; identical wrong-request replay does not add an attempt. Request
+limits are one per minute, three per rolling hour and ten per rolling day. Delivery
+uses the existing gated authentication template and shared budget; unresolved
+delivery is explicit and never automatically resent.
+
+Migration 94 binds each request to the current actor, account, membership,
+registration and old versioned mobile source. It stores masked/HMAC destinations
+and evidence, never plaintext number or code. A restricted recognition-owner
+function denies conflicting completed or historically confirmed foreign ownership
+without disclosing its identity. FORCE-RLS and column grants preserve request
+bindings; principal handoff preserves the function's admitted execution owner.
+
+Migration 96 admits current OWNER/MANAGER organisation row locks for the Identity
+resolver without admitting organisation writes (`WITH CHECK (false)`). Account-link
+updates are column-scoped; actor, tenant, original proof and start evidence remain
+unwritable. Matching candidates use the canonical 32-character lowercase Identity
+HMAC. Completed registration snapshots, identity and original outcomes stay frozen;
+only current contact metadata may change after exact consumed, unexpired proof and
+completed phone-change evidence have been saved in the same transaction.
+
+New account links store the verified actor's plain subject. Current reads and phone
+replacement cancellation also recognize the legacy issuer-qualified subject, bound
+to the same verified issuer, current membership and registration proof. This is not
+cross-account or cross-issuer linking authority.
+
+Confirmation records versioned explicit consent outside locks, then revalidates
+current Identity and reloads the source under the owning PostgreSQL transaction.
+Profile/proof replacement, cancellation of the actor's prior account links,
+revocation of active/prepared WhatsApp bindings across their account membership
+scopes and expiry of competing pending changes are atomic. No guest/account
+history or original outbox recipient is transferred. Pending old work loses
+current-route authority; unknown originals keep receipt-only correlation.
+The new consumed registration-bound proof can start ordinary account linking,
+but fresh signed LINK confirmation and new approval of each professional
+relationship remain required. No association or channel activates automatically.
+
+Canonical endpoints are `GET/POST /api/v1/identity/phone-changes`,
+`POST /api/v1/identity/phone-changes/confirm` and
+`POST /api/v1/identity/phone-changes/{challengeId}/cancel`.
+The portal uses a closed same-origin authenticated BFF, no-store responses,
+ephemeral phone/OTP fields and explicit uncertain-result status recovery.
+Phone OTP cannot recover a missing portal session or transfer another account.
+Different-customer reassignment and legal retention/hold decisions remain separate.
+Implementation regressions are authored; behavioral qualification remains deferred.
+
+Relationship-channel attachment is a separate command. Its controller forwards the verified
+portal actor and current membership to the shared BP attachment owner, not merely the earlier
+confirmed sender hash. After CE evidence and guest Stop-lock acquisition, Identity joins the
+customer binding transaction on the same PostgreSQL connection. It locks current actor/login,
+account, OWNER membership and organisation through the existing Identity admission function,
+then locks/reloads the completed registration, confirmed account link and consumed submitted
+destination proof. Changed membership, registration, link or destination denies both new
+attachment and replay. These locks remain held until the caller commits or rolls back its
+channel binding; the earlier read is not commit authority. Existing relationship/participant,
+withdrawal, freshness and activation checks remain required. No Identity table ownership or RLS
+permission is widened by this shared transaction.
+
+The attachment transaction also publishes a private BP routing-directory row for the
+exact service tenant, sender digest, customer tenant, channel binding and verified
+Identity owner/link coordinates. New attachment and authenticated replay use the
+same publisher; a replay cannot renew the original publication or replace its tuple.
+The service tenant can read only this narrow directory, not customer relationship
+or Identity tables. Customer-scoped writes and a cross-customer sender uniqueness
+constraint prevent silent reassignment; ordinary runtime principals cannot update
+or delete the route. Recognition and legacy contacts do not publish routes.
+
+An evidence-backed channel End permits a separate fresh attachment to renew the
+directory only for the same tenant, issuer/actor, account, membership, relationship,
+participant role, canonical conversation and sender. The narrow owner function
+archives the previous binding and retirement evidence before changing the current
+binding in the attachment transaction. End revalidates locked relationship,
+participant and binding authority after evidence recording; it cannot overwrite a
+concurrent End or restore revoked authority. Renewal does not clear recipient
+withdrawal, guest STOP or relationship Emergency Stop, and never transfers history
+to another owner or tenant. Cross-owner reassignment and data-retention policy
+remain separate R018 obligations.
+
+Delivery callbacks and worker recovery select the immutable original binding through
+the exact service/sender/environment/outbox index, including retired route history.
+Fresh customer leasing rejects an indexed original binding different from the
+current confirmed route. Retired pending or ordinary expired leases are blocked
+without another attempt. Possibly submitted originals, including exhausted leases,
+retain receipt-only reconciliation and never become fresh unsent work. A retirement
+does not prove remote cancellation of an already-started provider operation.
+
+Protected timeline, execution, event and retained-reply reads in a confirmed
+customer WhatsApp scope acquire the same service-sender, current Identity,
+participant, channel, canonical conversation and Stop guards inside their owning
+read transaction. Locks remain through bounded materialization and response
+construction; activation and sender admission are checked again at release.
+Stored SEND, terminal Retry/CANCEL, read-position and outbound-contribution
+replays do not bypass these guards. Candidate-only, missing owner, snapshot drift
+and non-PostgreSQL routed reads fail explicitly, including empty-result reads.
+Read-position writes recheck after evidence; cancellation rechecks before its
+remote request and again before canonical persistence, with no routing lock
+spanning the remote request. Unscoped Web and service-guest behavior is unchanged.
+
+The exact lease entry also checks the immutable outbox index against the current
+directory through a customer-scoped owner function in the lease transaction.
+This guards direct internal calls, not only hosted-worker wrappers. Application
+principals receive no direct index or retired-history access. Retired originals
+cannot acquire a new current-binding lease after restart.
+
+Signed ingress also revalidates current customer routing after the entire Journey
+operation, before returning its receipt. Accepted provider-event claim replay can
+otherwise return retained content without invoking a Conversation reader.
+The service-only path rechecks activation/recipient and denies release if a customer
+route was published during processing. Late denial withholds the receipt; it does
+not claim to undo already committed canonical work or remote effects.
+
+Directory lookup is not authentication or authority to switch tenant. Before
+customer work, routing must independently revalidate current Identity, exact
+binding/participant, consent, Stop and activation. End-to-end ingress, workers,
+callbacks and shared accounting integration remains a WC-134 implementation
+dependency; publication alone does not complete cross-tenant routing.
+
+Delivery-status reconciliation has a separate restricted BP owner. A signed
+recipient digest selects only its directory candidate; a signed opaque outbox
+UUID must then match the canonical customer-scoped outbox and historical binding,
+participant, sender, evidence and conversation under row locks. The outbox owner
+still requires persisted attempted-submission/reservation and provider correlation.
+Claim and observation writes use that customer transaction. Historical receipts
+remain recordable after consent withdrawal, binding revocation or relationship
+Stop; this is not a current Identity session or ordinary execution grant. The
+candidate is never confirmed for sending. No-recipient legacy callbacks remain
+service-scoped and cannot choose a customer tenant using an outbox UUID alone.
+
+Customer-relationship inbound accounting requires the internal confirmed route
+with exact tenant, relationship, binding and sender coordinates. BP reserves under
+the original Demo service tenant's existing traffic ledger and budget lock, with
+route rechecks after lock acquisition and before commit. A temporary database
+override selects only that service tenant for accounting and restores customer
+scope afterward. This neither creates a customer allowance nor admits ingress:
+current Identity/consent/Stop validation and staged ingress integration remain
+separate prerequisites.
+
+Migration 97 supplies the missing current-tenant policy for WhatsApp contacts
+after the principal-handoff migration enables FORCE RLS. `business_app` and
+`bp_owner` are admitted only when the contact tenant matches
+`app.current_tenant_id`, for both existing-row access and resulting-row checks.
+It adds no privileges, does not disable FORCE RLS and cannot retarget contacts
+across tenants. Real PostgreSQL attachment qualification covers policy replay,
+own updates, foreign isolation and owner-principal enforcement alongside current
+Identity, membership and confirmed-link attachment authority.
+
+Customer outbox leasing is an internal exact-item operation requiring the entire
+confirmed route snapshot. The outbox owner refuses generic customer-scope
+inventory, locks only the given canonical customer outbox row and preserves
+ordering and unresolved-submission semantics. Snapshot/activation rechecks fence
+commit. This lease grants no new Identity session or provider permission; hosted
+worker discovery, fresh route acquisition and final egress admission remain
+separate WC-134 dependencies.
+
+The owner-only WhatsApp outbox work directory is published transactionally from
+exact customer outbox/attachment coordinates. Service-scoped discovery returns
+only a due outbox UUID and sender digest; no customer transcript or tenant scan is
+exposed to the application principal. Discovery is not Identity or send authority.
+The internal relationship owner validates current Identity, consent, Stop and
+canonical route before exact leasing. Lease and outer route transactions remain
+separate, so final denial can leave an expiring lease but cannot start provider
+work. Hosted-worker consumption and fresh final egress remain qualification
+dependencies.
+
+Customer outbound reservations require a full confirmed route and exact attempted,
+unexpired canonical outbox. The traffic owner locks that customer row before
+temporarily selecting the Demo service tenant for the shared ledger transaction.
+Customer scope is restored after accounting; no duplicate customer allowance or
+provider permission is created. Routed delivery-status receipts verify the same
+service-ledger outbox/attempt reservation under a restricted override while all
+observation writes remain customer-scoped. Final provider admission remains
+separate.
+
+Customer provider dispatch requires the existing internal confirmed route and a
+fresh BP-owned Identity/guest-consent/Stop/binding/canonical recheck. Service
+override is limited to guest and directory reads; customer authority validation
+uses customer RLS. Rechecks finish and release locks before remote work. The
+adapter uses the shared service budget, requires the protected customer destination
+and rereads final lease coordinates; missing destination cannot select the pilot.
+This is no session or Stop release and does not guarantee cancellation of an
+already-started provider request. Hosted-worker scope integration and restricted
+post-revocation reconciliation remain WC-134 dependencies.
+
+The hosted worker consumes customer work through owner-indexed discovery, fresh
+exact leasing and a reinstated confirmed customer scope. Fresh authority checks
+finish before provider/heartbeat work; customer lease updates serialize exact
+route/owner checks and persistence under customer RLS. Poll preference alternates
+between service and customer work. Current-route reconciliation is local
+delivery-evidence readback only. Revoked or stopped work remains fenced until the
+separate restricted historical reconciliation worker path is implemented.
+
+Historical customer worker reconciliation now uses the restricted observation
+owner before ordinary leasing. It selects an exact historical binding/outbox
+under candidate customer RLS without a confirmed send route, and converges only
+existing terminal delivery receipts under the outbox lock. Current account,
+consent and relationship activation are not prerequisites for this receipt-only
+path. Unknown outcomes remain unknown, active leases remain untouched, and no
+provider, session or Stop-release authority is granted. Full-chain qualification
+remains outstanding.
+
+Ordinary signed WhatsApp ingress now stages sender-directory lookup and bounded
+fresh route validation before installing a confirmed customer scope for the
+existing BP Conversation journey. Validation locks end before slow evidence or
+runtime operations. Missing routed customer contact denies rather than creating
+a customer-tenant guest, and contact/binding coordinates must match the snapshot.
+No-route senders retain the service-tenant guest path. Exact STOP and EMERGENCY
+STOP bypass this ordinary consent/Identity gate; their cross-tenant safety adapter
+now uses only candidate customer RLS, never ordinary route confirmation.
+Recipient STOP commits the service sender fence before provider-claim or customer
+work, then applies only an exactly correlated historical customer contact
+withdrawal. Emergency Stop requires the exact active channel/current participant
+but no Identity login/OWNER membership, guest consent or absence of guest STOP.
+Validation transactions end before invoking the existing evidence-first
+Emergency Stop owner. Missing emergency correlation denies rather than becoming
+guest discovery; neither control grants ordinary ingress, provider permission,
+account/session, transcript, destination update or Stop release. Safety claims
+remain service-scoped, and a missing production routing owner is an explicit
+failure. Full-chain races and delivered acknowledgement qualification remain open.
+
+Canonical Send, routed Retry and journey-response contribution now revalidate
+the complete selected route inside the owning Conversation PostgreSQL transaction
+after evidence/mandate/context work. A borrowed relationship context shares that
+connection/transaction; service sender lock and guest consent/Stop/directory
+checks precede current customer Identity/channel/relationship/canonical checks.
+Customer RLS is restored before customer reads, and locks remain held through
+canonical commit. Candidate-only, mismatched coordinates and missing routing
+owner deny. Routed Retry also requires its persisted origin binding/sender.
+Fresh post-commit validation precedes runtime Start without holding sender locks
+over the remote call; a denial is not converted into a fabricated unknown remote
+outcome. Queued-admission recovery and full production race qualification remain
+open. These checks do not add authentication or new mandate authority.
+
+The shared route guard rereads the completed Identity registration, confirmed link
+and current OWNER membership through the existing Identity owner. It then locks
+and rereads the exact relationship, participant, contact and channel binding in
+the caller's transaction, preserving the attachment lock order. Only one current
+sender/relationship binding with matching participant role and evidence, valid
+conversation coordinates, eligible relationship state and non-withdrawn contact
+produces a private route snapshot. New attachment and authenticated replay apply
+this guard before committing the directory row. PostgreSQL also locks and checks
+the canonical conversation against the exact environment, customer tenant and
+relationship. The snapshot is not a session,
+new mandate, guest-consent decision, Stop release or provider-egress permission.
+
+Ordinary customer database work enters through the internal BP relationship
+routing owner. The service-tenant/sender-key lookup selects a candidate only.
+Under the existing guest sender lock, the owner requires current admission,
+versioned consent with notice/message/evidence coordinates and no guest Stop.
+It then opens a customer transaction, applies the current Identity and
+relationship guard, checks the relationship Stop latch, and confirms the
+candidate scope before invoking customer work. Scope confirmation does not
+relax the activation's recipient gate: that gate still validates the service
+tenant and sender, while the routing scope requires the exact customer
+tenant/relationship/binding.
+
+After work, the owner saves and rereads authority and consent before commit;
+changed relationship version or tuple denies the transaction. The database
+interceptor scopes commands to the selected customer tenant and refuses a
+conflicting authenticated HTTP or runtime tenant. Disposal restores the service
+scope, and concurrent executions do not share customer coordinates. The owner
+entry is for bounded database work only, not provider sockets or slow external
+evidence calls under the sender lock. STOP and Emergency Stop retain their
+separate priority path, not the ordinary consent-gated entry.
+
+This entry is registered in BP dependency injection but is not yet consumed by
+the webhook, worker, provider or callback adapters. Those surfaces remain
+fail-closed for cross-tenant work until their routing/accounting integration is
+implemented and qualified. No public API or new customer authentication is added.
 
 Changed or unknown phone possession may begin a separate evaluation path but cannot attach to an existing account. Automatic account merge is prohibited.
 
@@ -424,13 +711,14 @@ The normative HTTP details and generated models are in `business-platform.openap
 | `PUT /api/v1/identity/registrations/{registrationId}/profile` | Set only approved minimum profile fields | Same actor-bound pre-account session |
 | `POST /api/v1/identity/registrations/{registrationId}/email-verifications` | Start or replay an email challenge when no verified broker claim exists | Same actor-bound pre-account session |
 | `POST /api/v1/identity/registrations/{registrationId}/email-verifications/confirm` | Confirm an opaque challenge with a one-time code | Same actor-bound pre-account session |
-| `POST /api/v1/identity/registrations/{registrationId}/mobile-verifications` | Optionally start or replay approved mobile proof during registration | Same actor-bound pre-account session |
-| `POST /api/v1/identity/registrations/{registrationId}/mobile-verifications/confirm` | Confirm optional OTP/mobile proof during registration | Same actor-bound pre-account session |
-| `POST /api/v1/identity/registrations/{registrationId}/complete` | Resolve duplicate state and atomically mint or reuse one account | Confirmed email required; mobile optional |
+| `POST /api/v1/identity/registrations/{registrationId}/mobile-verifications` | Explicitly request or replay required WhatsApp contact proof during registration | Same actor-bound pre-account session |
+| `POST /api/v1/identity/registrations/{registrationId}/mobile-verifications/confirm` | Confirm destination-bound WhatsApp OTP during registration | Same actor-bound pre-account session |
+| `POST /api/v1/identity/registrations/{registrationId}/complete` | Resolve duplicate state and atomically mint or reuse one account | Confirmed email and verified WhatsApp contact required |
 | `POST /api/v1/identity/mobile-verifications` | Start or replay progressive mobile proof for an authenticated account | Portal session; returned challenge discloses no account-existence fact |
 | `POST /api/v1/identity/mobile-verifications/confirm` | Confirm progressive mobile proof before a consequential action | Same authenticated account; idempotent and proof-gated |
 | `POST /api/v1/identity/account-links` | Start or replay a WhatsApp-to-web link challenge | `AAL3_FRESH` portal session |
 | `POST /api/v1/identity/account-links/{linkId}/approve` | Record explicit portal approval | Same `AAL3_FRESH` actor |
+| `POST /api/v1/identity/account-links/{linkId}/cancel` | Cancel a pending challenge without unlinking a completed association | Same `AAL3_FRESH` actor and current owner membership |
 | `GET /api/v1/identity/account-links/{linkId}` | Read caller-bound link status after fresh Meta confirmation | Same portal actor |
 
 No API accepts `tenantId`, raw provider access token, password, upstream provider authorization code, relationship ID, or return URL in a request body. Keycloak protocol endpoints and callbacks remain Keycloak/Next.js session-boundary concerns and are not re-exposed as BP convenience endpoints.

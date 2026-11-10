@@ -1,7 +1,7 @@
 openapi: "3.1.0"
 info:
   title: WAOOAW Conversational Employment AI Runtime Candidate API
-  version: "1.0.0-candidate.2"
+  version: "1.0.0-candidate.3"
   contact:
     name: WAOOAW Architecture
   description: |
@@ -43,6 +43,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/Unprocessable" }
+        "423": { $ref: "#/components/responses/Stopped" }
         "503": { $ref: "#/components/responses/Unavailable" }
   /internal/v1/employment-patch-proposals/{proposalId}:
     get:
@@ -61,6 +62,36 @@ paths:
               schema: { $ref: "#/components/schemas/EmploymentPatchProposalV1" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "423": { $ref: "#/components/responses/Stopped" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /internal/v1/employment-patch-proposals/reconcile:
+    post:
+      tags: [Employment Interpretation]
+      operationId: reconcileEmploymentPatchProposal
+      summary: Recover a persisted outcome by its original dispatch identity
+      description: |
+        Read-only recovery bound to tenant, relationship, original idempotency key and
+        request digest. Never claims work or calls an interpreter. An absent result is
+        reconciliation-required, not proof that interpretation did not happen.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmploymentPatchProposalRequestV1" }
+      responses:
+        "200":
+          description: Original immutable result recovered
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmploymentPatchProposalV1" }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "423": { $ref: "#/components/responses/Stopped" }
         "503": { $ref: "#/components/responses/Unavailable" }
 components:
   securitySchemes:
@@ -86,6 +117,11 @@ components:
       required: true
       schema: { type: string, format: uuid }
   responses:
+    Stopped:
+      description: Durable relationship Stop fence prevents dispatch or result release
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/AirEmploymentProblemV1" }
     InvalidRequest:
       description: Invalid closed request
       content:
@@ -337,5 +373,5 @@ components:
         status: { type: integer, minimum: 400, maximum: 599 }
         code:
           type: string
-          enum: [AIR_EMPLOYMENT_INVALID, AIR_EMPLOYMENT_UNAUTHORIZED, AIR_EMPLOYMENT_NOT_FOUND, AIR_EMPLOYMENT_CONFLICT, AIR_EMPLOYMENT_UNREPRESENTABLE, AIR_EMPLOYMENT_UNAVAILABLE]
+          enum: [AIR_EMPLOYMENT_INVALID, AIR_EMPLOYMENT_UNAUTHORIZED, AIR_EMPLOYMENT_NOT_FOUND, AIR_EMPLOYMENT_CONFLICT, AIR_EMPLOYMENT_UNREPRESENTABLE, AIR_EMPLOYMENT_UNAVAILABLE, AIR_EMPLOYMENT_RECONCILIATION_REQUIRED, AIR_EMPLOYMENT_STOPPED]
         correlationId: { type: string, format: uuid }

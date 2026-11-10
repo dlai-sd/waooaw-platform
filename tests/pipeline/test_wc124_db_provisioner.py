@@ -409,6 +409,10 @@ def test_principal_handoff_reassigns_schema_objects_to_nologin_owners() -> None:
         assert owner in sql
     assert "ALTER %s %I.%I OWNER TO %I" in sql
     assert "ALTER %s %s OWNER TO %I" in sql
+    assert "WHEN p.prosecdef" in sql
+    assert "AND n.nspname = 'identity'" in sql
+    assert "p.proname IN ('has_verified_whatsapp_registration', 'phone_change_conflicts')" in sql
+    assert "THEN 'identity_whatsapp_recognizer_owner'" in sql
 
 
 def test_vendor_databases_use_nologin_owners_and_separate_migrators() -> None:
@@ -685,12 +689,24 @@ def test_identity_schema_verifier_requires_every_relation_policy_and_forced_rls(
         )
         for name, contract in sorted(IDENTITY_POLICY_CONTRACT.items())
     )
-    monkeypatch.setattr("wc124_db_provisioner.psql", lambda *_args, **_kwargs: rows)
+    queries = []
+
+    def catalog(*args, **_kwargs):
+        queries.append(args[4])
+        return rows
+
+    monkeypatch.setattr("wc124_db_provisioner.psql", catalog)
 
     evidence = verify_identity_schema("fqdn", "bootstrap", "token")
 
     assert evidence["status"] == "passed"
     assert len(evidence["relations"]) == 6
+    assert "policyname = 'whatsapp_verified_registration_recognition'" in queries[0]
+    assert "roles = ARRAY['identity_whatsapp_recognizer_owner']::name[]" in queries[0]
+    assert "permissive = 'PERMISSIVE' AND cmd = 'SELECT'" in queries[0]
+    assert "AND with_check IS NULL" in queries[0]
+    assert "AND NOT COALESCE((" in queries[0]
+    assert "((state)::text = ''Completed''::text)" in queries[0]
 
 
 def test_identity_schema_verifier_fails_when_one_policy_is_missing(

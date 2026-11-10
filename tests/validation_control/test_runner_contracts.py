@@ -11,7 +11,12 @@ from hypothesis import given, strategies as st
 from schemathesis.generation.value import GeneratedValue
 import yaml
 
-from validation_control.schemathesis_hooks import add_idempotency_key, before_generate_headers
+from validation_control.schemathesis_hooks import (
+    add_callback_host,
+    add_idempotency_key,
+    align_dependent_fields,
+    before_generate_headers,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -260,6 +265,45 @@ def test_schemathesis_header_hook_supports_missing_fuzzing_headers() -> None:
     assert result == {"Idempotency-Key": str(key)}
 
 
+def test_schemathesis_callback_host_preserves_generation_metadata() -> None:
+    generated = GeneratedValue(value={"Existing": "header"}, meta=None)
+
+    result = add_callback_host(generated)
+
+    assert result.meta is generated.meta
+    assert result.value == {"Existing": "header", "Host": "whatsapp-callback"}
+
+
+def test_schemathesis_body_hook_aligns_operational_mandate() -> None:
+    digest = f"sha256:{'0' * 64}"
+    body = {
+        "operationalMandate": {
+            "inputSchemaDigest": digest,
+            "outputSchemaDigest": digest,
+            "promptVersion": "prompt-v1",
+            "promptDigest": digest,
+            "permittedActions": [],
+            "exclusions": ["interpret"],
+            "conversationOperation": {
+                "governedAction": "interpret",
+                "inputSchemaDigest": "wrong",
+                "outputSchemaDigest": "wrong",
+                "promptPolicy": {"version": "wrong", "digest": "wrong"},
+            },
+        }
+    }
+
+    result = align_dependent_fields(body)
+
+    mandate = result["operationalMandate"]
+    operation = mandate["conversationOperation"]
+    assert operation["inputSchemaDigest"] == digest
+    assert operation["outputSchemaDigest"] == digest
+    assert operation["promptPolicy"] == {"version": "prompt-v1", "digest": digest}
+    assert mandate["permittedActions"] == ["interpret"]
+    assert mandate["exclusions"] == []
+
+
 def test_contract_workflow_starts_services_and_blocks_on_failure() -> None:
     workflow = (ROOT / ".github/workflows/integration-tests.yaml").read_text(encoding="utf-8")
     contract_job = workflow.split("  contract-rest:", maxsplit=1)[1].split("\n  seed-prompts-contract:", maxsplit=1)[0]
@@ -272,7 +316,7 @@ def test_contract_workflow_starts_services_and_blocks_on_failure() -> None:
         encoding="utf-8"
     )
 
-    assert "docker compose up --detach --no-build --wait" in contract_gate
+    assert "$compose up --detach --no-build --wait" in contract_gate
     assert "scripts/validation_control/run_docker_build.sh" in contract_gate
     assert "COMPOSE_PROJECT_NAME" not in contract_gate
     assert "rest_contract_scope.py" in contract_gate
@@ -284,7 +328,7 @@ def test_contract_workflow_starts_services_and_blocks_on_failure() -> None:
     assert "REST_START_BP=$REST_RUN_BP" in contract_gate
     assert 'if test "$REST_RUN_PR" = true; then\n    REST_START_BP=true' in contract_gate
     assert "product-image-builds.txt" in contract_gate
-    assert 'scripts/validation_control/run_docker_build.sh docker compose build "$@"' in contract_gate
+    assert 'scripts/validation_control/run_docker_build.sh $compose build "$@"' in contract_gate
     assert VALIDATION_CATALOG["gates"]["contract:rest"]["runner_id"] == "full"
     assert VALIDATION_CATALOG["gates"]["contract:rest"]["resources"]["docker_socket"] is True
     assert VALIDATION_CATALOG["gates"]["contract:rest"]["environment"] == [
@@ -304,11 +348,18 @@ def test_contract_workflow_starts_services_and_blocks_on_failure() -> None:
     assert 'value = {**headers, "Idempotency-Key": str(key)}' in hooks
     assert "st.tuples(strategy, st.uuids())" in hooks
     assert "add_idempotency_key(*generated)" in hooks
+    assert 'context.operation.path == "/api/v1/channels/whatsapp/webhook"' in hooks
+    assert "headers.map(add_callback_host)" in hooks
     assert business_platform_scope.count("_pid=$!") == 6
     assert business_platform_scope.count('wait "$') == 6
     assert professional_runtime_scope.count("_pid=$!") == 2
     assert professional_runtime_scope.count('wait "$') == 2
+    assert professional_runtime_scope.count("startConversationBatchExecution") == 2
     assert "--suppress-health-check=filter_too_much" in lane_runner
+    assert '--exclude-operation-id "$excluded_operation_id"' in lane_runner
+    assert '--exclude-operation-id "$second_excluded_operation_id"' in lane_runner
+    assert business_platform_scope.count("verifyWhatsAppWebhook") == 2
+    assert business_platform_scope.count("receiveWhatsAppJourneyMessage") == 1
     assert "WAOOAW_VALIDATION_OUTPUT_DIRECTORY" in contract_gate
     assert contract_gate.count('--volume "$host_validation_output_directory:/workspace/test-results"') == 2
     assert SCHEMATHESIS["checks"]["positive_data_acceptance"]["expected-statuses"] == [

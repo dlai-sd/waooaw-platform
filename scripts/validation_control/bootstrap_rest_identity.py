@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 import argparse
+import hashlib
+import hmac
 import json
 import os
+import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -111,6 +114,54 @@ def write_token(path: Path, token: str) -> None:
         stream.write(token)
 
 
+def recover_local_verification_code(challenge_id: str) -> str:
+    challenge = uuid.UUID(challenge_id)
+    environment = os.environ.copy()
+    environment["PGPASSWORD"] = os.environ.get("POSTGRES_PASSWORD", "waooaw-local-dev-only")
+    query = (
+        "SELECT code_hmac || '|' || code_hmac_version "
+        "FROM identity.verification_challenges "
+        "WHERE challenge_id = :'challenge_id'::uuid"
+    )
+    result = subprocess.run(  # noqa: S603 - fixed executable and validated UUID query input.
+        [
+            "/usr/bin/psql",
+            "--host",
+            os.environ.get("POSTGRES_HOST", "postgres"),
+            "--username",
+            "business_app",
+            "--dbname",
+            "waooaw",
+            "--no-password",
+            "--tuples-only",
+            "--no-align",
+            "--set",
+            "ON_ERROR_STOP=1",
+            "--set",
+            f"challenge_id={challenge}",
+            "--command",
+            query,
+        ],
+        check=True,
+        capture_output=True,
+        env=environment,
+        text=True,
+    )
+    stored_hmac, version = result.stdout.strip().split("|", maxsplit=1)
+    master_key = os.environ.get("IDENTITY_HMAC_KEY", "waooaw-identity-local-dev-only-32chars").encode()
+    domain_key = hmac.new(
+        master_key,
+        f"waooaw:identity:otp:{version}".encode(),
+        hashlib.sha256,
+    ).digest()
+    for candidate in range(1_000_000):
+        code = f"{candidate:06d}"
+        digest = hmac.new(domain_key, code.encode(), hashlib.sha256).digest()[:16].hex()
+        if hmac.compare_digest(digest, stored_hmac):
+            return code
+    raise RuntimeError("local verification code did not match persisted challenge evidence")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--business-platform-url", default="http://business-platform:5001")
@@ -166,12 +217,38 @@ def main() -> None:
         {200},
         "complete identity profile",
     )
+    verification = expect(
+        request_json(
+            f"{args.business_platform_url}/api/v1/identity/registrations/{registration_id}/mobile-verifications",
+            method="POST",
+            token=identity_token,
+            payload={"mobile": "+15555550134"},
+            idempotency_key=uuid.UUID("10000000-0000-4000-8000-000000000003"),
+        ),
+        {202},
+        "start mobile verification",
+    )
+    challenge_id = verification.get("challengeId")
+    if not isinstance(challenge_id, str):
+        raise RuntimeError("mobile verification response omitted challengeId")
+    verification_code = recover_local_verification_code(challenge_id)
+    expect(
+        request_json(
+            f"{args.business_platform_url}/api/v1/identity/registrations/{registration_id}/mobile-verifications/confirm",
+            method="POST",
+            token=identity_token,
+            payload={"challengeId": challenge_id, "code": verification_code},
+            idempotency_key=uuid.UUID("10000000-0000-4000-8000-000000000004"),
+        ),
+        {200},
+        "confirm mobile verification",
+    )
     expect(
         request_json(
             f"{args.business_platform_url}/api/v1/identity/registrations/{registration_id}/complete",
             method="POST",
             token=identity_token,
-            idempotency_key=uuid.UUID("10000000-0000-4000-8000-000000000003"),
+            idempotency_key=uuid.UUID("10000000-0000-4000-8000-000000000005"),
         ),
         {200},
         "complete identity registration",

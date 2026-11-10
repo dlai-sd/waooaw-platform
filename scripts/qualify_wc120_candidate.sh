@@ -149,7 +149,7 @@ declare -a dotnet_nodes=(
   "CE-FIT-06|Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit06ConclusionContractTests.MaterialConversation_RequiresConclusionFieldsOrTypedContinuation_AndRejectsFalseSuccess"
   "CE-FIT-07|Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit07IndependentStateTests.TransportExecutionDecisionAndEvidence_TransitionIndependently_WithoutSyntheticSuccess"
   "CE-FIT-08|Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit08ConcurrentIntentTests.ConcurrentWebAndWhatsAppIntent_CommitsOnce_ReplaysPriorOutcome_AndRejectsDivergentReuse"
-  "CE-FIT-09|Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit09WebhookIngressTests.ChallengeRawHmacLimitsBindingsAndAtomicClaim_FailClosed_AndCommitOneDurableOutcome"
+  "CE-FIT-09|Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit09WebhookIngressTests"
   "CE-FIT-10|Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit10EligibilityTests.ConsentWindowAndTemplateMatrix_IsDeterministic_AndIneligibleCasesDispatchZero"
   "CE-FIT-11|Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit11MediaVoiceSafetyTests.MediaCorpus_ScansBeforeReasoning_AndRequiresCorrectedTranscriptConfirmationAndSendConsent"
   "CE-FIT-13|Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness.CeFit13StopResilienceTests.TypedStop_MeetsAcceptedLatency_AndSurvivesOutageDuplicateSimultaneousRestartAndRelease"
@@ -158,10 +158,14 @@ declare -a dotnet_nodes=(
 
 for entry in "${dotnet_nodes[@]}"; do
   IFS='|' read -r ce_fit_id node <<<"${entry}"
+  filter="FullyQualifiedName=${node}"
+  if [[ "${ce_fit_id}" == "CE-FIT-09" ]]; then
+    filter="FullyQualifiedName~${node}"
+  fi
   run_selector "${ce_fit_id}" "${dotnet_runner_digest}" "${node}" dotnet \
     run_dotnet_container \
     sh scripts/validation_control/run_wc120_dotnet_test.sh \
-    --filter "FullyQualifiedName=${node}" \
+    --filter "${filter}" \
     --logger "trx;LogFileName=test-results.trx" \
     --results-directory "/workspace/test-results/wc120/${ce_fit_id}"
 done

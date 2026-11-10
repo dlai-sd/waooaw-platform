@@ -1,0 +1,466 @@
+openapi: "3.1.0"
+info:
+  title: WAOOAW Governed Agent-Skill Conversation Generation
+  version: "1.0.0-candidate.4"
+  description: |
+    WC-134 private candidate contract. Generation requires the original confirmed
+    trial/hire relationship and its admitted agent-specific skill. No binding,
+    model, credentials, approval or spend authority is supplied by the customer.
+    Unknown outcome recovery is read-only and never initiates inference.
+    The candidate Ollama adapter refuses tag-addressed generation before reservation
+    or provider traffic until immutable invocation is implemented and admitted.
+security:
+  - WorkloadTls: []
+    DelegatedContext: []
+paths:
+  /internal/v1/conversation-generations:
+    servers: [{url: "https://ai-runtime.internal.waooaw"}]
+    post:
+      operationId: generateConversation
+      summary: Generate or recover the original bounded professional response
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/GenerationRequest"}
+      responses: &generationResponses
+        "200":
+          description: Completed, explicitly failed, queued or unknown original outcome
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/GenerationResult"}
+        "401": {$ref: "#/components/responses/Denied"}
+        "403": {$ref: "#/components/responses/Denied"}
+        "409": {$ref: "#/components/responses/Denied"}
+        "422": {$ref: "#/components/responses/Denied"}
+        "423": {$ref: "#/components/responses/Denied"}
+        "503": {$ref: "#/components/responses/Denied"}
+  /internal/v1/conversation-generations/reconcile:
+    servers: [{url: "https://ai-runtime.internal.waooaw"}]
+    post:
+      operationId: reconcileConversationGeneration
+      summary: Read the original claim/result without reserving or dispatching work
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/GenerationRequest"}
+      responses: *generationResponses
+  /internal/v1/conversation-generations/recover-content:
+    servers: [{url: "https://ai-runtime.internal.waooaw"}]
+    post:
+      operationId: recoverConversationGenerationContent
+      summary: Read retained original content under separately persisted fresh-owner permission
+      description: |
+        Checks current BP read authority before and after AIR result access.
+        Does not impersonate the original actor, renew the original mandate,
+        create claims, reserve funds or dispatch inference.
+      parameters: [{$ref: "#/components/parameters/IdempotencyKey"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/GenerationContentRecoveryRequest"}
+      responses:
+        "200":
+          description: Retained outcome and immutable persistence timestamp, or unresolved absence
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/GenerationContentRecoveryResult"}
+        "401": {$ref: "#/components/responses/Denied"}
+        "403": {$ref: "#/components/responses/Denied"}
+        "409": {$ref: "#/components/responses/Denied"}
+        "423": {$ref: "#/components/responses/Denied"}
+        "503": {$ref: "#/components/responses/Denied"}
+  /internal/v1/conversation-inference/resolve:
+    servers: [{url: "https://business-platform.internal.waooaw"}]
+    post:
+      operationId: resolveConversationInference
+      summary: Revalidate current original authority and resolve its sealed binding
+      requestBody: &ownerBody
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/InferenceOwnerRequest"}
+      responses:
+        "200":
+          description: Current approved binding; not a dispatch permit
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/InferenceBinding"}
+        "403": {$ref: "#/components/responses/Denied"}
+        "409": {$ref: "#/components/responses/Denied"}
+        "423": {$ref: "#/components/responses/Denied"}
+        "503": {$ref: "#/components/responses/Denied"}
+  /internal/v1/conversation-inference/reserve:
+    servers: [{url: "https://business-platform.internal.waooaw"}]
+    post:
+      operationId: reserveConversationInference
+      summary: Reserve conservative input/output cost in the shared Demo ledger
+      description: |
+        INR500 ceiling uses the existing messaging owner's rolling 24-hour window,
+        shared with messaging/OTP, not a second allowance.
+        One unresolved model attempt owns the environment/service-tenant slot.
+        Known concurrency denial returns 503 with X-Inference-State QUEUED.
+        Existing reservation collisions are never permission to redispatch.
+      requestBody: *ownerBody
+      responses:
+        "200":
+          description: Single original evidence-backed bounded permit
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/InferencePermit"}
+        "403": {$ref: "#/components/responses/Denied"}
+        "409": {$ref: "#/components/responses/Denied"}
+        "423": {$ref: "#/components/responses/Denied"}
+        "503": {$ref: "#/components/responses/Denied"}
+  /internal/v1/conversation-inference/settle:
+    servers: [{url: "https://business-platform.internal.waooaw"}]
+    post:
+      operationId: settleConversationInference
+      summary: Record full actual usage against the immutable original reservation
+      description: Overrun is never clamped and halts subsequent dispatch. Settlement is not content-release authority.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - {$ref: "#/components/schemas/InferenceOwnerRequest"}
+                - required: [reservationId, commercialReservationId, inputTokens, outputTokens]
+      responses: &settlementResponses
+        "200":
+          description: Idempotent immutable financial outcome
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [state]
+                properties:
+                  state: {type: string, enum: [SETTLED, RELEASED]}
+        "403": {$ref: "#/components/responses/Denied"}
+        "409": {$ref: "#/components/responses/Denied"}
+        "503": {$ref: "#/components/responses/Denied"}
+  /internal/v1/conversation-inference/reconcile:
+    servers: [{url: "https://business-platform.internal.waooaw"}]
+    post:
+      operationId: reconcileConversationInference
+      summary: Read original financial coordinates without reserving, releasing or dispatching
+      description: |
+        The immutable customer-scoped receipt selects the original service budget
+        tenant, independent of current activation. Exact original actor,
+        relationship, execution, idempotency, mandate and request digest are required.
+        UNRESOLVED means no receipt is visible, not proof that an attempt never ran.
+        No provider binding, professional content or dispatch permission is returned.
+      requestBody: *ownerBody
+      responses:
+        "200":
+          description: Known original financial state or explicitly unresolved receipt
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/InferenceReceipt"}
+        "403": {$ref: "#/components/responses/Denied"}
+        "409": {$ref: "#/components/responses/Denied"}
+        "503": {$ref: "#/components/responses/Denied"}
+  /internal/v1/conversation-inference/read-content:
+    servers: [{url: "https://business-platform.internal.waooaw"}]
+    post:
+      operationId: readConversationInferenceContent
+      summary: Validate stored recovery permission against current membership and original source
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [original, permission]
+              properties:
+                original: {$ref: "#/components/schemas/InferenceOwnerRequest"}
+                permission: {$ref: "#/components/schemas/ContentRecoveryPermission"}
+      responses:
+        "200":
+          description: Current read-only permission, never dispatch authority
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [state]
+                properties:
+                  state: {const: READ_ALLOWED}
+        "403": {$ref: "#/components/responses/Denied"}
+        "409": {$ref: "#/components/responses/Denied"}
+        "423": {$ref: "#/components/responses/Denied"}
+        "503": {$ref: "#/components/responses/Denied"}
+  /internal/v1/conversation-inference/release:
+    servers: [{url: "https://business-platform.internal.waooaw"}]
+    post:
+      operationId: releaseConversationInference
+      summary: Release only a known pre-provider-dispatch reservation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - {$ref: "#/components/schemas/InferenceOwnerRequest"}
+                - required: [reservationId, commercialReservationId]
+      responses: *settlementResponses
+components:
+  securitySchemes:
+    WorkloadTls: {type: mutualTLS}
+    DelegatedContext:
+      type: http
+      scheme: bearer
+      description: ADR-046 ECDSA envelope bound to peer workload, route, purpose, body digest, original actor/tenant/relationship/key and 60-second replay window.
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: {type: string, format: uuid}
+  responses:
+    Denied:
+      description: Explicit invalid authority, invalid binding, Stop, queue admission or unavailable dependency; never a professional success.
+  schemas:
+    GenerationContentRecoveryResult:
+      type: object
+      additionalProperties: false
+      required: [result, retainedAt]
+      properties:
+        result: {$ref: "#/components/schemas/GenerationResult"}
+        retainedAt: {type: [string, "null"], format: date-time}
+    ContentRecoveryPermission:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, originalMessageId, originalSourceDigest, afterSequence, reconciliationAuthorityId, permissionExpiresAt, expectedProjectionVersion]
+      properties:
+        schemaVersion: {const: "1.0"}
+        originalMessageId: {type: string, format: uuid}
+        originalSourceDigest: {type: string, pattern: "^sha256:[0-9a-f]{64}$"}
+        afterSequence: {type: integer, minimum: 0}
+        reconciliationAuthorityId: {type: string, format: uuid}
+        permissionExpiresAt: {type: string, format: date-time}
+        expectedProjectionVersion: {type: integer, minimum: 0}
+    GenerationContentRecoveryRequest:
+      type: object
+      additionalProperties: false
+      required: [relationshipRef, generation, permission]
+      properties:
+        relationshipRef: {type: string, format: uuid}
+        generation: {$ref: "#/components/schemas/GenerationRequest"}
+        permission: {$ref: "#/components/schemas/ContentRecoveryPermission"}
+    GenerationRequest:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, relationshipRef, conversationId, executionId, contributionRef, operationalMandate, input, requestDigest]
+      properties:
+        schemaVersion: {const: "1.0"}
+        relationshipRef: {type: string, format: uuid}
+        conversationId: {type: string, format: uuid}
+        executionId: {type: string, format: uuid}
+        contributionRef: {type: string, format: uuid}
+        operationalMandate: {$ref: "#/components/schemas/OriginalMandate"}
+        batch: {$ref: "#/components/schemas/BatchGenerationBinding"}
+        input:
+          type: object
+          additionalProperties: false
+          required: [text, language]
+          properties:
+            text: {type: string, minLength: 1, maxLength: 32000, description: "Nonblank, no NUL; at most 32000 UTF-16 code units."}
+            language: {type: string, minLength: 2, maxLength: 35}
+        requestDigest: {type: string, pattern: "^[0-9a-f]{64}$"}
+    BatchGenerationBinding:
+      type: object
+      additionalProperties: false
+      required: [batchId, sourceListDigest, sources]
+      properties:
+        batchId: {type: string, format: uuid}
+        sourceListDigest: {type: string, pattern: '^sha256:[0-9a-f]{64}$'}
+        sources:
+          type: array
+          minItems: 2
+          maxItems: 3
+          items: {$ref: "#/components/schemas/BatchGenerationSource"}
+    BatchGenerationSource:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, messageId, executionId, sequence, workItemId, workItemRevision, workItemInvocationId, idempotencyKey, evidenceId, text, language, operationalMandate]
+      properties:
+        schemaVersion: {const: "1.0"}
+        messageId: {type: string, format: uuid}
+        executionId: {type: string, format: uuid}
+        sequence: {type: integer, minimum: 1}
+        workItemId: {type: string, format: uuid}
+        workItemRevision: {type: integer, minimum: 1}
+        workItemInvocationId: {type: string, format: uuid}
+        idempotencyKey: {type: string, format: uuid}
+        evidenceId: {type: string, format: uuid}
+        text: {type: string, minLength: 1, maxLength: 2000}
+        language: {type: string, minLength: 2, maxLength: 35}
+        operationalMandate: {$ref: "#/components/schemas/OriginalMandate"}
+    OriginalMandate:
+      type: object
+      description: |
+        Literal original OperationalMandateV1 from the accepted PR dispatch, including
+        agent instance, professional/admission/skill revisions, input/output/prompt/model
+        policy digests, accepted contract, Decision Space, approvals, original idempotency,
+        deadline and Stop. BP revalidates the persisted source and the entire typed mandate;
+        this object never grants caller-selected authority.
+    GenerationResult:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, executionId, requestDigest, state]
+      properties:
+        schemaVersion: {const: "1.0"}
+        executionId: {type: string, format: uuid}
+        requestDigest: {type: string, pattern: "^[0-9a-f]{64}$"}
+        state: {enum: [COMPLETED, FAILED, UNRESOLVED]}
+        text: {type: [string, "null"], minLength: 1, maxLength: 32000}
+        reason: {type: [string, "null"]}
+        inputTokens: {type: [integer, "null"], minimum: 0}
+        outputTokens: {type: [integer, "null"], minimum: 0}
+        reservationId: {type: [string, "null"], format: uuid}
+        commercialReservationId: {type: [string, "null"], format: uuid}
+        evidenceId: {type: [string, "null"], format: uuid}
+      allOf:
+        - if: {properties: {state: {const: COMPLETED}}}
+          then:
+            required: [text, inputTokens, outputTokens, reservationId, commercialReservationId, evidenceId]
+            properties:
+              text: {type: string}
+              inputTokens: {type: integer, maximum: 8192}
+              outputTokens: {type: integer, maximum: 2048}
+              reservationId: {type: string}
+              commercialReservationId: {type: string}
+              evidenceId: {type: string}
+              reason: {type: "null"}
+          else:
+            required: [reason]
+            properties:
+              text: {type: "null"}
+              reason: {type: string, minLength: 1}
+    InferenceOwnerRequest:
+      type: object
+      additionalProperties: false
+      required: [executionId, conversationId, contributionRef, relationshipRef, requestDigest, inputDigest, inputLanguage, operationalMandate]
+      properties:
+        executionId: {type: string, format: uuid}
+        conversationId: {type: string, format: uuid}
+        contributionRef: {type: string, format: uuid}
+        relationshipRef: {type: string, format: uuid}
+        requestDigest: {type: string, pattern: "^[0-9a-f]{64}$"}
+        inputDigest: {type: string, pattern: "^[0-9a-f]{64}$"}
+        inputLanguage: {type: string, minLength: 2, maxLength: 35}
+        operationalMandate: {$ref: "#/components/schemas/OriginalMandate"}
+        batch: {$ref: "#/components/schemas/BatchGenerationBinding"}
+        reservationId: {type: [string, "null"], format: uuid}
+        commercialReservationId: {type: [string, "null"], format: uuid}
+        inputTokens: {type: [integer, "null"], minimum: 0, maximum: 9223372036854775807}
+        outputTokens: {type: [integer, "null"], minimum: 0, maximum: 9223372036854775807}
+    InferenceBinding:
+      type: object
+      additionalProperties: false
+      required: [bindingId, providerId, providerIdentityUri, adapter, endpoint, model, modelDigest, tokenizerDigest, tokenizerVersion, region, tier, languages, domains, planTiers, resolvedPlanTier, mandatoryTiers, residencyRegions, institutionalBoundary, configurationDigest, rateDigest, inputPaisePerMillion, outputPaisePerMillion, systemPrompt, promptVersion, promptDigest, promptWrapper, modelPolicyDigest, expiresAt]
+      properties:
+        bindingId: {type: string, format: uuid}
+        providerId: {type: string, minLength: 1, maxLength: 128}
+        providerIdentityUri: {type: string, pattern: "^spiffe://[^ ]+$"}
+        adapter: {const: OLLAMA_INSTITUTIONAL}
+        endpoint: {type: string, format: uri}
+        model: {type: string, minLength: 1, maxLength: 200}
+        modelDigest: {type: string, pattern: "^sha256:[0-9a-f]{64}$"}
+        tokenizerDigest: {type: string, pattern: "^sha256:[0-9a-f]{64}$"}
+        tokenizerVersion: {type: string, minLength: 1}
+        region: {type: string, minLength: 1}
+        tier: {const: LOCAL}
+        languages: {type: array, minItems: 1, items: {type: string}}
+        domains: {type: array, minItems: 1, items: {type: string}}
+        planTiers: {type: array, minItems: 1, items: {type: string}}
+        resolvedPlanTier: {type: string, minLength: 1}
+        mandatoryTiers: {type: array, minItems: 1, items: {enum: [LOCAL, MID, FRONTIER]}}
+        residencyRegions: {type: array, minItems: 1, items: {type: string}}
+        institutionalBoundary: {const: true}
+        configurationDigest: {type: string, pattern: "^sha256:[0-9a-f]{64}$"}
+        rateDigest: {type: string, pattern: "^sha256:[0-9a-f]{64}$"}
+        inputPaisePerMillion: {type: integer, minimum: 0, maximum: 1000000000}
+        outputPaisePerMillion: {type: integer, minimum: 0, maximum: 1000000000}
+        systemPrompt: {type: string, minLength: 1, maxLength: 32000}
+        promptVersion: {type: string, minLength: 1}
+        promptDigest: {type: string, pattern: "^sha256:[0-9a-f]{64}$"}
+        promptWrapper: {enum: [RAW_SYSTEM_DOUBLE_NEWLINE, RAW_SYSTEM_CANONICAL_HISTORY_V1]}
+        modelPolicyDigest: {type: string, pattern: "^sha256:[0-9a-f]{64}$"}
+        expiresAt: {type: string, format: date-time}
+        conversationContext:
+          oneOf:
+            - {$ref: "#/components/schemas/ConversationResumeContext"}
+            - {type: "null"}
+    ConversationResumeContext:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, tenantId, relationshipId, conversationId, originalMessageId, skillId, beforeSequence, turns, digest]
+      properties:
+        schemaVersion: {const: "1.0"}
+        tenantId: {type: string, format: uuid}
+        relationshipId: {type: string, format: uuid}
+        conversationId: {type: string, format: uuid}
+        originalMessageId: {type: string, format: uuid}
+        skillId: {type: string, minLength: 1}
+        beforeSequence: {type: integer, minimum: 1}
+        turns: {type: array, maxItems: 12, items: {$ref: "#/components/schemas/ConversationResumeTurn"}}
+        digest: {type: string, pattern: "^sha256:[0-9a-f]{64}$"}
+    ConversationResumeTurn:
+      type: object
+      additionalProperties: false
+      required: [messageId, sequence, actor, text, language]
+      properties:
+        messageId: {type: string, format: uuid}
+        sequence: {type: integer, minimum: 1}
+        actor: {enum: [CUSTOMER, PROFESSIONAL]}
+        text: {type: string, minLength: 1, maxLength: 8000}
+        language: {type: string, minLength: 2, maxLength: 35}
+    InferencePermit:
+      type: object
+      additionalProperties: false
+      required: [reservationId, commercialReservationId, evidenceId, maximumCostPaise, expiresAt, binding]
+      properties:
+        reservationId: {type: string, format: uuid}
+        commercialReservationId: {type: string, format: uuid}
+        evidenceId: {type: string, format: uuid}
+        maximumCostPaise: {type: integer, minimum: 0}
+        expiresAt: {type: string, format: date-time}
+        binding: {$ref: "#/components/schemas/InferenceBinding"}
+    InferenceReceipt:
+      type: object
+      additionalProperties: false
+      required: [state]
+      properties:
+        state: {type: string, enum: [UNRESOLVED, RESERVED, SETTLED, RELEASED]}
+        reservationId: {type: [string, "null"], format: uuid}
+        commercialReservationId: {type: [string, "null"], format: uuid}
+        evidenceId: {type: [string, "null"], format: uuid}
+        maximumCostPaise: {type: [integer, "null"], minimum: 0}
+        expiresAt: {type: [string, "null"], format: date-time}
+      allOf:
+        - if:
+            properties:
+              state: {const: UNRESOLVED}
+          then:
+            properties:
+              reservationId: {type: "null"}
+              commercialReservationId: {type: "null"}
+              evidenceId: {type: "null"}
+              maximumCostPaise: {type: "null"}
+              expiresAt: {type: "null"}
+          else:
+            required: [reservationId, commercialReservationId, evidenceId, maximumCostPaise, expiresAt]
+            properties:
+              reservationId: {type: string, format: uuid}
+              commercialReservationId: {type: string, format: uuid}
+              evidenceId: {type: string, format: uuid}
+              maximumCostPaise: {type: integer, minimum: 0}
+              expiresAt: {type: string, format: date-time}

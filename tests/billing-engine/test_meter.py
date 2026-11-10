@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timezone
+from pathlib import Path
+from contextlib import closing
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
+import pytest_asyncio
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
@@ -76,7 +80,7 @@ async def test_record_usage_writes_to_platform_cost_ledger() -> None:
         tenant_id=uuid4(), relationship_id=uuid4(), agent_instance_id=uuid4(),
         skill_id="MARKET_RESEARCH_AND_MATURITY", skill_version="1.0.0", work_item_id=uuid4(), invocation_id=uuid4(),
     )
-    await svc.record_usage(customer_id, "DMA", 5000, attribution)
+    await svc.record_usage(customer_id, "DMA", 5000, attribution, raw_cost_paise=4000)
 
     assert session.execute.call_count == 2
     session.commit.assert_awaited_once()
@@ -88,6 +92,14 @@ async def test_record_usage_writes_to_platform_cost_ledger() -> None:
     assert parameters["skill_version"] == "1.0.0"
     assert parameters["work_item_id"] == str(attribution.work_item_id)
     assert parameters["invocation_id"] == str(attribution.invocation_id)
+    assert parameters["raw_cost_paise"] == 4000
+    assert parameters["amount_paise"] == 5000
+    lookup = str(session.execute.await_args_list[0].args[0])
+    assert "institutional.thread_catalog" in lookup
+    assert "tc.thread_id = :thread_type" in lookup
+    assert "tc.status = 'ACTIVE'" in lookup
+    assert "tc.founder_authorized_at IS NOT NULL" in lookup
+    assert "pa.is_active = TRUE" in lookup
 
 
 @pytest.mark.asyncio
@@ -101,16 +113,294 @@ async def test_dma_usage_without_attribution_fails_before_database_access() -> N
     session.execute.assert_not_awaited()
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("tenant_id", "not-a-uuid"),
+        ("tenant_id", 0),
+        ("relationship_id", 0),
+        ("agent_instance_id", 0),
+        ("work_item_id", 0),
+        ("invocation_id", 0),
+        ("skill_id", ""),
+        ("skill_id", "  "),
+        ("skill_version", ""),
+        ("skill_version", "  "),
+    ],
+)
+def test_usage_attribution_rejects_missing_identity(field, value) -> None:
+    from dataclasses import replace
+    from uuid import UUID
+    from meter.service import UsageAttribution
+
+    attribution = UsageAttribution(
+        uuid4(), uuid4(), uuid4(), "CUSTOMER_PROFILING", "1.0.0", uuid4(), uuid4()
+    )
+    if value == 0:
+        value = UUID(int=0)
+    with pytest.raises(ValueError, match="DMA_USAGE_ATTRIBUTION_INVALID"):
+        replace(attribution, **{field: value})
+
+
 @pytest.mark.asyncio
-async def test_record_usage_no_write_when_provider_not_found() -> None:
-    """record_usage: thread_catalog lookup returns None → no INSERT."""
+async def test_record_usage_fails_explicitly_when_provider_not_found() -> None:
+    """Missing owner mapping is not a successfully recorded usage event."""
     customer_id = uuid4()
     session = _mock_session(_fetchone_result(None))
     svc = _make_service(session)
-    await svc.record_usage(customer_id, "UNKNOWN_THREAD", 5000)
+    with pytest.raises(ValueError, match="USAGE_PROVIDER_UNAVAILABLE"):
+        await svc.record_usage(customer_id, "UNKNOWN_THREAD", 5000, raw_cost_paise=4000)
 
     assert session.execute.call_count == 1
     session.commit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("amount", "raw_cost"),
+    [(1, None), (-1, 0), (0, -1), (True, 0), (0, False), (1.5, 1), (1, 1.5)],
+)
+async def test_meter_requires_separately_reported_nonnegative_integer_costs(amount, raw_cost) -> None:
+    session = _mock_session()
+    with pytest.raises(ValueError, match="USAGE_COST_INVALID"):
+        await _make_service(session).record_usage(
+            uuid4(), "llm_local", amount, raw_cost_paise=raw_cost
+        )
+    session.execute.assert_not_awaited()
+
+
+@pytest_asyncio.fixture
+async def catalog_meter():
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+    from meter.service import MeterService, UsageAttribution
+
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    provider = uuid4()
+    async with engine.begin() as connection:
+        await connection.execute(text("ATTACH DATABASE ':memory:' AS institutional"))
+        await connection.execute(text("""
+            CREATE TABLE institutional.provider_accounts (id TEXT PRIMARY KEY, is_active BOOLEAN NOT NULL);
+        """))
+        await connection.execute(text("""
+            CREATE TABLE institutional.thread_catalog (
+                thread_id TEXT PRIMARY KEY, provider TEXT NOT NULL, provider_account_id TEXT,
+                status TEXT NOT NULL, founder_authorized_at TIMESTAMP
+            )
+        """))
+        await connection.execute(text("""
+            CREATE TABLE institutional.platform_cost_ledger (
+                id TEXT PRIMARY KEY, customer_id TEXT, thread_type TEXT NOT NULL,
+                provider_account_id TEXT NOT NULL, raw_cost_inr_paise INTEGER NOT NULL,
+                marked_up_cost_inr_paise INTEGER NOT NULL, recorded_at TIMESTAMP NOT NULL,
+                billing_period_start DATE NOT NULL, tenant_id TEXT, relationship_id TEXT,
+                agent_instance_id TEXT, skill_id TEXT, skill_version TEXT, work_item_id TEXT,
+                invocation_id TEXT
+            )
+        """))
+        await connection.execute(text("""
+            CREATE UNIQUE INDEX institutional.idx_cost_ledger_dma_invocation
+            ON platform_cost_ledger (tenant_id, relationship_id, agent_instance_id, invocation_id)
+            WHERE invocation_id IS NOT NULL
+        """))
+        await connection.execute(
+            text("INSERT INTO institutional.provider_accounts VALUES (:id, TRUE)"), {"id": str(provider)}
+        )
+        await connection.execute(text("""
+            INSERT INTO institutional.thread_catalog VALUES
+                ('llm_local', 'Display name is not an account ID', :provider, 'ACTIVE', CURRENT_TIMESTAMP)
+        """), {"provider": str(provider)})
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    attribution = UsageAttribution(
+        uuid4(), uuid4(), uuid4(), "CUSTOMER_PROFILING", "1.0.0", uuid4(), uuid4()
+    )
+    try:
+        yield MeterService(factory), factory, attribution, provider
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_real_catalog_columns_and_raw_cost_survive_exact_usage_replay(catalog_meter) -> None:
+    from sqlalchemy import text
+    service, factory, attribution, provider = catalog_meter
+    customer = uuid4()
+    for _ in range(2):
+        await service.record_usage(customer, "llm_local", 5000, attribution, raw_cost_paise=4000)
+    async with factory() as session:
+        rows = (await session.execute(text(
+            "SELECT provider_account_id, raw_cost_inr_paise, marked_up_cost_inr_paise "
+            "FROM institutional.platform_cost_ledger"
+        ))).all()
+    assert rows == [(str(provider), 4000, 5000)]
+    with pytest.raises(ValueError, match="USAGE_IDEMPOTENCY_CONFLICT"):
+        await service.record_usage(customer, "llm_local", 5001, attribution, raw_cost_paise=4000)
+    async with factory() as session:
+        assert (await session.execute(text(
+            "SELECT count(*) FROM institutional.platform_cost_ledger"
+        ))).scalar_one() == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("defect", ["mapping", "provider", "thread", "approval"])
+async def test_inactive_or_unmapped_catalog_cannot_silently_lose_usage(catalog_meter, defect) -> None:
+    from sqlalchemy import text
+    service, factory, attribution, _ = catalog_meter
+    statements = {
+        "mapping": "UPDATE institutional.thread_catalog SET provider_account_id=NULL",
+        "provider": "UPDATE institutional.provider_accounts SET is_active=FALSE",
+        "thread": "UPDATE institutional.thread_catalog SET status='PENDING_FOUNDER_AUTH'",
+        "approval": "UPDATE institutional.thread_catalog SET founder_authorized_at=NULL",
+    }
+    async with factory() as session:
+        await session.execute(text(statements[defect]))
+        await session.commit()
+    with pytest.raises(ValueError, match="USAGE_PROVIDER_UNAVAILABLE"):
+        await service.record_usage(uuid4(), "llm_local", 0, attribution, raw_cost_paise=0)
+    async with factory() as session:
+        assert (await session.execute(text(
+            "SELECT count(*) FROM institutional.platform_cost_ledger"
+        ))).scalar_one() == 0
+
+
+@pytest_asyncio.fixture
+async def postgres_meter():
+    import psycopg2
+    from psycopg2 import sql
+    from sqlalchemy import event, text
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+    from meter.service import MeterService, UsageAttribution
+
+    admin_url = os.getenv("WC134_METER_POSTGRES_ADMIN_URL")
+    if not admin_url:
+        pytest.skip("PostgreSQL meter is exercised by integration:postgres-migrations")
+    database = "wc134_meter_" + uuid4().hex
+    root = Path(__file__).resolve().parents[2]
+    admin = psycopg2.connect(admin_url)
+    admin.autocommit = True
+    engine = None
+    created = False
+    try:
+        with admin.cursor() as cursor:
+            cursor.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(database)))
+        created = True
+        parameters = psycopg2.extensions.parse_dsn(admin_url)
+        parameters["dbname"] = database
+        target_url = psycopg2.extensions.make_dsn(**parameters)
+        with closing(psycopg2.connect(target_url)) as connection, connection:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    CREATE SCHEMA business;
+                    CREATE SCHEMA institutional AUTHORIZATION bp_owner;
+                    CREATE TABLE business.organisations (id UUID PRIMARY KEY);
+                    CREATE TABLE business.employment_contracts (id UUID PRIMARY KEY);
+                    CREATE TABLE business.subscription_tiers (id UUID PRIMARY KEY);
+                """)
+                cursor.execute((root / "infrastructure/postgres/init/12-billing-engine.sql").read_text())
+                cursor.execute("""
+                    ALTER TABLE institutional.thread_catalog OWNER TO bp_owner;
+                    ALTER TABLE institutional.provider_accounts OWNER TO bp_owner;
+                    ALTER TABLE institutional.platform_cost_ledger OWNER TO bp_owner;
+                """)
+            connection.commit()
+            for _ in range(2):
+                with connection.cursor() as cursor:
+                    cursor.execute((root / "infrastructure/postgres/init/99-wc134-thread-provider-account-mapping.sql").read_text())
+            provider = uuid4()
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO institutional.provider_accounts (id,provider_name,display_name)
+                    VALUES (%s,'synthetic-meter-provider','Not a catalogue label')
+                """, (str(provider),))
+                cursor.execute("""
+                    INSERT INTO institutional.thread_catalog
+                        (thread_id,display_name,provider,unit_description,provider_account_id,founder_authorized_at)
+                    VALUES ('synthetic-meter-thread','Synthetic test thread','Not a provider ID','test',%s,now())
+                """, (str(provider),))
+        from sqlalchemy.engine import URL
+        engine = create_async_engine(URL.create(
+            "postgresql+asyncpg", username=parameters.get("user"), password=parameters.get("password"),
+            host=parameters.get("host"), port=int(parameters.get("port", "5432")), database=database,
+        ))
+
+        @event.listens_for(engine.sync_engine, "connect")
+        def application_role(connection, _):
+            cursor = connection.cursor()
+            try:
+                cursor.execute("SET ROLE wbe_app")
+            finally:
+                cursor.close()
+
+        factory = async_sessionmaker(engine, expire_on_commit=False)
+        attribution = UsageAttribution(
+            uuid4(), uuid4(), uuid4(), "CUSTOMER_PROFILING", "1.0.0", uuid4(), uuid4()
+        )
+        async with factory() as session:
+            row = (await session.execute(text("""
+                SELECT current_user,
+                       has_column_privilege(current_user,'institutional.thread_catalog','provider_account_id','UPDATE'),
+                       has_table_privilege(current_user,'institutional.platform_cost_ledger','UPDATE')
+            """))).one()
+            assert row == ("wbe_app", False, False)
+        yield MeterService(factory), factory, attribution, provider, target_url
+    finally:
+        if engine is not None:
+            await engine.dispose()
+        try:
+            if created:
+                with admin.cursor() as cursor:
+                    cursor.execute(sql.SQL("DROP DATABASE {}").format(sql.Identifier(database)))
+        finally:
+            admin.close()
+
+
+@pytest.mark.asyncio
+async def test_postgres_meter_migration_and_exact_append_only_usage(postgres_meter) -> None:
+    import asyncio
+    from sqlalchemy import text
+    service, factory, attribution, provider, _ = postgres_meter
+    customer = uuid4()
+    await asyncio.gather(*(
+        service.record_usage(customer, "synthetic-meter-thread", 5000, attribution, raw_cost_paise=4000)
+        for _ in range(4)
+    ))
+    with pytest.raises(ValueError, match="USAGE_IDEMPOTENCY_CONFLICT"):
+        await service.record_usage(customer, "synthetic-meter-thread", 5001, attribution, raw_cost_paise=4000)
+    async with factory() as session:
+        rows = (await session.execute(text("""
+            SELECT customer_id,provider_account_id,raw_cost_inr_paise,marked_up_cost_inr_paise,
+                   tenant_id,relationship_id,agent_instance_id,skill_id,skill_version,work_item_id,invocation_id
+            FROM institutional.platform_cost_ledger
+        """))).all()
+        assert rows == [(customer, provider, 4000, 5000, attribution.tenant_id,
+                         attribution.relationship_id, attribution.agent_instance_id, attribution.skill_id,
+                         attribution.skill_version, attribution.work_item_id, attribution.invocation_id)]
+        assert (await session.execute(text(
+            "SELECT count(*) FROM institutional.thread_catalog WHERE provider_account_id IS NOT NULL"
+        ))).scalar_one() == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("defect", ["mapping", "provider", "thread", "approval"])
+async def test_postgres_meter_does_not_mutate_ledger_without_catalogue_authority(postgres_meter, defect) -> None:
+    import psycopg2
+    from sqlalchemy import text
+    service, factory, attribution, _, owner_url = postgres_meter
+    statements = {
+        "mapping": "UPDATE institutional.thread_catalog SET provider_account_id=NULL",
+        "provider": "UPDATE institutional.provider_accounts SET is_active=FALSE",
+        "thread": "UPDATE institutional.thread_catalog SET status='PENDING_FOUNDER_AUTH'",
+        "approval": "UPDATE institutional.thread_catalog SET founder_authorized_at=NULL",
+    }
+    with closing(psycopg2.connect(owner_url)) as connection, connection:
+        with connection.cursor() as cursor:
+            cursor.execute(statements[defect])
+    with pytest.raises(ValueError, match="USAGE_PROVIDER_UNAVAILABLE"):
+        await service.record_usage(uuid4(), "synthetic-meter-thread", 0, attribution, raw_cost_paise=0)
+    async with factory() as session:
+        assert (await session.execute(text(
+            "SELECT count(*) FROM institutional.platform_cost_ledger"
+        ))).scalar_one() == 0
 
 
 # ===========================================================================
@@ -759,7 +1049,7 @@ async def test_record_usage_raises_on_runtime_error() -> None:
     )
 
     with pytest.raises(RuntimeError):
-        await svc.record_usage(customer_id, "DMA", 5000, attribution)
+        await svc.record_usage(customer_id, "DMA", 5000, attribution, raw_cost_paise=4000)
 
 
 @pytest.mark.asyncio

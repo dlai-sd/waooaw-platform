@@ -17,7 +17,9 @@ ENV BUILD_STANDALONE=true \
 RUN pnpm build
 
 FROM node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
-RUN apk upgrade --no-cache \
+ARG SECURITY_REFRESH=local
+RUN test -n "$SECURITY_REFRESH" \
+	&& apk upgrade --no-cache \
 	&& apk add --no-cache 'libcrypto3>=3.5.8-r0' 'libssl3>=3.5.8-r0' \
 	&& rm -rf /usr/local/lib/node_modules/npm \
 	&& rm -f /usr/local/bin/npm /usr/local/bin/npx \

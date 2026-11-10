@@ -14,6 +14,89 @@ namespace Waooaw.BusinessPlatform.Tests.ConversationWhatsAppFitness;
 
 public sealed class ChannelNeutralConversationControllerTests
 {
+    [Theory]
+    [InlineData("participant")]
+    [InlineData("channel")]
+    [InlineData("conversation")]
+    [InlineData("subject")]
+    [InlineData("assurance")]
+    [InlineData("auth-time")]
+    public async Task HandoffRejectsEachIncompleteContinuityIdentity(string defect)
+    {
+        var context = await Wc120FitnessContext.CreateAsync();
+        var controller = CreateController(context);
+        var claims = controller.User.Claims
+            .Where(value =>
+                value.Type
+                != (
+                    defect switch
+                    {
+                        "participant" => "participant_id",
+                        "channel" => "channel",
+                        "conversation" => "conversation_id",
+                        "subject" => "external_subject_hash",
+                        "assurance" => "authentication_assurance",
+                        "auth-time" => "auth_time",
+                        _ => string.Empty,
+                    }
+                )
+            )
+            .ToList();
+        if (defect == "participant")
+            claims.Add(new Claim("sub", context.ParticipantId.ToString("D")));
+        else if (defect == "subject")
+            claims.Add(new Claim("external_subject_hash", "short"));
+        else if (defect == "auth-time")
+            claims.Add(new Claim("auth_time", "not-a-number"));
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+
+        var result = await controller.PrepareHandoffAsync(
+            context.RelationshipId,
+            new("WEB", "WHATSAPP", 0, "workspace-1", new string('a', 64)),
+            CancellationToken.None
+        );
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Theory]
+    [InlineData("source")]
+    [InlineData("target")]
+    [InlineData("same-channel")]
+    [InlineData("identity-channel")]
+    [InlineData("sequence")]
+    [InlineData("context")]
+    [InlineData("digest")]
+    public async Task HandoffRejectsEveryInvalidRequestBinding(string defect)
+    {
+        var context = await Wc120FitnessContext.CreateAsync();
+        var controller = CreateController(context);
+        var request = new HandoffPrepareRequestV1(
+            defect == "source" ? "EMAIL" : "WEB",
+            defect == "target" ? "EMAIL" : defect == "same-channel" ? "WEB" : "WHATSAPP",
+            defect == "sequence" ? -1 : 0,
+            defect == "context" ? " " : "workspace-1",
+            defect == "digest" ? "bad" : new string('a', 64)
+        );
+        if (defect == "identity-channel")
+        {
+            var claims = controller.User.Claims
+                .Where(value => value.Type != "channel")
+                .Append(new Claim("channel", "MOBILE"));
+            controller.HttpContext.User = new ClaimsPrincipal(
+                new ClaimsIdentity(claims, "test")
+            );
+        }
+
+        var result = await controller.PrepareHandoffAsync(
+            context.RelationshipId,
+            request,
+            CancellationToken.None
+        );
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
     [Fact]
     public async Task CanonicalContextProfileContributionAndDataRightsUseSharedOwners()
     {
@@ -351,6 +434,7 @@ public sealed class ChannelNeutralConversationControllerTests
         await using (var db = context.Conversations.CreateDbContext())
         {
             var message = db.Messages.Single();
+            message.EvidenceRecordId = Guid.NewGuid();
             var execution = new ConversationExecution
             {
                 TenantId = context.TenantId,
@@ -359,6 +443,19 @@ public sealed class ChannelNeutralConversationControllerTests
                 MessageId = message.MessageId,
             };
             db.Executions.Add(execution);
+            db.IdempotencyOutcomes.Add(
+                new ConversationIdempotencyOutcome
+                {
+                    TenantId = context.TenantId,
+                    RelationshipId = context.RelationshipId,
+                    ActorParticipantId = context.ParticipantId,
+                    OperationFamily = "SEND",
+                    IdempotencyKey = Guid.NewGuid(),
+                    RequestHash = new string('a', 64),
+                    MessageId = message.MessageId,
+                    ExecutionId = execution.ExecutionId,
+                }
+            );
             await db.SaveChangesAsync();
             executionId = execution.ExecutionId;
         }
@@ -524,6 +621,142 @@ public sealed class ChannelNeutralConversationControllerTests
                 ),
                 CancellationToken.None
             )
+        );
+    }
+
+    [Fact]
+    public async Task PreparedHandoffRevertsOnceAndRejectsChangedSourceOrReplay()
+    {
+        var context = await Wc120FitnessContext.CreateAsync();
+        await context.SeedConversationAsync(("WEB", "start"));
+        var conversationId = Guid.NewGuid().ToString("D");
+        await using (var db = context.Relationships.CreateDbContext())
+        {
+            db.ChannelBindings.Add(
+                new ChannelBinding
+                {
+                    TenantId = context.TenantId,
+                    RelationshipId = context.RelationshipId,
+                    ParticipantId = context.ParticipantId,
+                    ParticipantRole = "EMPLOYER",
+                    Channel = "WEB",
+                    ExternalSubjectHash = new string('a', 64),
+                    ConversationId = conversationId,
+                    AssuranceLevel = "AAL3_FRESH",
+                    Status = "ACTIVE",
+                }
+            );
+            await db.SaveChangesAsync();
+        }
+        var evidence = new ConversationConstitutionalGatewayStub();
+        var continuity = new ChannelContinuityService(
+            context.Relationships,
+            evidence,
+            Options.Create(
+                new ChannelContinuityOptions
+                {
+                    EnvelopeHmacKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)),
+                }
+            )
+        );
+        var controller = CreateController(
+            context,
+            continuity: continuity,
+            conversationId: conversationId
+        );
+        var prepare = Assert.IsType<ObjectResult>(
+            await controller.PrepareHandoffAsync(
+                context.RelationshipId,
+                new("WEB", "WHATSAPP", 1, "workspace-1", new string('b', 64)),
+                CancellationToken.None
+            )
+        );
+        Assert.Equal(201, prepare.StatusCode);
+        var receipt = Assert.IsType<HandoffReceiptV1>(prepare.Value);
+        string digest;
+        await using (var db = context.Relationships.CreateDbContext())
+            digest = db.ContinuityCheckpoints.Single().ContinuityEnvelopeHash;
+        controller.Request.Headers["Idempotency-Key"] = Guid.NewGuid().ToString("D");
+        controller.Request.Headers["X-Correlation-ID"] = Guid.NewGuid().ToString("D");
+        var revert = new HandoffRevertRequestV1(
+            "WEB",
+            digest,
+            "PREPARED",
+            "CUSTOMER_CANCELLED",
+            new string('c', 64)
+        );
+        Assert.IsType<ConflictObjectResult>(
+            await controller.RevertHandoffAsync(
+                context.RelationshipId,
+                receipt.HandoffId,
+                revert with
+                {
+                    SourceChannel = "MOBILE",
+                },
+                CancellationToken.None
+            )
+        );
+        Assert.IsType<ConflictObjectResult>(
+            await controller.RevertHandoffAsync(
+                context.RelationshipId,
+                receipt.HandoffId,
+                revert with
+                {
+                    CheckpointDigest = new string('d', 64),
+                },
+                CancellationToken.None
+            )
+        );
+        Assert.IsType<ConflictObjectResult>(
+            await controller.RevertHandoffAsync(
+                context.RelationshipId,
+                receipt.HandoffId,
+                revert with
+                {
+                    ReasonCode = "OUTCOME_UNKNOWN",
+                },
+                CancellationToken.None
+            )
+        );
+        var reverted = Assert.IsType<OkObjectResult>(
+            await controller.RevertHandoffAsync(
+                context.RelationshipId,
+                receipt.HandoffId,
+                revert,
+                CancellationToken.None
+            )
+        );
+        Assert.Equal("REVERTED", Assert.IsType<HandoffReceiptV1>(reverted.Value).State);
+        var replay = Assert.IsType<OkObjectResult>(
+            await controller.RevertHandoffAsync(
+                context.RelationshipId,
+                receipt.HandoffId,
+                revert,
+                CancellationToken.None
+            )
+        );
+        Assert.Equal("REVERTED", Assert.IsType<HandoffReceiptV1>(replay.Value).State);
+        Assert.Equal(2, evidence.CallCount);
+        Assert.IsType<ConflictObjectResult>(
+            await controller.RevertHandoffAsync(
+                context.RelationshipId,
+                receipt.HandoffId,
+                revert with
+                {
+                    PayloadDigest = new string('e', 64),
+                },
+                CancellationToken.None
+            )
+        );
+        await using var verify = context.Relationships.CreateDbContext();
+        Assert.Equal("REVERTED", verify.ContinuityCheckpoints.Single().Status);
+        Assert.Equal(
+            "ACTIVE",
+            verify.ChannelBindings.Single(value => value.Channel == "WEB").Status
+        );
+        Assert.Equal(
+            "REVOKED",
+            verify.ChannelBindings.Single(value => value.Channel == "WHATSAPP").Status
         );
     }
 
