@@ -400,7 +400,7 @@ def _problem(code: str, status: int, correlation_id: str) -> JSONResponse:
     )
 
 
-async def _authorize(
+async def authorize_service_request(
     request: Request,
     route: str,
     operation: str,
@@ -446,7 +446,7 @@ async def authorize_paas_session_start(
     body: object,
     tenant_id: str,
 ) -> DelegatedContext:
-    return await _authorize(
+    return await authorize_service_request(
         request,
         "/api/v1/paas/sessions",
         "startPAASSession",
@@ -465,7 +465,7 @@ async def get_relationship_execution_projection(
     request: Request,
 ) -> ExecutionProjection | JSONResponse:
     try:
-        context = await _authorize(
+        context = await authorize_service_request(
             request,
             "/api/v1/internal/relationships/{relationshipId}/workspace-execution",
             "getRelationshipExecutionProjection",
@@ -491,7 +491,7 @@ async def start_relationship_trial(
 ) -> RelationshipTrialStartResult | JSONResponse:
     body = trial.model_dump(by_alias=True, mode="json")
     try:
-        context = await _authorize(
+        context = await authorize_service_request(
             request,
             "/api/v1/internal/relationships/{relationshipId}/evaluation-trial",
             "startRelationshipTrial",
@@ -514,7 +514,7 @@ async def submit_relationship_execution_control(
 ) -> ExecutionControlReceipt | JSONResponse:
     body = control.model_dump(by_alias=True, mode="json")
     try:
-        context = await _authorize(
+        context = await authorize_service_request(
             request,
             "/api/v1/internal/relationships/{relationshipId}/workspace-controls",
             "submitRelationshipExecutionControl",
@@ -541,7 +541,7 @@ async def get_relationship_execution_control(
     request: Request,
 ) -> ExecutionControlOutcome | JSONResponse:
     try:
-        context = await _authorize(
+        context = await authorize_service_request(
             request,
             "/api/v1/internal/relationships/{relationshipId}/workspace-controls/{controlId}",
             "getRelationshipExecutionControl",

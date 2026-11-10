@@ -19,11 +19,16 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: private-runner-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 env:
   IMAGE: ghcr.io/${{ github.repository_owner }}/goal006-private-runner
 
 jobs:
   build:
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'ci:skip-private-runner') }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read

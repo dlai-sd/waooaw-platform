@@ -2090,8 +2090,7 @@ public sealed partial class WhatsAppJourneyService
     )
     {
         ValidateFreshPortalProof(proof);
-        // lgtm[cs/user-controlled-bypass] Consent enables binding; it never bypasses identity validation.
-        if (
+        if ( // lgtm[cs/user-controlled-bypass] Consent enables binding; it never bypasses identity validation.
             identityLinkId == Guid.Empty
             || !IsLowerHexDigest(phoneSubjectHash)
             || !consentToRelationshipChannel

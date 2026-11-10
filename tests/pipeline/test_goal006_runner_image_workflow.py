@@ -39,6 +39,12 @@ def test_runner_image_workflow_qualifies_without_publishing() -> None:
     assert "packages: write" not in WORKFLOW
 
 
+def test_runner_image_workflow_supports_explicit_pr_exemption() -> None:
+    assert "group: private-runner-${{ github.event.pull_request.number }}" in WORKFLOW
+    assert "cancel-in-progress: true" in WORKFLOW
+    assert "ci:skip-private-runner" in WORKFLOW
+
+
 def test_runner_image_is_scanned_for_fixable_os_vulnerabilities() -> None:
     assert "aquasecurity/trivy-action@" in WORKFLOW
     assert "exit-code: 1" in WORKFLOW

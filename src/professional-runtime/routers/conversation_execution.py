@@ -51,7 +51,7 @@ from workflows.conversation_execution_workflow import (
 )
 from workload_identity import DelegatedContext
 from workload_identity import ServiceAuthError
-from relationship_workspace import _authorize
+from relationship_workspace import authorize_service_request
 
 router = APIRouter(prefix="/api/v1/internal/conversations", tags=["Conversation Execution"])
 logger = logging.getLogger(__name__)
@@ -1008,15 +1008,13 @@ async def get_conversation_service_context(request: Request) -> BPServiceContext
     try:
         # BP sends its shared canonical representation verbatim; retain its Unicode escaping.
         canonical = await request.body() if request.method == "POST" else b""
-        context = await _authorize(
+        context = await authorize_service_request(
             request,
             route,
             operation,
             None,
-            None,
-            request.headers.get("Idempotency-Key"),
-            None,
-            hashlib.sha256(canonical).hexdigest(),
+            idempotency_key=request.headers.get("Idempotency-Key"),
+            request_digest=hashlib.sha256(canonical).hexdigest(),
         )
         body = json.loads(canonical) if request.method == "POST" else None
         conversation_id = str(uuid.UUID(str(request.path_params["conversationId"])))
@@ -1097,15 +1095,13 @@ async def get_reconciliation_service_context(
 ) -> DelegatedContext | None:
     try:
         key = str(uuid.UUID(request.headers["Idempotency-Key"]))
-        context = await _authorize(
+        context = await authorize_service_request(
             request,
             RECONCILIATION_ROUTE,
             RECONCILIATION_OPERATION,
             None,
-            None,
-            key,
-            None,
-            hashlib.sha256(await request.body()).hexdigest(),
+            idempotency_key=key,
+            request_digest=hashlib.sha256(await request.body()).hexdigest(),
         )
         if not isinstance(context.expected_versions, Mapping):
             raise ServiceAuthError("DELEGATED_CONTEXT_INVALID")

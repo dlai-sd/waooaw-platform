@@ -792,7 +792,7 @@ def _retained_recovery(
     handle.state.update(state="COMPLETED", partial=False, completionReason="COMPLETE")
     temporal.handles[execution_id] = handle
     authorize = AsyncMock(return_value=context)
-    monkeypatch.setattr(conversation_router, "_authorize", authorize)
+    monkeypatch.setattr(conversation_router, "authorize_service_request", authorize)
     app.state.temporal_worker_task = MagicMock(done=MagicMock(return_value=True))
     return handle, body, context, authorize
 
@@ -834,7 +834,7 @@ async def test_fresh_owner_reads_one_retained_snapshot_without_original_imperson
         conversation_router.RECONCILIATION_ROUTE,
         conversation_router.RECONCILIATION_OPERATION,
     )
-    assert authorization.args[5] == str(DEFAULT_IDEMPOTENCY_KEY)
+    assert authorization.kwargs["idempotency_key"] == str(DEFAULT_IDEMPOTENCY_KEY)
 
 
 @pytest.mark.parametrize(
@@ -1010,9 +1010,9 @@ async def test_recovery_requires_workload_peer_not_legacy_service_jwt(
     client: Any, monkeypatch: pytest.MonkeyPatch, execution_state: FakeTemporalClient
 ) -> None:
     handle, body, _, _ = _retained_recovery(monkeypatch, execution_state)
-    from relationship_workspace import _authorize
+    from relationship_workspace import authorize_service_request
 
-    monkeypatch.setattr(conversation_router, "_authorize", _authorize)
+    monkeypatch.setattr(conversation_router, "authorize_service_request", authorize_service_request)
     response = await client.post(_recovery_path(handle), headers=_headers(_service_token()), json=body)
     assert response.status_code == 401
     assert handle.queries == [] and handle.signals == []
