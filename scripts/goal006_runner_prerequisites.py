@@ -30,6 +30,7 @@ CUSTOM_ROLE_PERMISSIONS = {
                 "Microsoft.App/jobs/read",
                 "Microsoft.App/jobs/executions/read",
                 "Microsoft.App/jobs/start/action",
+                "Microsoft.App/jobs/write",
             }
         ),
         "dataActions": frozenset(),
@@ -55,6 +56,10 @@ CUSTOM_ROLE_PERMISSIONS = {
             }
         ),
         "dataActions": frozenset({"Microsoft.OperationalInsights/workspaces/tables/data/read"}),
+    },
+    "Cleanup Job Override Writer": {
+        "actions": frozenset({"Microsoft.App/jobs/write"}),
+        "dataActions": frozenset(),
     },
     "Cleanup Evidence Writer": {
         "actions": frozenset(),
@@ -272,6 +277,10 @@ def verify(parameters: dict[str, Any], subscription_id: str, deployment_name: st
         ),
         "Cleanup Job Operator": (
             outputs["cleanupJobOperatorRoleDefinitionId"]["value"],
+            runner_scope,
+        ),
+        "Cleanup Job Override Writer": (
+            outputs["cleanupJobOverrideWriterRoleDefinitionId"]["value"],
             runner_scope,
         ),
         "Cleanup Evidence Writer": (

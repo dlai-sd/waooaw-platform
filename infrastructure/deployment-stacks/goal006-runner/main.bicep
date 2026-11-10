@@ -16,6 +16,7 @@ param brokerWriterRoleDefinitionId string
 param brokerJobOperatorRoleDefinitionId string
 param cleanupDeleterRoleDefinitionId string
 param cleanupJobOperatorRoleDefinitionId string
+param cleanupJobOverrideWriterRoleDefinitionId string
 param evidenceWriterRoleDefinitionId string
 param runnerImage string
 param reconcilerImage string
@@ -765,6 +766,16 @@ resource cleanupBrokerJob 'Microsoft.App/jobs@2024-03-01' = {
         }
       ]
     }
+  }
+}
+
+resource cleanupJobOverrideControl 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: cleanupBrokerJob
+  name: guid(cleanupBrokerJob.id, cleanupIdentity.id, cleanupJobOverrideWriterRoleDefinitionId)
+  properties: {
+    principalId: cleanupIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: cleanupJobOverrideWriterRoleDefinitionId
   }
 }
 

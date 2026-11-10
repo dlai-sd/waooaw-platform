@@ -27,6 +27,7 @@ docker run --rm \
     cp -R /repo/infrastructure/terraform/phase2 /tmp/infrastructure/terraform/phase2
     cp -R /repo/infrastructure/identity-config /tmp/infrastructure/identity-config
     cp -R /repo/infrastructure/environment-readiness /tmp/infrastructure/environment-readiness
+    cp -R /repo/infrastructure/operations /tmp/infrastructure/operations
     for environment in demo uat prod; do
       for root in foundation workload; do
         directory="/tmp/infrastructure/terraform/phase2/environments/$environment/$root"
