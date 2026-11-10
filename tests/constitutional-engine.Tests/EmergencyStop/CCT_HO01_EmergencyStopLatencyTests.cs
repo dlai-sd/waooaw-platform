@@ -1,17 +1,18 @@
 // Implements: architecture/reference/components/constitutional-engine.md full
 // constitutional_basis: C-001, C-024, C-059, C-076
-using FluentAssertions;
-using Waooaw.ConstitutionalEngine.Grpc;
 using System.Diagnostics;
+using FluentAssertions;
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Temporalio.Client;
+using Temporalio.Client.Interceptors;
 using Waooaw.ConstitutionalEngine.Data;
 using Waooaw.ConstitutionalEngine.EmergencyStop;
 using Waooaw.ConstitutionalEngine.Evaluators;
+using Waooaw.ConstitutionalEngine.Grpc;
 using Waooaw.ConstitutionalEngine.Services;
 using Waooaw.ConstitutionalEngine.Tests.Evaluators;
 using Xunit;
@@ -30,18 +31,35 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
     // C-024: architectural floor — this constant is the specification, not a magic number
     private const string TenantIdHeader = "x-tenant-id";
 
-    private static (IDbContextFactory<ConstitutionalDbContext>, IDbContextFactory<EmergencyStopDbContext>) BuildInMemoryFactories()
+    private sealed class StubClientOutboundInterceptor(
+        Func<SignalWorkflowInput, Task> signalWorkflow
+    ) : ClientOutboundInterceptor(null!)
+    {
+        public override Task SignalWorkflowAsync(SignalWorkflowInput input) =>
+            signalWorkflow(input);
+    }
+
+    private static (
+        IDbContextFactory<ConstitutionalDbContext>,
+        IDbContextFactory<EmergencyStopDbContext>
+    ) BuildInMemoryFactories()
     {
         // C-059: use InMemoryDatabase per test run — unique DB name prevents cross-test pollution
         var services = new ServiceCollection();
         services.AddDbContextFactory<ConstitutionalDbContext>(opts =>
-            opts.UseInMemoryDatabase(Guid.NewGuid().ToString()));
+            opts.UseInMemoryDatabase(Guid.NewGuid().ToString())
+        );
         services.AddDbContextFactory<EmergencyStopDbContext>(opts =>
-            opts.UseInMemoryDatabase(Guid.NewGuid().ToString()));
+            opts.UseInMemoryDatabase(Guid.NewGuid().ToString())
+        );
 
         var sp = services.BuildServiceProvider();
-        var constitutionalFactory = sp.GetRequiredService<IDbContextFactory<ConstitutionalDbContext>>();
-        var emergencyStopFactory = sp.GetRequiredService<IDbContextFactory<EmergencyStopDbContext>>();
+        var constitutionalFactory = sp.GetRequiredService<
+            IDbContextFactory<ConstitutionalDbContext>
+        >();
+        var emergencyStopFactory = sp.GetRequiredService<
+            IDbContextFactory<EmergencyStopDbContext>
+        >();
 
         // Pre-warm InMemory schemas — cold EF InMemory init can exceed the 100ms latency budget
         using var wc = constitutionalFactory.CreateDbContext();
@@ -73,19 +91,24 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
         // Mock ITemporalClient — returns immediately to isolate CE internal cost from network cost
         // C-001: latency test validates CE processing, not Temporal propagation latency
         var temporalClientMock = new Mock<ITemporalClient>();
+        var outboundInterceptor = new StubClientOutboundInterceptor(_ => Task.CompletedTask);
         temporalClientMock
-            .Setup(t => t.GetWorkflowHandle(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>()))
-            .Returns(() =>
-            {
-                var handleMock = new Mock<WorkflowHandle>();
-                handleMock
-                    .Setup(h => h.SignalAsync(
-                        It.IsAny<string>(),
-                        It.IsAny<object[]>(),
-                        It.IsAny<WorkflowSignalOptions?>()))
-                    .Returns(Task.CompletedTask);
-                return handleMock.Object;
-            });
+            .SetupGet(client => client.OutboundInterceptor)
+            .Returns(outboundInterceptor);
+        temporalClientMock
+            .Setup(t =>
+                t.GetWorkflowHandle(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>())
+            )
+            .Returns(
+                (string id, string? runId, string? firstExecutionRunId) =>
+                    new WorkflowHandle(
+                        temporalClientMock.Object,
+                        id,
+                        runId,
+                        null,
+                        firstExecutionRunId
+                    )
+            );
         return temporalClientMock.Object;
     }
 
@@ -104,7 +127,8 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
             NullLogger<ConstitutionalEngineService>.Instance,
             constitutionalFactory,
             emergencyStopFactory,
-            temporalClient);
+            temporalClient
+        );
 
         var tenantId = Guid.NewGuid().ToString();
         var contractId = Guid.NewGuid().ToString();
@@ -112,7 +136,7 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
         var request = new EmergencyStopRequest
         {
             ContractId = contractId,
-            StoppedBy = "test-user-cct-ho01"
+            StoppedBy = "test-user-cct-ho01",
         };
         request.ActiveSessionIds.Add(Guid.NewGuid().ToString());
         request.ActiveSessionIds.Add(Guid.NewGuid().ToString());
@@ -123,11 +147,14 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
         // C-001: SLA is P99 production latency; test eliminates JIT bias
         try
         {
-            await sut.TriggerEmergencyStop(new EmergencyStopRequest
-            {
-                ContractId = Guid.NewGuid().ToString(),
-                StoppedBy = "warmup-caller"
-            }, BuildCallContext(tenantId));
+            await sut.TriggerEmergencyStop(
+                new EmergencyStopRequest
+                {
+                    ContractId = Guid.NewGuid().ToString(),
+                    StoppedBy = "warmup-caller",
+                },
+                BuildCallContext(tenantId)
+            );
         }
         catch
         {
@@ -142,16 +169,28 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
         stopwatch.Stop();
 
         // Assert — C-001: constitutional SLA ≤250ms P99
-        stopwatch.ElapsedMilliseconds.Should().BeLessOrEqualTo(
-            EmergencyStopSlaMs,
-            because: $"C-001 mandates Emergency Stop completes within {EmergencyStopSlaMs}ms constitutional floor (AD-001: 250ms total = 100ms CE + 50ms network + 100ms caller overhead)");
+        stopwatch
+            .ElapsedMilliseconds.Should()
+            .BeLessOrEqualTo(
+                EmergencyStopSlaMs,
+                because: $"C-001 mandates Emergency Stop completes within {EmergencyStopSlaMs}ms constitutional floor (AD-001: 250ms total = 100ms CE + 50ms network + 100ms caller overhead)"
+            );
 
-        response.Should().NotBeNull(
-            because: "TriggerEmergencyStop must return a non-null response on success (C-059)");
-        response.EmergencyStopRecordId.Should().NotBeNullOrEmpty(
-            because: "C-023 (Evidence First): every Emergency Stop must produce a persisted record ID before returning");
-        response.RecordedAt.Should().NotBeNull(
-            because: "C-027 (append-only): recorded_at proves the record was written before the response was returned");
+        response
+            .Should()
+            .NotBeNull(
+                because: "TriggerEmergencyStop must return a non-null response on success (C-059)"
+            );
+        response
+            .EmergencyStopRecordId.Should()
+            .NotBeNullOrEmpty(
+                because: "C-023 (Evidence First): every Emergency Stop must produce a persisted record ID before returning"
+            );
+        response
+            .RecordedAt.Should()
+            .NotBeNull(
+                because: "C-027 (append-only): recorded_at proves the record was written before the response was returned"
+            );
 
         var persistedId = Guid.Parse(response.EmergencyStopRecordId["EMERGENCY_STOP:".Length..]);
         await using var evidenceDb = await emergencyStopFactory.CreateDbContextAsync();
@@ -175,7 +214,8 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
             NullLogger<ConstitutionalEngineService>.Instance,
             constitutionalFactory,
             emergencyStopFactory,
-            temporalClient);
+            temporalClient
+        );
 
         var tenantId = Guid.NewGuid().ToString();
         var sessionId1 = Guid.NewGuid().ToString();
@@ -185,7 +225,7 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
         var request = new EmergencyStopRequest
         {
             ContractId = Guid.NewGuid().ToString(),
-            StoppedBy = "customer-user-cct-ho01b"
+            StoppedBy = "customer-user-cct-ho01b",
         };
         request.ActiveSessionIds.Add(sessionId1);
         request.ActiveSessionIds.Add(sessionId2);
@@ -198,14 +238,29 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
 
         // Assert
         response.Should().NotBeNull();
-        response.AffectedSessions.Should().NotBeNull(
-            because: "C-013 (Emergency Override): response must list all sessions that were signalled");
-        response.AffectedSessions.Should().Contain(sessionId1,
-            because: "session was in the active_session_ids list — must be signalled and reported");
-        response.AffectedSessions.Should().Contain(sessionId2,
-            because: "session was in the active_session_ids list — must be signalled and reported");
-        response.AffectedSessions.Should().Contain(sessionId3,
-            because: "session was in the active_session_ids list — must be signalled and reported");
+        response
+            .AffectedSessions.Should()
+            .NotBeNull(
+                because: "C-013 (Emergency Override): response must list all sessions that were signalled"
+            );
+        response
+            .AffectedSessions.Should()
+            .Contain(
+                sessionId1,
+                because: "session was in the active_session_ids list — must be signalled and reported"
+            );
+        response
+            .AffectedSessions.Should()
+            .Contain(
+                sessionId2,
+                because: "session was in the active_session_ids list — must be signalled and reported"
+            );
+        response
+            .AffectedSessions.Should()
+            .Contain(
+                sessionId3,
+                because: "session was in the active_session_ids list — must be signalled and reported"
+            );
     }
 
     [Theory]
@@ -218,35 +273,41 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
         var (constitutionalFactory, emergencyStopFactory) = BuildInMemoryFactories();
         var failedSession = Guid.NewGuid().ToString();
         var temporalClient = new Mock<ITemporalClient>();
+        var outboundInterceptor = new StubClientOutboundInterceptor(input =>
+            input.Id == failedSession && !allSucceed
+                ? Task.FromException(new InvalidOperationException("signal unavailable"))
+                : Task.CompletedTask
+        );
+        temporalClient.SetupGet(client => client.OutboundInterceptor).Returns(outboundInterceptor);
         temporalClient
-            .Setup(t => t.GetWorkflowHandle(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>()))
-            .Returns((string id, string? _, string? _) =>
-            {
-                var handle = new Mock<WorkflowHandle>();
-                handle
-                    .Setup(h => h.SignalAsync(
-                        It.IsAny<string>(), It.IsAny<object[]>(), It.IsAny<WorkflowSignalOptions?>()))
-                    .Returns(id == failedSession && !allSucceed
-                        ? Task.FromException(new InvalidOperationException("signal unavailable"))
-                        : Task.CompletedTask);
-                return handle.Object;
-            });
+            .Setup(t =>
+                t.GetWorkflowHandle(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>())
+            )
+            .Returns(
+                (string id, string? runId, string? firstExecutionRunId) =>
+                    new WorkflowHandle(temporalClient.Object, id, runId, null, firstExecutionRunId)
+            );
         var sut = new ConstitutionalEngineService(
             BuildEmptyRegistry(),
             NullLogger<ConstitutionalEngineService>.Instance,
             constitutionalFactory,
             emergencyStopFactory,
-            temporalClient.Object);
+            temporalClient.Object
+        );
         var request = new EmergencyStopRequest
         {
             ContractId = Guid.NewGuid().ToString(),
-            StoppedBy = "customer"
+            StoppedBy = "customer",
         };
         request.ActiveSessionIds.Add(Guid.NewGuid().ToString());
         request.ActiveSessionIds.Add(failedSession);
-        var response = await sut.TriggerEmergencyStop(request, BuildCallContext(Guid.NewGuid().ToString()));
-        response.PendingSessions.Should().BeEquivalentTo(
-            allSucceed ? Array.Empty<string>() : new[] { failedSession });
+        var response = await sut.TriggerEmergencyStop(
+            request,
+            BuildCallContext(Guid.NewGuid().ToString())
+        );
+        response
+            .PendingSessions.Should()
+            .BeEquivalentTo(allSucceed ? Array.Empty<string>() : new[] { failedSession });
         var persistedId = Guid.Parse(response.EmergencyStopRecordId["EMERGENCY_STOP:".Length..]);
         await using var db = await emergencyStopFactory.CreateDbContextAsync();
         var persisted = await db.EmergencyStopEvents.SingleAsync(e => e.Id == persistedId);
@@ -257,23 +318,35 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
     public async Task TriggerEmergencyStop_AbsentWorkflowIsContainedByDurableFence()
     {
         var (constitutionalFactory, emergencyStopFactory) = BuildInMemoryFactories();
-        var handle = new Mock<WorkflowHandle>();
-        handle.Setup(h => h.SignalAsync(
-            It.IsAny<string>(), It.IsAny<object[]>(), It.IsAny<WorkflowSignalOptions?>()))
-            .ThrowsAsync(new Temporalio.Exceptions.RpcException(
-                Temporalio.Exceptions.RpcException.StatusCode.NotFound, "Workflow absent", null));
         var temporal = new Mock<ITemporalClient>();
-        temporal.Setup(t => t.GetWorkflowHandle(
-            It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>())).Returns(handle.Object);
+        temporal
+            .Setup(t =>
+                t.GetWorkflowHandle(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>())
+            )
+            .Throws(
+                new Temporalio.Exceptions.RpcException(
+                    Temporalio.Exceptions.RpcException.StatusCode.NotFound,
+                    "Workflow absent",
+                    null
+                )
+            );
         var service = new ConstitutionalEngineService(
-            BuildEmptyRegistry(), NullLogger<ConstitutionalEngineService>.Instance,
-            constitutionalFactory, emergencyStopFactory, temporal.Object);
+            BuildEmptyRegistry(),
+            NullLogger<ConstitutionalEngineService>.Instance,
+            constitutionalFactory,
+            emergencyStopFactory,
+            temporal.Object
+        );
         var request = new EmergencyStopRequest
         {
-            ContractId = Guid.NewGuid().ToString(), StoppedBy = "customer"
+            ContractId = Guid.NewGuid().ToString(),
+            StoppedBy = "customer",
         };
         request.ActiveSessionIds.Add(Guid.NewGuid().ToString());
-        var response = await service.TriggerEmergencyStop(request, BuildCallContext(Guid.NewGuid().ToString()));
+        var response = await service.TriggerEmergencyStop(
+            request,
+            BuildCallContext(Guid.NewGuid().ToString())
+        );
         response.PendingSessions.Should().BeEmpty();
     }
 
@@ -291,13 +364,14 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
             NullLogger<ConstitutionalEngineService>.Instance,
             constitutionalFactory,
             emergencyStopFactory,
-            temporalClient);
+            temporalClient
+        );
 
         var tenantId = Guid.NewGuid().ToString();
         var request = new EmergencyStopRequest
         {
             ContractId = Guid.NewGuid().ToString(),
-            StoppedBy = "customer-user-cct-ho01c"
+            StoppedBy = "customer-user-cct-ho01c",
         };
 
         var callContext = BuildCallContext(tenantId);
@@ -306,11 +380,14 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
         // C-001 SLA is P99 production latency; cold-start artefacts are eliminated here as in CCT-HO-01.
         try
         {
-            await sut.TriggerEmergencyStop(new EmergencyStopRequest
-            {
-                ContractId = Guid.NewGuid().ToString(),
-                StoppedBy = "warmup-caller-cct-ho01c"
-            }, BuildCallContext(tenantId));
+            await sut.TriggerEmergencyStop(
+                new EmergencyStopRequest
+                {
+                    ContractId = Guid.NewGuid().ToString(),
+                    StoppedBy = "warmup-caller-cct-ho01c",
+                },
+                BuildCallContext(tenantId)
+            );
         }
         catch
         {
@@ -321,8 +398,11 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
         var response = await sut.TriggerEmergencyStop(request, callContext);
 
         // Assert — evidence-schema.md: record ID format is "EMERGENCY_STOP:<uuid>"
-        response.EmergencyStopRecordId.Should().NotBeNullOrEmpty(
-            because: "every Emergency Stop must produce a persisted record ID (C-023, Evidence First)");
+        response
+            .EmergencyStopRecordId.Should()
+            .NotBeNullOrEmpty(
+                because: "every Emergency Stop must produce a persisted record ID (C-023, Evidence First)"
+            );
     }
 
     // CCT-HO-01d: C-001 — single-session Emergency Stop also meets the SLA
@@ -339,13 +419,14 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
             NullLogger<ConstitutionalEngineService>.Instance,
             constitutionalFactory,
             emergencyStopFactory,
-            temporalClient);
+            temporalClient
+        );
 
         var tenantId = Guid.NewGuid().ToString();
         var request = new EmergencyStopRequest
         {
             ContractId = Guid.NewGuid().ToString(),
-            StoppedBy = "customer-user-cct-ho01d"
+            StoppedBy = "customer-user-cct-ho01d",
         };
         request.ActiveSessionIds.Add(Guid.NewGuid().ToString());
 
@@ -354,11 +435,14 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
         // Warm-up
         try
         {
-            await sut.TriggerEmergencyStop(new EmergencyStopRequest
-            {
-                ContractId = Guid.NewGuid().ToString(),
-                StoppedBy = "warmup"
-            }, BuildCallContext(tenantId));
+            await sut.TriggerEmergencyStop(
+                new EmergencyStopRequest
+                {
+                    ContractId = Guid.NewGuid().ToString(),
+                    StoppedBy = "warmup",
+                },
+                BuildCallContext(tenantId)
+            );
         }
         catch
         {
@@ -371,9 +455,11 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
         sw.Stop();
 
         // Assert
-        sw.ElapsedMilliseconds.Should().BeLessOrEqualTo(
-            EmergencyStopSlaMs,
-            because: $"C-001: single-session Emergency Stop must also meet ≤{EmergencyStopSlaMs}ms constitutional floor");
+        sw.ElapsedMilliseconds.Should()
+            .BeLessOrEqualTo(
+                EmergencyStopSlaMs,
+                because: $"C-001: single-session Emergency Stop must also meet ≤{EmergencyStopSlaMs}ms constitutional floor"
+            );
         response.EmergencyStopRecordId.Should().NotBeNullOrEmpty();
     }
 }

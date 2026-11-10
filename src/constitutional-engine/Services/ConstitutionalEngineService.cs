@@ -315,28 +315,68 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
             var evalCtx = EvaluationContext.FromRequest(req, rawTenantId);
             if (req.ActionType is "CONVERSATION_EXECUTION" or "CONVERSATION_MODEL_RESERVATION")
             {
-                if (_emergencyStopDbContextFactory is null || !Guid.TryParse(rawTenantId, out var tenant))
-                    throw new RpcException(new Status(StatusCode.Unavailable, "Conversation Stop authority is unavailable."));
+                if (
+                    _emergencyStopDbContextFactory is null
+                    || !Guid.TryParse(rawTenantId, out var tenant)
+                )
+                    throw new RpcException(
+                        new Status(
+                            StatusCode.Unavailable,
+                            "Conversation Stop authority is unavailable."
+                        )
+                    );
                 using var parameters = System.Text.Json.JsonDocument.Parse(req.ActionParameters);
-                if (parameters.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object
-                    || !parameters.RootElement.TryGetProperty("relationship_id", out var relationship)
+                if (
+                    parameters.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object
+                    || !parameters.RootElement.TryGetProperty(
+                        "relationship_id",
+                        out var relationship
+                    )
                     || relationship.ValueKind != System.Text.Json.JsonValueKind.String
-                    || !Guid.TryParse(relationship.GetString(), out var relationshipId))
-                    throw new RpcException(new Status(StatusCode.InvalidArgument, "Conversation relationship must be a UUID."));
-                if (req.ActionType == "CONVERSATION_MODEL_RESERVATION" && req.ContractId != relationshipId.ToString("D"))
-                    throw new RpcException(new Status(StatusCode.InvalidArgument, "Inference relationship does not match its contract."));
-                await using var stopDb = await _emergencyStopDbContextFactory.CreateDbContextAsync(cts.Token);
+                    || !Guid.TryParse(relationship.GetString(), out var relationshipId)
+                )
+                    throw new RpcException(
+                        new Status(
+                            StatusCode.InvalidArgument,
+                            "Conversation relationship must be a UUID."
+                        )
+                    );
+                if (
+                    req.ActionType == "CONVERSATION_MODEL_RESERVATION"
+                    && req.ContractId != relationshipId.ToString("D")
+                )
+                    throw new RpcException(
+                        new Status(
+                            StatusCode.InvalidArgument,
+                            "Inference relationship does not match its contract."
+                        )
+                    );
+                await using var stopDb = await _emergencyStopDbContextFactory.CreateDbContextAsync(
+                    cts.Token
+                );
                 if (stopDb.Database.IsRelational())
                 {
-                    await using var transaction = await stopDb.Database.BeginTransactionAsync(cts.Token);
+                    await using var transaction = await stopDb.Database.BeginTransactionAsync(
+                        cts.Token
+                    );
                     await stopDb.Database.ExecuteSqlInterpolatedAsync(
-                        $"SELECT set_config('app.current_tenant_id', {tenant.ToString("D")}, true)", cts.Token);
-                    var stopped = await stopDb.Database.SqlQuery<int>(
-                        $"SELECT 1 AS \"Value\" FROM constitutional.employment_dispatch_stops WHERE tenant_id = {tenant} AND relationship_ref = {relationshipId.ToString("D")}")
+                        $"SELECT set_config('app.current_tenant_id', {tenant.ToString("D")}, true)",
+                        cts.Token
+                    );
+                    var stopped = await stopDb
+                        .Database.SqlQuery<int>(
+                            $"SELECT 1 AS \"Value\" FROM constitutional.employment_dispatch_stops WHERE tenant_id = {tenant} AND relationship_ref = {relationshipId.ToString("D")}"
+                        )
                         .AnyAsync(cts.Token);
                     if (stopped)
                     {
-                        await WriteAuditSinkRecordAsync(req, rawTenantId, "DENIED", "C-001", cts.Token);
+                        await WriteAuditSinkRecordAsync(
+                            req,
+                            rawTenantId,
+                            "DENIED",
+                            "C-001",
+                            cts.Token
+                        );
                         return new ValidateActionResponse
                         {
                             Decision = ValidationDecision.Deny,
@@ -429,10 +469,19 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
         {
             throw;
         }
-        catch (System.Text.Json.JsonException ex) when (req.ActionType is "CONVERSATION_EXECUTION" or "CONVERSATION_MODEL_RESERVATION")
+        catch (System.Text.Json.JsonException ex)
+            when (req.ActionType is "CONVERSATION_EXECUTION" or "CONVERSATION_MODEL_RESERVATION")
         {
-            _logger.LogWarning(ex, "Conversation authorization rejected malformed action parameters.");
-            throw new RpcException(new Status(StatusCode.InvalidArgument, "Conversation action parameters must be valid JSON."));
+            _logger.LogWarning(
+                ex,
+                "Conversation authorization rejected malformed action parameters."
+            );
+            throw new RpcException(
+                new Status(
+                    StatusCode.InvalidArgument,
+                    "Conversation action parameters must be valid JSON."
+                )
+            );
         }
         catch (OperationCanceledException)
             when (cts.IsCancellationRequested && !ctx.CancellationToken.IsCancellationRequested)
@@ -877,14 +926,21 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
 
             if (emergencyDb.Database.IsRelational())
             {
-                await using var transaction = await emergencyDb.Database.BeginTransactionAsync(cts.Token);
+                await using var transaction = await emergencyDb.Database.BeginTransactionAsync(
+                    cts.Token
+                );
                 await emergencyDb.Database.ExecuteSqlInterpolatedAsync(
-                    $"SELECT set_config('app.current_tenant_id', {tenantGuid.ToString("D")}, true)", cts.Token);
+                    $"SELECT set_config('app.current_tenant_id', {tenantGuid.ToString("D")}, true)",
+                    cts.Token
+                );
                 await emergencyDb.Database.ExecuteSqlInterpolatedAsync(
-                    $"SELECT ai_runtime.lock_employment_dispatch({tenantGuid}, {contractGuid.ToString("D")})", cts.Token);
+                    $"SELECT ai_runtime.lock_employment_dispatch({tenantGuid}, {contractGuid.ToString("D")})",
+                    cts.Token
+                );
                 await emergencyDb.Database.ExecuteSqlInterpolatedAsync(
                     $"INSERT INTO constitutional.employment_dispatch_stops (tenant_id, relationship_ref) VALUES ({tenantGuid}, {contractGuid.ToString("D")}) ON CONFLICT DO NOTHING",
-                    cts.Token);
+                    cts.Token
+                );
                 await emergencyDb.Set<EmergencyStopEvent>().AddAsync(stopEvent, cts.Token);
                 await emergencyDb.SaveChangesAsync(cts.Token);
                 await transaction.CommitAsync(cts.Token);
@@ -924,7 +980,9 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
                     {
                         _logger.LogInformation(
                             "Emergency Stop target has no active workflow; durable dispatch fence remains latched. StopEventId={StopEventId} SessionId={SessionId}",
-                            stopEventId, sessionId);
+                            stopEventId,
+                            sessionId
+                        );
                     }
                     catch (Exception ex)
                     {
@@ -968,9 +1026,12 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
                     stopEvent.TemporalSignalledAt = temporalSignalledAt;
                     if (emergencyDb.Database.IsRelational())
                     {
-                        await using var transaction = await emergencyDb.Database.BeginTransactionAsync(cts.Token);
+                        await using var transaction =
+                            await emergencyDb.Database.BeginTransactionAsync(cts.Token);
                         await emergencyDb.Database.ExecuteSqlInterpolatedAsync(
-                            $"SELECT set_config('app.current_tenant_id', {tenantGuid.ToString("D")}, true)", cts.Token);
+                            $"SELECT set_config('app.current_tenant_id', {tenantGuid.ToString("D")}, true)",
+                            cts.Token
+                        );
                         await emergencyDb.SaveChangesAsync(cts.Token);
                         await transaction.CommitAsync(cts.Token);
                     }

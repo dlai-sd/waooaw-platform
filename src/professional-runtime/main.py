@@ -6,7 +6,7 @@ import asyncio
 import logging
 import os
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from typing import Any, Literal
@@ -26,11 +26,10 @@ from temporalio.worker import Worker
 from constitutional_gateway import GrpcConversationConstitutionalGateway
 from routers.conversation_execution import (
     TEMPORAL_TASK_QUEUE,
-    ExecutionProblemCode,
     problem_response,
 )
 from routers.conversation_execution import router as conversation_execution_router
-from routers.conversation_models import HealthResponse
+from routers.conversation_models import ExecutionProblemCode, HealthResponse
 from routers.emergency_stop import KeycloakJWTValidator
 from routers.emergency_stop import router as emergency_stop_router
 from routers.sessions import router as sessions_router
@@ -213,18 +212,14 @@ app = FastAPI(
 
 @app.middleware("http")
 async def require_conversation_execution_authorization(
-    request: Request, call_next: Any
+    request: Request,
+    call_next: Callable[[Request], Awaitable[Response]],
 ) -> Response:
-    if request.method == "POST" and (
-        request.url.path.endswith("/executions")
-        or request.url.path.endswith("/batch-executions")
-    ):
+    if request.method == "POST" and (request.url.path.endswith("/executions") or request.url.path.endswith("/batch-executions")):
         authorization = request.headers.get("Authorization", "")
         if not authorization.startswith("Bearer ") or not authorization[7:].strip():
             try:
-                correlation_id = uuid.UUID(
-                    request.headers.get("X-Correlation-Id", "")
-                )
+                correlation_id = uuid.UUID(request.headers.get("X-Correlation-Id", ""))
             except ValueError:
                 correlation_id = uuid.uuid4()
             return problem_response(

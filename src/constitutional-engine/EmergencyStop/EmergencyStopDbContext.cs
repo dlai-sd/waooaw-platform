@@ -23,9 +23,13 @@ public sealed class EmergencyStopDbContext : DbContext
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.ContractId).HasColumnName("contract_id");
             entity.Property(value => value.InitiatedByUserId).HasColumnName("initiated_by_user_id");
-            entity.Property(value => value.AffectedSessionIds).HasColumnName("affected_session_ids");
+            entity
+                .Property(value => value.AffectedSessionIds)
+                .HasColumnName("affected_session_ids");
             entity.Property(value => value.TriggeredAt).HasColumnName("triggered_at");
-            entity.Property(value => value.TemporalSignalledAt).HasColumnName("temporal_signalled_at");
+            entity
+                .Property(value => value.TemporalSignalledAt)
+                .HasColumnName("temporal_signalled_at");
             entity.Property(value => value.StopSource).HasColumnName("stop_source");
         });
     }

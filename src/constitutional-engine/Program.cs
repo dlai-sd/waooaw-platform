@@ -23,7 +23,11 @@ if (!string.IsNullOrWhiteSpace(postgresPassword))
 builder.Services.AddGrpc();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<Waooaw.WorkloadIdentity.InferenceWorkloadValidator>();
-Waooaw.WorkloadIdentity.InferenceWorkloadValidator.ConfigureTransport(builder, "constitutional-engine", "business-platform");
+Waooaw.WorkloadIdentity.InferenceWorkloadValidator.ConfigureTransport(
+    builder,
+    "constitutional-engine",
+    "business-platform"
+);
 builder.Services.AddSingleton<IClaimEvaluator, C041ToolAuthorizationEvaluator>();
 builder.Services.AddSingleton<IClaimEvaluator, C043BudgetCeilingEvaluator>();
 builder.Services.AddSingleton<IClaimEvaluator, C048NonExploitationEvaluator>();

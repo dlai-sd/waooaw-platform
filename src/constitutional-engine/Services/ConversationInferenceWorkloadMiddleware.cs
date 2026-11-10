@@ -9,16 +9,25 @@ using Waooaw.WorkloadIdentity;
 namespace Waooaw.ConstitutionalEngine.Services;
 
 public sealed class ConversationInferenceWorkloadMiddleware(
-    RequestDelegate next, ILogger<ConversationInferenceWorkloadMiddleware> logger)
+    RequestDelegate next,
+    ILogger<ConversationInferenceWorkloadMiddleware> logger
+)
 {
     private const int MaximumGrpcMessage = 4 * 1024 * 1024;
 
     public async Task InvokeAsync(HttpContext http, InferenceWorkloadValidator validator)
     {
         var path = http.Request.Path.Value;
-        if (path is not ("/constitutional.v1.ConstitutionalService/ValidateAction" or "/constitutional.v1.ConstitutionalService/RecordEvidence")
+        if (
+            path
+                is not (
+                    "/constitutional.v1.ConstitutionalService/ValidateAction"
+                    or "/constitutional.v1.ConstitutionalService/RecordEvidence"
+                )
             || http.Request.Method != "POST"
-            || http.Request.ContentType?.StartsWith("application/grpc", StringComparison.Ordinal) != true)
+            || http.Request.ContentType?.StartsWith("application/grpc", StringComparison.Ordinal)
+                != true
+        )
         {
             await next(http);
             return;
@@ -36,8 +45,14 @@ public sealed class ConversationInferenceWorkloadMiddleware(
             if (await http.Request.Body.ReadAsync(new byte[1], http.RequestAborted) != 0)
                 throw new InferenceWorkloadRejectedException();
             if (header[0] == 1)
-                bytes = await DecompressAsync(bytes, http.Request.Headers["grpc-encoding"].ToString(), http.RequestAborted);
-            string action, contract, professional = "";
+                bytes = await DecompressAsync(
+                    bytes,
+                    http.Request.Headers["grpc-encoding"].ToString(),
+                    http.RequestAborted
+                );
+            string action,
+                contract,
+                professional = "";
             int revision;
             if (path.EndsWith("/ValidateAction", StringComparison.Ordinal))
             {
@@ -59,22 +74,51 @@ public sealed class ConversationInferenceWorkloadMiddleware(
                 if (bytes.Length > 131072)
                     throw new InferenceWorkloadRejectedException();
                 var operation = path.Split('/')[^1];
-                var caller = await validator.RequireAsync(http, "business-platform", "constitutional-engine",
-                    "CONVERSATION_INFERENCE_EVIDENCE", path, operation,
-                    Convert.ToHexStringLower(SHA256.HashData(bytes)), http.RequestAborted);
-                if (contract != caller.RelationshipId.ToString("D")
-                    || http.Request.Headers["x-tenant-id"].ToString() != caller.TenantId.ToString("D")
-                    || !caller.ExpectedVersions.TryGetValue("decisionSpaceRevision", out var expectedRevision)
-                    || expectedRevision != revision.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                var caller = await validator.RequireAsync(
+                    http,
+                    "business-platform",
+                    "constitutional-engine",
+                    "CONVERSATION_INFERENCE_EVIDENCE",
+                    path,
+                    operation,
+                    Convert.ToHexStringLower(SHA256.HashData(bytes)),
+                    http.RequestAborted
+                );
+                if (
+                    contract != caller.RelationshipId.ToString("D")
+                    || http.Request.Headers["x-tenant-id"].ToString()
+                        != caller.TenantId.ToString("D")
+                    || !caller.ExpectedVersions.TryGetValue(
+                        "decisionSpaceRevision",
+                        out var expectedRevision
+                    )
+                    || expectedRevision
+                        != revision.ToString(System.Globalization.CultureInfo.InvariantCulture)
                     || !caller.ExpectedVersions.ContainsKey("mandateDigest")
-                    || professional.Length > 0 && (!caller.ExpectedVersions.TryGetValue("professionalType", out var expectedProfessional)
-                        || professional != expectedProfessional))
+                    || professional.Length > 0
+                        && (
+                            !caller.ExpectedVersions.TryGetValue(
+                                "professionalType",
+                                out var expectedProfessional
+                            )
+                            || professional != expectedProfessional
+                        )
+                )
                     throw new InferenceWorkloadRejectedException();
             }
         }
-        catch (Exception error) when (error is InferenceWorkloadRejectedException or InvalidProtocolBufferException or IOException)
+        catch (Exception error)
+            when (error
+                    is InferenceWorkloadRejectedException
+                        or InvalidProtocolBufferException
+                        or IOException
+            )
         {
-            logger.LogWarning("CE inference boundary rejected {Route}: {Error}", path, error.GetType().Name);
+            logger.LogWarning(
+                "CE inference boundary rejected {Route}: {Error}",
+                path,
+                error.GetType().Name
+            );
             http.Response.StatusCode = 200;
             http.Response.ContentType = "application/grpc";
             http.Response.Headers["grpc-status"] = "16";
@@ -88,7 +132,11 @@ public sealed class ConversationInferenceWorkloadMiddleware(
         await next(http);
     }
 
-    private static async Task<byte[]> DecompressAsync(byte[] bytes, string encoding, CancellationToken ct)
+    private static async Task<byte[]> DecompressAsync(
+        byte[] bytes,
+        string encoding,
+        CancellationToken ct
+    )
     {
         using var input = new MemoryStream(bytes);
         using Stream decoder = encoding switch
