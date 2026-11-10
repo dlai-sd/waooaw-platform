@@ -42,6 +42,18 @@ def test_plan_and_deployment_evidence_are_retained() -> None:
     assert "deployment-record.json" in WORKFLOW
 
 
+def test_private_runner_cost_gate_is_warning_only() -> None:
+    warning_only_gate = (
+        "      - name: Report cumulative cost gate (warning only)\n"
+        "        continue-on-error: true\n"
+        "        run: |"
+    )
+
+    assert WORKFLOW.count(warning_only_gate) == 2
+    assert "Enforce cumulative cost gate" not in WORKFLOW
+    assert WORKFLOW.count("python scripts/goal006_cost_gate.py") == 2
+
+
 def test_private_qualification_uses_environment_scoped_brokers_and_runner() -> None:
     assert "          - qualify" in WORKFLOW
     assert "if: inputs.operation != 'qualify'" in WORKFLOW
