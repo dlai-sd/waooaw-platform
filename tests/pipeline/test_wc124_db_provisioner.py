@@ -654,6 +654,11 @@ def test_provider_registry_migration_owns_forced_rls_reconciliation() -> None:
             "GRANT bp_owner TO %I",
             "REVOKE bp_owner FROM %I",
         ),
+        (
+            "99zzzzz-wc134-offering-usage.sql",
+            "GRANT bp_owner TO %I",
+            "REVOKE bp_owner FROM %I",
+        ),
     ],
 )
 def test_migration_files_own_their_bounded_prerequisites(
@@ -666,6 +671,48 @@ def test_migration_files_own_their_bounded_prerequisites(
     assert sql.index("BEGIN;") < sql.index(grant)
     assert sql.index(grant) < sql.index(revoke)
     assert sql.index(revoke) < sql.rindex("COMMIT;")
+
+
+def test_offering_usage_migration_revokes_temporary_wbe_ownership() -> None:
+    sql = (
+        ROOT / "infrastructure/postgres/init/99zzzzz-wc134-offering-usage.sql"
+    ).read_text(encoding="utf-8")
+
+    grant = "GRANT wbe_owner TO %I"
+    revoke = "REVOKE wbe_owner FROM %I"
+    assert sql.index(grant) < sql.index(revoke)
+    assert sql.index(revoke) < sql.rindex("COMMIT;")
+    assert sql.index("SET LOCAL ROLE bp_owner;") < sql.index(
+        "CREATE TABLE IF NOT EXISTS business.relationship_commercial_authorities"
+    )
+    assert sql.index("RESET ROLE;") < sql.index(
+        "ALTER TABLE business.relationship_commercial_authorities OWNER TO wbe_owner;"
+    )
+    owner_transfer = (
+        "ALTER TABLE business.relationship_commercial_authorities OWNER TO wbe_owner;"
+    )
+    assert sql.index("GRANT CREATE ON SCHEMA business TO wbe_owner;") < sql.index(
+        owner_transfer
+    )
+    assert sql.index(owner_transfer) < sql.index(
+        "REVOKE CREATE ON SCHEMA business FROM wbe_owner;"
+    )
+
+
+def test_active_managed_organisation_owner_transfer_has_bounded_schema_authority() -> None:
+    sql = (
+        ROOT / "infrastructure/postgres/init/29-customer-workspace-provisioning.sql"
+    ).read_text(encoding="utf-8")
+    owner_transfer = (
+        "ALTER FUNCTION identity.is_active_managed_organisation(uuid) "
+        "OWNER TO identity_resolver_owner;"
+    )
+    grant = "GRANT CREATE ON SCHEMA identity TO identity_resolver_owner;"
+    revoke = "REVOKE CREATE ON SCHEMA identity FROM identity_resolver_owner;"
+
+    transfer_index = sql.index(owner_transfer)
+    assert sql.rfind(grant, 0, transfer_index) < transfer_index
+    assert transfer_index < sql.index(revoke, transfer_index)
 
 
 def test_identity_schema_verifier_requires_every_relation_policy_and_forced_rls(
