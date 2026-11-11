@@ -376,7 +376,9 @@ AS $organisation$
           AND organisation.identity_status = 'ACTIVE'
     );
 $organisation$;
+GRANT CREATE ON SCHEMA identity TO identity_resolver_owner;
 ALTER FUNCTION identity.is_active_managed_organisation(uuid) OWNER TO identity_resolver_owner;
+REVOKE CREATE ON SCHEMA identity FROM identity_resolver_owner;
 REVOKE ALL ON FUNCTION identity.is_active_managed_organisation(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION identity.is_active_managed_organisation(uuid) TO business_app;
 
