@@ -2,7 +2,7 @@
 
 **Office:** Platform IT Expert (INST-010)
 **Work Contract:** WC-134
-**State:** OPEN — Founder disposition recorded 2026-11-16: continue Demo with Professional Runtime unready (fail closed); provisioning deferred
+**State:** OPEN — PARTIALLY MITIGATED on Demo only (2026-11-16, Founder-accepted interim exception, expires 2026-12-16); cloud issuance, private-key delivery, the PR mTLS listener and the BP link remain undesigned
 
 ## Blocking condition
 
@@ -51,3 +51,41 @@ blob were removed; two `.pre-forward-fix-20261116` Terraform state backups remai
 WhatsApp webhook ingress, TLS, guest registration and deterministic replies are served; governed conversation
 generation remains `UNAVAILABLE` and fails closed. Live Meta delivery has not been exercised and needs Founder
 acceptance.
+
+## Interim mitigation (Demo only, Founder-accepted 2026-11-16)
+
+Professional Runtime health needs only the public ADR-046 trust material: `manifest.json` and Business
+Platform's `delegation-cert.pem`. Those two public files were generated with
+`scripts/bootstrap_workload_identity.py` in a throwaway Docker container, using a temporary registry copy that set
+the `ci` slot to Demo's trust domain (`demo.waooaw.internal`) and a 720-hour leaf lifetime; the manifest's
+`environment` field was then set to `demo`. All private keys and the throwaway root were shredded and never left
+that container. PR's own `WorkloadAuth.from_credentials` loaded exactly those two files.
+
+The two files were written to Key Vault `kv-waooaw-demo` by a temporary in-network job as secrets
+`workload-identity-manifest` and `workload-identity-bp-delegation-cert`, read by PR's identity only
+(`Key Vault Secrets User`, secret scope). Terraform now owns the wiring: two Key Vault secret references, a Container
+Apps `Secret` volume at `/mnt/workload-trust`, `WAOOAW_WORKLOAD_CREDENTIALS=/tmp/workload-identity`, and an entrypoint
+that rebuilds the directory tree the loader reads because Container Apps mounts secrets flat. The two role assignments
+created by hand are adopted by `import` blocks in `environments/demo/workload/main.tf`; remove them after the first
+successful deploy. A real Demo `terraform plan` showed 2 imports, 12 in-place changes and 0 destroys, plan policy PASS.
+
+Result: `ca-demo-professional-runtime--0000103` is ready; the in-network verification job passes for all 7 services and
+all 12 applications are ready; superseded revisions were retired.
+
+### Accepted ADR-046 exceptions (Demo only)
+
+| Exception | ADR-046 requirement | Expiry / closure |
+|---|---|---|
+| Hand-made trust root and certificates | Issuance from the approved registry, not a manual ceremony | Certificate not-after `2026-12-16T08:40:19Z`; replaced by the designed issuer |
+| 30-day leaf lifetime | 2-hour leaf lifetime for Demo | Same |
+
+### What is NOT delivered
+
+- PR reports healthy because it can verify BP-signed envelopes. BP has no workload credentials, so it does not sign them;
+  BP's gateways stay unconfigured and governed conversation generation remains `UNAVAILABLE`.
+- No private key is delivered to any workload. The PR mTLS listener (`private_server.py`, port 5443) is not started by
+  the image, which runs only `uvicorn main:app` on 5003, and nothing exposes port 5443.
+- No cloud issuance, renewal, revocation or compromise runbook exists. An architect-owned Azure deployment design for
+  these is required before the full capability, UAT or Production.
+- After 2026-12-16 the manifest and delegation certificate expire; PR's loader does not check expiry, but the
+  exception must be closed or renewed by then.
