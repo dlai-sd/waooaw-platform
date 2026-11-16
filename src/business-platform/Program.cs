@@ -381,6 +381,9 @@ builder.Services.AddScoped<OfferabilityOrchestrationService>();
 builder.Services.AddScoped<ActivationOrchestrationService>();
 builder.Services.AddScoped<RelationshipTrialService>();
 builder.Services.Configure<WhatsAppJourneyOptions>(builder.Configuration.GetSection("WhatsApp"));
+builder.Services.Configure<WhatsAppGuestLimitOptions>(
+    builder.Configuration.GetSection(WhatsAppGuestLimitOptions.SectionName)
+);
 builder.Services.Configure<PhoneIdentityAdapterOptions>(
     builder.Configuration.GetSection("PhoneIdentity")
 );

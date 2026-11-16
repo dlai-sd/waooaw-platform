@@ -310,20 +310,27 @@ def test_temporal_bounds_cover_both_stores_and_both_launch_surfaces():
             assert f"-e {name}=1" in (ROOT / "scripts" / harness).read_text()
 
 
-def provisioner_result(init_files: int) -> dict:
+def provisioner_result(init_files: int, *, reset: bool = True, spend_paise: int = 50000) -> dict:
     return {
         "schema": "waooaw.wc124-db-provisioning/v1",
         "environment": "demo",
         "database_reset": {
             "status": "completed",
             "databases": ["waooaw_application", "waooaw_keycloak", "waooaw_temporal", "waooaw_temporal_visibility"],
+        }
+        if reset
+        else None,
+        "spend_authority": {
+            "environment": "demo",
+            "maximum_paise": spend_paise,
+            "evidence_id": "22bc6da2-4fc8-5f50-aeca-1d4819589185",
         },
         "init_chain": {
             "ledger": "wc124_provisioning.init_chain_ledger",
-            "applied": init_files,
+            "applied": init_files if reset else 0,
             "reapplied": 0,
-            "skipped": 0,
-            "changed_files": [f"{number:03d}-init.sql" for number in range(init_files)],
+            "skipped": 0 if reset else init_files,
+            "changed_files": [f"{number:03d}-init.sql" for number in range(init_files)] if reset else [],
         },
         "identity_schema": {"status": "passed", "required_relations": [f"relation_{n}" for n in range(6)]},
         "credentials": [
@@ -340,8 +347,12 @@ def provisioner_result(init_files: int) -> dict:
     }
 
 
-def provisioner_context(tmp_path: Path, result_lines: list[str], log_lines: list[str]) -> tuple[Path, dict[str, str]]:
+def provisioner_context(
+    tmp_path: Path, result_lines: list[str], log_lines: list[str], *, reset: bool = True
+) -> tuple[Path, dict[str, str]]:
     """Fake Azure CLI whose job log tail is capped at 300 records while Log Analytics holds every record."""
+    (tmp_path / "scripts").symlink_to(ROOT / "scripts", target_is_directory=True)
+    (tmp_path / "release").symlink_to(ROOT / "release", target_is_directory=True)
     commands = tmp_path / "bin"
     commands.mkdir()
     (tmp_path / "log-analytics-calls").write_text("")
@@ -380,6 +391,7 @@ else:
     sleep.chmod(0o755)
     return tmp_path, {
         **os.environ,
+        "RESET_DEMO_DATABASE": "true" if reset else "false",
         "PATH": f"{commands}:{os.environ['PATH']}",
         "RESOURCE_GROUP": "waooaw-demo-rg",
         "TARGET_ENVIRONMENT": "demo",
@@ -420,6 +432,38 @@ def test_result_within_the_cli_tail_does_not_query_log_analytics(tmp_path):
 
     assert outcome.returncode == 0, outcome.stderr
     assert (tmp_path / "log-analytics-calls").read_text() == ""
+
+
+def test_normal_deployment_keeps_the_databases_and_still_sets_the_spend_authority(tmp_path):
+    lines = json.dumps(provisioner_result(10, reset=False), indent=2, sort_keys=True).splitlines()
+
+    outcome = run_provisioner_step(provisioner_context(tmp_path, lines, lines, reset=False))
+
+    assert outcome.returncode == 0, outcome.stderr
+
+
+def test_normal_deployment_rejects_a_result_that_reports_a_database_reset(tmp_path):
+    lines = json.dumps(provisioner_result(10), indent=2, sort_keys=True).splitlines()
+
+    outcome = run_provisioner_step(provisioner_context(tmp_path, lines, lines, reset=False))
+
+    assert outcome.returncode != 0
+
+
+def test_a_requested_reset_rejects_a_result_without_one(tmp_path):
+    lines = json.dumps(provisioner_result(10, reset=False), indent=2, sort_keys=True).splitlines()
+
+    outcome = run_provisioner_step(provisioner_context(tmp_path, lines, lines, reset=True))
+
+    assert outcome.returncode != 0
+
+
+def test_spend_authority_must_match_the_approved_policy(tmp_path):
+    lines = json.dumps(provisioner_result(10, reset=False, spend_paise=40000), indent=2, sort_keys=True).splitlines()
+
+    outcome = run_provisioner_step(provisioner_context(tmp_path, lines, lines, reset=False))
+
+    assert outcome.returncode != 0
 
 
 def test_incomplete_provisioner_output_fails_closed(tmp_path):

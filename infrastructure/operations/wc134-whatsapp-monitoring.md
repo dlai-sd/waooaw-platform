@@ -79,3 +79,14 @@ Cross-tenant monitoring, actual receiver delivery, automatic acknowledgement
 tracking/escalation, and restore-egress signal production are not established by
 this bounded wiring. R010 remains BLOCKED until those scoped requirements and
 Docker qualification pass. No cloud action or live alert test was performed.
+
+## Demo autopilot-managed rule (standing policy)
+
+Demo does not use the optional `whatsapp_monitoring` Terraform input. After every Demo apply,
+`scripts/wc134_demo_whatsapp_autopilot.py` (deployment step "Activate Demo WhatsApp under the
+standing Founder policy") writes the rule `waooaw-demo-whatsapp-operations` through the ARM API
+from this exact query template, bound to that run's activation reference, release and
+configuration digests and its activation window. The rule is created disabled, enabled only after
+activation passes, and disabled again with WhatsApp stopped if any activation check fails.
+Do not also set `whatsapp_monitoring` for Demo: two owners of one rule would fight each other.
+The action group `wc134-demo-operator` and its receiver remain the existing manual resources.

@@ -389,6 +389,9 @@ def test_database_provisioner_job_pulls_from_the_selected_home(tmp_path: Path, i
     script = re.sub(r"\$\{\{\s*([^}]+?)\s*\}\}", lambda match: expressions[match[1]], step["run"])
     (tmp_path / "scripts").mkdir()
     (tmp_path / "scripts/goal006_ghcr_digest.py").write_text(f"print('{digest('f')}')\n", encoding="utf-8")
+    (tmp_path / "scripts/wc134_demo_whatsapp_autopilot.py").write_text(
+        "print('{\"paise\": 50000, \"evidence_id\": \"22bc6da2-4fc8-5f50-aeca-1d4819589185\"}')\n", encoding="utf-8"
+    )
     az = tmp_path / "az"
     az.write_text(
         f"#!{sys.executable}\n"
@@ -422,6 +425,7 @@ def test_database_provisioner_job_pulls_from_the_selected_home(tmp_path: Path, i
             "POSTGRESQL_SERVER_FQDN": "postgres.example.invalid",
             "RESOURCE_GROUP": "waooaw-demo-rg",
             "TARGET_ENVIRONMENT": "demo",
+            "RESET_DEMO_DATABASE": "false",
             "IMAGE_HOME": effective[0],
             "IMAGE_REGISTRY_SERVER": effective[1],
             "IMAGE_PULL_IDENTITY_ID": effective[2],
@@ -434,6 +438,10 @@ def test_database_provisioner_job_pulls_from_the_selected_home(tmp_path: Path, i
     assert result.returncode == 0, result.stderr
     job = json.loads((tmp_path / "created.json").read_text(encoding="utf-8"))
     image = job["properties"]["template"]["containers"][0]["image"]
+    arguments = job["properties"]["template"]["containers"][0]["args"]
+    # A normal deployment keeps the databases but always sets the policy-derived spend authority.
+    assert "--reset-demo-databases" not in arguments
+    assert arguments[arguments.index("--demo-spend-authority-paise") + 1] == "50000"
     identities = set(job["identity"]["userAssignedIdentities"])
     if image_home == "github":
         assert image == f"ghcr.io/dlai-sd/goal006-private-runner@{digest('f')}"

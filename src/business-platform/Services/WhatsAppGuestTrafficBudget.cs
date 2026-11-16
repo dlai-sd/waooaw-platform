@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Waooaw.BusinessPlatform.Infrastructure;
 
 namespace Waooaw.BusinessPlatform.Services;
@@ -54,14 +55,27 @@ public static class WhatsAppGuestTrafficEventIdentity
         );
 }
 
+public sealed class WhatsAppGuestLimitOptions
+{
+    public const string SectionName = "WhatsAppGuestLimits";
+    public const int DefaultMessagesPerGuestPer24Hours = 10;
+    public const int DefaultNewSessionsPerDay = 100;
+
+    // Inbound and outbound messages of one guest share this rolling 24-hour allowance.
+    public int MessagesPerGuestPer24Hours { get; set; } = DefaultMessagesPerGuestPer24Hours;
+    public int NewSessionsPerDay { get; set; } = DefaultNewSessionsPerDay;
+}
+
 public sealed class WhatsAppGuestTrafficBudget(
     IDbContextFactory<ConversationStoreDbContext> conversations,
     IWhatsAppCapabilityGate gate,
-    TimeProvider clock
+    TimeProvider clock,
+    IOptions<WhatsAppGuestLimitOptions>? limits = null
 )
 {
-    private const int MaximumMessagesPerGuestPer24Hours = 10;
-    private const int MaximumNewPublicSessionsPerDay = 100;
+    // The notice thresholds need three messages of headroom; the upper bound only rejects typos.
+    private const int MinimumMessagesPerGuest = 3;
+    private const int MaximumConfiguredLimit = 100_000;
     public const string MessageLimitNotice =
         "You have reached the free guest-message limit for this 24-hour period. Please message us again after the limit resets. Reply STOP to stop messages.";
     public const string GlobalRateLimitNotice =
@@ -75,6 +89,21 @@ public sealed class WhatsAppGuestTrafficBudget(
     private static readonly TimeZoneInfo BusinessTimeZone = TimeZoneInfo.FindSystemTimeZoneById(
         "Asia/Kolkata"
     );
+
+    private (int MessagesPerGuest, int SessionsPerDay) ConfiguredLimits()
+    {
+        var configured = limits?.Value ?? new WhatsAppGuestLimitOptions();
+        if (
+            configured.MessagesPerGuestPer24Hours
+                is < MinimumMessagesPerGuest
+                    or > MaximumConfiguredLimit
+            || configured.NewSessionsPerDay is < 1 or > MaximumConfiguredLimit
+        )
+            throw new WhatsAppCapabilityUnavailableException("GUEST_LIMIT_CONFIGURATION_INVALID");
+        // The approved activation totals are checked before these limits, so a setting can only
+        // tighten what the Founder approved, never widen it.
+        return (configured.MessagesPerGuestPer24Hours, configured.NewSessionsPerDay);
+    }
 
     public Task<WhatsAppGuestTrafficNotice> ReserveInboundAsync(
         Guid tenantId,
@@ -120,6 +149,7 @@ public sealed class WhatsAppGuestTrafficBudget(
     {
         var now = clock.GetUtcNow();
         var authority = gate.RequireActive(now);
+        var (messagesPerGuest, sessionsPerDay) = ConfiguredLimits();
         if (
             !authority.AllowProvisionalOnboarding
             || authority.TenantId != tenantId
@@ -237,12 +267,12 @@ public sealed class WhatsAppGuestTrafficBudget(
             cancellationToken
         );
         if (
-            guestMessageCount >= MaximumMessagesPerGuestPer24Hours
-            || eventType == "INBOUND" && guestMessageCount >= MaximumMessagesPerGuestPer24Hours - 1
+            guestMessageCount >= messagesPerGuest
+            || eventType == "INBOUND" && guestMessageCount >= messagesPerGuest - 1
         )
             throw new WhatsAppCapabilityUnavailableException("GUEST_MESSAGE_LIMIT_REACHED");
         var notice =
-            eventType == "INBOUND" && guestMessageCount == MaximumMessagesPerGuestPer24Hours - 2
+            eventType == "INBOUND" && guestMessageCount == messagesPerGuest - 2
                 ? WhatsAppGuestTrafficNotice.GuestMessageLimit
             : eventType == "INBOUND" && tenantMinuteCount == authority.MaximumMessagesPerMinute - 2
                 ? WhatsAppGuestTrafficNotice.GlobalRateLimit
@@ -283,7 +313,7 @@ public sealed class WhatsAppGuestTrafficBudget(
                     .Select(value => value.BindingDigest)
                     .Distinct()
                     .CountAsync(cancellationToken);
-                if (sessionCount >= MaximumNewPublicSessionsPerDay)
+                if (sessionCount >= sessionsPerDay)
                     sessionLimitReached = true;
                 else
                     db.Set<WhatsAppGuestTrafficEvent>()

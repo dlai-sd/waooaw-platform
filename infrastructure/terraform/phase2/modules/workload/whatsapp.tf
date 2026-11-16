@@ -21,7 +21,7 @@ variable "whatsapp_provider" {
         toset(keys(var.whatsapp_provider.secret_versions)) == toset([
           "whatsapp-provider-binding", "whatsapp-verify-token",
           "whatsapp-app-secret", "whatsapp-outbound-authority"
-        ]) || toset(keys(var.whatsapp_provider.secret_versions)) == toset([
+          ]) || toset(keys(var.whatsapp_provider.secret_versions)) == toset([
           "whatsapp-provider-binding", "whatsapp-verify-token",
           "whatsapp-app-secret", "whatsapp-outbound-authority",
           "whatsapp-phone-subject-hmac"
@@ -38,33 +38,59 @@ variable "whatsapp_provider" {
   }
 }
 
+variable "whatsapp_guest_limits" {
+  description = "Per-guest message allowance per rolling 24 hours (inbound and outbound together) and new guest sessions per day. Tightens, never widens, an approved activation."
+  type = object({
+    messages_per_guest_per_24_hours = number
+    new_sessions_per_day            = number
+  })
+  default = {
+    messages_per_guest_per_24_hours = 10
+    new_sessions_per_day            = 100
+  }
+
+  validation {
+    condition = (
+      var.whatsapp_guest_limits.messages_per_guest_per_24_hours == floor(var.whatsapp_guest_limits.messages_per_guest_per_24_hours) &&
+      var.whatsapp_guest_limits.messages_per_guest_per_24_hours >= 3 &&
+      var.whatsapp_guest_limits.messages_per_guest_per_24_hours <= 100000 &&
+      var.whatsapp_guest_limits.new_sessions_per_day == floor(var.whatsapp_guest_limits.new_sessions_per_day) &&
+      var.whatsapp_guest_limits.new_sessions_per_day >= 1 &&
+      var.whatsapp_guest_limits.new_sessions_per_day <= 100000
+    )
+    error_message = "Guest limits must be whole numbers: 3 to 100000 messages per guest per 24 hours and 1 to 100000 new sessions per day."
+  }
+}
+
 locals {
   whatsapp_provider_runtime = var.whatsapp_provider == null ? {} : {
-    WhatsAppProvider__Enabled                    = "true"
-    WhatsAppProvider__Environment                = "demo"
-    WhatsAppProvider__VaultHost                  = "kv-waooaw-demo.vault.azure.net"
-    WhatsAppProvider__BindingVersion             = var.whatsapp_provider.secret_versions["whatsapp-provider-binding"]
-    WhatsAppProvider__VerifyTokenVersion         = var.whatsapp_provider.secret_versions["whatsapp-verify-token"]
-    WhatsAppProvider__AppSecretVersion           = var.whatsapp_provider.secret_versions["whatsapp-app-secret"]
-    WhatsAppProvider__OutboundAuthorityVersion   = var.whatsapp_provider.secret_versions["whatsapp-outbound-authority"]
-    WhatsAppProvider__PhoneSubjectKeyVersion     = lookup(var.whatsapp_provider.secret_versions, "whatsapp-phone-subject-hmac", "")
-    WhatsApp__CallbackHost                       = var.whatsapp_provider.callback_host
-    WhatsApp__VerificationEnabled                = tostring(var.whatsapp_provider.verification_enabled)
-    WhatsApp__CallbackAcceptanceEnabled          = "false"
-    WhatsApp__DispatchEnabled                    = "false"
-    Wc120Conversation__CallbackAcceptanceEnabled = "false"
-    Wc120Conversation__DispatchEnabled           = "false"
-    IdentityVerification__WhatsApp__Enabled      = "false"
+    WhatsAppGuestLimits__MessagesPerGuestPer24Hours              = tostring(var.whatsapp_guest_limits.messages_per_guest_per_24_hours)
+    WhatsAppGuestLimits__NewSessionsPerDay                       = tostring(var.whatsapp_guest_limits.new_sessions_per_day)
+    WhatsAppProvider__Enabled                                    = "true"
+    WhatsAppProvider__Environment                                = "demo"
+    WhatsAppProvider__VaultHost                                  = "kv-waooaw-demo.vault.azure.net"
+    WhatsAppProvider__BindingVersion                             = var.whatsapp_provider.secret_versions["whatsapp-provider-binding"]
+    WhatsAppProvider__VerifyTokenVersion                         = var.whatsapp_provider.secret_versions["whatsapp-verify-token"]
+    WhatsAppProvider__AppSecretVersion                           = var.whatsapp_provider.secret_versions["whatsapp-app-secret"]
+    WhatsAppProvider__OutboundAuthorityVersion                   = var.whatsapp_provider.secret_versions["whatsapp-outbound-authority"]
+    WhatsAppProvider__PhoneSubjectKeyVersion                     = lookup(var.whatsapp_provider.secret_versions, "whatsapp-phone-subject-hmac", "")
+    WhatsApp__CallbackHost                                       = var.whatsapp_provider.callback_host
+    WhatsApp__VerificationEnabled                                = tostring(var.whatsapp_provider.verification_enabled)
+    WhatsApp__CallbackAcceptanceEnabled                          = "false"
+    WhatsApp__DispatchEnabled                                    = "false"
+    Wc120Conversation__CallbackAcceptanceEnabled                 = "false"
+    Wc120Conversation__DispatchEnabled                           = "false"
+    IdentityVerification__WhatsApp__Enabled                      = "false"
     WhatsAppCapability__Authority__AllowRegistrationVerification = "false"
-    WhatsAppCapability__Authority__AllowProvisionalOnboarding = "false"
-    WhatsAppCapability__Authority__AllowPublicAdmission = "false"
-    WhatsAppCapability__Configured               = "true"
-    WhatsAppCapability__ProviderAvailable        = "false"
-    WhatsAppCapability__PublicAdmissionIdentityKeyAvailable = tostring(contains(keys(var.whatsapp_provider.secret_versions), "whatsapp-phone-subject-hmac"))
-    WhatsAppCapability__Environment              = "demo"
-    WhatsAppCapability__ReleaseDigest            = var.whatsapp_provider.release_digest
-    WhatsAppCapability__ConfigurationDigest      = var.whatsapp_provider.configuration_digest
-    WhatsAppCapability__CatalogDigest            = var.whatsapp_provider.catalog_digest
+    WhatsAppCapability__Authority__AllowProvisionalOnboarding    = "false"
+    WhatsAppCapability__Authority__AllowPublicAdmission          = "false"
+    WhatsAppCapability__Configured                               = "true"
+    WhatsAppCapability__ProviderAvailable                        = "false"
+    WhatsAppCapability__PublicAdmissionIdentityKeyAvailable      = tostring(contains(keys(var.whatsapp_provider.secret_versions), "whatsapp-phone-subject-hmac"))
+    WhatsAppCapability__Environment                              = "demo"
+    WhatsAppCapability__ReleaseDigest                            = var.whatsapp_provider.release_digest
+    WhatsAppCapability__ConfigurationDigest                      = var.whatsapp_provider.configuration_digest
+    WhatsAppCapability__CatalogDigest                            = var.whatsapp_provider.catalog_digest
   }
   whatsapp_provider_secret_scopes = var.whatsapp_provider == null ? {} : {
     for name in keys(var.whatsapp_provider.secret_versions) :

@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import secrets
 import shutil
 import socket
@@ -497,6 +498,73 @@ def reset_demo_databases(
     return {"status": "completed", "databases": list(DEMO_DATABASES)}
 
 
+SPEND_AUTHORITY_MAXIMUM_PAISE = 50_000
+UUID_PATTERN = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+
+
+def spend_authority_sql(environment: str, maximum_paise: int, evidence_id: str) -> str:
+    """Upsert the environment-wide spend authority; first creation requires no legacy model exposure."""
+    if environment != "demo":
+        raise ValueError("environment spend authority is provisioned for demo only")
+    if not isinstance(maximum_paise, int) or not 1 <= maximum_paise <= SPEND_AUTHORITY_MAXIMUM_PAISE:
+        raise ValueError("environment spend authority must be 1 to 50000 paise")
+    if UUID_PATTERN.fullmatch(evidence_id) is None or evidence_id == "00000000-0000-0000-0000-000000000000":
+        raise ValueError("environment spend authority evidence id must be a nonzero UUID")
+    env = sql_literal(environment)
+    return f"""
+BEGIN;
+SET LOCAL ROLE bp_owner;
+DO $spend$
+DECLARE existing business.environment_spend_authorities%ROWTYPE;
+BEGIN
+    SELECT * INTO existing FROM business.environment_spend_authorities WHERE environment = {env};
+    IF NOT FOUND THEN
+        IF EXISTS (SELECT 1 FROM business.conversation_model_reservations WHERE environment = {env}) THEN
+            RAISE EXCEPTION 'legacy model exposure must be mapped before spend authority is created';
+        END IF;
+        INSERT INTO business.environment_spend_authorities
+            (environment, authority_version, maximum_paise, active, migration_complete,
+             authority_evidence_id, updated_at)
+        VALUES ({env}, 1, {maximum_paise}, true, true, {sql_literal(evidence_id)}::UUID, clock_timestamp());
+    ELSIF NOT existing.migration_complete THEN
+        RAISE EXCEPTION 'spend authority exists without completed migration; owner reconciliation is required';
+    ELSIF existing.maximum_paise <> {maximum_paise} OR NOT existing.active
+        OR existing.authority_evidence_id <> {sql_literal(evidence_id)}::UUID THEN
+        UPDATE business.environment_spend_authorities
+        SET maximum_paise = {maximum_paise}, active = true,
+            authority_evidence_id = {sql_literal(evidence_id)}::UUID,
+            authority_version = existing.authority_version + 1, updated_at = clock_timestamp()
+        WHERE environment = {env};
+    END IF;
+END
+$spend$;
+COMMIT;
+"""  # noqa: S608 environment, integer and UUID are validated above and quoted
+
+
+def apply_environment_spend_authority(
+    server_fqdn: str,
+    bootstrap_name: str,
+    environment: str,
+    maximum_paise: int,
+    evidence_id: str,
+) -> dict[str, Any]:
+    statement = spend_authority_sql(environment, maximum_paise, evidence_id)
+    token = access_token()
+    psql(server_fqdn, bootstrap_name, APPLICATION_DATABASE, token, f"GRANT bp_owner TO {sql_identifier(bootstrap_name)};")
+    try:
+        psql(server_fqdn, bootstrap_name, APPLICATION_DATABASE, token, statement)
+    finally:
+        psql(
+            server_fqdn,
+            bootstrap_name,
+            APPLICATION_DATABASE,
+            token,
+            f"REVOKE bp_owner FROM {sql_identifier(bootstrap_name)};",
+        )
+    return {"environment": environment, "maximum_paise": maximum_paise, "evidence_id": evidence_id}
+
+
 def read_init_chain_ledger(
     server_fqdn: str,
     bootstrap_name: str,
@@ -892,6 +960,16 @@ def execute(arguments: argparse.Namespace) -> dict[str, Any]:
         force_init_chain=getattr(arguments, "force_init_chain", False),
         reset_demo=reset_demo,
     )
+    spend_paise = getattr(arguments, "demo_spend_authority_paise", None)
+    spend_authority = None
+    if spend_paise is not None:
+        spend_authority = apply_environment_spend_authority(
+            arguments.server_fqdn,
+            arguments.bootstrap_name,
+            arguments.environment,
+            spend_paise,
+            getattr(arguments, "demo_spend_authority_evidence_id", "") or "",
+        )
     azure_login(arguments.provisioner_client_id)
     evidence = write_secrets(
         specs,
@@ -909,6 +987,7 @@ def execute(arguments: argparse.Namespace) -> dict[str, Any]:
         "password_authentication_ready": True,
         "vault_authorization_attempts": authorization_attempts,
         "database_reset": database_reset,
+        "spend_authority": spend_authority,
         "init_chain": {
             "ledger": INIT_CHAIN_LEDGER_TABLE,
             "applied": len(init_chain["applied"]),
@@ -943,6 +1022,12 @@ def main() -> int:
         action="store_true",
         help="re-apply every init file regardless of the ledger digest (files are idempotent)",
     )
+    parser.add_argument(
+        "--demo-spend-authority-paise",
+        type=int,
+        help="demo only: set the environment-wide spend authority after the init chain",
+    )
+    parser.add_argument("--demo-spend-authority-evidence-id")
     parser.add_argument("--network-probe", action="store_true")
     parser.add_argument("--validate-only", action="store_true")
     arguments = parser.parse_args()

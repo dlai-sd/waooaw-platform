@@ -92,6 +92,7 @@ module "workload" {
   pr_min_replicas                          = 0
   bp_min_replicas                          = 1
   web_min_replicas                         = 1
+  whatsapp_guest_limits                    = { messages_per_guest_per_24_hours = 100, new_sessions_per_day = 100 }
   max_replicas                             = 1
   workload_enabled                         = module.lease.workload_enabled
   web_session_mode                         = "disabled"
