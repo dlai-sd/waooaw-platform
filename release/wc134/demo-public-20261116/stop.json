@@ -1,0 +1,10 @@
+{
+  "guest_stop": "STOP keyword latches a guest stop and suppresses further replies (covered by WhatsApp tests)",
+  "kind": "stop",
+  "operator_stop": {
+    "operation": "stop",
+    "result": "all traffic flags false and capability Revoked=true; verified live on Demo business platform revision",
+    "status": "PASS"
+  },
+  "release_digest": "sha256:f62f4a17c8681fb32fe4633b6586387699a8e47538cef8b9f2545ee7a69ac7b4"
+}

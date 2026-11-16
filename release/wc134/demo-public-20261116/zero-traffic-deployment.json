@@ -1,0 +1,51 @@
+{
+  "deploy": {
+    "conclusion": "success",
+    "headSha": "3ea31967e5b232d44ce74261dc78df446c972393",
+    "jobs": [
+      {
+        "conclusion": "success",
+        "name": "authorize"
+      },
+      {
+        "conclusion": "success",
+        "name": "deploy / resolve-environment"
+      },
+      {
+        "conclusion": "success",
+        "name": "deploy / start-broker"
+      },
+      {
+        "conclusion": "success",
+        "name": "deploy / Apply demo"
+      },
+      {
+        "conclusion": "skipped",
+        "name": "deploy / provider-operation"
+      },
+      {
+        "conclusion": "success",
+        "name": "deploy / cleanup-private"
+      },
+      {
+        "conclusion": "success",
+        "name": "verify / verify"
+      },
+      {
+        "conclusion": "success",
+        "name": "publish-url"
+      }
+    ],
+    "run": 43850807252,
+    "url": "https://github.com/dlai-sd/waooaw-platform/actions/runs/43850807252"
+  },
+  "kind": "zero-traffic-deployment",
+  "traffic_flags_after_deploy": {
+    "Wc120Conversation__CallbackAcceptanceEnabled": "false",
+    "Wc120Conversation__DispatchEnabled": "false",
+    "WhatsAppCapability__ProviderAvailable": "false",
+    "WhatsApp__CallbackAcceptanceEnabled": "false",
+    "WhatsApp__DispatchEnabled": "false"
+  },
+  "verify": "verify / verify job succeeded; 12 Container Apps Running"
+}

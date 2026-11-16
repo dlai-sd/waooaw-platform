@@ -88,7 +88,7 @@ module "workload" {
   ghcr_packages_public                     = var.ghcr_packages_public
   image_registry_server                    = var.image_registry_server
   image_pull_identity_id                   = var.image_pull_identity_id
-  ce_min_replicas                          = 0
+  ce_min_replicas                          = 1
   pr_min_replicas                          = 0
   bp_min_replicas                          = 1
   web_min_replicas                         = 1

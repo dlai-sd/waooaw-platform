@@ -1,0 +1,13 @@
+{
+  "approved_by": "Founder dlai-sd",
+  "kind": "pricing",
+  "maximum_cost_per_message_inr": 5,
+  "maximum_messages": 200,
+  "maximum_messages_per_minute": 6,
+  "maximum_spend_inr": 500,
+  "note": "Replies are customer-initiated service messages; no templates or proactive messages are sent.",
+  "window": [
+    "2026-11-16T11:30:00Z",
+    "2026-11-23T11:30:00Z"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "action_group_test": "az monitor action-group test-notifications create to the operator-email receiver completed (state Complete)",
+  "deviation": "evaluation every 5 minutes because Azure rejects 1-minute evaluation for this query",
+  "kind": "alerts",
+  "owner": "Founder dlai-sd",
+  "query_digest": "sha256:1665361ee30fdf2237a4c83c04061cdaa2b4d4b639dc1489d4dbb67268743d68",
+  "response": "email to wc134-demo-operator; operator runs the stop operation",
+  "rule": {
+    "actions": [
+      "/subscriptions/2ED11839-6A0F-4EAA-BD94-44CA96FF5D84/resourceGroups/waooaw-demo-rg/providers/microsoft.insights/actionGroups/wc134-demo-operator"
+    ],
+    "enabled": false,
+    "evaluationFrequency": "0:05:00",
+    "name": "waooaw-demo-whatsapp-operations",
+    "severity": 1,
+    "windowSize": "0:05:00"
+  }
+}

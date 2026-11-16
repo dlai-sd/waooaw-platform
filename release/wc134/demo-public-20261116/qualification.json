@@ -1,0 +1,191 @@
+{
+  "business_platform_whatsapp_tests": {
+    "command": "dotnet test tests/business-platform.Tests --filter FullyQualifiedName~WhatsApp (Docker, real PostgreSQL via Testcontainers)",
+    "failed": 0,
+    "passed": 678,
+    "skipped": 0
+  },
+  "ci": {
+    "conclusion": "success",
+    "headSha": "3ea31967e5b232d44ce74261dc78df446c972393",
+    "jobs": [
+      {
+        "conclusion": "success",
+        "name": "Static workflow and Docker preflight"
+      },
+      {
+        "conclusion": "success",
+        "name": "Publish Docker image (ai-runtime)"
+      },
+      {
+        "conclusion": "success",
+        "name": "Publish runner image (goal006-runner-control)"
+      },
+      {
+        "conclusion": "success",
+        "name": "Publish Docker image (billing-engine)"
+      },
+      {
+        "conclusion": "success",
+        "name": "Publish Docker image (web)"
+      },
+      {
+        "conclusion": "success",
+        "name": "Secret detection"
+      },
+      {
+        "conclusion": "success",
+        "name": "Release qualification control"
+      },
+      {
+        "conclusion": "success",
+        "name": "Publish runner image (goal006-private-runner)"
+      },
+      {
+        "conclusion": "success",
+        "name": "Publish Docker image (business-platform)"
+      },
+      {
+        "conclusion": "success",
+        "name": "Publish Docker image (constitutional-engine)"
+      },
+      {
+        "conclusion": "success",
+        "name": "Publish Docker image (agent-runtime-adapter-digital-marketing)"
+      },
+      {
+        "conclusion": "success",
+        "name": "Publish Docker image (professional-runtime)"
+      },
+      {
+        "conclusion": "success",
+        "name": "validation-plan / WC-102 validation plan"
+      },
+      {
+        "conclusion": "success",
+        "name": "SAST \u2014 CodeQL (python)"
+      },
+      {
+        "conclusion": "success",
+        "name": "SAST \u2014 CodeQL (csharp)"
+      },
+      {
+        "conclusion": "success",
+        "name": "SAST \u2014 CodeQL (javascript)"
+      },
+      {
+        "conclusion": "success",
+        "name": "runner-supply / Supply dotnet validation runner"
+      },
+      {
+        "conclusion": "success",
+        "name": "runner-supply / Supply typescript validation runner"
+      },
+      {
+        "conclusion": "success",
+        "name": "runner-supply / Supply full validation runner"
+      },
+      {
+        "conclusion": "success",
+        "name": "runner-supply / Supply python validation runner"
+      },
+      {
+        "conclusion": "skipped",
+        "name": "Build Docker image (${{ matrix.service.name }})"
+      },
+      {
+        "conclusion": "success",
+        "name": "Python unit tests + lint (test-python:professional-runtime, professional-runtime)"
+      },
+      {
+        "conclusion": "success",
+        "name": "OpenAPI + Proto lint"
+      },
+      {
+        "conclusion": "success",
+        "name": "Release qualification"
+      },
+      {
+        "conclusion": "success",
+        "name": "Python unit tests + lint (test-python:ai-runtime, ai-runtime)"
+      },
+      {
+        "conclusion": "success",
+        "name": "License compliance"
+      },
+      {
+        "conclusion": "success",
+        "name": "Dependency vulnerability scan"
+      },
+      {
+        "conclusion": "success",
+        "name": ".NET unit tests (test-dotnet:constitutional-engine, constitutional-engine)"
+      },
+      {
+        "conclusion": "success",
+        "name": "Web unit tests + type check"
+      },
+      {
+        "conclusion": "success",
+        "name": ".NET unit tests (test-dotnet:business-platform, business-platform)"
+      },
+      {
+        "conclusion": "success",
+        "name": "WC-124 persistent-state blocking gates"
+      },
+      {
+        "conclusion": "skipped",
+        "name": "C-059 Constitutional Commit Gate"
+      },
+      {
+        "conclusion": "skipped",
+        "name": "C-066 Authorization Tier Check"
+      },
+      {
+        "conclusion": "skipped",
+        "name": "C-065 Author Review Gate"
+      },
+      {
+        "conclusion": "success",
+        "name": "Trivy image scan (business-platform)"
+      },
+      {
+        "conclusion": "success",
+        "name": "Trivy image scan (web)"
+      },
+      {
+        "conclusion": "success",
+        "name": "Trivy image scan (constitutional-engine)"
+      },
+      {
+        "conclusion": "success",
+        "name": "Trivy image scan (professional-runtime)"
+      },
+      {
+        "conclusion": "success",
+        "name": "Trivy image scan (ai-runtime)"
+      },
+      {
+        "conclusion": "success",
+        "name": "Trivy image scan (agent-runtime-adapter-digital-marketing)"
+      },
+      {
+        "conclusion": "success",
+        "name": "Trivy image scan (billing-engine)"
+      },
+      {
+        "conclusion": "success",
+        "name": "Attest exact-seven release manifest"
+      },
+      {
+        "conclusion": "success",
+        "name": "Test Champion QA Campaign"
+      }
+    ],
+    "run": 43840552524,
+    "url": "https://github.com/dlai-sd/waooaw-platform/actions/runs/43840552524"
+  },
+  "kind": "release-qualification",
+  "note": "Release image is built from the CI-qualified main commit; deployed image digest equals release_digest.",
+  "release_digest": "sha256:f62f4a17c8681fb32fe4633b6586387699a8e47538cef8b9f2545ee7a69ac7b4"
+}

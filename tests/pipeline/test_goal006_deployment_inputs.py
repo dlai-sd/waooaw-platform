@@ -184,7 +184,7 @@ def test_monitoring_rule_uses_exact_machine_observation_and_existing_receiver() 
     assert "now() >= StartsAt and now() < ExpiresAt" in query
     assert "OPERATIONS_HEARTBEAT_MISSING" in query
     assert "var.workload_enabled && var.whatsapp_monitoring != null ? 1 : 0" in rule
-    assert "evaluation_frequency" in rule and '"PT1M"' in rule
+    assert "evaluation_frequency" in rule and '"PT5M"' in rule
     assert "action_groups = [var.whatsapp_monitoring.action_group_id]" in rule
     assert 'resource "azurerm_monitor_action_group"' not in rule
     assert "whatsapp_monitoring" in entry
