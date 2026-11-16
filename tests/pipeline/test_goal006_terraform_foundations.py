@@ -1586,3 +1586,75 @@ def test_web_uses_dedicated_health_probes() -> None:
     assert 'path                    = "/api/health/live"' in contract
     assert 'for_each = each.key == "web" ? [1] : []' in contract
     assert re.search(r'dynamic "liveness_probe"', contract)
+
+
+def professional_runtime_demo_entrypoint() -> str:
+    contract = read_contract("modules/workload/main.tf")
+    match = re.search(r"professional_runtime_demo_entrypoint = <<-EOT\n(.*?)\n  EOT", contract, re.DOTALL)
+    assert match, "Professional Runtime Demo entrypoint is not defined"
+    return "\n".join(line.removeprefix("    ") for line in match.group(1).splitlines())
+
+
+def test_professional_runtime_receives_only_public_workload_trust_material() -> None:
+    contract = read_contract("modules/workload/main.tf")
+    entrypoint = professional_runtime_demo_entrypoint()
+
+    assert 'workload_trust_secret_names = ["workload-identity-manifest", "workload-identity-bp-delegation-cert"]' in contract
+    assert 'for_each = each.key == "professional-runtime" ? local.workload_trust_secret_uris : {}' in contract
+    assert "key_vault_secret_id = secret.value" in contract
+    assert 'WAOOAW_WORKLOAD_CREDENTIALS = "/tmp/workload-identity"' in contract
+    assert re.search(r'dynamic "volume" \{.*?name\s+= "workload-trust".*?storage_type = "Secret"', contract, re.DOTALL)
+    assert 'path = "/mnt/workload-trust"' in contract
+    names = re.search(r"workload_trust_secret_names = \[(.*?)\]", contract).group(1)
+    assert "key" not in names.replace("-identity-", "")
+    assert "tls-key" not in entrypoint
+    assert "delegation-key" not in entrypoint
+
+
+def test_workload_trust_secrets_are_readable_only_by_professional_runtime_and_before_activation() -> None:
+    contract = read_contract("modules/workload/main.tf")
+    role = contract.split('resource "azurerm_role_assignment" "workload_trust_secret"', 1)[1].split("\n}\n", 1)[0]
+
+    assert "local.workload_trust_secret_resource_ids" in role
+    assert 'role_definition_name = "Key Vault Secrets User"' in role
+    assert 'azurerm_user_assigned_identity.member["professional-runtime"].principal_id' in role
+    assert "azurerm_role_assignment.workload_trust_secret," in contract
+    for environment in ("uat", "prod"):
+        assert 'var.environment == "demo" ? {' in contract
+        assert "workload_trust_secret" not in read_contract(f"environments/{environment}/workload/main.tf")
+
+
+def test_professional_runtime_entrypoint_rebuilds_the_tree_its_loader_reads(tmp_path: Path) -> None:
+    source = (REPO_ROOT / "src/professional-runtime/relationship_workspace.py").read_text(encoding="utf-8")
+    assert '(credentials / "manifest.json")' in source
+    assert '"workloads" / "business-platform" / "delegation-cert.pem"' in source
+
+    mounted = tmp_path / "mnt"
+    mounted.mkdir()
+    (mounted / "workload-identity-manifest").write_text('{"trust_domain": "demo.waooaw.internal"}')
+    (mounted / "workload-identity-bp-delegation-cert").write_text("-----BEGIN CERTIFICATE-----\n")
+    script = (
+        professional_runtime_demo_entrypoint()
+        .replace("/mnt/workload-trust", str(mounted))
+        .replace("/tmp/workload-identity", str(tmp_path / "credentials"))
+        .replace("exec uvicorn", "true uvicorn")
+    )
+
+    subprocess.run(["sh", "-c", script], check=True, capture_output=True, text=True, timeout=30)
+
+    credentials = tmp_path / "credentials"
+    assert json.loads((credentials / "manifest.json").read_text())["trust_domain"] == "demo.waooaw.internal"
+    assert (credentials / "workloads/business-platform/delegation-cert.pem").read_text().startswith("-----BEGIN")
+    assert sorted(path.name for path in credentials.rglob("*") if path.is_file()) == [
+        "delegation-cert.pem",
+        "manifest.json",
+    ]
+
+
+def test_demo_adopts_the_two_hand_created_workload_trust_role_assignments() -> None:
+    demo = read_contract("environments/demo/workload/main.tf")
+    imports = re.findall(r'to = module\.workload\.azurerm_role_assignment\.workload_trust_secret\["([^"]+)"\]', demo)
+
+    assert sorted(imports) == ["workload-identity-bp-delegation-cert", "workload-identity-manifest"]
+    for name in imports:
+        assert f"/secrets/{name}/providers/Microsoft.Authorization/roleAssignments/" in demo

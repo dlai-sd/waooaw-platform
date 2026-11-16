@@ -18,6 +18,17 @@ provider "azurerm" {
   features {}
 }
 
+# CB-021 interim: adopt the two Key Vault role assignments created when the trust secrets were first wired by hand.
+import {
+  to = module.workload.azurerm_role_assignment.workload_trust_secret["workload-identity-manifest"]
+  id = "/subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/resourceGroups/waooaw-demo-rg/providers/Microsoft.KeyVault/vaults/kv-waooaw-demo/secrets/workload-identity-manifest/providers/Microsoft.Authorization/roleAssignments/550d833f-d1af-408c-a32e-a237d5dfc115"
+}
+
+import {
+  to = module.workload.azurerm_role_assignment.workload_trust_secret["workload-identity-bp-delegation-cert"]
+  id = "/subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/resourceGroups/waooaw-demo-rg/providers/Microsoft.KeyVault/vaults/kv-waooaw-demo/secrets/workload-identity-bp-delegation-cert/providers/Microsoft.Authorization/roleAssignments/a749a302-4eba-4ba9-acf8-13507202f582"
+}
+
 data "terraform_remote_state" "foundation" {
   backend = "azurerm"
   config = {
