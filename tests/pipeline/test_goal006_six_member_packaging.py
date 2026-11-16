@@ -195,21 +195,21 @@ def test_release_images_pin_fixed_security_dependencies() -> None:
     assert jose_pin in constitutional_engine
     assert constitutional_engine.index(jose_pin) < constitutional_engine.index("CGO_ENABLED=0 go build")
     fixed_aspnet_runtime = (
-        "mcr.microsoft.com/dotnet/aspnet:9.0.22"
-        "@sha256:8bbd3f6fcc157792d96f0932107d9d435df814a2c058ce2891a267fe341dea1a"
+        "mcr.microsoft.com/dotnet/aspnet:9.0.23"
+        "@sha256:22db800f670f4c21327f463df2a0bc8f0947b44f58c13e582ab4ed7e34310f3e"
     )
     assert fixed_aspnet_runtime in constitutional_engine
     assert fixed_aspnet_runtime in business_platform
     assert "transformers==5.10.0" in ai_requirements
     for requirements in (professional_requirements, ai_requirements):
-        assert "opentelemetry-api==1.45.1" in requirements
-        assert "opentelemetry-sdk==1.45.1" in requirements
-        assert "opentelemetry-exporter-otlp==1.45.1" in requirements
-        assert "opentelemetry-instrumentation-fastapi==0.66b1" in requirements
-    assert "opentelemetry-api==1.45.1" in billing_requirements
-    assert "opentelemetry-sdk==1.45.1" in billing_requirements
-    assert "opentelemetry-exporter-otlp-proto-grpc==1.45.1" in billing_requirements
-    assert "opentelemetry-instrumentation-fastapi==0.66b1" in billing_requirements
+        assert "opentelemetry-api==1.45.2" in requirements
+        assert "opentelemetry-sdk==1.45.2" in requirements
+        assert "opentelemetry-exporter-otlp==1.45.2" in requirements
+        assert "opentelemetry-instrumentation-fastapi==0.66b2" in requirements
+    assert "opentelemetry-api==1.45.2" in billing_requirements
+    assert "opentelemetry-sdk==1.45.2" in billing_requirements
+    assert "opentelemetry-exporter-otlp-proto-grpc==1.45.2" in billing_requirements
+    assert "opentelemetry-instrumentation-fastapi==0.66b2" in billing_requirements
     assert '"next": "15.5.28"' in web_package
     assert '"eslint-config-next": "15.5.28"' in web_package
 

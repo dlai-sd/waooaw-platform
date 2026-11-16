@@ -23,7 +23,7 @@ RUN apk add --no-cache git \
     && go get "github.com/go-jose/go-jose/v4@${GO_JOSE_VERSION}" \
     && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /grpc_health_probe .
 
-FROM mcr.microsoft.com/dotnet/aspnet:9.0.22@sha256:8bbd3f6fcc157792d96f0932107d9d435df814a2c058ce2891a267fe341dea1a
+FROM mcr.microsoft.com/dotnet/aspnet:9.0.23@sha256:22db800f670f4c21327f463df2a0bc8f0947b44f58c13e582ab4ed7e34310f3e
 ARG SECURITY_REFRESH=local
 RUN test -n "$SECURITY_REFRESH" \
     && apt-get update \
