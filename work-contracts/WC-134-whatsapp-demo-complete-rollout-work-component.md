@@ -735,29 +735,6 @@ both append-only ledgers. Behavioral execution remains deferred. Activation-tota
 accounting, metered model cost, privacy/lifecycle, alerts and exact-provider/live acceptance remain
 open requirements, not exclusions or a claim of completed R008.
 
-### Demo deployment forward-fix record
-
-Environment Deployment run `43150585543` (release `e69dd3a0`, PR #594) failed after the Demo database
-reset succeeded. The CLI log tail is capped at 300 records and the indented provisioner result reached 324
-(106 init files), so `jq` received truncated JSON. The Azure job itself had `Succeeded`, the four databases
-were reset, the init chain applied and the ownership handoff verified. The workflow now rebuilds the result
-from Log Analytics when the tail is not complete JSON, and a regression test runs the step with a result larger
-than the cap.
-
-By Founder direction the remaining steps were replayed out of band on Demo only, from the same signed release
-tuple and run evidence, by a temporary job in the private runner environment as `id-waooaw-demo-deployment`.
-This is a departure from the single `deploy.yaml` mutation path (ADR-047) and carries no GitHub attestation of
-its own. Dormant and activation Terraform applies had zero destroys, Keycloak and Temporal migrations, the
-Billing migration and the Temporal qualification passed, and 11 of 12 applications became ready. The old-revision
-retirement step was skipped deliberately to keep Professional Runtime's last healthy revision as rollback.
-The temporary job and workspace blob were removed; two `.pre-forward-fix-20261116` Terraform state backups remain
-for Founder disposition.
-
-Professional Runtime stays unready because its WC-134 health check requires ADR-046 workload credentials that no
-infrastructure provisions (CB-021). WhatsApp webhook ingress, TLS, guest registration and deterministic replies
-are served; governed conversation generation remains `UNAVAILABLE` and fails closed. Live Meta delivery has not
-been exercised and needs Founder acceptance.
-
 ### Containment and completion
 
 On the first failed mutation, stop that mutation path, classify the actual failure and inspect

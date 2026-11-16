@@ -30,3 +30,24 @@ Accepted design and an authorized Work Contract for per-environment ADR-046 issu
 workload certificates, BP delegation key) in Key Vault, managed-identity access, mounts for BP and PR,
 the PR mTLS listener configuration, rotation and expiry alerting, and a Demo qualification proving BP to PR
 Start/Cancel/stream. Until then Demo serves everything that does not need PR conversation generation.
+
+## Demo forward-fix record
+
+Environment Deployment run `43150585543` (release `e69dd3a0`, PR #594) failed after the Demo database reset
+succeeded. The CLI log tail is capped at 300 records and the indented provisioner result reached 324
+(106 init files), so `jq` received truncated JSON. The Azure job itself had `Succeeded`: the four databases were
+reset, the init chain applied and the ownership handoff verified. The workflow now rebuilds the result from
+Log Analytics when the tail is not complete JSON, and a regression test runs the step with a result larger than
+the cap.
+
+By Founder direction the remaining steps were replayed out of band on Demo only, from the same signed release
+tuple and run evidence, by a temporary job in the private runner environment as `id-waooaw-demo-deployment`.
+This departs from the single `deploy.yaml` mutation path (ADR-047) and carries no GitHub attestation of its own.
+Terraform applies had zero destroys; the Keycloak and Temporal migrations, the Billing migration and the Temporal
+qualification passed; 11 of 12 applications became ready. The old-revision retirement step was skipped
+deliberately to keep Professional Runtime's last healthy revision as rollback. The temporary job and workspace
+blob were removed; two `.pre-forward-fix-20261116` Terraform state backups remain for Founder disposition.
+
+WhatsApp webhook ingress, TLS, guest registration and deterministic replies are served; governed conversation
+generation remains `UNAVAILABLE` and fails closed. Live Meta delivery has not been exercised and needs Founder
+acceptance.
