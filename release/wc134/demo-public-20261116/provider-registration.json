@@ -1,0 +1,19 @@
+{
+  "callback": "https://whatsapp-demo.waooaw.com/api/v1/channels/whatsapp/webhook rejects invalid verify token with 401",
+  "catalog_digest": "sha256:47a89b93f542470a06926b94e2e3eeb05033ac2858193197c06516a24a402681",
+  "credential_metadata": "READY",
+  "kind": "provider-registration",
+  "meta": {
+    "founder_attested": [
+      "Meta app is Live",
+      "webhook subscribed to messages",
+      "approved template inventory as listed"
+    ],
+    "phone_number_read": "HTTP 200, platform CLOUD_API, token type SYSTEM_USER valid, scope whatsapp_business_messaging"
+  },
+  "operation": "status",
+  "registration_configuration_digest": "sha256:70c11165601e4a289a377a9739f62c2dbef7f4c9edce8b603d73aaf062d2e7ad",
+  "registration_runtime_matches": true,
+  "release_digest": "sha256:f62f4a17c8681fb32fe4633b6586387699a8e47538cef8b9f2545ee7a69ac7b4",
+  "status": "PASS"
+}

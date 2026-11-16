@@ -780,6 +780,8 @@ def test_scale_contract_is_bounded_and_defaults_to_zero() -> None:
         '"web"                                     = var.application_activation_enabled ? var.web_min_replicas : 0'
     ) in workload
     assert re.search(r"bp_min_replicas\s*=\s*1", demo_root)
+    # BP records WhatsApp guest evidence on CE within a 5s timeout; a cold CE start takes longer.
+    assert re.search(r"ce_min_replicas\s*=\s*1", demo_root)
     assert re.search(r"web_min_replicas\s*=\s*1", demo_root)
     assert "var.max_replicas > 0 && var.max_replicas <= 10" in contract
     uat_root = read_contract("environments/uat/workload/main.tf")
@@ -1658,3 +1660,20 @@ def test_demo_adopts_the_two_hand_created_workload_trust_role_assignments() -> N
     assert sorted(imports) == ["workload-identity-bp-delegation-cert", "workload-identity-manifest"]
     for name in imports:
         assert f"/secrets/{name}/providers/Microsoft.Authorization/roleAssignments/" in demo
+
+
+def test_runtime_table_grants_are_least_privilege_and_spend_authority_is_operator_only() -> None:
+    repo = Path(__file__).resolve().parents[2]
+    grants = (repo / "infrastructure/postgres/init/99zzzzzzz-wc134-runtime-table-grants.sql").read_text()
+    operation = (repo / "infrastructure/postgres/operations/wc134-environment-spend-authority.sql").read_text()
+
+    assert "GRANT SELECT, INSERT ON business.conversation_operational_signals TO business_app;" in grants
+    assert "GRANT SELECT, INSERT, UPDATE ON business.provider_event_claims TO business_app;" in grants
+    assert "REVOKE DELETE, TRUNCATE ON business.provider_event_claims FROM business_app;" in grants
+    assert "SET LOCAL ROLE bp_owner;" in grants
+
+    # Activating spend authority is an explicit owner decision, so it must never run from init.
+    assert "environment_spend_authorities" not in grants
+    assert not list((repo / "infrastructure/postgres/init").glob("*spend-authority*"))
+    assert ":'maximum_paise'::BIGINT <= 50000" in operation
+    assert "00000000-0000-0000-0000-000000000000" in operation

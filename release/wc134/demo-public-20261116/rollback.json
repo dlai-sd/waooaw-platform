@@ -1,0 +1,7 @@
+{
+  "action": "scripts/wc133_whatsapp_operations.py stop (deploy workflow provider_operation=stop) turns off callback acceptance, dispatch and availability and revokes capability; no database or image change needed",
+  "kind": "rollback",
+  "previous_state": "zero-traffic registration-only configuration",
+  "release_digest": "sha256:f62f4a17c8681fb32fe4633b6586387699a8e47538cef8b9f2545ee7a69ac7b4",
+  "tested": "stop operation PASS on Demo 2026-11-16"
+}

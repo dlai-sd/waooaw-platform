@@ -1,0 +1,7 @@
+{
+  "code": "src/business-platform/Services/WhatsAppGuestSessionService.cs",
+  "design": "First inbound message from a guest gets a notice and a request to reply YES; no discovery or other reply before YES; STOP opts out at any stage; consent evidence is stored without message text.",
+  "founder_scope": "public guests, user-initiated replies only; no proactive or template sends",
+  "kind": "consent",
+  "tests": "WhatsAppGuest* and consent tests inside the 678 passing WhatsApp tests"
+}

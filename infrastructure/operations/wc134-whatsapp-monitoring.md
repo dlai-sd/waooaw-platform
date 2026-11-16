@@ -35,15 +35,18 @@ The authority is checked again after evaluation, including environment identity.
 Database failures, inactive capability or changed authority emit no success
 heartbeat. This record acknowledges evaluation only, never receiver delivery.
 
-One one-minute scheduled-query rule, with a five-minute query window and no
+One five-minute scheduled-query rule, with a five-minute query window and no
 dimensions, forwards any evaluated breach or missing heartbeat to the existing
 action group. It accepts only the exact BP app and candidate tuple. Fresh
 observations must have been produced in the last two minutes within the approved
 activation window; delayed old logs and old replicas cannot keep the rule healthy.
 Missing heartbeat begins after a two-minute startup grace (four expected worker
-intervals). Rule evaluation adds up to one minute; actual Azure ingestion and
-delivery latency must be measured against the accepted five-minute response
-deadline. No conclusions are drawn outside the approved window.
+intervals). Azure rejects one-minute evaluation for this query shape (it unions
+two tables), so the rule evaluates every five minutes; rule evaluation adds up to
+five minutes to detection, and actual Azure ingestion and delivery latency must
+be measured against the accepted five-minute response deadline. The Demo public
+pilot accepts the resulting detection delay. No conclusions are drawn outside the
+approved window.
 
 Both resource-specific and legacy console table names are supported. Empty logs
 in an existing table produce a missing-heartbeat result. If neither table exists,
