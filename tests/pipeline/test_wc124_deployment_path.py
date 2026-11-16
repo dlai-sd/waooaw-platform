@@ -308,3 +308,124 @@ def test_temporal_bounds_cover_both_stores_and_both_launch_surfaces():
         assert len(re.findall(rf'name\s+= "{name}"\s+value = "1"', workload)) == 2
         for harness in ("wc124_temporal_startup_local.sh", "wc124_application_activation_local.sh"):
             assert f"-e {name}=1" in (ROOT / "scripts" / harness).read_text()
+
+
+def provisioner_result(init_files: int) -> dict:
+    return {
+        "schema": "waooaw.wc124-db-provisioning/v1",
+        "environment": "demo",
+        "database_reset": {
+            "status": "completed",
+            "databases": ["waooaw_application", "waooaw_keycloak", "waooaw_temporal", "waooaw_temporal_visibility"],
+        },
+        "init_chain": {
+            "ledger": "wc124_provisioning.init_chain_ledger",
+            "applied": init_files,
+            "reapplied": 0,
+            "skipped": 0,
+            "changed_files": [f"{number:03d}-init.sql" for number in range(init_files)],
+        },
+        "identity_schema": {"status": "passed", "required_relations": [f"relation_{n}" for n in range(6)]},
+        "credentials": [
+            {
+                "database": "waooaw_application",
+                "logical_secret_id": f"secret-{n}",
+                "role": f"role_{n}",
+                "status": "preserved",
+                "vault_name": "kv-waooaw-demo",
+                "version_id": f"{n:032x}",
+            }
+            for n in range(17)
+        ],
+    }
+
+
+def provisioner_context(tmp_path: Path, result_lines: list[str], log_lines: list[str]) -> tuple[Path, dict[str, str]]:
+    """Fake Azure CLI whose job log tail is capped at 300 records while Log Analytics holds every record."""
+    commands = tmp_path / "bin"
+    commands.mkdir()
+    (tmp_path / "log-analytics-calls").write_text("")
+    rows = [{"ContainerGroupName_s": "job-demo-wc124-db-provisioner-fixture-r1", "Log_s": line} for line in log_lines]
+    (tmp_path / "rows.json").write_text(json.dumps(rows))
+    cli_tail = "\n".join(f"2026-11-12T03:59:42.4450244Z stdout F {line}" for line in result_lines[-300:])
+    (tmp_path / "tail.log").write_text(cli_tail + "\n")
+    az = commands / "az"
+    az.write_text(
+        f"""#!{sys.executable}
+import json, sys
+from pathlib import Path
+here = Path({str(tmp_path)!r})
+args = sys.argv[1:]
+if args[:3] == ["containerapp", "job", "start"]:
+    print("job-demo-wc124-db-provisioner-fixture")
+elif args[:4] == ["containerapp", "job", "execution", "show"]:
+    print("Succeeded" if "--query" in args else json.dumps({{"properties": {{"status": "Succeeded"}}}}))
+elif args[:3] == ["containerapp", "job", "show"]:
+    print(json.dumps({{"properties": {{"environmentId": "/subscriptions/fixture/environments/demo"}}}}))
+elif args[:4] == ["containerapp", "job", "logs", "show"]:
+    print((here / "tail.log").read_text(), end="")
+elif args[:2] == ["resource", "show"]:
+    print("8604586b-f914-46ab-8403-398b43186c0a")
+elif args[:3] == ["monitor", "log-analytics", "query"]:
+    with (here / "log-analytics-calls").open("a") as calls:
+        calls.write("query\\n")
+    print((here / "rows.json").read_text())
+else:
+    raise SystemExit("Unexpected Azure command: " + repr(args))
+"""
+    )
+    az.chmod(0o755)
+    sleep = commands / "sleep"
+    sleep.write_text("#!/bin/sh\nexit 0\n")
+    sleep.chmod(0o755)
+    return tmp_path, {
+        **os.environ,
+        "PATH": f"{commands}:{os.environ['PATH']}",
+        "RESOURCE_GROUP": "waooaw-demo-rg",
+        "TARGET_ENVIRONMENT": "demo",
+    }
+
+
+def run_provisioner_step(context: tuple[Path, dict[str, str]]) -> subprocess.CompletedProcess[str]:
+    directory, environment = context
+    return subprocess.run(
+        ["bash", "-c", step("Run WC-124 database provisioner")],
+        cwd=directory,
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+
+
+def test_full_demo_reset_result_survives_the_300_record_cli_tail(tmp_path):
+    lines = json.dumps(provisioner_result(150), indent=2, sort_keys=True).splitlines()
+    assert len(lines) > 300
+
+    context = provisioner_context(tmp_path, lines, lines)
+    outcome = run_provisioner_step(context)
+
+    assert outcome.returncode == 0, outcome.stderr
+    result = json.loads((tmp_path / "wc124-db-provisioner-result.json").read_text())
+    assert result["execution"] == "job-demo-wc124-db-provisioner-fixture"
+    assert len(result["init_chain"]["changed_files"]) == 150
+    assert len(result["credentials"]) == 17
+
+
+def test_result_within_the_cli_tail_does_not_query_log_analytics(tmp_path):
+    lines = json.dumps(provisioner_result(10), indent=2, sort_keys=True).splitlines()
+    assert len(lines) <= 300
+
+    outcome = run_provisioner_step(provisioner_context(tmp_path, lines, lines))
+
+    assert outcome.returncode == 0, outcome.stderr
+    assert (tmp_path / "log-analytics-calls").read_text() == ""
+
+
+def test_incomplete_provisioner_output_fails_closed(tmp_path):
+    lines = json.dumps(provisioner_result(150), indent=2, sort_keys=True).splitlines()
+
+    outcome = run_provisioner_step(provisioner_context(tmp_path, lines, lines[len(lines) // 2 :]))
+
+    assert outcome.returncode != 0
+    assert "WC-124 provisioner result incomplete" in outcome.stderr

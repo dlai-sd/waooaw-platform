@@ -1876,6 +1876,39 @@ jobs:
           done
           sed -n -E 's/^[^ ]+ stdout F ?//p' wc124-db-provisioner-evidence.log \
             > wc124-db-provisioner-result.json
+          # The CLI returns at most 300 records and the indented result lists every applied init file, so a full
+          # Demo reset (324 records at 106 files, run 43150585543) arrives truncated and is not JSON. Rebuild the
+          # complete stdout from the environment's Log Analytics workspace instead.
+          if ! jq -e . wc124-db-provisioner-result.json > /dev/null 2>&1; then
+            workspace_id=$(az resource show \
+              --ids "$(jq -er '.properties.environmentId' wc124-db-provisioner-job.json)" \
+              --api-version 2024-03-01 \
+              --query properties.appLogsConfiguration.logAnalyticsConfiguration.customerId \
+              --output tsv)
+            test -n "$workspace_id"
+            query="ContainerAppConsoleLogs_CL
+              | where TimeGenerated > ago(2h)
+              | where ContainerJobName_s == '$job_name' and ContainerGroupName_s startswith '$execution_name' and Stream_s == 'stdout'
+              | project ContainerGroupName_s, Log_s"
+            for lookup in $(seq 1 18); do
+              az monitor log-analytics query \
+                --workspace "$workspace_id" \
+                --analytics-query "$query" \
+                --output json > wc124-db-provisioner-log-query.json
+              jq -r '
+                group_by(.ContainerGroupName_s)
+                | map(map(.Log_s) | join("\n"))
+                | map(select(try (fromjson | .schema == "waooaw.wc124-db-provisioning/v1") catch false))
+                | (.[0] // empty)
+              ' wc124-db-provisioner-log-query.json > wc124-db-provisioner-result.json
+              if [ -s wc124-db-provisioner-result.json ]; then break; fi
+              test "$lookup" != 18 || {
+                echo "::error title=WC-124 provisioner result incomplete::Execution $execution_name output was not complete JSON in the CLI tail or Log Analytics" >&2
+                exit 1
+              }
+              sleep 10
+            done
+          fi
           if [ ! -s wc124-db-provisioner-result.json ]; then
             cat wc124-db-provisioner-evidence.log >&2
             echo "::error title=WC-124 provisioner result missing::Execution $execution_name ended $status but its console log had no result line; see wc124-db-provisioner-evidence.log" >&2
