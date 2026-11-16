@@ -501,6 +501,8 @@ locals {
       }, var.environment == "demo" ? {
       TEMPORAL_ADDRESS   = "ca-${var.environment}-temporal:80"
       TEMPORAL_NAMESPACE = "default"
+      # Public trust material only; the bundle is rebuilt under /tmp by the container entrypoint.
+      WAOOAW_WORKLOAD_CREDENTIALS = "/tmp/workload-identity"
     } : {})
     "ai-runtime" = {
       BP_BASE_URL                   = local.service_urls.business_platform
@@ -576,6 +578,25 @@ locals {
   identity_hmac_secret_resource_ids = var.environment == "demo" ? {
     identity-hmac-active = "${trimsuffix(var.key_vault_secret_resource_ids["business-platform"], "/business-platform")}/identity-hmac-active"
   } : {}
+  # CB-021 interim: public ADR-046 trust material only (no private keys) so Professional Runtime can verify BP envelopes.
+  workload_trust_secret_names = ["workload-identity-manifest", "workload-identity-bp-delegation-cert"]
+  workload_trust_secret_uris = var.environment == "demo" ? {
+    for name in local.workload_trust_secret_names :
+    name => "${trimsuffix(var.key_vault_secret_uris["business-platform"], "/business-platform")}/${name}"
+  } : {}
+  workload_trust_secret_resource_ids = var.environment == "demo" ? {
+    for name in local.workload_trust_secret_names :
+    name => "${trimsuffix(var.key_vault_secret_resource_ids["business-platform"], "/business-platform")}/${name}"
+  } : {}
+  # Container Apps mounts secrets as a flat directory; rebuild the tree Professional Runtime's loader expects.
+  professional_runtime_demo_entrypoint = <<-EOT
+    set -eu
+    trust=/tmp/workload-identity
+    mkdir -p "$trust/workloads/business-platform"
+    cp /mnt/workload-trust/workload-identity-manifest "$trust/manifest.json"
+    cp /mnt/workload-trust/workload-identity-bp-delegation-cert "$trust/workloads/business-platform/delegation-cert.pem"
+    exec uvicorn main:app --host 0.0.0.0 --port 5003
+  EOT
   identity_event_secret_uris = {
     identity-event-ingest-hmac = "${trimsuffix(var.key_vault_secret_uris["business-platform"], "/business-platform")}/identity-event-ingest-hmac"
   }
@@ -677,6 +698,13 @@ resource "azurerm_role_assignment" "professional_runtime_bp_secret" {
   count = var.workload_enabled ? 1 : 0
 
   scope                = var.key_vault_secret_resource_ids["business-platform"]
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.member["professional-runtime"].principal_id
+}
+
+resource "azurerm_role_assignment" "workload_trust_secret" {
+  for_each             = var.workload_enabled ? local.workload_trust_secret_resource_ids : {}
+  scope                = each.value
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_user_assigned_identity.member["professional-runtime"].principal_id
 }
@@ -1187,9 +1215,26 @@ resource "azurerm_container_app" "member" {
     }
   }
 
+  dynamic "secret" {
+    for_each = each.key == "professional-runtime" ? local.workload_trust_secret_uris : {}
+    content {
+      name                = secret.key
+      identity            = azurerm_user_assigned_identity.member[each.key].id
+      key_vault_secret_id = secret.value
+    }
+  }
+
   template {
     min_replicas = local.minimum_replicas[each.key]
     max_replicas = var.max_replicas
+
+    dynamic "volume" {
+      for_each = each.key == "professional-runtime" && length(local.workload_trust_secret_uris) > 0 ? [1] : []
+      content {
+        name         = "workload-trust"
+        storage_type = "Secret"
+      }
+    }
 
     container {
       name   = local.container_names[each.key]
@@ -1199,7 +1244,19 @@ resource "azurerm_container_app" "member" {
       # dash drops dotted logging environment names before starting dotnet.
       command = var.environment == "demo" && each.key == "business-platform" ? [
         "/bin/bash", "/app/docker-entrypoint.sh"
-      ] : null
+        ] : (
+        var.environment == "demo" && each.key == "professional-runtime" ? [
+          "/bin/sh", "-c", local.professional_runtime_demo_entrypoint
+        ] : null
+      )
+
+      dynamic "volume_mounts" {
+        for_each = each.key == "professional-runtime" && length(local.workload_trust_secret_uris) > 0 ? [1] : []
+        content {
+          name = "workload-trust"
+          path = "/mnt/workload-trust"
+        }
+      }
 
       env {
         name        = local.credential_environment[each.key]
@@ -1427,6 +1484,7 @@ resource "azurerm_container_app" "member" {
     azurerm_role_assignment.professional_runtime_bp_secret,
     azurerm_role_assignment.identity_reader_secret,
     azurerm_role_assignment.identity_hmac_secret,
+    azurerm_role_assignment.workload_trust_secret,
     azurerm_role_assignment.identity_event_secret,
     azurerm_role_assignment.continuity_hmac_secret,
     azurerm_role_assignment.conversation_cursor_secret,
