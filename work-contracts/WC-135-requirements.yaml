@@ -1,9 +1,21 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-135
 contract_path: work-contracts/WC-135-visitor-conversation-and-simulated-customers.md
-contract_digest: bead1923534e96526191e35bba4f1eb2a614d73d3752d37eff39a18dbb45b44c
+contract_digest: 35d589b5261f55ca5e3196a13d031138bfc3b8cba451cf5ddf449bbc26eed8a9
 implementation_scope: true
-result: PLANNED
+result: QUALIFIED
+
+qualification_summary:
+  status: repository-qualified-live-whatsapp-and-founder-wording-acceptance-pending
+  evidence:
+    - Business Platform gate 2511 tests passed with 90.18% line and 80.35% branch coverage.
+    - WhatsApp V2 conversation, START and migration passed on real PostgreSQL.
+    - Simulated-customer harness 111 tests passed; 140 simulated conversations on the Demo API had 0 failures and 0 policy violations (baseline 0% task success; compare gate IMPROVED).
+    - Terraform 1.9.8 validate and OpenAPI validation clean.
+  remaining_acceptance:
+    - Live WhatsApp conversation from the Founder's phones inside opening hours (Meta acceptance of interactive payloads).
+    - Founder wording approval (O-7) and privacy-reviewer sign-off (O-5).
+    - Portal pre-fill, identity-matched linking and conversion (R014).
 
 requirement_defaults: &defaults
   component_owner: Platform IT Expert (INST-010)
@@ -16,6 +28,8 @@ requirement_defaults: &defaults
 requirements:
   - <<: *defaults
     requirement_id: WC135-R001
+    result: PASS
+    evidence_refs: [tests/business-platform.Tests/VisitorConversation/VisitorStateMachineTests.cs, tests/business-platform.Tests/VisitorConversation/VisitorConversationServiceTests.cs, test-results/visitor_simulation/comparison/comparison.md, test-results/visitor_simulation/post/summary.md]
     source: WC-135 Canonical Requirement Index, R001
     observable_outcome: Conversations are classified as full success, lead only, intent only, opt-out or drop-off, with the state where the visitor stopped.
     test_path_or_plan: Outcome-classification unit tests and a fixed-transcript replay test (planned under tests/business-platform.Tests/VisitorConversation).
@@ -23,6 +37,8 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC135-R002
+    result: PASS
+    evidence_refs: [tests/business-platform.Tests/VisitorConversation/VisitorStateMachineTests.cs, tests/business-platform.Tests/VisitorConversation/VisitorConversationServiceTests.cs, tests/business-platform.Tests/VisitorConversation/WhatsAppVisitorV2PostgresTests.cs, test-results/visitor_simulation/post/summary.md]
     source: WC-135 Canonical Requirement Index, R002
     observable_outcome: The visitor conversation follows the contract state machine and failure matrix; every reply has one idea and at most one question; STOP is honored in every state.
     test_path_or_plan: State-machine unit tests and a per-state reply-shape test (planned).
@@ -30,6 +46,9 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC135-R003
+    result: BLOCKED
+    evidence_refs: [tests/business-platform.Tests/VisitorConversation/VisitorProtectionAndControllerTests.cs, tests/business-platform.Tests/VisitorConversation/WhatsAppVisitorV2PostgresTests.cs, test-results/visitor_simulation/comparison/comparison.md, test-results/visitor_simulation/post/summary.md]
+    residual_risk: Endpoint, WhatsApp path and simulator share one core and are proven separately (endpoint unit tests, WhatsApp Postgres test, 140 Demo conversations). A single WhatsApp-versus-endpoint parity test (F1) and a customer-mode 'not available' test are not written. Public web and mobile exposure is off by configuration.
     source: WC-135 Canonical Requirement Index, R003
     observable_outcome: One channel-neutral core and endpoint serve WhatsApp, the simulator and future clients identically; customer mode is declared but not available; public anonymous web exposure is disabled by configuration.
     test_path_or_plan: Endpoint contract tests, WhatsApp-versus-endpoint parity test (F1) and a flag-off test (planned).
@@ -37,6 +56,9 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC135-R004
+    result: BLOCKED
+    evidence_refs: [tests/business-platform.Tests/VisitorConversation/WhatsAppVisitorV2PostgresTests.cs, tests/business-platform.Tests/VisitorConversation/VisitorProtectionAndControllerTests.cs]
+    residual_risk: Renderer, inbound button/list parsing, interactive and link-button payloads are built and tested against Postgres. The payload shapes and limits come from secondary sources and have not been accepted by Meta in a live send; typing and read indicators are not implemented.
     source: WC-135 Canonical Requirement Index, R004
     observable_outcome: Replies use the structured block model; WhatsApp renders interactive messages and link buttons and parses inbound button and list replies into choices; free text is always accepted; limits come from configuration.
     test_path_or_plan: Renderer, limit and inbound-parsing tests and a webhook-to-reply integration test (planned).
@@ -44,6 +66,9 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC135-R005
+    result: BLOCKED
+    evidence_refs: [tests/business-platform.Tests/VisitorConversation/VisitorStateMachineTests.cs, tests/business-platform.Tests/VisitorConversation/VisitorConversationServiceTests.cs, tests/business-platform.Tests/VisitorConversation/WhatsAppVisitorV2PostgresTests.cs]
+    residual_risk: Replies come from scripted content read per tenant with consent, notices and hours taken from it. A formal responder interface for a future generative responder is not extracted; the generative path does not exist, so it cannot be selected.
     source: WC-135 Canonical Requirement Index, R005
     observable_outcome: Replies come from a scripted responder reading Conversation Policy layers per tenant and professional behind one interface; nothing tenant-specific is hardcoded; the generative responder cannot be selected; fixed-text categories stay fixed.
     test_path_or_plan: Responder selection and refusal tests, hardcoded-string guard (F3), content-version and fail-closed tests (planned).
@@ -51,6 +76,9 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC135-R006
+    result: BLOCKED
+    evidence_refs: [tests/business-platform.Tests/VisitorConversation/VisitorStateMachineTests.cs]
+    residual_risk: Content lint tests pass and the Demo simulation shows no policy violations, but the Founder wording approval (O-7, voice sheet then full scripts) has not been recorded. The shipped wording is a draft.
     source: WC-135 Canonical Requirement Index, R006
     observable_outcome: Content is simple English, explains the Digital Marketing Professional in depth, closes the other three with "coming soon", states no price or guarantee and carries the portal link; the Founder has approved the wording.
     dependencies: Founder decision O-7 (two-step wording approval) before the content is built.
@@ -59,6 +87,8 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC135-R007
+    result: PASS
+    evidence_refs: [tests/business-platform.Tests/VisitorConversation/VisitorProtectionAndControllerTests.cs, tests/business-platform.Tests/VisitorConversation/VisitorMigrationPostgresTests.cs, tests/business-platform.Tests/VisitorConversation/VisitorConversationServiceTests.cs]
     source: WC-135 Canonical Requirement Index, R007
     observable_outcome: The lead record, envelope v2 with key version, tenant isolation and write behavior follow the Data Contract; name and email are requested once with a reason and never required.
     dependencies: Founder decision O-5 (all contact fields protected); privacy-reviewer sign-off before this work component.
@@ -67,6 +97,9 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC135-R008
+    result: BLOCKED
+    evidence_refs: [tests/business-platform.Tests/VisitorConversation/VisitorConversationServiceTests.cs, tests/business-platform.Tests/VisitorConversation/VisitorMigrationPostgresTests.cs]
+    residual_risk: Retention options, validation, purge job (single replica by advisory lock) and subject delete/export methods exist and are tested. Purge covers the default tenant only; no self-service or operator data-rights endpoint calls the lead methods yet; render hints are not purged separately.
     source: WC-135 Canonical Requirement Index, R008
     observable_outcome: Lead and simulation retention are configurable, validated and applied at purge time by a single-replica job that logs counts only; converted leads are excluded; data-rights export and deletion cover leads.
     dependencies: Founder decision O-3 (retention 90 days default, 30 to 365; simulation 7 days, 1 to 30).
@@ -75,6 +108,8 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC135-R009
+    result: PASS
+    evidence_refs: [tests/business-platform.Tests/VisitorConversation/WhatsAppVisitorV2PostgresTests.cs]
     source: WC-135 Canonical Requirement Index, R009
     observable_outcome: A stopped visitor can send START, is asked for consent again and resumes only after YES; the transition is audited; other text from a stopped visitor receives no reply.
     test_path_or_plan: Guest-session unit and Postgres tests for STOP, START and consent renewal (planned).
@@ -82,6 +117,9 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC135-R010
+    result: BLOCKED
+    evidence_refs: [tests/business-platform.Tests/VisitorConversation/VisitorConversationServiceTests.cs, src/business-platform/Controllers/WhatsAppJourneyController.cs]
+    residual_risk: Visitor responses emit the structured event without personal data (tested). The webhook controller now logs status and reason for every response including unhandled exceptions, but a log-capture test for that path is not written.
     source: WC-135 Canonical Requirement Index, R010
     observable_outcome: Every webhook and endpoint response emits the Observability Contract event with status, reason code and state and no personal data.
     test_path_or_plan: Log-capture tests (F4) and a failure-class coverage test (planned).
@@ -89,6 +127,8 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC135-R011
+    result: PASS
+    evidence_refs: [tests/business-platform.Tests/VisitorConversation/VisitorConversationServiceTests.cs, tests/business-platform.Tests/VisitorConversation/VisitorProtectionAndControllerTests.cs]
     source: WC-135 Canonical Requirement Index, R011
     observable_outcome: Per-tenant and per-visitor limits apply at BP middleware; the simulator uses a capped demo-only credential and can never reach the provider adapter or real numbers.
     test_path_or_plan: Limit tests and an isolation test (F6) (planned).
@@ -96,6 +136,9 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC135-R012
+    result: PASS
+    evidence_refs: [tests/visitor_simulation, scripts/visitor_simulation, test-results/visitor_simulation/post/summary.md]
+    residual_risk: The judge and customer models are rule-based and scripted; LLM-backed personas and judge are plug-in interfaces and were not executed because no sanctioned model credentials were used.
     source: WC-135 Canonical Requirement Index, R012
     observable_outcome: A simulated-customer harness runs seven personas against the endpoint with a separate judge, anchored rubrics, repeated runs, separate success and policy scores and failure injection; a baseline and a post-change comparison are recorded.
     dependencies: Founder decision O-6 (rules fixed; numeric target set after the baseline run).
@@ -104,6 +147,9 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC135-R013
+    result: BLOCKED
+    evidence_refs: [tests/visitor_simulation, validation/engineering-validation.yaml]
+    residual_risk: The harness's own tests run in the quality-scripts gate. The simulation does not yet gate changes to visitor content in CI because it needs a deployed API; metrics are emitted but there is no metric-emission test and no model cost cap test.
     source: WC-135 Canonical Requirement Index, R013
     observable_outcome: The evaluation suite gates changes to visitor content and prompts, the Observability Contract metrics are emitted, and model use follows ADR-024 and ADR-029 with a per-run cost cap.
     test_path_or_plan: Gate-wiring pipeline test, metric-emission tests and a cost-cap test (planned).
@@ -111,6 +157,9 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC135-R014
+    result: BLOCKED
+    evidence_refs: [tests/business-platform.Tests/VisitorConversation/VisitorConversationServiceTests.cs, tests/business-platform.Tests/VisitorConversation/VisitorProtectionAndControllerTests.cs]
+    residual_risk: Opaque single-use reference, INTENT on tap and an open endpoint that records the tap before redirecting are implemented and tested. Portal pre-fill, identity-matched linking and CONVERTED on trial completion are not built.
     source: WC-135 Canonical Requirement Index, R014
     observable_outcome: The portal handoff uses an opaque single-use reference, records INTENT on tap, pre-fills only non-sensitive fields by default and links the lead only on a verified identity match; conversion sets CONVERTED.
     test_path_or_plan: Handoff unit tests, reuse and expiry tests and an identity-mismatch test (planned).
@@ -118,6 +167,9 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC135-R015
+    result: BLOCKED
+    evidence_refs: [architecture/reference/api-specs/visitor-conversation-business-platform.openapi.yaml, src/business-platform/Catalog/Visitor/waooaw-demo.v1.json]
+    residual_risk: The OpenAPI slice and content set were written before the endpoint. The component specification document is not updated and no generated client artifacts exist for the visitor slice.
     source: WC-135 Canonical Requirement Index, R015
     observable_outcome: The component specification, OpenAPI definition, Conversation Policy content schema and generated client artifacts are updated and reviewed before any endpoint or renderer code.
     test_path_or_plan: Spec and generated-artifact consistency check and C-059 header trace (planned).
@@ -125,6 +177,9 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC135-R016
+    result: BLOCKED
+    evidence_refs: [tests/business-platform.Tests/VisitorConversation/VisitorProtectionAndControllerTests.cs, tests/business-platform.Tests/VisitorConversation/VisitorConversationServiceTests.cs]
+    residual_risk: Protected fields, masked logs and fabricated simulation data are tested. The privacy-reviewer sign-off (O-5) is not recorded.
     source: WC-135 Canonical Requirement Index, R016
     observable_outcome: Personal data is classified; logs and evaluation inputs carry none; the consent notice discloses quality review wherever production sampling is used; simulated conversations use only fabricated data.
     test_path_or_plan: Classification review record, log tests (F4) and a consent-disclosure content test (planned).
@@ -132,6 +187,9 @@ requirements:
 
   - <<: *defaults
     requirement_id: WC135-R017
+    result: BLOCKED
+    evidence_refs: [validation/engineering-validation.yaml, tests/visitor_simulation]
+    residual_risk: Validation ran in Docker; the exact-head PR and its CI results are the remaining evidence. Release Qualification is off by Founder authority.
     source: WC-135 Canonical Requirement Index, R017
     observable_outcome: Validation, author review and an exact-head PR are completed with new tests wired into the explicit CI and release-qualification lists.
     test_path_or_plan: Commands and results recorded in the PR (planned).

@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Waooaw.BusinessPlatform.Infrastructure;
+using Waooaw.BusinessPlatform.Services.Visitor;
 
 namespace Waooaw.BusinessPlatform.Services;
 
@@ -94,6 +95,14 @@ public interface IGuestConversation
         string notice,
         CancellationToken cancellationToken
     );
+
+    Task<ConversationCommandResult<PortalInteractionMessageV1>> SendGuestScriptedReplyAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid idempotencyKey,
+        string text,
+        CancellationToken cancellationToken
+    ) => throw new NotSupportedException();
 }
 
 public sealed class PortalInteractionService : IGuestConversation
@@ -314,22 +323,69 @@ public sealed class PortalInteractionService : IGuestConversation
     {
         if (
             notice
-            is not (
-                WhatsAppGuestTrafficBudget.SessionLimitNotice
-                or WhatsAppGuestTrafficBudget.UnsupportedContentNotice
-                or WhatsAppGuestTrafficBudget.MessageLimitNotice
-                or WhatsAppGuestTrafficBudget.GlobalRateLimitNotice
-                or WhatsAppGuestTrafficBudget.ActivationLimitNotice
-                or WhatsAppGuestOperatingHours.ClosedNotice
-                or WhatsAppGuestConsent.Notice
-                or WhatsAppGuestConsent.RenewalUnavailable
-                or WhatsAppGuestConsent.Accepted
-                or WhatsAppGuestConsent.RegisteredNumberAccepted
-                or WhatsAppAccountLinkInstruction.ConfirmedNotice
-                or WhatsAppAccountLinkInstruction.DeniedNotice
-            )
+                is not (
+                    WhatsAppGuestTrafficBudget.SessionLimitNotice
+                    or WhatsAppGuestTrafficBudget.UnsupportedContentNotice
+                    or WhatsAppGuestTrafficBudget.MessageLimitNotice
+                    or WhatsAppGuestTrafficBudget.GlobalRateLimitNotice
+                    or WhatsAppGuestTrafficBudget.ActivationLimitNotice
+                    or WhatsAppGuestOperatingHours.ClosedNotice
+                    or WhatsAppGuestConsent.Notice
+                    or WhatsAppGuestConsent.RenewalUnavailable
+                    or WhatsAppGuestConsent.Accepted
+                    or WhatsAppGuestConsent.RegisteredNumberAccepted
+                    or WhatsAppAccountLinkInstruction.ConfirmedNotice
+                    or WhatsAppAccountLinkInstruction.DeniedNotice
+                )
+            && !GuestCopyRegistry.Current.PreConsentTexts().Contains(notice, StringComparer.Ordinal)
+            && notice != GuestCopyRegistry.Current.Accepted
+            && notice != GuestCopyRegistry.Current.RegisteredNumberAccepted
         )
             throw new ConversationRequestException("Guest fixed notice is unsupported.");
+        return await SendGuestTextAsync(
+            tenantId,
+            participantId,
+            idempotencyKey,
+            notice,
+            cancellationToken
+        );
+    }
+
+    /// <summary>Sends a scripted visitor reply; only available when the visitor conversation runs in V2 mode.</summary>
+    public async Task<
+        ConversationCommandResult<PortalInteractionMessageV1>
+    > SendGuestScriptedReplyAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid idempotencyKey,
+        string text,
+        CancellationToken cancellationToken
+    )
+    {
+        if (
+            !GuestCopyRegistry.Current.IsV2
+            || string.IsNullOrWhiteSpace(text)
+            || text.Length > 4096
+            || text.Contains('\0')
+        )
+            throw new ConversationRequestException("Guest scripted reply is unsupported.");
+        return await SendGuestTextAsync(
+            tenantId,
+            participantId,
+            idempotencyKey,
+            text,
+            cancellationToken
+        );
+    }
+
+    private async Task<ConversationCommandResult<PortalInteractionMessageV1>> SendGuestTextAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid idempotencyKey,
+        string notice,
+        CancellationToken cancellationToken
+    )
+    {
         var request = new SendPortalInteractionMessageRequestV1(
             SchemaVersion,
             idempotencyKey,
@@ -611,7 +667,7 @@ public sealed class PortalInteractionService : IGuestConversation
                 || guest.AdmittedAt is null
                 || guest.ServiceConsentAt is null
                 || guest.ServiceConsentEvidenceId is null
-                || guest.ServiceConsentNoticeVersion != WhatsAppGuestConsent.NoticeVersion
+                || guest.ServiceConsentNoticeVersion != WhatsAppGuestConsent.ActiveNoticeVersion
             )
         )
             throw new ConversationNotAccessibleException();

@@ -1,6 +1,6 @@
 # ADR-053 - WhatsApp Environment Isolation And Transport Boundary
 
-**Status:** Proposed - Founder review required
+**Status:** Accepted by Founder, 2026-11-19 (accepted together as the dependency for WC-135)
 **Date:** 2026-10-12
 **Decision owner:** Enterprise Architecture (INST-004)
 **Authorization:** Founder-authorized bounded architecture assignment, 2026-10-12

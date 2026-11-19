@@ -166,6 +166,33 @@ offline reconciliation, acceptance mapping, and dependency gates are defined in
 `architecture/reference/components/conversation-core.md`. The public wire contract is
 `architecture/reference/api-specs/business-platform.openapi.yaml` version 1.2.0.
 
+## Visitor Conversation (WC-135)
+
+A scripted, channel-neutral conversation for people who do not yet have an account. WhatsApp, the
+simulated-customer harness and any future web or mobile client use one core
+(`Services/Visitor/`); the WhatsApp guest session keeps ownership of consent, STOP, START, opening
+hours and traffic limits and hands every other message to the core.
+
+```
+POST /api/v1/visitor/sessions
+GET  /api/v1/visitor/sessions/{sessionId}
+GET  /api/v1/visitor/sessions/{sessionId}/messages
+POST /api/v1/visitor/sessions/{sessionId}/messages
+POST /api/v1/visitor/handoffs/{reference}/tap
+GET  /api/v1/visitor/handoffs/{reference}/open
+```
+
+- Wire contract: `architecture/reference/api-specs/visitor-conversation-business-platform.openapi.yaml`.
+  Content: `src/business-platform/Catalog/Visitor/*.json`, linted at startup and failing closed.
+- `VisitorConversation:Mode` is `LEGACY` (WC-134 behavior) or `V2`. Web and mobile exposure
+  (`PublicEntryEnabled`) is off; simulated customers use an HMAC credential that is enabled only for tests.
+- Leads hold business type, city, goal and optional name and email. Phone, email and name are
+  encrypted with envelope `v2` (key version in the ciphertext); the phone is also stored as the
+  existing keyed hash. Retention is `VisitorLeads:RetentionDays` (default 90, 30 to 365) and
+  `SimulationRetentionDays` (default 7, 1 to 30), enforced by a single-replica purge job.
+- Migration: `infrastructure/postgres/init/98-wc135-visitor-conversation.sql`.
+- Evaluation: `scripts/visitor_simulation` (seven simulated customers, judge, compare gate).
+
 ## What Business Platform does NOT do
 - Does NOT execute professional work (that is Professional Runtime)
 - Does NOT write to the Constitutional Audit Ledger directly (only via Constitutional Engine)

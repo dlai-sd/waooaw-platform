@@ -8,8 +8,8 @@
 | Authoring office | Platform IT Expert (INST-010) |
 | Architecture review | Enterprise Architect (INST-004) and Solution Architect (INST-005), each on explicit Founder request, 2026-11-19; findings and dispositions are recorded in the Review Records section |
 | Founder assignment | Current conversation, 2026-11-19: tune the WhatsApp "WAOOAW Agent" so a visitor who does not know WAOOAW gets a warm, curious, useful conversation, and prove it with simulated customers that call the same APIs every channel uses |
-| Status | DRAFT FOR FOUNDER REVIEW - IMPLEMENTATION NOT AUTHORIZED |
-| Implementing office | Named after current-session Founder authorization; on 2026-11-19 the Founder authorized only the writing of this contract |
+| Status | IMPLEMENTED AND DEPLOYED TO DEMO - RETROSPECTIVE PR FOR FOUNDER REVIEW (see Implementation And Evidence Record) |
+| Implementing office | Platform IT Expert (INST-010), on the Founder's explicit instruction of 2026-11-19 to implement, test locally, deploy to Demo with the Azure CLI and raise one retrospective PR |
 | Baseline | `origin/main` at `12efe5c4` (WC-134 PR #600 merged) |
 | Related contracts | WC-120 conversation; WC-121 provider enablement; WC-133 first contact; WC-134 WhatsApp Demo rollout (guest discovery and authenticated customer channel) |
 | Requirement ledger | [WC-135-requirements.yaml](./WC-135-requirements.yaml) |
@@ -227,9 +227,11 @@ at once. Index on `(tenant_id, updated_at)` for the purge scan.
 
 ## Handoff Contract (Solution Architecture)
 
-1. The `LINK` block points to the portal registration or trial page with an opaque, signed,
-   single-use lead reference. The reference holds only the lead id and an expiry. It carries no
-   personal data and is never logged in full. Its lifetime is a configured value.
+1. The `LINK` block points to the portal registration or trial page with an opaque, server-recorded,
+   single-use lead reference (256 random bits, only its hash is stored). The reference holds nothing
+   personal; the lead id and expiry live in the record it names. It is never logged in full. Its
+   lifetime is a configured value. When `VisitorConversation:HandoffOpenBaseUrl` is set the shared
+   address is the open endpoint, which records the tap and then redirects to the portal.
 2. Tapping the link records `INTENT` on the lead.
 3. After the visitor signs in and the identity is verified, registration reads the lead on the
    server. Only non-sensitive fields (business domain, city) are pre-filled by default. Name,
@@ -310,9 +312,11 @@ may be its own PR.
 - Per-tenant setting `VisitorConversation:Mode` with values `LEGACY` and `V2`, default `LEGACY`.
   Migrations are additive and ship dark. `V2` is enabled for the Demo tenant only after
   exact-image acceptance and separate Founder authorization.
-- Rollback: set the mode to `LEGACY`; the purge job and the new webhook paths respect it. Data
+- Rollback: set the mode to `LEGACY`; the WhatsApp guest path returns to the WC-134 text and the
+  START path is disabled. The purge job runs in either mode so retention is always enforced. Data
   already written remains and follows retention.
-- No deployment, provider mutation or Demo database action is part of this contract.
+- Demo deployment of this implementation was performed with the Azure CLI under the Founder's
+  2026-11-19 instruction; the record is in the Implementation And Evidence Record.
 
 ## Definition Of Done
 
@@ -332,6 +336,67 @@ ADR-051, ADR-052 or ADR-053 or an unaccepted amendment to them; public anonymous
 visitor endpoint; rotation of the phone-subject key while leads exist; a model or provider
 outside ADR-029; a conflict with an approved specification beyond the recorded deviations; or any
 missing detail that would require the implementer to invent an interface, state, schema or policy.
+
+## Implementation And Evidence Record
+
+Recorded 2026-11-19 by the Platform IT Expert after implementation, local qualification and Demo
+deployment under the Founder's instruction. Branch `ib/135/whatsapp-visitor-conversation-work-contract`.
+
+### What was built
+
+| Area | Delivered |
+|---|---|
+| Specification | `architecture/reference/api-specs/visitor-conversation-business-platform.openapi.yaml` (own slice so the main spec's generated-client contract is untouched); ADR-051/052/053 marked Accepted; capabilities 1.9 and 13.9. |
+| Core | `Services/Visitor/*`: scripted state machine, content set `Catalog/Visitor/waooaw-demo.v1.json` with lint that fails closed, outcome classification, lead capture, envelope `v2` (AES-GCM, key version in the ciphertext, tenant/field/row bound), structured telemetry without personal data. |
+| Endpoint | `VisitorConversationController`: open or resume a session, send (idempotent), read session and transcript, tap and open handoff references; simulator authenticated by HMAC with a five-minute window; web and mobile token path present and disabled. |
+| WhatsApp | V2 mode routes consent, STOP, START (consent asked again, earlier consent moved to history), unsupported content, opening hours and scripted replies through the same core; inbound `button_reply` and `list_reply` are read as choices; outbound buttons, lists and link buttons are built from the stored structured reply and fall back to the canonical text. LEGACY keeps the WC-134 behavior. |
+| Data | `infrastructure/postgres/init/98-wc135-visitor-conversation.sql`: five tenant-isolated tables with forced RLS and least-privilege grants, guest-session resume columns; idempotent. |
+| Operations | Purge job (single replica by advisory lock) with configurable retention; Terraform settings `visitor_conversation` (mode, tenant, retention, open-link base) wired into the Business Platform; webhook responses logged with status and reason. |
+| Evaluation | `scripts/visitor_simulation`: seven personas, rule-based judge, runner with failure injection, compare gate, loopback fake with legacy and good behavior; tests in `tests/visitor_simulation` wired into the `quality-scripts` gate. |
+
+### Local evidence (Docker only)
+
+| Check | Result |
+|---|---|
+| Visitor unit, service, controller, purge, content and security tests | 104 passed. |
+| WhatsApp V2 on real PostgreSQL (consent, Yes by button, STOP, silence, START, renewed consent, render hints, renderer limits) | Passed. |
+| Migration on real PostgreSQL (replay twice, tenant isolation for the least-privilege role, check constraints, cascade, resume column default) | Passed. |
+| Cross-language check: Python client signature equals the C# verifier for a fixed vector | Passed. |
+| Simulated-customer harness tests, Ruff check and format | 111 passed; clean. |
+| Catalog contract and gate equivalence tests | 110 passed. |
+| Terraform 1.9.8 `fmt` and `validate` of the Demo workload root | Clean. |
+| Full Business Platform suite through the repository gate `sh scripts/validation_control/run_dotnet_test_gate.sh business-platform tests/business-platform.Tests/business-platform.Tests.csproj` | 2511 passed, 0 failed; 90.18% line and 80.35% branch coverage against the 90% and 80% thresholds. |
+| `csharpier check src/business-platform`; build with warnings as errors | Clean. |
+| Visitor OpenAPI slice validated with openapi-generator-cli v7.17.0 (the spec-lint tool) | No validation issues. |
+
+### Demo deployment and acceptance
+
+| Item | Value |
+|---|---|
+| Image | `acrwaooawdemo2ed118.azurecr.io/dlai-sd/business-platform@sha256:e7baf83b1e552382b755ce3cca24debeab5b531d209314bf62ed641f9d702b05`, built with `az acr build` from the exact head of this branch (the earlier test images were `060957ab...` and `486489db...`). |
+| Revision | `ca-demo-business-platform--0000116`. |
+| Rollback target | `acrwaooawdemo2ed118.azurecr.io/dlai-sd/business-platform@sha256:f3b5ac43a6b6941711dacc996d9878cdde03598f260467b0a5f27a809ecc868a` (revision `--0000113`) with `VisitorConversation__Mode=LEGACY`. |
+| Settings applied by hand | `VisitorConversation__Mode=V2`, default tenant, open-link base, simulator enabled with a container-app secret, retention 90 and 7 days. The simulator secret lives only in the container app and a local session file, never in the repository. |
+| Database | The Demo database is not rebuilt by a manual rollout, so migration 98 was applied through the existing `job-demo-wa-db` job as `bp_owner`; it was verified by reading back the five tables and the two columns. The next pipeline apply re-applies the whole init chain. |
+| Drift | The manual rollout and settings differ from Terraform until the next Environment Deployment, which sets the same values from `visitor_conversation`, disables the simulator and reconciles the image. |
+| Demo state | The daily 22:00 IST stop had run at 16:32 UTC; the applications were started again by hand in dependency order for this test. |
+| Simulated customers against `api.demo.waooaw.com` | 140 conversations on the exact-head image (seven personas, 20 each, seed 91, with media, STOP-mid, slow and unknown-language injections): 0 failed, 0 policy violations. An earlier 140-conversation run on the previous image (seed 71) had the same result. Baseline is the harness's legacy behavior modeled on the Founder's transcript: 0% task success. Compare gate: IMPROVED. Records in `test-results/visitor_simulation/` (summaries and reports; transcripts are regenerated by the same command). |
+| Defect found by the simulation and fixed | A visitor whose business type is not recognized (the farmer persona) was asked the same question forever. The machine now asks for the missing detail once and then continues with a generic business or an unknown city. |
+
+### Known limitations and deviations
+
+1. The baseline is the modeled legacy behavior, not a measurement of live traffic; the judge and customers are rule-based. LLM-backed personas and judge are plug-in interfaces and were not run.
+2. A live WhatsApp conversation from a real phone was not performed: the Demo window had closed (09:00 to 21:00 IST) and the Founder's phones are the acceptance step. Meta has not yet accepted an interactive or link-button payload from this build.
+3. No acknowledgement is sent after STOP: the outbox correctly refuses delivery to a stopped recipient, and an exception was not added without a policy decision. START is supported.
+4. Typing and read indicators are not implemented.
+5. Portal pre-fill, identity-matched linking and `CONVERTED` are not built; the tap is recorded through the open endpoint.
+6. Purge and the open endpoint use the Demo default tenant; per-tenant purge lists were removed as unused.
+7. There is no self-service or operator endpoint calling the lead delete and export methods; the retention job is the enforcement today. The portal's data-deletion page remains the intake.
+8. The consent notice says "7 days" for simulated sessions and 90 for WhatsApp because retention is read per channel.
+9. The content wording is a draft until the Founder approves the voice sheet (O-7). Privacy-reviewer sign-off (O-5) is outstanding.
+10. Four unexplained webhook failures of 2026-11-19 predate response logging and cannot be diagnosed retroactively; future ones are now logged with status and reason.
+11. A 140-conversation run on the Demo API briefly starved the shared PgBouncer pool: one background Business Platform query logged `query_wait_timeout` after 8.6 seconds. Run large evaluations outside working hours or with fewer runs until the harness gains a concurrency limit and the pool is sized for it.
+12. Demo applications stop daily at 22:00 IST and start only by hand. Guest hours (09:00 to 21:00 IST) therefore fall inside the running window.
 
 ## Review Records
 
@@ -370,7 +435,7 @@ missing detail that would require the implementer to invent an interface, state,
 | # | Decision | Status | Needed before |
 |---|---|---|---|
 | O-1 | Capability-map entries for lead capture and simulated-customer evaluation are added now, on this branch (capabilities 1.9 and 13.9). | Closed | - |
-| O-2 | ADR-051, ADR-052 and ADR-053 are accepted together as the dependency for WC-135. | Accepted; ADR file and index status updates by the Enterprise Architect pending | Implementation authorization |
+| O-2 | ADR-051, ADR-052 and ADR-053 are accepted together as the dependency for WC-135. | Closed: ADR files and `adr/ADR-INDEX.md` record Accepted, 2026-11-19 | - |
 | O-3 | Lead retention default 90 days, minimum 30, maximum 365; simulation retention default 7 days, range 1 to 30. | Decided | - |
 | O-4 | Anonymous web and mobile exposure stays disabled in this release; WhatsApp is the only public entry. Before any enablement: bot challenge, per-source rate limits, short-lived tokens, no personal data before consent. | Decided | Any enablement of public exposure |
 | O-5 | Phone, email and name are all protected with the same envelope and masked in logs. | Decided; privacy-reviewer sign-off outstanding | Work component 1 |

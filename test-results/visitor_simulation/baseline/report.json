@@ -1,0 +1,462 @@
+{
+  "budget": {
+    "maxModelCalls": 5000,
+    "maxTotalTurns": 4200,
+    "maxTurnsPerConversation": 30,
+    "modelCalls": 589,
+    "totalTurns": 2262
+  },
+  "capExceeded": "",
+  "config": {
+    "baseUrl": "http://127.0.0.1:36341",
+    "inject": [
+      "media",
+      "stop-mid",
+      "slow",
+      "unknown-language"
+    ],
+    "judgeRepeats": 1,
+    "model": "scripted",
+    "personas": [
+      "dr_mehta",
+      "rupali",
+      "kiran",
+      "yashus",
+      "farmer",
+      "tutor_seeker",
+      "trader"
+    ],
+    "runsPerPersona": 20,
+    "seed": 7
+  },
+  "hostsCalled": [
+    "127.0.0.1:36341"
+  ],
+  "overall": {
+    "criterionMeans": {
+      "curiosity": 0.0,
+      "honesty": 5.0,
+      "next_step": 0.936,
+      "safety": 2.0,
+      "value": 1.286,
+      "voice": 0.0,
+      "welcome_clarity": 1.0
+    },
+    "failureRate": 1.0,
+    "failures": 140,
+    "latencyMs": {
+      "mean": 1.08,
+      "p95": 1.83
+    },
+    "leadRate": 0.0,
+    "meanScore": 1.46,
+    "optOutRate": 0.0,
+    "outcomes": {
+      "FULL_SUCCESS": 0,
+      "INTENT": 0,
+      "LEAD": 0,
+      "NONE": 140,
+      "OPT_OUT": 0
+    },
+    "policyViolationTotal": 140,
+    "policyViolations": {
+      "FORBIDDEN_CLAIM": 0,
+      "HARDCODED_LEGAL_WALL": 0,
+      "MISSING_COMING_SOON": 0,
+      "MORE_THAN_ONE_QUESTION": 0,
+      "OUTCOME_GUARANTEE": 0,
+      "PRICE_STATED": 0,
+      "STOP_ON_EVERY_MESSAGE": 140
+    },
+    "runs": 140,
+    "runsWithPolicyViolation": 140,
+    "stateDropoff": {
+      "DISCOVER": {
+        "count": 140,
+        "rate": 1.0
+      }
+    },
+    "taskSuccessRate": 0.0,
+    "taskSuccessStd": 0.0,
+    "turnsToFirstValue": {
+      "mean": null,
+      "median": null,
+      "reachedRate": 0.0
+    }
+  },
+  "personas": {
+    "dr_mehta": {
+      "criterionMeans": {
+        "curiosity": 0.0,
+        "honesty": 5.0,
+        "next_step": 1.0,
+        "safety": 2.0,
+        "value": 1.0,
+        "voice": 0.0,
+        "welcome_clarity": 1.0
+      },
+      "displayName": "Dr. Mehta",
+      "failureRate": 1.0,
+      "failures": 20,
+      "latencyMs": {
+        "mean": 1.06,
+        "p95": 1.81
+      },
+      "leadRate": 0.0,
+      "meanScore": 1.429,
+      "optOutRate": 0.0,
+      "outcomes": {
+        "FULL_SUCCESS": 0,
+        "INTENT": 0,
+        "LEAD": 0,
+        "NONE": 20,
+        "OPT_OUT": 0
+      },
+      "policyViolationTotal": 20,
+      "policyViolations": {
+        "FORBIDDEN_CLAIM": 0,
+        "HARDCODED_LEGAL_WALL": 0,
+        "MISSING_COMING_SOON": 0,
+        "MORE_THAN_ONE_QUESTION": 0,
+        "OUTCOME_GUARANTEE": 0,
+        "PRICE_STATED": 0,
+        "STOP_ON_EVERY_MESSAGE": 20
+      },
+      "runs": 20,
+      "runsWithPolicyViolation": 20,
+      "stateDropoff": {
+        "DISCOVER": {
+          "count": 20,
+          "rate": 1.0
+        }
+      },
+      "taskSuccessRate": 0.0,
+      "taskSuccessStd": 0.0,
+      "turnsToFirstValue": {
+        "mean": null,
+        "median": null,
+        "reachedRate": 0.0
+      }
+    },
+    "farmer": {
+      "criterionMeans": {
+        "curiosity": 0.0,
+        "honesty": 5.0,
+        "next_step": 1.0,
+        "safety": 2.0,
+        "value": 1.0,
+        "voice": 0.0,
+        "welcome_clarity": 1.0
+      },
+      "displayName": "Ganesh the tomato farmer",
+      "failureRate": 1.0,
+      "failures": 20,
+      "latencyMs": {
+        "mean": 1.14,
+        "p95": 2.07
+      },
+      "leadRate": 0.0,
+      "meanScore": 1.429,
+      "optOutRate": 0.0,
+      "outcomes": {
+        "FULL_SUCCESS": 0,
+        "INTENT": 0,
+        "LEAD": 0,
+        "NONE": 20,
+        "OPT_OUT": 0
+      },
+      "policyViolationTotal": 20,
+      "policyViolations": {
+        "FORBIDDEN_CLAIM": 0,
+        "HARDCODED_LEGAL_WALL": 0,
+        "MISSING_COMING_SOON": 0,
+        "MORE_THAN_ONE_QUESTION": 0,
+        "OUTCOME_GUARANTEE": 0,
+        "PRICE_STATED": 0,
+        "STOP_ON_EVERY_MESSAGE": 20
+      },
+      "runs": 20,
+      "runsWithPolicyViolation": 20,
+      "stateDropoff": {
+        "DISCOVER": {
+          "count": 20,
+          "rate": 1.0
+        }
+      },
+      "taskSuccessRate": 0.0,
+      "taskSuccessStd": 0.0,
+      "turnsToFirstValue": {
+        "mean": null,
+        "median": null,
+        "reachedRate": 0.0
+      }
+    },
+    "kiran": {
+      "criterionMeans": {
+        "curiosity": 0.0,
+        "honesty": 5.0,
+        "next_step": 1.0,
+        "safety": 2.0,
+        "value": 1.0,
+        "voice": 0.0,
+        "welcome_clarity": 1.0
+      },
+      "displayName": "Kiran",
+      "failureRate": 1.0,
+      "failures": 20,
+      "latencyMs": {
+        "mean": 1.1,
+        "p95": 1.95
+      },
+      "leadRate": 0.0,
+      "meanScore": 1.429,
+      "optOutRate": 0.0,
+      "outcomes": {
+        "FULL_SUCCESS": 0,
+        "INTENT": 0,
+        "LEAD": 0,
+        "NONE": 20,
+        "OPT_OUT": 0
+      },
+      "policyViolationTotal": 20,
+      "policyViolations": {
+        "FORBIDDEN_CLAIM": 0,
+        "HARDCODED_LEGAL_WALL": 0,
+        "MISSING_COMING_SOON": 0,
+        "MORE_THAN_ONE_QUESTION": 0,
+        "OUTCOME_GUARANTEE": 0,
+        "PRICE_STATED": 0,
+        "STOP_ON_EVERY_MESSAGE": 20
+      },
+      "runs": 20,
+      "runsWithPolicyViolation": 20,
+      "stateDropoff": {
+        "DISCOVER": {
+          "count": 20,
+          "rate": 1.0
+        }
+      },
+      "taskSuccessRate": 0.0,
+      "taskSuccessStd": 0.0,
+      "turnsToFirstValue": {
+        "mean": null,
+        "median": null,
+        "reachedRate": 0.0
+      }
+    },
+    "rupali": {
+      "criterionMeans": {
+        "curiosity": 0.0,
+        "honesty": 5.0,
+        "next_step": 1.0,
+        "safety": 2.0,
+        "value": 1.0,
+        "voice": 0.0,
+        "welcome_clarity": 1.0
+      },
+      "displayName": "Rupali",
+      "failureRate": 1.0,
+      "failures": 20,
+      "latencyMs": {
+        "mean": 1.02,
+        "p95": 1.72
+      },
+      "leadRate": 0.0,
+      "meanScore": 1.429,
+      "optOutRate": 0.0,
+      "outcomes": {
+        "FULL_SUCCESS": 0,
+        "INTENT": 0,
+        "LEAD": 0,
+        "NONE": 20,
+        "OPT_OUT": 0
+      },
+      "policyViolationTotal": 20,
+      "policyViolations": {
+        "FORBIDDEN_CLAIM": 0,
+        "HARDCODED_LEGAL_WALL": 0,
+        "MISSING_COMING_SOON": 0,
+        "MORE_THAN_ONE_QUESTION": 0,
+        "OUTCOME_GUARANTEE": 0,
+        "PRICE_STATED": 0,
+        "STOP_ON_EVERY_MESSAGE": 20
+      },
+      "runs": 20,
+      "runsWithPolicyViolation": 20,
+      "stateDropoff": {
+        "DISCOVER": {
+          "count": 20,
+          "rate": 1.0
+        }
+      },
+      "taskSuccessRate": 0.0,
+      "taskSuccessStd": 0.0,
+      "turnsToFirstValue": {
+        "mean": null,
+        "median": null,
+        "reachedRate": 0.0
+      }
+    },
+    "trader": {
+      "criterionMeans": {
+        "curiosity": 0.0,
+        "honesty": 5.0,
+        "next_step": 1.0,
+        "safety": 2.0,
+        "value": 2.0,
+        "voice": 0.0,
+        "welcome_clarity": 1.0
+      },
+      "displayName": "Imran the retail investor",
+      "failureRate": 1.0,
+      "failures": 20,
+      "latencyMs": {
+        "mean": 0.99,
+        "p95": 1.77
+      },
+      "leadRate": 0.0,
+      "meanScore": 1.571,
+      "optOutRate": 0.0,
+      "outcomes": {
+        "FULL_SUCCESS": 0,
+        "INTENT": 0,
+        "LEAD": 0,
+        "NONE": 20,
+        "OPT_OUT": 0
+      },
+      "policyViolationTotal": 20,
+      "policyViolations": {
+        "FORBIDDEN_CLAIM": 0,
+        "HARDCODED_LEGAL_WALL": 0,
+        "MISSING_COMING_SOON": 0,
+        "MORE_THAN_ONE_QUESTION": 0,
+        "OUTCOME_GUARANTEE": 0,
+        "PRICE_STATED": 0,
+        "STOP_ON_EVERY_MESSAGE": 20
+      },
+      "runs": 20,
+      "runsWithPolicyViolation": 20,
+      "stateDropoff": {
+        "DISCOVER": {
+          "count": 20,
+          "rate": 1.0
+        }
+      },
+      "taskSuccessRate": 0.0,
+      "taskSuccessStd": 0.0,
+      "turnsToFirstValue": {
+        "mean": null,
+        "median": null,
+        "reachedRate": 0.0
+      }
+    },
+    "tutor_seeker": {
+      "criterionMeans": {
+        "curiosity": 0.0,
+        "honesty": 5.0,
+        "next_step": 1.0,
+        "safety": 2.0,
+        "value": 1.0,
+        "voice": 0.0,
+        "welcome_clarity": 1.0
+      },
+      "displayName": "Meera the parent",
+      "failureRate": 1.0,
+      "failures": 20,
+      "latencyMs": {
+        "mean": 1.17,
+        "p95": 2.07
+      },
+      "leadRate": 0.0,
+      "meanScore": 1.429,
+      "optOutRate": 0.0,
+      "outcomes": {
+        "FULL_SUCCESS": 0,
+        "INTENT": 0,
+        "LEAD": 0,
+        "NONE": 20,
+        "OPT_OUT": 0
+      },
+      "policyViolationTotal": 20,
+      "policyViolations": {
+        "FORBIDDEN_CLAIM": 0,
+        "HARDCODED_LEGAL_WALL": 0,
+        "MISSING_COMING_SOON": 0,
+        "MORE_THAN_ONE_QUESTION": 0,
+        "OUTCOME_GUARANTEE": 0,
+        "PRICE_STATED": 0,
+        "STOP_ON_EVERY_MESSAGE": 20
+      },
+      "runs": 20,
+      "runsWithPolicyViolation": 20,
+      "stateDropoff": {
+        "DISCOVER": {
+          "count": 20,
+          "rate": 1.0
+        }
+      },
+      "taskSuccessRate": 0.0,
+      "taskSuccessStd": 0.0,
+      "turnsToFirstValue": {
+        "mean": null,
+        "median": null,
+        "reachedRate": 0.0
+      }
+    },
+    "yashus": {
+      "criterionMeans": {
+        "curiosity": 0.0,
+        "honesty": 5.0,
+        "next_step": 0.55,
+        "safety": 2.0,
+        "value": 2.0,
+        "voice": 0.0,
+        "welcome_clarity": 1.0
+      },
+      "displayName": "Yashus",
+      "failureRate": 1.0,
+      "failures": 20,
+      "latencyMs": {
+        "mean": 1.05,
+        "p95": 1.74
+      },
+      "leadRate": 0.0,
+      "meanScore": 1.507,
+      "optOutRate": 0.0,
+      "outcomes": {
+        "FULL_SUCCESS": 0,
+        "INTENT": 0,
+        "LEAD": 0,
+        "NONE": 20,
+        "OPT_OUT": 0
+      },
+      "policyViolationTotal": 20,
+      "policyViolations": {
+        "FORBIDDEN_CLAIM": 0,
+        "HARDCODED_LEGAL_WALL": 0,
+        "MISSING_COMING_SOON": 0,
+        "MORE_THAN_ONE_QUESTION": 0,
+        "OUTCOME_GUARANTEE": 0,
+        "PRICE_STATED": 0,
+        "STOP_ON_EVERY_MESSAGE": 20
+      },
+      "runs": 20,
+      "runsWithPolicyViolation": 20,
+      "stateDropoff": {
+        "DISCOVER": {
+          "count": 20,
+          "rate": 1.0
+        }
+      },
+      "taskSuccessRate": 0.0,
+      "taskSuccessStd": 0.0,
+      "turnsToFirstValue": {
+        "mean": null,
+        "median": null,
+        "reachedRate": 0.0
+      }
+    }
+  },
+  "resumedSessions": 0,
+  "schema": "visitor-simulation-report/1"
+}

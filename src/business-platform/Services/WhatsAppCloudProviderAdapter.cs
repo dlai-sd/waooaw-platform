@@ -355,6 +355,45 @@ public sealed class WhatsAppCloudProviderAdapter(
             );
 
         using var suppression = SuppressInstrumentationScope.Begin();
+        System.Text.Json.Nodes.JsonObject? interactivePayload = null;
+        if (
+            template is null
+            && outbox.PortalContextId is not null
+            && outbox.Purpose == "WHATSAPP_GUEST_DISCOVERY"
+            && Visitor.GuestCopyRegistry.Current.IsV2
+        )
+        {
+            var hint = await db.Set<Visitor.VisitorRenderHint>()
+                .AsNoTracking()
+                .SingleOrDefaultAsync(
+                    value => value.TenantId == request.TenantId && value.MessageId == messageId,
+                    cancellationToken
+                );
+            var hinted = hint is null
+                ? null
+                : Visitor.VisitorWhatsAppRenderer.ParseReply(hint.ReplyJson);
+            // Render structure only when it matches the persisted canonical text exactly.
+            if (
+                hinted is not null
+                && Visitor.VisitorWhatsAppRenderer.CanonicalText(hinted) == text
+                && Visitor.VisitorWhatsAppRenderer.Interactive(hinted) is { } interactive
+            )
+            {
+                interactivePayload = System
+                    .Text.Json.JsonSerializer.SerializeToNode(
+                        interactive,
+                        new JsonSerializerOptions
+                        {
+                            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                        }
+                    )!
+                    .AsObject();
+                interactivePayload["messaging_product"] = "whatsapp";
+                interactivePayload["recipient_type"] = "individual";
+                interactivePayload["to"] = recipientPhoneNumber.TrimStart('+');
+                interactivePayload["biz_opaque_callback_data"] = request.OutboxId.ToString("D");
+            }
+        }
         using var client = clients.CreateClient("WhatsAppProtected");
         using var submission = new HttpRequestMessage(
             HttpMethod.Post,
@@ -365,18 +404,20 @@ public sealed class WhatsAppCloudProviderAdapter(
             "Bearer",
             protectedValues.AccessToken
         );
-        submission.Content = template is null
-            ? JsonContent.Create(
-                new
-                {
-                    messaging_product = "whatsapp",
-                    recipient_type = "individual",
-                    to = recipientPhoneNumber.TrimStart('+'),
-                    type = "text",
-                    text = new { preview_url = false, body = text },
-                    biz_opaque_callback_data = request.OutboxId.ToString("D"),
-                }
-            )
+        submission.Content =
+            interactivePayload is not null ? JsonContent.Create(interactivePayload)
+            : template is null
+                ? JsonContent.Create(
+                    new
+                    {
+                        messaging_product = "whatsapp",
+                        recipient_type = "individual",
+                        to = recipientPhoneNumber.TrimStart('+'),
+                        type = "text",
+                        text = new { preview_url = false, body = text },
+                        biz_opaque_callback_data = request.OutboxId.ToString("D"),
+                    }
+                )
             : JsonContent.Create(
                 new
                 {

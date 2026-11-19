@@ -4,7 +4,9 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Waooaw.BusinessPlatform.Infrastructure;
+using Waooaw.BusinessPlatform.Services.Visitor;
 
 namespace Waooaw.BusinessPlatform.Services;
 
@@ -30,6 +32,8 @@ public sealed class WhatsAppGuestSession
     public DateTimeOffset? ServiceConsentAt { get; set; }
     public string? ServiceConsentMessageId { get; set; }
     public Guid? ServiceConsentEvidenceId { get; set; }
+    public DateTimeOffset? ResumedAt { get; set; }
+    public int ResumeCount { get; set; }
 }
 
 public sealed class WhatsAppGuestConsentHistory
@@ -65,12 +69,32 @@ public static class WhatsAppGuestConsent
         + "Reply STOP to stop messages.";
 
     public static bool IsAcceptance(string text) =>
-        text.Trim().Equals("YES", StringComparison.OrdinalIgnoreCase);
+        text.Trim().Equals("YES", StringComparison.OrdinalIgnoreCase)
+        || (
+            GuestCopyRegistry.Current.IsV2
+            && text.Trim()
+                .Equals(GuestCopyRegistry.Current.YesLabel, StringComparison.OrdinalIgnoreCase)
+        );
+
+    public static bool IsAcceptance(string text, string? choiceId) =>
+        IsAcceptance(text)
+        || (GuestCopyRegistry.Current.IsV2 && choiceId == VisitorChoiceIds.ConsentYes);
+
+    public static string ActiveNoticeVersion => GuestCopyRegistry.Current.NoticeVersion;
+
+    public static string ActiveNotice => GuestCopyRegistry.Current.Notice;
+
+    public static string ActiveAccepted => GuestCopyRegistry.Current.Accepted;
+
+    public static string ActiveRegisteredNumberAccepted =>
+        GuestCopyRegistry.Current.RegisteredNumberAccepted;
+
+    public static string ActiveRenewalUnavailable => GuestCopyRegistry.Current.RenewalUnavailable;
 
     public static bool IsCurrent(WhatsAppGuestSession guest) =>
         guest.ServiceConsentAt is not null
         && guest.ServiceConsentEvidenceId is not null
-        && guest.ServiceConsentNoticeVersion == NoticeVersion;
+        && guest.ServiceConsentNoticeVersion == ActiveNoticeVersion;
 
     public static bool IsPreConsentNotice(string text) =>
         text
@@ -80,7 +104,8 @@ public static class WhatsAppGuestConsent
                 or WhatsAppGuestTrafficBudget.MessageLimitNotice
                 or WhatsAppGuestTrafficBudget.GlobalRateLimitNotice
                 or WhatsAppGuestTrafficBudget.ActivationLimitNotice
-                or WhatsAppGuestOperatingHours.ClosedNotice;
+                or WhatsAppGuestOperatingHours.ClosedNotice
+        || GuestCopyRegistry.Current.PreConsentTexts().Contains(text, StringComparer.Ordinal);
 }
 
 public static partial class WhatsAppPhoneDestinationProtector
@@ -221,9 +246,87 @@ public sealed class WhatsAppGuestSessionService(
     WhatsAppGuestTrafficBudget trafficBudget,
     TimeProvider clock,
     IWhatsAppRegistrationRecognition? registrationRecognition = null,
-    IWhatsAppAccountLinkConfirmation? accountLinkConfirmation = null
+    IWhatsAppAccountLinkConfirmation? accountLinkConfirmation = null,
+    VisitorConversationService? visitor = null,
+    IOptionsMonitor<VisitorConversationOptions>? visitorOptions = null
 )
 {
+    private bool IsVisitorV2 => visitor is not null && visitorOptions?.CurrentValue.IsV2 == true;
+
+    private static bool IsStopInput(VerifiedPhoneIdentityProof proof) =>
+        proof.Text.Trim().Equals("STOP", StringComparison.OrdinalIgnoreCase)
+        || (
+            GuestCopyRegistry.Current.IsV2
+            && (
+                proof.ChoiceId == VisitorChoiceIds.ConsentStop
+                || proof
+                    .Text.Trim()
+                    .Equals(GuestCopyRegistry.Current.StopLabel, StringComparison.OrdinalIgnoreCase)
+            )
+        );
+
+    private static void MoveConsentToHistory(
+        ConversationStoreDbContext db,
+        WhatsAppGuestSession guestSession
+    )
+    {
+        if (guestSession.ServiceConsentAt is not { } previousConsentAt)
+            return;
+        db.Add(
+            new WhatsAppGuestConsentHistory
+            {
+                TenantId = guestSession.TenantId,
+                BindingDigest = guestSession.BindingDigest,
+                EvidenceId =
+                    guestSession.ServiceConsentEvidenceId
+                    ?? throw new ConversationStateConflictException(),
+                NoticeVersion =
+                    guestSession.ServiceConsentNoticeVersion
+                    ?? throw new ConversationStateConflictException(),
+                NoticeMessageId =
+                    guestSession.ServiceConsentNoticeMessageId
+                    ?? throw new ConversationStateConflictException(),
+                NoticeQueuedAt =
+                    guestSession.ServiceConsentNoticeQueuedAt
+                    ?? throw new ConversationStateConflictException(),
+                ConsentMessageId =
+                    guestSession.ServiceConsentMessageId
+                    ?? throw new ConversationStateConflictException(),
+                ConsentAt = previousConsentAt,
+            }
+        );
+        guestSession.ServiceConsentAt = null;
+        guestSession.ServiceConsentMessageId = null;
+        guestSession.ServiceConsentEvidenceId = null;
+    }
+
+    private async Task SaveRenderHintAsync(
+        Guid tenantId,
+        Guid messageId,
+        VisitorReply reply,
+        CancellationToken ct
+    )
+    {
+        if (VisitorWhatsAppRenderer.Interactive(reply) is null)
+            return;
+        await using var db = await factory.CreateDbContextAsync(ct);
+        if (
+            await db.Set<VisitorRenderHint>()
+                .AnyAsync(value => value.TenantId == tenantId && value.MessageId == messageId, ct)
+        )
+            return;
+        db.Add(
+            new VisitorRenderHint
+            {
+                TenantId = tenantId,
+                MessageId = messageId,
+                ReplyJson = System.Text.Json.JsonSerializer.Serialize(reply),
+                CreatedAt = clock.GetUtcNow(),
+            }
+        );
+        await db.SaveChangesAsync(ct);
+    }
+
     public async Task<WhatsAppJourneyReceipt> ReceiveAsync(
         VerifiedPhoneIdentityProof proof,
         CancellationToken ct,
@@ -285,18 +388,38 @@ public sealed class WhatsAppGuestSessionService(
         {
             guestSession.ProtectedDestination = proof.ProtectedDestination;
         }
-        var stop = proof.Text.Trim().Equals("STOP", StringComparison.OrdinalIgnoreCase);
+        var stop = IsStopInput(proof);
         if (stop)
         {
             guestSession.StoppedAt ??= clock.GetUtcNow();
             await db.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
+            if (IsVisitorV2)
+                await visitor!.RecordWhatsAppStopAsync(
+                    authority.TenantId,
+                    proof.PhoneSubjectHash,
+                    ct
+                );
             return new(proof.MessageId, "STOPPED", "STOP", string.Empty, false, string.Empty);
         }
+        var resumedThisMessage = false;
         if (guestSession.StoppedAt is not null)
         {
-            await transaction.CommitAsync(ct);
-            return new(proof.MessageId, "STOPPED", "STOP", string.Empty, false, string.Empty);
+            if (IsVisitorV2 && !proof.UnsupportedContent && VisitorStateMachine.IsStart(proof.Text))
+            {
+                // START re-opens the session but never reuses the earlier consent: the visitor must say YES again.
+                MoveConsentToHistory(db, guestSession);
+                guestSession.StoppedAt = null;
+                guestSession.ResumedAt = clock.GetUtcNow();
+                guestSession.ResumeCount++;
+                guestSession.ServiceConsentNoticeQueuedAt = null;
+                resumedThisMessage = true;
+            }
+            else
+            {
+                await transaction.CommitAsync(ct);
+                return new(proof.MessageId, "STOPPED", "STOP", string.Empty, false, string.Empty);
+            }
         }
         var trafficNotice = await trafficBudget.ReserveInboundAsync(
             guestSession.TenantId,
@@ -343,7 +466,7 @@ public sealed class WhatsAppGuestSessionService(
                 guestSession.TenantId,
                 proof.MessageId,
                 guestSession.BindingDigest,
-                WhatsAppGuestConsent.NoticeVersion,
+                WhatsAppGuestConsent.ActiveNoticeVersion,
                 proof.VerifiedAt,
                 ct
             );
@@ -392,7 +515,8 @@ public sealed class WhatsAppGuestSessionService(
         await admission.CommitAsync(ct);
         var renewalRequired =
             guestSession.ServiceConsentNoticeVersion is not null
-                && guestSession.ServiceConsentNoticeVersion != WhatsAppGuestConsent.NoticeVersion
+                && guestSession.ServiceConsentNoticeVersion
+                    != WhatsAppGuestConsent.ActiveNoticeVersion
             || guestSession.ServiceConsentAt is not null
                 && !WhatsAppGuestConsent.IsCurrent(guestSession);
         if (guestSession.ServiceConsentAt is null || consentedThisMessage || renewalRequired)
@@ -408,10 +532,10 @@ public sealed class WhatsAppGuestSessionService(
                     verifiedPhoneNumber,
                     ct
                 );
+            var copy = GuestCopyRegistry.Current;
             var notice =
-                proof.UnsupportedContent ? WhatsAppGuestTrafficBudget.UnsupportedContentNotice
-                : !WhatsAppGuestOperatingHours.IsOpen(clock.GetUtcNow())
-                    ? WhatsAppGuestOperatingHours.ClosedNotice
+                proof.UnsupportedContent ? copy.UnsupportedContent
+                : !WhatsAppGuestOperatingHours.IsOpen(clock.GetUtcNow()) ? copy.ClosedNotice
                 : trafficNotice switch
                 {
                     WhatsAppGuestTrafficNotice.GuestMessageLimit =>
@@ -420,11 +544,12 @@ public sealed class WhatsAppGuestSessionService(
                         WhatsAppGuestTrafficBudget.GlobalRateLimitNotice,
                     WhatsAppGuestTrafficNotice.ActivationLimit =>
                         WhatsAppGuestTrafficBudget.ActivationLimitNotice,
-                    _ => renewalRequired ? WhatsAppGuestConsent.Notice
+                    _ => resumedThisMessage ? copy.ResumeNotice
+                    : renewalRequired ? copy.Notice
                     : consentedThisMessage
-                        ? recognizedRegistration ? WhatsAppGuestConsent.RegisteredNumberAccepted
-                            : WhatsAppGuestConsent.Accepted
-                    : WhatsAppGuestConsent.Notice,
+                        ? recognizedRegistration ? copy.RegisteredNumberAccepted
+                            : copy.Accepted
+                    : copy.Notice,
                 };
             var noticeSubmission = await interactions.SendGuestFixedNoticeAsync(
                 guestSession.TenantId,
@@ -433,13 +558,33 @@ public sealed class WhatsAppGuestSessionService(
                 notice,
                 ct
             );
+            var consentNotice =
+                notice == copy.Notice || (resumedThisMessage && notice == copy.ResumeNotice);
+            if (copy.IsV2 && consentNotice)
+                await SaveRenderHintAsync(
+                    guestSession.TenantId,
+                    noticeSubmission.Value.MessageId,
+                    new VisitorReply
+                    {
+                        State = VisitorStates.ConsentPending,
+                        Blocks =
+                        [
+                            VisitorReplyBlock.TextBlock(notice),
+                            VisitorReplyBlock.ChoicesBlock(
+                                new(VisitorChoiceIds.ConsentYes, copy.YesLabel),
+                                new(VisitorChoiceIds.ConsentStop, copy.StopLabel)
+                            ),
+                        ],
+                    },
+                    ct
+                );
             await outbox.QueueGuestDiscoveryAsync(
                 guestSession,
                 noticeSubmission.Value,
                 proof.VerifiedAt,
                 ct
             );
-            if (notice == WhatsAppGuestConsent.Notice)
+            if (consentNotice)
             {
                 await using var noticeTransaction = await db.Database.BeginTransactionAsync(ct);
                 await db.Database.ExecuteSqlInterpolatedAsync(
@@ -464,7 +609,7 @@ public sealed class WhatsAppGuestSessionService(
                 if (
                     guestSession.ServiceConsentNoticeQueuedAt is null
                     || guestSession.ServiceConsentNoticeVersion
-                        != WhatsAppGuestConsent.NoticeVersion
+                        != WhatsAppGuestConsent.ActiveNoticeVersion
                 )
                 {
                     if (guestSession.ServiceConsentAt is { } previousConsentAt)
@@ -498,7 +643,8 @@ public sealed class WhatsAppGuestSessionService(
                     }
                     guestSession.ServiceConsentNoticeQueuedAt = clock.GetUtcNow();
                     guestSession.ServiceConsentNoticeMessageId = noticeSubmission.Value.MessageId;
-                    guestSession.ServiceConsentNoticeVersion = WhatsAppGuestConsent.NoticeVersion;
+                    guestSession.ServiceConsentNoticeVersion =
+                        WhatsAppGuestConsent.ActiveNoticeVersion;
                     await db.SaveChangesAsync(ct);
                 }
                 await noticeTransaction.CommitAsync(ct);
@@ -538,7 +684,7 @@ public sealed class WhatsAppGuestSessionService(
             "MARKETPLACE"
         );
         var fixedNotice = !WhatsAppGuestOperatingHours.IsOpen(clock.GetUtcNow())
-            ? WhatsAppGuestOperatingHours.ClosedNotice
+            ? GuestCopyRegistry.Current.ClosedNotice
             : trafficNotice switch
             {
                 WhatsAppGuestTrafficNotice.GuestMessageLimit =>
@@ -547,9 +693,7 @@ public sealed class WhatsAppGuestSessionService(
                     WhatsAppGuestTrafficBudget.GlobalRateLimitNotice,
                 WhatsAppGuestTrafficNotice.ActivationLimit =>
                     WhatsAppGuestTrafficBudget.ActivationLimitNotice,
-                _ => proof.UnsupportedContent
-                    ? WhatsAppGuestTrafficBudget.UnsupportedContentNotice
-                    : null,
+                _ => proof.UnsupportedContent ? GuestCopyRegistry.Current.UnsupportedContent : null,
             };
         if (WhatsAppAccountLinkInstruction.IsInstruction(proof.Text))
         {
@@ -574,6 +718,57 @@ public sealed class WhatsAppGuestSessionService(
                 "ACCOUNT_LINK",
                 linkReply.Value.Content.Single().Text,
                 linkReply.Replayed,
+                string.Empty
+            );
+        }
+        if (fixedNotice is null && IsVisitorV2)
+        {
+            var scripted = await visitor!.HandleWhatsAppAsync(
+                guestSession.TenantId,
+                proof.PhoneSubjectHash,
+                verifiedPhoneNumber,
+                guestSession.ServiceConsentEvidenceId
+                    ?? throw new ConversationStateConflictException(),
+                proof.ChoiceId is null
+                    ? new VisitorInput("TEXT", proof.Text)
+                    : new VisitorInput("CHOICE", proof.Text, proof.ChoiceId),
+                ct
+            );
+            var scriptedText = VisitorWhatsAppRenderer.CanonicalText(scripted.Reply);
+            if (string.IsNullOrWhiteSpace(scriptedText))
+                return new(
+                    proof.MessageId,
+                    "ACCEPTED",
+                    "GUEST_DISCOVERY",
+                    string.Empty,
+                    false,
+                    string.Empty
+                );
+            var scriptedSubmission = await interactions.SendGuestScriptedReplyAsync(
+                guestSession.TenantId,
+                guestSession.ParticipantId,
+                messageKey,
+                scriptedText,
+                ct
+            );
+            await SaveRenderHintAsync(
+                guestSession.TenantId,
+                scriptedSubmission.Value.MessageId,
+                scripted.Reply,
+                ct
+            );
+            await outbox.QueueGuestDiscoveryAsync(
+                guestSession,
+                scriptedSubmission.Value,
+                proof.VerifiedAt,
+                ct
+            );
+            return new(
+                proof.MessageId,
+                "ACCEPTED",
+                "GUEST_DISCOVERY",
+                scriptedText,
+                scriptedSubmission.Replayed,
                 string.Empty
             );
         }
@@ -612,11 +807,11 @@ public sealed class WhatsAppGuestSessionService(
     ) =>
         guestSession.ServiceConsentAt is null
         && guestSession.ServiceConsentNoticeQueuedAt is not null
-        && guestSession.ServiceConsentNoticeVersion == WhatsAppGuestConsent.NoticeVersion
+        && guestSession.ServiceConsentNoticeVersion == WhatsAppGuestConsent.ActiveNoticeVersion
         && proof.VerifiedAt > guestSession.ServiceConsentNoticeQueuedAt
         && proof.SentAt > guestSession.ServiceConsentNoticeQueuedAt
         && !proof.UnsupportedContent
-        && WhatsAppGuestConsent.IsAcceptance(proof.Text);
+        && WhatsAppGuestConsent.IsAcceptance(proof.Text, proof.ChoiceId);
 
     private async Task<string> ConfirmAccountLinkAsync(
         VerifiedPhoneIdentityProof proof,

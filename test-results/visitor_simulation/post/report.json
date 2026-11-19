@@ -1,0 +1,422 @@
+{
+  "budget": {
+    "maxModelCalls": 5000,
+    "maxTotalTurns": 4200,
+    "maxTurnsPerConversation": 30,
+    "modelCalls": 406,
+    "totalTurns": 1278
+  },
+  "capExceeded": "",
+  "config": {
+    "baseUrl": "https://api.demo.waooaw.com",
+    "inject": [
+      "media",
+      "stop-mid",
+      "slow",
+      "unknown-language"
+    ],
+    "judgeRepeats": 1,
+    "model": "scripted",
+    "personas": [
+      "dr_mehta",
+      "rupali",
+      "kiran",
+      "yashus",
+      "farmer",
+      "tutor_seeker",
+      "trader"
+    ],
+    "runsPerPersona": 20,
+    "seed": 91
+  },
+  "hostsCalled": [
+    "api.demo.waooaw.com"
+  ],
+  "overall": {
+    "criterionMeans": {
+      "curiosity": 5.0,
+      "honesty": 5.0,
+      "next_step": 4.686,
+      "safety": 2.0,
+      "value": 3.443,
+      "voice": 5.0,
+      "welcome_clarity": 5.0
+    },
+    "failureRate": 0.0,
+    "failures": 0,
+    "latencyMs": {
+      "mean": 135.43,
+      "p95": 195.52
+    },
+    "leadRate": 1.0,
+    "meanScore": 4.304,
+    "optOutRate": 0.0,
+    "outcomes": {
+      "FULL_SUCCESS": 80,
+      "INTENT": 0,
+      "LEAD": 60,
+      "NONE": 0,
+      "OPT_OUT": 0
+    },
+    "policyViolationTotal": 0,
+    "policyViolations": {
+      "FORBIDDEN_CLAIM": 0,
+      "HARDCODED_LEGAL_WALL": 0,
+      "MISSING_COMING_SOON": 0,
+      "MORE_THAN_ONE_QUESTION": 0,
+      "OUTCOME_GUARANTEE": 0,
+      "PRICE_STATED": 0,
+      "STOP_ON_EVERY_MESSAGE": 0
+    },
+    "runs": 140,
+    "runsWithPolicyViolation": 0,
+    "stateDropoff": {},
+    "taskSuccessRate": 1.0,
+    "taskSuccessStd": 0.0,
+    "turnsToFirstValue": {
+      "mean": 7.557,
+      "median": 8.0,
+      "reachedRate": 1.0
+    }
+  },
+  "personas": {
+    "dr_mehta": {
+      "criterionMeans": {
+        "curiosity": 5.0,
+        "honesty": 5.0,
+        "next_step": 4.8,
+        "safety": 0.4,
+        "value": 5.0,
+        "voice": 5.0,
+        "welcome_clarity": 5.0
+      },
+      "displayName": "Dr. Mehta",
+      "failureRate": 0.0,
+      "failures": 0,
+      "latencyMs": {
+        "mean": 150.39,
+        "p95": 218.2
+      },
+      "leadRate": 1.0,
+      "meanScore": 4.314,
+      "optOutRate": 0.0,
+      "outcomes": {
+        "FULL_SUCCESS": 20,
+        "INTENT": 0,
+        "LEAD": 0,
+        "NONE": 0,
+        "OPT_OUT": 0
+      },
+      "policyViolationTotal": 0,
+      "policyViolations": {
+        "FORBIDDEN_CLAIM": 0,
+        "HARDCODED_LEGAL_WALL": 0,
+        "MISSING_COMING_SOON": 0,
+        "MORE_THAN_ONE_QUESTION": 0,
+        "OUTCOME_GUARANTEE": 0,
+        "PRICE_STATED": 0,
+        "STOP_ON_EVERY_MESSAGE": 0
+      },
+      "runs": 20,
+      "runsWithPolicyViolation": 0,
+      "stateDropoff": {},
+      "taskSuccessRate": 1.0,
+      "taskSuccessStd": 0.0,
+      "turnsToFirstValue": {
+        "mean": 7.65,
+        "median": 8.0,
+        "reachedRate": 1.0
+      }
+    },
+    "farmer": {
+      "criterionMeans": {
+        "curiosity": 5.0,
+        "honesty": 5.0,
+        "next_step": 4.3,
+        "safety": 4.1,
+        "value": 2.0,
+        "voice": 5.0,
+        "welcome_clarity": 5.0
+      },
+      "displayName": "Ganesh the tomato farmer",
+      "failureRate": 0.0,
+      "failures": 0,
+      "latencyMs": {
+        "mean": 125.88,
+        "p95": 197.85
+      },
+      "leadRate": 1.0,
+      "meanScore": 4.343,
+      "optOutRate": 0.0,
+      "outcomes": {
+        "FULL_SUCCESS": 0,
+        "INTENT": 0,
+        "LEAD": 20,
+        "NONE": 0,
+        "OPT_OUT": 0
+      },
+      "policyViolationTotal": 0,
+      "policyViolations": {
+        "FORBIDDEN_CLAIM": 0,
+        "HARDCODED_LEGAL_WALL": 0,
+        "MISSING_COMING_SOON": 0,
+        "MORE_THAN_ONE_QUESTION": 0,
+        "OUTCOME_GUARANTEE": 0,
+        "PRICE_STATED": 0,
+        "STOP_ON_EVERY_MESSAGE": 0
+      },
+      "runs": 20,
+      "runsWithPolicyViolation": 0,
+      "stateDropoff": {},
+      "taskSuccessRate": 1.0,
+      "taskSuccessStd": 0.0,
+      "turnsToFirstValue": {
+        "mean": 5.5,
+        "median": 4.0,
+        "reachedRate": 1.0
+      }
+    },
+    "kiran": {
+      "criterionMeans": {
+        "curiosity": 5.0,
+        "honesty": 5.0,
+        "next_step": 5.0,
+        "safety": 2.0,
+        "value": 4.0,
+        "voice": 5.0,
+        "welcome_clarity": 5.0
+      },
+      "displayName": "Kiran",
+      "failureRate": 0.0,
+      "failures": 0,
+      "latencyMs": {
+        "mean": 175.41,
+        "p95": 196.63
+      },
+      "leadRate": 1.0,
+      "meanScore": 4.429,
+      "optOutRate": 0.0,
+      "outcomes": {
+        "FULL_SUCCESS": 20,
+        "INTENT": 0,
+        "LEAD": 0,
+        "NONE": 0,
+        "OPT_OUT": 0
+      },
+      "policyViolationTotal": 0,
+      "policyViolations": {
+        "FORBIDDEN_CLAIM": 0,
+        "HARDCODED_LEGAL_WALL": 0,
+        "MISSING_COMING_SOON": 0,
+        "MORE_THAN_ONE_QUESTION": 0,
+        "OUTCOME_GUARANTEE": 0,
+        "PRICE_STATED": 0,
+        "STOP_ON_EVERY_MESSAGE": 0
+      },
+      "runs": 20,
+      "runsWithPolicyViolation": 0,
+      "stateDropoff": {},
+      "taskSuccessRate": 1.0,
+      "taskSuccessStd": 0.0,
+      "turnsToFirstValue": {
+        "mean": 8.2,
+        "median": 8.0,
+        "reachedRate": 1.0
+      }
+    },
+    "rupali": {
+      "criterionMeans": {
+        "curiosity": 5.0,
+        "honesty": 5.0,
+        "next_step": 4.9,
+        "safety": 2.3,
+        "value": 3.9,
+        "voice": 5.0,
+        "welcome_clarity": 5.0
+      },
+      "displayName": "Rupali",
+      "failureRate": 0.0,
+      "failures": 0,
+      "latencyMs": {
+        "mean": 121.63,
+        "p95": 192.75
+      },
+      "leadRate": 1.0,
+      "meanScore": 4.443,
+      "optOutRate": 0.0,
+      "outcomes": {
+        "FULL_SUCCESS": 20,
+        "INTENT": 0,
+        "LEAD": 0,
+        "NONE": 0,
+        "OPT_OUT": 0
+      },
+      "policyViolationTotal": 0,
+      "policyViolations": {
+        "FORBIDDEN_CLAIM": 0,
+        "HARDCODED_LEGAL_WALL": 0,
+        "MISSING_COMING_SOON": 0,
+        "MORE_THAN_ONE_QUESTION": 0,
+        "OUTCOME_GUARANTEE": 0,
+        "PRICE_STATED": 0,
+        "STOP_ON_EVERY_MESSAGE": 0
+      },
+      "runs": 20,
+      "runsWithPolicyViolation": 0,
+      "stateDropoff": {},
+      "taskSuccessRate": 1.0,
+      "taskSuccessStd": 0.0,
+      "turnsToFirstValue": {
+        "mean": 7.6,
+        "median": 8.0,
+        "reachedRate": 1.0
+      }
+    },
+    "trader": {
+      "criterionMeans": {
+        "curiosity": 5.0,
+        "honesty": 5.0,
+        "next_step": 4.4,
+        "safety": 3.2,
+        "value": 3.2,
+        "voice": 5.0,
+        "welcome_clarity": 5.0
+      },
+      "displayName": "Imran the retail investor",
+      "failureRate": 0.0,
+      "failures": 0,
+      "latencyMs": {
+        "mean": 128.27,
+        "p95": 203.57
+      },
+      "leadRate": 1.0,
+      "meanScore": 4.4,
+      "optOutRate": 0.0,
+      "outcomes": {
+        "FULL_SUCCESS": 0,
+        "INTENT": 0,
+        "LEAD": 20,
+        "NONE": 0,
+        "OPT_OUT": 0
+      },
+      "policyViolationTotal": 0,
+      "policyViolations": {
+        "FORBIDDEN_CLAIM": 0,
+        "HARDCODED_LEGAL_WALL": 0,
+        "MISSING_COMING_SOON": 0,
+        "MORE_THAN_ONE_QUESTION": 0,
+        "OUTCOME_GUARANTEE": 0,
+        "PRICE_STATED": 0,
+        "STOP_ON_EVERY_MESSAGE": 0
+      },
+      "runs": 20,
+      "runsWithPolicyViolation": 0,
+      "stateDropoff": {},
+      "taskSuccessRate": 1.0,
+      "taskSuccessStd": 0.0,
+      "turnsToFirstValue": {
+        "mean": 6.8,
+        "median": 8.0,
+        "reachedRate": 1.0
+      }
+    },
+    "tutor_seeker": {
+      "criterionMeans": {
+        "curiosity": 5.0,
+        "honesty": 5.0,
+        "next_step": 4.4,
+        "safety": 0.0,
+        "value": 2.0,
+        "voice": 5.0,
+        "welcome_clarity": 5.0
+      },
+      "displayName": "Meera the parent",
+      "failureRate": 0.0,
+      "failures": 0,
+      "latencyMs": {
+        "mean": 119.59,
+        "p95": 188.59
+      },
+      "leadRate": 1.0,
+      "meanScore": 3.771,
+      "optOutRate": 0.0,
+      "outcomes": {
+        "FULL_SUCCESS": 0,
+        "INTENT": 0,
+        "LEAD": 20,
+        "NONE": 0,
+        "OPT_OUT": 0
+      },
+      "policyViolationTotal": 0,
+      "policyViolations": {
+        "FORBIDDEN_CLAIM": 0,
+        "HARDCODED_LEGAL_WALL": 0,
+        "MISSING_COMING_SOON": 0,
+        "MORE_THAN_ONE_QUESTION": 0,
+        "OUTCOME_GUARANTEE": 0,
+        "PRICE_STATED": 0,
+        "STOP_ON_EVERY_MESSAGE": 0
+      },
+      "runs": 20,
+      "runsWithPolicyViolation": 0,
+      "stateDropoff": {},
+      "taskSuccessRate": 1.0,
+      "taskSuccessStd": 0.0,
+      "turnsToFirstValue": {
+        "mean": 8.4,
+        "median": 8.0,
+        "reachedRate": 1.0
+      }
+    },
+    "yashus": {
+      "criterionMeans": {
+        "curiosity": 5.0,
+        "honesty": 5.0,
+        "next_step": 5.0,
+        "safety": 2.0,
+        "value": 4.0,
+        "voice": 5.0,
+        "welcome_clarity": 5.0
+      },
+      "displayName": "Yashus",
+      "failureRate": 0.0,
+      "failures": 0,
+      "latencyMs": {
+        "mean": 121.21,
+        "p95": 190.06
+      },
+      "leadRate": 1.0,
+      "meanScore": 4.429,
+      "optOutRate": 0.0,
+      "outcomes": {
+        "FULL_SUCCESS": 20,
+        "INTENT": 0,
+        "LEAD": 0,
+        "NONE": 0,
+        "OPT_OUT": 0
+      },
+      "policyViolationTotal": 0,
+      "policyViolations": {
+        "FORBIDDEN_CLAIM": 0,
+        "HARDCODED_LEGAL_WALL": 0,
+        "MISSING_COMING_SOON": 0,
+        "MORE_THAN_ONE_QUESTION": 0,
+        "OUTCOME_GUARANTEE": 0,
+        "PRICE_STATED": 0,
+        "STOP_ON_EVERY_MESSAGE": 0
+      },
+      "runs": 20,
+      "runsWithPolicyViolation": 0,
+      "stateDropoff": {},
+      "taskSuccessRate": 1.0,
+      "taskSuccessStd": 0.0,
+      "turnsToFirstValue": {
+        "mean": 8.75,
+        "median": 9.0,
+        "reachedRate": 1.0
+      }
+    }
+  },
+  "resumedSessions": 0,
+  "schema": "visitor-simulation-report/1"
+}

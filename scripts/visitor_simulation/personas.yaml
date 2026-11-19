@@ -1,0 +1,186 @@
+# Implements: work-contracts/WC-135-visitor-conversation-and-simulated-customers.md WC135-R012, WC135-R013
+# Constitutional basis: C-048, C-049, C-059, C-063
+# All people, businesses and places below are fabricated. Every persona knows nothing about WAOOAW.
+# "modes" are variants of the same persona, not extra personas: skeptic asks "Is this just ChatGPT?"
+# before consenting; overwhelmed withholds details until asked twice, has less patience and sends
+# STOP when it gives up.
+schema_version: 1
+personas:
+  - id: dr_mehta
+    display_name: Dr. Mehta
+    subject_slug: dr-mehta
+    intent: Get more patients booking appointments at a small dental clinic.
+    knowledge_of_waooaw: nothing
+    mood: busy but open
+    patience: 14
+    language: English
+    business:
+      type: dental clinic
+      statement: I run a dental clinic in Pune.
+      city: Pune
+      goal_keyword: bookings
+      goal_text: I want more patients to book appointments.
+    behavior:
+      choice_style: taps
+      withhold_until_asked: 1
+      followup: How would this work for a dental clinic like mine?
+      taps_link: true
+      on_giving_up: stop
+    goal:
+      kind: handoff_tap
+      accepted_outcomes: [FULL_SUCCESS]
+    modes: [normal, normal, skeptic, overwhelmed]
+
+  - id: rupali
+    display_name: Rupali
+    subject_slug: rupali
+    intent: Get more booking enquiries for a solo beauty business.
+    knowledge_of_waooaw: nothing
+    mood: friendly and short of time
+    patience: 12
+    language: English
+    unknown_language_message: Mujhe apna beauty business badhana hai, kya aap madad karoge?
+    business:
+      type: solo beauty artist
+      statement: I am a solo beauty artist in Pune.
+      city: Pune
+      goal_keyword: enquiries
+      goal_text: I want more booking enquiries.
+    behavior:
+      choice_style: taps
+      withhold_until_asked: 1
+      followup: Can it write posts for my beauty work?
+      taps_link: true
+      on_giving_up: leave
+    goal:
+      kind: handoff_tap
+      accepted_outcomes: [FULL_SUCCESS]
+    modes: [normal, normal, overwhelmed]
+
+  - id: kiran
+    display_name: Kiran
+    subject_slug: kiran
+    intent: Get more member sign-ups for a boutique fitness studio.
+    knowledge_of_waooaw: nothing
+    mood: ambitious and practical
+    patience: 14
+    language: English
+    business:
+      type: boutique fitness studio
+      statement: I run a boutique fitness studio in Bangalore.
+      city: Bangalore
+      goal_keyword: sign-ups
+      goal_text: I want more member sign-ups.
+    behavior:
+      choice_style: types
+      withhold_until_asked: 1
+      followup: Will it help my studio reach people living nearby?
+      taps_link: true
+      on_giving_up: leave
+    goal:
+      kind: handoff_tap
+      accepted_outcomes: [FULL_SUCCESS]
+    modes: [normal, normal, skeptic]
+
+  - id: yashus
+    display_name: Yashus
+    subject_slug: yashus
+    intent: Win more clients for a digital marketing agency.
+    knowledge_of_waooaw: nothing
+    mood: confident and a little skeptical
+    patience: 16
+    language: English
+    business:
+      type: digital marketing agency
+      statement: I run a digital marketing agency in Mumbai.
+      city: Mumbai
+      goal_keyword: clients
+      goal_text: I want to win more clients for my agency.
+    behavior:
+      choice_style: types
+      withhold_until_asked: 1
+      followup: Can it show off my agency's work to new clients?
+      taps_link: true
+      on_giving_up: leave
+    goal:
+      kind: handoff_tap
+      accepted_outcomes: [FULL_SUCCESS]
+    modes: [normal, skeptic, skeptic]
+
+  - id: farmer
+    display_name: Ganesh the tomato farmer
+    subject_slug: farmer
+    intent: Find out whether WAOOAW can help with farming.
+    knowledge_of_waooaw: nothing
+    mood: curious and patient
+    patience: 12
+    language: English
+    business:
+      type: tomato farm
+      statement: I grow tomatoes on my farm in Nashik.
+      city: Nashik
+      goal_keyword: farming
+      goal_text: Mainly I want to know if you help with farming.
+    behavior:
+      choice_style: types
+      withhold_until_asked: 1
+      followup: Do you help with farming? I grow tomatoes.
+      taps_link: false
+      on_giving_up: leave
+    goal:
+      kind: reach_state
+      state: OTHER_PROFESSIONALS
+      accepted_outcomes: [LEAD, FULL_SUCCESS]
+    modes: [normal, overwhelmed]
+
+  - id: tutor_seeker
+    display_name: Meera the parent
+    subject_slug: tutor-seeker
+    intent: Find a private tutor for a child.
+    knowledge_of_waooaw: nothing
+    mood: hopeful
+    patience: 10
+    language: English
+    business:
+      type: parent looking for a private tutor
+      statement: I am a parent looking for a private tutor in Chennai.
+      city: Chennai
+      goal_keyword: tutor
+      goal_text: I want to find a tutor for my daughter.
+    behavior:
+      choice_style: taps
+      withhold_until_asked: 1
+      followup: Can you find a tutor for my daughter?
+      taps_link: false
+      on_giving_up: leave
+    goal:
+      kind: reach_state
+      state: OTHER_PROFESSIONALS
+      accepted_outcomes: [LEAD, FULL_SUCCESS]
+    modes: [normal, normal, skeptic]
+
+  - id: trader
+    display_name: Imran the retail investor
+    subject_slug: trader
+    intent: Learn whether WAOOAW can help with share market investing.
+    knowledge_of_waooaw: nothing
+    mood: restless
+    patience: 10
+    language: English
+    business:
+      type: retail share market investor
+      statement: I am a retail share market investor in Hyderabad.
+      city: Hyderabad
+      goal_keyword: investing
+      goal_text: I want help with share market investing.
+    behavior:
+      choice_style: types
+      withhold_until_asked: 1
+      followup: Can you help me with share market investing?
+      taps_link: false
+      on_giving_up: stop
+    goal:
+      kind: reach_state
+      state: OTHER_PROFESSIONALS
+      accepted_outcomes: [LEAD, FULL_SUCCESS]
+    modes: [normal, skeptic, overwhelmed]
