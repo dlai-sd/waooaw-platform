@@ -13,7 +13,17 @@ public static class WhatsAppGuestOperatingHours
 
     public static bool IsOpen(DateTimeOffset instant)
     {
-        var localTime = TimeZoneInfo.ConvertTime(instant, BusinessTimeZone).TimeOfDay;
-        return localTime >= TimeSpan.FromHours(9) && localTime < TimeSpan.FromHours(21);
+        var hours = Visitor.GuestCopyRegistry.Current.Hours;
+        if (
+            !TimeSpan.TryParseExact(hours.OpensAt, @"hh\:mm", null, out var opens)
+            || !TimeSpan.TryParseExact(hours.ClosesAt, @"hh\:mm", null, out var closes)
+        )
+            return false;
+        var zone =
+            hours.TimeZone == "Asia/Kolkata"
+                ? BusinessTimeZone
+                : TimeZoneInfo.FindSystemTimeZoneById(hours.TimeZone);
+        var localTime = TimeZoneInfo.ConvertTime(instant, zone).TimeOfDay;
+        return localTime >= opens && localTime < closes;
     }
 }

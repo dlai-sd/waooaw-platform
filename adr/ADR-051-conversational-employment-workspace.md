@@ -1,6 +1,6 @@
 # ADR-051 - Conversational Employment Workspace And Readiness Protocol
 
-**Status:** Proposed - Founder review required
+**Status:** Accepted by Founder, 2026-11-19 (accepted together as the dependency for WC-135)
 **Date:** 2026-10-07
 **Author:** Chief Enterprise Architect (INST-004)
 **Work Contract:** WC-113

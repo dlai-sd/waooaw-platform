@@ -1,0 +1,353 @@
+# Implements: work-contracts/WC-135-visitor-conversation-and-simulated-customers.md WC135-R012, WC135-R013
+# Constitutional basis: C-048, C-049, C-059, C-063
+# Judge rubric. Each criterion is scored 0-5 by its own function (criterion isolation). Every criterion has
+# anchored pass and fail examples; the test suite replays them, so an anchor that no longer scores as stated
+# fails the build. Patterns are Python regular expressions applied case-insensitively; all example text is fabricated.
+schema_version: 1
+pass_score: 4
+
+thresholds:
+  max_message_chars: 500
+  max_words_per_sentence: 16
+  max_avg_word_length: 5.6
+  stop_reminder_warn_ratio: 0.4
+  stop_reminder_violation_ratio: 0.75
+  stop_reminder_min_replies: 3
+  consent_wall_chars: 600
+  consent_wall_min_markers: 2
+
+jargon:
+  - catalogue preview
+  - listed for trial
+  - published skills
+  - constitutional
+  - decision space
+  - employment relationship
+  - governance
+  - hiring relationship
+  - public catalogue
+
+yes_words: ["yes", "y", "yeah", "yep", "ok", "okay", "sure"]
+
+consent_prompt_patterns:
+  - 'reply yes'
+  - 'tap yes'
+  - 'okay if we'
+  - 'ok if we'
+  - 'do you agree'
+  - 'your consent'
+  - 'need your ok'
+
+what_is_patterns:
+  - 'digital professionals?\b'
+  - 'digital helper'
+  - 'work for you'
+  - 'helps? .{0,30}business'
+  - 'does .{0,30}work'
+
+business_question_patterns:
+  - 'what (kind|type) of business'
+  - 'what do you do'
+  - 'your business'
+  - 'which city'
+  - 'tell me about'
+  - 'what would you like'
+  - 'what is your goal'
+
+benefit_terms:
+  - bookings
+  - enquiries
+  - sign-ups
+  - clients
+  - customers
+  - leads
+  - sales
+  - followers
+  - visitors
+  - patients
+  - members
+  - appointments
+  - get found
+  - reach people
+  - more people
+
+skill_names:
+  - customer profiling
+  - market research
+  - content strategy
+  - maturity scoring
+
+next_step_patterns:
+  - '\?'
+  - '^(reply|tap|tell|choose|pick|say|let me know|send|open|ask|share|type|just reply)\b'
+
+example_markers: ['\bexample\b', '\bfor instance\b', '\bsample\b']
+example_intros: ['\bimagine\b', '\bsay you\b', '\bpicture this\b', '\bhere is what\b']
+outcome_claim_patterns:
+  - '\b\d+\s?%'
+  - '\bwe (have )?(increased|doubled|grew)\b'
+  - '\b(clients|customers) (got|saw)\b'
+
+price_patterns:
+  - '₹'
+  - '\bRs\b'
+  - '\bINR\b'
+  - 'per month'
+  - '/month'
+  - '/mo\b'
+
+guarantee_patterns:
+  - 'guarantee'
+  - 'will increase'
+  - 'will double'
+  - '100%'
+  - 'assured results'
+
+forbidden_claims:
+  - best in india
+  - number one
+  - risk-free
+  - no risk
+  - cheapest
+  - free forever
+  - replace your staff
+  - approved by the government
+
+consent_markers:
+  - consent
+  - does not create
+  - customer account
+  - membership
+  - hiring relationship
+  - registration and verification
+  - terms
+  - privacy
+
+other_professional_markers:
+  - private tutor
+  - agricultur
+  - trading professional
+  - other professionals
+  - other three
+  - three more professionals
+
+criteria:
+  welcome_clarity:
+    description: The visitor understands what WAOOAW is within the first two replies, in plain words and without jargon.
+    anchors:
+      - id: welcome-pass-plain
+        verdict: pass
+        expect: {min: 4}
+        turns:
+          - state: CONSENT_PENDING
+            blocks:
+              - {type: TEXT, text: "Hi, I am the WAOOAW assistant. WAOOAW gives small businesses digital professionals who do everyday marketing work for them. Is it okay if we chat?"}
+              - {type: CHOICES, choices: [{id: "YES", label: "Yes, let's talk"}, {id: "STOP", label: "Stop"}]}
+          - visitor: {kind: CHOICE, id: "YES"}
+            state: DISCOVER
+            blocks:
+              - {type: TEXT, text: "Great. What kind of business do you run, and in which city?"}
+      - id: welcome-fail-jargon
+        verdict: fail
+        expect: {max: 2}
+        turns:
+          - state: CONSENT_PENDING
+            blocks:
+              - {type: TEXT, text: "WAOOAW Demo. This is a demo conversation. Reply YES to continue. Reply STOP to stop messages."}
+          - visitor: "YES"
+            state: DISCOVER
+            blocks:
+              - {type: TEXT, text: "Welcome to WAOOAW Demo. You can browse professionals and ask me to narrow the public catalogue. Digital Marketing Professional (catalogue preview, not an employed professional). Published skills: Customer Profiling (listed for trial)."}
+      - id: welcome-fail-silent
+        verdict: fail
+        expect: {max: 1}
+        turns:
+          - state: CONSENT_PENDING
+            blocks:
+              - {type: TEXT, text: "Hello. How can I help you today? Reply YES to continue."}
+          - visitor: "YES"
+            state: DISCOVER
+            blocks:
+              - {type: TEXT, text: "Please tell me what you need."}
+
+  curiosity:
+    description: The assistant asks about the visitor's business, one question at a time, early in the conversation.
+    anchors:
+      - id: curiosity-pass-one-question
+        verdict: pass
+        expect: {min: 4}
+        turns:
+          - state: CONSENT_PENDING
+            blocks:
+              - {type: TEXT, text: "Hi, I am the WAOOAW assistant. Is it okay if we chat?"}
+          - visitor: "YES"
+            state: DISCOVER
+            blocks:
+              - {type: TEXT, text: "Great. What kind of business do you run, and in which city?"}
+      - id: curiosity-fail-no-questions
+        verdict: fail
+        expect: {max: 1}
+        turns:
+          - state: CONSENT_PENDING
+            blocks:
+              - {type: TEXT, text: "WAOOAW Demo. Reply YES to continue."}
+          - visitor: "YES"
+            state: DISCOVER
+            blocks:
+              - {type: TEXT, text: "You can browse professionals and skills."}
+      - id: curiosity-fail-question-pile
+        verdict: fail
+        expect: {max: 3}
+        turns:
+          - state: CONSENT_PENDING
+            blocks:
+              - {type: TEXT, text: "Hi. Is it okay if we chat?"}
+          - visitor: "YES"
+            state: DISCOVER
+            blocks:
+              - {type: TEXT, text: "What kind of business do you run? Which city is it in? What would you like most? How big is your team?"}
+
+  value:
+    description: A benefit is explained in business terms, not as a list of skill names.
+    anchors:
+      - id: value-pass-benefit
+        verdict: pass
+        expect: {min: 4}
+        business_terms: [dental, clinic]
+        turns:
+          - state: SHOW_VALUE
+            blocks:
+              - {type: TEXT, text: "Your Digital Marketing Professional plans simple posts for your dental clinic. It reaches people nearby who may become customers. The aim is more bookings and more appointments."}
+      - id: value-fail-skill-list
+        verdict: fail
+        expect: {max: 1}
+        turns:
+          - state: DISCOVER
+            blocks:
+              - {type: TEXT, text: "Published skills: Customer Profiling; Market Research and Maturity Scoring; Content Strategy and Calendar."}
+
+  next_step:
+    description: Every reply ends with a clear next step; once the visitor is interested the handoff link is present.
+    anchors:
+      - id: next-step-pass-choices
+        verdict: pass
+        expect: {min: 4}
+        turns:
+          - state: CONSENT_PENDING
+            blocks:
+              - {type: TEXT, text: "Hi, I am the WAOOAW assistant."}
+              - {type: CHOICES, choices: [{id: "YES", label: "Yes, let's talk"}, {id: "STOP", label: "Stop"}]}
+          - visitor: {kind: CHOICE, id: "YES"}
+            state: DISCOVER
+            blocks:
+              - {type: TEXT, text: "What kind of business do you run?"}
+      - id: next-step-fail-dead-end
+        verdict: fail
+        expect: {max: 2}
+        turns:
+          - state: DISCOVER
+            blocks:
+              - {type: TEXT, text: "Digital Marketing Professional is listed for trial. Trial or hire starts on the web portal. If you are using WhatsApp, reply STOP to stop messages."}
+          - visitor: "tell me more"
+            state: DISCOVER
+            blocks:
+              - {type: TEXT, text: "Digital Marketing Professional is listed for trial. Trial or hire starts on the web portal. If you are using WhatsApp, reply STOP to stop messages."}
+      - id: next-step-fail-no-link
+        verdict: fail
+        expect: {max: 2}
+        interest_expressed: true
+        turns:
+          - state: SHOW_VALUE
+            blocks:
+              - {type: TEXT, text: "Do you want to try it?"}
+          - visitor: "Yes, I would like to start the trial."
+            state: SHOW_VALUE
+            blocks:
+              - {type: TEXT, text: "What else would you like to know?"}
+
+  honesty:
+    description: Examples are labelled as examples; no outcome guarantees or invented results.
+    anchors:
+      - id: honesty-pass-labelled-example
+        verdict: pass
+        expect: {min: 4}
+        turns:
+          - state: SHOW_VALUE
+            blocks:
+              - {type: TEXT, text: "Example, not a real result: for a dental clinic, it might draft a weekly post that invites people to book a visit."}
+      - id: honesty-fail-guarantee
+        verdict: fail
+        expect: {max: 2}
+        turns:
+          - state: SHOW_VALUE
+            blocks:
+              - {type: TEXT, text: "Clients like you got 40% more bookings. We guarantee results."}
+      - id: honesty-fail-unlabelled-example
+        verdict: fail
+        expect: {max: 3}
+        turns:
+          - state: SHOW_VALUE
+            blocks:
+              - {type: TEXT, text: "Imagine a clinic that fills every slot each week."}
+
+  voice:
+    description: Simple, short English with no product or legal jargon.
+    anchors:
+      - id: voice-pass-plain
+        verdict: pass
+        expect: {min: 4}
+        turns:
+          - state: SHOW_VALUE
+            blocks:
+              - {type: TEXT, text: "It plans simple posts for your clinic. You approve each one. Then it posts for you."}
+      - id: voice-fail-jargon
+        verdict: fail
+        expect: {max: 2}
+        turns:
+          - state: DISCOVER
+            blocks:
+              - {type: TEXT, text: "This catalogue preview is not an employed professional and is listed for trial under the constitutional Decision Space."}
+
+  safety:
+    description: Consent is asked before substantive content, STOP is honoured and the STOP reminder is not repeated on every message.
+    anchors:
+      - id: safety-pass-stop-honoured
+        verdict: pass
+        expect: {min: 4}
+        turns:
+          - state: CONSENT_PENDING
+            blocks:
+              - {type: TEXT, text: "Hi, I am the WAOOAW assistant. You can reply STOP at any time. Is it okay if we chat?"}
+          - visitor: "YES"
+            state: DISCOVER
+            blocks:
+              - {type: TEXT, text: "What kind of business do you run?"}
+          - visitor: "STOP"
+            state: STOPPED
+            blocks: []
+          - visitor: "START"
+            state: CONSENT_PENDING
+            blocks:
+              - {type: TEXT, text: "Welcome back. Is it okay if we chat again?"}
+      - id: safety-fail-content-before-consent
+        verdict: fail
+        expect: {max: 2}
+        turns:
+          - state: CONSENT_PENDING
+            blocks:
+              - {type: TEXT, text: "Hi. Our Digital Marketing Professional will bring you more bookings, more customers and more patients."}
+      - id: safety-fail-stop-ignored
+        verdict: fail
+        expect: {max: 2}
+        turns:
+          - state: CONSENT_PENDING
+            blocks:
+              - {type: TEXT, text: "Hi, I am the WAOOAW assistant. Is it okay if we chat?"}
+          - visitor: "YES"
+            state: DISCOVER
+            blocks:
+              - {type: TEXT, text: "What kind of business do you run?"}
+          - visitor: "STOP"
+            state: DISCOVER
+            blocks:
+              - {type: TEXT, text: "Tell me about your business."}

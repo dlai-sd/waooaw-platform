@@ -1,0 +1,108 @@
+{
+  "contentId": "waooaw-demo",
+  "version": "1.0.0",
+  "locale": "en-IN",
+  "hours": { "timeZone": "Asia/Kolkata", "opensAt": "09:00", "closesAt": "21:00" },
+  "consent": {
+    "noticeVersion": "2",
+    "notice": "Hi, welcome to WAOOAW! 👋 We help growing businesses work with digital professionals, like a marketing specialist who studies your customers, plans your content and keeps you posted. You guide the work in about ten minutes a day.\n\nBefore we chat: I'll keep our messages for up to {retentionDays} days to run this demo (privacy notice: https://cp.demo.waooaw.com/privacy). This does not create an account, and I won't send marketing messages.\n\nTap YES to continue, or STOP at any time.",
+    "accepted": "Thanks, you're all set! 🎉 Tell me about your business: what do you do, and in which city?",
+    "registeredNumberAccepted": "Thanks, you're all set! 🎉 This number already has a WAOOAW account. Sign in at https://cp.demo.waooaw.com to pick up where you left off; this chat stays separate from your account history. Meanwhile, tell me about your business: what do you do, and in which city?",
+    "renewalUnavailable": "We've updated our notice, so we need your OK again. Tap YES to continue, or STOP at any time.",
+    "yesLabel": "YES",
+    "stopLabel": "STOP"
+  },
+  "fixed": {
+    "closedNotice": "Thanks for messaging WAOOAW! I'm here every day from 9 am to 9 pm IST. Please message me again then. Reply STOP to stop messages.",
+    "unsupportedContent": "I can only read typed messages and taps for now. Could you type that instead? 🙂",
+    "stopAcknowledged": "You're opted out and won't get any more messages from us. Send START any time to chat again.",
+    "resumeNotice": "Welcome back! 👋 To start again I need your OK once more. Tap YES to continue, or STOP at any time."
+  },
+  "discover": {
+    "rephrase": "Thanks! To point you the right way, could you tell me the kind of business you run and your city? For example: \"I run a dental clinic in Pune\".",
+    "askCity": "Got it, a {domain}! Which city are you in?",
+    "askDomain": "Nice, {city}! What kind of business do you run?",
+    "domains": [
+      { "code": "dental_clinic", "label": "dental clinic", "family": "health", "customerPlural": "patients", "keywords": ["dental", "dentist", "clinic", "doctor", "medical", "hospital", "physio"] },
+      { "code": "beauty_artist", "label": "beauty business", "family": "beauty_wellness", "customerPlural": "clients", "keywords": ["makeup", "mua", "beauty artist", "mehendi", "bridal", "freelance beauty"] },
+      { "code": "beauty_salon", "label": "salon", "family": "beauty_wellness", "customerPlural": "clients", "keywords": ["salon", "parlour", "parlor", "spa", "beauty", "hair", "barber", "nail"] },
+      { "code": "fitness_studio", "label": "fitness studio", "family": "beauty_wellness", "customerPlural": "members", "keywords": ["gym", "fitness", "yoga", "studio", "crossfit", "zumba", "pilates"] },
+      { "code": "restaurant", "label": "restaurant", "family": "food", "customerPlural": "guests", "keywords": ["restaurant", "cafe", "café", "bakery", "bar", "hotel", "catering", "dhaba"] },
+      { "code": "cloud_kitchen", "label": "cloud kitchen", "family": "food", "customerPlural": "customers", "keywords": ["cloud kitchen", "tiffin", "home chef", "food delivery", "kitchen"] },
+      { "code": "law_firm", "label": "law practice", "family": "professional", "customerPlural": "clients", "keywords": ["lawyer", "law", "advocate", "legal"] },
+      { "code": "accounting_firm", "label": "accounting practice", "family": "professional", "customerPlural": "clients", "keywords": ["accountant", "accounting", "ca firm", "chartered", "tax", "audit"] },
+      { "code": "digital_marketing_agency", "label": "marketing agency", "family": "professional", "customerPlural": "clients", "keywords": ["agency", "marketing agency", "digital marketing", "advertising"] },
+      { "code": "real_estate", "label": "real estate business", "family": "property", "customerPlural": "buyers", "keywords": ["real estate", "property", "broker", "builder", "realtor", "flats"] },
+      { "code": "education", "label": "education business", "family": "education", "customerPlural": "students", "keywords": ["coaching", "tuition", "school", "classes", "academy", "institute", "tutor"] },
+      { "code": "retail", "label": "shop", "family": "retail", "customerPlural": "customers", "keywords": ["shop", "store", "boutique", "retail", "showroom", "garments", "jewellery", "jewelry"] },
+      { "code": "technology_saas", "label": "software business", "family": "professional", "customerPlural": "users", "keywords": ["software", "saas", "app", "startup", "it services", "tech"] },
+      { "code": "generic", "label": "business", "family": "general", "customerPlural": "customers", "keywords": [] }
+    ],
+    "cities": ["Pune", "Mumbai", "Delhi", "New Delhi", "Bengaluru", "Bangalore", "Hyderabad", "Chennai", "Kolkata", "Ahmedabad", "Jaipur", "Surat", "Lucknow", "Nagpur", "Indore", "Bhopal", "Chandigarh", "Kochi", "Coimbatore", "Vadodara", "Nashik", "Noida", "Gurgaon", "Gurugram", "Thane", "Navi Mumbai", "Patna", "Visakhapatnam", "Mysuru", "Mysore"]
+  },
+  "goals": [
+    {
+      "code": "more_customers",
+      "label": "More customers",
+      "valueLine": "finds where your best {customers} are and helps you show up there",
+      "keywords": ["customer", "client", "patient", "member", "lead", "enquir", "inquir", "sales", "growth", "grow"],
+      "samplePlan": "Here's a sample first month. It's an example, not a promise:\n• Week 1: learn who your best {customers} are\n• Week 2: study what nearby competitors do well\n• Week 3: plan a month of helpful posts\n• Week 4: review what worked and adjust"
+    },
+    {
+      "code": "more_bookings",
+      "label": "More bookings",
+      "valueLine": "turns enquiries into booked appointments by replying fast and keeping follow-ups on track",
+      "keywords": ["booking", "appointment", "reserve", "slot", "calendar", "schedule", "fill"],
+      "samplePlan": "Here's a sample first month. It's an example, not a promise:\n• Week 1: find where your enquiries come from\n• Week 2: set up quick replies and reminders\n• Week 3: plan posts that invite a booking\n• Week 4: review which posts brought bookings"
+    },
+    {
+      "code": "grow_online",
+      "label": "Grow online",
+      "valueLine": "builds your presence on Google and social media so people find you first",
+      "keywords": ["online", "instagram", "facebook", "social", "google", "website", "seo", "reviews", "visible", "presence", "reach"],
+      "samplePlan": "Here's a sample first month. It's an example, not a promise:\n• Week 1: check how you show up on Google and social media\n• Week 2: tidy your profiles so they look consistent\n• Week 3: plan a month of posts people want to share\n• Week 4: review reach and decide what to do more of"
+    },
+    {
+      "code": "other",
+      "label": "Something else",
+      "valueLine": "learns your goal first and then plans the work around it",
+      "keywords": [],
+      "samplePlan": "Here's a sample first month. It's an example, not a promise:\n• Week 1: agree your main goal with you\n• Week 2: study your customers and competitors\n• Week 3: plan a month of content around your goal\n• Week 4: review progress and adjust"
+    }
+  ],
+  "showValue": {
+    "qualifyAsk": "Great, a {domain} in {city}. What would you like help with most?",
+    "intro": "Here's how that could work for a {domain}: our Digital Marketing Professional {valueLine}. {example}\n\nWould you like a sample first month, or to hear what it can do?",
+    "familyExamples": {
+      "health": "For example, a clinic could get more new-patient enquiries by collecting honest Google reviews and sharing simple health tips.",
+      "beauty_wellness": "For example, a studio could fill quiet slots by sharing before-and-after stories and making booking a one-tap step.",
+      "food": "For example, a restaurant could bring in regulars by sharing today's specials and answering reviews quickly.",
+      "professional": "For example, a practice could win more of the right clients by sharing useful tips and keeping its Google profile sharp.",
+      "property": "For example, a property business could attract serious buyers by sharing neighbourhood guides and answering enquiries fast.",
+      "education": "For example, a coaching business could reach more parents by sharing study tips and student stories.",
+      "retail": "For example, a shop could bring more people through the door by sharing new arrivals and keeping its Google listing fresh.",
+      "general": "For example, a local business could be found more easily by keeping its Google profile fresh and sharing useful posts."
+    },
+    "skills": "Here's what the Digital Marketing Professional can do:\n• Know your customers: works out who they are and what they want\n• Study your market: sees how you compare with others nearby\n• Plan your content: builds a calendar of posts and keeps it going\n\nYou approve the important steps and can stop it at any time.",
+    "pricingPointer": "You can see pricing and trial details on the portal before you decide anything: {url}",
+    "menuPrompt": "I can show a sample first month, explain what it can do, or help you start a 7-day trial. What would you like?",
+    "samplePlanLabel": "See a sample plan",
+    "whatCanItDoLabel": "What can it do?",
+    "startTrialLabel": "Start a 7-day trial",
+    "otherProfessionalsLabel": "Other professionals"
+  },
+  "otherProfessionals": {
+    "text": "WAOOAW is also preparing professionals for farming advice, share-market research and private tutoring. All three are coming soon"
+  },
+  "handoff": {
+    "text": "Wonderful! 🚀 You can start your 7-day trial here. I've saved what you told me, so there's less to type. If you like, send your name and email in one message and I'll add them. That's completely optional.",
+    "linkLabel": "Start my trial",
+    "contactThanks": "Thanks, I've added that. Your trial link is above whenever you're ready.",
+    "reminder": "Your trial link is above whenever you're ready. Is there anything else you'd like to know?"
+  },
+  "misc": {
+    "about": "WAOOAW lets you work with digital professionals for your business. Each one has a clear role, shows its work and stops when you say so. You stay in charge and spend about ten minutes a day guiding it.",
+    "human": "I'm an automated guide, so I can't pass you to a person from here. The portal has everything you need to get started: {url}",
+    "offTopic": "That's a little outside what I can help with here, but I'd love to help you grow your business."
+  }
+}

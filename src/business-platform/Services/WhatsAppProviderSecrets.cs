@@ -164,6 +164,12 @@ public sealed partial class WhatsAppKeyVaultCredentials(
     public Task<string> ReadPhoneSubjectKeyAsync(CancellationToken cancellationToken) =>
         ReadPurposeAsync("whatsapp-phone-subject-hmac", cancellationToken);
 
+    /// <summary>Reads one exact, named version of the phone-subject secret (key-ring reads for retained ciphertext).</summary>
+    public Task<string> ReadPhoneSubjectKeyVersionAsync(
+        string version,
+        CancellationToken cancellationToken
+    ) => ReadPurposeAsync("whatsapp-phone-subject-hmac", cancellationToken, version);
+
     public async Task<WhatsAppProviderBinding> ReadSenderBindingAsync(
         CancellationToken cancellationToken
     )
@@ -204,14 +210,18 @@ public sealed partial class WhatsAppKeyVaultCredentials(
         return binding;
     }
 
-    private async Task<string> ReadPurposeAsync(string name, CancellationToken cancellationToken)
+    private async Task<string> ReadPurposeAsync(
+        string name,
+        CancellationToken cancellationToken,
+        string? versionOverride = null
+    )
     {
         var current = options.CurrentValue;
         var version = name switch
         {
             "whatsapp-verify-token" => current.VerifyTokenVersion,
             "whatsapp-app-secret" => current.AppSecretVersion,
-            "whatsapp-phone-subject-hmac" => current.PhoneSubjectKeyVersion,
+            "whatsapp-phone-subject-hmac" => versionOverride ?? current.PhoneSubjectKeyVersion,
             "whatsapp-provider-binding" => current.BindingVersion,
             _ => throw Denied("PROVIDER_SECRET_DENIED"),
         };

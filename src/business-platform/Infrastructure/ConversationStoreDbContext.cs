@@ -231,6 +231,14 @@ public sealed class ConversationStoreDbContext : DbContext
         Set<RelationshipEmergencyStopLatch>();
     public DbSet<ConversationOperationalSignal> OperationalSignals =>
         Set<ConversationOperationalSignal>();
+    public DbSet<Services.Visitor.VisitorSession> VisitorSessions =>
+        Set<Services.Visitor.VisitorSession>();
+    public DbSet<Services.Visitor.VisitorTurn> VisitorTurns => Set<Services.Visitor.VisitorTurn>();
+    public DbSet<Services.Visitor.VisitorLead> VisitorLeads => Set<Services.Visitor.VisitorLead>();
+    public DbSet<Services.Visitor.VisitorHandoffReference> VisitorHandoffReferences =>
+        Set<Services.Visitor.VisitorHandoffReference>();
+    public DbSet<Services.Visitor.VisitorRenderHint> VisitorRenderHints =>
+        Set<Services.Visitor.VisitorRenderHint>();
     public DbSet<Services.WhatsAppGuestTrafficEvent> WhatsAppGuestTrafficEvents =>
         Set<Services.WhatsAppGuestTrafficEvent>();
 
@@ -284,6 +292,7 @@ public sealed class ConversationStoreDbContext : DbContext
         ConfigurePortalMessage(modelBuilder.Entity<PortalInteractionMessage>());
         ConfigurePortalIdempotency(modelBuilder.Entity<PortalInteractionIdempotencyOutcome>());
         modelBuilder.ConfigureWc120Conversation();
+        Services.Visitor.VisitorModelConfiguration.ConfigureVisitorConversation(modelBuilder);
         var guestSession = modelBuilder.Entity<Services.WhatsAppGuestSession>();
         guestSession.ToTable("whatsapp_guest_sessions", "business");
         guestSession.HasKey(value => new { value.TenantId, value.BindingDigest });
@@ -318,6 +327,11 @@ public sealed class ConversationStoreDbContext : DbContext
         guestSession
             .Property(value => value.ServiceConsentEvidenceId)
             .HasColumnName("service_consent_evidence_id");
+        guestSession.Property(value => value.ResumedAt).HasColumnName("resumed_at");
+        guestSession
+            .Property(value => value.ResumeCount)
+            .HasColumnName("resume_count")
+            .HasDefaultValue(0);
 
         var consentHistory = modelBuilder.Entity<Services.WhatsAppGuestConsentHistory>();
         consentHistory.ToTable("whatsapp_guest_consent_history", "business");

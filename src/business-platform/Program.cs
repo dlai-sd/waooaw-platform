@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Temporalio.Extensions.Hosting;
@@ -70,6 +71,11 @@ if (Uri.TryCreate(otlpEndpoint, UriKind.Absolute, out var otlpUri))
                     options.EnrichWithHttpRequestMessage = JourneyHttpTelemetry.ScrubRequestUrl
                 )
                 .AddSource("waooaw.business-platform.*")
+                .AddOtlpExporter(options => options.Endpoint = otlpUri)
+        )
+        .WithMetrics(metrics =>
+            metrics
+                .AddMeter(Waooaw.BusinessPlatform.Services.Visitor.VisitorTelemetry.MeterName)
                 .AddOtlpExporter(options => options.Endpoint = otlpUri)
         );
 }
@@ -393,6 +399,50 @@ builder.Services.AddScoped<
 >();
 builder.Services.AddScoped<WhatsAppJourneyService>();
 builder.Services.AddScoped<WhatsAppGuestSessionService>();
+builder
+    .Services.AddOptions<Waooaw.BusinessPlatform.Services.Visitor.VisitorConversationOptions>()
+    .Bind(builder.Configuration.GetSection("VisitorConversation"))
+    .ValidateOnStart();
+builder
+    .Services.AddOptions<Waooaw.BusinessPlatform.Services.Visitor.VisitorLeadOptions>()
+    .Bind(builder.Configuration.GetSection("VisitorLeads"))
+    .ValidateOnStart();
+builder.Services.AddSingleton<
+    IValidateOptions<Waooaw.BusinessPlatform.Services.Visitor.VisitorConversationOptions>,
+    Waooaw.BusinessPlatform.Services.Visitor.VisitorConversationOptionsValidator
+>();
+builder.Services.AddSingleton<
+    IValidateOptions<Waooaw.BusinessPlatform.Services.Visitor.VisitorLeadOptions>,
+    Waooaw.BusinessPlatform.Services.Visitor.VisitorLeadOptionsValidator
+>();
+builder.Services.AddSingleton<Waooaw.BusinessPlatform.Services.Visitor.VisitorTelemetry>();
+builder.Services.AddSingleton<
+    Waooaw.BusinessPlatform.Services.Visitor.IVisitorContentProvider,
+    Waooaw.BusinessPlatform.Services.Visitor.FileVisitorContentProvider
+>();
+builder.Services.AddSingleton<Waooaw.BusinessPlatform.Services.Visitor.IVisitorKeyRing>(provider =>
+{
+    var local = provider
+        .GetRequiredService<
+            IOptionsMonitor<Waooaw.BusinessPlatform.Services.Visitor.VisitorConversationOptions>
+        >()
+        .CurrentValue.LocalCurrentKeyVersion;
+    return string.IsNullOrEmpty(local)
+        ? new Waooaw.BusinessPlatform.Services.Visitor.VaultVisitorKeyRing(
+            provider.GetRequiredService<WhatsAppKeyVaultCredentials>(),
+            provider.GetRequiredService<IOptionsMonitor<WhatsAppProviderOptions>>()
+        )
+        : new Waooaw.BusinessPlatform.Services.Visitor.ConfigurationVisitorKeyRing(
+            provider.GetRequiredService<
+                IOptionsMonitor<Waooaw.BusinessPlatform.Services.Visitor.VisitorConversationOptions>
+            >()
+        );
+});
+builder.Services.AddSingleton<Waooaw.BusinessPlatform.Services.Visitor.VisitorFieldProtector>();
+builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.Visitor.VisitorConversationService>();
+builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.Visitor.VisitorLeadPurger>();
+builder.Services.AddHostedService<Waooaw.BusinessPlatform.Services.Visitor.VisitorLeadPurgeHostedService>();
+builder.Services.AddHostedService<Waooaw.BusinessPlatform.Services.Visitor.VisitorGuestCopyInitializer>();
 builder.Services.Configure<ChannelContinuityOptions>(
     builder.Configuration.GetSection("ChannelContinuity")
 );

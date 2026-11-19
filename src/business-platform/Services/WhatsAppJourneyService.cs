@@ -72,6 +72,7 @@ public sealed record VerifiedPhoneIdentityProof(
     public string? ReplyContextDigest { get; init; }
     public string? ProtectedDestination { get; init; }
     public bool UnsupportedContent { get; init; }
+    public string? ChoiceId { get; init; }
 }
 
 public sealed class WhatsAppWebhookException(int statusCode, string code) : Exception(code)
@@ -391,6 +392,7 @@ public sealed partial class WhatsAppJourneyService
                         PayloadDigest = message.PayloadDigest,
                         ReplyContextDigest = message.ReplyContextDigest,
                         UnsupportedContent = message.UnsupportedContent,
+                        ChoiceId = message.ChoiceId,
                         ProtectedDestination = publicAdmission
                             ? WhatsAppPhoneDestinationProtector.Protect(
                                 phoneSubjectKey
@@ -1649,7 +1651,8 @@ public sealed partial class WhatsAppJourneyService
         DateTimeOffset SentAt,
         bool UnsupportedContent,
         string PayloadDigest,
-        string? ReplyContextDigest
+        string? ReplyContextDigest,
+        string? ChoiceId = null
     );
 
     private List<ParsedProviderStatus> ParseProviderStatuses(JsonElement root)
@@ -1835,9 +1838,19 @@ public sealed partial class WhatsAppJourneyService
                         "text",
                         StringComparison.Ordinal
                     );
+                    string? choiceId = null;
                     var body = string.Empty;
                     if (
+                        string.Equals(messageType, "interactive", StringComparison.Ordinal)
+                        && TryReadInteractiveReply(providerMessage, out choiceId, out var title)
+                    )
+                    {
+                        body = title;
+                        unsupportedContent = false;
+                    }
+                    if (
                         !unsupportedContent
+                        && choiceId is null
                         && (
                             !providerMessage.TryGetProperty("text", out var text)
                             || !TryGetRequiredString(text, "body", out body)
@@ -1856,6 +1869,7 @@ public sealed partial class WhatsAppJourneyService
                                 timestampText,
                                 messageType,
                                 text = unsupportedContent ? null : body,
+                                choiceId,
                             }
                         )
                     );
@@ -1869,13 +1883,38 @@ public sealed partial class WhatsAppJourneyService
                             FromProviderTimestamp(timestamp),
                             unsupportedContent,
                             payloadDigest,
-                            ReadReplyContextDigest(providerMessage)
+                            ReadReplyContextDigest(providerMessage),
+                            choiceId
                         )
                     );
                 }
             }
         }
         return messages;
+    }
+
+    private static bool TryReadInteractiveReply(
+        JsonElement providerMessage,
+        out string? choiceId,
+        out string title
+    )
+    {
+        choiceId = null;
+        title = string.Empty;
+        if (
+            !providerMessage.TryGetProperty("interactive", out var interactive)
+            || interactive.ValueKind != JsonValueKind.Object
+            || !TryGetRequiredString(interactive, "type", out var kind)
+            || kind is not ("button_reply" or "list_reply")
+            || !interactive.TryGetProperty(kind, out var reply)
+            || reply.ValueKind != JsonValueKind.Object
+            || !TryGetRequiredString(reply, "id", out var id)
+            || id.Length > 64
+        )
+            return false;
+        choiceId = id;
+        title = TryGetRequiredString(reply, "title", out var text) && text.Length <= 80 ? text : id;
+        return true;
     }
 
     internal static string? ReadReplyContextDigest(JsonElement providerMessage)

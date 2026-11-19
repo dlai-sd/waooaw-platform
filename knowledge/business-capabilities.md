@@ -1,7 +1,7 @@
 # Business Capability Map
 
 **Produced by:** Chief Business Architect (Sprint 002 + v0.8.0 update)
-**Date:** 2026-07-07 (updated 2026-07-08)
+**Date:** 2026-07-07 (updated 2026-07-08; Founder-directed additions 1.9 and 13.9 on 2026-11-19, WC-135)
 **Constitutional Basis:** GENESIS Part 01 (Acceptance Scenarios 001–004), Ratified Claims C-001 through C-039
 
 ---
@@ -314,6 +314,16 @@ secret minimisation); C-065 (independent review); C-071 and C-076 (quality and c
 **Statement:** The institution must enable customers to begin a time-limited trial engagement (7 days) with full constitutional employment rights — Emergency Stop, Evidence First, data portability — and no billing commitment during the trial period.
 
 **Constitutional Basis:** FR-002 (trial = full constitutional employment); C-038 (no billing during trial); C-001 (Emergency Stop from day one of trial); ART-IX (data portability from day one of trial)
+
+---
+
+### 1.9 Capture Prospect Context Before Registration
+
+**Statement:** The institution must enable a prospective customer who has not registered to share, through conversation on any channel, the minimum business context needed to be guided toward a trial — business type, city and main goal, with name and email only if the prospect chooses to give them — and must hold that context as a consented, minimal, retention-bound record that carries into trial registration without re-entry and can be exported or deleted on request.
+
+**Status:** Founder-directed addition, 2026-11-19 (WC-135). Implementation is not authorized by this entry.
+
+**Constitutional Basis:** C-009 (rights visible before hiring — capture never commits the prospect); C-039 (context is gathered by conversation in business language); C-042 (the prospect's own vocabulary); C-048 (the context may be used only to serve the prospect); ART-IX (data rights); product gaps PG-01, PG-06, PG-14.
 
 ---
 
@@ -689,6 +699,14 @@ CONDITIONAL, or UNKNOWN recommendations without accepting protected Production t
 approving its own material contribution, merging, or activating an Institution or agent.
 
 **Constitutional Basis:** C-001; C-023; C-065; C-071; C-099.
+
+### 13.9 Evaluate Customer Conversations With Simulated Customers
+
+**Statement:** The institution must be able to evaluate any customer-facing conversation by running it against simulated customers — fabricated personas with an intent, a level of knowledge, a mood and a patience limit — through the same interfaces real channels use, scoring task success and policy compliance separately with an independent judge, repeating runs to measure variation, and gating changes to conversation content on the result, without messaging real people, using real personal data or consuming provider message budget. This capability is distinct from Synthetic Approval (C-044).
+
+**Status:** Founder-directed addition, 2026-11-19 (WC-135). Implementation is not authorized by this entry.
+
+**Constitutional Basis:** C-048; C-049 (conversations must not overpromise); C-059; C-063; relates to 13.2 and 13.6.
 
 ---
 

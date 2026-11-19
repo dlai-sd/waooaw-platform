@@ -1,0 +1,71 @@
+{
+  "gatePassed": true,
+  "leadRate": {
+    "baseline": 0.0,
+    "liftMet": true,
+    "minLift": 0.2,
+    "new": 1.0,
+    "relativeLift": null
+  },
+  "newPolicyViolations": 0,
+  "personas": [
+    {
+      "baselineTaskSuccess": 0.0,
+      "delta": 1.0,
+      "newTaskSuccess": 1.0,
+      "noise": 0.0,
+      "persona": "dr_mehta",
+      "verdict": "improved"
+    },
+    {
+      "baselineTaskSuccess": 0.0,
+      "delta": 1.0,
+      "newTaskSuccess": 1.0,
+      "noise": 0.0,
+      "persona": "farmer",
+      "verdict": "improved"
+    },
+    {
+      "baselineTaskSuccess": 0.0,
+      "delta": 1.0,
+      "newTaskSuccess": 1.0,
+      "noise": 0.0,
+      "persona": "kiran",
+      "verdict": "improved"
+    },
+    {
+      "baselineTaskSuccess": 0.0,
+      "delta": 1.0,
+      "newTaskSuccess": 1.0,
+      "noise": 0.0,
+      "persona": "rupali",
+      "verdict": "improved"
+    },
+    {
+      "baselineTaskSuccess": 0.0,
+      "delta": 1.0,
+      "newTaskSuccess": 1.0,
+      "noise": 0.0,
+      "persona": "trader",
+      "verdict": "improved"
+    },
+    {
+      "baselineTaskSuccess": 0.0,
+      "delta": 1.0,
+      "newTaskSuccess": 1.0,
+      "noise": 0.0,
+      "persona": "tutor_seeker",
+      "verdict": "improved"
+    },
+    {
+      "baselineTaskSuccess": 0.0,
+      "delta": 1.0,
+      "newTaskSuccess": 1.0,
+      "noise": 0.0,
+      "persona": "yashus",
+      "verdict": "improved"
+    }
+  ],
+  "reasons": [],
+  "verdict": "IMPROVED"
+}

@@ -133,6 +133,46 @@ public sealed class WhatsAppJourneyController(
     [HttpPost]
     public async Task<IActionResult> ReceiveAsync(CancellationToken cancellationToken)
     {
+        IActionResult result;
+        try
+        {
+            result = await ReceiveCoreAsync(cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            (logger ?? NullLogger<WhatsAppJourneyController>.Instance).LogError(
+                "WhatsApp webhook: StatusCode={StatusCode} Reason={Reason} ExceptionType={ExceptionType}",
+                StatusCodes.Status500InternalServerError,
+                "UNHANDLED_EXCEPTION",
+                exception.GetType().Name
+            );
+            throw;
+        }
+        var (status, reason) = result switch
+        {
+            ObjectResult { Value: ProblemDetails problem } => (
+                problem.Status ?? StatusCodes.Status500InternalServerError,
+                problem.Title ?? "PROBLEM"
+            ),
+            ObjectResult objectResult => (
+                objectResult.StatusCode ?? StatusCodes.Status200OK,
+                "ACCEPTED"
+            ),
+            StatusCodeResult statusResult => (statusResult.StatusCode, "REJECTED"),
+            ForbidResult => (StatusCodes.Status403Forbidden, "CALLBACK_HOST_MISMATCH"),
+            _ => (StatusCodes.Status200OK, "ACCEPTED"),
+        };
+        (logger ?? NullLogger<WhatsAppJourneyController>.Instance).Log(
+            status >= 400 ? LogLevel.Warning : LogLevel.Information,
+            "WhatsApp webhook: StatusCode={StatusCode} Reason={Reason}",
+            status,
+            reason
+        );
+        return result;
+    }
+
+    private async Task<IActionResult> ReceiveCoreAsync(CancellationToken cancellationToken)
+    {
         if (!HasExpectedCallbackHost())
             return Forbid();
         if (
