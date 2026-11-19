@@ -81,7 +81,10 @@ for attempt in $(seq 1 30); do
   if test "$initial_status" = 503; then
     initial_body=$(docker run --rm --network "$NETWORK" "$CURL_IMAGE" \
       --silent http://professional-runtime:5003/health)
-    break
+    # The first health call opens the gRPC channel to the CE fixture and can miss its short timeout.
+    if test "$(jq -r '.constitutionalEngineReachable' <<< "$initial_body")" = true; then
+      break
+    fi
   fi
   sleep 1
 done
