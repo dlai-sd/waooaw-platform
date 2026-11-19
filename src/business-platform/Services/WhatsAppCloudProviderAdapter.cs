@@ -27,7 +27,8 @@ public sealed class WhatsAppCloudProviderAdapter(
     IOptions<Wc120ConversationOptions> conversationOptions,
     IWhatsAppWebhookCredentials? webhookCredentials = null,
     WhatsAppTenantExecutionScope? execution = null,
-    WhatsAppRelationshipRouting? relationshipRouting = null
+    WhatsAppRelationshipRouting? relationshipRouting = null,
+    ILogger<WhatsAppCloudProviderAdapter>? logger = null
 ) : IWhatsAppProviderAdapter
 {
     private static readonly JsonSerializerOptions CanonicalBlockJson = new(
@@ -527,7 +528,8 @@ public sealed class WhatsAppCloudProviderAdapter(
             using var response = await WhatsAppKeyVaultCredentials.ReadJsonAsync(
                 client,
                 submission,
-                cancellationToken
+                cancellationToken,
+                captureProviderFailure: true
             );
             var root = response.RootElement;
             if (
@@ -543,6 +545,27 @@ public sealed class WhatsAppCloudProviderAdapter(
             )
                 return Observation(request, "UNKNOWN", "", clock.GetUtcNow());
             return Observation(request, "PROVIDER_ACCEPTED", id.GetString()!, clock.GetUtcNow());
+        }
+        catch (WhatsAppProviderHttpException exception)
+        {
+            var failure = WhatsAppProviderFailure.Classify(
+                exception.HttpStatus,
+                exception.MetaCode
+            );
+            logger?.LogWarning(
+                "WhatsApp send failed: reason={Reason} httpStatus={HttpStatus} metaCode={MetaCode} definitive={Definitive}",
+                failure.Reason,
+                exception.HttpStatus,
+                exception.MetaCode,
+                failure.Definitive
+            );
+            return Observation(
+                request,
+                failure.Definitive ? "REJECTED" : "UNKNOWN",
+                "",
+                clock.GetUtcNow(),
+                failure.Reason
+            );
         }
         catch (WhatsAppCapabilityUnavailableException)
         {
@@ -635,7 +658,8 @@ public sealed class WhatsAppCloudProviderAdapter(
         WhatsAppProviderDispatchRequest request,
         string state,
         string providerMessageId,
-        DateTimeOffset now
+        DateTimeOffset now,
+        string? failureReason = null
     ) =>
         new(
             state,
@@ -646,7 +670,10 @@ public sealed class WhatsAppCloudProviderAdapter(
             ),
             Hash($"{request.OutboxId:D}:{request.AttemptNumber}:{state}:{now:O}"),
             now
-        );
+        )
+        {
+            FailureReason = failureReason,
+        };
 
     private static string Hash(string value) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(value)));

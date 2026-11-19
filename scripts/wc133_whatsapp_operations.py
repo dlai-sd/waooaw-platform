@@ -72,6 +72,15 @@ class ProviderCommandError(RuntimeError):
             ("staticcontainerapps", "RESOURCE_ID_CASE_MISMATCH"),
             ("authorizationfailed", "AUTHORIZATION_DENIED"),
             ("forbiddenbyrbac", "AUTHORIZATION_DENIED"),
+            ("authorizationpermissionmismatch", "AUTHORIZATION_DENIED"),
+            ("not authorized to perform", "AUTHORIZATION_DENIED"),
+            ("authorizationfailure", "NETWORK_RULE_DENIED"),
+            ("blocked by network rules", "NETWORK_RULE_DENIED"),
+            ("aadsts700024", "OIDC_ASSERTION_EXPIRED"),
+            ("client assertion is not within its valid time range", "OIDC_ASSERTION_EXPIRED"),
+            ("blobnotfound", "REMOTE_OBJECT_NOT_FOUND"),
+            ("resourcenotfound", "REMOTE_OBJECT_NOT_FOUND"),
+            ("please run 'az login'", "NOT_LOGGED_IN"),
             ("error acquiring the state lock", "STATE_LOCK_FAILED"),
             ("cannot import non-existent remote object", "REMOTE_OBJECT_NOT_FOUND"),
             ("resource already managed by terraform", "RESOURCE_ALREADY_MANAGED"),
@@ -100,6 +109,7 @@ def az(*args: str) -> Any:
             ("containerapp", "show"): "APP_READ",
             ("identity", "show"): "IDENTITY_READ",
             ("role", "assignment"): "ROLE_ASSIGNMENT",
+            ("storage", "blob"): "BLOB_" + (args[2].upper() if len(args) > 2 else "OPERATION"),
         }.get(args[:2], "AZURE_OPERATION")
         raise ProviderCommandError("azure", stage, result.returncode, result.stderr)
     return json.loads(result.stdout) if result.stdout.strip() else None

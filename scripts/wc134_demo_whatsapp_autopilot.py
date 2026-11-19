@@ -609,6 +609,34 @@ def _read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text())
 
 
+def provider_failure_summary(stdout: str, stderr: str, evidence_path: Path) -> str:
+    """Bounded, credential-free reason for a failed provider phase.
+
+    The provider prints its classified command failure before its generic closing line, so the
+    last line alone hides which Azure or Terraform stage failed and why.
+    """
+    lines = (stdout + "\n" + stderr).strip().splitlines()
+    fields: dict[str, Any] = {}
+    try:
+        evidence = _read_json(evidence_path)
+    except (OSError, ValueError):
+        evidence = {}
+    if isinstance(evidence, dict):
+        for key in ("command_failure", "failure_location", "error_type"):
+            if key in evidence:
+                fields[key] = evidence[key]
+    if "command_failure" not in fields:
+        for line in lines:
+            try:
+                failure = json.loads(line).get("provider_command_failure")
+            except (ValueError, AttributeError):
+                continue
+            if failure:
+                fields["command_failure"] = failure
+    closing = lines[-1] if lines else "no output"
+    return f"{closing} {json.dumps(fields, sort_keys=True)}" if fields else closing
+
+
 def subprocess_operation(base: Path, run: str) -> Callable[[str, bytes, str, str], dict[str, Any]]:
     """Runs the protected provider tool phases (prepare, persist, apply) for one operation."""
 
@@ -632,8 +660,10 @@ def subprocess_operation(base: Path, run: str) -> Callable[[str, bytes, str, str
                 command += ["--approved-digest", approved_digest]
             result = subprocess.run(command, env=env, capture_output=True, text=True, check=False)  # noqa: S603
             if result.returncode:
-                message = (result.stderr or result.stdout).strip().splitlines()[-1:] or ["no output"]
-                raise AutopilotError(f"provider operation {operation} failed in {phase}: {message[0]}")
+                raise AutopilotError(
+                    f"provider operation {operation} failed in {phase}: "
+                    + provider_failure_summary(result.stdout, result.stderr, directory / f"evidence-{phase}.json")
+                )
         evidence = _read_json(directory / "evidence-apply.json")
         if evidence.get("status") != "PASS":
             raise AutopilotError(f"provider operation {operation} did not pass")
