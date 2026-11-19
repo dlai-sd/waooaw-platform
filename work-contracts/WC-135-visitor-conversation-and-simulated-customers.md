@@ -61,7 +61,7 @@ logging; fair-use limits; the simulated-customer harness and its gate.
 Not in scope: customer-mode behavior; price, payment or trial-terms text in replies; generative
 free-form answers; new professionals; Meta console or template changes; deployment or provider
 mutation; public anonymous web or mobile exposure of the visitor endpoint (built and tested, left
-disabled pending the Security decision in Open Decisions); messaging real phone numbers from
+disabled pending the Security decision in Founder Decisions O-4); messaging real phone numbers from
 simulated customers; changes to constitutional documents. The Hinglish opener and price in DMA
 section 3.23 are Founder-directed deviations; amending that section is a separate authorized step.
 
@@ -71,16 +71,18 @@ section 3.23 are Founder-directed deviations; amending that section is a separat
 |---|---|---|---|
 | Visitor learns what WAOOAW and its professionals do before committing | 1.6 Browse Agent and Skill Catalogue; PG-01 | C-009 (rights visible before hiring), C-039, C-042, C-048, C-049 | ADR-052 (Conversation Policy layers), ADR-019 (grounding, for the later generative responder) |
 | Visitor is led from first message to the trial | 1.8 Enroll in Trial Engagement; PG-08, PG-14 | C-009; trial has no billing commitment (C-038) | ADR-051 (one relationship, one conversation after handoff) |
-| Minimum context is captured in business language | 1.7 Configure Agent via Conversation; PG-06 | C-039, C-042 | ADR-052 (typed proposals; authoritative owner commits) |
+| Minimum context is captured in business language | 1.7 Configure Agent via Conversation; 1.9 Capture Prospect Context Before Registration (added 2026-11-19); PG-06 | C-039, C-042, C-048 | ADR-052 (typed proposals; authoritative owner commits) |
 | One behavior across WhatsApp, web and mobile | PG-14, PG-03 | AD-004, AD-013 | ADR-052 (BP is the only public conversation facade; clients cannot supply tenant, prompt or policy), ADR-053 (WhatsApp transport and service window), ADR-002 (OpenAPI first) |
 | Consent, Stop, opt-out and deletion | Existing consent and data-rights controls; PG-04 (Stop is channel-independent) | C-001, C-023 | WC-134 guest consent; data-rights endpoint |
 | Per-tenant fair use | Existing traffic budget | AD-004 | ADR-006 (per-tenant limits at BP middleware) |
-| Simulated-customer evaluation | Founder-directed supporting capability (see Review Records F-E2) | C-059, C-063 | ADR-016 (Python 3.12 for tooling, no new language), ADR-029 (sanctioned model providers), ADR-024 (cost gates) |
+| Simulated-customer evaluation | 13.9 Evaluate Customer Conversations With Simulated Customers (added 2026-11-19) | C-048, C-049, C-059, C-063 | ADR-016 (Python 3.12 for tooling, no new language), ADR-029 (sanctioned model providers), ADR-024 (cost gates) |
 
 **Dependency acceptance.** ADR-051, ADR-052 and ADR-053 are Proposed. WC-135 conforms to them as
-written and may not contradict them. The Founder must accept them, or accept WC-135 as
-authority to proceed on them, before `IMPLEMENTATION_AUTHORIZED`. If a Founder review amends them,
-this contract is re-reviewed before implementation.
+written and may not contradict them. On 2026-11-19 the Founder accepted them together as the
+dependency for WC-135 (decision O-2). The status fields of the ADR files and `adr/ADR-INDEX.md`
+still read Proposed and are updated by the Enterprise Architect as a separate recorded step; until
+then this paragraph is the acceptance record. If a later Founder review amends them, this contract
+is re-reviewed before implementation.
 
 **Boundary decisions.**
 
@@ -194,8 +196,7 @@ New table `business.visitor_leads`, created by an additive migration under
 | `business_text` | VARCHAR(120), nullable; bounded free text when the domain is `OTHER` |
 | `city` | VARCHAR(80), nullable |
 | `goal_code` | VARCHAR(48), nullable; a code from a fixed goal list in the content layer |
-| `contact_name` | VARCHAR(80), nullable |
-| `contact_email_protected` | Text, nullable; same envelope as the phone |
+| `contact_name_protected` | Text, nullable; same envelope as the phone |
 | `source_channel` | `WHATSAPP`, `WEB`, `MOBILE` or `SIMULATION` |
 | `consent_reference` | UUID, not null; the guest consent evidence identifier |
 | `status` | `OPEN`, `INTENT`, `CONVERTED` |
@@ -205,14 +206,14 @@ New table `business.visitor_leads`, created by an additive migration under
 Retention is read at purge time from per-tenant options, not stored per row, so a change applies
 at once. Index on `(tenant_id, updated_at)` for the purge scan.
 
-- **Options.** `VisitorLeads:RetentionDays` (default 90) and `VisitorLeads:SimulationRetentionDays`
-  (default 7), validated at startup: positive integers within a minimum and maximum that are
-  Founder-owned; provisional bounds of 7 and 365 days pending Founder confirmation. An invalid
-  value fails startup rather than defaulting silently.
+- **Options.** `VisitorLeads:RetentionDays` (default 90, minimum 30, maximum 365) and
+  `VisitorLeads:SimulationRetentionDays` (default 7, minimum 1, maximum 30), validated at startup.
+  An invalid value fails startup rather than defaulting silently. The bounds are Founder decision
+  O-3. The consent notice states the retention period.
 - **Purge.** A hosted job runs on a configured interval, takes a database advisory lock so only
   one replica purges, deletes in bounded batches, is idempotent, and logs counts only. `CONVERTED`
   leads are excluded; they follow the customer record.
-- **Encryption and keys.** The raw phone and the email use envelope `v2` with the key version
+- **Encryption and keys.** The raw phone, the email and the name use envelope `v2` with the key version
   identifier stored in the ciphertext. New writes use the current pinned version; reads select
   the key by the stored version; a re-wrap job moves rows to the current version before an old
   version is retired. The existing `v1` destination envelope remains readable. Rotating the
@@ -220,9 +221,9 @@ at once. Index on `(tenant_id, updated_at)` for the purge scan.
   is approved.
 - **Data rights.** The existing data-rights export and deletion cover consent, session and lead.
   Deletion removes the lead and its protected values, and the result is auditable.
-- **Classification.** Phone, email and name are personal data. Name is stored in clear under RLS
-  and is masked in logs; the phone and email are protected as above. Security confirms this
-  classification before implementation.
+- **Classification.** Phone, email and name are personal data. All three are protected with the same
+  envelope and masked in logs (Founder decision O-5). A qualified privacy reviewer confirms this
+  classification before work component 1.
 
 ## Handoff Contract (Solution Architecture)
 
@@ -339,7 +340,7 @@ missing detail that would require the implementer to invent an interface, state,
 | # | Finding | Disposition |
 |---|---|---|
 | F-E1 | The draft had no capability, driver, claim or ADR trace. | Fixed: Capability, Driver And Decision Trace added; constitutional basis corrected (C-009 added). |
-| F-E2 | Lead capture and the evaluation harness are not entries in the capability map; an architect may not invent capabilities. | Recorded as Founder-directed supporting capabilities. Open Decision O-1: Business Architecture authors the capability-map entries. Implementation may not start without that entry or an explicit Founder waiver. |
+| F-E2 | Lead capture and the evaluation harness are not entries in the capability map; an architect may not invent capabilities. | Fixed on 2026-11-19 at the Founder's direction: capabilities 1.9 and 13.9 added to `knowledge/business-capabilities.md` on this branch. |
 | F-E3 | The draft relied on ADR-051/052/053 without noting they are Proposed. | Fixed: dependency acceptance clause and stop condition. |
 | F-E4 | The draft invented "versioned per-tenant content" parallel to ADR-052's Conversation Policy layers. | Fixed: scripted content is Conversation Policy layers; clients cannot supply policy, prompt or tenant. |
 | F-E5 | Visitor versus relationship conversation ownership was undefined, risking a second conversation store. | Fixed: visitor scope is pre-relationship; the relationship conversation owns history after handoff. |
@@ -353,7 +354,7 @@ missing detail that would require the implementer to invent an interface, state,
 | # | Gap that would have forced the implementer to invent | Disposition |
 |---|---|---|
 | F-S1 | Endpoint paths, identity, idempotency, errors, limits, timeouts and the structured reply were unspecified. | Fixed: Interface Contract. |
-| F-S2 | How a web or mobile visitor is identified without an account. | Fixed: server-issued visitor session token; public web exposure disabled by default and listed as an Open Decision. |
+| F-S2 | How a web or mobile visitor is identified without an account. | Fixed: server-issued visitor session token; public web exposure disabled by default and decided in Founder Decisions O-4. |
 | F-S3 | State transitions, START semantics and failure behavior were unspecified. | Fixed: Visitor State Machine and failure matrix. |
 | F-S4 | The lead schema, keys, constraints, RLS and retention mechanics were unspecified. | Fixed: Data Contract, including single-replica purge and options validation. |
 | F-S5 | The existing destination envelope has no key id, so key rotation breaks stored numbers (E9). | Fixed: envelope `v2` with key version, re-wrap job, rotation stop condition. |
@@ -364,14 +365,14 @@ missing detail that would require the implementer to invent an interface, state,
 | F-S10 | No rollout order, rollback, or work-component dependency order. | Fixed: Work Components table and Rollout And Rollback. |
 | F-S11 | Channel limits for interactive messages came from secondary sources. | Fixed: limits are configuration, verified against Meta documentation before the renderer is built. |
 
-### Open Decisions (Founder-owned)
+### Founder Decisions Recorded 2026-11-19
 
-| # | Decision | Needed before |
-|---|---|---|
-| O-1 | Capability-map entries for lead capture and simulated-customer evaluation, or a waiver | Implementation authorization |
-| O-2 | Acceptance of ADR-051, ADR-052 and ADR-053 | Implementation authorization |
-| O-3 | Retention minimum and maximum (provisional 7 and 365 days) and the default simulation retention | Work component 1 |
-| O-4 | Security decision on anonymous web and mobile exposure and abuse control | Any enablement of public exposure |
-| O-5 | Security confirmation of the personal-data classification and field protection | Work component 1 |
-| O-6 | Evaluation targets (conversion and quality lift over baseline) | Baseline run |
-| O-7 | Reply wording approval | Work component 2 content build |
+| # | Decision | Status | Needed before |
+|---|---|---|---|
+| O-1 | Capability-map entries for lead capture and simulated-customer evaluation are added now, on this branch (capabilities 1.9 and 13.9). | Closed | - |
+| O-2 | ADR-051, ADR-052 and ADR-053 are accepted together as the dependency for WC-135. | Accepted; ADR file and index status updates by the Enterprise Architect pending | Implementation authorization |
+| O-3 | Lead retention default 90 days, minimum 30, maximum 365; simulation retention default 7 days, range 1 to 30. | Decided | - |
+| O-4 | Anonymous web and mobile exposure stays disabled in this release; WhatsApp is the only public entry. Before any enablement: bot challenge, per-source rate limits, short-lived tokens, no personal data before consent. | Decided | Any enablement of public exposure |
+| O-5 | Phone, email and name are all protected with the same envelope and masked in logs. | Decided; privacy-reviewer sign-off outstanding | Work component 1 |
+| O-6 | No numeric target before the baseline. Fixed rules: zero policy violations, no persona below its baseline, improvement must exceed run-to-run variation. After the baseline, a lift target is set, starting from about 30% relative on full-success plus lead rate and adjusted to the measured variation. | Decided; numeric target pending baseline | Baseline run |
+| O-7 | Wording is approved in two steps: first a one-page voice sheet (five rules and three sample replies), then the full scripts after the simulated customers have run on them. The Founder confirms the facts: skill names, the 7-day trial, and that no price appears. | Decided; approvals pending | Work component 2 content build |

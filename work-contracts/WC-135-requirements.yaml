@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-135
 contract_path: work-contracts/WC-135-visitor-conversation-and-simulated-customers.md
-contract_digest: 4a37aed24d81743e3bf438af0a78713754f8ec8a33c1e97c6467aec6e90774f9
+contract_digest: bead1923534e96526191e35bba4f1eb2a614d73d3752d37eff39a18dbb45b44c
 implementation_scope: true
 result: PLANNED
 
@@ -9,7 +9,7 @@ requirement_defaults: &defaults
   component_owner: Platform IT Expert (INST-010)
   evidence_class: Planned local unit, contract, Postgres and pipeline evidence; Demo acceptance separate
   initial_state: new
-  dependencies: Founder authorization of the implementing session; Founder decisions O-1 and O-2 (capability entries; acceptance of ADR-051, ADR-052, ADR-053).
+  dependencies: Founder authorization of the implementing session; ADR-051, ADR-052 and ADR-053 accepted as the dependency (O-2), with their status fields updated by the Enterprise Architect.
   residual_risk: Live WhatsApp acceptance and real-traffic metrics need a separately authorized Demo deployment.
   result: PLANNED
 
@@ -53,7 +53,7 @@ requirements:
     requirement_id: WC135-R006
     source: WC-135 Canonical Requirement Index, R006
     observable_outcome: Content is simple English, explains the Digital Marketing Professional in depth, closes the other three with "coming soon", states no price or guarantee and carries the portal link; the Founder has approved the wording.
-    dependencies: Founder decision O-7 (reply wording approval) before the content is built.
+    dependencies: Founder decision O-7 (two-step wording approval) before the content is built.
     test_path_or_plan: Content lint tests and recorded Founder approval (planned).
     completion_rule: Planned executable evidence for WC135-R006 passes and Founder approval is recorded.
 
@@ -61,7 +61,7 @@ requirements:
     requirement_id: WC135-R007
     source: WC-135 Canonical Requirement Index, R007
     observable_outcome: The lead record, envelope v2 with key version, tenant isolation and write behavior follow the Data Contract; name and email are requested once with a reason and never required.
-    dependencies: Founder decision O-5 (Security confirmation of personal-data classification).
+    dependencies: Founder decision O-5 (all contact fields protected); privacy-reviewer sign-off before this work component.
     test_path_or_plan: Migration and RLS tests, envelope round-trip and rotation tests, write-failure test (planned).
     completion_rule: Planned executable evidence for WC135-R007 passes.
 
@@ -69,7 +69,7 @@ requirements:
     requirement_id: WC135-R008
     source: WC-135 Canonical Requirement Index, R008
     observable_outcome: Lead and simulation retention are configurable, validated and applied at purge time by a single-replica job that logs counts only; converted leads are excluded; data-rights export and deletion cover leads.
-    dependencies: Founder decision O-3 (retention bounds and simulation retention).
+    dependencies: Founder decision O-3 (retention 90 days default, 30 to 365; simulation 7 days, 1 to 30).
     test_path_or_plan: Options validation tests, purge tests with injected clock and concurrent runners, data-rights tests (planned).
     completion_rule: Planned executable evidence for WC135-R008 passes.
 
@@ -98,7 +98,7 @@ requirements:
     requirement_id: WC135-R012
     source: WC-135 Canonical Requirement Index, R012
     observable_outcome: A simulated-customer harness runs seven personas against the endpoint with a separate judge, anchored rubrics, repeated runs, separate success and policy scores and failure injection; a baseline and a post-change comparison are recorded.
-    dependencies: Founder decision O-6 (evaluation targets) before the baseline run.
+    dependencies: Founder decision O-6 (rules fixed; numeric target set after the baseline run).
     test_path_or_plan: Harness tests with a fake model, recorded baseline and comparison (planned under tests/visitor_simulation).
     completion_rule: Planned executable evidence for WC135-R012 passes and the comparison is recorded.
 
