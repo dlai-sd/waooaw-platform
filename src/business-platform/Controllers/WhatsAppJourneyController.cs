@@ -196,9 +196,8 @@ public sealed class WhatsAppJourneyController(
         try
         {
             using var tenant = tenantExecution?.Begin();
-            var receipt = await service.ReceiveAsync(
+            var receipt = await service.ReceiveSignatureVerifiedAsync(
                 rawBody,
-                signature,
                 (clock ?? TimeProvider.System).GetUtcNow(),
                 cancellationToken
             );

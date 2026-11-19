@@ -2211,6 +2211,324 @@ public sealed class WhatsAppDemoProviderTests
     }
 
     [Fact]
+    public async Task DefinitiveProviderRejectionKeepsItsClassifiedReasonOnTheBlockedOutbox()
+    {
+        var fixture = await SeedAsync();
+        using var factory = new ClientFactory(
+            (_, _) =>
+                Task.FromResult(
+                    ProviderError(HttpStatusCode.BadRequest, new { error = new { code = 131047 } })
+                )
+        );
+        var observation = await Adapter(fixture, factory)
+            .DispatchAsync(fixture.Request, CancellationToken.None);
+        Assert.Equal("REJECTED", observation.State);
+        Assert.Equal("PROVIDER_REJECTED_OUTSIDE_WINDOW", observation.FailureReason);
+        await fixture
+            .Context.Outbox()
+            .RecordResultAsync(
+                fixture.Request.OutboxId,
+                "fixture",
+                observation,
+                CancellationToken.None
+            );
+        await using var db = fixture.Context.Conversations.CreateDbContext();
+        var row = await db.ConversationOutbox.SingleAsync();
+        Assert.Equal("BLOCKED", row.State);
+        Assert.Equal("PROVIDER_REJECTED_OUTSIDE_WINDOW", row.BlockedReason);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.TooManyRequests, 130429, "PROVIDER_RATE_LIMITED")]
+    [InlineData(HttpStatusCode.Unauthorized, 190, "PROVIDER_AUTHORITY_REJECTED")]
+    [InlineData(HttpStatusCode.ServiceUnavailable, null, "PROVIDER_UNAVAILABLE")]
+    public async Task ThrottlingAuthorityAndServerFailuresStayUnknownSoNothingIsResent(
+        HttpStatusCode status,
+        int? code,
+        string reason
+    )
+    {
+        var fixture = await SeedAsync();
+        var logger = new CapturingLogger<WhatsAppCloudProviderAdapter>();
+        using var factory = new ClientFactory(
+            (_, _) =>
+                Task.FromResult(
+                    code is null
+                        ? new HttpResponseMessage(status)
+                        : ProviderError(status, new { error = new { code } })
+                )
+        );
+        var observation = await Adapter(fixture, factory, logger: logger)
+            .DispatchAsync(fixture.Request, CancellationToken.None);
+        Assert.Equal("UNKNOWN", observation.State);
+        Assert.Equal(reason, observation.FailureReason);
+        var message = Assert.Single(logger.Messages);
+        Assert.Contains(reason, message, StringComparison.Ordinal);
+        Assert.Contains(((int)status).ToString(), message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(null, 131047, "PROVIDER_REJECTED_OUTSIDE_WINDOW", true)]
+    [InlineData(null, 131026, "PROVIDER_REJECTED_UNDELIVERABLE", true)]
+    [InlineData(null, 131030, "PROVIDER_REJECTED_RECIPIENT_NOT_ALLOWED", true)]
+    [InlineData(null, 131031, "PROVIDER_REJECTED_ACCOUNT_RESTRICTED", true)]
+    [InlineData(null, 131042, "PROVIDER_REJECTED_PAYMENT_ISSUE", true)]
+    [InlineData(null, 131051, "PROVIDER_REJECTED_UNSUPPORTED_TYPE", true)]
+    [InlineData(null, 132001, "PROVIDER_REJECTED_TEMPLATE", true)]
+    [InlineData(null, 100, "PROVIDER_REJECTED_INVALID_REQUEST", true)]
+    [InlineData(null, 131056, "PROVIDER_RATE_LIMITED", false)]
+    [InlineData(null, 131016, "PROVIDER_UNAVAILABLE", false)]
+    [InlineData(null, 10, "PROVIDER_AUTHORITY_REJECTED", false)]
+    [InlineData(404, null, "PROVIDER_REJECTED", true)]
+    [InlineData(500, null, "PROVIDER_UNAVAILABLE", false)]
+    [InlineData(302, null, "PROVIDER_FAILURE_UNCLASSIFIED", false)]
+    public void ProviderFailuresAreClassifiedAsDefinitiveOnlyWhenNothingWasAccepted(
+        int? httpStatus,
+        int? code,
+        string reason,
+        bool definitive
+    )
+    {
+        var failure = WhatsAppProviderFailure.Classify(httpStatus, code);
+        Assert.Equal(reason, failure.Reason);
+        Assert.Equal(definitive, failure.Definitive);
+    }
+
+    [Theory]
+    [InlineData("{\"error\":{\"code\":190}}", 190)]
+    [InlineData("{\"errors\":[{\"code\":131047},{\"code\":1}]}", 131047)]
+    [InlineData("{\"errors\":[]}", null)]
+    [InlineData("{\"error\":{\"code\":\"190\"}}", null)]
+    [InlineData("{\"error\":7}", null)]
+    [InlineData("[]", null)]
+    public void MetaErrorCodesAreReadFromSendErrorsAndStatusErrorArrays(string json, int? expected)
+    {
+        using var document = JsonDocument.Parse(json);
+        Assert.Equal(expected, WhatsAppProviderFailure.ReadMetaCode(document.RootElement));
+    }
+
+    [Fact]
+    public async Task UnreadableProviderErrorBodyStillClassifiesFromTheHttpStatus()
+    {
+        var fixture = await SeedAsync();
+        using var factory = new ClientFactory(
+            (_, _) =>
+                Task.FromResult(
+                    new HttpResponseMessage(HttpStatusCode.BadRequest)
+                    {
+                        Content = new StringContent("<html>not json</html>"),
+                    }
+                )
+        );
+        var observation = await Adapter(fixture, factory)
+            .DispatchAsync(fixture.Request, CancellationToken.None);
+        Assert.Equal("REJECTED", observation.State);
+        Assert.Equal("PROVIDER_REJECTED", observation.FailureReason);
+    }
+
+    [Fact]
+    public async Task WebhookSecretsAreCachedPerVersionForAShortTimeAndThenReadAgain()
+    {
+        var paths = new List<string>();
+        using var factory = new ClientFactory(
+            (request, _) =>
+            {
+                paths.Add(request.RequestUri!.AbsolutePath);
+                return Task.FromResult(SecretResponse(request));
+            }
+        );
+        var clock = new Clock { Now = Now };
+        var options = ProviderOptions();
+        var reader = Reader(factory, options, clock: clock);
+        await reader.ReadAppSecretAsync(CancellationToken.None);
+        await reader.ReadAppSecretAsync(CancellationToken.None);
+        Assert.Equal(2, paths.Count);
+        clock.Now = Now.AddSeconds(59);
+        await reader.ReadAppSecretAsync(CancellationToken.None);
+        Assert.Equal(2, paths.Count);
+        clock.Now = Now.AddSeconds(61);
+        await reader.ReadAppSecretAsync(CancellationToken.None);
+        Assert.Equal(4, paths.Count);
+        options.AppSecretVersion = new string('f', 32);
+        await reader.ReadAppSecretAsync(CancellationToken.None);
+        Assert.Equal(6, paths.Count);
+        Assert.Contains(
+            paths,
+            value => value.EndsWith(new string('f', 32), StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
+    public async Task CachedWebhookSecretsStillRequireEnabledProviderConfiguration()
+    {
+        using var factory = new ClientFactory(
+            (request, _) => Task.FromResult(SecretResponse(request))
+        );
+        var options = ProviderOptions();
+        var reader = Reader(factory, options);
+        await reader.ReadAppSecretAsync(CancellationToken.None);
+        options.Enabled = false;
+        await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+            reader.ReadAppSecretAsync(CancellationToken.None)
+        );
+    }
+
+    [Fact]
+    public async Task ExpiringWebhookSecretIsNotCachedPastItsExpiry()
+    {
+        var reads = 0;
+        using var factory = new ClientFactory(
+            (request, _) =>
+            {
+                reads++;
+                var response = SecretResponse(request);
+                if (request.RequestUri!.IsLoopback)
+                    return Task.FromResult(response);
+                return Task.FromResult(
+                    Json(
+                        new
+                        {
+                            id = request.RequestUri.GetLeftPart(UriPartial.Path),
+                            value = new string('p', 40),
+                            attributes = new
+                            {
+                                enabled = true,
+                                nbf = Now.ToUnixTimeSeconds(),
+                                exp = Now.AddSeconds(30).ToUnixTimeSeconds(),
+                            },
+                        }
+                    )
+                );
+            }
+        );
+        var clock = new Clock { Now = Now };
+        var reader = Reader(factory, clock: clock);
+        await reader.ReadAppSecretAsync(CancellationToken.None);
+        clock.Now = Now.AddSeconds(29);
+        await reader.ReadAppSecretAsync(CancellationToken.None);
+        Assert.Equal(2, reads);
+        clock.Now = Now.AddSeconds(31);
+        await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+            reader.ReadAppSecretAsync(CancellationToken.None)
+        );
+    }
+
+    [Fact]
+    public async Task UnsupportedDeliveryStatesAreAcknowledgedAndFailedStatesAreLoggedWithTheirReason()
+    {
+        var fixture = await SeedAsync();
+        var secrets = new WebhookCredentials();
+        var logger = new CapturingLogger<WhatsAppJourneyService>();
+        var service = new WhatsAppJourneyService(
+            fixture.Context.Relationships,
+            new ForbiddenEvidence(),
+            Options.Create(new WhatsAppJourneyOptions()),
+            conversationDbFactory: fixture.Context.Conversations,
+            conversationOptions: Options.Create(fixture.Context.Options),
+            outboxService: fixture.Context.Outbox(),
+            webhookCredentials: secrets,
+            logger: logger
+        );
+        foreach (var state in new[] { "deleted", new string('x', 40) })
+        {
+            var receipt = await service.ReceiveSignatureVerifiedAsync(
+                StatusBody(state),
+                Now,
+                CancellationToken.None
+            );
+            Assert.Equal("ACCEPTED", receipt.Status);
+        }
+        await service.ReceiveSignatureVerifiedAsync(
+            StatusBody("failed", 131047),
+            Now,
+            CancellationToken.None
+        );
+        Assert.Equal(0, secrets.AppReads);
+        Assert.Equal(
+            2,
+            logger.Messages.Count(value => value.StartsWith("Ignoring", StringComparison.Ordinal))
+        );
+        Assert.Contains(
+            logger.Messages,
+            value =>
+                value.Contains("PROVIDER_REJECTED_OUTSIDE_WINDOW", StringComparison.Ordinal)
+                && value.Contains("131047", StringComparison.Ordinal)
+        );
+        await using var db = fixture.Context.Conversations.CreateDbContext();
+        Assert.DoesNotContain(
+            await db.DeliveryObservations.ToListAsync(),
+            value => value.DeliveryState == "deleted"
+        );
+    }
+
+    private static byte[] StatusBody(string status, int? errorCode = null) =>
+        Encoding.UTF8.GetBytes(
+            JsonSerializer.Serialize(
+                new
+                {
+                    @object = "whatsapp_business_account",
+                    entry = new[]
+                    {
+                        new
+                        {
+                            id = "1002",
+                            changes = new[]
+                            {
+                                new
+                                {
+                                    value = new
+                                    {
+                                        metadata = new { phone_number_id = "1003" },
+                                        statuses = new[]
+                                        {
+                                            new
+                                            {
+                                                id = "wamid.synthetic",
+                                                status,
+                                                timestamp = Now.ToUnixTimeSeconds().ToString(),
+                                                errors = errorCode is null
+                                                    ? null
+                                                    : new[] { new { code = errorCode.Value } },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                }
+            )
+        );
+
+    private static HttpResponseMessage ProviderError<T>(HttpStatusCode status, T body) =>
+        new(status)
+        {
+            Content = new StringContent(
+                JsonSerializer.Serialize(body),
+                Encoding.UTF8,
+                "application/json"
+            ),
+        };
+
+    private sealed class CapturingLogger<T> : Microsoft.Extensions.Logging.ILogger<T>
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            Microsoft.Extensions.Logging.LogLevel logLevel,
+            Microsoft.Extensions.Logging.EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter
+        ) => Messages.Add(formatter(state, exception));
+    }
+
+    [Fact]
     public async Task BudgetAndRecipientBoundariesDenyBeforeProviderEgress()
     {
         var fixture = await SeedAsync();
@@ -2668,7 +2986,8 @@ public sealed class WhatsAppDemoProviderTests
         Fixture fixture,
         ClientFactory factory,
         WhatsAppJourneyOptions? channel = null,
-        IWhatsAppProviderCredentials? credentials = null
+        IWhatsAppProviderCredentials? credentials = null,
+        Microsoft.Extensions.Logging.ILogger<WhatsAppCloudProviderAdapter>? logger = null
     ) =>
         new(
             factory,
@@ -2683,13 +3002,15 @@ public sealed class WhatsAppDemoProviderTests
                 channel ?? new WhatsAppJourneyOptions { DispatchEnabled = true }
             ),
             Options.Create(fixture.Context.Options),
-            credentials as IWhatsAppWebhookCredentials ?? new Credentials()
+            credentials as IWhatsAppWebhookCredentials ?? new Credentials(),
+            logger: logger
         );
 
     private static WhatsAppKeyVaultCredentials Reader(
         ClientFactory factory,
         WhatsAppProviderOptions? options = null,
-        string endpoint = "http://127.0.0.1:8080/msi/token"
+        string endpoint = "http://127.0.0.1:8080/msi/token",
+        Clock? clock = null
     ) =>
         new(
             factory,
@@ -2703,7 +3024,7 @@ public sealed class WhatsAppDemoProviderTests
                     }
                 )
                 .Build(),
-            new Clock { Now = Now }
+            clock ?? new Clock { Now = Now }
         );
 
     private static WhatsAppProviderOptions ProviderOptions() =>

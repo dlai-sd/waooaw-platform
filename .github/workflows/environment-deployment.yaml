@@ -3788,6 +3788,16 @@ jobs:
             )
           ' demo-managed-certificates.json > /dev/null
 
+      # The OIDC client assertion expires 5 minutes after login, so a token for a resource not yet
+      # requested (the private configuration blob) cannot be minted after the long apply.
+      - name: Refresh Azure login before Demo WhatsApp activation
+        if: inputs.apply && inputs.environment == 'demo'
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3 (Node 24)
+        with:
+          client-id: ${{ steps.foundation.outputs.deployment_client_id }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
       - name: Activate Demo WhatsApp under the standing Founder policy
         if: inputs.apply && inputs.environment == 'demo'
         timeout-minutes: 25
@@ -3797,6 +3807,10 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
+          # Cache every resource token the activation needs while the OIDC assertion is fresh.
+          for resource in https://storage.azure.com/ https://api.loganalytics.io; do
+            az account get-access-token --resource "$resource" --query expiresOn --output tsv > /dev/null
+          done
           # Stops WhatsApp again and fails the deployment if any check does not hold.
           python3 scripts/wc134_demo_whatsapp_autopilot.py run \
             --policy release/wc134/demo-whatsapp-activation-policy.json \

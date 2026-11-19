@@ -122,6 +122,7 @@ public sealed partial class WhatsAppJourneyService
     private readonly WhatsAppTrafficBudget? _trafficBudget;
     private readonly IdentityService? _identity;
     private readonly WhatsAppRelationshipRouting? _relationshipRouting;
+    private readonly ILogger<WhatsAppJourneyService>? _logger;
 
     public WhatsAppJourneyService(
         IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
@@ -144,9 +145,11 @@ public sealed partial class WhatsAppJourneyService
         IdentitySecurityEventService? securityEvents = null,
         WhatsAppTrafficBudget? trafficBudget = null,
         IdentityService? identity = null,
-        WhatsAppRelationshipRouting? relationshipRouting = null
+        WhatsAppRelationshipRouting? relationshipRouting = null,
+        ILogger<WhatsAppJourneyService>? logger = null
     )
     {
+        _logger = logger;
         _dbFactory = dbFactory;
         _evidenceGateway = evidenceGateway;
         _identityOptions = options.Value;
@@ -189,6 +192,16 @@ public sealed partial class WhatsAppJourneyService
     )
     {
         await ValidateSignatureAsync(rawBody, signatureHeader, cancellationToken);
+        return await ReceiveSignatureVerifiedAsync(rawBody, receivedAt, cancellationToken);
+    }
+
+    // For callers that already verified the signature of this exact body (the webhook controller).
+    internal async Task<WhatsAppJourneyReceipt> ReceiveSignatureVerifiedAsync(
+        byte[] rawBody,
+        DateTimeOffset receivedAt,
+        CancellationToken cancellationToken
+    )
+    {
         if (
             _conversationOptions is not null
             && (
@@ -272,6 +285,35 @@ public sealed partial class WhatsAppJourneyService
                 foreach (var status in statuses)
                 {
                     var statusEvent = status.Event;
+                    if (!WhatsAppOutboxService.IsSupportedProviderStatus(statusEvent.State))
+                    {
+                        // Meta adds states (for example "deleted"); acknowledge instead of forcing redelivery.
+                        _logger?.LogInformation(
+                            "Ignoring unsupported WhatsApp status state {State}",
+                            statusEvent.State.Length > 32
+                                ? statusEvent.State[..32]
+                                : statusEvent.State
+                        );
+                        continue;
+                    }
+                    if (
+                        string.Equals(
+                            statusEvent.State,
+                            "failed",
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
+                    {
+                        var failure = WhatsAppProviderFailure.Classify(
+                            null,
+                            statusEvent.FailureCode
+                        );
+                        _logger?.LogWarning(
+                            "WhatsApp delivery failed: reason={Reason} metaCode={MetaCode}",
+                            failure.Reason,
+                            statusEvent.FailureCode
+                        );
+                    }
                     if (senderBinding is not null && status.SenderPhoneNumber is not null)
                     {
                         if (
@@ -1734,6 +1776,7 @@ public sealed partial class WhatsAppJourneyService
                             )
                             {
                                 OutboxId = outboxId,
+                                FailureCode = WhatsAppProviderFailure.ReadMetaCode(providerStatus),
                             },
                             statusSender
                         )

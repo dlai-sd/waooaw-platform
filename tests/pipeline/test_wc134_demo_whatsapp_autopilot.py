@@ -20,6 +20,7 @@ from wc134_demo_whatsapp_autopilot import (
     build_receipts,
     digest,
     load_policy,
+    provider_failure_summary,
     render_alert_query,
     spend_arguments,
 )
@@ -392,3 +393,29 @@ def test_activation_step_runs_after_tls_binding_inside_the_apply_job_and_publish
     assert "release/wc134/demo-whatsapp-activation-policy.json" in step["run"]
     upload = next(item for item in steps if item.get("name") == "Upload plans and evidence")
     assert "whatsapp-autopilot/*.json" in upload["with"]["path"]
+
+
+def test_activation_step_gets_a_fresh_login_and_caches_the_storage_token_first() -> None:
+    steps = _workflow("environment-deployment.yaml")["jobs"]["terraform"]["steps"]
+    names = [step.get("name") for step in steps]
+    activate = steps[names.index("Activate Demo WhatsApp under the standing Founder policy")]
+    login = steps[names.index("Refresh Azure login before Demo WhatsApp activation")]
+
+    assert names.index(login["name"]) == names.index(activate["name"]) - 1
+    assert login["if"] == activate["if"]
+    assert login["with"]["client-id"] == "${{ steps.foundation.outputs.deployment_client_id }}"
+    first = activate["run"].index("https://storage.azure.com/")
+    assert first < activate["run"].index("wc134_demo_whatsapp_autopilot.py run")
+
+
+def test_failed_provider_phase_reports_the_classified_command_failure(tmp_path: Path) -> None:
+    failure = {"tool": "azure", "stage": "BLOB_SHOW", "exit_code": 1, "reason": "AUTHORIZATION_DENIED"}
+    stdout = json.dumps({"provider_command_failure": failure}) + "\nProvider operation denied or failed (X).\n"
+    evidence = tmp_path / "evidence-prepare.json"
+    evidence.write_text(json.dumps({"command_failure": failure, "failure_location": {"line": 1}, "reason": "ignored"}))
+
+    for path in (evidence, tmp_path / "missing.json"):
+        summary = provider_failure_summary(stdout, "", path)
+        assert summary.startswith("Provider operation denied or failed (X).")
+        assert '"stage": "BLOB_SHOW"' in summary and '"reason": "AUTHORIZATION_DENIED"' in summary
+        assert "ignored" not in summary

@@ -2,6 +2,7 @@
 // Implements: work-contracts/WC-121-demo-whatsapp-provider-enablement-work-component.md §10.17
 // Constitutional basis: C-014, C-023, C-026, C-059, C-063
 
+using System.Collections.Concurrent;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -70,6 +71,12 @@ public sealed partial class WhatsAppKeyVaultCredentials(
     TimeProvider clock
 ) : IWhatsAppProviderCredentials, IWhatsAppWebhookCredentials
 {
+    private static readonly TimeSpan SecretCacheLifetime = TimeSpan.FromSeconds(60);
+    private readonly ConcurrentDictionary<
+        string,
+        (string Value, DateTimeOffset ExpiresAt)
+    > _secretCache = new();
+
     private static readonly JsonSerializerOptions BindingJson = new(JsonSerializerDefaults.Web)
     {
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
@@ -216,6 +223,12 @@ public sealed partial class WhatsAppKeyVaultCredentials(
             || !Matches(Version(), version)
         )
             throw Denied("PROVIDER_CONFIGURATION_DENIED");
+        var cacheKey = $"{current.VaultHost}/{current.ManagedIdentityClientId}/{name}/{version}";
+        if (
+            _secretCache.TryGetValue(cacheKey, out var cached)
+            && cached.ExpiresAt > clock.GetUtcNow()
+        )
+            return cached.Value;
         using var suppression = SuppressInstrumentationScope.Begin();
         using var client = clients.CreateClient("WhatsAppProtected");
         try
@@ -239,6 +252,14 @@ public sealed partial class WhatsAppKeyVaultCredentials(
                 )
             )
                 throw Denied("PROVIDER_SECRET_DENIED");
+            var now = clock.GetUtcNow();
+            var expiresAt = now + SecretCacheLifetime;
+            _secretCache[cacheKey] = (
+                secret.Value,
+                secret.ExpiresAt is { } secretExpiry && secretExpiry < expiresAt
+                    ? secretExpiry
+                    : expiresAt
+            );
             return secret.Value;
         }
         catch (JsonException)
@@ -351,7 +372,8 @@ public sealed partial class WhatsAppKeyVaultCredentials(
     internal static async Task<JsonDocument> ReadJsonAsync(
         HttpClient client,
         HttpRequestMessage request,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        bool captureProviderFailure = false
     )
     {
         using var response = await client.SendAsync(
@@ -360,7 +382,14 @@ public sealed partial class WhatsAppKeyVaultCredentials(
             cancellationToken
         );
         if (!response.IsSuccessStatusCode)
+        {
+            if (captureProviderFailure)
+                throw new WhatsAppProviderHttpException(
+                    (int)response.StatusCode,
+                    await ReadProviderErrorCodeAsync(response, cancellationToken)
+                );
             throw Denied("PROVIDER_AUTHORITY_UNAVAILABLE");
+        }
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         var bytes = new byte[65_537];
         var length = 0;
@@ -402,6 +431,33 @@ public sealed partial class WhatsAppKeyVaultCredentials(
         {
             foreach (var item in element.EnumerateArray())
                 RequireUniqueProperties(item);
+        }
+    }
+
+    private static async Task<int?> ReadProviderErrorCodeAsync(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken
+    )
+    {
+        try
+        {
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            var bytes = new byte[16_384];
+            var length = 0;
+            while (length < bytes.Length)
+            {
+                var count = await stream.ReadAsync(bytes.AsMemory(length), cancellationToken);
+                if (count == 0)
+                    break;
+                length += count;
+            }
+            using var document = JsonDocument.Parse(bytes.AsMemory(0, length));
+            return WhatsAppProviderFailure.ReadMetaCode(document.RootElement);
+        }
+        catch (Exception exception)
+            when (exception is JsonException or HttpRequestException or IOException)
+        {
+            return null;
         }
     }
 

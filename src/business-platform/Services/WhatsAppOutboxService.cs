@@ -45,7 +45,11 @@ public sealed record WhatsAppDispatchObservation(
     string ProviderReferenceDigest,
     string ObservationDigest,
     DateTimeOffset ObservedAt
-);
+)
+{
+    /// <summary>Fixed classification label from <see cref="WhatsAppProviderFailure"/>; never provider text.</summary>
+    public string? FailureReason { get; init; }
+}
 
 public sealed record WhatsAppProviderStatusEvent(
     string EventIdentity,
@@ -57,6 +61,7 @@ public sealed record WhatsAppProviderStatusEvent(
 {
     public Guid? OutboxId { get; init; }
     public string? SenderBindingDigest { get; internal init; }
+    public int? FailureCode { get; init; }
 }
 
 public sealed class WhatsAppOutboxService(
@@ -733,7 +738,7 @@ public sealed class WhatsAppOutboxService(
         };
         record.BlockedReason = observation.State switch
         {
-            "REJECTED" => "PROVIDER_REJECTED",
+            "REJECTED" => observation.FailureReason ?? "PROVIDER_REJECTED",
             "NOT_SENT" => "DISPATCH_AUTHORITY_DENIED",
             _ => null,
         };
@@ -797,6 +802,9 @@ public sealed class WhatsAppOutboxService(
         if (customerTransaction is not null)
             await customerTransaction.CommitAsync(cancellationToken);
     }
+
+    internal static bool IsSupportedProviderStatus(string state) =>
+        state.Trim().ToUpperInvariant() is "SENT" or "DELIVERED" or "READ" or "FAILED";
 
     public async Task<bool> RecordProviderStatusAsync(
         WhatsAppProviderStatusEvent statusEvent,
