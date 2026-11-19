@@ -490,7 +490,7 @@ locals {
         provider_alias     = "facebook"
         provider_namespace = "urn:waooaw:identity:${var.environment}:facebook:customer-login:v1"
       }))
-    } : {}, var.environment == "demo" ? local.demo_identity_runtime : {}, local.whatsapp_provider_runtime, local.visitor_conversation_runtime)
+    } : {}, var.environment == "demo" ? local.demo_identity_runtime : {}, local.whatsapp_provider_runtime)
     "professional-runtime" = merge({
       AIR_TRANSCRIPTION_BASE_URL    = local.service_urls.ai_runtime
       CONSTITUTIONAL_ENGINE_ADDRESS = "ca-${var.environment}-constitutional-engine:80"

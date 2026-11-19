@@ -102,13 +102,6 @@ module "workload" {
     environment_contract = filesha256("../../../../../environment-readiness/demo.rendered.json")
     release_members      = var.image_digests
   }))
-  visitor_conversation = {
-    mode                      = "V2"
-    default_tenant_id         = "65797d6b-dc09-5e94-987b-02f365d457ef"
-    lead_retention_days       = 90
-    simulation_retention_days = 7
-    handoff_open_base_url     = "https://api.demo.waooaw.com/api/v1/visitor/handoffs"
-  }
 }
 
 output "lease_reconciliation_inputs" {

@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-135
 contract_path: work-contracts/WC-135-visitor-conversation-and-simulated-customers.md
-contract_digest: 35d589b5261f55ca5e3196a13d031138bfc3b8cba451cf5ddf449bbc26eed8a9
+contract_digest: 3a6f1bbf6db0f720dfc200d73927bbd27a315bc0eacac4247f578f83ab46e339
 implementation_scope: true
 result: QUALIFIED
 
@@ -11,7 +11,7 @@ qualification_summary:
     - Business Platform gate 2511 tests passed with 90.18% line and 80.35% branch coverage.
     - WhatsApp V2 conversation, START and migration passed on real PostgreSQL.
     - Simulated-customer harness 111 tests passed; 140 simulated conversations on the Demo API had 0 failures and 0 policy violations (baseline 0% task success; compare gate IMPROVED).
-    - Terraform 1.9.8 validate and OpenAPI validation clean.
+    - OpenAPI validation clean.
   remaining_acceptance:
     - Live WhatsApp conversation from the Founder's phones inside opening hours (Meta acceptance of interactive payloads).
     - Founder wording approval (O-7) and privacy-reviewer sign-off (O-5).
