@@ -9,7 +9,7 @@ COPY src/shared/InferenceWorkloadValidator.cs /shared/InferenceWorkloadValidator
 RUN dotnet publish --configuration Release --runtime linux-musl-x64 \
     --self-contained false --no-restore --output /app/publish
 
-FROM golang:1.26.10-alpine@sha256:9ce231b28998b32e116927c61aa5c406183061d4f3f2d61b292c88e7f6bdf7ca AS health-probe
+FROM golang:1.26.11-alpine@sha256:f496f8c537ed506626ee1a6913afb32c45068a48697163c088f604cc775a0c38 AS health-probe
 ARG GRPC_HEALTH_PROBE_COMMIT=b5fef775b4ec749eefb19fb00787089ec9a772d5
 ARG GRPC_GO_VERSION=v1.83.2
 ARG GOLANG_X_NET_VERSION=v0.62.0
