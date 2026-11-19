@@ -45,6 +45,11 @@ on:
         description: "Activate only: exact bundle digest from separate Founder activation/traffic approval"
         required: false
         type: string
+      reset_demo_database:
+        description: "Demo apply only: drop and recreate all four demo databases. Leave off to keep Demo data, guest sessions and consent."
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -67,6 +72,7 @@ jobs:
       execution: ${{ steps.dispatch.outputs.execution }}
       image_home: ${{ steps.dispatch.outputs.image_home }}
       provider_operation: ${{ steps.dispatch.outputs.provider_operation }}
+      reset_demo_database: ${{ steps.dispatch.outputs.reset_demo_database }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -77,6 +83,7 @@ jobs:
           EXECUTION_MODE: ${{ inputs.execution || 'apply' }}
           IMAGE_HOME: ${{ inputs.image_home || 'github' }}
           PROVIDER_OPERATION: ${{ inputs.provider_operation || 'none' }}
+          RESET_DEMO_DATABASE: ${{ inputs.reset_demo_database && 'true' || 'false' }}
         run: |
           normalized=$(python3 scripts/goal006_dispatch_inputs.py \
             --environment "$TARGET_ENVIRONMENT" \
@@ -89,6 +96,11 @@ jobs:
               ;;
             *) exit 1 ;;
           esac
+          case "$RESET_DEMO_DATABASE" in
+            true) test "$TARGET_ENVIRONMENT:$EXECUTION_MODE" = demo:apply ;;
+            false) ;;
+            *) exit 1 ;;
+          esac
           jq -e . >/dev/null <<< "$normalized"
           {
             echo "lease_expires_at=$(jq -r '.lease_expires_at' <<< "$normalized")"
@@ -96,6 +108,7 @@ jobs:
             echo "execution=$EXECUTION_MODE"
             echo "image_home=$(jq -r '.image_home' <<< "$normalized")"
             echo "provider_operation=$PROVIDER_OPERATION"
+            echo "reset_demo_database=$RESET_DEMO_DATABASE"
           } >> "$GITHUB_OUTPUT"
 
       - name: Select trusted current-main release
@@ -156,6 +169,7 @@ jobs:
       provider_operation: ${{ needs.authorize.outputs.provider_operation }}
       provider_document: ${{ inputs.provider_document || '{}' }}
       provider_approved_digest: ${{ inputs.provider_approved_digest || '' }}
+      reset_demo_database: ${{ needs.authorize.outputs.reset_demo_database == 'true' }}
     secrets: inherit
 
   verify:

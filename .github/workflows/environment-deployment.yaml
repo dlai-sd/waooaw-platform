@@ -53,6 +53,11 @@ on:
         required: false
         type: string
         default: ""
+      reset_demo_database:
+        description: "Demo only: drop and recreate all four demo databases. Off by default so a normal deployment keeps Demo data."
+        required: false
+        type: boolean
+        default: false
     outputs:
       verification_client_id:
         value: ${{ jobs.terraform.outputs.verification_client_id }}
@@ -1658,8 +1663,15 @@ jobs:
           IMAGE_HOME: ${{ needs.start-broker.outputs.image_home }}
           IMAGE_REGISTRY_SERVER: ${{ needs.start-broker.outputs.image_registry_server }}
           IMAGE_PULL_IDENTITY_ID: ${{ needs.start-broker.outputs.image_pull_identity_id }}
+          RESET_DEMO_DATABASE: ${{ inputs.reset_demo_database }}
         run: |
           set -euo pipefail
+          # The Founder-merged standing policy owns the environment spend authority the provisioner sets.
+          spend_arguments='{"paise":0,"evidence_id":""}'
+          if [ "$TARGET_ENVIRONMENT" = demo ]; then
+            spend_arguments=$(python3 scripts/wc134_demo_whatsapp_autopilot.py spend-args \
+              --policy release/wc134/demo-whatsapp-activation-policy.json)
+          fi
           recovery_verification='${{ steps.database-transition.outputs.revocation_verification_required }}'
           full_provisioning='${{ steps.database-transition.outputs.provisioner_required }}'
           job_name="job-${TARGET_ENVIRONMENT}-wc124-db-provisioner"
@@ -1708,6 +1720,8 @@ jobs:
             --arg provisioner_client_id "$DATABASE_PROVISIONER_CLIENT_ID" \
             --argjson recovery_verification "$recovery_verification" \
             --argjson full_provisioning "$full_provisioning" \
+            --argjson reset_demo_database "$RESET_DEMO_DATABASE" \
+            --argjson spend_arguments "$spend_arguments" \
             --arg image_registry_server "$acr_server" \
             --arg image_pull_identity_id "$acr_pull_identity" \
             '{
@@ -1761,7 +1775,13 @@ jobs:
                         "--bootstrap-client-id", $bootstrap_client_id,
                         "--bootstrap-name", $bootstrap_name,
                         "--provisioner-client-id", $provisioner_client_id
-                      ] + if $target_environment == "demo" then ["--reset-demo-databases"] else [] end)
+                      ] + if $target_environment == "demo" then (
+                        (if $reset_demo_database then ["--reset-demo-databases"] else [] end)
+                        + [
+                          "--demo-spend-authority-paise", ($spend_arguments.paise | tostring),
+                          "--demo-spend-authority-evidence-id", $spend_arguments.evidence_id
+                        ]
+                      ) else [] end)
                       else [
                         "/opt/waooaw/wc124_db_provisioner.py",
                         "--environment", $target_environment,
@@ -1809,6 +1829,7 @@ jobs:
         env:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
+          RESET_DEMO_DATABASE: ${{ inputs.reset_demo_database }}
         run: |
           set -euo pipefail
           job_name="job-${TARGET_ENVIRONMENT}-wc124-db-provisioner"
@@ -1917,21 +1938,40 @@ jobs:
           jq --arg execution "$execution_name" '. + {execution: $execution}' \
             wc124-db-provisioner-result.json > wc124-db-provisioner-result.bound.json
           mv wc124-db-provisioner-result.bound.json wc124-db-provisioner-result.json
-          jq -e --arg environment "$TARGET_ENVIRONMENT" '
+          expected_spend_paise=0
+          if [ "$TARGET_ENVIRONMENT" = demo ]; then
+            expected_spend_paise=$(python3 scripts/wc134_demo_whatsapp_autopilot.py spend-args \
+              --policy release/wc134/demo-whatsapp-activation-policy.json | jq -er '.paise')
+          fi
+          jq -e --arg environment "$TARGET_ENVIRONMENT" \
+            --argjson reset "$RESET_DEMO_DATABASE" \
+            --argjson spend_paise "$expected_spend_paise" '
             .schema == "waooaw.wc124-db-provisioning/v1"
             and .mode != "canonical-url-refresh"
             and (
               if $environment == "demo"
               then (
-                .database_reset.status == "completed"
-                and (.database_reset.databases | sort) == ([
-                  "waooaw_application",
-                  "waooaw_keycloak",
-                  "waooaw_temporal",
-                  "waooaw_temporal_visibility"
-                ] | sort)
-                and .init_chain.reapplied == 0
-                and .init_chain.skipped == 0
+                (
+                  if $reset
+                  then (
+                    .database_reset.status == "completed"
+                    and (.database_reset.databases | sort) == ([
+                      "waooaw_application",
+                      "waooaw_keycloak",
+                      "waooaw_temporal",
+                      "waooaw_temporal_visibility"
+                    ] | sort)
+                    and .init_chain.reapplied == 0
+                    and .init_chain.skipped == 0
+                  )
+                  else (
+                    .database_reset == null
+                    and .init_chain.reapplied == 0
+                  )
+                  end
+                )
+                and .spend_authority.environment == "demo"
+                and .spend_authority.maximum_paise == $spend_paise
               )
               else .database_reset == null
               end
@@ -3748,6 +3788,25 @@ jobs:
             )
           ' demo-managed-certificates.json > /dev/null
 
+      - name: Activate Demo WhatsApp under the standing Founder policy
+        if: inputs.apply && inputs.environment == 'demo'
+        timeout-minutes: 25
+        env:
+          RELEASE_RUN_ID: ${{ inputs.release_run_id }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          # Stops WhatsApp again and fails the deployment if any check does not hold.
+          python3 scripts/wc134_demo_whatsapp_autopilot.py run \
+            --policy release/wc134/demo-whatsapp-activation-policy.json \
+            --alert-template infrastructure/operations/wc134-whatsapp-monitor.kql \
+            --directory "$RUNNER_TEMP/whatsapp-autopilot" \
+            --evidence whatsapp-autopilot \
+            --run "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --release-run-id "$RELEASE_RUN_ID" \
+            --release-sha "$RELEASE_SHA"
+
       - name: Preserve workload state after apply failure
         if: failure() && steps.workload.outcome == 'failure'
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload
@@ -4038,6 +4097,7 @@ jobs:
             wc124-db-credential-inventory.json
             wc124-connection-budget.json
             wc124-connection-budget-post-activation.json
+            whatsapp-autopilot/*.json
             wc124-dependency-readiness.json
             wc124-migration-readiness.json
             wc124-activation-readiness.json

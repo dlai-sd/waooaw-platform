@@ -86,7 +86,8 @@ jobs:
               tests/pipeline/test_goal006_keycloak_realm_refresh.py \
               tests/pipeline/test_goal006_az_extensions.py \
               tests/pipeline/test_wc132_demo_reset_recovery.py \
-              tests/pipeline/test_goal006_cloud_platform_finalization.py'
+              tests/pipeline/test_goal006_cloud_platform_finalization.py \
+              tests/pipeline/test_wc134_demo_whatsapp_autopilot.py'
       - name: PST-SEC-EVIDENCE-01 fail-closed evidence contract
         run: |
           docker compose --profile test-python run --rm -e PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 --pull never test-runner-python sh -lc \

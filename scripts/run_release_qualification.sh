@@ -83,6 +83,7 @@ if test "$RELEASE_RUN_TESTS" = true; then
     tests/pipeline/test_goal006_six_member_packaging.py \
     tests/pipeline/test_goal006_deployment_inputs.py \
     tests/pipeline/test_wc120_whatsapp_activation.py \
+    tests/pipeline/test_wc134_demo_whatsapp_autopilot.py \
     tests/validation_control/test_wc120_evidence.py \
     tests/pipeline/test_auth_preview.py \
     tests/pipeline/test_prepare_pr_body.py \

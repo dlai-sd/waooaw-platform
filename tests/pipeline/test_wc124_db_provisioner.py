@@ -26,7 +26,9 @@ from wc124_db_provisioner import (
     password_from_secret,
     probe_pgbouncer_connectivity,
     psql,
+    apply_environment_spend_authority,
     reset_demo_databases,
+    spend_authority_sql,
     run,
     secret_value,
     validate_catalog,
@@ -829,3 +831,67 @@ def test_identity_schema_verifier_rejects_additional_permissive_policy(
 
     with pytest.raises(ValueError, match="memberships"):
         verify_identity_schema("fqdn", "bootstrap", "token")
+
+
+EVIDENCE_ID = "22bc6da2-4fc8-5f50-aeca-1d4819589185"
+
+
+def test_spend_authority_upsert_is_owner_scoped_and_fails_closed_on_unmapped_exposure() -> None:
+    statement = spend_authority_sql("demo", 50000, EVIDENCE_ID)
+
+    assert "SET LOCAL ROLE bp_owner;" in statement
+    assert "50000" in statement and EVIDENCE_ID in statement
+    # First creation is refused when model reservations already exist for the environment.
+    assert "legacy model exposure must be mapped" in statement
+    # An incomplete existing authority needs owner reconciliation instead of silent activation.
+    assert "owner reconciliation is required" in statement
+    # An unchanged authority is left alone so each deploy does not bump its version.
+    assert statement.count("authority_version = existing.authority_version + 1") == 1
+
+
+@pytest.mark.parametrize(
+    ("environment", "paise", "evidence"),
+    [
+        ("uat", 50000, EVIDENCE_ID),
+        ("demo", 0, EVIDENCE_ID),
+        ("demo", 50001, EVIDENCE_ID),
+        ("demo", 50000, "00000000-0000-0000-0000-000000000000"),
+        ("demo", 50000, "not-a-uuid"),
+    ],
+)
+def test_spend_authority_rejects_out_of_policy_inputs(environment: str, paise: int, evidence: str) -> None:
+    with pytest.raises(ValueError):
+        spend_authority_sql(environment, paise, evidence)
+
+
+def test_spend_authority_grants_owner_only_around_the_statement(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr("wc124_db_provisioner.access_token", lambda: "token")
+    monkeypatch.setattr(
+        "wc124_db_provisioner.psql",
+        lambda _server, _bootstrap, _database, _token, sql, **_kwargs: calls.append(sql) or "",
+    )
+
+    result = apply_environment_spend_authority("fqdn", "bootstrap-principal", "demo", 50000, EVIDENCE_ID)
+
+    assert result == {"environment": "demo", "maximum_paise": 50000, "evidence_id": EVIDENCE_ID}
+    assert calls[0].startswith("GRANT bp_owner TO") and calls[-1].startswith("REVOKE bp_owner FROM")
+    assert "business.environment_spend_authorities" in calls[1]
+
+
+def test_spend_authority_revokes_owner_when_the_statement_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    def fake_psql(_server, _bootstrap, _database, _token, sql, **_kwargs):
+        calls.append(sql)
+        if "environment_spend_authorities" in sql:
+            raise RuntimeError("owner reconciliation is required")
+        return ""
+
+    monkeypatch.setattr("wc124_db_provisioner.access_token", lambda: "token")
+    monkeypatch.setattr("wc124_db_provisioner.psql", fake_psql)
+
+    with pytest.raises(RuntimeError):
+        apply_environment_spend_authority("fqdn", "bootstrap-principal", "demo", 50000, EVIDENCE_ID)
+
+    assert calls[-1].startswith("REVOKE bp_owner FROM")

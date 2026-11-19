@@ -4,6 +4,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Options;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
 using Xunit;
@@ -367,6 +368,105 @@ public sealed class WhatsAppGuestTrafficBudgetTests
             )
         );
         Assert.Equal("GUEST_MESSAGE_LIMIT_REACHED", exhausted.ReasonCode);
+    }
+
+    [Fact]
+    public async Task ConfiguredPerGuestLimitReplacesTheBuiltInDefault()
+    {
+        var tenantId = Guid.NewGuid();
+        var factory = new ConversationFitnessDbFactory(Guid.NewGuid().ToString("N"));
+        var clock = new FixedTimeProvider(new DateTimeOffset(2026, 11, 6, 10, 0, 0, TimeSpan.Zero));
+        var budget = new WhatsAppGuestTrafficBudget(
+            factory,
+            new GuestBudgetGate(tenantId, maximumMessagesPerMinute: 100),
+            clock,
+            Options.Create(new WhatsAppGuestLimitOptions { MessagesPerGuestPer24Hours = 20 })
+        );
+        var bindingDigest = new string('a', 64);
+        // The built-in default of 10 gives the limit notice on the fifth inbound message.
+        foreach (var index in Enumerable.Range(0, 5))
+        {
+            Assert.Equal(
+                WhatsAppGuestTrafficNotice.None,
+                await budget.ReserveInboundAsync(
+                    tenantId,
+                    bindingDigest,
+                    $"inbound-{index}",
+                    false,
+                    CancellationToken.None
+                )
+            );
+            await budget.ReserveOutboundAsync(
+                tenantId,
+                bindingDigest,
+                Guid.NewGuid(),
+                CancellationToken.None
+            );
+        }
+    }
+
+    [Theory]
+    [InlineData(2, 100)]
+    [InlineData(10, 0)]
+    [InlineData(100_001, 100)]
+    public async Task InvalidConfiguredLimitsFailClosed(int perGuest, int sessionsPerDay)
+    {
+        var tenantId = Guid.NewGuid();
+        var budget = new WhatsAppGuestTrafficBudget(
+            new ConversationFitnessDbFactory(Guid.NewGuid().ToString("N")),
+            new GuestBudgetGate(tenantId, maximumMessagesPerMinute: 100),
+            new FixedTimeProvider(new DateTimeOffset(2026, 11, 6, 10, 0, 0, TimeSpan.Zero)),
+            Options.Create(
+                new WhatsAppGuestLimitOptions
+                {
+                    MessagesPerGuestPer24Hours = perGuest,
+                    NewSessionsPerDay = sessionsPerDay,
+                }
+            )
+        );
+        var failure = await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+            budget.ReserveInboundAsync(
+                tenantId,
+                new string('a', 64),
+                "invalid-limits",
+                false,
+                CancellationToken.None
+            )
+        );
+        Assert.Equal("GUEST_LIMIT_CONFIGURATION_INVALID", failure.ReasonCode);
+    }
+
+    [Fact]
+    public async Task ConfiguredDailySessionLimitStopsAdmissionOfAnotherNewGuest()
+    {
+        var tenantId = Guid.NewGuid();
+        var factory = new ConversationFitnessDbFactory(Guid.NewGuid().ToString("N"));
+        var budget = new WhatsAppGuestTrafficBudget(
+            factory,
+            new GuestBudgetGate(tenantId, maximumMessagesPerMinute: 100),
+            new FixedTimeProvider(new DateTimeOffset(2026, 11, 6, 10, 0, 0, TimeSpan.Zero)),
+            Options.Create(new WhatsAppGuestLimitOptions { NewSessionsPerDay = 1 })
+        );
+        Assert.Equal(
+            WhatsAppGuestTrafficNotice.None,
+            await budget.ReserveInboundAsync(
+                tenantId,
+                new string('a', 64),
+                "first-guest",
+                true,
+                CancellationToken.None
+            )
+        );
+        Assert.Equal(
+            WhatsAppGuestTrafficNotice.GuestSessionLimit,
+            await budget.ReserveInboundAsync(
+                tenantId,
+                new string('b', 64),
+                "second-guest",
+                true,
+                CancellationToken.None
+            )
+        );
     }
 
     [Fact]

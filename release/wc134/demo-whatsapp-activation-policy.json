@@ -1,0 +1,37 @@
+{
+  "schema": "waooaw.demo-whatsapp-standing-policy/v1",
+  "approval": {
+    "approved_by": "dlai-sd",
+    "basis": "Founder decision of 2026-11-16: merging this file approves re-activation of Demo WhatsApp for public guests after every Demo deployment, strictly inside these limits and never beyond window_days."
+  },
+  "cohort": {
+    "allow_public_admission": true,
+    "allow_provisional_onboarding": true
+  },
+  "window_days": 7,
+  "limits": {
+    "maximum_messages": 200,
+    "maximum_messages_per_minute": 6,
+    "maximum_spend_inr": 500,
+    "maximum_cost_per_message_inr": 5
+  },
+  "tenant_id": "65797d6b-dc09-5e94-987b-02f365d457ef",
+  "references": {
+    "consent": "GUEST-CONSENT-FLOW-WC134",
+    "incident_owner": "INCIDENT-OWNER-FOUNDER-DLAI-SD",
+    "alert_route": "ALERT-wc134-demo-operator"
+  },
+  "policies": {
+    "PolicyVersion": "wc134-demo-guest-20261116",
+    "InstitutionalPolicyVersion": "wc134-demo-guest-20261116",
+    "InteractionPolicyVersion": "wc134-demo-guest-20261116",
+    "ChannelRenderingPolicyVersion": "wc134-demo-guest-20261116"
+  },
+  "template": {
+    "Name": "waooaw_demo_invitation_v1",
+    "Version": "v1",
+    "Locale": "en",
+    "Category": "MARKETING",
+    "Body": "Hello, You’re invited to try WAOOAW Demo, where you can interact with digital professionals through WhatsApp. Reply to this message to begin. This is a demo service. Reply STOP to stop messages."
+  }
+}
