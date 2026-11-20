@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-136
 contract_path: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md
-contract_digest: f86e269655295b2e3720fd53bdfcf11ae57e89edb3bb1c78d2ffbfd4b950c485
+contract_digest: 7ec950cbc114fce2f0778392cd79523b993dc627b92d1bd220002b25c7ae9a65
 implementation_scope: true
 result: PLANNED
 
