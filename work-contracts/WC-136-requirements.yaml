@@ -16,6 +16,8 @@ requirement_defaults: &defaults
   evidence_refs:
     - "Commit-hook prechecks at 787f992b and 4509d74f (all nodes PASS, .git/waooaw/prechecks): business-platform tests, CSharpier and .NET quality, web gate, TypeScript quality, scripts quality, gitleaks"
     - "Tests named in test_path_or_plan and the Implementation Record of work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md"
+
+requirements:
   - <<: *defaults
     requirement_id: WC136-R001
     source: WC-136 Canonical Requirement Index, R001
