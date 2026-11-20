@@ -1,0 +1,292 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-136
+contract_path: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md
+contract_digest: e90e50eecbf983520604bc770b71873dceee8d95a4d9e8b42ec8a13f96f7fc02
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Unit and contract tests authored per story and run once in the Final Qualification Phase; PostgreSQL, build, static, security and simulated-customer evidence in the same phase
+  initial_state: new
+  dependencies: Preconditions P1 to P6 of WC-136 (architecture package accepted, ledger validated, Founder authorization of the implementing session, fresh worktree); Founder instruction that Docker validation runs only after all stories
+  residual_risk: No deployment, live provider, Demo acceptance or real-phone acceptance is part of this contract; Founder-reserved items are listed in WC-136 Definition Of Done
+  completion_rule: Executable evidence for the requirement passes at the exact qualified head in the Final Qualification Phase
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC136-R001
+    source: WC-136 Canonical Requirement Index, R001
+    observable_outcome: One protocol policy table drives STOP and START behavior for the visitor endpoint and WhatsApp and invalid policy content fails to load.
+    test_path_or_plan: Planned tests/business-platform.Tests/VisitorConversation/ProtocolPolicyTests.cs and VisitorStateMachineTests.cs (story C1-01).
+
+  - <<: *defaults
+    requirement_id: WC136-R002
+    source: WC-136 Canonical Requirement Index, R002
+    observable_outcome: A WhatsApp guest STOP is acknowledged once after the stop commits, later messages get silence, and the outbox still refuses other purposes to a stopped recipient.
+    test_path_or_plan: Planned tests/business-platform.Tests/ConversationWhatsAppFitness/WhatsAppGuestStopAcknowledgementTests.cs and WhatsAppVisitorV2PostgresTests.cs (story C1-02).
+
+  - <<: *defaults
+    requirement_id: WC136-R003
+    source: WC-136 Canonical Requirement Index, R003
+    observable_outcome: Relationship-bound STOP and EMERGENCY STOP are acknowledged once without changing evidence, fence or halt ordering.
+    test_path_or_plan: Planned relationship STOP acknowledgement tests beside WhatsAppJourneyService tests (story C1-03).
+
+  - <<: *defaults
+    requirement_id: WC136-R004
+    source: WC-136 Canonical Requirement Index, R004
+    observable_outcome: The judge scores STOP, START and YES transcripts from the protocol policy and the consent-after-START defect no longer occurs.
+    test_path_or_plan: Planned tests/visitor_simulation/test_visitor_judge.py additions (story C1-04).
+
+  - <<: *defaults
+    requirement_id: WC136-R005
+    source: WC-136 Canonical Requirement Index, R005
+    observable_outcome: pass^k, k and run variance are reported per persona and the compare gate uses pass^k with schema compatibility.
+    test_path_or_plan: Planned tests/visitor_simulation/test_visitor_passk.py and test_visitor_runner.py (story C1-05).
+
+  - <<: *defaults
+    requirement_id: WC136-R006
+    source: WC-136 Canonical Requirement Index, R006
+    observable_outcome: The experience schema and model validate the DMA declaration, whose component ids equal the content-social cost units and whose availability is honest.
+    test_path_or_plan: Planned tests/contract/test_wc136_experience_contract.py (stories C2-01, C2-02).
+
+  - <<: *defaults
+    requirement_id: WC136-R007
+    source: WC-136 Canonical Requirement Index, R007
+    observable_outcome: Block schema v2 validates every block type and enforces limits, fallback and no-authority rules.
+    test_path_or_plan: Planned tests/contract/test_wc136_experience_contract.py (story C2-03).
+
+  - <<: *defaults
+    requirement_id: WC136-R008
+    source: WC-136 Canonical Requirement Index, R008
+    observable_outcome: The Workbench OpenAPI parses, every operation is capability-traced and idempotent, and at least ten negative fixtures fail for stated reasons.
+    test_path_or_plan: Planned tests/contract/test_wc136_experience_contract.py and architecture/reference/api-specs/agent-experience-negative-fixtures.yaml (story C2-04).
+
+  - <<: *defaults
+    requirement_id: WC136-R009
+    source: WC-136 Canonical Requirement Index, R009
+    observable_outcome: The Pricing Admin and WBE internal specifications parse and each internal route has exactly one workload grant.
+    test_path_or_plan: Planned contract tests and registry parity test (story C2-05).
+
+  - <<: *defaults
+    requirement_id: WC136-R010
+    source: WC-136 Canonical Requirement Index, R010
+    observable_outcome: Client generation is pinned to openapi-generator-cli v7.17.0 and produces an API file per tag and a model per named schema.
+    test_path_or_plan: Planned tests/contract/test_wc136_generated_clients.py (story C2-06).
+
+  - <<: *defaults
+    requirement_id: WC136-R011
+    source: WC-136 Canonical Requirement Index, R011
+    observable_outcome: The wc136 contract gate exists in the validation catalog and runs the new contract tests.
+    test_path_or_plan: Planned validation/engineering-validation.yaml change and tests/validation_control/test_catalog_contract.py (story C2-07).
+
+  - <<: *defaults
+    requirement_id: WC136-R012
+    source: WC-136 Canonical Requirement Index, R012
+    observable_outcome: The environment ceiling comes from configuration with default 500, the database no longer caps it at 50000 paise, and no monetary literal remains.
+    test_path_or_plan: Planned tests/business-platform.Tests/Conversation/EnvironmentSpendOptionsTests.cs and a PostgreSQL case (story C3-01).
+
+  - <<: *defaults
+    requirement_id: WC136-R013
+    source: WC-136 Canonical Requirement Index, R013
+    observable_outcome: Trial start, expiry and conversion make no Redis calls and tier selection uses relationship-level entitlement only.
+    test_path_or_plan: Planned tests/billing-engine/test_trial.py and tests/ai-runtime/test_pse_router.py updates (story C3-02).
+
+  - <<: *defaults
+    requirement_id: WC136-R014
+    source: WC-136 Canonical Requirement Index, R014
+    observable_outcome: Agent version flows from Business Platform to WBE, identity claims are recorded under RECORD mode and refused under ENFORCE, and hiring never blocks a trial.
+    test_path_or_plan: Planned tests/business-platform.Tests/AcquisitionControllerTests.cs, tests/billing-engine/test_trial.py and test_trial_postgres.py (story C3-03).
+
+  - <<: *defaults
+    requirement_id: WC136-R015
+    source: WC-136 Canonical Requirement Index, R015
+    observable_outcome: Every metered call resolves to one account class by the resolution table and the decision is pinned at reserve and never re-resolved.
+    test_path_or_plan: Planned tests/business-platform.Tests/Spend/SpendAccountResolverTests.cs (story C3-04).
+
+  - <<: *defaults
+    requirement_id: WC136-R016
+    source: WC-136 Canonical Requirement Index, R016
+    observable_outcome: ACQUISITION reservations check every level of the cap hierarchy and name the exhausted level, with pseudonymous lead references only.
+    test_path_or_plan: Planned tests/billing-engine/test_platform_accounts.py (story C4-04).
+
+  - <<: *defaults
+    requirement_id: WC136-R017
+    source: WC-136 Canonical Requirement Index, R017
+    observable_outcome: One SETUP GRANT exists per relationship and funds only onboarding turns, replay creates none, and exhaustion returns the typed result.
+    test_path_or_plan: Planned tests/billing-engine/test_platform_accounts.py (story C4-04).
+
+  - <<: *defaults
+    requirement_id: WC136-R018
+    source: WC-136 Canonical Requirement Index, R018
+    observable_outcome: SIMULATION draws never touch ACQUISITION or customer scopes and PLATFORM FLOOR succeeds at zero balances.
+    test_path_or_plan: Planned tests/billing-engine/test_platform_accounts.py (story C4-04).
+
+  - <<: *defaults
+    requirement_id: WC136-R019
+    source: WC-136 Canonical Requirement Index, R019
+    observable_outcome: With WBE unavailable no metered provider dispatch occurs, PLATFORM FLOOR continues, and the Base Specification B-3 default is amended.
+    test_path_or_plan: Planned tests/business-platform.Tests/Conversation/SpendFailClosedTests.cs and specification text test (story C3-05).
+
+  - <<: *defaults
+    requirement_id: WC136-R020
+    source: WC-136 Canonical Requirement Index, R020
+    observable_outcome: Leases keep the ceiling strict under concurrency, GLOBAL_LOCK mode reproduces prior results, and unknown outcomes block lease return.
+    test_path_or_plan: Planned tests/business-platform.Tests/Spend/EnvironmentSpendLeaseTests.cs with PostgreSQL concurrency cases (story C3-06).
+
+  - <<: *defaults
+    requirement_id: WC136-R021
+    source: WC-136 Canonical Requirement Index, R021
+    observable_outcome: The Wallet schema and ledger implement credit, reserve, settle, release and expire with idempotency, immutability, no refundable kind and no rollover.
+    test_path_or_plan: Planned tests/billing-engine/test_wc136_wallet_schema.py, test_wallet_entity_postgres.py and test_wallet_ledger.py (stories C4-01, C4-02).
+
+  - <<: *defaults
+    requirement_id: WC136-R022
+    source: WC-136 Canonical Requirement Index, R022
+    observable_outcome: In SHADOW mode every allowance operation is mirrored to the wallet with zero parity difference and LEGACY mode makes no wallet writes.
+    test_path_or_plan: Planned tests/billing-engine/test_wallet_parity.py (story C4-03).
+
+  - <<: *defaults
+    requirement_id: WC136-R023
+    source: WC-136 Canonical Requirement Index, R023
+    observable_outcome: Packages are keyed by agent version with components, recipes, ex-GST floor and margin, allocation sum and availability gate, and customer reads expose no cost or recipe data.
+    test_path_or_plan: Planned tests/billing-engine/test_package_engine.py, test_pricing_versions_postgres.py and tests/business-platform.Tests/PackagesControllerTests.cs (stories C4-05, C4-06, C4-13).
+
+  - <<: *defaults
+    requirement_id: WC136-R024
+    source: WC-136 Canonical Requirement Index, R024
+    observable_outcome: Voice and template-message catalogue entries exist as pending Founder authorization and no package can be authorized against them.
+    test_path_or_plan: Planned tests/billing-engine/test_thread_catalog.py additions (story C4-07).
+
+  - <<: *defaults
+    requirement_id: WC136-R025
+    source: WC-136 Canonical Requirement Index, R025
+    observable_outcome: COUNTED, SELECTED, TIME_ACCESS and CAPACITY components meter on owner-confirmed outcomes and verified connections, idempotently.
+    test_path_or_plan: Planned tests/billing-engine/test_component_units.py and tests/business-platform.Tests/ComponentUnitGatewayTests.cs (story C4-08).
+
+  - <<: *defaults
+    requirement_id: WC136-R026
+    source: WC-136 Canonical Requirement Index, R026
+    observable_outcome: Component units are released on cadence so consuming at maximum speed never exceeds released units.
+    test_path_or_plan: Planned pacing tests in tests/billing-engine/test_component_units.py (story C4-08).
+
+  - <<: *defaults
+    requirement_id: WC136-R027
+    source: WC-136 Canonical Requirement Index, R027
+    observable_outcome: Commercial projections and commands persist in PostgreSQL and survive a service restart with unchanged replay and conflict behavior.
+    test_path_or_plan: Planned tests/billing-engine/test_commercial_projection_postgres.py and test_relationship_workspace.py (story C4-09).
+
+  - <<: *defaults
+    requirement_id: WC136-R028
+    source: WC-136 Canonical Requirement Index, R028
+    observable_outcome: Pro-rata equals the time-pro-rated allocation to the paisa, lifecycle commands follow policy, and no wallet refund entry is ever written.
+    test_path_or_plan: Planned tests/billing-engine/test_prorata.py and test_lifecycle_commands.py (story C4-10).
+
+  - <<: *defaults
+    requirement_id: WC136-R029
+    source: WC-136 Canonical Requirement Index, R029
+    observable_outcome: Spend and cost telemetry events and metrics contain no personal data across all outcomes.
+    test_path_or_plan: Planned log-capture tests in tests/billing-engine/test_wc107_telemetry.py and VisitorOperationsTests.cs (story C4-11).
+
+  - <<: *defaults
+    requirement_id: WC136-R030
+    source: WC-136 Canonical Requirement Index, R030
+    observable_outcome: Outbound messages are classified and counted against 30 included proactive messages per period without enabling any send.
+    test_path_or_plan: Planned tests/billing-engine/test_proactive_messages.py and ProactiveClassificationTests.cs (story C4-12).
+
+  - <<: *defaults
+    requirement_id: WC136-R031
+    source: WC-136 Canonical Requirement Index, R031
+    observable_outcome: The pricing state machine enforces draft, simulate, authorize, effective with Founder-only step-up authorization, immediate safety-direction operations, change-size guard and CE evidence that fails closed.
+    test_path_or_plan: Planned tests/billing-engine/test_pricing_engine.py and test_pricing_validators.py (story C5-01).
+
+  - <<: *defaults
+    requirement_id: WC136-R032
+    source: WC-136 Canonical Requirement Index, R032
+    observable_outcome: The simulator reports floor, margin and three usage profiles and the live-margin watch detects and clears breaches without writing state.
+    test_path_or_plan: Planned tests/billing-engine/test_pricing_simulator.py (story C5-02).
+
+  - <<: *defaults
+    requirement_id: WC136-R033
+    source: WC-136 Canonical Requirement Index, R033
+    observable_outcome: Admin routes enforce the role and step-up matrix through delegated context, grants equal routes, and ceiling administration respects the deploy maximum and open reservations.
+    test_path_or_plan: Planned tests/billing-engine/test_pricing_admin_router.py, tests/business-platform.Tests/PricingAdminControllerTests.cs and Spend/BudgetAdministrationTests.cs (stories C5-03, C5-04).
+
+  - <<: *defaults
+    requirement_id: WC136-R034
+    source: WC-136 Canonical Requirement Index, R034
+    observable_outcome: Console screens and API routes enforce roles, origin, limits and allow-list, show floor, margin and allocation sums, and are keyboard accessible.
+    test_path_or_plan: Planned web/components/admin/pricing/*.test.tsx and route tests (story C5-05).
+
+  - <<: *defaults
+    requirement_id: WC136-R035
+    source: WC-136 Canonical Requirement Index, R035
+    observable_outcome: The Demo baseline replays idempotently, seed rows are flagged, export round-trips, and import creates drafts only and rejects tampering.
+    test_path_or_plan: Planned tests/billing-engine/test_pricing_export_import.py (story C5-06).
+
+  - <<: *defaults
+    requirement_id: WC136-R036
+    source: WC-136 Canonical Requirement Index, R036
+    observable_outcome: Coupons never take a price below the cost floor and no support wallet-credit path exists.
+    test_path_or_plan: Planned tests/billing-engine/test_promotions.py additions (story C5-07).
+
+  - <<: *defaults
+    requirement_id: WC136-R037
+    source: WC-136 Canonical Requirement Index, R037
+    observable_outcome: The funding and margin dashboard aggregates correctly, is read-only and exposes no personal data.
+    test_path_or_plan: Planned tests/billing-engine/test_pricing_dashboard.py and FundingDashboard.test.tsx (story C5-08).
+
+  - <<: *defaults
+    requirement_id: WC136-R038
+    source: WC-136 Canonical Requirement Index, R038
+    observable_outcome: The workbench projection composes existing owners, degrades to limitations, is flag-gated, and its commands delegate with idempotency and membership checks.
+    test_path_or_plan: Planned tests/business-platform.Tests/Workbench/WorkbenchProjectionServiceTests.cs and WorkbenchControllerTests.cs (stories C6-01, C6-02).
+
+  - <<: *defaults
+    requirement_id: WC136-R039
+    source: WC-136 Canonical Requirement Index, R039
+    observable_outcome: Block negotiation, fallback and WhatsApp rendering work and P0 behaviors have identical meaning across channels.
+    test_path_or_plan: Planned tests/business-platform.Tests/Workbench/ExperienceBlockBuilderTests.cs and VisitorConversation/WhatsAppRendererV2Tests.cs (story C6-03).
+
+  - <<: *defaults
+    requirement_id: WC136-R040
+    source: WC-136 Canonical Requirement Index, R040
+    observable_outcome: Web routes and workbench screens render the projection, fall back to legacy components when disabled, and hide wallet data from beneficiaries.
+    test_path_or_plan: Planned web/lib/api/workbench.test.ts and web/components/workbench/*.test.tsx (stories C6-04, C6-05).
+
+  - <<: *defaults
+    requirement_id: WC136-R041
+    source: WC-136 Canonical Requirement Index, R041
+    observable_outcome: The DMA manifest v1.1.0 is admitted and the compatibility scan reports experience gaps and accepts v1.0.0 manifests.
+    test_path_or_plan: Planned tests/business-platform.Tests/EmploymentCompatibilityServiceTests.cs and tests/digital-marketing-agent additions (story C6-06).
+
+  - <<: *defaults
+    requirement_id: WC136-R042
+    source: WC-136 Canonical Requirement Index, R042
+    observable_outcome: A beneficiary projection contains no money, price, top-up or purchase fields and exhaustion tells the beneficiary to ask the owner.
+    test_path_or_plan: Planned audience matrix tests in WorkbenchProjectionServiceTests.cs (story C6-01).
+
+  - <<: *defaults
+    requirement_id: WC136-R043
+    source: WC-136 Canonical Requirement Index, R043
+    observable_outcome: The three legacy projections return byte-identical bodies with the flag on and off and add deprecation headers only when on.
+    test_path_or_plan: Planned golden-file tests beside the three controller test files (story C6-07).
+
+  - <<: *defaults
+    requirement_id: WC136-R044
+    source: WC-136 Canonical Requirement Index, R044
+    observable_outcome: Funding and pricing scenario packs run in the harness, a wrong expectation fails the run, and the simulator-only header appears only for the simulator role when enabled.
+    test_path_or_plan: Planned tests/visitor_simulation/test_funding_scenarios.py, test_pricing_scenarios.py and tests/business-platform.Tests/Spend/SimulatorHeaderTests.cs (stories C7-01, C7-02).
+
+  - <<: *defaults
+    requirement_id: WC136-R045
+    source: WC-136 Canonical Requirement Index, R045
+    observable_outcome: Gates Q0 to Q9 pass at one exact head after all stories and author review is bound to that head.
+    test_path_or_plan: Planned Final Qualification Phase evidence recorded in the WC-136 Implementation And Evidence Record.
+
+  - <<: *defaults
+    requirement_id: WC136-R046
+    source: WC-136 Canonical Requirement Index, R046
+    observable_outcome: Every new or changed source file carries the C-059 header and directly related documentation (Base Specification B-3, acquisition specification note, component quick reference) is updated.
+    test_path_or_plan: Planned quality:traceability and constitutional-commit-gate evidence plus a documentation diff review in the Final Qualification Phase.
