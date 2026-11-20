@@ -1,5 +1,6 @@
 # Implements: WC027-01a — BundleEngine implementing IMarkupEngine
-# constitutional_basis: C-059, C-082, C-088, C-089
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-06
+# Constitutional basis: C-059, C-082, C-088, C-089, C-090
 from __future__ import annotations
 
 import logging
@@ -25,11 +26,14 @@ class BundleEngine(IMarkupEngine):
         """Initialize BundleEngine with database session"""
         self.db = db
 
-    async def cost_floor(self, agent_type: str, bundle_tier: str) -> int:
+    async def cost_floor(
+        self, agent_type: str, bundle_tier: str, agent_version: str | None = None
+    ) -> int:
         """
-        cost_floor(agent_type, bundle_tier) -> int
+        cost_floor(agent_type, bundle_tier, agent_version=None) -> int
         Reads bundle_profiles.cost_floor_paise from DB.
-        Do NOT recompute — return stored value.
+        Do NOT recompute — return stored value. A package code is unique per agent version
+        (C4-05), so the agent version narrows the lookup when it is known.
         """
         query = text(
             """
@@ -37,6 +41,7 @@ class BundleEngine(IMarkupEngine):
                         FROM institutional.bundle_profiles
                         WHERE agent_type = :agent_type
                             AND bundle_tier = :bundle_tier
+                            AND (CAST(:agent_version AS TEXT) IS NULL OR agent_version = :agent_version)
                             AND is_active = TRUE
                             AND status = 'FOUNDER_AUTHORIZED'
                         ORDER BY bundle_version DESC
@@ -45,7 +50,7 @@ class BundleEngine(IMarkupEngine):
         )
         result = await self.db.execute(
             query,
-            {"agent_type": agent_type, "bundle_tier": bundle_tier},
+            {"agent_type": agent_type, "bundle_tier": bundle_tier, "agent_version": agent_version},
         )
         row = result.fetchone()
         if row is None:
@@ -63,9 +68,10 @@ class BundleEngine(IMarkupEngine):
         agent_type: str,
         bundle_tier: str,
         target_margin_pct: int | None = None,
+        agent_version: str | None = None,
     ) -> int:
         """
-        derive_price(agent_type, bundle_tier, target_margin_pct=None) -> int
+        derive_price(agent_type, bundle_tier, target_margin_pct=None, agent_version=None) -> int
         Formula: floor / (1 - margin/100) — margin-on-revenue.
         Uses bundle_profiles.minimum_margin_pct if target_margin_pct is None.
         """
@@ -75,6 +81,7 @@ class BundleEngine(IMarkupEngine):
                         FROM institutional.bundle_profiles
                         WHERE agent_type = :agent_type
                             AND bundle_tier = :bundle_tier
+                            AND (CAST(:agent_version AS TEXT) IS NULL OR agent_version = :agent_version)
                             AND is_active = TRUE
                             AND status = 'FOUNDER_AUTHORIZED'
                         ORDER BY bundle_version DESC
@@ -83,7 +90,7 @@ class BundleEngine(IMarkupEngine):
         )
         result = await self.db.execute(
             query,
-            {"agent_type": agent_type, "bundle_tier": bundle_tier},
+            {"agent_type": agent_type, "bundle_tier": bundle_tier, "agent_version": agent_version},
         )
         row = result.fetchone()
         if row is None:
@@ -118,9 +125,10 @@ class BundleEngine(IMarkupEngine):
         agent_type: str,
         bundle_tier: str,
         proposed_price_paise: int,
+        agent_version: str | None = None,
     ) -> PriceValidation:
         """
-        validate_price(agent_type, bundle_tier, proposed_price_paise) -> PriceValidation
+        validate_price(agent_type, bundle_tier, proposed_price_paise, agent_version=None) -> PriceValidation
         C-088: Check billing_profiles.status == FOUNDER_AUTHORIZED before validation.
         C-089: Enforce constitutional minimum margin floor.
         Writes to pricing_floor_log on BOTH APPROVED and REJECTED (C-059 audit).
@@ -155,6 +163,7 @@ class BundleEngine(IMarkupEngine):
                         FROM institutional.bundle_profiles
                         WHERE agent_type = :agent_type
                             AND bundle_tier = :bundle_tier
+                            AND (CAST(:agent_version AS TEXT) IS NULL OR agent_version = :agent_version)
                             AND is_active = TRUE
                             AND status = 'FOUNDER_AUTHORIZED'
                         ORDER BY bundle_version DESC
@@ -163,7 +172,7 @@ class BundleEngine(IMarkupEngine):
         )
         profile_result = await self.db.execute(
             profile_query,
-            {"agent_type": agent_type, "bundle_tier": bundle_tier},
+            {"agent_type": agent_type, "bundle_tier": bundle_tier, "agent_version": agent_version},
         )
         profile_row = profile_result.fetchone()
         if profile_row is None:

@@ -22,6 +22,9 @@ const inputParsers: Record<string, string[]> = {
   'app/api/admin/azure-key-vault/route.ts': ['sameOrigin'],
   'app/api/acquisition/events/route.ts': ['POSTHandler'],
   'config/public-config.ts': ['validatePublicConfiguration'],
+  'lib/pricing-admin-server.ts': ['subjectOf'],
+  'lib/pricing-admin.ts': ['claimsFromToken'],
+  'lib/pricing-forms.ts': ['parseJson'],
 };
 const owners = new Set([
   'logServerFailure',

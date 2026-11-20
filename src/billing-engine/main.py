@@ -1,5 +1,7 @@
 # Implements: work-contracts/WC-030-*.md §WC030-01bb:main.py
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-10
 # constitutional_basis: C-059 (Implementation Traceability)
+# Constitutional basis: C-059, C-038, ADR-026
 from __future__ import annotations
 
 import logging
@@ -7,11 +9,13 @@ from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 
 import redis.asyncio as aioredis
+from apscheduler.triggers.interval import IntervalTrigger
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import Settings
 from database import init_db, close_db, get_session_factory
+from payment.lifecycle_jobs import run_lifecycle_sweep
 from markup.router import router as pricing_router
 from markup import thread_catalog
 from meter.router import router as meter_router
@@ -22,9 +26,12 @@ from trial.router import router as trial_router
 from promotions.router import router as promotions_router
 from payment.router import router as payment_router
 from wallet.router import router as wallet_router
+from wallet.private_routes import router as wallet_private_router
 from reconciliation.service import ReconciliationService, FounderActionGenerator as _FAGBase
 from relationship_workspace import configure_relationship_workspace
 from relationship_workspace import router as relationship_workspace_router
+from pricing_admin import configure_pricing_admin
+from pricing_admin import router as pricing_admin_router
 from employment_eligibility import configure_employment_eligibility
 from employment_eligibility import router as employment_eligibility_router
 from telemetry import configure_telemetry
@@ -81,6 +88,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     scheduler.start()
     logger.info("Reconciliation scheduler started")
+    scheduler.add_job(
+        run_lifecycle_sweep,
+        trigger=IntervalTrigger(minutes=15),
+        id="wbe_lifecycle_sweep",
+        name="WBE package lifecycle sweep (grace expiry, fee refunds)",
+        replace_existing=True,
+        kwargs={"open_session": get_session_factory()},
+    )
 
     yield
 
@@ -172,7 +187,12 @@ def create_app() -> FastAPI:
     # Mount wallet bucket router — reserve endpoint for AIR CCT-PREPAID-01 (WC-043)
     app.include_router(wallet_router)
     app.include_router(relationship_workspace_router)
+    # WC-136 C4-03/C4-04: wallet parity read and setup-grant open, over the same private mTLS path
+    app.include_router(wallet_private_router)
     configure_relationship_workspace(app)
+    # WC-136 C5-03: pricing administration, over the same private mTLS path
+    app.include_router(pricing_admin_router)
+    configure_pricing_admin(app)
     app.include_router(employment_eligibility_router)
     configure_employment_eligibility(app)
 

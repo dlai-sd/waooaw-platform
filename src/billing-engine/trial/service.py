@@ -1,28 +1,36 @@
 # Implements: work-contracts/WC-031-goal005-wbe-trial-promotions.md §WC031-01
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C3-02
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C3-03
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-04
 # constitutional_basis: C-088 (trial is a billing mode), C-089 (trial costs tracked),
 #                       C-090 (grandfather on conversion), C-019 (informed consent — phone verified),
 #                       C-059 (Traceability)
 from __future__ import annotations
 
 import logging
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 
-import redis.asyncio as aioredis
 from fastapi import HTTPException
 from sqlalchemy import DateTime, String, bindparam, text
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from config import Settings
 from trial.models import ConvertResult, TrialStartResult, TrialStatus
+from wallet import metrics
+from wallet.platform_accounts import PlatformAccounts, PlatformGrant, effective_grant
 
 logger = logging.getLogger(__name__)
 
 _GRANDFATHER_DAYS = 14
 _DEFAULT_TRIAL_DURATION_DAYS = 14
 _UUID_BIND_TYPE = String(36).with_variant(postgresql.UUID(as_uuid=False), "postgresql")
+_IDENTITY_HASH = re.compile(r"^[0-9a-f]{64}$")
+_BINDING_MODES = ("OFF", "RECORD", "ENFORCE")
+_WALLET_AUTHORITIES = ("LEGACY", "SHADOW", "WALLET")
 
 
 class TrialService:
@@ -35,17 +43,30 @@ class TrialService:
       C-090 — trial→paid conversion within 14 days activates grandfather pricing.
       C-019 — phone_verified=True required before trial (informed consent gate).
       C-059 — full traceability on every operation.
+
+    Trial status lives only in PostgreSQL (trial_allocations); there is no customer-level mode flag.
     """
 
     def __init__(
         self,
         session_factory: async_sessionmaker[AsyncSession],
-        redis_client: aioredis.Redis,
         settings: Settings,
     ) -> None:
         self._session_factory = session_factory
-        self._redis = redis_client
         self._settings = settings
+
+    def _setting(self, name: str, allowed: tuple[str, ...], default: str) -> str:
+        value = getattr(self._settings, name, default)
+        return value if isinstance(value, str) and value in allowed else default
+
+    async def _lookup_trial_grant(self, agent_type: str, agent_version: str) -> PlatformGrant | None:
+        """The EFFECTIVE trial grant for the exact version; unavailable pricing means the settings fallback."""
+        try:
+            async with self._session_factory() as session:
+                return await effective_grant(session, "TRIAL", agent_type, agent_version)
+        except SQLAlchemyError:
+            logger.warning("Trial grant lookup unavailable; using settings fallback", exc_info=True)
+            return None
 
     # ------------------------------------------------------------------
     # start_trial
@@ -57,18 +78,29 @@ class TrialService:
         agent_type: str,
         phone_verified: bool,
         agent_version: str = "1.0.0",
+        identity_subject_hash: str | None = None,
+        tenant_id: uuid.UUID | None = None,
+        relationship_id: uuid.UUID | None = None,
     ) -> TrialStartResult:
         """
         Start a trial for the given customer and exact agent version.
 
         C-019: phone_verified=True is required before trial starts.
         C-088: inserts wallet_buckets + trial_free_unit_ledger in ONE transaction.
-        Redis key wbe:customer:{id}:mode = "TRIAL" is set AFTER commit (non-transactional).
+        C3-03: the verified identity (a hash, never the number) is bound per agent type and version
+        according to TRIAL_IDENTITY_BINDING_MODE (OFF, RECORD, ENFORCE).
+        C4-04: with WALLET_AUTHORITY SHADOW or WALLET and a relationship, the trial grant is also
+        credited to the relationship's TRIAL wallet account in the same transaction.
         """
         if not phone_verified:
             raise HTTPException(
                 status_code=422,
                 detail={"code": "PHONE_NOT_VERIFIED", "message": "Phone verification required to start trial"},
+            )
+        if identity_subject_hash is not None and not _IDENTITY_HASH.fullmatch(identity_subject_hash):
+            raise HTTPException(
+                status_code=422,
+                detail={"code": "IDENTITY_HASH_INVALID", "message": "identity_subject_hash must be 64 lowercase hex characters"},
             )
 
         free_units_map: dict[str, dict[str, int]] = getattr(self._settings, "TRIAL_FREE_UNITS", {})
@@ -78,6 +110,11 @@ class TrialService:
                 status_code=422,
                 detail={"code": "TRIAL_CONFIG_MISSING", "message": f"No trial configuration for agent_type={agent_type}"},
             )
+
+        binding_mode = self._setting("TRIAL_IDENTITY_BINDING_MODE", _BINDING_MODES, "RECORD")
+        wallet_mode = self._setting("WALLET_AUTHORITY", _WALLET_AUTHORITIES, "LEGACY")
+        credit_wallet = wallet_mode != "LEGACY" and tenant_id is not None and relationship_id is not None
+        grant = await self._lookup_trial_grant(agent_type, agent_version) if credit_wallet else None
 
         async with self._session_factory() as session:
             # C-088: one trial per customer per exact agent version (UNIQUE constraint)
@@ -140,6 +177,37 @@ class TrialService:
                     },
                 ) from error
 
+            if identity_subject_hash is not None and binding_mode != "OFF":
+                claimed = await session.execute(
+                    text(
+                        "INSERT INTO trial_identity_claims "
+                        "(identity_subject_hash, agent_type, agent_version, trial_id, claimed_at) "
+                        "VALUES (:hash, :at, :av, :trial_id, :claimed_at) "
+                        "ON CONFLICT (identity_subject_hash, agent_type, agent_version) DO NOTHING"
+                    ).bindparams(
+                        bindparam("trial_id", str(trial_id), type_=_UUID_BIND_TYPE),
+                        bindparam("claimed_at", now, type_=DateTime(timezone=True)),
+                        hash=identity_subject_hash,
+                        at=agent_type,
+                        av=agent_version,
+                    )
+                )
+                if claimed.rowcount == 0:
+                    if binding_mode == "ENFORCE":
+                        await session.rollback()
+                        raise HTTPException(
+                            status_code=409,
+                            detail={
+                                "code": "TRIAL_ALREADY_USED_BY_IDENTITY",
+                                "message": "This verified identity already used the trial of this agent version",
+                            },
+                        )
+                    logger.warning(
+                        "Trial identity already claimed; RECORD mode keeps the first claim: agent_type=%s agent_version=%s",
+                        agent_type,
+                        agent_version,
+                    )
+
             bucket_ids: list[uuid.UUID] = []
             for thread_type, units in agent_free_units.items():
                 bucket_id = uuid.uuid4()
@@ -171,14 +239,22 @@ class TrialService:
                     )
                 )
 
-            await session.commit()
+            if credit_wallet:
+                await self._credit_wallet(
+                    session,
+                    wallet_mode,
+                    tenant_id,
+                    relationship_id,
+                    agent_type,
+                    agent_version,
+                    trial_id,
+                    now,
+                    expires_at,
+                    grant,
+                    agent_free_units,
+                )
 
-        # Set Redis customer mode AFTER commit (not transactional — on failure, log and continue)
-        ttl = max(1, int((expires_at - datetime.now(tz=timezone.utc)).total_seconds()))
-        try:
-            await self._redis.set(f"wbe:customer:{customer_id}:mode", "TRIAL", ex=ttl)
-        except Exception:
-            logger.error("Failed to set Trial mode in Redis", exc_info=True)
+            await session.commit()
 
         logger.info(
             "Trial started: agent_type=%s agent_version=%s expires_at=%s",
@@ -194,12 +270,52 @@ class TrialService:
             wallet_bucket_ids=bucket_ids,
         )
 
+    async def _credit_wallet(
+        self,
+        session: AsyncSession,
+        wallet_mode: str,
+        tenant_id: uuid.UUID,
+        relationship_id: uuid.UUID,
+        agent_type: str,
+        agent_version: str,
+        trial_id: uuid.UUID,
+        started_at: datetime,
+        expires_at: datetime,
+        grant: PlatformGrant | None,
+        fallback_units: dict[str, int],
+    ) -> None:
+        """SHADOW never fails the legacy trial; WALLET makes the credit part of the same transaction."""
+        accounts = PlatformAccounts(session)
+
+        async def credit() -> None:
+            await accounts.credit_trial_grant(
+                tenant_id,
+                relationship_id,
+                agent_type,
+                agent_version,
+                trial_id,
+                started_at,
+                expires_at,
+                grant=grant,
+                fallback_units=fallback_units,
+            )
+
+        if wallet_mode == "WALLET":
+            await credit()
+            return
+        try:
+            async with session.begin_nested():
+                await credit()
+        except Exception:
+            logger.error("Trial wallet credit failed in SHADOW mode; legacy trial continues", exc_info=True)
+            metrics.count("wbe.wallet.shadow_failure", operation="trial_credit")
+
     # ------------------------------------------------------------------
     # check_expiry  (called by WC-033 Temporal saga)
     # ------------------------------------------------------------------
 
     async def check_expiry(self, trial_id: uuid.UUID) -> str:
-        """Mark trial as EXPIRED and clear Redis customer_mode key."""
+        """Mark trial as EXPIRED. Status is only in PostgreSQL; there is no customer-mode flag to clear."""
         async with self._session_factory() as session:
             result = await session.execute(
                 text("SELECT customer_id, status FROM trial_allocations WHERE trial_id = :trial_id").bindparams(
@@ -218,12 +334,6 @@ class TrialService:
                 )
             )
             await session.commit()
-            customer_id = row[0]
-
-        try:
-            await self._redis.delete(f"wbe:customer:{customer_id}:mode")
-        except Exception:
-            logger.error("Failed to clear Trial mode in Redis", exc_info=True)
 
         logger.info("Trial expired")
         return "EXPIRED"
@@ -296,12 +406,6 @@ class TrialService:
                 razorpay_order_id=payment_reference,
                 razorpay_payment_id=payment_reference,
             )
-
-        # Update Redis mode to ACTIVE
-        try:
-            await self._redis.set(f"wbe:customer:{customer_id}:mode", "ACTIVE")
-        except Exception:
-            logger.error("Failed to set Active mode in Redis", exc_info=True)
 
         logger.info(
             "Trial converted: grandfather_applied=%s",

@@ -1,5 +1,6 @@
 # Implements: work-contracts/WC-031-goal005-wbe-trial-promotions.md §WC031-02
-# constitutional_basis: C-088 (discount cap enforcement), C-059 (Traceability)
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C5-07
+# constitutional_basis: C-088 (discount cap enforcement), C-089 (cost floor), C-059 (Traceability)
 from __future__ import annotations
 
 import json
@@ -12,6 +13,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from config import Settings
+from promotions.coupon_versions import CouponQuote, CouponRedemption, quote_coupon, redeem_coupon
 from promotions.models import CouponValidation, DiscountResult, ReferralEntry, ReferralStatus
 
 logger = logging.getLogger(__name__)
@@ -242,8 +244,8 @@ class PromotionsService:
 
     async def credit_referrer(self, referral_id: uuid.UUID) -> None:
         """
-        Idempotent referral credit: fires only when credit_status='PENDING'.
-        Uses UPDATE ... WHERE credit_status='PENDING' to prevent duplicate credits.
+        Idempotent referral status transition: fires only when credit_status='PENDING'.
+        The reward is a goodwill coupon, never wallet credit (WC-136 C5-07).
         """
         async with self._session_factory() as session:
             await self._credit_referrer_in_session(session, referral_id)
@@ -254,8 +256,11 @@ class PromotionsService:
         session: AsyncSession,
         referral_id: uuid.UUID,
     ) -> None:
-        """Inner helper — must be called inside an open session; caller commits."""
-        # Idempotent: only fires if credit_status='PENDING'
+        """Inner helper — must be called inside an open session; caller commits.
+
+        A referral reward is goodwill and goodwill is a discount coupon only (WC-136 C5-07), so the status moves
+        to CREDITED exactly once and no wallet balance is ever touched.
+        """
         update_result = await session.execute(
             text(
                 "UPDATE referral_records "
@@ -268,34 +273,63 @@ class PromotionsService:
         )
         if update_result.rowcount == 0:
             return  # already credited — no-op
+        logger.info("Referral reward recorded as a goodwill coupon entitlement: referral_id=%s", referral_id)
 
-        # Fetch referrer and credit amount
-        ref_result = await session.execute(
-            text(
-                "SELECT referrer_customer_id, credit_amount_paise FROM referral_records WHERE referral_id = :id"
-            ).bindparams(id=str(referral_id))
-        )
-        ref_row = ref_result.fetchone()
-        if ref_row is None or ref_row[1] is None:
-            return
+    # ------------------------------------------------------------------
+    # Versioned goodwill coupons (WC-136 C5-07)
+    # ------------------------------------------------------------------
 
-        referrer_id, credit_paise = str(ref_row[0]), int(ref_row[1])
+    async def quote_versioned_coupon(
+        self,
+        *,
+        code: str,
+        agent_type: str,
+        agent_version: str,
+        price_incl_gst_paise: int,
+        event: str,
+    ) -> CouponQuote:
+        """Read the effective COUPON version and price one hire or renewal; raises CouponError."""
+        async with self._session_factory() as session:
+            return await quote_coupon(
+                session,
+                code=code,
+                agent_type=agent_type,
+                agent_version=agent_version,
+                price_incl_gst_paise=price_incl_gst_paise,
+                event=event,
+                at=datetime.now(tz=timezone.utc),
+            )
 
-        # Add credit to referrer's first active wallet bucket
-        await session.execute(
-            text(
-                "UPDATE wallet_buckets "
-                "SET balance_paise = balance_paise + :credit "
-                "WHERE id = ("
-                "  SELECT id FROM wallet_buckets WHERE customer_id = :cid "
-                "  ORDER BY rowid LIMIT 1"
-                ")"
-            ).bindparams(credit=credit_paise, cid=referrer_id)
-        )
-        logger.info(
-            "Referral credit applied: referral_id=%s referrer_id=%s credit_paise=%d",
-            referral_id, referrer_id, credit_paise,
-        )
+    async def redeem_versioned_coupon(
+        self,
+        *,
+        code: str,
+        agent_type: str,
+        agent_version: str,
+        tenant_id: uuid.UUID,
+        relationship_id: uuid.UUID,
+        event: str,
+        period_start: datetime,
+        price_incl_gst_paise: int,
+        idempotency_key: uuid.UUID,
+    ) -> CouponRedemption:
+        """Record a redemption with its reason; a discount is never a wallet credit."""
+        async with self._session_factory() as session:
+            redemption = await redeem_coupon(
+                session,
+                code=code,
+                agent_type=agent_type,
+                agent_version=agent_version,
+                tenant_id=tenant_id,
+                relationship_id=relationship_id,
+                event=event,
+                period_start=period_start,
+                price_incl_gst_paise=price_incl_gst_paise,
+                idempotency_key=idempotency_key,
+                at=datetime.now(tz=timezone.utc),
+            )
+            await session.commit()
+        return redemption
 
     # ------------------------------------------------------------------
     # get_referral_status

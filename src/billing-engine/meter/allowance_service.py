@@ -1,10 +1,19 @@
 # Implements: work-contracts/WC-134-batching-offering-and-spend-work-component.md §9.3
-"""WBE-owned component allowance reservation and immutable settlement."""
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-03
+# Constitutional basis: C-059, C-088, C-089
+"""WBE-owned component allowance reservation and immutable settlement.
+
+WALLET_AUTHORITY (C4-03): LEGACY writes the allocation tables only; SHADOW additionally mirrors
+every reserve, settle, release and reconcile into the Wallet in the same transaction and never
+fails the customer path on a mirror error; WALLET makes the Wallet the admission authority, so the
+allocation counters are written as a projection and a wallet refusal denies the call.
+"""
 
 from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Literal
@@ -14,6 +23,12 @@ from sqlalchemy import DateTime, String, Uuid, bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from skeleton.wbe_interfaces import IOfferingAllowanceService
+from wallet import metrics as wallet_metrics
+from wallet.entity_models import WalletError
+from wallet.ledger import WalletLedger
+from wallet.mirror import WalletMirror, wallet_authority, wallet_overrun_tolerance
+
+logger = logging.getLogger(__name__)
 
 _UUID = String(36).with_variant(Uuid(as_uuid=False), "postgresql")
 
@@ -63,8 +78,44 @@ class AllowanceDenied(ValueError):
 
 
 class OfferingAllowanceService(IOfferingAllowanceService):
-    def __init__(self, sessions: async_sessionmaker[AsyncSession]) -> None:
+    def __init__(
+        self, sessions: async_sessionmaker[AsyncSession], settings: object | None = None
+    ) -> None:
         self._sessions = sessions
+        self._settings = settings
+
+    async def _mirror(
+        self, session: AsyncSession, tenant_id: UUID, reservation_id: UUID, operation: str
+    ) -> None:
+        mode = wallet_authority(self._settings)
+        if mode == "LEGACY":
+            return
+        mirror = WalletMirror(
+            session,
+            ledger=WalletLedger(
+                session, overrun_tolerance_paise=wallet_overrun_tolerance(self._settings)
+            ),
+        )
+        if mode == "WALLET":
+            try:
+                await mirror.sync_reservation(tenant_id, reservation_id)
+            except WalletError as error:
+                raise AllowanceDenied(
+                    "ALLOWANCE_EXHAUSTED"
+                    if error.code == "WALLET_INSUFFICIENT"
+                    else "ALLOWANCE_WALLET_UNAVAILABLE"
+                ) from error
+            return
+        try:
+            async with session.begin_nested():
+                await mirror.sync_reservation(tenant_id, reservation_id)
+        except Exception as error:  # SHADOW must never fail the customer path
+            logger.warning(
+                "wallet shadow mirror failed operation=%s code=%s",
+                operation,
+                getattr(error, "code", type(error).__name__),
+            )
+            wallet_metrics.count("wbe.wallet.shadow_failure", operation=operation)
 
     @staticmethod
     def _same(row: object, identity: AllowanceIdentity) -> bool:
@@ -121,6 +172,9 @@ class OfferingAllowanceService(IOfferingAllowanceService):
             if existing is not None:
                 if not self._same(existing, identity) or existing.maximum_units != maximum_units:
                     raise AllowanceConflict("ALLOWANCE_IDEMPOTENCY_CONFLICT")
+                await self._mirror(
+                    session, identity.tenant_id, UUID(str(existing.reservation_id)), "reserve"
+                )
                 return self._receipt(existing, True)
 
             now = datetime.now(timezone.utc)
@@ -209,7 +263,7 @@ class OfferingAllowanceService(IOfferingAllowanceService):
                     - trial_units.units_consumed
                     - resolved.reserved_units,
                 )
-            if maximum_units > available:
+            if maximum_units > available and wallet_authority(self._settings) != "WALLET":
                 raise AllowanceDenied("ALLOWANCE_EXHAUSTED")
 
             reservation_id = uuid4()
@@ -277,6 +331,7 @@ class OfferingAllowanceService(IOfferingAllowanceService):
                 ),
                 {"units": maximum_units, "allocation": str(resolved.allocation_id)},
             )
+            await self._mirror(session, identity.tenant_id, reservation_id, "reserve")
             return AllowanceReceipt(
                 reservation_id, "RESERVED", maximum_units, raw, marked,
                 identity.component_id, UUID(str(resolved.provider_account_id)), rate_version
@@ -302,6 +357,7 @@ class OfferingAllowanceService(IOfferingAllowanceService):
                     or str(row.settlement_evidence_id) != str(settlement_evidence_id)
                 ):
                     raise AllowanceConflict("ALLOWANCE_SETTLEMENT_CONFLICT")
+                await self._mirror(session, identity.tenant_id, reservation_id, "settle")
                 return self._receipt(row, True)
             now = datetime.now(timezone.utc)
             await session.execute(
@@ -366,6 +422,7 @@ class OfferingAllowanceService(IOfferingAllowanceService):
                         "component": row.component_id,
                     },
                 )
+            await self._mirror(session, identity.tenant_id, reservation_id, "settle")
             return AllowanceReceipt(
                 reservation_id, "SETTLED", row.maximum_units,
                 row.reserved_raw_paise, row.reserved_marked_up_paise,
@@ -383,6 +440,7 @@ class OfferingAllowanceService(IOfferingAllowanceService):
             if row.state != "RESERVED":
                 if row.state != "RELEASED" or str(row.non_dispatch_evidence_id) != str(non_dispatch_evidence_id):
                     raise AllowanceConflict("ALLOWANCE_RELEASE_CONFLICT")
+                await self._mirror(session, identity.tenant_id, reservation_id, "release")
                 return self._receipt(row, True)
             now = datetime.now(timezone.utc)
             await session.execute(
@@ -403,6 +461,7 @@ class OfferingAllowanceService(IOfferingAllowanceService):
                 ),
                 {"maximum": row.maximum_units, "allocation": str(row.allocation_id)},
             )
+            await self._mirror(session, identity.tenant_id, reservation_id, "release")
             return AllowanceReceipt(
                 reservation_id, "RELEASED", row.maximum_units,
                 row.reserved_raw_paise, row.reserved_marked_up_paise,
@@ -429,6 +488,12 @@ class OfferingAllowanceService(IOfferingAllowanceService):
                 return None
             if not self._same(row, identity):
                 raise AllowanceConflict("ALLOWANCE_IDEMPOTENCY_CONFLICT")
+            if wallet_authority(self._settings) != "LEGACY":
+                # Reconcile repairs a dropped mirror write, then commits it with its own transaction.
+                await self._mirror(
+                    session, identity.tenant_id, UUID(str(row.reservation_id)), "reconcile"
+                )
+                await session.commit()
             return self._receipt(row, True)
 
     async def _locked(

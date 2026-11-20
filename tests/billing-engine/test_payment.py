@@ -14,6 +14,7 @@ import json
 import uuid
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import fakeredis
@@ -39,6 +40,7 @@ from payment.paid_activation import PaidActivationService
 from payment.razorpay_client import RazorpayClient
 from payment.router import HireCommercialPreviewBody, OnboardingOrderBody
 from payment.webhook import WebhookHandler
+from promotions.coupon_versions import CouponError
 from wallet.models import RenewalResult, SubscriptionActivationResult
 from wallet.service import WalletService
 
@@ -1202,6 +1204,9 @@ async def test_hire_preview_applies_an_explicit_registry_validated_coupon(monkey
     redis_client = AsyncMock()
     monkeypatch.setattr(payment_router.aioredis, "from_url", lambda *_args, **_kwargs: redis_client)
     promotions = MagicMock()
+    promotions.quote_versioned_coupon = AsyncMock(
+        side_effect=CouponError("COUPON_NOT_FOUND", 404, "no versioned coupon")
+    )
     promotions.validate_commercial_preview_coupon = AsyncMock(
         return_value=CouponValidation(
             valid=True,
@@ -1233,6 +1238,77 @@ async def test_hire_preview_applies_an_explicit_registry_validated_coupon(monkey
     assert result.discount_inr_paise == 118000
     assert result.payable_inr_paise == 0
     assert result.payment_method_required is False
+    assert result.coupon_version_id is None
+
+
+@pytest.mark.asyncio
+async def test_hire_preview_prefers_the_versioned_goodwill_coupon(monkeypatch):
+    from payment import router as payment_router
+
+    settings = MagicMock()
+    settings.WAOOAW_ENVIRONMENT = "demo"
+    settings.REDIS_URL = "redis://redis:6379/0"
+    settings.DEMO_RENEWAL_CONSEQUENCE = "Standard paid renewal terms apply after the Demo period."
+    monkeypatch.setattr(payment_router, "_settings", settings)
+    redis_client = AsyncMock()
+    monkeypatch.setattr(payment_router.aioredis, "from_url", lambda *_args, **_kwargs: redis_client)
+    version_id = uuid.uuid4()
+    promotions = MagicMock()
+    promotions.quote_versioned_coupon = AsyncMock(
+        return_value=SimpleNamespace(version_id=version_id, discount_paise=20000)
+    )
+    promotions.validate_commercial_preview_coupon = AsyncMock()
+    monkeypatch.setattr(payment_router, "PromotionsService", lambda **_kwargs: promotions)
+
+    result = await payment_router.create_hire_commercial_preview(
+        HireCommercialPreviewBody(
+            professional_type="TUTOR",
+            professional_version="1.0.0",
+            gross_amount_inr_paise=118000,
+            gst_amount_inr_paise=18000,
+            cadence="MONTHLY",
+            coupon_code="goodwill",
+        )
+    )
+
+    promotions.quote_versioned_coupon.assert_awaited_once()
+    promotions.validate_commercial_preview_coupon.assert_not_awaited()
+    assert result.coupon_version_id == version_id
+    assert result.discount_inr_paise == 20000
+    assert result.payable_inr_paise == 98000
+
+
+@pytest.mark.asyncio
+async def test_hire_preview_refuses_a_versioned_coupon_that_is_not_applicable(monkeypatch):
+    from payment import router as payment_router
+
+    settings = MagicMock()
+    settings.WAOOAW_ENVIRONMENT = "demo"
+    settings.REDIS_URL = "redis://redis:6379/0"
+    monkeypatch.setattr(payment_router, "_settings", settings)
+    redis_client = AsyncMock()
+    monkeypatch.setattr(payment_router.aioredis, "from_url", lambda *_args, **_kwargs: redis_client)
+    promotions = MagicMock()
+    promotions.quote_versioned_coupon = AsyncMock(side_effect=CouponError("COUPON_EXPIRED", 422, "expired"))
+    promotions.validate_commercial_preview_coupon = AsyncMock()
+    monkeypatch.setattr(payment_router, "PromotionsService", lambda **_kwargs: promotions)
+
+    with pytest.raises(HTTPException) as refusal:
+        await payment_router.create_hire_commercial_preview(
+            HireCommercialPreviewBody(
+                professional_type="TUTOR",
+                professional_version="1.0.0",
+                gross_amount_inr_paise=118000,
+                gst_amount_inr_paise=18000,
+                cadence="MONTHLY",
+                coupon_code="OLD",
+            )
+        )
+
+    assert refusal.value.status_code == 422
+    assert refusal.value.detail == {"code": "COUPON_EXPIRED"}
+    promotions.validate_commercial_preview_coupon.assert_not_awaited()
+    redis_client.aclose.assert_awaited_once()
 
 
 @pytest.mark.asyncio

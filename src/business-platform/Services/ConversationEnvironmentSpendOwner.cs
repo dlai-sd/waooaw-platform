@@ -1,6 +1,11 @@
 // Implements: work-contracts/WC-134-batching-offering-and-spend-work-component.md §9.4
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C3-04
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C3-05
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C3-06
+// Constitutional basis: C-023, C-059, C-063
 using Microsoft.EntityFrameworkCore;
 using Waooaw.BusinessPlatform.Infrastructure;
+using Waooaw.BusinessPlatform.Services.Spend;
 
 namespace Waooaw.BusinessPlatform.Services;
 
@@ -14,8 +19,13 @@ public sealed record EnvironmentSpendPermit(
     long MaximumPaise
 );
 
-public sealed class ConversationEnvironmentSpendOwner
+public sealed class ConversationEnvironmentSpendOwner(
+    EnvironmentSpendOptions? options = null,
+    EnvironmentSpendLeaseService? leases = null
+)
 {
+    private readonly EnvironmentSpendOptions _options = options ?? new EnvironmentSpendOptions();
+
     public async Task<EnvironmentSpendPermit> ReserveAsync(
         ConversationStoreDbContext db,
         string environment,
@@ -28,7 +38,8 @@ public sealed class ConversationEnvironmentSpendOwner
         long reservedPaise,
         long activeLimitPaise,
         DateTimeOffset now,
-        CancellationToken ct
+        CancellationToken ct,
+        SpendAccountPin? pin = null
     )
     {
         if (
@@ -60,10 +71,16 @@ public sealed class ConversationEnvironmentSpendOwner
                 reservedPaise,
                 activeLimitPaise
             );
-        await db.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT pg_advisory_xact_lock(hashtextextended({"environment-spend:" + environment},0))",
-            ct
-        );
+        // The platform floor is always counted but never refused by the ceiling or the fence.
+        var bypassLimits = pin?.AccountClass == SpendAccountClass.PlatformFloor;
+        var useLease =
+            !bypassLimits
+            && leases is not null
+            && _options.UsesLeases
+            && reservedPaise > 0
+            && reservedPaise <= leases.LeaseSizePaise;
+        if (!useLease)
+            await LockEnvironmentAsync(db, environment, ct);
         var authority =
             await db
                 .Database.SqlQuery<AuthorityRow>(
@@ -82,44 +99,26 @@ public sealed class ConversationEnvironmentSpendOwner
             throw new WhatsAppCapabilityUnavailableException(
                 "ENVIRONMENT_SPEND_RECONCILIATION_REQUIRED"
             );
-        var existing = await db
-            .Database.SqlQuery<AttemptRow>(
-                $"""
-                SELECT owner_kind AS "OwnerKind",attempt_id AS "AttemptId",
-                    original_tenant_id AS "OriginalTenantId",
-                    activation_digest AS "ActivationDigest",request_digest AS "RequestDigest",
-                    reservation_reference AS "ReservationReference",
-                    reserved_paise AS "ReservedPaise",state AS "State",
-                    actual_paise AS "ActualPaise"
-                FROM business.environment_spend_attempts
-                WHERE environment={environment} AND owner_kind={ownerKind}
-                    AND attempt_id={attemptId} FOR UPDATE
-                """
-            )
-            .SingleOrDefaultAsync(ct);
+        var effectiveMaximum = Math.Min(authority.MaximumPaise, activeLimitPaise);
+        var existing = await ReadAttemptAsync(db, environment, ownerKind, attemptId, ct);
         var exposure = await ExposureAsync(db, environment, now, ct);
         if (existing is not null)
-        {
-            if (
-                existing.OriginalTenantId != originalTenantId
-                || existing.ActivationDigest != activationDigest
-                || existing.RequestDigest != canonicalRequestDigest
-                || existing.ReservationReference != reservationReference
-                || existing.ReservedPaise != reservedPaise
-            )
-                throw new ConversationStateConflictException();
-            return new(
+            return ReplayPermit(
+                existing,
                 environment,
                 ownerKind,
                 attemptId,
+                originalTenantId,
+                activationDigest,
+                canonicalRequestDigest,
                 reservationReference,
                 reservedPaise,
                 exposure,
-                Math.Min(authority.MaximumPaise, activeLimitPaise)
+                effectiveMaximum
             );
-        }
         if (
-            await db
+            !bypassLimits
+            && await db
                 .Database.SqlQuery<int>(
                     $"""
                     SELECT 1 AS "Value" FROM business.environment_spend_attempts
@@ -130,19 +129,76 @@ public sealed class ConversationEnvironmentSpendOwner
                 .AnyAsync(ct)
         )
             throw new WhatsAppCapabilityUnavailableException("ENVIRONMENT_SPEND_ADMISSION_FENCED");
-        var effectiveMaximum = Math.Min(authority.MaximumPaise, activeLimitPaise);
-        if (checked(exposure + reservedPaise) > effectiveMaximum)
+        if (useLease)
+        {
+            var leaseInserted = await InsertFromLeaseAsync(
+                db,
+                environment,
+                ownerKind,
+                attemptId,
+                originalTenantId,
+                activationDigest,
+                canonicalRequestDigest,
+                reservationReference,
+                reservedPaise,
+                effectiveMaximum,
+                now,
+                pin,
+                ct
+            );
+            if (leaseInserted)
+                return new(
+                    environment,
+                    ownerKind,
+                    attemptId,
+                    reservationReference,
+                    reservedPaise,
+                    exposure + reservedPaise,
+                    effectiveMaximum
+                );
+            var replay =
+                await ReadAttemptAsync(db, environment, ownerKind, attemptId, ct)
+                ?? throw new ConversationStateConflictException();
+            return ReplayPermit(
+                replay,
+                environment,
+                ownerKind,
+                attemptId,
+                originalTenantId,
+                activationDigest,
+                canonicalRequestDigest,
+                reservationReference,
+                reservedPaise,
+                exposure,
+                effectiveMaximum
+            );
+        }
+        if (!bypassLimits && checked(exposure + reservedPaise) > effectiveMaximum)
             throw new WhatsAppCapabilityUnavailableException("COMBINED_DAILY_COST_EXHAUSTED");
-        await db.Database.ExecuteSqlInterpolatedAsync(
-            $"""
-            INSERT INTO business.environment_spend_attempts
-                (environment,owner_kind,attempt_id,original_tenant_id,activation_digest,
-                 request_digest,reservation_reference,reserved_paise,state,reserved_at)
-            VALUES ({environment},{ownerKind},{attemptId},{originalTenantId},{activationDigest},
-                {canonicalRequestDigest},{reservationReference},{reservedPaise},'RESERVED',{now})
-            """,
-            ct
-        );
+        if (pin is null)
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                INSERT INTO business.environment_spend_attempts
+                    (environment,owner_kind,attempt_id,original_tenant_id,activation_digest,
+                     request_digest,reservation_reference,reserved_paise,state,reserved_at)
+                VALUES ({environment},{ownerKind},{attemptId},{originalTenantId},{activationDigest},
+                    {canonicalRequestDigest},{reservationReference},{reservedPaise},'RESERVED',{now})
+                """,
+                ct
+            );
+        else
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                INSERT INTO business.environment_spend_attempts
+                    (environment,owner_kind,attempt_id,original_tenant_id,activation_digest,
+                     request_digest,reservation_reference,reserved_paise,state,reserved_at,
+                     account_class,pinned_wallet_account_id)
+                VALUES ({environment},{ownerKind},{attemptId},{originalTenantId},{activationDigest},
+                    {canonicalRequestDigest},{reservationReference},{reservedPaise},'RESERVED',{now},
+                    {pin.AccountClass.ToStorage()},{pin.PinnedWalletAccountId})
+                """,
+                ct
+            );
         return new(
             environment,
             ownerKind,
@@ -169,26 +225,10 @@ public sealed class ConversationEnvironmentSpendOwner
     {
         if (!db.Database.IsNpgsql())
             return;
-        await db.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT pg_advisory_xact_lock(hashtextextended({"environment-spend:" + environment},0))",
-            ct
-        );
+        if (!_options.UsesLeases)
+            await LockEnvironmentAsync(db, environment, ct);
         var row =
-            await db
-                .Database.SqlQuery<AttemptRow>(
-                    $"""
-                    SELECT owner_kind AS "OwnerKind",attempt_id AS "AttemptId",
-                        original_tenant_id AS "OriginalTenantId",
-                        activation_digest AS "ActivationDigest",request_digest AS "RequestDigest",
-                        reservation_reference AS "ReservationReference",
-                        reserved_paise AS "ReservedPaise",state AS "State",
-                        actual_paise AS "ActualPaise"
-                    FROM business.environment_spend_attempts
-                    WHERE environment={environment} AND owner_kind={ownerKind}
-                        AND attempt_id={attemptId} FOR UPDATE
-                    """
-                )
-                .SingleOrDefaultAsync(ct)
+            await ReadAttemptAsync(db, environment, ownerKind, attemptId, ct)
             ?? throw new ConversationNotAccessibleException();
         if (row.ReservationReference != reservationReference)
             throw new ConversationStateConflictException();
@@ -223,6 +263,130 @@ public sealed class ConversationEnvironmentSpendOwner
                 $"SELECT business.environment_spend_exposure({environment},{now}) AS \"Value\""
             )
             .SingleAsync(ct);
+
+    private static Task LockEnvironmentAsync(
+        ConversationStoreDbContext db,
+        string environment,
+        CancellationToken ct
+    ) =>
+        db.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_advisory_xact_lock(hashtextextended({"environment-spend:" + environment},0))",
+            ct
+        );
+
+    private static Task<AttemptRow?> ReadAttemptAsync(
+        ConversationStoreDbContext db,
+        string environment,
+        string ownerKind,
+        Guid attemptId,
+        CancellationToken ct
+    ) =>
+        db
+            .Database.SqlQuery<AttemptRow>(
+                $"""
+                SELECT owner_kind AS "OwnerKind",attempt_id AS "AttemptId",
+                    original_tenant_id AS "OriginalTenantId",
+                    activation_digest AS "ActivationDigest",request_digest AS "RequestDigest",
+                    reservation_reference AS "ReservationReference",
+                    reserved_paise AS "ReservedPaise",state AS "State",
+                    actual_paise AS "ActualPaise"
+                FROM business.environment_spend_attempts
+                WHERE environment={environment} AND owner_kind={ownerKind}
+                    AND attempt_id={attemptId} FOR UPDATE
+                """
+            )
+            .SingleOrDefaultAsync(ct);
+
+    private static EnvironmentSpendPermit ReplayPermit(
+        AttemptRow existing,
+        string environment,
+        string ownerKind,
+        Guid attemptId,
+        Guid originalTenantId,
+        string activationDigest,
+        string canonicalRequestDigest,
+        Guid reservationReference,
+        long reservedPaise,
+        long exposure,
+        long effectiveMaximum
+    )
+    {
+        if (
+            existing.OriginalTenantId != originalTenantId
+            || existing.ActivationDigest != activationDigest
+            || existing.RequestDigest != canonicalRequestDigest
+            || existing.ReservationReference != reservationReference
+            || existing.ReservedPaise != reservedPaise
+        )
+            throw new ConversationStateConflictException();
+        return new(
+            environment,
+            ownerKind,
+            attemptId,
+            reservationReference,
+            reservedPaise,
+            exposure,
+            effectiveMaximum
+        );
+    }
+
+    private async Task<bool> InsertFromLeaseAsync(
+        ConversationStoreDbContext db,
+        string environment,
+        string ownerKind,
+        Guid attemptId,
+        Guid originalTenantId,
+        string activationDigest,
+        string canonicalRequestDigest,
+        Guid reservationReference,
+        long reservedPaise,
+        long effectiveMaximum,
+        DateTimeOffset now,
+        SpendAccountPin? pin,
+        CancellationToken ct
+    )
+    {
+        var accountClass = pin?.AccountClass.ToStorage();
+        var pinnedWallet = pin?.PinnedWalletAccountId;
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            var draw =
+                await leases!.TryDrawAsync(environment, reservedPaise, effectiveMaximum, now, ct)
+                ?? throw new WhatsAppCapabilityUnavailableException(
+                    "COMBINED_DAILY_COST_EXHAUSTED"
+                );
+            // The shared row lock keeps the grantor from expiring or returning the lease mid-attempt.
+            var live = await db
+                .Database.SqlQuery<int>(
+                    $"""
+                    SELECT 1 AS "Value" FROM business.environment_spend_leases
+                    WHERE lease_id={draw.LeaseId} AND state='ACTIVE' AND expires_at > {now}
+                    FOR SHARE
+                    """
+                )
+                .SingleOrDefaultAsync(ct);
+            if (live != 1)
+            {
+                await leases.InvalidateAsync(environment, draw.LeaseId, ct);
+                continue;
+            }
+            var inserted = await db.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                INSERT INTO business.environment_spend_attempts
+                    (environment,owner_kind,attempt_id,original_tenant_id,activation_digest,
+                     request_digest,reservation_reference,reserved_paise,state,reserved_at,
+                     lease_id,account_class,pinned_wallet_account_id)
+                VALUES ({environment},{ownerKind},{attemptId},{originalTenantId},{activationDigest},
+                    {canonicalRequestDigest},{reservationReference},{reservedPaise},'RESERVED',{now},
+                    {draw.LeaseId},{accountClass},{pinnedWallet})
+                ON CONFLICT (environment,owner_kind,attempt_id) DO NOTHING
+                """,
+                ct
+            );
+            return inserted == 1;
+        }
+        throw new WhatsAppCapabilityUnavailableException("ENVIRONMENT_SPEND_LEASE_UNAVAILABLE");
+    }
 
     private sealed class AuthorityRow
     {

@@ -1,22 +1,28 @@
 # Implements: work-contracts/WC-031-goal005-wbe-trial-promotions.md §WC031-03
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C3-02
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C3-03
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-04
 # constitutional_basis: C-088 (CCT-TRIAL-01), C-089 (CCT-TRIAL-02 billing layer),
 #                       C-090 (grandfather), C-019 (phone verification), C-059 (Traceability)
 from __future__ import annotations
 
+import inspect
 import uuid
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 
-import fakeredis
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 from main import app
 from trial.router import _get_trial_service
 from trial.service import TrialService
+from wallet.ledger import WalletLedger
+from wallet.platform_accounts import PlatformAccounts
 
 
 # ---------------------------------------------------------------------------
@@ -61,6 +67,14 @@ _DDL = [
         balance_paise INTEGER NOT NULL DEFAULT 0,
         is_active INTEGER NOT NULL DEFAULT 1
     )""",
+    """CREATE TABLE IF NOT EXISTS trial_identity_claims (
+        identity_subject_hash TEXT NOT NULL,
+        agent_type TEXT NOT NULL,
+        agent_version TEXT NOT NULL,
+        trial_id TEXT NOT NULL,
+        claimed_at TEXT NOT NULL,
+        PRIMARY KEY (identity_subject_hash, agent_type, agent_version)
+    )""",
 ]
 
 
@@ -88,13 +102,6 @@ def session_factory(in_memory_engine):
 
 
 @pytest.fixture
-async def mock_redis():
-    client = fakeredis.FakeAsyncRedis(decode_responses=False)
-    yield client
-    await client.aclose()
-
-
-@pytest.fixture
 def mock_settings():
     return MagicMock(
         TRIAL_FREE_UNITS={"DMA": {"llm_cloud": 50, "llm_local": 200}},
@@ -103,10 +110,9 @@ def mock_settings():
 
 
 @pytest.fixture
-def trial_service(session_factory, mock_redis, mock_settings):
+def trial_service(session_factory, mock_settings):
     return TrialService(
         session_factory=session_factory,
-        redis_client=mock_redis,
         settings=mock_settings,
     )
 
@@ -136,7 +142,6 @@ async def test_different_agent_type_allowed_for_same_customer(trial_service, ses
     cid = uuid.uuid4()
     svc = TrialService(
         session_factory=session_factory,
-        redis_client=trial_service._redis,
         settings=MagicMock(
             TRIAL_FREE_UNITS={"DMA": {"llm_cloud": 50}, "DPA": {"llm_cloud": 30}},
             TRIAL_DURATION_DAYS=14,
@@ -182,24 +187,26 @@ async def test_founder_authorized_agent_version_duration_override(
 
 
 # ---------------------------------------------------------------------------
-# CCT-TRIAL-02 — Trial billing layer: Redis key + ledger rows created
+# CCT-TRIAL-02 — Trial billing layer: ledger rows created; no customer-level Redis flag (C3-02)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_cct_trial_02_redis_key_set_to_trial(trial_service, mock_redis):
-    """CCT-TRIAL-02 (billing layer): Redis wbe:customer:{id}:mode = b'TRIAL' after start_trial."""
+async def test_cct_trial_02_status_lives_only_in_postgres(trial_service):
+    """C3-02: TrialService takes no Redis client and a started trial is visible only through its rows."""
+    assert "redis_client" not in inspect.signature(TrialService).parameters
     cid = uuid.uuid4()
-    await trial_service.start_trial(cid, "DMA", phone_verified=True)
+    started = await trial_service.start_trial(cid, "DMA", phone_verified=True)
 
-    mode = await mock_redis.get(f"wbe:customer:{cid}:mode")
-    assert mode == b"TRIAL"
+    status = await trial_service.get_status(cid, started.trial_id)
+
+    assert not hasattr(trial_service, "_redis")
+    assert status is not None and status.status == "ACTIVE"
 
 
 @pytest.mark.asyncio
-async def test_trial_duration_is_exactly_fourteen_days(session_factory, mock_redis):
+async def test_trial_duration_is_exactly_fourteen_days(session_factory):
     service = TrialService(
         session_factory=session_factory,
-        redis_client=mock_redis,
         settings=MagicMock(
             TRIAL_FREE_UNITS={"DMA": {"llm_local": 200}},
             TRIAL_DURATION_DAYS=3,
@@ -281,13 +288,12 @@ async def test_start_trial_phone_not_verified_raises_422(trial_service):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_start_trial_missing_config_raises_422(session_factory, mock_redis):
+async def test_start_trial_missing_config_raises_422(session_factory):
     """TRIAL_FREE_UNITS missing for agent_type → 422 TRIAL_CONFIG_MISSING."""
     from fastapi import HTTPException
 
     svc = TrialService(
         session_factory=session_factory,
-        redis_client=mock_redis,
         settings=MagicMock(TRIAL_FREE_UNITS={}, TRIAL_DURATION_DAYS=14),
     )
     with pytest.raises(HTTPException) as exc_info:
@@ -298,34 +304,12 @@ async def test_start_trial_missing_config_raises_422(session_factory, mock_redis
 
 
 # ---------------------------------------------------------------------------
-# Redis failure is non-fatal
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_start_trial_redis_failure_does_not_rollback_db(session_factory, mock_settings):
-    """Redis failure after DB commit is logged and NOT re-raised (DB not rolled back)."""
-    failing_redis = AsyncMock()
-    failing_redis.set = AsyncMock(side_effect=OSError("Redis unavailable"))
-
-    svc = TrialService(session_factory=session_factory, redis_client=failing_redis, settings=mock_settings)
-    cid = uuid.uuid4()
-    result = await svc.start_trial(cid, "DMA", phone_verified=True)
-
-    # DB transaction committed despite Redis failure
-    async with session_factory() as session:
-        row = await session.execute(
-            text("SELECT status FROM trial_allocations WHERE trial_id = :id").bindparams(id=str(result.trial_id))
-        )
-        assert row.fetchone()[0] == "ACTIVE"
-
-
-# ---------------------------------------------------------------------------
 # check_expiry
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_check_expiry_marks_status_expired(trial_service, session_factory, mock_redis):
-    """check_expiry() sets status=EXPIRED and clears Redis key."""
+async def test_check_expiry_marks_status_expired(trial_service, session_factory):
+    """check_expiry() sets status=EXPIRED."""
     cid = uuid.uuid4()
     result = await trial_service.start_trial(cid, "DMA", phone_verified=True)
 
@@ -336,9 +320,6 @@ async def test_check_expiry_marks_status_expired(trial_service, session_factory,
             text("SELECT status FROM trial_allocations WHERE trial_id = :id").bindparams(id=str(result.trial_id))
         )
         assert row.fetchone()[0] == "EXPIRED"
-
-    mode = await mock_redis.get(f"wbe:customer:{cid}:mode")
-    assert mode is None
 
 
 @pytest.mark.asyncio
@@ -419,18 +400,6 @@ async def test_convert_to_paid_grandfather_applies_within_14_days(trial_service)
     convert_result = await trial_service.convert_to_paid(start_result.trial_id, "pay_ref_002")
 
     assert convert_result.grandfather_applied is True
-
-
-@pytest.mark.asyncio
-async def test_convert_to_paid_sets_redis_mode_to_active(trial_service, mock_redis):
-    """After conversion, Redis wbe:customer:{id}:mode = b'ACTIVE'."""
-    cid = uuid.uuid4()
-    start_result = await trial_service.start_trial(cid, "DMA", phone_verified=True)
-
-    await trial_service.convert_to_paid(start_result.trial_id, "pay_ref_003")
-
-    mode = await mock_redis.get(f"wbe:customer:{cid}:mode")
-    assert mode == b"ACTIVE"
 
 
 @pytest.mark.asyncio
@@ -552,6 +521,220 @@ async def test_get_status_projects_elapsed_active_trial_as_expired(
 
 
 # ---------------------------------------------------------------------------
+# C3-03 — per-version trial bound to the verified identity (hash only)
+# ---------------------------------------------------------------------------
+
+HASH_A = "a" * 64
+HASH_B = "b" * 64
+
+
+def _settings(**overrides):
+    return MagicMock(
+        TRIAL_FREE_UNITS={"DMA": {"llm_cloud": 50, "llm_local": 200}, "DPA": {"llm_cloud": 30}},
+        TRIAL_DURATION_DAYS=14,
+        **overrides,
+    )
+
+
+async def _scalar(session_factory, sql: str, **params):
+    async with session_factory() as session:
+        return (await session.execute(text(sql).bindparams(**params))).scalar_one()
+
+
+@pytest.mark.asyncio
+async def test_default_mode_records_the_identity_claim_with_agent_and_version(trial_service, session_factory):
+    started = await trial_service.start_trial(
+        uuid.uuid4(), "DMA", phone_verified=True, agent_version="2.0.0", identity_subject_hash=HASH_A
+    )
+
+    async with session_factory() as session:
+        row = (
+            await session.execute(
+                text("SELECT agent_type, agent_version, trial_id FROM trial_identity_claims WHERE identity_subject_hash = :h")
+                .bindparams(h=HASH_A)
+            )
+        ).fetchone()
+    assert tuple(row) == ("DMA", "2.0.0", str(started.trial_id))
+
+
+@pytest.mark.asyncio
+async def test_record_mode_keeps_the_first_claim_and_does_not_block_a_second_customer(session_factory):
+    service = TrialService(session_factory=session_factory, settings=_settings(TRIAL_IDENTITY_BINDING_MODE="RECORD"))
+    first = await service.start_trial(uuid.uuid4(), "DMA", phone_verified=True, identity_subject_hash=HASH_A)
+    second = await service.start_trial(uuid.uuid4(), "DMA", phone_verified=True, identity_subject_hash=HASH_A)
+
+    assert first.trial_id != second.trial_id
+    assert await _scalar(session_factory, "SELECT COUNT(*) FROM trial_identity_claims") == 1
+    assert await _scalar(session_factory, "SELECT trial_id FROM trial_identity_claims") == str(first.trial_id)
+
+
+@pytest.mark.asyncio
+async def test_enforce_mode_refuses_the_same_identity_for_the_same_agent_version(session_factory):
+    from fastapi import HTTPException
+
+    service = TrialService(session_factory=session_factory, settings=_settings(TRIAL_IDENTITY_BINDING_MODE="ENFORCE"))
+    await service.start_trial(uuid.uuid4(), "DMA", phone_verified=True, identity_subject_hash=HASH_A)
+    second_customer = uuid.uuid4()
+
+    with pytest.raises(HTTPException) as error:
+        await service.start_trial(second_customer, "DMA", phone_verified=True, identity_subject_hash=HASH_A)
+
+    assert error.value.status_code == 409
+    assert error.value.detail["code"] == "TRIAL_ALREADY_USED_BY_IDENTITY"
+    cid = str(second_customer)
+    assert await _scalar(session_factory, "SELECT COUNT(*) FROM trial_allocations WHERE customer_id = :c", c=cid) == 0
+    assert await _scalar(session_factory, "SELECT COUNT(*) FROM wallet_buckets WHERE customer_id = :c", c=cid) == 0
+    assert await _scalar(session_factory, "SELECT COUNT(*) FROM trial_identity_claims") == 1
+
+
+@pytest.mark.asyncio
+async def test_enforce_mode_allows_new_versions_other_agents_and_other_identities(session_factory):
+    service = TrialService(session_factory=session_factory, settings=_settings(TRIAL_IDENTITY_BINDING_MODE="ENFORCE"))
+    customer = uuid.uuid4()
+
+    await service.start_trial(customer, "DMA", phone_verified=True, agent_version="1.0.0", identity_subject_hash=HASH_A)
+    await service.start_trial(customer, "DMA", phone_verified=True, agent_version="2.0.0", identity_subject_hash=HASH_A)
+    await service.start_trial(customer, "DPA", phone_verified=True, agent_version="1.0.0", identity_subject_hash=HASH_A)
+    await service.start_trial(uuid.uuid4(), "DMA", phone_verified=True, agent_version="1.0.0", identity_subject_hash=HASH_B)
+
+    assert await _scalar(session_factory, "SELECT COUNT(*) FROM trial_identity_claims") == 4
+
+
+@pytest.mark.asyncio
+async def test_off_mode_records_no_claim_and_never_blocks(session_factory):
+    service = TrialService(session_factory=session_factory, settings=_settings(TRIAL_IDENTITY_BINDING_MODE="OFF"))
+
+    await service.start_trial(uuid.uuid4(), "DMA", phone_verified=True, identity_subject_hash=HASH_A)
+    await service.start_trial(uuid.uuid4(), "DMA", phone_verified=True, identity_subject_hash=HASH_A)
+
+    assert await _scalar(session_factory, "SELECT COUNT(*) FROM trial_identity_claims") == 0
+
+
+@pytest.mark.asyncio
+async def test_start_without_a_verified_identity_makes_no_claim_even_when_enforced(session_factory):
+    service = TrialService(session_factory=session_factory, settings=_settings(TRIAL_IDENTITY_BINDING_MODE="ENFORCE"))
+
+    await service.start_trial(uuid.uuid4(), "DMA", phone_verified=True)
+    await service.start_trial(uuid.uuid4(), "DMA", phone_verified=True)
+
+    assert await _scalar(session_factory, "SELECT COUNT(*) FROM trial_identity_claims") == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("bad_hash", ["", "abc", "A" * 64, "g" * 64, "a" * 63, "a" * 65, "+919876543210"])
+async def test_malformed_identity_hash_is_refused_before_any_write(trial_service, session_factory, bad_hash):
+    from fastapi import HTTPException
+
+    with pytest.raises(HTTPException) as error:
+        await trial_service.start_trial(uuid.uuid4(), "DMA", phone_verified=True, identity_subject_hash=bad_hash)
+
+    assert error.value.status_code == 422
+    assert error.value.detail["code"] == "IDENTITY_HASH_INVALID"
+    assert await _scalar(session_factory, "SELECT COUNT(*) FROM trial_allocations") == 0
+
+
+@pytest.mark.asyncio
+async def test_claim_survives_expiry_and_conversion(session_factory):
+    from fastapi import HTTPException
+
+    service = TrialService(session_factory=session_factory, settings=_settings(TRIAL_IDENTITY_BINDING_MODE="ENFORCE"))
+    started = await service.start_trial(uuid.uuid4(), "DMA", phone_verified=True, identity_subject_hash=HASH_A)
+    await service.convert_to_paid(started.trial_id, "pay_ref_claim")
+
+    with pytest.raises(HTTPException) as error:
+        await service.start_trial(uuid.uuid4(), "DMA", phone_verified=True, identity_subject_hash=HASH_A)
+
+    assert error.value.detail["code"] == "TRIAL_ALREADY_USED_BY_IDENTITY"
+
+
+# ---------------------------------------------------------------------------
+# C4-04 — trial grant credited to the relationship's TRIAL wallet account
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+async def wallet_trial_factory(wallet_db):
+    async with wallet_db.kw["bind"].begin() as connection:
+        for statement in _DDL:
+            await connection.execute(text(statement))
+    return wallet_db
+
+
+async def _trial_balance(factory, tenant_id, relationship_id):
+    async with factory() as session:
+        ledger = WalletLedger(session)
+        account = await ledger.find_account(tenant_id, "TRIAL", relationship_id=relationship_id)
+        if account is None:
+            return None
+        return await ledger.balance(account, datetime.now(tz=timezone.utc) + timedelta(seconds=1))
+
+
+@pytest.mark.asyncio
+async def test_shadow_mode_credits_the_trial_account_from_the_settings_fallback(wallet_trial_factory):
+    service = TrialService(session_factory=wallet_trial_factory, settings=_settings(WALLET_AUTHORITY="SHADOW"))
+    tenant, relationship = uuid.uuid4(), uuid.uuid4()
+
+    await service.start_trial(
+        uuid.uuid4(), "DMA", phone_verified=True, tenant_id=tenant, relationship_id=relationship
+    )
+
+    balance = await _trial_balance(wallet_trial_factory, tenant, relationship)
+    assert balance.credited_paise == (50 + 200) * 100
+    assert balance.available_paise == (50 + 200) * 100
+
+
+@pytest.mark.asyncio
+async def test_legacy_mode_makes_no_wallet_writes(wallet_trial_factory):
+    service = TrialService(session_factory=wallet_trial_factory, settings=_settings(WALLET_AUTHORITY="LEGACY"))
+    tenant, relationship = uuid.uuid4(), uuid.uuid4()
+
+    await service.start_trial(
+        uuid.uuid4(), "DMA", phone_verified=True, tenant_id=tenant, relationship_id=relationship
+    )
+
+    assert await _trial_balance(wallet_trial_factory, tenant, relationship) is None
+
+
+@pytest.mark.asyncio
+async def test_shadow_credit_failure_never_fails_the_legacy_trial(session_factory, monkeypatch):
+    monkeypatch.setattr(PlatformAccounts, "credit_trial_grant", AsyncMock(side_effect=RuntimeError("wallet down")))
+    service = TrialService(session_factory=session_factory, settings=_settings(WALLET_AUTHORITY="SHADOW"))
+
+    started = await service.start_trial(
+        uuid.uuid4(), "DMA", phone_verified=True, tenant_id=uuid.uuid4(), relationship_id=uuid.uuid4()
+    )
+
+    assert await _scalar(
+        session_factory, "SELECT status FROM trial_allocations WHERE trial_id = :t", t=str(started.trial_id)
+    ) == "ACTIVE"
+
+
+@pytest.mark.asyncio
+async def test_wallet_mode_credit_failure_fails_the_start_and_commits_nothing(session_factory, monkeypatch):
+    monkeypatch.setattr(PlatformAccounts, "credit_trial_grant", AsyncMock(side_effect=RuntimeError("wallet down")))
+    service = TrialService(session_factory=session_factory, settings=_settings(WALLET_AUTHORITY="WALLET"))
+
+    with pytest.raises(RuntimeError):
+        await service.start_trial(
+            uuid.uuid4(), "DMA", phone_verified=True, tenant_id=uuid.uuid4(), relationship_id=uuid.uuid4()
+        )
+
+    assert await _scalar(session_factory, "SELECT COUNT(*) FROM trial_allocations") == 0
+
+
+@pytest.mark.asyncio
+async def test_unavailable_pricing_falls_back_to_settings_in_wallet_mode(session_factory):
+    """Without the pricing table the grant lookup fails soft; the credit then fails closed in WALLET mode."""
+    service = TrialService(session_factory=session_factory, settings=_settings(WALLET_AUTHORITY="WALLET"))
+
+    assert await service._lookup_trial_grant("DMA", "1.0.0") is None
+    with pytest.raises(SQLAlchemyError):
+        await service.start_trial(
+            uuid.uuid4(), "DMA", phone_verified=True, tenant_id=uuid.uuid4(), relationship_id=uuid.uuid4()
+        )
+
+
+# ---------------------------------------------------------------------------
 # Router-level tests (FastAPI dependency overrides)
 # ---------------------------------------------------------------------------
 
@@ -596,6 +779,38 @@ async def test_router_post_start_returns_200():
     body = resp.json()
     assert "trial_id" in body
     assert "expires_at" in body
+
+
+@pytest.mark.asyncio
+async def test_router_forwards_identity_hash_and_refuses_a_malformed_one():
+    now = datetime.now(tz=timezone.utc)
+    mock_svc = _make_mock_trial_service(
+        start_result=MagicMock(
+            trial_id=uuid.uuid4(),
+            started_at=now,
+            expires_at=now + timedelta(days=14),
+            free_unit_caps={"llm_cloud": 50},
+            wallet_bucket_ids=[uuid.uuid4()],
+        )
+    )
+    app.dependency_overrides[_get_trial_service] = lambda: mock_svc
+    base = {
+        "customer_id": str(uuid.uuid4()),
+        "agent_type": "DMA",
+        "agent_version": "1.0.0",
+        "phone_verified": True,
+    }
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            ok = await c.post("/trial/start", json={**base, "identity_subject_hash": "c" * 64})
+            bad = await c.post("/trial/start", json={**base, "identity_subject_hash": "+919876543210"})
+    finally:
+        _clear_overrides()
+
+    assert ok.status_code == 200
+    assert mock_svc.start_trial.await_args.kwargs["identity_subject_hash"] == "c" * 64
+    assert bad.status_code == 422
+    mock_svc.start_trial.assert_awaited_once()
 
 
 @pytest.mark.asyncio

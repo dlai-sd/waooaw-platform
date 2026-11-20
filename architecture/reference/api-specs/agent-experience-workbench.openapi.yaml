@@ -1,0 +1,1621 @@
+openapi: "3.1.0"
+info:
+  title: WAOOAW Agent Experience Workbench API
+  version: "1.0.0"
+  contact:
+    name: WAOOAW Architecture
+  description: |
+    Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C2-04.
+    Constitutional basis: C-059, C-063, ADR-051, ADR-052.
+
+    The workbench is one Business Platform projection and command set that Web, WhatsApp and the
+    future Mobile client render. It is composed from the existing owners (plan, goals, outcomes,
+    performance, operations, work, results, usage, rights, evidence); it never becomes a second
+    source of truth. Business Platform is the only public facade. The server sends content and
+    typed fields, never layout.
+
+    Every command requires `Idempotency-Key` and `X-Correlation-ID` and carries the
+    `expectedVersion` the client last saw (the `ETag` of the workbench projection or of the
+    addressed resource). A replay with the same key and canonical request returns the stored
+    receipt; a changed replay conflicts. Success is never decided from a model or transport result.
+
+    Customers see components remaining and the period end. Provider units, costs, margins and
+    recipes never appear in any response. A beneficiary projection omits every money, price,
+    top-up and purchase field.
+
+    Reads accept `X-Experience-Capabilities`
+    (`channel=WEB|WHATSAPP|MOBILE|API|SIMULATION;modality=text,voice;blocks=TEXT:1,CHOICES:1,...`)
+    so the server can emit only block types and versions the client can render; unknown or
+    unsupported blocks are replaced by their `fallback`. When the workbench flag is off every
+    operation answers 404 `WORKBENCH_DISABLED`.
+servers:
+  - url: https://api.waooaw.com
+tags:
+  - name: Workbench
+    description: Projection, goals, plans, capabilities, work, decisions, monitoring, wallet, evidence, controls and handoffs.
+  - name: Subscription
+    description: Customer subscription lifecycle changes.
+  - name: Marketplace Packages
+    description: Customer-facing for-sale package reads.
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/employment/relationships/{relationshipId}/workbench:
+    get:
+      tags: [Workbench]
+      summary: Read the workbench projection
+      description: |
+        Returns one audience-filtered projection of the relationship: phase and readiness, current
+        goal and plan, decisions queue, monitor tiles, components remaining and period end, alerts,
+        evidence state and source freshness, limitations, the recommended next action, available
+        commands and negotiated blocks. A missing owner yields `limitations` and an `UNAVAILABLE`
+        item state, not an error. The `ETag` is the `expectedVersion` for commands.
+      operationId: getWorkbench
+      x-capability: ["2.5", "4.5"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/ExperienceCapabilities"
+        - $ref: "#/components/parameters/OptionalCorrelationId"
+      responses:
+        "200":
+          description: Workbench projection
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkbenchProjectionV1" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/goals:
+    get:
+      tags: [Workbench]
+      summary: List goals
+      operationId: listWorkbenchGoals
+      x-capability: ["4.5"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/OptionalCorrelationId"
+      responses:
+        "200":
+          description: A page of goals
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkbenchGoalListV1" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+    post:
+      tags: [Workbench]
+      summary: Create a goal
+      description: |
+        Creates a goal of a goal type declared by the agent's experience contract. Delegates to
+        the existing goal owner; the goal is not active until the owner confirms it.
+      operationId: createWorkbenchGoal
+      x-capability: ["4.5"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateWorkbenchGoalRequestV1" }
+      responses:
+        "200": { $ref: "#/components/responses/CommandReplayed" }
+        "202": { $ref: "#/components/responses/CommandAccepted" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/goals/{goalId}:
+    get:
+      tags: [Workbench]
+      summary: Read one goal
+      operationId: getWorkbenchGoal
+      x-capability: ["4.5"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/GoalId"
+        - $ref: "#/components/parameters/OptionalCorrelationId"
+      responses:
+        "200":
+          description: Goal
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkbenchGoalV1" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/goals/{goalId}/revisions:
+    post:
+      tags: [Workbench]
+      summary: Revise a goal
+      description: Appends a new goal version. Earlier versions are never edited in place.
+      operationId: reviseWorkbenchGoal
+      x-capability: ["4.5"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/GoalId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReviseWorkbenchGoalRequestV1" }
+      responses:
+        "200": { $ref: "#/components/responses/CommandReplayed" }
+        "202": { $ref: "#/components/responses/CommandAccepted" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/goals/{goalId}/versions:
+    get:
+      tags: [Workbench]
+      summary: List the versions of a goal
+      operationId: listWorkbenchGoalVersions
+      x-capability: ["4.5"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/GoalId"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/OptionalCorrelationId"
+      responses:
+        "200":
+          description: A page of goal versions, newest first
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkbenchGoalVersionListV1" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/plans/current:
+    get:
+      tags: [Workbench]
+      summary: Read the current plan
+      operationId: getCurrentWorkbenchPlan
+      x-capability: ["1.7", "2.7"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/ExperienceCapabilities"
+        - $ref: "#/components/parameters/OptionalCorrelationId"
+      responses:
+        "200":
+          description: Current plan
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkbenchPlanV1" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/plans:
+    post:
+      tags: [Workbench]
+      summary: Propose a plan
+      description: |
+        Proposes a plan version from a goal, milestones of declared milestone types and calendar
+        windows. The plan is validated by the domain adapter before it can be accepted.
+      operationId: proposeWorkbenchPlan
+      x-capability: ["1.7"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProposeWorkbenchPlanRequestV1" }
+      responses:
+        "200": { $ref: "#/components/responses/CommandReplayed" }
+        "202": { $ref: "#/components/responses/CommandAccepted" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/plans/{planVersion}/accept:
+    post:
+      tags: [Workbench]
+      summary: Accept a plan version
+      description: Only the accountable customer owner can accept; the owner records the acceptance.
+      operationId: acceptWorkbenchPlan
+      x-capability: ["1.7"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/PlanVersion"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcceptWorkbenchPlanRequestV1" }
+      responses:
+        "200": { $ref: "#/components/responses/CommandReplayed" }
+        "202": { $ref: "#/components/responses/CommandAccepted" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/capabilities:
+    get:
+      tags: [Workbench]
+      summary: List the capabilities of the agent
+      description: |
+        Skills of the employed agent version with their honest availability. A `DEFAULT_OFF` or
+        `UNAVAILABLE` capability is shown as such and cannot be commanded.
+      operationId: listWorkbenchCapabilities
+      x-capability: ["5.4", "5.5"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/ExperienceCapabilities"
+        - $ref: "#/components/parameters/OptionalCorrelationId"
+      responses:
+        "200":
+          description: Capabilities
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkbenchCapabilityListV1" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/capabilities/{skillId}/commands:
+    post:
+      tags: [Workbench]
+      summary: Command one capability
+      description: |
+        Enables, pauses or resumes one skill. `RUN_NOW` and `CHANGE_APPROVAL_MODE` are reserved
+        values: no owner accepts them yet, so they are refused with 400 `WORKBENCH_REQUEST_INVALID`
+        and no client shows a control for them. A typed
+        `SETUP_GRANT_EXHAUSTED` outcome is returned with status 200 when the setup grant is spent;
+        it is a result, not an error.
+      operationId: commandWorkbenchCapability
+      x-capability: ["5.4", "5.5"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/SkillId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkbenchCapabilityCommandRequestV1" }
+      responses:
+        "200":
+          description: Replayed receipt, or the typed result of a command that was refused by a grant limit
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkbenchCapabilityCommandResultV1" }
+        "202": { $ref: "#/components/responses/CommandAccepted" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/work-items:
+    get:
+      tags: [Workbench]
+      summary: List work items
+      description: Work items in the common item states, each with its owner and freshness.
+      operationId: listWorkbenchWorkItems
+      x-capability: ["2.5"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: state
+          in: query
+          required: false
+          schema:
+            $ref: "./conversational-employment-business-platform.openapi.yaml#/components/schemas/EmploymentItemState"
+        - name: skillId
+          in: query
+          required: false
+          schema: { type: string, minLength: 1, maxLength: 160 }
+        - $ref: "#/components/parameters/OptionalCorrelationId"
+      responses:
+        "200":
+          description: A page of work items
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkbenchWorkItemListV1" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/decisions:
+    get:
+      tags: [Workbench]
+      summary: List pending decisions
+      operationId: listWorkbenchDecisions
+      x-capability: ["2.5"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/ExperienceCapabilities"
+        - $ref: "#/components/parameters/OptionalCorrelationId"
+      responses:
+        "200":
+          description: A page of decisions
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkbenchDecisionListV1" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/decisions/{decisionId}/resolve:
+    post:
+      tags: [Workbench]
+      summary: Resolve a decision
+      description: |
+        Authority is decided by the server when the decision is resolved, not by the block that
+        displayed it. A consequential approval that a channel cannot safely perform is answered
+        by a handoff (`POST .../handoffs`).
+      operationId: resolveWorkbenchDecision
+      x-capability: ["2.5", "2.7"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/DecisionId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResolveWorkbenchDecisionRequestV1" }
+      responses:
+        "200": { $ref: "#/components/responses/CommandReplayed" }
+        "202": { $ref: "#/components/responses/CommandAccepted" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/monitor:
+    get:
+      tags: [Workbench]
+      summary: Read the monitor
+      description: Tiles against target with freshness, alerts and negotiated blocks.
+      operationId: getWorkbenchMonitor
+      x-capability: ["2.5", "2.7"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/ExperienceCapabilities"
+        - $ref: "#/components/parameters/OptionalCorrelationId"
+      responses:
+        "200":
+          description: Monitor
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkbenchMonitorV1" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/monitor/narratives:
+    get:
+      tags: [Workbench]
+      summary: List performance narratives
+      description: Narratives in the agent's declared structure, newest first.
+      operationId: listWorkbenchNarratives
+      x-capability: ["2.7"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/OptionalCorrelationId"
+      responses:
+        "200":
+          description: A page of narratives
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkbenchNarrativeListV1" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/wallet:
+    get:
+      tags: [Workbench]
+      summary: Read the component wallet
+      description: |
+        Components remaining and the period end only. No price, cost, margin, recipe or provider
+        unit is returned. A beneficiary receives `askAccountOwner` instead of purchase options.
+      operationId: getWorkbenchWallet
+      x-capability: ["9.2"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/OptionalCorrelationId"
+      responses:
+        "200":
+          description: Wallet
+          headers:
+            ETag: { $ref: "#/components/headers/ETag" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkbenchWalletV1" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/topups:
+    post:
+      tags: [Workbench]
+      summary: Top up one component
+      description: |
+        Buys more units of one component whose package allows top-ups. The price is derived on the
+        server from the effective package version pinned for the relationship and is GST
+        inclusive. Only the accountable customer owner may top up.
+      operationId: createWorkbenchTopup
+      x-capability: ["6.5", "9.2"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateWorkbenchTopupRequestV1" }
+      responses:
+        "200":
+          description: Replayed top-up receipt
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkbenchTopupReceiptV1" }
+        "202":
+          description: Top-up accepted; credit follows the confirmed payment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkbenchTopupReceiptV1" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/evidence:
+    get:
+      tags: [Workbench]
+      summary: List evidence
+      operationId: listWorkbenchEvidence
+      x-capability: ["5.3"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/OptionalCorrelationId"
+      responses:
+        "200":
+          description: A page of evidence entries
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkbenchEvidenceListV1" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/evidence/exports:
+    post:
+      tags: [Workbench]
+      summary: Request an evidence export
+      operationId: exportWorkbenchEvidence
+      x-capability: ["5.3"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExportWorkbenchEvidenceRequestV1" }
+      responses:
+        "200": { $ref: "#/components/responses/CommandReplayed" }
+        "202": { $ref: "#/components/responses/CommandAccepted" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/controls/stop:
+    post:
+      tags: [Workbench]
+      summary: Stop the relationship now
+      description: |
+        Emergency stop. It works with the credit at zero because it is paid from the PLATFORM
+        FLOOR account, and it is reachable on every channel with the same meaning.
+      operationId: stopWorkbenchRelationship
+      x-capability: ["2.5"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkbenchControlRequestV1" }
+      responses:
+        "200": { $ref: "#/components/responses/CommandReplayed" }
+        "202": { $ref: "#/components/responses/CommandAccepted" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/controls/pause:
+    post:
+      tags: [Workbench]
+      summary: Pause the relationship
+      operationId: pauseWorkbenchRelationship
+      x-capability: ["5.4"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkbenchControlRequestV1" }
+      responses:
+        "200": { $ref: "#/components/responses/CommandReplayed" }
+        "202": { $ref: "#/components/responses/CommandAccepted" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/handoffs:
+    post:
+      tags: [Workbench]
+      summary: Create a single-use handoff to the web workbench
+      description: |
+        Used when a channel cannot safely perform an action (for example a consequential
+        approval or a payment). The returned reference is opaque, single use and expires.
+      operationId: createWorkbenchHandoff
+      x-capability: ["6.6"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateWorkbenchHandoffRequestV1" }
+      responses:
+        "200":
+          description: Replayed handoff
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkbenchHandoffV1" }
+        "201":
+          description: Handoff created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkbenchHandoffV1" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/workbench/handoffs/consume:
+    post:
+      tags: [Workbench]
+      summary: Redeem a single-use handoff
+      description: |
+        Redeems the opaque destination reference of a handoff exactly once for the signed-in
+        participant of this relationship. A reference that is unknown, expired, already used or
+        issued to someone else answers the same 404, so a reference cannot be probed.
+      operationId: consumeWorkbenchHandoff
+      x-capability: ["6.6"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConsumeWorkbenchHandoffRequestV1" }
+      responses:
+        "200":
+          description: Handoff redeemed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkbenchHandoffConsumptionV1" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/employment/relationships/{relationshipId}/subscription/changes:
+    post:
+      tags: [Subscription]
+      summary: Change the subscription
+      description: |
+        UPGRADE is immediate with a pro-rated fee difference. DOWNGRADE takes effect at the next
+        renewal. PAUSE and TERMINATE record a pro-rata billing adjustment through the payment
+        path, never a wallet refund; remaining wallet credit lapses and delivered work is kept.
+        RESUME and TERMINATE need no target package. Timing is decided by the effective policy
+        version, not by the client.
+      operationId: changeSubscription
+      x-capability: ["9.1", "6.5"]
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SubscriptionChangeRequestV1" }
+      responses:
+        "200":
+          description: Replayed subscription change receipt
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SubscriptionChangeReceiptV1" }
+        "202":
+          description: Subscription change accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SubscriptionChangeReceiptV1" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/marketplace/agents/{agentType}/versions/{agentVersion}/packages:
+    get:
+      tags: [Marketplace Packages]
+      summary: List the packages on sale for an agent version
+      description: |
+        Returns only EFFECTIVE packages that are for sale. Each package carries its price including
+        GST, the base price, the GST, the billing period and its components in the agent's own
+        vocabulary. Provider units, costs, margins and recipes are never returned.
+      operationId: listMarketplaceAgentPackages
+      x-capability: ["9.2"]
+      parameters:
+        - name: agentType
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - name: agentVersion
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 64 }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/OptionalCorrelationId"
+      responses:
+        "200":
+          description: A page of for-sale packages
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MarketplacePackageListV1" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Customer identity token. The route additionally requires membership of the relationship; tenant and role are never taken from the request.
+  headers:
+    ETag:
+      description: Opaque version of the returned resource; send it back as `expectedVersion` on the next command.
+      schema: { type: string, minLength: 1, maxLength: 128 }
+  parameters:
+    RelationshipId:
+      name: relationshipId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    GoalId:
+      name: goalId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    PlanVersion:
+      name: planVersion
+      in: path
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 64 }
+    SkillId:
+      name: skillId
+      in: path
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 160 }
+    DecisionId:
+      name: decisionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+      description: Same key and canonical request replay the stored receipt; divergent reuse conflicts with `WORKBENCH_IDEMPOTENCY_CONFLICT`.
+    CorrelationId:
+      name: X-Correlation-ID
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+    OptionalCorrelationId:
+      name: X-Correlation-ID
+      in: header
+      required: false
+      schema: { type: string, format: uuid }
+    ExperienceCapabilities:
+      name: X-Experience-Capabilities
+      in: header
+      required: false
+      schema: { type: string, minLength: 1, maxLength: 512, pattern: "^channel=(WEB|WHATSAPP|MOBILE|API|SIMULATION)(;modality=(text|voice)(,(text|voice))*)?(;blocks=[A-Z]+:[0-9]+(,[A-Z]+:[0-9]+)*)?$" }
+      description: |
+        Channel class, modality and the highest block version the client renders, for example
+        `channel=WHATSAPP;modality=text,voice;blocks=TEXT:1,CHOICES:1,LINK:1`. Absent means the v1
+        block set. Blocks above the stated version are replaced by their fallback.
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema: { type: string, minLength: 1, maxLength: 256 }
+      description: Opaque cursor from the previous page.
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+  responses:
+    CommandAccepted:
+      description: Command accepted. The receipt names the operation; completion is confirmed by the owner, never by this response alone.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/WorkbenchCommandReceiptV1" }
+    CommandReplayed:
+      description: The same idempotency key and request were seen before; the stored receipt is returned.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/WorkbenchCommandReceiptV1" }
+    BadRequest:
+      description: Request, header or schema version is malformed or unsupported (`WORKBENCH_REQUEST_INVALID`).
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/WorkbenchProblemDetailV1" }
+    Unauthorized:
+      description: Credential is missing or invalid.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/WorkbenchProblemDetailV1" }
+    Forbidden:
+      description: Not a member of the relationship, the audience may not perform the operation, or a spend authority refused it (`SPEND_PURPOSE_UNMAPPED`, `SPEND_AUTHORITY_UNAVAILABLE`).
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/WorkbenchProblemDetailV1" }
+    NotFound:
+      description: The workbench is disabled (`WORKBENCH_DISABLED`) or the resource does not exist for this relationship.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/WorkbenchProblemDetailV1" }
+    Conflict:
+      description: Stale `expectedVersion` (`WORKBENCH_VERSION_CONFLICT`), divergent idempotency reuse (`WORKBENCH_IDEMPOTENCY_CONFLICT`), or a wallet, component or trial conflict.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/WorkbenchProblemDetailV1" }
+    UnprocessableEntity:
+      description: The request is well formed but the requested change is not allowed for the package or component.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/WorkbenchProblemDetailV1" }
+    TooManyRequests:
+      description: Fair-use limit reached; retry after the stated delay.
+      headers:
+        Retry-After:
+          schema: { type: integer, minimum: 1 }
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/WorkbenchProblemDetailV1" }
+    Unavailable:
+      description: A required owner or dependency is unavailable (`WORKBENCH_UNAVAILABLE`, `SPEND_COMMERCIAL_UNAVAILABLE`); the call is retry-safe.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/WorkbenchProblemDetailV1" }
+  schemas:
+    WorkbenchProblemCodeV1:
+      type: string
+      enum:
+        - WORKBENCH_DISABLED
+        - WORKBENCH_REQUEST_INVALID
+        - WORKBENCH_VERSION_CONFLICT
+        - WORKBENCH_IDEMPOTENCY_CONFLICT
+        - WORKBENCH_UNAVAILABLE
+        - SPEND_PURPOSE_UNMAPPED
+        - SPEND_AUTHORITY_UNAVAILABLE
+        - SPEND_COMMERCIAL_UNAVAILABLE
+        - WALLET_INSUFFICIENT
+        - WALLET_IDEMPOTENCY_CONFLICT
+        - COMPONENT_NOT_YET_RELEASED
+        - PROACTIVE_ALLOWANCE_EXHAUSTED
+        - TRIAL_ALREADY_USED
+        - TRIAL_ALREADY_USED_BY_IDENTITY
+        - PACKAGE_COMPONENT_NOT_AVAILABLE
+    WorkbenchProblemDetailV1:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, correlationId]
+      properties:
+        type: { type: string, minLength: 1, maxLength: 240 }
+        title: { type: string, minLength: 1, maxLength: 240 }
+        status: { type: integer, minimum: 400, maximum: 599 }
+        code: { $ref: "#/components/schemas/WorkbenchProblemCodeV1" }
+        correlationId: { type: string, minLength: 1, maxLength: 64 }
+        detail: { type: string, maxLength: 500 }
+    WorkbenchAudienceV1:
+      type: string
+      enum: [customer_owner, delegate, beneficiary, steward]
+    WorkbenchFreshnessV1:
+      $ref: "./customer-engagement-workspace-business-platform.openapi.yaml#/components/schemas/ProjectionFreshnessV1"
+    WorkbenchEvidenceStateV1:
+      $ref: "./customer-engagement-workspace-business-platform.openapi.yaml#/components/schemas/ProjectionEvidenceStateV1"
+    WorkbenchItemStateV1:
+      $ref: "./conversational-employment-business-platform.openapi.yaml#/components/schemas/EmploymentItemState"
+    WorkbenchPhaseV1:
+      $ref: "./conversational-employment-business-platform.openapi.yaml#/components/schemas/EmploymentPhaseKind"
+    WorkbenchReadinessV1:
+      type: object
+      additionalProperties: false
+      required: [induction, plan, operations, performance]
+      properties:
+        induction:
+          $ref: "./conversational-employment-business-platform.openapi.yaml#/components/schemas/InductionReadinessState"
+        plan:
+          $ref: "./conversational-employment-business-platform.openapi.yaml#/components/schemas/PlanReadinessState"
+        operations:
+          $ref: "./conversational-employment-business-platform.openapi.yaml#/components/schemas/OperationsEligibilityState"
+        performance:
+          $ref: "./conversational-employment-business-platform.openapi.yaml#/components/schemas/PerformanceAssuranceState"
+    WorkbenchDecisionV1:
+      type: object
+      additionalProperties: false
+      required: [decisionId, version, effect, authority, confirmLabel, cancelLabel, owner, freshness]
+      properties:
+        decisionId: { type: string, format: uuid }
+        version: { type: string, minLength: 1, maxLength: 64 }
+        effect: { type: string, minLength: 1, maxLength: 500 }
+        authority: { type: string, minLength: 1, maxLength: 120 }
+        cost: { type: string, minLength: 1, maxLength: 240, description: "Cost in business language, never provider units." }
+        confirmLabel: { type: string, minLength: 1, maxLength: 20 }
+        cancelLabel: { type: string, minLength: 1, maxLength: 20 }
+        expiresAt: { type: string, format: date-time }
+        itemRef: { type: string, minLength: 1, maxLength: 128 }
+        owner: { type: string, minLength: 1, maxLength: 120 }
+        freshness: { $ref: "#/components/schemas/WorkbenchFreshnessV1" }
+    WorkbenchTileV1:
+      type: object
+      additionalProperties: false
+      required: [tileId, measureId, label, value, unit, freshness, owner, blockType]
+      properties:
+        tileId: { type: string, minLength: 1, maxLength: 160 }
+        measureId: { type: string, minLength: 1, maxLength: 160 }
+        label: { type: string, minLength: 1, maxLength: 240 }
+        value: { type: string, minLength: 1, maxLength: 64 }
+        unit: { type: string, minLength: 1, maxLength: 64 }
+        target: { type: string, minLength: 1, maxLength: 64 }
+        trend: { type: string, enum: [UP, DOWN, FLAT] }
+        basis: { type: string, minLength: 1, maxLength: 500, description: "The declared basis of any percentage; a percentage without a basis is never sent." }
+        freshness: { $ref: "#/components/schemas/WorkbenchFreshnessV1" }
+        owner: { type: string, minLength: 1, maxLength: 120 }
+        blockType: { type: string, enum: [STATUS, METRIC, PLAN, DECISION, EVIDENCE, DOMAIN] }
+    WorkbenchComponentBalanceV1:
+      type: object
+      additionalProperties: false
+      required: [componentId, label, remaining, quantity, periodEnd]
+      properties:
+        componentId: { type: string, minLength: 1, maxLength: 160 }
+        label: { type: string, minLength: 1, maxLength: 240 }
+        remaining: { type: integer, minimum: 0 }
+        quantity: { type: integer, minimum: 0 }
+        periodEnd: { type: string, format: date-time }
+    WorkbenchAlertV1:
+      type: object
+      additionalProperties: false
+      required: [alertId, signal, severity, message, raisedAt, freshness]
+      properties:
+        alertId: { type: string, minLength: 1, maxLength: 128 }
+        signal: { type: string, minLength: 1, maxLength: 160 }
+        severity: { type: string, enum: [INFO, WARNING, CRITICAL] }
+        message: { type: string, minLength: 1, maxLength: 500 }
+        raisedAt: { type: string, format: date-time }
+        freshness: { $ref: "#/components/schemas/WorkbenchFreshnessV1" }
+    WorkbenchRecommendedActionV1:
+      type: object
+      additionalProperties: false
+      required: [commandId, label, reason]
+      properties:
+        commandId: { type: string, minLength: 1, maxLength: 160 }
+        label: { type: string, minLength: 1, maxLength: 240 }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    WorkbenchAvailableCommandV1:
+      type: object
+      additionalProperties: false
+      required: [commandId, label, enabled]
+      properties:
+        commandId: { type: string, minLength: 1, maxLength: 160 }
+        label: { type: string, minLength: 1, maxLength: 240 }
+        enabled: { type: boolean }
+        disabledReason: { type: string, minLength: 1, maxLength: 500 }
+    ExperienceFallbackBlockV2:
+      type: object
+      additionalProperties: false
+      required: [type, data]
+      properties:
+        type: { type: string, enum: [TEXT, CHOICES, LIST, LINK] }
+        data: { type: object }
+    ExperienceBlockV2:
+      type: object
+      additionalProperties: false
+      description: One block of `ExperienceReplyV2`; the closed per-type `data` shapes are defined by `schemas/experience-blocks.v2.schema.json`.
+      required: [id, type, version, sensitivity, data, fallback]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 64 }
+        type: { type: string, enum: [TEXT, CHOICES, LIST, LINK, STATUS, METRIC, PLAN, DECISION, FORM, EVIDENCE, DOMAIN] }
+        version: { type: integer, minimum: 1 }
+        sensitivity: { type: string, enum: [PUBLIC, CUSTOMER, SENSITIVE] }
+        data: { type: object }
+        fallback:
+          type: array
+          maxItems: 4
+          items: { $ref: "#/components/schemas/ExperienceFallbackBlockV2" }
+        spoken: { type: string, minLength: 1, maxLength: 1024 }
+        label: { type: string, minLength: 1, maxLength: 120 }
+    WorkbenchProjectionV1:
+      type: object
+      additionalProperties: false
+      required:
+        - schemaVersion
+        - relationshipRef
+        - audience
+        - phase
+        - readiness
+        - decisions
+        - tiles
+        - alerts
+        - evidenceState
+        - sourceFreshness
+        - limitations
+        - availableCommands
+        - blocks
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        relationshipRef: { type: string, format: uuid }
+        audience: { $ref: "#/components/schemas/WorkbenchAudienceV1" }
+        phase: { $ref: "#/components/schemas/WorkbenchPhaseV1" }
+        readiness: { $ref: "#/components/schemas/WorkbenchReadinessV1" }
+        currentGoalRef: { type: string, format: uuid }
+        currentPlanVersion: { type: string, minLength: 1, maxLength: 64 }
+        decisions:
+          type: array
+          items: { $ref: "#/components/schemas/WorkbenchDecisionV1" }
+        tiles:
+          type: array
+          items: { $ref: "#/components/schemas/WorkbenchTileV1" }
+        components:
+          type: array
+          description: Components remaining and period end. Omitted for the beneficiary audience.
+          items: { $ref: "#/components/schemas/WorkbenchComponentBalanceV1" }
+        alerts:
+          type: array
+          items: { $ref: "#/components/schemas/WorkbenchAlertV1" }
+        evidenceState: { $ref: "#/components/schemas/WorkbenchEvidenceStateV1" }
+        sourceFreshness: { $ref: "#/components/schemas/WorkbenchFreshnessV1" }
+        limitations:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 500 }
+        recommendedNextAction: { $ref: "#/components/schemas/WorkbenchRecommendedActionV1" }
+        availableCommands:
+          type: array
+          items: { $ref: "#/components/schemas/WorkbenchAvailableCommandV1" }
+        blocks:
+          type: array
+          maxItems: 6
+          description: Blocks negotiated through `X-Experience-Capabilities`.
+          items: { $ref: "#/components/schemas/ExperienceBlockV2" }
+    WorkbenchCommandReceiptV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, operationRef, status, version, replayed, correlationId]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        operationRef: { type: string, format: uuid }
+        status: { type: string, enum: [ACCEPTED, COMPLETED, REJECTED] }
+        resourceRef: { type: string, minLength: 1, maxLength: 128 }
+        version: { type: string, minLength: 1, maxLength: 128, description: The resulting resource version. }
+        replayed: { type: boolean }
+        correlationId: { type: string, minLength: 1, maxLength: 64 }
+    WorkbenchGoalSummaryV1:
+      type: object
+      additionalProperties: false
+      required: [goalId, goalTypeId, title, state, currentVersion, updatedAt]
+      properties:
+        goalId: { type: string, format: uuid }
+        goalTypeId: { type: string, minLength: 1, maxLength: 160 }
+        title: { type: string, minLength: 1, maxLength: 240 }
+        state: { type: string, enum: [ACTIVE, SUPERSEDED, CLOSED] }
+        currentVersion: { type: integer, minimum: 1 }
+        updatedAt: { type: string, format: date-time }
+    WorkbenchGoalListV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, items]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        items:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/WorkbenchGoalSummaryV1" }
+        nextCursor: { type: string, minLength: 1, maxLength: 256 }
+    WorkbenchGoalParametersV1:
+      type: object
+      description: Values of the parameters the goal type declares, keyed by parameter name.
+      maxProperties: 20
+      additionalProperties:
+        type: string
+        maxLength: 500
+    WorkbenchGoalMeasureV1:
+      type: object
+      additionalProperties: false
+      required: [measureId, unit, freshness]
+      properties:
+        measureId: { type: string, minLength: 1, maxLength: 160 }
+        unit: { type: string, minLength: 1, maxLength: 64 }
+        target: { type: string, minLength: 1, maxLength: 64 }
+        baseline: { type: string, minLength: 1, maxLength: 64 }
+        freshness: { $ref: "#/components/schemas/WorkbenchFreshnessV1" }
+    WorkbenchGoalV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, goal, parameters, measures, constraints]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        goal: { $ref: "#/components/schemas/WorkbenchGoalSummaryV1" }
+        parameters: { $ref: "#/components/schemas/WorkbenchGoalParametersV1" }
+        measures:
+          type: array
+          items: { $ref: "#/components/schemas/WorkbenchGoalMeasureV1" }
+        constraints:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 160 }
+    WorkbenchGoalVersionV1:
+      type: object
+      additionalProperties: false
+      required: [versionNo, revisedAt, revisedBy, parameters]
+      properties:
+        versionNo: { type: integer, minimum: 1 }
+        revisedAt: { type: string, format: date-time }
+        revisedBy: { type: string, minLength: 1, maxLength: 120 }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+        parameters: { $ref: "#/components/schemas/WorkbenchGoalParametersV1" }
+    WorkbenchGoalVersionListV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, items]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        items:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/WorkbenchGoalVersionV1" }
+        nextCursor: { type: string, minLength: 1, maxLength: 256 }
+    CreateWorkbenchGoalRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, expectedVersion, goalTypeId, title, parameters]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        expectedVersion: { type: string, minLength: 1, maxLength: 128 }
+        goalTypeId: { type: string, minLength: 1, maxLength: 160 }
+        title: { type: string, minLength: 1, maxLength: 240 }
+        parameters: { $ref: "#/components/schemas/WorkbenchGoalParametersV1" }
+        starterRef: { type: string, minLength: 1, maxLength: 160 }
+    ReviseWorkbenchGoalRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, expectedVersion, parameters, reason]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        expectedVersion: { type: string, minLength: 1, maxLength: 128 }
+        title: { type: string, minLength: 1, maxLength: 240 }
+        parameters: { $ref: "#/components/schemas/WorkbenchGoalParametersV1" }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    WorkbenchMilestoneV1:
+      type: object
+      additionalProperties: false
+      required: [milestoneId, milestoneTypeId, title, dueMeaning, state]
+      properties:
+        milestoneId: { type: string, minLength: 1, maxLength: 128 }
+        milestoneTypeId: { type: string, minLength: 1, maxLength: 160 }
+        title: { type: string, minLength: 1, maxLength: 240 }
+        dueMeaning: { type: string, minLength: 1, maxLength: 240 }
+        state: { $ref: "#/components/schemas/WorkbenchItemStateV1" }
+    WorkbenchCalendarEntryV1:
+      type: object
+      additionalProperties: false
+      required: [date, title]
+      properties:
+        date: { type: string, format: date }
+        title: { type: string, minLength: 1, maxLength: 240 }
+    WorkbenchPlanV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, planVersion, state, goalRef, milestones, calendar, limitations]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        planVersion: { type: string, minLength: 1, maxLength: 64 }
+        state: { type: string, enum: [DRAFT, READY_FOR_REVIEW, AGREED, SUPERSEDED] }
+        goalRef: { type: string, format: uuid }
+        milestones:
+          type: array
+          items: { $ref: "#/components/schemas/WorkbenchMilestoneV1" }
+        calendar:
+          type: array
+          items: { $ref: "#/components/schemas/WorkbenchCalendarEntryV1" }
+        limitations:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 500 }
+    ProposeWorkbenchPlanRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, expectedVersion, goalId, milestones]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        expectedVersion: { type: string, minLength: 1, maxLength: 128 }
+        goalId: { type: string, format: uuid }
+        milestones:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: object
+            additionalProperties: false
+            required: [milestoneTypeId, title]
+            properties:
+              milestoneTypeId: { type: string, minLength: 1, maxLength: 160 }
+              title: { type: string, minLength: 1, maxLength: 240 }
+              dueDate: { type: string, format: date }
+        calendarWindows:
+          type: array
+          uniqueItems: true
+          items: { type: string, minLength: 1, maxLength: 160 }
+    AcceptWorkbenchPlanRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, expectedVersion, acknowledgedLimitations]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        expectedVersion: { type: string, minLength: 1, maxLength: 128 }
+        acknowledgedLimitations: { type: boolean }
+    WorkbenchCapabilityV1:
+      type: object
+      additionalProperties: false
+      required: [skillId, label, availability, state, approvalMode, componentIds]
+      properties:
+        skillId: { type: string, minLength: 1, maxLength: 160 }
+        label: { type: string, minLength: 1, maxLength: 240 }
+        availability: { type: string, enum: [AVAILABLE, DEFAULT_OFF, UNAVAILABLE] }
+        state: { type: string, enum: [ACTIVE, PAUSED, NOT_ENABLED] }
+        approvalMode: { type: string, minLength: 1, maxLength: 160 }
+        nextRunMeaning: { type: string, minLength: 1, maxLength: 240 }
+        componentIds:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 160 }
+        limitation: { type: string, minLength: 1, maxLength: 500 }
+    WorkbenchCapabilityListV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, items]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/WorkbenchCapabilityV1" }
+    WorkbenchCapabilityCommandRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, expectedVersion, command]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        expectedVersion: { type: string, minLength: 1, maxLength: 128 }
+        command: { type: string, enum: [ENABLE, PAUSE, RESUME, RUN_NOW, CHANGE_APPROVAL_MODE] }
+        approvalMode: { type: string, minLength: 1, maxLength: 160 }
+      allOf:
+        - if:
+            properties:
+              command:
+                const: CHANGE_APPROVAL_MODE
+            required: [command]
+          then:
+            required: [approvalMode]
+    WorkbenchCapabilityCommandResultV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, outcome, correlationId]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        outcome: { type: string, enum: [ACCEPTED, COMPLETED, NEEDS_APPROVAL, SETUP_GRANT_EXHAUSTED] }
+        operationRef: { type: string, format: uuid }
+        message: { type: string, minLength: 1, maxLength: 500 }
+        correlationId: { type: string, minLength: 1, maxLength: 64 }
+    WorkbenchWorkItemV1:
+      type: object
+      additionalProperties: false
+      required: [itemRef, workItemType, label, state, owner, freshness, updatedAt]
+      properties:
+        itemRef: { type: string, minLength: 1, maxLength: 128 }
+        workItemType: { type: string, minLength: 1, maxLength: 160 }
+        skillId: { type: string, minLength: 1, maxLength: 160 }
+        label: { type: string, minLength: 1, maxLength: 240 }
+        state: { $ref: "#/components/schemas/WorkbenchItemStateV1" }
+        owner: { type: string, minLength: 1, maxLength: 120 }
+        freshness: { $ref: "#/components/schemas/WorkbenchFreshnessV1" }
+        updatedAt: { type: string, format: date-time }
+    WorkbenchWorkItemListV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, items]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        items:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/WorkbenchWorkItemV1" }
+        nextCursor: { type: string, minLength: 1, maxLength: 256 }
+    WorkbenchDecisionListV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, items, blocks]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        items:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/WorkbenchDecisionV1" }
+        blocks:
+          type: array
+          maxItems: 6
+          items: { $ref: "#/components/schemas/ExperienceBlockV2" }
+        nextCursor: { type: string, minLength: 1, maxLength: 256 }
+    ResolveWorkbenchDecisionRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, expectedVersion, resolution]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        expectedVersion: { type: string, minLength: 1, maxLength: 128 }
+        resolution: { type: string, enum: [APPROVE, DECLINE, DEFER] }
+        note: { type: string, minLength: 1, maxLength: 500 }
+    WorkbenchMonitorV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, tiles, alerts, sourceFreshness, limitations, blocks]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        tiles:
+          type: array
+          items: { $ref: "#/components/schemas/WorkbenchTileV1" }
+        alerts:
+          type: array
+          items: { $ref: "#/components/schemas/WorkbenchAlertV1" }
+        sourceFreshness: { $ref: "#/components/schemas/WorkbenchFreshnessV1" }
+        limitations:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 500 }
+        blocks:
+          type: array
+          maxItems: 6
+          items: { $ref: "#/components/schemas/ExperienceBlockV2" }
+    WorkbenchNarrativePartV1:
+      type: object
+      additionalProperties: false
+      required: [part, text]
+      properties:
+        part: { type: string, minLength: 1, maxLength: 160, description: A part id from the narrative structure the agent declares. }
+        text: { type: string, minLength: 1, maxLength: 1024 }
+    WorkbenchNarrativeV1:
+      type: object
+      additionalProperties: false
+      required: [narrativeId, periodLabel, publishedAt, parts, freshness]
+      properties:
+        narrativeId: { type: string, minLength: 1, maxLength: 160 }
+        periodLabel: { type: string, minLength: 1, maxLength: 120 }
+        publishedAt: { type: string, format: date-time }
+        parts:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/WorkbenchNarrativePartV1" }
+        freshness: { $ref: "#/components/schemas/WorkbenchFreshnessV1" }
+    WorkbenchNarrativeListV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, items]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        items:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/WorkbenchNarrativeV1" }
+        nextCursor: { type: string, minLength: 1, maxLength: 256 }
+    WorkbenchWalletV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, relationshipRef, periodEnd, components, topUpAvailable, askAccountOwner]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        relationshipRef: { type: string, format: uuid }
+        periodEnd: { type: string, format: date-time }
+        components:
+          type: array
+          items: { $ref: "#/components/schemas/WorkbenchComponentBalanceV1" }
+        topUpAvailable: { type: boolean }
+        askAccountOwner: { type: boolean, description: "True when the audience cannot buy; the customer is told to ask the account owner." }
+    CreateWorkbenchTopupRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, expectedVersion, componentId, quantity]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        expectedVersion: { type: string, minLength: 1, maxLength: 128 }
+        componentId: { type: string, minLength: 1, maxLength: 160 }
+        quantity: { type: integer, minimum: 1, maximum: 1000 }
+    WorkbenchTopupReceiptV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, operationRef, status, componentId, quantity, priceInclGstPaise, basePricePaise, gstPaise, taxTreatment, correlationId]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        operationRef: { type: string, format: uuid }
+        status: { type: string, enum: [PENDING_PAYMENT, CREDITED, FAILED] }
+        componentId: { type: string, minLength: 1, maxLength: 160 }
+        quantity: { type: integer, minimum: 1 }
+        priceInclGstPaise: { type: integer, format: int64, minimum: 0 }
+        basePricePaise: { type: integer, format: int64, minimum: 0 }
+        gstPaise: { type: integer, format: int64, minimum: 0 }
+        taxTreatment: { type: string, enum: [GST_INCLUSIVE] }
+        checkoutHandoffRef: { type: string, minLength: 8, maxLength: 128 }
+        correlationId: { type: string, minLength: 1, maxLength: 64 }
+    WorkbenchEvidenceEntryV1:
+      type: object
+      additionalProperties: false
+      required: [evidenceRef, kind, summary, producedAt, freshness]
+      properties:
+        evidenceRef: { type: string, minLength: 1, maxLength: 128 }
+        kind: { type: string, minLength: 1, maxLength: 160 }
+        summary: { type: string, minLength: 1, maxLength: 500 }
+        producedAt: { type: string, format: date-time }
+        freshness: { $ref: "#/components/schemas/WorkbenchFreshnessV1" }
+    WorkbenchEvidenceListV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, evidenceState, items]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        evidenceState: { $ref: "#/components/schemas/WorkbenchEvidenceStateV1" }
+        items:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/WorkbenchEvidenceEntryV1" }
+        nextCursor: { type: string, minLength: 1, maxLength: 256 }
+    ExportWorkbenchEvidenceRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, expectedVersion, scope, format]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        expectedVersion: { type: string, minLength: 1, maxLength: 128 }
+        scope: { type: string, enum: [GOAL, PLAN, PERIOD, RELATIONSHIP] }
+        scopeRef: { type: string, minLength: 1, maxLength: 128 }
+        periodFrom: { type: string, format: date }
+        periodTo: { type: string, format: date }
+        format: { type: string, enum: [PDF, JSON] }
+    WorkbenchControlRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, expectedVersion]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        expectedVersion: { type: string, minLength: 1, maxLength: 128 }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    CreateWorkbenchHandoffRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, expectedVersion, purpose]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        expectedVersion: { type: string, minLength: 1, maxLength: 128 }
+        purpose: { type: string, enum: [WEB_WORKBENCH, APPROVAL, PAYMENT, EVIDENCE] }
+        contextRef: { type: string, minLength: 1, maxLength: 128 }
+    WorkbenchHandoffV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, handoffRef, destinationRef, expiresAt, singleUse]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        handoffRef: { type: string, format: uuid }
+        destinationRef: { type: string, pattern: "^[A-Za-z0-9][A-Za-z0-9._~:-]{7,127}$" }
+        expiresAt: { type: string, format: date-time }
+        singleUse: { type: boolean, enum: [true] }
+    ConsumeWorkbenchHandoffRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, destinationRef]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        destinationRef: { type: string, pattern: "^[A-Za-z0-9][A-Za-z0-9._~:-]{7,127}$" }
+    WorkbenchHandoffConsumptionV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, purpose]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        purpose: { type: string, enum: [WEB_WORKBENCH, APPROVAL, PAYMENT, EVIDENCE] }
+        contextRef: { type: string, minLength: 1, maxLength: 128 }
+    SubscriptionChangeRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, expectedVersion, kind]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        expectedVersion: { type: string, minLength: 1, maxLength: 128 }
+        kind: { type: string, enum: [UPGRADE, DOWNGRADE, PAUSE, RESUME, TERMINATE] }
+        targetPackageId: { type: string, format: uuid }
+        skillId: { type: string, minLength: 1, maxLength: 160, description: "Limits PAUSE and RESUME to the components of one skill." }
+        selections:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            additionalProperties: false
+            required: [componentId]
+            properties:
+              componentId: { type: string, minLength: 1, maxLength: 160 }
+              selectedItemRefs:
+                type: array
+                uniqueItems: true
+                items: { type: string, minLength: 1, maxLength: 128 }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+      allOf:
+        - if:
+            properties:
+              kind:
+                enum: [UPGRADE, DOWNGRADE]
+            required: [kind]
+          then:
+            required: [targetPackageId]
+    SubscriptionChangeReceiptV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, operationRef, kind, status, effectiveAt, taxTreatment, correlationId]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        operationRef: { type: string, format: uuid }
+        kind: { type: string, enum: [UPGRADE, DOWNGRADE, PAUSE, RESUME, TERMINATE] }
+        status: { type: string, enum: [ACCEPTED, SCHEDULED, COMPLETED, BLOCKED] }
+        effectiveAt: { type: string, format: date-time }
+        proratedFeeDifferencePaise: { type: integer, format: int64, minimum: 0, description: "Upgrade only; GST inclusive." }
+        refundFeePaise: { type: integer, format: int64, minimum: 0, description: "Pause and terminate only; a billing adjustment, never a wallet refund." }
+        taxTreatment: { type: string, enum: [GST_INCLUSIVE] }
+        blockedReason: { type: string, minLength: 1, maxLength: 500 }
+        correlationId: { type: string, minLength: 1, maxLength: 64 }
+    MarketplacePackageComponentV1:
+      type: object
+      additionalProperties: false
+      required: [componentId, label, quantity, cadence]
+      properties:
+        componentId: { type: string, minLength: 1, maxLength: 160 }
+        label: { type: string, minLength: 1, maxLength: 240 }
+        quantity: { type: integer, minimum: 0 }
+        cadence: { type: string, enum: [SPREAD, UPFRONT, DAILY, WEEKLY, MONTHLY] }
+        selectableMaximum: { type: integer, minimum: 1 }
+    MarketplacePackageV1:
+      type: object
+      additionalProperties: false
+      required: [packageId, packageCode, displayName, agentType, agentVersion, billingPeriodDays, priceInclGstPaise, basePricePaise, gstPaise, gstRatePercent, taxTreatment, components]
+      properties:
+        packageId: { type: string, format: uuid }
+        packageCode: { type: string, minLength: 1, maxLength: 64 }
+        displayName: { type: string, minLength: 1, maxLength: 240 }
+        agentType: { type: string, minLength: 1, maxLength: 100 }
+        agentVersion: { type: string, minLength: 1, maxLength: 64 }
+        billingPeriodDays: { type: integer, minimum: 1 }
+        priceInclGstPaise: { type: integer, format: int64, minimum: 0 }
+        basePricePaise: { type: integer, format: int64, minimum: 0 }
+        gstPaise: { type: integer, format: int64, minimum: 0 }
+        gstRatePercent: { type: integer, minimum: 0, maximum: 100 }
+        taxTreatment: { type: string, enum: [GST_INCLUSIVE] }
+        components:
+          type: array
+          items: { $ref: "#/components/schemas/MarketplacePackageComponentV1" }
+    MarketplacePackageListV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, items]
+      properties:
+        schemaVersion: { type: string, enum: ["1.0"] }
+        items:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/MarketplacePackageV1" }
+        nextCursor: { type: string, minLength: 1, maxLength: 256 }

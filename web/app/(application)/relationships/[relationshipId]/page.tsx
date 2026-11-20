@@ -1,3 +1,6 @@
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C6-05
+// Constitutional basis: C-001, C-059, ADR-051
+
 import { redirect } from 'next/navigation';
 import { RelationshipWorkspace } from '@/components/relationships/RelationshipWorkspace';
 import { RelationshipPreActivation } from '@/components/relationships/RelationshipPreActivation';
@@ -13,11 +16,22 @@ import { getEmploymentWorkspace } from '@/lib/api/employment-workspace';
 import { getCustomerEngagementProgress } from '@/lib/api/customer-engagement';
 import { getProfessionalDisclosure } from '@/lib/api/professionals';
 import { getServerAccessToken } from '@/lib/server-auth';
+import { getRequestI18n } from '@/lib/i18n-server';
+import { getWorkbench } from '@/lib/api/workbench';
+import { workbenchMessages } from '@/lib/workbench-i18n';
+import { WorkbenchShell } from '@/components/workbench/WorkbenchShell';
 
-export default async function RelationshipPage({ params }: { params: Promise<{ relationshipId: string }> }) {
+export default async function RelationshipPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ relationshipId: string }>;
+  searchParams?: Promise<{ handoff?: string | string[] }>;
+}) {
   const accessToken = await getServerAccessToken();
   if (!accessToken) redirect('/login');
   const { relationshipId } = await params;
+  const handoff = (await searchParams)?.handoff;
 
   const relationship = await getRelationship(relationshipId, accessToken);
   const operational = relationship.state === 'TRIAL_ACTIVE' || relationship.state === 'ACTIVE';
@@ -38,6 +52,18 @@ export default async function RelationshipPage({ params }: { params: Promise<{ r
         evaluation={evaluation}
         contractJourney={contractJourney}
         availableSkills={disclosure?.skills ?? []}
+      />
+    );
+  }
+  const workbench = await getWorkbench(relationshipId, accessToken);
+  if (workbench.state === 'available') {
+    const { locale } = await getRequestI18n();
+    return (
+      <WorkbenchShell
+        copy={workbenchMessages(locale)}
+        handoffToken={typeof handoff === 'string' ? handoff : undefined}
+        initial={workbench.snapshot}
+        relationshipId={relationshipId}
       />
     );
   }

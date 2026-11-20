@@ -1,0 +1,7 @@
+{
+  "generator": "openapi-generator-cli",
+  "generatorImage": "openapitools/openapi-generator-cli:v7.17.0",
+  "generationInput": "deterministically-bundled",
+  "specVersion": "1.0.0",
+  "specSha256": "ad6bef4cd81345af3960de8f51afeca8d7b65d26bb4633972f7717d000e4e59b"
+}

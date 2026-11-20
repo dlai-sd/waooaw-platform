@@ -864,6 +864,18 @@ def test_spend_authority_rejects_out_of_policy_inputs(environment: str, paise: i
         spend_authority_sql(environment, paise, evidence)
 
 
+def test_spend_authority_above_the_default_needs_an_explicit_founder_hard_maximum() -> None:
+    statement = spend_authority_sql("demo", 120000, EVIDENCE_ID, 200000)
+
+    assert "120000" in statement
+    with pytest.raises(ValueError):
+        spend_authority_sql("demo", 120000, EVIDENCE_ID)
+    with pytest.raises(ValueError):
+        spend_authority_sql("demo", 200001, EVIDENCE_ID, 200000)
+    with pytest.raises(ValueError):
+        spend_authority_sql("demo", 100, EVIDENCE_ID, 40000)
+
+
 def test_spend_authority_grants_owner_only_around_the_statement(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
     monkeypatch.setattr("wc124_db_provisioner.access_token", lambda: "token")

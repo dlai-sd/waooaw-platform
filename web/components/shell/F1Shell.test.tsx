@@ -1,4 +1,5 @@
 // Implements: architecture/reference/ux/hybrid-ui-acceptance-contract.md §F1 Acceptance Matrix
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C2-05
 // Constitutional basis: C-001 (Human Override), C-042 (Vocabulary Mandate), C-059 (Implementation Traceability)
 
 import { AppleSignInCommand } from '@/components/auth/AppleSignInCommand';
@@ -78,6 +79,26 @@ describe('F1 shell primitives', () => {
     expect(screen.getByRole('link', { name: 'Azure Key Vault' })).toHaveAttribute('href', '/admin/azure-key-vault');
     expect(screen.getByRole('navigation', { name: messages.en.customerMobileNavigation })).not.toHaveTextContent(
       'Azure Key Vault'
+    );
+  });
+
+  it('shows the pricing console only to administrators and only in the desktop navigation', () => {
+    const { unmount } = render(
+      <ProtectedAppShell messages={messages.en} variant="customer">
+        <p>Customer content</p>
+      </ProtectedAppShell>
+    );
+    expect(screen.queryByRole('link', { name: 'Pricing' })).not.toBeInTheDocument();
+    unmount();
+
+    render(
+      <ProtectedAppShell messages={messages.en} showPricingAdmin variant="customer">
+        <p>Administrator content</p>
+      </ProtectedAppShell>
+    );
+    expect(screen.getByRole('link', { name: 'Pricing' })).toHaveAttribute('href', '/admin/pricing');
+    expect(screen.getByRole('navigation', { name: messages.en.customerMobileNavigation })).not.toHaveTextContent(
+      'Pricing'
     );
   });
 

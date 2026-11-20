@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0",
+  "entries": [
+    { "contextKey": "INDUCTION", "phase": "INDUCTION", "purpose": "Onboarding" },
+    { "contextKey": "PLANNING", "phase": "PLANNING", "purpose": "AgentWork" },
+    { "contextKey": "OPERATIONS", "phase": "OPERATIONS", "purpose": "AgentWork" },
+    { "contextKey": "MARKETPLACE", "phase": "*", "purpose": "PresalesOrMarketplace" },
+    { "contextKey": "MY_AGENTS", "phase": "*", "purpose": "PlatformSupport" },
+    { "contextKey": "ALERTS", "phase": "*", "purpose": "PlatformSupport" },
+    { "contextKey": "RELATIONSHIP", "phase": "*", "purpose": "AgentWork" },
+    { "contextKey": "PERFORMANCE", "phase": "*", "purpose": "AgentWork" },
+    { "contextKey": "BILLING", "phase": "*", "purpose": "PlatformSupport" },
+    { "contextKey": "BUDGET", "phase": "*", "purpose": "PlatformSupport" },
+    { "contextKey": "RIGHTS", "phase": "*", "purpose": "PlatformSupport" },
+    { "contextKey": "SETTINGS", "phase": "*", "purpose": "PlatformSupport" },
+    { "contextKey": "PROFILE", "phase": "*", "purpose": "PlatformSupport" },
+    { "contextKey": "STOP", "phase": "*", "purpose": "SafetyFloor" }
+  ]
+}

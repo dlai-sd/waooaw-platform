@@ -1,0 +1,1883 @@
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C7-01
+# Constitutional basis: C-048, C-049, C-059, C-063
+# Funding scenario pack: walk-throughs 1-12 of architecture 6.10 and the funding-related scenarios S1-S12, run against the
+# loopback fake (scripts/visitor_simulation/funding_fake.py). Amounts are fabricated paise; assertions are on account
+# class, wallet movement, outcome code and the absence of money words, never on customer copy.
+schema: wc136-scenario-pack/1.0
+pack: funding
+seed: 136
+scenarios:
+  - id: WT01-anonymous-visitor-acquisition
+    title: An anonymous visitor's turns are paid from the ACQUISITION budget
+    source: architecture 6.10 walk-through 1
+    steps:
+      - id: first-turn
+        actor: VISITOR
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: PRESALES_OR_MARKETPLACE
+        action: visitor_turn
+        params: {lead: visitor-1, tenant: marketplace-a}
+        expect:
+          accountClass: ACQUISITION
+          walletMovement: {account: ACQUISITION, unit: PAISE, delta: -40}
+          customerVisible:
+            outcome: VISITOR_REPLIED
+            excludes: &money ["₹", "rupee", "paise", "price", "top-up", "top up", "wallet", "balance", "invoice", "refund"]
+          fields:
+            "leadRef": {$regex: "lead-[0-9a-f]{12}"}
+            "balances.ACQUISITION": 40
+            "balances.ACQUISITION_TENANTS.marketplace-a": 40
+      - id: second-turn
+        actor: VISITOR
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: PRESALES_OR_MARKETPLACE
+        action: visitor_turn
+        params: {lead: visitor-1, tenant: marketplace-a}
+        expect:
+          accountClass: ACQUISITION
+          walletMovement: {account: ACQUISITION, unit: PAISE, delta: -40}
+          customerVisible: {outcome: VISITOR_REPLIED, excludes: *money}
+          fields:
+            "balances.ACQUISITION": 80
+            "balances.PLATFORM_FLOOR": 0
+
+  - id: WT02-web-handoff-pseudonymous-lead
+    title: A web handoff stays on ACQUISITION and links the visitor through opaque references only
+    source: architecture 6.10 walk-through 2; S12
+    steps:
+      - id: handoff
+        actor: VISITOR
+        channel: WEB
+        relationshipState: NONE
+        purpose: PRESALES_OR_MARKETPLACE
+        action: web_handoff
+        params: {lead: visitor-1, customer: customer-1}
+        expect:
+          accountClass: ACQUISITION
+          walletMovement: NONE
+          customerVisible: {outcome: LEAD_ATTRIBUTED, excludes: *money}
+          fields:
+            "leadRef": {$regex: "lead-[0-9a-f]{12}"}
+            "linkedSubject": {$regex: "subj-[0-9a-f]{12}"}
+            "balances.ACQUISITION": 0
+      - id: web-turn
+        actor: VISITOR
+        channel: WEB
+        relationshipState: NONE
+        purpose: PRESALES_OR_MARKETPLACE
+        action: visitor_turn
+        params: {lead: visitor-1, tenant: marketplace-a}
+        expect:
+          accountClass: ACQUISITION
+          walletMovement: {account: ACQUISITION, unit: PAISE, delta: -40}
+          customerVisible: {outcome: VISITOR_REPLIED, excludes: *money}
+          fields:
+            "leadRef": {$regex: "lead-[0-9a-f]{12}"}
+
+  - id: WT03-trial-funding
+    title: Starting a trial funds the TRIAL account and the setup grant, and trial work draws on TRIAL
+    source: architecture 6.10 walk-through 3
+    steps:
+      - id: start-trial
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: NONE
+        action: start_trial
+        params: {relationship: t1, customer: customer-1, agent: dma, version: "1.0.0"}
+        expect:
+          accountClass: TRIAL
+          walletMovement: {account: TRIAL, unit: PAISE, delta: 500}
+          customerVisible: {outcome: TRIAL_STARTED, excludes: *money}
+          fields:
+            "relationshipId": {$regex: "rel-[0-9a-f]{12}"}
+            "balances.relationships.t1.TRIAL": 500
+            "balances.relationships.t1.SETUP_GRANT": 300
+            "balances.relationships.t1.SUBSCRIPTION": 0
+      - id: trial-work
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: TRIAL
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: t1}
+        expect:
+          accountClass: TRIAL
+          walletMovement: {account: TRIAL, unit: PAISE, delta: -100}
+          customerVisible: {outcome: WORK_DONE, contains: ["Done"], excludes: *money}
+          fields:
+            "balances.relationships.t1.TRIAL": 400
+            "balances.relationships.t1.SETUP_GRANT": 300
+
+  - id: WT04-convert-trial-lapses-leftovers
+    title: Converting a trial credits the SUBSCRIPTION account and lets the trial and setup leftovers lapse
+    source: architecture 6.10 walk-through 4
+    steps:
+      - id: start-trial
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: start_trial
+        params: {relationship: t1, customer: customer-1, agent: dma, version: "1.0.0"}
+        expect:
+          accountClass: TRIAL
+          walletMovement: {account: TRIAL, unit: PAISE, delta: 500}
+          customerVisible: {outcome: TRIAL_STARTED, excludes: *money}
+      - id: trial-work
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: TRIAL
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: t1, repeat: 2}
+        expect:
+          accountClass: TRIAL
+          walletMovement: {account: TRIAL, unit: PAISE, delta: -200}
+          customerVisible: {outcome: WORK_DONE, excludes: *money}
+      - id: convert
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: TRIAL
+        purpose: NONE
+        action: convert_trial
+        params: {relationship: t1}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: TRIAL_CONVERTED, excludes: *money}
+          fields:
+            "lapsed.TRIAL": 300
+            "lapsed.SETUP_GRANT": 300
+            "pinnedPricingVersion": price-v1
+            "balances.relationships.t1.TRIAL": 0
+            "balances.relationships.t1.SETUP_GRANT": 0
+            "balances.relationships.t1.SUBSCRIPTION": 1000
+      - id: hired-work
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: t1}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: -100}
+          customerVisible: {outcome: WORK_DONE, excludes: *money}
+
+  - id: WT05-hired-customer-presales-on-another-agent
+    title: A hired customer browsing another agent is paid from ACQUISITION and leaves the wallet untouched
+    source: architecture 6.10 walk-through 5
+    steps:
+      - id: hire
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: h1, customer: customer-2, agent: dma}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+          fields:
+            "pinnedPricingVersion": price-v1
+      - id: browse-other-agent
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: PRESALES_OR_MARKETPLACE
+        action: marketplace_turn
+        params: {relationship: h1, tenant: marketplace-a}
+        expect:
+          accountClass: ACQUISITION
+          walletMovement: {account: ACQUISITION, unit: PAISE, delta: -40}
+          customerVisible: {outcome: MARKETPLACE_REPLIED, excludes: *money}
+          fields:
+            "balances.relationships.h1.SUBSCRIPTION": 1000
+            "balances.ACQUISITION": 40
+
+  - id: WT06-switch-request-spends-nothing
+    title: Asking to switch agents is offered without charging any agent's wallet
+    source: architecture 6.10 walk-through 6
+    steps:
+      - id: hire-first
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: a1, customer: customer-3, agent: agent-a}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+      - id: hire-second
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: b1, customer: customer-3, agent: agent-b}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+      - id: switch
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: PLATFORM_SUPPORT
+        action: switch_request
+        params: {relationship: a1, requested: b1}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: FOCUS_SWITCH_OFFERED, excludes: *money}
+          fields:
+            "agentWorkCharged": false
+            "balances.relationships.a1.SUBSCRIPTION": 1000
+            "balances.relationships.b1.SUBSCRIPTION": 1000
+            "balances.ACQUISITION": 0
+
+  - id: WT07a-trial-component-limit
+    title: Reaching a trial component limit gives the honest limitation after the units that were available
+    source: architecture 6.10 walk-through 7 (component limit)
+    steps:
+      - id: start-trial
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: NONE
+        action: start_trial
+        params: {relationship: t1, customer: customer-1, agent: dma, version: "1.0.0"}
+        expect:
+          accountClass: TRIAL
+          walletMovement: {account: TRIAL, unit: PAISE, delta: 500}
+          customerVisible: {outcome: TRIAL_STARTED, excludes: *money}
+      - id: three-posts
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: TRIAL
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: t1, component: POSTS, repeat: 3}
+        expect:
+          accountClass: TRIAL
+          walletMovement: {account: TRIAL, unit: PAISE, delta: -200}
+          customerVisible: {outcome: COMPONENT_LIMIT_REACHED, contains: ["limited help"], excludes: *money}
+          fields:
+            "served": 2
+            "componentUnitsUsed": 2
+
+  - id: WT07b-hired-component-limit
+    title: A hired agent that used its component units answers honestly and the wallet is not drained for it
+    source: architecture 6.10 walk-through 7 (component limit)
+    steps:
+      - id: hire
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: h1, customer: customer-2, agent: dma}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+      - id: four-posts
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: h1, component: POSTS, repeat: 4}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: -400}
+          customerVisible: {outcome: WORK_DONE, excludes: *money}
+          fields:
+            "componentUnitsUsed": 4
+      - id: fifth-post
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: h1, component: POSTS}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: NONE
+          customerVisible: {outcome: COMPONENT_LIMIT_REACHED, contains: ["limited help"], excludes: *money}
+          fields:
+            "served": 0
+            "balances.relationships.h1.SUBSCRIPTION": 600
+      - id: owner-sees-units
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: PLATFORM_SUPPORT
+        action: render_for
+        params: {relationship: h1, audience: OWNER, component: POSTS}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: RENDERED_FOR_OWNER, contains: ["0 posts left", "40% used"]}
+          fields:
+            "controls": []
+
+  - id: WT07c-wallet-85-percent-and-empty
+    title: Capacity notices at 50% and 85% and at empty, honest free path at zero, other agents unaffected, top-up for that agent only
+    source: architecture 6.10 walk-through 7 (wallet 85% and 0)
+    steps:
+      - id: hire-first
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: a1, customer: customer-3, agent: agent-a}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+      - id: hire-second
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: b1, customer: customer-3, agent: agent-b}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+      - id: reach-50-percent
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: a1, repeat: 5}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: -500}
+          customerVisible: {outcome: WORK_DONE, contains: ["Half"], excludes: *money}
+          fields:
+            "notices.0": CAPACITY_50
+            "notices.1": {$absent: true}
+            "noticeDelivery": NEXT_TURN
+      - id: reach-85-percent
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: a1, repeat: 4}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: -400}
+          customerVisible: {outcome: WORK_DONE, contains: ["Most"], excludes: *money}
+          fields:
+            "notices.0": CAPACITY_85
+            "notices.1": {$absent: true}
+      - id: owner-sees-top-up-control
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: PLATFORM_SUPPORT
+        action: render_for
+        params: {relationship: a1, audience: OWNER}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: RENDERED_FOR_OWNER, contains: ["90% used"]}
+          fields:
+            "controls.0": TOPUP_THIS_AGENT
+      - id: reach-empty
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: a1}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: -100}
+          customerVisible: {outcome: WORK_DONE, contains: ["used up"], excludes: *money}
+          fields:
+            "notices.0": CAPACITY_EMPTY
+      - id: free-path-at-zero
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: a1}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: NONE
+          customerVisible: {outcome: WALLET_EMPTY_FREE_PATH, contains: ["limited help"], excludes: *money}
+          fields:
+            "balances.relationships.a1.SUBSCRIPTION": 0
+      - id: other-agent-unaffected
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: b1}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: -100}
+          customerVisible: {outcome: WORK_DONE, excludes: *money}
+          fields:
+            "balances.relationships.b1.SUBSCRIPTION": 900
+      - id: top-up-this-agent
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: PLATFORM_SUPPORT
+        action: request_topup
+        params: {relationship: a1}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 500}
+          customerVisible: {outcome: TOPUP_APPLIED}
+          fields:
+            "balances.relationships.a1.SUBSCRIPTION": 500
+            "balances.relationships.b1.SUBSCRIPTION": 900
+      - id: work-after-top-up
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: a1}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: -100}
+          customerVisible: {outcome: WORK_DONE, excludes: *money}
+
+  - id: WT08-emergency-stop-at-zero-wallet
+    title: An emergency stop is honoured from the PLATFORM_FLOOR when the agent's wallet is empty
+    source: architecture 6.10 walk-through 8
+    steps:
+      - id: hire
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: h1, customer: customer-2, agent: dma}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+      - id: drain-wallet
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: h1, repeat: 10}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: -1000}
+          customerVisible: {outcome: WORK_DONE, excludes: *money}
+          fields:
+            "balances.relationships.h1.SUBSCRIPTION": 0
+      - id: stop
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: SAFETY_FLOOR
+        action: emergency_stop
+        params: {}
+        expect:
+          accountClass: PLATFORM_FLOOR
+          walletMovement: {account: PLATFORM_FLOOR, unit: PAISE, delta: -60}
+          customerVisible: {outcome: STOP_ACKNOWLEDGED, silent: false, excludes: *money}
+          fields:
+            "balances.relationships.h1.SUBSCRIPTION": 0
+            "balances.PLATFORM_FLOOR": 60
+
+  - id: WT09-separate-balances-per-relationship
+    title: Two hires and a trial keep separate balances and each draws only on its own account
+    source: architecture 6.10 walk-through 9
+    steps:
+      - id: hire-first
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: h1, customer: customer-5, agent: agent-a}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+      - id: hire-second
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: h2, customer: customer-5, agent: agent-b}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+      - id: trial-third
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: start_trial
+        params: {relationship: t1, customer: customer-5, agent: agent-c, version: "1.0.0"}
+        expect:
+          accountClass: TRIAL
+          walletMovement: {account: TRIAL, unit: PAISE, delta: 500}
+          customerVisible: {outcome: TRIAL_STARTED, excludes: *money}
+      - id: work-first
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: h1, repeat: 3}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: -300}
+          customerVisible: {outcome: WORK_DONE, excludes: *money}
+      - id: work-trial
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: TRIAL
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: t1}
+        expect:
+          accountClass: TRIAL
+          walletMovement: {account: TRIAL, unit: PAISE, delta: -100}
+          customerVisible: {outcome: WORK_DONE, excludes: *money}
+          fields:
+            "balances.relationships.h1.SUBSCRIPTION": 700
+            "balances.relationships.h2.SUBSCRIPTION": 1000
+            "balances.relationships.t1.TRIAL": 400
+
+  - id: WT10-pause-skill-pro-rata
+    title: Pausing a skill is a pro-rata billing adjustment, never a wallet refund
+    source: architecture 6.10 walk-through 10
+    steps:
+      - id: hire
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: h1, customer: customer-2, agent: dma}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+      - id: pause-half-period
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: PLATFORM_SUPPORT
+        action: pause_skill
+        params: {relationship: h1, feeSharePaise: 50000, remainingSeconds: 1296000, periodSeconds: 2592000}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: SKILL_PAUSED, excludes: *money}
+          fields:
+            "billingAdjustment.refundFeePaise": 25000
+            "billingAdjustment.mode": BILLING_ADJUSTMENT
+            "walletRefund": false
+            "balances.relationships.h1.SUBSCRIPTION": 1000
+      - id: pause-rounds-half-up
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: PLATFORM_SUPPORT
+        action: pause_skill
+        params: {relationship: h1, feeSharePaise: 50001, remainingSeconds: 1296000, periodSeconds: 2592000}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: SKILL_PAUSED, excludes: *money}
+          fields:
+            "billingAdjustment.refundFeePaise": 25001
+            "walletRefund": false
+
+  - id: WT11a-flood-absorbed-per-tenant
+    title: A visitor flood exhausts only its tenant's ACQUISITION level, refuses the surplus and spares other tenants
+    source: architecture 6.10 walk-through 11; S7
+    steps:
+      - id: flood-tenant-a
+        actor: VISITOR
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: PRESALES_OR_MARKETPLACE
+        action: flood
+        params: {tenant: marketplace-a, visitors: 30}
+        expect:
+          accountClass: ACQUISITION
+          walletMovement: {account: ACQUISITION, unit: PAISE, delta: -1000}
+          customerVisible: {outcome: FLOOD_ABSORBED, contains: ["short version"], excludes: *money}
+          fields:
+            "served": 25
+            "refused": 5
+            "exhaustedLevel": TENANT
+            "balances.breaker.open": false
+      - id: other-tenant-served
+        actor: VISITOR
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: PRESALES_OR_MARKETPLACE
+        action: flood
+        params: {tenant: marketplace-b, visitors: 5}
+        expect:
+          accountClass: ACQUISITION
+          walletMovement: {account: ACQUISITION, unit: PAISE, delta: -200}
+          customerVisible: {outcome: FLOOD_SERVED, silent: true}
+          fields:
+            "refused": 0
+            "balances.ACQUISITION": 1200
+      - id: exhausted-tenant-scripted
+        actor: VISITOR
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: PRESALES_OR_MARKETPLACE
+        action: visitor_turn
+        params: {lead: visitor-9, tenant: marketplace-a}
+        expect:
+          accountClass: ACQUISITION
+          walletMovement: NONE
+          customerVisible: {outcome: ACQUISITION_BUDGET_EXHAUSTED, contains: ["short version"], excludes: *money}
+
+  - id: WT11b-flood-environment-breaker
+    title: Filling every tenant's level opens the environment breaker and later visitors get the scripted reply
+    source: architecture 6.10 walk-through 11; S7
+    steps:
+      - id: flood-tenant-a
+        actor: VISITOR
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: PRESALES_OR_MARKETPLACE
+        action: flood
+        params: {tenant: tenant-a, visitors: 25}
+        expect:
+          accountClass: ACQUISITION
+          walletMovement: {account: ACQUISITION, unit: PAISE, delta: -1000}
+          customerVisible: {outcome: FLOOD_SERVED, silent: true}
+          fields:
+            "balances.breaker.open": false
+      - id: flood-tenant-b
+        actor: VISITOR
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: PRESALES_OR_MARKETPLACE
+        action: flood
+        params: {tenant: tenant-b, visitors: 25}
+        expect:
+          accountClass: ACQUISITION
+          walletMovement: {account: ACQUISITION, unit: PAISE, delta: -1000}
+          customerVisible: {outcome: FLOOD_SERVED, silent: true}
+      - id: flood-tenant-c
+        actor: VISITOR
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: PRESALES_OR_MARKETPLACE
+        action: flood
+        params: {tenant: tenant-c, visitors: 25}
+        expect:
+          accountClass: ACQUISITION
+          walletMovement: {account: ACQUISITION, unit: PAISE, delta: -1000}
+          customerVisible: {outcome: FLOOD_SERVED, silent: true}
+      - id: flood-tenant-d
+        actor: VISITOR
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: PRESALES_OR_MARKETPLACE
+        action: flood
+        params: {tenant: tenant-d, visitors: 25}
+        expect:
+          accountClass: ACQUISITION
+          walletMovement: {account: ACQUISITION, unit: PAISE, delta: -1000}
+          customerVisible: {outcome: FLOOD_SERVED, silent: true}
+      - id: flood-tenant-e
+        actor: VISITOR
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: PRESALES_OR_MARKETPLACE
+        action: flood
+        params: {tenant: tenant-e, visitors: 25}
+        expect:
+          accountClass: ACQUISITION
+          walletMovement: {account: ACQUISITION, unit: PAISE, delta: -1000}
+          customerVisible: {outcome: FLOOD_SERVED, silent: true}
+          fields:
+            "balances.ACQUISITION": 5000
+            "balances.breaker.open": true
+      - id: later-visitor-scripted
+        actor: VISITOR
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: PRESALES_OR_MARKETPLACE
+        action: visitor_turn
+        params: {lead: visitor-9, tenant: tenant-f}
+        expect:
+          accountClass: ACQUISITION
+          walletMovement: NONE
+          customerVisible: {outcome: ACQUISITION_BUDGET_EXHAUSTED, contains: ["short version"], excludes: *money}
+
+  - id: WT12-timeout-pins-reservation-to-trial
+    title: An unconfirmed dispatch keeps its reservation on the pinned TRIAL account across conversion and settles there
+    source: architecture 6.10 walk-through 12
+    steps:
+      - id: start-trial
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: NONE
+        action: start_trial
+        params: {relationship: t1, customer: customer-1, agent: dma, version: "1.0.0"}
+        expect:
+          accountClass: TRIAL
+          walletMovement: {account: TRIAL, unit: PAISE, delta: 500}
+          customerVisible: {outcome: TRIAL_STARTED, excludes: *money}
+      - id: timed-out-work
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: TRIAL
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: t1, fault: TIMEOUT}
+        expect:
+          accountClass: TRIAL
+          walletMovement: NONE
+          customerVisible: {outcome: WORK_UNCONFIRMED, contains: ["confirm"], excludes: *money}
+          fields:
+            "reservation.open": 1
+            "reservation.pinnedClass": TRIAL
+            "balances.relationships.t1.reservedPaise": 100
+            "balances.relationships.t1.openReservations": 1
+      - id: convert
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: TRIAL
+        purpose: NONE
+        action: convert_trial
+        params: {relationship: t1}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: TRIAL_CONVERTED, excludes: *money}
+          fields:
+            "lapsed.TRIAL": 400
+            "balances.relationships.t1.TRIAL": 100
+            "balances.relationships.t1.reservedPaise": 100
+      - id: reconcile
+        actor: PLATFORM
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: reconcile
+        params: {relationship: t1}
+        expect:
+          accountClass: TRIAL
+          walletMovement: {account: TRIAL, unit: PAISE, delta: -100}
+          customerVisible: {outcome: WORK_CONFIRMED, excludes: *money}
+          fields:
+            "pinnedClass": TRIAL
+            "balances.relationships.t1.TRIAL": 0
+            "balances.relationships.t1.SUBSCRIPTION": 1000
+            "balances.relationships.t1.reservedPaise": 0
+            "balances.relationships.t1.openReservations": 0
+
+  - id: S01-beneficiary-never-sees-money
+    title: A beneficiary never sees a price, a balance or a top-up control; the owner does and is the only one who can top up
+    source: architecture S1
+    steps:
+      - id: hire
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: h1, customer: owner-1, agent: tutor}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+      - id: beneficiary-view
+        actor: BENEFICIARY
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: PLATFORM_SUPPORT
+        action: render_for
+        params: {relationship: h1, audience: BENEFICIARY}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible:
+            outcome: RENDERED_FOR_BENEFICIARY
+            excludes: &moneyUi ["₹", "rupee", "paise", "price", "top-up", "top up", "wallet", "balance", "invoice", "refund", "allowance", "%"]
+          fields:
+            "controls": []
+      - id: beneficiary-half-used
+        actor: BENEFICIARY
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: h1, repeat: 5}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: -500}
+          customerVisible: {outcome: WORK_DONE, contains: ["account holder"], excludes: *moneyUi}
+          fields:
+            "notices.0": CAPACITY_50
+      - id: beneficiary-credit-running-out
+        actor: BENEFICIARY
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: h1, repeat: 5}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: -500}
+          customerVisible: {outcome: WORK_DONE, contains: ["account holder"], excludes: *moneyUi}
+          fields:
+            "notices.0": CAPACITY_85
+            "notices.1": CAPACITY_EMPTY
+      - id: beneficiary-at-zero
+        actor: BENEFICIARY
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: h1}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: NONE
+          customerVisible: {outcome: WALLET_EMPTY_FREE_PATH, contains: ["account holder"], excludes: *moneyUi}
+      - id: beneficiary-cannot-top-up
+        actor: BENEFICIARY
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: PLATFORM_SUPPORT
+        action: request_topup
+        params: {relationship: h1}
+        expect:
+          status: 403
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: TOPUP_NOT_PERMITTED, contains: ["account holder"], excludes: *moneyUi}
+          fields:
+            "balances.relationships.h1.SUBSCRIPTION": 0
+      - id: owner-sees-top-up
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: PLATFORM_SUPPORT
+        action: render_for
+        params: {relationship: h1, audience: OWNER}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: RENDERED_FOR_OWNER, contains: ["100% used"]}
+          fields:
+            "controls.0": TOPUP_THIS_AGENT
+      - id: owner-tops-up
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: PLATFORM_SUPPORT
+        action: request_topup
+        params: {relationship: h1}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 500}
+          customerVisible: {outcome: TOPUP_APPLIED}
+
+  - id: S02-emergency-alert-on-floor-and-voice-unavailable
+    title: An emergency alert is paid from the PLATFORM_FLOOR without counting, and a voice note is honestly unavailable
+    source: architecture S2
+    steps:
+      - id: hire
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: h1, customer: customer-2, agent: dma}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+      - id: emergency-alert
+        actor: PLATFORM
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: SAFETY_FLOOR
+        action: proactive_send
+        params: {relationship: h1, kind: EMERGENCY_ALERT, count: 1}
+        expect:
+          accountClass: PLATFORM_FLOOR
+          walletMovement: {account: PLATFORM_FLOOR, unit: PAISE, delta: -60}
+          customerVisible: {outcome: PROACTIVE_SENT, excludes: *money}
+          fields:
+            "counted": false
+            "proactive": {$absent: true}
+            "balances.relationships.h1.SUBSCRIPTION": 1000
+      - id: voice-note
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: voice_note
+        params: {relationship: h1}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: VOICE_UNAVAILABLE, contains: ["limited help"], excludes: *money}
+          fields:
+            "catalogueStatus": PENDING_FOUNDER_AUTH
+
+  - id: S03-time-access-session-creates-no-reservation
+    title: A long time-access session records ticks without reservations and a halt alert is paid from the floor
+    source: architecture S3
+    steps:
+      - id: hire
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: h1, customer: customer-2, agent: dma}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+      - id: session
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: time_access_session
+        params: {relationship: h1, ticks: 60}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: SESSION_RECORDED}
+          fields:
+            "ticks": 60
+            "reservationsCreated": 0
+            "unitsConsumed": 0
+            "balances.relationships.h1.reservedPaise": 0
+            "balances.relationships.h1.SUBSCRIPTION": 1000
+      - id: halt-alert
+        actor: PLATFORM
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: SAFETY_FLOOR
+        action: proactive_send
+        params: {relationship: h1, kind: CAPACITY_NOTICE, count: 1}
+        expect:
+          accountClass: PLATFORM_FLOOR
+          walletMovement: {account: PLATFORM_FLOOR, unit: PAISE, delta: -60}
+          customerVisible: {outcome: PROACTIVE_SENT, excludes: *money}
+
+  - id: S06a-simulated-traffic-never-spends-acquisition
+    title: Simulated traffic is paid from the SIMULATION account and never from ACQUISITION or a customer wallet
+    source: architecture S6
+    steps:
+      - id: simulation-turn
+        actor: PLATFORM
+        channel: SIMULATION
+        relationshipState: NONE
+        purpose: SIMULATION
+        action: simulation_turn
+        params: {}
+        expect:
+          accountClass: SIMULATION
+          walletMovement: {account: SIMULATION, unit: PAISE, delta: -40}
+          customerVisible: {outcome: SIMULATED_REPLIED}
+          fields:
+            "balances.ACQUISITION": 0
+            "balances.SIMULATION": 40
+      - id: simulated-visitor
+        actor: VISITOR
+        channel: SIMULATION
+        relationshipState: NONE
+        purpose: PRESALES_OR_MARKETPLACE
+        action: visitor_turn
+        params: {lead: simulated-1, tenant: marketplace-a}
+        expect:
+          accountClass: SIMULATION
+          walletMovement: {account: SIMULATION, unit: PAISE, delta: -40}
+          customerVisible: {outcome: VISITOR_REPLIED, excludes: *money}
+          fields:
+            "balances.ACQUISITION": 0
+            "balances.SIMULATION": 80
+      - id: real-visitor
+        actor: VISITOR
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: PRESALES_OR_MARKETPLACE
+        action: visitor_turn
+        params: {lead: visitor-1, tenant: marketplace-a}
+        expect:
+          accountClass: ACQUISITION
+          walletMovement: {account: ACQUISITION, unit: PAISE, delta: -40}
+          customerVisible: {outcome: VISITOR_REPLIED, excludes: *money}
+          fields:
+            "balances.SIMULATION": 80
+
+  - id: S06b-simulation-budget-is-bounded
+    title: The SIMULATION budget is bounded and its exhaustion does not touch ACQUISITION
+    source: architecture S6
+    steps:
+      - id: simulation-flood
+        actor: VISITOR
+        channel: SIMULATION
+        relationshipState: NONE
+        purpose: PRESALES_OR_MARKETPLACE
+        action: flood
+        params: {tenant: marketplace-a, visitors: 60}
+        expect:
+          accountClass: SIMULATION
+          walletMovement: {account: SIMULATION, unit: PAISE, delta: -2000}
+          customerVisible: {outcome: FLOOD_ABSORBED}
+          fields:
+            "served": 50
+            "refused": 10
+            "balances.ACQUISITION": 0
+      - id: simulation-exhausted
+        actor: PLATFORM
+        channel: SIMULATION
+        relationshipState: NONE
+        purpose: SIMULATION
+        action: simulation_turn
+        params: {}
+        expect:
+          accountClass: SIMULATION
+          walletMovement: NONE
+          customerVisible: {outcome: SIMULATION_BUDGET_EXHAUSTED}
+          fields:
+            "balances.SIMULATION": 2000
+            "balances.ACQUISITION": 0
+
+  - id: S08-trial-claimed-once-per-identity-and-version
+    title: A trial is claimed once per customer, once per identity and agent version, and a new version is a new trial
+    source: architecture S8
+    steps:
+      - id: first-claim
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: NONE
+        action: start_trial
+        params: {relationship: t1, customer: customer-1, identity: person-1, agent: dma, version: "1.0.0"}
+        expect:
+          accountClass: TRIAL
+          walletMovement: {account: TRIAL, unit: PAISE, delta: 500}
+          customerVisible: {outcome: TRIAL_STARTED, excludes: *money}
+      - id: same-customer-again
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: NONE
+        action: start_trial
+        params: {relationship: t2, customer: customer-1, identity: person-1, agent: dma, version: "1.0.0"}
+        expect:
+          status: 409
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: TRIAL_ALREADY_USED}
+      - id: same-identity-other-customer
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: start_trial
+        params: {relationship: t3, customer: customer-2, identity: person-1, agent: dma, version: "1.0.0"}
+        expect:
+          status: 409
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: TRIAL_ALREADY_USED_BY_IDENTITY}
+      - id: new-agent-version
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: NONE
+        action: start_trial
+        params: {relationship: t4, customer: customer-1, identity: person-1, agent: dma, version: "2.0.0"}
+        expect:
+          accountClass: TRIAL
+          walletMovement: {account: TRIAL, unit: PAISE, delta: 500}
+          customerVisible: {outcome: TRIAL_STARTED, excludes: *money}
+
+  - id: S09-goodwill-is-coupon-only
+    title: Support goodwill is a coupon for the next hire; crediting a wallet is refused
+    source: architecture S9
+    steps:
+      - id: hire
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: h1, customer: customer-2, agent: dma}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+      - id: coupon
+        actor: SUPPORT
+        channel: WEB
+        relationshipState: HIRED
+        purpose: PLATFORM_SUPPORT
+        action: goodwill
+        params: {relationship: h1, kind: COUPON}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: COUPON_ISSUED, contains: ["coupon"]}
+          fields:
+            "couponCode": {$regex: "GOODWILL-[0-9A-F]{8}"}
+            "balances.relationships.h1.SUBSCRIPTION": 1000
+      - id: wallet-credit-refused
+        actor: SUPPORT
+        channel: WEB
+        relationshipState: HIRED
+        purpose: PLATFORM_SUPPORT
+        action: goodwill
+        params: {relationship: h1, kind: WALLET_CREDIT}
+        expect:
+          status: 403
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: GOODWILL_WALLET_CREDIT_FORBIDDEN}
+          fields:
+            "balances.relationships.h1.SUBSCRIPTION": 1000
+      - id: customer-cannot-grant
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: PLATFORM_SUPPORT
+        action: goodwill
+        params: {relationship: h1, kind: COUPON}
+        expect:
+          status: 403
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: GOODWILL_FORBIDDEN}
+
+  - id: S10-telemetry-carries-references-only
+    title: Spend telemetry names a lead or relationship by opaque reference and never carries a phone number or a name
+    source: architecture S10
+    steps:
+      - id: visitor-turn
+        actor: VISITOR
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: PRESALES_OR_MARKETPLACE
+        action: visitor_turn
+        params: {lead: visitor-1, tenant: marketplace-a}
+        expect:
+          accountClass: ACQUISITION
+          walletMovement: {account: ACQUISITION, unit: PAISE, delta: -40}
+          customerVisible: {outcome: VISITOR_REPLIED, excludes: *money}
+      - id: hire
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: h1, customer: "919800000001", agent: dma}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+      - id: hired-work
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: h1}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: -100}
+          customerVisible: {outcome: WORK_DONE, excludes: *money}
+      - id: read-telemetry
+        actor: PLATFORM
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: read_telemetry
+        params: {}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: TELEMETRY_READ}
+          fields:
+            "count": 2
+            "telemetry.0.accountClass": ACQUISITION
+            "telemetry.0.leadRef": {$regex: "lead-[0-9a-f]{12}"}
+            "telemetry.0.phone": {$absent: true}
+            "telemetry.0.name": {$absent: true}
+            "telemetry.1.accountClass": SUBSCRIPTION
+            "telemetry.1.relationshipId": {$regex: "rel-[0-9a-f]{12}"}
+            "telemetry.1.phone": {$absent: true}
+            "telemetry.1.name": {$absent: true}
+            "telemetry.1.customer": {$absent: true}
+
+  - id: S11-failed-connection-consumes-no-slot
+    title: A failed account connection is not counted against the connection slot
+    source: architecture S11
+    steps:
+      - id: hire
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: h1, customer: customer-2, agent: dma}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+      - id: failed-attempt
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: ONBOARDING
+        action: connect_account
+        params: {relationship: h1, result: FAILED}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: CONNECTION_FAILED, contains: ["nothing was used up"]}
+          fields:
+            "slotsUsed": 0
+      - id: failed-again
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: ONBOARDING
+        action: connect_account
+        params: {relationship: h1, result: FAILED}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: CONNECTION_FAILED}
+          fields:
+            "slotsUsed": 0
+      - id: verified
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: ONBOARDING
+        action: connect_account
+        params: {relationship: h1, result: VERIFIED}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: CONNECTION_VERIFIED}
+          fields:
+            "slotsUsed": 1
+      - id: slot-limit
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: ONBOARDING
+        action: connect_account
+        params: {relationship: h1, result: VERIFIED}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: SLOT_LIMIT_REACHED, contains: ["limited help"], excludes: *money}
+          fields:
+            "slotsUsed": 1
+
+  - id: SG01-setup-grant-exhaustion-on-hire
+    title: When the setup grant runs out the customer is told honestly and, after acknowledging, setup continues on SUBSCRIPTION
+    source: contract C4-06 setup grant; architecture 6.10.3
+    steps:
+      - id: hire
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: h1, customer: customer-2, agent: dma}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+      - id: acknowledge-before-told
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: ONBOARDING
+        action: acknowledge_setup_exhaustion
+        params: {relationship: h1}
+        expect:
+          status: 409
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: SETUP_EXHAUSTION_NOT_DISCLOSED}
+      - id: setup-turns
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: ONBOARDING
+        action: onboarding_turn
+        params: {relationship: h1, repeat: 3}
+        expect:
+          accountClass: SETUP_GRANT
+          walletMovement: {account: SETUP_GRANT, unit: PAISE, delta: -300}
+          customerVisible: {outcome: ONBOARDING_DONE, excludes: *money}
+          fields:
+            "continuesOnSubscription": false
+            "balances.relationships.h1.SETUP_GRANT": 0
+      - id: setup-exhausted
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: ONBOARDING
+        action: onboarding_turn
+        params: {relationship: h1}
+        expect:
+          accountClass: SETUP_GRANT
+          walletMovement: NONE
+          customerVisible: {outcome: SETUP_GRANT_EXHAUSTED, contains: ["limited help"], excludes: *money}
+          fields:
+            "balances.relationships.h1.SUBSCRIPTION": 1000
+      - id: acknowledge
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: ONBOARDING
+        action: acknowledge_setup_exhaustion
+        params: {relationship: h1}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: SETUP_EXHAUSTION_ACKNOWLEDGED, excludes: *money}
+      - id: setup-continues
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: ONBOARDING
+        action: onboarding_turn
+        params: {relationship: h1}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: -100}
+          customerVisible: {outcome: ONBOARDING_DONE, excludes: *money}
+          fields:
+            "continuesOnSubscription": true
+            "balances.relationships.h1.SUBSCRIPTION": 900
+            "balances.relationships.h1.SETUP_GRANT": 0
+
+  - id: SG02-setup-grant-exhaustion-in-trial
+    title: A trial never continues setup on a paid account; the limitation stays honest after acknowledgement
+    source: contract C4-06 setup grant; architecture 6.10.3
+    steps:
+      - id: start-trial
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: NONE
+        action: start_trial
+        params: {relationship: t1, customer: customer-1, agent: dma, version: "1.0.0"}
+        expect:
+          accountClass: TRIAL
+          walletMovement: {account: TRIAL, unit: PAISE, delta: 500}
+          customerVisible: {outcome: TRIAL_STARTED, excludes: *money}
+      - id: setup-turns
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: TRIAL
+        purpose: ONBOARDING
+        action: onboarding_turn
+        params: {relationship: t1, repeat: 3}
+        expect:
+          accountClass: SETUP_GRANT
+          walletMovement: {account: SETUP_GRANT, unit: PAISE, delta: -300}
+          customerVisible: {outcome: ONBOARDING_DONE, excludes: *money}
+      - id: setup-exhausted
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: TRIAL
+        purpose: ONBOARDING
+        action: onboarding_turn
+        params: {relationship: t1}
+        expect:
+          accountClass: SETUP_GRANT
+          walletMovement: NONE
+          customerVisible: {outcome: SETUP_GRANT_EXHAUSTED, contains: ["limited help"], excludes: *money}
+      - id: acknowledge
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: TRIAL
+        purpose: ONBOARDING
+        action: acknowledge_setup_exhaustion
+        params: {relationship: t1}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: SETUP_EXHAUSTION_ACKNOWLEDGED}
+      - id: still-limited
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: TRIAL
+        purpose: ONBOARDING
+        action: onboarding_turn
+        params: {relationship: t1}
+        expect:
+          accountClass: SETUP_GRANT
+          walletMovement: NONE
+          customerVisible: {outcome: SETUP_GRANT_EXHAUSTED, contains: ["limited help"], excludes: *money}
+          fields:
+            "balances.relationships.t1.TRIAL": 500
+
+  - id: PA01-proactive-message-allowance-of-30
+    title: Thirty agent-initiated messages per month are allowed; the next is delivered in the portal and the next turn instead
+    source: contract C4-12 proactive allowance; architecture 6.10.3
+    steps:
+      - id: hire
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: h1, customer: customer-2, agent: dma}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+      - id: first-29
+        actor: PLATFORM
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: proactive_send
+        params: {relationship: h1, kind: AGENT_ALERT, count: 29}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: MESSAGES, delta: -29}
+          customerVisible: {outcome: PROACTIVE_SENT, excludes: *money}
+          fields:
+            "proactive.used": 29
+            "proactive.allowance": 30
+      - id: thirtieth
+        actor: PLATFORM
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: proactive_send
+        params: {relationship: h1, kind: AGENT_ALERT, count: 1}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: MESSAGES, delta: -1}
+          customerVisible: {outcome: PROACTIVE_SENT, excludes: *money}
+          fields:
+            "proactive.used": 30
+      - id: thirty-first
+        actor: PLATFORM
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: proactive_send
+        params: {relationship: h1, kind: AGENT_ALERT, count: 1}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: NONE
+          customerVisible: {outcome: PROACTIVE_ALLOWANCE_EXHAUSTED, contains: ["portal"], excludes: *money}
+          fields:
+            "sent": 0
+            "deliveredIn": PORTAL_AND_NEXT_TURN
+            "proactive.used": 30
+      - id: capacity-notice-still-sent
+        actor: PLATFORM
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: SAFETY_FLOOR
+        action: proactive_send
+        params: {relationship: h1, kind: CAPACITY_NOTICE, count: 1}
+        expect:
+          accountClass: PLATFORM_FLOOR
+          walletMovement: {account: PLATFORM_FLOOR, unit: PAISE, delta: -60}
+          customerVisible: {outcome: PROACTIVE_SENT, excludes: *money}
+          fields:
+            "counted": false
+      - id: emergency-alert-still-sent
+        actor: PLATFORM
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: SAFETY_FLOOR
+        action: proactive_send
+        params: {relationship: h1, kind: EMERGENCY_ALERT, count: 1}
+        expect:
+          accountClass: PLATFORM_FLOOR
+          walletMovement: {account: PLATFORM_FLOOR, unit: PAISE, delta: -60}
+          customerVisible: {outcome: PROACTIVE_SENT, excludes: *money}
+          fields:
+            "counted": false
+            "balances.relationships.h1.SUBSCRIPTION": 1000
+
+  - id: PA02-trial-has-no-proactive-allowance
+    title: A trial has no agent-initiated message allowance, so the message is held for the portal and the next turn
+    source: contract C4-12 proactive allowance
+    steps:
+      - id: start-trial
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: NONE
+        action: start_trial
+        params: {relationship: t1, customer: customer-1, agent: dma, version: "1.0.0"}
+        expect:
+          accountClass: TRIAL
+          walletMovement: {account: TRIAL, unit: PAISE, delta: 500}
+          customerVisible: {outcome: TRIAL_STARTED, excludes: *money}
+      - id: agent-alert
+        actor: PLATFORM
+        channel: WHATSAPP
+        relationshipState: TRIAL
+        purpose: AGENT_WORK
+        action: proactive_send
+        params: {relationship: t1, kind: AGENT_ALERT, count: 1}
+        expect:
+          accountClass: TRIAL
+          walletMovement: NONE
+          customerVisible: {outcome: PROACTIVE_ALLOWANCE_EXHAUSTED, contains: ["portal"], excludes: *money}
+          fields:
+            "proactive.allowance": 0
+            "deliveredIn": PORTAL_AND_NEXT_TURN
+
+  - id: PR01-pricing-version-cutover
+    title: After a pricing cutover an existing customer stays on the pinned version until renewal and a new hire gets the new one
+    source: architecture 6.11 pricing versions; contract C5-01
+    steps:
+      - id: hire-before-cutover
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: h1, customer: customer-2, agent: dma}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+          fields:
+            "pinnedPricingVersion": price-v1
+      - id: only-founder-publishes
+        actor: SUPPORT
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: publish_pricing
+        params: {versionId: price-v2, priceInclGstPaise: 250000}
+        expect:
+          status: 403
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: PRICING_FORBIDDEN}
+      - id: founder-publishes
+        actor: FOUNDER
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: publish_pricing
+        params: {versionId: price-v2, priceInclGstPaise: 250000}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: PRICING_EFFECTIVE}
+          fields:
+            "currentVersion": price-v2
+      - id: existing-customer-stays-pinned
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: NONE
+        action: read_relationship
+        params: {relationship: h1}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: RELATIONSHIP_READ}
+          fields:
+            "pinnedPricingVersion": price-v1
+            "pricePaise": 200000
+            "currentPricingVersion": price-v2
+      - id: work-before-renewal
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: h1, repeat: 3}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: -300}
+          customerVisible: {outcome: WORK_DONE, excludes: *money}
+      - id: new-hire-gets-new-version
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: h2, customer: customer-4, agent: dma}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+          fields:
+            "pinnedPricingVersion": price-v2
+      - id: renewal-re-pins
+        actor: CUSTOMER
+        channel: WEB
+        relationshipState: HIRED
+        purpose: NONE
+        action: renew
+        params: {relationship: h1}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: RENEWED, excludes: *money}
+          fields:
+            "lapsedPaise": 700
+            "pinnedPricingVersion": price-v2
+            "pricePaise": 250000
+
+  - id: FC01-wbe-unavailable-fails-closed-to-free-path
+    title: With the wallet service down metered spending stops with the free-path disclosure while safety stays on the floor
+    source: architecture 6.10.2 failure table; contract C3-05
+    steps:
+      - id: hire
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: NONE
+        action: hire
+        params: {relationship: h1, customer: customer-2, agent: dma}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: 1000}
+          customerVisible: {outcome: HIRED, excludes: *money}
+      - id: wbe-goes-down
+        actor: PLATFORM
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: NONE
+        action: wbe_fault
+        params: {available: false}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: FAULT_SET}
+          fields:
+            "wbeAvailable": false
+      - id: work-fails-closed
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: h1}
+        expect:
+          status: 503
+          accountClass: SUBSCRIPTION
+          walletMovement: NONE
+          customerVisible: {outcome: SPEND_COMMERCIAL_UNAVAILABLE, contains: ["answering without them"], excludes: *money}
+          fields:
+            "balances.relationships.h1.SUBSCRIPTION": 1000
+      - id: visitor-fails-closed
+        actor: VISITOR
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: PRESALES_OR_MARKETPLACE
+        action: visitor_turn
+        params: {lead: visitor-1, tenant: marketplace-a}
+        expect:
+          status: 503
+          accountClass: ACQUISITION
+          walletMovement: NONE
+          customerVisible: {outcome: SPEND_COMMERCIAL_UNAVAILABLE, contains: ["answering without them"], excludes: *money}
+          fields:
+            "balances.ACQUISITION": 0
+      - id: onboarding-fails-closed
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: ONBOARDING
+        action: onboarding_turn
+        params: {relationship: h1}
+        expect:
+          status: 503
+          accountClass: SETUP_GRANT
+          walletMovement: NONE
+          customerVisible: {outcome: SPEND_COMMERCIAL_UNAVAILABLE, excludes: *money}
+      - id: safety-stays-on-floor
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: SAFETY_FLOOR
+        action: emergency_stop
+        params: {}
+        expect:
+          accountClass: PLATFORM_FLOOR
+          walletMovement: {account: PLATFORM_FLOOR, unit: PAISE, delta: -60}
+          customerVisible: {outcome: STOP_ACKNOWLEDGED, silent: false}
+      - id: wbe-recovers
+        actor: PLATFORM
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: NONE
+        action: wbe_fault
+        params: {available: true}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: FAULT_SET}
+          fields:
+            "wbeAvailable": true
+      - id: work-resumes
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: HIRED
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: h1}
+        expect:
+          accountClass: SUBSCRIPTION
+          walletMovement: {account: SUBSCRIPTION, unit: PAISE, delta: -100}
+          customerVisible: {outcome: WORK_DONE, excludes: *money}
+
+  - id: FC02-expired-trial-fails-closed
+    title: Once a trial has ended agent work is refused for lack of spend authority and nothing is charged
+    source: contract C3-04 resolver table; architecture 6.10.2
+    steps:
+      - id: start-trial
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: NONE
+        action: start_trial
+        params: {relationship: t1, customer: customer-1, agent: dma, version: "1.0.0"}
+        expect:
+          accountClass: TRIAL
+          walletMovement: {account: TRIAL, unit: PAISE, delta: 500}
+          customerVisible: {outcome: TRIAL_STARTED, excludes: *money}
+      - id: trial-ends
+        actor: PLATFORM
+        channel: WHATSAPP
+        relationshipState: TRIAL
+        purpose: NONE
+        action: expire_trial
+        params: {relationship: t1}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: TRIAL_EXPIRED}
+          fields:
+            "balances.relationships.t1.TRIAL": 0
+      - id: work-refused
+        actor: CUSTOMER
+        channel: WHATSAPP
+        relationshipState: ENDED
+        purpose: AGENT_WORK
+        action: work_turn
+        params: {relationship: t1}
+        expect:
+          status: 403
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: SPEND_AUTHORITY_UNAVAILABLE}
+          fields:
+            "balances.relationships.t1.TRIAL": 0
+            "balances.relationships.t1.SUBSCRIPTION": 0
+
+  - id: ST01-stop-is-acknowledged-once-and-resumes-on-start
+    title: STOP is acknowledged exactly once, later turns are suppressed and START resumes with the resume notice
+    source: protocol policy (Track A); architecture walk-through 8
+    steps:
+      - id: first-stop
+        actor: VISITOR
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: SAFETY_FLOOR
+        action: emergency_stop
+        params: {}
+        expect:
+          accountClass: PLATFORM_FLOOR
+          walletMovement: {account: PLATFORM_FLOOR, unit: PAISE, delta: -60}
+          customerVisible: {outcome: STOP_ACKNOWLEDGED, silent: false, excludes: *money}
+          fields:
+            "acknowledgements": 1
+      - id: second-stop-is-silent
+        actor: VISITOR
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: SAFETY_FLOOR
+        action: emergency_stop
+        params: {}
+        expect:
+          accountClass: PLATFORM_FLOOR
+          walletMovement: {account: PLATFORM_FLOOR, unit: PAISE, delta: -60}
+          customerVisible: {outcome: STOP_ALREADY_ACKNOWLEDGED, silent: true}
+          fields:
+            "acknowledgements": 1
+            "balances.PLATFORM_FLOOR": 120
+      - id: turn-after-stop-suppressed
+        actor: VISITOR
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: PRESALES_OR_MARKETPLACE
+        action: visitor_turn
+        params: {lead: visitor-1, tenant: marketplace-a}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: SUPPRESSED_AFTER_STOP, silent: true}
+          fields:
+            "balances.ACQUISITION": 0
+      - id: start
+        actor: VISITOR
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: PLATFORM_SUPPORT
+        action: start_message
+        params: {}
+        expect:
+          accountClass: NONE
+          walletMovement: NONE
+          customerVisible: {outcome: START_NOTICE_SENT, silent: false, excludes: *money}
+          fields:
+            "consentRequiredAgain": true
+      - id: turn-after-start
+        actor: VISITOR
+        channel: WHATSAPP
+        relationshipState: NONE
+        purpose: PRESALES_OR_MARKETPLACE
+        action: visitor_turn
+        params: {lead: visitor-1, tenant: marketplace-a}
+        expect:
+          accountClass: ACQUISITION
+          walletMovement: {account: ACQUISITION, unit: PAISE, delta: -40}
+          customerVisible: {outcome: VISITOR_REPLIED, excludes: *money}

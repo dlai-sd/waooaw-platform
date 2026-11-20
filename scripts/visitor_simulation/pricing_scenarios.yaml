@@ -1,0 +1,1026 @@
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C7-02
+# Constitutional basis: C-048, C-049, C-059, C-063, C-088, C-091
+# Pricing scenario pack: the administrator and Founder journeys A1-A13 of architecture 6.11, run against the loopback fake
+# (scripts/visitor_simulation/pricing_fake.py). A11 (WBE unavailable, fail closed) and A13 (cost of visitor conversations from
+# ACQUISITION telemetry) are funding journeys and run in funding_scenarios.yaml (FC01, S10). Amounts are fabricated paise.
+# Seed state: STARTER 200000 (cost floor 19628), LITE 60000 (cost floor 20000), environment ceiling 30000 with a deploy-time
+# maximum of 50000 and 12000 committed, and one customer, existing-customer, pinned to seed-starter.
+schema: wc136-scenario-pack/1.0
+pack: pricing
+seed: 136
+scenarios:
+  - id: A01-admin-role-gate
+    title: Only the pricing administrator and the Founder can reach the pricing write and read routes
+    source: architecture 6.11 journey A1
+    steps:
+      - id: customer-cannot-draft
+        actor: CUSTOMER
+        action: create_draft
+        params: {id: v1, kind: PACKAGE, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 220000}
+        expect:
+          status: 403
+          outcome: PRICING_FORBIDDEN
+          fields:
+            "state.versions.v1": {$absent: true}
+      - id: system-cannot-draft
+        actor: SYSTEM
+        action: create_draft
+        params: {id: v1, kind: PACKAGE, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 220000}
+        expect: {status: 403, outcome: PRICING_FORBIDDEN}
+      - id: customer-cannot-simulate
+        actor: CUSTOMER
+        action: simulate
+        params: {id: seed-starter}
+        expect: {status: 403, outcome: PRICING_FORBIDDEN}
+      - id: customer-cannot-read-margin
+        actor: CUSTOMER
+        action: live_margin
+        expect: {status: 403, outcome: PRICING_FORBIDDEN}
+      - id: customer-cannot-export
+        actor: CUSTOMER
+        action: export_versions
+        expect: {status: 403, outcome: PRICING_FORBIDDEN}
+      - id: administrator-drafts
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: v1, kind: PACKAGE, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 220000}
+        expect:
+          outcome: DRAFT_CREATED
+          fields:
+            versionId: v1
+            versionState: DRAFT
+      - id: founder-discards
+        actor: FOUNDER
+        action: discard
+        params: {id: v1}
+        expect:
+          outcome: DISCARDED
+          fields:
+            versionState: DISCARDED
+
+  - id: A02-provider-rate-change-and-live-margin
+    title: A provider rate rise breaches the live margin, raises an alert and a compliant new version clears it
+    source: architecture 6.11 journeys A2 and A10
+    steps:
+      - id: margin-healthy
+        actor: PRICING_ADMIN
+        action: live_margin
+        expect:
+          outcome: LIVE_MARGIN_OK
+          fields:
+            breaches: []
+            waooaw_live_margin_floor_breach: 0
+            "state.founderNotifications": 0
+      - id: provider-raises-rates
+        actor: SYSTEM
+        action: provider_rate_change
+        params: {percent: 30}
+        expect: {outcome: RATE_CHANGED}
+      - id: margin-breached
+        actor: PRICING_ADMIN
+        action: live_margin
+        expect:
+          outcome: LIVE_MARGIN_BREACH
+          fields:
+            "breaches.0.subjectKey": "package:dma|1.0.0|LITE"
+            "breaches.0.reason": BELOW_MINIMUM_MARGIN
+            "breaches.1": {$absent: true}
+            waooaw_live_margin_floor_breach: 1
+            "state.founderNotifications": 1
+      - id: old-price-refused-against-new-rates
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: lite-same, kind: PACKAGE, subject: "package:dma|1.0.0|LITE", priceInclGstPaise: 60000}
+        expect:
+          status: 422
+          outcome: PRICING_BELOW_FLOOR
+          fields:
+            minimumCompliantPricePaise: {$regex: "[0-9]+"}
+            "state.versions.lite-same": {$absent: true}
+      - id: compliant-draft
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: lite-v2, kind: PACKAGE, subject: "package:dma|1.0.0|LITE", priceInclGstPaise: 70000}
+        expect:
+          outcome: DRAFT_CREATED
+          fields:
+            needsSecondConfirmation: false
+      - id: simulate-compliant
+        actor: PRICING_ADMIN
+        action: simulate
+        params: {id: lite-v2}
+        expect:
+          outcome: SIMULATED
+          fields:
+            costFloorPaise: 26000
+            basePricePaise: 59322
+            marginPercent: 56.1
+            "profiles.WORST_CASE.monthlyCostPaise": 26000
+      - id: submit-compliant
+        actor: PRICING_ADMIN
+        action: submit
+        params: {id: lite-v2}
+        expect: {outcome: SUBMITTED}
+      - id: founder-authorizes-compliant
+        actor: FOUNDER
+        action: authorize
+        params: {id: lite-v2, stepUp: true}
+        expect:
+          outcome: AUTHORIZED
+          fields:
+            versionState: EFFECTIVE
+            supersedes: seed-lite
+      - id: margin-restored
+        actor: PRICING_ADMIN
+        action: live_margin
+        expect:
+          outcome: LIVE_MARGIN_OK
+          fields:
+            breaches: []
+            waooaw_live_margin_floor_breach: 0
+            "state.founderNotifications": 1
+
+  - id: A03-below-floor-refusal
+    title: A draft below the minimum compliant price is refused at the boundary, and malformed drafts are rejected
+    source: architecture 6.11 journey A3
+    steps:
+      - id: far-below-floor
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: d-low, kind: PACKAGE, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 2000}
+        expect:
+          status: 422
+          outcome: PRICING_BELOW_FLOOR
+          fields:
+            minimumCompliantPricePaise: 51469
+            "state.versions.d-low": {$absent: true}
+      - id: one-paisa-below-minimum
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: d-edge-low, kind: PACKAGE, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 51468}
+        expect:
+          status: 422
+          outcome: PRICING_BELOW_FLOOR
+          fields:
+            minimumCompliantPricePaise: 51469
+      - id: exactly-the-minimum
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: d-edge, kind: PACKAGE, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 51469}
+        expect:
+          outcome: DRAFT_CREATED
+          fields:
+            versionState: DRAFT
+            needsSecondConfirmation: true
+      - id: lite-below-minimum
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: d-lite, kind: PACKAGE, subject: "package:dma|1.0.0|LITE", priceInclGstPaise: 40000}
+        expect:
+          status: 422
+          outcome: PRICING_BELOW_FLOOR
+          fields:
+            minimumCompliantPricePaise: {$regex: "[0-9]+"}
+      - id: zero-price
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: d-zero, kind: PACKAGE, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 0}
+        expect: {status: 422, outcome: PRICING_DRAFT_INVALID}
+      - id: unknown-package
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: d-pro, kind: PACKAGE, subject: "package:dma|1.0.0|PRO", priceInclGstPaise: 100000}
+        expect: {status: 422, outcome: PRICING_DRAFT_INVALID}
+
+  - id: A04-simulate-margin-and-profiles
+    title: Simulation shows the cost floor, the ex-GST base price, the margin and the three usage profiles
+    source: architecture 6.11 journey A4
+    steps:
+      - id: draft-at-current-price
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: v1, kind: PACKAGE, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 200000}
+        expect:
+          outcome: DRAFT_CREATED
+          fields:
+            versionNo: 2
+            needsSecondConfirmation: false
+      - id: simulate
+        actor: PRICING_ADMIN
+        action: simulate
+        params: {id: v1}
+        expect:
+          outcome: SIMULATED
+          fields:
+            versionState: SIMULATED
+            costFloorPaise: 19628
+            basePricePaise: 169492
+            gstPaise: 30508
+            marginPercent: 88.4
+            minimumCompliantPricePaise: 51469
+            "diff.fromPricePaise": 200000
+            "diff.toPricePaise": 200000
+            "profiles.BEST_CASE.monthlyCostPaise": 3926
+            "profiles.TYPICAL.monthlyCostPaise": 11777
+            "profiles.WORST_CASE.monthlyCostPaise": 19628
+
+  - id: A05-founder-authorizes-with-step-up
+    title: Only the Founder authorizes, with step-up, and the authorization records evidence and makes the version effective
+    source: architecture 6.11 journey A5
+    steps:
+      - id: draft
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: v1, kind: PACKAGE, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 220000}
+        expect: {outcome: DRAFT_CREATED}
+      - id: simulate
+        actor: PRICING_ADMIN
+        action: simulate
+        params: {id: v1}
+        expect:
+          outcome: SIMULATED
+          fields:
+            costFloorPaise: 19628
+            basePricePaise: 186441
+            gstPaise: 33559
+            marginPercent: 89.4
+            "diff.fromPricePaise": 200000
+            "diff.toPricePaise": 220000
+      - id: submit
+        actor: PRICING_ADMIN
+        action: submit
+        params: {id: v1}
+        expect:
+          outcome: SUBMITTED
+          fields:
+            secondConfirmed: false
+      - id: administrator-cannot-authorize
+        actor: PRICING_ADMIN
+        action: authorize
+        params: {id: v1, stepUp: true}
+        expect: {status: 403, outcome: PRICING_FORBIDDEN}
+      - id: founder-without-step-up
+        actor: FOUNDER
+        action: authorize
+        params: {id: v1}
+        expect: {status: 403, outcome: PRICING_STEP_UP_REQUIRED}
+      - id: founder-step-up-declined
+        actor: FOUNDER
+        action: authorize
+        params: {id: v1, stepUp: false}
+        expect: {status: 403, outcome: PRICING_STEP_UP_REQUIRED}
+      - id: founder-authorizes
+        actor: FOUNDER
+        action: authorize
+        params: {id: v1, stepUp: true}
+        expect:
+          outcome: AUTHORIZED
+          fields:
+            versionState: EFFECTIVE
+            effectiveFrom: 0
+            supersedes: seed-starter
+            evidenceId: {$regex: "ev-[0-9a-f]{12}"}
+            "state.versions.v1": EFFECTIVE
+            "state.versions.seed-starter": SUPERSEDED
+      - id: authorize-twice
+        actor: FOUNDER
+        action: authorize
+        params: {id: v1, stepUp: true}
+        expect:
+          status: 409
+          outcome: PRICING_ILLEGAL_TRANSITION
+          fields:
+            fromState: EFFECTIVE
+            toState: AUTHORIZED
+
+  - id: A05-illegal-transitions
+    title: The version state machine refuses skipped, repeated and post-discard transitions
+    source: architecture 6.11 journeys A2 and A5
+    steps:
+      - id: draft
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: v1, kind: PACKAGE, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 220000}
+        expect: {outcome: DRAFT_CREATED}
+      - id: authorize-a-draft
+        actor: FOUNDER
+        action: authorize
+        params: {id: v1, stepUp: true}
+        expect:
+          status: 409
+          outcome: PRICING_ILLEGAL_TRANSITION
+          fields:
+            fromState: DRAFT
+            toState: AUTHORIZED
+      - id: submit-before-simulating
+        actor: PRICING_ADMIN
+        action: submit
+        params: {id: v1}
+        expect:
+          status: 409
+          outcome: PRICING_ILLEGAL_TRANSITION
+          fields:
+            fromState: DRAFT
+            toState: SUBMITTED
+      - id: simulate
+        actor: PRICING_ADMIN
+        action: simulate
+        params: {id: v1}
+        expect: {outcome: SIMULATED}
+      - id: simulate-twice
+        actor: PRICING_ADMIN
+        action: simulate
+        params: {id: v1}
+        expect:
+          status: 409
+          outcome: PRICING_ILLEGAL_TRANSITION
+          fields:
+            fromState: SIMULATED
+      - id: discard
+        actor: PRICING_ADMIN
+        action: discard
+        params: {id: v1}
+        expect:
+          outcome: DISCARDED
+          fields:
+            versionState: DISCARDED
+      - id: submit-after-discard
+        actor: PRICING_ADMIN
+        action: submit
+        params: {id: v1}
+        expect:
+          status: 409
+          outcome: PRICING_ILLEGAL_TRANSITION
+          fields:
+            fromState: DISCARDED
+      - id: edit-after-discard
+        actor: PRICING_ADMIN
+        action: edit_draft
+        params: {id: v1, value: 230000}
+        expect:
+          status: 409
+          outcome: PRICING_ILLEGAL_TRANSITION
+          fields:
+            fromState: DISCARDED
+            toState: DRAFT
+      - id: unknown-version
+        actor: PRICING_ADMIN
+        action: simulate
+        params: {id: ghost}
+        expect: {status: 404, outcome: PRICING_VERSION_NOT_FOUND}
+      - id: duplicate-version-id
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: v1, kind: PACKAGE, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 230000}
+        expect: {status: 409, outcome: SCENARIO_ALIAS_IN_USE}
+
+  - id: A06-price-change-existing-customer-pinned
+    title: A new price applies to new hires and renewals, while an existing customer keeps the agreed price until renewal
+    source: architecture 6.11 journeys A6 and A12; contract C5-01
+    steps:
+      - id: customer-before-change
+        actor: SYSTEM
+        action: read_customer
+        params: {customer: existing-customer}
+        expect:
+          outcome: CUSTOMER_READ
+          fields:
+            pinnedVersionId: seed-starter
+            pricePaise: 200000
+            currentVersionId: seed-starter
+            currentPricePaise: 200000
+      - id: draft
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: v2, kind: PACKAGE, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 220000}
+        expect: {outcome: DRAFT_CREATED}
+      - id: simulate
+        actor: PRICING_ADMIN
+        action: simulate
+        params: {id: v2}
+        expect: {outcome: SIMULATED}
+      - id: submit
+        actor: PRICING_ADMIN
+        action: submit
+        params: {id: v2}
+        expect: {outcome: SUBMITTED}
+      - id: authorize
+        actor: FOUNDER
+        action: authorize
+        params: {id: v2, stepUp: true}
+        expect:
+          outcome: AUTHORIZED
+          fields:
+            versionState: EFFECTIVE
+      - id: existing-customer-keeps-price
+        actor: SYSTEM
+        action: read_customer
+        params: {customer: existing-customer}
+        expect:
+          outcome: CUSTOMER_READ
+          fields:
+            pinnedVersionId: seed-starter
+            pricePaise: 200000
+            currentVersionId: v2
+            currentPricePaise: 220000
+      - id: new-customer-gets-new-price
+        actor: SYSTEM
+        action: hire_customer
+        params: {customer: new-customer}
+        expect:
+          outcome: HIRED
+          fields:
+            pinnedVersionId: v2
+            pricePaise: 220000
+      - id: renewal-re-pins
+        actor: SYSTEM
+        action: renew_customer
+        params: {customer: existing-customer}
+        expect:
+          outcome: RENEWED
+          fields:
+            pinnedVersionId: v2
+            pricePaise: 220000
+      - id: customer-after-renewal
+        actor: SYSTEM
+        action: read_customer
+        params: {customer: existing-customer}
+        expect:
+          outcome: CUSTOMER_READ
+          fields:
+            pinnedVersionId: v2
+            currentVersionId: v2
+
+  - id: A06-scheduled-effective-date
+    title: An authorized version with a future effective date takes over only when the date arrives
+    source: architecture 6.11 journeys A2 and A6
+    steps:
+      - id: draft
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: v2, kind: PACKAGE, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 220000}
+        expect: {outcome: DRAFT_CREATED}
+      - id: simulate
+        actor: PRICING_ADMIN
+        action: simulate
+        params: {id: v2}
+        expect: {outcome: SIMULATED}
+      - id: submit
+        actor: PRICING_ADMIN
+        action: submit
+        params: {id: v2}
+        expect: {outcome: SUBMITTED}
+      - id: authorize-for-day-10
+        actor: FOUNDER
+        action: authorize
+        params: {id: v2, stepUp: true, effectiveFrom: 10}
+        expect:
+          outcome: AUTHORIZED
+          fields:
+            versionState: AUTHORIZED
+            effectiveFrom: 10
+            "state.versions.v2": AUTHORIZED
+            "state.versions.seed-starter": EFFECTIVE
+      - id: hire-before-the-date
+        actor: SYSTEM
+        action: hire_customer
+        params: {customer: early-customer}
+        expect:
+          outcome: HIRED
+          fields:
+            pinnedVersionId: seed-starter
+            pricePaise: 200000
+      - id: day-9
+        actor: SYSTEM
+        action: advance_clock
+        params: {days: 9}
+        expect:
+          outcome: CLOCK_ADVANCED
+          fields:
+            madeEffective: []
+            "state.today": 9
+            "state.versions.v2": AUTHORIZED
+      - id: day-10
+        actor: SYSTEM
+        action: advance_clock
+        params: {days: 1}
+        expect:
+          outcome: CLOCK_ADVANCED
+          fields:
+            "madeEffective.0": v2
+            "madeEffective.1": {$absent: true}
+            "state.today": 10
+            "state.versions.v2": EFFECTIVE
+            "state.versions.seed-starter": SUPERSEDED
+      - id: hire-after-the-date
+        actor: SYSTEM
+        action: hire_customer
+        params: {customer: late-customer}
+        expect:
+          outcome: HIRED
+          fields:
+            pinnedVersionId: v2
+            pricePaise: 220000
+      - id: early-customer-stays-pinned
+        actor: SYSTEM
+        action: read_customer
+        params: {customer: early-customer}
+        expect:
+          outcome: CUSTOMER_READ
+          fields:
+            pinnedVersionId: seed-starter
+            currentVersionId: v2
+      - id: next-draft
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: v3, kind: PACKAGE, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 230000}
+        expect: {outcome: DRAFT_CREATED}
+      - id: next-simulate
+        actor: PRICING_ADMIN
+        action: simulate
+        params: {id: v3}
+        expect: {outcome: SIMULATED}
+      - id: next-submit
+        actor: PRICING_ADMIN
+        action: submit
+        params: {id: v3}
+        expect: {outcome: SUBMITTED}
+      - id: effective-date-in-the-past
+        actor: FOUNDER
+        action: authorize
+        params: {id: v3, stepUp: true, effectiveFrom: 5}
+        expect: {status: 422, outcome: PRICING_DRAFT_INVALID}
+
+  - id: A06-second-confirmation-guards
+    title: A change beyond 30 percent or a mistyped price needs a second confirmation, and a typo can be corrected
+    source: architecture 6.11 journeys A3 and A6
+    steps:
+      - id: exactly-thirty-percent
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: v-edge, kind: PACKAGE, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 260000}
+        expect:
+          outcome: DRAFT_CREATED
+          fields:
+            needsSecondConfirmation: false
+      - id: just-over-thirty-percent
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: v-over, kind: PACKAGE, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 260001}
+        expect:
+          outcome: DRAFT_CREATED
+          fields:
+            needsSecondConfirmation: true
+      - id: over-simulate
+        actor: PRICING_ADMIN
+        action: simulate
+        params: {id: v-over}
+        expect: {outcome: SIMULATED}
+      - id: over-submit-unconfirmed
+        actor: PRICING_ADMIN
+        action: submit
+        params: {id: v-over}
+        expect: {status: 409, outcome: PRICING_NEEDS_SECOND_CONFIRMATION}
+      - id: over-submit-confirmed
+        actor: PRICING_ADMIN
+        action: submit
+        params: {id: v-over, secondConfirmation: true}
+        expect:
+          outcome: SUBMITTED
+          fields:
+            secondConfirmed: true
+      - id: mistyped-price
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: v-typo, kind: PACKAGE, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 20000000}
+        expect:
+          outcome: DRAFT_CREATED
+          fields:
+            needsSecondConfirmation: true
+      - id: typo-simulate
+        actor: PRICING_ADMIN
+        action: simulate
+        params: {id: v-typo}
+        expect: {outcome: SIMULATED}
+      - id: typo-submit-refused
+        actor: PRICING_ADMIN
+        action: submit
+        params: {id: v-typo}
+        expect: {status: 409, outcome: PRICING_NEEDS_SECOND_CONFIRMATION}
+      - id: typo-corrected-below-floor
+        actor: PRICING_ADMIN
+        action: edit_draft
+        params: {id: v-typo, value: 1000}
+        expect:
+          status: 422
+          outcome: PRICING_BELOW_FLOOR
+          fields:
+            "state.versions.v-typo": SIMULATED
+      - id: typo-corrected
+        actor: PRICING_ADMIN
+        action: edit_draft
+        params: {id: v-typo, value: 220000}
+        expect:
+          outcome: DRAFT_EDITED
+          fields:
+            versionState: DRAFT
+            needsSecondConfirmation: false
+      - id: typo-resimulate
+        actor: PRICING_ADMIN
+        action: simulate
+        params: {id: v-typo}
+        expect: {outcome: SIMULATED}
+      - id: typo-submit-ok
+        actor: PRICING_ADMIN
+        action: submit
+        params: {id: v-typo}
+        expect:
+          outcome: SUBMITTED
+          fields:
+            secondConfirmed: false
+
+  - id: A07-ceiling-raise
+    title: The environment ceiling can be raised through a confirmed, authorized version up to the deploy-time maximum
+    source: architecture 6.11 journey A7
+    steps:
+      - id: zero-ceiling
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: b0, kind: BUDGET, maximumPaise: 0}
+        expect: {status: 422, outcome: PRICING_DRAFT_INVALID}
+      - id: raise-draft
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: b1, kind: BUDGET, maximumPaise: 40000}
+        expect:
+          outcome: DRAFT_CREATED
+          fields:
+            subjectKey: "budget:ENVIRONMENT_CEILING|demo"
+            versionNo: 2
+            needsSecondConfirmation: true
+      - id: raise-simulate
+        actor: PRICING_ADMIN
+        action: simulate
+        params: {id: b1}
+        expect:
+          outcome: SIMULATED
+          fields:
+            "diff.fromMaximumPaise": 30000
+            "diff.toMaximumPaise": 40000
+      - id: raise-unconfirmed
+        actor: PRICING_ADMIN
+        action: submit
+        params: {id: b1}
+        expect: {status: 409, outcome: PRICING_NEEDS_SECOND_CONFIRMATION}
+      - id: raise-confirmed
+        actor: PRICING_ADMIN
+        action: submit
+        params: {id: b1, secondConfirmation: true}
+        expect: {outcome: SUBMITTED}
+      - id: raise-authorized
+        actor: FOUNDER
+        action: authorize
+        params: {id: b1, stepUp: true}
+        expect:
+          outcome: AUTHORIZED
+          fields:
+            versionState: EFFECTIVE
+            "state.ceilingPaise": 40000
+            "state.versions.seed-ceiling": SUPERSEDED
+      - id: above-deploy-maximum
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: b2, kind: BUDGET, maximumPaise: 60000}
+        expect:
+          status: 422
+          outcome: PRICING_CEILING_ABOVE_MAXIMUM
+          fields:
+            maximumPaise: 50000
+            "state.versions.b2": {$absent: true}
+      - id: at-deploy-maximum
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: b3, kind: BUDGET, maximumPaise: 50000}
+        expect:
+          outcome: DRAFT_CREATED
+          fields:
+            needsSecondConfirmation: false
+
+  - id: A07-ceiling-lower-safety-direction
+    title: The ceiling can be lowered at once down to the committed reservations, and never raised on the safety path
+    source: architecture 6.11 journeys A7 and A8; S14
+    steps:
+      - id: below-open-reservations
+        actor: PRICING_ADMIN
+        action: lower_ceiling
+        params: {maximumPaise: 10000}
+        expect:
+          status: 409
+          outcome: PRICING_CEILING_BELOW_OPEN_RESERVATIONS
+          fields:
+            blockingPaise: 12000
+            "state.ceilingPaise": 30000
+            "state.founderNotifications": 0
+      - id: lower-to-20000
+        actor: PRICING_ADMIN
+        action: lower_ceiling
+        params: {maximumPaise: 20000}
+        expect:
+          outcome: CEILING_LOWERED
+          fields:
+            direction: SAFETY
+            founderNotified: true
+            maximumPaise: 20000
+            "state.ceilingPaise": 20000
+            "state.founderNotifications": 1
+      - id: lower-to-committed
+        actor: PRICING_ADMIN
+        action: lower_ceiling
+        params: {maximumPaise: 12000}
+        expect:
+          outcome: CEILING_LOWERED
+          fields:
+            "state.ceilingPaise": 12000
+            "state.founderNotifications": 2
+      - id: one-paisa-below-committed
+        actor: PRICING_ADMIN
+        action: lower_ceiling
+        params: {maximumPaise: 11999}
+        expect:
+          status: 409
+          outcome: PRICING_CEILING_BELOW_OPEN_RESERVATIONS
+          fields:
+            blockingPaise: 12000
+      - id: raise-through-the-safety-path
+        actor: PRICING_ADMIN
+        action: lower_ceiling
+        params: {maximumPaise: 20000}
+        expect:
+          status: 422
+          outcome: PRICING_CEILING_ABOVE_MAXIMUM
+          fields:
+            maximumPaise: 12000
+            "state.ceilingPaise": 12000
+      - id: customer-cannot-lower
+        actor: CUSTOMER
+        action: lower_ceiling
+        params: {maximumPaise: 12000}
+        expect: {status: 403, outcome: PRICING_FORBIDDEN}
+
+  - id: A08-trial-grant-disable
+    title: The trial grant can be disabled at once by the administrator, with a Founder notification
+    source: architecture 6.11 journey A8
+    steps:
+      - id: customer-cannot-disable
+        actor: CUSTOMER
+        action: disable_grant
+        params: {grant: "grant:TRIAL|dma|1.0.0"}
+        expect: {status: 403, outcome: PRICING_FORBIDDEN}
+      - id: administrator-disables
+        actor: PRICING_ADMIN
+        action: disable_grant
+        params: {grant: "grant:TRIAL|dma|1.0.0"}
+        expect:
+          outcome: GRANT_DISABLED
+          fields:
+            direction: SAFETY
+            founderNotified: true
+            "state.founderNotifications": 1
+      - id: unknown-grant
+        actor: PRICING_ADMIN
+        action: disable_grant
+        params: {grant: "grant:TRIAL|dma|9.9.9"}
+        expect: {status: 404, outcome: PRICING_VERSION_NOT_FOUND}
+
+  - id: A08-close-package-to-new-customers
+    title: A closed package refuses new customers while existing customers keep working and other packages stay open
+    source: architecture 6.11 journeys A6 and A8
+    steps:
+      - id: customer-cannot-close
+        actor: CUSTOMER
+        action: close_package
+        params: {subject: "package:dma|1.0.0|STARTER"}
+        expect: {status: 403, outcome: PRICING_FORBIDDEN}
+      - id: unknown-package
+        actor: PRICING_ADMIN
+        action: close_package
+        params: {subject: "package:dma|1.0.0|PRO"}
+        expect: {status: 404, outcome: PRICING_VERSION_NOT_FOUND}
+      - id: administrator-closes
+        actor: PRICING_ADMIN
+        action: close_package
+        params: {subject: "package:dma|1.0.0|STARTER"}
+        expect:
+          outcome: PACKAGE_CLOSED
+          fields:
+            direction: SAFETY
+            founderNotified: true
+            "state.founderNotifications": 1
+      - id: new-customer-refused
+        actor: SYSTEM
+        action: hire_customer
+        params: {customer: late-customer, subject: "package:dma|1.0.0|STARTER"}
+        expect: {status: 409, outcome: PACKAGE_CLOSED_TO_NEW_CUSTOMERS}
+      - id: other-package-still-open
+        actor: SYSTEM
+        action: hire_customer
+        params: {customer: lite-customer, subject: "package:dma|1.0.0|LITE"}
+        expect:
+          outcome: HIRED
+          fields:
+            pinnedVersionId: seed-lite
+            pricePaise: 60000
+      - id: existing-customer-unchanged
+        actor: SYSTEM
+        action: read_customer
+        params: {customer: existing-customer}
+        expect:
+          outcome: CUSTOMER_READ
+          fields:
+            pinnedVersionId: seed-starter
+            pricePaise: 200000
+      - id: existing-customer-renews
+        actor: SYSTEM
+        action: renew_customer
+        params: {customer: existing-customer}
+        expect:
+          outcome: RENEWED
+          fields:
+            pinnedVersionId: seed-starter
+
+  - id: A09-export-and-reimport-as-drafts
+    title: Exported versions re-import only as drafts, all or nothing, and still need the full authorization path
+    source: architecture 6.11 journey A9
+    steps:
+      - id: export
+        actor: PRICING_ADMIN
+        action: export_versions
+        expect:
+          outcome: EXPORTED
+          fields:
+            "items.0.subjectKey": "package:dma|1.0.0|LITE"
+            "items.0.value": 60000
+            "items.1.value": 200000
+            "items.2": {$absent: true}
+            bodyDigest: {$regex: "[0-9a-f]{16}"}
+      - id: customer-cannot-import
+        actor: CUSTOMER
+        action: import_versions
+        params:
+          items:
+            - {id: imp1, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 220000}
+        expect: {status: 403, outcome: PRICING_FORBIDDEN}
+      - id: import
+        actor: PRICING_ADMIN
+        action: import_versions
+        params:
+          items:
+            - {id: imp1, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 220000}
+            - {id: imp2, subject: "package:dma|1.0.0|LITE", priceInclGstPaise: 70000}
+        expect:
+          outcome: IMPORTED_AS_DRAFTS
+          fields:
+            imported: 2
+            "states.0": DRAFT
+            "states.1": DRAFT
+            "state.versions.imp1": DRAFT
+            "state.versions.imp2": DRAFT
+      - id: imported-draft-cannot-be-authorized
+        actor: FOUNDER
+        action: authorize
+        params: {id: imp1, stepUp: true}
+        expect:
+          status: 409
+          outcome: PRICING_ILLEGAL_TRANSITION
+          fields:
+            fromState: DRAFT
+            toState: AUTHORIZED
+      - id: import-with-a-below-floor-item
+        actor: PRICING_ADMIN
+        action: import_versions
+        params:
+          items:
+            - {id: imp3, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 230000}
+            - {id: imp4, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 1000}
+        expect:
+          status: 422
+          outcome: PRICING_BELOW_FLOOR
+          fields:
+            "state.versions.imp3": {$absent: true}
+            "state.versions.imp4": {$absent: true}
+      - id: import-with-a-used-id
+        actor: PRICING_ADMIN
+        action: import_versions
+        params:
+          items:
+            - {id: imp1, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 220000}
+        expect: {status: 409, outcome: SCENARIO_ALIAS_IN_USE}
+      - id: import-nothing
+        actor: PRICING_ADMIN
+        action: import_versions
+        params: {items: []}
+        expect: {status: 422, outcome: PRICING_DRAFT_INVALID}
+      - id: imported-draft-simulate
+        actor: PRICING_ADMIN
+        action: simulate
+        params: {id: imp1}
+        expect: {outcome: SIMULATED}
+      - id: imported-draft-submit
+        actor: PRICING_ADMIN
+        action: submit
+        params: {id: imp1}
+        expect: {outcome: SUBMITTED}
+      - id: imported-draft-authorize
+        actor: FOUNDER
+        action: authorize
+        params: {id: imp1, stepUp: true}
+        expect:
+          outcome: AUTHORIZED
+          fields:
+            versionState: EFFECTIVE
+
+  - id: A12-charge-reproducible-from-pinned-version
+    title: Each customer's price can be reproduced from the version pinned at hire, across two later price changes
+    source: architecture 6.11 journey A12; contract C4-02
+    steps:
+      - id: first-draft
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: v2, kind: PACKAGE, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 220000}
+        expect: {outcome: DRAFT_CREATED}
+      - id: first-simulate
+        actor: PRICING_ADMIN
+        action: simulate
+        params: {id: v2}
+        expect: {outcome: SIMULATED}
+      - id: first-submit
+        actor: PRICING_ADMIN
+        action: submit
+        params: {id: v2}
+        expect: {outcome: SUBMITTED}
+      - id: first-authorize
+        actor: FOUNDER
+        action: authorize
+        params: {id: v2, stepUp: true}
+        expect:
+          outcome: AUTHORIZED
+          fields:
+            supersedes: seed-starter
+      - id: hire-between-changes
+        actor: SYSTEM
+        action: hire_customer
+        params: {customer: middle-customer}
+        expect:
+          outcome: HIRED
+          fields:
+            pinnedVersionId: v2
+      - id: second-draft
+        actor: PRICING_ADMIN
+        action: create_draft
+        params: {id: v3, kind: PACKAGE, subject: "package:dma|1.0.0|STARTER", priceInclGstPaise: 240000}
+        expect:
+          outcome: DRAFT_CREATED
+          fields:
+            versionNo: 3
+      - id: second-simulate
+        actor: PRICING_ADMIN
+        action: simulate
+        params: {id: v3}
+        expect: {outcome: SIMULATED}
+      - id: second-submit
+        actor: PRICING_ADMIN
+        action: submit
+        params: {id: v3}
+        expect: {outcome: SUBMITTED}
+      - id: second-authorize
+        actor: FOUNDER
+        action: authorize
+        params: {id: v3, stepUp: true}
+        expect:
+          outcome: AUTHORIZED
+          fields:
+            supersedes: v2
+            "state.versions.v2": SUPERSEDED
+            "state.versions.v3": EFFECTIVE
+      - id: original-customer
+        actor: SYSTEM
+        action: read_customer
+        params: {customer: existing-customer}
+        expect:
+          outcome: CUSTOMER_READ
+          fields:
+            pinnedVersionId: seed-starter
+            pricePaise: 200000
+            currentVersionId: v3
+            currentPricePaise: 240000
+      - id: middle-customer
+        actor: SYSTEM
+        action: read_customer
+        params: {customer: middle-customer}
+        expect:
+          outcome: CUSTOMER_READ
+          fields:
+            pinnedVersionId: v2
+            pricePaise: 220000
+            currentVersionId: v3
+            currentPricePaise: 240000

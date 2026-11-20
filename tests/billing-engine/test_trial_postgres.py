@@ -1,4 +1,5 @@
 # Implements: work-contracts/WC-107-fundamental-customer-journey-integrity.md R011
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C3-02
 # constitutional_basis: C-002, C-059, C-088, C-089
 from __future__ import annotations
 
@@ -8,7 +9,6 @@ import uuid
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import fakeredis
 import psycopg2
 import pytest
 import pytest_asyncio
@@ -57,13 +57,11 @@ async def postgres_trial():
         connect_args={"server_settings": {"search_path": "business,public"}},
     )
     factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    redis = fakeredis.FakeAsyncRedis(decode_responses=False)
     customer_id = uuid.uuid4()
     async with factory() as session:
         await session.execute(text("INSERT INTO organisations (id) VALUES (:id)"), {"id": customer_id})
         await session.commit()
-    yield factory, redis, customer_id
-    await redis.aclose()
+    yield factory, customer_id
     await engine.dispose()
     with psycopg2.connect(sync_url) as connection:
         with connection.cursor() as cursor:
@@ -72,10 +70,9 @@ async def postgres_trial():
 
 @pytest.mark.asyncio
 async def test_trial_ledger_is_durable_and_duplicate_safe_on_postgres(postgres_trial):
-    factory, redis, customer_id = postgres_trial
+    factory, customer_id = postgres_trial
     service = TrialService(
         session_factory=factory,
-        redis_client=redis,
         settings=MagicMock(TRIAL_FREE_UNITS={"DMA": {"llm_cloud": 50, "llm_local": 200}}),
     )
 
@@ -104,7 +101,6 @@ async def test_trial_ledger_is_durable_and_duplicate_safe_on_postgres(postgres_t
     assert allocation[1].days == 14
     assert ledger == [("llm_cloud", 50, 0), ("llm_local", 200, 0)]
     assert buckets == 2
-    assert await redis.get(f"wbe:customer:{customer_id}:mode") == b"TRIAL"
 
     with pytest.raises(HTTPException) as duplicate:
         await service.start_trial(customer_id, "DMA", phone_verified=True, agent_version="1.0.0")
@@ -117,10 +113,9 @@ async def test_trial_ledger_is_durable_and_duplicate_safe_on_postgres(postgres_t
 
 @pytest.mark.asyncio
 async def test_trial_allows_same_agent_type_at_a_new_version(postgres_trial):
-    factory, redis, customer_id = postgres_trial
+    factory, customer_id = postgres_trial
     service = TrialService(
         session_factory=factory,
-        redis_client=redis,
         settings=MagicMock(TRIAL_FREE_UNITS={"DMA": {"llm_cloud": 50}}),
     )
 
@@ -143,10 +138,9 @@ async def test_trial_allows_same_agent_type_at_a_new_version(postgres_trial):
 
 @pytest.mark.asyncio
 async def test_concurrent_same_version_trial_has_one_authoritative_winner(postgres_trial):
-    factory, redis, customer_id = postgres_trial
+    factory, customer_id = postgres_trial
     service = TrialService(
         session_factory=factory,
-        redis_client=redis,
         settings=MagicMock(TRIAL_FREE_UNITS={"DMA": {"llm_cloud": 50}}),
     )
 

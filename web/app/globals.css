@@ -5904,3 +5904,170 @@ html[data-header-scrolled="true"] .app-shell-public .top-bar {
     flex-direction: column;
   }
 }
+
+.workbench-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.workbench-layout {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(10rem, 14rem) minmax(0, 1fr);
+}
+
+.workbench-rail {
+  align-content: start;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.workbench-rail button {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.workbench-panel:focus-visible,
+.workbench-rail button:focus-visible,
+.workbench-stop:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.workbench-stack,
+.workbench-section {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.workbench-section,
+.workbench-block,
+.workbench-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+dialog.workbench-section {
+  color: inherit;
+  inset: auto;
+  max-width: none;
+  position: static;
+  width: auto;
+}
+
+.workbench-cards {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.workbench-plain-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.workbench-block-title {
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+}
+
+.workbench-facts {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.workbench-facts div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.workbench-facts dt {
+  font-weight: 600;
+}
+
+.workbench-facts dd {
+  margin: 0;
+}
+
+.workbench-form {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 32rem;
+}
+
+.workbench-actions {
+  border: 0;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.workbench-hint {
+  margin: 0;
+  opacity: 0.8;
+}
+
+.workbench-metric {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.workbench-message {
+  margin: 0;
+  min-height: 1.25rem;
+}
+
+.workbench-message-error,
+.workbench-stop {
+  color: #b42318;
+}
+
+.workbench-message-success {
+  color: #067647;
+}
+
+.workbench-stop {
+  background: var(--surface);
+  border: 2px solid #b42318;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0.5rem 1rem;
+}
+
+@media (max-width: 47.99rem) {
+  .workbench-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workbench-rail {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+  }
+
+  .workbench-rail button {
+    flex: 0 0 auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workbench-shell * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

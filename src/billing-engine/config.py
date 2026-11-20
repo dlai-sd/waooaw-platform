@@ -1,4 +1,5 @@
 # Implements: architecture/reference/api-specs/business-platform.openapi.yaml §RelationshipCheckoutOutcome
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C3-03 C4-02
 # Constitutional basis: C-043, C-059, C-088, C-089
 """Environment-only Billing Engine configuration."""
 
@@ -41,6 +42,9 @@ class Settings(BaseSettings):
     TRIAL_FREE_UNITS: dict[str, dict[str, int]] = Field(default_factory=dict)
     TRIAL_DURATION_DAYS: PositiveInt = 14
     MAX_DISCOUNT_PCT: int = Field(default=0, ge=0, le=100)
+    TRIAL_IDENTITY_BINDING_MODE: Literal["OFF", "RECORD", "ENFORCE"] = "RECORD"
+    WALLET_AUTHORITY: Literal["LEGACY", "SHADOW", "WALLET"] = "LEGACY"
+    WALLET_OVERRUN_TOLERANCE_PAISE: int = Field(default=0, ge=0)
 
     @property
     def database_url(self) -> str:
