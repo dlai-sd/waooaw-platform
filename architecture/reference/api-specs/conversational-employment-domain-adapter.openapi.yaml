@@ -245,10 +245,228 @@ components:
         induction: { $ref: "#/components/schemas/EmploymentInductionManifestV1" }
         planning: { $ref: "#/components/schemas/EmploymentPlanningManifestV1" }
         operations: { $ref: "#/components/schemas/EmploymentOperationsManifestV1" }
+        experience: { $ref: "#/components/schemas/EmploymentExperienceManifestV1" }
         conformanceScenarios:
           type: array
           minItems: 1
           items: { $ref: "#/components/schemas/EmploymentConformanceScenarioV1" }
+    EmploymentExperienceBlockTypeV1:
+      type: string
+      enum: [TEXT, CHOICES, LIST, LINK, STATUS, METRIC, PLAN, DECISION, FORM, EVIDENCE, DOMAIN]
+    EmploymentExperienceAudienceV1:
+      type: string
+      enum: [customer_owner, delegate, beneficiary, steward]
+    EmploymentExperienceMeasureV1:
+      type: object
+      additionalProperties: false
+      required: [measureId, unit, evidenceSource, freshnessSeconds]
+      properties:
+        measureId: { type: string, minLength: 1, maxLength: 160 }
+        unit: { type: string, minLength: 1, maxLength: 160 }
+        evidenceSource: { type: string, minLength: 1, maxLength: 160 }
+        freshnessSeconds: { type: integer, minimum: 1 }
+    EmploymentExperienceGoalTypeV1:
+      type: object
+      additionalProperties: false
+      required: [goalTypeId, parameters, measures, constraints, starters]
+      properties:
+        goalTypeId: { type: string, minLength: 1, maxLength: 160 }
+        parameters:
+          type: array
+          items: { type: string }
+        measures:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/EmploymentExperienceMeasureV1" }
+        constraints:
+          type: array
+          items: { type: string }
+        starters:
+          type: array
+          items: { type: string }
+    EmploymentExperienceComponentV1:
+      type: object
+      additionalProperties: false
+      required: [componentId, label, unit, kind, countedOn, availability]
+      properties:
+        componentId: { type: string, minLength: 1, maxLength: 160 }
+        label: { type: string, minLength: 1, maxLength: 240 }
+        unit: { type: string, minLength: 1, maxLength: 160 }
+        kind: { type: string, enum: [COUNTED, SELECTED, TIME_ACCESS, CAPACITY] }
+        skillId: { type: string, minLength: 1, maxLength: 160 }
+        countedOn: { type: string, minLength: 1, maxLength: 160 }
+        selectableDimension:
+          type: object
+          additionalProperties: false
+          required: [kind, maximum]
+          properties:
+            kind: { type: string, minLength: 1, maxLength: 160 }
+            maximum: { type: integer, minimum: 1 }
+        availability: { type: string, enum: [AVAILABLE, DEFAULT_OFF, UNAVAILABLE] }
+        activationAuthority: { type: string, minLength: 1, maxLength: 160 }
+    EmploymentExperienceManifestV1:
+      description: |
+        Optional declaration of how the agent's goals, plan, operation, monitoring and components are shown by the
+        common workbench (agent-experience-contract.v1). A manifest without it stays admissible and is served by the
+        legacy relationship projections.
+      type: object
+      additionalProperties: false
+      required:
+        - contractVersion
+        - vocabularyRef
+        - goalTypes
+        - plan
+        - operate
+        - monitor
+        - domainBlocks
+        - components
+        - audiences
+        - modalities
+        - channelSupport
+        - conformanceScenarios
+      properties:
+        contractVersion: { type: string, minLength: 1, maxLength: 64 }
+        vocabularyRef: { $ref: "#/components/schemas/ImmutableContractReferenceV1" }
+        componentCatalogueRef: { $ref: "#/components/schemas/ImmutableContractReferenceV1" }
+        goalTypes:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/EmploymentExperienceGoalTypeV1" }
+        plan:
+          type: object
+          additionalProperties: false
+          required: [milestoneTypes, calendarWindows]
+          properties:
+            milestoneTypes:
+              type: array
+              minItems: 1
+              items: { type: string }
+            calendarWindows:
+              type: array
+              items: { type: string }
+        operate:
+          type: object
+          additionalProperties: false
+          required: [workItemTypes, cadence, approvalModes]
+          properties:
+            workItemTypes:
+              type: array
+              minItems: 1
+              items: { type: string }
+            cadence:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                additionalProperties: false
+                required: [skillId, trigger, window]
+                properties:
+                  skillId: { type: string, minLength: 1, maxLength: 160 }
+                  trigger: { type: string, minLength: 1, maxLength: 160 }
+                  window: { type: string, minLength: 1, maxLength: 160 }
+            approvalModes:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                additionalProperties: false
+                required: [mode, escalation]
+                properties:
+                  mode: { type: string, minLength: 1, maxLength: 160 }
+                  escalation: { type: string, minLength: 1, maxLength: 160 }
+        monitor:
+          type: object
+          additionalProperties: false
+          required: [tiles, narratives, alerts]
+          properties:
+            tiles:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                additionalProperties: false
+                required: [tileId, measureId, blockType, audiences]
+                properties:
+                  tileId: { type: string, minLength: 1, maxLength: 160 }
+                  measureId: { type: string, minLength: 1, maxLength: 160 }
+                  blockType: { type: string, enum: [STATUS, METRIC, PLAN, DECISION, EVIDENCE, DOMAIN] }
+                  audiences:
+                    type: array
+                    minItems: 1
+                    items: { $ref: "#/components/schemas/EmploymentExperienceAudienceV1" }
+            narratives:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [narrativeId, cadence, channels, structure]
+                properties:
+                  narrativeId: { type: string, minLength: 1, maxLength: 160 }
+                  cadence: { type: string, minLength: 1, maxLength: 160 }
+                  channels:
+                    type: array
+                    minItems: 1
+                    items: { type: string }
+                  structure:
+                    type: array
+                    minItems: 1
+                    items: { type: string }
+            alerts:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [signal, threshold, severity, channels]
+                properties:
+                  signal: { type: string, minLength: 1, maxLength: 160 }
+                  threshold: { type: string, minLength: 1, maxLength: 160 }
+                  severity: { type: string, enum: [INFO, WARNING, CRITICAL] }
+                  channels:
+                    type: array
+                    minItems: 1
+                    items: { type: string }
+        domainBlocks:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [blockId, version, fallbackBlocks]
+            properties:
+              blockId: { type: string, minLength: 1, maxLength: 160 }
+              version: { type: integer, minimum: 1 }
+              fallbackBlocks:
+                type: array
+                minItems: 1
+                items: { type: string, enum: [TEXT, CHOICES, LIST, LINK] }
+        components:
+          type: array
+          items: { $ref: "#/components/schemas/EmploymentExperienceComponentV1" }
+        audiences:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/EmploymentExperienceAudienceV1" }
+        modalities:
+          type: array
+          minItems: 1
+          items: { type: string, enum: [text, voice] }
+        channelSupport:
+          type: object
+          additionalProperties: false
+          required: [web, whatsapp, mobile]
+          properties:
+            web:
+              type: array
+              items: { $ref: "#/components/schemas/EmploymentExperienceBlockTypeV1" }
+            whatsapp:
+              type: array
+              items: { $ref: "#/components/schemas/EmploymentExperienceBlockTypeV1" }
+            mobile:
+              type: array
+              items: { $ref: "#/components/schemas/EmploymentExperienceBlockTypeV1" }
+        conformanceScenarios:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1 }
     ImmutableContractReferenceV1:
       type: object
       additionalProperties: false

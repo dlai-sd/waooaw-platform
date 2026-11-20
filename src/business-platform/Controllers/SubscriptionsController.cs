@@ -1,15 +1,22 @@
 // Implements: work-contracts/WC-033-goal005-bp-trial-lifecycle.md §WC033-01
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C3-03
 // constitutional_basis: C-023 (Evidence First — phone_verified gate), C-088 (trial is a billing mode), C-059
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Waooaw.BusinessPlatform.Controllers;
 
 // ─── Request / Response ──────────────────────────────────────────────────────
 
-public sealed record TrialStartRequest(Guid CustomerId, string AgentType, bool PhoneVerified);
+public sealed record TrialStartRequest(
+    Guid CustomerId,
+    string AgentType,
+    bool PhoneVerified,
+    string? AgentVersion = null
+);
 
 public sealed record TrialStartResponse(
     Guid TrialId,
@@ -27,6 +34,18 @@ public sealed class SubscriptionsController : ControllerBase
     private const string WbeTrialStartPath = "/trial/start";
 
     private static readonly JsonSerializerOptions _jsonOpts = new(JsonSerializerDefaults.Web);
+
+    private static readonly Regex AgentVersionPattern = new(
+        @"\A[0-9]+\.[0-9]+\.[0-9]+\z",
+        RegexOptions.CultureInvariant | RegexOptions.Compiled,
+        TimeSpan.FromMilliseconds(100)
+    );
+
+    private static readonly Regex IdentityHashPattern = new(
+        @"\A[0-9a-fA-F]{64}\z",
+        RegexOptions.CultureInvariant | RegexOptions.Compiled,
+        TimeSpan.FromMilliseconds(100)
+    );
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<SubscriptionsController> _logger;
@@ -66,6 +85,12 @@ public sealed class SubscriptionsController : ControllerBase
             return UnprocessableEntity(new { error = "PHONE_NOT_VERIFIED" });
         }
 
+        // C3-03: the trial is per exact agent version (matches trial_allocations_agent_version_check).
+        if (request.AgentVersion is null || !AgentVersionPattern.IsMatch(request.AgentVersion))
+        {
+            return BadRequest(new { error = "AGENT_VERSION_INVALID" });
+        }
+
         // Call WBE billing-engine trial/start — WBE is the authoritative source of truth
         // for trial allocation (trial_allocations + wallet_buckets + trial_free_unit_ledger).
         var wbeClient = _httpClientFactory.CreateClient(WbeClientName);
@@ -73,7 +98,9 @@ public sealed class SubscriptionsController : ControllerBase
         WbeTrialStartPayload wbePayload = new(
             request.CustomerId.ToString(),
             request.AgentType,
-            request.PhoneVerified
+            request.AgentVersion,
+            request.PhoneVerified,
+            VerifiedIdentitySubjectHash()
         );
 
         HttpResponseMessage wbeResponse;
@@ -103,11 +130,14 @@ public sealed class SubscriptionsController : ControllerBase
             request.CustomerId
         );
 
-        // Propagate 409 TRIAL_ALREADY_USED directly from WBE
+        // Propagate 409 TRIAL_ALREADY_USED and TRIAL_ALREADY_USED_BY_IDENTITY directly from WBE
         if (wbeResponse.StatusCode == System.Net.HttpStatusCode.Conflict)
         {
             var errBody = await wbeResponse.Content.ReadAsStringAsync(cancellationToken);
-            return Conflict(new { error = "TRIAL_ALREADY_USED", detail = errBody });
+            var code = errBody.Contains("TRIAL_ALREADY_USED_BY_IDENTITY", StringComparison.Ordinal)
+                ? "TRIAL_ALREADY_USED_BY_IDENTITY"
+                : "TRIAL_ALREADY_USED";
+            return Conflict(new { error = code, detail = errBody });
         }
 
         if (!wbeResponse.IsSuccessStatusCode)
@@ -157,12 +187,33 @@ public sealed class SubscriptionsController : ControllerBase
         );
     }
 
+    // ─── Verified identity ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// The hash of the verified phone subject, taken only from the server-verified token claims
+    /// (never from the request body). Absent for sessions that are not WhatsApp-verified.
+    /// </summary>
+    private string? VerifiedIdentitySubjectHash()
+    {
+        var channel = User.FindFirst("channel")?.Value;
+        var hash = User.FindFirst("external_subject_hash")?.Value;
+        if (
+            !string.Equals(channel, "WHATSAPP", StringComparison.OrdinalIgnoreCase)
+            || hash is null
+            || !IdentityHashPattern.IsMatch(hash)
+        )
+            return null;
+        return hash.ToLowerInvariant();
+    }
+
     // ─── WBE wire types (snake_case from billing-engine FastAPI) ─────────────
 
     private sealed record WbeTrialStartPayload(
         [property: JsonPropertyName("customer_id")] string CustomerId,
         [property: JsonPropertyName("agent_type")] string AgentType,
-        [property: JsonPropertyName("phone_verified")] bool PhoneVerified
+        [property: JsonPropertyName("agent_version")] string AgentVersion,
+        [property: JsonPropertyName("phone_verified")] bool PhoneVerified,
+        [property: JsonPropertyName("identity_subject_hash")] string? IdentitySubjectHash
     );
 
     private sealed record WbeTrialStartResult(

@@ -1,3 +1,4 @@
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C1-05
 # Implements: work-contracts/WC-135-visitor-conversation-and-simulated-customers.md WC135-R012, WC135-R013
 # Constitutional basis: C-048, C-049, C-059, C-063
 """Loader and validation for the fabricated simulated-customer personas."""
@@ -118,6 +119,16 @@ def load_personas(path: Path | None = None) -> dict[str, Persona]:
             raise PersonaError(f"duplicate persona id {persona.id}")
         personas[persona.id] = persona
     return personas
+
+
+def load_default_k(path: Path | None = None) -> int:
+    """Default number of independent runs per seed for pass^k (``reliability.k`` of personas.yaml)."""
+    raw = yaml.safe_load((path or PERSONAS_PATH).read_text(encoding="utf-8"))
+    reliability = raw.get("reliability")
+    value = reliability.get("k") if isinstance(reliability, dict) else None
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise PersonaError("reliability.k must be an integer of at least 1")
+    return value
 
 
 def select_personas(ids: list[str] | None, path: Path | None = None) -> list[Persona]:

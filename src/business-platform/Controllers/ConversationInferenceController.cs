@@ -1,4 +1,7 @@
 // Implements: work-contracts/WC-134-batching-offering-and-spend-work-component.md §9.1
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C3-05
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-09
+// Constitutional basis: C-023, C-059, C-063
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -6,6 +9,7 @@ using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Waooaw.BusinessPlatform.Services;
+using Waooaw.BusinessPlatform.Services.Spend;
 
 namespace Waooaw.BusinessPlatform.Controllers;
 
@@ -179,6 +183,33 @@ public sealed class ConversationInferenceController(
         catch (ConversationStoppedException)
         {
             return StatusCode(423, new { code = "INFERENCE_STOPPED" });
+        }
+        catch (SpendRefusedException error)
+        {
+            logger.LogWarning(
+                "Inference spend refused for {Operation}: {Code}",
+                operation,
+                error.Code
+            );
+            if (error.Code == SetupGrantReservationGate.ExhaustedCode)
+                return StatusCode(
+                    error.StatusCode,
+                    new
+                    {
+                        code = error.Code,
+                        message = SetupGrantReservationGate.ExhaustedConversationText,
+                    }
+                );
+            return StatusCode(error.StatusCode, new { code = error.Code });
+        }
+        catch (OfferingUsageOwnerUnavailableException error)
+        {
+            logger.LogWarning(
+                "Inference commercial owner unavailable for {Operation}: {Code}",
+                operation,
+                error.ReasonCode
+            );
+            return StatusCode(503, new { code = error.ReasonCode });
         }
         catch (WhatsAppCapabilityUnavailableException error)
             when (error.ReasonCode == "MODEL_CONCURRENCY_DENIED")

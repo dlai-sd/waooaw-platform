@@ -18,10 +18,11 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
 from typing_extensions import Annotated
 from employment_domain_client.models.domain_employment_schema_version import DomainEmploymentSchemaVersion
 from employment_domain_client.models.employment_conformance_scenario_v1 import EmploymentConformanceScenarioV1
+from employment_domain_client.models.employment_experience_manifest_v1 import EmploymentExperienceManifestV1
 from employment_domain_client.models.employment_governance_references_v1 import EmploymentGovernanceReferencesV1
 from employment_domain_client.models.employment_induction_manifest_v1 import EmploymentInductionManifestV1
 from employment_domain_client.models.employment_operations_manifest_v1 import EmploymentOperationsManifestV1
@@ -42,8 +43,9 @@ class EmploymentInterfaceManifestV1(BaseModel):
     induction: EmploymentInductionManifestV1
     planning: EmploymentPlanningManifestV1
     operations: EmploymentOperationsManifestV1
+    experience: Optional[EmploymentExperienceManifestV1] = None
     conformance_scenarios: Annotated[List[EmploymentConformanceScenarioV1], Field(min_length=1)] = Field(alias="conformanceScenarios")
-    __properties: ClassVar[List[str]] = ["schemaVersion", "protocolVersion", "agentType", "agentVersion", "manifestVersion", "governance", "induction", "planning", "operations", "conformanceScenarios"]
+    __properties: ClassVar[List[str]] = ["schemaVersion", "protocolVersion", "agentType", "agentVersion", "manifestVersion", "governance", "induction", "planning", "operations", "experience", "conformanceScenarios"]
 
     @field_validator('protocol_version')
     def protocol_version_validate_enum(cls, value):
@@ -103,6 +105,9 @@ class EmploymentInterfaceManifestV1(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of operations
         if self.operations:
             _dict['operations'] = self.operations.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of experience
+        if self.experience:
+            _dict['experience'] = self.experience.to_dict()
         # override the default output from pydantic by calling `to_dict()` of each item in conformance_scenarios (list)
         _items = []
         if self.conformance_scenarios:
@@ -131,6 +136,7 @@ class EmploymentInterfaceManifestV1(BaseModel):
             "induction": EmploymentInductionManifestV1.from_dict(obj["induction"]) if obj.get("induction") is not None else None,
             "planning": EmploymentPlanningManifestV1.from_dict(obj["planning"]) if obj.get("planning") is not None else None,
             "operations": EmploymentOperationsManifestV1.from_dict(obj["operations"]) if obj.get("operations") is not None else None,
+            "experience": EmploymentExperienceManifestV1.from_dict(obj["experience"]) if obj.get("experience") is not None else None,
             "conformanceScenarios": [EmploymentConformanceScenarioV1.from_dict(_item) for _item in obj["conformanceScenarios"]] if obj.get("conformanceScenarios") is not None else None
         })
         return _obj

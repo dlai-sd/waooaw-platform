@@ -2040,7 +2040,7 @@ platform_services:
     schema_version: "1.0"          # Update when WBE signal schema version bumps
     handles_signals: [...]         # All 5 WBE signals with customer-vocabulary handlers
     does_not_handle: [...]         # Explicitly list any deliberately unhandled signals
-    unavailability: "..."          # Default: "continue_silent"
+    unavailability: "..."          # Default: "fail_closed_free_path" (Base Spec v1.1 B-3)
     budget_vocabulary:             # ALL active thread types for this agent
       llm_mid:          "[term]"
       llm_frontier:     "[term or null]"

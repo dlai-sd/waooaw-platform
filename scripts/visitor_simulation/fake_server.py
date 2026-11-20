@@ -1,8 +1,10 @@
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C1-04
 # Implements: work-contracts/WC-135-visitor-conversation-and-simulated-customers.md WC135-R012, WC135-R013
 # Constitutional basis: C-048, C-049, C-059, C-063
 """In-process fake of the visitor API (OpenAPI contract) with a weak ``legacy`` and a ``good`` behaviour.
 
 Used by the tests and for local dry runs of the harness. It never leaves the loopback interface.
+The ``good`` behaviour acknowledges a STOP exactly once, with the text of the protocol policy (WC136-R004).
 """
 
 import hashlib
@@ -20,6 +22,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
 from visitor_simulation.client import sign_request
+from visitor_simulation.policy import ProtocolPolicy, load_protocol_policy
 
 SESSIONS = "/api/v1/visitor/sessions"
 TAP_PREFIX = "/api/v1/visitor/handoffs/"
@@ -365,10 +368,12 @@ class FakeVisitorServer:
         secret: str = "fake-simulator-secret",  # noqa: S107
         *,
         clock: Callable[[], float] = time.time,
+        policy: ProtocolPolicy | None = None,
     ) -> None:
         if behaviour not in {"good", "legacy"}:
             raise ValueError("behaviour must be 'good' or 'legacy'")
         self.behaviour = behaviour
+        self._policy = policy
         self._engine: _LegacyEngine | _GoodEngine = _LegacyEngine() if behaviour == "legacy" else _GoodEngine()
         self._secret = secret
         self._clock = clock
@@ -601,14 +606,23 @@ class FakeVisitorServer:
         session.idempotency[key] = (body_hash, response)
         return 200, {}, response
 
+    def _stop_blocks(self) -> list[dict[str, Any]]:
+        """The STOP acknowledgement the product's protocol policy asks for (the legacy behaviour never sent one)."""
+        if self._engine.is_legacy:
+            return []
+        if self._policy is None:
+            self._policy = load_protocol_policy()
+        return [_text(self._policy.stop_acknowledgement)] if self._policy.stop_acknowledges else []
+
     def _process(self, session: _Session, kind: str, text: str, choice_id: str, content: dict[str, Any]) -> dict[str, Any]:
         self._record(session, "VISITOR", content=content)
         said = text.strip().upper() if kind == "TEXT" else ""
         if said == "STOP" or choice_id.upper() == "STOP":
-            if session.state != "STOPPED":
+            already_stopped = session.state == "STOPPED"
+            if not already_stopped:
                 session.resume_state = session.state
             session.state = "STOPPED"
-            blocks: list[dict[str, Any]] = []
+            blocks = [] if already_stopped else self._stop_blocks()
         elif session.state == "STOPPED":
             blocks = []
             if said == "START":

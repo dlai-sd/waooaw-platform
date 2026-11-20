@@ -1,5 +1,12 @@
 \set ON_ERROR_STOP on
 
+-- WC-136 C5-04 (C-059): a Founder-authorized ceiling above INR 500 is allowed only with
+-- hard_maximum_paise set explicitly; without it the former 50000 paise limit applies.
+\if :{?hard_maximum_paise}
+\else
+\set hard_maximum_paise 50000
+\endif
+
 -- Required psql variables: environment, maximum_paise, authority_evidence_id.
 -- Operator-run, never an init file: the init migration deliberately leaves new environments fail-closed
 -- (no authority row => every WhatsApp send is refused with ENVIRONMENT_SPEND_AUTHORITY_UNAVAILABLE).
@@ -7,8 +14,11 @@
 -- A fresh Demo database has no legacy exposure to map, so migration is complete by construction.
 SELECT 1 / CASE
     WHEN :'environment' IN ('demo', 'uat', 'production')
-     AND :'maximum_paise' ~ '^[1-9][0-9]{0,4}$'
-     AND :'maximum_paise'::BIGINT <= 50000
+     AND :'maximum_paise' ~ '^[1-9][0-9]{0,8}$'
+     AND :'hard_maximum_paise' ~ '^[1-9][0-9]{4,8}$'
+     AND :'hard_maximum_paise'::BIGINT >= 50000
+     AND (:'maximum_paise'::BIGINT <= 50000
+          OR :'maximum_paise'::BIGINT <= :'hard_maximum_paise'::BIGINT)
      AND :'authority_evidence_id' ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
      AND :'authority_evidence_id' <> '00000000-0000-0000-0000-000000000000'
      AND NOT EXISTS (SELECT 1 FROM business.conversation_model_reservations WHERE environment = :'environment')

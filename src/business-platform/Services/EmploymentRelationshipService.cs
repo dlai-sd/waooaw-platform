@@ -1,4 +1,5 @@
 // Implements: architecture/reference/product/ae01-solution-contract.md § Canonical API and Compatibility
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-04
 // constitutional_basis: C-005, C-023, C-026, C-059
 
 using System.Security.Cryptography;
@@ -112,16 +113,54 @@ public sealed class EmploymentRelationshipService
     private readonly IDbContextFactory<EmploymentRelationshipDbContext> _dbFactory;
     private readonly IRelationshipConstitutionalGateway _constitutionalGateway;
     private readonly ILogger<EmploymentRelationshipService> _logger;
+    private readonly IPlatformAccountGateway? _platformAccounts;
 
     public EmploymentRelationshipService(
         IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
         IRelationshipConstitutionalGateway constitutionalGateway,
-        ILogger<EmploymentRelationshipService> logger
+        ILogger<EmploymentRelationshipService> logger,
+        IPlatformAccountGateway? platformAccounts = null
     )
     {
         _dbFactory = dbFactory;
         _constitutionalGateway = constitutionalGateway;
         _logger = logger;
+        _platformAccounts = platformAccounts;
+    }
+
+    /// <summary>One setup grant per relationship: the key is derived from the relationship, so a replay creates none.</summary>
+    internal static Guid SetupGrantKey(Guid relationshipId) =>
+        new(SHA256.HashData(Encoding.UTF8.GetBytes($"setup-grant:{relationshipId:D}"))[..16]);
+
+    private async Task OpenSetupGrantAsync(
+        EmploymentRelationship relationship,
+        Guid participantId,
+        CancellationToken cancellationToken
+    )
+    {
+        if (_platformAccounts is null || string.IsNullOrEmpty(relationship.ProfessionalVersion))
+            return;
+        try
+        {
+            await _platformAccounts.OpenSetupGrantAsync(
+                relationship.TenantId,
+                participantId,
+                relationship.RelationshipId,
+                relationship.ProfessionalType,
+                relationship.ProfessionalVersion,
+                SetupGrantKey(relationship.RelationshipId),
+                cancellationToken
+            );
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // The grant is also opened by the first onboarding draw, so a failure here never blocks admission.
+            _logger.LogWarning(
+                exception,
+                "Setup grant could not be opened for relationship {RelationshipId}",
+                relationship.RelationshipId
+            );
+        }
     }
 
     public async Task<AdmitRelationshipResult> AdmitAsync(
@@ -379,6 +418,7 @@ public sealed class EmploymentRelationshipService
         try
         {
             await db.SaveChangesAsync(cancellationToken);
+            await OpenSetupGrantAsync(relationship, participantId, cancellationToken);
             return new AdmitRelationshipResult(relationship, true);
         }
         catch (DbUpdateException)

@@ -1,0 +1,515 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://waooaw.example/schemas/experience-blocks.v2.schema.json",
+  "title": "ExperienceReplyV2",
+  "description": "Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C2-03. Constitutional basis: C-059, C-063, ADR-051. The structured reply every channel renders when it negotiates schemaVersion 2.0. The server sends content, never layout. TEXT, CHOICES, LIST and LINK keep their v1 meaning; a renderer that does not know a block type or version renders the block fallback, which holds v1 types only. No block carries an authority field: authority is decided by the server at command time.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "state", "cursor", "blocks"],
+  "properties": {
+    "schemaVersion": {
+      "const": "2.0"
+    },
+    "state": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "cursor": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "blocks": {
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "$ref": "#/$defs/Block"
+      },
+      "contains": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "LINK"
+          }
+        }
+      },
+      "minContains": 0,
+      "maxContains": 1
+    }
+  },
+  "$defs": {
+    "Freshness": {
+      "type": "string",
+      "enum": ["CURRENT", "STALE", "UNKNOWN", "UNAVAILABLE"]
+    },
+    "ItemState": {
+      "type": "string",
+      "enum": [
+        "PROPOSED",
+        "READY",
+        "IN_PROGRESS",
+        "WAITING_ON_CUSTOMER",
+        "WAITING_ON_AGENT",
+        "WAITING_ON_PLATFORM",
+        "BLOCKED",
+        "COMPLETED",
+        "DEFERRED",
+        "CANCELLED",
+        "SUPERSEDED",
+        "OUTCOME_UNKNOWN"
+      ]
+    },
+    "Reference": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "TextData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        }
+      }
+    },
+    "ChoicesData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["choices"],
+      "properties": {
+        "choices": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "description": "Labels must be unique; JSON Schema cannot compare one property across items, so the reference validator and every server emitter also reject duplicate labels.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["choiceId", "label"],
+            "properties": {
+              "choiceId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20
+              }
+            }
+          }
+        }
+      }
+    },
+    "ListData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rows"],
+      "properties": {
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["rowId", "title"],
+            "properties": {
+              "rowId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 24
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 72
+              }
+            }
+          }
+        }
+      }
+    },
+    "LinkData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "destinationRef"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "destinationRef": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._~:-]{7,127}$",
+          "description": "Opaque handoff reference. The block never carries a URL."
+        }
+      }
+    },
+    "StatusData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["itemRef", "state", "owner", "freshness"],
+      "properties": {
+        "itemRef": {
+          "$ref": "#/$defs/Reference"
+        },
+        "state": {
+          "$ref": "#/$defs/ItemState"
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "freshness": {
+          "$ref": "#/$defs/Freshness"
+        }
+      }
+    },
+    "MetricData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["measureId", "value", "unit", "freshness"],
+      "properties": {
+        "measureId": {
+          "$ref": "#/$defs/Reference"
+        },
+        "value": {
+          "type": ["number", "string"]
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "target": {
+          "type": ["number", "string"]
+        },
+        "trend": {
+          "type": "string",
+          "enum": ["UP", "DOWN", "FLAT"]
+        },
+        "freshness": {
+          "$ref": "#/$defs/Freshness"
+        }
+      }
+    },
+    "PlanData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["planVersion", "milestones", "calendar"],
+      "properties": {
+        "planVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "milestones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["milestoneId", "title", "dueMeaning"],
+            "properties": {
+              "milestoneId": {
+                "$ref": "#/$defs/Reference"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              },
+              "dueMeaning": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              }
+            }
+          }
+        },
+        "calendar": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["date", "title"],
+            "properties": {
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              }
+            }
+          }
+        }
+      }
+    },
+    "DecisionData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decisionId", "effect", "authority", "confirmLabel", "cancelLabel"],
+      "properties": {
+        "decisionId": {
+          "$ref": "#/$defs/Reference"
+        },
+        "effect": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "authority": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "Who decides, in business language. It is informative: the server re-checks authority when the decision is resolved."
+        },
+        "cost": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240,
+          "description": "Cost in business language, never provider units."
+        },
+        "confirmLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "cancelLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "FormData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["formId", "fields"],
+      "properties": {
+        "formId": {
+          "$ref": "#/$defs/Reference"
+        },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["fieldId", "label", "type", "required"],
+            "properties": {
+              "fieldId": {
+                "$ref": "#/$defs/Reference"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "type": {
+                "type": "string",
+                "enum": ["TEXT", "NUMBER", "DATE", "CHOICE", "TOGGLE"]
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "options": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 20,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "EvidenceData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidenceRef", "summary", "producedAt"],
+      "properties": {
+        "evidenceRef": {
+          "$ref": "#/$defs/Reference"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "producedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "DomainData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["domainBlockId", "payload"],
+      "properties": {
+        "domainBlockId": {
+          "$ref": "#/$defs/Reference"
+        },
+        "payload": {
+          "type": "object"
+        }
+      }
+    },
+    "FallbackBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "data"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["TEXT", "CHOICES", "LIST", "LINK"]
+        },
+        "data": {
+          "type": "object"
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"const": "TEXT"}}},
+          "then": {"properties": {"data": {"$ref": "#/$defs/TextData"}}}
+        },
+        {
+          "if": {"properties": {"type": {"const": "CHOICES"}}},
+          "then": {"properties": {"data": {"$ref": "#/$defs/ChoicesData"}}}
+        },
+        {
+          "if": {"properties": {"type": {"const": "LIST"}}},
+          "then": {"properties": {"data": {"$ref": "#/$defs/ListData"}}}
+        },
+        {
+          "if": {"properties": {"type": {"const": "LINK"}}},
+          "then": {"properties": {"data": {"$ref": "#/$defs/LinkData"}}}
+        }
+      ]
+    },
+    "Block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "version", "sensitivity", "data", "fallback"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "type": {
+          "type": "string",
+          "enum": ["TEXT", "CHOICES", "LIST", "LINK", "STATUS", "METRIC", "PLAN", "DECISION", "FORM", "EVIDENCE", "DOMAIN"]
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sensitivity": {
+          "type": "string",
+          "enum": ["PUBLIC", "CUSTOMER", "SENSITIVE"]
+        },
+        "data": {
+          "type": "object"
+        },
+        "fallback": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/FallbackBlock"
+          }
+        },
+        "spoken": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"const": "TEXT"}}},
+          "then": {"properties": {"data": {"$ref": "#/$defs/TextData"}}}
+        },
+        {
+          "if": {"properties": {"type": {"const": "CHOICES"}}},
+          "then": {"properties": {"data": {"$ref": "#/$defs/ChoicesData"}}}
+        },
+        {
+          "if": {"properties": {"type": {"const": "LIST"}}},
+          "then": {"properties": {"data": {"$ref": "#/$defs/ListData"}}}
+        },
+        {
+          "if": {"properties": {"type": {"const": "LINK"}}},
+          "then": {"properties": {"data": {"$ref": "#/$defs/LinkData"}}}
+        },
+        {
+          "if": {"properties": {"type": {"const": "STATUS"}}},
+          "then": {"properties": {"data": {"$ref": "#/$defs/StatusData"}}}
+        },
+        {
+          "if": {"properties": {"type": {"const": "METRIC"}}},
+          "then": {"properties": {"data": {"$ref": "#/$defs/MetricData"}}}
+        },
+        {
+          "if": {"properties": {"type": {"const": "PLAN"}}},
+          "then": {"properties": {"data": {"$ref": "#/$defs/PlanData"}}}
+        },
+        {
+          "if": {"properties": {"type": {"const": "DECISION"}}},
+          "then": {"properties": {"data": {"$ref": "#/$defs/DecisionData"}}}
+        },
+        {
+          "if": {"properties": {"type": {"const": "FORM"}}},
+          "then": {"properties": {"data": {"$ref": "#/$defs/FormData"}}}
+        },
+        {
+          "if": {"properties": {"type": {"const": "EVIDENCE"}}},
+          "then": {"properties": {"data": {"$ref": "#/$defs/EvidenceData"}}}
+        },
+        {
+          "if": {"properties": {"type": {"const": "DOMAIN"}}},
+          "then": {
+            "properties": {
+              "data": {"$ref": "#/$defs/DomainData"},
+              "fallback": {"minItems": 1}
+            }
+          }
+        }
+      ]
+    }
+  }
+}

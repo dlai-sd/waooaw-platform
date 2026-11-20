@@ -1,5 +1,6 @@
 // Implements: work-contracts/WC-096-conversational-customer-portal.md §5
 // Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R015
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C1-03
 // constitutional_basis: C-005, C-026, C-049, C-059, C-063
 
 using System.Security.Cryptography;
@@ -336,6 +337,7 @@ public sealed class PortalInteractionService : IGuestConversation
                     or WhatsAppGuestConsent.RegisteredNumberAccepted
                     or WhatsAppAccountLinkInstruction.ConfirmedNotice
                     or WhatsAppAccountLinkInstruction.DeniedNotice
+                    or WhatsAppStopAcknowledgementPolicy.EmergencyStopConfirmation
                 )
             && !GuestCopyRegistry.Current.PreConsentTexts().Contains(notice, StringComparer.Ordinal)
             && notice != GuestCopyRegistry.Current.Accepted

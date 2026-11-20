@@ -1,4 +1,5 @@
 // Implements: business-platform.openapi.yaml 1.3.0 Relationship Workspace
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C6-07
 // constitutional_basis: C-001, C-005, C-023, C-026, C-059, C-063, C-083, C-084, C-085
 
 using System.Security.Claims;
@@ -41,6 +42,7 @@ public sealed record RelationshipOnboardRequest(
 [ApiController]
 [Authorize]
 [CustomerIdentityRoute(requiresMembership: true)]
+[WorkbenchSuccessorHeaders]
 [Route("api/v1/employment/relationships/{relationshipId:guid}/workspace")]
 public sealed class RelationshipWorkspaceController(
     EmploymentRelationshipService relationships,

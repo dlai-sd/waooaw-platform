@@ -33,7 +33,7 @@ from runtime_contract.employment import (
 
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent
 CONTRACT_ROOT = PACKAGE_ROOT / "contracts"
-MANIFEST_VERSION = "1.0.0"
+MANIFEST_VERSION = "1.1.0"
 REQUIREMENT_SET_VERSION = "1.0.0"
 ASSESSMENT_VERSION = "1.0.0"
 SHA256_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")

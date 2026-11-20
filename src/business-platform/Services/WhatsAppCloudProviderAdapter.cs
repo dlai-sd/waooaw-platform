@@ -1,4 +1,5 @@
 // Implements: architecture/reference/components/conversation-engine-whatsapp-solution-work-component.md §10.2, §25.2 WC120-P2, WC120-P4
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C1-02, C1-03
 // Constitutional basis: C-005, C-023, C-026, C-059, C-063
 
 using System.Net.Http.Headers;
@@ -123,13 +124,22 @@ public sealed class WhatsAppCloudProviderAdapter(
         if (outbox.PortalContextId is { } contextId)
         {
             var admissionLimitNotice = outbox.Purpose == "WHATSAPP_GUEST_SESSION_LIMIT_NOTICE";
+            var stopAcknowledgement =
+                outbox.Purpose == WhatsAppStopAcknowledgementPolicy.GuestPurpose;
+            var relationshipStopAcknowledgement =
+                outbox.Purpose == WhatsAppStopAcknowledgementPolicy.RelationshipPurpose;
             if (admissionLimitNotice && !authority.AllowPublicAdmission)
                 throw new WhatsAppCapabilityUnavailableException("GUEST_ADMISSION_DENIED");
             if (
                 request.RelationshipId is not null
                 || request.ConversationId is not null
                 || outbox.Purpose
-                    is not ("WHATSAPP_GUEST_DISCOVERY" or "WHATSAPP_GUEST_SESSION_LIMIT_NOTICE")
+                    is not (
+                        "WHATSAPP_GUEST_DISCOVERY"
+                        or "WHATSAPP_GUEST_SESSION_LIMIT_NOTICE"
+                        or WhatsAppStopAcknowledgementPolicy.GuestPurpose
+                        or WhatsAppStopAcknowledgementPolicy.RelationshipPurpose
+                    )
                 || !authority.AllowProvisionalOnboarding
             )
                 throw new WhatsAppCapabilityUnavailableException(
@@ -166,6 +176,41 @@ public sealed class WhatsAppCloudProviderAdapter(
                         )
                 )
                     throw new WhatsAppCapabilityUnavailableException("GUEST_ADMISSION_DENIED");
+                protectedDestination =
+                    outbox.ProtectedRecipientDestination
+                    ?? throw new WhatsAppCapabilityUnavailableException(
+                        "PHONE_DESTINATION_UNAVAILABLE"
+                    );
+            }
+            else if (stopAcknowledgement)
+            {
+                if (
+                    guestContext is null
+                    || !await db.Set<WhatsAppGuestSession>()
+                        .AnyAsync(
+                            value =>
+                                value.TenantId == request.TenantId
+                                && value.BindingDigest == outbox.RecipientBindingDigest
+                                && value.StoppedAt != null,
+                            cancellationToken
+                        )
+                )
+                    throw new WhatsAppCapabilityUnavailableException(
+                        "RECIPIENT_ELIGIBILITY_REVOKED"
+                    );
+                protectedDestination =
+                    outbox.ProtectedRecipientDestination
+                    ?? throw new WhatsAppCapabilityUnavailableException(
+                        "PHONE_DESTINATION_UNAVAILABLE"
+                    );
+            }
+            else if (relationshipStopAcknowledgement)
+            {
+                // Stop evidence and the service window are re-verified by IsCurrentlyEligibleAsync before dispatch.
+                if (guestContext is null)
+                    throw new WhatsAppCapabilityUnavailableException(
+                        "RECIPIENT_ELIGIBILITY_REVOKED"
+                    );
                 protectedDestination =
                     outbox.ProtectedRecipientDestination
                     ?? throw new WhatsAppCapabilityUnavailableException(
@@ -254,6 +299,24 @@ public sealed class WhatsAppCloudProviderAdapter(
             if (
                 outbox.Purpose == "WHATSAPP_GUEST_SESSION_LIMIT_NOTICE"
                 && text != WhatsAppGuestTrafficBudget.SessionLimitNotice
+            )
+                throw new WhatsAppCapabilityUnavailableException("MESSAGE_PROJECTION_DENIED");
+            if (
+                outbox.Purpose == WhatsAppStopAcknowledgementPolicy.GuestPurpose
+                && text != Visitor.GuestCopyRegistry.Current.StopAcknowledged
+            )
+                throw new WhatsAppCapabilityUnavailableException("MESSAGE_PROJECTION_DENIED");
+            if (
+                outbox.Purpose == WhatsAppStopAcknowledgementPolicy.RelationshipPurpose
+                && (
+                    !WhatsAppStopAcknowledgementPolicy.TryParseRelationshipReference(
+                        outbox.PayloadReference,
+                        out var emergencyStop,
+                        out _,
+                        out _
+                    )
+                    || text != WhatsAppStopAcknowledgementPolicy.RelationshipText(emergencyStop)
+                )
             )
                 throw new WhatsAppCapabilityUnavailableException("MESSAGE_PROJECTION_DENIED");
             if (

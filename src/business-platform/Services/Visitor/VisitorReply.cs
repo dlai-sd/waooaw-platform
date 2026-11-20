@@ -1,4 +1,5 @@
 // Implements: work-contracts/WC-135-visitor-conversation-and-simulated-customers.md WC135-R002, WC135-R004
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C2-03
 // Constitutional basis: C-009, C-039, C-042, C-048, C-049, C-059, C-063
 
 using System.Text.Json;
@@ -110,6 +111,15 @@ public sealed record VisitorReplyBlock
 public sealed record VisitorReply
 {
     public const string SchemaVersion = "1.0";
+    public const string SchemaVersionV2 = "2.0";
+
+    public static readonly IReadOnlySet<string> AcceptedSchemaVersions = new HashSet<string>(
+        StringComparer.Ordinal
+    )
+    {
+        SchemaVersion,
+        SchemaVersionV2,
+    };
 
     [JsonPropertyName("schemaVersion")]
     public string Schema { get; init; } = SchemaVersion;
@@ -160,6 +170,8 @@ public static class VisitorReplyValidator
     )
     {
         var problems = new List<string>();
+        if (!VisitorReply.AcceptedSchemaVersions.Contains(reply.Schema))
+            problems.Add("SCHEMA_VERSION_UNSUPPORTED");
         if (!VisitorStates.All.Contains(reply.State))
             problems.Add("STATE_UNKNOWN");
         if (reply.Blocks.Count > 6)

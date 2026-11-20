@@ -1,4 +1,5 @@
 // Implements: WC-115 R055-R062, R067-R071, R096
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-08
 // Constitutional basis: C-001, C-023, C-026, C-059, C-076, C-079, ADR-051
 // IB: N/A - Founder-assigned WC-115
 
@@ -214,6 +215,102 @@ public sealed class ConversationalEmploymentServiceTests
         Assert.Equal("COMPLETED", completed.State);
         Assert.Null(completed.Limitation);
         Assert.Contains("evidence:CE", completed.EvidenceRefs);
+    }
+
+    [Theory]
+    [InlineData("evidence:CE", false)]
+    [InlineData("component-unit:not a component:00000000-0000-0000-0000-000000000000", false)]
+    [InlineData("component-unit:lead_batch:5d6c0f7e-9b1a-4c34-8f67-2a1e3b4c5d6e", true)]
+    public void OnlyOwnerConfirmedCompletionWithComponentEvidenceCountsAUnit(
+        string ceEvidence,
+        bool counted
+    )
+    {
+        var sink = new RecordingComponentUnitSink();
+        var service = new ConversationalEmploymentService(null, sink);
+        var tenantId = Guid.NewGuid();
+        var relationshipId = Guid.NewGuid();
+        service.RegisterWorkspace(Workspace(tenantId, relationshipId));
+        var submission = service.Submit(
+            tenantId,
+            relationshipId,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            ValidConfirmCommand()
+        );
+        service.UpdateOwnerStep(
+            tenantId,
+            relationshipId,
+            submission.Receipt.CommandId,
+            "DOMAIN_ADAPTER",
+            "COMPLETED",
+            "domain-command",
+            "source-1",
+            "component-unit:lead_batch:5d6c0f7e-9b1a-4c34-8f67-2a1e3b4c5d6e"
+        );
+        Assert.Empty(sink.Completions);
+
+        service.UpdateOwnerStep(
+            tenantId,
+            relationshipId,
+            submission.Receipt.CommandId,
+            "CE",
+            "COMPLETED",
+            "ce-decision-1",
+            "decision-space-1",
+            ceEvidence
+        );
+
+        if (!counted)
+        {
+            Assert.Empty(sink.Completions);
+            return;
+        }
+        var completion = Assert.Single(sink.Completions);
+        Assert.Equal(tenantId, completion.TenantId);
+        Assert.Equal(relationshipId, completion.RelationshipId);
+        Assert.Equal("lead_batch", completion.ComponentId);
+        Assert.Equal(
+            Guid.Parse("5d6c0f7e-9b1a-4c34-8f67-2a1e3b4c5d6e"),
+            completion.CompletionEvidenceId
+        );
+    }
+
+    [Fact]
+    public void AnIncompleteCommandNeverCountsAUnit()
+    {
+        var sink = new RecordingComponentUnitSink();
+        var service = new ConversationalEmploymentService(null, sink);
+        var tenantId = Guid.NewGuid();
+        var relationshipId = Guid.NewGuid();
+        service.RegisterWorkspace(Workspace(tenantId, relationshipId));
+        var submission = service.Submit(
+            tenantId,
+            relationshipId,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            ValidConfirmCommand()
+        );
+
+        service.UpdateOwnerStep(
+            tenantId,
+            relationshipId,
+            submission.Receipt.CommandId,
+            "CE",
+            "ACCEPTED",
+            null,
+            null,
+            "component-unit:lead_batch:5d6c0f7e-9b1a-4c34-8f67-2a1e3b4c5d6e"
+        );
+
+        Assert.Empty(sink.Completions);
+    }
+
+    private sealed class RecordingComponentUnitSink : IComponentUnitCompletionSink
+    {
+        public List<ComponentUnitCompletion> Completions { get; } = [];
+
+        public void Completed(ComponentUnitCompletion completion) => Completions.Add(completion);
     }
 
     [Fact]

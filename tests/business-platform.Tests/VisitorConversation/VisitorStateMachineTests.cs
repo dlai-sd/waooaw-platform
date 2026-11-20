@@ -1,4 +1,5 @@
 // Implements: work-contracts/WC-135-requirements.yaml WC135-R001, WC135-R002, WC135-R005, WC135-R006, WC135-R009
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C2-03
 // Constitutional basis: C-009, C-039, C-042, C-048, C-049, C-059, C-063
 
 using Waooaw.BusinessPlatform.Services.Visitor;
@@ -653,5 +654,29 @@ public sealed class VisitorReplyValidatorTests
             VisitorReplyBlock.LinkBlock("Open", "https://a.example")
         );
         Assert.Equal(reply.ToJson(), VisitorReply.FromJson(reply.ToJson()).ToJson());
+    }
+
+    [Theory]
+    [InlineData("1.0")]
+    [InlineData("2.0")]
+    public void ReplyAcceptsSchemaVersionsOneAndTwoWithoutChangingTheBlockShape(
+        string schemaVersion
+    )
+    {
+        var reply = Reply(VisitorReplyBlock.TextBlock("Hi")) with { Schema = schemaVersion };
+
+        Assert.Empty(VisitorReplyValidator.Validate(reply, Limits));
+        Assert.Equal(schemaVersion, VisitorReply.FromJson(reply.ToJson()).Schema);
+    }
+
+    [Fact]
+    public void ReplyRejectsAnUnknownSchemaVersion()
+    {
+        var reply = Reply(VisitorReplyBlock.TextBlock("Hi")) with { Schema = "3.0" };
+
+        Assert.Contains(
+            "SCHEMA_VERSION_UNSUPPORTED",
+            VisitorReplyValidator.Validate(reply, Limits)
+        );
     }
 }

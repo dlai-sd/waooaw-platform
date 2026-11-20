@@ -1,5 +1,9 @@
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C1-04
 # Implements: work-contracts/WC-135-visitor-conversation-and-simulated-customers.md WC135-R012, WC135-R013
 # Constitutional basis: C-048, C-049, C-059, C-063
+import copy
+import json
+
 import pytest
 
 from visitor_simulation.customer import ScriptedModel
@@ -16,10 +20,23 @@ from visitor_simulation.judge import (
     ScoreParseError,
     check_policy,
     load_rubric,
+    score_safety,
 )
 from visitor_simulation.models import GoalSpec, build_conversation
+from visitor_simulation.policy import DEFAULT_CONTENT_PATH, PolicyError, load_protocol_policy, parse_protocol_policy
 
 RUBRIC = load_rubric()
+ACK_PLACEHOLDER = "{stop_acknowledgement}"
+
+
+def _fill_placeholder(value, acknowledgement):
+    if isinstance(value, str):
+        return value.replace(ACK_PLACEHOLDER, acknowledgement)
+    if isinstance(value, list):
+        return [_fill_placeholder(v, acknowledgement) for v in value]
+    if isinstance(value, dict):
+        return {k: _fill_placeholder(v, acknowledgement) for k, v in value.items()}
+    return value
 
 
 def _anchor_cases():
@@ -30,7 +47,7 @@ def _anchor_cases():
 
 def _conv_from_anchor(anchor):
     return build_conversation(
-        anchor["turns"],
+        _fill_placeholder(anchor["turns"], RUBRIC.policy.stop_acknowledgement),
         business_terms=tuple(anchor.get("business_terms", ())),
         interest_expressed=anchor.get("interest_expressed", False),
     )
@@ -225,3 +242,201 @@ def test_model_backed_scorer_plugs_in_through_the_model_client_interface():
 
     with pytest.raises(ScoreParseError):
         ModelScorer("welcome_clarity", RUBRIC, Unclear()).score(_text_conv("Hello."))
+
+
+ACK = "You are opted out and will get no more messages. Send START any time to chat again."
+NOTICE = "Welcome back. To start again I need your OK once more. Tap YES to continue, or STOP at any time."
+OPENING = {
+    "state": "CONSENT_PENDING",
+    "blocks": [{"type": "TEXT", "text": "Hi, I am the WAOOAW assistant. You can reply STOP at any time. Is it okay if we chat?"}],
+}
+_DELETE = object()
+
+
+def _content():
+    return {
+        "fixed": {"stopAcknowledged": ACK, "resumeNotice": NOTICE},
+        "protocol": {
+            "version": "1.0.0",
+            "stop": {
+                "acknowledge": True,
+                "acknowledgementRef": "fixed.stopAcknowledged",
+                "maximumAcknowledgementsPerStop": 1,
+                "channels": ["API", "WHATSAPP", "SIMULATION"],
+            },
+            "start": {"consentRequiredAgain": True, "noticeRef": "fixed.resumeNotice"},
+        },
+    }
+
+
+def _changed_content(path, value):
+    content = _content()
+    node = content
+    for key in path[:-1]:
+        node = node[key]
+    if value is _DELETE:
+        del node[path[-1]]
+    else:
+        node[path[-1]] = value
+    return content
+
+
+def _policy(path=("protocol", "version"), value="1.0.0"):
+    return parse_protocol_policy(_changed_content(path, value))
+
+
+def _t(visitor, state, *texts):
+    return {"visitor": visitor, "state": state, "blocks": [{"type": "TEXT", "text": text} for text in texts]}
+
+
+QUESTION = "What kind of business do you run?"
+
+
+def _safety(turns, policy=None):
+    rubric = load_rubric(policy=policy or _policy())
+    return score_safety(build_conversation([OPENING, *turns]), rubric)
+
+
+def _stop_then_start_yes():
+    return [
+        _t("YES", "DISCOVER", QUESTION),
+        _t("STOP", "STOPPED", ACK),
+        _t("START", "CONSENT_PENDING", NOTICE),
+        _t("YES", "DISCOVER", "Great. Which city is it in?"),
+        _t("a clinic in Pune", "DISCOVER", "Nice. What is your goal?"),
+    ]
+
+
+def test_default_policy_is_the_product_content_catalogue():
+    content = json.loads(DEFAULT_CONTENT_PATH.read_text(encoding="utf-8"))
+    policy = load_protocol_policy()
+    reference = content["protocol"]["stop"]["acknowledgementRef"].removeprefix("fixed.")
+    assert policy.version == content["protocol"]["version"]
+    assert policy.stop_acknowledgement == content["fixed"][reference]
+    assert policy.stop_acknowledges is content["protocol"]["stop"]["acknowledge"]
+    assert load_rubric().policy.version == policy.version
+    explicit = _policy()
+    assert load_rubric(policy=explicit).policy is explicit
+
+
+@pytest.mark.parametrize(
+    ("path", "value"),
+    [
+        (("protocol",), _DELETE),
+        (("protocol",), "nope"),
+        (("protocol", "version"), ""),
+        (("protocol", "stop"), "nope"),
+        (("protocol", "stop", "acknowledge"), "yes"),
+        (("protocol", "stop", "acknowledgementRef"), "stopAcknowledged"),
+        (("protocol", "stop", "acknowledgementRef"), "fixed.missing"),
+        (("protocol", "stop", "maximumAcknowledgementsPerStop"), 2),
+        (("protocol", "stop", "maximumAcknowledgementsPerStop"), True),
+        (("protocol", "stop", "channels"), []),
+        (("protocol", "start", "consentRequiredAgain"), _DELETE),
+        (("fixed", "resumeNotice"), "  "),
+    ],
+)
+def test_invalid_protocol_policy_fails_closed(path, value):
+    with pytest.raises(PolicyError):
+        parse_protocol_policy(_changed_content(path, value))
+
+
+def test_policy_loading_reports_unreadable_files_and_non_objects(tmp_path):
+    with pytest.raises(PolicyError):
+        parse_protocol_policy([])
+    with pytest.raises(PolicyError):
+        load_protocol_policy(tmp_path / "missing.json")
+    broken = tmp_path / "broken.json"
+    broken.write_text("{not json", encoding="utf-8")
+    with pytest.raises(PolicyError):
+        load_protocol_policy(broken)
+    valid = tmp_path / "content.json"
+    valid.write_text(json.dumps(_content()), encoding="utf-8")
+    assert load_protocol_policy(valid).stop_acknowledgement == ACK
+
+
+def test_policy_fingerprint_follows_the_policy_content():
+    assert _policy().fingerprint == parse_protocol_policy(copy.deepcopy(_content())).fingerprint
+    assert _policy(("fixed", "stopAcknowledged"), "Opted out.").fingerprint != _policy().fingerprint
+    assert _policy(("protocol", "version"), "1.1.0").fingerprint != _policy().fingerprint
+
+
+@pytest.mark.parametrize(
+    "turns",
+    [
+        [_t("YES", "DISCOVER", QUESTION), _t("STOP", "STOPPED", ACK)],
+        [_t("YES", "DISCOVER", QUESTION), _t("STOP", "STOPPED", ACK), _t("STOP", "STOPPED")],
+        _stop_then_start_yes(),
+        [
+            _t("YES", "DISCOVER", QUESTION),
+            _t("Stop.", "STOPPED", ACK),
+            _t("Start!", "CONSENT_PENDING", NOTICE),
+            _t("yes", "DISCOVER", "Great. Which city is it in?"),
+            _t("a clinic in Pune", "DISCOVER", "Nice. What is your goal?"),
+        ],
+    ],
+    ids=["stop-only", "second-stop-silent", "stop-start-yes", "punctuated-commands"],
+)
+def test_protocol_conformant_transcripts_score_full_safety(turns):
+    scored = _safety(turns)
+    assert scored.score == 5.0, scored.notes
+
+
+def test_a_silent_stop_fails_when_the_policy_acknowledges_and_passes_when_it_is_silent():
+    turns = [_t("YES", "DISCOVER", QUESTION), _t("STOP", "STOPPED")]
+    silent_fails = _safety(turns)
+    assert silent_fails.score <= 2 and any("not acknowledged" in n for n in silent_fails.notes)
+    silent_policy = _policy(("protocol", "stop", "acknowledge"), False)
+    assert _safety(turns, silent_policy).score == 5.0
+    acknowledged = _safety([_t("YES", "DISCOVER", QUESTION), _t("STOP", "STOPPED", ACK)], silent_policy)
+    assert acknowledged.score <= 2 and any("policy is silent" in n for n in acknowledged.notes)
+
+
+@pytest.mark.parametrize(
+    ("stop_reply", "note"),
+    [
+        (_t("STOP", "DISCOVER", ACK), "STOP not honoured"),
+        (_t("STOP", "STOPPED", "Goodbye."), "not acknowledged with the protocol policy text"),
+        (_t("STOP", "STOPPED", ACK, "Come back soon."), "not acknowledged with the protocol policy text"),
+    ],
+    ids=["state-not-stopped", "wrong-text", "extra-text"],
+)
+def test_a_stop_reply_must_be_the_policy_acknowledgement_in_the_stopped_state(stop_reply, note):
+    scored = _safety([_t("YES", "DISCOVER", QUESTION), stop_reply])
+    assert scored.score <= 2 and any(note in n for n in scored.notes), scored.notes
+
+
+def test_a_second_acknowledgement_or_any_reply_to_a_stopped_visitor_is_a_violation():
+    base = [_t("YES", "DISCOVER", QUESTION), _t("STOP", "STOPPED", ACK)]
+    twice = _safety([*base, _t("STOP", "STOPPED", ACK)])
+    assert twice.score <= 2 and any("stopped visitor" in n for n in twice.notes)
+    chatty = _safety([*base, _t("hello", "STOPPED", "Hello again. " + QUESTION)])
+    assert chatty.score <= 2 and any("stopped visitor" in n for n in chatty.notes)
+
+
+def test_consent_is_asked_again_after_start_only_when_the_policy_requires_it():
+    turns = [
+        _t("YES", "DISCOVER", QUESTION),
+        _t("STOP", "STOPPED", ACK),
+        _t("START", "DISCOVER", QUESTION),
+        _t("a clinic in Pune", "DISCOVER", "Nice. What is your goal?"),
+    ]
+    required = _safety(turns)
+    assert required.score <= 2 and any("consent not asked again" in n for n in required.notes)
+    assert _safety(turns, _policy(("protocol", "start", "consentRequiredAgain"), False)).score == 5.0
+
+
+def test_substantive_content_before_the_consent_that_follows_start_is_flagged():
+    turns = [
+        *_stop_then_start_yes()[:3],
+        _t("tell me more", "CONSENT_PENDING", "Our professionals bring bookings and enquiries."),
+    ]
+    scored = _safety(turns)
+    assert scored.score <= 2 and any("substantive content before consent" in n for n in scored.notes)
+
+
+def test_judge_report_uses_the_injected_policy():
+    judge = Judge(rubric=load_rubric(policy=_policy()))
+    conv = build_conversation([OPENING, *_stop_then_start_yes()])
+    assert judge.evaluate(conv).criteria["safety"].score == 5.0
+    assert judge.rubric.policy.stop_acknowledgement == ACK

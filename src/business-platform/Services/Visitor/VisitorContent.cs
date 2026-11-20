@@ -1,4 +1,5 @@
 // Implements: work-contracts/WC-135-visitor-conversation-and-simulated-customers.md WC135-R005, WC135-R006
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C1-01
 // Constitutional basis: C-009, C-039, C-042, C-048, C-049, C-059, C-063
 
 using System.Text.Json;
@@ -29,6 +30,39 @@ public sealed record VisitorFixedContent(
     [property: JsonPropertyName("stopAcknowledged")] string StopAcknowledged,
     [property: JsonPropertyName("resumeNotice")] string ResumeNotice
 );
+
+public sealed record VisitorProtocolStopContent(
+    [property: JsonPropertyName("acknowledge")] bool Acknowledge,
+    [property: JsonPropertyName("acknowledgementRef")] string AcknowledgementRef,
+    [property: JsonPropertyName("maximumAcknowledgementsPerStop")]
+        int MaximumAcknowledgementsPerStop,
+    [property: JsonPropertyName("channels")] IReadOnlyList<string> Channels
+);
+
+public sealed record VisitorProtocolStartContent(
+    [property: JsonPropertyName("consentRequiredAgain")] bool ConsentRequiredAgain,
+    [property: JsonPropertyName("noticeRef")] string NoticeRef
+);
+
+/// <summary>The one protocol policy table (STOP and START) every channel renderer and the simulation judge read.</summary>
+public sealed record VisitorProtocolContent(
+    [property: JsonPropertyName("version")] string Version,
+    [property: JsonPropertyName("stop")] VisitorProtocolStopContent Stop,
+    [property: JsonPropertyName("start")] VisitorProtocolStartContent Start
+)
+{
+    public const string WhatsAppChannel = "WHATSAPP";
+
+    /// <summary>The behavior that shipped before WC-136: STOP is silent on every channel.</summary>
+    public static readonly VisitorProtocolContent Legacy = new(
+        "legacy",
+        new VisitorProtocolStopContent(false, "fixed.stopAcknowledged", 1, []),
+        new VisitorProtocolStartContent(true, "fixed.resumeNotice")
+    );
+
+    public bool AcknowledgesStopOn(string channel) =>
+        Stop.Acknowledge && Stop.Channels.Contains(channel, StringComparer.OrdinalIgnoreCase);
+}
 
 public sealed record VisitorDomain(
     [property: JsonPropertyName("code")] string Code,
@@ -100,6 +134,9 @@ public sealed record VisitorContentSet
     [JsonPropertyName("hours")]
     public VisitorHoursContent Hours { get; init; } = new("Asia/Kolkata", "09:00", "21:00");
 
+    [JsonPropertyName("protocol")]
+    public VisitorProtocolContent Protocol { get; init; } = null!;
+
     [JsonPropertyName("consent")]
     public VisitorConsentContent Consent { get; init; } = null!;
 
@@ -129,6 +166,19 @@ public sealed record VisitorContentSet
     public VisitorDomain DomainOrOther(string? code) =>
         Discover.Domains.FirstOrDefault(domain => domain.Code == code)
         ?? Discover.Domains.First(domain => domain.Code == "generic");
+
+    /// <summary>Resolves a protocol policy reference of the form <c>fixed.{name}</c>; null when it does not resolve.</summary>
+    public string? ResolveFixed(string? reference) =>
+        Fixed is null
+            ? null
+            : reference switch
+            {
+                "fixed.closedNotice" => Fixed.ClosedNotice,
+                "fixed.unsupportedContent" => Fixed.UnsupportedContent,
+                "fixed.stopAcknowledged" => Fixed.StopAcknowledged,
+                "fixed.resumeNotice" => Fixed.ResumeNotice,
+                _ => null,
+            };
 
     public static VisitorContentSet Parse(string json) =>
         JsonSerializer.Deserialize<VisitorContentSet>(json, VisitorJson.Options)
@@ -166,6 +216,28 @@ public static partial class VisitorContentValidator
             return [.. problems, "SECTION_MISSING"];
         if (content.Handoff is null || content.Misc is null)
             return [.. problems, "SECTION_MISSING"];
+        if (content.Protocol?.Stop is null || content.Protocol.Start is null)
+            return [.. problems, "PROTOCOL_MISSING"];
+
+        Require(content.Protocol.Version, "PROTOCOL_VERSION");
+        if (
+            string.IsNullOrWhiteSpace(
+                content.ResolveFixed(content.Protocol.Stop.AcknowledgementRef)
+            )
+        )
+            problems.Add("PROTOCOL_STOP_ACKNOWLEDGEMENT_UNRESOLVED");
+        if (content.Protocol.Stop.MaximumAcknowledgementsPerStop != 1)
+            problems.Add("PROTOCOL_STOP_MAXIMUM_INVALID");
+        if (
+            content.Protocol.Stop.Channels is null
+            || content.Protocol.Stop.Channels.Count == 0
+            || content.Protocol.Stop.Channels.Any(string.IsNullOrWhiteSpace)
+        )
+            problems.Add("PROTOCOL_STOP_CHANNELS_EMPTY");
+        if (string.IsNullOrWhiteSpace(content.ResolveFixed(content.Protocol.Start.NoticeRef)))
+            problems.Add("PROTOCOL_START_NOTICE_UNRESOLVED");
+        if (!content.Protocol.Start.ConsentRequiredAgain)
+            problems.Add("PROTOCOL_START_CONSENT_REQUIRED");
 
         Require(content.Consent.Notice, "CONSENT_NOTICE");
         Require(content.Consent.NoticeVersion, "CONSENT_NOTICE_VERSION");

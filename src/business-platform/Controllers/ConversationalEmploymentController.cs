@@ -1,6 +1,7 @@
 // Implements: architecture/reference/components/conversational-employment-solution-contract.md §4.1 BP public candidate operations
 // Constitutional basis: C-001, C-005, C-023, C-026, C-059, C-063, C-079, ADR-051
 // IB: N/A - Founder-assigned WC-115
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C6-07
 
 using System.Security.Claims;
 using System.Text.Json;
@@ -14,6 +15,7 @@ namespace Waooaw.BusinessPlatform.Controllers;
 [ApiController]
 [Authorize]
 [CustomerIdentityRoute(requiresMembership: true)]
+[WorkbenchSuccessorHeaders]
 [Route("api/v1/employment/relationships/{relationshipId:guid}/workspace/employment")]
 public sealed class ConversationalEmploymentController(
     EmploymentRelationshipService relationships,

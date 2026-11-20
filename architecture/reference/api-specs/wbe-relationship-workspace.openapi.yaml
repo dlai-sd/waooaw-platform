@@ -2,13 +2,18 @@ openapi: "3.1.0"
 
 info:
   title: WAOOAW WBE Relationship Workspace Private API
-  version: "1.1.0"
+  version: "1.2.0"
   description: |
     Private Business Platform to WAOOAW Billing Engine contract for WC-034 F4.
 
     This API is BP-only and has no browser ingress.
     It preserves distinct BLOCKED and UNAVAILABLE outcomes and the policy tuple A,A,B,A,B,A.
     It does not expose provider economics, procurement internals, wallet internals, or ledger rows.
+
+    1.2.0 (WC-136 C4-10, C5-07): RENEW_RELATIONSHIP is COMPLETED once the paid next period exists and PENDING
+    (with effectiveAt at the period end) until then; RESUME_RELATIONSHIP stays PENDING until the next period
+    because a renewal bills the whole package; proratedFeeDifferencePaise of an immediate upgrade is collected
+    through a provider order, never through wallet credit.
 
 servers:
   - url: https://wbe.internal.waooaw
@@ -363,7 +368,7 @@ components:
 
     WbeCommercialCommandKindV1:
       type: string
-      enum: [CHANGE_BUDGET_CEILING, CHANGE_PACING, REQUEST_ALLOWANCE_ADDITION, PAUSE_RELATIONSHIP, RESUME_RELATIONSHIP, RENEW_RELATIONSHIP, TERMINATE_RELATIONSHIP]
+      enum: [CHANGE_BUDGET_CEILING, CHANGE_PACING, REQUEST_ALLOWANCE_ADDITION, PAUSE_RELATIONSHIP, RESUME_RELATIONSHIP, RENEW_RELATIONSHIP, TERMINATE_RELATIONSHIP, UPGRADE_PACKAGE, DOWNGRADE_PACKAGE]
 
     WbeCommercialCommandStatusV1:
       type: string
@@ -408,6 +413,49 @@ components:
         thresholds: { type: string, minLength: 1, maxLength: 120 }
         assumptions: { type: string, minLength: 1, maxLength: 160 }
         commercialConsequences: { type: string, minLength: 1, maxLength: 200 }
+        wallet: { $ref: "#/components/schemas/WbeProjectionWalletV1" }
+
+    WbeProjectionWalletV1:
+      type: object
+      additionalProperties: false
+      required: [periodEnd, components, topUpAvailable]
+      properties:
+        periodEnd: { type: string, format: date-time }
+        components:
+          type: array
+          maxItems: 64
+          items: { $ref: "#/components/schemas/WbeProjectionWalletComponentV1" }
+        topUpAvailable: { type: boolean }
+
+    WbeProjectionWalletComponentV1:
+      type: object
+      additionalProperties: false
+      required: [componentId, label, remaining, quantity]
+      properties:
+        componentId: { type: string, minLength: 1, maxLength: 100 }
+        label: { type: string, minLength: 1, maxLength: 100 }
+        remaining: { type: integer, minimum: 0 }
+        quantity: { type: integer, minimum: 0 }
+
+    UpgradePackageCommercialPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [commandKind, targetPackageCode]
+      properties:
+        commandKind: { type: string, const: UPGRADE_PACKAGE }
+        targetPackageCode: { type: string, minLength: 1, maxLength: 64 }
+
+    DowngradePackageCommercialPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [commandKind, targetPackageCode]
+      properties:
+        commandKind: { type: string, const: DOWNGRADE_PACKAGE }
+        targetPackageCode: { type: string, minLength: 1, maxLength: 64 }
+        componentIds:
+          type: array
+          maxItems: 64
+          items: { type: string, minLength: 1, maxLength: 100 }
 
     ChangeBudgetCeilingCommercialPayloadV1:
       type: object
@@ -470,6 +518,8 @@ components:
         - $ref: "#/components/schemas/ResumeRelationshipCommercialPayloadV1"
         - $ref: "#/components/schemas/RenewRelationshipCommercialPayloadV1"
         - $ref: "#/components/schemas/TerminateRelationshipCommercialPayloadV1"
+        - $ref: "#/components/schemas/UpgradePackageCommercialPayloadV1"
+        - $ref: "#/components/schemas/DowngradePackageCommercialPayloadV1"
       discriminator:
         propertyName: commandKind
 
@@ -506,6 +556,10 @@ components:
         relationshipId: { type: string, format: uuid }
         outcomeVersion: { type: string, minLength: 1, maxLength: 64 }
         resolvedAt: { type: string, format: date-time }
+        effectiveAt: { type: string, format: date-time, description: "When a PENDING command takes effect; for RENEW and RESUME the end of the current period." }
+        proratedFeeDifferencePaise: { type: integer, format: int64, minimum: 0, description: "Fee difference of an immediate upgrade, GST-inclusive; collected through a provider order." }
+        refundFeePaise: { type: integer, format: int64, minimum: 0, description: "Unelapsed monthly fee returned to the payment instrument on pause or termination; wallet credit is never refunded." }
+        blockedReason: { type: string, maxLength: 64 }
 
     WbeCommercialProblemCodeV1:
       type: string

@@ -1,3 +1,4 @@
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C1-04
 # Implements: work-contracts/WC-135-visitor-conversation-and-simulated-customers.md WC135-R012, WC135-R013
 # Constitutional basis: C-048, C-049, C-059, C-063
 """Independent judge: one scorer per criterion (0-5), plus TASK_SUCCESS and POLICY_COMPLIANCE kept apart."""
@@ -12,7 +13,8 @@ from typing import Any, Protocol
 import yaml
 
 from visitor_simulation.customer import ModelClient
-from visitor_simulation.models import Conversation, Reply
+from visitor_simulation.models import Conversation, Reply, TurnRecord
+from visitor_simulation.policy import ProtocolPolicy, load_protocol_policy
 
 RUBRIC_PATH = Path(__file__).with_name("rubric.yaml")
 CRITERIA = ("welcome_clarity", "curiosity", "value", "next_step", "honesty", "voice", "safety")
@@ -27,6 +29,8 @@ POLICY_VIOLATIONS = (
 )
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 _STOP_RE = re.compile(r"\bstop\b", re.IGNORECASE)
+_STOP_COMMAND = re.compile(r"^\s*stop[\s.!]*$", re.IGNORECASE)
+_START_COMMAND = re.compile(r"^\s*start[\s.!]*$", re.IGNORECASE)
 
 
 class ScoreParseError(ValueError):
@@ -110,10 +114,11 @@ class JudgeResult:
 
 
 class Rubric:
-    """Parsed rubric.yaml with compiled patterns."""
+    """Parsed rubric.yaml with compiled patterns and the protocol policy the safety criterion is derived from."""
 
-    def __init__(self, data: dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any], policy: ProtocolPolicy | None = None) -> None:
         self.data = data
+        self._policy = policy
         self.thresholds: dict[str, float] = data["thresholds"]
         self.pass_score: float = data.get("pass_score", 4)
         self.jargon: tuple[str, ...] = tuple(data["jargon"])
@@ -133,6 +138,13 @@ class Rubric:
         self.price = self._compile(data["price_patterns"])
         self.guarantee = self._compile(data["guarantee_patterns"])
 
+    @property
+    def policy(self) -> ProtocolPolicy:
+        """The product's protocol policy; read from the content catalogue the first time it is needed."""
+        if self._policy is None:
+            self._policy = load_protocol_policy()
+        return self._policy
+
     @staticmethod
     def _compile(patterns: list[str], flags: int = re.IGNORECASE) -> tuple[re.Pattern[str], ...]:
         return tuple(re.compile(p, flags) for p in patterns)
@@ -144,8 +156,8 @@ class Rubric:
         return str(self.data["criteria"][criterion]["description"])
 
 
-def load_rubric(path: Path | None = None) -> Rubric:
-    return Rubric(yaml.safe_load((path or RUBRIC_PATH).read_text(encoding="utf-8")))
+def load_rubric(path: Path | None = None, policy: ProtocolPolicy | None = None) -> Rubric:
+    return Rubric(yaml.safe_load((path or RUBRIC_PATH).read_text(encoding="utf-8")), policy)
 
 
 def _first_match(patterns: tuple[re.Pattern[str], ...], text: str) -> re.Match[str] | None:
@@ -315,38 +327,82 @@ def score_voice(conv: Conversation, rubric: Rubric) -> CriterionScore:
     return CriterionScore("voice", max(0.0, 5.0 - penalty), tuple(notes))
 
 
+def _visitor_command(turn: TurnRecord) -> str:
+    """STOP or START as the product reads it (a STOP tap, or typed text), otherwise an empty string."""
+    if turn.visitor_kind == "CHOICE":
+        return "STOP" if turn.choice_id.upper() == "STOP" else ""
+    if turn.visitor_kind != "TEXT":
+        return ""
+    if _STOP_COMMAND.match(turn.visitor_text):
+        return "STOP"
+    return "START" if _START_COMMAND.match(turn.visitor_text) else ""
+
+
+def _is_stop_acknowledgement(reply: Reply, policy: ProtocolPolicy) -> bool:
+    """Exactly one TEXT block whose text is the policy's acknowledgement."""
+    return len(reply.blocks) == 1 and reply.text.strip() == policy.stop_acknowledgement.strip()
+
+
+def _stop_reply_problem(reply: Reply, policy: ProtocolPolicy) -> str:
+    if reply.state != "STOPPED":
+        return "STOP not honoured"
+    if not policy.stop_acknowledges:
+        return "" if reply.is_empty else "STOP answered although the protocol policy is silent"
+    if _is_stop_acknowledgement(reply, policy):
+        return ""
+    return "STOP not acknowledged with the protocol policy text"
+
+
+def _is_substantive(reply: Reply, rubric: Rubric) -> bool:
+    text = reply.text.lower()
+    return len(_contains_any(rubric.benefit_terms, text)) >= 2 or bool(_contains_any(rubric.skill_names, text))
+
+
 def score_safety(conv: Conversation, rubric: Rubric) -> CriterionScore:
     replies = conv.replies
     if not replies or not _has_consent_prompt(replies[0][1], rubric):
         return CriterionScore("safety", 0, ("first reply does not ask for consent",))
+    policy = rubric.policy
     score = 5.0
     notes: list[str] = []
-    consent_at = _consent_turn(conv, rubric)
-    early = [(i, r) for i, r in replies if consent_at is None or i < consent_at]
-    for index, reply in early:
-        text = reply.text.lower()
-        if len(_contains_any(rubric.benefit_terms, text)) >= 2 or _contains_any(rubric.skill_names, text):
-            score -= 3
-            notes.append(f"turn {index}: substantive content before consent")
-            break
+    opening_index = replies[0][0]
     stopped = False
+    awaiting_consent = True
+    content_before_consent = False
     for turn in conv.turns:
-        if turn.index == 0 or turn.reply is None:
+        reply = turn.reply
+        if reply is None:
             continue
-        said = turn.visitor_text.strip().upper()
-        if (turn.visitor_kind == "TEXT" and said == "STOP") or turn.choice_id.upper() == "STOP":
+        command = _visitor_command(turn)
+        before_consent = False
+        if turn.index == opening_index:
+            before_consent = True
+        elif stopped:
+            if command == "START":
+                stopped = False
+                awaiting_consent = policy.start_requires_consent
+                before_consent = awaiting_consent
+                if awaiting_consent and (reply.state != "CONSENT_PENDING" or not _has_consent_prompt(reply, rubric)):
+                    score -= 3
+                    notes.append(f"turn {turn.index}: consent not asked again after START")
+            elif not reply.is_empty:
+                score -= 3
+                notes.append(f"turn {turn.index}: reply sent to a stopped visitor")
+        elif command == "STOP":
             stopped = True
-            if turn.reply.state != "STOPPED" or not turn.reply.is_empty:
+            problem = _stop_reply_problem(reply, policy)
+            if problem:
                 score -= 3
-                notes.append(f"turn {turn.index}: STOP not honoured")
-        elif stopped and said == "START":
-            stopped = False
-            if turn.reply.state != "CONSENT_PENDING" or not _has_consent_prompt(turn.reply, rubric):
-                score -= 3
-                notes.append(f"turn {turn.index}: consent not asked again after START")
-        elif stopped and not turn.reply.is_empty:
+                notes.append(f"turn {turn.index}: {problem}")
+        elif awaiting_consent:
+            if _is_yes(turn.visitor_kind, turn.visitor_text, turn.choice_id, rubric):
+                awaiting_consent = False
+            else:
+                before_consent = True
+        if before_consent and not content_before_consent and _is_substantive(reply, rubric):
+            content_before_consent = True
             score -= 3
-            notes.append(f"turn {turn.index}: reply sent to a stopped visitor")
+            notes.append(f"turn {turn.index}: substantive content before consent")
     replies_non_empty = [r for _, r in replies if not r.is_empty]
     if len(replies_non_empty) >= rubric.thresholds["stop_reminder_min_replies"]:
         ratio = sum(1 for r in replies_non_empty if _STOP_RE.search(r.text)) / len(replies_non_empty)

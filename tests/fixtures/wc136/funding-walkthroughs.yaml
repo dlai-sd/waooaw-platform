@@ -1,0 +1,62 @@
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C7-01, C7-02
+# Constitutional basis: C-059, C-063
+#
+# Traceability from the architecture's funding walk-throughs (6.10.1), second-round scenarios S1-S14 and administrator
+# journeys A1-A13 (6.11) to the scenario ids of the two packs run by the simulated-customer harness
+# (scripts/visitor_simulation/funding_scenarios.yaml and pricing_scenarios.yaml). tests/visitor_simulation verifies that
+# every reference below resolves to a scenario in its pack and that every scenario of both packs is claimed here.
+schemaVersion: "1.0"
+coverage:
+  - {ref: "walk-through 1", kind: WALKTHROUGH, funding: [WT01-anonymous-visitor-acquisition]}
+  - {ref: "walk-through 2", kind: WALKTHROUGH, funding: [WT02-web-handoff-pseudonymous-lead]}
+  - {ref: "walk-through 3", kind: WALKTHROUGH, funding: [WT03-trial-funding]}
+  - {ref: "walk-through 4", kind: WALKTHROUGH, funding: [WT04-convert-trial-lapses-leftovers]}
+  - {ref: "walk-through 5", kind: WALKTHROUGH, funding: [WT05-hired-customer-presales-on-another-agent]}
+  - {ref: "walk-through 6", kind: WALKTHROUGH, funding: [WT06-switch-request-spends-nothing]}
+  - ref: "walk-through 7"
+    kind: WALKTHROUGH
+    funding: [WT07a-trial-component-limit, WT07b-hired-component-limit, WT07c-wallet-85-percent-and-empty]
+  - {ref: "walk-through 8", kind: WALKTHROUGH, funding: [WT08-emergency-stop-at-zero-wallet]}
+  - {ref: "walk-through 9", kind: WALKTHROUGH, funding: [WT09-separate-balances-per-relationship]}
+  - {ref: "walk-through 10", kind: WALKTHROUGH, funding: [WT10-pause-skill-pro-rata]}
+  - {ref: "walk-through 11", kind: WALKTHROUGH, funding: [WT11a-flood-absorbed-per-tenant, WT11b-flood-environment-breaker]}
+  - {ref: "walk-through 12", kind: WALKTHROUGH, funding: [WT12-timeout-pins-reservation-to-trial]}
+
+  - {ref: "S1", kind: SECOND_ROUND, funding: [S01-beneficiary-never-sees-money]}
+  - {ref: "S2", kind: SECOND_ROUND, funding: [S02-emergency-alert-on-floor-and-voice-unavailable]}
+  - {ref: "S3", kind: SECOND_ROUND, funding: [S03-time-access-session-creates-no-reservation]}
+  - {ref: "S4", kind: SECOND_ROUND, pricing: [A02-provider-rate-change-and-live-margin]}
+  - {ref: "S5", kind: SECOND_ROUND, pricing: [A06-second-confirmation-guards]}
+  - {ref: "S6", kind: SECOND_ROUND, funding: [S06a-simulated-traffic-never-spends-acquisition, S06b-simulation-budget-is-bounded]}
+  - {ref: "S7", kind: SECOND_ROUND, funding: [WT11a-flood-absorbed-per-tenant, WT11b-flood-environment-breaker]}
+  - {ref: "S8", kind: SECOND_ROUND, funding: [S08-trial-claimed-once-per-identity-and-version]}
+  - {ref: "S9", kind: SECOND_ROUND, funding: [S09-goodwill-is-coupon-only]}
+  - {ref: "S10", kind: SECOND_ROUND, funding: [S10-telemetry-carries-references-only]}
+  - {ref: "S11", kind: SECOND_ROUND, funding: [S11-failed-connection-consumes-no-slot]}
+  - {ref: "S12", kind: SECOND_ROUND, funding: [WT02-web-handoff-pseudonymous-lead]}
+  - {ref: "S13", kind: SECOND_ROUND, pricing: [A05-founder-authorizes-with-step-up]}
+  - {ref: "S14", kind: SECOND_ROUND, pricing: [A07-ceiling-lower-safety-direction]}
+
+  - {ref: "A1", kind: ADMIN_JOURNEY, pricing: [A01-admin-role-gate]}
+  - ref: "A2"
+    kind: ADMIN_JOURNEY
+    pricing: [A02-provider-rate-change-and-live-margin, A05-illegal-transitions, A06-scheduled-effective-date]
+  - {ref: "A3", kind: ADMIN_JOURNEY, pricing: [A03-below-floor-refusal]}
+  - {ref: "A4", kind: ADMIN_JOURNEY, pricing: [A04-simulate-margin-and-profiles]}
+  - {ref: "A5", kind: ADMIN_JOURNEY, pricing: [A05-founder-authorizes-with-step-up, A05-illegal-transitions]}
+  - ref: "A6"
+    kind: ADMIN_JOURNEY
+    pricing: [A06-price-change-existing-customer-pinned, A06-scheduled-effective-date, A06-second-confirmation-guards]
+  - {ref: "A7", kind: ADMIN_JOURNEY, pricing: [A07-ceiling-raise, A07-ceiling-lower-safety-direction]}
+  - {ref: "A8", kind: ADMIN_JOURNEY, pricing: [A08-trial-grant-disable, A08-close-package-to-new-customers]}
+  - {ref: "A9", kind: ADMIN_JOURNEY, pricing: [A09-export-and-reimport-as-drafts]}
+  - {ref: "A10", kind: ADMIN_JOURNEY, pricing: [A02-provider-rate-change-and-live-margin]}
+  - {ref: "A11", kind: ADMIN_JOURNEY, funding: [FC01-wbe-unavailable-fails-closed-to-free-path]}
+  - {ref: "A12", kind: ADMIN_JOURNEY, pricing: [A12-charge-reproducible-from-pinned-version]}
+  - {ref: "A13", kind: ADMIN_JOURNEY, funding: [S10-telemetry-carries-references-only]}
+
+  - {ref: "C4-06 setup grant", kind: CONTRACT, funding: [SG01-setup-grant-exhaustion-on-hire, SG02-setup-grant-exhaustion-in-trial]}
+  - {ref: "C4-12 proactive allowance", kind: CONTRACT, funding: [PA01-proactive-message-allowance-of-30, PA02-trial-has-no-proactive-allowance]}
+  - {ref: "C5-01 pricing versions", kind: CONTRACT, funding: [PR01-pricing-version-cutover]}
+  - {ref: "C3-05 fail closed", kind: CONTRACT, funding: [FC01-wbe-unavailable-fails-closed-to-free-path, FC02-expired-trial-fails-closed]}
+  - {ref: "protocol STOP and START", kind: CONTRACT, funding: [ST01-stop-is-acknowledged-once-and-resumes-on-start]}

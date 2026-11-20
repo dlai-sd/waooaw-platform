@@ -1,8 +1,9 @@
 """Generic conversational-employment semantics for every admitted adapter."""
 
 # Implements: architecture/reference/components/conversational-employment-solution-contract.md §4.5 Domain-adapter operations
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C2-01
 # Constitutional basis: C-023, C-035, C-059, C-063, C-079, ADR-051
-# IB: N/A - Founder-assigned WC-115
+# IB: N/A - Founder-assigned WC-115, WC-136
 
 from __future__ import annotations
 
@@ -10,7 +11,7 @@ from datetime import datetime
 from typing import Literal, Protocol
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class EmploymentModel(BaseModel):
@@ -73,6 +74,135 @@ class ConformanceScenario(EmploymentModel):
     limitation_refs: tuple[str, ...] = ()
 
 
+ExperienceBlockType = Literal["TEXT", "CHOICES", "LIST", "LINK", "STATUS", "METRIC", "PLAN", "DECISION", "FORM", "EVIDENCE", "DOMAIN"]
+
+
+class ExperienceMeasure(EmploymentModel):
+    measure_id: str = Field(min_length=1, max_length=160)
+    unit: str = Field(min_length=1, max_length=160)
+    evidence_source: str = Field(min_length=1, max_length=160)
+    freshness_seconds: int = Field(ge=1)
+
+
+class ExperienceGoalType(EmploymentModel):
+    goal_type_id: str = Field(min_length=1, max_length=160)
+    parameters: tuple[str, ...]
+    measures: tuple[ExperienceMeasure, ...] = Field(min_length=1)
+    constraints: tuple[str, ...]
+    starters: tuple[str, ...]
+
+
+class ExperiencePlan(EmploymentModel):
+    milestone_types: tuple[str, ...] = Field(min_length=1)
+    calendar_windows: tuple[str, ...]
+
+
+class ExperienceCadence(EmploymentModel):
+    skill_id: str = Field(min_length=1, max_length=160)
+    trigger: str = Field(min_length=1, max_length=160)
+    window: str = Field(min_length=1, max_length=160)
+
+
+class ExperienceApprovalMode(EmploymentModel):
+    mode: str = Field(min_length=1, max_length=160)
+    escalation: str = Field(min_length=1, max_length=160)
+
+
+class ExperienceOperate(EmploymentModel):
+    work_item_types: tuple[str, ...] = Field(min_length=1)
+    cadence: tuple[ExperienceCadence, ...] = Field(min_length=1)
+    approval_modes: tuple[ExperienceApprovalMode, ...] = Field(min_length=1)
+
+
+class ExperienceTile(EmploymentModel):
+    tile_id: str = Field(min_length=1, max_length=160)
+    measure_id: str = Field(min_length=1, max_length=160)
+    block_type: Literal["STATUS", "METRIC", "PLAN", "DECISION", "EVIDENCE", "DOMAIN"]
+    audiences: tuple[Literal["customer_owner", "delegate", "beneficiary", "steward"], ...] = Field(min_length=1)
+
+
+class ExperienceNarrative(EmploymentModel):
+    narrative_id: str = Field(min_length=1, max_length=160)
+    cadence: str = Field(min_length=1, max_length=160)
+    channels: tuple[str, ...] = Field(min_length=1)
+    structure: tuple[str, ...] = Field(min_length=1)
+
+
+class ExperienceAlert(EmploymentModel):
+    signal: str = Field(min_length=1, max_length=160)
+    threshold: str = Field(min_length=1, max_length=160)
+    severity: Literal["INFO", "WARNING", "CRITICAL"]
+    channels: tuple[str, ...] = Field(min_length=1)
+
+
+class ExperienceMonitor(EmploymentModel):
+    tiles: tuple[ExperienceTile, ...] = Field(min_length=1)
+    narratives: tuple[ExperienceNarrative, ...]
+    alerts: tuple[ExperienceAlert, ...]
+
+
+class ExperienceDomainBlock(EmploymentModel):
+    block_id: str = Field(min_length=1, max_length=160)
+    version: int = Field(ge=1)
+    fallback_blocks: tuple[Literal["TEXT", "CHOICES", "LIST", "LINK"], ...] = Field(min_length=1)
+
+
+class ExperienceSelectableDimension(EmploymentModel):
+    kind: str = Field(min_length=1, max_length=160)
+    maximum: int = Field(ge=1)
+
+
+class ExperienceComponent(EmploymentModel):
+    component_id: str = Field(min_length=1, max_length=160)
+    label: str = Field(min_length=1, max_length=240)
+    unit: str = Field(min_length=1, max_length=160)
+    kind: Literal["COUNTED", "SELECTED", "TIME_ACCESS", "CAPACITY"]
+    skill_id: str | None = Field(default=None, min_length=1, max_length=160)
+    counted_on: str = Field(min_length=1, max_length=160)
+    selectable_dimension: ExperienceSelectableDimension | None = None
+    availability: Literal["AVAILABLE", "DEFAULT_OFF", "UNAVAILABLE"]
+    activation_authority: str | None = Field(default=None, min_length=1, max_length=160)
+
+    @model_validator(mode="after")
+    def _selected_components_declare_their_dimension(self) -> ExperienceComponent:
+        if self.kind == "SELECTED" and self.selectable_dimension is None:
+            raise ValueError("a SELECTED component must declare its selectable dimension")
+        return self
+
+
+class ExperienceChannelSupport(EmploymentModel):
+    web: tuple[ExperienceBlockType, ...]
+    whatsapp: tuple[ExperienceBlockType, ...]
+    mobile: tuple[ExperienceBlockType, ...]
+
+
+class ExperienceManifest(EmploymentModel):
+    contract_version: str = Field(min_length=1, max_length=64)
+    vocabulary_ref: ImmutableContractReference
+    component_catalogue_ref: ImmutableContractReference | None = None
+    goal_types: tuple[ExperienceGoalType, ...] = Field(min_length=1)
+    plan: ExperiencePlan
+    operate: ExperienceOperate
+    monitor: ExperienceMonitor
+    domain_blocks: tuple[ExperienceDomainBlock, ...]
+    components: tuple[ExperienceComponent, ...]
+    audiences: tuple[Literal["customer_owner", "delegate", "beneficiary", "steward"], ...] = Field(min_length=1)
+    modalities: tuple[Literal["text", "voice"], ...] = Field(min_length=1)
+    channel_support: ExperienceChannelSupport
+    conformance_scenarios: tuple[str, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _components_are_unique_and_bound_to_declared_skills(self) -> ExperienceManifest:
+        component_ids = [component.component_id for component in self.components]
+        if len(component_ids) != len(set(component_ids)):
+            raise ValueError("component ids must be unique")
+        operated_skills = {entry.skill_id for entry in self.operate.cadence}
+        for component in self.components:
+            if component.skill_id is not None and component.skill_id not in operated_skills:
+                raise ValueError(f"component {component.component_id} references a skill that is not operated")
+        return self
+
+
 class EmploymentInterfaceManifest(EmploymentModel):
     schema_version: Literal["1.0"] = "1.0"
     protocol_version: Literal["1.0-candidate"] = "1.0-candidate"
@@ -83,6 +213,7 @@ class EmploymentInterfaceManifest(EmploymentModel):
     induction: InductionManifest
     planning: PlanningManifest
     operations: OperationsManifest
+    experience: ExperienceManifest | None = None
     conformance_scenarios: tuple[ConformanceScenario, ...] = Field(min_length=1)
 
 

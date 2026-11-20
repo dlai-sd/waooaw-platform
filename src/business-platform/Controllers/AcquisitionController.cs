@@ -1,4 +1,5 @@
 // Implements: WC-096 §4.3 Marketplace And Disclosure
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-04
 // Constitutional basis: C-005, C-023, C-026, C-049, C-059, C-063
 
 using System.Security.Claims;
@@ -288,7 +289,8 @@ public sealed class AcquisitionController(
                         acquisitionIntent.PlannedAgentInstanceId.Value,
                         lifecycleCorrelationId,
                         acquisitionEvidence,
-                        cancellationToken
+                        cancellationToken,
+                        TrialIdentityHash.FromClaims(User)
                     )
                 ).Admission;
             }

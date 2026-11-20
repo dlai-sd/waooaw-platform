@@ -225,8 +225,8 @@ Assert: credit fires only once per referral pair (idempotent)
 |---|---|---|
 | `WalletService.activate_subscription(mode=TRIAL)` | Internal import | billing-engine/wallet |
 | `BundleEngine.cost_floor()` | Internal import | billing-engine/markup |
-| `Redis customer_mode key` | Shared state | Redis — key: `wbe:customer:{customer_id}:mode` |
-| `LlmTier.LOCAL` | Cross-service | ai-runtime/pse/router.py — reads Redis key |
+| `Redis customer_mode key` | Superseded (WC-136 C3-02) | Removed; trial status is the per-relationship PostgreSQL row (`trial_allocations`) |
+| `LlmTier.LOCAL` | Cross-service | ai-runtime/pse/router.py — forced by the WBE-validated `trial_entitled` flag |
 | Temporal workflow | Orchestration | ai-runtime/temporal — trial-expiry saga |
 | Razorpay payment | BP → WBE | billing-engine integrates with BP payment at conversion |
 | 360dialog WhatsApp | Alert | trial-expiry notification via WhatsAppNotifier |
@@ -238,6 +238,13 @@ Assert: credit fires only once per referral pair (idempotent)
 The PSE (Provider Selection Engine) in AIR routes LLM calls by `customer_tier`.
 For TRIAL customers, it must intercept this routing and force `LlmTier.LOCAL` regardless
 of the customer's configured tier.
+
+> **Superseded by WC-136 C3-02.** The customer-level Redis key `wbe:customer:{customer_id}:mode`
+> described below no longer exists: a trial for one agent could change the routing of every other
+> agent of the same customer. `TrialService` no longer takes a Redis client, and `pse/router.py`
+> never consults Redis. LOCAL is forced only when the caller passes the WBE-validated, per-relationship
+> `trial_entitled` flag (derived from `relationship_commercial_authorities.authority_kind = 'TRIAL'`).
+> The pattern below is retained as historical design only.
 
 **Implementation pattern (additive — do not restructure pse/router.py):**
 ```python

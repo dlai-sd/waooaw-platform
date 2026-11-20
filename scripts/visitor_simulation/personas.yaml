@@ -1,10 +1,14 @@
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C1-05
 # Implements: work-contracts/WC-135-visitor-conversation-and-simulated-customers.md WC135-R012, WC135-R013
 # Constitutional basis: C-048, C-049, C-059, C-063
 # All people, businesses and places below are fabricated. Every persona knows nothing about WAOOAW.
 # "modes" are variants of the same persona, not extra personas: skeptic asks "Is this just ChatGPT?"
 # before consenting; overwhelmed withholds details until asked twice, has less patience and sends
 # STOP when it gives up.
+# "reliability.k" is the default number of independent runs per seed for pass^k (a seed passes only when all k succeed).
 schema_version: 1
+reliability:
+  k: 3
 personas:
   - id: dr_mehta
     display_name: Dr. Mehta

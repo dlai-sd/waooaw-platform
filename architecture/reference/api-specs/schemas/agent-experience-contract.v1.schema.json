@@ -1,0 +1,481 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://waooaw.example/schemas/agent-experience-contract.v1.schema.json",
+  "title": "Agent Experience Contract v1",
+  "description": "Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C2-01. Constitutional basis: C-059, C-063, ADR-051. The experience block of an agent employment interface manifest. Every domain agent declares its goals, plan, operation, monitoring, domain blocks, spend components, audiences, modalities and channel support through this contract; the platform never reads agent-specific fields outside it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "vocabularyRef",
+    "goalTypes",
+    "plan",
+    "operate",
+    "monitor",
+    "domainBlocks",
+    "components",
+    "audiences",
+    "modalities",
+    "channelSupport",
+    "conformanceScenarios"
+  ],
+  "properties": {
+    "contractVersion": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "vocabularyRef": {
+      "$ref": "#/$defs/ImmutableContractReference"
+    },
+    "componentCatalogueRef": {
+      "$ref": "#/$defs/ImmutableContractReference"
+    },
+    "goalTypes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/GoalType"
+      }
+    },
+    "plan": {
+      "$ref": "#/$defs/PlanDeclaration"
+    },
+    "operate": {
+      "$ref": "#/$defs/OperateDeclaration"
+    },
+    "monitor": {
+      "$ref": "#/$defs/MonitorDeclaration"
+    },
+    "domainBlocks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/DomainBlockDeclaration"
+      }
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Component"
+      }
+    },
+    "audiences": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/Audience"
+      }
+    },
+    "modalities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/Modality"
+      }
+    },
+    "channelSupport": {
+      "$ref": "#/$defs/ChannelSupport"
+    },
+    "conformanceScenarios": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/Identifier"
+      }
+    }
+  },
+  "$defs": {
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "Audience": {
+      "type": "string",
+      "enum": ["customer_owner", "delegate", "beneficiary", "steward"]
+    },
+    "Modality": {
+      "type": "string",
+      "enum": ["text", "voice"]
+    },
+    "Channel": {
+      "type": "string",
+      "enum": ["web", "whatsapp", "mobile"]
+    },
+    "ImmutableContractReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contractRef", "contractVersion", "contractDigest"],
+      "properties": {
+        "contractRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "contractVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "contractDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "Measure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["measureId", "unit", "evidenceSource", "freshnessSeconds"],
+      "properties": {
+        "measureId": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "unit": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "evidenceSource": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "freshnessSeconds": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "GoalType": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["goalTypeId", "parameters", "measures", "constraints", "starters"],
+      "properties": {
+        "goalTypeId": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "parameters": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "measures": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Measure"
+          }
+        },
+        "constraints": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "starters": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        }
+      }
+    },
+    "PlanDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["milestoneTypes", "calendarWindows"],
+      "properties": {
+        "milestoneTypes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "calendarWindows": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        }
+      }
+    },
+    "CadenceEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["skillId", "trigger", "window"],
+      "properties": {
+        "skillId": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "trigger": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "window": {
+          "$ref": "#/$defs/Identifier"
+        }
+      }
+    },
+    "ApprovalMode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "escalation"],
+      "properties": {
+        "mode": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "escalation": {
+          "$ref": "#/$defs/Identifier"
+        }
+      }
+    },
+    "OperateDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workItemTypes", "cadence", "approvalModes"],
+      "properties": {
+        "workItemTypes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "cadence": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/CadenceEntry"
+          }
+        },
+        "approvalModes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/ApprovalMode"
+          }
+        }
+      }
+    },
+    "Tile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tileId", "measureId", "blockType", "audiences"],
+      "properties": {
+        "tileId": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "measureId": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "blockType": {
+          "type": "string",
+          "enum": ["STATUS", "METRIC", "PLAN", "DECISION", "EVIDENCE", "DOMAIN"]
+        },
+        "audiences": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Audience"
+          }
+        }
+      }
+    },
+    "Narrative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["narrativeId", "cadence", "channels", "structure"],
+      "properties": {
+        "narrativeId": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "cadence": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "channels": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "structure": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        }
+      }
+    },
+    "AlertDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signal", "threshold", "severity", "channels"],
+      "properties": {
+        "signal": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "threshold": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["INFO", "WARNING", "CRITICAL"]
+        },
+        "channels": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        }
+      }
+    },
+    "MonitorDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tiles", "narratives", "alerts"],
+      "properties": {
+        "tiles": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Tile"
+          }
+        },
+        "narratives": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Narrative"
+          }
+        },
+        "alerts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AlertDeclaration"
+          }
+        }
+      }
+    },
+    "DomainBlockDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blockId", "version", "fallbackBlocks"],
+      "properties": {
+        "blockId": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "fallbackBlocks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": ["TEXT", "CHOICES", "LIST", "LINK"]
+          }
+        }
+      }
+    },
+    "SelectableDimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "maximum"],
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "maximum": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "Component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["componentId", "label", "unit", "kind", "countedOn", "availability"],
+      "properties": {
+        "componentId": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "unit": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["COUNTED", "SELECTED", "TIME_ACCESS", "CAPACITY"]
+        },
+        "skillId": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "countedOn": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "selectableDimension": {
+          "$ref": "#/$defs/SelectableDimension"
+        },
+        "availability": {
+          "type": "string",
+          "enum": ["AVAILABLE", "DEFAULT_OFF", "UNAVAILABLE"]
+        },
+        "activationAuthority": {
+          "$ref": "#/$defs/Identifier"
+        }
+      },
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "SELECTED"
+          }
+        },
+        "required": ["kind"]
+      },
+      "then": {
+        "required": ["selectableDimension"]
+      }
+    },
+    "ChannelSupport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["web", "whatsapp", "mobile"],
+      "properties": {
+        "web": {
+          "$ref": "#/$defs/BlockTypeList"
+        },
+        "whatsapp": {
+          "$ref": "#/$defs/BlockTypeList"
+        },
+        "mobile": {
+          "$ref": "#/$defs/BlockTypeList"
+        }
+      }
+    },
+    "BlockTypeList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["TEXT", "CHOICES", "LIST", "LINK", "STATUS", "METRIC", "PLAN", "DECISION", "FORM", "EVIDENCE", "DOMAIN"]
+      }
+    }
+  }
+}

@@ -1,4 +1,7 @@
 // Implements: architecture/reference/components/business-platform.md § Tenant Isolation
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C5-03
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-08
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-13
 // constitutional_basis: C-005, C-023, C-026, C-059
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json.Serialization;
@@ -17,6 +20,8 @@ using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Middleware;
 using Waooaw.BusinessPlatform.Services;
+using Waooaw.BusinessPlatform.Services.Spend;
+using Waooaw.BusinessPlatform.Services.Workbench;
 using Waooaw.BusinessPlatform.Workflows;
 using Waooaw.ConstitutionalEngine.Grpc;
 
@@ -361,14 +366,37 @@ if (
     workloadIdentity is not null
     && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var offeringWbeUri)
 )
-    builder.Services.AddSingleton<IAuthenticatedOfferingUsageGateway>(
-        new AuthenticatedOfferingUsageGateway(workloadIdentity, offeringWbeUri)
-    );
+{
+    var offeringGateway = new AuthenticatedOfferingUsageGateway(workloadIdentity, offeringWbeUri);
+    builder.Services.AddSingleton<IAuthenticatedOfferingUsageGateway>(offeringGateway);
+    builder.Services.AddSingleton<IPlatformAccountGateway>(offeringGateway);
+}
 else
+{
     builder.Services.AddSingleton<
         IAuthenticatedOfferingUsageGateway,
         UnconfiguredOfferingUsageGateway
     >();
+    builder.Services.AddSingleton<IPlatformAccountGateway, UnconfiguredOfferingUsageGateway>();
+}
+if (
+    workloadIdentity is not null
+    && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var pricingWbeUri)
+)
+    builder.Services.AddSingleton<IPricingAdminGateway>(
+        new AuthenticatedPricingAdminGateway(workloadIdentity, pricingWbeUri)
+    );
+else
+    builder.Services.AddSingleton<IPricingAdminGateway, UnconfiguredPricingAdminGateway>();
+builder.Services.Configure<PricingAdminOptions>(
+    builder.Configuration.GetSection(PricingAdminOptions.SectionName)
+);
+builder.Services.AddSingleton<
+    IEnvironmentSpendCeilingStore,
+    PostgresEnvironmentSpendCeilingStore
+>();
+builder.Services.AddSingleton<PricingAdminWriteLimiter>();
+builder.Services.AddSingleton<PricingAdminService>();
 builder.Services.AddScoped<IOfferabilityGuard, PersistentOfferabilityGuard>();
 builder.Services.AddScoped<OfferabilityService>();
 if (
@@ -390,6 +418,9 @@ builder.Services.Configure<WhatsAppJourneyOptions>(builder.Configuration.GetSect
 builder.Services.Configure<WhatsAppGuestLimitOptions>(
     builder.Configuration.GetSection(WhatsAppGuestLimitOptions.SectionName)
 );
+builder.Services.Configure<ProtocolOptions>(
+    builder.Configuration.GetSection(ProtocolOptions.SectionName)
+);
 builder.Services.Configure<PhoneIdentityAdapterOptions>(
     builder.Configuration.GetSection("PhoneIdentity")
 );
@@ -399,6 +430,7 @@ builder.Services.AddScoped<
 >();
 builder.Services.AddScoped<WhatsAppJourneyService>();
 builder.Services.AddScoped<WhatsAppGuestSessionService>();
+builder.Services.AddScoped<WhatsAppRelationshipStopAcknowledgementService>();
 builder
     .Services.AddOptions<Waooaw.BusinessPlatform.Services.Visitor.VisitorConversationOptions>()
     .Bind(builder.Configuration.GetSection("VisitorConversation"))
@@ -615,6 +647,26 @@ builder
         options => options.ErrorOnUnknownConfiguration = true
     )
     .ValidateOnStart();
+builder.Services.AddSingleton<
+    IValidateOptions<EnvironmentSpendOptions>,
+    EnvironmentSpendOptionsValidator
+>();
+builder
+    .Services.AddOptions<EnvironmentSpendOptions>()
+    .Bind(
+        builder.Configuration.GetSection(EnvironmentSpendOptions.SectionName),
+        options => options.ErrorOnUnknownConfiguration = true
+    )
+    .ValidateOnStart();
+builder.Services.AddSingleton(services =>
+    services.GetRequiredService<IOptions<EnvironmentSpendOptions>>().Value
+);
+builder.Services.AddSimulatorSpendHeader(builder.Configuration);
+builder.Services.AddSingleton<ISpendAccountResolver>(_ => new ObservingSpendAccountResolver(
+    new SpendAccountResolver(SpendPurposeMap.LoadDefault())
+));
+builder.Services.AddSingleton<IEnvironmentSpendLeaseStore, PostgresEnvironmentSpendLeaseStore>();
+builder.Services.AddSingleton<EnvironmentSpendLeaseService>();
 builder.Services.AddSingleton<ConversationCursorCodec>();
 var conversationPrBaseUrl =
     builder.Configuration["Conversation:ProfessionalRuntimeBaseUrl"]
@@ -739,6 +791,36 @@ builder.Services.AddSingleton<IConversationalEmploymentPersistence>(
     new PostgresConversationalEmploymentPersistence(employmentRelationshipConn)
 );
 builder.Services.AddSingleton<ConversationalEmploymentService>();
+builder.Services.AddSingleton<PostgresComponentUnitOutbox>(
+    new PostgresComponentUnitOutbox(employmentRelationshipConn)
+);
+builder.Services.AddSingleton<IComponentUnitOutbox>(services =>
+    services.GetRequiredService<PostgresComponentUnitOutbox>()
+);
+builder.Services.AddSingleton<IComponentUnitCompletionSink>(services =>
+    services.GetRequiredService<PostgresComponentUnitOutbox>()
+);
+if (
+    workloadIdentity is not null
+    && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var componentUnitWbeUri)
+)
+    builder.Services.AddSingleton<IComponentUnitGateway>(
+        new AuthenticatedComponentUnitGateway(workloadIdentity, componentUnitWbeUri)
+    );
+else
+    builder.Services.AddSingleton<IComponentUnitGateway, UnconfiguredComponentUnitGateway>();
+builder.Services.AddHostedService<ComponentUnitCompletionWorker>();
+if (
+    workloadIdentity is not null
+    && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var packageCatalogWbeUri)
+)
+    builder.Services.AddSingleton<IPackageCatalogGateway>(
+        new AuthenticatedPackageCatalogGateway(workloadIdentity, packageCatalogWbeUri)
+    );
+else
+    builder.Services.AddSingleton<IPackageCatalogGateway, UnconfiguredPackageCatalogGateway>();
+builder.Services.AddSingleton<IPackageComponentLabelSource, HumanizedComponentLabelSource>();
+builder.Services.AddSingleton<PackageCatalogService>();
 var employmentDomainBaseUrl = builder.Configuration["AgentAdapters:EmploymentBaseUrl"];
 if (
     workloadIdentity is not null
@@ -763,6 +845,43 @@ else
     >();
 builder.Services.AddScoped<IEmploymentCommandCoordinator, EmploymentCommandCoordinator>();
 builder.Services.AddSingleton<EmploymentCompatibilityService>();
+
+// ── Common agent workbench — WC-136 C6 ──────────────────────────────────────
+builder
+    .Services.AddOptions<WorkbenchOptions>()
+    .Bind(builder.Configuration.GetSection(WorkbenchOptions.SectionName));
+if (
+    workloadIdentity is not null
+    && Uri.TryCreate(employmentDomainBaseUrl, UriKind.Absolute, out var workbenchDomainUri)
+)
+    builder.Services.AddSingleton<IAdmittedExperienceManifestSource>(
+        new DomainAdapterExperienceManifestSource(workloadIdentity, workbenchDomainUri)
+    );
+else
+    builder.Services.AddSingleton<
+        IAdmittedExperienceManifestSource,
+        UnconfiguredAdmittedExperienceManifestSource
+    >();
+if (
+    workloadIdentity is not null
+    && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var workbenchWbeUri)
+)
+    builder.Services.AddSingleton<IWorkbenchCommercialReader>(
+        new AuthenticatedWorkbenchCommercialReader(workloadIdentity, workbenchWbeUri)
+    );
+else
+    builder.Services.AddSingleton<
+        IWorkbenchCommercialReader,
+        UnconfiguredWorkbenchCommercialReader
+    >();
+builder.Services.AddSingleton<IWorkbenchLedgerStore, PostgresWorkbenchLedgerStore>();
+builder.Services.AddSingleton<IWorkbenchHandoffStore, PostgresWorkbenchHandoffStore>();
+builder.Services.AddSingleton<IWorkbenchGoalHistoryStore, PostgresWorkbenchGoalHistoryStore>();
+builder.Services.AddSingleton<WorkbenchCommandLedger>();
+builder.Services.AddSingleton<WorkbenchHandoffService>();
+builder.Services.AddScoped<WorkbenchProjectionService>();
+builder.Services.AddScoped<WorkbenchCommandService>();
+builder.Services.AddScoped<IWorkbenchWhatsAppResponder, WorkbenchWhatsAppResponder>();
 
 // ── Voice Contributions — WC-062 / GOAL-005 F6 ─────────────────────────────
 var voiceConn =
@@ -869,6 +988,9 @@ app.UseMiddleware<JourneyTelemetryMiddleware>();
 // a user-supplied x-tenant-id — it would bypass RLS.
 app.UseAuthentication();
 app.UseAuthorization();
+
+// WC-136 C7-02: test-only X-Spend-Account-Class for the authenticated visitor-simulator role; default off.
+app.UseSimulatorSpendHeader();
 
 // C-005 / C-026: sets PostgreSQL session variable from JWT tenant_id claim.
 // Returns 403 if tenant_id claim is absent from a successfully authenticated token.

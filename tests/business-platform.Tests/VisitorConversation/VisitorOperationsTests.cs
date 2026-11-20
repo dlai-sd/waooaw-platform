@@ -1,7 +1,9 @@
 // Implements: work-contracts/WC-135-requirements.yaml WC135-R005, WC135-R006, WC135-R008, WC135-R009
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-11
 // Constitutional basis: C-009, C-023, C-026, C-048, C-059, C-063
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Testcontainers.PostgreSql;
 using Waooaw.BusinessPlatform.Infrastructure;
@@ -333,5 +335,170 @@ public sealed class GuestCopyTests
             ],
         };
         Assert.Null(VisitorWhatsAppRenderer.Interactive(insecure));
+    }
+}
+
+public sealed class SpendTelemetryTests
+{
+    private sealed class CapturingLogger<T> : ILogger<T>
+    {
+        public List<string> Lines { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter
+        ) => Lines.Add(formatter(state, exception));
+    }
+
+    private sealed class MetricCapture : IDisposable
+    {
+        private readonly System.Diagnostics.Metrics.MeterListener _listener = new();
+
+        public List<(string Name, long Value, string Tags)> Measurements { get; } = [];
+
+        public MetricCapture()
+        {
+            _listener.InstrumentPublished = (instrument, listener) =>
+            {
+                if (
+                    instrument.Meter.Name == VisitorTelemetry.MeterName
+                    && instrument.Name.StartsWith("waooaw_spend_", StringComparison.Ordinal)
+                )
+                    listener.EnableMeasurementEvents(instrument);
+            };
+            _listener.SetMeasurementEventCallback<long>(
+                (instrument, value, tags, _) =>
+                {
+                    lock (Measurements)
+                        Measurements.Add(
+                            (
+                                instrument.Name,
+                                value,
+                                string.Join(
+                                    ",",
+                                    tags.ToArray().Select(tag => $"{tag.Key}={tag.Value}")
+                                )
+                            )
+                        );
+                }
+            );
+            _listener.Start();
+        }
+
+        public void Dispose() => _listener.Dispose();
+    }
+
+    [Fact]
+    public void SettledEventAddsItsPaiseToTheClassTotal_AndDeniedCountsOnceByReason()
+    {
+        var logger = new CapturingLogger<VisitorTelemetry>();
+        using var telemetry = new VisitorTelemetry(logger);
+        using var metrics = new MetricCapture();
+        var tenant = Guid.NewGuid();
+
+        telemetry.Spend(VisitorTelemetry.SpendReserved, "SETUP_GRANT", tenant, 40, "RESERVED");
+        telemetry.Spend(VisitorTelemetry.SpendSettled, "SETUP_GRANT", tenant, 35, "SETTLED");
+        telemetry.Spend(
+            VisitorTelemetry.SpendReleased,
+            "SETUP_GRANT",
+            tenant,
+            0,
+            "PRE_DISPATCH_RELEASE"
+        );
+        telemetry.Spend(
+            VisitorTelemetry.SpendDenied,
+            "SETUP_GRANT",
+            tenant,
+            0,
+            "SETUP_GRANT_EXHAUSTED"
+        );
+
+        Assert.Equal(4, logger.Lines.Count);
+        Assert.Contains(
+            metrics.Measurements,
+            value =>
+                value.Name == VisitorTelemetry.SpendPaiseMetric
+                && value.Value == 35
+                && value.Tags == "class=SETUP_GRANT"
+        );
+        Assert.Single(
+            metrics.Measurements,
+            value => value.Name == VisitorTelemetry.SpendDeniedMetric
+        );
+        Assert.Contains(
+            metrics.Measurements,
+            value =>
+                value.Name == VisitorTelemetry.SpendDeniedMetric
+                && value.Tags == "class=SETUP_GRANT,reason=SETUP_GRANT_EXHAUSTED"
+        );
+        Assert.Single(
+            metrics.Measurements,
+            value => value.Name == VisitorTelemetry.SpendPaiseMetric
+        );
+    }
+
+    [Fact]
+    public void EveryOutcomeCarriesTheSchemaFieldsAndNoPersonalData()
+    {
+        var logger = new CapturingLogger<VisitorTelemetry>();
+        using var telemetry = new VisitorTelemetry(logger);
+        var tenant = Guid.NewGuid();
+        var relationship = Guid.NewGuid();
+
+        telemetry.Spend(
+            VisitorTelemetry.SpendReserved,
+            "ACQUISITION",
+            tenant,
+            10,
+            "RESERVED",
+            relationship,
+            "post-writer",
+            "MODEL_GENERATION",
+            "campaign-7",
+            "lead:ab12cd"
+        );
+        telemetry.Spend(
+            VisitorTelemetry.SpendSettled,
+            "ACQUISITION",
+            tenant,
+            10,
+            "SETTLED",
+            relationship,
+            "priya@example.com",
+            "+91 98765 43210",
+            "Priya Sharma",
+            "call me on 9876543210"
+        );
+        telemetry.Spend(VisitorTelemetry.SpendDenied, "ACQUISITION", tenant, 0, "not a code");
+        telemetry.Spend("spend_unknown", "ACQUISITION", tenant, 0, "OK");
+
+        Assert.Equal(3, logger.Lines.Count);
+        var first = logger.Lines[0];
+        Assert.Contains("accountClass=ACQUISITION", first);
+        Assert.Contains($"tenantId={tenant}", first);
+        Assert.Contains($"relationshipId={relationship}", first);
+        Assert.Contains("skillId=post-writer", first);
+        Assert.Contains("componentId=MODEL_GENERATION", first);
+        Assert.Contains("campaignRef=campaign-7", first);
+        Assert.Contains("leadRef=lead:ab12cd", first);
+        Assert.Contains("paise=10", first);
+        Assert.Contains("reasonCode=RESERVED", first);
+        foreach (var line in logger.Lines)
+        {
+            Assert.DoesNotContain("@", line);
+            Assert.DoesNotContain("98765", line);
+            Assert.DoesNotContain("9876543210", line);
+            Assert.DoesNotContain("Priya", line);
+            Assert.DoesNotContain("call me", line);
+        }
+        Assert.Contains("reasonCode=UNSPECIFIED", logger.Lines[2]);
     }
 }

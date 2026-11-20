@@ -1,3 +1,4 @@
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C1-05
 # Implements: work-contracts/WC-135-visitor-conversation-and-simulated-customers.md WC135-R012, WC135-R013
 # Constitutional basis: C-048, C-049, C-059, C-063
 """Typed views of the visitor API payloads and of a recorded simulated conversation."""
@@ -220,6 +221,13 @@ class Conversation:
     resumed: bool = False
     states_visited: list[str] = field(default_factory=list)
     server_transcript_items: int = -1
+    trial: int = 0
+    seed_group: int | None = None
+
+    @property
+    def seed_key(self) -> int:
+        """Shared by the k independent runs of one seed; ``seed`` itself when the run is not part of a k-run group."""
+        return self.seed if self.seed_group is None else self.seed_group
 
     @property
     def visitor_turns(self) -> int:
@@ -241,6 +249,8 @@ class Conversation:
             "personaId": self.persona_id,
             "mode": self.mode,
             "seed": self.seed,
+            "seedGroup": self.seed_key,
+            "trial": self.trial,
             "subjectKey": self.subject_key,
             "sessionId": self.session_id,
             "injections": list(self.injections),

@@ -3,6 +3,16 @@
   "version": "1.0.0",
   "locale": "en-IN",
   "hours": { "timeZone": "Asia/Kolkata", "opensAt": "09:00", "closesAt": "21:00" },
+  "protocol": {
+    "version": "1.0.0",
+    "stop": {
+      "acknowledge": true,
+      "acknowledgementRef": "fixed.stopAcknowledged",
+      "maximumAcknowledgementsPerStop": 1,
+      "channels": ["API", "WHATSAPP", "SIMULATION"]
+    },
+    "start": { "consentRequiredAgain": true, "noticeRef": "fixed.resumeNotice" }
+  },
   "consent": {
     "noticeVersion": "2",
     "notice": "Hi, welcome to WAOOAW! 👋 We help growing businesses work with digital professionals, like a marketing specialist who studies your customers, plans your content and keeps you posted. You guide the work in about ten minutes a day.\n\nBefore we chat: I'll keep our messages for up to {retentionDays} days to run this demo (privacy notice: https://cp.demo.waooaw.com/privacy). This does not create an account, and I won't send marketing messages.\n\nTap YES to continue, or STOP at any time.",

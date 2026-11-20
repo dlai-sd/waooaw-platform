@@ -69,6 +69,7 @@ commands:
   wc123-identity-contract: {shell: "pytest tests/contract/test_wc123_identity_contract.py -q"}
   wc123-session-readiness: {shell: "pytest tests/pipeline/test_wc123_session_readiness.py tests/pipeline/test_wc124_db_provisioner.py tests/identity-foundation/test_identity_artifacts.py -q"}
   wc123-session-contract: {shell: "sh scripts/validation_control/run_wc123_session_contract.sh"}
+  wc136-experience-contract: {shell: "pytest tests/contract/test_wc136_experience_contract.py tests/contract/test_wc136_generated_clients.py tests/contract/test_wc136_dma_experience_scenarios.py -q"}
   quality-scripts: {shell: "ruff check scripts/ --config pyproject.toml && ruff format --check scripts/ && python scripts/ai_resource_governance.py --repository /workspace && pytest tests/scripts/test_ai_resource_governance.py -q && pytest tests/validation_control/test_unified_execution_contract.py tests/validation_control/test_wc104_rollback.py tests/validation_control/test_runner_contracts.py tests/validation_control/test_runner_supply.py tests/validation_control/test_catalog_contract.py tests/validation_control/test_gate_equivalence.py -q && pytest tests/validation_control/test_pilot.py tests/validation_control/test_wc109_value_pilot.py -q && pytest tests/pipeline/test_goal006_runner_bootstrap.py tests/pipeline/test_goal006_runner_image_workflow.py tests/pipeline/test_wc132_demo_reset_recovery.py tests/pipeline/test_goal006_deployment_inputs.py tests/pipeline/test_wc091_environment_readiness.py tests/pipeline/test_wc120_whatsapp_activation.py tests/pipeline/test_wc133_whatsapp_operations.py tests/pipeline/test_goal006_demo_revision_cleanup.py tests/pipeline/test_wc134_dispatch_rollout.py -q && pytest tests/visitor_simulation -q && python scripts/seed-prompts.py --dry-run"}
   quality-commitlint: {shell: "sh scripts/validation_control/run_commitlint_quality_gate.sh"}
   quality-dotnet-constitutional-engine: {shell: "sh scripts/validation_control/run_dotnet_quality_gate.sh src/constitutional-engine constitutional-engine"}
@@ -84,7 +85,7 @@ commands:
   mutation-dotnet: {shell: "sh scripts/validation_control/run_dotnet_mutation_gate.sh"}
   mutation-python: {shell: "sh scripts/validation_control/run_python_mutation_gate.sh"}
   integration-multi-tenant: {shell: "sh scripts/validation_control/run_multi_tenant_integration_gate.sh"}
-  integration-postgres-migrations: {shell: "sh scripts/validation_control/run_postgres_migrations.sh && WC134_METER_POSTGRES_ADMIN_URL=\"$DATABASE_URL\" pytest tests/billing-engine/test_meter.py tests/billing-engine/test_offering_usage_postgres.py -q"}
+  integration-postgres-migrations: {shell: "sh scripts/validation_control/run_postgres_migrations.sh && WC134_METER_POSTGRES_ADMIN_URL=\"$DATABASE_URL\" pytest tests/billing-engine/test_meter.py tests/billing-engine/test_offering_usage_postgres.py tests/billing-engine/test_wallet_entity_postgres.py tests/billing-engine/test_pricing_versions_postgres.py tests/billing-engine/test_pricing_baseline_postgres.py tests/billing-engine/test_commercial_projection_postgres.py -q"}
   integration-dotnet: {shell: "sh scripts/validation_control/run_dotnet_integration_gate.sh"}
   integration-python: {shell: "sh scripts/validation_control/run_python_integration_gate.sh"}
   contract-rest: {shell: "sh scripts/validation_control/run_rest_contract_gate.sh", execution: host}
@@ -165,6 +166,7 @@ gates:
   wc123:impact-manifest: {<<: *python_static, gate_id: "wc123:impact-manifest", command_id: wc123-impact-manifest, evidence_class: contract, cost_class: FOCUSED}
   wc123:identity-contract: {<<: *python_static, gate_id: "wc123:identity-contract", command_id: wc123-identity-contract, evidence_class: contract, cost_class: FOCUSED}
   wc123:session-readiness: {<<: *python_static, gate_id: "wc123:session-readiness", command_id: wc123-session-readiness, evidence_class: contract, cost_class: FOCUSED}
+  wc136:experience-contract: {<<: *python_static, gate_id: "wc136:experience-contract", command_id: wc136-experience-contract, evidence_class: contract, cost_class: FOCUSED}
   wc123:session-contract: {<<: *python_static, gate_id: "wc123:session-contract", runner_id: full, command_id: wc123-session-contract, evidence_class: integration, cost_class: FOCUSED, resources: {cpus: 2, memory_mb: 6144, disk_mb: 2048, timeout_seconds: 300, docker_socket: true, socket_classification: nested-docker, concurrency_class: full}}
   quality:scripts: {<<: *python_static, gate_id: "quality:scripts", command_id: quality-scripts, evidence_class: static, global_trigger: true}
   quality:commitlint: {<<: *python_static, gate_id: "quality:commitlint", runner_id: typescript, command_id: quality-commitlint, evidence_class: contract, resources: *typescript_resources, global_trigger: true}

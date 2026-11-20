@@ -12,7 +12,6 @@ from uuid import UUID
 import httpx
 import pytest
 import respx
-import fakeredis.aioredis
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -40,13 +39,6 @@ from ctg.models import GatewayResult, MCPToolError
 def _make_session_factory() -> MagicMock:
     """Minimal async_sessionmaker stub — we stub _record_dispatch_event away."""
     return MagicMock()
-
-
-async def _fake_redis_with_mode(mode: bytes | None) -> fakeredis.aioredis.FakeRedis:
-    r = fakeredis.aioredis.FakeRedis()
-    if mode is not None:
-        await r.set("wbe:customer:cust-001:mode", mode)
-    return r
 
 
 def _make_mock_gateway(
@@ -120,49 +112,78 @@ class TestSelectTier:
 
 
 # ---------------------------------------------------------------------------
-# CCT-TRIAL-02: TRIAL mode in Redis → force LOCAL regardless of complexity
+# CCT-TRIAL-02: only the WBE-validated relationship trial forces LOCAL (C3-02: no Redis mode flag)
 # ADR-042 update: tier selection now verified via CTG gateway.call() args
 # ---------------------------------------------------------------------------
 
 
 class TestTrialTierOverride:
-    """CCT-TRIAL-02 — PSE must route LOCAL for TRIAL customers (via CTG)."""
+    """CCT-TRIAL-02 — PSE must route LOCAL for validated trial entitlements (via CTG)."""
 
     @pytest.mark.asyncio
-    async def test_trial_mode_overrides_complex_to_local(self):
-        """TRIAL customer with complex task → CTG called with provider=ollama (LOCAL)."""
-        redis = await _fake_redis_with_mode(b"TRIAL")
+    async def test_redis_mode_projection_is_never_consulted(self):
+        """A passed Redis client is ignored: a customer-level TRIAL key cannot change the tier."""
+        redis = MagicMock()
+        redis.get = AsyncMock(return_value=b"TRIAL")
         session_factory = _make_session_factory()
-        mock_gw = _make_mock_gateway(
-            result={
-                "tier": LlmTier.LOCAL.value,
-                "provider_id": "ollama",
-                "model_id": "llama3.2:3b",
-                "response": "hello",
-                "done": True,
-                "total_duration_ns": 100,
-            }
+        mock_gw = _make_mock_gateway()
+        mock_gw.call.return_value = GatewayResult(
+            decision_id="DEC-MOCK",
+            error=MCPToolError(code="PROVIDER_ERROR", message="FRONTIER not wired", retry_eligible=False),
         )
 
         with (
-            patch("pse.router._select_tier", return_value=LlmTier.FRONTIER),
             patch("pse.router._make_gateway", return_value=mock_gw),
             patch("pse.router._record_dispatch_event", new_callable=AsyncMock),
         ):
-            result = await route_and_dispatch(
-                prompt="complex query",
-                task_complexity="complex",
-                language=None,
-                async_session_factory=session_factory,
-                customer_id="cust-001",
-                redis_client=redis,
-            )
+            with pytest.raises(RuntimeError, match="CTG tool error"):
+                await route_and_dispatch(
+                    prompt="complex query",
+                    task_complexity="complex",
+                    language=None,
+                    async_session_factory=session_factory,
+                    customer_id="cust-001",
+                    redis_client=redis,
+                )
 
-        # TRIAL override must have forced LOCAL — gateway called with provider=ollama
+        redis.get.assert_not_awaited()
         mock_gw.call.assert_awaited_once()
-        assert mock_gw.call.call_args.args[1]["provider"] == "ollama"
-        assert result["tier"] == LlmTier.LOCAL.value
+        assert mock_gw.call.call_args.args[1]["provider"] == "google"
 
+    @pytest.mark.asyncio
+    async def test_one_agents_trial_never_changes_another_agents_tier(self):
+        """The entitlement is per call: the same customer's non-trial agent keeps its configured tier."""
+        session_factory = _make_session_factory()
+        local_gw = _make_mock_gateway()
+        paid_gw = _make_mock_gateway()
+        paid_gw.call.return_value = GatewayResult(
+            decision_id="DEC-MOCK",
+            error=MCPToolError(code="PROVIDER_ERROR", message="FRONTIER not wired", retry_eligible=False),
+        )
+
+        with patch("pse.router._record_dispatch_event", new_callable=AsyncMock):
+            with patch("pse.router._make_gateway", return_value=local_gw):
+                await route_and_dispatch(
+                    prompt="complex trial query",
+                    task_complexity="complex",
+                    language=None,
+                    async_session_factory=session_factory,
+                    customer_id="cust-001",
+                    trial_entitled=True,
+                )
+            with patch("pse.router._make_gateway", return_value=paid_gw):
+                with pytest.raises(RuntimeError, match="CTG tool error"):
+                    await route_and_dispatch(
+                        prompt="complex paid query",
+                        task_complexity="complex",
+                        language=None,
+                        async_session_factory=session_factory,
+                        customer_id="cust-001",
+                        trial_entitled=False,
+                    )
+
+        assert local_gw.call.call_args.args[1]["provider"] == "ollama"
+        assert paid_gw.call.call_args.args[1]["provider"] == "google"
     @pytest.mark.asyncio
     async def test_validated_trial_entitlement_forces_local_without_redis(self):
         session_factory = _make_session_factory()
@@ -219,9 +240,8 @@ class TestTrialTierOverride:
         assert mock_gw.call.call_args.args[1]["provider"] == "ollama"
 
     @pytest.mark.asyncio
-    async def test_trial_mode_overrides_medium_indic_to_local(self):
-        """TRIAL customer with medium/indic (would be MID) → CTG called with provider=ollama."""
-        redis = await _fake_redis_with_mode(b"TRIAL")
+    async def test_validated_trial_overrides_medium_indic_to_local(self):
+        """Trial-entitled medium/indic (would be MID) → CTG called with provider=ollama."""
         session_factory = _make_session_factory()
         mock_gw = _make_mock_gateway(
             result={
@@ -244,7 +264,7 @@ class TestTrialTierOverride:
                 language="hi",
                 async_session_factory=session_factory,
                 customer_id="cust-001",
-                redis_client=redis,
+                trial_entitled=True,
             )
 
         mock_gw.call.assert_awaited_once()
@@ -252,9 +272,8 @@ class TestTrialTierOverride:
         assert result["tier"] == LlmTier.LOCAL.value
 
     @pytest.mark.asyncio
-    async def test_non_trial_mode_uses_configured_tier(self):
-        """Customer with mode=ACTIVE → tier selection unchanged (FRONTIER=google for complex)."""
-        redis = await _fake_redis_with_mode(b"ACTIVE")
+    async def test_non_trial_uses_configured_tier(self):
+        """No entitlement → tier selection unchanged (FRONTIER=google for complex)."""
         session_factory = _make_session_factory()
         # FRONTIER provider is google — mock gateway as not-implemented (CTG error path)
         mock_gw = _make_mock_gateway(
@@ -276,36 +295,11 @@ class TestTrialTierOverride:
                     language=None,
                     async_session_factory=session_factory,
                     customer_id="cust-001",
-                    redis_client=redis,
                 )
 
         # FRONTIER was attempted — gateway called with google provider (not ollama)
         mock_gw.call.assert_awaited_once()
         assert mock_gw.call.call_args.args[1]["provider"] == "google"
-
-    @pytest.mark.asyncio
-    async def test_no_redis_key_uses_configured_tier(self):
-        """Customer has no mode key in Redis (TTL expiry) → normal tier selection."""
-        redis = await _fake_redis_with_mode(None)
-        session_factory = _make_session_factory()
-        mock_gw = _make_mock_gateway()
-
-        with (
-            patch("pse.router._make_gateway", return_value=mock_gw),
-            patch("pse.router._record_dispatch_event", new_callable=AsyncMock),
-        ):
-            result = await route_and_dispatch(
-                prompt="simple query",
-                task_complexity="simple",
-                language=None,
-                async_session_factory=session_factory,
-                customer_id="cust-001",
-                redis_client=redis,
-            )
-
-        mock_gw.call.assert_awaited_once()
-        assert mock_gw.call.call_args.args[1]["provider"] == "ollama"
-        assert result["tier"] == LlmTier.LOCAL.value
 
     @pytest.mark.asyncio
     async def test_no_redis_client_uses_configured_tier(self):
@@ -326,37 +320,6 @@ class TestTrialTierOverride:
 
         mock_gw.call.assert_awaited_once()
         assert result["tier"] == LlmTier.LOCAL.value
-
-    @pytest.mark.asyncio
-    async def test_no_customer_id_uses_configured_tier(self):
-        """redis_client present but no customer_id → skip Redis lookup, use normal tier."""
-        redis = await _fake_redis_with_mode(b"TRIAL")
-        session_factory = _make_session_factory()
-        # No customer_id → no TRIAL override → complex → FRONTIER = google
-        mock_gw = _make_mock_gateway(
-            error=MCPToolError(code="PROVIDER_ERROR", message="FRONTIER not wired", retry_eligible=False)
-        )
-        mock_gw.call.return_value = GatewayResult(
-            decision_id="DEC-MOCK",
-            error=MCPToolError(code="PROVIDER_ERROR", message="FRONTIER not wired", retry_eligible=False),
-        )
-
-        with (
-            patch("pse.router._make_gateway", return_value=mock_gw),
-            patch("pse.router._record_dispatch_event", new_callable=AsyncMock),
-        ):
-            with pytest.raises(RuntimeError, match="CTG tool error"):
-                await route_and_dispatch(
-                    prompt="complex",
-                    task_complexity="complex",
-                    language=None,
-                    async_session_factory=session_factory,
-                    redis_client=redis,
-                    # customer_id intentionally omitted
-                )
-
-        mock_gw.call.assert_awaited_once()
-        assert mock_gw.call.call_args.args[1]["provider"] == "google"
 
 
 # ---------------------------------------------------------------------------
