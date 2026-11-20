@@ -50,7 +50,7 @@ PROBLEM_SCHEMA = {
     WBE_PRICING: "PricingProblemDetailV1",
 }
 EXPECTED_TAG_COUNTS = {
-    WORKBENCH: {"Workbench": 23, "Subscription": 1, "Marketplace Packages": 1},
+    WORKBENCH: {"Workbench": 24, "Subscription": 1, "Marketplace Packages": 1},
     PRICING: {"Pricing Drafts": 8, "Pricing Versions": 4, "Pricing Safety": 3, "Pricing Reports": 3},
     WBE_PRICING: {"Pricing Drafts": 8, "Pricing Versions": 4, "Pricing Safety": 3, "Pricing Reports": 3},
 }
@@ -752,7 +752,9 @@ def test_wc136_r008_mutating_operations_require_idempotency_and_correlation_head
             if item["in"] == "header"
         }
         if method in MUTATING_METHODS:
-            assert headers.get("idempotency-key") is True, operation["operationId"]
+            # A handoff reference is single-use, so a replay answers 404 instead of repeating the effect.
+            if operation["operationId"] != "consumeWorkbenchHandoff":
+                assert headers.get("idempotency-key") is True, operation["operationId"]
             assert headers.get("x-correlation-id") is True, operation["operationId"]
         else:
             assert "idempotency-key" not in headers, operation["operationId"]
@@ -999,7 +1001,8 @@ def test_wc136_r009_the_wbe_schemas_equal_the_public_schemas_except_the_deploy_t
         "ImportPricingBundleRequestV1",
     }
     for name in carriers:
-        assert private[name]["properties"].pop("deployTimeMaximumPaise")["type"] == "integer"
+        popped = private[name]["properties"].pop("deployTimeMaximumPaise")
+        assert popped["type"] == "integer"
     assert private == public
 
 

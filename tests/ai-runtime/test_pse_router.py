@@ -184,6 +184,7 @@ class TestTrialTierOverride:
 
         assert local_gw.call.call_args.args[1]["provider"] == "ollama"
         assert paid_gw.call.call_args.args[1]["provider"] == "google"
+
     @pytest.mark.asyncio
     async def test_validated_trial_entitlement_forces_local_without_redis(self):
         session_factory = _make_session_factory()
@@ -328,6 +329,57 @@ class TestTrialTierOverride:
 
 
 class TestRouteAndDispatchCore:
+    @pytest.mark.asyncio
+    async def test_retry_eligible_mid_error_falls_back_to_azure(self):
+        retry = MCPToolError(code="PROVIDER_ERROR", message="mid down", retry_eligible=True)
+        gateway = AsyncMock()
+        gateway.call.side_effect = [
+            GatewayResult(decision_id="DEC-1", result=None, error=retry),
+            GatewayResult(decision_id="DEC-2", result={"response": "azure ok"}, error=None),
+        ]
+        with (
+            patch("pse.router._select_tier", return_value=LlmTier.MID),
+            patch("pse.router._make_gateway", return_value=gateway),
+            patch("pse.router._record_dispatch_event", new_callable=AsyncMock) as record,
+        ):
+            result = await route_and_dispatch(
+                prompt="p",
+                task_complexity="medium",
+                language=None,
+                async_session_factory=_make_session_factory(),
+                customer_id="30000000-0000-0000-0000-000000000003",
+            )
+
+        assert result["response"] == "azure ok"
+        assert gateway.call.await_args_list[1].args[1]["provider"] == "azure"
+        assert gateway.call.await_args_list[1].args[1]["model"] == "gpt-4o-mini"
+        assert [call.args[7] for call in record.await_args_list] == ["failed", "success"]
+
+    @pytest.mark.asyncio
+    async def test_failed_azure_fallback_records_and_raises(self):
+        retry = MCPToolError(code="PROVIDER_ERROR", message="mid down", retry_eligible=True)
+        azure = MCPToolError(code="TIMEOUT", message="azure down", retry_eligible=False)
+        gateway = AsyncMock()
+        gateway.call.side_effect = [
+            GatewayResult(decision_id="DEC-1", result=None, error=retry),
+            GatewayResult(decision_id="DEC-2", result=None, error=azure),
+        ]
+        with (
+            patch("pse.router._select_tier", return_value=LlmTier.FRONTIER),
+            patch("pse.router._make_gateway", return_value=gateway),
+            patch("pse.router._record_dispatch_event", new_callable=AsyncMock) as record,
+        ):
+            with pytest.raises(RuntimeError, match="CTG tool error: TIMEOUT"):
+                await route_and_dispatch(
+                    prompt="p",
+                    task_complexity="complex",
+                    language=None,
+                    async_session_factory=_make_session_factory(),
+                    customer_id="30000000-0000-0000-0000-000000000003",
+                )
+
+        assert record.await_args_list[-1].args[7:] == ("failed", "azure down")
+
     @pytest.mark.asyncio
     async def test_local_dispatch_returns_event_id(self):
         """route_and_dispatch sends and records the exact governed request."""
@@ -528,6 +580,12 @@ class TestDispatchOllama:
         assert caplog.messages == ["Ollama request timed out after 30 seconds"]
 
     @pytest.mark.asyncio
+    async def test_cancellation_is_not_converted_to_a_provider_failure(self) -> None:
+        with patch("pse.router.httpx.AsyncClient.post", new=AsyncMock(side_effect=asyncio.CancelledError())):
+            with pytest.raises(asyncio.CancelledError):
+                await _dispatch_ollama("test prompt")
+
+    @pytest.mark.asyncio
     @respx.mock
     async def test_http_error_raises(self, caplog: pytest.LogCaptureFixture) -> None:
         """Ollama non-2xx status propagates as httpx.HTTPStatusError."""
@@ -695,6 +753,18 @@ class TestDispatchEvidence:
         )
 
         assert session.execute.await_args.args[1]["error_detail"] == "TimeoutError"
+
+    @pytest.mark.asyncio
+    async def test_record_dispatch_event_does_not_swallow_cancellation(self) -> None:
+        session_factory = MagicMock()
+        session = MagicMock()
+        session.execute = AsyncMock(side_effect=asyncio.CancelledError())
+        session_factory.return_value.__aenter__.return_value = session
+
+        with pytest.raises(asyncio.CancelledError):
+            await _record_dispatch_event(
+                session_factory, "event-3", LlmTier.LOCAL, "ollama", "llama3.2:3b", "simple", None, "success", ""
+            )
 
     @pytest.mark.asyncio
     async def test_record_dispatch_event_propagates_failures(self) -> None:

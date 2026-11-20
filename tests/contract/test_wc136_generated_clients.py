@@ -58,7 +58,12 @@ def test_wc136_r010_generated_client_has_an_api_per_tag_and_a_model_per_schema(
     expected = {re.sub(r"[^A-Za-z0-9]", "", tag) + "Api" for tag in _tags(spec)}
     assert expected <= apis
     models = {path.stem for path in (GENERATED / directory / "src/models").glob("*.ts")}
-    local_schemas = set(spec["components"]["schemas"])
+    local_schemas = {
+        name
+        for name, schema in spec["components"]["schemas"].items()
+        # The generator emits no file for a pure alias or a free-form map.
+        if "$ref" not in schema and (schema.get("type") != "object" or "properties" in schema)
+    }
     assert local_schemas
     assert all(name in models for name in local_schemas)
 

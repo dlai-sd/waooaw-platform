@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from config import Settings
 from promotions.coupon_versions import CouponQuote, CouponRedemption, quote_coupon, redeem_coupon
 from promotions.models import CouponValidation, DiscountResult, ReferralEntry, ReferralStatus
+from wallet.log_safe import log_value
 
 logger = logging.getLogger(__name__)
 
@@ -230,7 +231,7 @@ class PromotionsService:
 
         logger.info(
             "Discount applied: coupon_id=%s customer_id=%s original=%d discounted=%d referral_credited=%s",
-            coupon_id, customer_id, original_price_paise, discounted_price, referral_credited,
+            log_value(coupon_id), log_value(customer_id), original_price_paise, discounted_price, referral_credited,
         )
         return DiscountResult(
             discounted_price_paise=discounted_price,

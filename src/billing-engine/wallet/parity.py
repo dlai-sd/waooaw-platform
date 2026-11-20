@@ -21,6 +21,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from wallet import metrics, spend_events
+from wallet.log_safe import log_value
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +153,7 @@ async def report_parity(
         spend_events.record_parity_difference(differing)
         logger.warning(
             "wallet parity differs tenant=%s differing=%d compared=%d",
-            tenant_id,
+            log_value(tenant_id),
             differing,
             report.compared,
         )

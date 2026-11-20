@@ -39,7 +39,7 @@ def test_canonical_provider_neutral_operations_are_versioned_and_no_store() -> N
         ): "deleteIdentityProviderLink",
     }
 
-    assert spec["info"]["version"] == "1.11.0"
+    assert spec["info"]["version"] == "1.12.0"
     for (path, method), operation_id in expected.items():
         operation = paths[path][method]
         assert operation["operationId"] == operation_id

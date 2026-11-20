@@ -268,7 +268,7 @@ async def test_report_parity_raises_a_metric_and_a_log_line_without_raising(
         clean_report = await report_parity(session, OTHER_TENANT)
 
     assert not report.clean
-    assert counted == [("wbe.wallet.parity_difference", 1)]
+    assert counted == [("wbe.wallet.parity_difference", 1), ("waooaw_wallet_parity_difference", 1)]
     assert "wallet parity differs" in caplog.text
     assert str(CUSTOMER) not in caplog.text
     assert clean_report.clean

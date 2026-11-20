@@ -111,7 +111,7 @@ def test_manifest_and_induction_are_exact_closed_package_a_contracts() -> None:
     subject = semantics(frozenset({"MARKET_RESEARCH_AND_MATURITY"}))
 
     manifest = subject.manifest("DIGITAL_MARKETING_LOCAL_SERVICE", "1.0.0", "1.1.0")
-    requirements = subject.induction_requirements(RELATIONSHIP, "1.0.0")
+    requirements = subject.induction_requirements(RELATIONSHIP, "1.1.0")
     by_ref = {item.requirement_ref: item for item in requirements.requirements}
 
     assert manifest.protocol_version == "1.0-candidate"

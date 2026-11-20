@@ -40,6 +40,7 @@ from wallet.entity_models import (
     as_utc,
 )
 from wallet.ledger import WalletLedger
+from wallet.log_safe import log_value
 
 logger = logging.getLogger(__name__)
 
@@ -492,9 +493,9 @@ class PlatformAccounts:
             metrics.count("wbe.wallet.platform_floor_use", environment=environment, purpose=purpose)
             logger.info(
                 "platform floor use recorded: environment=%s purpose=%s component=%s paise=%d",
-                environment,
-                purpose,
-                component_id,
+                log_value(environment),
+                log_value(purpose),
+                log_value(component_id),
                 paise,
             )
         return FloorUseReceipt(use_id=recorded_id, account_id=account.account_id, recorded=recorded)

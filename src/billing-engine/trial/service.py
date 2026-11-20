@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from config import Settings
 from trial.models import ConvertResult, TrialStartResult, TrialStatus
 from wallet import metrics
+from wallet.log_safe import log_value
 from wallet.platform_accounts import PlatformAccounts, PlatformGrant, effective_grant
 
 logger = logging.getLogger(__name__)
@@ -204,8 +205,8 @@ class TrialService:
                         )
                     logger.warning(
                         "Trial identity already claimed; RECORD mode keeps the first claim: agent_type=%s agent_version=%s",
-                        agent_type,
-                        agent_version,
+                        log_value(agent_type),
+                        log_value(agent_version),
                     )
 
             bucket_ids: list[uuid.UUID] = []
@@ -258,8 +259,8 @@ class TrialService:
 
         logger.info(
             "Trial started: agent_type=%s agent_version=%s expires_at=%s",
-            agent_type,
-            agent_version,
+            log_value(agent_type),
+            log_value(agent_version),
             expires_at.isoformat(),
         )
         return TrialStartResult(
