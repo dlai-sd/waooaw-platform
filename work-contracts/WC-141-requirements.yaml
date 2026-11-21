@@ -1,0 +1,58 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-141
+contract_path: work-contracts/WC-141-digest-gated-reuse-on-merge.md
+contract_digest: 298b165a78a93d55409711049dd07317da7b5a95071f9c971b6815f8e9db9979
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Validation-control unit and fault-injection tests run in Docker at the exact head of the implementation PR
+  initial_state: new
+  dependencies: Separate Founder authorization of the implementing session; WC-109 evidence envelope; WC-139 merged
+  residual_risk: This PR records scope only; nothing is implemented until the implementation PR passes its own gates
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the implementation PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC141-R001
+    source: WC-141 Canonical Requirement Index, R001
+    observable_outcome: A gate is reused only when the full reuse key equals the key in a passing PR-run envelope.
+    test_path_or_plan: tests/validation_control/ reuse-key cases (to be added in the implementation PR).
+
+  - <<: *defaults
+    requirement_id: WC141-R002
+    source: WC-141 Canonical Requirement Index, R002
+    observable_outcome: Fork, failed, cancelled, expired or unsigned evidence is ignored and the gate runs.
+    test_path_or_plan: tests/validation_control/ trust and age-limit fault-injection cases (to be added).
+
+  - <<: *defaults
+    requirement_id: WC141-R003
+    source: WC-141 Canonical Requirement Index, R003
+    observable_outcome: Equal tree gives exact-candidate-reuse, different tree gives verified-carry-forward only when no gate input changed, otherwise the gate runs.
+    test_path_or_plan: tests/validation_control/ disposition cases built on evidence_controller (to be added).
+
+  - <<: *defaults
+    requirement_id: WC141-R004
+    source: WC-141 Canonical Requirement Index, R004
+    observable_outcome: Every reused gate is reported with its source run and disposition in the push run.
+    test_path_or_plan: tests/pipeline/ workflow assertions on the reuse report step (to be added).
+
+  - <<: *defaults
+    requirement_id: WC141-R005
+    source: WC-141 Canonical Requirement Index, R005
+    observable_outcome: reusable false gates, CodeQL, publish and attestation always run on a push.
+    test_path_or_plan: tests/validation_control/ catalog assertions on the reusable-gate list (to be added).
+
+  - <<: *defaults
+    requirement_id: WC141-R006
+    source: WC-141 Canonical Requirement Index, R006
+    observable_outcome: The kill-switch variable forces every gate to run and no threshold changes.
+    test_path_or_plan: tests/pipeline/ kill-switch workflow assertion (to be added).
+
+  - <<: *defaults
+    requirement_id: WC141-R007
+    source: WC-141 Canonical Requirement Index, R007
+    observable_outcome: Stale, forged, expired, wrong-tree and missing evidence all fall back to running the gate.
+    test_path_or_plan: tests/validation_control/ fault-injection suite (to be added).
