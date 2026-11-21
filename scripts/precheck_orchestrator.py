@@ -16,7 +16,7 @@ import subprocess
 import sys
 import threading
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -592,13 +592,18 @@ def run_prechecks(
     pending = set(names) - results.keys()
     heavy_slots = threading.Semaphore(max_heavy if mode == "parallel" else 1)
     failure_event = threading.Event()
-    while pending:
+    # A node starts the moment its own dependencies pass; it never waits for unrelated running nodes.
+    executor = (
+        ThreadPoolExecutor(max_workers=max(1, len(nodes)), thread_name_prefix="wc100-precheck") if mode == "parallel" else None
+    )
+    running: dict[str, Future[dict[str, object]]] = {}
+    while pending or running:
         ready = [
             name
             for name in names
             if name in pending and all(dependency in results for dependency in node_by_name[name].dependencies)
         ]
-        if not ready:
+        if not ready and not running:
             for name in names:
                 if name in pending:
                     results[name] = {
@@ -634,31 +639,27 @@ def run_prechecks(
             else:
                 runnable.append(node)
             pending.remove(name)
-        if mode == "parallel" and len(runnable) > 1:
-            executor = ThreadPoolExecutor(max_workers=len(runnable), thread_name_prefix="wc100-precheck")
-            try:
-                futures = {
-                    node.name: executor.submit(
-                        _run_node,
-                        node,
-                        artifact_dir,
-                        heavy_slots,
-                        _node_identity(node, identity_inputs),
-                        failure_event,
-                    )
-                    for node in runnable
-                }
-                for name in ready:
-                    if name in futures:
-                        results[name] = futures[name].result()
-            except (KeyboardInterrupt, SystemExit):
-                with _BlockedInterrupts():
-                    _terminate_active_processes()
-                    _cleanup_compose_projects(runnable)
-                    executor.shutdown(wait=True, cancel_futures=True)
-                raise
-            else:
-                executor.shutdown(wait=True)
+        if executor is not None:
+            for node in runnable:
+                running[node.name] = executor.submit(
+                    _run_node,
+                    node,
+                    artifact_dir,
+                    heavy_slots,
+                    _node_identity(node, identity_inputs),
+                    failure_event,
+                )
+            if running:
+                try:
+                    done, _ = wait(running.values(), return_when=FIRST_COMPLETED)
+                    for name in [name for name in names if name in running and running[name] in done]:
+                        results[name] = running.pop(name).result()
+                except (KeyboardInterrupt, SystemExit):
+                    with _BlockedInterrupts():
+                        _terminate_active_processes()
+                        _cleanup_compose_projects([node_by_name[name] for name in running])
+                        executor.shutdown(wait=True, cancel_futures=True)
+                    raise
         else:
             for node in runnable:
                 results[node.name] = _run_node(
@@ -668,7 +669,8 @@ def run_prechecks(
                     _node_identity(node, identity_inputs),
                     failure_event,
                 )
-
+    if executor is not None:
+        executor.shutdown(wait=True)
     ordered_results = [results[name] for name in names]
     failures = [result for result in ordered_results if result["status"] != "PASS"]
     causal_failures = [result for result in ordered_results if result["status"] == "FAIL"]

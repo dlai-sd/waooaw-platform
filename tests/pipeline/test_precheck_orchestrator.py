@@ -593,6 +593,27 @@ def test_resource_fallback_and_failure_semantics(tmp_path: Path) -> None:
     assert manifest["first_causal_failure"] == "assertion"
 
 
+def test_dependent_starts_when_its_own_prerequisite_passes_not_when_unrelated_nodes_finish(tmp_path: Path) -> None:
+    marker = tmp_path / "dependent-ran"
+    wait_for_marker = (
+        "import sys, time; from pathlib import Path; "
+        f"deadline = time.monotonic() + 30; marker = Path({str(marker)!r})\n"
+        "while not marker.exists() and time.monotonic() < deadline: time.sleep(0.05)\n"
+        "sys.exit(0 if marker.exists() else 1)"
+    )
+    manifest = run(
+        [
+            python_node("unrelated_slow", wait_for_marker),
+            python_node("prerequisite", "pass"),
+            python_node("dependent", f"from pathlib import Path; Path({str(marker)!r}).touch()", dependencies=("prerequisite",)),
+        ],
+        tmp_path / "artifacts",
+        preflight=lambda: (True, []),
+    )
+
+    assert [node["status"] for node in manifest["nodes"]] == ["PASS", "PASS", "PASS"]
+
+
 def test_dependency_is_not_started_after_prerequisite_failure(tmp_path: Path) -> None:
     marker = tmp_path / "dependent-ran"
     manifest = run(
@@ -676,8 +697,10 @@ def test_interrupt_terminates_workers_and_cleans_compose(monkeypatch: pytest.Mon
     cleaned: list[str] = []
 
     class InterruptingFuture:
-        def result(self) -> object:
-            raise KeyboardInterrupt
+        pass
+
+    def interrupting_wait(*unused: object, **unused_options: object) -> object:
+        raise KeyboardInterrupt
 
     class InterruptingExecutor:
         def __init__(self, **unused: object) -> None:
@@ -691,6 +714,7 @@ def test_interrupt_terminates_workers_and_cleans_compose(monkeypatch: pytest.Mon
             assert cancel_futures is True
 
     monkeypatch.setattr(precheck_orchestrator, "ThreadPoolExecutor", InterruptingExecutor)
+    monkeypatch.setattr(precheck_orchestrator, "wait", interrupting_wait)
     monkeypatch.setattr(precheck_orchestrator, "_BlockedInterrupts", precheck_orchestrator._NullContext)
     monkeypatch.setattr(precheck_orchestrator, "_terminate_active_processes", lambda: terminated.append("workers"))
     monkeypatch.setattr(
