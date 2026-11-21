@@ -15,6 +15,7 @@
 | V5 | Tests do not need durability. Pooled clusters use an in-memory data directory with `fsync` off. Do not do this for anything that is not a throwaway test database. |
 | V6 | Reuse only evidence that is keyed by the exact inputs: gate id, input digest, runner image digest and graph version. Never reuse a result by branch name or by time. Gates marked `reusable: false` (for example dependency scans, whose result changes with the vulnerability database) always re-run. |
 | V7 | The full suite and the coverage gate (90% line, 80% branch) stay authoritative on merge to `main` and on the nightly run. A faster path may select tests on a PR; it may not lower the thresholds. |
+| V8 | A pre-check node starts the moment its own dependencies pass and never waits for unrelated nodes (`run_prechecks` in `scripts/precheck_orchestrator.py`). Declare real dependencies only; an unnecessary dependency serialises the graph. |
 
 ## 2. Where things live
 
