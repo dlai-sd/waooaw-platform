@@ -1743,17 +1743,32 @@ resource "azurerm_container_app_job" "temporal_startup_qualification" {
         export TEMPORAL_ADDRESS="127.0.0.1:7233"
         : > "$log"
         temporal_pid=
+        temporal_stop_grace=15
         cleanup() {
-          printf 'exited\n' | nc -w 2 127.0.0.1 17301 >/dev/null 2>&1 || true
-          kill "$receiver_pid" 2>/dev/null || true
-          if [ -n "$readiness_pid" ]; then kill "$readiness_pid" 2>/dev/null || true; fi
+          status=$?
+          set +e
+          trap - EXIT
+          printf 'exited\n' | nc -w 2 127.0.0.1 17301 >/dev/null 2>&1
+          kill "$receiver_pid" 2>/dev/null
+          if [ -n "$readiness_pid" ]; then kill "$readiness_pid" 2>/dev/null; fi
           if [ -n "$temporal_pid" ]; then
-            kill "$temporal_pid" 2>/dev/null || true
-            wait "$temporal_pid" 2>/dev/null || true
+            # temporal-server ignored SIGTERM for about 200 s after a passed qualification (run
+            # 44916211268); an unbounded wait held the replica until Azure killed it and lost this log.
+            kill "$temporal_pid" 2>/dev/null
+            stop_deadline=$((SECONDS + temporal_stop_grace))
+            while kill -0 "$temporal_pid" 2>/dev/null && [ "$SECONDS" -lt "$stop_deadline" ]; do sleep 1; done
+            if kill -0 "$temporal_pid" 2>/dev/null; then
+              echo "WC142_TEMPORAL_SHUTDOWN forced after $temporal_stop_grace seconds"
+              kill -9 "$temporal_pid" 2>/dev/null
+            else
+              echo "WC142_TEMPORAL_SHUTDOWN graceful"
+            fi
+            wait "$temporal_pid" 2>/dev/null
           fi
           # Keep the 60 samples/result inside Azure's 300-line console retrieval limit.
           tail -n 150 "$log"
-          cat "$samples/sampler.log" 2>/dev/null || true
+          cat "$samples/sampler.log" 2>/dev/null
+          exit "$status"
         }
         trap cleanup EXIT
         # The sampler admits startup only after old session-pool clients have drained.
