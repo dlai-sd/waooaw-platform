@@ -16,6 +16,10 @@ Do not assume Auto is free or claim an office assignment switches the client's m
 
 ---
 
+**Tests, validation gates, pre-checks, CI run time:** follow
+[CI Validation Speed Policy](../standards/CI-VALIDATION-SPEED-POLICY.md) (IB-139). Cheap checks gate
+expensive ones; Postgres tests use the pooled helper; reuse evidence only by exact input digest.
+
 ## ⛔ IMPLEMENTATION GATE — READ BEFORE ANYTHING ELSE
 
 ```

@@ -14,7 +14,8 @@ namespace Waooaw.BusinessPlatform.Tests.Identity;
 
 public sealed class CustomerPhoneChangeSchemaFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("pgvector/pgvector:pg16")
+    private readonly Testcontainers.PostgreSql.PostgreSqlContainer _postgres =
+        new Testcontainers.PostgreSql.PostgreSqlBuilder("pgvector/pgvector:pg16")
         .WithDatabase("waooaw")
         .WithUsername("waooaw")
         .WithPassword("synthetic-phone-owner")

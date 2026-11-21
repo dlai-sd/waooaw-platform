@@ -24,7 +24,7 @@ public sealed class ConversationPendingStartPostgresTests
         var initDirectory = Path.GetDirectoryName(
             RepositoryPaths.Resolve("infrastructure/postgres/init/01-schemas.sql")
         )!;
-        await using var postgres = new PostgreSqlBuilder("pgvector/pgvector:pg16")
+        await using var postgres = new Testcontainers.PostgreSql.PostgreSqlBuilder("pgvector/pgvector:pg16")
             .WithDatabase("waooaw")
             .WithUsername("waooaw")
             .WithPassword("synthetic-full-schema-password")

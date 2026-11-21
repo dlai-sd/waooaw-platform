@@ -1,0 +1,46 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-138
+contract_path: work-contracts/WC-138-ci-validation-speed-up.md
+contract_digest: 7c3e8d21af74c8f5aff53fd623da92e47deaee57d5535821e317a90cdf55ba03
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Pipeline unit tests and the full Business Platform gate run in Docker at the exact head; commands and results in the PR body
+  initial_state: new
+  dependencies: Founder authorization of this implementing session (current conversation)
+  residual_risk: No deployment is part of this contract; Release Qualification and hosted-CI carry-forward are separate Work Contracts
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC138-R001
+    source: WC-138 Canonical Requirement Index, R001
+    observable_outcome: The Business Platform test pre-check is skipped when the Business Platform format check fails.
+    test_path_or_plan: tests/pipeline/test_prepare_pr_body.py (dependency assertion for business_platform).
+
+  - <<: *defaults
+    requirement_id: WC138-R002
+    source: WC-138 Canonical Requirement Index, R002
+    observable_outcome: Leased PostgreSQL clusters leak no role, database or table between leases and concurrent leases get distinct databases.
+    test_path_or_plan: tests/business-platform.Tests/PooledPostgresIsolationTests.cs.
+
+  - <<: *defaults
+    requirement_id: WC138-R003
+    source: WC-138 Canonical Requirement Index, R003
+    observable_outcome: The test list matches origin/main apart from the new isolation tests and coverage thresholds are met.
+    test_path_or_plan: scripts/validation_control/run_dotnet_test_gate.sh business-platform (3763 tests, 90.96% line, 82.15% branch); dotnet test --list-tests comparison against origin/main.
+
+  - <<: *defaults
+    requirement_id: WC138-R004
+    source: WC-138 Canonical Requirement Index, R004
+    observable_outcome: A dependent node starts while an unrelated node is still running, and does not start after its prerequisite fails.
+    test_path_or_plan: tests/pipeline/test_precheck_orchestrator.py (dependent_starts_when_its_own_prerequisite_passes, dependency_is_not_started_after_prerequisite_failure, interrupt cases).
+
+  - <<: *defaults
+    requirement_id: WC138-R005
+    source: WC-138 Canonical Requirement Index, R005
+    observable_outcome: The standing policy exists and the agent entry point routes to it.
+    test_path_or_plan: standards/CI-VALIDATION-SPEED-POLICY.md; constitution/AGENT-ENTRY.md.
