@@ -95,7 +95,7 @@ def semantics(
 def plan(**changes: object) -> PlanValidationRequest:
     values: dict[str, object] = {
         "schemaVersion": "1.0",
-        "manifestVersion": "1.0.0",
+        "manifestVersion": "1.1.0",
         "requirementSetVersion": "1.0.0",
         "planVersion": "plan-1",
         "goalType": "UNDERSTAND_CURRENT_POSITION",
@@ -110,8 +110,8 @@ def plan(**changes: object) -> PlanValidationRequest:
 def test_manifest_and_induction_are_exact_closed_package_a_contracts() -> None:
     subject = semantics(frozenset({"MARKET_RESEARCH_AND_MATURITY"}))
 
-    manifest = subject.manifest("DIGITAL_MARKETING_LOCAL_SERVICE", "1.0.0", "1.0.0")
-    requirements = subject.induction_requirements(RELATIONSHIP, "1.0.0")
+    manifest = subject.manifest("DIGITAL_MARKETING_LOCAL_SERVICE", "1.0.0", "1.1.0")
+    requirements = subject.induction_requirements(RELATIONSHIP, "1.1.0")
     by_ref = {item.requirement_ref: item for item in requirements.requirements}
 
     assert manifest.protocol_version == "1.0-candidate"
@@ -133,6 +133,7 @@ def test_compatibility_tuple_requires_exact_source_and_evidence_identities() -> 
     assert result["professionalTypeId"] == "DIGITAL_MARKETING_LOCAL_SERVICE"
     assert result["professionalVersion"] == "1.0.0"
     assert result["specificationRevision"] == "3.1"
+    assert result["manifestVersion"] == "1.1.0"
     assert result["sourceCommit"] == "a" * 40
     assert result["evidenceDigest"] == "sha256:" + "b" * 64
     with pytest.raises(ValueError, match="DMA_SOURCE_COMMIT_INVALID"):
@@ -153,6 +154,8 @@ def test_manifest_contract_references_match_repository_content() -> None:
         manifest["operations"]["outcomeAdapter"],
         manifest["operations"]["billingProfile"],
         manifest["operations"]["degradationProfile"],
+        manifest["experience"]["vocabularyRef"],
+        manifest["experience"]["componentCatalogueRef"],
     ]
 
     for reference in references:
@@ -181,7 +184,7 @@ async def test_dma_semantics_use_the_existing_private_wc115_routes(
             "/internal/v1/employment-interface/manifest"
             "?agentType=DIGITAL_MARKETING_LOCAL_SERVICE"
             "&agentVersion=1.0.0"
-            "&manifestVersion=1.0.0",
+            "&manifestVersion=1.1.0",
             headers={"X-Correlation-Id": str(uuid4())},
         )
 
@@ -322,7 +325,7 @@ def test_material_change_classification_fails_closed(
     request = MaterialChangeRequest.model_validate(
         {
             "schemaVersion": "1.0",
-            "manifestVersion": "1.0.0",
+            "manifestVersion": "1.1.0",
             "currentPlanVersion": "plan-1",
             "candidatePatchRef": uuid4(),
             "protectedCategoryFlags": flags,
@@ -351,7 +354,7 @@ def test_calendar_change_outside_tolerance_is_material() -> None:
     request = MaterialChangeRequest.model_validate(
         {
             "schemaVersion": "1.0",
-            "manifestVersion": "1.0.0",
+            "manifestVersion": "1.1.0",
             "currentPlanVersion": "plan-1",
             "candidatePatchRef": uuid4(),
             "protectedCategoryFlags": ("CALENDAR",),
@@ -397,7 +400,7 @@ def test_dependency_isolation_distrusts_caller_completeness(
     request = DependencyIsolationRequest.model_validate(
         {
             "schemaVersion": "1.0",
-            "manifestVersion": "1.0.0",
+            "manifestVersion": "1.1.0",
             "dependencyRef": dependency,
             "dependencyState": state,
             "candidateAffectedSkillRefs": candidate,

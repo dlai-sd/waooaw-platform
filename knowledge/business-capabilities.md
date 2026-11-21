@@ -1,7 +1,7 @@
 # Business Capability Map
 
 **Produced by:** Chief Business Architect (Sprint 002 + v0.8.0 update)
-**Date:** 2026-07-07 (updated 2026-07-08; Founder-directed additions 1.9 and 13.9 on 2026-11-19, WC-135)
+**Date:** 2026-07-07 (updated 2026-07-08; Founder-directed additions 1.9 and 13.9 on 2026-11-19, WC-135; 6.8 and 6.9 on 2026-11-20, WC-136)
 **Constitutional Basis:** GENESIS Part 01 (Acceptance Scenarios 001–004), Ratified Claims C-001 through C-039
 
 ---
@@ -286,6 +286,26 @@ data lifecycle, targets, provider resources, expenditure, DNS, Production action
 (implementation cannot create architecture); C-059 (implementation traceability); C-063 (data and
 secret minimisation); C-065 (independent review); C-071 and C-076 (quality and coverage gates); C-077
 (development cost control)
+
+---
+
+### 6.8 Operate Agents Through One Channel-Neutral Workbench
+
+**Statement:** The institution must enable a customer, delegate or steward to set goals, review plans, resolve decisions, monitor outcomes, see remaining entitlements and exercise controls for any employed Digital Professional through one Business Platform workbench that Web, WhatsApp and later Mobile render identically in meaning, using a closed, versioned block vocabulary with honest fallback.
+
+**Status:** Founder-directed addition, 2026-11-20 (WC-136, architecture decision D3). Implementation of the DMA slice is authorized by WC-136 only.
+
+**Constitutional Basis:** C-001 (Stop reachable on every channel); C-009 (rights visible); C-023 (evidence); C-034 (employment relationship unchanged); C-037 (business outcomes, not technical metrics); C-042 (customer vocabulary); C-049 (no overpromising); relates to 1.7, 2.5, 2.7, 4.5, 6.6.
+
+---
+
+### 6.9 Configure Pricing And Platform-Funded Spend
+
+**Statement:** The institution must enable the Founder and an authorized administrator to draft, simulate, authorize and observe agent-version package prices, component cost recipes, grants and platform-funded spend budgets through versioned, evidence-bound configuration, so that every metered call is charged to exactly one account and no price or budget is a code constant.
+
+**Status:** Founder-directed addition, 2026-11-20 (WC-136, architecture decision D3). Implementation is authorized by WC-136 on Demo only; Production values are Founder-entered later.
+
+**Constitutional Basis:** C-038 (pro-rata billing; no wallet refund by Founder decision FD9); C-051 and C-088 (only the Founder authorizes prices and budgets); C-089 to C-091 (spend discipline and catalogue authorization); C-001 (fail closed); relates to 6.5.
 
 ---
 

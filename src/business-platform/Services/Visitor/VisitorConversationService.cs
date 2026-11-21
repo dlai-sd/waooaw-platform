@@ -1,4 +1,5 @@
 // Implements: work-contracts/WC-135-visitor-conversation-and-simulated-customers.md WC135-R001, WC135-R002, WC135-R003, WC135-R007, WC135-R009, WC135-R010, WC135-R011, WC135-R014
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C1-01
 // Constitutional basis: C-009, C-023, C-026, C-039, C-048, C-049, C-059, C-063
 
 using System.Security.Cryptography;
@@ -325,6 +326,8 @@ public sealed class VisitorConversationService(
         if (input.ChoiceId is { } choice)
             telemetry.ChoiceTap(choice);
         EmitTelemetry(session, priorState, reason, started, 200);
+        if (transition.Event == "OPT_OUT" && reply.Blocks.Count > 0)
+            logger.LogInformation("protocol_stop_acknowledged channel={Channel}", session.Channel);
         return new VisitorTurnResult(
             sessionId,
             messageId,

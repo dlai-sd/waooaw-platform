@@ -494,11 +494,7 @@ public sealed class ConversationInferenceOwnerPostgresTests
     {
         private readonly Dictionary<Guid, OfferingUsageReceipt> _receipts = [];
 
-        public void Seed(
-            Guid invocationId,
-            Guid reservationId,
-            string state
-        ) =>
+        public void Seed(Guid invocationId, Guid reservationId, string state) =>
             _receipts[invocationId] = new(
                 reservationId,
                 state,
@@ -556,9 +552,7 @@ public sealed class ConversationInferenceOwnerPostgresTests
             CancellationToken ct
         ) =>
             Task.FromResult(
-                _receipts.TryGetValue(identity.InvocationId, out var receipt)
-                    ? receipt
-                    : null
+                _receipts.TryGetValue(identity.InvocationId, out var receipt) ? receipt : null
             );
 
         private Task<OfferingUsageReceipt> Transition(
@@ -629,246 +623,239 @@ public sealed class ConversationInferenceOwnerPostgresTests
                     "Synthetic workload credential bootstrap failed to start"
                 );
 
-                    async Task ConfigureBatchAsync()
-                    {
-                        var first = Request.OperationalMandate;
-                        var secondKey = Guid.NewGuid();
-                        var secondEvidence = Guid.NewGuid();
-                        const string secondText = "Use a festive tone";
-                        var second = await new OperationalMandateResolver(_ownerRelationships).ResolveAsync(
-                            Caller.TenantId,
-                            Caller.ActorId,
-                            Caller.RelationshipId,
-                            secondKey,
-                            secondEvidence,
-                            first.SkillId,
-                            secondText,
-                            CancellationToken.None
-                        );
-                        var secondMessage = Guid.NewGuid();
-                        var secondExecution = ConversationExecutionIdentity.Create(
-                            Caller.TenantId,
-                            Caller.RelationshipId,
-                            Caller.ActorId,
-                            Request.ConversationId,
-                            secondKey
-                        );
-                        await using (var db = _ownerConversations.CreateDbContext())
+            async Task ConfigureBatchAsync()
+            {
+                var first = Request.OperationalMandate;
+                var secondKey = Guid.NewGuid();
+                var secondEvidence = Guid.NewGuid();
+                const string secondText = "Use a festive tone";
+                var second = await new OperationalMandateResolver(_ownerRelationships).ResolveAsync(
+                    Caller.TenantId,
+                    Caller.ActorId,
+                    Caller.RelationshipId,
+                    secondKey,
+                    secondEvidence,
+                    first.SkillId,
+                    secondText,
+                    CancellationToken.None
+                );
+                var secondMessage = Guid.NewGuid();
+                var secondExecution = ConversationExecutionIdentity.Create(
+                    Caller.TenantId,
+                    Caller.RelationshipId,
+                    Caller.ActorId,
+                    Request.ConversationId,
+                    secondKey
+                );
+                await using (var db = _ownerConversations.CreateDbContext())
+                {
+                    var conversation = await db.Conversations.SingleAsync();
+                    var firstExecution = await db.Executions.SingleAsync();
+                    conversation.NextMessageSequence = 3;
+                    db.Messages.Add(
+                        new()
                         {
-                            var conversation = await db.Conversations.SingleAsync();
-                            var firstExecution = await db.Executions.SingleAsync();
-                            conversation.NextMessageSequence = 3;
-                            db.Messages.Add(
-                                new()
+                            TenantId = Caller.TenantId,
+                            RelationshipId = Caller.RelationshipId,
+                            ConversationId = Request.ConversationId,
+                            MessageId = secondMessage,
+                            Environment = "demo",
+                            Sequence = 2,
+                            SkillId = second.SkillId,
+                            EvidenceRecordId = secondEvidence,
+                            ContentJson = JsonSerializer.Serialize(
+                                new[]
                                 {
-                                    TenantId = Caller.TenantId,
-                                    RelationshipId = Caller.RelationshipId,
-                                    ConversationId = Request.ConversationId,
-                                    MessageId = secondMessage,
-                                    Environment = "demo",
-                                    Sequence = 2,
-                                    SkillId = second.SkillId,
-                                    EvidenceRecordId = secondEvidence,
-                                    ContentJson = JsonSerializer.Serialize(
-                                        new[]
-                                        {
-                                            new ConversationTextBlockV1(
-                                                "1.0",
-                                                "TEXT",
-                                                secondText,
-                                                "en"
-                                            ),
-                                        },
-                                        ConversationReconciliationBinding.Json
-                                    ),
-                                }
-                            );
-                            db.Executions.Add(
-                                new()
-                                {
-                                    ExecutionId = secondExecution,
-                                    TenantId = Caller.TenantId,
-                                    RelationshipId = Caller.RelationshipId,
-                                    ConversationId = Request.ConversationId,
-                                    MessageId = secondMessage,
-                                    RuntimeActorId = firstExecution.RuntimeActorId,
-                                    RuntimeActorIssuer = firstExecution.RuntimeActorIssuer,
-                                    RuntimeMembershipId = firstExecution.RuntimeMembershipId,
-                                    RuntimeAccountId = firstExecution.RuntimeAccountId,
-                                }
-                            );
-                            await db.SaveChangesAsync();
-                        }
-                        var workItem = Guid.NewGuid();
-                        var invocation = Guid.NewGuid();
-                        var batchId = Guid.NewGuid();
-                        var runtimeExecution = ConversationExecutionIdentity.Create(
-                            Caller.TenantId,
-                            Caller.RelationshipId,
-                            Caller.ActorId,
-                            Request.ConversationId,
-                            batchId
-                        );
-                        var sources = new[]
-                        {
-                            new ConversationInferenceBatchSourceV1(
-                                "1.0",
-                                Request.ContributionRef,
-                                Request.ExecutionId,
-                                1,
-                                workItem,
-                                1,
-                                invocation,
-                                first.IdempotencyIdentity,
-                                Guid.Parse(first.ConstitutionalEvidenceRef["ce-evidence:".Length..]),
-                                "Prepare the profile",
-                                "en",
-                                first
-                            ),
-                            new ConversationInferenceBatchSourceV1(
-                                "1.0",
-                                secondMessage,
-                                secondExecution,
-                                2,
-                                workItem,
-                                1,
-                                invocation,
-                                secondKey,
-                                secondEvidence,
-                                secondText,
-                                "en",
-                                second
-                            ),
-                        };
-                        var sourceListDigest = AgentAdmissionCanonicalizer.Digest(
-                            JsonSerializer.SerializeToElement(
-                                sources.Select(value => new
-                                {
-                                    value.SchemaVersion,
-                                    value.MessageId,
-                                    value.ExecutionId,
-                                    value.Sequence,
-                                    value.WorkItemId,
-                                    value.WorkItemRevision,
-                                    value.WorkItemInvocationId,
-                                    value.IdempotencyKey,
-                                    value.EvidenceId,
-                                    value.Text,
-                                    value.Language,
-                                    value.OperationalMandate.MandateId,
-                                    value.OperationalMandate.MandateDigest,
-                                }),
+                                    new ConversationTextBlockV1("1.0", "TEXT", secondText, "en"),
+                                },
                                 ConversationReconciliationBinding.Json
-                            )
-                        );
-                        var prepared = HttpConversationExecutionGateway.PrepareBatchExecution(
-                        batchId,
-                        sources
-                            .Select(value =>
-                                new HttpConversationExecutionGateway.BatchExecutionSource(
-                                    value.SchemaVersion,
-                                    value.MessageId,
-                                    value.ExecutionId,
-                                    value.Sequence,
-                                    value.WorkItemId,
-                                    value.WorkItemRevision,
-                                    value.WorkItemInvocationId,
-                                    value.IdempotencyKey,
-                                    value.EvidenceId,
-                                    value.Text,
-                                    value.Language,
-                                    value.OperationalMandate
-                                )
-                            )
-                            .ToArray()
-                        );
-                        await using var connection = OwnerConnection();
-                        await connection.OpenAsync();
-                        await using var transaction = await connection.BeginTransactionAsync();
-                        await using var command = new NpgsqlCommand(
-                            """
-                            CREATE TABLE business.conversation_batch_groups (
-                                tenant_id uuid NOT NULL, relationship_id uuid NOT NULL,
-                                conversation_id uuid NOT NULL, batch_id uuid NOT NULL,
-                                frozen_at timestamptz, member_count integer, dispatch_state text,
-                                due_at timestamptz, work_item_id uuid, work_item_revision integer,
-                                source_list_digest text, request_digest text, runtime_execution_id uuid,
-                                lease_owner uuid, lease_token bigint, lease_expires_at timestamptz,
-                                dispatch_intent_at timestamptz, started_at timestamptz,
-                                PRIMARY KEY (tenant_id,batch_id)
-                            );
-                            CREATE TABLE business.conversation_batch_members (
-                                tenant_id uuid NOT NULL, relationship_id uuid NOT NULL,
-                                conversation_id uuid NOT NULL, batch_id uuid NOT NULL,
-                                message_id uuid NOT NULL, ordinal integer NOT NULL,
-                                PRIMARY KEY (tenant_id,batch_id,ordinal)
-                            );
-                            ALTER TABLE business.conversation_batch_groups OWNER TO business_app;
-                            ALTER TABLE business.conversation_batch_members OWNER TO business_app;
-                            INSERT INTO business.conversation_batch_groups
-                                (tenant_id,relationship_id,conversation_id,batch_id)
-                            VALUES (@tenant,@relationship,@conversation,@batch);
-                            INSERT INTO business.conversation_batch_members
-                                (tenant_id,relationship_id,conversation_id,batch_id,message_id,ordinal)
-                            VALUES
-                                (@tenant,@relationship,@conversation,@batch,@first_message,1),
-                                (@tenant,@relationship,@conversation,@batch,@second_message,2);
-                            UPDATE business.conversation_batch_groups
-                            SET frozen_at=now(),member_count=2,dispatch_state='STARTED',
-                                due_at=now(),work_item_id=@work_item,work_item_revision=1,
-                                source_list_digest=@source_digest,
-                                request_digest=@request_digest,
-                                runtime_execution_id=@runtime_execution,
-                                lease_owner=gen_random_uuid(),lease_token=1,
-                                lease_expires_at=now()+interval '1 minute',
-                                dispatch_intent_at=now(),started_at=now()
-                            WHERE tenant_id=@tenant AND batch_id=@batch;
-                            """,
-                            connection,
-                            transaction
-                        );
-                        command.Parameters.AddWithValue("tenant", Caller.TenantId);
-                        command.Parameters.AddWithValue("relationship", Caller.RelationshipId);
-                        command.Parameters.AddWithValue("conversation", Request.ConversationId);
-                        command.Parameters.AddWithValue("first_message", Request.ContributionRef);
-                        command.Parameters.AddWithValue("first_execution", Request.ExecutionId);
-                        command.Parameters.AddWithValue("first_key", first.IdempotencyIdentity);
-                        command.Parameters.AddWithValue(
-                            "first_evidence",
-                            Guid.Parse(first.ConstitutionalEvidenceRef["ce-evidence:".Length..])
-                        );
-                        command.Parameters.AddWithValue("first_mandate", first.MandateId);
-                        command.Parameters.AddWithValue("second_message", secondMessage);
-                        command.Parameters.AddWithValue("second_execution", secondExecution);
-                        command.Parameters.AddWithValue("second_key", secondKey);
-                        command.Parameters.AddWithValue("second_evidence", secondEvidence);
-                        command.Parameters.AddWithValue("second_mandate", second.MandateId);
-                        command.Parameters.AddWithValue("actor", Caller.ActorId);
-                        command.Parameters.AddWithValue("work_item", workItem);
-                        command.Parameters.AddWithValue("invocation", invocation);
-                        command.Parameters.AddWithValue("batch", batchId);
-                        command.Parameters.AddWithValue("source_digest", sourceListDigest);
-                        command.Parameters.AddWithValue("request_digest", prepared.RequestDigest);
-                        command.Parameters.AddWithValue("runtime_execution", runtimeExecution);
-                        await command.ExecuteNonQueryAsync();
-                        await transaction.CommitAsync();
-                        var combined = string.Join("\n", sources.Select(value => value.Text));
-                        Request = Request with
-                        {
-                            ExecutionId = runtimeExecution,
-                            ContributionRef = batchId,
-                            InputDigest = Convert.ToHexStringLower(
-                                SHA256.HashData(Encoding.UTF8.GetBytes(combined))
                             ),
-                            Batch = new(batchId, sourceListDigest, sources),
-                        };
-                        Caller = Caller with
+                        }
+                    );
+                    db.Executions.Add(
+                        new()
                         {
-                            ContributionId = batchId,
-                            ExecutionId = runtimeExecution,
-                            IdempotencyKey = batchId,
-                        };
-                    }
+                            ExecutionId = secondExecution,
+                            TenantId = Caller.TenantId,
+                            RelationshipId = Caller.RelationshipId,
+                            ConversationId = Request.ConversationId,
+                            MessageId = secondMessage,
+                            RuntimeActorId = firstExecution.RuntimeActorId,
+                            RuntimeActorIssuer = firstExecution.RuntimeActorIssuer,
+                            RuntimeMembershipId = firstExecution.RuntimeMembershipId,
+                            RuntimeAccountId = firstExecution.RuntimeAccountId,
+                        }
+                    );
+                    await db.SaveChangesAsync();
+                }
+                var workItem = Guid.NewGuid();
+                var invocation = Guid.NewGuid();
+                var batchId = Guid.NewGuid();
+                var runtimeExecution = ConversationExecutionIdentity.Create(
+                    Caller.TenantId,
+                    Caller.RelationshipId,
+                    Caller.ActorId,
+                    Request.ConversationId,
+                    batchId
+                );
+                var sources = new[]
+                {
+                    new ConversationInferenceBatchSourceV1(
+                        "1.0",
+                        Request.ContributionRef,
+                        Request.ExecutionId,
+                        1,
+                        workItem,
+                        1,
+                        invocation,
+                        first.IdempotencyIdentity,
+                        Guid.Parse(first.ConstitutionalEvidenceRef["ce-evidence:".Length..]),
+                        "Prepare the profile",
+                        "en",
+                        first
+                    ),
+                    new ConversationInferenceBatchSourceV1(
+                        "1.0",
+                        secondMessage,
+                        secondExecution,
+                        2,
+                        workItem,
+                        1,
+                        invocation,
+                        secondKey,
+                        secondEvidence,
+                        secondText,
+                        "en",
+                        second
+                    ),
+                };
+                var sourceListDigest = AgentAdmissionCanonicalizer.Digest(
+                    JsonSerializer.SerializeToElement(
+                        sources.Select(value => new
+                        {
+                            value.SchemaVersion,
+                            value.MessageId,
+                            value.ExecutionId,
+                            value.Sequence,
+                            value.WorkItemId,
+                            value.WorkItemRevision,
+                            value.WorkItemInvocationId,
+                            value.IdempotencyKey,
+                            value.EvidenceId,
+                            value.Text,
+                            value.Language,
+                            value.OperationalMandate.MandateId,
+                            value.OperationalMandate.MandateDigest,
+                        }),
+                        ConversationReconciliationBinding.Json
+                    )
+                );
+                var prepared = HttpConversationExecutionGateway.PrepareBatchExecution(
+                    batchId,
+                    sources
+                        .Select(value => new HttpConversationExecutionGateway.BatchExecutionSource(
+                            value.SchemaVersion,
+                            value.MessageId,
+                            value.ExecutionId,
+                            value.Sequence,
+                            value.WorkItemId,
+                            value.WorkItemRevision,
+                            value.WorkItemInvocationId,
+                            value.IdempotencyKey,
+                            value.EvidenceId,
+                            value.Text,
+                            value.Language,
+                            value.OperationalMandate
+                        ))
+                        .ToArray()
+                );
+                await using var connection = OwnerConnection();
+                await connection.OpenAsync();
+                await using var transaction = await connection.BeginTransactionAsync();
+                await using var command = new NpgsqlCommand(
+                    """
+                    CREATE TABLE business.conversation_batch_groups (
+                        tenant_id uuid NOT NULL, relationship_id uuid NOT NULL,
+                        conversation_id uuid NOT NULL, batch_id uuid NOT NULL,
+                        frozen_at timestamptz, member_count integer, dispatch_state text,
+                        due_at timestamptz, work_item_id uuid, work_item_revision integer,
+                        source_list_digest text, request_digest text, runtime_execution_id uuid,
+                        lease_owner uuid, lease_token bigint, lease_expires_at timestamptz,
+                        dispatch_intent_at timestamptz, started_at timestamptz,
+                        PRIMARY KEY (tenant_id,batch_id)
+                    );
+                    CREATE TABLE business.conversation_batch_members (
+                        tenant_id uuid NOT NULL, relationship_id uuid NOT NULL,
+                        conversation_id uuid NOT NULL, batch_id uuid NOT NULL,
+                        message_id uuid NOT NULL, ordinal integer NOT NULL,
+                        PRIMARY KEY (tenant_id,batch_id,ordinal)
+                    );
+                    ALTER TABLE business.conversation_batch_groups OWNER TO business_app;
+                    ALTER TABLE business.conversation_batch_members OWNER TO business_app;
+                    INSERT INTO business.conversation_batch_groups
+                        (tenant_id,relationship_id,conversation_id,batch_id)
+                    VALUES (@tenant,@relationship,@conversation,@batch);
+                    INSERT INTO business.conversation_batch_members
+                        (tenant_id,relationship_id,conversation_id,batch_id,message_id,ordinal)
+                    VALUES
+                        (@tenant,@relationship,@conversation,@batch,@first_message,1),
+                        (@tenant,@relationship,@conversation,@batch,@second_message,2);
+                    UPDATE business.conversation_batch_groups
+                    SET frozen_at=now(),member_count=2,dispatch_state='STARTED',
+                        due_at=now(),work_item_id=@work_item,work_item_revision=1,
+                        source_list_digest=@source_digest,
+                        request_digest=@request_digest,
+                        runtime_execution_id=@runtime_execution,
+                        lease_owner=gen_random_uuid(),lease_token=1,
+                        lease_expires_at=now()+interval '1 minute',
+                        dispatch_intent_at=now(),started_at=now()
+                    WHERE tenant_id=@tenant AND batch_id=@batch;
+                    """,
+                    connection,
+                    transaction
+                );
+                command.Parameters.AddWithValue("tenant", Caller.TenantId);
+                command.Parameters.AddWithValue("relationship", Caller.RelationshipId);
+                command.Parameters.AddWithValue("conversation", Request.ConversationId);
+                command.Parameters.AddWithValue("first_message", Request.ContributionRef);
+                command.Parameters.AddWithValue("first_execution", Request.ExecutionId);
+                command.Parameters.AddWithValue("first_key", first.IdempotencyIdentity);
+                command.Parameters.AddWithValue(
+                    "first_evidence",
+                    Guid.Parse(first.ConstitutionalEvidenceRef["ce-evidence:".Length..])
+                );
+                command.Parameters.AddWithValue("first_mandate", first.MandateId);
+                command.Parameters.AddWithValue("second_message", secondMessage);
+                command.Parameters.AddWithValue("second_execution", secondExecution);
+                command.Parameters.AddWithValue("second_key", secondKey);
+                command.Parameters.AddWithValue("second_evidence", secondEvidence);
+                command.Parameters.AddWithValue("second_mandate", second.MandateId);
+                command.Parameters.AddWithValue("actor", Caller.ActorId);
+                command.Parameters.AddWithValue("work_item", workItem);
+                command.Parameters.AddWithValue("invocation", invocation);
+                command.Parameters.AddWithValue("batch", batchId);
+                command.Parameters.AddWithValue("source_digest", sourceListDigest);
+                command.Parameters.AddWithValue("request_digest", prepared.RequestDigest);
+                command.Parameters.AddWithValue("runtime_execution", runtimeExecution);
+                await command.ExecuteNonQueryAsync();
+                await transaction.CommitAsync();
+                var combined = string.Join("\n", sources.Select(value => value.Text));
+                Request = Request with
+                {
+                    ExecutionId = runtimeExecution,
+                    ContributionRef = batchId,
+                    InputDigest = Convert.ToHexStringLower(
+                        SHA256.HashData(Encoding.UTF8.GetBytes(combined))
+                    ),
+                    Batch = new(batchId, sourceListDigest, sources),
+                };
+                Caller = Caller with
+                {
+                    ContributionId = batchId,
+                    ExecutionId = runtimeExecution,
+                    IdempotencyKey = batchId,
+                };
+            }
             var errors = await process.StandardError.ReadToEndAsync();
             await process.WaitForExitAsync();
             Assert.True(process.ExitCode == 0, errors);
@@ -1243,12 +1230,18 @@ public sealed class ConversationInferenceOwnerPostgresTests
                 command.Parameters.AddWithValue("first_execution", first.ExecutionId);
                 command.Parameters.AddWithValue("first_key", first.IdempotencyKey);
                 command.Parameters.AddWithValue("first_evidence", first.EvidenceId);
-                command.Parameters.AddWithValue("first_mandate", first.OperationalMandate.MandateId);
+                command.Parameters.AddWithValue(
+                    "first_mandate",
+                    first.OperationalMandate.MandateId
+                );
                 command.Parameters.AddWithValue("second_message", second.MessageId);
                 command.Parameters.AddWithValue("second_execution", second.ExecutionId);
                 command.Parameters.AddWithValue("second_key", second.IdempotencyKey);
                 command.Parameters.AddWithValue("second_evidence", second.EvidenceId);
-                command.Parameters.AddWithValue("second_mandate", second.OperationalMandate.MandateId);
+                command.Parameters.AddWithValue(
+                    "second_mandate",
+                    second.OperationalMandate.MandateId
+                );
                 await command.ExecuteNonQueryAsync();
             }
             var options = Options.Create(
@@ -1282,15 +1275,17 @@ public sealed class ConversationInferenceOwnerPostgresTests
             var gateway = new Mock<IConversationExecutionGateway>();
             var batchGateway = new Mock<IConversationBatchExecutionGateway>();
             var dispatch = batchGateway.Setup(value =>
-                    value.StartBatchAsync(
-                        It.IsAny<Guid>(),
-                        It.IsAny<Guid>(),
-                        It.IsAny<Guid>(),
-                        It.IsAny<Guid>(),
-                        It.IsAny<IReadOnlyList<HttpConversationExecutionGateway.BatchExecutionSource>>(),
-                        It.IsAny<CancellationToken>()
-                    )
-                );
+                value.StartBatchAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<Guid>(),
+                    It.IsAny<Guid>(),
+                    It.IsAny<Guid>(),
+                    It.IsAny<
+                        IReadOnlyList<HttpConversationExecutionGateway.BatchExecutionSource>
+                    >(),
+                    It.IsAny<CancellationToken>()
+                )
+            );
             if (dispatchFails)
                 dispatch.ThrowsAsync(new HttpRequestException("synthetic lost response"));
             else
@@ -1503,6 +1498,9 @@ public sealed class ConversationInferenceOwnerPostgresTests
                     "95-wc134-governed-conversation-generation.sql",
                     "98-wc134-inference-binding-row-lock.sql",
                     "99zzzzzz-wc134-environment-spend.sql",
+                    "99zzzzzzzz-wc136-01-environment-spend-ceiling.sql",
+                    "99zzzzzzzz-wc136-03-spend-account-pin.sql",
+                    "99zzzzzzzz-wc136-04-environment-spend-leases.sql",
                 }
             )
             {
@@ -1516,10 +1514,7 @@ public sealed class ConversationInferenceOwnerPostgresTests
                 }
                 catch (Exception exception)
                 {
-                    throw new InvalidOperationException(
-                        $"Failed to apply {migration}.",
-                        exception
-                    );
+                    throw new InvalidOperationException($"Failed to apply {migration}.", exception);
                 }
             }
             await ExecuteAsync(
@@ -1743,12 +1738,7 @@ public sealed class ConversationInferenceOwnerPostgresTests
                 ),
                 TimeProvider.System,
                 new ConversationCursorCodec(
-                    Options.Create(
-                        new ConversationCursorOptions
-                        {
-                            HmacKey = new string('c', 32),
-                        }
-                    )
+                    Options.Create(new ConversationCursorOptions { HmacKey = new string('c', 32) })
                 ),
                 identity
             );

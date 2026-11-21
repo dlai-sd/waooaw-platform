@@ -1,4 +1,5 @@
 // Implements: work-contracts/WC-058-goal005-ae01-discover-trial-configure.md §WC058-04
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-04
 // constitutional_basis: C-023, C-026, C-049, C-059, C-088
 
 using System.Net;
@@ -18,6 +19,30 @@ public sealed record WbeTrialEntitlement(
 );
 
 public sealed record WbeTrialStatus(Guid TrialId, string Status);
+
+/// <summary>What the wallet owner needs to credit the trial grant and bind the verified identity.</summary>
+public sealed record TrialIdentityContext(Guid TenantId, string? IdentitySubjectHash);
+
+/// <summary>The verified WhatsApp identity hash of the caller; never the phone number.</summary>
+public static class TrialIdentityHash
+{
+    private static readonly System.Text.RegularExpressions.Regex Pattern = new(
+        "^[0-9a-fA-F]{64}$",
+        System.Text.RegularExpressions.RegexOptions.Compiled
+    );
+
+    public static string? FromClaims(System.Security.Claims.ClaimsPrincipal user)
+    {
+        var channel = user.FindFirst("channel")?.Value;
+        var hash = user.FindFirst("external_subject_hash")?.Value;
+        return
+            string.Equals(channel, "WHATSAPP", StringComparison.OrdinalIgnoreCase)
+            && hash is not null
+            && Pattern.IsMatch(hash)
+            ? hash.ToLowerInvariant()
+            : null;
+    }
+}
 
 public sealed record PrTrialWorkflow(Guid TrialId, string WorkflowState, DateTimeOffset ExpiresAt);
 
@@ -43,7 +68,8 @@ public interface IRelationshipTrialOwnerGateway
         string professionalVersion,
         Guid relationshipId,
         Guid correlationId,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        TrialIdentityContext? context = null
     );
     Task<WbeTrialStatus?> GetWbeTrialStatusAsync(
         Guid customerId,
@@ -75,7 +101,8 @@ public sealed class UnconfiguredRelationshipTrialOwnerGateway : IRelationshipTri
         string professionalVersion,
         Guid relationshipId,
         Guid correlationId,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        TrialIdentityContext? context = null
     ) => Task.FromResult<WbeTrialEntitlement?>(null);
 
     public Task<WbeTrialStatus?> GetWbeTrialStatusAsync(
@@ -129,7 +156,8 @@ public sealed class HttpRelationshipTrialOwnerGateway : IRelationshipTrialOwnerG
         string professionalVersion,
         Guid relationshipId,
         Guid correlationId,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        TrialIdentityContext? context = null
     )
     {
         try
@@ -143,6 +171,9 @@ public sealed class HttpRelationshipTrialOwnerGateway : IRelationshipTrialOwnerG
                     agent_type = professionalType,
                     agent_version = professionalVersion,
                     phone_verified = true,
+                    identity_subject_hash = context?.IdentitySubjectHash,
+                    tenant_id = context?.TenantId,
+                    relationship_id = context is null ? (Guid?)null : relationshipId,
                 },
                 cancellationToken
             );
@@ -372,7 +403,8 @@ public sealed class RelationshipTrialService(
         Guid relationshipId,
         Guid actorParticipantId,
         Guid correlationId,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        string? identitySubjectHash = null
     )
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
@@ -433,7 +465,8 @@ public sealed class RelationshipTrialService(
                         ),
                     relationshipId,
                     binding.CorrelationId,
-                    cancellationToken
+                    cancellationToken,
+                    new TrialIdentityContext(tenantId, identitySubjectHash)
                 );
         if (
             wbe is null
@@ -513,7 +546,8 @@ public sealed class RelationshipTrialService(
         Guid agentInstanceId,
         Guid correlationId,
         RelationshipAcquisitionEvidence acquisitionEvidence,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        string? identitySubjectHash = null
     )
     {
         var wbe = await owners.StartWbeTrialAsync(
@@ -522,7 +556,8 @@ public sealed class RelationshipTrialService(
             professionalVersion,
             relationshipId,
             correlationId,
-            cancellationToken
+            cancellationToken,
+            new TrialIdentityContext(tenantId, identitySubjectHash)
         );
         if (
             wbe is null

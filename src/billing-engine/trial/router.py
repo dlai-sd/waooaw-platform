@@ -1,13 +1,14 @@
 # Implements: work-contracts/WC-031-goal005-wbe-trial-promotions.md §WC031-01
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C3-02
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C3-03
 # constitutional_basis: C-059 (Implementation Traceability), C-003 (Ops Auth on internal endpoints)
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
 
-import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, Header, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from config import Settings
 from trial.service import TrialService
@@ -23,17 +24,12 @@ def _get_settings() -> Settings:
     return Settings()
 
 
-def _get_redis(settings: Settings = Depends(_get_settings)) -> aioredis.Redis:
-    return aioredis.from_url(settings.REDIS_URL, decode_responses=False)
-
-
 def _get_trial_service(
     settings: Settings = Depends(_get_settings),
-    redis_client: aioredis.Redis = Depends(_get_redis),
 ) -> TrialService:
     from database import get_session_factory
     sf = get_session_factory()
-    return TrialService(session_factory=sf, redis_client=redis_client, settings=settings)
+    return TrialService(session_factory=sf, settings=settings)
 
 
 async def _require_ops_auth(
@@ -53,6 +49,10 @@ class TrialStartRequest(BaseModel):
     agent_type: str
     agent_version: str
     phone_verified: bool
+    # Hash of the verified phone subject held by BP; never the number itself.
+    identity_subject_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    tenant_id: uuid.UUID | None = None
+    relationship_id: uuid.UUID | None = None
 
 
 class TrialStartResponse(BaseModel):
@@ -97,6 +97,9 @@ async def start_trial(
         agent_type=body.agent_type,
         agent_version=body.agent_version,
         phone_verified=body.phone_verified,
+        identity_subject_hash=body.identity_subject_hash,
+        tenant_id=body.tenant_id,
+        relationship_id=body.relationship_id,
     )
     return TrialStartResponse(
         trial_id=result.trial_id,

@@ -1,4 +1,5 @@
 # Implements: ADR-046 sections 3.1, 3.2, 4, 7.2, and 10 items 1, 4, 9, 13, 14
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-09
 # constitutional_basis: C-026, C-059, C-063, C-076, C-080, C-083, C-084, C-085
 
 from __future__ import annotations
@@ -28,13 +29,15 @@ PRIVATE_SPECS = {
     "professional-runtime": REPO_ROOT / "architecture/reference/api-specs/professional-runtime.openapi.yaml",
     "domain-adapter-dma": REPO_ROOT / "architecture/reference/api-specs/dma-relationship-outcome-adapter.openapi.yaml",
 }
+WBE_PRICING_SPEC = REPO_ROOT / "architecture/reference/api-specs/wbe-pricing-admin.openapi.yaml"
+WBE_WALLET_SPEC = REPO_ROOT / "architecture/reference/api-specs/wbe-wallet-private.openapi.yaml"
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
-def _operations(path: Path) -> set[tuple[str, str, str, int]]:
+def _operations(path: Path, route_marker: str = "relationship") -> set[tuple[str, str, str, int]]:
     spec = _load_yaml(path)
     major = int(spec["info"]["version"].split(".", maxsplit=1)[0])
     return {
@@ -43,7 +46,7 @@ def _operations(path: Path) -> set[tuple[str, str, str, int]]:
         for method, operation in path_item.items()
         if method in {"get", "post", "put", "patch", "delete"}
         and operation.get("x-internal") is True
-        and "relationship" in route
+        and route_marker in route
     }
 
 
@@ -79,9 +82,10 @@ def test_registry_exactly_matches_private_f4_operations() -> None:
             (grant["method"], grant["route"], grant["operation"], grant["contract_major"])
         )
 
-    assert grants_by_target == {
-        target: _operations(spec_path) for target, spec_path in PRIVATE_SPECS.items()
-    }
+    expected = {target: _operations(spec_path) for target, spec_path in PRIVATE_SPECS.items()}
+    expected["billing-engine"] |= _operations(WBE_PRICING_SPEC, "/internal/v1/pricing/")
+    expected["billing-engine"] |= _operations(WBE_WALLET_SPEC, "/internal/v1/")
+    assert grants_by_target == expected
 
 
 @pytest.mark.parametrize(

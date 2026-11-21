@@ -1,4 +1,5 @@
 // Implements: work-contracts/WC-058-goal005-ae01-discover-trial-configure.md §WC058-04
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-04
 // constitutional_basis: C-023, C-026, C-049, C-059, C-076, C-088
 
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,7 @@ internal sealed class TrialOwnerGatewayStub : IRelationshipTrialOwnerGateway
     public WbeTrialStatus? WbeStatus { get; set; }
     public PrTrialWorkflow? Pr { get; set; }
     public int WbeCalls { get; private set; }
+    public TrialIdentityContext? WbeContext { get; private set; }
     public int PrCalls { get; private set; }
     public Guid? AgentInstanceId { get; private set; }
     public Guid? ProfessionalAdmissionId { get; private set; }
@@ -28,11 +30,13 @@ internal sealed class TrialOwnerGatewayStub : IRelationshipTrialOwnerGateway
         string professionalVersion,
         Guid relationshipId,
         Guid correlationId,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        TrialIdentityContext? context = null
     )
     {
         WbeCalls++;
         ProfessionalVersion = professionalVersion;
+        WbeContext = context;
         return Task.FromResult(Wbe);
     }
 
@@ -84,6 +88,54 @@ public sealed class RelationshipTrialServiceTests
         );
 
         Assert.Equal(startsAt.AddDays(21), result.ExpiresAt);
+    }
+
+    [Fact]
+    public async Task StartPassesTenantAndVerifiedIdentityHashToTheWalletOwner()
+    {
+        var (service, _, _, gateway, relationship, tenantId, actorId) = await CreateAsync();
+        var startsAt = DateTimeOffset.UtcNow;
+        var trialId = Guid.NewGuid();
+        var hash = new string('a', 64);
+        gateway.Wbe = new(trialId, startsAt, startsAt.AddDays(14));
+        gateway.Pr = new(trialId, "TRIAL_DEMONSTRATING", startsAt.AddDays(14));
+
+        await service.StartAsync(
+            tenantId,
+            relationship.RelationshipId,
+            actorId,
+            Guid.NewGuid(),
+            CancellationToken.None,
+            hash
+        );
+
+        Assert.Equal(new TrialIdentityContext(tenantId, hash), gateway.WbeContext);
+    }
+
+    [Theory]
+    [InlineData(
+        "WHATSAPP",
+        "ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789",
+        true
+    )]
+    [InlineData("WEB", "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789", false)]
+    [InlineData("WHATSAPP", "not-a-hash", false)]
+    public void VerifiedIdentityHashIsReadOnlyFromAWhatsAppSession(
+        string channel,
+        string hash,
+        bool expected
+    )
+    {
+        var user = new System.Security.Claims.ClaimsPrincipal(
+            new System.Security.Claims.ClaimsIdentity([
+                new System.Security.Claims.Claim("channel", channel),
+                new System.Security.Claims.Claim("external_subject_hash", hash),
+            ])
+        );
+
+        var value = TrialIdentityHash.FromClaims(user);
+
+        Assert.Equal(expected ? hash.ToLowerInvariant() : null, value);
     }
 
     [Fact]

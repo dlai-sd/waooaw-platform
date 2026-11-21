@@ -29,7 +29,7 @@
 | **Trial (WC-031)** | `start_trial(customer_id, agent_type, phone_verified: bool)` — C-019 gate | missing `phone_verified` param |
 | **Trial (WC-031)** | Direct `wallet_buckets` DB insert (NOT `WalletService.activate_subscription`) | `activate_subscription` requires Razorpay params — TypeError on trial start |
 | **Trial (WC-031)** | Free unit caps from `settings.TRIAL_FREE_UNITS[agent_type]` env var dict | hardcoded caps — violates Founder FA authority |
-| **Trial (WC-031)** | DB transaction commits first; Redis `wbe:customer:{id}:mode=TRIAL` set after commit | "atomic DB + Redis" — impossible; Redis is not transactional |
+| **Trial (WC-031)** | DB transaction commits first; trial status is the PostgreSQL row only (the customer-level Redis mode key was removed by WC-136 C3-02) | "atomic DB + Redis" — impossible; Redis is not transactional |
 | **Promotions (WC-031)** | `validate_coupon` checks `coupon.discount_pct <= settings.MAX_DISCOUNT_PCT` | no cap enforcement specified |
 | **Promotions (WC-031)** | `apply_discount` calls `credit_referrer` internally when referral PENDING | call chain omitted entirely |
 
@@ -39,7 +39,7 @@
 |---|---|---|---|
 | `wbe:billing_halted` | `set_halt()` in reconciliation | None (permanent until cleared) | `clear_halt()` after audit resolves |
 | `wbe:audit_in_progress:{YYYY-MM-DD}` | reconciliation scheduler | 4 hours | automatic TTL expiry |
-| `wbe:customer:{customer_id}:mode` | `start_trial()` | `(expires_at - now()).total_seconds()` | automatic TTL + `check_expiry()` DEL |
+| `wbe:customer:{customer_id}:mode` | Removed by WC-136 C3-02 (no customer-level trial flag) | n/a | n/a |
 | `wbe:customer:{id}:balance:{bucket_type}` | `reserve()` / `release()` | 30 seconds | automatic TTL |
 
 ---

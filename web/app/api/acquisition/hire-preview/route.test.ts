@@ -1,5 +1,8 @@
 /** @jest-environment node */
 
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-13
+// Constitutional basis: C-023, C-059, C-063
+
 import { NextRequest } from 'next/server';
 import { getIdentitySession } from '@/lib/api/identity';
 import { getProfessionalDisclosure } from '@/lib/api/professionals';
@@ -80,5 +83,96 @@ describe('Hire commercial preview boundary', () => {
       })
     );
     expect(await response.json()).toEqual({ coupon_code: 'DEMO100', payable_inr_paise: 0 });
+  });
+
+  const disclosure = () =>
+    ({
+      professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
+      projectionVersion: '1.0.0',
+      displayName: 'Digital Marketing Professional',
+      suitability: [],
+      eligibility: { eligible: true, explanation: 'Available' },
+      customerRouteSlug: 'digital-marketing-local-service',
+      disclosureRevision: '1.0.0',
+      termsVersion: '2026-07-18',
+      skills: [],
+      limitations: [],
+      authorityNeeds: [],
+      customerRights: [],
+      trial: { available: true, durationDays: 14, paidApiCallsAllowed: false, externalActionsAllowed: false },
+      evidencePosture: 'Evidence First',
+      indicativePrice: { currency: 'INR', amountInrPaise: 118000, cadence: 'MONTHLY', qualification: 'Indicative' },
+    }) as never;
+  const catalogue = {
+    items: [
+      {
+        packageCode: 'GROWTH',
+        displayName: 'Growth',
+        billingPeriodDays: 30,
+        priceInclGstPaise: 236000,
+        basePricePaise: 200000,
+        gstPaise: 36000,
+        components: [
+          { componentId: 'PROACTIVE_MESSAGE', label: 'Proactive messages', quantity: 30, cadence: 'SPREAD' },
+        ],
+      },
+    ],
+  };
+
+  it('prices the preview from the versioned package catalogue and returns its components', async () => {
+    jest.mocked(getProfessionalDisclosure).mockResolvedValue(disclosure());
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => catalogue } as Response)
+      .mockResolvedValueOnce({ status: 200, json: async () => ({ payable_inr_paise: 236000 }) } as Response);
+    const { POST } = await import('./route');
+
+    const response = await POST(
+      new NextRequest('http://localhost/api/acquisition/hire-preview', {
+        method: 'POST',
+        body: JSON.stringify({
+          professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
+          professionalVersion: '1.0.0',
+          packageCode: 'GROWTH',
+        }),
+      })
+    );
+
+    const [packageUrl, packageInit] = jest.mocked(global.fetch).mock.calls[0];
+    expect(packageUrl).toBe(
+      'http://localhost:5001/api/v1/marketplace/agents/DIGITAL_MARKETING_LOCAL_SERVICE/versions/1.0.0/packages?limit=100'
+    );
+    expect((packageInit as RequestInit).headers).toMatchObject({ Authorization: 'Bearer access-token' });
+    expect(jest.mocked(global.fetch).mock.calls[1][1]).toMatchObject({
+      body: JSON.stringify({
+        professional_type: 'DIGITAL_MARKETING_LOCAL_SERVICE',
+        gross_amount_inr_paise: 236000,
+        gst_amount_inr_paise: 36000,
+        cadence: 'MONTHLY',
+      }),
+    });
+    const result = await response.json();
+    expect(result.package).toMatchObject({ packageCode: 'GROWTH', billingPeriodDays: 30 });
+    expect(result.package.components).toHaveLength(1);
+  });
+
+  it('refuses a package code that the catalogue does not list', async () => {
+    jest.mocked(getProfessionalDisclosure).mockResolvedValue(disclosure());
+    global.fetch = jest.fn().mockResolvedValueOnce({ ok: true, status: 200, json: async () => catalogue } as Response);
+    const { POST } = await import('./route');
+
+    const response = await POST(
+      new NextRequest('http://localhost/api/acquisition/hire-preview', {
+        method: 'POST',
+        body: JSON.stringify({
+          professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
+          professionalVersion: '1.0.0',
+          packageCode: 'UNLISTED',
+        }),
+      })
+    );
+
+    expect(response.status).toBe(409);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 });

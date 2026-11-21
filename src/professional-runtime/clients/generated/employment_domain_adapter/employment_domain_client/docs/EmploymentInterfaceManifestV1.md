@@ -14,6 +14,7 @@ Name | Type | Description | Notes
 **induction** | [**EmploymentInductionManifestV1**](EmploymentInductionManifestV1.md) |  | 
 **planning** | [**EmploymentPlanningManifestV1**](EmploymentPlanningManifestV1.md) |  | 
 **operations** | [**EmploymentOperationsManifestV1**](EmploymentOperationsManifestV1.md) |  | 
+**experience** | [**EmploymentExperienceManifestV1**](EmploymentExperienceManifestV1.md) |  | [optional] 
 **conformance_scenarios** | [**List[EmploymentConformanceScenarioV1]**](EmploymentConformanceScenarioV1.md) |  | 
 
 ## Example

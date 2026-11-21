@@ -1,0 +1,83 @@
+{
+  "schemaVersion": "1.0",
+  "catalogueVersion": "1.0.0",
+  "agentType": "DIGITAL_MARKETING_LOCAL_SERVICE",
+  "contentSocialManifestVersion": "1.0.0",
+  "components": [
+    {
+      "componentId": "CONTENT_PLAN",
+      "label": "Content plans",
+      "unit": "plan",
+      "kind": "COUNTED",
+      "skillId": "CONTENT_STRATEGY_AND_CALENDAR",
+      "countedOn": "APPROVED_PLAN_VERSION",
+      "availability": "DEFAULT_OFF",
+      "activationAuthority": "FOUNDER_SEPARATE_DECISION"
+    },
+    {
+      "componentId": "CONTENT_DRAFT",
+      "label": "Content drafts",
+      "unit": "draft",
+      "kind": "COUNTED",
+      "skillId": "SOCIAL_CONTENT_CREATION_AND_PUBLISHING",
+      "countedOn": "DRAFT_DELIVERED_FOR_APPROVAL",
+      "availability": "DEFAULT_OFF",
+      "activationAuthority": "FOUNDER_SEPARATE_DECISION"
+    },
+    {
+      "componentId": "CONTENT_ASSET",
+      "label": "Pictures and short videos",
+      "unit": "asset",
+      "kind": "COUNTED",
+      "skillId": "VISUAL_AND_VIDEO_CONTENT",
+      "countedOn": "ASSET_DELIVERED_FOR_APPROVAL",
+      "availability": "DEFAULT_OFF",
+      "activationAuthority": "FOUNDER_SEPARATE_DECISION"
+    },
+    {
+      "componentId": "SOCIAL_PUBLICATION",
+      "label": "Approved posts published for you",
+      "unit": "post",
+      "kind": "COUNTED",
+      "skillId": "SOCIAL_CONTENT_CREATION_AND_PUBLISHING",
+      "countedOn": "PUBLICATION_ACCEPTED_BY_PLATFORM",
+      "availability": "DEFAULT_OFF",
+      "activationAuthority": "FOUNDER_SEPARATE_DECISION"
+    },
+    {
+      "componentId": "SOCIAL_OBSERVATION",
+      "label": "Social accounts I watch for you",
+      "unit": "social account",
+      "kind": "SELECTED",
+      "skillId": "MARKETING_PERFORMANCE_AND_IMPROVEMENT",
+      "countedOn": "OBSERVED_PLATFORM_PER_BILLING_PERIOD",
+      "selectableDimension": {
+        "kind": "SOCIAL_PLATFORM",
+        "maximum": 8
+      },
+      "availability": "DEFAULT_OFF",
+      "activationAuthority": "FOUNDER_SEPARATE_DECISION"
+    },
+    {
+      "componentId": "AD_BOOST",
+      "label": "Paid boosts",
+      "unit": "boost",
+      "kind": "COUNTED",
+      "countedOn": "BOOST_STARTED",
+      "availability": "UNAVAILABLE"
+    },
+    {
+      "componentId": "PROACTIVE_MESSAGE",
+      "label": "Messages I start on WhatsApp",
+      "unit": "message",
+      "kind": "COUNTED",
+      "countedOn": "TEMPLATE_MESSAGE_SENT",
+      "availability": "DEFAULT_OFF"
+    }
+  ],
+  "packageComponents": {
+    "B1": ["CONTENT_PLAN", "CONTENT_DRAFT", "CONTENT_ASSET"],
+    "B2": ["SOCIAL_PUBLICATION", "SOCIAL_OBSERVATION"]
+  },
+  "excludedPackages": ["C", "D", "E"]
+}

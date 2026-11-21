@@ -1,0 +1,35 @@
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C6-06
+# Constitutional basis: C-059, C-063, ADR-051
+#
+# Experience-compatibility scenarios for the published DMA employment manifest. Each scenario names one change applied
+# to a copy of src/digital-marketing-agent/contracts/employment-interface-manifest.v1.json and the scan outcome the
+# Business Platform compatibility scan (ExperienceManifestScanner) must report. The expectations are mirrored by
+# tests/business-platform.Tests/Workbench/ExperienceManifestScannerTests.cs; the Python model side is verified by
+# tests/contract/test_wc136_dma_experience_scenarios.py.
+schemaVersion: "1.0"
+manifest: src/digital-marketing-agent/contracts/employment-interface-manifest.v1.json
+scenarios:
+  - scenarioId: WC136-DMA-C04-COMPATIBLE
+    description: The published manifest 1.1.0 resolves completely.
+    change: {op: none}
+    expect: {state: COMPATIBLE, reasonCodes: [COMPATIBLE], pythonModelValid: true}
+  - scenarioId: WC136-DMA-C04-LEGACY
+    description: A manifest without an experience section stays admissible and is served by the legacy projections.
+    change: {op: remove, path: [experience]}
+    expect: {state: NOT_DECLARED, reasonCodes: [EXPERIENCE_NOT_DECLARED], pythonModelValid: true}
+  - scenarioId: WC136-DMA-C05-UNSUPPORTED-MAJOR
+    description: An unsupported experience contract major fails closed.
+    change: {op: set, path: [experience, contractVersion], value: "2.0.0"}
+    expect: {state: INCOMPATIBLE, reasonCodes: [EXPERIENCE_CONTRACT_VERSION_UNSUPPORTED], pythonModelValid: true}
+  - scenarioId: WC136-DMA-C06-UNRESOLVED-COMPONENT-SKILL
+    description: A component bound to a skill the agent does not operate fails closed.
+    change: {op: set, path: [experience, components, 0, skillId], value: SKILL_THAT_IS_NOT_OPERATED}
+    expect: {state: INCOMPATIBLE, reasonCodes: [EXPERIENCE_COMPONENT_SKILL_UNRESOLVED], pythonModelValid: false}
+  - scenarioId: WC136-DMA-C07-DUPLICATE-COMPONENT
+    description: Duplicate component identifiers fail closed.
+    change: {op: set, path: [experience, components, 1, componentId], value: CONTENT_PLAN}
+    expect: {state: INCOMPATIBLE, reasonCodes: [EXPERIENCE_COMPONENT_DUPLICATE], pythonModelValid: false}
+  - scenarioId: WC136-DMA-C08-WHATSAPP-WITHOUT-V1-BLOCKS
+    description: A channel that does not list the v1 block set fails closed.
+    change: {op: set, path: [experience, channelSupport, whatsapp], value: [TEXT]}
+    expect: {state: INCOMPATIBLE, reasonCodes: [EXPERIENCE_CHANNEL_SUPPORT_MISSING], pythonModelValid: true}

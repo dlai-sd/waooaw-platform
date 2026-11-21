@@ -498,16 +498,26 @@ def reset_demo_databases(
     return {"status": "completed", "databases": list(DEMO_DATABASES)}
 
 
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C5-04
+# Constitutional basis: C-023, C-059, C-063
+# Demo stays at INR 500; a Founder-authorized higher ceiling is passed explicitly as hard_maximum_paise.
 SPEND_AUTHORITY_MAXIMUM_PAISE = 50_000
 UUID_PATTERN = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
 
-def spend_authority_sql(environment: str, maximum_paise: int, evidence_id: str) -> str:
+def spend_authority_sql(
+    environment: str,
+    maximum_paise: int,
+    evidence_id: str,
+    hard_maximum_paise: int = SPEND_AUTHORITY_MAXIMUM_PAISE,
+) -> str:
     """Upsert the environment-wide spend authority; first creation requires no legacy model exposure."""
     if environment != "demo":
         raise ValueError("environment spend authority is provisioned for demo only")
-    if not isinstance(maximum_paise, int) or not 1 <= maximum_paise <= SPEND_AUTHORITY_MAXIMUM_PAISE:
-        raise ValueError("environment spend authority must be 1 to 50000 paise")
+    if not isinstance(hard_maximum_paise, int) or hard_maximum_paise < SPEND_AUTHORITY_MAXIMUM_PAISE:
+        raise ValueError(f"the hard maximum cannot be below {SPEND_AUTHORITY_MAXIMUM_PAISE} paise")
+    if not isinstance(maximum_paise, int) or not 1 <= maximum_paise <= hard_maximum_paise:
+        raise ValueError(f"environment spend authority must be 1 to {hard_maximum_paise} paise")
     if UUID_PATTERN.fullmatch(evidence_id) is None or evidence_id == "00000000-0000-0000-0000-000000000000":
         raise ValueError("environment spend authority evidence id must be a nonzero UUID")
     env = sql_literal(environment)
@@ -548,8 +558,9 @@ def apply_environment_spend_authority(
     environment: str,
     maximum_paise: int,
     evidence_id: str,
+    hard_maximum_paise: int = SPEND_AUTHORITY_MAXIMUM_PAISE,
 ) -> dict[str, Any]:
-    statement = spend_authority_sql(environment, maximum_paise, evidence_id)
+    statement = spend_authority_sql(environment, maximum_paise, evidence_id, hard_maximum_paise)
     token = access_token()
     psql(server_fqdn, bootstrap_name, APPLICATION_DATABASE, token, f"GRANT bp_owner TO {sql_identifier(bootstrap_name)};")
     try:
@@ -969,6 +980,7 @@ def execute(arguments: argparse.Namespace) -> dict[str, Any]:
             arguments.environment,
             spend_paise,
             getattr(arguments, "demo_spend_authority_evidence_id", "") or "",
+            getattr(arguments, "demo_spend_authority_hard_maximum_paise", None) or SPEND_AUTHORITY_MAXIMUM_PAISE,
         )
     azure_login(arguments.provisioner_client_id)
     evidence = write_secrets(
@@ -1028,6 +1040,11 @@ def main() -> int:
         help="demo only: set the environment-wide spend authority after the init chain",
     )
     parser.add_argument("--demo-spend-authority-evidence-id")
+    parser.add_argument(
+        "--demo-spend-authority-hard-maximum-paise",
+        type=int,
+        help="demo only: Founder-authorized environment hard maximum above the default 50000 paise",
+    )
     parser.add_argument("--network-probe", action="store_true")
     parser.add_argument("--validate-only", action="store_true")
     arguments = parser.parse_args()

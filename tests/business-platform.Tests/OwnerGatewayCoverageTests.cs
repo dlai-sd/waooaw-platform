@@ -1,4 +1,5 @@
 // Implements: tests/QA-STRATEGY.md §5.1 Unit Tests
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-09
 // constitutional_basis: C-002, C-023, C-026, C-059, C-076, C-083, C-084, C-085
 using System.Diagnostics;
 using System.Net;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Waooaw.BusinessPlatform.Services;
+using Waooaw.BusinessPlatform.Services.Spend;
 using Xunit;
 
 namespace Waooaw.BusinessPlatform.Tests;
@@ -395,6 +397,53 @@ public sealed class OwnerGatewayCoverageTests(OwnerGatewayIdentityFixture fixtur
     }
 
     [Fact]
+    public async Task TrialOwner_SendsTenantRelationshipAndIdentityHashForTheWalletCredit()
+    {
+        var tenantId = Guid.NewGuid();
+        var relationshipId = Guid.NewGuid();
+        var hash = new string('b', 64);
+        var startsAt = DateTimeOffset.UtcNow;
+        var sent = new List<string>();
+        using var identity = fixture.CreateIdentity();
+        var factory = new StubClientFactory(
+            Handler(
+                (request, _) =>
+                {
+                    sent.Add(request.Content!.ReadAsStringAsync().GetAwaiter().GetResult());
+                    return Json(
+                        HttpStatusCode.Created,
+                        $$"""
+                        {"trial_id":"{{Guid.NewGuid():D}}","started_at":"{{startsAt:O}}","expires_at":"{{startsAt.AddDays(
+                            14
+                        ):O}}"}
+                        """
+                    );
+                }
+            )
+        );
+        using var gateway = new HttpRelationshipTrialOwnerGateway(
+            factory,
+            identity,
+            new Uri("https://runtime.test")
+        );
+
+        await gateway.StartWbeTrialAsync(
+            Guid.NewGuid(),
+            "DMA",
+            "1.0.0",
+            relationshipId,
+            Guid.NewGuid(),
+            CancellationToken.None,
+            new TrialIdentityContext(tenantId, hash)
+        );
+
+        var body = Assert.Single(sent);
+        Assert.Contains($"\"tenant_id\":\"{tenantId:D}\"", body);
+        Assert.Contains($"\"relationship_id\":\"{relationshipId:D}\"", body);
+        Assert.Contains($"\"identity_subject_hash\":\"{hash}\"", body);
+    }
+
+    [Fact]
     public async Task TrialOwner_ConflictLoadsMatchingActiveEntitlement()
     {
         var customerId = Guid.NewGuid();
@@ -605,13 +654,7 @@ public sealed class OwnerGatewayCoverageTests(OwnerGatewayIdentityFixture fixtur
 
         Assert.Equal(
             reservationId,
-            (
-                await gateway.ReserveAsync(
-                    identityValue,
-                    8192,
-                    CancellationToken.None
-                )
-            ).ReservationId
+            (await gateway.ReserveAsync(identityValue, 8192, CancellationToken.None)).ReservationId
         );
         await gateway.SettleAsync(
             identityValue,
@@ -627,11 +670,7 @@ public sealed class OwnerGatewayCoverageTests(OwnerGatewayIdentityFixture fixtur
             CancellationToken.None
         );
         Assert.NotNull(
-            await gateway.ReconcileAsync(
-                identityValue,
-                reservationId,
-                CancellationToken.None
-            )
+            await gateway.ReconcileAsync(identityValue, reservationId, CancellationToken.None)
         );
         Assert.Equal(["reserve", "settle", "release", "reconcile"], actions);
     }
@@ -659,22 +698,13 @@ public sealed class OwnerGatewayCoverageTests(OwnerGatewayIdentityFixture fixtur
         if (reconcileReturnsNull)
         {
             Assert.Null(
-                await gateway.ReconcileAsync(
-                    OfferingIdentity(),
-                    null,
-                    CancellationToken.None
-                )
+                await gateway.ReconcileAsync(OfferingIdentity(), null, CancellationToken.None)
             );
         }
         else
         {
-            await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(
-                () =>
-                    gateway.ReserveAsync(
-                        OfferingIdentity(),
-                        1,
-                        CancellationToken.None
-                    )
+            await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(() =>
+                gateway.ReserveAsync(OfferingIdentity(), 1, CancellationToken.None)
             );
         }
     }
@@ -702,13 +732,417 @@ public sealed class OwnerGatewayCoverageTests(OwnerGatewayIdentityFixture fixtur
             )
         );
 
-        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(
-            () =>
-                gateway.ReserveAsync(
-                    OfferingIdentity(),
-                    1,
-                    CancellationToken.None
-                )
+        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(() =>
+            gateway.ReserveAsync(OfferingIdentity(), 1, CancellationToken.None)
+        );
+    }
+
+    [Fact]
+    public async Task PlatformAccountGateway_ReservesWithASignedRouteAndOmitsAbsentFields()
+    {
+        var tenant = Guid.NewGuid();
+        var key = Guid.NewGuid();
+        var reservation = Guid.NewGuid();
+        var captured = new List<(string Path, string Body, string? Idempotency)>();
+        using var identity = fixture.CreateIdentity();
+        using var gateway = new AuthenticatedOfferingUsageGateway(
+            identity,
+            new Uri("https://billing.test")
+        );
+        ReplaceClient(
+            gateway,
+            "_client",
+            Handler(
+                (request, _) =>
+                {
+                    Assert.StartsWith("Bearer ", request.Headers.Authorization?.ToString());
+                    captured.Add(
+                        (
+                            request.RequestUri!.AbsolutePath,
+                            request.Content!.ReadAsStringAsync().GetAwaiter().GetResult(),
+                            request.Headers.GetValues("Idempotency-Key").Single()
+                        )
+                    );
+                    return Json(
+                        HttpStatusCode.OK,
+                        $$"""
+                        {
+                          "schemaVersion": "1.0",
+                          "accountClass": "ACQUISITION",
+                          "reservationId": "{{reservation:D}}",
+                          "accountId": "{{Guid.NewGuid():D}}",
+                          "state": "RESERVED",
+                          "reservedPaise": 120,
+                          "replayed": false
+                        }
+                        """
+                    );
+                }
+            )
+        );
+
+        var receipt = await gateway.ReserveAccountAsync(
+            new PlatformAccountReserveRequest(
+                tenant,
+                Guid.NewGuid(),
+                SpendAccountClass.Acquisition,
+                null,
+                null,
+                "lead-7",
+                "llm_cloud",
+                120,
+                null,
+                Guid.NewGuid(),
+                key,
+                Guid.NewGuid()
+            ),
+            CancellationToken.None
+        );
+
+        Assert.Equal(reservation, receipt.ReservationId);
+        Assert.Equal(120, receipt.ReservedPaise);
+        var sent = Assert.Single(captured);
+        Assert.Equal("/internal/v1/wallet/accounts/reserve", sent.Path);
+        Assert.Equal(key.ToString("D"), sent.Idempotency);
+        Assert.Contains("\"accountClass\":\"ACQUISITION\"", sent.Body);
+        Assert.Contains("\"leadRef\":\"lead-7\"", sent.Body);
+        Assert.DoesNotContain("environment", sent.Body);
+        Assert.DoesNotContain("campaignRef", sent.Body);
+        Assert.DoesNotContain("purpose", sent.Body);
+    }
+
+    [Theory]
+    [InlineData(SpendAccountClass.Subscription)]
+    [InlineData(SpendAccountClass.Trial)]
+    [InlineData(SpendAccountClass.SetupGrant)]
+    public async Task PlatformAccountGateway_RefusesRelationshipScopedClasses(
+        SpendAccountClass accountClass
+    )
+    {
+        using var identity = fixture.CreateIdentity();
+        using var gateway = new AuthenticatedOfferingUsageGateway(
+            identity,
+            new Uri("https://billing.test")
+        );
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            gateway.ReserveAccountAsync(
+                new PlatformAccountReserveRequest(
+                    Guid.NewGuid(),
+                    Guid.NewGuid(),
+                    accountClass,
+                    null,
+                    null,
+                    null,
+                    "llm_cloud",
+                    10,
+                    null,
+                    Guid.NewGuid(),
+                    Guid.NewGuid(),
+                    Guid.NewGuid()
+                ),
+                CancellationToken.None
+            )
+        );
+    }
+
+    [Theory]
+    [InlineData(
+        HttpStatusCode.Conflict,
+        """{"detail":{"code":"ACQUISITION_BUDGET_EXHAUSTED","level":"CAMPAIGN"}}""",
+        "ACQUISITION_BUDGET_EXHAUSTED",
+        "CAMPAIGN"
+    )]
+    [InlineData(
+        HttpStatusCode.Conflict,
+        """{"detail":"WALLET_ACCOUNT_CLOSED"}""",
+        "WALLET_ACCOUNT_CLOSED",
+        null
+    )]
+    [InlineData(HttpStatusCode.UnprocessableEntity, "not json", "WALLET_REFUSED", null)]
+    public async Task PlatformAccountGateway_SurfacesTheOwnerRefusalCodeAndLevel(
+        HttpStatusCode status,
+        string body,
+        string code,
+        string? level
+    )
+    {
+        using var identity = fixture.CreateIdentity();
+        using var gateway = new AuthenticatedOfferingUsageGateway(
+            identity,
+            new Uri("https://billing.test")
+        );
+        ReplaceClient(gateway, "_client", Handler((_, _) => Json(status, body)));
+
+        var refused = await Assert.ThrowsAsync<PlatformAccountRefusedException>(() =>
+            gateway.OpenSetupGrantAsync(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                "DMA",
+                "1.0.0",
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
+
+        Assert.Equal(code, refused.Code);
+        Assert.Equal(level, refused.Level);
+    }
+
+    [Fact]
+    public async Task PlatformAccountGateway_OpensTheSetupGrantOnTheRelationshipRoute()
+    {
+        var relationship = Guid.NewGuid();
+        var paths = new List<string>();
+        using var identity = fixture.CreateIdentity();
+        using var gateway = new AuthenticatedOfferingUsageGateway(
+            identity,
+            new Uri("https://billing.test")
+        );
+        ReplaceClient(
+            gateway,
+            "_client",
+            Handler(
+                (request, _) =>
+                {
+                    paths.Add(request.RequestUri!.AbsolutePath);
+                    return Json(
+                        HttpStatusCode.OK,
+                        $$"""
+                        {
+                          "schemaVersion": "1.0",
+                          "status": "GRANTED",
+                          "accountId": "{{Guid.NewGuid():D}}",
+                          "lotId": "{{Guid.NewGuid():D}}",
+                          "creditedPaise": 5000,
+                          "created": true
+                        }
+                        """
+                    );
+                }
+            )
+        );
+
+        var receipt = await gateway.OpenSetupGrantAsync(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            relationship,
+            "DMA",
+            "1.0.0",
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
+
+        Assert.Equal([$"/internal/v1/relationships/{relationship:D}/setup-grant"], paths);
+        Assert.Equal("GRANTED", receipt.Status);
+        Assert.Equal(5000, receipt.CreditedPaise);
+        Assert.True(receipt.Created);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.BadGateway)]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    public async Task PlatformAccountGateway_FailsClosedWhenTheOwnerIsUnavailable(
+        HttpStatusCode status
+    )
+    {
+        using var identity = fixture.CreateIdentity();
+        using var gateway = new AuthenticatedOfferingUsageGateway(
+            identity,
+            new Uri("https://billing.test")
+        );
+        ReplaceClient(gateway, "_client", Handler((_, _) => Json(status, "{}")));
+
+        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(() =>
+            gateway.OpenSetupGrantAsync(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                "DMA",
+                "1.0.0",
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
+    }
+
+    [Fact]
+    public async Task PlatformAccountGateway_DrawsSettlesAndReleasesWithSignedRoutes()
+    {
+        var reservation = Guid.NewGuid();
+        var relationship = Guid.NewGuid();
+        var captured = new List<(string Path, string Body)>();
+        using var identity = fixture.CreateIdentity();
+        using var gateway = new AuthenticatedOfferingUsageGateway(
+            identity,
+            new Uri("https://billing.test")
+        );
+        ReplaceClient(
+            gateway,
+            "_client",
+            Handler(
+                (request, _) =>
+                {
+                    Assert.StartsWith("Bearer ", request.Headers.Authorization?.ToString());
+                    var body = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+                    captured.Add((request.RequestUri!.AbsolutePath, body));
+                    return request.RequestUri.AbsolutePath.EndsWith("/setup-grant/reserve")
+                        ? Json(
+                            HttpStatusCode.OK,
+                            $$"""
+                            {"schemaVersion":"1.0","status":"SETUP_GRANT_EXHAUSTED","accountId":"{{Guid.NewGuid():D}}","reservedPaise":0,"replayed":false}
+                            """
+                        )
+                        : Json(
+                            HttpStatusCode.OK,
+                            $$"""
+                            {"schemaVersion":"1.0","reservationId":"{{reservation:D}}","accountId":"{{Guid.NewGuid():D}}","state":"SETTLED","reservedPaise":200,"actualPaise":150,"overrunPaise":0,"fenced":false,"replayed":false}
+                            """
+                        );
+                }
+            )
+        );
+
+        var draw = await gateway.ReserveSetupGrantAsync(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            relationship,
+            "DMA",
+            "1.0.0",
+            "llm_cloud",
+            200,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
+        var settled = await gateway.SettleAccountAsync(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            reservation,
+            150,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
+        var released = await gateway.ReleaseAccountAsync(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            reservation,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
+
+        Assert.True(draw.IsExhausted);
+        Assert.Null(draw.ReservationId);
+        Assert.Equal(150, settled.ActualPaise);
+        Assert.Equal(reservation, released.ReservationId);
+        Assert.Equal(
+            [
+                $"/internal/v1/relationships/{relationship:D}/setup-grant/reserve",
+                "/internal/v1/wallet/reservations/settle",
+                "/internal/v1/wallet/reservations/release",
+            ],
+            captured.Select(item => item.Path).ToArray()
+        );
+        Assert.Contains("\"actualPaise\":150", captured[1].Body);
+        Assert.Contains($"\"reservationId\":\"{reservation:D}\"", captured[2].Body);
+    }
+
+    [Fact]
+    public async Task PlatformAccountGateway_SettleFailsClosedWhenTheOwnerIsUnavailable()
+    {
+        using var identity = fixture.CreateIdentity();
+        using var gateway = new AuthenticatedOfferingUsageGateway(
+            identity,
+            new Uri("https://billing.test")
+        );
+        ReplaceClient(gateway, "_client", Handler((_, _) => Json(HttpStatusCode.BadGateway, "{}")));
+
+        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(() =>
+            gateway.SettleAccountAsync(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                10,
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
+    }
+
+    [Fact]
+    public async Task UnconfiguredPlatformAccountGateway_DeniesEveryOperation()
+    {
+        var gateway = new UnconfiguredOfferingUsageGateway();
+        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(() =>
+            gateway.ReserveSetupGrantAsync(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                "DMA",
+                "1.0.0",
+                "llm_cloud",
+                10,
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
+        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(() =>
+            gateway.SettleAccountAsync(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                10,
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
+        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(() =>
+            gateway.ReleaseAccountAsync(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
+        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(() =>
+            gateway.ReserveAccountAsync(
+                new PlatformAccountReserveRequest(
+                    Guid.NewGuid(),
+                    Guid.NewGuid(),
+                    SpendAccountClass.Simulation,
+                    "ci",
+                    null,
+                    null,
+                    "llm_cloud",
+                    10,
+                    null,
+                    Guid.NewGuid(),
+                    Guid.NewGuid(),
+                    Guid.NewGuid()
+                ),
+                CancellationToken.None
+            )
+        );
+        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(() =>
+            gateway.OpenSetupGrantAsync(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                "DMA",
+                "1.0.0",
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
         );
     }
 
@@ -717,30 +1151,17 @@ public sealed class OwnerGatewayCoverageTests(OwnerGatewayIdentityFixture fixtur
     {
         var gateway = new UnconfiguredOfferingUsageGateway();
         var value = OfferingIdentity();
-        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(
-            () => gateway.ReserveAsync(value, 1, CancellationToken.None)
+        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(() =>
+            gateway.ReserveAsync(value, 1, CancellationToken.None)
         );
-        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(
-            () =>
-                gateway.SettleAsync(
-                    value,
-                    Guid.NewGuid(),
-                    1,
-                    Guid.NewGuid(),
-                    CancellationToken.None
-                )
+        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(() =>
+            gateway.SettleAsync(value, Guid.NewGuid(), 1, Guid.NewGuid(), CancellationToken.None)
         );
-        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(
-            () =>
-                gateway.ReleaseAsync(
-                    value,
-                    Guid.NewGuid(),
-                    Guid.NewGuid(),
-                    CancellationToken.None
-                )
+        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(() =>
+            gateway.ReleaseAsync(value, Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None)
         );
-        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(
-            () => gateway.ReconcileAsync(value, null, CancellationToken.None)
+        await Assert.ThrowsAsync<OfferingUsageOwnerUnavailableException>(() =>
+            gateway.ReconcileAsync(value, null, CancellationToken.None)
         );
     }
 

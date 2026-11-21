@@ -1,4 +1,5 @@
 // Implements: architecture/reference/api-specs/business-platform.openapi.yaml §RelationshipCheckoutOutcome
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-04
 // Constitutional basis: C-005, C-023, C-026, C-059
 
 using System.Security.Claims;
@@ -946,7 +947,8 @@ public sealed class EmploymentRelationshipsController : ControllerBase
                     relationshipId,
                     participantId,
                     request.CorrelationId ?? Guid.NewGuid(),
-                    cancellationToken
+                    cancellationToken,
+                    TrialIdentityHash.FromClaims(User)
                 )
             );
         }

@@ -1,4 +1,6 @@
 // Implements: work-contracts/WC-121-demo-whatsapp-provider-enablement-work-component.md S11-S13
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C1-02
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C3-01
 // Constitutional basis: C-005, C-023, C-026, C-059, C-063
 
 using System.Data;
@@ -21,11 +23,14 @@ public sealed class WhatsAppTrafficBudget(
     IWhatsAppCapabilityGate gate,
     TimeProvider clock,
     WhatsAppTenantExecutionScope? execution = null,
-    ConversationEnvironmentSpendOwner? environmentSpend = null
+    ConversationEnvironmentSpendOwner? environmentSpend = null,
+    EnvironmentSpendOptions? spendOptions = null
 ) : IWhatsAppRegistrationVerificationBudget
 {
     private readonly ConversationEnvironmentSpendOwner _environmentSpend =
         environmentSpend ?? new ConversationEnvironmentSpendOwner();
+    private readonly EnvironmentSpendOptions _spendOptions =
+        spendOptions ?? new EnvironmentSpendOptions();
 
     public Task<WhatsAppGuestTrafficNotice> ReserveRelationshipInboundAsync(
         Guid tenantId,
@@ -247,7 +252,7 @@ public sealed class WhatsAppTrafficBudget(
                 ),
                 challengeId,
                 costPaise,
-                CheckedPaise(Math.Min(500m, authority.MaximumSpendInr)),
+                CheckedPaise(_spendOptions.EffectiveMaximumInr(authority.MaximumSpendInr)),
                 now,
                 ct
             )
@@ -403,6 +408,8 @@ public sealed class WhatsAppTrafficBudget(
                     "CUSTOMER_REQUEST"
                     or "WHATSAPP_GUEST_DISCOVERY"
                     or "WHATSAPP_GUEST_SESSION_LIMIT_NOTICE"
+                    or "WHATSAPP_GUEST_STOP_ACK"
+                    or "WHATSAPP_RELATIONSHIP_STOP_ACK"
                 )
             || dispatchOutbox.TemplateName is not null
             || dispatchOutbox.TemplateVersion is not null
@@ -425,7 +432,7 @@ public sealed class WhatsAppTrafficBudget(
                 request.PayloadDigest,
                 request.OutboxId,
                 0,
-                CheckedPaise(Math.Min(500m, authority.MaximumSpendInr)),
+                CheckedPaise(_spendOptions.EffectiveMaximumInr(authority.MaximumSpendInr)),
                 now,
                 cancellationToken
             )
@@ -473,6 +480,8 @@ public sealed class WhatsAppTrafficBudget(
             && dispatchOutbox.Purpose
                 is "WHATSAPP_GUEST_DISCOVERY"
                     or "WHATSAPP_GUEST_SESSION_LIMIT_NOTICE"
+                    or "WHATSAPP_GUEST_STOP_ACK"
+                    or "WHATSAPP_RELATIONSHIP_STOP_ACK"
         )
         {
             var guestEvents = db.Set<WhatsAppGuestTrafficEvent>()

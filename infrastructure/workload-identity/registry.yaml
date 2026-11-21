@@ -82,6 +82,14 @@ route_grants:
   - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/relationships/{relationshipId}/offering-usage/settle", operation: settleOfferingComponentUsage, contract_major: 1 }
   - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/relationships/{relationshipId}/offering-usage/release", operation: releaseOfferingComponentUsage, contract_major: 1 }
   - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/relationships/{relationshipId}/offering-usage/reconcile", operation: reconcileOfferingComponentUsage, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/wallet/parity", operation: wbeGetWalletParity, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/relationships/{relationshipId}/setup-grant", operation: wbeOpenSetupGrant, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/wallet/accounts/reserve", operation: wbeReserveWalletAccount, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/relationships/{relationshipId}/setup-grant/reserve", operation: wbeReserveSetupGrant, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/wallet/reservations/settle", operation: wbeSettleWalletReservation, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/wallet/reservations/release", operation: wbeReleaseWalletReservation, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/marketplace/agents/{agentType}/versions/{agentVersion}/packages", operation: wbeListForSalePackages, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/relationships/{relationshipId}/component-units/consume", operation: applyRelationshipComponentUnit, contract_major: 1 }
   - { caller: business-platform, target: constitutional-engine, method: POST, route: "/constitutional.v1.ConstitutionalService/ValidateAction", operation: ValidateAction, contract_major: 1 }
   - { caller: business-platform, target: constitutional-engine, method: POST, route: "/constitutional.v1.ConstitutionalService/RecordEvidence", operation: RecordEvidence, contract_major: 1 }
   - { caller: business-platform, target: professional-runtime, method: POST, route: "/api/v1/internal/conversations/{conversationId}/executions", operation: startConversationExecution, contract_major: 1 }
@@ -117,6 +125,24 @@ route_grants:
   - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/relationships/{relationshipId}/commercial-commands", operation: submitRelationshipCommercialCommand, contract_major: 1 }
   - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/relationships/{relationshipId}/commercial-commands/{commandId}", operation: getRelationshipCommercialCommand, contract_major: 1 }
   - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/relationships/{relationshipId}/employment-eligibility", operation: getEmploymentCommercialEligibility, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/pricing/drafts", operation: wbeListPricingDrafts, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/pricing/drafts", operation: wbeCreatePricingDraft, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/pricing/drafts/{draftId}", operation: wbeGetPricingDraft, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: PUT, route: "/internal/v1/pricing/drafts/{draftId}", operation: wbeUpdatePricingDraft, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/pricing/drafts/{draftId}/simulate", operation: wbeSimulatePricingDraft, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/pricing/drafts/{draftId}/submit", operation: wbeSubmitPricingDraft, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/pricing/drafts/{draftId}/authorize", operation: wbeAuthorizePricingDraft, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/pricing/drafts/{draftId}/discard", operation: wbeDiscardPricingDraft, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/pricing/versions", operation: wbeListPricingVersions, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/pricing/versions/export", operation: wbeExportPricingVersions, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/pricing/versions/import", operation: wbeImportPricingVersions, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/pricing/packages/{packageId}/activate-for-sale", operation: wbeActivatePackageForSale, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/pricing/safety/lower-ceiling", operation: wbeLowerPricingCeiling, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/pricing/safety/close-package", operation: wbeClosePackageToNewCustomers, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/pricing/safety/disable-grant", operation: wbeDisablePricingGrant, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/pricing/live-margin", operation: wbeGetPricingLiveMargin, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/pricing/dashboard/funding", operation: wbeGetPricingFundingDashboard, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/pricing/dashboard/margin", operation: wbeGetPricingMarginDashboard, contract_major: 1 }
   - { caller: business-platform, target: professional-runtime, method: GET, route: "/api/v1/internal/relationships/{relationshipId}/workspace-execution", operation: getRelationshipExecutionProjection, contract_major: 1 }
   - { caller: business-platform, target: professional-runtime, method: POST, route: "/api/v1/internal/relationships/{relationshipId}/evaluation-trial", operation: startRelationshipTrial, contract_major: 1 }
   - { caller: business-platform, target: professional-runtime, method: POST, route: "/api/v1/internal/relationships/{relationshipId}/workspace-controls", operation: submitRelationshipExecutionControl, contract_major: 1 }

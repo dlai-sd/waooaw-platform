@@ -1,4 +1,5 @@
 // Implements: architecture/reference/api-specs/customer-engagement-workspace-business-platform.openapi.yaml
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C6-07
 // Constitutional basis: C-001, C-005, C-007, C-023, C-026, C-059, C-063
 
 using System.Security.Claims;
@@ -29,6 +30,7 @@ public sealed record EndConversationChannelSessionRequest(
 [ApiController]
 [Authorize]
 [CustomerIdentityRoute(requiresMembership: true)]
+[WorkbenchSuccessorHeaders]
 [Route("api/v1/employment/relationships/{relationshipId:guid}")]
 public sealed class CustomerEngagementWorkspaceController(
     CustomerEngagementWorkspaceService service

@@ -1,5 +1,8 @@
 # Implements: work-contracts/WC-059-goal005-ae01-contract-payment-activation.md §WC059-06
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-10
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C5-07
 # constitutional_basis: C-002, C-023, C-059, C-088
+# Constitutional basis: C-059, C-038, C-088
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -9,7 +12,10 @@ from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from markup.package_engine import SqlPackageReferenceData
+from payment.lifecycle import credit_paid_period
 from payment.models import PaidActivationRequest, PaidActivationResult
+from wallet import mirror
 from wallet.service import WalletService
 
 
@@ -87,6 +93,18 @@ class PaidActivationService:
                 now=database_time, subscription_id=database_uuid(outcome.subscription_id),
                 payment_reference=request.payment_reference,
             ))
+            authority = mirror.wallet_authority()
+            await credit_paid_period(
+                self._db,
+                rates=SqlPackageReferenceData(self._db),
+                tenant_id=UUID(str(row.tenant_id)),
+                relationship_id=UUID(str(row.relationship_id)),
+                customer_id=UUID(str(row.customer_id)),
+                period_start=now,
+                evidence_id=request.payment_evidence_id,
+                authority=authority,
+                coupon_code=await self._checkout_coupon(request.payment_reference) if authority != "LEGACY" else None,
+            )
             await self._db.commit()
             return PaidActivationResult(subscription_id=outcome.subscription_id)
         except Exception:
@@ -97,3 +115,12 @@ class PaidActivationService:
             ).bindparams(payment_reference=request.payment_reference))
             await self._db.commit()
             raise
+
+    async def _checkout_coupon(self, payment_reference: str) -> str | None:
+        """The coupon code the customer checked out with, if any, for its redemption at hire (C5-07)."""
+        row = (await self._db.execute(text(
+            "SELECT o.coupon_code FROM pre_hire_checkout_orders o "
+            "JOIN payment_intents p ON p.checkout_intent_id = o.checkout_intent_id "
+            "WHERE p.razorpay_payment_id = :payment_reference"
+        ).bindparams(payment_reference=payment_reference))).fetchone()
+        return None if row is None or not row.coupon_code else str(row.coupon_code)

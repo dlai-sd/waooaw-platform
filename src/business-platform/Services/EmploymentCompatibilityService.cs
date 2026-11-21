@@ -1,6 +1,7 @@
 // Implements: architecture/reference/components/conversational-employment-solution-contract.md §4.8 Compatibility scan
 // Constitutional basis: C-023, C-059, C-063, C-079, ADR-051
 // IB: N/A - Founder-assigned WC-115
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C6-06
 
 using System.Security.Cryptography;
 using System.Text;
@@ -68,6 +69,13 @@ public sealed record EmploymentCompatibilitySubmission(
     EmploymentCompatibilityReceipt Receipt,
     EmploymentCompatibilityResult Result,
     bool Replayed
+);
+
+/// <summary>The compatibility verdict for one agent plus its experience state: COMPATIBLE, NOT_DECLARED or INCOMPATIBLE.</summary>
+public sealed record EmploymentExperienceScan(
+    EmploymentAgentCompatibilityResult Result,
+    string ExperienceState,
+    IReadOnlyList<string> Gaps
 );
 
 public sealed class EmploymentCompatibilityService
@@ -184,6 +192,34 @@ public sealed class EmploymentCompatibilityService
             _results[scanId] = completed;
             return completed;
         }
+    }
+
+    /// <summary>
+    /// Scans one admitted manifest for experience compatibility. A manifest without `experience` stays compatible and
+    /// is served by the legacy projections; a declared section that does not resolve fails closed.
+    /// </summary>
+    public static EmploymentExperienceScan ScanExperience(
+        OfferedEmploymentAgent agent,
+        JsonElement manifest
+    )
+    {
+        var scan = Workbench.ExperienceManifestScanner.Scan(manifest);
+        var incompatible = scan.State == Workbench.ExperienceScanResult.Incompatible;
+        var result = new EmploymentAgentCompatibilityResult(
+            agent.AgentType,
+            agent.AgentVersion,
+            agent.ManifestVersion,
+            agent.DomainAdapterVersion,
+            incompatible ? "FAIL" : "PASS",
+            incompatible ? scan.ReasonCodes : ["COMPATIBLE"],
+            incompatible ? [$"manifest:{agent.AgentType}:{agent.AgentVersion}"] : [],
+            incompatible ? [] : [$"manifest:{agent.AgentType}:{agent.AgentVersion}"]
+        );
+        return new EmploymentExperienceScan(
+            result,
+            scan.State,
+            scan.State == Workbench.ExperienceScanResult.Compatible ? [] : scan.ReasonCodes
+        );
     }
 
     private static EmploymentCompatibilityReceipt Receipt(

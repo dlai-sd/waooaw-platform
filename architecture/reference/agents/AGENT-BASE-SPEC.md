@@ -1,4 +1,4 @@
-# WAOOAW Agent Base Specification v1.0
+# WAOOAW Agent Base Specification v1.1
 
 **Authority:** Enterprise Architect (INST-004) — 2026-07-30
 **Constitutional Basis:** C-070 (Constitutional DNA — 3 Instincts), C-049 (Honest Limitation),
@@ -7,7 +7,7 @@ C-088 (Agent Billing Profile), C-091 (Thread Catalog Sovereignty)
 principle hierarchy, AsyncAPI 3.0 consumer declarations. WAOOAW's approach is governance-first
 (document-based, mandatory) vs industry's code-first (optional inheritance).
 **Status:** APPROVED — 2026-07-30
-**Version:** 1.0
+**Version:** 1.1
 **Supersedes:** Nothing (new document)
 **Referenced by:** AGENT-AUTHORING-GUIDE §mandatory-sections, CONSTITUTIONAL_DNA.md
 
@@ -36,6 +36,7 @@ When this document's version changes:
 | Version | Date | Changes |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial — 5 mandatory sections: Budget state, Trial/Live, Graceful degradation, Honest limitation, Emergency Stop |
+| 1.1 | 2026-11-20 | WC-136 C3-05 — B-3 WBE-unavailable default changes from `continue_silent` to `fail_closed_free_path`: no metered model spend without a commercial reservation; free path with disclosure |
 
 ---
 
@@ -139,11 +140,13 @@ CE unavailable:
   → Customer told: "I'm in advisory-only mode right now. I can plan but not act."
   → Resume automatically when CE recovers (≤30s per ADR-031)
 
-WBE unavailable:
-  → Skip proactive budget alerts (non-critical path)
-  → Continue LLM dispatch (AIR uses last-known bucket state from Redis)
+WBE unavailable (fail closed, free path with disclosure — WC-136 C3-05):
+  → Metered spending stops: no model dispatch is made without a commercial reservation
+  → Continue on the free path only (ZERO_COST templates, read-only guidance, platform-floor
+    safety responses); platform-floor calls do not need a commercial reservation
+  → No uncounted spend: an unknown outcome keeps its reservation until reconciled
+  → Customer told the limitation per C-049 ("I can only give standard guidance right now.")
   → Log signal materiality event (institutional.signal_materiality_events)
-  → Do NOT error; do NOT disclose to customer unless WBE is down > 1 hour
 
 AIR unavailable:
   → Switch to ZERO_COST templates for advisory responses
@@ -167,7 +170,7 @@ Example: Agricultural Advisor — if climate data API is unavailable, use 3-day 
 platform_agent_contract:
   degradation_hierarchy:
     ce_unavailable:   "halt_and_disclose_advisory_only"  # default — do not change
-    wbe_unavailable:  "continue_silent"                  # default — may override
+    wbe_unavailable:  "fail_closed_free_path"            # default — metered spend stops; free path with disclosure
     air_unavailable:  "zero_cost_with_disclosure"        # default — may override
     mcp_unavailable:
       - mcp_id: "[mcp-name]"

@@ -1,4 +1,5 @@
 // Implements: work-contracts/WC-134-whatsapp-demo-complete-rollout-work-component.md §8
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C1-03
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Waooaw.BusinessPlatform.Infrastructure;
@@ -495,7 +496,8 @@ public sealed class WhatsAppRelationshipRouting(
     internal async Task<WhatsAppJourneyReceipt> ReceiveSignedSafetyControlAsync(
         VerifiedPhoneIdentityProof proof,
         RelationshipEmergencyStopService? emergencyStops,
-        CancellationToken ct
+        CancellationToken ct,
+        List<WhatsAppSafetyAcknowledgementTarget>? acknowledgements = null
     )
     {
         var stop = proof.Text.Trim().Equals("STOP", StringComparison.OrdinalIgnoreCase);
@@ -579,6 +581,7 @@ public sealed class WhatsAppRelationshipRouting(
 
         using var customer = execution.BeginRelationshipValidation(candidate);
         ChannelBinding binding;
+        string? contactDestination = null;
         await using (var transaction = await db.Database.BeginTransactionAsync(ct))
         {
             binding = await RequireSafetyBindingAsync(
@@ -599,6 +602,7 @@ public sealed class WhatsAppRelationshipRouting(
                 contact.OptedOutAt ??= proof.VerifiedAt;
                 contact.PendingMediumRiskConfirmation = false;
                 contact.JourneyStage = "STOP";
+                contactDestination = contact.ProtectedDestination;
                 execution.RequireUnchangedAuthority();
                 await db.SaveChangesAsync(ct);
             }
@@ -606,7 +610,13 @@ public sealed class WhatsAppRelationshipRouting(
             await transaction.CommitAsync(ct);
         }
         if (stop)
+        {
+            // Reported only after the opt-out is committed, so an acknowledgement can never precede its evidence.
+            acknowledgements?.Add(
+                new(candidate.TenantId, binding.RelationshipId, false, contactDestination)
+            );
             return SafetyReceipt(proof.MessageId, "STOPPED", string.Empty);
+        }
         var owner =
             emergencyStops
             ?? throw new WhatsAppWebhookException(503, "WHATSAPP_EMERGENCY_STOP_UNAVAILABLE");
@@ -625,11 +635,43 @@ public sealed class WhatsAppRelationshipRouting(
                 "Relationship Emergency Stop was not confirmed."
             );
         execution.RequireUnchangedAuthority();
+        if (acknowledgements is not null)
+            acknowledgements.Add(
+                new(
+                    candidate.TenantId,
+                    binding.RelationshipId,
+                    true,
+                    await ReadContactDestinationAsync(db, candidate, ct)
+                )
+            );
         return SafetyReceipt(
             proof.MessageId,
             "ACCEPTED",
             "Emergency Stop is recorded and the relationship is blocked. Session halt confirmation may still be pending."
         );
+    }
+
+    // Read after the halt is confirmed, and best effort: it only selects a delivery destination for the confirmation.
+    private static async Task<string?> ReadContactDestinationAsync(
+        EmploymentRelationshipDbContext db,
+        WhatsAppRelationshipRoute candidate,
+        CancellationToken ct
+    )
+    {
+        try
+        {
+            return await db
+                .WhatsAppJourneyContacts.AsNoTracking()
+                .Where(value =>
+                    value.TenantId == candidate.TenantId && value.PhoneHmac == candidate.SenderHash
+                )
+                .Select(value => value.ProtectedDestination)
+                .SingleOrDefaultAsync(ct);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return null;
+        }
     }
 
     private static WhatsAppJourneyReceipt SafetyReceipt(

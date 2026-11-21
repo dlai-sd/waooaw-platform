@@ -384,6 +384,175 @@ components:
           scenarioId: scenarioId
           validatedAt: 2000-01-23T04:56:07.000+00:00
         protocolVersion: 1.0-candidate
+        experience:
+          channelSupport:
+            whatsapp:
+            - null
+            - null
+            web:
+            - TEXT
+            - TEXT
+            mobile:
+            - null
+            - null
+          components:
+          - skillId: skillId
+            selectableDimension:
+              kind: kind
+              maximum: 1
+            activationAuthority: activationAuthority
+            unit: unit
+            componentId: componentId
+            countedOn: countedOn
+            kind: COUNTED
+            label: label
+            availability: AVAILABLE
+          - skillId: skillId
+            selectableDimension:
+              kind: kind
+              maximum: 1
+            activationAuthority: activationAuthority
+            unit: unit
+            componentId: componentId
+            countedOn: countedOn
+            kind: COUNTED
+            label: label
+            availability: AVAILABLE
+          domainBlocks:
+          - blockId: blockId
+            fallbackBlocks:
+            - TEXT
+            - TEXT
+            version: 1
+          - blockId: blockId
+            fallbackBlocks:
+            - TEXT
+            - TEXT
+            version: 1
+          monitor:
+            alerts:
+            - severity: INFO
+              channels:
+              - channels
+              - channels
+              threshold: threshold
+              signal: signal
+            - severity: INFO
+              channels:
+              - channels
+              - channels
+              threshold: threshold
+              signal: signal
+            tiles:
+            - measureId: measureId
+              tileId: tileId
+              blockType: STATUS
+              audiences:
+              - customer_owner
+              - customer_owner
+            - measureId: measureId
+              tileId: tileId
+              blockType: STATUS
+              audiences:
+              - customer_owner
+              - customer_owner
+            narratives:
+            - channels:
+              - channels
+              - channels
+              narrativeId: narrativeId
+              cadence: cadence
+              structure:
+              - structure
+              - structure
+            - channels:
+              - channels
+              - channels
+              narrativeId: narrativeId
+              cadence: cadence
+              structure:
+              - structure
+              - structure
+          goalTypes:
+          - measures:
+            - measureId: measureId
+              unit: unit
+              evidenceSource: evidenceSource
+              freshnessSeconds: 1
+            - measureId: measureId
+              unit: unit
+              evidenceSource: evidenceSource
+              freshnessSeconds: 1
+            goalTypeId: goalTypeId
+            starters:
+            - starters
+            - starters
+            parameters:
+            - parameters
+            - parameters
+            constraints:
+            - constraints
+            - constraints
+          - measures:
+            - measureId: measureId
+              unit: unit
+              evidenceSource: evidenceSource
+              freshnessSeconds: 1
+            - measureId: measureId
+              unit: unit
+              evidenceSource: evidenceSource
+              freshnessSeconds: 1
+            goalTypeId: goalTypeId
+            starters:
+            - starters
+            - starters
+            parameters:
+            - parameters
+            - parameters
+            constraints:
+            - constraints
+            - constraints
+          contractVersion: contractVersion
+          operate:
+            workItemTypes:
+            - workItemTypes
+            - workItemTypes
+            approvalModes:
+            - mode: mode
+              escalation: escalation
+            - mode: mode
+              escalation: escalation
+            cadence:
+            - skillId: skillId
+              trigger: trigger
+              window: window
+            - skillId: skillId
+              trigger: trigger
+              window: window
+          modalities:
+          - text
+          - text
+          componentCatalogueRef:
+            contractDigest: contractDigest
+            contractVersion: contractVersion
+            contractRef: contractRef
+          audiences:
+          - null
+          - null
+          conformanceScenarios:
+          - conformanceScenarios
+          - conformanceScenarios
+          plan:
+            milestoneTypes:
+            - milestoneTypes
+            - milestoneTypes
+            calendarWindows:
+            - calendarWindows
+            - calendarWindows
+          vocabularyRef:
+            contractDigest: contractDigest
+            contractVersion: contractVersion
+            contractRef: contractRef
         governance:
           promptPolicy:
             contractDigest: contractDigest
@@ -428,6 +597,8 @@ components:
           $ref: "#/components/schemas/EmploymentPlanningManifestV1"
         operations:
           $ref: "#/components/schemas/EmploymentOperationsManifestV1"
+        experience:
+          $ref: "#/components/schemas/EmploymentExperienceManifestV1"
         conformanceScenarios:
           items:
             $ref: "#/components/schemas/EmploymentConformanceScenarioV1"
@@ -444,6 +615,403 @@ components:
       - planning
       - protocolVersion
       - schemaVersion
+    EmploymentExperienceBlockTypeV1:
+      enum:
+      - TEXT
+      - CHOICES
+      - LIST
+      - LINK
+      - STATUS
+      - METRIC
+      - PLAN
+      - DECISION
+      - FORM
+      - EVIDENCE
+      - DOMAIN
+      type: string
+    EmploymentExperienceAudienceV1:
+      enum:
+      - customer_owner
+      - delegate
+      - beneficiary
+      - steward
+      type: string
+    EmploymentExperienceMeasureV1:
+      additionalProperties: false
+      example:
+        measureId: measureId
+        unit: unit
+        evidenceSource: evidenceSource
+        freshnessSeconds: 1
+      properties:
+        measureId:
+          maxLength: 160
+          minLength: 1
+          type: string
+        unit:
+          maxLength: 160
+          minLength: 1
+          type: string
+        evidenceSource:
+          maxLength: 160
+          minLength: 1
+          type: string
+        freshnessSeconds:
+          minimum: 1
+          type: integer
+      required:
+      - evidenceSource
+      - freshnessSeconds
+      - measureId
+      - unit
+    EmploymentExperienceGoalTypeV1:
+      additionalProperties: false
+      example:
+        measures:
+        - measureId: measureId
+          unit: unit
+          evidenceSource: evidenceSource
+          freshnessSeconds: 1
+        - measureId: measureId
+          unit: unit
+          evidenceSource: evidenceSource
+          freshnessSeconds: 1
+        goalTypeId: goalTypeId
+        starters:
+        - starters
+        - starters
+        parameters:
+        - parameters
+        - parameters
+        constraints:
+        - constraints
+        - constraints
+      properties:
+        goalTypeId:
+          maxLength: 160
+          minLength: 1
+          type: string
+        parameters:
+          items:
+            type: string
+          type: array
+        measures:
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceMeasureV1"
+          minItems: 1
+          type: array
+        constraints:
+          items:
+            type: string
+          type: array
+        starters:
+          items:
+            type: string
+          type: array
+      required:
+      - constraints
+      - goalTypeId
+      - measures
+      - parameters
+      - starters
+    EmploymentExperienceComponentV1:
+      additionalProperties: {}
+      example:
+        skillId: skillId
+        selectableDimension:
+          kind: kind
+          maximum: 1
+        activationAuthority: activationAuthority
+        unit: unit
+        componentId: componentId
+        countedOn: countedOn
+        kind: COUNTED
+        label: label
+        availability: AVAILABLE
+      properties:
+        componentId:
+          maxLength: 160
+          minLength: 1
+          type: string
+        label:
+          maxLength: 240
+          minLength: 1
+          type: string
+        unit:
+          maxLength: 160
+          minLength: 1
+          type: string
+        kind:
+          enum:
+          - COUNTED
+          - SELECTED
+          - TIME_ACCESS
+          - CAPACITY
+          type: string
+        skillId:
+          maxLength: 160
+          minLength: 1
+          type: string
+        countedOn:
+          maxLength: 160
+          minLength: 1
+          type: string
+        selectableDimension:
+          $ref: "#/components/schemas/EmploymentExperienceComponentV1_selectableDimension"
+        availability:
+          enum:
+          - AVAILABLE
+          - DEFAULT_OFF
+          - UNAVAILABLE
+          type: string
+        activationAuthority:
+          maxLength: 160
+          minLength: 1
+          type: string
+      required:
+      - availability
+      - componentId
+      - countedOn
+      - kind
+      - label
+      - unit
+    EmploymentExperienceManifestV1:
+      additionalProperties: {}
+      description: |
+        Optional declaration of how the agent's goals, plan, operation, monitoring and components are shown by the
+        common workbench (agent-experience-contract.v1). A manifest without it stays admissible and is served by the
+        legacy relationship projections.
+      example:
+        channelSupport:
+          whatsapp:
+          - null
+          - null
+          web:
+          - TEXT
+          - TEXT
+          mobile:
+          - null
+          - null
+        components:
+        - skillId: skillId
+          selectableDimension:
+            kind: kind
+            maximum: 1
+          activationAuthority: activationAuthority
+          unit: unit
+          componentId: componentId
+          countedOn: countedOn
+          kind: COUNTED
+          label: label
+          availability: AVAILABLE
+        - skillId: skillId
+          selectableDimension:
+            kind: kind
+            maximum: 1
+          activationAuthority: activationAuthority
+          unit: unit
+          componentId: componentId
+          countedOn: countedOn
+          kind: COUNTED
+          label: label
+          availability: AVAILABLE
+        domainBlocks:
+        - blockId: blockId
+          fallbackBlocks:
+          - TEXT
+          - TEXT
+          version: 1
+        - blockId: blockId
+          fallbackBlocks:
+          - TEXT
+          - TEXT
+          version: 1
+        monitor:
+          alerts:
+          - severity: INFO
+            channels:
+            - channels
+            - channels
+            threshold: threshold
+            signal: signal
+          - severity: INFO
+            channels:
+            - channels
+            - channels
+            threshold: threshold
+            signal: signal
+          tiles:
+          - measureId: measureId
+            tileId: tileId
+            blockType: STATUS
+            audiences:
+            - customer_owner
+            - customer_owner
+          - measureId: measureId
+            tileId: tileId
+            blockType: STATUS
+            audiences:
+            - customer_owner
+            - customer_owner
+          narratives:
+          - channels:
+            - channels
+            - channels
+            narrativeId: narrativeId
+            cadence: cadence
+            structure:
+            - structure
+            - structure
+          - channels:
+            - channels
+            - channels
+            narrativeId: narrativeId
+            cadence: cadence
+            structure:
+            - structure
+            - structure
+        goalTypes:
+        - measures:
+          - measureId: measureId
+            unit: unit
+            evidenceSource: evidenceSource
+            freshnessSeconds: 1
+          - measureId: measureId
+            unit: unit
+            evidenceSource: evidenceSource
+            freshnessSeconds: 1
+          goalTypeId: goalTypeId
+          starters:
+          - starters
+          - starters
+          parameters:
+          - parameters
+          - parameters
+          constraints:
+          - constraints
+          - constraints
+        - measures:
+          - measureId: measureId
+            unit: unit
+            evidenceSource: evidenceSource
+            freshnessSeconds: 1
+          - measureId: measureId
+            unit: unit
+            evidenceSource: evidenceSource
+            freshnessSeconds: 1
+          goalTypeId: goalTypeId
+          starters:
+          - starters
+          - starters
+          parameters:
+          - parameters
+          - parameters
+          constraints:
+          - constraints
+          - constraints
+        contractVersion: contractVersion
+        operate:
+          workItemTypes:
+          - workItemTypes
+          - workItemTypes
+          approvalModes:
+          - mode: mode
+            escalation: escalation
+          - mode: mode
+            escalation: escalation
+          cadence:
+          - skillId: skillId
+            trigger: trigger
+            window: window
+          - skillId: skillId
+            trigger: trigger
+            window: window
+        modalities:
+        - text
+        - text
+        componentCatalogueRef:
+          contractDigest: contractDigest
+          contractVersion: contractVersion
+          contractRef: contractRef
+        audiences:
+        - null
+        - null
+        conformanceScenarios:
+        - conformanceScenarios
+        - conformanceScenarios
+        plan:
+          milestoneTypes:
+          - milestoneTypes
+          - milestoneTypes
+          calendarWindows:
+          - calendarWindows
+          - calendarWindows
+        vocabularyRef:
+          contractDigest: contractDigest
+          contractVersion: contractVersion
+          contractRef: contractRef
+      properties:
+        contractVersion:
+          maxLength: 64
+          minLength: 1
+          type: string
+        vocabularyRef:
+          $ref: "#/components/schemas/ImmutableContractReferenceV1"
+        componentCatalogueRef:
+          $ref: "#/components/schemas/ImmutableContractReferenceV1"
+        goalTypes:
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceGoalTypeV1"
+          minItems: 1
+          type: array
+        plan:
+          $ref: "#/components/schemas/EmploymentExperienceManifestV1_plan"
+        operate:
+          $ref: "#/components/schemas/EmploymentExperienceManifestV1_operate"
+        monitor:
+          $ref: "#/components/schemas/EmploymentExperienceManifestV1_monitor"
+        domainBlocks:
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceManifestV1_domainBlocks_inner"
+          type: array
+        components:
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceComponentV1"
+          type: array
+        audiences:
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceAudienceV1"
+          minItems: 1
+          type: array
+        modalities:
+          items:
+            enum:
+            - text
+            - voice
+            type: string
+          minItems: 1
+          type: array
+        channelSupport:
+          $ref: "#/components/schemas/EmploymentExperienceManifestV1_channelSupport"
+        conformanceScenarios:
+          items:
+            minLength: 1
+            type: string
+          minItems: 1
+          type: array
+      required:
+      - audiences
+      - channelSupport
+      - components
+      - conformanceScenarios
+      - contractVersion
+      - domainBlocks
+      - goalTypes
+      - modalities
+      - monitor
+      - operate
+      - plan
+      - vocabularyRef
     ImmutableContractReferenceV1:
       additionalProperties: false
       example:
@@ -1263,6 +1831,351 @@ components:
       - status
       - title
       - type
+    EmploymentExperienceComponentV1_selectableDimension:
+      additionalProperties: false
+      example:
+        kind: kind
+        maximum: 1
+      properties:
+        kind:
+          maxLength: 160
+          minLength: 1
+          type: string
+        maximum:
+          minimum: 1
+          type: integer
+      required:
+      - kind
+      - maximum
+    EmploymentExperienceManifestV1_plan:
+      additionalProperties: false
+      example:
+        milestoneTypes:
+        - milestoneTypes
+        - milestoneTypes
+        calendarWindows:
+        - calendarWindows
+        - calendarWindows
+      properties:
+        milestoneTypes:
+          items:
+            type: string
+          minItems: 1
+          type: array
+        calendarWindows:
+          items:
+            type: string
+          type: array
+      required:
+      - calendarWindows
+      - milestoneTypes
+    EmploymentExperienceManifestV1_operate_cadence_inner:
+      additionalProperties: false
+      example:
+        skillId: skillId
+        trigger: trigger
+        window: window
+      properties:
+        skillId:
+          maxLength: 160
+          minLength: 1
+          type: string
+        trigger:
+          maxLength: 160
+          minLength: 1
+          type: string
+        window:
+          maxLength: 160
+          minLength: 1
+          type: string
+      required:
+      - skillId
+      - trigger
+      - window
+    EmploymentExperienceManifestV1_operate_approvalModes_inner:
+      additionalProperties: false
+      example:
+        mode: mode
+        escalation: escalation
+      properties:
+        mode:
+          maxLength: 160
+          minLength: 1
+          type: string
+        escalation:
+          maxLength: 160
+          minLength: 1
+          type: string
+      required:
+      - escalation
+      - mode
+    EmploymentExperienceManifestV1_operate:
+      additionalProperties: false
+      example:
+        workItemTypes:
+        - workItemTypes
+        - workItemTypes
+        approvalModes:
+        - mode: mode
+          escalation: escalation
+        - mode: mode
+          escalation: escalation
+        cadence:
+        - skillId: skillId
+          trigger: trigger
+          window: window
+        - skillId: skillId
+          trigger: trigger
+          window: window
+      properties:
+        workItemTypes:
+          items:
+            type: string
+          minItems: 1
+          type: array
+        cadence:
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceManifestV1_operate_cadence_inner"
+          minItems: 1
+          type: array
+        approvalModes:
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceManifestV1_operate_approvalModes_inner"
+          minItems: 1
+          type: array
+      required:
+      - approvalModes
+      - cadence
+      - workItemTypes
+    EmploymentExperienceManifestV1_monitor_tiles_inner:
+      additionalProperties: false
+      example:
+        measureId: measureId
+        tileId: tileId
+        blockType: STATUS
+        audiences:
+        - customer_owner
+        - customer_owner
+      properties:
+        tileId:
+          maxLength: 160
+          minLength: 1
+          type: string
+        measureId:
+          maxLength: 160
+          minLength: 1
+          type: string
+        blockType:
+          enum:
+          - STATUS
+          - METRIC
+          - PLAN
+          - DECISION
+          - EVIDENCE
+          - DOMAIN
+          type: string
+        audiences:
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceAudienceV1"
+          minItems: 1
+          type: array
+      required:
+      - audiences
+      - blockType
+      - measureId
+      - tileId
+    EmploymentExperienceManifestV1_monitor_narratives_inner:
+      additionalProperties: false
+      example:
+        channels:
+        - channels
+        - channels
+        narrativeId: narrativeId
+        cadence: cadence
+        structure:
+        - structure
+        - structure
+      properties:
+        narrativeId:
+          maxLength: 160
+          minLength: 1
+          type: string
+        cadence:
+          maxLength: 160
+          minLength: 1
+          type: string
+        channels:
+          items:
+            type: string
+          minItems: 1
+          type: array
+        structure:
+          items:
+            type: string
+          minItems: 1
+          type: array
+      required:
+      - cadence
+      - channels
+      - narrativeId
+      - structure
+    EmploymentExperienceManifestV1_monitor_alerts_inner:
+      additionalProperties: false
+      example:
+        severity: INFO
+        channels:
+        - channels
+        - channels
+        threshold: threshold
+        signal: signal
+      properties:
+        signal:
+          maxLength: 160
+          minLength: 1
+          type: string
+        threshold:
+          maxLength: 160
+          minLength: 1
+          type: string
+        severity:
+          enum:
+          - INFO
+          - WARNING
+          - CRITICAL
+          type: string
+        channels:
+          items:
+            type: string
+          minItems: 1
+          type: array
+      required:
+      - channels
+      - severity
+      - signal
+      - threshold
+    EmploymentExperienceManifestV1_monitor:
+      additionalProperties: false
+      example:
+        alerts:
+        - severity: INFO
+          channels:
+          - channels
+          - channels
+          threshold: threshold
+          signal: signal
+        - severity: INFO
+          channels:
+          - channels
+          - channels
+          threshold: threshold
+          signal: signal
+        tiles:
+        - measureId: measureId
+          tileId: tileId
+          blockType: STATUS
+          audiences:
+          - customer_owner
+          - customer_owner
+        - measureId: measureId
+          tileId: tileId
+          blockType: STATUS
+          audiences:
+          - customer_owner
+          - customer_owner
+        narratives:
+        - channels:
+          - channels
+          - channels
+          narrativeId: narrativeId
+          cadence: cadence
+          structure:
+          - structure
+          - structure
+        - channels:
+          - channels
+          - channels
+          narrativeId: narrativeId
+          cadence: cadence
+          structure:
+          - structure
+          - structure
+      properties:
+        tiles:
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceManifestV1_monitor_tiles_inner"
+          minItems: 1
+          type: array
+        narratives:
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceManifestV1_monitor_narratives_inner"
+          type: array
+        alerts:
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceManifestV1_monitor_alerts_inner"
+          type: array
+      required:
+      - alerts
+      - narratives
+      - tiles
+    EmploymentExperienceManifestV1_domainBlocks_inner:
+      additionalProperties: false
+      example:
+        blockId: blockId
+        fallbackBlocks:
+        - TEXT
+        - TEXT
+        version: 1
+      properties:
+        blockId:
+          maxLength: 160
+          minLength: 1
+          type: string
+        version:
+          minimum: 1
+          type: integer
+        fallbackBlocks:
+          items:
+            enum:
+            - TEXT
+            - CHOICES
+            - LIST
+            - LINK
+            type: string
+          minItems: 1
+          type: array
+      required:
+      - blockId
+      - fallbackBlocks
+      - version
+    EmploymentExperienceManifestV1_channelSupport:
+      additionalProperties: false
+      example:
+        whatsapp:
+        - null
+        - null
+        web:
+        - TEXT
+        - TEXT
+        mobile:
+        - null
+        - null
+      properties:
+        web:
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceBlockTypeV1"
+          type: array
+        whatsapp:
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceBlockTypeV1"
+          type: array
+        mobile:
+          items:
+            $ref: "#/components/schemas/EmploymentExperienceBlockTypeV1"
+          type: array
+      required:
+      - mobile
+      - web
+      - whatsapp
   securitySchemes:
     ServiceBearerAuth:
       bearerFormat: JWT

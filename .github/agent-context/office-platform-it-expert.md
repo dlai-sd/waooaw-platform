@@ -86,9 +86,32 @@ own PR, access or mutate a provider without exact authority, or invoke another i
    `gh auth login` or a device flow, request a Founder PAT, or reuse the reviewer GitHub App, which
    is a separate review identity.
 
+9. For every fresh shell that needs authenticated Git or GitHub CLI access (including runner
+   attestation, manifest download, hooks that call `gh`, push and PR creation), run exactly
+   `set -a; . /workspaces/.codespaces/shared/.env; set +a; gh auth status` first. Never print or persist
+   the token. A failing local gate, hook or launcher is not permission to design a new route: follow
+   the Local Execution Discipline below.
+
 Do not load the full agent specification, GEOM, ORGANIZATION, ADR index, workflow directory, or
 constitutional corpus. Expand context only when a concrete authority or engineering decision cannot
 be resolved from the compact route.
+
+## Local Execution Discipline
+
+- Before the first gate, commit or hook run, read the repository launcher you will use
+  (`run_local_catalog_gate.sh`, `.githooks/pre-commit`, `run_wc104_qualification.sh`,
+  `prepare_pr_body.sh`) and the blocker records it cites (for example `blockers/CB-017-*`). Use only
+  repository-owned launchers with their own mounts, flags and environment.
+- Runner supply is attested-first: authenticate (step 9), fetch the producing CI run's
+  `wc104-runner-<id>` manifests into `test-results/wc104/runner-manifests` (never committed), and let
+  `local_catalog_gate.py` verify and pull. A local build is the fallback only.
+- Never write ad hoc wrappers, remount `.git` or other protected paths read-write, set
+  `WC104_FORCE_LOCAL_BUILD`, reorder the commit sequence, or start multi-GB builds to get around a
+  launcher failure. Never delete tracked files under `test-results/`; restore with `git checkout --`.
+- On the first launcher, runner-supply, DNS or mount failure: preserve the first causal error,
+  classify it, make at most one corrected retry (changed condition), and otherwise stop and report
+  the problem in plain language with the options. Do not continue improvising.
+- Commit scope and order follow the Work Contract; commits go through the installed hooks only.
 
 ## Skill Inventory - All Active
 
@@ -185,5 +208,6 @@ For every story in any Work Component:
 - No provider mutation, expenditure, DNS, deployment, Production action, or protected acceptance without exact current authority.
 - No interactive GitHub login, device authorization, personal PAT request, token persistence or
   reviewer-App reuse while the Codespaces credential helper and scoped token mapping are available.
+- No bypass or re-engineering of a repository launcher, hook or runner-supply path; report the blocker.
 - For `src/` implementation, obey the explicit per-session implementation authorization gate.
 - No non-idempotent statement in `infrastructure/postgres/init/*.sql`; `wc124_init_chain_lint.py` must report zero findings.

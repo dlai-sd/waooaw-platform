@@ -1,4 +1,5 @@
 // Implements: work-contracts/WC-135-visitor-conversation-and-simulated-customers.md WC135-R005, WC135-R006, WC135-R009
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C1-01
 // Constitutional basis: C-009, C-023, C-026, C-048, C-049, C-059, C-063
 
 using Microsoft.Extensions.Options;
@@ -22,7 +23,8 @@ public sealed record GuestCopy(
     string YesLabel,
     string StopLabel,
     VisitorHoursContent Hours,
-    bool IsV2
+    bool IsV2,
+    VisitorProtocolContent Protocol
 )
 {
     public static readonly GuestCopy Legacy = new(
@@ -38,7 +40,8 @@ public sealed record GuestCopy(
         "YES",
         "STOP",
         new VisitorHoursContent("Asia/Kolkata", "09:00", "21:00"),
-        false
+        false,
+        VisitorProtocolContent.Legacy
     );
 
     public static GuestCopy FromContent(VisitorContentSet content, int retentionDays) =>
@@ -53,19 +56,26 @@ public sealed record GuestCopy(
             content.Consent.RenewalUnavailable,
             content.Fixed.ClosedNotice,
             content.Fixed.UnsupportedContent,
-            content.Fixed.StopAcknowledged,
-            content.Fixed.ResumeNotice,
+            content.ResolveFixed(content.Protocol.Stop.AcknowledgementRef) ?? string.Empty,
+            content.ResolveFixed(content.Protocol.Start.NoticeRef) ?? string.Empty,
             content.Consent.YesLabel,
             content.Consent.StopLabel,
             content.Hours,
-            true
+            true,
+            content.Protocol
         );
 
     /// <summary>Every fixed text the guest flow may send before or outside a consented conversation.</summary>
     public IEnumerable<string> PreConsentTexts() =>
-        new[] { Notice, RenewalUnavailable, ClosedNotice, UnsupportedContent, ResumeNotice }.Where(
-            text => !string.IsNullOrEmpty(text)
-        );
+        new[]
+        {
+            Notice,
+            RenewalUnavailable,
+            ClosedNotice,
+            UnsupportedContent,
+            ResumeNotice,
+            StopAcknowledged,
+        }.Where(text => !string.IsNullOrEmpty(text));
 }
 
 /// <summary>

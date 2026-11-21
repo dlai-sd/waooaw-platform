@@ -3,7 +3,7 @@
   "protocolVersion": "1.0-candidate",
   "agentType": "DIGITAL_MARKETING_LOCAL_SERVICE",
   "agentVersion": "1.0.0",
-  "manifestVersion": "1.0.0",
+  "manifestVersion": "1.1.0",
   "governance": {
     "agentSpecification": {
       "contractRef": "architecture/reference/agents/digital-marketing-agent.md",
@@ -143,6 +143,201 @@
       "contractDigest": "9a61737b766134b7178364ec8af9149fcf9fcef32d24beae15505b5f2a90bfc7"
     },
     "shorterMissedReviewThreshold": null
+  },
+  "experience": {
+    "contractVersion": "1.0.0",
+    "vocabularyRef": {
+      "contractRef": "architecture/reference/agents/digital-marketing-agent.md#3.22",
+      "contractVersion": "3.1",
+      "contractDigest": "703530cef938b21da8e910a7071eb3465467fe65d108e51c0e1fa17b150a3972"
+    },
+    "componentCatalogueRef": {
+      "contractRef": "src/digital-marketing-agent/contracts/experience-components.v1.json",
+      "contractVersion": "1.0.0",
+      "contractDigest": "b7ef20715a1a70a9f80c09a7864878c9e998d268db451120ab5fbbdde144a401"
+    },
+    "goalTypes": [
+      {
+        "goalTypeId": "UNDERSTAND_CURRENT_POSITION",
+        "parameters": ["BUSINESS_DOMAIN", "PRIMARY_LOCATION"],
+        "measures": [
+          {"measureId": "PROFILE_COVERAGE", "unit": "PERCENT", "evidenceSource": "CUSTOMER_CONFIRMATION", "freshnessSeconds": 604800},
+          {"measureId": "MATURITY_EVIDENCE_COVERAGE", "unit": "PERCENT", "evidenceSource": "PUBLIC_OBSERVATION", "freshnessSeconds": 604800}
+        ],
+        "constraints": ["NO_PUBLICATION_AUTHORITY"],
+        "starters": ["Help me see where my marketing stands today"]
+      },
+      {
+        "goalTypeId": "PRIORITIZE_MARKETING_IMPROVEMENTS",
+        "parameters": ["THREE_MONTH_ASPIRATION"],
+        "measures": [
+          {"measureId": "PRIORITY_ACTION_PROGRESS", "unit": "PERCENT", "evidenceSource": "PLATFORM_OWNER_RECORD", "freshnessSeconds": 86400}
+        ],
+        "constraints": ["ACCEPTED_PLAN_TOLERANCE_REQUIRED"],
+        "starters": ["Tell me which marketing improvements matter most"]
+      },
+      {
+        "goalTypeId": "PLAN_CONTENT_AND_CAMPAIGNS",
+        "parameters": ["CONTENT_INPUTS", "PREFERRED_LANGUAGE"],
+        "measures": [
+          {"measureId": "PLAN_REVIEW_TIMELINESS", "unit": "PERCENT", "evidenceSource": "PLATFORM_OWNER_RECORD", "freshnessSeconds": 86400},
+          {"measureId": "CALENDAR_READINESS", "unit": "PERCENT", "evidenceSource": "PLATFORM_OWNER_RECORD", "freshnessSeconds": 86400}
+        ],
+        "constraints": ["IANA_TIME_ZONE_REQUIRED", "NO_PUBLICATION_AUTHORITY"],
+        "starters": ["Plan my content and campaigns for next month"]
+      }
+    ],
+    "plan": {
+      "milestoneTypes": [
+        "PROFILE_CONFIRMED",
+        "MATURITY_ASSESSMENT_REVIEWED",
+        "PRIORITIES_CONFIRMED",
+        "CAMPAIGN_BRIEF_ACCEPTED",
+        "CONTENT_CALENDAR_ACCEPTED"
+      ],
+      "calendarWindows": ["MONTH_END_REVIEW_LAST_3_WORKING_DAYS", "GOAL_CHECK_WEEK_2", "MID_MONTH_ALERT_DAY_15"]
+    },
+    "operate": {
+      "workItemTypes": [
+        "PROFILE_CONFIRMATION",
+        "PUBLIC_PRESENCE_OBSERVATION",
+        "MATURITY_DIMENSION_SCORING",
+        "MATURITY_REPORT",
+        "PRIORITY_RECOMMENDATION",
+        "CAMPAIGN_BRIEF",
+        "CONTENT_CALENDAR"
+      ],
+      "cadence": [
+        {"skillId": "CONTENT_STRATEGY_AND_CALENDAR", "trigger": "MONTHLY", "window": "MONTH_END_REVIEW_LAST_3_WORKING_DAYS"},
+        {"skillId": "SOCIAL_CONTENT_CREATION_AND_PUBLISHING", "trigger": "WEEKLY", "window": "ACCEPTED_CALENDAR_WINDOW"},
+        {"skillId": "VISUAL_AND_VIDEO_CONTENT", "trigger": "ON_APPROVED_BRIEF", "window": "ACCEPTED_CALENDAR_WINDOW"},
+        {"skillId": "MARKETING_PERFORMANCE_AND_IMPROVEMENT", "trigger": "MONTHLY", "window": "GOAL_CHECK_WEEK_2"}
+      ],
+      "approvalModes": [
+        {"mode": "CUSTOMER_APPROVAL", "escalation": "ASK_CUSTOMER_BEFORE_EVERY_ACTION"},
+        {"mode": "EXCEPTION_APPROVAL", "escalation": "ASK_CUSTOMER_ON_EXCEPTION_CATEGORY"},
+        {"mode": "SYNTHETIC_APPROVAL", "escalation": "MONTHLY_DIGEST_WITH_OVERRIDE_WINDOW"}
+      ]
+    },
+    "monitor": {
+      "tiles": [
+        {"tileId": "PROFILE_COVERAGE_TILE", "measureId": "PROFILE_COVERAGE", "blockType": "METRIC", "audiences": ["customer_owner", "delegate", "steward"]},
+        {"tileId": "MATURITY_EVIDENCE_TILE", "measureId": "MATURITY_EVIDENCE_COVERAGE", "blockType": "METRIC", "audiences": ["customer_owner", "delegate", "steward"]},
+        {"tileId": "PRIORITY_PROGRESS_TILE", "measureId": "PRIORITY_ACTION_PROGRESS", "blockType": "STATUS", "audiences": ["customer_owner", "delegate", "steward"]},
+        {"tileId": "PLAN_REVIEW_TILE", "measureId": "PLAN_REVIEW_TIMELINESS", "blockType": "DECISION", "audiences": ["customer_owner", "delegate"]},
+        {"tileId": "CALENDAR_READINESS_TILE", "measureId": "CALENDAR_READINESS", "blockType": "PLAN", "audiences": ["customer_owner", "delegate", "steward"]}
+      ],
+      "narratives": [
+        {
+          "narrativeId": "MONTHLY_PERFORMANCE_NARRATIVE",
+          "cadence": "MONTHLY_DAY_1",
+          "channels": ["portal", "whatsapp_text"],
+          "structure": ["WHAT_HAPPENED", "WHAT_I_LEARNED", "WHAT_I_TRIED", "WHAT_CHANGES_NEXT_MONTH", "WHAT_I_NEED_FROM_YOU"]
+        }
+      ],
+      "alerts": [
+        {"signal": "MID_MONTH_PACE_BELOW_TARGET", "threshold": "KPI_PACE_BELOW_60_PERCENT_BY_DAY_15", "severity": "WARNING", "channels": ["portal", "whatsapp_text"]},
+        {"signal": "CONSECUTIVE_MONTHLY_MISSES", "threshold": "TWO_CONSECUTIVE_MONTHLY_MISSES", "severity": "CRITICAL", "channels": ["portal", "whatsapp_text"]},
+        {"signal": "COMPONENT_NEARING_EXHAUSTION", "threshold": "REMAINING_AT_OR_BELOW_20_PERCENT", "severity": "INFO", "channels": ["portal"]}
+      ]
+    },
+    "domainBlocks": [
+      {"blockId": "MARKETING_MATURITY_SUMMARY", "version": 1, "fallbackBlocks": ["TEXT", "LIST"]},
+      {"blockId": "CONTENT_CALENDAR_PREVIEW", "version": 1, "fallbackBlocks": ["LIST", "LINK"]}
+    ],
+    "components": [
+      {
+        "componentId": "CONTENT_PLAN",
+        "label": "Content plans",
+        "unit": "plan",
+        "kind": "COUNTED",
+        "skillId": "CONTENT_STRATEGY_AND_CALENDAR",
+        "countedOn": "APPROVED_PLAN_VERSION",
+        "availability": "DEFAULT_OFF",
+        "activationAuthority": "FOUNDER_SEPARATE_DECISION"
+      },
+      {
+        "componentId": "CONTENT_DRAFT",
+        "label": "Content drafts",
+        "unit": "draft",
+        "kind": "COUNTED",
+        "skillId": "SOCIAL_CONTENT_CREATION_AND_PUBLISHING",
+        "countedOn": "DRAFT_DELIVERED_FOR_APPROVAL",
+        "availability": "DEFAULT_OFF",
+        "activationAuthority": "FOUNDER_SEPARATE_DECISION"
+      },
+      {
+        "componentId": "CONTENT_ASSET",
+        "label": "Pictures and short videos",
+        "unit": "asset",
+        "kind": "COUNTED",
+        "skillId": "VISUAL_AND_VIDEO_CONTENT",
+        "countedOn": "ASSET_DELIVERED_FOR_APPROVAL",
+        "availability": "DEFAULT_OFF",
+        "activationAuthority": "FOUNDER_SEPARATE_DECISION"
+      },
+      {
+        "componentId": "SOCIAL_PUBLICATION",
+        "label": "Approved posts published for you",
+        "unit": "post",
+        "kind": "COUNTED",
+        "skillId": "SOCIAL_CONTENT_CREATION_AND_PUBLISHING",
+        "countedOn": "PUBLICATION_ACCEPTED_BY_PLATFORM",
+        "availability": "DEFAULT_OFF",
+        "activationAuthority": "FOUNDER_SEPARATE_DECISION"
+      },
+      {
+        "componentId": "SOCIAL_OBSERVATION",
+        "label": "Social accounts I watch for you",
+        "unit": "social account",
+        "kind": "SELECTED",
+        "skillId": "MARKETING_PERFORMANCE_AND_IMPROVEMENT",
+        "countedOn": "OBSERVED_PLATFORM_PER_BILLING_PERIOD",
+        "selectableDimension": {"kind": "SOCIAL_PLATFORM", "maximum": 8},
+        "availability": "DEFAULT_OFF",
+        "activationAuthority": "FOUNDER_SEPARATE_DECISION"
+      },
+      {
+        "componentId": "AD_BOOST",
+        "label": "Paid boosts",
+        "unit": "boost",
+        "kind": "COUNTED",
+        "countedOn": "BOOST_STARTED",
+        "availability": "UNAVAILABLE"
+      },
+      {
+        "componentId": "PROACTIVE_MESSAGE",
+        "label": "Messages I start on WhatsApp",
+        "unit": "message",
+        "kind": "COUNTED",
+        "countedOn": "TEMPLATE_MESSAGE_SENT",
+        "availability": "DEFAULT_OFF"
+      }
+    ],
+    "audiences": ["customer_owner", "delegate", "steward"],
+    "modalities": ["text"],
+    "channelSupport": {
+      "web": ["TEXT", "CHOICES", "LIST", "LINK", "STATUS", "METRIC", "PLAN", "DECISION", "FORM", "EVIDENCE", "DOMAIN"],
+      "whatsapp": ["TEXT", "CHOICES", "LIST", "LINK", "STATUS", "METRIC", "DECISION"],
+      "mobile": ["TEXT", "CHOICES", "LIST", "LINK", "STATUS", "METRIC", "PLAN", "DECISION", "FORM", "EVIDENCE", "DOMAIN"]
+    },
+    "conformanceScenarios": [
+      "WC136-DMA-C04",
+      "WC136-DMA-C05",
+      "WC136-DMA-C06",
+      "WC136-DMA-C07",
+      "WC136-DMA-C08",
+      "WC136-DMA-C09",
+      "WC136-DMA-C10",
+      "WC136-DMA-C11",
+      "WC136-DMA-C12",
+      "WC136-DMA-C14",
+      "WC136-DMA-C15",
+      "WC136-DMA-C16",
+      "WC136-PRICING-A03",
+      "WC136-PRICING-A04",
+      "WC136-PRICING-A05"
+    ]
   },
   "conformanceScenarios": [
     {

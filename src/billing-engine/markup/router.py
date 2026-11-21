@@ -1,5 +1,6 @@
 # Implements: WC027-01b — FastAPI router for pricing endpoints
-# constitutional_basis: C-023, C-059, C-082, C-088, C-089, C-090, C-091
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-06
+# Constitutional basis: C-023, C-059, C-082, C-088, C-089, C-090, C-091
 from __future__ import annotations
 
 import logging
@@ -44,14 +45,19 @@ async def get_thread_catalog() -> list[ThreadEntry]:
 async def get_bundle_cost_floor(
     agent_type: str,
     bundle_tier: str,
+    agent_version: str | None = None,
     engine: BundleEngine = Depends(get_bundle_engine),
 ) -> dict[str, int]:
     """
     GET /bundle-cost-floor/{agent_type}/{bundle_tier}
     Returns cost floor in paise for given agent type and bundle tier.
+    The optional agent_version query parameter selects the package of that agent version.
     """
     await CE.validate_action("pricing.cost_floor.read")
-    cost_floor_paise = await engine.cost_floor(agent_type=agent_type, bundle_tier=bundle_tier)
+    version_filter = {} if agent_version is None else {"agent_version": agent_version}
+    cost_floor_paise = await engine.cost_floor(
+        agent_type=agent_type, bundle_tier=bundle_tier, **version_filter
+    )
     return {"cost_floor_paise": cost_floor_paise}
 
 
@@ -74,6 +80,7 @@ async def validate_price(
         agent_type=request.agent_type,
         bundle_tier=request.bundle_tier,
         proposed_price_paise=request.proposed_price_paise,
+        **({} if request.agent_version is None else {"agent_version": request.agent_version}),
     )
     
     if result.outcome == "REJECTED":
@@ -106,6 +113,7 @@ async def derive_price(
         agent_type=request.agent_type,
         bundle_tier=request.bundle_tier,
         target_margin_pct=request.target_margin_pct,
+        **({} if request.agent_version is None else {"agent_version": request.agent_version}),
     )
     
     return {"derived_price_paise": derived_price_paise}

@@ -1,5 +1,6 @@
 # Implements: WC027-01a — Pydantic models for pricing
-# constitutional_basis: C-059, C-082
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-06
+# Constitutional basis: C-059, C-082, C-090
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
@@ -39,6 +40,7 @@ class PriceValidationRequest(BaseModel):
     agent_type: str
     bundle_tier: str
     proposed_price_paise: int = Field(..., gt=0)
+    agent_version: str | None = None
 
 
 class PriceDeriveRequest(BaseModel):
@@ -46,6 +48,7 @@ class PriceDeriveRequest(BaseModel):
     agent_type: str
     bundle_tier: str
     target_margin_pct: int | None = None
+    agent_version: str | None = None
 
 
 class PriceValidation(BaseModel):

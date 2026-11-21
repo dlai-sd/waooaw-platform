@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-136
 contract_path: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md
-contract_digest: e90e50eecbf983520604bc770b71873dceee8d95a4d9e8b42ec8a13f96f7fc02
+contract_digest: 7ec950cbc114fce2f0778392cd79523b993dc627b92d1bd220002b25c7ae9a65
 implementation_scope: true
 result: PLANNED
 
@@ -12,7 +12,10 @@ requirement_defaults: &defaults
   dependencies: Preconditions P1 to P6 of WC-136 (architecture package accepted, ledger validated, Founder authorization of the implementing session, fresh worktree); Founder instruction that Docker validation runs only after all stories
   residual_risk: No deployment, live provider, Demo acceptance or real-phone acceptance is part of this contract; Founder-reserved items are listed in WC-136 Definition Of Done
   completion_rule: Executable evidence for the requirement passes at the exact qualified head in the Final Qualification Phase
-  result: PLANNED
+  result: PASS
+  evidence_refs:
+    - "Commit-hook prechecks at 787f992b and 4509d74f (all nodes PASS, .git/waooaw/prechecks): business-platform tests, CSharpier and .NET quality, web gate, TypeScript quality, scripts quality, gitleaks"
+    - "Tests named in test_path_or_plan and the Implementation Record of work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md"
 
 requirements:
   - <<: *defaults
@@ -284,6 +287,8 @@ requirements:
     source: WC-136 Canonical Requirement Index, R045
     observable_outcome: Gates Q0 to Q9 pass at one exact head after all stories and author review is bound to that head.
     test_path_or_plan: Planned Final Qualification Phase evidence recorded in the WC-136 Implementation And Evidence Record.
+    result: PLANNED
+    evidence_refs: []
 
   - <<: *defaults
     requirement_id: WC136-R046

@@ -1,0 +1,215 @@
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C2-04, C2-07
+# Constitutional basis: C-059, C-063
+# Every instance below must be rejected by the named schema of agent-experience-workbench.openapi.yaml.
+schema: waooaw.spec-negative-fixtures/v1
+contract_version: 1.0.0
+cases:
+  - id: AEW-NEG-001
+    contract: agent-experience-workbench.openapi.yaml
+    schema_ref: "#/components/schemas/WorkbenchProjectionV1"
+    expected_invalid_reason: readiness is mandatory on the projection
+    instance:
+      schemaVersion: "1.0"
+      relationshipRef: 00000000-0000-4000-8000-000000000001
+      audience: customer_owner
+      phase: OPERATIONS
+      decisions: []
+      tiles: []
+      alerts: []
+      evidenceState: RECORDED
+      sourceFreshness: CURRENT
+      limitations: []
+      availableCommands: []
+      blocks: []
+  - id: AEW-NEG-002
+    contract: agent-experience-workbench.openapi.yaml
+    schema_ref: "#/components/schemas/WorkbenchProjectionV1"
+    expected_invalid_reason: a provider cost field is not part of the customer projection
+    instance:
+      schemaVersion: "1.0"
+      relationshipRef: 00000000-0000-4000-8000-000000000001
+      audience: customer_owner
+      phase: OPERATIONS
+      readiness: { induction: READY, plan: AGREED, operations: ACTIVE, performance: CURRENT }
+      decisions: []
+      tiles: []
+      alerts: []
+      evidenceState: RECORDED
+      sourceFreshness: CURRENT
+      limitations: []
+      availableCommands: []
+      blocks: []
+      rawCostPaise: 1200
+  - id: AEW-NEG-003
+    contract: agent-experience-workbench.openapi.yaml
+    schema_ref: "#/components/schemas/WorkbenchProjectionV1"
+    expected_invalid_reason: audience must be one of the four declared audiences
+    instance:
+      schemaVersion: "1.0"
+      relationshipRef: 00000000-0000-4000-8000-000000000001
+      audience: administrator
+      phase: OPERATIONS
+      readiness: { induction: READY, plan: AGREED, operations: ACTIVE, performance: CURRENT }
+      decisions: []
+      tiles: []
+      alerts: []
+      evidenceState: RECORDED
+      sourceFreshness: CURRENT
+      limitations: []
+      availableCommands: []
+      blocks: []
+  - id: AEW-NEG-004
+    contract: agent-experience-workbench.openapi.yaml
+    schema_ref: "#/components/schemas/WorkbenchProjectionV1"
+    expected_invalid_reason: at most six blocks may be returned
+    instance:
+      schemaVersion: "1.0"
+      relationshipRef: 00000000-0000-4000-8000-000000000001
+      audience: customer_owner
+      phase: OPERATIONS
+      readiness: { induction: READY, plan: AGREED, operations: ACTIVE, performance: CURRENT }
+      decisions: []
+      tiles: []
+      alerts: []
+      evidenceState: RECORDED
+      sourceFreshness: CURRENT
+      limitations: []
+      availableCommands: []
+      blocks:
+        - &text_block
+          id: b1
+          type: TEXT
+          version: 1
+          sensitivity: CUSTOMER
+          data: { text: Hello }
+          fallback: []
+        - { <<: *text_block, id: b2 }
+        - { <<: *text_block, id: b3 }
+        - { <<: *text_block, id: b4 }
+        - { <<: *text_block, id: b5 }
+        - { <<: *text_block, id: b6 }
+        - { <<: *text_block, id: b7 }
+  - id: AEW-NEG-005
+    contract: agent-experience-workbench.openapi.yaml
+    schema_ref: "#/components/schemas/ExperienceBlockV2"
+    expected_invalid_reason: every block must carry a fallback
+    instance:
+      id: b1
+      type: DECISION
+      version: 1
+      sensitivity: CUSTOMER
+      data: { decisionId: 00000000-0000-4000-8000-000000000002 }
+  - id: AEW-NEG-006
+    contract: agent-experience-workbench.openapi.yaml
+    schema_ref: "#/components/schemas/CreateWorkbenchGoalRequestV1"
+    expected_invalid_reason: expectedVersion is mandatory on every state-changing request
+    instance:
+      schemaVersion: "1.0"
+      goalTypeId: GROW_AUDIENCE
+      title: Grow the audience
+      parameters: { channel: linkedin }
+  - id: AEW-NEG-007
+    contract: agent-experience-workbench.openapi.yaml
+    schema_ref: "#/components/schemas/WorkbenchCapabilityCommandRequestV1"
+    expected_invalid_reason: changing the approval mode requires the new approval mode
+    instance:
+      schemaVersion: "1.0"
+      expectedVersion: etag-1
+      command: CHANGE_APPROVAL_MODE
+  - id: AEW-NEG-008
+    contract: agent-experience-workbench.openapi.yaml
+    schema_ref: "#/components/schemas/SubscriptionChangeRequestV1"
+    expected_invalid_reason: an upgrade must name the target package
+    instance:
+      schemaVersion: "1.0"
+      expectedVersion: etag-1
+      kind: UPGRADE
+  - id: AEW-NEG-009
+    contract: agent-experience-workbench.openapi.yaml
+    schema_ref: "#/components/schemas/SubscriptionChangeRequestV1"
+    expected_invalid_reason: a refund is not a subscription change kind
+    instance:
+      schemaVersion: "1.0"
+      expectedVersion: etag-1
+      kind: REFUND
+  - id: AEW-NEG-010
+    contract: agent-experience-workbench.openapi.yaml
+    schema_ref: "#/components/schemas/CreateWorkbenchTopupRequestV1"
+    expected_invalid_reason: a top-up quantity must be at least one
+    instance:
+      schemaVersion: "1.0"
+      expectedVersion: etag-1
+      componentId: CONTENT_ASSET
+      quantity: 0
+  - id: AEW-NEG-011
+    contract: agent-experience-workbench.openapi.yaml
+    schema_ref: "#/components/schemas/WorkbenchWalletV1"
+    expected_invalid_reason: the customer wallet exposes components remaining only, never a price
+    instance:
+      schemaVersion: "1.0"
+      relationshipRef: 00000000-0000-4000-8000-000000000001
+      periodEnd: "2030-01-31T00:00:00Z"
+      components: []
+      topUpAvailable: false
+      askAccountOwner: false
+      priceInclGstPaise: 199900
+  - id: AEW-NEG-012
+    contract: agent-experience-workbench.openapi.yaml
+    schema_ref: "#/components/schemas/MarketplacePackageComponentV1"
+    expected_invalid_reason: a customer package component never carries a recipe
+    instance:
+      componentId: CONTENT_ASSET
+      label: Designed assets
+      quantity: 4
+      cadence: SPREAD
+      recipe:
+        - { threadId: image-generation, unitsPerUnit: 1 }
+  - id: AEW-NEG-013
+    contract: agent-experience-workbench.openapi.yaml
+    schema_ref: "#/components/schemas/MarketplacePackageV1"
+    expected_invalid_reason: money is integer paise, a fractional amount is invalid
+    instance:
+      packageId: 00000000-0000-4000-8000-000000000003
+      packageCode: STARTER
+      displayName: Starter
+      agentType: digital-marketing-agent
+      agentVersion: "1.0.0"
+      billingPeriodDays: 30
+      priceInclGstPaise: 199900.5
+      basePricePaise: 169407
+      gstPaise: 30493
+      gstRatePercent: 18
+      taxTreatment: GST_INCLUSIVE
+      components: []
+  - id: AEW-NEG-014
+    contract: agent-experience-workbench.openapi.yaml
+    schema_ref: "#/components/schemas/WorkbenchProblemDetailV1"
+    expected_invalid_reason: the problem code must be one declared by the contract
+    instance:
+      type: https://api.waooaw.com/problems/unknown
+      title: Unknown
+      status: 400
+      code: SOMETHING_ELSE
+      correlationId: 00000000-0000-4000-8000-000000000004
+  - id: AEW-NEG-015
+    contract: agent-experience-workbench.openapi.yaml
+    schema_ref: "#/components/schemas/WorkbenchHandoffV1"
+    expected_invalid_reason: a handoff is always single use
+    instance:
+      schemaVersion: "1.0"
+      handoffRef: 00000000-0000-4000-8000-000000000005
+      destinationRef: handoff-abcdef12
+      expiresAt: "2030-01-01T00:00:00Z"
+      singleUse: false
+  - id: AEW-NEG-016
+    contract: agent-experience-workbench.openapi.yaml
+    schema_ref: "#/components/schemas/SubscriptionChangeReceiptV1"
+    expected_invalid_reason: tax treatment is GST inclusive only
+    instance:
+      schemaVersion: "1.0"
+      operationRef: 00000000-0000-4000-8000-000000000006
+      kind: UPGRADE
+      status: ACCEPTED
+      effectiveAt: "2030-01-01T00:00:00Z"
+      taxTreatment: GST_EXCLUSIVE
+      correlationId: 00000000-0000-4000-8000-000000000007

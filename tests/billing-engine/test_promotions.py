@@ -1,9 +1,14 @@
 # Implements: work-contracts/WC-031-goal005-wbe-trial-promotions.md §WC031-03
-# constitutional_basis: C-088 (CCT-COUPON-01 discount cap), C-059 (CCT-REFERRAL-01 idempotency)
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C5-07
+# constitutional_basis: C-088 (CCT-COUPON-01 discount cap), C-089 (cost floor), C-059 (CCT-REFERRAL-01 idempotency)
 from __future__ import annotations
 
+import ast
+import re
+import sys
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import fakeredis
@@ -13,10 +18,25 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from main import app
-from promotions.models import CouponValidation, DiscountResult, ReferralStatus
-from promotions.router import _get_promotions_service
-from promotions.service import PromotionsService
+sys.path.insert(0, str(Path(__file__).parent))
+
+from main import app  # noqa: E402
+from promotions import coupon_versions  # noqa: E402
+from promotions.coupon_versions import CouponError, quote_coupon, redeem_coupon  # noqa: E402
+from promotions.models import CouponValidation, DiscountResult, ReferralStatus  # noqa: E402
+from promotions.router import _get_promotions_service  # noqa: E402
+from promotions.service import PromotionsService  # noqa: E402
+from pricing.models import PricingKind  # noqa: E402
+from pricing_support import (  # noqa: E402
+    AGENT_TYPE,
+    AGENT_VERSION,
+    DMA_PRICE,
+    PACKAGE_SUBJECT,
+    START,
+    FakeReference,
+    make_harness,
+    dma_package_body,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -481,8 +501,8 @@ async def test_cct_referral_01_credit_fires_on_apply_discount(promotions_service
 
 
 @pytest.mark.asyncio
-async def test_cct_referral_01_referrer_wallet_credited(promotions_service, session_factory):
-    """CCT-REFERRAL-01: referrer's wallet balance increases by credit_amount_paise."""
+async def test_cct_referral_01_referrer_wallet_never_credited(promotions_service, session_factory):
+    """WC-136 C5-07: a referral reward is goodwill, so the referrer's wallet balance never changes."""
     referrer_id = uuid.uuid4()
     referee_id = uuid.uuid4()
     coupon_id = await _ins_coupon(session_factory, code="REF20", discount_pct=10)
@@ -501,12 +521,12 @@ async def test_cct_referral_01_referrer_wallet_credited(promotions_service, sess
         row = await session.execute(
             text("SELECT balance_paise FROM wallet_buckets WHERE id = :bid").bindparams(bid=str(bucket_id))
         )
-        assert row.fetchone()[0] == 1300  # 1000 + 300 credit
+        assert row.fetchone()[0] == 1000  # goodwill is never wallet credit
 
 
 @pytest.mark.asyncio
 async def test_cct_referral_01_no_duplicate_credit_idempotent(promotions_service, session_factory):
-    """CCT-REFERRAL-01: credit fires only once per referral pair (idempotent)."""
+    """CCT-REFERRAL-01: the status moves to CREDITED once (idempotent) and the wallet is untouched."""
     referrer_id = uuid.uuid4()
     referee_id = uuid.uuid4()
     coupon_id = await _ins_coupon(session_factory, code="REF30", discount_pct=10)
@@ -525,7 +545,7 @@ async def test_cct_referral_01_no_duplicate_credit_idempotent(promotions_service
         row = await session.execute(
             text("SELECT balance_paise FROM wallet_buckets WHERE id = :bid").bindparams(bid=str(bucket_id))
         )
-        assert row.fetchone()[0] == 1300  # still 1000 + 300, NOT 1600
+        assert row.fetchone()[0] == 1000  # unchanged: no wallet credit on any call
 
 
 @pytest.mark.asyncio
@@ -730,3 +750,231 @@ async def test_router_referral_status_returns_200():
 
     assert resp.status_code == 200
     assert resp.json()["total_credits_paise"] == 0
+
+
+# ---------------------------------------------------------------------------
+# WC-136 C5-07: goodwill coupons are versioned discounts, never wallet credit
+# ---------------------------------------------------------------------------
+
+from markup.package_engine import ThreadRate  # noqa: E402
+
+COUPON_CODE = "GOODWILL50"
+
+
+class _Result:
+    def __init__(self, rows=(), rowcount=1, scalar=None):
+        self._rows = list(rows)
+        self.rowcount = rowcount
+        self._scalar = scalar
+
+    def scalar_one(self):
+        return self._scalar
+
+    def mappings(self):
+        return self
+
+    def one_or_none(self):
+        return self._rows[0] if self._rows else None
+
+
+class _RedemptionSession:
+    """Answers the four statements the coupon module issues against business.coupon_version_redemptions."""
+
+    def __init__(self):
+        self.rows: list[dict] = []
+
+    async def execute(self, statement, params=None):
+        sql = str(statement)
+        if "pg_advisory_xact_lock" in sql:
+            return _Result()
+        if "count(*)" in sql:
+            return _Result(scalar=sum(1 for row in self.rows if row["version_id"] == params["version"]))
+        if "INSERT INTO business.coupon_version_redemptions" in sql:
+            key = (params["version"], params["relationship"], params["event"], params["period"])
+            if any((r["version_id"], r["relationship_id"], r["event"], r["period_start"]) == key for r in self.rows):
+                return _Result(rowcount=0)
+            self.rows.append(
+                {
+                    "redemption_id": params["redemption"],
+                    "version_id": params["version"],
+                    "coupon_code": params["code"],
+                    "relationship_id": params["relationship"],
+                    "event": params["event"],
+                    "period_start": params["period"],
+                    "price_incl_gst_paise": params["price"],
+                    "discount_paise": params["discount"],
+                    "reason": params["reason"],
+                    "idempotency_key": params["key"],
+                    "redeemed_at": params["at"],
+                }
+            )
+            return _Result()
+        if "WHERE idempotency_key" in sql:
+            return _Result(rows=[row for row in self.rows if row["idempotency_key"] == params["key"]])
+        raise AssertionError(f"unexpected statement: {sql}")
+
+
+def _coupon_body(**changes):
+    body = {
+        "code": COUPON_CODE,
+        "agentType": AGENT_TYPE,
+        "agentVersion": AGENT_VERSION,
+        "percentOff": 50,
+        "expiresAt": (START + timedelta(days=30)).isoformat(),
+        "reason": "Goodwill after a delayed first post",
+        "maxRedemptions": 2,
+    }
+    body.update(changes)
+    return body
+
+
+@pytest.fixture
+def coupon_world(monkeypatch):
+    harness = make_harness()
+    harness.repository.seed(PricingKind.PACKAGE, PACKAGE_SUBJECT, dma_package_body())
+    harness.repository.seed(PricingKind.COUPON, f"coupon:{COUPON_CODE}", _coupon_body())
+    session = _RedemptionSession()
+    monkeypatch.setattr(coupon_versions, "SqlPricingRepository", lambda _session: harness.repository)
+    monkeypatch.setattr(coupon_versions, "SqlPackageReferenceData", lambda _session: harness.reference)
+    return harness, session
+
+
+def _quote_args(**changes):
+    args = dict(
+        code=COUPON_CODE,
+        agent_type=AGENT_TYPE,
+        agent_version=AGENT_VERSION,
+        price_incl_gst_paise=DMA_PRICE,
+        event="HIRE",
+        at=START,
+    )
+    args.update(changes)
+    return args
+
+
+def _redeem_args(**changes):
+    args = dict(
+        code=COUPON_CODE,
+        agent_type=AGENT_TYPE,
+        agent_version=AGENT_VERSION,
+        tenant_id=uuid.uuid4(),
+        relationship_id=uuid.uuid4(),
+        event="RENEWAL",
+        period_start=START,
+        price_incl_gst_paise=DMA_PRICE,
+        idempotency_key=uuid.uuid4(),
+        at=START,
+    )
+    args.update(changes)
+    return args
+
+
+async def test_coupon_quote_discounts_the_package_price_and_writes_nothing(coupon_world):
+    _, session = coupon_world
+
+    quote = await quote_coupon(session, **_quote_args())
+
+    assert (quote.discount_paise, quote.discounted_price_paise) == (DMA_PRICE // 2, DMA_PRICE // 2)
+    assert quote.reason == "Goodwill after a delayed first post"
+    assert session.rows == []
+
+
+async def test_coupon_below_cost_floor_is_refused_at_redemption(coupon_world):
+    harness, session = coupon_world
+    harness.repository.seed(PricingKind.COUPON, f"coupon:{COUPON_CODE}", _coupon_body(percentOff=95))
+
+    with pytest.raises(CouponError) as refused:
+        await redeem_coupon(session, **_redeem_args())
+
+    assert (refused.value.code, refused.value.status_code) == ("PRICING_BELOW_FLOOR", 422)
+    assert session.rows == []
+
+
+async def test_coupon_floor_is_rechecked_against_the_rates_in_force(coupon_world):
+    harness, session = coupon_world
+    assert (await quote_coupon(session, **_quote_args())).discount_paise > 0
+    harness.reference.rates["llm_pro"] = ThreadRate("llm_pro", 3000, True)
+
+    with pytest.raises(CouponError) as refused:
+        await quote_coupon(session, **_quote_args())
+
+    assert refused.value.code == "PRICING_BELOW_FLOOR"
+
+
+async def test_coupon_without_a_matching_package_cannot_prove_the_floor(coupon_world):
+    _, session = coupon_world
+
+    with pytest.raises(CouponError) as refused:
+        await quote_coupon(session, **_quote_args(price_incl_gst_paise=DMA_PRICE + 1))
+
+    assert refused.value.code == "COUPON_FLOOR_UNVERIFIABLE"
+
+
+@pytest.mark.parametrize(
+    ("changes", "code"),
+    [
+        ({"code": "UNKNOWN1"}, "COUPON_NOT_FOUND"),
+        ({"event": "TOPUP"}, "COUPON_EVENT_NOT_ALLOWED"),
+        ({"agent_type": "OTHER"}, "COUPON_AGENT_MISMATCH"),
+        ({"agent_version": "9.9.9"}, "COUPON_VERSION_MISMATCH"),
+        ({"at": START + timedelta(days=31)}, "COUPON_EXPIRED"),
+    ],
+)
+async def test_coupon_refusals_carry_stable_codes(coupon_world, changes, code):
+    _, session = coupon_world
+    with pytest.raises(CouponError) as refused:
+        await quote_coupon(session, **_quote_args(**changes))
+    assert refused.value.code == code
+
+
+async def test_coupon_redemption_is_recorded_with_its_reason_and_capped(coupon_world):
+    _, session = coupon_world
+
+    first = await redeem_coupon(session, **_redeem_args())
+    await redeem_coupon(session, **_redeem_args())
+
+    assert first.replayed is False
+    assert first.event == "RENEWAL"
+    assert [row["reason"] for row in session.rows] == ["Goodwill after a delayed first post"] * 2
+    assert all(row["discount_paise"] == DMA_PRICE // 2 for row in session.rows)
+    with pytest.raises(CouponError) as used:
+        await redeem_coupon(session, **_redeem_args())
+    assert used.value.code == "COUPON_USED"
+
+
+async def test_coupon_redemption_replays_by_key_and_refuses_a_second_use_in_the_period(coupon_world):
+    _, session = coupon_world
+    args = _redeem_args()
+
+    first = await redeem_coupon(session, **args)
+    again = await redeem_coupon(session, **args)
+
+    assert again.replayed is True
+    assert again.redemption_id == first.redemption_id
+    assert len(session.rows) == 1
+    with pytest.raises(CouponError) as same_period:
+        await redeem_coupon(session, **{**args, "idempotency_key": uuid.uuid4()})
+    assert same_period.value.code == "COUPON_ALREADY_REDEEMED"
+    with pytest.raises(CouponError) as conflict:
+        await redeem_coupon(session, **{**args, "event": "HIRE"})
+    assert conflict.value.code == "COUPON_IDEMPOTENCY_CONFLICT"
+
+
+def test_the_only_wallet_credit_paths_are_ledger_credit_and_trial_grant():
+    wallet = Path(__file__).resolve().parents[2] / "src" / "billing-engine" / "wallet"
+    credit_like = re.compile(r"credit|top_?up|bonus|goodwill|adjust|refund|gift|deposit|support")
+    found: set[str] = set()
+    lot_writers: set[str] = set()
+    for source in sorted(wallet.glob("*.py")):
+        text_ = source.read_text(encoding="utf-8")
+        if "INSERT INTO business.wallet_lots" in text_:
+            lot_writers.add(source.name)
+        for node in ast.walk(ast.parse(text_)):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and credit_like.search(node.name):
+                found.add(node.name)
+
+    from wallet.entity_models import LOT_KINDS
+
+    assert found == {"credit", "credit_trial_grant"}
+    assert lot_writers == {"ledger.py"}
+    assert LOT_KINDS == ("PERIOD_CREDIT", "TOPUP_CREDIT", "GRANT")

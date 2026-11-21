@@ -27,7 +27,7 @@
     "agentBaseSpec": {
       "path": "architecture/reference/agents/AGENT-BASE-SPEC.md",
       "version": "1.0",
-      "digest": "sha256:58ee2bef72887a0187a61dce66214a37b7d10ed517c45fa9b9566dc2b66da4b1"
+      "digest": "sha256:21923e58761f1af8b190b374e0bba12608c506ce851fe6b8a088268114026363"
     },
     "platformAgentContract": {
       "schemaVersion": "1.0.0",

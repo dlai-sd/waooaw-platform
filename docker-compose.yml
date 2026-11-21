@@ -423,6 +423,8 @@ services:
       Keycloak__Authority: http://keycloak:8080/realms/waooaw
       Keycloak__Audience: waooaw-platform
       IdentityProviderPreview__ClaimsProofEnabled: "true"
+      Workbench__Enabled: "true"
+      Workbench__HandoffBaseUrl: http://localhost:3000
       IdentityEnvironment__Providers__0__Enabled: "true"
       IdentityEnvironment__Providers__0__UnavailableReason: ""
       IdentityEnvironment__Providers__0__SecretReference: kv://local-preview/google

@@ -1,3 +1,4 @@
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C1-04
 # Implements: work-contracts/WC-135-visitor-conversation-and-simulated-customers.md WC135-R012, WC135-R013
 # Constitutional basis: C-048, C-049, C-059, C-063
 from pathlib import Path
@@ -5,6 +6,7 @@ from pathlib import Path
 import yaml
 
 from visitor_simulation.models import OUTCOMES, STATES
+from visitor_simulation.policy import load_protocol_policy
 
 SPEC = (
     Path(__file__).resolve().parents[2] / "architecture/reference/api-specs/visitor-conversation-business-platform.openapi.yaml"
@@ -92,7 +94,10 @@ def test_stop_and_start_semantics(good_client):
     good_client.send_message(sid, choice_id="YES")
     good_client.send_message(sid, text="I run a dental clinic in Pune.")
     stopped = good_client.send_message(sid, text="stop")
-    assert stopped.state == "STOPPED" and stopped.reply.is_empty and stopped.outcome == "OPT_OUT"
+    acknowledgement = load_protocol_policy().stop_acknowledgement
+    assert stopped.state == "STOPPED" and stopped.outcome == "OPT_OUT"
+    assert stopped.reply.text_blocks == (acknowledgement,)
+    assert good_client.send_message(sid, text="STOP").reply.is_empty
     ignored = good_client.send_message(sid, text="hello?")
     assert ignored.state == "STOPPED" and ignored.reply.is_empty
     restarted = good_client.send_message(sid, text="START")

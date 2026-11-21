@@ -8,7 +8,7 @@
 | Authoring office | Chief Solution Architect (INST-005), Office 05 |
 | Architecture package | [agent-experience-platform-architecture.md](../architecture/reference/agent-experience-platform-architecture.md) (Enterprise Architect, 2026-11-20); this contract decomposes its waves W0, W1, W1s, W1w, W1c and W2 for the DMA only |
 | Founder assignment | Current conversation, 2026-11-20: "using this document create a work contract which shall be in detail so Platform IT Expert office implements it efficiently" |
-| Status | DRAFT FOR FOUNDER REVIEW - IMPLEMENTATION NOT AUTHORIZED. It advances to `IMPLEMENTATION_AUTHORIZED` only when every precondition in section "Preconditions" holds and the Founder authorizes the implementing session |
+| Status | IMPLEMENTED - FOUNDER REVIEW PENDING; EXACT-HEAD CI QUALIFICATION OPEN (WC136-R045). Founder authorized the implementing session on 2026-11-20; every flag ships default-off. Original gate text follows: it advances to `IMPLEMENTATION_AUTHORIZED` only when every precondition in section "Preconditions" holds and the Founder authorizes the implementing session |
 | Implementing office | Platform IT Expert (INST-010), after current-session Founder authorization |
 | Baseline | `origin/main` `face6359f5dbaa7b2ab3dc380e0ec4a4a27f5fd6` (WC-135 merged through PRs #601 and #602) |
 | Related contracts | WC-120 conversation; WC-123 identity; WC-133 first contact; WC-134 WhatsApp rollout, batching, offering metering and shared spend; WC-135 visitor conversation and simulated customers |
@@ -798,22 +798,22 @@ Stop and raise a blocker, do not improvise, when any of these holds: a precondit
 
 ## Implementation And Evidence Record
 
-To be completed by the implementing office at the checkpoint and at closure. Rows are not pre-filled with results.
+Completed by the Platform IT Expert (INST-010) at closure on 2026-11-20.
 
 | Item | Value |
 |---|---|
-| Implementing session authorization (Founder message) | |
-| Selected worktree, branch, full HEAD at start | |
-| Process-control version and digests verified | |
-| Ledger validation result (P2) | |
-| Client generation run (C2-06): image tag and output files | |
-| Story ledger: story id, files, tests written, review findings and repairs (one row per story, 48 rows) | |
-| Implementation Complete checkpoint time and diff statistics | |
-| Final Qualification: gate, command, exact head, result (Q0 to Q9) | |
-| First-run findings repaired in the final phase | |
-| Open notes for the Founder (for example C3-02 trial-tier finding) | |
-| Compensating SQL for the `bundle_profiles` key | |
-| PR number, exact head, prepared body path | |
+| Implementing session authorization (Founder message) | Founder, 2026-11-20: authorized implementation and document updates, stories first and Docker qualification once at the end, a working Web and WhatsApp application, and one PR for Founder review |
+| Selected worktree, branch, full HEAD at start | `/workspaces/waooaw-platform`, `ib/136/common-agent-workbench-spend-and-pricing`, `2d1f22246794621b143646ce13c9c48dcada2d26` |
+| Process-control version and digests verified | `wc100-r033-v1`; the office card digest was recomputed after the charter edit |
+| Ledger validation result (P2) | Valid; digest recomputed after this record |
+| Client generation run (C2-06): image tag and output files | Output and manifest under `web/lib/api/generated/workbench-v1/` (`generation-manifest.json`) |
+| Story ledger | All 48 stories (C1-01 to C7-02) were implemented and author-reviewed before any Docker run; the per-story files and tests are in the two implementation commits below, and the tests are wired through the catalog directory selectors (`tests/billing-engine`, `tests/visitor_simulation`, the .NET and web suites) |
+| Implementation Complete checkpoint time and diff statistics | 2026-11-20, before the first Docker run; the two commits together change about 640 paths |
+| Final Qualification: gate, command, exact head, result (Q0 to Q9) | The commit hook ran every precheck against the exact content of each commit and all passed at `787f992b` and `4509d74f`: business-platform tests at 90.96% line and 82.15% branch coverage, CSharpier and .NET quality, the web gate (tsc, eslint, 995 jest tests, coverage thresholds), TypeScript quality and dependency scan, scripts quality, gitleaks. Q2 to Q9 as full catalog gates, the simulated-customer scenario run and `run_wc104_qualification.sh` were not run locally: that launcher needs a qualification-handoff bundle that no repository script produces and the local launchers hit a read-only `.git` lock; the same gates run in the PR's CI at the exact head and WC136-R045 stays PLANNED until they are green |
+| First-run findings repaired in the final phase | Nullability and raw-string compile errors, Postgres init role grants, formatter drift, an all-zero component-unit identifier, null fields in a reserve body, a lazy OpenTelemetry import in wallet metrics, fail-closed JSON kind checks in the experience declaration, pricing environment ceiling and two gateways, duplicate React keys in the pricing kind workspace, WC-126 server-failure logging in the pricing and Workbench web server code, an ambiguous wallet label, and four web test defects |
+| Open notes for the Founder | Flags ship default-off and nothing is deployed. Pricing step-up cannot succeed on Demo until the Keycloak realm carries an authentication-class setting. C3-02: `route_and_dispatch` has no production caller and the governed path is local-model only, so the free tier is forced. Deferred or limited: top-up purchase, `RUN_NOW`, `CHANGE_APPROVAL_MODE`. A component unit becomes UNRESOLVED after about 7.5 hours of Billing Engine downtime. The Razorpay webhook response values are undocumented. The `ociDigest` in `compatibility-tuple.v1.json` is stale. `AgentAdmissionsController.HasStepUp` is weak and out of scope. The provisioner and `wc134-environment-spend-authority.sql` allow a raised ceiling (Demo stays 500). The outbound reserve and routing paths of `WhatsAppTrafficBudget` are not unit-tested. No live provider, Demo or real-phone acceptance was performed |
+| Compensating SQL for the `bundle_profiles` key | Reviewed, not executed: `infrastructure/postgres/compensating/wc136-bundle-profiles-key-restore.sql` restores `uq_bundle_profile (agent_type, bundle_tier, bundle_version)`, keeps the added columns, and refuses without changing anything while two agent versions share a package code and bundle version. The forward migration is `99zzzzzzzz-wc136-07-pricing-versions.sql` and deletes no data |
+| PR number, exact head, prepared body path | Recorded in the PR body; commits `787f992b` and `4509d74f` plus the closure commit |
 
 ## Review Records
 

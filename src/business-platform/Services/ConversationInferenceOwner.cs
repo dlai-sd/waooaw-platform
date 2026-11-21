@@ -1,10 +1,17 @@
 // Implements: work-contracts/WC-134-batching-offering-and-spend-work-component.md §9.1
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C3-01
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C3-04
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C3-05
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-09
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-11
+// Constitutional basis: C-023, C-059, C-063
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Waooaw.BusinessPlatform.Infrastructure;
+using Waooaw.BusinessPlatform.Services.Spend;
 
 namespace Waooaw.BusinessPlatform.Services;
 
@@ -119,10 +126,19 @@ public sealed class ConversationInferenceOwner(
     IConfiguration configuration,
     TimeProvider clock,
     IAuthenticatedOfferingUsageGateway? offeringUsage = null,
-    ConversationEnvironmentSpendOwner? environmentSpend = null
+    ConversationEnvironmentSpendOwner? environmentSpend = null,
+    EnvironmentSpendOptions? spendOptions = null,
+    ISpendAccountResolver? spendAccounts = null,
+    IPlatformAccountGateway? platformAccounts = null,
+    Visitor.VisitorTelemetry? telemetry = null
 ) : IConversationInferenceOwner
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    private readonly IPlatformAccountGateway? _platformAccounts = platformAccounts;
+    private readonly Visitor.VisitorTelemetry? _telemetry = telemetry;
+    private readonly EnvironmentSpendOptions _spendOptions =
+        spendOptions ?? new EnvironmentSpendOptions();
+    private readonly ISpendAccountResolver? _spendAccounts = spendAccounts;
     private readonly IAuthenticatedOfferingUsageGateway _offeringUsage =
         offeringUsage ?? new UnconfiguredOfferingUsageGateway();
     private readonly ConversationEnvironmentSpendOwner _environmentSpend =
@@ -191,6 +207,8 @@ public sealed class ConversationInferenceOwner(
         if (prior.State != "UNRESOLVED")
             throw new ConversationStateConflictException();
         var reservationAuthority = capability.RequireActive(clock.GetUtcNow());
+        var pin = await ResolveSpendPinAsync(caller, request, ct);
+        var floor = pin?.AccountClass == SpendAccountClass.PlatformFloor;
         var existingEvidence = await ExistingCoordinatorEvidenceAsync(caller, request, ct);
         var evidence =
             existingEvidence
@@ -211,8 +229,9 @@ public sealed class ConversationInferenceOwner(
                     maximumInputTokens = 8192,
                     maximumOutputTokens = 2048,
                     environment = reservationAuthority.Environment,
-                    environmentMaximumPaise = Math.Min(500m, reservationAuthority.MaximumSpendInr)
-                        * 100m,
+                    environmentMaximumPaise = _spendOptions.EffectiveMaximumInr(
+                        reservationAuthority.MaximumSpendInr
+                    ) * 100m,
                     contextDigest = resolved
                         .GetProperty("conversationContext")
                         .GetProperty("digest")
@@ -229,20 +248,51 @@ public sealed class ConversationInferenceOwner(
         {
             await using var intentTransaction = await intentDb.Database.BeginTransactionAsync(ct);
             await SetTenantAsync(intentDb, caller.TenantId, ct);
-            await intentDb.Database.ExecuteSqlInterpolatedAsync(
-                $"""
-                INSERT INTO business.conversation_inference_spend_coordinators
-                    (tenant_id,relationship_id,execution_id,request_digest,owner_evidence_id,component_id,
-                     invocation_id,wbe_state,operational_state,provider_dispatch_state,
-                     created_at,updated_at)
-                VALUES ({caller.TenantId},{caller.RelationshipId},{request.ExecutionId},
-                    {request.RequestDigest},{evidence},{offeringIdentity.ComponentId},
-                    {offeringIdentity.InvocationId},'PENDING','PENDING','NOT_DISPATCHED',
-                    {clock.GetUtcNow()},{clock.GetUtcNow()})
-                ON CONFLICT (tenant_id,execution_id) DO NOTHING
-                """,
-                ct
-            );
+            if (pin is null)
+                await intentDb.Database.ExecuteSqlInterpolatedAsync(
+                    $"""
+                    INSERT INTO business.conversation_inference_spend_coordinators
+                        (tenant_id,relationship_id,execution_id,request_digest,owner_evidence_id,component_id,
+                         invocation_id,wbe_state,operational_state,provider_dispatch_state,
+                         created_at,updated_at)
+                    VALUES ({caller.TenantId},{caller.RelationshipId},{request.ExecutionId},
+                        {request.RequestDigest},{evidence},{offeringIdentity.ComponentId},
+                        {offeringIdentity.InvocationId},'PENDING','PENDING','NOT_DISPATCHED',
+                        {clock.GetUtcNow()},{clock.GetUtcNow()})
+                    ON CONFLICT (tenant_id,execution_id) DO NOTHING
+                    """,
+                    ct
+                );
+            else
+                await intentDb.Database.ExecuteSqlInterpolatedAsync(
+                    $"""
+                    INSERT INTO business.conversation_inference_spend_coordinators
+                        (tenant_id,relationship_id,execution_id,request_digest,owner_evidence_id,component_id,
+                         invocation_id,wbe_state,operational_state,provider_dispatch_state,
+                         created_at,updated_at,account_class,pinned_wallet_account_id)
+                    VALUES ({caller.TenantId},{caller.RelationshipId},{request.ExecutionId},
+                        {request.RequestDigest},{evidence},{offeringIdentity.ComponentId},
+                        {offeringIdentity.InvocationId},'PENDING','PENDING','NOT_DISPATCHED',
+                        {clock.GetUtcNow()},{clock.GetUtcNow()},{pin.AccountClass.ToStorage()},
+                        {pin.PinnedWalletAccountId})
+                    ON CONFLICT (tenant_id,execution_id) DO NOTHING
+                    """,
+                    ct
+                );
+            if (
+                pin is not null
+                && !await intentDb
+                    .Database.SqlQuery<int>(
+                        $"""
+                        SELECT 1 AS "Value"
+                        FROM business.conversation_inference_spend_coordinators
+                        WHERE tenant_id={caller.TenantId} AND execution_id={request.ExecutionId}
+                          AND account_class={pin.AccountClass.ToStorage()}
+                        """
+                    )
+                    .AnyAsync(ct)
+            )
+                throw new ConversationStateConflictException();
             if (
                 !await intentDb
                     .Database.SqlQuery<int>(
@@ -263,7 +313,43 @@ public sealed class ConversationInferenceOwner(
                 throw new ConversationStateConflictException();
             await intentTransaction.CommitAsync(ct);
         }
-        var commercial = await _offeringUsage.ReserveAsync(offeringIdentity, 8192 + 2048, ct);
+        var setupGrant = pin?.AccountClass == SpendAccountClass.SetupGrant;
+        var accountClassName = pin?.AccountClass.ToStorage() ?? UnpinnedClass;
+        OfferingUsageReceipt? commercial;
+        try
+        {
+            commercial = setupGrant
+                ? await ReserveSetupGrantAsync(caller, offeringIdentity, cost, ct)
+                : await CommercialReservationGate.ReserveAsync(
+                    _offeringUsage,
+                    pin?.AccountClass,
+                    offeringIdentity,
+                    8192 + 2048,
+                    ct
+                );
+        }
+        catch (SpendRefusedException refused)
+        {
+            RecordSpend(
+                Visitor.VisitorTelemetry.SpendDenied,
+                accountClassName,
+                caller,
+                offeringIdentity,
+                0,
+                refused.Code
+            );
+            throw;
+        }
+        RecordSpend(
+            Visitor.VisitorTelemetry.SpendReserved,
+            accountClassName,
+            caller,
+            offeringIdentity,
+            PaiseCeiling(cost),
+            "RESERVED"
+        );
+        var commercialReservationId = commercial?.ReservationId ?? Guid.Empty;
+        var commercialState = commercial is null ? "RELEASED" : "RESERVED";
         await using (var commercialDb = await conversations.CreateDbContextAsync(ct))
         {
             await using var commercialTransaction =
@@ -272,7 +358,7 @@ public sealed class ConversationInferenceOwner(
             await commercialDb.Database.ExecuteSqlInterpolatedAsync(
                 $"""
                 UPDATE business.conversation_inference_spend_coordinators
-                SET wbe_reservation_id={commercial.ReservationId},wbe_state='RESERVED',
+                SET wbe_reservation_id={commercial?.ReservationId},wbe_state={commercialState},
                     updated_at={clock.GetUtcNow()}
                 WHERE tenant_id={caller.TenantId} AND execution_id={request.ExecutionId}
                     AND relationship_id={caller.RelationshipId}
@@ -342,7 +428,8 @@ public sealed class ConversationInferenceOwner(
                     if (existing is not null)
                         throw new ConversationStateConflictException();
                     if (
-                        await db
+                        !floor
+                        && await db
                             .Database.SqlQuery<int>(
                                 $"SELECT 1 AS \"Value\" FROM business.conversation_model_reservations WHERE tenant_id={authority.TenantId} AND overrun"
                             )
@@ -351,7 +438,10 @@ public sealed class ConversationInferenceOwner(
                         throw new WhatsAppCapabilityUnavailableException(
                             "MODEL_COST_OVERRUN_HALTED"
                         );
-                    if (cost > checked((long)(Math.Min(500m, authority.MaximumSpendInr) * 100m)))
+                    var environmentMaximumPaise = _spendOptions.EffectiveMaximumPaise(
+                        authority.MaximumSpendInr
+                    );
+                    if (!floor && cost > environmentMaximumPaise)
                         throw new WhatsAppCapabilityUnavailableException(
                             "COMBINED_DAILY_COST_EXHAUSTED"
                         );
@@ -385,9 +475,10 @@ public sealed class ConversationInferenceOwner(
                         request.RequestDigest,
                         reservation,
                         checked((long)cost),
-                        checked((long)(Math.Min(500m, authority.MaximumSpendInr) * 100m)),
+                        environmentMaximumPaise,
                         now,
-                        ct
+                        ct,
+                        pin
                     );
                     await db.Database.ExecuteSqlInterpolatedAsync(
                         $"""
@@ -421,7 +512,7 @@ public sealed class ConversationInferenceOwner(
                     );
                     return new ConversationInferencePermitV1(
                         reservation,
-                        commercial.ReservationId,
+                        floor ? reservation : commercialReservationId,
                         evidence,
                         cost,
                         expires,
@@ -437,23 +528,44 @@ public sealed class ConversationInferenceOwner(
                 caller,
                 request,
                 "CONVERSATION_MODEL_PRE_DISPATCH_RELEASE",
-                commercial.ReservationId,
+                commercial?.ReservationId ?? request.ExecutionId,
                 new
                 {
                     request.ExecutionId,
                     request.RequestDigest,
-                    commercial.ReservationId,
+                    ReservationId = commercialReservationId,
                     providerDispatch = false,
                 },
                 ct
             );
             if (releaseEvidence != Guid.Empty)
             {
-                await _offeringUsage.ReleaseAsync(
+                if (commercial is not null)
+                {
+                    if (setupGrant)
+                        await SettleSetupGrantAsync(
+                            caller,
+                            commercial.ReservationId,
+                            true,
+                            0,
+                            releaseEvidence,
+                            ct
+                        );
+                    else
+                        await _offeringUsage.ReleaseAsync(
+                            offeringIdentity,
+                            commercial.ReservationId,
+                            releaseEvidence,
+                            ct
+                        );
+                }
+                RecordSpend(
+                    Visitor.VisitorTelemetry.SpendReleased,
+                    accountClassName,
+                    caller,
                     offeringIdentity,
-                    commercial.ReservationId,
-                    releaseEvidence,
-                    ct
+                    0,
+                    "PRE_DISPATCH_RELEASE"
                 );
                 await using var releaseDb = await conversations.CreateDbContextAsync(ct);
                 await using var releaseTransaction = await releaseDb.Database.BeginTransactionAsync(
@@ -503,7 +615,8 @@ public sealed class ConversationInferenceOwner(
                     $"""
                     SELECT wbe_reservation_id AS "WbeReservationId",
                         operational_reservation_id AS "OperationalReservationId",
-                        wbe_state AS "WbeState",operational_state AS "OperationalState"
+                        wbe_state AS "WbeState",operational_state AS "OperationalState",
+                        account_class AS "AccountClass"
                     FROM business.conversation_inference_spend_coordinators
                     WHERE tenant_id={caller.TenantId} AND execution_id={request.ExecutionId}
                     FOR UPDATE
@@ -511,9 +624,16 @@ public sealed class ConversationInferenceOwner(
                 )
                 .SingleOrDefaultAsync(ct)
             ?? throw new ConversationNotAccessibleException();
+        var floor = coordinator.AccountClass == SpendAccountClass.PlatformFloor.ToStorage();
+        var setupGrant = coordinator.AccountClass == SpendAccountClass.SetupGrant.ToStorage();
         if (
-            coordinator.WbeReservationId != commercialReservation
-            || coordinator.OperationalReservationId != reservation
+            coordinator.OperationalReservationId != reservation
+            || (
+                floor
+                    ? coordinator.WbeReservationId is not null
+                        || commercialReservation != reservation
+                    : coordinator.WbeReservationId != commercialReservation
+            )
         )
             throw new ConversationStateConflictException();
         var budgetTenant = await OriginalBudgetTenantAsync(
@@ -553,6 +673,20 @@ public sealed class ConversationInferenceOwner(
             var replayEvidence =
                 row.SettlementEvidenceId ?? throw new ConversationStateConflictException();
             var replayIdentity = OfferingIdentity(caller, request, row.EvidenceId);
+            if (floor)
+                return;
+            if (setupGrant)
+            {
+                await SettleSetupGrantAsync(
+                    caller,
+                    commercialReservation,
+                    release,
+                    row.ActualPaise ?? 0,
+                    replayEvidence,
+                    ct
+                );
+                return;
+            }
             if (release)
                 await _offeringUsage.ReleaseAsync(
                     replayIdentity,
@@ -629,6 +763,44 @@ public sealed class ConversationInferenceOwner(
         );
         await transaction.CommitAsync(ct);
         var offeringIdentity = OfferingIdentity(caller, request, row.EvidenceId);
+        RecordSpend(
+            release
+                ? Visitor.VisitorTelemetry.SpendReleased
+                : Visitor.VisitorTelemetry.SpendSettled,
+            coordinator.AccountClass ?? UnpinnedClass,
+            caller,
+            offeringIdentity,
+            release ? 0 : PaiseCeiling(actual),
+            release ? "PRE_DISPATCH_RELEASE" : "SETTLED"
+        );
+        if (floor)
+            return;
+        if (setupGrant)
+        {
+            await SettleSetupGrantAsync(
+                caller,
+                commercialReservation,
+                release,
+                actual,
+                evidence,
+                ct
+            );
+            await using var grantCompletion = await conversations.CreateDbContextAsync(ct);
+            await using var grantTransaction = await grantCompletion.Database.BeginTransactionAsync(
+                ct
+            );
+            await SetTenantAsync(grantCompletion, caller.TenantId, ct);
+            await grantCompletion.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                UPDATE business.conversation_inference_spend_coordinators
+                SET wbe_state={state},updated_at={clock.GetUtcNow()}
+                WHERE tenant_id={caller.TenantId} AND execution_id={request.ExecutionId}
+                """,
+                ct
+            );
+            await grantTransaction.CommitAsync(ct);
+            return;
+        }
         var offeringReceipt = release
             ? await _offeringUsage.ReleaseAsync(
                 offeringIdentity,
@@ -692,22 +864,73 @@ public sealed class ConversationInferenceOwner(
             ct
         );
         await SetTenantAsync(db, caller.TenantId, ct);
-        var commercial = await db
-            .Database.SqlQuery<Guid?>(
+        var commercialRow = await db
+            .Database.SqlQuery<CoordinatorCommercialRow>(
                 $"""
-                SELECT wbe_reservation_id AS "Value"
+                SELECT wbe_reservation_id AS "WbeReservationId",account_class AS "AccountClass"
                 FROM business.conversation_inference_spend_coordinators
                 WHERE tenant_id={caller.TenantId} AND execution_id={request.ExecutionId}
                 """
             )
             .SingleOrDefaultAsync(ct);
-        if (commercial is not { } commercialId)
+        if (commercialRow is null)
+            return new("UNRESOLVED");
+        if (commercialRow.AccountClass == SpendAccountClass.PlatformFloor.ToStorage())
+        {
+            if (
+                commercialRow.WbeReservationId is not null
+                || request.CommercialReservationId is { } suppliedFloor
+                    && suppliedFloor != row.ReservationId
+            )
+                throw new ConversationNotAccessibleException();
+            return new(
+                row.State,
+                row.ReservationId,
+                row.ReservationId,
+                row.EvidenceId,
+                row.ReservedPaise,
+                row.ExpiresAt
+            );
+        }
+        if (commercialRow.WbeReservationId is not { } commercialId)
             return new("UNRESOLVED");
         if (
             request.CommercialReservationId is { } suppliedCommercial
             && suppliedCommercial != commercialId
         )
             throw new ConversationNotAccessibleException();
+        if (commercialRow.AccountClass == SpendAccountClass.SetupGrant.ToStorage())
+        {
+            if (row.State is "SETTLED" or "RELEASED")
+            {
+                await SettleSetupGrantAsync(
+                    caller,
+                    commercialId,
+                    row.State == "RELEASED",
+                    row.ActualPaise ?? 0,
+                    row.SettlementEvidenceId ?? throw new ConversationStateConflictException(),
+                    ct
+                );
+                await SetTenantAsync(db, caller.TenantId, ct);
+                await db.Database.ExecuteSqlInterpolatedAsync(
+                    $"""
+                    UPDATE business.conversation_inference_spend_coordinators
+                    SET wbe_state={row.State},updated_at={clock.GetUtcNow()}
+                    WHERE tenant_id={caller.TenantId} AND execution_id={request.ExecutionId}
+                    """,
+                    ct
+                );
+                await transaction.CommitAsync(ct);
+            }
+            return new(
+                row.State,
+                row.ReservationId,
+                commercialId,
+                row.EvidenceId,
+                row.ReservedPaise,
+                row.ExpiresAt
+            );
+        }
         var offeringIdentity = OfferingIdentity(caller, request, row.EvidenceId);
         var commercialReceipt = await _offeringUsage.ReconcileAsync(
             offeringIdentity,
@@ -756,6 +979,54 @@ public sealed class ConversationInferenceOwner(
             row.ExpiresAt
         );
     }
+
+    private const string UnpinnedClass = "UNPINNED";
+
+    private static long PaiseCeiling(decimal paise) => SetupGrantOwnerWiring.PaiseCeiling(paise);
+
+    private void RecordSpend(
+        string eventName,
+        string accountClass,
+        InferenceCaller caller,
+        OfferingUsageIdentity identity,
+        long paise,
+        string reasonCode
+    ) =>
+        _telemetry?.Spend(
+            eventName,
+            accountClass,
+            caller.TenantId,
+            paise,
+            reasonCode,
+            caller.RelationshipId,
+            identity.SkillId,
+            identity.ComponentId
+        );
+
+    private Task<OfferingUsageReceipt> ReserveSetupGrantAsync(
+        InferenceCaller caller,
+        OfferingUsageIdentity identity,
+        decimal cost,
+        CancellationToken ct
+    ) => SetupGrantOwnerWiring.ReserveAsync(_platformAccounts, caller, identity, cost, ct);
+
+    private Task SettleSetupGrantAsync(
+        InferenceCaller caller,
+        Guid reservationId,
+        bool release,
+        decimal actualPaise,
+        Guid evidenceId,
+        CancellationToken ct
+    ) =>
+        SetupGrantOwnerWiring.SettleAsync(
+            _platformAccounts,
+            caller,
+            reservationId,
+            release,
+            actualPaise,
+            evidenceId,
+            ct
+        );
 
     private static async Task<ReservationRow> ReadReservationAsync(
         ConversationStoreDbContext db,
@@ -1563,6 +1834,59 @@ public sealed class ConversationInferenceOwner(
             ownerEvidenceId
         );
 
+    private async Task<SpendAccountPin?> ResolveSpendPinAsync(
+        InferenceCaller caller,
+        ConversationInferenceRequest request,
+        CancellationToken ct
+    )
+    {
+        if (_spendAccounts is null)
+            return null;
+        await using var db = await conversations.CreateDbContextAsync(ct);
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        await SetTenantAsync(db, caller.TenantId, ct);
+        var stored = await db
+            .Database.SqlQuery<StoredPinRow>(
+                $"""
+                SELECT account_class AS "AccountClass",
+                    pinned_wallet_account_id AS "PinnedWalletAccountId"
+                FROM business.conversation_inference_spend_coordinators
+                WHERE tenant_id={caller.TenantId}
+                  AND relationship_id={caller.RelationshipId}
+                  AND execution_id={request.ExecutionId}
+                  AND request_digest={request.RequestDigest}
+                """
+            )
+            .SingleOrDefaultAsync(ct);
+        if (stored is not null)
+            return stored.AccountClass is null
+                ? null
+                : new SpendAccountPin(
+                    SpendAccountClasses.Parse(stored.AccountClass),
+                    stored.PinnedWalletAccountId
+                );
+        var inputMessageId = request.Batch?.Sources[0].MessageId ?? request.ContributionRef;
+        var contextJson = await db
+            .Messages.AsNoTracking()
+            .Where(row => row.TenantId == caller.TenantId && row.MessageId == inputMessageId)
+            .Select(row => row.InteractionContextJson)
+            .SingleAsync(ct);
+        var context =
+            JsonSerializer.Deserialize<SpendContextSnapshot>(contextJson, Json)
+            ?? new SpendContextSnapshot();
+        var purpose = _spendAccounts.ResolvePurpose(context.Purpose, context.Phase);
+        var decision = _spendAccounts.Resolve(
+            new RelationshipSpendInput(
+                caller.RelationshipId,
+                SpendAuthorityKinds.FromEngagementMode(request.OperationalMandate.EngagementMode),
+                purpose,
+                context.Channel ?? "",
+                false
+            )
+        );
+        return new SpendAccountPin(decision.AccountClass);
+    }
+
     private async Task<Guid?> ExistingCoordinatorEvidenceAsync(
         InferenceCaller caller,
         ConversationInferenceRequest request,
@@ -1673,6 +1997,26 @@ public sealed class ConversationInferenceOwner(
         public Guid? OperationalReservationId { get; init; }
         public string WbeState { get; init; } = "";
         public string OperationalState { get; init; } = "";
+        public string? AccountClass { get; init; }
+    }
+
+    private sealed class CoordinatorCommercialRow
+    {
+        public Guid? WbeReservationId { get; init; }
+        public string? AccountClass { get; init; }
+    }
+
+    private sealed class StoredPinRow
+    {
+        public string? AccountClass { get; init; }
+        public Guid? PinnedWalletAccountId { get; init; }
+    }
+
+    private sealed class SpendContextSnapshot
+    {
+        public string? Phase { get; init; }
+        public string? Purpose { get; init; }
+        public string? Channel { get; init; }
     }
 
     private sealed class ProviderRow

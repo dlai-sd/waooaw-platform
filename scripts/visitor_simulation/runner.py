@@ -1,3 +1,4 @@
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C1-04, C1-05
 # Implements: work-contracts/WC-135-visitor-conversation-and-simulated-customers.md WC135-R012, WC135-R013
 # Constitutional basis: C-048, C-049, C-059, C-063
 """Runs every persona K times against a visitor API base URL and aggregates the judged results."""
@@ -29,16 +30,20 @@ from visitor_simulation.customer import (
     ScriptedModel,
     stable_index,
 )
-from visitor_simulation.judge import CRITERIA, POLICY_VIOLATIONS, Judge, JudgeResult
+from visitor_simulation.judge import CRITERIA, POLICY_VIOLATIONS, Judge, JudgeResult, load_rubric
 from visitor_simulation.models import Conversation, TurnRecord
-from visitor_simulation.personas import Persona, select_personas
+from visitor_simulation.personas import Persona, load_default_k, select_personas
+from visitor_simulation.policy import ProtocolPolicy, load_protocol_policy
 
 logger = logging.getLogger(__name__)
 
 INJECTIONS = ("media", "stop-mid", "slow", "unknown-language")
 MODELS = ("scripted", "none", "http")
-REPORT_SCHEMA = "visitor-simulation-report/1"
+REPORT_SCHEMA = "visitor-simulation-report/1.1"
+LEGACY_REPORT_SCHEMA = "visitor-simulation-report/1"
+COMPATIBLE_REPORT_SCHEMAS = (LEGACY_REPORT_SCHEMA, REPORT_SCHEMA)
 SLOW_TURN = 3
+TRIAL_SEED_STRIDE = 1_000_000_000
 DEFAULT_OUTPUT = "test-results/visitor_simulation"
 KEY_NAMESPACE = uuid.UUID("5b0f2f0e-3a5b-4f7e-9d1c-2b6f6a0d7c11")
 
@@ -68,6 +73,8 @@ class RunConfig:
     timeout: float = 10.0
     judge_repeats: int = 1
     forbidden_claims: tuple[str, ...] = ()
+    k: int = field(default_factory=load_default_k)
+    content_path: str | None = None
 
 
 @dataclass
@@ -212,11 +219,15 @@ def run_suite(
     sleep: Callable[[float], None] = time.sleep,
     judge: Judge | None = None,
 ) -> SuiteResult:
+    if config.k < 1:
+        raise ValueError("k must be at least 1")
+    if judge is None:
+        rubric = load_rubric(policy=load_protocol_policy(config.content_path))
+        judge = Judge(rubric=rubric, repeats=config.judge_repeats, extra_forbidden_claims=config.forbidden_claims)
     client = VisitorClient(config.base_url, config.secret, timeout=config.timeout, sleep=sleep)
-    judge = judge or Judge(repeats=config.judge_repeats, extra_forbidden_claims=config.forbidden_claims)
     budget = RunBudget(
         max_model_calls=config.max_model_calls,
-        max_total_turns=config.runs * len(config.personas) * config.max_turns,
+        max_total_turns=config.runs * config.k * len(config.personas) * config.max_turns,
         max_turns_per_conversation=config.max_turns,
     )
     items: list[tuple[Conversation, JudgeResult]] = []
@@ -225,26 +236,33 @@ def run_suite(
         for run in range(config.runs):
             run_seed = config.seed * 1_000_000 + p_index * 1_000 + run
             mode = persona.modes[stable_index(run_seed, "mode", len(persona.modes))]
-            subject_key = f"{persona.subject_prefix}-{config.seed:03d}-{run:03d}"
-            try:
-                conv = run_conversation(
-                    client,
-                    persona,
-                    mode=mode,
-                    seed=run_seed,
-                    subject_key=subject_key,
-                    inject=config.inject,
-                    budget=budget,
-                    model=_model_for(config.model, run_seed),
-                )
-            except CostCapExceeded as exc:
-                cap_exceeded = str(exc)
-                logger.error("run stopped: %s", cap_exceeded)
+            for trial in range(config.k):
+                trial_seed = run_seed + trial * TRIAL_SEED_STRIDE
+                subject_key = f"{persona.subject_prefix}-{config.seed:03d}-{run:03d}"
+                if trial:
+                    subject_key = f"{subject_key}-k{trial:02d}"
+                try:
+                    conv = run_conversation(
+                        client,
+                        persona,
+                        mode=mode,
+                        seed=trial_seed,
+                        subject_key=subject_key,
+                        inject=config.inject,
+                        budget=budget,
+                        model=_model_for(config.model, trial_seed),
+                    )
+                except CostCapExceeded as exc:
+                    cap_exceeded = str(exc)
+                    logger.error("run stopped: %s", cap_exceeded)
+                    break
+                conv.seed_group, conv.trial = run_seed, trial
+                items.append((conv, judge.evaluate(conv)))
+            if cap_exceeded:
                 break
-            items.append((conv, judge.evaluate(conv)))
         if cap_exceeded:
             break
-    report = build_report(config, items, budget, client, cap_exceeded)
+    report = build_report(config, items, budget, client, cap_exceeded, judge.rubric.policy)
     return SuiteResult(items, report)
 
 
@@ -255,7 +273,25 @@ def _p95(values: list[float]) -> float:
     return ordered[min(len(ordered) - 1, int(0.95 * len(ordered)))]
 
 
-def _group_stats(items: list[tuple[Conversation, JudgeResult]]) -> dict[str, Any]:
+def reliability_stats(items: list[tuple[Conversation, JudgeResult]], k: int) -> dict[str, Any]:
+    """pass^k: the fraction of seeds whose k independent runs all succeed, with the spread of that per-seed pass.
+
+    A seed counts only when all k of its runs were completed (a run stopped by a cap leaves a partial seed out).
+    ``runVariance`` is the standard deviation of the per-seed pass indicator, the noise estimate the compare gate uses.
+    """
+    by_seed: dict[int, list[bool]] = {}
+    for conv, result in items:
+        by_seed.setdefault(conv.seed_key, []).append(result.task.success)
+    passes = [1.0 if all(runs) else 0.0 for runs in by_seed.values() if len(runs) == k]
+    return {
+        "k": k,
+        "seeds": len(passes),
+        "passK": round(statistics.fmean(passes), 4) if passes else None,
+        "runVariance": round(statistics.pstdev(passes), 4) if passes else None,
+    }
+
+
+def _group_stats(items: list[tuple[Conversation, JudgeResult]], k: int = 1) -> dict[str, Any]:
     n = len(items)
     if n == 0:
         return {"runs": 0}
@@ -279,6 +315,8 @@ def _group_stats(items: list[tuple[Conversation, JudgeResult]]) -> dict[str, Any
         "failureRate": round(sum(1 for _, r in items if r.failed) / n, 4),
         "taskSuccessRate": round(statistics.fmean(successes), 4),
         "taskSuccessStd": round(statistics.pstdev(successes), 4),
+        "pass1": round(statistics.fmean(successes), 4),
+        **reliability_stats(items, k),
         "outcomes": outcomes,
         "leadRate": round((outcomes["FULL_SUCCESS"] + outcomes["LEAD"]) / n, 4),
         "optOutRate": round(outcomes["OPT_OUT"] / n, 4),
@@ -306,18 +344,24 @@ def build_report(
     budget: RunBudget,
     client: VisitorClient,
     cap_exceeded: str = "",
+    policy: ProtocolPolicy | None = None,
 ) -> dict[str, Any]:
+    policy = policy or load_protocol_policy(config.content_path)
     parts = urllib.parse.urlsplit(config.base_url)
     hosts = sorted({urllib.parse.urlsplit(url).netloc for _, url in client.request_log})
     personas: dict[str, Any] = {}
     for persona in config.personas:
         subset = [(c, r) for c, r in items if c.persona_id == persona.id]
-        stats = _group_stats(subset)
+        stats = _group_stats(subset, config.k)
         stats["displayName"] = persona.display_name
         personas[persona.id] = stats
     return {
         "schema": REPORT_SCHEMA,
+        "policyVersion": policy.version,
+        "policyFingerprint": policy.fingerprint,
         "config": {
+            "k": config.k,
+            "policyVersion": policy.version,
             "baseUrl": f"{parts.scheme}://{parts.hostname}{f':{parts.port}' if parts.port else ''}{parts.path.rstrip('/')}",
             "runsPerPersona": config.runs,
             "seed": config.seed,
@@ -330,9 +374,13 @@ def build_report(
         "capExceeded": cap_exceeded,
         "hostsCalled": hosts,
         "resumedSessions": sum(1 for c, _ in items if c.resumed),
-        "overall": _group_stats(items),
+        "overall": _group_stats(items, config.k),
         "personas": personas,
     }
+
+
+def _percent(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:.1%}"
 
 
 def render_markdown(report: dict[str, Any]) -> str:
@@ -353,6 +401,8 @@ def render_markdown(report: dict[str, Any]) -> str:
         return "\n".join([*lines, "No conversations completed.", ""])
     lines += [
         f"- Runs: {overall['runs']}; failure rate: {overall['failureRate']:.1%}; task success: {overall['taskSuccessRate']:.1%}",
+        f"- Reliability pass^{overall.get('k', 1)}: {_percent(overall.get('passK'))} over {overall.get('seeds', 0)} seed(s)"
+        f"; policy version {report.get('policyVersion', 'unknown')}",
         f"- Lead rate (full success + lead): {overall['leadRate']:.1%}; opt-out rate: {overall['optOutRate']:.1%}",
         f"- Policy violations: {overall['policyViolationTotal']} in {overall['runsWithPolicyViolation']} run(s)",
         f"- Turns to first value: mean {overall['turnsToFirstValue']['mean']}, reached in "
@@ -360,15 +410,16 @@ def render_markdown(report: dict[str, Any]) -> str:
         "",
         "## Per persona",
         "",
-        "| Persona | Runs | Failure rate | Task success | Lead rate | Opt-out | Violations | Mean score |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|",
+        "| Persona | Runs | Failure rate | Task success | Pass^k | Lead rate | Opt-out | Violations | Mean score |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for pid, stats in report["personas"].items():
         if not stats.get("runs"):
             continue
         lines.append(
             f"| {pid} | {stats['runs']} | {stats['failureRate']:.1%} | {stats['taskSuccessRate']:.1%} | "
-            f"{stats['leadRate']:.1%} | {stats['optOutRate']:.1%} | {stats['policyViolationTotal']} | {stats['meanScore']} |"
+            f"{_percent(stats.get('passK'))} | {stats['leadRate']:.1%} | {stats['optOutRate']:.1%} | "
+            f"{stats['policyViolationTotal']} | {stats['meanScore']} |"
         )
     lines += ["", "## Criterion means (0-5)", "", "| Criterion | Mean |", "|---|---:|"]
     lines += [f"| {name} | {score} |" for name, score in overall["criterionMeans"].items()]

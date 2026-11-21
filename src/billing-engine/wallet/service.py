@@ -1,4 +1,5 @@
 # Implements: <spec-path> §<section>
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-10
 # constitutional_basis: C-059 (Implementation Traceability)
 from __future__ import annotations
 
@@ -537,6 +538,7 @@ class WalletService:
         customer_id: UUID,
         contract_id: UUID,
         new_period_start: date,
+        renewal_payment: dict[str, object] | None = None,
     ) -> RenewalResult:
         """
         Renew a subscription contract.
@@ -546,6 +548,9 @@ class WalletService:
             customer_id: UUID of the customer.
             contract_id: UUID of the employment contract to renew.
             new_period_start: Start date of the new renewal period.
+            renewal_payment: Captured renewal payment (``tenant_id``, ``relationship_id``, ``payment_reference``,
+                ``fee_paid_paise``, optional ``coupon_code``); when given, the paid
+                period credits the wallet allowance lot in the same transaction (see ``_start_renewal_period``).
 
         Returns:
             RenewalResult with renewal details.
@@ -620,6 +625,8 @@ class WalletService:
             )
         )
 
+        await self._start_renewal_period(customer_id, new_period_start, renewal_payment)
+
         await self._db.commit()
 
         logger.info(
@@ -634,4 +641,35 @@ class WalletService:
             customer_id=customer_id,
             new_period_start=new_period_start,
             renewed_at=now_utc,
+        )
+
+    async def _start_renewal_period(
+        self,
+        customer_id: UUID,
+        new_period_start: date,
+        renewal_payment: dict[str, object] | None,
+    ) -> None:
+        """Credit the renewal's wallet allowance lot in the renewal's own transaction (C4-10).
+
+        ``renewal_payment`` carries ``tenant_id``, ``relationship_id``, ``payment_reference``, ``fee_paid_paise``
+        and optionally ``coupon_code``. Without it the contract-only renewal credits nothing: the wallet is
+        credited only by a captured payment.
+        """
+        if renewal_payment is None:
+            return
+        # Local imports: the lifecycle module depends on the wallet ledger this module is part of.
+        from markup.package_engine import SqlPackageReferenceData
+        from payment.lifecycle import LifecycleService
+        from wallet import mirror
+
+        payment_reference = str(renewal_payment["payment_reference"])
+        await LifecycleService(self._db, rates=SqlPackageReferenceData(self._db)).renew_paid(
+            UUID(str(renewal_payment["tenant_id"])),
+            UUID(str(renewal_payment["relationship_id"])),
+            customer_id,
+            payment_reference=payment_reference,
+            fee_paid_paise=int(renewal_payment["fee_paid_paise"]),  # type: ignore[call-overload]
+            evidence_id=uuid.uuid5(uuid.NAMESPACE_URL, f"waooaw:payment:{payment_reference}"),
+            authority=mirror.wallet_authority(),
+            coupon_code=(str(renewal_payment["coupon_code"]) if renewal_payment.get("coupon_code") else None),
         )

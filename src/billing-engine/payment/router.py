@@ -1,4 +1,6 @@
 # Implements: architecture/reference/api-specs/business-platform.openapi.yaml §RelationshipCheckoutOutcome
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-10
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C5-07
 # Constitutional basis: C-059, C-088, C-090
 """Payment FastAPI router — onboarding order + Razorpay webhook endpoint."""
 
@@ -17,6 +19,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_session_factory
 from config import Settings
+from markup.package_engine import SqlPackageReferenceData
+from payment.lifecycle import BillingAdjustments, LifecycleError, LifecycleService
 from payment.models import (
     CheckoutOutcomeKind,
     OnboardingOrderRequest,
@@ -29,7 +33,9 @@ from payment.commercial_outcomes import ZeroPriceCommercialOutcomeStore
 from payment.onboarding import OnboardingService
 from payment.razorpay_client import RazorpayClient
 from payment.webhook import WebhookHandler
+from promotions.coupon_versions import CouponError
 from promotions.service import PromotionsService
+from wallet import mirror
 from wallet.service import WalletService
 
 logger = logging.getLogger(__name__)
@@ -100,6 +106,7 @@ class HireCommercialPreview(BaseModel):
     currency: str = "INR"
     cadence: str
     coupon_code: str | None = None
+    coupon_version_id: UUID | None = Field(default=None, exclude=True)
     provider: str = "RAZORPAY"
     payment_method_required: bool
     payments_enabled: bool
@@ -191,24 +198,41 @@ async def create_hire_commercial_preview(body: HireCommercialPreviewBody) -> Hir
         raise HTTPException(status_code=422, detail={"code": "INVALID_COMMERCIAL_PREVIEW"})
     coupon_code = body.coupon_code.strip().upper() if body.coupon_code else None
     discount_pct = 0
+    versioned_discount: int | None = None
+    coupon_version_id: UUID | None = None
     if coupon_code:
         redis_client = aioredis.from_url(_settings.REDIS_URL, decode_responses=False)
         try:
-            validation = await PromotionsService(
+            promotions = PromotionsService(
                 session_factory=get_session_factory(),
                 redis_client=redis_client,
                 settings=_settings,
-            ).validate_commercial_preview_coupon(
-                coupon_code,
-                body.professional_type,
-                body.professional_version,
             )
+            try:
+                quote = await promotions.quote_versioned_coupon(
+                    code=coupon_code,
+                    agent_type=body.professional_type,
+                    agent_version=body.professional_version,
+                    price_incl_gst_paise=body.gross_amount_inr_paise,
+                    event="HIRE",
+                )
+                versioned_discount, coupon_version_id = quote.discount_paise, quote.version_id
+            except CouponError as refusal:
+                if refusal.code != "COUPON_NOT_FOUND":
+                    raise HTTPException(status_code=refusal.status_code, detail={"code": refusal.code}) from None
+            if versioned_discount is None:
+                validation = await promotions.validate_commercial_preview_coupon(
+                    coupon_code,
+                    body.professional_type,
+                    body.professional_version,
+                )
         finally:
             await redis_client.aclose()
-        if not validation.valid:
-            raise HTTPException(status_code=422, detail={"code": validation.error_code or "COUPON_INVALID"})
-        discount_pct = validation.discount_pct
-    discount = body.gross_amount_inr_paise * discount_pct // 100
+        if versioned_discount is None:
+            if not validation.valid:
+                raise HTTPException(status_code=422, detail={"code": validation.error_code or "COUPON_INVALID"})
+            discount_pct = validation.discount_pct
+    discount = versioned_discount if versioned_discount is not None else body.gross_amount_inr_paise * discount_pct // 100
     fully_discounted = discount == body.gross_amount_inr_paise
     expected_readiness = "READY_LIVE" if _settings.WAOOAW_ENVIRONMENT == PaymentEnvironment.PRODUCTION.value else "READY_TEST"
     configured_values = (
@@ -230,6 +254,7 @@ async def create_hire_commercial_preview(body: HireCommercialPreviewBody) -> Hir
         payable_inr_paise=body.gross_amount_inr_paise - discount,
         cadence=body.cadence,
         coupon_code=coupon_code,
+        coupon_version_id=coupon_version_id,
         payment_method_required=not fully_discounted,
         payments_enabled=payments_enabled,
         renewal_consequence=_settings.DEMO_RENEWAL_CONSEQUENCE,
@@ -326,7 +351,8 @@ async def _reserve_checkout_coupon(
     body: PreHireCheckoutBody,
     preview: HireCommercialPreview,
 ) -> None:
-    if preview.coupon_code is None:
+    if preview.coupon_code is None or preview.coupon_version_id is not None:
+        # A versioned coupon is capacity-checked when it is redeemed at activation (C5-07).
         return
     now = datetime.now(tz=timezone.utc)
     expires_at = now + timedelta(seconds=_settings.RAZORPAY_CHECKOUT_TTL_SECONDS)
@@ -1075,10 +1101,16 @@ async def razorpay_webhook(request: Request) -> dict:
     payment = payload.get("payload", {}).get("payment", {}).get("entity", {})
     notes = payment.get("notes", {})
 
+    if notes.get("checkout_kind") == "UPGRADE_FEE":
+        return await _capture_upgrade_fee(payment, notes)
+
     try:
         customer_id = UUID(notes.get("customer_id", ""))
     except (ValueError, AttributeError):
         raise HTTPException(status_code=400, detail={"code": "MISSING_CUSTOMER_ID"}) from None
+
+    if notes.get("checkout_kind") == "RENEWAL":
+        return await _capture_renewal(payment, notes, customer_id)
 
     if notes.get("checkout_kind") == "PRE_HIRE":
         try:
@@ -1166,6 +1198,53 @@ async def razorpay_webhook(request: Request) -> dict:
         }
     return {"status": "activated", "subscription_id": str(result.subscription_id), "customer_id": str(result.customer_id)}
 
+
+async def _capture_upgrade_fee(payment: dict, notes: dict) -> dict:
+    """An upgrade fee order was captured: record the collection against its billing adjustment (C4-10)."""
+    payment_id = str(payment.get("id", ""))
+    adjustment_id = _optional_uuid(notes.get("adjustment_id"))
+    if not payment_id or adjustment_id is None:
+        raise HTTPException(status_code=400, detail={"code": "INVALID_PAYMENT_REFERENCE"})
+    async with get_session_factory()() as db:
+        try:
+            recorded = await BillingAdjustments(db).mark_charge_captured(
+                adjustment_id, payment_id, int(payment.get("amount", -1))
+            )
+        except LifecycleError as error:
+            await db.rollback()
+            raise HTTPException(status_code=409, detail={"code": error.code}) from None
+        await db.commit()
+    return {"status": "COLLECTED" if recorded else "REPLAYED", "payment_reference": payment_id}
+
+
+async def _capture_renewal(payment: dict, notes: dict, customer_id: UUID) -> dict:
+    """A renewal order was captured: start the next period and credit its wallet lot (C4-10)."""
+    payment_id = str(payment.get("id", ""))
+    tenant_id = _optional_uuid(notes.get("tenant_id"))
+    relationship_id = _optional_uuid(notes.get("relationship_id"))
+    if not payment_id or tenant_id is None or relationship_id is None:
+        raise HTTPException(status_code=400, detail={"code": "INVALID_PAYMENT_REFERENCE"})
+    async with get_session_factory()() as db:
+        try:
+            period = await LifecycleService(db, rates=SqlPackageReferenceData(db)).renew_paid(
+                tenant_id,
+                relationship_id,
+                customer_id,
+                payment_reference=payment_id,
+                fee_paid_paise=int(payment.get("amount", -1)),
+                evidence_id=uuid5(NAMESPACE_URL, f"waooaw:payment:{payment_id}"),
+                authority=mirror.wallet_authority(),
+                coupon_code=(str(notes["coupon_code"]).strip().upper() if notes.get("coupon_code") else None),
+            )
+        except LifecycleError as error:
+            await db.rollback()
+            raise HTTPException(status_code=409, detail={"code": error.code}) from None
+        await db.commit()
+    return {
+        "status": "RENEWED" if period is not None else "NOT_APPLICABLE",
+        "payment_reference": payment_id,
+        "period_start": period.period_start.isoformat() if period is not None else None,
+    }
 
 def _optional_uuid(value: object) -> UUID | None:
     if value in (None, ""):

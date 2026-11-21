@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
+import pytest_asyncio
 from hypothesis import HealthCheck, settings
 
 # billing-engine uses flat imports (WORKDIR=/app in Docker)
@@ -48,3 +49,68 @@ sys.modules.setdefault("config", _config_stub)
 # Our fixtures are stateless mocks — safe to share across hypothesis-generated inputs.
 settings.register_profile("ci", suppress_health_check=[HealthCheck.function_scoped_fixture, HealthCheck.too_slow])
 settings.load_profile("ci")
+
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-02
+# SQLite twin of the wallet entity (99zzzzzzzz-wc136-05-wallet-entity.sql) for service-level tests.
+WALLET_SQLITE_DDL = (
+    """CREATE TABLE business.wallet_accounts (
+        account_id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, owner_kind TEXT NOT NULL,
+        owner_ref TEXT, account_class TEXT NOT NULL, scope_kind TEXT NOT NULL,
+        relationship_id TEXT, skill_id TEXT, campaign_ref TEXT, lead_ref TEXT, environment TEXT,
+        agent_type TEXT, agent_version TEXT, status TEXT NOT NULL, created_at TIMESTAMP NOT NULL
+    )""",
+    """CREATE UNIQUE INDEX business.wallet_accounts_key ON wallet_accounts (
+        tenant_id, account_class,
+        COALESCE(relationship_id, '00000000-0000-0000-0000-000000000000'),
+        COALESCE(skill_id, ''), COALESCE(campaign_ref, ''), COALESCE(lead_ref, ''),
+        COALESCE(environment, ''))""",
+    """CREATE TABLE business.wallet_lots (
+        lot_id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, account_id TEXT NOT NULL,
+        lot_kind TEXT NOT NULL, credited_paise INTEGER NOT NULL CHECK (credited_paise > 0),
+        valid_from TIMESTAMP NOT NULL, valid_until TIMESTAMP NOT NULL, source_kind TEXT NOT NULL,
+        source_ref TEXT NOT NULL, pinned_versions TEXT NOT NULL, evidence_id TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL
+    )""",
+    """CREATE TABLE business.wallet_reservations (
+        reservation_id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, account_id TEXT NOT NULL,
+        lot_id TEXT NOT NULL, component_id TEXT NOT NULL,
+        reserved_paise INTEGER NOT NULL CHECK (reserved_paise > 0), actual_paise INTEGER,
+        state TEXT NOT NULL, pinned_account_class TEXT NOT NULL, pinned_versions TEXT NOT NULL,
+        expires_at TIMESTAMP NOT NULL, created_at TIMESTAMP NOT NULL, resolved_at TIMESTAMP
+    )""",
+    """CREATE TABLE business.wallet_entries (
+        entry_id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, account_id TEXT NOT NULL,
+        lot_id TEXT, entry_kind TEXT NOT NULL, amount_paise INTEGER NOT NULL CHECK (amount_paise > 0),
+        reservation_id TEXT, idempotency_key TEXT NOT NULL, request_digest TEXT NOT NULL,
+        component_id TEXT, invocation_id TEXT, evidence_id TEXT, occurred_at TIMESTAMP NOT NULL,
+        UNIQUE (tenant_id, idempotency_key, entry_kind)
+    )""",
+    """CREATE TABLE business.wallet_floor_uses (
+        tenant_id TEXT NOT NULL, environment TEXT NOT NULL, use_id TEXT NOT NULL,
+        purpose TEXT NOT NULL, component_id TEXT NOT NULL, amount_paise INTEGER NOT NULL,
+        invocation_id TEXT, evidence_id TEXT NOT NULL, occurred_at TIMESTAMP NOT NULL,
+        PRIMARY KEY (tenant_id, environment, use_id)
+    )""",
+    """CREATE TABLE institutional.pricing_versions (
+        version_id TEXT PRIMARY KEY, kind TEXT NOT NULL, subject_key TEXT NOT NULL,
+        version_no INTEGER NOT NULL, state TEXT NOT NULL, body TEXT NOT NULL,
+        effective_from TIMESTAMP
+    )""",
+)
+
+
+@pytest_asyncio.fixture
+async def wallet_db():
+    """Yield an async session factory over an in-memory database with the wallet schema attached."""
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+    from sqlalchemy.pool import StaticPool
+
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", poolclass=StaticPool)
+    async with engine.begin() as connection:
+        await connection.execute(text("ATTACH DATABASE ':memory:' AS business"))
+        await connection.execute(text("ATTACH DATABASE ':memory:' AS institutional"))
+        for statement in WALLET_SQLITE_DDL:
+            await connection.execute(text(statement))
+    yield async_sessionmaker(engine, expire_on_commit=False)
+    await engine.dispose()

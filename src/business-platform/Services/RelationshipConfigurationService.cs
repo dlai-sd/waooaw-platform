@@ -1,4 +1,5 @@
 // Implements: architecture/reference/product/ae01-relationship-data-contract.md § Migration 20
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C6-02
 // constitutional_basis: C-023, C-026, C-059, C-063, C-078
 
 using System.Buffers.Binary;
@@ -863,6 +864,49 @@ public sealed class RelationshipConfigurationService(
             Status = Required(status, nameof(status)).ToUpperInvariant(),
         };
         db.RelationshipGoals.Add(item);
+        await db.SaveChangesAsync(cancellationToken);
+        return item;
+    }
+
+    /// <summary>Revises a goal in place; the goal version changes, so earlier verification no longer applies.</summary>
+    public async Task<RelationshipGoal> ReviseGoalAsync(
+        Guid tenantId,
+        Guid relationshipId,
+        Guid goalId,
+        string expectedWorkspaceVersion,
+        string expectedGoalVersion,
+        string goal,
+        string? baseline,
+        CancellationToken cancellationToken
+    )
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var relationship = await EnsureRelationshipAsync(
+            db,
+            tenantId,
+            relationshipId,
+            cancellationToken
+        );
+        if (relationship.State == EmploymentRelationshipState.StoppedEmergency)
+            throw new ConstitutionalActionDeniedException(
+                "Goal revision is blocked by Emergency Stop."
+            );
+        var item =
+            await db.RelationshipGoals.SingleOrDefaultAsync(
+                value =>
+                    value.TenantId == tenantId
+                    && value.RelationshipId == relationshipId
+                    && value.GoalId == goalId,
+                cancellationToken
+            ) ?? throw new KeyNotFoundException("Goal not found.");
+        if (
+            expectedWorkspaceVersion != $"relationship-{relationship.StateVersion}"
+            || expectedGoalVersion != GetGoalVersion(item)
+        )
+            throw new RelationshipGoalVersionConflictException();
+        item.Goal = Required(goal, nameof(goal));
+        item.Baseline = baseline?.Trim();
+        item.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
         return item;
     }

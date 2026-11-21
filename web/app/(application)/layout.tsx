@@ -1,5 +1,6 @@
 // Implements: architecture/reference/ux/hybrid-application-shell.md §Route and Layout Ownership
 // Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R002, WC105-R013, WC105-R017
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C2-05
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import { ProtectedAppShell } from '@/components/shell/ProtectedAppShell';
@@ -8,6 +9,7 @@ import type { WorkspaceLayoutPreferencesV1 } from '@/lib/api/generated/models/Wo
 import { getIdentitySession, getWorkspaceLayoutPreferences } from '@/lib/api/identity';
 import { getRequestI18n } from '@/lib/i18n-server';
 import { isKeyVaultPortalAdministrator, keyVaultTarget } from '@/lib/key-vault-admin';
+import { pricingAccess } from '@/lib/pricing-admin';
 import { getServerAccessToken } from '@/lib/server-auth';
 import { logServerFailure } from '@/lib/server-failure';
 import { redirect } from 'next/navigation';
@@ -71,6 +73,7 @@ export default async function ApplicationLayout({ children }: { children: ReactN
       messages={messages}
       workspaceLayout={workspaceLayout}
       showKeyVaultAdmin={isKeyVaultPortalAdministrator(accessToken) && keyVaultTarget() !== undefined}
+      showPricingAdmin={pricingAccess(accessToken).administrator}
       variant="customer"
     >
       {children}

@@ -1,5 +1,6 @@
 # Implements: architecture/reference/components/ai-runtime.md §0 Provider Abstraction Layer,§1 LLM Gateway
 # Implements: adr/ADR-042-provider-registry-constitutional-tool-gateway.md §3 (AIR refactor)
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C3-02
 # constitutional_basis: C-023, C-041, C-051, C-059, C-063
 from __future__ import annotations
 
@@ -310,10 +311,9 @@ async def route_and_dispatch(
         task_complexity:       One of "simple" | "medium" | "complex".
         language:              BCP-47 language code or None (e.g. "hi", "en").
         async_session_factory: SQLAlchemy async_sessionmaker bound to institutional DB.
-        customer_id:           Customer UUID string — used for trial mode Redis lookup.
-        redis_client:          Async Redis client — shared instance from billing-engine.
-        trial_entitled:        WBE-validated relationship trial entitlement. Forces LOCAL
-                       without consulting the advisory Redis projection.
+        customer_id:           Customer UUID string — recorded on dispatch evidence.
+        redis_client:          Accepted for caller compatibility; no longer consulted (C3-02).
+        trial_entitled:        WBE-validated relationship trial entitlement. Forces LOCAL.
 
     Returns:
         dict with keys: tier, provider_id, model_id, response, done,
@@ -328,12 +328,10 @@ async def route_and_dispatch(
     tier = _select_tier(task_complexity, language)
 
     # C-049: trial customers must use LOCAL (Ollama) — zero procurement cost
+    # C3-02: only the WBE-validated per-relationship entitlement forces LOCAL; there is no
+    # customer-level trial flag, so one agent's trial never changes another agent's tier.
     if trial_entitled:
         tier = LlmTier.LOCAL
-    elif redis_client is not None and customer_id is not None:
-        customer_mode = await redis_client.get(f"wbe:customer:{customer_id}:mode")
-        if customer_mode == b"TRIAL":
-            tier = LlmTier.LOCAL
     event_id = str(uuid.uuid4())
 
     # Resolve provider metadata before dispatch so we can record on failure too

@@ -195,6 +195,36 @@ public sealed class ConversationInferenceControllerTests(OwnerGatewayIdentityFix
             503,
             "INFERENCE_DEPENDENCY_UNAVAILABLE",
         ];
+        yield return
+        [
+            new Waooaw.BusinessPlatform.Services.Spend.SpendRefusedException(
+                "SPEND_COMMERCIAL_UNAVAILABLE"
+            ),
+            503,
+            "SPEND_COMMERCIAL_UNAVAILABLE",
+        ];
+        yield return
+        [
+            new Waooaw.BusinessPlatform.Services.Spend.SpendRefusedException(
+                "SPEND_PURPOSE_UNMAPPED"
+            ),
+            403,
+            "SPEND_PURPOSE_UNMAPPED",
+        ];
+        yield return
+        [
+            new Waooaw.BusinessPlatform.Services.Spend.SpendRefusedException(
+                "SPEND_AUTHORITY_UNAVAILABLE"
+            ),
+            403,
+            "SPEND_AUTHORITY_UNAVAILABLE",
+        ];
+        yield return
+        [
+            new OfferingUsageOwnerUnavailableException("private owner details"),
+            503,
+            "SPEND_COMMERCIAL_UNAVAILABLE",
+        ];
     }
 
     [Theory]

@@ -1,4 +1,5 @@
 // Implements: architecture/reference/components/conversational-employment-solution-contract.md §4.1 BP public candidate operations
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-08
 // Constitutional basis: C-001, C-005, C-023, C-026, C-059, C-063, C-079, ADR-051
 // IB: N/A - Founder-assigned WC-115
 
@@ -129,10 +130,15 @@ public sealed class ConversationalEmploymentService
     > _commands = new();
     private readonly object _sync = new();
     private readonly IConversationalEmploymentPersistence? _persistence;
+    private readonly IComponentUnitCompletionSink _componentUnits;
 
-    public ConversationalEmploymentService(IConversationalEmploymentPersistence? persistence = null)
+    public ConversationalEmploymentService(
+        IConversationalEmploymentPersistence? persistence = null,
+        IComponentUnitCompletionSink? componentUnits = null
+    )
     {
         _persistence = persistence;
+        _componentUnits = componentUnits ?? new NoopComponentUnitCompletionSink();
     }
 
     public void RegisterWorkspace(EmploymentWorkspaceSnapshot snapshot)
@@ -369,6 +375,27 @@ public sealed class ConversationalEmploymentService
                         : $"Owner reconciliation is {commandState.ToLowerInvariant()}.",
                 UpdatedAt = DateTimeOffset.UtcNow,
             };
+            // The unit is recorded before the outcome so a failed outcome write is retried by the owner callback
+            // and the idempotent outbox row is never missed; a unit is counted at most once on the evidence id.
+            if (
+                commandState == "COMPLETED"
+                && owner == "CE"
+                && state == "COMPLETED"
+                && ComponentUnitEvidence.TryParse(
+                    evidenceRef,
+                    out var componentId,
+                    out var unitEvidence
+                )
+            )
+                _componentUnits.Completed(
+                    new ComponentUnitCompletion(
+                        tenantId,
+                        relationshipId,
+                        componentId,
+                        unitEvidence,
+                        "bp-component-unit"
+                    )
+                );
             _persistence?.AppendCommandOutcome(tenantId, relationshipId, updated);
             _commands[key] = updated;
             return updated;

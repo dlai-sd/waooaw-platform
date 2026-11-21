@@ -1,4 +1,5 @@
 // Implements: work-contracts/WC-134-whatsapp-demo-complete-rollout-work-component.md WC134-R001-R003
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C1-02
 // Constitutional basis: C-023, C-026, C-039, C-059, C-063
 
 using System.Security.Cryptography;
@@ -248,7 +249,9 @@ public sealed class WhatsAppGuestSessionService(
     IWhatsAppRegistrationRecognition? registrationRecognition = null,
     IWhatsAppAccountLinkConfirmation? accountLinkConfirmation = null,
     VisitorConversationService? visitor = null,
-    IOptionsMonitor<VisitorConversationOptions>? visitorOptions = null
+    IOptionsMonitor<VisitorConversationOptions>? visitorOptions = null,
+    IOptionsMonitor<ProtocolOptions>? protocolOptions = null,
+    ILogger<WhatsAppGuestSessionService>? logger = null
 )
 {
     private bool IsVisitorV2 => visitor is not null && visitorOptions?.CurrentValue.IsV2 == true;
@@ -391,6 +394,7 @@ public sealed class WhatsAppGuestSessionService(
         var stop = IsStopInput(proof);
         if (stop)
         {
+            var alreadyStopped = guestSession.StoppedAt is not null;
             guestSession.StoppedAt ??= clock.GetUtcNow();
             await db.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
@@ -400,7 +404,18 @@ public sealed class WhatsAppGuestSessionService(
                     proof.PhoneSubjectHash,
                     ct
                 );
-            return new(proof.MessageId, "STOPPED", "STOP", string.Empty, false, string.Empty);
+            var acknowledgement =
+                alreadyStopped || !WhatsAppStopAcknowledgementPolicy.IsActive(protocolOptions)
+                    ? null
+                    : await TryAcknowledgeStopAsync(authority, proof, ct);
+            return new(
+                proof.MessageId,
+                "STOPPED",
+                "STOP",
+                acknowledgement ?? string.Empty,
+                false,
+                string.Empty
+            );
         }
         var resumedThisMessage = false;
         if (guestSession.StoppedAt is not null)
@@ -916,6 +931,61 @@ public sealed class WhatsAppGuestSessionService(
             submission.Replayed,
             string.Empty
         );
+    }
+
+    private async Task<string?> TryAcknowledgeStopAsync(
+        WhatsAppActivationAuthority authority,
+        VerifiedPhoneIdentityProof proof,
+        CancellationToken ct
+    )
+    {
+        if (proof.ProtectedDestination is null)
+            return null;
+        var text = GuestCopyRegistry.Current.StopAcknowledged;
+        try
+        {
+            var participantId = StopAcknowledgementParticipantId(authority.TenantId, proof);
+            var submission = await interactions.SendGuestFixedNoticeAsync(
+                authority.TenantId,
+                participantId,
+                MessageKey(proof),
+                text,
+                ct
+            );
+            await outbox.QueueGuestStopAcknowledgementAsync(
+                authority.TenantId,
+                participantId,
+                proof.PhoneSubjectHash,
+                proof.ProtectedDestination,
+                submission.Value,
+                proof.SentAt,
+                ct
+            );
+            logger?.LogInformation("protocol_stop_acknowledged channel=WHATSAPP");
+            return text;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // The stop is already committed; a failed acknowledgement must never undo or hide it.
+            logger?.LogWarning(
+                "protocol_stop_acknowledgement_failed channel=WHATSAPP reason={Reason}",
+                exception.GetType().Name
+            );
+            return null;
+        }
+    }
+
+    private static Guid StopAcknowledgementParticipantId(
+        Guid tenantId,
+        VerifiedPhoneIdentityProof proof
+    )
+    {
+        var digest = SHA256.HashData(
+            Encoding.UTF8.GetBytes(
+                $"WC136:stop-ack:{proof.Environment}:{tenantId:D}:{proof.PhoneSubjectHash}"
+            )
+        );
+        return new Guid(digest.AsSpan(0, 16));
     }
 
     private static Guid AdmissionNoticeParticipantId(

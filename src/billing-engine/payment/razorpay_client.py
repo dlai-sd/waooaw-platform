@@ -1,5 +1,7 @@
 # Implements: adr/ADR-022-payment-processing-razorpay-india.md §Amendment 1.2
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-10
 # constitutional_basis: C-059 (Implementation Traceability), ADR-014 (secret management)
+# Constitutional basis: C-059, C-038, ADR-026
 """Razorpay HTTP client — all configuration from env vars (FA-029)."""
 from __future__ import annotations
 
@@ -8,6 +10,7 @@ import hmac
 import logging
 import re
 from base64 import b64encode
+from collections.abc import Mapping
 from urllib.parse import quote
 
 import httpx
@@ -74,6 +77,28 @@ class RazorpayClient:
             )
         resp.raise_for_status()
         return resp.json()
+
+    async def create_refund(self, payment_id: str, amount_paise: int, notes: Mapping[str, str]) -> str:
+        """Refund part of a captured payment (a pro-rata fee refund, never wallet credit); returns the refund id.
+
+        The adjustment id travels as the refund idempotency key so a retried dispatch never refunds twice.
+        """
+        if not _RAZORPAY_PAYMENT_ID.fullmatch(payment_id):
+            raise ValueError("Invalid Razorpay payment identifier.")
+        if amount_paise <= 0:
+            raise ValueError("A refund amount must be positive.")
+        headers = {"Authorization": self._auth_header()}
+        if notes.get("adjustment_id"):
+            headers["X-Refund-Idempotency"] = notes["adjustment_id"]
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                f"{_RAZORPAY_BASE}/payments/{quote(payment_id, safe='')}/refund",
+                json={"amount": amount_paise, "notes": dict(notes)},
+                headers=headers,
+            )
+        resp.raise_for_status()
+        logger.info("Razorpay refund created")
+        return str(resp.json()["id"])
 
     def verify_webhook_signature(self, body: bytes, signature: str) -> bool:
         """Verify Razorpay webhook signature (HMAC-SHA256 of raw body)."""

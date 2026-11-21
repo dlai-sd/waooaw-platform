@@ -1,6 +1,7 @@
 'use client';
 
 // Implements: work-contracts/WC-099-demo-customer-journey-and-application-shell-remediation.md §5.4 Authenticated Application Shell
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C2-05
 // Constitutional basis: C-001 (Human Override), C-059 (Implementation Traceability)
 
 import {
@@ -13,6 +14,7 @@ import {
   Settings,
   ShieldCheck,
   Store,
+  Tag,
   UserRound,
   Vault,
 } from 'lucide-react';
@@ -46,6 +48,7 @@ export function ProtectedAppShell({
   locale = 'en',
   messages,
   showKeyVaultAdmin = false,
+  showPricingAdmin = false,
   stopContext,
   variant,
   workspaceLayout,
@@ -55,6 +58,7 @@ export function ProtectedAppShell({
   locale?: SupportedLocale;
   messages: Messages;
   showKeyVaultAdmin?: boolean;
+  showPricingAdmin?: boolean;
   stopContext?: StopContext;
   variant: ProtectedVariant;
   workspaceLayout?: WorkspaceLayoutPreferencesV1;
@@ -72,6 +76,7 @@ export function ProtectedAppShell({
     { href: '/alerts', label: portal.alerts, icon: Bell },
     { href: '/settings', label: messages.settings, icon: Settings },
     ...(showKeyVaultAdmin ? [{ href: '/admin/azure-key-vault', label: 'Azure Key Vault', icon: Vault }] : []),
+    ...(showPricingAdmin ? [{ href: '/admin/pricing', label: 'Pricing', icon: Tag }] : []),
   ];
   const links =
     variant === 'founder' ? [{ href: '/founder', label: messages.founderHome, icon: ShieldCheck }] : customerLinks;

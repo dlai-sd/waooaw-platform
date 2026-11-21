@@ -1,39 +1,69 @@
 # Implements: wbe-relationship-workspace.openapi.yaml 1.0.0
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-09
 # constitutional_basis: C-002, C-023, C-026, C-059, C-063, C-088, C-089, C-090, C-091
+# Constitutional basis: C-059, C-038, C-088, C-089, C-063
 
 from __future__ import annotations
 
+import sys
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import pytest_asyncio
 from fastapi import HTTPException
 from fastapi import FastAPI
+from sqlalchemy import text
 from starlette.requests import Request
 from fastapi.testclient import TestClient
 
-import relationship_workspace
-from relationship_workspace import (
+sys.path.insert(0, str(Path(__file__).parent))
+
+import relationship_workspace  # noqa: E402
+from payment.lifecycle import PeriodCreditService  # noqa: E402
+from relationship_workspace import (  # noqa: E402
     CommercialCommandRequest,
     CommercialProjection,
     CommercialStore,
     OfferabilityValidationRequest,
     PaidActivationBody,
+    _rebind_component_unit,
     _rebind_offerability_validation,
     _rebind_paid_activation,
     router,
     validate_relationship_offerability,
 )
-from workload_identity import ServiceAuthError
+from wc136_commercial_ddl import install  # noqa: E402
+from wc136_commercial_fakes import (  # noqa: E402
+    FakePackages,
+    FakeRates,
+    policy_body,
+    policy_source,
+    pro,
+    starter,
+)
+from workload_identity import ServiceAuthError  # noqa: E402
 
 
-RELATIONSHIP_ID = uuid.uuid4()
-CONTEXT = SimpleNamespace(actor_subject="actor-a", tenant_id="tenant-a", relationship_id=str(RELATIONSHIP_ID))
+START = datetime(2026, 1, 1, tzinfo=timezone.utc)
+TENANT = uuid.UUID("11111111-1111-4111-8111-111111111111")
+CUSTOMER = uuid.UUID("22222222-2222-4222-8222-222222222222")
+RELATIONSHIP_ID = uuid.UUID("44444444-4444-4444-8444-444444444444")
+CONTEXT = SimpleNamespace(actor_subject="actor-a", tenant_id=str(TENANT), relationship_id=str(RELATIONSHIP_ID))
 
 
-def request(kind="CHANGE_PACING", version="7"):
-    payload = {"commandKind": kind}
+class _Clock:
+    def __init__(self, at: datetime) -> None:
+        self.at = at
+
+    def __call__(self) -> datetime:
+        return self.at
+
+
+def request(kind="CHANGE_PACING", version="7", **payload_fields):
+    payload = {"commandKind": kind, **payload_fields}
     if kind == "CHANGE_PACING":
         payload["pacingChoice"] = "CONSERVATIVE"
     return CommercialCommandRequest.model_validate(
@@ -41,34 +71,135 @@ def request(kind="CHANGE_PACING", version="7"):
     )
 
 
-def test_absent_commercial_truth_is_explicitly_unavailable() -> None:
-    projection = CommercialStore().projection("tenant-a", RELATIONSHIP_ID)
+def _store(db, clock, *, policy=None):
+    return CommercialStore(
+        db, now=clock, rates=FakeRates(), packages=FakePackages(starter(), pro()),
+        policy=policy_source(policy_body() if policy is None else policy),
+    )
+
+
+@pytest_asyncio.fixture
+async def db(wallet_db):
+    async with wallet_db() as session:
+        await install(session)
+        await session.commit()
+    return wallet_db
+
+
+@pytest_asyncio.fixture
+async def hired(db):
+    clock = _Clock(START)
+    async with db() as session:
+        await PeriodCreditService(session, rates=FakeRates(), now=clock).start_period(
+            TENANT, RELATIONSHIP_ID, CUSTOMER, starter(), START, 30_000, uuid.uuid4()
+        )
+        await session.commit()
+    return SimpleNamespace(db=db, clock=clock, store=_store(db, clock))
+
+
+@pytest.mark.asyncio
+async def test_absent_commercial_truth_is_explicitly_unavailable(db) -> None:
+    projection = await _store(db, _Clock(START)).projection(str(TENANT), RELATIONSHIP_ID)
     assert projection.currency_state == "UNAVAILABLE"
     assert projection.actuals == "Actual use unavailable"
 
 
-def test_current_owner_state_accepts_exact_replay_and_rejects_changed_intent() -> None:
-    store = CommercialStore()
-    store.set_projection("tenant-a", CommercialProjection(
-        schemaVersion="1.0", relationshipId=RELATIONSHIP_ID, projectionVersion="7",
-        producedAt=datetime.now(timezone.utc), currencyState="CURRENT", actuals="INR 100",
+@pytest.mark.asyncio
+async def test_projection_is_built_from_the_stored_period_and_saved(hired) -> None:
+    projection = await hired.store.projection(str(TENANT), RELATIONSHIP_ID)
+    again = await hired.store.projection(str(TENANT), RELATIONSHIP_ID)
+    assert projection.currency_state == "CURRENT"
+    assert projection.allowance == "4 units left this period"
+    assert projection.wallet is not None and projection.wallet.top_up_available
+    assert {item.component_id: item.quantity for item in projection.wallet.components} == {"POSTS": 4, "INBOX": 1}
+    assert again.projection_version == projection.projection_version
+    async with hired.db() as session:
+        saved = (await session.execute(text("SELECT COUNT(*) FROM business.commercial_projections"))).scalar_one()
+    assert saved == 1
+
+
+@pytest.mark.asyncio
+async def test_stored_projection_answers_when_no_period_exists_and_goes_stale(db) -> None:
+    clock = _Clock(datetime.now(timezone.utc))
+    store = _store(db, clock)
+    await store.set_projection(str(TENANT), _projection("7", clock.at + timedelta(minutes=5)))
+    assert (await store.projection(str(TENANT), RELATIONSHIP_ID)).currency_state == "CURRENT"
+    clock.at += timedelta(minutes=10)
+    assert (await store.projection(str(TENANT), RELATIONSHIP_ID)).currency_state == "STALE"
+
+
+def _projection(version: str, valid_until: datetime | None = None) -> CommercialProjection:
+    return CommercialProjection(
+        schemaVersion="1.0", relationshipId=RELATIONSHIP_ID, projectionVersion=version,
+        producedAt=datetime.now(timezone.utc), validUntil=valid_until, currencyState="CURRENT", actuals="INR 100",
         allowance="INR 900 remaining", budget="INR 1,000 ceiling", forecast="INR 800 to INR 1,000",
-        thresholds="Below threshold", commercialConsequences="No current restriction"))
-    first = store.submit(CONTEXT, request(), "key-a")
-    replay = store.submit(CONTEXT, request(), "key-a")
+        thresholds="Below threshold", commercialConsequences="No current restriction")
+
+
+@pytest.mark.asyncio
+async def test_current_owner_state_accepts_exact_replay_and_rejects_changed_intent(db) -> None:
+    store = _store(db, _Clock(START))
+    await store.set_projection(str(TENANT), _projection("7"))
+    first = await store.submit(CONTEXT, request(), "key-a")
+    replay = await _store(db, _Clock(START)).submit(CONTEXT, request(), "key-a")
     assert first.status == "PENDING"
     assert replay.command_id == first.command_id and replay.replayed
     with pytest.raises(HTTPException) as conflict:
-        store.submit(CONTEXT, request("PAUSE_RELATIONSHIP"), "key-a")
+        await store.submit(CONTEXT, request("PAUSE_RELATIONSHIP"), "key-a")
     assert conflict.value.status_code == 409
+    assert conflict.value.detail == "WBE_COMMERCIAL_CONFLICT"
 
 
-def test_unresolved_lifecycle_policy_blocks_and_cross_tenant_outcome_is_hidden() -> None:
-    store = CommercialStore()
-    receipt = store.submit(CONTEXT, request("TERMINATE_RELATIONSHIP"), "key-b")
+@pytest.mark.asyncio
+async def test_unresolved_lifecycle_policy_blocks_and_cross_tenant_outcome_is_hidden(db) -> None:
+    store = CommercialStore(db, now=_Clock(START), policy=policy_source(None))
+    receipt = await store.submit(CONTEXT, request("TERMINATE_RELATIONSHIP"), "key-b")
     assert receipt.status == "BLOCKED"
-    other = SimpleNamespace(actor_subject="actor-a", tenant_id="tenant-b", relationship_id=str(RELATIONSHIP_ID))
-    assert store.outcome(other, receipt.command_id) is None
+    assert (await store.outcome(CONTEXT, receipt.command_id)).blocked_reason == "POLICY_ABSENT"
+    other = SimpleNamespace(actor_subject="actor-a", tenant_id=str(uuid.uuid4()), relationship_id=str(RELATIONSHIP_ID))
+    assert await store.outcome(other, receipt.command_id) is None
+
+
+@pytest.mark.asyncio
+async def test_stale_projection_version_conflicts_and_pause_refunds_the_unelapsed_fee(hired) -> None:
+    hired.clock.at = START + timedelta(days=15)
+    version = (await hired.store.projection(str(TENANT), RELATIONSHIP_ID)).projection_version
+    stale = await hired.store.submit(CONTEXT, request("PAUSE_RELATIONSHIP", "old-version"), "key-c")
+    assert stale.status == "CONFLICT"
+    paused = await hired.store.submit(CONTEXT, request("PAUSE_RELATIONSHIP", version), "key-d")
+    outcome = await hired.store.outcome(CONTEXT, paused.command_id)
+    assert paused.status == "COMPLETED"
+    assert outcome.refund_fee_paise == 15_000 and outcome.resolved_at is not None
+    async with hired.db() as session:
+        adjustments = (await session.execute(text("SELECT amount_paise, status FROM business.billing_adjustments"))).all()
+        wallet_entries = (await session.execute(text("SELECT COUNT(*) FROM business.wallet_lots"))).scalar_one()
+    assert adjustments == [(15_000, "NOT_PAYABLE")]
+    assert wallet_entries == 1
+
+
+@pytest.mark.asyncio
+async def test_terminate_is_allowed_on_a_stale_projection_and_ends_the_period(hired) -> None:
+    hired.clock.at = START + timedelta(days=12)
+    receipt = await hired.store.submit(CONTEXT, request("TERMINATE_RELATIONSHIP", "any"), "key-e")
+    outcome = await hired.store.outcome(CONTEXT, receipt.command_id)
+    assert receipt.status == "COMPLETED"
+    assert outcome.refund_fee_paise == 18_000
+    projection = await hired.store.projection(str(TENANT), RELATIONSHIP_ID)
+    assert projection.currency_state == "BLOCKED"
+
+
+def test_component_unit_rebind_requires_the_exact_delegated_context() -> None:
+    relationship_id = uuid.uuid4()
+    key = str(uuid.uuid4())
+    body = SimpleNamespace(component_id="POSTS")
+    context = SimpleNamespace(
+        effective_role="SYSTEM", purpose="COMPONENT_UNIT_USAGE", relationship_id=str(relationship_id),
+        idempotency_key=key, subject_reference="POSTS",
+    )
+    _rebind_component_unit(context, relationship_id, key, body)
+    context.purpose = "OFFERING_COMPONENT_USAGE"
+    with pytest.raises(ServiceAuthError, match="SERVICE_AUTHORIZATION_DENIED"):
+        _rebind_component_unit(context, relationship_id, key, body)
 
 
 def _activation_binding() -> tuple[SimpleNamespace, uuid.UUID, PaidActivationBody, str]:

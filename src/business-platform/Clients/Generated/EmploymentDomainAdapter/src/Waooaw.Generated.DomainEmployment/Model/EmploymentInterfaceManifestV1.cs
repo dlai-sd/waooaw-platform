@@ -74,8 +74,9 @@ namespace Waooaw.Generated.DomainEmployment.Model
         /// <param name="induction">induction (required).</param>
         /// <param name="planning">planning (required).</param>
         /// <param name="operations">operations (required).</param>
+        /// <param name="experience">experience.</param>
         /// <param name="conformanceScenarios">conformanceScenarios (required).</param>
-        public EmploymentInterfaceManifestV1(DomainEmploymentSchemaVersion schemaVersion = default, ProtocolVersionEnum protocolVersion = default, string agentType = default, string agentVersion = default, string manifestVersion = default, EmploymentGovernanceReferencesV1 governance = default, EmploymentInductionManifestV1 induction = default, EmploymentPlanningManifestV1 planning = default, EmploymentOperationsManifestV1 operations = default, List<EmploymentConformanceScenarioV1> conformanceScenarios = default)
+        public EmploymentInterfaceManifestV1(DomainEmploymentSchemaVersion schemaVersion = default, ProtocolVersionEnum protocolVersion = default, string agentType = default, string agentVersion = default, string manifestVersion = default, EmploymentGovernanceReferencesV1 governance = default, EmploymentInductionManifestV1 induction = default, EmploymentPlanningManifestV1 planning = default, EmploymentOperationsManifestV1 operations = default, EmploymentExperienceManifestV1 experience = default, List<EmploymentConformanceScenarioV1> conformanceScenarios = default)
         {
             this.SchemaVersion = schemaVersion;
             this.ProtocolVersion = protocolVersion;
@@ -127,6 +128,7 @@ namespace Waooaw.Generated.DomainEmployment.Model
                 throw new ArgumentNullException("conformanceScenarios is a required property for EmploymentInterfaceManifestV1 and cannot be null");
             }
             this.ConformanceScenarios = conformanceScenarios;
+            this.Experience = experience;
         }
 
         /// <summary>
@@ -172,6 +174,12 @@ namespace Waooaw.Generated.DomainEmployment.Model
         public EmploymentOperationsManifestV1 Operations { get; set; }
 
         /// <summary>
+        /// Gets or Sets Experience
+        /// </summary>
+        [DataMember(Name = "experience", EmitDefaultValue = false)]
+        public EmploymentExperienceManifestV1 Experience { get; set; }
+
+        /// <summary>
         /// Gets or Sets ConformanceScenarios
         /// </summary>
         [DataMember(Name = "conformanceScenarios", IsRequired = true, EmitDefaultValue = true)]
@@ -194,6 +202,7 @@ namespace Waooaw.Generated.DomainEmployment.Model
             sb.Append("  Induction: ").Append(Induction).Append("\n");
             sb.Append("  Planning: ").Append(Planning).Append("\n");
             sb.Append("  Operations: ").Append(Operations).Append("\n");
+            sb.Append("  Experience: ").Append(Experience).Append("\n");
             sb.Append("  ConformanceScenarios: ").Append(ConformanceScenarios).Append("\n");
             sb.Append("}\n");
             return sb.ToString();

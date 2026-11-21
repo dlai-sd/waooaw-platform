@@ -1,4 +1,5 @@
 // Implements: work-contracts/WC-135-visitor-conversation-and-simulated-customers.md WC135-R001, WC135-R002, WC135-R005, WC135-R009
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C1-01
 // Constitutional basis: C-009, C-039, C-042, C-048, C-049, C-059, C-063
 
 using System.Text.RegularExpressions;
@@ -138,11 +139,16 @@ public static partial class VisitorStateMachine
                 {
                     State = VisitorStates.Stopped,
                 },
-                Reply(
-                    content,
-                    VisitorStates.Stopped,
-                    VisitorReplyBlock.TextBlock(content.Fixed.StopAcknowledged)
-                ),
+                content.Protocol.Stop.Acknowledge
+                    ? Reply(
+                        content,
+                        VisitorStates.Stopped,
+                        VisitorReplyBlock.TextBlock(
+                            content.ResolveFixed(content.Protocol.Stop.AcknowledgementRef)
+                                ?? throw new VisitorContentException("PROTOCOL_STOP_UNRESOLVED")
+                        )
+                    )
+                    : VisitorReply.Empty(VisitorStates.Stopped, content.VersionLabel),
                 new VisitorLeadUpdate(),
                 false,
                 "OPT_OUT"
@@ -219,7 +225,9 @@ public static partial class VisitorStateMachine
         bool resume = false
     )
     {
-        var notice = resume ? content.Fixed.ResumeNotice : content.Consent.Notice;
+        var notice = resume
+            ? content.ResolveFixed(content.Protocol.Start.NoticeRef) ?? content.Fixed.ResumeNotice
+            : content.Consent.Notice;
         return new(
             snapshot,
             Reply(

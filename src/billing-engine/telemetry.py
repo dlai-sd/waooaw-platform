@@ -1,3 +1,5 @@
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-11
+# Constitutional basis: C-059, C-063, C-088
 from __future__ import annotations
 
 import os
@@ -5,12 +7,28 @@ from collections.abc import Mapping
 from typing import Any
 
 from fastapi import FastAPI
+from opentelemetry import metrics as otel_metrics
 from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+from wallet.spend_events import (  # noqa: F401 - the spend event and metric surface of C4-11
+    LIVE_MARGIN_BREACH_METRIC,
+    PARITY_DIFFERENCE_METRIC,
+    SPEND_DENIED,
+    SPEND_DENIED_METRIC,
+    SPEND_PAISE_METRIC,
+    SPEND_RELEASED,
+    SPEND_RESERVED,
+    SPEND_SETTLED,
+    emit_spend_event,
+)
 
 _JOURNEY_OPERATIONS = {
     "/trial/start": "trial.start",
@@ -75,6 +93,10 @@ def configure_telemetry(app: FastAPI) -> None:
         BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint, insecure=endpoint.startswith("http://")))
     )
     trace.set_tracer_provider(provider)
+    exporter = OTLPMetricExporter(endpoint=endpoint, insecure=endpoint.startswith("http://"))
+    otel_metrics.set_meter_provider(
+        MeterProvider(resource=resource, metric_readers=[PeriodicExportingMetricReader(exporter)])
+    )
     FastAPIInstrumentor.instrument_app(
         app,
         tracer_provider=provider,

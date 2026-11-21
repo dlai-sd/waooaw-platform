@@ -191,7 +191,15 @@ GET  /api/v1/visitor/handoffs/{reference}/open
   existing keyed hash. Retention is `VisitorLeads:RetentionDays` (default 90, 30 to 365) and
   `SimulationRetentionDays` (default 7, 1 to 30), enforced by a single-replica purge job.
 - Migration: `infrastructure/postgres/init/98-wc135-visitor-conversation.sql`.
-- Evaluation: `scripts/visitor_simulation` (seven simulated customers, judge, compare gate).
+- Evaluation: `scripts/visitor_simulation` (seven simulated customers, judge, compare gate). The WC-136
+  funding and pricing scenario packs run through `python -m visitor_simulation scenarios` against the loopback
+  fake (`funding_scenarios.yaml`, `pricing_scenarios.yaml`); they never target Demo.
+- Simulator spend header (WC-136 C7-02): `SimulatorHeaders:Enabled` (default `false`). When true, a response
+  carries `X-Spend-Account-Class` (`ACQUISITION`, `SETUP_GRANT`, `TRIAL`, `SUBSCRIPTION`, `PLATFORM_FLOOR` or
+  `SIMULATION`) only for an authenticated principal with the `visitor-simulator` role and only when a spend
+  decision was made for that request. All other callers never receive it, and a client-supplied header is never
+  echoed. Spend from the simulator role resolves to `SIMULATION` whatever the flag says
+  (`Services/Spend/SimulatorSpendHeader.cs`).
 
 ## What Business Platform does NOT do
 - Does NOT execute professional work (that is Professional Runtime)

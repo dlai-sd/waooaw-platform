@@ -1,7 +1,11 @@
 """WBE-owned WC-034 F4 commercial projection and command reconciliation."""
 
 # Implements: wbe-relationship-workspace.openapi.yaml 1.0.0
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-08
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-09
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-10
 # constitutional_basis: C-002, C-023, C-026, C-059, C-063, C-088, C-089, C-090, C-091
+# Constitutional basis: C-059, C-038, C-088, C-089, C-063
 
 from __future__ import annotations
 
@@ -10,11 +14,10 @@ import json
 import logging
 import os
 import uuid
-from dataclasses import dataclass
+from collections.abc import Callable
 from datetime import datetime, timezone
-from threading import Lock
 from pathlib import Path
-from typing import Annotated, Literal, Protocol
+from typing import Annotated, Any, Literal, Protocol
 
 import redis.asyncio as aioredis
 from cryptography import x509
@@ -22,15 +25,24 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
+from commercial_projection import (
+    CommercialRepository,
+    ProjectionBuilder,
+    binding_key,
+    request_digest,
+)
 from config import Settings
 from database import get_session_factory
 from markup.bundle_engine import BundleEngine
+from markup.package_engine import SqlPackageReferenceData
 from meter.allowance_service import (
     AllowanceConflict,
     AllowanceDenied,
     AllowanceIdentity,
     OfferingAllowanceService,
 )
+from meter.component_units import ComponentUnitError, ComponentUnitService
+from payment.lifecycle import LifecycleService, effective_policy
 from payment.models import PaidActivationRequest, ZeroPriceActivationRequest
 from payment.paid_activation import PaidActivationService
 from payment.zero_price_activation import ZeroPriceActivationService
@@ -98,6 +110,19 @@ class WorkloadAuth:
             manifest["trust_domain"], target["audience"])
 
 
+class ProjectionWalletComponent(StrictModel):
+    component_id: str = Field(alias="componentId", min_length=1, max_length=100)
+    label: str = Field(min_length=1, max_length=100)
+    remaining: int = Field(ge=0)
+    quantity: int = Field(ge=0)
+
+
+class ProjectionWallet(StrictModel):
+    period_end: datetime = Field(alias="periodEnd")
+    components: list[ProjectionWalletComponent]
+    top_up_available: bool = Field(alias="topUpAvailable")
+
+
 class CommercialProjection(StrictModel):
     schema_version: Literal["1.0"] = Field(alias="schemaVersion")
     relationship_id: uuid.UUID = Field(alias="relationshipId")
@@ -112,15 +137,19 @@ class CommercialProjection(StrictModel):
     thresholds: str = Field(min_length=1, max_length=120)
     assumptions: str | None = Field(default=None, min_length=1, max_length=160)
     commercial_consequences: str = Field(alias="commercialConsequences", min_length=1, max_length=200)
+    wallet: ProjectionWallet | None = None
 
 
 class CommercialPayload(StrictModel):
     command_kind: Literal[
         "CHANGE_BUDGET_CEILING", "CHANGE_PACING", "REQUEST_ALLOWANCE_ADDITION",
         "PAUSE_RELATIONSHIP", "RESUME_RELATIONSHIP", "RENEW_RELATIONSHIP", "TERMINATE_RELATIONSHIP",
+        "UPGRADE_PACKAGE", "DOWNGRADE_PACKAGE",
     ] = Field(alias="commandKind")
     amount_inr_paise: int | None = Field(default=None, alias="amountInrPaise", ge=0)
     pacing_choice: str | None = Field(default=None, alias="pacingChoice", min_length=1, max_length=64)
+    target_package_code: str | None = Field(default=None, alias="targetPackageCode", min_length=1, max_length=64)
+    component_ids: list[str] | None = Field(default=None, alias="componentIds", max_length=64)
 
 
 class CommercialCommandRequest(StrictModel):
@@ -146,6 +175,10 @@ class CommercialOutcome(StrictModel):
     relationship_id: uuid.UUID = Field(alias="relationshipId")
     outcome_version: str | None = Field(default=None, alias="outcomeVersion")
     resolved_at: datetime | None = Field(default=None, alias="resolvedAt")
+    effective_at: datetime | None = Field(default=None, alias="effectiveAt")
+    prorated_fee_difference_paise: int | None = Field(default=None, alias="proratedFeeDifferencePaise", ge=0)
+    refund_fee_paise: int | None = Field(default=None, alias="refundFeePaise", ge=0)
+    blocked_reason: str | None = Field(default=None, alias="blockedReason", max_length=64)
 
 
 class PaidActivationBody(StrictModel):
@@ -213,76 +246,158 @@ class OfferingUsageReceipt(CamelStrictModel):
     replayed: bool
 
 
-@dataclass(frozen=True)
-class StoredCommand:
-    tenant_id: str
-    relationship_id: str
-    digest: str
-    receipt: CommercialReceipt
-    outcome: CommercialOutcome
+def _unavailable_projection(relationship_id: uuid.UUID, at: datetime) -> CommercialProjection:
+    return CommercialProjection(
+        schemaVersion="1.0", relationshipId=relationship_id, projectionVersion="unavailable-1",
+        producedAt=at, currencyState="UNAVAILABLE",
+        actuals="Actual use unavailable", allowance="Allowance unavailable",
+        budget="Budget unavailable", forecast="Forecast unavailable",
+        thresholds="Threshold state unavailable",
+        commercialConsequences="Consequential commercial commands are blocked",
+    )
+
+
+_LIFECYCLE_KINDS = frozenset({
+    "PAUSE_RELATIONSHIP", "RESUME_RELATIONSHIP", "RENEW_RELATIONSHIP", "TERMINATE_RELATIONSHIP",
+    "UPGRADE_PACKAGE", "DOWNGRADE_PACKAGE",
+})
+
+
+def _tenant(value: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(value)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="WBE_COMMERCIAL_UNAUTHORIZED") from None
 
 
 class CommercialStore:
-    def __init__(self) -> None:
-        self._projections: dict[tuple[str, uuid.UUID], CommercialProjection] = {}
-        self._commands: dict[uuid.UUID, StoredCommand] = {}
-        self._idempotency: dict[tuple[str, ...], uuid.UUID] = {}
-        self._lock = Lock()
+    """Durable commercial projection and command ledger (C4-09); every state lives in the database."""
 
-    def projection(self, tenant_id: str, relationship_id: uuid.UUID) -> CommercialProjection:
-        with self._lock:
-            current = self._projections.get((tenant_id, relationship_id))
-        return current or CommercialProjection(
-            schemaVersion="1.0", relationshipId=relationship_id, projectionVersion="unavailable-1",
-            producedAt=datetime.now(timezone.utc), currencyState="UNAVAILABLE",
-            actuals="Actual use unavailable", allowance="Allowance unavailable",
-            budget="Budget unavailable", forecast="Forecast unavailable",
-            thresholds="Threshold state unavailable",
-            commercialConsequences="Consequential commercial commands are blocked",
+    def __init__(
+        self,
+        open_session: Callable[[], Any],
+        *,
+        now: Callable[[], datetime] | None = None,
+        rates: Any = None,
+        packages: Any = None,
+        policy: Any = None,
+    ) -> None:
+        self._open = open_session
+        self._now = now or (lambda: datetime.now(timezone.utc))
+        self._rates = rates
+        self._packages = packages
+        self._policy = policy
+
+    def _builder(self, session: Any) -> ProjectionBuilder:
+        return ProjectionBuilder(session, now=self._now, packages=self._packages)
+
+    def _lifecycle(self, session: Any) -> LifecycleService:
+        return LifecycleService(
+            session, rates=self._rates or SqlPackageReferenceData(session), packages=self._packages,
+            policy=self._policy, now=self._now,
         )
 
-    def set_projection(self, tenant_id: str, projection: CommercialProjection) -> None:
-        with self._lock:
-            self._projections[(tenant_id, projection.relationship_id)] = projection
+    async def projection(self, tenant_id: str, relationship_id: uuid.UUID) -> CommercialProjection:
+        tenant = _tenant(tenant_id)
+        async with self._open() as session:
+            repository = CommercialRepository(session)
+            body = await self._builder(session).build(tenant, relationship_id)
+            if body is not None:
+                await repository.save_projection(
+                    tenant, relationship_id, body["projectionVersion"], body,
+                    datetime.fromisoformat(body["producedAt"]), datetime.fromisoformat(body["validUntil"]),
+                )
+                await session.commit()
+                return CommercialProjection.model_validate(body)
+            stored = await repository.latest_projection(tenant, relationship_id)
+        if stored is None:
+            return _unavailable_projection(relationship_id, self._now())
+        projection = CommercialProjection.model_validate(stored.body)
+        if stored.valid_until is not None and stored.valid_until < self._now():
+            return projection.model_copy(update={"currency_state": "STALE"})
+        return projection
 
-    def submit(self, context: TrustedContext, request: CommercialCommandRequest, key: str) -> CommercialReceipt:
-        body = request.model_dump(by_alias=True, mode="json")
-        digest = hashlib.sha256(json.dumps(body, separators=(",", ":"), sort_keys=True).encode()).hexdigest()
-        binding = (context.actor_subject, context.tenant_id, context.relationship_id, key)
+    async def set_projection(self, tenant_id: str, projection: CommercialProjection) -> None:
+        body = projection.model_dump(by_alias=True, mode="json", exclude_none=True)
+        async with self._open() as session:
+            await CommercialRepository(session).save_projection(
+                _tenant(tenant_id), projection.relationship_id, projection.projection_version, body,
+                projection.produced_at, projection.valid_until,
+            )
+            await session.commit()
+
+    async def submit(self, context: TrustedContext, request: CommercialCommandRequest, key: str) -> CommercialReceipt:
+        tenant = _tenant(context.tenant_id)
         relationship_id = uuid.UUID(context.relationship_id)
-        with self._lock:
-            existing_id = self._idempotency.get(binding)
-            if existing_id:
-                existing = self._commands[existing_id]
-                if existing.digest != digest:
+        digest = request_digest(request.model_dump(by_alias=True, mode="json"))
+        binding = binding_key(context.actor_subject, context.tenant_id, context.relationship_id, key)
+        payload = request.payload
+        async with self._open() as session:
+            repository = CommercialRepository(session)
+            existing = await repository.find_command(tenant, relationship_id, binding)
+            if existing is not None:
+                if existing.request_digest != digest:
                     raise HTTPException(status_code=409, detail="WBE_COMMERCIAL_CONFLICT")
-                return existing.receipt.model_copy(update={"replayed": True})
-            projection = self._projections.get((context.tenant_id, relationship_id))
-            if request.payload.command_kind in {"RENEW_RELATIONSHIP", "TERMINATE_RELATIONSHIP"}:
-                status = "BLOCKED"
-            elif projection is None or projection.currency_state != "CURRENT":
-                status = "UNAVAILABLE"
-            elif projection.projection_version != request.expected_projection_version:
-                status = "CONFLICT"
-            else:
-                status = "PENDING"
+                return CommercialReceipt.model_validate(existing.receipt).model_copy(update={"replayed": True})
             command_id = uuid.uuid4()
-            accepted = datetime.now(timezone.utc)
+            accepted = self._now()
+            fields: dict[str, Any] = {}
+            status = "PENDING"
+            current = await self._builder(session).build(tenant, relationship_id)
+            if current is None:
+                stored = await repository.latest_projection(tenant, relationship_id)
+                if stored is not None and (stored.valid_until is None or stored.valid_until >= accepted):
+                    current = stored.body
+            if payload.command_kind in {"RENEW_RELATIONSHIP", "TERMINATE_RELATIONSHIP"} and (
+                await self._policy_absent(session, accepted)
+            ):
+                status, fields["blocked_reason"] = "BLOCKED", "POLICY_ABSENT"
+            elif current is None:
+                status = "UNAVAILABLE"
+            elif current["currencyState"] != "CURRENT" and payload.command_kind != "TERMINATE_RELATIONSHIP":
+                status = "UNAVAILABLE"
+            elif (
+                payload.command_kind != "TERMINATE_RELATIONSHIP"
+                and current["projectionVersion"] != request.expected_projection_version
+            ):
+                status = "CONFLICT"
+            elif payload.command_kind in _LIFECYCLE_KINDS:
+                result = await self._lifecycle(session).execute(
+                    payload.command_kind, tenant, relationship_id, command_id,
+                    component_ids=payload.component_ids, target_package_code=payload.target_package_code,
+                )
+                status = result.status
+                fields = {
+                    "effective_at": result.effective_at,
+                    "prorated_fee_difference_paise": result.prorated_fee_difference_paise,
+                    "refund_fee_paise": result.refund_fee_paise,
+                    "blocked_reason": result.blocked_reason,
+                }
             receipt = CommercialReceipt(schemaVersion="1.0", commandId=command_id,
-                commandKind=request.payload.command_kind, status=status, acceptedAt=accepted, replayed=False)
+                commandKind=payload.command_kind, status=status, acceptedAt=accepted, replayed=False)
             outcome = CommercialOutcome(schemaVersion="1.0", commandId=command_id,
-                commandKind=request.payload.command_kind, status=status, relationshipId=relationship_id,
-                resolvedAt=accepted if status in {"BLOCKED", "UNAVAILABLE", "CONFLICT"} else None)
-            self._idempotency[binding] = command_id
-            self._commands[command_id] = StoredCommand(context.tenant_id, context.relationship_id, digest, receipt, outcome)
+                commandKind=payload.command_kind, status=status, relationshipId=relationship_id,
+                resolvedAt=accepted if status in {"COMPLETED", "BLOCKED", "UNAVAILABLE", "CONFLICT", "REJECTED"} else None,
+                **fields)
+            await repository.insert_command(
+                command_id, tenant, relationship_id, binding, digest, payload.command_kind, status,
+                receipt.model_dump(by_alias=True, mode="json"),
+                outcome.model_dump(by_alias=True, mode="json"),
+                accepted, outcome.resolved_at,
+            )
+            await session.commit()
             return receipt
 
-    def outcome(self, context: TrustedContext, command_id: uuid.UUID) -> CommercialOutcome | None:
-        with self._lock:
-            command = self._commands.get(command_id)
-        if command is None or (command.tenant_id, command.relationship_id) != (context.tenant_id, context.relationship_id):
-            return None
-        return command.outcome
+    async def _policy_absent(self, session: Any, at: datetime) -> bool:
+        policy = self._policy or (lambda moment: effective_policy(session, moment))
+        return await policy(at) is None
+
+    async def outcome(self, context: TrustedContext, command_id: uuid.UUID) -> CommercialOutcome | None:
+        async with self._open() as session:
+            stored = await CommercialRepository(session).get_command(
+                _tenant(context.tenant_id), uuid.UUID(context.relationship_id), command_id
+            )
+        return None if stored is None else CommercialOutcome.model_validate(stored.outcome)
 
 
 router = APIRouter(prefix="/internal/v1/relationships", tags=["Relationship Commercial Projection"])
@@ -535,14 +650,14 @@ async def reconcile_offering_usage(
 
 
 @router.get("/{relationship_id}/commercial-projection", response_model=CommercialProjection, response_model_by_alias=True)
-def get_projection(
+async def get_projection(
     relationship_id: uuid.UUID, request: Request, store: CommercialStore = Depends(get_store)
 ) -> CommercialProjection:
     try:
         context = _authorize(request, "/internal/v1/relationships/{relationshipId}/commercial-projection",
             "getRelationshipCommercialProjection", relationship_id)
         logger.info("service_auth decision=allow target=billing-engine operation=projection policy_version=1.0")
-        return store.projection(context.tenant_id, relationship_id)
+        return await store.projection(context.tenant_id, relationship_id)
     except ServiceAuthError as exc:
         logger.warning("service_auth decision=deny target=billing-engine operation=projection reason_class=%s", exc.code)
         raise HTTPException(status_code=401, detail="WBE_COMMERCIAL_UNAUTHORIZED") from None
@@ -661,21 +776,21 @@ async def validate_relationship_offerability(
 
 
 @router.post("/{relationship_id}/commercial-commands", response_model=CommercialReceipt, response_model_by_alias=True, status_code=202)
-def submit_command(relationship_id: uuid.UUID, command: CommercialCommandRequest,
+async def submit_command(relationship_id: uuid.UUID, command: CommercialCommandRequest,
     request: Request, idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
     store: CommercialStore = Depends(get_store)) -> CommercialReceipt:
     body = command.model_dump(by_alias=True, mode="json")
     try:
         context = _authorize(request, "/internal/v1/relationships/{relationshipId}/commercial-commands",
             "submitRelationshipCommercialCommand", relationship_id, body, idempotency_key)
-        return store.submit(context, command, idempotency_key)
+        return await store.submit(context, command, idempotency_key)
     except ServiceAuthError as exc:
         logger.warning("service_auth decision=deny target=billing-engine operation=command reason_class=%s", exc.code)
         raise HTTPException(status_code=401, detail="WBE_COMMERCIAL_UNAUTHORIZED") from None
 
 
 @router.get("/{relationship_id}/commercial-commands/{command_id}", response_model=CommercialOutcome, response_model_by_alias=True)
-def get_command(relationship_id: uuid.UUID, command_id: uuid.UUID,
+async def get_command(relationship_id: uuid.UUID, command_id: uuid.UUID,
     request: Request, store: CommercialStore = Depends(get_store)) -> CommercialOutcome:
     try:
         context = _authorize(request, "/internal/v1/relationships/{relationshipId}/commercial-commands/{commandId}",
@@ -683,13 +798,129 @@ def get_command(relationship_id: uuid.UUID, command_id: uuid.UUID,
     except ServiceAuthError as exc:
         logger.warning("service_auth decision=deny target=billing-engine operation=reconciliation reason_class=%s", exc.code)
         raise HTTPException(status_code=401, detail="WBE_COMMERCIAL_UNAUTHORIZED") from None
-    outcome = store.outcome(context, command_id)
+    outcome = await store.outcome(context, command_id)
     if outcome is None:
         raise HTTPException(status_code=404, detail="WBE_COMMERCIAL_NOT_ACCESSIBLE")
     return outcome
 
 
+class ComponentUnitCommand(CamelStrictModel):
+    """One component-unit operation; ``action`` selects which of the fields below it needs."""
+
+    schema_version: Literal["1.0"]
+    action: Literal["CONSUME", "SELECT", "SWAP", "DESELECT", "ACCESS", "CLOSE"]
+    component_id: str = Field(min_length=1, max_length=100)
+    completion_evidence_id: uuid.UUID | None = None
+    outcome: Literal["COMPLETED", "FAILED", "CANCELLED"] | None = None
+    item_ref: str | None = Field(default=None, min_length=1, max_length=200)
+    previous_item_ref: str | None = Field(default=None, min_length=1, max_length=200)
+    connection_proof_id: uuid.UUID | None = None
+    session_ref: str | None = Field(default=None, min_length=1, max_length=200)
+
+
+class ComponentUnitResult(CamelStrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    component_id: str
+    kind: str
+    entry_id: uuid.UUID
+    quantity: int
+    used: int
+    remaining: int
+    released: int
+    replayed: bool
+
+
+_COMPONENT_REFUSAL_STATUS = {
+    "COMPONENT_UNKNOWN": 404,
+    "COMPONENT_ITEM_UNKNOWN": 404,
+    "COMPONENT_IDEMPOTENCY_CONFLICT": 409,
+    "COMPONENT_KIND_MISMATCH": 409,
+}
+
+
+def _component_unit_call(service: ComponentUnitService, tenant: uuid.UUID, relationship_id: uuid.UUID,
+    body: ComponentUnitCommand, key: uuid.UUID):
+    component = body.component_id
+    if body.action == "CONSUME" and body.completion_evidence_id is not None:
+        return service.consume(tenant, relationship_id, component, body.completion_evidence_id, key,
+            outcome=body.outcome or "COMPLETED")
+    if body.action == "SELECT" and body.item_ref:
+        return service.select(tenant, relationship_id, component, body.item_ref, body.connection_proof_id, key)
+    if body.action == "SWAP" and body.item_ref and body.previous_item_ref:
+        return service.swap(tenant, relationship_id, component, body.previous_item_ref, body.item_ref,
+            body.connection_proof_id, key)
+    if body.action == "DESELECT" and body.item_ref:
+        return service.deselect(tenant, relationship_id, component, body.item_ref, key)
+    if body.action == "ACCESS":
+        return service.record_access(tenant, relationship_id, component, key)
+    if body.action == "CLOSE" and body.session_ref:
+        return service.close(tenant, relationship_id, component, body.session_ref, key)
+    return None
+
+
+def _rebind_component_unit(
+    context: DelegatedContext, relationship_id: uuid.UUID, idempotency_key: str, body: ComponentUnitCommand
+) -> None:
+    exact = (
+        context.effective_role in {"SYSTEM", "EMPLOYER"}
+        and context.purpose == "COMPONENT_UNIT_USAGE"
+        and context.relationship_id == str(relationship_id)
+        and context.idempotency_key == idempotency_key
+        and context.subject_reference == body.component_id
+    )
+    if not exact:
+        raise ServiceAuthError("SERVICE_AUTHORIZATION_DENIED")
+
+
+@router.post("/{relationship_id}/component-units/consume", response_model=ComponentUnitResult,
+    response_model_by_alias=True)
+async def apply_component_unit(
+    relationship_id: uuid.UUID,
+    body: ComponentUnitCommand,
+    request: Request,
+    idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
+) -> ComponentUnitResult:
+    """Counts or records one component-unit operation of the relationship (C4-08)."""
+    payload = body.model_dump(by_alias=True, mode="json", exclude_none=True)
+    try:
+        context = _authorize(
+            request, "/internal/v1/relationships/{relationshipId}/component-units/consume",
+            "applyRelationshipComponentUnit", relationship_id, payload, idempotency_key)
+        _rebind_component_unit(context, relationship_id, idempotency_key, body)
+        key = uuid.UUID(idempotency_key)
+    except ServiceAuthError as exc:
+        logger.warning("service_auth decision=deny target=billing-engine operation=component_unit reason_class=%s", exc.code)
+        raise HTTPException(status_code=401, detail="WBE_COMPONENT_UNIT_UNAUTHORIZED") from None
+    except ValueError:
+        raise HTTPException(status_code=400, detail="WBE_COMPONENT_UNIT_KEY_INVALID") from None
+    tenant = _tenant(context.tenant_id)
+    async with get_session_factory()() as session:
+        service = ComponentUnitService(session, swaps_per_period=await _swaps_per_period(session))
+        call = _component_unit_call(service, tenant, relationship_id, body, key)
+        if call is None:
+            raise HTTPException(status_code=400, detail="WBE_COMPONENT_UNIT_REQUEST_INVALID")
+        try:
+            receipt = await call
+            await session.commit()
+        except ComponentUnitError as refusal:
+            await session.rollback()
+            raise HTTPException(status_code=_COMPONENT_REFUSAL_STATUS.get(refusal.code, 422), detail=refusal.code) from None
+    return ComponentUnitResult.model_validate({
+        "schemaVersion": "1.0", "componentId": receipt.component_id, "kind": receipt.kind,
+        "entryId": receipt.entry_id, "quantity": receipt.quantity, "used": receipt.used,
+        "remaining": receipt.remaining, "released": receipt.released, "replayed": receipt.replayed,
+    })
+
+
+async def _swaps_per_period(session: Any) -> int:
+    """The selection swaps a period allows come from the POLICY (selectedSwapsPerPeriod); none means none."""
+    policy = await effective_policy(session, datetime.now(timezone.utc))
+    extra = (policy.model_extra or {}) if policy is not None else {}
+    value = extra.get("selectedSwapsPerPeriod", 0)
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else 0
+
+
 def configure_relationship_workspace(application: FastAPI) -> None:
-    application.state.relationship_commercial_store = CommercialStore()
+    application.state.relationship_commercial_store = CommercialStore(lambda: get_session_factory()())
     credentials = os.getenv("WAOOAW_WORKLOAD_CREDENTIALS")
     application.state.relationship_workload_auth = WorkloadAuth.from_credentials(Path(credentials)) if credentials else None

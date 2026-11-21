@@ -1,4 +1,5 @@
 // Implements: architecture/reference/components/conversation-engine-whatsapp-solution-work-component.md §10.2, §13
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C1-02, C1-03, C4-12
 // Constitutional basis: C-005, C-023, C-026, C-059, C-063
 
 using System.Data;
@@ -9,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
 using Waooaw.BusinessPlatform.Infrastructure;
+using Waooaw.BusinessPlatform.Services.Visitor;
 
 namespace Waooaw.BusinessPlatform.Services;
 
@@ -25,6 +27,46 @@ public sealed record WhatsAppOutboundEligibility(
     string? TemplateCategory,
     bool TemplateApproved
 );
+
+public enum WhatsAppMessageClass
+{
+    /// <summary>Inside the open customer-service window; needs no template and is not counted.</summary>
+    Reply,
+
+    /// <summary>Agent alert, reminder or narrative outside the window; needs a template and counts.</summary>
+    ProactiveCounted,
+
+    /// <summary>Capacity notice or emergency alert outside the window; never counts or blocks.</summary>
+    ProactiveUncounted,
+}
+
+/// <summary>
+/// Classification only (WC-136 C4-12). It enables nothing: the WC-134 policy still refuses every
+/// proactive send, and the allowance counter lives in the billing engine.
+/// </summary>
+public static class WhatsAppMessageClassifier
+{
+    public static readonly TimeSpan ServiceWindow = TimeSpan.FromHours(24);
+
+    public static bool InsideServiceWindow(DateTimeOffset? lastInboundAt, DateTimeOffset now) =>
+        lastInboundAt.HasValue
+        && now - lastInboundAt.Value <= ServiceWindow
+        && now >= lastInboundAt.Value;
+
+    public static WhatsAppMessageClass Classify(
+        DateTimeOffset? lastInboundAt,
+        DateTimeOffset now,
+        bool capacityNotice = false,
+        bool emergencyAlert = false
+    )
+    {
+        if (InsideServiceWindow(lastInboundAt, now))
+            return WhatsAppMessageClass.Reply;
+        return capacityNotice || emergencyAlert
+            ? WhatsAppMessageClass.ProactiveUncounted
+            : WhatsAppMessageClass.ProactiveCounted;
+    }
+}
 
 public sealed record WhatsAppOutboxLease(
     Guid OutboxId,
@@ -72,10 +114,11 @@ public sealed class WhatsAppOutboxService(
     ConversationStopFence stopFence,
     ConversationRuntimeIdentityAuthority? runtimeIdentity = null,
     WhatsAppDeliveryObservationRouting? relationshipRouting = null,
-    WhatsAppTenantExecutionScope? execution = null
+    WhatsAppTenantExecutionScope? execution = null,
+    IOptionsMonitor<ProtocolOptions>? protocolOptions = null
 )
 {
-    private static readonly TimeSpan ServiceWindow = TimeSpan.FromHours(24);
+    private static readonly TimeSpan ServiceWindow = WhatsAppMessageClassifier.ServiceWindow;
     private static readonly TimeSpan LeaseDuration = TimeSpan.FromSeconds(60);
     private readonly Wc120ConversationOptions _conversationOptions = conversationOptions.Value;
     private WhatsAppJourneyOptions WhatsAppOptions => whatsAppOptions.CurrentValue;
@@ -362,6 +405,246 @@ public sealed class WhatsAppOutboxService(
         await db.SaveChangesAsync(ct);
     }
 
+    public async Task QueueGuestStopAcknowledgementAsync(
+        Guid tenantId,
+        Guid participantId,
+        string bindingDigest,
+        string protectedDestination,
+        PortalInteractionMessageV1 message,
+        DateTimeOffset now,
+        CancellationToken ct
+    )
+    {
+        const string purpose = WhatsAppStopAcknowledgementPolicy.GuestPurpose;
+        if (!_conversationOptions.Enabled || !WhatsAppOptions.DispatchEnabled)
+            throw new WhatsAppCapabilityUnavailableException("DISPATCH_DISABLED");
+        if (!WhatsAppStopAcknowledgementPolicy.IsActive(protocolOptions))
+            throw new WhatsAppCapabilityUnavailableException("STOP_ACKNOWLEDGEMENT_DISABLED");
+        if (!IsDigest(bindingDigest) || string.IsNullOrWhiteSpace(protectedDestination))
+            throw new WhatsAppCapabilityUnavailableException("PHONE_DESTINATION_UNAVAILABLE");
+        if (await IsRecipientOptedOutAsync(tenantId, bindingDigest, ct))
+            throw new ConversationStoppedException();
+        if (
+            message.Actor != "GUIDE"
+            || message.ClientMessageId is not null
+            || message.Content.Count != 1
+            || message.Content[0].Text != GuestCopyRegistry.Current.StopAcknowledged
+        )
+            throw new WhatsAppCapabilityUnavailableException("MESSAGE_PROJECTION_DENIED");
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var stopped = await db.Set<WhatsAppGuestSession>()
+            .AsNoTracking()
+            .AnyAsync(
+                identity =>
+                    identity.TenantId == tenantId
+                    && identity.BindingDigest == bindingDigest
+                    && identity.StoppedAt != null,
+                ct
+            );
+        if (!stopped)
+            throw new WhatsAppCapabilityUnavailableException("RECIPIENT_ELIGIBILITY_REVOKED");
+        await InsertStopAcknowledgementAsync(
+            db,
+            purpose,
+            tenantId,
+            participantId,
+            bindingDigest,
+            protectedDestination,
+            $"portal-message:{message.MessageId:D}",
+            message,
+            now,
+            ct
+        );
+    }
+
+    /// <summary>
+    /// Queues the fixed STOP or Emergency Stop acknowledgement for a relationship-bound recipient. Called only after
+    /// the stop evidence and fence are committed; the row is portal-scoped because the relationship route refuses a
+    /// stopped recipient, and the relationship and stop message identities ride in the payload reference.
+    /// </summary>
+    public async Task QueueRelationshipStopAcknowledgementAsync(
+        Guid tenantId,
+        Guid relationshipTenantId,
+        Guid relationshipId,
+        Guid participantId,
+        string bindingDigest,
+        string protectedDestination,
+        bool emergency,
+        PortalInteractionMessageV1 message,
+        DateTimeOffset now,
+        CancellationToken ct
+    )
+    {
+        const string purpose = WhatsAppStopAcknowledgementPolicy.RelationshipPurpose;
+        if (!_conversationOptions.Enabled || !WhatsAppOptions.DispatchEnabled)
+            throw new WhatsAppCapabilityUnavailableException("DISPATCH_DISABLED");
+        if (!WhatsAppStopAcknowledgementPolicy.IsActive(protocolOptions))
+            throw new WhatsAppCapabilityUnavailableException("STOP_ACKNOWLEDGEMENT_DISABLED");
+        if (
+            relationshipTenantId == Guid.Empty
+            || relationshipId == Guid.Empty
+            || !IsDigest(bindingDigest)
+            || string.IsNullOrWhiteSpace(protectedDestination)
+        )
+            throw new WhatsAppCapabilityUnavailableException("PHONE_DESTINATION_UNAVAILABLE");
+        var expectedText = WhatsAppStopAcknowledgementPolicy.RelationshipText(emergency);
+        if (
+            message.Actor != "GUIDE"
+            || message.ClientMessageId is not null
+            || message.Content.Count != 1
+            || message.Content[0].Text != expectedText
+        )
+            throw new WhatsAppCapabilityUnavailableException("MESSAGE_PROJECTION_DENIED");
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        if (
+            !await HasRelationshipStopEvidenceAsync(
+                db,
+                tenantId,
+                relationshipTenantId,
+                relationshipId,
+                bindingDigest,
+                emergency,
+                ct
+            )
+        )
+            throw new WhatsAppCapabilityUnavailableException("RECIPIENT_ELIGIBILITY_REVOKED");
+        await InsertStopAcknowledgementAsync(
+            db,
+            purpose,
+            tenantId,
+            participantId,
+            bindingDigest,
+            protectedDestination,
+            WhatsAppStopAcknowledgementPolicy.RelationshipReference(
+                emergency,
+                relationshipTenantId,
+                relationshipId,
+                message.MessageId
+            ),
+            message,
+            now,
+            ct
+        );
+    }
+
+    // STOP is evidenced by the stopped guest session the safety route commits first; Emergency Stop by its fence latch.
+    private async Task<bool> HasRelationshipStopEvidenceAsync(
+        ConversationStoreDbContext db,
+        Guid tenantId,
+        Guid relationshipTenantId,
+        Guid relationshipId,
+        string bindingDigest,
+        bool emergency,
+        CancellationToken ct
+    ) =>
+        emergency
+            ? await stopFence.IsLatchedAsync(relationshipTenantId, relationshipId, ct)
+            : await db.Set<WhatsAppGuestSession>()
+                .AsNoTracking()
+                .AnyAsync(
+                    identity =>
+                        identity.TenantId == tenantId
+                        && identity.BindingDigest == bindingDigest
+                        && identity.StoppedAt != null,
+                    ct
+                );
+
+    private async Task InsertStopAcknowledgementAsync(
+        ConversationStoreDbContext db,
+        string purpose,
+        Guid tenantId,
+        Guid participantId,
+        string bindingDigest,
+        string protectedDestination,
+        string reference,
+        PortalInteractionMessageV1 message,
+        DateTimeOffset now,
+        CancellationToken ct
+    )
+    {
+        var context = await db.PortalInteractionContexts.SingleAsync(
+            value => value.TenantId == tenantId && value.ParticipantId == participantId,
+            ct
+        );
+        var payload = JsonSerializer.Serialize(
+            message.Content,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        );
+        var digest = Sha256(payload);
+        var existing = await db.ConversationOutbox.SingleOrDefaultAsync(
+            value =>
+                value.TenantId == tenantId
+                && value.PortalContextId == context.ContextId
+                && value.IdempotencyKey == message.MessageId,
+            ct
+        );
+        if (existing is not null)
+        {
+            if (
+                existing.Purpose != purpose
+                || existing.RecipientBindingDigest != bindingDigest
+                || existing.PayloadDigest != digest
+            )
+                throw new ConversationIdempotencyConflictException();
+            return;
+        }
+        if (db.Database.IsNpgsql())
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                INSERT INTO business.conversation_outbox
+                    (outbox_id, environment, tenant_id, portal_context_id, sequence, owner,
+                     aggregate_id, operation_family, idempotency_key, payload_digest,
+                     payload_reference, purpose, recipient_binding_digest,
+                     protected_recipient_destination, state, attempt_number,
+                     next_attempt_at, created_at, updated_at)
+                VALUES ({Guid.NewGuid()}, {_conversationOptions.Environment}, {tenantId}, {context.ContextId},
+                    {message.Sequence}, 'BUSINESS_PLATFORM', {message.MessageId:D}, 'WHATSAPP_OUTBOUND',
+                    {message.MessageId}, {digest}, {reference}, {purpose},
+                    {bindingDigest}, {protectedDestination}, 'PENDING', 0, {now}, {now}, {now})
+                ON CONFLICT DO NOTHING
+                """,
+                ct
+            );
+            var inserted = await db.ConversationOutbox.SingleOrDefaultAsync(
+                value =>
+                    value.TenantId == tenantId
+                    && value.PortalContextId == context.ContextId
+                    && value.IdempotencyKey == message.MessageId,
+                ct
+            );
+            if (
+                inserted is null
+                || inserted.Purpose != purpose
+                || inserted.RecipientBindingDigest != bindingDigest
+                || inserted.PayloadDigest != digest
+            )
+                throw new ConversationIdempotencyConflictException();
+            return;
+        }
+        db.ConversationOutbox.Add(
+            new()
+            {
+                Environment = _conversationOptions.Environment,
+                TenantId = tenantId,
+                PortalContextId = context.ContextId,
+                Sequence = message.Sequence,
+                AggregateId = message.MessageId.ToString("D"),
+                OperationFamily = "WHATSAPP_OUTBOUND",
+                IdempotencyKey = message.MessageId,
+                PayloadDigest = digest,
+                PayloadReference = reference,
+                Purpose = purpose,
+                RecipientBindingDigest = bindingDigest,
+                ProtectedRecipientDestination = protectedDestination,
+                CreatedAt = now,
+                UpdatedAt = now,
+                NextAttemptAt = now,
+            }
+        );
+        await db.SaveChangesAsync(ct);
+    }
+
     public async Task<ConversationOutboxRecord?> QueueAsync(
         Guid tenantId,
         Guid relationshipId,
@@ -389,10 +672,10 @@ public sealed class WhatsAppOutboxService(
         )
             return null;
 
-        var insideServiceWindow =
-            eligibility.LastInboundAt.HasValue
-            && now - eligibility.LastInboundAt.Value <= ServiceWindow
-            && now >= eligibility.LastInboundAt.Value;
+        var insideServiceWindow = WhatsAppMessageClassifier.InsideServiceWindow(
+            eligibility.LastInboundAt,
+            now
+        );
         if (
             !insideServiceWindow
             || eligibility.TemplateName is not null
@@ -1269,11 +1552,47 @@ public sealed class WhatsAppOutboxService(
                 record.RelationshipId is not null
                 || record.ConversationId is not null
                 || record.Purpose
-                    is not ("WHATSAPP_GUEST_DISCOVERY" or "WHATSAPP_GUEST_SESSION_LIMIT_NOTICE")
+                    is not (
+                        "WHATSAPP_GUEST_DISCOVERY"
+                        or "WHATSAPP_GUEST_SESSION_LIMIT_NOTICE"
+                        or WhatsAppStopAcknowledgementPolicy.GuestPurpose
+                        or WhatsAppStopAcknowledgementPolicy.RelationshipPurpose
+                    )
                 || record.TemplateName is not null
             )
                 return false;
             await using var interactions = await dbFactory.CreateDbContextAsync(cancellationToken);
+            if (record.Purpose == WhatsAppStopAcknowledgementPolicy.RelationshipPurpose)
+            {
+                // The recipient is stopped by definition; the stop evidence, not an opt-in, authorises this one row.
+                if (
+                    !WhatsAppStopAcknowledgementPolicy.IsActive(protocolOptions)
+                    || record.ProtectedRecipientDestination is null
+                    || now < record.CreatedAt
+                    || now - record.CreatedAt > ServiceWindow
+                    || !WhatsAppStopAcknowledgementPolicy.TryParseRelationshipReference(
+                        record.PayloadReference,
+                        out var emergencyStop,
+                        out var relationshipTenantId,
+                        out var stoppedRelationshipId
+                    )
+                )
+                    return false;
+                return await HasRelationshipStopEvidenceAsync(
+                        interactions,
+                        record.TenantId,
+                        relationshipTenantId,
+                        stoppedRelationshipId,
+                        record.RecipientBindingDigest,
+                        emergencyStop,
+                        cancellationToken
+                    )
+                    && await interactions.PortalInteractionContexts.AnyAsync(
+                        context =>
+                            context.ContextId == contextId && context.TenantId == record.TenantId,
+                        cancellationToken
+                    );
+            }
             if (
                 await db.WhatsAppJourneyContacts.AnyAsync(
                     contact =>
@@ -1284,6 +1603,31 @@ public sealed class WhatsAppOutboxService(
                 )
             )
                 return false;
+            if (record.Purpose == WhatsAppStopAcknowledgementPolicy.GuestPurpose)
+            {
+                if (
+                    !WhatsAppStopAcknowledgementPolicy.IsActive(protocolOptions)
+                    || record.ProtectedRecipientDestination is null
+                    || now < record.CreatedAt
+                    || now - record.CreatedAt > ServiceWindow
+                )
+                    return false;
+                var stopped = await interactions
+                    .Set<WhatsAppGuestSession>()
+                    .AnyAsync(
+                        identity =>
+                            identity.TenantId == record.TenantId
+                            && identity.BindingDigest == record.RecipientBindingDigest
+                            && identity.StoppedAt != null,
+                        cancellationToken
+                    );
+                return stopped
+                    && await interactions.PortalInteractionContexts.AnyAsync(
+                        context =>
+                            context.ContextId == contextId && context.TenantId == record.TenantId,
+                        cancellationToken
+                    );
+            }
             if (record.Purpose == "WHATSAPP_GUEST_SESSION_LIMIT_NOTICE")
             {
                 if (

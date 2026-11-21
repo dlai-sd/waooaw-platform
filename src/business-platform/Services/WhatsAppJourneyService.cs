@@ -1,5 +1,7 @@
 // Implements: ADR-023 and work-contracts/WC-058-goal005-ae01-discover-trial-configure.md §WC058-06
 // Implements: architecture/reference/components/conversation-engine-whatsapp-solution-work-component.md §25.2 WC120-P2
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C1-03
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C6-03
 // constitutional_basis: C-023, C-026, C-042, C-059, C-063
 
 using System.Data;
@@ -124,6 +126,8 @@ public sealed partial class WhatsAppJourneyService
     private readonly IdentityService? _identity;
     private readonly WhatsAppRelationshipRouting? _relationshipRouting;
     private readonly ILogger<WhatsAppJourneyService>? _logger;
+    private readonly WhatsAppRelationshipStopAcknowledgementService? _stopAcknowledgements;
+    private readonly Workbench.IWorkbenchWhatsAppResponder? _workbench;
 
     public WhatsAppJourneyService(
         IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
@@ -147,10 +151,14 @@ public sealed partial class WhatsAppJourneyService
         WhatsAppTrafficBudget? trafficBudget = null,
         IdentityService? identity = null,
         WhatsAppRelationshipRouting? relationshipRouting = null,
-        ILogger<WhatsAppJourneyService>? logger = null
+        ILogger<WhatsAppJourneyService>? logger = null,
+        WhatsAppRelationshipStopAcknowledgementService? stopAcknowledgements = null,
+        Workbench.IWorkbenchWhatsAppResponder? workbench = null
     )
     {
         _logger = logger;
+        _workbench = workbench;
+        _stopAcknowledgements = stopAcknowledgements;
         _dbFactory = dbFactory;
         _evidenceGateway = evidenceGateway;
         _identityOptions = options.Value;
@@ -973,7 +981,19 @@ public sealed partial class WhatsAppJourneyService
                 contact.PendingMediumRiskConfirmation = false;
                 contact.JourneyStage = progress.LifecycleStage;
                 status = "ACCEPTED";
-                reply = PresentProgress(attachedRelationship, progress);
+                reply =
+                    (
+                        _workbench is null
+                            ? null
+                            : await _workbench.RenderProgressAsync(
+                                contact.TenantId,
+                                binding.RelationshipId,
+                                binding.ParticipantId,
+                                RelationshipRoleCodec.FromDatabase(binding.ParticipantRole),
+                                proof.CorrelationId.ToString("D"),
+                                cancellationToken
+                            )
+                    ) ?? PresentProgress(attachedRelationship, progress);
                 journeyReply = true;
             }
             else if (riskTier == "TIER_4_CONSEQUENTIAL")
@@ -1309,13 +1329,13 @@ public sealed partial class WhatsAppJourneyService
         WhatsAppJourneyReceipt? receipt = null;
         // A held/replayed provider claim must not delay recipient opt-out containment.
         if (IsRecipientStopRequest(proof.Text))
-            receipt = await routing.ReceiveSignedSafetyControlAsync(proof, _emergencyStops, ct);
+            receipt = await ReceiveSafetyControlAsync(routing, proof, ct);
         var claim = await ClaimProviderEventAsync(proof, ct);
         if (claim.Replay is not null)
             return claim.Replay;
         try
         {
-            receipt ??= await routing.ReceiveSignedSafetyControlAsync(proof, _emergencyStops, ct);
+            receipt ??= await ReceiveSafetyControlAsync(routing, proof, ct);
             await CompleteProviderEventAsync(proof, claim.LeaseOwner, receipt, ct);
             return receipt;
         }
@@ -1324,6 +1344,26 @@ public sealed partial class WhatsAppJourneyService
             await ReleaseProviderEventClaimAsync(proof, claim.LeaseOwner, ct);
             throw;
         }
+    }
+
+    // The fixed acknowledgement is requested only after the routed stop has committed and never alters its outcome.
+    private async Task<WhatsAppJourneyReceipt> ReceiveSafetyControlAsync(
+        WhatsAppRelationshipRouting routing,
+        VerifiedPhoneIdentityProof proof,
+        CancellationToken ct
+    )
+    {
+        var targets = new List<WhatsAppSafetyAcknowledgementTarget>();
+        var receipt = await routing.ReceiveSignedSafetyControlAsync(
+            proof,
+            _emergencyStops,
+            ct,
+            targets
+        );
+        if (_stopAcknowledgements is null || targets.Count == 0)
+            return receipt;
+        var text = await _stopAcknowledgements.TryAcknowledgeAsync(targets[0], proof, ct);
+        return text is not null && !targets[0].Emergency ? receipt with { Reply = text } : receipt;
     }
 
     private async Task<WhatsAppJourneyReceipt> ReceiveGuestEventAsync(

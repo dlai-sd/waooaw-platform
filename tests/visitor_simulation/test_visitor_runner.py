@@ -1,3 +1,4 @@
+# Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C1-04, C1-05
 # Implements: work-contracts/WC-135-visitor-conversation-and-simulated-customers.md WC135-R012, WC135-R013
 # Constitutional basis: C-048, C-049, C-059, C-063
 import io
@@ -18,6 +19,7 @@ _CACHE: dict = {}
 
 
 def _suite(behaviour, *, runs=3, seed=1, inject=(), personas=None, **config):
+    config.setdefault("k", 1)
     key = (behaviour, runs, seed, tuple(inject), tuple(personas or ()), tuple(sorted(config.items())))
     if key not in _CACHE:
         with FakeVisitorServer(behaviour, SECRET) as server:

@@ -1,3 +1,6 @@
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C2-05
+// Constitutional basis: C-023, C-059, C-063
+
 import ApplicationLayout from '@/app/(application)/layout';
 import type { IdentitySession } from '@/lib/api/generated/models/IdentitySession';
 import type { WorkspaceLayoutPreferencesV1 } from '@/lib/api/generated/models/WorkspaceLayoutPreferencesV1';
@@ -18,11 +21,18 @@ jest.mock('@/components/shell/ProtectedAppShell', () => ({
   ProtectedAppShell: ({
     children,
     identitySession,
+    showPricingAdmin,
     workspaceLayout,
-  }: { children: React.ReactNode; identitySession?: unknown; workspaceLayout?: WorkspaceLayoutPreferencesV1 }) => (
+  }: {
+    children: React.ReactNode;
+    identitySession?: unknown;
+    showPricingAdmin?: boolean;
+    workspaceLayout?: WorkspaceLayoutPreferencesV1;
+  }) => (
     <div
       data-has-membership={identitySession !== undefined}
       data-layout-version={workspaceLayout?.preferenceVersion}
+      data-pricing-admin={String(showPricingAdmin)}
       data-testid="application-shell"
     >
       {children}
@@ -47,6 +57,24 @@ it('renders the basic customer shell for a broker-authenticated visitor without 
   expect(redirect).not.toHaveBeenCalled();
   expect(screen.getByTestId('application-shell')).toHaveAttribute('data-has-membership', 'false');
   expect(screen.getByText('Marketplace')).toBeVisible();
+});
+
+function tokenWithRoles(...roles: string[]) {
+  const payload = Buffer.from(JSON.stringify({ realm_access: { roles } })).toString('base64url');
+  return `header.${payload}.signature`;
+}
+
+it.each([
+  ['pricing_admin', 'true'],
+  ['founder', 'true'],
+  ['employer', 'false'],
+])('offers the pricing console in navigation only to administrators (role %s -> %s)', async (role, expected) => {
+  jest.mocked(getServerAccessToken).mockResolvedValue(tokenWithRoles(role));
+  jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'registration-required' });
+
+  render(await ApplicationLayout({ children: <p>Marketplace</p> }));
+
+  expect(screen.getByTestId('application-shell')).toHaveAttribute('data-pricing-admin', expected);
 });
 
 it('keeps anonymous users outside the application shell', async () => {

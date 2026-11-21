@@ -1,0 +1,477 @@
+openapi: "3.1.0"
+info:
+  title: WAOOAW WBE Wallet Private API
+  version: "1.0.0"
+  contact:
+    name: WAOOAW Architecture
+  description: |
+    Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C4-03, C4-04, C4-08, C4-09, C4-13.
+    Constitutional basis: C-059, C-063, C-088, C-089, ADR-046, ADR-051.
+
+    Private Business Platform to WAOOAW Billing Engine contract for the one Wallet: platform-owned
+    account draws, settle and release of any wallet reservation, owner-confirmed component units,
+    the shadow parity read, and the customer-safe catalogue of packages for one agent version.
+    This API is BP-only and has no browser ingress.
+
+    Every route requires the BP mTLS workload identity and a signed delegated context bound to the
+    route, operation, method, canonical body digest (absent optional fields omitted, keys sorted),
+    correlation id and, for writes, the idempotency key. Settle and release bind the reservation id
+    as the delegated `subject_reference`; the package catalogue binds `{agentType}|{agentVersion}`;
+    component units bind the component id and the `COMPONENT_UNIT_USAGE` purpose.
+
+    Wallet credit is never refundable and never rolls over. No response carries a cost, recipe,
+    margin or ledger row; the catalogue shows customer prices that include GST.
+servers:
+  - url: https://wbe.internal.waooaw
+    description: Private service network only
+tags:
+  - name: Wallet Private
+    description: Internal owner operations of the Wallet and the package catalogue.
+security:
+  - ServiceBearerAuth: []
+paths:
+  /internal/v1/wallet/parity:
+    get:
+      tags: [Wallet Private]
+      operationId: wbeGetWalletParity
+      x-internal: true
+      summary: Compare the allowance tables with the wallet for one tenant
+      parameters:
+        - { name: tenantId, in: query, required: true, schema: { type: string, format: uuid } }
+        - { name: relationshipId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 2000 } }
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Parity report
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WalletParityV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /internal/v1/relationships/{relationshipId}/setup-grant:
+    post:
+      tags: [Wallet Private]
+      operationId: wbeOpenSetupGrant
+      x-internal: true
+      summary: Open the one setup grant of a relationship (idempotent)
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetupGrantRequestV1" }
+      responses:
+        "200":
+          description: Setup grant state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SetupGrantV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Refused" }
+
+  /internal/v1/relationships/{relationshipId}/setup-grant/reserve:
+    post:
+      tags: [Wallet Private]
+      operationId: wbeReserveSetupGrant
+      x-internal: true
+      summary: Draw on the relationship's setup grant for one onboarding call
+      description: Exhaustion is a typed result (`SETUP_GRANT_EXHAUSTED`), not an error.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetupGrantReserveRequestV1" }
+      responses:
+        "200":
+          description: Reserved or exhausted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SetupGrantReserveV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Refused" }
+        "422": { $ref: "#/components/responses/Refused" }
+
+  /internal/v1/wallet/accounts/reserve:
+    post:
+      tags: [Wallet Private]
+      operationId: wbeReserveWalletAccount
+      x-internal: true
+      summary: Reserve on a platform-owned account (ACQUISITION, SIMULATION, PLATFORM_FLOOR)
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AccountReserveRequestV1" }
+      responses:
+        "200":
+          description: Reservation or recorded floor use
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountReserveV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Refused" }
+        "422": { $ref: "#/components/responses/Refused" }
+
+  /internal/v1/wallet/reservations/settle:
+    post:
+      tags: [Wallet Private]
+      operationId: wbeSettleWalletReservation
+      x-internal: true
+      summary: Record the actual cost of a reservation of the caller's tenant
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReservationSettleRequestV1" }
+      responses:
+        "200":
+          description: Settled reservation (a repeat is a replay)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReservationOutcomeV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/Refused" }
+        "409": { $ref: "#/components/responses/Refused" }
+        "422": { $ref: "#/components/responses/Refused" }
+
+  /internal/v1/wallet/reservations/release:
+    post:
+      tags: [Wallet Private]
+      operationId: wbeReleaseWalletReservation
+      x-internal: true
+      summary: Return a hold that was provably never dispatched
+      parameters:
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReservationReleaseRequestV1" }
+      responses:
+        "200":
+          description: Released reservation (a repeat is a replay)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReservationOutcomeV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/Refused" }
+        "409": { $ref: "#/components/responses/Refused" }
+        "422": { $ref: "#/components/responses/Refused" }
+
+  /internal/v1/relationships/{relationshipId}/component-units/consume:
+    post:
+      tags: [Wallet Private]
+      operationId: applyRelationshipComponentUnit
+      x-internal: true
+      summary: Count, select or record one component-unit operation of a relationship
+      description: |
+        COUNTED units are consumed only for an owner-confirmed COMPLETED outcome and are idempotent on
+        the completion evidence id. A consume beyond the released amount is refused with
+        `COMPONENT_NOT_YET_RELEASED`. Requires `effective_role` SYSTEM or EMPLOYER and purpose
+        `COMPONENT_UNIT_USAGE`.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/CorrelationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ComponentUnitCommandV1" }
+      responses:
+        "200":
+          description: Component unit state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ComponentUnitResultV1" }
+        "400": { $ref: "#/components/responses/Refused" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/Refused" }
+        "409": { $ref: "#/components/responses/Refused" }
+        "422": { $ref: "#/components/responses/Refused" }
+
+  /internal/v1/marketplace/agents/{agentType}/versions/{agentVersion}/packages:
+    get:
+      tags: [Wallet Private]
+      operationId: wbeListForSalePackages
+      x-internal: true
+      summary: List the EFFECTIVE, for-sale packages of one agent version
+      parameters:
+        - { name: agentType, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 100 } }
+        - { name: agentVersion, in: path, required: true, schema: { type: string, pattern: '^[0-9]+\.[0-9]+\.[0-9]+$' } }
+        - { name: after, in: query, required: false, schema: { type: string, minLength: 1, maxLength: 64 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: A page of customer-safe packages
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WbePackageListV1" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/Refused" }
+
+components:
+  securitySchemes:
+    ServiceBearerAuth:
+      type: http
+      scheme: bearer
+      description: Delegated service context bound to the mTLS workload identity.
+  parameters:
+    RelationshipId:
+      name: relationshipId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CorrelationId:
+      name: X-Correlation-ID
+      in: header
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 128 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    Unauthorized:
+      description: The service identity or delegated context was not accepted
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/WbeWalletProblemV1" }
+    Refused:
+      description: The owner refused the request with a typed code
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/WbeWalletProblemV1" }
+  schemas:
+    WbeWalletProblemV1:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          oneOf:
+            - { type: string, maxLength: 80 }
+            - type: object
+              required: [code]
+              properties:
+                code: { type: string, maxLength: 80 }
+                level: { type: [string, "null"], maxLength: 80 }
+
+    WalletParityRowV1:
+      type: object
+      additionalProperties: false
+      required: [relationshipId, componentId, allowanceOpenPaise, allowanceSettledPaise, walletOpenPaise, walletSettledPaise, openDifferencePaise, settledDifferencePaise]
+      properties:
+        relationshipId: { type: string, format: uuid }
+        componentId: { type: string }
+        allowanceOpenPaise: { type: integer, format: int64 }
+        allowanceSettledPaise: { type: integer, format: int64 }
+        walletOpenPaise: { type: integer, format: int64 }
+        walletSettledPaise: { type: integer, format: int64 }
+        openDifferencePaise: { type: integer, format: int64 }
+        settledDifferencePaise: { type: integer, format: int64 }
+
+    WalletParityV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, checkedAt, clean, compared, truncated, differences]
+      properties:
+        schemaVersion: { type: string, const: "1.0" }
+        checkedAt: { type: string, format: date-time }
+        clean: { type: boolean }
+        compared: { type: integer, minimum: 0 }
+        truncated: { type: boolean }
+        differences:
+          type: array
+          items: { $ref: "#/components/schemas/WalletParityRowV1" }
+
+    SetupGrantRequestV1:
+      type: object
+      additionalProperties: false
+      required: [agentType, agentVersion]
+      properties:
+        agentType: { type: string, minLength: 1, maxLength: 100 }
+        agentVersion: { type: string, pattern: '^[0-9]+\.[0-9]+\.[0-9]+$' }
+
+    SetupGrantV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, status, accountId, creditedPaise, created]
+      properties:
+        schemaVersion: { type: string, const: "1.0" }
+        status: { type: string, enum: [GRANTED, NO_GRANT] }
+        accountId: { type: string, format: uuid }
+        lotId: { type: string, format: uuid }
+        creditedPaise: { type: integer, format: int64, minimum: 0 }
+        created: { type: boolean }
+
+    SetupGrantReserveRequestV1:
+      type: object
+      additionalProperties: false
+      required: [agentType, agentVersion, componentId, maximumPaise, invocationId, ownerEvidenceId]
+      properties:
+        agentType: { type: string, minLength: 1, maxLength: 100 }
+        agentVersion: { type: string, pattern: '^[0-9]+\.[0-9]+\.[0-9]+$' }
+        componentId: { type: string, minLength: 1, maxLength: 100 }
+        maximumPaise: { type: integer, format: int64, minimum: 1, maximum: 100000000 }
+        invocationId: { type: string, format: uuid }
+        ownerEvidenceId: { type: string, format: uuid }
+
+    SetupGrantReserveV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, status, accountId, reservedPaise, replayed]
+      properties:
+        schemaVersion: { type: string, const: "1.0" }
+        status: { type: string, enum: [RESERVED, SETUP_GRANT_EXHAUSTED] }
+        accountId: { type: string, format: uuid }
+        reservationId: { type: string, format: uuid }
+        reservedPaise: { type: integer, format: int64, minimum: 0 }
+        replayed: { type: boolean }
+
+    AccountReserveRequestV1:
+      type: object
+      additionalProperties: false
+      required: [accountClass, componentId, maximumPaise, invocationId, ownerEvidenceId]
+      properties:
+        accountClass: { type: string, enum: [ACQUISITION, SIMULATION, PLATFORM_FLOOR] }
+        environment: { type: string, minLength: 1, maxLength: 64 }
+        campaignRef: { type: string, minLength: 1, maxLength: 64 }
+        leadRef: { type: string, minLength: 1, maxLength: 64 }
+        componentId: { type: string, minLength: 1, maxLength: 100 }
+        maximumPaise: { type: integer, format: int64, minimum: 0, maximum: 100000000 }
+        purpose: { type: string, minLength: 1, maxLength: 64 }
+        invocationId: { type: string, format: uuid }
+        ownerEvidenceId: { type: string, format: uuid }
+
+    AccountReserveV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, accountClass, reservationId, accountId, state, reservedPaise, replayed]
+      properties:
+        schemaVersion: { type: string, const: "1.0" }
+        accountClass: { type: string }
+        reservationId: { type: string, format: uuid }
+        accountId: { type: string, format: uuid }
+        state: { type: string }
+        reservedPaise: { type: integer, format: int64, minimum: 0 }
+        replayed: { type: boolean }
+
+    ReservationSettleRequestV1:
+      type: object
+      additionalProperties: false
+      required: [reservationId, actualPaise, evidenceId]
+      properties:
+        reservationId: { type: string, format: uuid }
+        actualPaise: { type: integer, format: int64, minimum: 1, maximum: 100000000 }
+        evidenceId: { type: string, format: uuid }
+
+    ReservationReleaseRequestV1:
+      type: object
+      additionalProperties: false
+      required: [reservationId, nonDispatchEvidenceId]
+      properties:
+        reservationId: { type: string, format: uuid }
+        nonDispatchEvidenceId: { type: string, format: uuid }
+
+    ReservationOutcomeV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, reservationId, accountId, state, reservedPaise, overrunPaise, fenced, replayed]
+      properties:
+        schemaVersion: { type: string, const: "1.0" }
+        reservationId: { type: string, format: uuid }
+        accountId: { type: string, format: uuid }
+        state: { type: string }
+        reservedPaise: { type: integer, format: int64, minimum: 0 }
+        actualPaise: { type: integer, format: int64, minimum: 0 }
+        overrunPaise: { type: integer, format: int64, minimum: 0 }
+        fenced: { type: boolean }
+        replayed: { type: boolean }
+
+    ComponentUnitCommandV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, action, componentId]
+      properties:
+        schemaVersion: { type: string, const: "1.0" }
+        action: { type: string, enum: [CONSUME, SELECT, SWAP, DESELECT, ACCESS, CLOSE] }
+        componentId: { type: string, minLength: 1, maxLength: 100 }
+        completionEvidenceId: { type: string, format: uuid }
+        outcome: { type: string, enum: [COMPLETED, FAILED, CANCELLED] }
+        itemRef: { type: string, minLength: 1, maxLength: 200 }
+        previousItemRef: { type: string, minLength: 1, maxLength: 200 }
+        connectionProofId: { type: string, format: uuid }
+        sessionRef: { type: string, minLength: 1, maxLength: 200 }
+
+    ComponentUnitResultV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, componentId, kind, entryId, quantity, used, remaining, released, replayed]
+      properties:
+        schemaVersion: { type: string, const: "1.0" }
+        componentId: { type: string }
+        kind: { type: string }
+        entryId: { type: string, format: uuid }
+        quantity: { type: integer, minimum: 0 }
+        used: { type: integer, minimum: 0 }
+        remaining: { type: integer, minimum: 0 }
+        released: { type: integer, minimum: 0 }
+        replayed: { type: boolean }
+
+    WbePackageComponentV1:
+      type: object
+      additionalProperties: false
+      required: [componentId, quantity, cadence]
+      properties:
+        componentId: { type: string }
+        quantity: { type: integer, minimum: 0 }
+        cadence: { type: string, enum: [SPREAD, UPFRONT, DAILY, WEEKLY] }
+        selectableMaximum: { type: integer, minimum: 0 }
+
+    WbePackageV1:
+      type: object
+      additionalProperties: false
+      required: [packageId, packageCode, displayName, agentType, agentVersion, billingPeriodDays, priceInclGstPaise, basePricePaise, gstPaise, gstRatePercent, components]
+      properties:
+        packageId: { type: string, format: uuid }
+        packageCode: { type: string }
+        displayName: { type: string }
+        agentType: { type: string }
+        agentVersion: { type: string }
+        billingPeriodDays: { type: integer, minimum: 1 }
+        priceInclGstPaise: { type: integer, format: int64, minimum: 0 }
+        basePricePaise: { type: integer, format: int64, minimum: 0 }
+        gstPaise: { type: integer, format: int64, minimum: 0 }
+        gstRatePercent: { type: integer, minimum: 0 }
+        components:
+          type: array
+          items: { $ref: "#/components/schemas/WbePackageComponentV1" }
+
+    WbePackageListV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, items]
+      properties:
+        schemaVersion: { type: string, const: "1.0" }
+        items:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/WbePackageV1" }
+        nextCursor: { type: string, minLength: 1, maxLength: 64 }
