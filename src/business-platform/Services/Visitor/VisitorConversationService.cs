@@ -458,7 +458,7 @@ public sealed class VisitorConversationService(
                 TenantId = tenantId,
                 SubjectHash = subjectHash,
                 Channel = VisitorChannels.WhatsApp,
-                State = VisitorStates.Discover,
+                State = VisitorStates.ChooseProfessional,
                 ContentVersion = content.VersionLabel,
                 ConsentAt = now,
                 ConsentNoticeVersion = content.Consent.NoticeVersion,
@@ -475,7 +475,7 @@ public sealed class VisitorConversationService(
                 or VisitorStates.Stopped
         )
         {
-            session.State = VisitorStates.Discover;
+            session.State = VisitorStates.ChooseProfessional;
             session.ConsentAt = now;
             session.ConsentNoticeVersion = content.Consent.NoticeVersion;
             session.ConsentEvidenceId = consentEvidenceId;

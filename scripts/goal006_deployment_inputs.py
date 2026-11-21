@@ -49,6 +49,76 @@ WHATSAPP_SECRET_NAMES = frozenset(
     }
 )
 WHATSAPP_PUBLIC_SUBJECT_KEY_NAME = "whatsapp-phone-subject-hmac"
+FEATURE_SETTING_TYPES: dict[str, Any] = {
+    "workbench_enabled": bool,
+    "wallet_authority": ("LEGACY", "SHADOW", "WALLET"),
+    "trial_identity_binding_mode": ("OFF", "RECORD", "ENFORCE"),
+    "whatsapp_stop_acknowledgement_enabled": bool,
+}
+FOUNDER_EMAIL = re.compile(r"[a-z0-9._%+-]+@[a-z0-9.-]+[.][a-z]{2,}")
+FOUNDER_SUBJECT = re.compile(r"[A-Za-z0-9._:@-]{8,128}")
+
+
+def merge_environment_settings(configuration: Mapping[str, Any], settings: Any) -> dict[str, Any]:
+    """Layer the repository's per-environment settings file under the private configuration blob (WC137-R007).
+
+    The same release images are promoted Demo -> UAT -> Prod, so these values are data per environment, never code.
+    A value present in the blob wins, key by key, so an operator can still override without a pull request.
+    """
+    if not isinstance(settings, Mapping) or set(settings) - {"feature_settings", "platform_access"}:
+        raise ValueError("environment settings may only define feature_settings and platform_access")
+    merged = dict(configuration)
+    for name in ("feature_settings", "platform_access"):
+        base, override = settings.get(name), configuration.get(name)
+        if base is None:
+            continue
+        if override is None:
+            merged[name] = base
+        elif name == "feature_settings" and isinstance(base, Mapping) and isinstance(override, Mapping):
+            merged[name] = {**base, **override}
+    return merged
+
+
+def feature_settings_inputs(configuration: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate the closed per-environment feature switches and Founder identities (WC137-R001, R002)."""
+    inputs: dict[str, Any] = {}
+    settings = configuration.get("feature_settings")
+    if settings is not None:
+        if not isinstance(settings, Mapping) or set(settings) - set(FEATURE_SETTING_TYPES):
+            raise ValueError("feature_settings fields are closed: " + ", ".join(sorted(FEATURE_SETTING_TYPES)))
+        for name, value in settings.items():
+            allowed = FEATURE_SETTING_TYPES[name]
+            if allowed is bool:
+                valid = isinstance(value, bool)
+            else:
+                valid = isinstance(value, str) and value in allowed
+            if not valid:
+                raise ValueError(
+                    f"feature_settings.{name} must be " + ("a boolean" if allowed is bool else "one of " + ", ".join(allowed))
+                )
+        inputs["feature_settings"] = dict(settings)
+    access = configuration.get("platform_access")
+    if access is not None:
+        founders = access.get("founders") if isinstance(access, Mapping) and set(access) <= {"founders"} else None
+        if not isinstance(founders, list) or not founders:
+            raise ValueError("platform_access must be a closed object with a non-empty founders list")
+        seen: set[str] = set()
+        for founder in founders:
+            if (
+                not isinstance(founder, Mapping)
+                or set(founder) - {"email", "subject"}
+                or not isinstance(founder.get("email"), str)
+                or FOUNDER_EMAIL.fullmatch(founder["email"]) is None
+                or (
+                    founder.get("subject") is not None
+                    and (not isinstance(founder["subject"], str) or FOUNDER_SUBJECT.fullmatch(founder["subject"]) is None)
+                )
+                or founder["email"] in seen
+            ):
+                raise ValueError("every Founder needs a unique lower-case email and an optional safe identity-provider subject")
+            seen.add(founder["email"])
+        inputs["platform_access"] = {"founders": [dict(founder) for founder in founders]}
+    return inputs
 
 
 def whatsapp_provider_configuration(environment: str, configuration: Mapping[str, Any]) -> dict[str, Any] | None:
@@ -315,6 +385,7 @@ def create_inputs(
     }
     inputs.update(whatsapp_provider_inputs(environment, configuration, manifest))
     inputs.update(whatsapp_monitoring_inputs(environment, configuration, manifest))
+    inputs.update(feature_settings_inputs(configuration))
     if image_registry_server:
         inputs["image_registry_server"] = image_registry_server
         inputs["image_pull_identity_id"] = image_pull_identity_id
@@ -355,9 +426,14 @@ def main() -> int:
     parser.add_argument("--ghcr-packages-public-verified", action="store_true")
     parser.add_argument("--image-registry-server", default="")
     parser.add_argument("--image-pull-identity-id", default="")
+    parser.add_argument("--environment-settings", type=Path)
     args = parser.parse_args()
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
     configuration = json.loads(args.configuration.read_text(encoding="utf-8"))
+    if args.environment_settings is not None:
+        configuration = merge_environment_settings(
+            configuration, json.loads(args.environment_settings.read_text(encoding="utf-8"))
+        )
     if bool(args.key_vault_id) != bool(args.key_vault_uri):
         parser.error("--key-vault-id and --key-vault-uri must be provided together")
     if args.key_vault_id:

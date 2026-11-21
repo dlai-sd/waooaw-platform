@@ -12,6 +12,8 @@ from goal006_deployment_inputs import (
     LEASE_FIELDS,
     add_key_vault_references,
     create_inputs,
+    feature_settings_inputs,
+    merge_environment_settings,
     whatsapp_monitoring_inputs,
 )
 from goal006_registry_manifest import RELEASE_MEMBERS
@@ -204,6 +206,101 @@ def test_nonproduction_inputs_require_lease_and_preserve_exact_tuple(environment
     assert inputs["lease_state"] == "ACTIVE"
     assert inputs["ghcr_packages_public"] is True
     assert "whatsapp_provider" not in inputs
+    assert "feature_settings" not in inputs and "platform_access" not in inputs
+
+
+def configured(environment: str, **fields: Any) -> dict[str, Any]:
+    values = configuration(environment)
+    values.update(fields)
+    return values
+
+
+def test_feature_settings_and_founders_pass_through_unchanged_for_any_environment() -> None:
+    settings = {
+        "workbench_enabled": True,
+        "wallet_authority": "SHADOW",
+        "trial_identity_binding_mode": "RECORD",
+        "whatsapp_stop_acknowledgement_enabled": True,
+    }
+    access = {"founders": [{"email": "founder@example.org", "subject": "a1b2c3d4-e5f6"}, {"email": "second@example.org"}]}
+    for environment in ("demo", "uat", "prod"):
+        inputs = create_inputs(
+            environment,
+            manifest(),
+            configured(environment, feature_settings=settings, platform_access=access, ce_min_replicas=1, pr_min_replicas=1),
+            True,
+            current_time=datetime(2026, 8, 25, tzinfo=timezone.utc),
+        )
+        assert inputs["feature_settings"] == settings
+        assert inputs["platform_access"] == access
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"feature_settings": {"unknown_flag": True}},
+        {"feature_settings": {"workbench_enabled": "true"}},
+        {"feature_settings": {"wallet_authority": "AUTO"}},
+        {"feature_settings": {"trial_identity_binding_mode": "record"}},
+        {"feature_settings": ["workbench_enabled"]},
+        {"platform_access": {"founders": []}},
+        {"platform_access": {"founders": [{"email": "Founder@Example.org"}]}},
+        {"platform_access": {"founders": [{"email": "a@example.org"}, {"email": "a@example.org"}]}},
+        {"platform_access": {"founders": [{"email": "a@example.org", "subject": "short"}]}},
+        {"platform_access": {"founders": [{"email": "a@example.org", "role": "founder"}]}},
+        {"platform_access": {"admins": [{"email": "a@example.org"}]}},
+    ],
+)
+def test_invalid_feature_settings_or_founders_fail_before_terraform(fields: dict[str, Any]) -> None:
+    with pytest.raises(ValueError):
+        create_inputs(
+            "demo", manifest(), configured("demo", **fields), True, current_time=datetime(2026, 8, 25, tzinfo=timezone.utc)
+        )
+
+
+SETTINGS_DIR = Path(__file__).resolve().parents[2] / "infrastructure" / "platform-settings"
+
+
+def test_environment_settings_file_is_the_base_and_the_private_blob_wins_key_by_key() -> None:
+    file_settings = {
+        "feature_settings": {"workbench_enabled": True, "wallet_authority": "WALLET"},
+        "platform_access": {"founders": [{"email": "file@example.org"}]},
+    }
+    merged = merge_environment_settings({"lease_state": "ACTIVE"}, file_settings)
+    assert merged["feature_settings"] == file_settings["feature_settings"]
+    assert merged["platform_access"] == file_settings["platform_access"]
+    override = {
+        "feature_settings": {"wallet_authority": "SHADOW"},
+        "platform_access": {"founders": [{"email": "blob@example.org"}]},
+    }
+    merged = merge_environment_settings(override, file_settings)
+    assert merged["feature_settings"] == {"workbench_enabled": True, "wallet_authority": "SHADOW"}
+    assert merged["platform_access"] == override["platform_access"]
+    assert merge_environment_settings({"lease_state": "ACTIVE"}, {}) == {"lease_state": "ACTIVE"}
+
+
+@pytest.mark.parametrize("settings", [{"image_digests": {}}, {"feature_settings": {}, "lease_state": "ACTIVE"}, [], "x"])
+def test_environment_settings_file_is_closed_to_the_two_setting_groups(settings: Any) -> None:
+    with pytest.raises(ValueError):
+        merge_environment_settings({}, settings)
+
+
+@pytest.mark.parametrize("environment", ["demo", "uat", "prod"])
+def test_committed_environment_settings_are_valid_for_every_environment(environment: str) -> None:
+    import json
+
+    settings = json.loads((SETTINGS_DIR / f"{environment}.json").read_text(encoding="utf-8"))
+    feature_settings_inputs(merge_environment_settings({}, settings))
+
+
+def test_demo_enables_the_workbench_and_names_a_founder() -> None:
+    import json
+
+    inputs = feature_settings_inputs(
+        merge_environment_settings({}, json.loads((SETTINGS_DIR / "demo.json").read_text(encoding="utf-8")))
+    )
+    assert inputs["feature_settings"]["workbench_enabled"] is True
+    assert inputs["platform_access"]["founders"]
 
 
 def whatsapp_configuration() -> dict[str, Any]:

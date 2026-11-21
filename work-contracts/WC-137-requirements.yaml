@@ -1,0 +1,76 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-137
+contract_path: work-contracts/WC-137-platform-access-and-environment-feature-settings.md
+contract_digest: 25445679623ff5c645d63b25894628219890f0bbdb7f5f0c7b4cbe9a1db03228
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Unit, PostgreSQL, pipeline, web and real-stack tests run in Docker at the exact head; commands and results in the PR body
+  initial_state: new
+  dependencies: Founder authorization of this implementing session (current conversation); WC-136 merged
+  residual_risk: No deployment, UAT, Production value, real-phone WhatsApp acceptance or live provider call is part of this contract
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC137-R001
+    source: WC-137 Canonical Requirement Index, R001
+    observable_outcome: Feature settings are validated before Terraform and reach the workload as per-environment data.
+    test_path_or_plan: tests/pipeline/test_goal006_deployment_inputs.py (feature settings and founders cases).
+
+  - <<: *defaults
+    requirement_id: WC137-R002
+    source: WC-137 Canonical Requirement Index, R002
+    observable_outcome: The settings file is the base, the private blob wins key by key, unknown groups are rejected, and UAT and Production files are empty.
+    test_path_or_plan: tests/pipeline/test_goal006_deployment_inputs.py (merge_environment_settings and committed settings cases); tests/pipeline/test_goal006_demo_deployment_workflow.py.
+
+  - <<: *defaults
+    requirement_id: WC137-R003
+    source: WC-137 Canonical Requirement Index, R003
+    observable_outcome: The Founder grant is re-asserted from configuration at every start and roles come only from stored grants.
+    test_path_or_plan: tests/business-platform.Tests/PlatformAccess/; real-stack restart and wiped-grants check.
+
+  - <<: *defaults
+    requirement_id: WC137-R004
+    source: WC-137 Canonical Requirement Index, R004
+    observable_outcome: Access Request, Founder approval with step-up and the abuse controls behave as the policy states.
+    test_path_or_plan: tests/business-platform.Tests/PlatformAccess/; real-stack journeys (41 checks).
+
+  - <<: *defaults
+    requirement_id: WC137-R005
+    source: WC-137 Canonical Requirement Index, R005
+    observable_outcome: Staff routes work with a web token and refuse a token that claims its own roles.
+    test_path_or_plan: tests/business-platform.Tests/CustomerMembershipMiddlewareTests.cs (StaffRoute cases).
+
+  - <<: *defaults
+    requirement_id: WC137-R006
+    source: WC-137 Canonical Requirement Index, R006
+    observable_outcome: Mapped JwtBearer claim names are recognised for identity and step-up.
+    test_path_or_plan: tests/business-platform.Tests/PlatformAccess/PlatformAccessTests.cs (ClaimsMappedByJwtBearerAreRecognisedToo, StepUpRecognisesTheClaimNamesJwtBearerMapsInbound).
+
+  - <<: *defaults
+    requirement_id: WC137-R007
+    source: WC-137 Canonical Requirement Index, R007
+    observable_outcome: The realm issues an OTP step-up token and the proof passes against the Demo realm.
+    test_path_or_plan: scripts/keycloak_stepup_proof.sh --terraform.
+
+  - <<: *defaults
+    requirement_id: WC137-R008
+    source: WC-137 Canonical Requirement Index, R008
+    observable_outcome: Request-access and Founder approvals screens exist and staff layouts and the pricing console are role-gated.
+    test_path_or_plan: web/lib/platform-access*.test.ts, web/__tests__/app/founder, layout tests; web gate.
+
+  - <<: *defaults
+    requirement_id: WC137-R009
+    source: WC-137 Canonical Requirement Index, R009
+    observable_outcome: The WhatsApp flow is consent, menu, then agent card, with a versioned notice and flag-gated STOP acknowledgement.
+    test_path_or_plan: tests/business-platform.Tests/VisitorConversation/ (state machine, service, PostgreSQL tests).
+
+  - <<: *defaults
+    requirement_id: WC137-R010
+    source: WC-137 Canonical Requirement Index, R010
+    observable_outcome: The standing policy exists and the agent entry point routes to it.
+    test_path_or_plan: standards/PLATFORM-SETTINGS-AND-ACCESS-POLICY.md; constitution/AGENT-ENTRY.md.

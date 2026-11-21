@@ -21,9 +21,17 @@ public sealed class CustomerIdentityRouteAttribute(
     public bool RegistrationRequiredWhenMissing { get; } = registrationRequiredWhenMissing;
 }
 
+/// <summary>
+/// Marks a route staff reach with the same web sign-in a customer uses. The route skips the customer journey; its
+/// authority is decided only by stored platform role grants, never by anything the token claims about itself.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class)]
+public sealed class StaffIdentityRouteAttribute : Attribute;
+
 public sealed class CustomerMembershipMiddleware(RequestDelegate next)
 {
     public const string JourneyItem = "waooaw:customer-identity-journey";
+    public const string StaffItem = "waooaw:staff-identity-route";
     public const string MembershipItem = "waooaw:customer-membership";
     public const string AuthenticationTimeItem = "waooaw:customer-authentication-time";
     public const string MembershipSelectionHeader = "x-waooaw-membership-reference";
@@ -74,6 +82,30 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
         }
         var route = endpoint.Metadata.GetMetadata<CustomerIdentityRouteAttribute>();
         var controllerAction = endpoint.Metadata.GetMetadata<ControllerActionDescriptor>();
+        if (
+            route is null
+            && endpoint.Metadata.GetMetadata<StaffIdentityRouteAttribute>() is not null
+        )
+        {
+            // Web sign-ins may carry an environment-mapped tenant_id (Demo hardcodes it). Staff routes never
+            // take their tenant from the token, so only a self-claimed role list counts as forged authority.
+            if (customer && context.User.HasClaim(claim => claim.Type == "waooaw_roles"))
+            {
+                await ProblemAsync(
+                    context,
+                    StatusCodes.Status403Forbidden,
+                    "IDENTITY_ACTION_DENIED"
+                );
+                return;
+            }
+            if (customer)
+            {
+                context.Items.Remove(TenantIsolationMiddleware.TenantIdItemKey);
+                context.Items[StaffItem] = true;
+            }
+            await next(context);
+            return;
+        }
         if (route is null && controllerAction is null)
         {
             await next(context);

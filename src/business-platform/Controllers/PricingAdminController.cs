@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
+using Waooaw.BusinessPlatform.Services.PlatformAccess;
 
 namespace Waooaw.BusinessPlatform.Controllers;
 
@@ -21,6 +22,7 @@ namespace Waooaw.BusinessPlatform.Controllers;
 /// </summary>
 [ApiController]
 [Authorize]
+[StaffIdentityRoute]
 [Route(PricingAdminService.PublicRoutePrefix)]
 public sealed class PricingAdminController(PricingAdminService pricing) : ControllerBase
 {
@@ -258,14 +260,5 @@ public sealed class PricingAdminController(PricingAdminService pricing) : Contro
 
     // Same bar as the identity lifecycle step-up (IdentityController.HasLifecycleStepUp): a fresh
     // authentication (auth_time within five minutes) at assurance level 2 or 3 with a multi-factor method.
-    private bool HasStepUp() =>
-        User.FindFirstValue("auth_time") is string authTime
-        && long.TryParse(authTime, out var authenticatedAt)
-        && DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds(authenticatedAt) is var age
-        && age >= TimeSpan.FromSeconds(-30)
-        && age <= TimeSpan.FromMinutes(5)
-        && User.FindFirstValue("acr") is "2" or "3" or "urn:waooaw:aal2" or "urn:waooaw:aal3"
-        && User.FindAll("amr")
-            .SelectMany(claim => claim.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            .Any(method => method is "mfa" or "otp" or "webauthn");
+    private bool HasStepUp() => PlatformRoles.HasStepUp(User, DateTimeOffset.UtcNow);
 }

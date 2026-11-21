@@ -51,6 +51,58 @@ public sealed class VisitorContentTests
     }
 
     [Fact]
+    public void ProfessionalMenuNeedsOneLiveProfessionalWithACardAndWorkingPlaceholders()
+    {
+        var content = VisitorTestContent.Shipped();
+        var items = content.Professionals.Items;
+
+        var noneLive = content with
+        {
+            Professionals = content.Professionals with
+            {
+                Items = items.Select(item => item with { Available = false }).ToList(),
+            },
+        };
+        Assert.Contains("PROFESSIONALS_AVAILABLE_COUNT", VisitorContentValidator.Validate(noneLive, Limits));
+
+        var noCard = content with
+        {
+            Professionals = content.Professionals with
+            {
+                Items = items.Select(item => item with { Card = null }).ToList(),
+            },
+        };
+        Assert.Contains(
+            VisitorContentValidator.Validate(noCard, Limits),
+            problem => problem.StartsWith("PROFESSIONAL_CARD_MISSING", StringComparison.Ordinal)
+        );
+
+        var noUrl = content with
+        {
+            Professionals = content.Professionals with { Hire = "Hire it on the portal." },
+        };
+        Assert.Contains("PROFESSIONALS_HIRE_URL_MISSING", VisitorContentValidator.Validate(noUrl, Limits));
+
+        var priced = content with
+        {
+            Professionals = content.Professionals with { Promise = "Only ₹999 per month" },
+        };
+        Assert.Contains(
+            VisitorContentValidator.Validate(priced, Limits),
+            problem => problem.StartsWith("PRICE_STATED", StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
+    public void ShippedGreetingAndMenuFitOneWhatsAppMessage()
+    {
+        var content = VisitorTestContent.Shipped();
+        Assert.True(content.Consent.Notice.Length <= 1024, "consent notice must fit interactive button body");
+        Assert.True(content.Professionals.Welcome().Length <= 4096);
+        Assert.StartsWith("*Welcome to WAOOAW!*", content.Consent.Notice, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void OtherProfessionalsMustEndWithComingSoon()
     {
         var content = VisitorTestContent.Shipped();
@@ -206,7 +258,103 @@ public sealed class VisitorStateMachineTests
         Assert.Equal(VisitorStates.ConsentPending, start.Next.State);
         Assert.Contains("45 days", Text(start), StringComparison.Ordinal);
         var choices = Assert.Single(start.Reply.Blocks, block => block.Type == "CHOICES").Choices!;
-        Assert.Equal(["YES", "STOP"], choices.Select(choice => choice.Label));
+        Assert.Equal(["Yes", "STOP"], choices.Select(choice => choice.Label));
+    }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("1️⃣")]
+    [InlineData("digital marketing")]
+    public void ChoosingAnAvailableProfessionalShowsItsCardWithFourActions(string reply)
+    {
+        var menu = new VisitorSnapshot { State = VisitorStates.ChooseProfessional, ConsentGiven = true };
+        var t = Step(menu, VisitorInput.FromText(reply));
+        Assert.Equal(VisitorStates.ProfessionalCard, t.Next.State);
+        var text = Text(t);
+        Assert.Contains("Digital Marketing Professional", text, StringComparison.Ordinal);
+        foreach (var action in new[] { "Interview this agent", "Try it free for 7 days", "Hire it", "Get a call back" })
+            Assert.Contains(action, text, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("2", "Agriculture Advisory")]
+    [InlineData("3", "Trading & Markets")]
+    [InlineData("4", "Private Tutoring")]
+    public void ChoosingAProfessionalThatIsNotLiveSaysComingSoonAndShowsTheMenuAgain(string reply, string label)
+    {
+        var menu = new VisitorSnapshot { State = VisitorStates.ChooseProfessional, ConsentGiven = true };
+        var t = Step(menu, VisitorInput.FromText(reply));
+        Assert.Equal(VisitorStates.ChooseProfessional, t.Next.State);
+        Assert.Contains($"*{label}* is coming soon", Text(t), StringComparison.Ordinal);
+        Assert.Contains("Which professional would you like to explore?", Text(t), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MenuHelpAndUnclearRepliesStayInTheMenu()
+    {
+        var menu = new VisitorSnapshot { State = VisitorStates.ChooseProfessional, ConsentGiven = true };
+        var help = Step(menu, VisitorInput.FromText("Help"));
+        Assert.Equal(VisitorStates.ChooseProfessional, help.Next.State);
+        Assert.Contains(Content.Misc.About, Text(help), StringComparison.Ordinal);
+        Assert.Contains("1️⃣", Text(help), StringComparison.Ordinal);
+
+        var unclear = Step(menu, VisitorInput.FromText("9"));
+        Assert.Equal(VisitorStates.ChooseProfessional, unclear.Next.State);
+        Assert.Contains("number from 1 to 4", Text(unclear), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void EachCardActionDoesOneClearThing()
+    {
+        var card = new VisitorSnapshot { State = VisitorStates.ProfessionalCard, ConsentGiven = true };
+
+        var interview = Step(card, VisitorInput.FromText("1"));
+        Assert.Equal(VisitorStates.ProfessionalCard, interview.Next.State);
+        Assert.Contains(Options.HandoffBaseUrl, Text(interview), StringComparison.Ordinal);
+        Assert.Contains("interview", Text(interview), StringComparison.OrdinalIgnoreCase);
+
+        var trial = Step(card, VisitorInput.FromText("2"));
+        Assert.Equal(VisitorStates.Handoff, trial.Next.State);
+        Assert.True(trial.WantsHandoffReference);
+
+        var hire = Step(card, VisitorInput.FromText("3"));
+        Assert.Contains(Options.HandoffBaseUrl, Text(hire), StringComparison.Ordinal);
+        Assert.Contains("hire", Text(hire), StringComparison.OrdinalIgnoreCase);
+
+        var callback = Step(card, VisitorInput.FromText("4"));
+        Assert.Contains("aren't available on WhatsApp yet", Text(callback), StringComparison.Ordinal);
+        Assert.Contains(Options.HandoffBaseUrl, Text(callback), StringComparison.Ordinal);
+
+        var unclear = Step(card, VisitorInput.FromText("7"));
+        Assert.Equal(VisitorStates.ProfessionalCard, unclear.Next.State);
+        Assert.Contains("1, 2, 3 or 4", Text(unclear), StringComparison.Ordinal);
+        Assert.Contains("Digital Marketing Professional", Text(unclear), StringComparison.Ordinal);
+
+        var back = Step(card, VisitorInput.FromText("menu"));
+        Assert.Equal(VisitorStates.ChooseProfessional, back.Next.State);
+        Assert.Contains("Which professional would you like to explore?", Text(back), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MenuAndCardRepliesPassTheReplyValidatorAndTheContentRules()
+    {
+        var menu = new VisitorSnapshot { State = VisitorStates.ChooseProfessional, ConsentGiven = true };
+        var card = new VisitorSnapshot { State = VisitorStates.ProfessionalCard, ConsentGiven = true };
+        foreach (
+            var t in new[]
+            {
+                Step(menu, VisitorInput.FromText("1")),
+                Step(menu, VisitorInput.FromText("2")),
+                Step(menu, VisitorInput.FromText("help")),
+                Step(card, VisitorInput.FromText("1")),
+                Step(card, VisitorInput.FromText("3")),
+                Step(card, VisitorInput.FromText("4")),
+            }
+        )
+        {
+            Assert.Empty(VisitorReplyValidator.Validate(Concrete(t.Reply), Options));
+            Assert.DoesNotContain("₹", Text(t), StringComparison.Ordinal);
+        }
     }
 
     [Fact]
@@ -361,6 +509,8 @@ public sealed class VisitorStateMachineTests
             {
                 VisitorStates.Discover,
                 VisitorStates.Qualify,
+                VisitorStates.ChooseProfessional,
+                VisitorStates.ProfessionalCard,
                 VisitorStates.ShowValue,
                 VisitorStates.Handoff,
             }
@@ -377,7 +527,8 @@ public sealed class VisitorStateMachineTests
             );
             Assert.Equal(VisitorStates.Stopped, stopped.Next.State);
             Assert.Equal(VisitorOutcomes.OptOut, stopped.Next.Outcome);
-            Assert.Contains("START", Text(stopped), StringComparison.Ordinal);
+            Assert.Contains("Nothing further will be sent", Text(stopped), StringComparison.Ordinal);
+            Assert.Contains("just say *Hi*", Text(stopped), StringComparison.Ordinal);
         }
         var snapshot = new VisitorSnapshot { State = VisitorStates.Stopped, ConsentGiven = true };
         var ignored = Step(snapshot, VisitorInput.FromText("hello?"));
@@ -392,6 +543,10 @@ public sealed class VisitorStateMachineTests
             VisitorStates.Discover,
             Step(resumed.Next, VisitorInput.FromChoice(VisitorChoiceIds.ConsentYes)).Next.State
         );
+
+        var greeted = Step(snapshot, VisitorInput.FromText("Hi"));
+        Assert.Equal(VisitorStates.ConsentPending, greeted.Next.State);
+        Assert.False(greeted.Next.ConsentGiven);
     }
 
     [Fact]

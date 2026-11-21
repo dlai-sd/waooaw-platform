@@ -10,6 +10,10 @@ On occupying any office, emit one bold `Model recommendation:` line per
 [section 2.1](../standards/AI-RESOURCE-GOVERNANCE.md#21-office-activation-model-notice).
 Do not assume Auto is free or claim an office assignment switches the client's model.
 
+**Feature flags, per-environment values, staff roles/sign-in, WhatsApp visitor flow:** follow
+[Platform Settings And Access Policy](../standards/PLATFORM-SETTINGS-AND-ACCESS-POLICY.md)
+(WC-137). Config is data per environment, never code; do not invent another mechanism.
+
 ---
 
 ## ⛔ IMPLEMENTATION GATE — READ BEFORE ANYTHING ELSE

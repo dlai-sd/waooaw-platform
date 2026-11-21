@@ -106,6 +106,64 @@ public sealed record VisitorOtherProfessionalsContent(
     [property: JsonPropertyName("text")] string Text
 );
 
+/// <summary>One professional in the numbered menu. Only a professional marked available has a card.</summary>
+public sealed record VisitorProfessionalItem(
+    [property: JsonPropertyName("code")] string Code,
+    [property: JsonPropertyName("emoji")] string Emoji,
+    [property: JsonPropertyName("label")] string Label,
+    [property: JsonPropertyName("available")] bool Available,
+    [property: JsonPropertyName("card")] string? Card = null
+);
+
+/// <summary>The numbered journey after consent: pick a professional, then pick an action on its card.</summary>
+public sealed record VisitorProfessionalsContent
+{
+    [JsonPropertyName("promise")]
+    public string Promise { get; init; } = string.Empty;
+
+    [JsonPropertyName("question")]
+    public string Question { get; init; } = string.Empty;
+
+    [JsonPropertyName("footer")]
+    public string Footer { get; init; } = string.Empty;
+
+    [JsonPropertyName("retry")]
+    public string Retry { get; init; } = string.Empty;
+
+    [JsonPropertyName("comingSoon")]
+    public string ComingSoon { get; init; } = string.Empty;
+
+    [JsonPropertyName("interview")]
+    public string Interview { get; init; } = string.Empty;
+
+    [JsonPropertyName("hire")]
+    public string Hire { get; init; } = string.Empty;
+
+    [JsonPropertyName("callback")]
+    public string Callback { get; init; } = string.Empty;
+
+    [JsonPropertyName("cardRetry")]
+    public string CardRetry { get; init; } = string.Empty;
+
+    [JsonPropertyName("items")]
+    public IReadOnlyList<VisitorProfessionalItem> Items { get; init; } = [];
+
+    /// <summary>The numbered list shown to the visitor, built from the configured items.</summary>
+    public string MenuList() =>
+        string.Join(
+            "\n",
+            Items.Select((item, index) => $"{Keycap(index + 1)} {item.Emoji} {item.Label}")
+        );
+
+    /// <summary>The full menu: question, numbered list and footer.</summary>
+    public string Menu() => $"{Question}\n{MenuList()}\n\n{Footer}";
+
+    /// <summary>The promise stack followed by the menu: the first message after consent.</summary>
+    public string Welcome() => $"{Promise}\n\n{Menu()}";
+
+    public static string Keycap(int number) => $"{number}\uFE0F\u20E3";
+}
+
 public sealed record VisitorHandoffContent(
     [property: JsonPropertyName("text")] string Text,
     [property: JsonPropertyName("linkLabel")] string LinkLabel,
@@ -154,6 +212,9 @@ public sealed record VisitorContentSet
 
     [JsonPropertyName("otherProfessionals")]
     public VisitorOtherProfessionalsContent OtherProfessionals { get; init; } = null!;
+
+    [JsonPropertyName("professionals")]
+    public VisitorProfessionalsContent Professionals { get; init; } = null!;
 
     [JsonPropertyName("handoff")]
     public VisitorHandoffContent Handoff { get; init; } = null!;
@@ -214,7 +275,7 @@ public static partial class VisitorContentValidator
             return [.. problems, "SECTION_MISSING"];
         if (content.ShowValue is null || content.OtherProfessionals is null)
             return [.. problems, "SECTION_MISSING"];
-        if (content.Handoff is null || content.Misc is null)
+        if (content.Handoff is null || content.Misc is null || content.Professionals is null)
             return [.. problems, "SECTION_MISSING"];
         if (content.Protocol?.Stop is null || content.Protocol.Start is null)
             return [.. problems, "PROTOCOL_MISSING"];
@@ -279,6 +340,51 @@ public static partial class VisitorContentValidator
             if (label.Length > limits.MaxChoiceLabelLength)
                 problems.Add($"LABEL_TOO_LONG:{label}");
 
+        var professionals = content.Professionals;
+        foreach (
+            var (name, value) in new[]
+            {
+                ("PROMISE", professionals.Promise),
+                ("QUESTION", professionals.Question),
+                ("FOOTER", professionals.Footer),
+                ("RETRY", professionals.Retry),
+                ("COMING_SOON", professionals.ComingSoon),
+                ("INTERVIEW", professionals.Interview),
+                ("HIRE", professionals.Hire),
+                ("CALLBACK", professionals.Callback),
+                ("CARD_RETRY", professionals.CardRetry),
+            }
+        )
+            Require(value, $"PROFESSIONALS_{name}");
+        if (professionals.Items.Count is < 2 or > 9)
+            problems.Add("PROFESSIONALS_COUNT");
+        if (professionals.Items.Count(item => item.Available) != 1)
+            problems.Add("PROFESSIONALS_AVAILABLE_COUNT");
+        if (
+            professionals.Items.Select(item => item.Code).Distinct(StringComparer.Ordinal).Count()
+            != professionals.Items.Count
+        )
+            problems.Add("PROFESSIONALS_CODE_DUPLICATE");
+        foreach (var item in professionals.Items)
+        {
+            if (string.IsNullOrWhiteSpace(item.Label) || string.IsNullOrWhiteSpace(item.Emoji))
+                problems.Add($"PROFESSIONAL_ITEM_INCOMPLETE:{item.Code}");
+            if (item.Available && string.IsNullOrWhiteSpace(item.Card))
+                problems.Add($"PROFESSIONAL_CARD_MISSING:{item.Code}");
+        }
+        if (!professionals.ComingSoon.Contains("{label}", StringComparison.Ordinal))
+            problems.Add("PROFESSIONALS_COMING_SOON_LABEL_MISSING");
+        foreach (
+            var (name, value) in new[]
+            {
+                ("INTERVIEW", professionals.Interview),
+                ("HIRE", professionals.Hire),
+                ("CALLBACK", professionals.Callback),
+            }
+        )
+            if (!value.Contains("{url}", StringComparison.Ordinal))
+                problems.Add($"PROFESSIONALS_{name}_URL_MISSING");
+
         var trimmed = TrailingPunctuation()
             .Replace(content.OtherProfessionals.Text.Trim(), string.Empty);
         if (!trimmed.EndsWith("coming soon", StringComparison.OrdinalIgnoreCase))
@@ -328,6 +434,16 @@ public static partial class VisitorContentValidator
         yield return ("showValue.pricingPointer", content.ShowValue.PricingPointer);
         yield return ("showValue.menuPrompt", content.ShowValue.MenuPrompt);
         yield return ("otherProfessionals.text", content.OtherProfessionals.Text);
+        yield return ("professionals.promise", content.Professionals.Promise);
+        yield return ("professionals.menu", content.Professionals.Menu());
+        yield return ("professionals.retry", content.Professionals.Retry);
+        yield return ("professionals.comingSoon", content.Professionals.ComingSoon);
+        yield return ("professionals.interview", content.Professionals.Interview);
+        yield return ("professionals.hire", content.Professionals.Hire);
+        yield return ("professionals.callback", content.Professionals.Callback);
+        yield return ("professionals.cardRetry", content.Professionals.CardRetry);
+        foreach (var item in content.Professionals.Items.Where(item => item.Card is not null))
+            yield return ($"professionals.card.{item.Code}", item.Card!);
         yield return ("handoff.text", content.Handoff.Text);
         yield return ("handoff.contactThanks", content.Handoff.ContactThanks);
         yield return ("handoff.reminder", content.Handoff.Reminder);

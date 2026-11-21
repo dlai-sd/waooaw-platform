@@ -174,6 +174,89 @@ public sealed class CustomerMembershipMiddlewareTests
     }
 
     [Fact]
+    public async Task StaffRouteLetsAWebSignInReachGrantBasedAuthorityWithoutTheCustomerJourney()
+    {
+        var context = CustomerContext();
+        context.SetEndpoint(
+            new Endpoint(
+                _ => Task.CompletedTask,
+                new EndpointMetadataCollection(
+                    new ControllerActionDescriptor(),
+                    new StaffIdentityRouteAttribute()
+                ),
+                "staff"
+            )
+        );
+        var nextWasCalled = false;
+        var middleware = new CustomerMembershipMiddleware(_ =>
+        {
+            nextWasCalled = true;
+            return Task.CompletedTask;
+        });
+
+        await middleware.InvokeAsync(context);
+
+        Assert.True(nextWasCalled);
+        Assert.False(context.Items.ContainsKey(CustomerMembershipMiddleware.MembershipItem));
+    }
+
+    [Fact]
+    public async Task StaffRouteIgnoresAnEnvironmentMappedTenantClaimAndSkipsTenantIsolation()
+    {
+        var context = CustomerContext(new Claim("tenant_id", Guid.NewGuid().ToString()));
+        context.SetEndpoint(
+            new Endpoint(
+                _ => Task.CompletedTask,
+                new EndpointMetadataCollection(
+                    new ControllerActionDescriptor(),
+                    new StaffIdentityRouteAttribute()
+                ),
+                "staff"
+            )
+        );
+        context.Items[TenantIsolationMiddleware.TenantIdItemKey] = "from-token";
+        var nextWasCalled = false;
+        var middleware = new CustomerMembershipMiddleware(_ =>
+        {
+            nextWasCalled = true;
+            return Task.CompletedTask;
+        });
+
+        await middleware.InvokeAsync(context);
+
+        Assert.True(nextWasCalled);
+        Assert.True(context.Items.ContainsKey(CustomerMembershipMiddleware.StaffItem));
+        Assert.False(context.Items.ContainsKey(TenantIsolationMiddleware.TenantIdItemKey));
+    }
+
+    [Fact]
+    public async Task StaffRouteStillRejectsTokensThatClaimTheirOwnRoles()
+    {
+        var context = CustomerContext(new Claim("waooaw_roles", "forged"));
+        context.SetEndpoint(
+            new Endpoint(
+                _ => Task.CompletedTask,
+                new EndpointMetadataCollection(
+                    new ControllerActionDescriptor(),
+                    new StaffIdentityRouteAttribute()
+                ),
+                "staff"
+            )
+        );
+        var nextWasCalled = false;
+        var middleware = new CustomerMembershipMiddleware(_ =>
+        {
+            nextWasCalled = true;
+            return Task.CompletedTask;
+        });
+
+        await middleware.InvokeAsync(context);
+
+        Assert.False(nextWasCalled);
+        Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
+    }
+
+    [Fact]
     public async Task NonCustomerControllerBypassesCustomerJourney()
     {
         var context = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) };

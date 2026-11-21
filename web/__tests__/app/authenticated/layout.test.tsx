@@ -9,6 +9,9 @@ jest.mock('next/navigation', () => ({ redirect: jest.fn() }));
 jest.mock('@/lib/api/identity', () => ({ getIdentitySession: jest.fn() }));
 jest.mock('@/lib/i18n-server', () => ({ getRequestI18n: jest.fn() }));
 jest.mock('@/lib/server-auth', () => ({ getServerAccessToken: jest.fn() }));
+jest.mock('@/lib/platform-access-server', () => ({
+  resolvePlatformAccess: jest.fn(async () => ({ founder: false, administrator: false })),
+}));
 jest.mock('@/components/shell/ProtectedAppShell', () => ({
   ProtectedAppShell: ({ children, identitySession }: { children: React.ReactNode; identitySession?: unknown }) => (
     <div data-has-membership={identitySession !== undefined} data-testid="customer-shell">

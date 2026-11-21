@@ -11,13 +11,8 @@ import {
   PricingSafetyApi,
   PricingVersionsApi,
 } from '@/lib/api/generated/pricing-admin-v1/src';
-import {
-  pricingAccess,
-  pricingQueryNames,
-  pricingRouteFor,
-  pricingRouteWrites,
-  type PricingAccess,
-} from '@/lib/pricing-admin';
+import { pricingQueryNames, pricingRouteFor, pricingRouteWrites } from '@/lib/pricing-admin';
+import { resolvePlatformAccess } from '@/lib/platform-access-server';
 import { logServerFailure, readServerResponse } from '@/lib/server-failure';
 import { readRequestJson } from '@/lib/server-failure-boundary';
 
@@ -75,7 +70,7 @@ export async function proxyPricingAdmin(
   const correlationHeader = request.headers.get('x-correlation-id');
   const correlationId =
     correlationHeader && uuidPattern.test(correlationHeader) ? correlationHeader : crypto.randomUUID();
-  const access: PricingAccess = pricingAccess(accessToken);
+  const access = await resolvePlatformAccess(accessToken);
   if (!access.administrator) {
     return problem(403, 'PRICING_FORBIDDEN', 'Pricing administration is not permitted.', correlationId);
   }

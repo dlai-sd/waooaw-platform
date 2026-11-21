@@ -728,7 +728,7 @@ jobs:
               --blob-name "$source_blob" \
               --output workload-configuration.source.json \
               --evidence configuration-promotion-download-attempts.jsonl
-            jq '.lease_purpose = "UAT exact-seven qualification" | del(.founder_ipv4_cidr)' \
+            jq '.lease_purpose = "UAT exact-seven qualification" | del(.founder_ipv4_cidr) | del(.feature_settings, .platform_access)' \
               workload-configuration.source.json > workload-configuration.seed.json
             issued_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
             expires_at=$(date -u -d '+10 days' +%Y-%m-%dT%H:%M:%SZ)
@@ -2466,6 +2466,7 @@ jobs:
             --environment '${{ inputs.environment }}' \
             --manifest registry-release-manifest.json \
             --configuration workload-configuration.json \
+            --environment-settings 'infrastructure/platform-settings/${{ inputs.environment }}.json' \
             --key-vault-id '${{ steps.foundation.outputs.key_vault_id }}' \
             --key-vault-uri '${{ steps.foundation.outputs.key_vault_uri }}' \
             --output workload.auto.tfvars.json \

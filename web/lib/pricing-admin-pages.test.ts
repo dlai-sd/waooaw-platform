@@ -17,6 +17,19 @@ jest.mock('next/navigation', () => ({
   }),
 }));
 jest.mock('@/lib/server-auth', () => ({ getServerAccessToken: jest.fn() }));
+jest.mock('@/lib/platform-access-server', () => ({
+  // Stands in for the Business Platform: it reports whatever role the test token carries.
+  resolvePlatformAccess: jest.fn(async (accessToken?: string) => {
+    const roles: string[] = accessToken
+      ? (JSON.parse(Buffer.from(accessToken.split('.')[1] ?? '', 'base64url').toString() || '{}').realm_access?.roles ??
+        [])
+      : [];
+    return {
+      founder: roles.includes('founder'),
+      administrator: roles.includes('founder') || roles.includes('pricing_admin'),
+    };
+  }),
+}));
 jest.mock('@/lib/pricing-admin-server', () => ({
   pricingApis: () => ({
     drafts: { listPricingDrafts: mockListDrafts },

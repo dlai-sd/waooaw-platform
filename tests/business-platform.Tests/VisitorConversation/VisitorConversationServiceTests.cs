@@ -561,28 +561,21 @@ public sealed class VisitorConversationServiceTests
             subject,
             "+919876543210",
             consent,
-            VisitorInput.FromText("I run a gym in Pune"),
+            VisitorInput.FromText("1"),
             CancellationToken.None
         );
-        Assert.Equal(VisitorStates.Qualify, first.State);
-        Assert.Equal(3, first.Reply.Blocks.Single(block => block.Type == "CHOICES").Choices!.Count);
+        Assert.Equal(VisitorStates.ProfessionalCard, first.State);
+        Assert.Contains("Digital Marketing Professional", first.Reply.PlainText(), StringComparison.Ordinal);
         var second = await h.Service.HandleWhatsAppAsync(
             VisitorHarness.Tenant,
             subject,
             "+919876543210",
             consent,
-            VisitorInput.FromChoice("goal_more_customers"),
+            VisitorInput.FromText("2"),
             CancellationToken.None
         );
-        Assert.Equal(VisitorStates.ShowValue, second.State);
-        var trial = await h.Service.HandleWhatsAppAsync(
-            VisitorHarness.Tenant,
-            subject,
-            "+919876543210",
-            consent,
-            VisitorInput.FromChoice(VisitorChoiceIds.StartTrial),
-            CancellationToken.None
-        );
+        Assert.Equal(VisitorStates.Handoff, second.State);
+        var trial = second;
         Assert.Contains(
             trial.Reply.Blocks,
             block =>

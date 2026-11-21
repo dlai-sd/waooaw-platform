@@ -13,6 +13,8 @@ public static class VisitorStates
     public const string ConsentPending = "CONSENT_PENDING";
     public const string Discover = "DISCOVER";
     public const string Qualify = "QUALIFY";
+    public const string ChooseProfessional = "CHOOSE_PROFESSIONAL";
+    public const string ProfessionalCard = "PROFESSIONAL_CARD";
     public const string ShowValue = "SHOW_VALUE";
     public const string OtherProfessionals = "OTHER_PROFESSIONALS";
     public const string Handoff = "HANDOFF";
@@ -24,6 +26,8 @@ public static class VisitorStates
         ConsentPending,
         Discover,
         Qualify,
+        ChooseProfessional,
+        ProfessionalCard,
         ShowValue,
         OtherProfessionals,
         Handoff,

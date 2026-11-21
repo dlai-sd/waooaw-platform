@@ -4,7 +4,7 @@ import 'server-only';
 // Constitutional basis: C-023, C-059, C-063, C-088
 
 import { redirect } from 'next/navigation';
-import { pricingAccess } from '@/lib/pricing-admin';
+import { resolvePlatformAccess } from '@/lib/platform-access-server';
 import { pricingApis } from '@/lib/pricing-admin-server';
 import { logServerFailure } from '@/lib/server-failure';
 import type { PricingKind, PricingVersion } from '@/lib/pricing-admin-client';
@@ -16,7 +16,7 @@ export type PricingPageSession = { accessToken: string; isFounder: boolean };
 export async function requirePricingPage(): Promise<PricingPageSession> {
   const accessToken = await getServerAccessToken();
   if (!accessToken) redirect('/home');
-  const access = pricingAccess(accessToken);
+  const access = await resolvePlatformAccess(accessToken);
   if (!access.administrator) redirect('/home');
   return { accessToken, isFounder: access.founder };
 }
