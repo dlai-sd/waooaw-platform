@@ -1,0 +1,46 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-140
+contract_path: work-contracts/WC-140-demo-deployment-time-reduction.md
+contract_digest: 9c79a2deffcfb6b74341fd79237f9cd1cb0e2f8bcff409c9cfa49a11c4ad5c92
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Pipeline unit tests run in Docker at the exact head, plus read-only Azure measurements against Demo; commands and results in the PR body
+  initial_state: new
+  dependencies: Founder authorization of this implementing session (current conversation)
+  residual_risk: The end-to-end saving and the -refresh=false plans are proven only by the first Demo deployment after merge; no deployment is part of this contract
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC140-R001
+    source: WC-140 Canonical Requirement Index, R001
+    observable_outcome: On success with zero authority reported by Azure, the terminal step writes normal-terminal evidence and calls no Terraform.
+    test_path_or_plan: tests/pipeline/test_goal006_demo_deployment_workflow.py (test_terminal_cleanup_skips_foundation_apply_when_success_and_azure_reports_zero_authority); read-only Azure check against Demo.
+
+  - <<: *defaults
+    requirement_id: WC140-R002
+    source: WC-140 Canonical Requirement Index, R002
+    observable_outcome: Leftover authority after success, or any non-success status, runs the forced removal and fails closed when authority remains.
+    test_path_or_plan: tests/pipeline/test_goal006_demo_deployment_workflow.py (test_terminal_cleanup_forces_removal_when_success_leaves_authority_behind, test_terminal_cleanup_after_failure_always_runs_the_forced_removal).
+
+  - <<: *defaults
+    requirement_id: WC140-R003
+    source: WC-140 Canonical Requirement Index, R003
+    observable_outcome: Exactly the three normal-path authority flips plan with -refresh=false; the initial and terminal fallback plans refresh.
+    test_path_or_plan: tests/pipeline/test_goal006_demo_deployment_workflow.py (test_foundation_authority_flips_reuse_the_refreshed_state_but_terminal_fallback_refreshes).
+
+  - <<: *defaults
+    requirement_id: WC140-R004
+    source: WC-140 Canonical Requirement Index, R004
+    observable_outcome: Concurrent inspection gives the same results as serial, preserves order and the first failure, and mutations stay serial.
+    test_path_or_plan: tests/pipeline/test_goal006_activation_readiness.py; tests/pipeline/test_goal006_demo_revision_cleanup.py; timed comparison against Demo (44 s to 8 s readiness, 32 s to 8 s cleanup plan).
+
+  - <<: *defaults
+    requirement_id: WC140-R005
+    source: WC-140 Canonical Requirement Index, R005
+    observable_outcome: Only start-broker and cleanup-private restore a Dockerfile-keyed extension cache via a 40-character commit pin.
+    test_path_or_plan: tests/pipeline/test_goal006_demo_deployment_workflow.py (test_hosted_jobs_restore_the_pinned_az_extensions_from_a_dockerfile_keyed_cache).

@@ -18,9 +18,25 @@ import re
 import subprocess
 import sys
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
+
+# Each ``az`` call costs about two seconds, almost all of it CLI start-up, so inspecting ten apps one
+# by one took longer than the revisions took to become ready. The calls are read-only (or an
+# idempotent start of one app), so they are issued concurrently.
+MAX_PARALLEL_AZ = 8
+
+
+def parallel_map[T, R](function: Callable[[T], R], items: Iterable[T], workers: int = MAX_PARALLEL_AZ) -> list[R]:
+    """Apply ``function`` to every item, preserving order; the first failure in item order is raised."""
+    values = list(items)
+    if len(values) < 2 or workers < 2:
+        return [function(value) for value in values]
+    with ThreadPoolExecutor(max_workers=min(workers, len(values))) as pool:
+        return list(pool.map(function, values))
+
 
 SCHEMA = "waooaw.wc124-activation-readiness/v2"
 # Running states Azure reports for a revision that is no longer converging.
@@ -204,8 +220,10 @@ def evaluate(
     pending = set(apps) - set(missing_apps)
     resumed_apps = []
     if resume_stopped and not missing_apps:
-        for app in sorted(pending):
-            if resume_stopped_app(resource_group, environment, app, run_az):
+        ordered = sorted(pending)
+        started = parallel_map(lambda app: resume_stopped_app(resource_group, environment, app, run_az), ordered)
+        for app, was_started in zip(ordered, started, strict=True):
+            if was_started:
                 resumed_apps.append(app)
                 log(f"{app}: requested operational Start")
     observations: dict[str, dict[str, Any]] = {
@@ -224,13 +242,17 @@ def evaluate(
     attempts = 0
     while True:
         attempts += 1
-        for app in sorted(pending):
-            observations[app] = observe_revision(
+        observed = sorted(pending)
+        results = parallel_map(
+            lambda app: observe_revision(
                 resource_group,
                 app,
                 run_az,
                 require_replica=True if scope in {"dependencies", "migration"} else None,
-            )
+            ),
+            observed,
+        )
+        observations.update(zip(observed, results, strict=True))
         for app, observation in observations.items():
             if observation["ready"] or observation.get("running_state") in TERMINAL_FAILURE_STATES:
                 pending.discard(app)

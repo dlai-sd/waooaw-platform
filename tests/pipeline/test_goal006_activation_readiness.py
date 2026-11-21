@@ -354,6 +354,27 @@ def test_main_writes_evidence_and_returns_nonzero_on_failure(tmp_path, monkeypat
     assert "::error::" in capsys.readouterr().err
 
 
+def test_parallel_map_runs_concurrently_keeps_order_and_raises_the_first_failure():
+    import threading
+
+    barrier = threading.Barrier(3, timeout=5)
+
+    def wait_for_peers(value):
+        barrier.wait()  # only passes when all three calls are in flight at once
+        return value * 2
+
+    assert readiness.parallel_map(wait_for_peers, [1, 2, 3]) == [2, 4, 6]
+
+    def fail(value):
+        if value >= 2:
+            raise RuntimeError(f"boom {value}")
+        return value
+
+    with pytest.raises(RuntimeError, match="boom 2"):
+        readiness.parallel_map(fail, [1, 2, 3])
+    assert readiness.parallel_map(fail, [1]) == [1]
+
+
 def test_no_apps_for_environment_is_an_error():
     with pytest.raises(SystemExit):
         readiness.evaluate("rg", "demo", timeout_seconds=0, interval_seconds=1,

@@ -11,7 +11,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from goal006_activation_readiness import _run_az, list_container_apps
+from goal006_activation_readiness import _run_az, list_container_apps, parallel_map
 
 
 def plan_app(resource_group: str, app: str, run_az: Callable[[list[str]], Any]) -> dict[str, Any]:
@@ -68,7 +68,7 @@ def reconcile(
     if not apps:
         raise ValueError("No Demo apps found; refusing an empty cleanup result")
     # Validate the entire inventory before performing any mutation.
-    plans = [plan_app(resource_group, app, run_az) for app in apps]
+    plans = parallel_map(lambda app: plan_app(resource_group, app, run_az), apps)
     retired = []
     if apply:
         for plan in plans:
@@ -87,7 +87,7 @@ def reconcile(
                         raise RuntimeError(f"{revision}: deactivation did not reach zero replicas")
                     sleep(5)
                 retired.append({"app": plan["app"], "revision": revision})
-        final = [plan_app(resource_group, app, run_az) for app in apps]
+        final = parallel_map(lambda app: plan_app(resource_group, app, run_az), apps)
         if any(plan["obsolete"] for plan in final):
             raise ValueError("Obsolete active revisions remain after cleanup")
     return {
