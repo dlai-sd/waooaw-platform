@@ -59,7 +59,12 @@ CANDIDATE_EVIDENCE_STATUS_SECTION = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 VALIDATION_POLICY_PATH = Path(__file__).resolve().parents[1] / "validation/engineering-validation.yaml"
-PRECHECK_GRAPH_VERSION = "wc109-prechecks-v13"
+PRECHECK_GRAPH_VERSION = "wc109-prechecks-v14"
+# Cheap static checks gate the expensive test nodes so a format failure costs seconds, not a full test run.
+PRECHECK_DEPENDENCIES = {
+    "test_web": "typescript_quality",
+    "business_platform": "dotnet_quality_business_platform",
+}
 PRECHECK_ORDER = (
     "gitleaks",
     "scripts_quality",
@@ -524,8 +529,9 @@ def precheck_nodes(
         input_patterns = tuple(input_patterns_value)
         identity = gate_execution_identity(repository_root, gate_id, head, git_common_dir)
         dependencies: tuple[str, ...] = ()
-        if name == "test_web" and "typescript_quality" in applicable_prechecks:
-            dependencies = ("typescript_quality",)
+        required_check = PRECHECK_DEPENDENCIES.get(name)
+        if required_check in applicable_prechecks:
+            dependencies = (required_check,)
         nodes.append(
             PrecheckNode(
                 name=name,
