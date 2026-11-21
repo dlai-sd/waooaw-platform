@@ -1,0 +1,40 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-142
+contract_path: work-contracts/WC-142-demo-deployment-time-reduction-phase-2.md
+contract_digest: 10275bdff2e836a5dc87757f0233464774d42c8812a74f27c8bfceeead0d1342
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Pipeline unit tests run in Docker at the exact head, plus the local Temporal startup harness and the runtime lifecycle gate; commands and results in the PR body
+  initial_state: new
+  dependencies: Founder authorization of this implementing session (current conversation)
+  residual_risk: The end-to-end saving and the rare Temporal stall are proven only by Demo deployments after merge; no deployment is part of this contract
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC142-R001
+    source: WC-142 Canonical Requirement Index, R001
+    observable_outcome: The startup controller stops Temporal within 15 seconds, prints the shutdown marker, the 150-line log tail and the sampler log, and exits with the pre-trap status.
+    test_path_or_plan: tests/pipeline/test_wc124_temporal_readiness.py (test_exit_trap_bounds_temporal_shutdown_keeps_status_and_prints_the_log); scripts/wc124_temporal_startup_local.sh against the pinned images.
+
+  - <<: *defaults
+    requirement_id: WC142-R002
+    source: WC-142 Canonical Requirement Index, R002
+    observable_outcome: The five job polls sleep 3 seconds with at least the previous total budget; the Unknown grace is unchanged.
+    test_path_or_plan: tests/pipeline/test_goal006_demo_deployment_workflow.py (test_job_polls_use_short_sleeps_with_at_least_the_previous_budget); tests/pipeline/test_goal006_terraform_foundations.py.
+
+  - <<: *defaults
+    requirement_id: WC142-R003
+    source: WC-142 Canonical Requirement Index, R003
+    observable_outcome: All three readiness invocations pass --interval-seconds 3 and keep their timeouts.
+    test_path_or_plan: tests/pipeline/test_goal006_demo_deployment_workflow.py (test_job_polls_use_short_sleeps_with_at_least_the_previous_budget).
+
+  - <<: *defaults
+    requirement_id: WC142-R004
+    source: WC-142 Canonical Requirement Index, R004
+    observable_outcome: Different apps retire concurrently in app order, one app stays serial, and a rollout in any app refuses the cleanup before any mutation.
+    test_path_or_plan: tests/pipeline/test_goal006_demo_revision_cleanup.py (test_obsolete_revisions_of_different_apps_are_retired_concurrently_in_app_order, test_rollout_race_in_any_app_refuses_the_cleanup_before_every_mutation).

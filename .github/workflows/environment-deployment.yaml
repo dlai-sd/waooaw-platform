@@ -1865,7 +1865,7 @@ jobs:
               --format text > wc124-db-provisioner-evidence.log 2>&1 || true
           }
           started=$(date +%s)
-          for poll in $(seq 1 180); do
+          for poll in $(seq 1 600); do
             status=$(az containerapp job execution show \
               --name "$job_name" \
               --resource-group "$RESOURCE_GROUP" \
@@ -1895,13 +1895,13 @@ jobs:
                 exit 1
                 ;;
             esac
-            if [ "$poll" = 180 ]; then
+            if [ "$poll" = 600 ]; then
               capture_database_provisioner_evidence
               cat wc124-db-provisioner-evidence.log >&2
               echo "WC-124 database provisioner timed out with status: $status" >&2
               exit 1
             fi
-            sleep 10
+            sleep 3
           done
           sed -n -E 's/^[^ ]+ stdout F ?//p' wc124-db-provisioner-evidence.log \
             > wc124-db-provisioner-result.json
@@ -2123,7 +2123,7 @@ jobs:
               --format text > wc124-db-handoff-evidence.log 2>&1 || true
           }
           started=$(date +%s)
-          for poll in $(seq 1 180); do
+          for poll in $(seq 1 600); do
             status=$(az containerapp job execution show \
               --name "$job_name" \
               --resource-group "$RESOURCE_GROUP" \
@@ -2154,13 +2154,13 @@ jobs:
                 exit 1
                 ;;
             esac
-            if [ "$poll" = 180 ]; then
+            if [ "$poll" = 600 ]; then
               capture_database_handoff_evidence
               cat wc124-db-handoff-evidence.log >&2
               echo "WC-124 database handoff timed out with status: $status" >&2
               exit 1
             fi
-            sleep 10
+            sleep 3
           done
 
       - name: Verify interrupted WC-124 handoff before revocation
@@ -2849,7 +2849,7 @@ jobs:
             --scope migration \
             --resume-stopped \
             --timeout-seconds 600 \
-            --interval-seconds 15 \
+            --interval-seconds 3 \
             --output wc124-migration-readiness.json
 
       - name: Preflight PgBouncer from private ACA environment
@@ -2891,7 +2891,7 @@ jobs:
               --tail 100 \
               --format text > wc124-pgbouncer-preflight.log 2>&1 || true
           }
-          for attempt in $(seq 1 60); do
+          for attempt in $(seq 1 200); do
             status=$(az containerapp job execution show \
               --name "$job_name" \
               --resource-group "$RESOURCE_GROUP" \
@@ -2919,13 +2919,13 @@ jobs:
                 exit 1
                 ;;
             esac
-            if [ "$attempt" = 60 ]; then
+            if [ "$attempt" = 200 ]; then
               capture_pgbouncer_preflight_evidence
               cat wc124-pgbouncer-preflight.log >&2
               echo "PgBouncer private ACA preflight timed out with status: $status" >&2
               exit 1
             fi
-            sleep 10
+            sleep 3
           done
 
       - name: Reclaim PostgreSQL connection budget before vendor migrations
@@ -3195,7 +3195,7 @@ jobs:
               --tail 300 \
               --format text > wc124-billing-migration.log 2>&1 || true
           }
-          for attempt in $(seq 1 120); do
+          for attempt in $(seq 1 400); do
             status=$(az containerapp job execution show \
               --resource-group "$RESOURCE_GROUP" \
               --name "$job_name" \
@@ -3224,13 +3224,13 @@ jobs:
                 exit 1
                 ;;
             esac
-            if [ "$attempt" = 120 ]; then
+            if [ "$attempt" = 400 ]; then
               capture_billing_evidence
               cat wc124-billing-migration.log >&2
               echo "Billing migration timed out with status: $status" >&2
               exit 1
             fi
-            sleep 10
+            sleep 3
           done
 
       # The OIDC client assertion expires 5 minutes after login; refresh before
@@ -3297,7 +3297,7 @@ jobs:
                 cat wc124-temporal-sampler.log >&2
               }
           }
-          for attempt in $(seq 1 60); do
+          for attempt in $(seq 1 200); do
             status=$(az containerapp job execution show \
               --name "$job_name" \
               --resource-group "$RESOURCE_GROUP" \
@@ -3323,12 +3323,12 @@ jobs:
                 exit 1
                 ;;
             esac
-            test "$attempt" != 60 || {
+            test "$attempt" != 200 || {
               capture_temporal_startup_evidence
               echo "Temporal startup qualification timed out with status: $status" >&2
               exit 1
             }
-            sleep 10
+            sleep 3
           done
           sed -n -E 's/^[^ ]+ stdout F ?//p' wc124-temporal-startup.log \
             | grep -F '"schema":"waooaw.wc124-temporal-startup/v1"' \
@@ -3573,7 +3573,7 @@ jobs:
             --scope dependencies \
             --resume-stopped \
             --timeout-seconds 600 \
-            --interval-seconds 15 \
+            --interval-seconds 3 \
             --output wc124-dependency-readiness.json
 
       # The realm import overwrites Keycloak's database, but a replica that was already running keeps
@@ -3702,7 +3702,7 @@ jobs:
             --environment "$TARGET_ENVIRONMENT" \
             --resume-stopped \
             --timeout-seconds 600 \
-            --interval-seconds 15 \
+            --interval-seconds 3 \
             --output wc124-activation-readiness.json
 
       - name: Retire obsolete Demo revisions after healthy activation

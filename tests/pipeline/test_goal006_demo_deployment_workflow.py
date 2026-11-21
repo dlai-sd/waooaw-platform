@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -915,6 +916,18 @@ def test_job_polling_rejects_empty_and_unknown_statuses() -> None:
     assert WORKFLOW.count("returned unknown status: ${status:-<empty>}") == 10
 
 
+def test_job_polls_use_short_sleeps_with_at_least_the_previous_budget() -> None:
+    # WC142-R002/R003: sleep 3 s per poll; attempts x 3 s never falls below the former attempts x 10 s.
+    for attempts, old_attempts, count in ((600, 180, 2), (200, 60, 2), (400, 120, 1)):
+        assert attempts * 3 >= old_attempts * 10
+        assert len(re.findall(rf"for (?:poll|attempt) in \$\(seq 1 {attempts}\)", WORKFLOW)) == count
+    for old in ("seq 1 180)", "seq 1 60)", "seq 1 120)", "seq 1 360)", "seq 1 240)"):
+        for line in WORKFLOW.splitlines():
+            assert not (("for poll in" in line or "for attempt in" in line) and old in line and "sleep" in line)
+    assert WORKFLOW.count("--interval-seconds 3 \\") == 3
+    assert "--interval-seconds 15" not in WORKFLOW
+
+
 def test_provisioner_replacement_waits_for_confirmed_deletion() -> None:
     create_step = WORKFLOW.split("      - name: Create WC-124 database provisioner", 1)[1].split(
         "      - name: Run WC-124 database provisioner", 1
@@ -993,9 +1006,9 @@ def test_wc124_database_jobs_emit_unambiguous_poll_progress() -> None:
         "      - name: Verify interrupted WC-124 handoff before revocation", 1
     )[0]
 
-    assert "for poll in $(seq 1 180)" in provisioner
+    assert "for poll in $(seq 1 600)" in provisioner
     assert "[wc124-db-provisioner] poll=%s elapsed=%ss status=%s time=%s" in provisioner
-    assert "for poll in $(seq 1 180)" in handoff
+    assert "for poll in $(seq 1 600)" in handoff
     assert "[wc124-db-handoff] poll=%s elapsed=%ss status=%s time=%s" in handoff
     assert "attempt=%s" not in provisioner
     assert "attempt=%s" not in handoff

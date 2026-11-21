@@ -4,6 +4,7 @@ import os
 import re
 import subprocess
 import textwrap
+import time
 from pathlib import Path
 
 import pytest
@@ -196,3 +197,50 @@ def test_controller_cannot_start_temporal_before_pool_admission():
     assert controller.index('test "$(cat /tmp/pool-admission)" = ready') < controller.index(
         "/etc/temporal/entrypoint.sh autosetup"
     )
+
+
+@pytest.mark.parametrize(
+    "stub,script_status,expected_marker,maximum_seconds",
+    [
+        ("exec sleep 30", 0, "WC142_TEMPORAL_SHUTDOWN graceful", 3),
+        ('trap "" TERM; while :; do sleep 0.2; done', 0, "WC142_TEMPORAL_SHUTDOWN forced after 2 seconds", 8),
+        ('trap "" TERM; while :; do sleep 0.2; done', 7, "WC142_TEMPORAL_SHUTDOWN forced after 2 seconds", 8),
+        ("exec sleep 30", 7, "WC142_TEMPORAL_SHUTDOWN graceful", 3),
+    ],
+)
+def test_exit_trap_bounds_temporal_shutdown_keeps_status_and_prints_the_log(
+    tmp_path, stub, script_status, expected_marker, maximum_seconds
+):
+    """Run 44916211268: Temporal ignored SIGTERM and an unbounded wait lost the log and the replica."""
+    controller = script("temporal-startup-qualification")
+    cleanup = controller.split("temporal_stop_grace=15", 1)[1].split("trap cleanup EXIT", 1)[0]
+    commands = tmp_path / "bin"
+    commands.mkdir()
+    (commands / "nc").write_text("#!/bin/sh\ncat >/dev/null\n")
+    (commands / "nc").chmod(0o755)
+    log = tmp_path / "temporal.log"
+    log.write_text("".join(f"temporal-line-{number}\n" for number in range(1, 301)))
+    harness = (
+        "set -euo pipefail\n"
+        f"log='{log}'\nsamples='{tmp_path}'\nreceiver_pid=\nreadiness_pid=\n"
+        f"temporal_stop_grace=2{cleanup}"
+        "trap cleanup EXIT\n"
+        f"bash -c '{stub}' &\n"
+        "temporal_pid=$!\n"
+        "sleep 0.5\n"
+        f"exit {script_status}\n"
+    )
+    started = time.monotonic()
+    result = subprocess.run(
+        ["bash", "-c", harness],
+        env={**os.environ, "PATH": f"{commands}:{os.environ['PATH']}"},
+        text=True,
+        capture_output=True,
+        timeout=20,
+    )
+    elapsed = time.monotonic() - started
+    assert result.returncode == script_status, result.stderr
+    assert expected_marker in result.stdout
+    assert elapsed < maximum_seconds
+    assert "temporal-line-300" in result.stdout
+    assert "temporal-line-150" not in result.stdout

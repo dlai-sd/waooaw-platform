@@ -71,11 +71,16 @@ def reconcile(
     plans = parallel_map(lambda app: plan_app(resource_group, app, run_az), apps)
     retired = []
     if apply:
-        for plan in plans:
+        # Validate every app that will change before the first mutation, so a rollout race refuses the whole cleanup.
+        targets = [plan for plan in plans if plan["obsolete"]]
+        rechecked = parallel_map(lambda plan: plan_app(resource_group, plan["app"], run_az), targets)
+        for plan, current in zip(targets, rechecked, strict=True):
+            if current["latest"] != plan["latest"] or not set(plan["obsolete"]).issubset(current["obsolete"]):
+                raise ValueError(f"{plan['app']}: rollout changed during cleanup; retry after it settles")
+
+        def retire(plan: dict[str, Any]) -> list[dict[str, str]]:
+            done = []
             for revision in plan["obsolete"]:
-                current = plan_app(resource_group, plan["app"], run_az)
-                if current["latest"] != plan["latest"] or revision not in current["obsolete"]:
-                    raise ValueError(f"{plan['app']}: rollout changed during cleanup; retry after it settles")
                 args = ["--resource-group", resource_group, "--name", plan["app"], "--revision", revision]
                 run_az(["containerapp", "revision", "deactivate", *args])
                 deadline = clock() + timeout_seconds
@@ -85,8 +90,12 @@ def reconcile(
                         break
                     if clock() >= deadline:
                         raise RuntimeError(f"{revision}: deactivation did not reach zero replicas")
-                    sleep(5)
-                retired.append({"app": plan["app"], "revision": revision})
+                    sleep(2)
+                done.append({"app": plan["app"], "revision": revision})
+            return done
+
+        # Apps are independent; the revisions of one app stay serial.
+        retired = [item for items in parallel_map(retire, plans) for item in items]
         final = parallel_map(lambda app: plan_app(resource_group, app, run_az), apps)
         if any(plan["obsolete"] for plan in final):
             raise ValueError("Obsolete active revisions remain after cleanup")

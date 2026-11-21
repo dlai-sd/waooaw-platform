@@ -3,6 +3,7 @@
 import copy
 import os
 import subprocess
+import threading
 from pathlib import Path
 
 import pytest
@@ -78,6 +79,64 @@ def test_selected_app_cleanup_does_not_inspect_or_mutate_other_demo_apps():
     result = reconcile("waooaw-demo-rg", apply=True, selected_apps=[APP], run_az=run)
     assert result["status"] == "passed"
     assert azure.mutations == [f"{APP}--old"]
+
+
+class Fleet:
+    """Several apps, each with one obsolete and one latest revision."""
+
+    def __init__(self, apps, barrier=None):
+        self.apps = {app: {"latest": f"{app}--new", "active": {f"{app}--new", f"{app}--old"}} for app in apps}
+        self.barrier = barrier
+        self.mutations = []
+        self.race = None
+
+    def __call__(self, args):
+        if args[:2] == ["containerapp", "list"]:
+            return list(self.apps)
+        app = args[args.index("--name") + 1]
+        state = self.apps[app]
+        if args[:2] == ["containerapp", "show"]:
+            latest = f"{app}--other" if self.race == app and state.get("seen") else state["latest"]
+            state["active"].add(latest)
+            state["seen"] = True
+            return {
+                "properties": {
+                    "latestRevisionName": latest,
+                    "latestReadyRevisionName": latest,
+                    "configuration": {"ingress": {"traffic": [{"latestRevision": True, "weight": 100}]}},
+                }
+            }
+        if args[:3] == ["containerapp", "revision", "list"]:
+            return [
+                {"name": name, "properties": {"active": True, "healthState": "Healthy", "replicas": 1}}
+                for name in sorted(state["active"])
+            ]
+        name = args[args.index("--revision") + 1]
+        if args[:3] == ["containerapp", "revision", "deactivate"]:
+            if self.barrier is not None:
+                self.barrier.wait(timeout=5)  # only passes when every app is retired concurrently
+            self.mutations.append(name)
+            state["active"].discard(name)
+            return None
+        return {"properties": {"active": name in state["active"], "replicas": int(name in state["active"])}}
+
+
+def test_obsolete_revisions_of_different_apps_are_retired_concurrently_in_app_order():
+    apps = ["ca-demo-billing-engine", "ca-demo-dma", "ca-demo-web"]
+    fleet = Fleet(apps, barrier=threading.Barrier(len(apps)))
+    result = reconcile("waooaw-demo-rg", apply=True, run_az=fleet, sleep=lambda _: None)
+    assert result["status"] == "passed"
+    assert [item["app"] for item in result["retired"]] == apps
+    assert sorted(fleet.mutations) == [f"{app}--old" for app in apps]
+
+
+def test_rollout_race_in_any_app_refuses_the_cleanup_before_every_mutation():
+    apps = ["ca-demo-billing-engine", "ca-demo-dma", "ca-demo-web"]
+    fleet = Fleet(apps)
+    fleet.race = "ca-demo-web"
+    with pytest.raises(ValueError, match="ca-demo-web: rollout changed"):
+        reconcile("waooaw-demo-rg", apply=True, run_az=fleet, sleep=lambda _: None)
+    assert fleet.mutations == []
 
 
 @pytest.mark.parametrize("selection", [[], [APP, APP], ["ca-uat-web"], ["ca-demo-unknown"]])
