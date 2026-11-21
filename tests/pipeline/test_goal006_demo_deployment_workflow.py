@@ -1027,6 +1027,111 @@ def test_terminal_cleanup_forces_and_verifies_zero_database_authority() -> None:
     assert '[ "$cleanup_failed" = 0 ] && [ -n "$job_id" ]' in final
 
 
+def _terminal_step_run_script() -> str:
+    steps = yaml.safe_load(WORKFLOW)["jobs"]["terraform"]["steps"]
+    step = next(step for step in steps if step.get("name") == "Ensure zero WC-124 database authority on terminal path")
+    return step["run"].replace("${{ inputs.environment }}", "demo")
+
+
+def _run_terminal_step(tmp_path: Path, status: str, bootstrap_admins: str, vault_roles: str) -> tuple[subprocess.CompletedProcess, list[str]]:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    log = tmp_path / "calls.log"
+    (bin_dir / "az").write_text(
+        "#!/usr/bin/env bash\n"
+        'echo "az $*" >> "$STUB_LOG"\n'
+        'case "$*" in\n'
+        '  "identity show"*) echo principal-id ;;\n'
+        '  "keyvault show"*) echo /vault-id ;;\n'
+        '  *microsoft-entra-admin*) echo "$STUB_BOOTSTRAP_ADMINS" ;;\n'
+        '  *"role assignment"*) echo "$STUB_VAULT_ROLES" ;;\n'
+        "esac\n",
+        encoding="utf-8",
+    )
+    (bin_dir / "terraform").write_text(
+        '#!/usr/bin/env bash\necho "terraform $*" >> "$STUB_LOG"\n[ "$1" = output ] && echo client-id\nexit 0\n', encoding="utf-8"
+    )
+    (bin_dir / "python3").write_text('#!/usr/bin/env bash\necho "python3 $*" >> "$STUB_LOG"\n', encoding="utf-8")
+    for tool in bin_dir.iterdir():
+        tool.chmod(0o755)
+    (tmp_path / "work").mkdir()
+    env = {
+        **os.environ,
+        "PATH": f"{bin_dir}:{os.environ['PATH']}",
+        "STUB_LOG": str(log),
+        "STUB_BOOTSTRAP_ADMINS": bootstrap_admins,
+        "STUB_VAULT_ROLES": vault_roles,
+        "DEPLOYMENT_JOB_STATUS": status,
+        "GITHUB_WORKSPACE": str(tmp_path),
+        "TFSTATE_RESOURCE_GROUP": "rg",
+        "TFSTATE_STORAGE_ACCOUNT": "sa",
+        "TFSTATE_CONTAINER": "c",
+    }
+    result = subprocess.run(
+        ["bash", "-c", _terminal_step_run_script()], cwd=tmp_path / "work", env=env, capture_output=True, text=True, check=False
+    )
+    calls = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+    return result, calls
+
+
+def test_terminal_cleanup_skips_foundation_apply_when_success_and_azure_reports_zero_authority(tmp_path: Path) -> None:
+    result, calls = _run_terminal_step(tmp_path, "success", "0", "0")
+
+    assert result.returncode == 0, result.stderr
+    assert not any(call.startswith("terraform") for call in calls)
+    evidence = json.loads((tmp_path / "wc124-terminal-authority-cleanup.json").read_text(encoding="utf-8"))
+    assert evidence["cleanup_mode"] == "normal-terminal"
+    assert evidence["status"] == "zero-authority-verified"
+    assert evidence["bootstrap_admin_count"] == 0
+    assert evidence["provisioner_vault_role_count"] == 0
+
+
+@pytest.mark.parametrize(("bootstrap_admins", "vault_roles"), [("1", "0"), ("0", "1")])
+def test_terminal_cleanup_forces_removal_when_success_leaves_authority_behind(
+    tmp_path: Path, bootstrap_admins: str, vault_roles: str
+) -> None:
+    result, calls = _run_terminal_step(tmp_path, "success", bootstrap_admins, vault_roles)
+
+    # The stubbed Azure keeps reporting the leftover authority after the apply, so the step must fail closed.
+    assert result.returncode != 0
+    assert any(call.startswith("terraform apply") for call in calls)
+    assert not (tmp_path / "wc124-terminal-authority-cleanup.json").exists()
+
+
+def test_terminal_cleanup_after_failure_always_runs_the_forced_removal(tmp_path: Path) -> None:
+    result, calls = _run_terminal_step(tmp_path, "failure", "0", "0")
+
+    assert result.returncode == 0, result.stderr
+    assert any(call.startswith("terraform plan") for call in calls)
+    assert any(call.startswith("terraform apply") for call in calls)
+    evidence = json.loads((tmp_path / "wc124-terminal-authority-cleanup.json").read_text(encoding="utf-8"))
+    assert evidence["cleanup_mode"] == "post-failure-safety"
+
+
+def test_foundation_authority_flips_reuse_the_refreshed_state_but_terminal_fallback_refreshes() -> None:
+    for plan in ("foundation-schema-reconciliation", "foundation-plan-b", "foundation-bootstrap-removal"):
+        command = WORKFLOW.split(f"-out={plan}.tfplan", 1)[0].rsplit("terraform plan", 1)[1]
+        assert "-refresh=false" in command, plan
+    terminal = WORKFLOW.split("-out=foundation-terminal-authority-removal.tfplan", 1)[0].rsplit("terraform plan", 1)[1]
+    assert "-refresh=false" not in terminal
+    initial = WORKFLOW.split("-out=foundation.tfplan", 1)[0].rsplit("terraform plan", 1)[1]
+    assert "-refresh=false" not in initial
+
+
+def test_hosted_jobs_restore_the_pinned_az_extensions_from_a_dockerfile_keyed_cache() -> None:
+    jobs = yaml.safe_load(WORKFLOW)["jobs"]
+    for job in ("start-broker", "cleanup-private"):
+        steps = jobs[job]["steps"]
+        names = [step.get("name") for step in steps]
+        cache = steps[names.index("Restore pinned Azure CLI extensions")]
+        assert names.index("Restore pinned Azure CLI extensions") < names.index("Install pinned Azure CLI extensions")
+        assert cache["uses"].startswith("actions/cache@") and len(cache["uses"].split("@")[1]) == 40
+        assert cache["with"]["path"] == "~/.azure/cliextensions"
+        assert "infrastructure/runner/Dockerfile" in cache["with"]["key"]
+    # The private runner has no cache service and installs from the pinned Dockerfile versions.
+    assert "Restore pinned Azure CLI extensions" not in [step.get("name") for step in jobs["terraform"]["steps"]]
+
+
 def test_cost_evidence_is_queried_once_and_reused_by_private_job() -> None:
     assert WORKFLOW.count("CostManagement/query?api-version=2023-11-01") == 1
     assert WORKFLOW.count("CostManagement/forecast?api-version=2023-11-01") == 1

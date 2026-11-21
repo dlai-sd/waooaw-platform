@@ -198,6 +198,12 @@ jobs:
             --environment '${{ inputs.environment }}' \
             --manifest infrastructure/deployment-stacks/goal006-runner/bootstrap-manifest.json
 
+      - name: Restore pinned Azure CLI extensions
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.azure/cliextensions
+          key: az-extensions-${{ runner.os }}-${{ hashFiles('infrastructure/runner/Dockerfile', 'scripts/goal006_az_extensions.sh') }}
+
       - name: Install pinned Azure CLI extensions
         run: bash scripts/goal006_az_extensions.sh
 
@@ -1501,7 +1507,9 @@ jobs:
             -backend-config="container_name=$TFSTATE_CONTAINER" \
             -backend-config="use_oidc=true" \
             -backend-config="use_azuread_auth=true"
-          terraform plan -input=false -lock-timeout=5m \
+          # The initial foundation plan of this run already refreshed state, so the authority flips
+          # plan against that state instead of re-reading every foundation resource from Azure.
+          terraform plan -input=false -lock-timeout=5m -refresh=false \
             -var="postgresql_password_auth_enabled=true" \
             -var="database_bootstrap_admin_enabled=true" \
             -var="database_provisioner_vault_access_enabled=false" \
@@ -2017,7 +2025,7 @@ jobs:
             -backend-config="container_name=$TFSTATE_CONTAINER" \
             -backend-config="use_oidc=true" \
             -backend-config="use_azuread_auth=true"
-          terraform plan -input=false -lock-timeout=5m \
+          terraform plan -input=false -lock-timeout=5m -refresh=false \
             -var="postgresql_password_auth_enabled=true" \
             -var="database_bootstrap_admin_enabled=true" \
             -var="database_provisioner_vault_access_enabled=true" \
@@ -2262,7 +2270,7 @@ jobs:
           TF_VAR_deployment_client_id: ${{ steps.foundation.outputs.deployment_client_id }}
         run: |
           set -euo pipefail
-          terraform plan -input=false -lock-timeout=5m \
+          terraform plan -input=false -lock-timeout=5m -refresh=false \
             -var="postgresql_password_auth_enabled=true" \
             -var="database_bootstrap_admin_enabled=false" \
             -var="database_provisioner_vault_access_enabled=false" \
@@ -3844,6 +3852,58 @@ jobs:
           if [ "$DEPLOYMENT_JOB_STATUS" != success ]; then
             echo "::notice title=WC-124 post-failure safety cleanup::Deployment already ${DEPLOYMENT_JOB_STATUS}; removing temporary database authority only. This does not continue the deployment."
           fi
+          resource_group="waooaw-${{ inputs.environment }}-rg"
+          server_name="psql-waooaw-${{ inputs.environment }}-state"
+          read_database_authority() {
+            provisioner_principal_id=$(az identity show \
+              --resource-group "$resource_group" \
+              --name "id-waooaw-${{ inputs.environment }}-db-provisioner" \
+              --query principalId \
+              --output tsv)
+            vault_id=$(az keyvault show \
+              --resource-group "$resource_group" \
+              --name "kv-waooaw-${{ inputs.environment }}" \
+              --query id \
+              --output tsv)
+            bootstrap_admin_count=$(az postgres flexible-server microsoft-entra-admin list \
+              --resource-group "$resource_group" \
+              --server-name "$server_name" \
+              --query "[?principalName == 'id-waooaw-${{ inputs.environment }}-db-bootstrap'] | length(@)" \
+              --output tsv)
+            provisioner_vault_role_count=$(az role assignment list \
+              --assignee-object-id "$provisioner_principal_id" \
+              --scope "$vault_id" \
+              --query "[?roleDefinitionName == 'Key Vault Secrets Officer'] | length(@)" \
+              --output tsv)
+          }
+          write_cleanup_evidence() {
+            jq -n \
+              --arg environment '${{ inputs.environment }}' \
+              --argjson bootstrap_admin_count "$bootstrap_admin_count" \
+              --argjson provisioner_vault_role_count "$provisioner_vault_role_count" \
+              --arg deployment_status "$DEPLOYMENT_JOB_STATUS" \
+              '{
+                schema: "waooaw.wc124-terminal-authority-cleanup/v1",
+                environment: $environment,
+                deployment_status: $deployment_status,
+                cleanup_mode: (if $deployment_status == "success" then "normal-terminal" else "post-failure-safety" end),
+                bootstrap_admin_count: $bootstrap_admin_count,
+                provisioner_vault_role_count: $provisioner_vault_role_count,
+                status: "zero-authority-verified"
+              }' > "$GITHUB_WORKSPACE/wc124-terminal-authority-cleanup.json"
+          }
+          # A successful deployment already removed both grants in the finalize and bootstrap-removal
+          # steps. Prove that from Azure itself (read-only) and skip the foundation plan/apply that
+          # would only repeat it; anything other than zero authority falls through to the forced removal.
+          if [ "$DEPLOYMENT_JOB_STATUS" = success ]; then
+            read_database_authority
+            if [ "$bootstrap_admin_count" = 0 ] && [ "$provisioner_vault_role_count" = 0 ]; then
+              echo "Azure already reports zero WC-124 database authority; skipping the repeated foundation apply."
+              write_cleanup_evidence
+              exit 0
+            fi
+            echo "::warning title=WC-124 terminal authority::Authority still present after a successful deployment; forcing removal."
+          fi
           terraform init -input=false \
             -backend-config="resource_group_name=$TFSTATE_RESOURCE_GROUP" \
             -backend-config="storage_account_name=$TFSTATE_STORAGE_ACCOUNT" \
@@ -3864,44 +3924,10 @@ jobs:
             --transition wc124-schema-reconciliation \
             --plan foundation-terminal-authority-removal.json
           terraform apply -input=false -auto-approve foundation-terminal-authority-removal.tfplan
-          resource_group="waooaw-${{ inputs.environment }}-rg"
-          server_name="psql-waooaw-${{ inputs.environment }}-state"
-          provisioner_principal_id=$(az identity show \
-            --resource-group "$resource_group" \
-            --name "id-waooaw-${{ inputs.environment }}-db-provisioner" \
-            --query principalId \
-            --output tsv)
-          vault_id=$(az keyvault show \
-            --resource-group "$resource_group" \
-            --name "kv-waooaw-${{ inputs.environment }}" \
-            --query id \
-            --output tsv)
-          bootstrap_admin_count=$(az postgres flexible-server microsoft-entra-admin list \
-            --resource-group "$resource_group" \
-            --server-name "$server_name" \
-            --query "[?principalName == 'id-waooaw-${{ inputs.environment }}-db-bootstrap'] | length(@)" \
-            --output tsv)
-          provisioner_vault_role_count=$(az role assignment list \
-            --assignee-object-id "$provisioner_principal_id" \
-            --scope "$vault_id" \
-            --query "[?roleDefinitionName == 'Key Vault Secrets Officer'] | length(@)" \
-            --output tsv)
+          read_database_authority
           test "$bootstrap_admin_count" = 0
           test "$provisioner_vault_role_count" = 0
-          jq -n \
-            --arg environment '${{ inputs.environment }}' \
-            --argjson bootstrap_admin_count "$bootstrap_admin_count" \
-            --argjson provisioner_vault_role_count "$provisioner_vault_role_count" \
-            --arg deployment_status "$DEPLOYMENT_JOB_STATUS" \
-            '{
-              schema: "waooaw.wc124-terminal-authority-cleanup/v1",
-              environment: $environment,
-              deployment_status: $deployment_status,
-              cleanup_mode: (if $deployment_status == "success" then "normal-terminal" else "post-failure-safety" end),
-              bootstrap_admin_count: $bootstrap_admin_count,
-              provisioner_vault_role_count: $provisioner_vault_role_count,
-              status: "zero-authority-verified"
-            }' > "$GITHUB_WORKSPACE/wc124-terminal-authority-cleanup.json"
+          write_cleanup_evidence
 
       - name: Delete private credential seeder
         if: always() && steps.credential-inventory.outputs.seeding_required == 'true'
@@ -4304,6 +4330,12 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5 (Node 24)
         with:
           ref: ${{ inputs.control_sha }}
+
+      - name: Restore pinned Azure CLI extensions
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.azure/cliextensions
+          key: az-extensions-${{ runner.os }}-${{ hashFiles('infrastructure/runner/Dockerfile', 'scripts/goal006_az_extensions.sh') }}
 
       - name: Install pinned Azure CLI extensions
         run: bash scripts/goal006_az_extensions.sh
