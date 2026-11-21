@@ -41,6 +41,8 @@ module "workload" {
   verification_principal_id                = data.terraform_remote_state.foundation.outputs.verification_principal_id
   dma_admission_content_digest             = var.dma_admission_content_digest
   image_digests                            = var.image_digests
+  feature_settings                         = var.feature_settings
+  platform_access                          = var.platform_access
   key_vault_secret_uris                    = var.key_vault_secret_uris
   key_vault_secret_resource_ids            = var.key_vault_secret_resource_ids
   ghcr_packages_public                     = var.ghcr_packages_public

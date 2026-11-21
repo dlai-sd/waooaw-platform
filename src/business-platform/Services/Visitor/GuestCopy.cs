@@ -51,8 +51,8 @@ public sealed record GuestCopy(
                 content.Consent.Notice,
                 ("retentionDays", retentionDays.ToString())
             ),
-            content.Consent.Accepted,
-            content.Consent.RegisteredNumberAccepted,
+            content.Professionals.Welcome(),
+            content.Consent.RegisteredNumberAccepted + "\n\n" + content.Professionals.Menu(),
             content.Consent.RenewalUnavailable,
             content.Fixed.ClosedNotice,
             content.Fixed.UnsupportedContent,

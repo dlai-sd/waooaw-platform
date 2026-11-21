@@ -1,17 +1,13 @@
 // Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C5-05
 // Constitutional basis: C-023, C-059, C-063, C-088
 
-import { pricingAccess, pricingRouteFor, pricingRouteWrites, pricingRoutes } from './pricing-admin';
+import { pricingRouteFor, pricingRouteWrites, pricingRoutes } from './pricing-admin';
 
 const id = '7d5e5d5e-6a16-4d35-9b44-7f3a1f0d1a11';
 
 function route<T>(value: T | undefined): T {
   if (value === undefined) throw new Error('Expected a published pricing route.');
   return value;
-}
-
-function token(claims: Record<string, unknown>): string {
-  return `e30.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.sig`;
 }
 
 test('exactly the eighteen published operations are routable', () => {
@@ -53,22 +49,4 @@ test.each([
 test('only reads are free of the idempotency requirement', () => {
   expect(pricingRouteWrites(route(pricingRouteFor('GET', ['drafts'])))).toBe(false);
   expect(pricingRouteWrites(route(pricingRouteFor('PUT', ['drafts', id])))).toBe(true);
-});
-
-test('access is read from the signed-in token claims', () => {
-  expect(pricingAccess(token({ realm_access: { roles: ['pricing_admin'] } }))).toEqual({
-    administrator: true,
-    founder: false,
-  });
-  expect(pricingAccess(token({ realm_access: { roles: ['founder'] } }))).toEqual({
-    administrator: true,
-    founder: true,
-  });
-  expect(pricingAccess(token({ realm_access: { roles: ['employer'] } }))).toEqual({
-    administrator: false,
-    founder: false,
-  });
-  expect(pricingAccess(undefined).administrator).toBe(false);
-  expect(pricingAccess('not-a-token').administrator).toBe(false);
-  expect(pricingAccess('a.%%%.c').administrator).toBe(false);
 });

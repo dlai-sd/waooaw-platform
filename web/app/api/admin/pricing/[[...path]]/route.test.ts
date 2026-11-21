@@ -8,6 +8,19 @@ import { resetPricingWriteLimit } from '@/lib/pricing-admin-server';
 import { accessTokenFromRequest } from '@/lib/server-auth';
 
 jest.mock('@/lib/server-auth', () => ({ accessTokenFromRequest: jest.fn() }));
+jest.mock('@/lib/platform-access-server', () => ({
+  // Stands in for the Business Platform: it reports whatever role the test token carries.
+  resolvePlatformAccess: jest.fn(async (accessToken?: string) => {
+    const roles: string[] = accessToken
+      ? (JSON.parse(Buffer.from(accessToken.split('.')[1] ?? '', 'base64url').toString() || '{}').realm_access?.roles ??
+        [])
+      : [];
+    return {
+      founder: roles.includes('founder'),
+      administrator: roles.includes('founder') || roles.includes('pricing_admin'),
+    };
+  }),
+}));
 
 const id = '7d5e5d5e-6a16-4d35-9b44-7f3a1f0d1a11';
 const key = '11111111-1111-4111-8111-111111111111';

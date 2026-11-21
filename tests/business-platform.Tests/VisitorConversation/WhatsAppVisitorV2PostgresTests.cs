@@ -187,21 +187,23 @@ public sealed class WhatsAppVisitorV2PostgresTests
             var welcome = await Say("Hi");
             Assert.Equal("CONSENT_REQUIRED", welcome.Status);
             Assert.Equal(copy.Notice, welcome.Reply);
-            Assert.StartsWith("Hi, welcome to WAOOAW", welcome.Reply);
+            Assert.StartsWith("*Welcome to WAOOAW!*", welcome.Reply);
+            Assert.Contains("https://cp.demo.waooaw.com/privacy", welcome.Reply);
 
-            var consent = await Say("YES", VisitorChoiceIds.ConsentYes);
+            var consent = await Say("Yes", VisitorChoiceIds.ConsentYes);
             Assert.Equal("CONSENT_RECORDED", consent.Status);
             Assert.Equal(copy.Accepted, consent.Reply);
+            Assert.Contains("Which professional would you like to explore?", consent.Reply);
 
-            var qualify = await Say("I run a dental clinic in Pune");
-            Assert.Equal("GUEST_DISCOVERY", qualify.JourneyStage);
-            Assert.DoesNotContain("STOP", qualify.Reply);
+            var card = await Say("1");
+            Assert.Contains("Digital Marketing Professional", card.Reply);
+            Assert.DoesNotContain("STOP", card.Reply);
 
             var stopped = await Say("stop");
             Assert.Equal("STOPPED", stopped.Status);
             Assert.Equal("STOPPED", (await Say("hello?")).Status);
 
-            var resumed = await Say("START");
+            var resumed = await Say("Hi");
             Assert.Equal("CONSENT_REQUIRED", resumed.Status);
             Assert.Equal(copy.ResumeNotice, resumed.Reply);
 
@@ -215,9 +217,9 @@ public sealed class WhatsAppVisitorV2PostgresTests
             Assert.Equal(digest, session.SubjectHash);
             Assert.Equal(VisitorOutcomes.OptOut, session.Outcome);
 
-            // Both consent notices were stored with their YES/STOP buttons; the goal question carries its choices.
+            // Both consent notices were stored with their Yes/STOP buttons.
             var hints = await verify.VisitorRenderHints.ToListAsync();
-            Assert.True(hints.Count >= 3);
+            Assert.True(hints.Count >= 2);
             Assert.All(
                 hints,
                 hint =>

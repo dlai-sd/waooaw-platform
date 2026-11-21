@@ -9,7 +9,7 @@ import type { WorkspaceLayoutPreferencesV1 } from '@/lib/api/generated/models/Wo
 import { getIdentitySession, getWorkspaceLayoutPreferences } from '@/lib/api/identity';
 import { getRequestI18n } from '@/lib/i18n-server';
 import { isKeyVaultPortalAdministrator, keyVaultTarget } from '@/lib/key-vault-admin';
-import { pricingAccess } from '@/lib/pricing-admin';
+import { resolvePlatformAccess } from '@/lib/platform-access-server';
 import { getServerAccessToken } from '@/lib/server-auth';
 import { logServerFailure } from '@/lib/server-failure';
 import { redirect } from 'next/navigation';
@@ -73,7 +73,7 @@ export default async function ApplicationLayout({ children }: { children: ReactN
       messages={messages}
       workspaceLayout={workspaceLayout}
       showKeyVaultAdmin={isKeyVaultPortalAdministrator(accessToken) && keyVaultTarget() !== undefined}
-      showPricingAdmin={pricingAccess(accessToken).administrator}
+      showPricingAdmin={(await resolvePlatformAccess(accessToken)).administrator}
       variant="customer"
     >
       {children}

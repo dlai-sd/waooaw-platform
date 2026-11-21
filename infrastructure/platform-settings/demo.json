@@ -1,0 +1,15 @@
+{
+  "feature_settings": {
+    "workbench_enabled": true,
+    "wallet_authority": "WALLET",
+    "trial_identity_binding_mode": "RECORD",
+    "whatsapp_stop_acknowledgement_enabled": true
+  },
+  "platform_access": {
+    "founders": [
+      {
+        "email": "yogesh.khandge@dlaisd.com"
+      }
+    ]
+  }
+}

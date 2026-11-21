@@ -238,6 +238,11 @@ a Production plan/apply, change DNS, or accept customer traffic without separate
 
 ## History And Evidence
 
+- WC-137 / IB-138 (platform access, per-environment feature settings, WhatsApp consent-first flow):
+  `work-contracts/WC-137-platform-access-and-environment-feature-settings.md`; standing rules in
+  `standards/PLATFORM-SETTINGS-AND-ACCESS-POLICY.md`. Unmerged PR for Founder review; UAT and
+  Production values untouched.
+
 - History through 2026-07-22: `constitution/PROJECT_STATE_ARCHIVE.md`.
 - History from 2026-07-23 through WC-059 closure: git object
   `b0dbe9c^2:constitution/PROJECT_STATE.md` (the merged PR #265 head snapshot).

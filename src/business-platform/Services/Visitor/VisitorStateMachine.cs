@@ -202,6 +202,8 @@ public static partial class VisitorStateMachine
         return current.State switch
         {
             VisitorStates.Discover => Discover(content, current, text),
+            VisitorStates.ChooseProfessional => ChooseProfessional(content, current, text),
+            VisitorStates.ProfessionalCard => ProfessionalCard(content, options, current, text),
             VisitorStates.Qualify => Qualify(content, current, input, text),
             VisitorStates.ShowValue or VisitorStates.OtherProfessionals => Menu(
                 content,
@@ -443,6 +445,157 @@ public static partial class VisitorStateMachine
         );
     }
 
+    // ── Choose a professional, then act on its card (WhatsApp numbered journey) ─────────────────
+
+    private static VisitorTransition ChooseProfessional(
+        VisitorContentSet content,
+        VisitorSnapshot current,
+        string text
+    )
+    {
+        var professionals = content.Professionals;
+        if (HelpPattern().IsMatch(text))
+            return Stay(
+                content,
+                current,
+                [VisitorReplyBlock.TextBlock(content.Misc.About + "\n\n" + professionals.Menu())],
+                "HELP"
+            );
+        var number =
+            PickNumber(text, professionals.Items.Count) ?? PickByLabel(professionals, text);
+        if (number is null)
+            return Stay(
+                content,
+                current,
+                [VisitorReplyBlock.TextBlock(professionals.Retry + "\n\n" + professionals.Menu())],
+                "PROFESSIONAL_RETRY"
+            );
+        var item = professionals.Items[number.Value - 1];
+        if (!item.Available)
+            return Stay(
+                content,
+                current,
+                [
+                    VisitorReplyBlock.TextBlock(
+                        Fill(professionals.ComingSoon, ("label", item.Label))
+                            + "\n\n"
+                            + professionals.Menu()
+                    ),
+                ],
+                "PROFESSIONAL_COMING_SOON"
+            );
+        return new(
+            current with
+            {
+                State = VisitorStates.ProfessionalCard,
+                Nudges = 0,
+            },
+            Reply(content, VisitorStates.ProfessionalCard, VisitorReplyBlock.TextBlock(item.Card!)),
+            new VisitorLeadUpdate(),
+            false,
+            "PROFESSIONAL_SELECTED"
+        );
+    }
+
+    private static VisitorTransition ProfessionalCard(
+        VisitorContentSet content,
+        VisitorConversationOptions options,
+        VisitorSnapshot current,
+        string text
+    )
+    {
+        var professionals = content.Professionals;
+        var url = options.HandoffBaseUrl;
+        var label = professionals.Items.First(item => item.Available).Label;
+        if (BackPattern().IsMatch(text))
+            return new(
+                current with
+                {
+                    State = VisitorStates.ChooseProfessional,
+                },
+                Reply(
+                    content,
+                    VisitorStates.ChooseProfessional,
+                    VisitorReplyBlock.TextBlock(professionals.Menu())
+                ),
+                new VisitorLeadUpdate(),
+                false,
+                "PROFESSIONAL_MENU"
+            );
+        switch (PickNumber(text, 4))
+        {
+            case 1:
+                return Stay(
+                    content,
+                    current,
+                    [
+                        VisitorReplyBlock.TextBlock(
+                            Fill(professionals.Interview, ("url", url), ("label", label))
+                        ),
+                    ],
+                    "CARD_INTERVIEW"
+                );
+            case 2:
+                return ToHandoff(content, current);
+            case 3:
+                return Stay(
+                    content,
+                    current,
+                    [
+                        VisitorReplyBlock.TextBlock(
+                            Fill(professionals.Hire, ("url", url), ("label", label))
+                        ),
+                    ],
+                    "CARD_HIRE"
+                );
+            case 4:
+                return Stay(
+                    content,
+                    current,
+                    [
+                        VisitorReplyBlock.TextBlock(
+                            Fill(professionals.Callback, ("url", url), ("label", label))
+                        ),
+                    ],
+                    "CARD_CALLBACK"
+                );
+            default:
+                var card = professionals.Items.First(item => item.Available).Card!;
+                return Stay(
+                    content,
+                    current,
+                    [VisitorReplyBlock.TextBlock(professionals.CardRetry + "\n\n" + card)],
+                    "CARD_RETRY"
+                );
+        }
+    }
+
+    /// <summary>Reads a menu number, tolerating the keycap emoji form (1️⃣) and trailing punctuation.</summary>
+    private static int? PickNumber(string text, int maximum)
+    {
+        var match = NumberPattern().Match(text);
+        return
+            match.Success
+            && int.TryParse(match.Groups[1].Value, out var number)
+            && number >= 1
+            && number <= maximum
+            ? number
+            : null;
+    }
+
+    private static int? PickByLabel(VisitorProfessionalsContent professionals, string text)
+    {
+        var lower = text.Trim().ToLowerInvariant();
+        if (lower.Length < 4)
+            return null;
+        for (var index = 0; index < professionals.Items.Count; index++)
+            if (
+                professionals.Items[index].Label.Contains(lower, StringComparison.OrdinalIgnoreCase)
+            )
+                return index + 1;
+        return null;
+    }
+
     // ── Show value and other professionals ──────────────────────────────────────────────────────
 
     private static VisitorTransition Menu(
@@ -643,6 +796,10 @@ public static partial class VisitorStateMachine
             {
                 VisitorStates.Discover => content.Consent.Accepted,
                 VisitorStates.Qualify => null,
+                VisitorStates.ChooseProfessional => content.Professionals.Menu(),
+                VisitorStates.ProfessionalCard => content
+                    .Professionals.Items.First(item => item.Available)
+                    .Card,
                 _ => content.ShowValue.MenuPrompt,
             };
             var blocks = new List<VisitorReplyBlock>
@@ -838,8 +995,26 @@ public static partial class VisitorStateMachine
     [GeneratedRegex(@"^\s*stop[\s.!]*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex StopPattern();
 
-    [GeneratedRegex(@"^\s*start[\s.!]*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(
+        @"^\s*(start|hi+|hello|hey)[\s.!]*$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant
+    )]
     private static partial Regex StartPattern();
+
+    [GeneratedRegex(@"^\s*([1-9])[\uFE0F\u20E3\s.!)]*$", RegexOptions.CultureInvariant)]
+    private static partial Regex NumberPattern();
+
+    [GeneratedRegex(
+        @"^\s*(help|\?)[\s.!]*$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant
+    )]
+    private static partial Regex HelpPattern();
+
+    [GeneratedRegex(
+        @"^\s*(0|menu|back|home)[\s.!]*$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant
+    )]
+    private static partial Regex BackPattern();
 
     [GeneratedRegex(
         @"^\s*(yes|y|yeah|yep|ok|okay|sure|i agree|i consent)[\s.!]*$",

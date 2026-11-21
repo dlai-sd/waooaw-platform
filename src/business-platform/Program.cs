@@ -5,6 +5,7 @@
 // constitutional_basis: C-005, C-023, C-026, C-059
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -20,6 +21,7 @@ using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Middleware;
 using Waooaw.BusinessPlatform.Services;
+using Waooaw.BusinessPlatform.Services.PlatformAccess;
 using Waooaw.BusinessPlatform.Services.Spend;
 using Waooaw.BusinessPlatform.Services.Workbench;
 using Waooaw.BusinessPlatform.Workflows;
@@ -636,6 +638,20 @@ builder
     .Services.AddOptions<ConversationCursorOptions>()
     .Bind(builder.Configuration.GetSection("Conversation"))
     .ValidateOnStart();
+
+// ── Platform access — WC-137: staff roles from stored grants, Founder from configuration ──────────
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<
+    IValidateOptions<PlatformAccessOptions>,
+    PlatformAccessOptionsValidator
+>();
+builder
+    .Services.AddOptions<PlatformAccessOptions>()
+    .Bind(builder.Configuration.GetSection(PlatformAccessOptions.SectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton<IPlatformAccessStore, PostgresPlatformAccessStore>();
+builder.Services.AddSingleton<IClaimsTransformation, PlatformRoleClaimsTransformation>();
+builder.Services.AddHostedService<PlatformFounderBootstrapService>();
 builder.Services.AddSingleton<
     IValidateOptions<ConversationBatchingOptions>,
     ConversationBatchingOptionsValidator
@@ -996,7 +1012,9 @@ app.UseSimulatorSpendHeader();
 // Returns 403 if tenant_id claim is absent from a successfully authenticated token.
 app.UseMiddleware<CustomerMembershipMiddleware>();
 app.UseWhen(
-    context => !context.Items.ContainsKey(CustomerMembershipMiddleware.JourneyItem),
+    context =>
+        !context.Items.ContainsKey(CustomerMembershipMiddleware.JourneyItem)
+        && !context.Items.ContainsKey(CustomerMembershipMiddleware.StaffItem),
     branch => branch.UseTenantIsolation()
 );
 

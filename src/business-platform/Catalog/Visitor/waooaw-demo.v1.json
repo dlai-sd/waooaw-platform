@@ -1,6 +1,6 @@
 {
   "contentId": "waooaw-demo",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "locale": "en-IN",
   "hours": { "timeZone": "Asia/Kolkata", "opensAt": "09:00", "closesAt": "21:00" },
   "protocol": {
@@ -14,19 +14,19 @@
     "start": { "consentRequiredAgain": true, "noticeRef": "fixed.resumeNotice" }
   },
   "consent": {
-    "noticeVersion": "2",
-    "notice": "Hi, welcome to WAOOAW! 👋 We help growing businesses work with digital professionals, like a marketing specialist who studies your customers, plans your content and keeps you posted. You guide the work in about ten minutes a day.\n\nBefore we chat: I'll keep our messages for up to {retentionDays} days to run this demo (privacy notice: https://cp.demo.waooaw.com/privacy). This does not create an account, and I won't send marketing messages.\n\nTap YES to continue, or STOP at any time.",
+    "noticeVersion": "3",
+    "notice": "*Welcome to WAOOAW!*\n\nGreat to have you here. WAOOAW gives you your own digital professional — an AI employee that plans, executes, and reports back, while you guide the work in just *10 minutes a day*.\n\n*Before we begin — a quick word on trust.*\nWe'll keep our conversation for up to {retentionDays} days so your professional has context to work with. Nothing more. No account created. No marketing messages, ever.\nYour data stays yours — here's exactly how: https://cp.demo.waooaw.com/privacy\n\n*Shall we start?*\nTap *Yes* to continue — or reply *STOP* anytime to end this.",
     "accepted": "Thanks, you're all set! 🎉 Tell me about your business: what do you do, and in which city?",
-    "registeredNumberAccepted": "Thanks, you're all set! 🎉 This number already has a WAOOAW account. Sign in at https://cp.demo.waooaw.com to pick up where you left off; this chat stays separate from your account history. Meanwhile, tell me about your business: what do you do, and in which city?",
+    "registeredNumberAccepted": "Thanks, you're all set! 🎉 This number already has a WAOOAW account. Sign in at https://cp.demo.waooaw.com to pick up where you left off; this chat stays separate from your account history.",
     "renewalUnavailable": "We've updated our notice, so we need your OK again. Tap YES to continue, or STOP at any time.",
-    "yesLabel": "YES",
+    "yesLabel": "Yes",
     "stopLabel": "STOP"
   },
   "fixed": {
     "closedNotice": "Thanks for messaging WAOOAW! I'm here every day from 9 am to 9 pm IST. Please message me again then. Reply STOP to stop messages.",
     "unsupportedContent": "I can only read typed messages and taps for now. Could you type that instead? 🙂",
-    "stopAcknowledged": "You're opted out and won't get any more messages from us. Send START any time to chat again.",
-    "resumeNotice": "Welcome back! 👋 To start again I need your OK once more. Tap YES to continue, or STOP at any time."
+    "stopAcknowledged": "Understood — we've stopped. Nothing further will be sent. If you'd like to start again, just say *Hi*.",
+    "resumeNotice": "Welcome back! 👋 To start again I need your OK once more. Tap *Yes* to continue, or reply *STOP* anytime."
   },
   "discover": {
     "rephrase": "Thanks! To point you the right way, could you tell me the kind of business you run and your city? For example: \"I run a dental clinic in Pune\".",
@@ -100,6 +100,29 @@
     "whatCanItDoLabel": "What can it do?",
     "startTrialLabel": "Start a 7-day trial",
     "otherProfessionalsLabel": "Other professionals"
+  },
+  "professionals": {
+    "promise": "🕒 *10 min/day* to guide the work\n🔍 *Full visibility* — scope, limits, results\n🛑 *You stay in control* — Emergency Stop, always on",
+    "question": "*Which professional would you like to explore?*",
+    "footer": "Reply *1–4* — or type *Help*",
+    "retry": "Please reply with a number from 1 to 4, or type *Help*.",
+    "comingSoon": "*{label}* is coming soon. Please pick another professional below.",
+    "interview": "You can interview your {label} Professional on the portal before you decide anything: {url}\n\nReply *2* to try it free for 7 days, or *menu* to see the professionals again.",
+    "hire": "You can hire your {label} Professional on the portal, where you see its scope and limits before you commit: {url}\n\nReply *menu* to see the professionals again.",
+    "callback": "Call-backs aren't available on WhatsApp yet. The portal is the quickest way to reach us: {url}\n\nReply *menu* to see the professionals again.",
+    "cardRetry": "Please reply with 1, 2, 3 or 4, or type *menu* to see the professionals again.",
+    "items": [
+      {
+        "code": "digital_marketing",
+        "emoji": "📣",
+        "label": "Digital Marketing",
+        "available": true,
+        "card": "*Digital Marketing Professional* ✅\n\nPlans campaigns, runs SEO and social, manages ad spend — and reports back with evidence.\n\nWhat next?\n*1* — Interview this agent\n*2* — Try it free for 7 days\n*3* — Hire it\n*4* — Get a call back\n\nReply *1–4*"
+      },
+      { "code": "agriculture_advisory", "emoji": "🌾", "label": "Agriculture Advisory", "available": false },
+      { "code": "trading_markets", "emoji": "📈", "label": "Trading & Markets", "available": false },
+      { "code": "private_tutoring", "emoji": "🎓", "label": "Private Tutoring", "available": false }
+    ]
   },
   "otherProfessionals": {
     "text": "WAOOAW is also preparing professionals for farming advice, share-market research and private tutoring. All three are coming soon"

@@ -136,3 +136,15 @@ variable "whatsapp_provider" {
   default  = null
   nullable = true
 }
+
+variable "feature_settings" {
+  description = "Per-environment non-secret feature switches from workload-configuration.json; the module validates the closed set and defaults every switch off."
+  type        = any
+  default     = {}
+}
+
+variable "platform_access" {
+  description = "Founder identities from workload-configuration.json; the Business Platform re-asserts them at every start."
+  type        = any
+  default     = {}
+}

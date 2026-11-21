@@ -9,6 +9,10 @@
   "resetPasswordAllowed": true,
   "editUsernameAllowed": false,
   "bruteForceProtected": true,
+  "browserFlow": "waooaw step-up browser",
+  "attributes": {
+    "acr.loa.map": "{\"1\":1,\"2\":2}"
+  },
 
   "accessTokenLifespan": 900,
   "ssoSessionMaxLifespan": 86400,
@@ -82,6 +86,15 @@
             "claim.name": "auth_path",
             "claim.value": "PORTAL",
             "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "amr_mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-amr-mapper",
+          "config": {
             "id.token.claim": "true",
             "access.token.claim": "true"
           }
@@ -321,6 +334,125 @@
           "userSetupAllowed": false
         }
       ]
+    },
+    {
+      "alias": "waooaw step-up browser",
+      "description": "Browser flow: password (acr 1); OTP step-up (acr 2) when acr_values=2 is requested.",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-cookie",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "identity-provider-redirector",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 25,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "flowAlias": "waooaw step-up forms",
+          "requirement": "ALTERNATIVE",
+          "priority": 30,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "waooaw step-up forms",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticatorFlow": true,
+          "flowAlias": "waooaw step-up level 1",
+          "requirement": "CONDITIONAL",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "flowAlias": "waooaw step-up level 2",
+          "requirement": "CONDITIONAL",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "waooaw step-up level 1",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-level-of-authentication",
+          "authenticatorConfig": "waooaw loa 1",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-username-password-form",
+          "authenticatorConfig": "waooaw amr pwd",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "waooaw step-up level 2",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-level-of-authentication",
+          "authenticatorConfig": "waooaw loa 2",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-otp-form",
+          "authenticatorConfig": "waooaw amr otp",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
+    }
+  ],
+
+  "authenticatorConfig": [
+    {
+      "alias": "waooaw loa 1",
+      "config": { "loa-condition-level": "1", "loa-max-age": "36000" }
+    },
+    {
+      "alias": "waooaw loa 2",
+      "config": { "loa-condition-level": "2", "loa-max-age": "0" }
+    },
+    {
+      "alias": "waooaw amr pwd",
+      "config": { "default.reference.value": "pwd", "default.reference.maxAge": "36000" }
+    },
+    {
+      "alias": "waooaw amr otp",
+      "config": { "default.reference.value": "otp", "default.reference.maxAge": "300" }
     }
   ],
 
@@ -329,6 +461,10 @@
       {
         "name": "customer",
         "description": "WAOOAW customer — can hire and govern digital professionals"
+      },
+      {
+        "name": "founder",
+        "description": "WAOOAW founder — pricing administration; step-up (OTP) required for authorizations"
       },
       {
         "name": "waooaw-operator",

@@ -128,7 +128,9 @@ locals {
     revokeRefreshToken     = true
     passwordPolicy         = "length(12) and upperCase(1) and digits(1) and specialChars(1) and notUsername"
     identityProviders      = concat(local.google_identity_providers, local.facebook_identity_providers)
-    authenticationFlows = var.google_login_enabled ? [{
+    browserFlow            = "waooaw step-up browser"
+    attributes             = { "acr.loa.map" = jsonencode({ "1" = 1, "2" = 2 }) }
+    authenticationFlows = concat(var.google_login_enabled ? [{
       alias       = "google verified email first login"
       description = "Create unique Google users or link an existing account by Google's verified email."
       providerId  = "basic-flow"
@@ -150,7 +152,56 @@ locals {
           userSetupAllowed  = false
         },
       ]
-    }] : []
+      }] : [], [
+      {
+        alias       = "waooaw step-up browser"
+        description = "Browser flow: password (acr 1); OTP step-up (acr 2) when acr_values=2 is requested."
+        providerId  = "basic-flow"
+        topLevel    = true
+        builtIn     = false
+        authenticationExecutions = [
+          { authenticator = "auth-cookie", authenticatorFlow = false, requirement = "ALTERNATIVE", priority = 10, userSetupAllowed = false },
+          { authenticator = "identity-provider-redirector", authenticatorFlow = false, requirement = "ALTERNATIVE", priority = 25, userSetupAllowed = false },
+          { flowAlias = "waooaw step-up forms", authenticatorFlow = true, requirement = "ALTERNATIVE", priority = 30, userSetupAllowed = false },
+        ]
+      },
+      {
+        alias      = "waooaw step-up forms"
+        providerId = "basic-flow"
+        topLevel   = false
+        builtIn    = false
+        authenticationExecutions = [
+          { flowAlias = "waooaw step-up level 1", authenticatorFlow = true, requirement = "CONDITIONAL", priority = 10, userSetupAllowed = false },
+          { flowAlias = "waooaw step-up level 2", authenticatorFlow = true, requirement = "CONDITIONAL", priority = 20, userSetupAllowed = false },
+        ]
+      },
+      {
+        alias      = "waooaw step-up level 1"
+        providerId = "basic-flow"
+        topLevel   = false
+        builtIn    = false
+        authenticationExecutions = [
+          { authenticator = "conditional-level-of-authentication", authenticatorConfig = "waooaw loa 1", authenticatorFlow = false, requirement = "REQUIRED", priority = 10, userSetupAllowed = false },
+          { authenticator = "auth-username-password-form", authenticatorConfig = "waooaw amr pwd", authenticatorFlow = false, requirement = "REQUIRED", priority = 20, userSetupAllowed = false },
+        ]
+      },
+      {
+        alias      = "waooaw step-up level 2"
+        providerId = "basic-flow"
+        topLevel   = false
+        builtIn    = false
+        authenticationExecutions = [
+          { authenticator = "conditional-level-of-authentication", authenticatorConfig = "waooaw loa 2", authenticatorFlow = false, requirement = "REQUIRED", priority = 10, userSetupAllowed = false },
+          { authenticator = "auth-otp-form", authenticatorConfig = "waooaw amr otp", authenticatorFlow = false, requirement = "REQUIRED", priority = 20, userSetupAllowed = false },
+        ]
+      },
+    ])
+    authenticatorConfig = [
+      { alias = "waooaw loa 1", config = { "loa-condition-level" = "1", "loa-max-age" = "36000" } },
+      { alias = "waooaw loa 2", config = { "loa-condition-level" = "2", "loa-max-age" = "0" } },
+      { alias = "waooaw amr pwd", config = { "default.reference.value" = "pwd", "default.reference.maxAge" = "36000" } },
+      { alias = "waooaw amr otp", config = { "default.reference.value" = "otp", "default.reference.maxAge" = "300" } },
+    ]
     clients = concat([
       {
         clientId                  = "waooaw-web"
@@ -222,6 +273,15 @@ locals {
               "id.token.claim"       = "true"
               "access.token.claim"   = "true"
               "userinfo.token.claim" = "false"
+            }
+          },
+          {
+            name           = "amr_mapper"
+            protocol       = "openid-connect"
+            protocolMapper = "oidc-amr-mapper"
+            config = {
+              "id.token.claim"     = "true"
+              "access.token.claim" = "true"
             }
           },
         ]
@@ -302,6 +362,15 @@ locals {
               "id.token.claim"       = "true"
               "access.token.claim"   = "true"
               "userinfo.token.claim" = "false"
+            }
+          },
+          {
+            name           = "amr_mapper"
+            protocol       = "openid-connect"
+            protocolMapper = "oidc-amr-mapper"
+            config = {
+              "id.token.claim"     = "true"
+              "access.token.claim" = "true"
             }
           },
         ]
@@ -490,7 +559,7 @@ locals {
         provider_alias     = "facebook"
         provider_namespace = "urn:waooaw:identity:${var.environment}:facebook:customer-login:v1"
       }))
-    } : {}, var.environment == "demo" ? local.demo_identity_runtime : {}, local.whatsapp_provider_runtime, local.visitor_conversation_runtime)
+    } : {}, var.environment == "demo" ? local.demo_identity_runtime : {}, local.whatsapp_provider_runtime, local.visitor_conversation_runtime, local.feature_settings_runtime["business-platform"])
     "professional-runtime" = merge({
       AIR_TRANSCRIPTION_BASE_URL    = local.service_urls.ai_runtime
       CONSTITUTIONAL_ENGINE_ADDRESS = "ca-${var.environment}-constitutional-engine:80"
@@ -537,7 +606,7 @@ locals {
       WEB_SESSION_EXPECTED_TELEMETRY_ROUTE_DIGEST = var.web_session_expected_telemetry_route_digest
       WEB_SESSION_TELEMETRY_ROUTE_DIGEST          = var.web_session_telemetry_route_digest
     })
-    "billing-engine" = {
+    "billing-engine" = merge({
       BILLING_CONTRACT_ID            = "goal006-demo"
       BILLING_DECISION_SPACE_VERSION = "1"
       CONSTITUTIONAL_ENGINE_ADDRESS  = "ca-${var.environment}-constitutional-engine:80"
@@ -546,7 +615,7 @@ locals {
       REDIS_URL                      = local.auth_redis_url
       WAOOAW_ENVIRONMENT             = var.environment
       WBE_INTERNAL_BASE_URL          = local.service_urls.billing_engine
-    }
+    }, local.feature_settings_runtime["billing-engine"])
     "agent-runtime-adapter-digital-marketing" = {
       DMA_ADMISSION_CONTENT_DIGEST = var.dma_admission_content_digest
       DMA_ARTIFACT_DIGEST          = split("@", var.image_digests["agent-runtime-adapter-digital-marketing"])[1]

@@ -59,3 +59,15 @@ variable "image_pull_identity_id" {
   description = "AcrPull user-assigned identity used with image_registry_server."
   default     = ""
 }
+
+variable "feature_settings" {
+  description = "Per-environment non-secret feature switches from workload-configuration.json; the module validates the closed set and defaults every switch off."
+  type        = any
+  default     = {}
+}
+
+variable "platform_access" {
+  description = "Founder identities from workload-configuration.json; the Business Platform re-asserts them at every start."
+  type        = any
+  default     = {}
+}

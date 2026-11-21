@@ -1,8 +1,6 @@
 // Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C5-05
 // Constitutional basis: C-023, C-059, C-063, C-088
 
-import { hasFounderClaim, hasPricingAdminClaim } from '@/lib/identity-claims';
-
 const uuid = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
 
 export type PricingMethod = 'GET' | 'POST' | 'PUT';
@@ -70,21 +68,4 @@ export function pricingRouteFor(method: string, segments: readonly string[]): Pr
 
 export function pricingRouteWrites(route: PricingRoute): boolean {
   return route.method !== 'GET';
-}
-
-function claimsFromToken(token: string): unknown {
-  try {
-    const payload = token.split('.')[1];
-    return payload ? JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-export type PricingAccess = { administrator: boolean; founder: boolean };
-
-// The page and the proxy only gate the surface; the Business Platform re-checks the role on every call.
-export function pricingAccess(accessToken: string | undefined): PricingAccess {
-  const claims = accessToken ? claimsFromToken(accessToken) : undefined;
-  return { administrator: hasPricingAdminClaim(claims), founder: hasFounderClaim(claims) };
 }
