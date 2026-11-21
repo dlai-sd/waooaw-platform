@@ -1,0 +1,34 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-139
+contract_path: work-contracts/WC-139-ci-speed-policy-enforcement.md
+contract_digest: ad759bc6ce481ba7c7177f0592671bc6d85d39eefcb8b68b546ccd186ea04a97
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Pipeline unit tests and the Business Platform policy tests run in Docker at the exact head; commands and results in the PR body
+  initial_state: new
+  dependencies: Founder authorization of this implementing session (current conversation); WC-138 merged
+  residual_risk: No deployment is part of this contract; rules V6 and V8 stay review-enforced
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC139-R001
+    source: WC-139 Canonical Requirement Index, R001
+    observable_outcome: Removing a dependency from, or adding an unmapped non-static node to, the pre-check graph fails the pipeline test.
+    test_path_or_plan: tests/pipeline/test_prepare_pr_body.py (test_every_test_precheck_waits_for_a_static_check).
+
+  - <<: *defaults
+    requirement_id: WC139-R002
+    source: WC-139 Canonical Requirement Index, R002
+    observable_outcome: A test file outside the named list that names a real Postgres container fails the Business Platform gate, and a stale list entry fails it too.
+    test_path_or_plan: tests/business-platform.Tests/PooledPostgresPolicyTests.cs; temporary violation shown to fail, then removed.
+
+  - <<: *defaults
+    requirement_id: WC139-R003
+    source: WC-139 Canonical Requirement Index, R003
+    observable_outcome: The policy is linked from the always-loaded instructions and the office card, and the policy table names the enforcing test per rule.
+    test_path_or_plan: .github/copilot-instructions.md; .github/agent-context/office-platform-it-expert.md; standards/CI-VALIDATION-SPEED-POLICY.md section 2.1.

@@ -11,6 +11,9 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from prepare_pr_body import (  # noqa: E402
+    PRECHECK_DEPENDENCIES,
+    PRECHECK_ORDER,
+    STATIC_PRECHECKS,
     add_candidate_evidence_status,
     add_runtime_evidence,
     add_prepush_qualification_authority,
@@ -484,6 +487,14 @@ def test_precheck_evidence_must_match_base_and_head() -> None:
             assert "selected base and branch HEAD" in str(error)
         else:
             raise AssertionError("stale precheck evidence was accepted")
+
+
+def test_every_test_precheck_waits_for_a_static_check() -> None:
+    # Rule V1 of standards/CI-VALIDATION-SPEED-POLICY.md: a test node never starts before its cheap check passes.
+    test_nodes = set(PRECHECK_ORDER) - STATIC_PRECHECKS
+
+    assert set(PRECHECK_DEPENDENCIES) == test_nodes
+    assert set(PRECHECK_DEPENDENCIES.values()) <= STATIC_PRECHECKS
 
 
 def test_precheck_evidence_rejects_changed_files_or_graph_version() -> None:

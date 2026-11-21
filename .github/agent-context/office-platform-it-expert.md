@@ -78,6 +78,8 @@ own PR, access or mutate a provider without exact authority, or invoke another i
    When updating an open PR, first run the same command with `--allow-unpushed-head` after the final
    local commit and update the PR body before push. Push, then rerun without the flag and update the
    body again; this prevents C-065 from evaluating stale commit-bound evidence during synchronization.
+   When adding or changing a test, gate or pre-check node, follow the
+   [CI Validation Speed Policy](../../standards/CI-VALIDATION-SPEED-POLICY.md) rules table.
 8. In Codespaces, use the preconfigured `/.codespaces/bin/gitcredential_github.sh` helper for author
    publication. Copilot SDK shells may not inherit the refreshed credential; source
    `/workspaces/.codespaces/shared/.env` in the publishing subprocess and use its `GITHUB_TOKEN`
@@ -165,6 +167,9 @@ lint, build, test, security, author-review, or Test Champion results.
    once, then follow Skill 7's exact-head `prepare_pr_body.py` pre-push/post-push sequence.
 7. Perform one final status lookup after submission; do not poll. Separate local proof, GitHub proof,
    pending checks, and untested stages, and never call a pending PR merge-ready.
+8. Speed: a repair must not add repeated work. Keep test nodes behind their cheap check, keep Postgres
+   tests on the pooled helper, and reuse evidence only by exact input digest, per the
+   [CI Validation Speed Policy](../../standards/CI-VALIDATION-SPEED-POLICY.md).
 
 Before any costly Docker qualification, run the cheap execution preflight separately: use the selected
 worktree's absolute path, confirm its exact HEAD, `bash`, Docker CLI/daemon/Compose/Buildx and `jq`, Docker socket

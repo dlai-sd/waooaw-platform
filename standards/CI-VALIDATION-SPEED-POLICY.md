@@ -25,6 +25,18 @@
 | Gate catalog, inputs, reuse flags | `validation/engineering-validation.yaml` |
 | Pooled Postgres for tests | `tests/business-platform.Tests/PooledPostgres.cs`, `PooledPostgresAliases.cs`, `PooledPostgresIsolationTests.cs` |
 
+## 2.1 What is enforced by a test
+
+| Rule | Enforced by | Effect of breaking it |
+|---|---|---|
+| V1 | `test_every_test_precheck_waits_for_a_static_check` in `tests/pipeline/test_prepare_pr_body.py` | A new non-static pre-check node without an entry in `PRECHECK_DEPENDENCIES` fails the test |
+| V2, V3 | `tests/business-platform.Tests/PooledPostgresPolicyTests.cs` (runs in the Business Platform gate) | A test file outside its `RealContainerFiles` list that names a real Postgres container fails the gate |
+| V4, V5 | `PooledPostgresIsolationTests.cs` | A reset that leaks a role, table or database fails the gate |
+| V7 | Coverage thresholds in the Business Platform gate | Coverage below 90% line or 80% branch fails the gate |
+| V6, V8 | Not enforced by a test: review against this policy | |
+
+When you add a pre-check node, add its dependency in the same change; the V1 test fails until you do.
+
 ## 3. Measured effect (IB-139)
 
 | Item | Before | After |
