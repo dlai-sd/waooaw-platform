@@ -1,6 +1,7 @@
 // Implements: architecture/reference/ux/hybrid-application-shell.md §Route and Layout Ownership
 // Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R002, WC105-R013, WC105-R017
 // Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C2-05
+// Implements: work-contracts/WC-148-founder-provider-credential-registry-screen.md WC148-R006
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import { ProtectedAppShell } from '@/components/shell/ProtectedAppShell';
@@ -66,6 +67,7 @@ export default async function ApplicationLayout({ children }: { children: ReactN
       );
     }
   }
+  const platformAccess = await resolvePlatformAccess(accessToken);
   return (
     <ProtectedAppShell
       identitySession={identity.kind === 'ready' ? identity.session : undefined}
@@ -73,7 +75,8 @@ export default async function ApplicationLayout({ children }: { children: ReactN
       messages={messages}
       workspaceLayout={workspaceLayout}
       showKeyVaultAdmin={isKeyVaultPortalAdministrator(accessToken) && keyVaultTarget() !== undefined}
-      showPricingAdmin={(await resolvePlatformAccess(accessToken)).administrator}
+      showPricingAdmin={platformAccess.administrator}
+      showProviderAdmin={platformAccess.founder}
       variant="customer"
     >
       {children}
