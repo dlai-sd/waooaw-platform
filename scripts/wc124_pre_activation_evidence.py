@@ -84,9 +84,12 @@ def validate_evidence(
     identity_execution: dict[str, Any],
     temporal: dict[str, Any] | None,
     temporal_execution: dict[str, Any] | None,
+    chain_reuse: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     identity_name = execution_name(identity_execution, "identity provisioning")
     validate_identity(identity, identity_name)
+    if chain_reuse is not None and chain_reuse.get("execution") != identity_name:
+        raise ValueError("database chain reuse record is bound to a different identity execution")
     temporal_name: str | None = None
     if environment == "demo":
         if temporal is None or temporal_execution is None:
@@ -97,6 +100,8 @@ def validate_evidence(
         "schema": "waooaw.wc124-pre-activation-evidence/v1",
         "environment": environment,
         "identity_execution": identity_name,
+        "identity_reused": chain_reuse is not None,
+        "identity_record_sha256": chain_reuse.get("record_sha256") if chain_reuse else None,
         "temporal_execution": temporal_name,
         "status": "accepted-for-activation",
     }
@@ -109,6 +114,7 @@ def main() -> int:
     parser.add_argument("--identity-execution", required=True, type=Path)
     parser.add_argument("--temporal", type=Path)
     parser.add_argument("--temporal-execution", type=Path)
+    parser.add_argument("--chain-reuse", type=Path)
     parser.add_argument("--output", required=True, type=Path)
     arguments = parser.parse_args()
     try:
@@ -118,6 +124,7 @@ def main() -> int:
             identity_execution=load_object(arguments.identity_execution),
             temporal=load_object(arguments.temporal) if arguments.temporal else None,
             temporal_execution=load_object(arguments.temporal_execution) if arguments.temporal_execution else None,
+            chain_reuse=load_object(arguments.chain_reuse) if arguments.chain_reuse else None,
         )
         arguments.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     except (OSError, json.JSONDecodeError, ValueError) as error:

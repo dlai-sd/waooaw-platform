@@ -211,7 +211,7 @@ def test_demo_quiescence_precedes_reset_and_qualification_but_resume_follows():
     assert names.index("Qualify exact Temporal startup through PgBouncer") < names.index(
         "Require runtime dependency revisions before application activation"
     )
-    assert steps[stop]["if"] == "inputs.apply && inputs.environment == 'demo'"
+    assert steps[stop]["if"] == "inputs.apply && steps.database-chain.outputs.reuse != 'true' && inputs.environment == 'demo'"
     assert "--action Stop --component database-reset" in steps[stop]["run"]
     upload = next(item for item in steps if item.get("name") == "Upload plans and evidence")
     assert upload["if"] == "always()"

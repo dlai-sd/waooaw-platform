@@ -603,6 +603,7 @@ jobs:
       CONFIG_CONTAINER: deployment-config
       CONFIG_BLOB: ${{ inputs.environment }}/workload-configuration.json
       FOUNDATION_CACHE_BLOB: ${{ inputs.environment }}/foundation-cache.json
+      DATABASE_CHAIN_RECORD_BLOB: ${{ inputs.environment }}/wc143-database-chain-record.json
       SEEDER_IMAGE: mcr.microsoft.com/azure-cli@sha256:4faeb3c955086c3842d4f8cf0ff1d900ce3a1c68c6e6c6430c5e8a3cb882c5aa
       SEEDER_JOB: goal006-${{ inputs.environment }}-secret-seeder
     steps:
@@ -963,6 +964,30 @@ jobs:
             > foundation-cache-decision.json
           echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
           echo "cache_hit=$cache_hit" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch recorded WC-143 database chain evidence
+        if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
+        run: |
+          set -euo pipefail
+          # An absent or unreadable record only means the full chain runs.
+          rm -f wc143-database-chain-record.json
+          record_exists=$(az storage blob exists \
+            --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+            --container-name "$CONFIG_CONTAINER" \
+            --name "$DATABASE_CHAIN_RECORD_BLOB" \
+            --auth-mode login \
+            --query exists -o tsv 2>/dev/null || echo false)
+          if test "$record_exists" = true; then
+            az storage blob download \
+              --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+              --container-name "$CONFIG_CONTAINER" \
+              --name "$DATABASE_CHAIN_RECORD_BLOB" \
+              --auth-mode login \
+              --file wc143-database-chain-record.json \
+              --overwrite \
+              --only-show-errors \
+              --output none || rm -f wc143-database-chain-record.json
+          fi
 
       - name: Resolve WC-124 database transition state
         if: inputs.environment == 'demo' || inputs.environment == 'uat'
@@ -1493,8 +1518,45 @@ jobs:
             sleep 10
           done
 
+      - name: Decide WC-124 database chain reuse
+        id: database-chain
+        if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
+        env:
+          FOUNDATION_FINGERPRINT: ${{ steps.foundation-cache.outputs.fingerprint }}
+          KEY_VAULT_NAME: ${{ steps.foundation.outputs.key_vault_name }}
+          RESET_DEMO_DATABASE: ${{ inputs.reset_demo_database }}
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          fingerprint=$(python3 scripts/wc143_database_chain_record.py fingerprint \
+            --environment "$TARGET_ENVIRONMENT" \
+            --context "foundation_fingerprint=$FOUNDATION_FINGERPRINT")
+          decision='{"reuse": false, "reason": "live facts could not be read"}'
+          if bash scripts/wc143_database_chain_live_facts.sh > wc143-database-chain-live-facts.json; then
+            spend_arguments=()
+            if [ "$TARGET_ENVIRONMENT" = demo ]; then
+              spend_arguments=(--expected-spend-paise "$(python3 scripts/wc134_demo_whatsapp_autopilot.py spend-args \
+                --policy release/wc134/demo-whatsapp-activation-policy.json | jq -er '.paise')")
+            fi
+            decision=$(python3 scripts/wc143_database_chain_record.py evaluate \
+              --record wc143-database-chain-record.json \
+              --environment "$TARGET_ENVIRONMENT" \
+              --fingerprint "$fingerprint" \
+              --live-facts wc143-database-chain-live-facts.json \
+              --transition wc124-database-transition.json \
+              --reset-requested "$RESET_DEMO_DATABASE" \
+              --output-directory . \
+              "${spend_arguments[@]}")
+          fi
+          jq --arg fingerprint "$fingerprint" '. + {fingerprint: $fingerprint}' <<< "$decision" \
+            > wc143-database-chain-decision.json
+          cat wc143-database-chain-decision.json
+          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
+          echo "reuse=$(jq -r '.reuse' wc143-database-chain-decision.json)" >> "$GITHUB_OUTPUT"
+
       - name: Open bounded WC-124 schema reconciliation authority
-        if: inputs.apply && steps.database-transition.outputs.schema_reconciliation_required == 'true'
+        if: inputs.apply && steps.database-chain.outputs.reuse != 'true' && steps.database-transition.outputs.schema_reconciliation_required == 'true'
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
         env:
           ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
@@ -1528,7 +1590,7 @@ jobs:
           test "$admin_count" = 1
 
       - name: Grant bounded WC-124 reconciliation authority
-        if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
+        if: inputs.apply && steps.database-chain.outputs.reuse != 'true' && (inputs.environment == 'demo' || inputs.environment == 'uat')
         id: reconciliation-authority
         env:
           DATABASE_PROVISIONER_IDENTITY_ID: ${{ steps.foundation.outputs.database_provisioner_identity_id }}
@@ -1637,7 +1699,7 @@ jobs:
 
       - name: Quiesce Demo consumers before database reset
         id: demo-maintenance
-        if: inputs.apply && inputs.environment == 'demo'
+        if: inputs.apply && steps.database-chain.outputs.reuse != 'true' && inputs.environment == 'demo'
         run: |
           set -euo pipefail
           # A previously deployed realm must have its existing recovery job before any reset.
@@ -1657,7 +1719,7 @@ jobs:
 
       - name: Create WC-124 database provisioner
         id: database-provisioner
-        if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
+        if: inputs.apply && steps.database-chain.outputs.reuse != 'true' && (inputs.environment == 'demo' || inputs.environment == 'uat')
         env:
           BOOTSTRAP_CLIENT_ID: ${{ steps.foundation.outputs.database_bootstrap_client_id }}
           BOOTSTRAP_IDENTITY_ID: ${{ steps.foundation.outputs.database_bootstrap_identity_id }}
@@ -1833,7 +1895,7 @@ jobs:
 
       - name: Run WC-124 database provisioner
         id: demo-database-reset
-        if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')
+        if: inputs.apply && steps.database-chain.outputs.reuse != 'true' && (inputs.environment == 'demo' || inputs.environment == 'uat')
         env:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
@@ -2457,6 +2519,17 @@ jobs:
             --resource-group "$RESOURCE_GROUP" \
             --server-name "psql-waooaw-${TARGET_ENVIRONMENT}-state" \
             --query '[?contains(principalName, `db-bootstrap`)] | length(@)' -o tsv)" = 0
+
+      - name: Capture live facts of the completed WC-124 database chain
+        id: database-chain-facts
+        if: inputs.apply && steps.database-chain.outputs.reuse != 'true' && (inputs.environment == 'demo' || inputs.environment == 'uat')
+        # A missing record only costs the next deployment its reuse; it never blocks this one.
+        continue-on-error: true
+        env:
+          KEY_VAULT_NAME: ${{ steps.foundation.outputs.key_vault_name }}
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: bash scripts/wc143_database_chain_live_facts.sh > wc143-database-chain-live-facts.json
 
       - name: Build workload inputs from trusted foundation outputs
         if: inputs.apply
@@ -3424,6 +3497,9 @@ jobs:
             --identity-execution wc124-db-provisioner-execution.json
             --output wc124-pre-activation-evidence.json
           )
+          if [ -f wc143-database-chain-reuse.json ]; then
+            evidence_arguments+=(--chain-reuse wc143-database-chain-reuse.json)
+          fi
           if [ "$TARGET_ENVIRONMENT" = demo ]; then
             evidence_arguments+=(
               --temporal wc124-temporal-pool-evidence.json
@@ -4088,6 +4164,50 @@ jobs:
             fi
           fi
 
+      - name: Record completed WC-124 database chain for reuse
+        if: >-
+          success() && inputs.apply &&
+          (inputs.environment == 'demo' || inputs.environment == 'uat') &&
+          steps.database-chain.outputs.reuse != 'true' &&
+          steps.database-chain-facts.outcome == 'success'
+        # Last Azure-facing step: nothing after it needs the deployment identity.
+        continue-on-error: true
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3 (Node 24)
+        with:
+          client-id: ${{ env.ARM_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Persist completed WC-124 database chain record
+        if: >-
+          success() && inputs.apply &&
+          (inputs.environment == 'demo' || inputs.environment == 'uat') &&
+          steps.database-chain.outputs.reuse != 'true' &&
+          steps.database-chain-facts.outcome == 'success'
+        continue-on-error: true
+        env:
+          FINGERPRINT: ${{ steps.database-chain.outputs.fingerprint }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          python3 scripts/wc143_database_chain_record.py create \
+            --environment "$TARGET_ENVIRONMENT" \
+            --fingerprint "$FINGERPRINT" \
+            --live-facts wc143-database-chain-live-facts.json \
+            --provisioner-result wc124-db-provisioner-result.json \
+            --provisioner-execution wc124-db-provisioner-execution.json \
+            --run-id "$GITHUB_RUN_ID" \
+            --output wc143-database-chain-record.json
+          az storage blob upload \
+            --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+            --container-name "$CONFIG_CONTAINER" \
+            --name "$DATABASE_CHAIN_RECORD_BLOB" \
+            --auth-mode login \
+            --file wc143-database-chain-record.json \
+            --overwrite \
+            --only-show-errors \
+            --output none
+
       - name: Upload plans and evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6 (Node 24)
@@ -4136,7 +4256,9 @@ jobs:
             wc124-pgbouncer-metadata-reconciliation.json
             wc124-reconciliation-authority.json
             wc124-db-credential-inventory.json
-            wc124-connection-budget.json
+            wc143-database-chain-decision.json
+            wc143-database-chain-live-facts.json
+            wc143-database-chain-reuse.json            wc124-connection-budget.json
             wc124-connection-budget-post-activation.json
             whatsapp-autopilot/*.json
             wc124-dependency-readiness.json

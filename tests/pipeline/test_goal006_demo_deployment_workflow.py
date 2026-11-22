@@ -310,7 +310,10 @@ def test_completed_wc124_transition_still_refreshes_and_rebinds_database_urls() 
         "      - name: Terraform workload plan", 1
     )[0]
 
-    assert "if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')" in create_step
+    assert (
+        "if: inputs.apply && steps.database-chain.outputs.reuse != 'true' "
+        "&& (inputs.environment == 'demo' || inputs.environment == 'uat')"
+    ) in create_step
     assert "full_provisioning='${{ steps.database-transition.outputs.provisioner_required }}'" in create_step
     assert 'pgbouncer_host="ca-${TARGET_ENVIRONMENT}-pgbouncer"' in create_step
     assert "pgbouncer.internal.${{ steps.foundation.outputs.container_app_environment_default_domain }}" not in create_step
@@ -318,7 +321,10 @@ def test_completed_wc124_transition_still_refreshes_and_rebinds_database_urls() 
     assert '"--reset-demo-databases"' in create_step
     assert 'if $target_environment == "demo"' in create_step
     assert "if $full_provisioning then [$bootstrap, $provisioner] else [$provisioner] end" in create_step
-    assert "if: inputs.apply && (inputs.environment == 'demo' || inputs.environment == 'uat')" in run_step
+    assert (
+        "if: inputs.apply && steps.database-chain.outputs.reuse != 'true' "
+        "&& (inputs.environment == 'demo' || inputs.environment == 'uat')"
+    ) in run_step
     assert "wc124-db-credential-inventory.json" in input_step
     assert "missing database secret version for " in input_step
     assert '.value = (.value + "/" + $versions[$secret_name])' in input_step
