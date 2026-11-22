@@ -1,7 +1,7 @@
 # ADR-046: Workload Identity and Service Authentication
 
-**Status:** ACCEPTED - R-066 conditions satisfied; R-067 approved with no conditions
-**Date:** 2026-08-10
+**Status:** ACCEPTED - R-066 conditions satisfied; R-067 approved with no conditions. **Amendment 1 (Section 12, cloud issuance, delivery and renewal): PROPOSED - FOUNDER APPROVAL PENDING.** Sections 1-11 are unchanged.
+**Date:** 2026-08-10 (Amendment 1: 2026-11-22)
 **Decision owner:** INST-004 - Enterprise Architect
 **Goal / Work Contract:** GOAL-005 / WC-034 F4, Amendment 4 Order 1
 **Authorization:** [GOA-GOAL-005-INST-004-09](../goals/GOAL-005-execution-plan.md#goa-goal-005-inst-004-09), accepted by [ACC-GOAL-005-INST-004-09](../goals/GOAL-005-execution-plan.md#acc-goal-005-inst-004-09)
@@ -286,3 +286,78 @@ Static specification, fixture, integration, browser, deployment, and customer-pr
 Order 2 produced independent INST-003 Business review R-066, which approved the decision with two conditions. The prospectively authorized INST-004 repair satisfied both conditions in Sections 7.2 and 10 without changing the authentication mechanism. Order 3 then produced fresh INST-002 Constitutional review R-067, which approved the repaired decision with no conditions.
 
 INST-013 mechanically recorded ADR-046 as **ACCEPTED** and EA-F4-01 as closed only after both independent reviews and the repair evidence were published. No self-approval is claimed, and this acceptance grants no implementation, policy-default, provider-activation, deployment, or F5-F8 authority.
+
+## 12. Amendment 1 - Cloud Credential Issuance, Delivery, Renewal And Interim Rules
+
+**Status:** PROPOSED - FOUNDER APPROVAL PENDING (Founder approval is recorded the way ADR-048 and ADR-053 record it: an `Accepted by Founder, <date>` status line plus a CB-021 disposition entry)
+**Date:** 2026-11-22
+**Decision owner:** INST-004 - Enterprise Architect, in a Founder-requested focused session
+**Trigger:** blocker [CB-021](../blockers/CB-021-inst010-wc134-adr046-cloud-workload-credentials-2026-11-16.md) and IB-147; Section 4.1 and the Cloud row of Section 3.1 promise "Azure custody and automated issuance" but no issuance, delivery, reload, renewal or listener-exposure design exists, so BP cannot reach WBE or PR in any cloud environment
+**Constitutional basis:** C-031, C-059, C-065, C-067; ADR-007, ADR-010, ADR-014, ADR-045, ADR-047; Sections 3-8 of this ADR
+**Detailed contract and implementation brief:** [workload-identity-cloud-issuance-contract.md](../architecture/reference/security/workload-identity-cloud-issuance-contract.md)
+
+### 12.1 Part A - Clarifications Of Accepted Text (in force without new approval)
+
+These restate Sections 3.3, 4.1, 4.2, 5.1 and 8 and bind every future session. They create no new decision.
+
+1. **Shared secrets never carry authority.** `BP_SERVICE_JWT_SECRET`, `PR_SERVICE_JWT_SECRET`, `OPS_AUTH_TOKEN`, `KEYCLOAK_CLIENT_SECRET`, an `X-Ops-Token` header or any other shared secret must never carry or vouch for actor, effective role, purpose, step-up, tenant, relationship or operation. Actor, role and the Founder step-up that gates price authorization travel only in the Section 3.3 signed envelope, rebound to the Section 3.2 mTLS peer.
+2. **No fallback on a governed route.** A governed ADR-046 route (including the pricing-admin routes `PRICING_ADMIN` and `PRICING_ADMIN_STEP_UP`) has no plaintext, legacy-secret, ops-token or reduced-assurance fallback. When credentials are missing or invalid the owner gateway reports `UNAVAILABLE`.
+3. **Legacy shared-secret routes are frozen, not governed.** The pre-F4 BP-to-WBE trial/subscription calls (`X-Ops-Token`) and the BP/PR service JWT secrets are outside the governed route set. They may continue only for routes that carry no actor-, role-, relationship- or pricing-authority; no new route may use them; each remains subject to the Section 7.2 migration.
+4. **No static credential without an expiry and a closing slice.** No hand-made, manually minted or statically delivered certificate or key may exist in Demo, UAT or Production unless it is a recorded exception with a not-after date and a named slice that closes it (Section 4.1 prohibits manual ceremony; Section 4.2 caps lifetimes). The only current exception is the Demo interim bundle in CB-021 (not-after 2026-12-16T08:40:19Z); it is closed by the slices in 12.3.
+5. **An expiry date must never be an outage date.** A credential that expires on a calendar date must be renewed automatically before two-thirds of its lifetime, with a monitored margin and an alert (Section 4.2 and 5.2). A control that can only be renewed by a person remembering to act is not an accepted renewal mechanism.
+
+### 12.2 Part B - Decisions (require Founder approval)
+
+**D1 - Custody.** Each environment's Key Vault holds that environment's root and intermediate as EC P-256 Key Vault keys that are never exported. Software-protected keys are sufficient; no HSM tier is required by this decision. No CA private key may exist in a file, secret, image, Terraform state, job log or human hands. Key Vault key rotation policy creates new key versions on the Section 4.2 schedule; root and intermediate certificates are public artifacts.
+
+**D2 - Issuance.** Two scheduled Azure Container Apps Jobs per environment in the existing workload Container Apps environment perform issuance. There is no always-on issuer, no new deployable service, no service mesh and no identity control plane, so the Section 8 rejection of those alternatives is preserved.
+
+| Job | Cadence | Identity and Key Vault authority | Duty |
+|---|---|---|---|
+| `ca-rotator` | daily | own managed identity; sign on the root key only; write only the public CA/trust-bundle secrets | issue or renew the intermediate when 30 days or less remain (maximum 90 days); issue or renew the root when 60 days or less remain (maximum one year) with at most a seven-day published dual-trust window and an explicit old-root removal time; publish the signed trust bundle |
+| `leaf-issuer` | every 30 minutes | own managed identity; sign on the intermediate key only; write only the workload bundle secrets | for each registry workload, issue a new TLS leaf and, for delegation signers, a delegation certificate when the current one is 8 hours old or older; publish before activating; honor revocation and suspension |
+
+Issuance is executed by repository-owned code from `scripts/` run in a digest-pinned image that the workload module already uses for jobs; the script and registry digests are bound into the Terraform plan evidence. Issuance occurs only for workloads and URI SANs present in `infrastructure/workload-identity/registry.yaml` (Section 4.1). The existing development/CI harness and the cloud issuer must share one issuance library that differs only in the signing backend (local ephemeral key versus Key Vault `sign`), so that Section 3.1 parity is evidenced by one code path.
+
+**D3 - Lifetimes.** Cloud TLS leaf and delegation certificates are valid for 24 hours (the Section 4.2 maximum) in Demo, UAT and Production and are renewed after 8 hours, giving at least 16 hours of renewal margin. The registry's cloud `leaf_lifetime_hours` values (2, 2, 1) are replaced by 24 under `policy_version: "1.1"`; shorter values are permitted only if the renewal margin stays at least 8 hours. CI keeps its two-hour cap.
+
+**D4 - Delivery and reload.** Each workload receives its credentials only by reading its own Key Vault secret with its own managed identity into process memory and swapping them atomically in process; it never needs a restart.
+
+- Private keys exist only in the bundle secret for that one workload and in that workload's memory (or a memory-backed file that is unlinked after load). No Container Apps secret volume or environment-variable secret reference carries rotating credential material, because Container Apps documents that a changed Key Vault secret restarts revisions that use it through environment variables and does not promise in-place refresh of mounted secret files.
+- Public material is published as a signed, versioned trust bundle: roots, intermediates, the revocation list, the registry-derived workload URIs, audiences and route grants, and the currently valid delegation certificates and key IDs. Every workload may read the trust bundle; only the named workload may read its private bundle.
+- Each workload re-reads at most every five minutes and when 8 hours of validity have elapsed, rejects a bundle whose version is older than the last accepted one, and swaps only after the complete bundle (chain, key match, URI SAN, audience, validity, key usage, signature) verifies.
+- Publish-then-activate: a delegation certificate appears in the trust bundle at least ten minutes before the owning workload's bundle allows signing with it; the previous delegation key remains verifiable until its own expiry.
+- If Key Vault is unreachable the workload keeps using the last verified bundle until its `not_after`, then fails closed with `SERVICE_IDENTITY_UNAVAILABLE`. It never relaxes validation.
+- The delegation certificate must be chain-verified to the trust bundle, checked for validity and the delegation key usage at load and at each envelope verification, and an envelope signed with a key that is not currently valid is rejected. (Section 3.3 already requires this chain; the current verifiers do not check it.)
+
+**D5 - Private listener exposure.** WBE and PR run the existing mutual-TLS private listener (`private_server.py`) as a supervised second listener in the same container as the public HTTP listener; the container exits if either stops. The listener is exposed only inside the Container Apps environment as an additional internal TCP port mapping, so TLS terminates in the workload and not in the platform proxy. Until the `azurerm` provider supports additional port mappings, the mapping is applied by an `azapi` resource overlay; no port is ever external. The Container Apps client-certificate ingress mode (peer certificate passed in `X-Forwarded-Client-Cert`) is not selected because the platform proxy then terminates TLS and relies on header sanitization; it may be used only if the additional-port qualification fails and only through a further amendment.
+
+**D6 - Observability and alerts.** Every workload exposes credential state (serial digest, `not_after`, remaining seconds, bundle version, source) in health detail and as an OpenTelemetry gauge without secret content (Section 5.2). Azure Monitor alerts, owned operationally by Platform Operations, fire on: any failed issuer or rotator execution; no successful `leaf-issuer` execution for 2 hours; any workload credential with fewer than 12 hours remaining (warning) or fewer than 4 hours (critical); intermediate or root with fewer than 14 days beyond its scheduled renewal; trust-bundle rollback or signature failure; and any `UNAVAILABLE` owner gateway in a deployed environment.
+
+**D7 - Revocation and compromise.** A manually triggered `revoke` execution of the issuer, authorized only to the environment deployment identity, adds serials and workload URIs to the signed revocation list, suspends reissue for the named workload, and republishes the trust bundle. Targets enforce the list within one refresh interval (at most five minutes). Intermediate compromise disables the intermediate key version in Key Vault, halts issuance, and rotates the intermediate under the `ca-rotator`; root compromise follows Section 4.3 steps 1-7 and creates a new root with no dual-trust window.
+
+**D8 - Trust-domain text correction.** The URI SAN form is `spiffe://<trust_domain>/workload/<identity_path>` where `trust_domain` is the per-environment value in the registry (`waooaw.dev`, `waooaw.ci`, `demo.waooaw.internal`, `uat.waooaw.internal`, `prod.waooaw.internal`). This replaces the illustrative `spiffe://waooaw.<environment>/workload/<workload-name>` text in Section 3.1 so that the ADR matches the registry, the verifiers and the deployed Demo configuration. Exact-match, per-environment separation and the wildcard prohibition are unchanged.
+
+**D9 - Ordering gate.** A cloud environment may enable an owner gateway only after (a) the issuer jobs have produced a bundle that every dependent workload has loaded, (b) the private listener answers an authenticated link probe from BP, and (c) the deployment verification required by 12.5 item 8 passes. A deployed environment in which an owner gateway is `Unconfigured` or its link probe fails fails the deployment verification visibly; it is never reported healthy.
+
+### 12.3 Transition And Closure Of The Demo Interim Exception
+
+1. The Demo interim bundle (secrets `workload-identity-manifest` and `workload-identity-bp-delegation-cert`, the `/mnt/workload-trust` volume and the PR entrypoint workaround) remains the only static credential. It is retired by the contract's Slice 5 after the `ca-rotator` and `leaf-issuer` have run successfully in Demo and PR and WBE load bundles from Key Vault.
+2. Slice 5 must reach Demo no later than 2026-12-09, seven days before the interim not-after, so there is a full week of margin. If it has not, the Platform IT Expert records a CB-021 dated extension request for the Founder before 2026-12-09; no silent expiry is acceptable.
+3. The exception is closed when Demo shows: the two interim secrets deleted; BP, PR and WBE reading `source=keyvault` with at least 16 hours remaining; and a Founder-session `GET /admin/pricing` returning 200 through BP to WBE. CB-021 records closure with the run and evidence identifiers.
+
+### 12.4 Rejected Alternatives (Amendment 1)
+
+| Alternative | Reason |
+|---|---|
+| Azure Key Vault certificates with auto-rotation and lifetime actions | Certificate validity is expressed in months and its integrated issuers are public CAs (DigiCert, GlobalSign) or self-issued self-signed certificates; it cannot issue 24-hour SPIFFE-SAN leaves chained to a private root, and per-rotation self-signed certificates would require re-pinning in three services on every rotation. Used here only for custody of keys and secrets. |
+| Azure managed-identity (Entra) tokens in place of mTLS | Requires amending Sections 3, 3.1, 3.2 and 8: it removes the mTLS peer and SPIFFE SAN, has no development or CI equivalent so it breaks the Section 3.1 parity rule, is a bearer credential of the kind Section 8 rejects, and needs Entra application registrations and app-role grants outside the deployment identity's authority. The envelope could still carry actor, role and step-up if BP signed it with a Key Vault key, but that is a different decision. It is the ADR-010 escape hatch and may be proposed only through a further amendment if this design fails qualification. |
+| Container Apps built-in peer-to-peer mTLS (ADR-007) | It encrypts and authenticates within the environment but exposes no verifiable per-workload SPIFFE URI SAN, audience or route policy to the application, and the workload module does not enable it. It cannot satisfy Sections 3.1-3.2. |
+| Container Apps secret volumes or secret references for rotating credentials | Refresh without a new revision is not promised by the platform; environment-variable references restart the revision. Rejected for rotating material (Section 12.2 D4). |
+| Restart or redeploy a revision at every renewal | Causes an outage-risk event every 8 hours for BP, WBE and PR and couples issuance to deployment. |
+| Longer static credentials (30 days to 1 year) renewed by a person | Section 4.2 lifetime caps and the Founder rule that an expiry date must not be an outage date. |
+| A new always-on WAOOAW issuer or CA service, or a new image in the release tuple | Rejected by Section 8; the scheduled jobs reuse existing runner infrastructure and a pinned image. |
+
+### 12.5 Acceptance Criteria
+
+Amendment 1 is satisfied only when executable evidence shows, per environment: (1) no CA key material outside Key Vault and no private key in Terraform state, images or logs; (2) the issuer produces 24-hour leaves renewed at 8 hours with exact URI SANs and Section 3.1 per-workload separation; (3) all three workloads reload a new bundle in process with no restart, including delegation-key rotation overlap and revocation within five minutes; (4) a simulated issuer outage lets workloads continue until the last verified bundle's `not_after` and then fail closed, with the alerts of D6 firing in order; (5) a rolled-back, unsigned, expired or wrong-environment bundle is rejected; (6) BP to WBE and BP to PR succeed through the private listeners and fail closed on every negative case in Section 10 item 4; (7) the pricing-admin route succeeds only for the signed pricing role, and a shared token, an unsigned envelope or a missing step-up is refused with no fallback; (8) the deployment verification fails visibly on an `Unconfigured` gateway, 401, 503 or a failed link probe; (9) Emergency Stop is unaffected by issuer, rotation or listener failure; and (10) the CB-021 exception is closed as in 12.3.

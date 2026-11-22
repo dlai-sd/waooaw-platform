@@ -1059,6 +1059,19 @@ The Founder-authorized FA-052 limits are cumulative across all tagged GOAL-006 A
 
 ADR-046 governs workload-to-service authentication and does not create a new runner certificate authority here. ADR-047 runner trust uses GitHub's ephemeral runner registration, Azure managed identity and environment-scoped OIDC. If a runner later calls a governed private WAOOAW service, that call must separately satisfy ADR-046; runner registration never substitutes for workload mTLS.
 
+### Workload Identity Issuance Topology (ADR-046 Amendment 1 - PROPOSED, FOUNDER APPROVAL PENDING)
+
+Per environment, inside the existing workload Container Apps environment and that environment's Key Vault; nothing is shared across environments. Full contract and ordered implementation slices: [workload-identity-cloud-issuance-contract.md](../security/workload-identity-cloud-issuance-contract.md).
+
+| Element | Contract |
+|---|---|
+| Key Vault keys `wid-root`, `wid-intermediate` | Non-exportable EC P-256 with Key Vault rotation policy; signing only through the Key Vault sign operation |
+| Container Apps Job `ca-rotator` (daily) and `leaf-issuer` (every 30 minutes) | Scheduled, no always-on compute, distinct managed identities, digest-pinned image, no new release-tuple artifact; issue 24-hour leaves renewed at 8 hours |
+| Secrets `wid-trust-bundle` (public, signed, versioned) and `wid-bundle-<workload>` (private) | Workloads read only their own bundle and the trust bundle with their own managed identity into memory and reload in process every five minutes; no secret volume or environment reference carries rotating material |
+| BP, WBE, PR private listeners | WBE 5444 and PR 5443 mutual-TLS listeners as a supervised second listener, exposed only as internal additional TCP ports; never external |
+| Interim Demo bundle (CB-021) | Static public trust material expiring 2026-12-16T08:40:19Z; removed by Slice 5 no later than 2026-12-09 |
+| Monitoring | Issuer failure, no successful `leaf-issuer` in 2 hours, remaining validity below 12 hours (warning) and 4 hours (critical), trust-bundle rollback, and any `UNAVAILABLE` owner gateway; deployment verification fails on an `Unconfigured` owner gateway, 401, 503 or failed link probe |
+
 ## Data And Migration Contract
 
 - Demo and UAT remove PostgreSQL sidecars from CE, BP, Billing, Keycloak, Web, and Temporal.
