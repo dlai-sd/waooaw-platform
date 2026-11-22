@@ -1,0 +1,52 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-143
+contract_path: work-contracts/WC-143-database-chain-evidence-reuse.md
+contract_digest: 66eaad5dddef5928876aa73a1264db344fca3c5b16ebd33db6af99d967cde9c6
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Pipeline unit tests run in Docker at the exact head; commands and results in the PR body
+  initial_state: new
+  dependencies: Founder authorization of this implementing session (current conversation)
+  residual_risk: The saving is proven only by the second deployment after merge; the record is tamper-evident (sha256), not keyed, so manual database drift inside the 7-day window is caught only by live facts and the terminal live authority checks
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC143-R001
+    source: WC-143 Canonical Requirement Index, R001
+    observable_outcome: The record is created and uploaded only after a successful full-chain Demo or UAT job, is best-effort, and is the last Azure-facing step before the evidence upload.
+    test_path_or_plan: tests/pipeline/test_wc143_database_chain_record.py (test_record_is_persisted_only_after_the_whole_job_succeeded_and_never_blocks_it).
+
+  - <<: *defaults
+    requirement_id: WC143-R002
+    source: WC-143 Canonical Requirement Index, R002
+    observable_outcome: Reuse is selected only when every binding holds; each changed binding selects the full chain.
+    test_path_or_plan: tests/pipeline/test_wc143_database_chain_record.py (test_unchanged_record_is_reusable, test_any_changed_binding_selects_the_full_chain, test_live_fact_drift_selects_the_full_chain, test_edited_record_fails_its_integrity_digest, test_recorded_evidence_must_be_a_complete_unreset_provisioning, test_fingerprint_follows_inputs_and_rejects_unknown_environment).
+
+  - <<: *defaults
+    requirement_id: WC143-R003
+    source: WC-143 Canonical Requirement Index, R003
+    observable_outcome: A missing, corrupt or mismatched record, or missing chain inputs, selects the full chain; the decision step has no continue-on-error.
+    test_path_or_plan: tests/pipeline/test_wc143_database_chain_record.py (test_missing_corrupt_or_mismatched_record_selects_the_full_chain, test_missing_chain_inputs_fail_closed, test_chain_decision_is_taken_before_any_authority_is_opened_and_record_is_fetched_first).
+
+  - <<: *defaults
+    requirement_id: WC143-R004
+    source: WC-143 Canonical Requirement Index, R004
+    observable_outcome: The five authority, quiesce and provisioner steps are gated on the reuse decision, and restored evidence is accepted by the unchanged validator.
+    test_path_or_plan: tests/pipeline/test_wc143_database_chain_record.py (test_every_authority_chain_step_is_skipped_only_by_the_reuse_decision, test_reuse_restores_evidence_that_the_activation_gate_accepts).
+
+  - <<: *defaults
+    requirement_id: WC143-R005
+    source: WC-143 Canonical Requirement Index, R005
+    observable_outcome: Pre-activation evidence carries identity_reused and the record digest and rejects a reuse record bound to another execution.
+    test_path_or_plan: tests/pipeline/test_wc143_database_chain_record.py (test_reuse_restores_evidence_that_the_activation_gate_accepts).
+
+  - <<: *defaults
+    requirement_id: WC143-R006
+    source: WC-143 Canonical Requirement Index, R006
+    observable_outcome: The credential handoff verification and the terminal provisioner and authority cleanup steps carry no reuse gate.
+    test_path_or_plan: tests/pipeline/test_wc143_database_chain_record.py (test_verification_and_terminal_cleanup_run_whether_or_not_the_chain_was_reused).
