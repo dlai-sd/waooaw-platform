@@ -16,7 +16,7 @@ from typing import Any
 
 import uvicorn
 from mtls_protocol import MutualTlsH11Protocol, validated_protocol
-from workload_credentials import (
+from billing_workload_credentials import (
     MINIMUM_REFRESH_SECONDS,
     SOURCE_KEYVAULT,
     CredentialHolder,

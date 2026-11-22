@@ -46,7 +46,7 @@ from payment.models import PaidActivationRequest, ZeroPriceActivationRequest
 from payment.paid_activation import PaidActivationService
 from payment.zero_price_activation import ZeroPriceActivationService
 from wallet.service import WalletService
-from workload_credentials import (
+from billing_workload_credentials import (
     SOURCE_KEYVAULT,
     CredentialHolder,
     credential_source,

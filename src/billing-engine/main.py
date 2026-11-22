@@ -37,7 +37,7 @@ from pricing_admin import router as pricing_admin_router
 from employment_eligibility import configure_employment_eligibility
 from employment_eligibility import router as employment_eligibility_router
 from telemetry import configure_telemetry
-from workload_credentials import service_link_router
+from billing_workload_credentials import service_link_router
 
 logger = logging.getLogger(__name__)
 

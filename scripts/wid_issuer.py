@@ -71,6 +71,26 @@ def _ca_line(vault: VaultClient, now: datetime) -> list[str]:
     return [f"wid_status ca intermediate_days={days['intermediate']} root_days={days['root']}"]
 
 
+_SUMMARY_TEXT = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.:/+ ")
+
+
+def _public(value: object) -> object:
+    """Rebuild a summary from numbers, booleans and short plain text so nothing secret-bearing can be printed."""
+    if isinstance(value, bool):
+        return bool(value)
+    if isinstance(value, int):
+        return int(value)
+    if isinstance(value, float):
+        return float(value)
+    if isinstance(value, str):
+        return "".join(character for character in value[:200] if character in _SUMMARY_TEXT)
+    if isinstance(value, Mapping):
+        return {_public(key): _public(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_public(item) for item in value]
+    return None
+
+
 def _status_lines(summary: Mapping[str, object]) -> list[str]:
     """Secret-free console lines that the Log Analytics alerts parse (contract section 8)."""
     lines: list[str] = []
@@ -132,7 +152,7 @@ def main(
     for line in status_lines:
         print(line)
     print(f"wid_issuer mode={args.mode} result=ok" if healthy else f"wid_issuer mode={args.mode} result=failed reason=unhealthy")
-    print(json.dumps(summary, sort_keys=True))
+    print(json.dumps(_public(summary), sort_keys=True))
     return 0 if healthy else 1
 
 

@@ -33,7 +33,7 @@ from mtls_protocol import MutualTlsH11Protocol, validated_protocol
 from private_server import WorkloadTlsContext, await_first_snapshot
 from relationship_workspace import WorkloadAuth, configure_relationship_workspace
 from uvicorn.protocols.http.h11_impl import H11Protocol
-from workload_credentials import (
+from billing_workload_credentials import (
     CredentialHolder,
     CredentialRefresher,
     CredentialRejected,
@@ -497,6 +497,7 @@ def _connect(port: int, pair: fx.Pair, folder: Path, sni: bool = True) -> bytes:
     cert.write_text(fx._pem(pair.bp_leaf, pair.cloud.intermediate))
     key.write_text(fx._key_pem(pair.bp_leaf_key))
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
     context.check_hostname = False
     context.load_verify_locations(cadata=fx._pem(pair.cloud.root))
     context.load_cert_chain(cert, key)
@@ -619,10 +620,12 @@ class FakeChild:
 def test_supervisor_exits_non_zero_and_stops_the_other_child_when_one_dies() -> None:
     survivor, dead = FakeChild(), FakeChild(3)
     children = [survivor, dead]
-    assert entrypoint.Supervisor([["a"], ["b"]], spawn=lambda _command: children.pop(0), sleep=lambda _seconds: None).run() == 3
+    exit_code = entrypoint.Supervisor([["a"], ["b"]], spawn=lambda _command: children.pop(0), sleep=lambda _seconds: None).run()
+    assert exit_code == 3
     assert survivor.terminated
     clean_exit = [FakeChild(), FakeChild(0)]
-    assert entrypoint.Supervisor([["a"], ["b"]], spawn=lambda _command: clean_exit.pop(0), sleep=lambda _seconds: None).run() == 1
+    clean_code = entrypoint.Supervisor([["a"], ["b"]], spawn=lambda _command: clean_exit.pop(0), sleep=lambda _seconds: None).run()
+    assert clean_code == 1
 
 
 def test_supervisor_forwards_sigterm_and_exits_cleanly() -> None:

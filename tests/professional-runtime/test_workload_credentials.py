@@ -31,12 +31,12 @@ sys.path.insert(0, str(Path(__file__).parents[2] / "scripts"))
 import entrypoint
 import private_server
 import wid_pr_cloud_fixture as fx
-import workload_credentials as wc
+import runtime_workload_credentials as wc
 from mtls_protocol import MutualTlsH11Protocol
 from professional_runtime_main import app as runtime_app
 from professional_runtime_main import lifespan
 from relationship_workspace import WorkloadAuth, probe_service_link
-from workload_credentials import (
+from runtime_workload_credentials import (
     CredentialError,
     CredentialHolder,
     KeyVaultSecretReader,
@@ -1064,6 +1064,7 @@ def connect(port: int, pair: fx.Pair, folder: Path, sni: bool = True) -> bytes:
     certificate.write_text(fx.pem(pair.bp_leaf, pair.cloud.intermediate))
     key.write_text(fx.key_pem(pair.bp_leaf_key))
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
     context.check_hostname = False
     context.load_verify_locations(cadata=fx.pem(pair.cloud.root))
     context.load_cert_chain(certificate, key)
@@ -1208,10 +1209,12 @@ def test_supervisor_exits_non_zero_and_stops_the_other_child_when_one_dies() -> 
     environ = {"WAOOAW_WID_SOURCE": "keyvault"}
     survivor, dead = FakeChild(), FakeChild(3)
     children = [survivor, dead]
-    assert entrypoint.supervise(environ, spawn=lambda _c: children.pop(0), sleep=lambda _s: None) == 3
+    supervised = entrypoint.supervise(environ, spawn=lambda _c: children.pop(0), sleep=lambda _s: None)
+    assert supervised == 3
     assert survivor.terminated and not dead.terminated
     clean = [FakeChild(), FakeChild(0)]
-    assert entrypoint.supervise(environ, spawn=lambda _c: clean.pop(0), sleep=lambda _s: None) == 1
+    supervised_clean = entrypoint.supervise(environ, spawn=lambda _c: clean.pop(0), sleep=lambda _s: None)
+    assert supervised_clean == 1
 
 
 def test_supervisor_stops_children_on_termination_and_kills_the_unresponsive() -> None:

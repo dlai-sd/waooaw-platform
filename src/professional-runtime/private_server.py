@@ -17,7 +17,7 @@ import uvicorn
 from cryptography import x509
 
 from mtls_protocol import MutualTlsH11Protocol
-from workload_credentials import (
+from runtime_workload_credentials import (
     SOURCE_KEYVAULT,
     CredentialHolder,
     CredentialSnapshot,

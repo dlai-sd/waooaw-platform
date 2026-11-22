@@ -20,7 +20,7 @@ from fastapi import APIRouter, FastAPI, Header, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from workload_credentials import (
+from runtime_workload_credentials import (
     CredentialHolder,
     authenticate_peer,
     credential_holder_from_environment,
