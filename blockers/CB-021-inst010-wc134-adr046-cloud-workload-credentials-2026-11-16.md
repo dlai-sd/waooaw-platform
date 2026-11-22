@@ -89,3 +89,13 @@ all 12 applications are ready; superseded revisions were retired.
   these is required before the full capability, UAT or Production.
 - After 2026-12-16 the manifest and delegation certificate expire; PR's loader does not check expiry, but the
   exception must be closed or renewed by then.
+
+## Enterprise Architect disposition (2026-11-22, Founder-requested focused session)
+
+**Office:** INST-004 Enterprise Architect. **Status of the design:** PROPOSED - FOUNDER APPROVAL PENDING; Part A of ADR-046 Section 12 restates accepted text and is already in force.
+
+- **The design gap in "Needed to unblock" is answered.** [ADR-046 Section 12](../adr/ADR-046-workload-identity-and-service-authentication.md) (Amendment 1) and [workload-identity-cloud-issuance-contract.md](../architecture/reference/security/workload-identity-cloud-issuance-contract.md) define Key Vault custody, scheduled issuance, 24-hour leaves renewed at 8 hours, in-process reload, private listener exposure, alerting, revocation and ordered implementation slices. No earlier Azure-issued-identity design existed; the contract section 1.1 records the evidence.
+- **Pricing admin cannot use a shared token.** The Platform IT Expert's withdrawal of the ops-token path is confirmed: only the signed delegated envelope can carry actor, role and Founder step-up (ADR-046 12.1 items 1-2).
+- **Exception handling.** The Demo interim exception expiring 2026-12-16T08:40:19Z stays as recorded until closed. It must be retired by Slice 5 no later than 2026-12-09; if not, the Platform IT Expert records a dated extension request here before 2026-12-09. Closure requires the deletion of the two interim Key Vault secrets, credential source `keyvault` in BP, PR and WBE, and a Founder-session `GET /admin/pricing` returning 200 through BP to WBE (ADR-046 12.3).
+- **Newly recorded gap.** Verifiers do not check chain, validity or key usage of the BP delegation certificate (`relationship_workspace.py` in WBE and PR); Slice 2 closes this.
+- **Next state.** Blocker stays OPEN until the Founder approves Amendment 1 and a Work Contract for Slices 1-5 is authorized; then it moves to PARTIALLY MITIGATED until Slice 5 evidence closes it. The Enterprise Architect did not change implementation, infrastructure or any existing Work Contract.

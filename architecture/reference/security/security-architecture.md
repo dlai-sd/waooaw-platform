@@ -133,8 +133,9 @@ Business Platform and Professional Runtime propagate the raw JWT Bearer token as
 | PR → AI Runtime | Plain HTTP (internal network only) | TLS 1.3 (internal) |
 | All → PostgreSQL | Password auth (DB user credentials) | Password auth + Azure Private Endpoint |
 | All → Temporal | Temporal SDK (no auth in dev) | Temporal Cloud mTLS |
+| BP → WBE, BP → PR, BP → approved adapter (governed F4 routes) | mTLS with exact SPIFFE-style URI SAN and BP-signed delegated envelope (ADR-046) | Same; cloud credentials issued by Key Vault-held CA keys and scheduled jobs, 24-hour leaves renewed at 8 hours (ADR-046 Amendment 1, proposed). Shared secrets, ops tokens and JWT secrets never carry actor, role or step-up and are never a fallback. |
 
-mTLS certificates for cloud deployment are managed per ADR-007 — cloud provider certificates with 90-day rotation.
+mTLS certificates for CE routes in cloud are managed per ADR-007. ADR-046 governs the BP to WBE, PR and adapter routes above and is not covered by the ADR-007 rotation statements; see `workload-identity-cloud-issuance-contract.md`.
 
 ---
 
