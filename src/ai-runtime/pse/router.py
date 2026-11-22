@@ -1,6 +1,7 @@
 # Implements: architecture/reference/components/ai-runtime.md §0 Provider Abstraction Layer,§1 LLM Gateway
 # Implements: adr/ADR-042-provider-registry-constitutional-tool-gateway.md §3 (AIR refactor)
 # Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C3-02
+# Implements: work-contracts/WC-148-founder-provider-credential-registry-screen.md WC148-R005
 # constitutional_basis: C-023, C-041, C-051, C-059, C-063
 from __future__ import annotations
 
@@ -17,6 +18,8 @@ import sqlalchemy.ext.asyncio as sa_async
 from sqlalchemy import text
 
 from pse.tiers import LlmTier
+from providers.credential_resolver import ProviderCredentialResolver, ProviderCredentialUnavailable
+from providers.sarvam_provider import SarvamProvider
 
 # CTG import — trust-layer is on PYTHONPATH in Docker (PYTHONPATH=/workspace/src/trust-layer)
 try:
@@ -54,6 +57,11 @@ _OLLAMA_GENERATE_PATH = "/api/generate"
 _OLLAMA_MODEL = "llama3.2:3b"
 
 _OLLAMA_TIMEOUT_SECONDS = 30
+_SARVAM_PROVIDER_NAME = "sarvam"
+_SARVAM_LANGUAGES = {"hi", "mr", "te", "ta", "kn", "pa", "bn", "gu"}
+_credential_resolver: ProviderCredentialResolver | None = None
+
+
 _AZURE_FALLBACK_MODELS = {
     LlmTier.MID: "gpt-4o-mini",
     LlmTier.FRONTIER: "gpt-4o",
@@ -168,15 +176,43 @@ async def _dispatch_ollama(prompt: str) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def _get_credential_resolver() -> ProviderCredentialResolver:
+    global _credential_resolver
+    if _credential_resolver is None:
+        _credential_resolver = ProviderCredentialResolver()
+    return _credential_resolver
+
+
 async def _dispatch_mid(prompt: str, language: str | None) -> dict[str, Any]:
     """
-    MID_TIER dispatch stub — Sarvam (indic) or Gemini 2.0 Flash.
-    Full implementation lives in pse/providers/sarvam_provider.py and
-    pse/providers/vertex_provider.py.  Raises NotImplementedError until
-    those adapters are wired in (WC015-02b scope).
+    MID_TIER dispatch — Sarvam (indic) via the Founder-managed credential (WC-148).
+    The key is resolved per call from the provider registry and Key Vault, so a saved or
+    rolled-back version applies without a restart.  Non-indic MID (Gemini 2.0 Flash) and
+    a missing or unreachable Sarvam credential raise NotImplementedError (WC015-02b scope).
     C-063: prompt is not logged here.
     """
-    raise NotImplementedError("MID_TIER provider dispatch not yet implemented in this adapter scope (WC015-02b)")
+    if (language or "").strip().lower() not in _SARVAM_LANGUAGES:
+        raise NotImplementedError("MID_TIER provider dispatch not yet implemented in this adapter scope (WC015-02b)")
+    try:
+        api_key = await _get_credential_resolver().get_api_key(_SARVAM_PROVIDER_NAME)
+    except ProviderCredentialUnavailable as exc:
+        raise NotImplementedError(
+            f"MID_TIER provider dispatch unavailable: no usable Sarvam credential ({exc.reason}); "
+            "save one on the Founder provider screen"
+        ) from exc
+    provider = SarvamProvider(api_key=api_key)
+    try:
+        completion = await provider.complete([{"role": "user", "content": prompt}])
+    finally:
+        await provider.close()
+    return {
+        "tier": LlmTier.MID.value,
+        "provider_id": _SARVAM_PROVIDER_NAME,
+        "model_id": completion["model"],
+        "response": completion["content"],
+        "done": True,
+        "usage": completion["usage"],
+    }
 
 
 async def _dispatch_frontier(prompt: str) -> dict[str, Any]:

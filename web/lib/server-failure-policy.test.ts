@@ -25,6 +25,7 @@ const inputParsers: Record<string, string[]> = {
   'lib/pricing-admin-server.ts': ['subjectOf'],
   'lib/pricing-admin.ts': ['claimsFromToken'],
   'lib/pricing-forms.ts': ['parseJson'],
+  'lib/provider-admin-server.ts': ['subjectOf'],
 };
 const owners = new Set([
   'logServerFailure',

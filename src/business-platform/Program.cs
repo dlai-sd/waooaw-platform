@@ -373,6 +373,22 @@ builder.Services.AddDbContextFactory<Waooaw.BusinessPlatform.Infrastructure.Prov
     opts => opts.UseNpgsql(providerRegistryConn)
 );
 
+// ── Founder provider credential registry (WC-148) — Key Vault writes stay unavailable until VaultUrl is set ──
+var providerCredentialOptions = ProviderCredentialOptions.From(builder.Configuration);
+builder.Services.AddSingleton(providerCredentialOptions);
+if (providerCredentialOptions.VaultUri is not null)
+    builder.Services.AddSingleton<IProviderSecretStore>(
+        new KeyVaultProviderSecretStore(
+            new HttpClient { Timeout = TimeSpan.FromSeconds(10) },
+            builder.Configuration,
+            providerCredentialOptions
+        )
+    );
+else
+    builder.Services.AddSingleton<IProviderSecretStore, UnconfiguredProviderSecretStore>();
+builder.Services.AddSingleton<IProviderCredentialTester, ProviderCredentialTester>();
+builder.Services.AddSingleton<IProviderCredentialAdminService, ProviderCredentialAdminService>();
+
 // ── Skill Catalog DbContext — ADR-043 §2 ─────────────────────────────────────
 var skillCatalogConn =
     builder.Configuration.GetConnectionString("SkillCatalog")

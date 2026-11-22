@@ -8,13 +8,23 @@ using Waooaw.BusinessPlatform.Infrastructure;
 
 namespace Waooaw.BusinessPlatform.Controllers;
 
+/// <summary>
+/// Pinned Key Vault secret version of the provider's active credential (WC148-R005). Names a secret; never holds its value.
+/// </summary>
+public sealed record ProviderCredentialPointer(
+    string SecretName,
+    string SecretVersion,
+    int VersionNo
+);
+
 /// <summary>Response DTO — no internal fields (vault_path_key excluded from external response).</summary>
 public sealed record ProviderConfigResponse(
     string ProviderName,
     string AuthMethod,
     string? McpServerUrl,
     string[] ScopeSet,
-    bool Active
+    bool Active,
+    ProviderCredentialPointer? Credential = null
 );
 
 /// <summary>
@@ -52,17 +62,12 @@ public sealed class ProvidersController : ControllerBase
 
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
-        var rows = await db
+        var configs = await db
             .ProviderConfigs.Where(p => p.Active && (p.TenantId == null || p.TenantId == tenantId))
             .OrderBy(p => p.ProviderName)
-            .Select(p => new ProviderConfigResponse(
-                p.ProviderName,
-                p.AuthMethod,
-                p.McpServerUrl,
-                p.ScopeSet,
-                p.Active
-            ))
             .ToListAsync(ct);
+        var pointers = await ActivePointersAsync(db, configs, ct);
+        var rows = configs.Select(p => ToResponse(p, pointers.GetValueOrDefault(p.Id))).ToList();
 
         _logger.LogInformation(
             "GetProviders: returned {Count} providers for tenant={TenantId}",
@@ -108,14 +113,48 @@ public sealed class ProvidersController : ControllerBase
             return NotFound(new { error = "PROVIDER_NOT_FOUND", provider_name = providerName });
         }
 
-        return Ok(
-            new ProviderConfigResponse(
-                row.ProviderName,
-                row.AuthMethod,
-                row.McpServerUrl,
-                row.ScopeSet,
-                row.Active
+        var pointers = await ActivePointersAsync(db, [row], ct);
+        return Ok(ToResponse(row, pointers.GetValueOrDefault(row.Id)));
+    }
+
+    private static ProviderConfigResponse ToResponse(
+        ProviderConfig row,
+        ProviderCredentialPointer? pointer
+    ) => new(row.ProviderName, row.AuthMethod, row.McpServerUrl, row.ScopeSet, row.Active, pointer);
+
+    private static async Task<Dictionary<Guid, ProviderCredentialPointer>> ActivePointersAsync(
+        ProviderRegistryDbContext db,
+        IReadOnlyList<ProviderConfig> configs,
+        CancellationToken ct
+    )
+    {
+        var versionIds = configs
+            .Where(p => p.ActiveCredentialVersionId.HasValue)
+            .Select(p => p.ActiveCredentialVersionId!.Value)
+            .ToList();
+        if (versionIds.Count == 0)
+            return [];
+        var versions = await db
+            .ProviderCredentialVersions.Where(v =>
+                versionIds.Contains(v.Id) && v.Status == ProviderCredentialStatuses.Active
             )
-        );
+            .ToListAsync(ct);
+        return configs
+            .Where(p => p.ActiveCredentialVersionId.HasValue)
+            .Select(p =>
+                (
+                    Config: p,
+                    Version: versions.FirstOrDefault(v => v.Id == p.ActiveCredentialVersionId)
+                )
+            )
+            .Where(pair => pair.Version is not null)
+            .ToDictionary(
+                pair => pair.Config.Id,
+                pair => new ProviderCredentialPointer(
+                    pair.Version!.VaultSecretName,
+                    pair.Version.VaultSecretVersion,
+                    pair.Version.VersionNo
+                )
+            );
     }
 }

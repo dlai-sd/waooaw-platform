@@ -1711,3 +1711,74 @@ def test_runtime_table_grants_are_least_privilege_and_spend_authority_is_operato
     assert not list((repo / "infrastructure/postgres/init").glob("*spend-authority*"))
     assert ":'maximum_paise'::BIGINT <= 50000" in operation
     assert "00000000-0000-0000-0000-000000000000" in operation
+
+
+def provider_credentials_contract() -> str:
+    return read_contract("modules/workload/provider-credentials.tf")
+
+
+def test_provider_secret_roles_are_condition_scoped_to_provider_names_not_vault_wide() -> None:
+    contract = squash(provider_credentials_contract())
+    writer = contract.split('resource "azurerm_role_assignment" "provider_credential_writer"', 1)[1].split("} resource", 1)[0]
+    reader = contract.split('resource "azurerm_role_assignment" "provider_credential_reader"', 1)[1]
+
+    assert 'role_definition_name = "Key Vault Secrets Officer"' in writer
+    assert 'azurerm_user_assigned_identity.member["business-platform"].principal_id' in writer
+    assert 'role_definition_name = "Key Vault Secrets User"' in reader
+    assert 'azurerm_user_assigned_identity.member["ai-runtime"].principal_id' in reader
+    for assignment, role in ((writer, "writer"), (reader, "reader")):
+        assert "scope = local.wid_vault_id" in assignment
+        assert 'condition_version = "2.0"' in assignment
+        assert f'condition = local.provider_secret_conditions["{role}"]' in assignment
+
+    assert "@${local.provider_secret_actions[name].source}[Microsoft.KeyVault/vaults/secrets:name] StringStartsWith" in contract
+    sources = dict(re.findall(r'(\w+) += \{ action = "[^"]+", source = "(\w+)"', contract))
+    assert {name for name, source in sources.items() if source == "Request"} == {"setSecret", "restore"}
+    assert {source for source in sources.values()} == {"Request", "Resource"}
+    assert "'${local.provider_secret_prefix}'" in contract and 'provider_secret_prefix = "provider-"' in contract
+    actions = dict(re.findall(r'(\w+) += \{ action = "Microsoft\.KeyVault/vaults/secrets/([\w/]+)"', contract))
+    assert sorted(actions) == sorted(
+        ["getSecret", "readMetadata", "setSecret", "update", "delete", "backup", "restore", "recover", "purge"]
+    )
+    listed = {
+        role: re.search(rf"{role} = \[(.*?)\]", contract.split("provider_secret_condition_actions", 1)[1]).group(1)
+        for role in ("writer", "reader")
+    }
+    # A condition only constrains the actions it names, so the writer must name every data action it can use.
+    assert sorted(re.findall(r'"(\w+)"', listed["writer"])) == sorted(actions)
+    assert sorted(re.findall(r'"(\w+)"', listed["reader"])) == ["getSecret", "readMetadata"]
+
+
+def test_no_unconditional_vault_wide_secret_role_is_granted_to_provider_credential_identities() -> None:
+    workload = PHASE2_ROOT / "modules" / "workload"
+    for path in sorted(workload.glob("*.tf")):
+        text = squash(path.read_text(encoding="utf-8"))
+        for block in text.split('resource "azurerm_role_assignment"')[1:]:
+            block = block.split("} resource", 1)[0]
+            if 'member["business-platform"].principal_id' in block or 'member["ai-runtime"].principal_id' in block:
+                if "local.wid_vault_id" in block or "key_vault_id" in block or "azurerm_key_vault." in block:
+                    assert "condition_version" in block, path.name
+
+
+def test_provider_credential_settings_reach_business_platform_and_ai_runtime_in_every_environment() -> None:
+    main = squash(read_contract("modules/workload/main.tf"))
+    contract = squash(provider_credentials_contract())
+
+    assert "ProviderCredentials__VaultUrl = local.wid_vault_url" in contract
+    assert "PROVIDER_CREDENTIALS_VAULT_URL = local.wid_vault_url" in contract
+    assert 'local.provider_credentials_runtime["business-platform"])' in main
+    assert '}, local.provider_credentials_runtime["ai-runtime"])' in main
+    assert "BP_BASE_URL = local.service_urls.business_platform" in main
+    assert "local.provider_credentials_identity_env[each.key]" in main
+    for environment in ENVIRONMENTS:
+        assert 'source = "../../../modules/workload"' in read_contract(f"environments/{environment}/workload/main.tf")
+
+
+def test_terraform_holds_no_provider_secret_values() -> None:
+    module_text = "\n".join(path.read_text(encoding="utf-8") for path in sorted((PHASE2_ROOT / "modules").rglob("*.tf")))
+    contract = provider_credentials_contract()
+
+    assert "azurerm_key_vault_secret" not in contract and "random_password" not in contract
+    assert not re.search(r'^\s*value\s*=', contract, re.MULTILINE)
+    assert not re.search(r'azurerm_key_vault_secret"\s+"[^"]*provider', module_text)
+    assert not re.search(r'name\s*=\s*"provider-', module_text)

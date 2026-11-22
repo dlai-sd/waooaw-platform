@@ -2,6 +2,7 @@
 
 // Implements: work-contracts/WC-099-demo-customer-journey-and-application-shell-remediation.md §5.4 Authenticated Application Shell
 // Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C2-05
+// Implements: work-contracts/WC-148-founder-provider-credential-registry-screen.md WC148-R006
 // Constitutional basis: C-001 (Human Override), C-059 (Implementation Traceability)
 
 import {
@@ -11,6 +12,7 @@ import {
   ChevronRight,
   CircleUserRound,
   CreditCard,
+  KeyRound,
   Settings,
   ShieldCheck,
   Store,
@@ -49,6 +51,7 @@ export function ProtectedAppShell({
   messages,
   showKeyVaultAdmin = false,
   showPricingAdmin = false,
+  showProviderAdmin = false,
   stopContext,
   variant,
   workspaceLayout,
@@ -59,6 +62,7 @@ export function ProtectedAppShell({
   messages: Messages;
   showKeyVaultAdmin?: boolean;
   showPricingAdmin?: boolean;
+  showProviderAdmin?: boolean;
   stopContext?: StopContext;
   variant: ProtectedVariant;
   workspaceLayout?: WorkspaceLayoutPreferencesV1;
@@ -77,6 +81,7 @@ export function ProtectedAppShell({
     { href: '/settings', label: messages.settings, icon: Settings },
     ...(showKeyVaultAdmin ? [{ href: '/admin/azure-key-vault', label: 'Azure Key Vault', icon: Vault }] : []),
     ...(showPricingAdmin ? [{ href: '/admin/pricing', label: 'Pricing', icon: Tag }] : []),
+    ...(showProviderAdmin ? [{ href: '/admin/providers', label: 'Providers', icon: KeyRound }] : []),
   ];
   const links =
     variant === 'founder' ? [{ href: '/founder', label: messages.founderHome, icon: ShieldCheck }] : customerLinks;
