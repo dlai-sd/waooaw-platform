@@ -65,6 +65,12 @@ DIGEST = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 DER = serialization.Encoding.DER
 
 
+def auth_from_holder(holder):
+    # Billing and Professional Runtime each define a module named relationship_workspace; static analysis cannot
+    # tell which one this test imports, so the classmethod is looked up at run time.
+    return getattr(WorkloadAuth, "from_holder")(holder)  # noqa: B009
+
+
 @pytest.fixture
 def cloud() -> fx.Cloud:
     return fx.new_cloud()
@@ -538,7 +544,7 @@ def test_hot_reload_swaps_the_delegation_key_set_without_restart(cloud) -> None:
     values = secrets(first)
     holder = keyvault_holder(cloud, values)
     holder.refresh_once()
-    auth = WorkloadAuth.from_holder(holder)
+    auth = auth_from_holder(holder)
     now = int(cloud.now.timestamp())
     assert verify_envelope(auth.verifier, envelope(first.bp_key, kid_of(first), now, "e1")).envelope_id == "e1"
     with pytest.raises(ServiceAuthError, match="SERVICE_AUTHENTICATION_FAILED"):
@@ -596,7 +602,7 @@ def test_workload_auth_follows_the_holder_and_fails_closed_when_expired(cloud) -
     pair = fx.build_pair(cloud)
     clock = {"now": cloud.now}
     holder = keyvault_holder(cloud, secrets(pair), clock=lambda: clock["now"])
-    auth = WorkloadAuth.from_holder(holder)
+    auth = auth_from_holder(holder)
     with pytest.raises(ServiceAuthError, match="SERVICE_IDENTITY_UNAVAILABLE"):
         auth.audience  # noqa: B018
     holder.refresh_once()
@@ -883,7 +889,7 @@ def request_with(auth, peer: x509.Certificate | None, headers=None) -> Request:
 def ready_auth(cloud: fx.Cloud, **options) -> tuple[fx.Pair, CredentialHolder, WorkloadAuth]:
     pair = fx.build_pair(cloud, **options)
     holder = CredentialHolder.static(accept(pair))
-    return pair, holder, WorkloadAuth.from_holder(holder)
+    return pair, holder, auth_from_holder(holder)
 
 
 def test_link_probe_answers_a_granted_authenticated_peer_without_an_actor(cloud, caplog) -> None:
@@ -926,7 +932,7 @@ def test_link_probe_is_unavailable_when_the_credential_has_expired(cloud) -> Non
     clock = {"now": cloud.now}
     holder = keyvault_holder(cloud, secrets(pair), clock=lambda: clock["now"])
     holder.refresh_once()
-    auth = WorkloadAuth.from_holder(holder)
+    auth = auth_from_holder(holder)
     assert asyncio.run(probe_service_link(request_with(auth, pair.bp_leaf))).status_code == 200
     clock["now"] = pair.leaf.not_valid_after_utc + timedelta(seconds=1)
     response = asyncio.run(probe_service_link(request_with(auth, pair.bp_leaf)))

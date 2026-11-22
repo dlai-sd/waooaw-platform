@@ -62,6 +62,12 @@ OPERATION = "getRelationshipCommercialProjection"
 DIGEST = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 
+def auth_from_holder(holder, trust_domain: str):
+    # Billing and Professional Runtime each define a module named relationship_workspace; static analysis cannot
+    # tell which one this test imports, so the classmethod is looked up at run time.
+    return getattr(WorkloadAuth, "from_holder")(holder, trust_domain)  # noqa: B009
+
+
 @pytest.fixture
 def cloud() -> fx.Cloud:
     return fx.new_cloud()
@@ -226,7 +232,7 @@ def test_hot_reload_swaps_the_delegation_key_set_without_restart(cloud) -> None:
     holder = CredentialHolder("keyvault", now=lambda: cloud.now)
     refresher = CredentialRefresher(holder, lambda: source["texts"], EXPECT, now=lambda: cloud.now)
     refresher.refresh_once()
-    auth = WorkloadAuth.from_holder(holder, fx.TRUST_DOMAIN)
+    auth = auth_from_holder(holder, fx.TRUST_DOMAIN)
     now = int(cloud.now.timestamp())
     assert verify_token(auth.verifier, token(first.bp_key, kid_of(first), now, "e1")).envelope_id == "e1"
     with pytest.raises(ServiceAuthError, match="SERVICE_AUTHENTICATION_FAILED"):
@@ -284,7 +290,7 @@ def test_expired_snapshot_fails_closed(cloud, caplog) -> None:
     clock = {"now": cloud.now}
     holder = CredentialHolder("keyvault", now=lambda: clock["now"])
     CredentialRefresher(holder, lambda: pair.texts, EXPECT, now=lambda: cloud.now).refresh_once()
-    auth = WorkloadAuth.from_holder(holder, fx.TRUST_DOMAIN)
+    auth = auth_from_holder(holder, fx.TRUST_DOMAIN)
     peer = pair.bp_leaf.public_bytes(serialization.Encoding.DER)
     assert holder.validate_peer(peer) and holder.status()["state"] == "READY"
     caplog.set_level(logging.WARNING)
@@ -428,7 +434,7 @@ def test_health_reports_credential_state_and_lifespan_starts_the_refresher(monke
     reset_keyvault_runtime()
     application = main.create_app()
     application.state.credential_runtime = SimpleNamespace(holder=holder, refresher=refresher)
-    application.state.relationship_workload_auth = WorkloadAuth.from_holder(holder, fx.TRUST_DOMAIN)
+    application.state.relationship_workload_auth = auth_from_holder(holder, fx.TRUST_DOMAIN)
     assert TestClient(application).get("/health").json()["credential"]["state"] == "UNAVAILABLE"
     refresher.refresh_once()
     scheduler = MagicMock()
@@ -456,7 +462,7 @@ def _probe_request(auth, peer: x509.Certificate | None):
 def test_link_probe_answers_only_a_granted_authenticated_peer(cloud, caplog) -> None:
     pair = fx.build_pair(cloud)
     holder = CredentialHolder.static(accept(pair), now=lambda: cloud.now)
-    auth = WorkloadAuth.from_holder(holder, fx.TRUST_DOMAIN)
+    auth = auth_from_holder(holder, fx.TRUST_DOMAIN)
     caplog.set_level(logging.INFO)
     answer = asyncio.run(probe_service_link(_probe_request(auth, pair.bp_leaf)))
     assert answer["status"] == "ok" and answer["peer_identity_uri"] == fx.BP_URI and answer["bundle_version"] == 100
