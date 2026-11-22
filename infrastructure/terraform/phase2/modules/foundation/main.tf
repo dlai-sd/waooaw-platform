@@ -15,6 +15,10 @@ terraform {
       source  = "Azure/azapi"
       version = "= 2.2.0"
     }
+    time = {
+      source  = "hashicorp/time"
+      version = "= 0.12.1"
+    }
   }
 }
 
@@ -247,6 +251,61 @@ resource "azurerm_role_assignment" "deployment_secret_officer" {
   scope                = azurerm_key_vault.environment.id
   role_definition_name = "Key Vault Secrets Officer"
   principal_id         = azurerm_user_assigned_identity.deployment.principal_id
+}
+
+# ADR-046 Amendment 1: the deployment identity only creates the non-exportable CA keys and the empty credential
+# slots; the scheduled issuer jobs in the workload module hold the signing and publishing authority.
+resource "azurerm_role_assignment" "deployment_crypto_officer" {
+  scope                = azurerm_key_vault.environment.id
+  role_definition_name = "Key Vault Crypto Officer"
+  principal_id         = azurerm_user_assigned_identity.deployment.principal_id
+}
+
+resource "time_sleep" "deployment_crypto_officer_propagation" {
+  create_duration = "90s"
+
+  depends_on = [azurerm_role_assignment.deployment_crypto_officer]
+}
+
+locals {
+  workload_identity_key_names    = ["wid-root", "wid-intermediate"]
+  workload_identity_secret_names = ["wid-ca-state", "wid-trust-bundle", "wid-bundle-business-platform", "wid-bundle-billing-engine", "wid-bundle-professional-runtime"]
+}
+
+resource "azurerm_key_vault_key" "workload_identity" {
+  for_each = toset(local.workload_identity_key_names)
+
+  provider     = azurerm.deployment
+  name         = each.key
+  key_vault_id = azurerm_key_vault.environment.id
+  key_type     = "EC"
+  curve        = "P-256"
+  key_opts     = ["sign", "verify"]
+  tags         = merge(local.tags, { authority = "adr-046-workload-identity-ca" })
+
+  lifecycle {
+    ignore_changes = [tags, expiration_date, not_before_date]
+  }
+
+  depends_on = [time_sleep.deployment_crypto_officer_propagation]
+}
+
+# Slots are created with a placeholder that every consumer treats as "no credential"; only the issuer jobs write real values.
+resource "azurerm_key_vault_secret" "workload_identity" {
+  for_each = toset(local.workload_identity_secret_names)
+
+  provider     = azurerm.deployment
+  name         = each.key
+  value        = "UNISSUED"
+  key_vault_id = azurerm_key_vault.environment.id
+  content_type = "application/json"
+  tags         = merge(local.tags, { authority = "adr-046-workload-identity-issuer" })
+
+  lifecycle {
+    ignore_changes = [value, tags, content_type, expiration_date, not_before_date]
+  }
+
+  depends_on = [azurerm_role_assignment.deployment_secret_officer]
 }
 
 resource "azurerm_private_endpoint" "key_vault" {

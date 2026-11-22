@@ -95,6 +95,10 @@ output "location" {
   value = module.foundation.location
 }
 
+output "log_analytics_workspace_id" {
+  value = module.foundation.log_analytics_workspace_id
+}
+
 output "deployment_client_id" {
   value = module.foundation.deployment_client_id
 }

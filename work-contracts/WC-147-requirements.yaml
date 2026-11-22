@@ -1,0 +1,52 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-147
+contract_path: work-contracts/WC-147-cloud-workload-credential-issuance.md
+contract_digest: befe537647a784c56f78f134da347210539779b9ca6299982391133d3fdf7aad
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Python, dotnet and Terraform checks run in Docker at the exact head; commands and results in the PR body
+  initial_state: new
+  dependencies: Founder authorization of this implementing session (current conversation); ADR-046 Section 12 merged in PR #615
+  residual_risk: Key Vault signing, key-version creation under RBAC, the listener PATCH and cost are proven only by the first Demo deployment after merge
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC147-R001
+    source: WC-147 Canonical Requirement Index, R001
+    observable_outcome: Terraform for demo, uat and prod creates keys, slots, identities, jobs, listeners and alerts with least-privilege roles, holds no key material, and validates.
+    test_path_or_plan: tests/pipeline/test_goal006_terraform_foundations.py; tests/pipeline/test_goal006_azure_resource_names.py; terraform fmt and validate for all six roots.
+
+  - <<: *defaults
+    requirement_id: WC147-R002
+    source: WC-147 Canonical Requirement Index, R002
+    observable_outcome: The issuer signs with Key Vault keys, issues 24-hour leaves renewed at 8 hours, orders publication, and prints the lines the alerts parse.
+    test_path_or_plan: tests/constitutional/test_wid_issuer.py.
+
+  - <<: *defaults
+    requirement_id: WC147-R003
+    source: WC-147 Canonical Requirement Index, R003
+    observable_outcome: Services reject invalid credentials, keep the last good one and reload a newer one without restart.
+    test_path_or_plan: tests/billing-engine/test_workload_credentials.py; tests/professional-runtime/test_workload_credentials.py; tests/business-platform.Tests WorkloadCredentialVerifierTests, WorkloadIdentityReloadTests, WorkloadCredentialRefresherTests, KeyVaultWorkloadCredentialReaderTests.
+
+  - <<: *defaults
+    requirement_id: WC147-R004
+    source: WC-147 Canonical Requirement Index, R004
+    observable_outcome: Owner-link state is reported without gating readiness, and an unavailable owner fails closed for that owner only.
+    test_path_or_plan: tests/business-platform.Tests WorkloadCredentialHealthTests, OwnerGatewayGuardTests, WorkloadCredentialRefresherTests.
+
+  - <<: *defaults
+    requirement_id: WC147-R005
+    source: WC-147 Canonical Requirement Index, R005
+    observable_outcome: The deployment gate fails unless both issuer jobs succeed and Business Platform reports Key Vault credentials and ready owner links.
+    test_path_or_plan: tests/pipeline/test_goal006_wid_gate.py; tests/pipeline/test_goal006_terraform_foundations.py (workflow step count).
+
+  - <<: *defaults
+    requirement_id: WC147-R006
+    source: WC-147 Canonical Requirement Index, R006
+    observable_outcome: New tests are in the release-qualification gate, and the contract and CB-021 record what is implemented and what is unproven.
+    test_path_or_plan: scripts/run_release_qualification.sh; tests/pipeline/test_ci_validation_efficiency.py; review of the contract Section 9 and CB-021.

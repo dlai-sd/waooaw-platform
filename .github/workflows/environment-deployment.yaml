@@ -3783,6 +3783,21 @@ jobs:
             --interval-seconds 3 \
             --output wc124-activation-readiness.json
 
+      - name: Issue workload credentials and prove Business Platform uses them
+        if: inputs.apply
+        env:
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          # ADR-046 Amendment 1: Terraform only creates the issuer jobs. Run them now so the first
+          # credentials exist before traffic needs them, and fail the deployment if Key Vault signing
+          # or Business Platform's signed link to Billing or Professional Runtime does not work.
+          python3 scripts/goal006_wid_gate.py \
+            --resource-group "$RESOURCE_GROUP" \
+            --environment "$TARGET_ENVIRONMENT" \
+            --output wid-deployment-gate.json
+
       - name: Retire obsolete Demo revisions after healthy activation
         if: inputs.apply && inputs.environment == 'demo'
         env:
@@ -4266,6 +4281,7 @@ jobs:
             wc124-dependency-readiness.json
             wc124-migration-readiness.json
             wc124-activation-readiness.json
+            wid-deployment-gate.json
             demo-revision-cleanup.json
             wc124-vendor-migrations.json
             wc124-keycloak-migration-job.json
