@@ -72,10 +72,18 @@ TRAFFIC_FLAGS = (
 REFERENCE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9:._/-]{0,255}$")
 UUID_TEXT = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+# The heartbeat is logged every 30 seconds and ingested within seconds.
+HEARTBEAT_POLL_SECONDS = 5
 
 
 class AutopilotError(RuntimeError):
     """A refusal that must fail the deployment and leave WhatsApp stopped."""
+
+
+def unique_query(kql: str) -> str:
+    # Log Analytics serves a cached result for about two minutes to identical query text, so a poll
+    # repeating the same text cannot observe new records (WC-146).
+    return f"{kql}\n// poll {uuid.uuid4().hex}"
 
 
 def canonical(document: Any) -> bytes:
@@ -588,13 +596,13 @@ class Autopilot:
             "and ContainerAppName_s == 'ca-demo-business-platform' and Log_s has '42501' | count"
         )
         while True:
-            if self._count(self.log_query(broken)):
+            if self._count(self.log_query(unique_query(broken))):
                 raise AutopilotError("Business Platform logged database permission errors after activation")
-            if self._count(self.log_query(beat)):
+            if self._count(self.log_query(unique_query(beat))):
                 return
             if self.clock() >= deadline:
                 raise AutopilotError("no operations heartbeat for the new activation was observed in time")
-            self.sleep(30)
+            self.sleep(HEARTBEAT_POLL_SECONDS)
 
     @staticmethod
     def _count(rows: list[Any]) -> int:

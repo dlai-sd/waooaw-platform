@@ -1395,25 +1395,27 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
     assert "lifecycle_action: ${{ needs.authorize.outputs.execution == 'apply' && 'activate' || 'plan' }}" in deploy
     assert "cost_controls:" not in deploy
     assert "enforce_cost_controls:" not in deploy
-    # verify runs whenever the private apply succeeded, independent of runner cleanup; publish
-    # still requires the whole deploy and verification to succeed (run 39428513813).
+    # verify runs inside the engine whenever the private apply succeeded, independent of runner
+    # cleanup and overlapping it (WC-146); publish still requires the whole engine, including
+    # verification, to succeed (run 39428513813).
     assert deploy.count("if: needs.authorize.outputs.execution == 'apply'") == 0
-    assert deploy.count("needs.authorize.outputs.execution == 'apply'\n") == 2
-    verify_job = deploy.split("  verify:", 1)[1].split("  publish-url:", 1)[0]
+    assert deploy.count("needs.authorize.outputs.execution == 'apply'\n") == 1
+    assert "  verify:" not in deploy
     publish_job = deploy.split("  publish-url:", 1)[1]
-    assert "always()" in verify_job
-    assert "needs.authorize.result == 'success'" in verify_job
-    assert "needs.deploy.outputs.apply_result == 'success'" in verify_job
     # jobs.<id>.result is empty in workflow_call outputs (actions/runner#3087); the result must
     # come from a job output recorded by an always() step, or verify never runs.
     deployment = (REPO_ROOT / ".github/workflows/environment-deployment.yaml").read_text(encoding="utf-8")
+    verify_job = deployment.split("\n  verify:\n", 1)[1]
+    assert "always()" in verify_job
+    assert "inputs.apply" in verify_job
+    assert "needs.terraform.outputs.apply_result == 'success'" in verify_job
     assert "jobs.terraform.result" not in deployment
     assert "value: ${{ jobs.terraform.outputs.apply_result }}" in deployment
     terraform_job = deployment.split("\n  terraform:\n", 1)[1].split("\n  cleanup-private:\n", 1)[0]
     assert "apply_result: ${{ steps.apply_result.outputs.result }}" in terraform_job
     assert 'id: apply_result\n        if: always()\n        run: echo "result=${{ job.status }}" >> "$GITHUB_OUTPUT"' in terraform_job
     assert "needs.deploy.result == 'success'" in publish_job
-    assert "needs.verify.result == 'success'" in publish_job
+    assert "needs.verify" not in publish_job
     for internal_input in (
         "lifecycle_evidence:",
         "founder_action_authority:",
@@ -1423,8 +1425,9 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
         "release_tuple:",
     ):
         assert internal_input not in deploy
-    assert "verification_client_id: ${{ needs.deploy.outputs.verification_client_id }}" in deploy
-    assert "web_url: ${{ needs.deploy.outputs.web_url }}" in deploy
+    assert "verification_client_id: ${{ needs.terraform.outputs.verification_client_id }}" in deployment
+    assert "web_url: ${{ needs.terraform.outputs.web_url }}" in deployment
+    assert "WEB_URL: ${{ needs.deploy.outputs.web_url }}" in deploy
     assert not (REPO_ROOT / ".github/workflows/promote.yaml").exists()
 
     verification = (REPO_ROOT / ".github/workflows/environment-deployment-verification.yaml").read_text(encoding="utf-8")

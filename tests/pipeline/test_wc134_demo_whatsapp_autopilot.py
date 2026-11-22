@@ -15,6 +15,7 @@ from wc134_demo_whatsapp_autopilot import (
     TRAFFIC_FLAGS,
     Autopilot,
     AutopilotError,
+    HEARTBEAT_POLL_SECONDS,
     activation_window,
     binding_digests,
     build_receipts,
@@ -23,6 +24,7 @@ from wc134_demo_whatsapp_autopilot import (
     provider_failure_summary,
     render_alert_query,
     spend_arguments,
+    unique_query,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -326,6 +328,24 @@ def test_failed_proof_stops_whatsapp_and_disables_the_alert(harness: Harness) ->
 
     assert harness.calls[-2:] == ["activate", "stop"]
     assert harness.rule_puts[-1]["properties"]["enabled"] is False
+
+
+def test_heartbeat_is_polled_quickly_with_a_distinct_query_each_time() -> None:
+    harness = Harness(beat=False)
+    sleeps: list[float] = []
+    queries: list[str] = []
+    clock_sleep, logs = harness.clock.sleep, harness.logs
+    harness.clock.sleep = lambda seconds: (sleeps.append(seconds), clock_sleep(seconds))[1]  # type: ignore[method-assign]
+    harness.logs = lambda kql: (queries.append(kql), logs(kql))[1]  # type: ignore[method-assign]
+
+    with pytest.raises(AutopilotError, match="no operations heartbeat"):
+        harness.pilot().activate()
+
+    assert set(sleeps) == {HEARTBEAT_POLL_SECONDS}
+    assert len(queries) > 4
+    assert len(set(queries)) == len(queries)
+    assert unique_query("q").startswith("q\n// ")
+    assert unique_query("q") != unique_query("q")
 
 
 def test_unready_registration_stops_before_any_activation_work() -> None:

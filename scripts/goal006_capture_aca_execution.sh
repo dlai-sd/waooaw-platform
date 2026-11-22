@@ -65,7 +65,7 @@ fi
 for evidence_attempt in $(seq 1 "$evidence_polls"); do
   az monitor log-analytics query \
     --workspace "$workspace" \
-    --analytics-query "$query" \
+    --analytics-query "$query"$'\n'"// poll $evidence_attempt-$(date +%s%N)" \
     --output json > "${prefix}.events.json"
   python3 scripts/goal006_aca_execution_evidence.py classify \
     --events "${prefix}.events.json" \

@@ -172,31 +172,11 @@ jobs:
       reset_demo_database: ${{ needs.authorize.outputs.reset_demo_database == 'true' }}
     secrets: inherit
 
-  verify:
-    # Verification evidence is produced whenever the private apply succeeded, even if runner
-    # cleanup failed afterwards; publication still requires the whole deploy to succeed.
-    if: >-
-      always()
-      && needs.authorize.result == 'success'
-      && needs.authorize.outputs.execution == 'apply'
-      && needs.deploy.outputs.apply_result == 'success'
-    needs: [authorize, deploy]
-    uses: ./.github/workflows/environment-deployment-verification.yaml
-    with:
-      environment: ${{ needs.authorize.outputs.environment }}
-      release_run_id: ${{ fromJSON(needs.authorize.outputs.release_run_id) }}
-      release_sha: ${{ needs.authorize.outputs.release_sha }}
-      control_sha: ${{ needs.authorize.outputs.control_sha }}
-      verification_client_id: ${{ needs.deploy.outputs.verification_client_id }}
-      web_url: ${{ needs.deploy.outputs.web_url }}
-    secrets: inherit
-
   publish-url:
     if: >-
       needs.authorize.outputs.execution == 'apply'
       && needs.deploy.result == 'success'
-      && needs.verify.result == 'success'
-    needs: [authorize, deploy, verify]
+    needs: [authorize, deploy]
     runs-on: ubuntu-latest
     steps:
       - name: Publish verified environment URL
