@@ -37,6 +37,7 @@ public sealed class ProviderRegistryDbContext : DbContext
             e.Property(p => p.TestUrl).HasColumnName("test_url");
             e.Property(p => p.TestAuthScheme).HasColumnName("test_auth_scheme");
             e.Property(p => p.TestAuthHeader).HasColumnName("test_auth_header");
+            e.Property(p => p.TestMethod).HasColumnName("test_method");
             e.Property(p => p.ActiveCredentialVersionId)
                 .HasColumnName("active_credential_version_id");
             e.HasIndex(p => new { p.TenantId, p.ProviderName }).IsUnique();
@@ -85,6 +86,9 @@ public sealed class ProviderConfig
     /// <summary>BEARER, X_API_KEY, X_GOOG_API_KEY or HEADER (the header named by TestAuthHeader).</summary>
     public string? TestAuthScheme { get; init; }
     public string? TestAuthHeader { get; init; }
+
+    /// <summary>GET (default) or POST_EMPTY_JSON for providers with no read-only endpoint.</summary>
+    public string? TestMethod { get; init; }
     public Guid? ActiveCredentialVersionId { get; set; }
 }
 

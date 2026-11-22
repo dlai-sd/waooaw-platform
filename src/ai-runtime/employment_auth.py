@@ -75,6 +75,40 @@ def _canonical_context(context: DelegatedContext) -> bytes:
     return json.dumps(asdict(context), ensure_ascii=True, separators=(",", ":"), sort_keys=True).encode()
 
 
+_DOTNET_SHORT_ESCAPES = {"\b": "\\b", "\t": "\\t", "\n": "\\n", "\f": "\\f", "\r": "\\r", "\\": "\\\\"}
+
+
+def _dotnet_string(value: str) -> str:
+    # System.Text.Json's default encoder escapes quotes, <>&'+`, controls and everything outside printable ASCII.
+    parts = ['"']
+    for character in value:
+        if character in _DOTNET_SHORT_ESCAPES:
+            parts.append(_DOTNET_SHORT_ESCAPES[character])
+        elif character in "\"<>&'+`" or not " " <= character <= "~":
+            encoded = character.encode("utf-16-be")
+            parts.extend(f"\\u{encoded[index] << 8 | encoded[index + 1]:04X}" for index in range(0, len(encoded), 2))
+        else:
+            parts.append(character)
+    parts.append('"')
+    return "".join(parts)
+
+
+def _dotnet_value(value: object) -> str:
+    if value is None:
+        return "null"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, str):
+        return _dotnet_string(value)
+    assert isinstance(value, Mapping)
+    return "{" + ",".join(f"{_dotnet_string(key)}:{_dotnet_value(value[key])}" for key in sorted(value)) + "}"
+
+
+def _dotnet_canonical_context(context: DelegatedContext) -> bytes:
+    """The Business Platform signer's byte form of the same context (sorted keys, compact, .NET string escaping)."""
+    return _dotnet_value(asdict(context)).encode()
+
+
 class ReplayStore:
     def __init__(self) -> None:
         self._entries: dict[tuple[str, ...], int] = {}
@@ -106,16 +140,16 @@ class EmploymentWorkloadAuth:
         self.audience = audience
 
     @classmethod
-    def from_credentials(cls, credentials: Path) -> EmploymentWorkloadAuth:
+    def from_credentials(cls, credentials: Path, caller_workload: str = "professional-runtime") -> EmploymentWorkloadAuth:
         manifest = json.loads((credentials / "manifest.json").read_text(encoding="utf-8"))
         target = manifest["workloads"]["ai-runtime"]
-        caller = manifest["workloads"]["professional-runtime"]
+        caller = manifest["workloads"][caller_workload]
         certificate = x509.load_pem_x509_certificate(
-            (credentials / "workloads" / "professional-runtime" / "delegation-cert.pem").read_bytes()
+            (credentials / "workloads" / caller_workload / "delegation-cert.pem").read_bytes()
         )
         public_key = certificate.public_key()
         if not isinstance(public_key, (ec.EllipticCurvePublicKey, ed25519.Ed25519PublicKey)):
-            raise ValueError("PR delegation certificate must contain an ECDSA or Ed25519 public key")
+            raise ValueError("Caller delegation certificate must contain an ECDSA or Ed25519 public key")
         grants = frozenset(
             RouteGrant(
                 caller_uri=manifest["workloads"][grant["caller"]]["identity_uri"],
@@ -159,7 +193,7 @@ class EmploymentWorkloadAuth:
             context = DelegatedContext(**json.loads(payload))
         except (TypeError, ValueError, KeyError, json.JSONDecodeError) as error:
             raise EmploymentAuthError("AIR_EMPLOYMENT_UNAUTHORIZED") from error
-        if payload != _canonical_context(context):
+        if payload != _canonical_context(context) and payload != _dotnet_canonical_context(context):
             raise EmploymentAuthError("AIR_EMPLOYMENT_UNAUTHORIZED")
         public_key = self._public_keys.get((context.issuer_uri, context.key_id))
         if public_key is None:

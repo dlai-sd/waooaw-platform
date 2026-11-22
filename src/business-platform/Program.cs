@@ -279,6 +279,15 @@ else if (!string.IsNullOrWhiteSpace(workloadCredentials))
     workloadIdentity = WorkloadIdentityClient.Load(workloadCredentials);
     builder.Services.AddSingleton(workloadIdentity);
 }
+var workloadInboundPort = WorkloadInboundListener.Configure(
+    builder,
+    credentialOptions,
+    workloadIdentity
+);
+if (credentialOptions.IsKeyVault && workloadIdentity is not null)
+    builder.Services.AddSingleton<Waooaw.WorkloadIdentity.IInboundCredentialSource>(
+        new WorkloadInboundCredentialSource(workloadIdentity, TimeProvider.System)
+    );
 T Guarded<T>(T real, T unavailable)
     where T : class =>
     credentialOptions.IsKeyVault && workloadIdentity is not null
@@ -377,17 +386,61 @@ builder.Services.AddDbContextFactory<Waooaw.BusinessPlatform.Infrastructure.Prov
 var providerCredentialOptions = ProviderCredentialOptions.From(builder.Configuration);
 builder.Services.AddSingleton(providerCredentialOptions);
 if (providerCredentialOptions.VaultUri is not null)
-    builder.Services.AddSingleton<IProviderSecretStore>(
-        new KeyVaultProviderSecretStore(
-            new HttpClient { Timeout = TimeSpan.FromSeconds(10) },
-            builder.Configuration,
-            providerCredentialOptions
+{
+    var keyVault = new KeyVaultProviderSecretStore(
+        new HttpClient { Timeout = TimeSpan.FromSeconds(10) },
+        builder.Configuration,
+        providerCredentialOptions
+    );
+    builder.Services.AddSingleton<ISecretVault>(keyVault);
+    builder.Services.AddSingleton<IProviderSecretStore>(keyVault);
+}
+else
+{
+    var unconfiguredVault = new UnconfiguredProviderSecretStore();
+    builder.Services.AddSingleton<ISecretVault>(unconfiguredVault);
+    builder.Services.AddSingleton<IProviderSecretStore>(unconfiguredVault);
+}
+builder.Services.AddSingleton<IProviderCredentialTester, ProviderCredentialTester>();
+builder.Services.AddSingleton<IProviderCredentialAdminService, ProviderCredentialAdminService>();
+if (
+    workloadIdentity is not null
+    && Uri.TryCreate(
+        builder.Configuration["ProviderProbe:BaseUrl"],
+        UriKind.Absolute,
+        out var providerProbeUri
+    )
+)
+    builder.Services.AddSingleton<IProviderProbeGateway>(
+        Guarded<IProviderProbeGateway>(
+            new AuthenticatedProviderProbeGateway(workloadIdentity, providerProbeUri),
+            new UnconfiguredProviderProbeGateway()
         )
     );
 else
-    builder.Services.AddSingleton<IProviderSecretStore, UnconfiguredProviderSecretStore>();
-builder.Services.AddSingleton<IProviderCredentialTester, ProviderCredentialTester>();
-builder.Services.AddSingleton<IProviderCredentialAdminService, ProviderCredentialAdminService>();
+    builder.Services.AddSingleton<IProviderProbeGateway, UnconfiguredProviderProbeGateway>();
+builder.Services.AddSingleton<IProviderGenerationProbe, ProviderGenerationProbe>();
+
+// ── Customer provider connections (WC-149) — Page tokens live only in Key Vault under customer-connection-* ──
+var customerConnectionsConn =
+    builder.Configuration.GetConnectionString("CustomerConnections")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Host=localhost;Database=waooaw_bp;Username=business_app;";
+builder.Services.AddDbContextFactory<CustomerConnectionsDbContext>(opts =>
+    opts.UseNpgsql(customerConnectionsConn)
+);
+var metaConnectionOptions = MetaConnectionOptions.From(builder.Configuration);
+builder.Services.AddSingleton(metaConnectionOptions);
+builder.Services.AddSingleton<IMetaGraphClient>(
+    new MetaGraphClient(
+        new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
+        {
+            Timeout = TimeSpan.FromSeconds(15),
+        },
+        metaConnectionOptions
+    )
+);
+builder.Services.AddSingleton<IProviderConnectionService, ProviderConnectionService>();
 
 // ── Skill Catalog DbContext — ADR-043 §2 ─────────────────────────────────────
 var skillCatalogConn =
@@ -809,6 +862,8 @@ builder.Services.AddScoped<PerformanceReviewService>();
 builder.Services.AddScoped<ConversationService>();
 builder.Services.AddScoped<ConversationRuntimeEventIngestion>();
 builder.Services.AddSingleton<InferenceWorkloadAuthority>();
+builder.Services.AddSingleton<ProviderCredentialWorkloadAuthority>();
+builder.Services.AddSingleton<IProviderCredentialResolver, ProviderCredentialResolver>();
 builder.Services.AddSingleton<Waooaw.WorkloadIdentity.InferenceWorkloadValidator>();
 Waooaw.WorkloadIdentity.InferenceWorkloadValidator.ConfigureTransport(
     builder,
@@ -1035,6 +1090,21 @@ builder.Services.AddScoped<VoiceContributionService>();
 
 // ─────────────────────────────────────────────────────────────────────────────
 var app = builder.Build();
+if (workloadInboundPort is { } privatePort)
+    app.Use(
+        async (context, next) =>
+        {
+            if (
+                context.Connection.LocalPort == privatePort
+                && !context.Request.Path.StartsWithSegments(WorkloadInboundListener.RoutePrefix)
+            )
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+                return;
+            }
+            await next();
+        }
+    );
 app.UseMiddleware<WhatsAppCallbackHostMiddleware>();
 
 // ── Middleware pipeline (order is constitutional — do NOT reorder) ────────────

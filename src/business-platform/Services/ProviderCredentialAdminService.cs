@@ -47,7 +47,8 @@ public sealed record CreateProviderRequest(
     string? AgentTypeId,
     string? TestUrl,
     string? TestAuthScheme,
-    string? TestAuthHeader
+    string? TestAuthHeader,
+    string? TestMethod = null
 );
 
 public sealed record ProviderCredentialVersionSummary(
@@ -139,7 +140,9 @@ public sealed partial class ProviderCredentialAdminService(
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var providers = await db
             .ProviderConfigs.AsNoTracking()
-            .Where(p => p.TenantId == null && p.AuthMethod == "API_KEY")
+            .Where(p =>
+                p.TenantId == null && (p.AuthMethod == "API_KEY" || p.TestAuthScheme == "META_APP")
+            )
             .OrderBy(p => p.Category)
             .ThenBy(p => p.ProviderName)
             .ToListAsync(ct);
@@ -412,7 +415,10 @@ public sealed partial class ProviderCredentialAdminService(
         CancellationToken ct
     ) =>
         await db.ProviderConfigs.SingleOrDefaultAsync(
-            p => p.Id == providerId && p.TenantId == null && p.AuthMethod == "API_KEY",
+            p =>
+                p.Id == providerId
+                && p.TenantId == null
+                && (p.AuthMethod == "API_KEY" || p.TestAuthScheme == "META_APP"),
             ct
         ) ?? throw NotFound();
 
@@ -423,7 +429,7 @@ public sealed partial class ProviderCredentialAdminService(
     ) =>
         await db
             .ProviderConfigs.FromSql(
-                $"SELECT * FROM business.provider_configs WHERE id = {providerId} AND tenant_id IS NULL AND auth_method = 'API_KEY' FOR UPDATE"
+                $"SELECT * FROM business.provider_configs WHERE id = {providerId} AND tenant_id IS NULL AND (auth_method = 'API_KEY' OR test_auth_scheme = 'META_APP') FOR UPDATE"
             )
             .SingleOrDefaultAsync(ct)
         ?? throw NotFound();
@@ -458,7 +464,8 @@ public sealed partial class ProviderCredentialAdminService(
             provider.ProviderName,
             provider.TestUrl,
             provider.TestAuthScheme,
-            provider.TestAuthHeader
+            provider.TestAuthHeader,
+            provider.TestMethod
         );
 
     private static string NormalizeValue(string? value)
@@ -504,6 +511,11 @@ public sealed partial class ProviderCredentialAdminService(
         var header = string.IsNullOrWhiteSpace(request.TestAuthHeader)
             ? null
             : request.TestAuthHeader.Trim();
+        var method = string.IsNullOrWhiteSpace(request.TestMethod)
+            ? null
+            : request.TestMethod.Trim();
+        if (method is not null && (testUrl is null || !ProviderTestMethods.All.Contains(method)))
+            throw Invalid("testMethod must be GET or POST_EMPTY_JSON and needs a testUrl.");
         if (testUrl is null)
         {
             if (scheme is not null || header is not null)
@@ -523,7 +535,7 @@ public sealed partial class ProviderCredentialAdminService(
                 throw Invalid("testUrl must be an https URL for a named host.");
             if (scheme is null || !ProviderAuthSchemes.All.Contains(scheme))
                 throw Invalid(
-                    "testAuthScheme must be BEARER, X_API_KEY, X_GOOG_API_KEY or HEADER."
+                    "testAuthScheme must be BEARER, X_API_KEY, X_GOOG_API_KEY, SUBSCRIPTION_KEY or HEADER."
                 );
             if (scheme == ProviderAuthSchemes.Header)
             {
@@ -551,6 +563,7 @@ public sealed partial class ProviderCredentialAdminService(
             TestUrl = testUrl,
             TestAuthScheme = scheme,
             TestAuthHeader = header,
+            TestMethod = method,
         };
     }
 

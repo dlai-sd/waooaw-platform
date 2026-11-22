@@ -23,6 +23,7 @@ public sealed class ProviderCredentialAdminControllerTests
     private const string Secret = "sk-test-SYNTHETIC-credential-value-0123456789";
     private static readonly Guid ProviderId = Guid.NewGuid();
     private readonly Mock<IProviderCredentialAdminService> _service = new(MockBehavior.Strict);
+    private readonly Mock<IProviderGenerationProbe> _probe = new(MockBehavior.Strict);
 
     private ProviderCredentialAdminController Controller(
         string? role,
@@ -54,6 +55,7 @@ public sealed class ProviderCredentialAdminControllerTests
         http.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body ?? "{}"));
         return new ProviderCredentialAdminController(
             _service.Object,
+            _probe.Object,
             NullLogger<ProviderCredentialAdminController>.Instance
         )
         {
@@ -140,6 +142,7 @@ public sealed class ProviderCredentialAdminControllerTests
             await controller().CreateAsync(CancellationToken.None),
             await controller().ListVersionsAsync(ProviderId, CancellationToken.None),
             await controller().TestAsync(ProviderId, CancellationToken.None),
+            await controller().TestAnswerAsync("openai", CancellationToken.None),
             await controller().ConfirmAsync(ProviderId, CancellationToken.None),
             await controller().ActivateAsync(ProviderId, Guid.NewGuid(), CancellationToken.None),
         };
@@ -151,6 +154,7 @@ public sealed class ProviderCredentialAdminControllerTests
             body.GetProperty("code").GetString().Should().Be("PROVIDER_FORBIDDEN");
         }
         _service.VerifyNoOtherCalls();
+        _probe.VerifyNoOtherCalls();
     }
 
     [Fact]
@@ -163,6 +167,7 @@ public sealed class ProviderCredentialAdminControllerTests
         {
             await controller().CreateAsync(CancellationToken.None),
             await controller().TestAsync(ProviderId, CancellationToken.None),
+            await controller().TestAnswerAsync("openai", CancellationToken.None),
             await controller().ConfirmAsync(ProviderId, CancellationToken.None),
             await controller().ActivateAsync(ProviderId, Guid.NewGuid(), CancellationToken.None),
         };
@@ -175,6 +180,53 @@ public sealed class ProviderCredentialAdminControllerTests
             body.GetRawText().Should().NotContain(Secret);
         }
         _service.VerifyNoOtherCalls();
+        _probe.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task TestAnswerPassesTheActorAndReturnsTheProbeResult()
+    {
+        var probeResult = new ProviderProbeResult(
+            new ProviderProbeAnswer("openai", "gpt", "gpt-x", "ok", 3, 1, 120),
+            [new ProviderProbeAttempt("openai", "ANSWERED", null)]
+        );
+        _probe
+            .Setup(p =>
+                p.TestAnswerAsync(
+                    "openai",
+                    It.Is<ProviderTestAnswerRequest>(r => r.Model == null),
+                    "founder-1",
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(probeResult);
+
+        var result = await Controller("founder", true, """{"model":null,"fallbackProviders":[]}""")
+            .TestAnswerAsync("openai", CancellationToken.None);
+
+        result.Should().BeOfType<OkObjectResult>().Which.Value.Should().Be(probeResult);
+    }
+
+    [Fact]
+    public async Task TestAnswerProbeUnavailabilityIsAProblem()
+    {
+        _probe
+            .Setup(p =>
+                p.TestAnswerAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<ProviderTestAnswerRequest>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ThrowsAsync(new ProviderAdminException(503, "PROVIDER_PROBE_UNAVAILABLE", "down"));
+
+        var result = await Controller("founder", true, "{}")
+            .TestAnswerAsync("openai", CancellationToken.None);
+
+        var (status, body) = Problem(result);
+        status.Should().Be(503);
+        body.GetProperty("code").GetString().Should().Be("PROVIDER_PROBE_UNAVAILABLE");
     }
 
     [Fact]

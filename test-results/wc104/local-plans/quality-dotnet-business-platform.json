@@ -1,8 +1,8 @@
 {
   "authoritative": false,
   "catalog_version": "wc121-selective-validation-v1",
-  "execution_namespace": "wc109-ceec6e1bbda65659",
-  "head_sha": "9899063ee79f7612f2b400e076c4baeb306e45d4",
+  "execution_namespace": "wc109-663c7b500152e052",
+  "head_sha": "52a718cfd07a2c018c421fb80f05a121a4509f51",
   "machine_checkable": true,
   "mode": "qualification",
   "nodes": [
@@ -16,7 +16,7 @@
       "command": "sh scripts/validation_control/run_dotnet_quality_gate.sh src/business-platform business-platform",
       "command_id": "quality-dotnet-business-platform",
       "components": [],
-      "compose_project": "wc109-ceec6e1bbda65659",
+      "compose_project": "wc109-663c7b500152e052",
       "compose_service": "test-runner-dotnet",
       "cost_class": "STATIC",
       "direct_prerequisites": [],
@@ -28,7 +28,7 @@
           "common": "test-results/validation/build.json",
           "native": []
         },
-        "directory": "test-results/wc109/runs/wc109-ceec6e1bbda65659/quality-dotnet-business-platform"
+        "directory": "test-results/wc109/runs/wc109-663c7b500152e052/quality-dotnet-business-platform"
       },
       "gate_id": "quality:dotnet:business-platform",
       "inputs": {
@@ -36,7 +36,7 @@
         "catalog_version": "wc121-selective-validation-v1",
         "command_id": "quality-dotnet-business-platform",
         "environment": [],
-        "head_sha": "9899063ee79f7612f2b400e076c4baeb306e45d4",
+        "head_sha": "52a718cfd07a2c018c421fb80f05a121a4509f51",
         "required_services": [],
         "runner_id": "dotnet"
       },
@@ -66,7 +66,7 @@
           "environment"
         ]
       },
-      "output_directory": "test-results/wc109/runs/wc109-ceec6e1bbda65659/quality-dotnet-business-platform",
+      "output_directory": "test-results/wc109/runs/wc109-663c7b500152e052/quality-dotnet-business-platform",
       "owner": "validation-control",
       "phase": "A_DESIGN",
       "product_image_builds": [],

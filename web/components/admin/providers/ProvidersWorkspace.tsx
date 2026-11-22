@@ -5,7 +5,7 @@
 
 import { useCallback, useState } from 'react';
 import { providerCall } from '@/lib/provider-admin-call';
-import { problemText, type ProviderSummary } from '@/lib/provider-admin-client';
+import { fallbackProvidersFrom, problemText, type ProviderSummary } from '@/lib/provider-admin-client';
 import { AddProviderForm } from './AddProviderForm';
 import { ProviderList } from './ProviderList';
 import { ProviderPanel } from './ProviderPanel';
@@ -60,6 +60,7 @@ export function ProvidersWorkspace({ initialProviders }: Props) {
         {selected ? (
           <ProviderPanel
             focusOnMount={userSelected}
+            fallbackCandidates={fallbackProvidersFrom(providers, selected.id)}
             key={selected.id}
             onChanged={() => void refresh()}
             provider={selected}

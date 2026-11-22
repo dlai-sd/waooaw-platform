@@ -13,6 +13,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 import httpx
+from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
@@ -26,9 +27,14 @@ from conversation_generation import (
     canonical,
 )
 from employment_auth import DelegatedContext
+from runtime_workload_credentials import CredentialHolder, CredentialSnapshot
+from workload_identity import certificate_uris
 
 
 class BusinessPlatformGenerationOwner:
+    key: ec.EllipticCurvePrivateKey | None
+    expected_peer: str | None = None
+
     def __init__(self, endpoint: str, credentials: Path) -> None:
         if not endpoint.startswith("https://"):
             raise ValueError("Inference owner requires institutional HTTPS")
@@ -44,6 +50,38 @@ class BusinessPlatformGenerationOwner:
         tls = ssl.create_default_context(cafile=str(credentials / "trust" / "ca-bundle.pem"))
         tls.load_cert_chain(str(workload / "tls-cert.pem"), str(workload / "tls-key.pem"))
         self.client = httpx.AsyncClient(verify=tls, timeout=15, follow_redirects=False, trust_env=False)
+
+    @classmethod
+    def from_holder(cls, endpoint: str, holder: CredentialHolder, tls: ssl.SSLContext) -> BusinessPlatformGenerationOwner:
+        """Cloud form: signing material and trust follow the verified Key Vault snapshot, rotated without restart."""
+        if not endpoint.startswith("https://"):
+            raise ValueError("Inference owner requires institutional HTTPS")
+        owner = cls.__new__(cls)
+        owner.endpoint, owner.key, owner.expected_peer = endpoint.rstrip("/"), None, None
+        owner.issuer = owner.key_id = owner.audience = ""
+        owner.client = httpx.AsyncClient(verify=tls, timeout=15, follow_redirects=False, trust_env=False)
+        holder.subscribe(owner._rotate)
+        return owner
+
+    def _rotate(self, snapshot: CredentialSnapshot) -> None:
+        target = snapshot.manifest["workloads"]["business-platform"]
+        if snapshot.delegation_key_pem is None or snapshot.delegation_key_id is None:
+            raise ValueError("Inference owner requires the admitted delegation key")
+        key = load_pem_private_key(snapshot.delegation_key_pem, password=None)
+        if not isinstance(key, ec.EllipticCurvePrivateKey):
+            raise ValueError("Inference owner requires the admitted ECDSA delegation key")
+        self.key, self.issuer, self.key_id = key, snapshot.identity_uri, snapshot.delegation_key_id
+        self.audience, self.expected_peer = str(target["audience"]), str(target["identity_uri"])
+
+    def _verify_peer(self, response: httpx.Response) -> None:
+        # Cloud leaves carry only a URI SAN, so the owner is identified by its workload URI rather than a host name.
+        if self.expected_peer is None:
+            return
+        stream = response.extensions.get("network_stream")
+        ssl_object = stream.get_extra_info("ssl_object") if stream is not None else None
+        der = ssl_object.getpeercert(binary_form=True) if ssl_object is not None else None
+        if not der or certificate_uris(x509.load_der_x509_certificate(der)) != [self.expected_peer]:
+            raise ValueError("Inference owner peer identity mismatch")
 
     async def _post(
         self,
@@ -93,16 +131,64 @@ class BusinessPlatformGenerationOwner:
             expires_at=now + 60,
             envelope_id=str(uuid4()),
         )
+        return await self._send(delegated, payload)
+
+    async def _send(self, delegated: DelegatedContext, payload: bytes, correlation_id: str | None = None) -> httpx.Response:
         envelope = json.dumps(asdict(delegated), sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
-        signature = self.key.sign(envelope, ec.ECDSA(hashes.SHA256()))
+        key = self.key
+        if key is None:
+            raise RuntimeError("Workload credential is not yet available")
+        signature = key.sign(envelope, ec.ECDSA(hashes.SHA256()))
         token = ".".join(base64.urlsafe_b64encode(part).rstrip(b"=").decode() for part in (envelope, signature))
-        response = await self.client.post(
-            self.endpoint + delegated.route,
-            content=payload,
-            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-        )
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        if correlation_id is not None:
+            headers["X-Correlation-Id"] = correlation_id
+        response = await self.client.post(self.endpoint + delegated.route, content=payload, headers=headers)
+        self._verify_peer(response)
         response.raise_for_status()
         return response
+
+    async def resolve_provider_credential(self, provider_name: str) -> dict[str, object] | None:
+        """Names the active Key Vault secret version for a provider; the reply never carries a secret value."""
+        body = canonical({"providerName": provider_name})
+        now = int(time.time())
+        command = str(uuid4())
+        delegated = DelegatedContext(
+            schema_version="1.0",
+            key_id=self.key_id,
+            issuer_uri=self.issuer,
+            target_audience=self.audience,
+            method="POST",
+            route="/internal/v1/provider-credentials/resolve",
+            operation="resolveProviderCredential",
+            contract_major=1,
+            actor_subject=self.issuer,
+            actor_source="WORKLOAD",
+            effective_role="WORKLOAD",
+            tenant_id="platform",
+            relationship_id="provider-credential",
+            purpose="PROVIDER_CREDENTIAL_RESOLVE",
+            subject_reference=provider_name,
+            request_digest=hashlib.sha256(body).hexdigest(),
+            command_id=command,
+            idempotency_key=None,
+            expected_versions={},
+            issued_at=now,
+            not_before=now,
+            expires_at=now + 60,
+            envelope_id=str(uuid4()),
+            correlation_id=command,
+        )
+        try:
+            response = await self._send(delegated, body, command)
+        except httpx.HTTPStatusError as error:
+            if error.response.status_code == 404:
+                return None
+            raise
+        result = response.json()
+        if not isinstance(result, dict) or result.get("providerName") != provider_name:
+            raise ValueError("Provider credential reference does not match the request")
+        return {key: result.get(key) for key in ("secretName", "secretVersion", "authStyle")}
 
     async def resolve(self, request: GenerationRequest, context: DelegatedContext, key: UUID) -> InferenceBinding:
         return InferenceBinding.model_validate((await self._post(request, context, key, "resolve")).json())

@@ -8,7 +8,7 @@ import logging
 import os
 import re
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
@@ -43,13 +43,18 @@ class _CredentialRef:
     secret_version: str
 
 
+RefFetcher = Callable[[str], Awaitable[dict[str, object] | None]]
+
+
 class ProviderCredentialResolver:
     """
     Resolves a provider API key from the BP provider registry and Key Vault.
 
     The registry names the active secret version (short TTL cache); that exact version is read from Key Vault with the
     container's managed identity. A new or rolled-back version is picked up on the next registry refresh, and values of
-    superseded versions are dropped. Registry authentication mirrors ctg.registry_client.ProviderRegistryClient.
+    superseded versions are dropped. Registry authentication mirrors ctg.registry_client.ProviderRegistryClient unless a
+    ref_fetcher is supplied (the ADR-046 mTLS client to POST /internal/v1/provider-credentials/resolve), which returns
+    {"secretName", "secretVersion", ...} or None when the provider has no active credential.
     """
 
     def __init__(
@@ -61,7 +66,9 @@ class ProviderCredentialResolver:
         ttl_seconds: float = REGISTRY_CACHE_TTL_SECONDS,
         clock: Callable[[], float] = time.monotonic,
         wall_clock: Callable[[], float] = time.time,
+        ref_fetcher: RefFetcher | None = None,
     ) -> None:
+        self._ref_fetcher = ref_fetcher
         base_url = bp_base_url if bp_base_url else os.getenv("BP_BASE_URL", "http://business-platform:5003")
         self._bp_base_url = base_url.rstrip("/")
         self._vault_url = vault_url if vault_url is not None else os.getenv("PROVIDER_CREDENTIALS_VAULT_URL", "")
@@ -104,6 +111,8 @@ class ProviderCredentialResolver:
         self._secrets = {key: val for key, val in self._secrets.items() if key[0] != secret_name or key[1] == keep_version}
 
     async def _fetch_ref(self, provider_name: str) -> _CredentialRef | None:
+        if self._ref_fetcher is not None:
+            return await self._fetch_ref_via_owner(provider_name, self._ref_fetcher)
         url = f"{self._bp_base_url}/api/v1/providers/{provider_name}"
         headers = {"Authorization": f"Bearer {self._internal_jwt}"}
         try:
@@ -126,6 +135,22 @@ class ProviderCredentialResolver:
             return None
         if not isinstance(credential, dict):
             raise ProviderCredentialUnavailable(provider_name, "registry_error")
+        return self._parse_ref(provider_name, credential)
+
+    async def _fetch_ref_via_owner(self, provider_name: str, fetcher: RefFetcher) -> _CredentialRef | None:
+        try:
+            credential = await fetcher(provider_name)
+        except (httpx.HTTPError, OSError) as exc:
+            self._warn(provider_name, "registry_unreachable", type(exc).__name__)
+            raise ProviderCredentialUnavailable(provider_name, "registry_unreachable") from None
+        except ValueError:
+            raise ProviderCredentialUnavailable(provider_name, "registry_error") from None
+        if credential is None:
+            return None
+        return self._parse_ref(provider_name, credential)
+
+    @staticmethod
+    def _parse_ref(provider_name: str, credential: dict[str, object]) -> _CredentialRef:
         name = credential.get("secretName", credential.get("secret_name"))
         version = credential.get("secretVersion", credential.get("secret_version"))
         if (
@@ -137,6 +162,10 @@ class ProviderCredentialResolver:
         ):
             raise ProviderCredentialUnavailable(provider_name, "registry_error")
         return _CredentialRef(name, version)
+
+    def vault_configured(self) -> bool:
+        parts = urlsplit(self._vault_url or "")
+        return parts.scheme == "https" and (parts.hostname or "").endswith(".vault.azure.net") and parts.port in (None, 443)
 
     async def _read_secret(self, provider_name: str, ref: _CredentialRef) -> str:
         vault_origin = self._vault_origin(provider_name)

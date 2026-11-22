@@ -102,6 +102,7 @@ describe('provider admin proxy route', () => {
     ['POST', `${providerId}/credentials/test`, [providerId, 'credentials', 'test']],
     ['POST', `${providerId}/credentials`, [providerId, 'credentials']],
     ['POST', `${providerId}/credentials/${versionId}/activate`, [providerId, 'credentials', versionId, 'activate']],
+    ['POST', 'sarvam/test-answer', ['sarvam', 'test-answer']],
   ])('proxies the allowed operation %s /%s', async (method, path, segments) => {
     global.fetch = jest.fn().mockResolvedValue(upstream(200, {}));
     const { GET, POST } = await import('./route');
@@ -124,7 +125,10 @@ describe('provider admin proxy route', () => {
     ['POST', [providerId, 'credentials', 'not-a-uuid', 'activate']],
     ['POST', [providerId, 'credentials', versionId, 'deactivate']],
     ['POST', ['..', 'internal']],
-  ])('does not proxy anything outside the six published operations (%s %j)', async (method, segments) => {
+    ['POST', ['Bad_Name', 'test-answer']],
+    ['GET', ['sarvam', 'test-answer']],
+    ['POST', ['sarvam', 'test-answer', 'extra']],
+  ])('does not proxy anything outside the seven published operations (%s %j)', async (method, segments) => {
     global.fetch = jest.fn();
     const { GET, POST } = await import('./route');
     const path = segments.join('/');
@@ -209,6 +213,21 @@ describe('provider admin proxy route', () => {
       status: 403,
     });
     expect(text).not.toContain(secret);
+  });
+
+  it('relays the provider-probe-unavailable problem from the owner on a Test answer', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(
+        upstream(503, { code: 'PROVIDER_PROBE_UNAVAILABLE', title: 'The provider probe is unavailable.' })
+      );
+    const { POST } = await import('./route');
+    const path = ['sarvam', 'test-answer'];
+
+    const response = await POST(post(path.join('/'), '{"model":null,"fallbackProviders":[]}'), context(path));
+
+    expect(response.status).toBe(503);
+    expect((await response.json()).code).toBe('PROVIDER_PROBE_UNAVAILABLE');
   });
 
   it('gives a published problem when the owner sends an unusable error', async () => {

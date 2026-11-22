@@ -178,3 +178,38 @@ All secrets stored in Azure Key Vault, read via `secretref:` pattern (ADR-014). 
 |---|---|---|---|
 | **FA-021** | Create GCP project, enable Vertex AI API, create service account with `aiplatform.user` role, download SA key JSON | 2 hours | MID_TIER primary, FRONTIER primary |
 | **FA-022** | Register at sarvam.ai, subscribe to Saaras API, get API key | 1 hour | Agricultural MID_TIER override |
+
+---
+
+## Amendment 2 (WC-149): Hosted model binding
+
+**Status:** PROPOSED - FOUNDER APPROVAL PENDING (the Founder approved the approach in conversation; approval is recorded by merging the pull request that carries this amendment; the Enterprise Architect office is not invoked)
+**Date:** 2026-11-22
+**Work Contract:** [WC-149](../work-contracts/WC-149-paid-provider-consumption-and-customer-account-connection.md), requirement WC149-R006
+**Constitutional basis:** C-051 (Resource Transparency), C-059, C-063; ADR-042 (provider registry), ADR-046 (workload identity)
+**Scope:** Decisions 1 to 5 above are unchanged. This amendment only defines how a hosted (MID_TIER or FRONTIER) model is identified when a governed inference binding names it.
+
+### A2.1 Why
+
+A governed inference binding identifies a model by a weight digest and a tokenizer digest. A hosted model has no weights or tokenizer files the platform can hash, so those digests cannot be computed. Without a rule, either hosted models could not be bound at all, or a placeholder hash would imply a verification that did not happen.
+
+### A2.2 Decision
+
+1. **Identity.** A hosted-model inference binding identifies the model by three values: `provider`, the pinned model identifier (for example the exact model name sent in the request) and `tokenizerFamily`. It does not claim weight or tokenizer bytes.
+2. **Digest fields.** The binding's existing model and tokenizer digest fields hold the same value: the SHA-256 of the canonical JSON (sorted keys, no whitespace, UTF-8) of `{provider, model, tokenizerFamily}`. A change to any of the three values therefore changes the digest and requires a new binding.
+3. **Provider-reported model as evidence.** On every call the adapter records the model name the provider returned as per-call evidence. A mismatch with the pinned identifier is evidence of provider alias drift. It is recorded and surfaced; it is not a blocking failure, because providers move aliases without notice and a blocking rule would stop service for a change the platform cannot prevent.
+4. **Rates.** Input and output rates are set by the Founder and bound by `rate_digest`, as for any binding. The adapter never infers a rate from provider output.
+5. **Endpoints.** A hosted binding endpoint must be on an allowlist of provider hosts: `api.sarvam.ai`, `api.openai.com`, `api.anthropic.com`, `generativelanguage.googleapis.com`. A binding naming any other host is not admitted. Adding a host needs an amendment.
+6. **Keys.** The provider key comes from the provider registry (WC-148) at call time, pinned to the active credential version. A key is never part of the binding, its digests or its evidence.
+7. **Unchanged.** Ollama LOCAL bindings keep their weight and tokenizer digest rules. The Provider Selection Engine layers, the Sarvam agricultural override and the fallback chain of Decision 1 are unchanged.
+
+### A2.3 Not decided here
+
+This amendment does not select any provider or plan tier for any customer or agent, does not set any rate, and does not publish a binding. Publishing a binding and its approval evidence remains a separate Founder-approved act under WC-134.
+
+### A2.4 Consequences
+
+- Hosted adapters can be admitted to the governed generation binding without fabricated weight digests.
+- Provider alias drift becomes visible in evidence instead of silent.
+- The host allowlist bounds where a bound key can be sent, so a mistaken or malicious endpoint cannot receive a provider key.
+- A pinned model that a provider retires fails at the provider and falls back through the existing chain; the platform does not substitute another model silently.

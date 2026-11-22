@@ -314,6 +314,18 @@ def test_trust_bundle_stays_within_key_vault_secret_limit_with_overlapping_deleg
     assert len(json.loads(fixture["wid-trust-bundle"])["manifest"]["workloads"]["business-platform"]["delegation_certificates"]) == 3
 
 
+def test_trust_bundle_with_the_ai_runtime_workload_stays_within_the_secret_limit_and_publishes_its_grants() -> None:
+    cloud_workloads = [*WORKLOADS, "ai-runtime"]
+    fixture = build_cloud_fixture(REGISTRY_PATH, "demo", cloud_workloads, now=T0)
+    for step in range(1, 7):
+        fixture = renew_cloud_fixture(fixture, T0 + timedelta(hours=8 * step))
+    bundle = json.loads(fixture["wid-trust-bundle"])
+
+    assert len(fixture["wid-trust-bundle"].encode()) < wid.MAX_SECRET_BYTES
+    published = {grant["operation"] for grant in bundle["manifest"]["route_grants"]}
+    assert {"resolveProviderCredential", "probeProviderGeneration"} <= published
+
+
 def test_fixture_renewal_uses_the_same_vault_and_raises_versions() -> None:
     first = build_cloud_fixture(REGISTRY_PATH, "demo", WORKLOADS, now=T0)
     second = renew_cloud_fixture(first, T0 + timedelta(hours=9))

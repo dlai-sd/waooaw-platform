@@ -269,7 +269,7 @@ resource "time_sleep" "deployment_crypto_officer_propagation" {
 
 locals {
   workload_identity_key_names    = ["wid-root", "wid-intermediate"]
-  workload_identity_secret_names = ["wid-ca-state", "wid-trust-bundle", "wid-bundle-business-platform", "wid-bundle-billing-engine", "wid-bundle-professional-runtime"]
+  workload_identity_secret_names = ["wid-ca-state", "wid-trust-bundle", "wid-bundle-business-platform", "wid-bundle-billing-engine", "wid-bundle-professional-runtime", "wid-bundle-ai-runtime"]
 }
 
 resource "azurerm_key_vault_key" "workload_identity" {

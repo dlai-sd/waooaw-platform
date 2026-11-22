@@ -208,6 +208,16 @@ variable "bp_min_replicas" {
   }
 }
 
+variable "air_min_replicas" {
+  description = "AI runtime minimum replicas. The private mutual-TLS port does not wake a scaled-to-zero replica, so the Founder provider probe needs one warm replica."
+  type        = number
+  default     = 1
+  validation {
+    condition     = var.air_min_replicas >= 0 && var.air_min_replicas <= 1
+    error_message = "AI runtime minimum replicas must be zero or one."
+  }
+}
+
 variable "web_min_replicas" {
   type    = number
   default = 0

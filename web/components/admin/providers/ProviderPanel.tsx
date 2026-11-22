@@ -19,11 +19,19 @@ import {
 } from '@/lib/provider-admin-client';
 import { ProviderHistory, type HistoryState } from './ProviderHistory';
 import { ProviderStatusChips } from './ProviderList';
+import { ProviderTestAnswer } from './ProviderTestAnswer';
 
 type Props = {
   provider: ProviderSummary;
+  fallbackCandidates?: ProviderSummary[];
   focusOnMount: boolean;
   onChanged: () => void;
+};
+
+const valueHints: Record<string, string> = {
+  meta: 'For Meta, enter the secret value as JSON: {"appId":"...","appSecret":"..."}.',
+  sarvam:
+    'For Sarvam, Test sends an empty request and treats a validation response as proof that the key is valid; it does not run a real completion.',
 };
 
 const outcomeIcon = {
@@ -32,7 +40,7 @@ const outcomeIcon = {
   NOT_TESTABLE: CircleMinus,
 } as const;
 
-export function ProviderPanel({ provider, focusOnMount, onChanged }: Props) {
+export function ProviderPanel({ provider, fallbackCandidates = [], focusOnMount, onChanged }: Props) {
   const ids = useId();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const valueRef = useRef<HTMLInputElement>(null);
@@ -183,6 +191,11 @@ export function ProviderPanel({ provider, focusOnMount, onChanged }: Props) {
           keep your own copy. Test it first; Confirm and save is enabled only after the latest test of what you typed
           passes.
         </p>
+        {valueHints[provider.providerName] ? (
+          <p className="workbench-hint" data-testid="provider-value-format">
+            {valueHints[provider.providerName]}
+          </p>
+        ) : null}
         <div className="workbench-actions">
           <button
             className="secondary-link"
@@ -215,6 +228,10 @@ export function ProviderPanel({ provider, focusOnMount, onChanged }: Props) {
         <PricingMessage message={message} />
         {stepUp ? <StepUpCommand /> : null}
       </fieldset>
+
+      {provider.credential.status === 'ACTIVE' ? (
+        <ProviderTestAnswer fallbackCandidates={fallbackCandidates} provider={provider} />
+      ) : null}
 
       <div className="workbench-stack">
         <h3>Version history</h3>

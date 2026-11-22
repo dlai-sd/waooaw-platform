@@ -42,6 +42,25 @@ export type SavedVersion = {
   status: string;
 };
 
+export type AnswerAttempt = {
+  provider: string;
+  outcome: string;
+  reason?: string | null;
+};
+
+export type TestAnswerResult = {
+  answered: {
+    provider: string;
+    model: string | null;
+    reportedModel: string | null;
+    text: string;
+    inputTokens: number | null;
+    outputTokens: number | null;
+    latencyMs: number | null;
+  } | null;
+  attempts: AnswerAttempt[];
+};
+
 export type CreateProviderInput = {
   providerName: string;
   displayName: string;
@@ -73,7 +92,38 @@ const problemMessages: Record<string, string> = {
   PROVIDER_CONFLICT: 'That provider already exists or changed. Reload and try again.',
   PROVIDER_RATE_LIMITED: 'Too many changes in a minute. Wait and try again.',
   PROVIDER_VAULT_UNAVAILABLE: 'The secret store is unavailable. Nothing was saved. Try again shortly.',
+  PROVIDER_PROBE_UNAVAILABLE: 'The provider test is unavailable right now. Nothing was changed. Try again shortly.',
 };
+
+const reasonMessages: Record<string, string> = {
+  KEY_MISSING: 'no key is saved for this provider',
+  KEY_REJECTED: 'the provider rejected the saved key',
+  TIMEOUT: 'the provider did not answer in time',
+  PROVIDER_ERROR: 'the provider returned an error',
+  UNSUPPORTED: 'this provider cannot answer text requests',
+};
+
+const llmProviderNames = new Set(['sarvam', 'openai', 'anthropic', 'google']);
+
+export function fallbackProvidersFrom(providers: ProviderSummary[], selectedId: string): ProviderSummary[] {
+  return providers.filter(
+    (provider) =>
+      provider.id !== selectedId &&
+      provider.credential.status === 'ACTIVE' &&
+      llmProviderNames.has(provider.providerName)
+  );
+}
+
+export function reasonText(reason: string | null | undefined): string {
+  if (!reason) return 'no reason was reported';
+  return reasonMessages[reason] ?? 'the provider could not answer';
+}
+
+export function attemptText(attempt: AnswerAttempt): string {
+  const outcome = attempt.outcome.toUpperCase();
+  if (outcome === 'ANSWERED' || outcome === 'SUCCESS' || outcome === 'OK') return 'answered';
+  return `skipped because ${reasonText(attempt.reason)}`;
+}
 
 export function problemText(problem: ProviderProblem): string {
   return problemMessages[problem.code ?? ''] ?? problemMessages.PROVIDER_VAULT_UNAVAILABLE;
