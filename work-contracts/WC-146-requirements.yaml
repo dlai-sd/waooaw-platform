@@ -1,0 +1,40 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-146
+contract_path: work-contracts/WC-146-demo-deployment-time-reduction-phase-3.md
+contract_digest: 1eb52a86f5f9f50e9f5b8390989f37b6c5429cf23d176dc3af921cc22b59d695
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Pipeline unit tests run in Docker at the exact head, plus actionlint and shellcheck; commands and results in the PR body
+  initial_state: new
+  dependencies: Founder authorization of this implementing session (current conversation)
+  residual_risk: The end-to-end saving is proven only by the first Demo deployment after merge; no deployment is part of this contract
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC146-R001
+    source: WC-146 Canonical Requirement Index, R001
+    observable_outcome: Verification runs as an engine job that needs only the Terraform job, overlaps runner cleanup, keeps its gates, and the URL is published only when the whole engine succeeded.
+    test_path_or_plan: tests/pipeline/test_wc146_deploy_time_phase3.py (test_verification_runs_inside_the_engine_alongside_runner_cleanup, test_the_neutral_entry_publishes_only_after_the_engine_including_verification_succeeds, test_the_verification_workflow_still_enforces_the_trusted_top_level_caller); tests/pipeline/test_goal006_terraform_foundations.py; tests/pipeline/test_goal006_cloud_platform_finalization.py; actionlint.
+
+  - <<: *defaults
+    requirement_id: WC146-R002
+    source: WC-146 Canonical Requirement Index, R002
+    observable_outcome: No Log Analytics poll can be served from the two-minute identical-query cache.
+    test_path_or_plan: tests/pipeline/test_wc146_deploy_time_phase3.py (test_every_log_analytics_poll_carries_a_unique_query_text); tests/pipeline/test_wc134_demo_whatsapp_autopilot.py (test_heartbeat_is_polled_quickly_with_a_distinct_query_each_time).
+
+  - <<: *defaults
+    requirement_id: WC146-R003
+    source: WC-146 Canonical Requirement Index, R003
+    observable_outcome: The Temporal pool wait polls every 3 seconds within the previous 180-second budget, prints each attempt and keeps the watermark and zero-timeout rules.
+    test_path_or_plan: tests/pipeline/test_wc146_deploy_time_phase3.py (test_temporal_log_wait_polls_quickly_within_the_previous_budget); tests/pipeline/test_wc124_deployment_path.py.
+
+  - <<: *defaults
+    requirement_id: WC146-R004
+    source: WC-146 Canonical Requirement Index, R004
+    observable_outcome: The WhatsApp proof polls every 5 seconds, keeps its timeout and proof gates, and still stops WhatsApp on any failed proof.
+    test_path_or_plan: tests/pipeline/test_wc134_demo_whatsapp_autopilot.py (test_heartbeat_is_polled_quickly_with_a_distinct_query_each_time, test_failed_proof_stops_whatsapp_and_disables_the_alert).

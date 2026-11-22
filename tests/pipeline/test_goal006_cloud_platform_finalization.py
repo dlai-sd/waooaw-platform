@@ -41,9 +41,10 @@ def test_neutral_deploy_entry_is_the_only_manual_application_entry() -> None:
 
 def test_neutral_entry_delegates_deployment_and_verification() -> None:
     deploy = _workflow("deploy.yaml")
+    engine = _workflow("environment-deployment.yaml")
 
     assert "uses: ./.github/workflows/environment-deployment.yaml" in deploy
-    assert "uses: ./.github/workflows/environment-deployment-verification.yaml" in deploy
+    assert "uses: ./.github/workflows/environment-deployment-verification.yaml" in engine
     assert "terraform " not in deploy
     assert "az " not in deploy
 
