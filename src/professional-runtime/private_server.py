@@ -110,8 +110,8 @@ def private_listener_config() -> uvicorn.Config:
 
 def main() -> None:
     config = private_listener_config()
-    if config.ssl is None:
-        config.load()
+    # uvicorn creates Config.ssl only inside load(), so it must not be read before this call.
+    config.load()
     if config.ssl is None and keyvault_source():
         holder = shared_holder()
         if holder is None:

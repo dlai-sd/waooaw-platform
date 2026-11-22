@@ -1,0 +1,40 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-150
+contract_path: work-contracts/WC-150-private-listener-start-defect-and-startup-guard.md
+contract_digest: a909a6a9f2bf0ef420753753d31003ad704ffc9dcaf23b0fb09d91690dd0a51c
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Python checks run in Docker at the exact head; commands and results in the PR body
+  initial_state: defect
+  dependencies: Founder authorization of this implementing session (current conversation)
+  residual_risk: Both revisions becoming Healthy, Key Vault credential resolution and mTLS peers are proven only after Demo is redeployed
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC150-R001
+    source: WC-150 Canonical Requirement Index, R001
+    observable_outcome: AI runtime and professional runtime main() load the config before reading ssl and then serve with the Key Vault TLS context or the file-based context.
+    test_path_or_plan: tests/ai-runtime/test_private_server_startup.py; tests/professional-runtime/test_private_server_startup.py.
+
+  - <<: *defaults
+    requirement_id: WC150-R002
+    source: WC-150 Canonical Requirement Index, R002
+    observable_outcome: Billing, AI runtime and professional runtime start-up runs against a real uvicorn.Config in each supported credential mode.
+    test_path_or_plan: tests/billing-engine/test_private_server_startup.py; tests/ai-runtime/test_private_server_startup.py; tests/professional-runtime/test_private_server_startup.py.
+
+  - <<: *defaults
+    requirement_id: WC150-R003
+    source: WC-150 Canonical Requirement Index, R003
+    observable_outcome: The guard fails when a private_server.py main() reads config.ssl before calling config.load(), and passes on the three current services.
+    test_path_or_plan: tests/pipeline/test_private_listener_startup_guard.py.
+
+  - <<: *defaults
+    requirement_id: WC150-R004
+    source: WC-150 Canonical Requirement Index, R004
+    observable_outcome: The guard runs in the quality-scripts gate and the contract records what stays unproven until Demo is redeployed.
+    test_path_or_plan: validation/engineering-validation.yaml quality-scripts; tests/validation_control/test_catalog_contract.py; review of the contract Implementation Record.

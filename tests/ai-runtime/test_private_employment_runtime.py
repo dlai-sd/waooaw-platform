@@ -95,7 +95,7 @@ def test_air_private_listener_main_enforces_tls_floor(
     private_server.main()
 
     assert tls.minimum_version == ssl.TLSVersion.TLSv1_2
-    config.load.assert_not_called()
+    config.load.assert_called_once_with()
     server.run.assert_called_once_with()
 
 
