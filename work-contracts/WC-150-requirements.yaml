@@ -8,7 +8,7 @@ result: PLANNED
 requirement_defaults: &defaults
   component_owner: Platform IT Expert (INST-010)
   evidence_class: Python checks run in Docker at the exact head; commands and results in the PR body
-  initial_state: defect
+  initial_state: expected-fail
   dependencies: Founder authorization of this implementing session (current conversation)
   residual_risk: Both revisions becoming Healthy, Key Vault credential resolution and mTLS peers are proven only after Demo is redeployed
   completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
