@@ -1,0 +1,34 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-145
+contract_path: work-contracts/WC-145-ci-image-layer-cache-reuse.md
+contract_digest: f6d354c674820c9b029f6171778c89ce1239c2b1498d2b27de70014b3261249e
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Pipeline unit tests run in Docker at the exact head; commands and results in the PR body
+  initial_state: new
+  dependencies: Founder authorization of this implementing session (current conversation)
+  residual_risk: The saving is proven only by the first merge CI run after a cold build of a UTC day; a newly fixed HIGH or CRITICAL finding can block a release until the next UTC day unless WAOOAW_IMAGE_REFRESH_EPOCH is changed
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC145-R001
+    source: WC-145 Canonical Requirement Index, R001
+    observable_outcome: Both the build and publish jobs resolve the refresh key before the image build step and pass it as SECURITY_REFRESH; github.run_id is no longer a build argument.
+    test_path_or_plan: tests/pipeline/test_goal006_six_member_packaging.py (test_hosted_builds_refresh_runtime_security_layers).
+
+  - <<: *defaults
+    requirement_id: WC145-R002
+    source: WC-145 Canonical Requirement Index, R002
+    observable_outcome: The key is the repository variable WAOOAW_IMAGE_REFRESH_EPOCH (default daily) plus the UTC date.
+    test_path_or_plan: tests/pipeline/test_goal006_six_member_packaging.py (test_hosted_builds_refresh_runtime_security_layers).
+
+  - <<: *defaults
+    requirement_id: WC145-R003
+    source: WC-145 Canonical Requirement Index, R003
+    observable_outcome: Dockerfile refresh layers still precede apt-get and pip; Trivy, dep-scan, license check and SAST jobs are unchanged.
+    test_path_or_plan: tests/pipeline/test_goal006_six_member_packaging.py (test_hosted_builds_refresh_runtime_security_layers); git diff shows only the two refresh steps and build-args in ci.yaml.

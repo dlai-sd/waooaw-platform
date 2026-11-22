@@ -130,7 +130,15 @@ def test_ci_has_deterministic_spec_and_fixable_vulnerability_gates() -> None:
 
 def test_hosted_builds_refresh_runtime_security_layers() -> None:
     workflow = CI_WORKFLOW.read_text(encoding="utf-8")
-    assert workflow.count("SECURITY_REFRESH=${{ github.run_id }}") == 2
+    # WC-145: the refresh key is stable within a UTC day so unchanged layers hit the build cache.
+    assert workflow.count("SECURITY_REFRESH=${{ steps.security-refresh.outputs.value }}") == 2
+    assert "SECURITY_REFRESH=${{ github.run_id }}" not in workflow
+    assert workflow.count("name: Resolve image security refresh key") == 2
+    assert workflow.count("REFRESH_EPOCH: ${{ vars.WAOOAW_IMAGE_REFRESH_EPOCH }}") == 2
+    assert workflow.count('value=${REFRESH_EPOCH:-daily}-$(date -u +%Y%m%d)') == 2
+    first_key = workflow.index("id: security-refresh")
+    assert first_key < workflow.index("id: candidate-build")
+    assert workflow.index("id: security-refresh", first_key + 1) < workflow.index("id: image\n")
 
     for dockerfile in DEBIAN_RUNTIME_DOCKERFILES:
         content = (REPO_ROOT / dockerfile).read_text(encoding="utf-8")
