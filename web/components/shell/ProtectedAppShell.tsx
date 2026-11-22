@@ -3,6 +3,7 @@
 // Implements: work-contracts/WC-099-demo-customer-journey-and-application-shell-remediation.md §5.4 Authenticated Application Shell
 // Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C2-05
 // Implements: work-contracts/WC-148-founder-provider-credential-registry-screen.md WC148-R006
+// Implements: work-contracts/WC-149-paid-provider-consumption-and-customer-account-connection.md WC149-R010
 // Constitutional basis: C-001 (Human Override), C-059 (Implementation Traceability)
 
 import {
@@ -13,6 +14,7 @@ import {
   CircleUserRound,
   CreditCard,
   KeyRound,
+  Link2,
   Settings,
   ShieldCheck,
   Store,
@@ -78,6 +80,7 @@ export function ProtectedAppShell({
     { href: '/professionals/mine', label: portal.myAgents, icon: Bot },
     { href: '/marketplace', label: portal.marketplace, icon: Store },
     { href: '/alerts', label: portal.alerts, icon: Bell },
+    { href: '/connections', label: 'Connections', icon: Link2 },
     { href: '/settings', label: messages.settings, icon: Settings },
     ...(showKeyVaultAdmin ? [{ href: '/admin/azure-key-vault', label: 'Azure Key Vault', icon: Vault }] : []),
     ...(showPricingAdmin ? [{ href: '/admin/pricing', label: 'Pricing', icon: Tag }] : []),

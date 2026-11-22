@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 import copy
 import hashlib
+import json
 from pathlib import Path
 
 import httpx
@@ -26,11 +27,13 @@ from conversation_generation import (
     ConversationResumeContext,
     canonical,
 )
-from conversation_generation_provider import InstitutionalOllamaProvider
+from conversation_generation_provider import AdapterRoutingProvider, HostedGovernedProvider, InstitutionalOllamaProvider
 from conversation_generation_owner import BusinessPlatformGenerationOwner
 from conversation_generation_store import ConversationGenerationStore
+from ctg.governed_inference import GovernedInferenceToolGateway
 from employment_auth import DelegatedContext
 from employment_persistence import EmploymentDispatchStoppedError
+from providers.credential_resolver import ProviderCredentialUnavailable
 
 
 def scenario(professional="digital-marketing-agent"):
@@ -882,6 +885,150 @@ async def test_tag_addressed_backend_is_unavailable_before_reservation_or_provid
     with pytest.raises(ValueError, match="IMMUTABLE_MODEL_DISPATCH_UNAVAILABLE"):
         await provider.invoke_admitted(permit.binding, request, AsyncMock())
     assert client.stream.call_count == 0
+
+
+HOSTED_ENDPOINTS = {
+    "SARVAM_HOSTED": "https://api.sarvam.ai",
+    "OPENAI_HOSTED": "https://api.openai.com/",
+    "ANTHROPIC_HOSTED": "https://api.anthropic.com",
+    "GOOGLE_HOSTED": "https://generativelanguage.googleapis.com",
+}
+
+
+def hosted_scenario(adapter="OPENAI_HOSTED", tier="MID", endpoint=None, model="gpt-4o-mini"):
+    request, context, key, owner, permit = scenario()
+    payload = permit.binding.model_dump(by_alias=True, mode="json")
+    payload.update(adapter=adapter, tier=tier, endpoint=endpoint or HOSTED_ENDPOINTS[adapter], model=model, mandatoryTiers=[tier])
+    binding = InferenceBinding.model_validate(payload)
+    permit = permit.model_copy(update={"binding": binding})
+    owner.resolve.return_value, owner.reserve.return_value = binding, permit
+    return request, context, key, owner, permit
+
+
+@pytest.mark.parametrize("tier", ["MID", "FRONTIER"])
+@pytest.mark.parametrize("adapter", list(HOSTED_ENDPOINTS))
+def test_hosted_adapters_are_admitted_for_mid_and_frontier_on_their_own_host(adapter, tier):
+    assert hosted_scenario(adapter, tier)[4].binding.adapter == adapter
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"tier": "LOCAL", "mandatoryTiers": ["LOCAL"]},
+        {"endpoint": "https://api.anthropic.com"},
+        {"endpoint": "http://api.openai.com"},
+        {"endpoint": "https://api.openai.com@evil.example"},
+        {"endpoint": "https://user:pw@api.openai.com"},
+        {"endpoint": "https://api.openai.com.evil.example"},
+        {"endpoint": "https://api.openai.com:8443"},
+        {"endpoint": "https://api.openai.com/v1/chat/completions"},
+        {"endpoint": "https://api.openai.com/?x=1"},
+        {"endpoint": "https://api.openai.com/#x"},
+        {"endpoint": "https://model.example.invalid"},
+        {"model": "gpt/../x"},
+        {"model": "gpt 4o"},
+    ],
+)
+def test_hosted_binding_rejects_wrong_tier_host_shape_or_model(change):
+    payload = hosted_scenario()[4].binding.model_dump(by_alias=True, mode="json")
+    with pytest.raises(ValidationError, match="No implemented admitted institutional socket"):
+        InferenceBinding.model_validate({**payload, **change})
+
+
+@pytest.mark.parametrize(
+    "change", [{"tier": "MID", "mandatoryTiers": ["MID"]}, {"tier": "FRONTIER", "mandatoryTiers": ["FRONTIER"]}]
+)
+def test_local_ollama_binding_rules_are_unchanged(change):
+    payload = scenario()[4].binding.model_dump(by_alias=True, mode="json")
+    with pytest.raises(ValidationError, match="No implemented admitted institutional socket"):
+        InferenceBinding.model_validate({**payload, **change})
+    with pytest.raises(ValidationError):
+        InferenceBinding.model_validate({**payload, "adapter": "UNLISTED_HOSTED"})
+
+
+class StandInKeys:
+    def __init__(self, available=True):
+        self.available, self.requested = available, []
+
+    async def get_api_key(self, provider_name):
+        self.requested.append(provider_name)
+        if not self.available:
+            raise ProviderCredentialUnavailable(provider_name, "no_active_credential")
+        return "sk-governed-SECRET-0000"
+
+
+def hosted_gateway(owner, reply, keys=None):
+    seen = []
+
+    def handler(request):
+        seen.append((request, owner.resolve.await_count))
+        return httpx.Response(200, json=reply)
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler), follow_redirects=False, trust_env=False)
+    hosted = HostedGovernedProvider(keys or StandInKeys(), client)
+    router = AdapterRoutingProvider(InstitutionalOllamaProvider(Path("/synthetic-unavailable-tokenizers"), AsyncMock()), hosted)
+    return GovernedInferenceToolGateway(router), hosted, seen
+
+
+def openai_reply(prompt_tokens=10, completion_tokens=7):
+    usage = {} if prompt_tokens is None else {"prompt_tokens": prompt_tokens, "completion_tokens": completion_tokens}
+    return {"model": "gpt-4o-mini-2024-07-18", "choices": [{"message": {"content": "Synthetic hosted output"}}], "usage": usage}
+
+
+async def test_hosted_generation_authorizes_then_dispatches_and_settles_conservative_usage():
+    request, context, key, owner, permit = hosted_scenario()
+    gateway, hosted, seen = hosted_gateway(owner, openai_reply())
+    estimate = hosted.count_prompt(permit.binding, request)
+    prompt_bytes = len(b"Synthetic admitted skill prompt\n\nSynthetic customer request")
+    assert estimate == -(-prompt_bytes // 2) + 64 >= prompt_bytes // 2
+    result = await GovernedGenerationService(Store(), owner, gateway).execute(request, context, key, recovery=False)
+    assert result.state == "COMPLETED" and result.text == "Synthetic hosted output"
+    assert (result.input_tokens, result.output_tokens) == (estimate, 7)
+    assert owner.settle.await_args.args[-2:] == (estimate, 7) and owner.reserve.await_count == 1
+    ((sent, resolves),) = seen
+    assert resolves >= 3  # initial resolve, gateway authorize, provider authorize all precede dispatch
+    body = json.loads(sent.content)
+    assert sent.url.host == "api.openai.com" and body["model"] == "gpt-4o-mini" and body["max_completion_tokens"] == 2048
+    assert sent.headers["authorization"] == "Bearer sk-governed-SECRET-0000" and "SECRET" not in str(sent.url)
+
+
+async def test_hosted_generation_falls_back_to_estimates_when_provider_usage_is_absent():
+    request, context, key, owner, permit = hosted_scenario("ANTHROPIC_HOSTED", "FRONTIER", model="claude-haiku-4-5")
+    reply = {"model": "claude-haiku-4-5-x", "content": [{"type": "text", "text": "Synthetic hosted output"}]}
+    gateway, hosted, _ = hosted_gateway(owner, reply)
+    result = await GovernedGenerationService(Store(), owner, gateway).execute(request, context, key, recovery=False)
+    assert result.state == "COMPLETED" and result.input_tokens == hosted.count_prompt(permit.binding, request)
+    assert result.output_tokens == -(-len(b"Synthetic hosted output") // 2)
+
+
+@pytest.mark.parametrize("prompt_tokens,completion_tokens", [(10, 2049), (10**6, 5)])
+async def test_hosted_usage_above_the_permit_ceiling_is_settled_and_withheld(prompt_tokens, completion_tokens):
+    request, context, key, owner, _ = hosted_scenario()
+    gateway, hosted, _ = hosted_gateway(owner, openai_reply(prompt_tokens, completion_tokens))
+    result = await GovernedGenerationService(Store(), owner, gateway).execute(request, context, key, recovery=False)
+    assert result.state == "UNRESOLVED" and result.text is None and result.reason == "PROVIDER_OUTCOME_UNKNOWN"
+    billed_input = max(prompt_tokens, hosted.count_prompt(owner.resolve.return_value, request))
+    assert owner.settle.await_args.args[-2:] == (billed_input, completion_tokens)
+
+
+async def test_hosted_generation_without_a_credential_never_dispatches_and_keeps_the_reservation():
+    request, context, key, owner, permit = hosted_scenario()
+    gateway, _, seen = hosted_gateway(owner, openai_reply(), StandInKeys(available=False))
+    result = await GovernedGenerationService(Store(), owner, gateway).execute(request, context, key, recovery=False)
+    assert result.state == "UNRESOLVED" and result.reservation_id == permit.reservation_id and not seen
+    assert owner.release.await_count == 0 and owner.settle.await_count == 0
+
+
+async def test_hosted_provider_refuses_non_hosted_bindings_and_router_keeps_ollama_unavailable():
+    request, context, key, owner, permit = scenario()
+    gateway, hosted, seen = hosted_gateway(owner, openai_reply())
+    with pytest.raises(ValueError, match="not an admitted hosted provider"):
+        await hosted.invoke_admitted(permit.binding, request, AsyncMock())
+    result = await GovernedGenerationService(Store(), owner, gateway).execute(request, context, key, recovery=False)
+    assert result.state == "FAILED" and owner.reserve.await_count == 0 and not seen
+    hosted_request, _, _, hosted_owner, hosted_permit = hosted_scenario()
+    direct = await hosted.generate(hosted_permit.binding, hosted_request, hosted_permit, AsyncMock(), hosted_owner.settle)
+    assert direct[0] == "Synthetic hosted output" and hosted_owner.settle.await_count == 1
 
 
 async def test_duplicate_during_reservation_cannot_poison_original_result_or_release_its_funds():

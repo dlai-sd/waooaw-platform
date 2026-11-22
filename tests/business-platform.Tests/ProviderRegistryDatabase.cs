@@ -14,6 +14,8 @@ internal sealed class ProviderRegistryDatabase : IAsyncDisposable
     public const string RegistryInit = "infrastructure/postgres/init/16-provider-registry.sql";
     public const string CredentialsInit =
         "infrastructure/postgres/init/99zzzzzzzz-wc148-01-provider-credentials.sql";
+    public const string ConnectionsInit =
+        "infrastructure/postgres/init/99zzzzzzzz-wc149-01-customer-provider-connections.sql";
 
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("pgvector/pgvector:pg16")
         .WithDatabase("provider_registry")
@@ -21,7 +23,7 @@ internal sealed class ProviderRegistryDatabase : IAsyncDisposable
         .WithPassword("synthetic-owner-password")
         .Build();
 
-    public static async Task<ProviderRegistryDatabase> CreateAsync()
+    public static async Task<ProviderRegistryDatabase> CreateAsync(bool applyConnections = true)
     {
         var database = new ProviderRegistryDatabase();
         await database._postgres.StartAsync();
@@ -31,6 +33,8 @@ internal sealed class ProviderRegistryDatabase : IAsyncDisposable
         await database.ApplyAsync(RegistryInit);
         await database.ExecuteAsync("ALTER TABLE business.provider_configs OWNER TO bp_owner;");
         await database.ApplyAsync(CredentialsInit);
+        if (applyConnections)
+            await database.ApplyAsync(ConnectionsInit);
         return database;
     }
 

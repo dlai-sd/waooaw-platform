@@ -310,6 +310,103 @@ public sealed class InferenceWorkloadValidatorTests(InferenceWorkloadCredentials
             .BeFalse();
     }
 
+    [Theory]
+    [InlineData("directory", "founder-subject", "FOUNDER", "BP_SESSION", true)]
+    [InlineData("directory", "", "FOUNDER", "BP_SESSION", false)]
+    [InlineData("directory", "founder-subject", "", "BP_SESSION", false)]
+    [InlineData("directory", "founder-subject", "FOUNDER", "WORKLOAD", false)]
+    [InlineData("source", "founder-subject", "FOUNDER", "BP_SESSION", true)]
+    [InlineData("source-missing", "founder-subject", "FOUNDER", "BP_SESSION", false)]
+    [InlineData("source-untrusted-peer", "founder-subject", "FOUNDER", "BP_SESSION", false)]
+    [InlineData("source-unknown-delegation", "founder-subject", "FOUNDER", "BP_SESSION", false)]
+    public async Task PlatformCallsNeedOnlyAnActorAndRoleFromEitherCredentialSource(
+        string mode,
+        string actor,
+        string role,
+        string actorSource,
+        bool allowed
+    )
+    {
+        using var signer = WorkloadIdentityClient.Load(credentials.Path);
+        var token = signer.Sign(
+            new DelegatedRequestContext(
+                actor,
+                role,
+                Guid.Empty.ToString("D"),
+                Guid.Empty.ToString("D"),
+                "PROVIDER_GENERATION_PROBE",
+                Guid.NewGuid().ToString("D"),
+                Guid.NewGuid().ToString("D"),
+                Guid.NewGuid().ToString("D"),
+                new Dictionary<string, string>(),
+                Guid.NewGuid().ToString("D")
+            ),
+            "urn:waooaw:service:constitutional-engine",
+            "POST",
+            Route,
+            "ValidateAction",
+            1,
+            Digest,
+            DateTimeOffset.UtcNow
+        );
+        using var peer = Peer("business-platform");
+        var http = Request(token, peer, "POST", Route);
+        var validator = mode.StartsWith("source", StringComparison.Ordinal)
+            ? new InferenceWorkloadValidator(
+                new ConfigurationBuilder().Build(),
+                TimeProvider.System,
+                new FixtureCredentialSource(credentials.Path, mode)
+            )
+            : Validator();
+
+        var call = () =>
+            validator.RequirePlatformAsync(
+                http,
+                "business-platform",
+                "constitutional-engine",
+                "PROVIDER_GENERATION_PROBE",
+                Route,
+                "ValidateAction",
+                Digest,
+                CancellationToken.None,
+                actorSource
+            );
+
+        if (!allowed)
+        {
+            await Assert.ThrowsAsync<InferenceWorkloadRejectedException>(call);
+            return;
+        }
+        var context = await call();
+        context.ActorSubject.Should().Be(actor);
+        context.Role.Should().Be(role);
+    }
+
+    private sealed class FixtureCredentialSource(string directory, string mode)
+        : IInboundCredentialSource
+    {
+        public InboundCredentialMaterial? Current() =>
+            mode == "source-missing"
+                ? null
+                : new InboundCredentialMaterial(
+                    File.ReadAllText(System.IO.Path.Combine(directory, "manifest.json")),
+                    (certificate, uri) =>
+                        mode != "source-untrusted-peer"
+                        && InferenceWorkloadValidator.HasExactUriSan(certificate, uri),
+                    (caller, _) =>
+                        mode == "source-unknown-delegation"
+                            ? null
+                            : X509CertificateLoader.LoadCertificateFromFile(
+                                System.IO.Path.Combine(
+                                    directory,
+                                    "workloads",
+                                    caller,
+                                    "delegation-cert.pem"
+                                )
+                            )
+                );
+    }
+
     private InferenceWorkloadValidator Validator() => new(Configuration(), TimeProvider.System);
 
     private IConfiguration Configuration() =>

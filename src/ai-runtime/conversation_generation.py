@@ -21,6 +21,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validato
 
 from employment_auth import EmploymentAuthError
 from employment_persistence import EmploymentDispatchStoppedError
+from providers.hosted.base import HOSTED_ADAPTER_HOSTS, MODEL_NAME
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/internal/v1/conversation-generations", tags=["Conversation Generation"])
@@ -355,7 +356,7 @@ class InferenceBinding(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     provider_id: str = Field(alias="providerId", min_length=1, max_length=128)
     provider_identity_uri: str = Field(alias="providerIdentityUri", pattern=r"^spiffe://[^ ]+$")
-    adapter: Literal["OLLAMA_INSTITUTIONAL"]
+    adapter: Literal["OLLAMA_INSTITUTIONAL", "SARVAM_HOSTED", "OPENAI_HOSTED", "ANTHROPIC_HOSTED", "GOOGLE_HOSTED"]
     endpoint: str
     model: str = Field(min_length=1, max_length=200)
     model_digest: str = Field(alias="modelDigest", pattern=r"^sha256:[0-9a-f]{64}$")
@@ -395,16 +396,33 @@ class InferenceBinding(BaseModel):
         if "sha256:" + hashlib.sha256(canonical(rates)).hexdigest() != self.rate_digest:
             raise ValueError("Approved rate artifact differs from the resolved rates")
         endpoint = urlparse(self.endpoint)
-        if (
-            self.tier != "LOCAL"
-            or endpoint.scheme != "https"
-            or not endpoint.hostname
-            or endpoint.username
-            or endpoint.password
-            or endpoint.query
-            or endpoint.fragment
-            or endpoint.path not in {"", "/"}
-        ):
+        well_formed = (
+            endpoint.scheme == "https"
+            and bool(endpoint.hostname)
+            and not endpoint.username
+            and not endpoint.password
+            and not endpoint.query
+            and not endpoint.fragment
+            and endpoint.path in {"", "/"}
+        )
+        hosted_host = HOSTED_ADAPTER_HOSTS.get(self.adapter)
+        if hosted_host is None:
+            admitted = self.tier == "LOCAL" and well_formed
+        else:
+            # A hosted binding is a pinned model on one allowlisted provider host; tokenizerVersion is its tokenizer family.
+            try:
+                port = endpoint.port
+            except ValueError:
+                port = -1
+            admitted = (
+                self.tier in {"MID", "FRONTIER"}
+                and well_formed
+                and endpoint.hostname == hosted_host
+                and port is None
+                and "@" not in endpoint.netloc
+                and MODEL_NAME.fullmatch(self.model) is not None
+            )
+        if not admitted:
             raise ValueError("No implemented admitted institutional socket for this selection")
         return self
 

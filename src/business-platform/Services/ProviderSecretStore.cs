@@ -11,6 +11,7 @@ namespace Waooaw.BusinessPlatform.Services;
 public sealed class ProviderCredentialOptions
 {
     public const string SectionName = "ProviderCredentials";
+    public const string ConnectionsSectionName = "ProviderConnections";
 
     public string VaultUrl { get; init; } = string.Empty;
     public string ManagedIdentityClientId { get; init; } = string.Empty;
@@ -18,10 +19,15 @@ public sealed class ProviderCredentialOptions
     public static ProviderCredentialOptions From(IConfiguration configuration) =>
         new()
         {
-            VaultUrl = configuration[$"{SectionName}:VaultUrl"]?.Trim() ?? string.Empty,
+            VaultUrl =
+                (
+                    configuration[$"{ConnectionsSectionName}:VaultUrl"]
+                    ?? configuration[$"{SectionName}:VaultUrl"]
+                )?.Trim() ?? string.Empty,
             ManagedIdentityClientId =
                 (
-                    configuration[$"{SectionName}:ManagedIdentityClientId"]
+                    configuration[$"{ConnectionsSectionName}:ManagedIdentityClientId"]
+                    ?? configuration[$"{SectionName}:ManagedIdentityClientId"]
                     ?? configuration["WhatsAppProvider:ManagedIdentityClientId"]
                     ?? configuration["WAOOAW_WID_MANAGED_IDENTITY_CLIENT_ID"]
                 )?.Trim() ?? string.Empty,
@@ -42,6 +48,7 @@ public sealed class ProviderCredentialOptions
 public static partial class ProviderSecretNames
 {
     public const string Prefix = "provider-";
+    public const string ConnectionPrefix = "customer-connection-";
 
     [GeneratedRegex("^[a-z0-9-]{2,48}$")]
     private static partial Regex ProviderNamePattern();
@@ -53,6 +60,17 @@ public static partial class ProviderSecretNames
         IsValidProviderName(providerName)
             ? Prefix + providerName
             : throw new ArgumentException("The provider name is not valid.", nameof(providerName));
+
+    public static string ForConnection(Guid connectionId) =>
+        ConnectionPrefix + connectionId.ToString("D");
+
+    /// <summary>The vault holds only these two namespaces on behalf of this service.</summary>
+    public static bool IsManaged(string secretName) =>
+        secretName.StartsWith(Prefix, StringComparison.Ordinal)
+        || (
+            secretName.StartsWith(ConnectionPrefix, StringComparison.Ordinal)
+            && Guid.TryParseExact(secretName[ConnectionPrefix.Length..], "D", out _)
+        );
 }
 
 /// <summary>The vault is unavailable or refused a write. The message never carries a secret value or a vault response body.</summary>
@@ -65,11 +83,21 @@ public interface IProviderSecretStore
     Task<string> SetSecretAsync(string secretName, string value, CancellationToken ct);
 }
 
+/// <summary>Reads and removes secrets this service owns; used for customer connection tokens and the Meta app credential.</summary>
+public interface ISecretVault : IProviderSecretStore
+{
+    /// <summary>The value of the named secret (a given version, or the latest when version is null); null when it does not exist.</summary>
+    Task<string?> GetSecretAsync(string secretName, string? version, CancellationToken ct);
+
+    /// <summary>Deletes the secret. A secret that is already gone is not an error.</summary>
+    Task DeleteSecretAsync(string secretName, CancellationToken ct);
+}
+
 public sealed partial class KeyVaultProviderSecretStore(
     HttpClient client,
     IConfiguration configuration,
     ProviderCredentialOptions options
-) : IProviderSecretStore
+) : ISecretVault
 {
     private const int MaximumResponseBytes = 131_072;
 
@@ -81,9 +109,9 @@ public sealed partial class KeyVaultProviderSecretStore(
         var vault =
             options.VaultUri
             ?? throw new ProviderSecretStoreException("Key Vault is not configured.");
-        if (!secretName.StartsWith(ProviderSecretNames.Prefix, StringComparison.Ordinal))
+        if (!ProviderSecretNames.IsManaged(secretName))
             throw new ProviderSecretStoreException(
-                "The secret name is outside the provider namespace."
+                "The secret name is outside the managed namespaces."
             );
         try
         {
@@ -124,6 +152,112 @@ public sealed partial class KeyVaultProviderSecretStore(
                         or JsonException
                         or IOException
             )
+        {
+            if (ct.IsCancellationRequested)
+                throw;
+            throw new ProviderSecretStoreException("Key Vault could not be reached.");
+        }
+    }
+
+    public async Task<string?> GetSecretAsync(
+        string secretName,
+        string? version,
+        CancellationToken ct
+    )
+    {
+        var vault =
+            options.VaultUri
+            ?? throw new ProviderSecretStoreException("Key Vault is not configured.");
+        if (
+            !ProviderSecretNames.IsManaged(secretName)
+            || (version is not null && !VersionPattern().IsMatch(version))
+        )
+            throw new ProviderSecretStoreException(
+                "The secret name is outside the managed namespaces."
+            );
+        try
+        {
+            var token = await ReadTokenAsync(ct);
+            var path = version is null
+                ? $"/secrets/{Uri.EscapeDataString(secretName)}"
+                : $"/secrets/{Uri.EscapeDataString(secretName)}/{version}";
+            using var request = new HttpRequestMessage(
+                HttpMethod.Get,
+                new Uri(vault, path + "?api-version=7.4")
+            );
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            using var response = await client.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                ct
+            );
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return null;
+            if (!response.IsSuccessStatusCode)
+                throw new ProviderSecretStoreException(
+                    $"Key Vault refused the read (HTTP {(int)response.StatusCode})."
+                );
+            using var document = await ReadBoundedJsonAsync(response, ct);
+            var returned = ParseVersion(document.RootElement, vault, secretName);
+            if (version is not null && returned != version)
+                throw new ProviderSecretStoreException(
+                    "Key Vault returned an unexpected response."
+                );
+            return
+                document.RootElement.TryGetProperty("value", out var value)
+                && value.ValueKind == JsonValueKind.String
+                ? value.GetString()
+                : throw new ProviderSecretStoreException(
+                    "Key Vault returned an unexpected response."
+                );
+        }
+        catch (Exception exception)
+            when (exception
+                    is HttpRequestException
+                        or TaskCanceledException
+                        or JsonException
+                        or IOException
+            )
+        {
+            if (ct.IsCancellationRequested)
+                throw;
+            throw new ProviderSecretStoreException("Key Vault could not be reached.");
+        }
+    }
+
+    public async Task DeleteSecretAsync(string secretName, CancellationToken ct)
+    {
+        var vault =
+            options.VaultUri
+            ?? throw new ProviderSecretStoreException("Key Vault is not configured.");
+        if (!ProviderSecretNames.IsManaged(secretName))
+            throw new ProviderSecretStoreException(
+                "The secret name is outside the managed namespaces."
+            );
+        try
+        {
+            var token = await ReadTokenAsync(ct);
+            using var request = new HttpRequestMessage(
+                HttpMethod.Delete,
+                new Uri(vault, $"/secrets/{Uri.EscapeDataString(secretName)}?api-version=7.4")
+            );
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            using var response = await client.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                ct
+            );
+            if (
+                !response.IsSuccessStatusCode
+                && response.StatusCode != System.Net.HttpStatusCode.NotFound
+                && response.StatusCode != System.Net.HttpStatusCode.Conflict
+            )
+                throw new ProviderSecretStoreException(
+                    $"Key Vault refused the delete (HTTP {(int)response.StatusCode})."
+                );
+        }
+        catch (Exception exception)
+            when (exception is HttpRequestException or TaskCanceledException or IOException)
         {
             if (ct.IsCancellationRequested)
                 throw;
@@ -211,10 +345,17 @@ public sealed partial class KeyVaultProviderSecretStore(
 }
 
 /// <summary>Registered when ProviderCredentials:VaultUrl is not set; every write reports the vault unavailable.</summary>
-public sealed class UnconfiguredProviderSecretStore : IProviderSecretStore
+public sealed class UnconfiguredProviderSecretStore : ISecretVault
 {
+    private static ProviderSecretStoreException Unavailable() =>
+        new("The provider credential vault is not configured.");
+
     public Task<string> SetSecretAsync(string secretName, string value, CancellationToken ct) =>
-        Task.FromException<string>(
-            new ProviderSecretStoreException("The provider credential vault is not configured.")
-        );
+        Task.FromException<string>(Unavailable());
+
+    public Task<string?> GetSecretAsync(string secretName, string? version, CancellationToken ct) =>
+        Task.FromException<string?>(Unavailable());
+
+    public Task DeleteSecretAsync(string secretName, CancellationToken ct) =>
+        Task.FromException(Unavailable());
 }

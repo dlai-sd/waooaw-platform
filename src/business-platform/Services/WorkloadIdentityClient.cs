@@ -43,6 +43,7 @@ public sealed class WorkloadIdentityClient : IDisposable
         "professional-runtime",
         "domain-adapter",
         "domain-adapter-dma",
+        "ai-runtime",
     ];
     private static readonly TimeSpan ConnectionLifetime = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan RetireDelay = TimeSpan.FromMinutes(2);
@@ -152,6 +153,11 @@ public sealed class WorkloadIdentityClient : IDisposable
         var targets = new Dictionary<string, WorkloadTarget>(StringComparer.Ordinal);
         foreach (var targetName in KnownTargets)
         {
+            if (
+                targetName == "ai-runtime"
+                && !manifest.RootElement.GetProperty("workloads").TryGetProperty(targetName, out _)
+            )
+                continue;
             var target = manifest.RootElement.GetProperty("workloads").GetProperty(targetName);
             targets[targetName] = new WorkloadTarget(
                 target.GetProperty("identity_uri").GetString()
@@ -297,6 +303,9 @@ public sealed class WorkloadIdentityClient : IDisposable
             base.Dispose(disposing);
         }
     }
+
+    internal WorkloadCredentialSnapshot? InboundSnapshot() =>
+        _settings is null ? null : LiveSnapshot();
 
     private WorkloadCredentialSnapshot? LiveSnapshot()
     {

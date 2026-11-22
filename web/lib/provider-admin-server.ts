@@ -22,7 +22,7 @@ type ProviderRoute = {
   pattern: RegExp;
 };
 
-// The six operations of the Founder provider registry; nothing else is ever proxied.
+// The seven operations of the Founder provider registry; nothing else is ever proxied.
 const providerRoutes: readonly ProviderRoute[] = [
   { operationId: 'listProviders', method: 'GET', pattern: /^$/ },
   { operationId: 'createProvider', method: 'POST', pattern: /^$/ },
@@ -45,6 +45,11 @@ const providerRoutes: readonly ProviderRoute[] = [
     operationId: 'activateCredentialVersion',
     method: 'POST',
     pattern: new RegExp(`^${uuid}/credentials/${uuid}/activate$`),
+  },
+  {
+    operationId: 'testAnswer',
+    method: 'POST',
+    pattern: /^[a-z0-9-]{2,48}\/test-answer$/,
   },
 ];
 

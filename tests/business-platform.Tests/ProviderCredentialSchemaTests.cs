@@ -79,7 +79,13 @@ public sealed class ProviderCredentialSchemaTests
                     false
                 ),
                 ("openai", "PLATFORM_LLM", "https://api.openai.com/v1/models", "BEARER", false),
-                ("sarvam", "PLATFORM_LLM", null, null, false)
+                (
+                    "sarvam",
+                    "PLATFORM_LLM",
+                    "https://api.sarvam.ai/v1/chat/completions",
+                    "SUBSCRIPTION_KEY",
+                    false
+                )
             );
         (await db.ScalarAsync<long>("SELECT count(*) FROM business.provider_credential_versions"))
             .Should()
@@ -94,8 +100,10 @@ public sealed class ProviderCredentialSchemaTests
         await db.ExecuteAsync(Insert(openai, 1, "ACTIVE"));
 
         await db.ApplyAsync(ProviderRegistryDatabase.CredentialsInit);
+        await db.ApplyAsync(ProviderRegistryDatabase.ConnectionsInit);
         await db.ApplyAsync(ProviderRegistryDatabase.RegistryInit);
         await db.ApplyAsync(ProviderRegistryDatabase.CredentialsInit);
+        await db.ApplyAsync(ProviderRegistryDatabase.ConnectionsInit);
 
         (
             await db.ScalarAsync<long>(

@@ -1,0 +1,35 @@
+{
+  "artifacts": [
+    {
+      "digest": "sha256:0667a879b78d3de692e352bb9334879d544079ed2831e89f12a01097e3f6c7fa",
+      "path": "test-results/wc109/runs/wc109-9e511033cbeffefc/quality-typescript/wc109-execution.json"
+    }
+  ],
+  "base_sha": "6dcecc9efc66f96af1f68a57f0875a9eb883a53c",
+  "command_id": "quality-typescript",
+  "component": "cross-cutting",
+  "disposition": "executed",
+  "disposition_proof": {
+    "execution_fresh": true
+  },
+  "duration_ms": 82941,
+  "first_cause": "none",
+  "gate_id": "quality:typescript",
+  "head_sha": "52a718cfd07a2c018c421fb80f05a121a4509f51",
+  "identities": {
+    "evidence": "sha256:1cf4d0c95752cae2087992260d68f8acb48af74fd2499b896d18dcce5679ed32",
+    "runner": "sha256:dac03d2b01a351b112e17328482d26ab304ed26272fae02d7f47e39bb7df804e",
+    "subject": "sha256:8e82a44d5b87b12ea72f77bb40e03c638b9436ad51d3c338439bf51813dfb42e",
+    "test_execution": "sha256:1f5a0d6454e5973f81324f6afe83d0a59da6aaa287ff9e048539a91af3d10887"
+  },
+  "invocation": {
+    "namespace": "wc109-9e511033cbeffefc",
+    "signature": "sha256:0f5ef2e065e25a31c452dacae65ea424ebce684a59a8be29eb85e8a4605bcf7d",
+    "source": "catalog"
+  },
+  "result": "PASS",
+  "routing_class": "NONE",
+  "schema": "waooaw.validation-evidence-envelope/v1",
+  "started_at": "2026-11-22T12:02:55.792912+00:00",
+  "trust_source": "local-diagnostic"
+}

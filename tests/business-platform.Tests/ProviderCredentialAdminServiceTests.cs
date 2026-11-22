@@ -56,11 +56,16 @@ public sealed class ProviderCredentialAdminServiceTests : IAsyncLifetime
         providers
             .Select(p => p.ProviderName)
             .Should()
-            .BeEquivalentTo("openai", "anthropic", "google", "sarvam");
+            .BeEquivalentTo("openai", "anthropic", "google", "sarvam", "meta");
+        providers.Should().OnlyContain(p => p.Credential.Status == "NOT_SET");
         providers
+            .Where(p => p.ProviderName != "meta")
             .Should()
-            .OnlyContain(p => p.Credential.Status == "NOT_SET" && p.AuthMethod == "API_KEY");
-        providers.Single(p => p.ProviderName == "sarvam").HasTestEndpoint.Should().BeFalse();
+            .OnlyContain(p => p.AuthMethod == "API_KEY");
+        var meta = providers.Single(p => p.ProviderName == "meta");
+        meta.Category.Should().Be("AGENT_API");
+        meta.HasTestEndpoint.Should().BeTrue();
+        providers.Single(p => p.ProviderName == "sarvam").HasTestEndpoint.Should().BeTrue();
         providers.Single(p => p.ProviderName == "openai").HasTestEndpoint.Should().BeTrue();
     }
 

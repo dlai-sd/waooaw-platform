@@ -105,6 +105,22 @@ def test_registry_policy_1_1_lifetimes_and_link_probe_grants() -> None:
     }
 
 
+def test_registry_grants_exactly_the_wc149_provider_routes_between_business_platform_and_ai_runtime() -> None:
+    registry = _load_yaml(REGISTRY_PATH)
+    grants = {
+        (grant["caller"], grant["target"], grant["method"], grant["route"], grant["operation"], grant["contract_major"])
+        for grant in registry["route_grants"]
+        if grant["operation"] in {"resolveProviderCredential", "probeProviderGeneration"}
+    }
+
+    assert grants == {
+        ("ai-runtime", "business-platform", "POST", "/internal/v1/provider-credentials/resolve", "resolveProviderCredential", 1),
+        ("business-platform", "ai-runtime", "POST", "/internal/v1/provider-generations/probe", "probeProviderGeneration", 1),
+    }
+    for name in ("business-platform", "ai-runtime"):
+        assert {"client_auth", "server_auth"} <= set(registry["workloads"][name]["tls_usages"])
+
+
 def test_registry_rejects_unsupported_policy_and_leaf_lifetime_over_24_hours(tmp_path: Path) -> None:
     registry = _load_yaml(REGISTRY_PATH)
     registry["policy_version"] = "1.0"

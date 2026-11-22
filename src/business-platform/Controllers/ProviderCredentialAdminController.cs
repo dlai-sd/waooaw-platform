@@ -23,6 +23,7 @@ namespace Waooaw.BusinessPlatform.Controllers;
 [Route("api/v1/admin/providers")]
 public sealed class ProviderCredentialAdminController(
     IProviderCredentialAdminService providers,
+    IProviderGenerationProbe generationProbe,
     ILogger<ProviderCredentialAdminController> logger
 ) : ControllerBase
 {
@@ -60,6 +61,19 @@ public sealed class ProviderCredentialAdminController(
             {
                 var request = await ReadBodyAsync<ProviderCredentialTestRequest>(ct);
                 return Ok(await providers.TestAsync(id, request.Value, ct));
+            }
+        );
+
+    [HttpPost("{providerName}/test-answer")]
+    public Task<IActionResult> TestAnswerAsync(string providerName, CancellationToken ct) =>
+        RunAsync(
+            true,
+            async () =>
+            {
+                var request = await ReadBodyAsync<ProviderTestAnswerRequest>(ct);
+                return Ok(
+                    await generationProbe.TestAnswerAsync(providerName, request, Subject()!, ct)
+                );
             }
         );
 

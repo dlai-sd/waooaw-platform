@@ -14,17 +14,68 @@ public sealed class InferenceWorkloadRejectedException : Exception;
 public sealed record InferenceWorkloadContext(Guid TenantId, Guid RelationshipId, Guid ActorId, string Role,
     Guid ContributionId, Guid ExecutionId, Guid IdempotencyKey, IReadOnlyDictionary<string, string> ExpectedVersions);
 
-public sealed class InferenceWorkloadValidator(IConfiguration configuration, TimeProvider clock)
+public sealed record PlatformWorkloadContext(string ActorSubject, string Role);
+
+/// <summary>
+/// Trust material for inbound workload calls when credentials are delivered through Key Vault rather than a directory:
+/// the signed trust manifest plus peer and delegation-certificate checks against the CURRENT verified bundle.
+/// </summary>
+public sealed record InboundCredentialMaterial(string ManifestJson,
+    Func<X509Certificate2, string, bool> ValidatePeer, Func<string, string, X509Certificate2?> DelegationCertificate);
+
+public interface IInboundCredentialSource
+{
+    InboundCredentialMaterial? Current();
+}
+
+public sealed class InferenceWorkloadValidator(IConfiguration configuration, TimeProvider clock,
+    IInboundCredentialSource? source = null)
 {
     private readonly ConcurrentDictionary<string, long> _replays = new(StringComparer.Ordinal);
 
-    public async Task<InferenceWorkloadContext> RequireAsync(HttpContext http, string callerName, string targetName,
-        string purpose, string route, string operation, string digest, CancellationToken ct)
+    public Task<InferenceWorkloadContext> RequireAsync(HttpContext http, string callerName, string targetName,
+        string purpose, string route, string operation, string digest, CancellationToken ct) =>
+        RequireCoreAsync(http, callerName, targetName, purpose, route, operation, digest, ct, ReadConversationContext,
+            context =>
+            {
+                var roleAllowed = purpose == "CONVERSATION_CONTENT_RECOVERY"
+                    ? context.Role is "OWNER" or "MANAGER"
+                    : context.Role is "EMPLOYER" or "EVALUATOR" or "OUTCOME_OWNER" or "RELATIONSHIP_MANAGER";
+                return roleAllowed
+                    && context.TenantId != Guid.Empty && context.RelationshipId != Guid.Empty && context.ActorId != Guid.Empty
+                    && context.ContributionId != Guid.Empty && context.ExecutionId != Guid.Empty && context.IdempotencyKey != Guid.Empty;
+            });
+
+    /// <summary>
+    /// Platform-level calls (no tenant, relationship or conversation): the same mTLS, route grant, signature, digest,
+    /// freshness and replay checks, but the signed context only has to name a non-empty actor subject and role.
+    /// </summary>
+    public Task<PlatformWorkloadContext> RequirePlatformAsync(HttpContext http, string callerName, string targetName,
+        string purpose, string route, string operation, string digest, CancellationToken ct, string actorSource = "BP_SESSION") =>
+        RequireCoreAsync(http, callerName, targetName, purpose, route, operation, digest, ct,
+            value => new PlatformWorkloadContext(value.GetProperty("actor_subject").GetString() ?? string.Empty,
+                value.GetProperty("effective_role").GetString() ?? string.Empty),
+            context => context.ActorSubject.Length is > 0 and <= 128 && context.Role.Length is > 0 and <= 64, actorSource);
+
+    private static InferenceWorkloadContext ReadConversationContext(JsonElement value) =>
+        new(Guid.Parse(value.GetProperty("tenant_id").GetString()!),
+            Guid.Parse(value.GetProperty("relationship_id").GetString()!), Guid.Parse(value.GetProperty("actor_subject").GetString()!),
+            value.GetProperty("effective_role").GetString()!, Guid.Parse(value.GetProperty("subject_reference").GetString()!),
+            Guid.Parse(value.GetProperty("command_id").GetString()!), Guid.Parse(value.GetProperty("idempotency_key").GetString()!),
+            value.GetProperty("expected_versions").EnumerateObject().ToDictionary(property => property.Name, property => property.Value.GetString()!));
+
+    private async Task<T> RequireCoreAsync<T>(HttpContext http, string callerName, string targetName,
+        string purpose, string route, string operation, string digest, CancellationToken ct,
+        Func<JsonElement, T> readContext, Func<T, bool> isAllowed, string actorSource = "BP_SESSION")
     {
         if (http.Request.Method != "POST" || http.Request.Path.Value != route)
             throw new InferenceWorkloadRejectedException();
-        var credentials = configuration["WAOOAW_WORKLOAD_CREDENTIALS"] ?? throw new InferenceWorkloadRejectedException();
-        using var manifest = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(credentials, "manifest.json"), ct));
+        var credentials = configuration["WAOOAW_WORKLOAD_CREDENTIALS"];
+        var inbound = credentials is null ? source?.Current() : null;
+        if (credentials is null && inbound is null)
+            throw new InferenceWorkloadRejectedException();
+        using var manifest = JsonDocument.Parse(inbound?.ManifestJson
+            ?? await File.ReadAllTextAsync(Path.Combine(credentials!, "manifest.json"), ct));
         var workloads = manifest.RootElement.GetProperty("workloads");
         var caller = workloads.GetProperty(callerName);
         var target = workloads.GetProperty(targetName);
@@ -35,7 +86,7 @@ public sealed class InferenceWorkloadValidator(IConfiguration configuration, Tim
             throw new InferenceWorkloadRejectedException();
         var certificate = await http.Connection.GetClientCertificateAsync(ct) ?? throw new InferenceWorkloadRejectedException();
         var callerUri = caller.GetProperty("identity_uri").GetString()!;
-        if (!ValidatePeer(certificate, credentials, callerUri))
+        if (!(inbound is null ? ValidatePeer(certificate, credentials!, callerUri) : inbound.ValidatePeer(certificate, callerUri)))
             throw new InferenceWorkloadRejectedException();
         var header = http.Request.Headers.Authorization.ToString();
         if (!header.StartsWith("Bearer ", StringComparison.Ordinal) || header.Length > 16000)
@@ -52,32 +103,24 @@ public sealed class InferenceWorkloadValidator(IConfiguration configuration, Tim
             var expires = value.GetProperty("expires_at").GetInt64();
             if (value.EnumerateObject().Select(property => property.Name).Distinct().Count() != value.EnumerateObject().Count()
                 || value.GetProperty("issuer_uri").GetString() != callerUri
-                || value.GetProperty("key_id").GetString() != caller.GetProperty("delegation_key_id").GetString()
+                || (inbound is null && value.GetProperty("key_id").GetString() != caller.GetProperty("delegation_key_id").GetString())
                 || value.GetProperty("target_audience").GetString() != target.GetProperty("audience").GetString()
                 || value.GetProperty("method").GetString() != "POST"
                 || value.GetProperty("route").GetString() != route || value.GetProperty("operation").GetString() != operation
                 || value.GetProperty("schema_version").GetString() != "1.0" || value.GetProperty("contract_major").GetInt32() != 1
-                || value.GetProperty("purpose").GetString() != purpose || value.GetProperty("actor_source").GetString() != "BP_SESSION"
+                || value.GetProperty("purpose").GetString() != purpose || value.GetProperty("actor_source").GetString() != actorSource
                 || value.GetProperty("request_digest").GetString() != digest
                 || value.GetProperty("not_before").GetInt64() > now || expires <= now
                 || value.GetProperty("issued_at").GetInt64() > now || expires - value.GetProperty("issued_at").GetInt64() > 60)
                 throw new InferenceWorkloadRejectedException();
-            using var signingCertificate = X509CertificateLoader.LoadCertificateFromFile(
-                Path.Combine(credentials, "workloads", callerName, "delegation-cert.pem"));
+            using var signingCertificate = inbound is null
+                ? X509CertificateLoader.LoadCertificateFromFile(Path.Combine(credentials!, "workloads", callerName, "delegation-cert.pem"))
+                : inbound.DelegationCertificate(callerName, value.GetProperty("key_id").GetString()!) ?? throw new InferenceWorkloadRejectedException();
             using var key = signingCertificate.GetECDsaPublicKey() ?? throw new InferenceWorkloadRejectedException();
             if (!key.VerifyData(payload, Decode(parts[1]), HashAlgorithmName.SHA256, DSASignatureFormat.Rfc3279DerSequence))
                 throw new InferenceWorkloadRejectedException();
-            var context = new InferenceWorkloadContext(Guid.Parse(value.GetProperty("tenant_id").GetString()!),
-                Guid.Parse(value.GetProperty("relationship_id").GetString()!), Guid.Parse(value.GetProperty("actor_subject").GetString()!),
-                value.GetProperty("effective_role").GetString()!, Guid.Parse(value.GetProperty("subject_reference").GetString()!),
-                Guid.Parse(value.GetProperty("command_id").GetString()!), Guid.Parse(value.GetProperty("idempotency_key").GetString()!),
-                value.GetProperty("expected_versions").EnumerateObject().ToDictionary(property => property.Name, property => property.Value.GetString()!));
-            var roleAllowed = purpose == "CONVERSATION_CONTENT_RECOVERY"
-                ? context.Role is "OWNER" or "MANAGER"
-                : context.Role is "EMPLOYER" or "EVALUATOR" or "OUTCOME_OWNER" or "RELATIONSHIP_MANAGER";
-            if (!roleAllowed
-                || context.TenantId == Guid.Empty || context.RelationshipId == Guid.Empty || context.ActorId == Guid.Empty
-                || context.ContributionId == Guid.Empty || context.ExecutionId == Guid.Empty || context.IdempotencyKey == Guid.Empty)
+            var context = readContext(value);
+            if (!isAllowed(context))
                 throw new InferenceWorkloadRejectedException();
             foreach (var replay in _replays.Where(pair => pair.Value <= now))
                 _replays.TryRemove(replay.Key, out _);

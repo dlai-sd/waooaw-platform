@@ -78,6 +78,8 @@ route_grants:
   - { caller: ai-runtime, target: business-platform, method: POST, route: "/internal/v1/conversation-inference/read-content", operation: readConversationInferenceContent, contract_major: 1 }
   - { caller: ai-runtime, target: business-platform, method: POST, route: "/internal/v1/conversation-inference/settle", operation: settleConversationInference, contract_major: 1 }
   - { caller: ai-runtime, target: business-platform, method: POST, route: "/internal/v1/conversation-inference/release", operation: releaseConversationInference, contract_major: 1 }
+  - { caller: ai-runtime, target: business-platform, method: POST, route: "/internal/v1/provider-credentials/resolve", operation: resolveProviderCredential, contract_major: 1 }
+  - { caller: business-platform, target: ai-runtime, method: POST, route: "/internal/v1/provider-generations/probe", operation: probeProviderGeneration, contract_major: 1 }
   - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/relationships/{relationshipId}/offering-usage/reserve", operation: reserveOfferingComponentUsage, contract_major: 1 }
   - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/relationships/{relationshipId}/offering-usage/settle", operation: settleOfferingComponentUsage, contract_major: 1 }
   - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/relationships/{relationshipId}/offering-usage/release", operation: releaseOfferingComponentUsage, contract_major: 1 }

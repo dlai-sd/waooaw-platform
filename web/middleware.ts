@@ -17,6 +17,7 @@ const protectedFamilies = new Set([
   'alerts',
   'settings',
   'profile',
+  'connections',
   'founder',
   'admin',
 ]);

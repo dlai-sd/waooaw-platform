@@ -19,8 +19,26 @@ public static class ProviderAuthSchemes
     public const string XApiKey = "X_API_KEY";
     public const string XGoogApiKey = "X_GOOG_API_KEY";
     public const string Header = "HEADER";
+    public const string SubscriptionKey = "SUBSCRIPTION_KEY";
+    public const string MetaApp = "META_APP";
 
-    public static readonly IReadOnlyList<string> All = [Bearer, XApiKey, XGoogApiKey, Header];
+    /// <summary>Schemes a Founder may choose when adding a provider. META_APP is reserved for the seeded Meta row.</summary>
+    public static readonly IReadOnlyList<string> All =
+    [
+        Bearer,
+        XApiKey,
+        XGoogApiKey,
+        Header,
+        SubscriptionKey,
+    ];
+}
+
+public static class ProviderTestMethods
+{
+    public const string Get = "GET";
+    public const string PostEmptyJson = "POST_EMPTY_JSON";
+
+    public static readonly IReadOnlyList<string> All = [Get, PostEmptyJson];
 }
 
 /// <summary>What the Test call needs from a provider row. Never carries the credential value.</summary>
@@ -28,7 +46,8 @@ public sealed record ProviderTestTarget(
     string ProviderName,
     string? TestUrl,
     string? AuthScheme,
-    string? AuthHeader
+    string? AuthHeader,
+    string? TestMethod = null
 );
 
 /// <summary>Sanitized result. Detail is a short fixed reason such as "HTTP 401"; the provider's body is never kept.</summary>
@@ -94,8 +113,27 @@ public sealed class ProviderCredentialTester : IProviderCredentialTester
         if (addresses.Length == 0 || addresses.Any(address => !IsPublic(address)))
             return Failed("The test endpoint resolves to a blocked address.");
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        if (!TryApplyAuth(request, target, value))
+        var metaApp = target.AuthScheme == ProviderAuthSchemes.MetaApp;
+        var postsEmptyJson = target.TestMethod == ProviderTestMethods.PostEmptyJson;
+        if (metaApp)
+        {
+            var metaUri = MetaAppUri(uri, value);
+            if (metaUri is null)
+                return Failed("The Meta app credential must be JSON with appId and appSecret.");
+            uri = metaUri;
+        }
+
+        using var request = new HttpRequestMessage(
+            postsEmptyJson ? HttpMethod.Post : HttpMethod.Get,
+            uri
+        );
+        if (postsEmptyJson)
+            request.Content = new StringContent(
+                "{}",
+                System.Text.Encoding.UTF8,
+                "application/json"
+            );
+        if (!metaApp && !TryApplyAuth(request, target, value))
             return Failed("The credential could not be sent as a request header.");
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(ProbeTimeout);
@@ -111,6 +149,17 @@ public sealed class ProviderCredentialTester : IProviderCredentialTester
                 timeout.Token
             );
             var status = (int)response.StatusCode;
+            if (postsEmptyJson)
+                return status switch
+                {
+                    400 or 422 => new(
+                        ProviderTestOutcomes.Passed,
+                        $"HTTP {status}: the key was accepted and the empty request was refused",
+                        status
+                    ),
+                    401 or 403 => new(ProviderTestOutcomes.Failed, $"HTTP {status}", status),
+                    _ => new(ProviderTestOutcomes.NotTestable, $"HTTP {status}", status),
+                };
             return response.IsSuccessStatusCode
                 ? new(ProviderTestOutcomes.Passed, $"HTTP {status}", status)
                 : new(ProviderTestOutcomes.Failed, $"HTTP {status}", status);
@@ -128,6 +177,41 @@ public sealed class ProviderCredentialTester : IProviderCredentialTester
     private static ProviderCredentialTestResult Failed(string detail) =>
         new(ProviderTestOutcomes.Failed, detail, null);
 
+    /// <summary>The app-token request for the Meta app. The query carries the secret, so it is never logged or returned.</summary>
+    private static Uri? MetaAppUri(Uri endpoint, string value)
+    {
+        string? appId;
+        string? appSecret;
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(value);
+            if (document.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object)
+                return null;
+            appId = document.RootElement.TryGetProperty("appId", out var id)
+                ? id.GetString()
+                : null;
+            appSecret = document.RootElement.TryGetProperty("appSecret", out var secret)
+                ? secret.GetString()
+                : null;
+        }
+        catch (Exception exception)
+            when (exception is System.Text.Json.JsonException or InvalidOperationException)
+        {
+            return null;
+        }
+        if (
+            appId is null
+            || appSecret is null
+            || !System.Text.RegularExpressions.Regex.IsMatch(appId, "^[0-9]{5,32}$")
+            || !System.Text.RegularExpressions.Regex.IsMatch(appSecret, "^[A-Za-z0-9]{8,128}$")
+        )
+            return null;
+        return new UriBuilder(endpoint)
+        {
+            Query = $"client_id={appId}&client_secret={appSecret}&grant_type=client_credentials",
+        }.Uri;
+    }
+
     private static bool TryApplyAuth(
         HttpRequestMessage request,
         ProviderTestTarget target,
@@ -138,6 +222,7 @@ public sealed class ProviderCredentialTester : IProviderCredentialTester
         {
             ProviderAuthSchemes.XApiKey => "x-api-key",
             ProviderAuthSchemes.XGoogApiKey => "x-goog-api-key",
+            ProviderAuthSchemes.SubscriptionKey => "api-subscription-key",
             ProviderAuthSchemes.Header => target.AuthHeader,
             _ => "Authorization",
         };

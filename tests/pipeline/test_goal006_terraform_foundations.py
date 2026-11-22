@@ -1631,6 +1631,7 @@ def test_workload_identity_keys_and_slots_are_created_by_foundation_without_key_
         "wid-bundle-business-platform",
         "wid-bundle-billing-engine",
         "wid-bundle-professional-runtime",
+        "wid-bundle-ai-runtime",
     ]
     assert "private_key" not in workload.lower() and "random_" not in workload
     assert 'role_definition_name = "Key Vault Crypto Officer"' in foundation
@@ -1678,6 +1679,12 @@ def test_services_read_keyvault_credentials_and_expose_private_listeners_in_ever
     assert 'WAOOAW_WID_ENVIRONMENT = var.environment' in workload
     assert "contains(local.wid_workloads, each.key)" in main
     assert '"billing-engine" = 5444' in workload and '"professional-runtime" = 5443' in workload
+    assert '"ai-runtime" = 5444' in workload and 'wid_workloads = ["business-platform", "billing-engine", "professional-runtime", "ai-runtime"]' in workload
+    assert 'ProviderProbe__BaseUrl = "https://ca-${var.environment}-ai-runtime:${local.wid_private_listeners["ai-runtime"]}"' in workload
+    assert '"business-platform" = 5445' in workload
+    assert 'WorkloadInbound__Port = tostring(local.wid_private_listeners["business-platform"])' in workload
+    assert 'AIR_CONVERSATION_GENERATION_OWNER_URL = "https://ca-${var.environment}-business-platform:${local.wid_private_listeners["business-platform"]}"' in workload
+    assert "DATABASE_URL" not in workload and "AIR_CONVERSATION_TOKENIZER_DIRECTORY" not in workload
     assert "BillingEngine__RelationshipWorkspaceBaseUrl" in workload and "ProfessionalRuntime__RelationshipWorkspaceBaseUrl" in workload
     action = workload.split('resource "azapi_resource_action" "wid_private_listener"', 1)[1].split("} resource", 1)[0]
     assert "external = false" in action and 'method = "PATCH"' in action
@@ -1735,7 +1742,11 @@ def test_provider_secret_roles_are_condition_scoped_to_provider_names_not_vault_
     sources = dict(re.findall(r'(\w+) += \{ action = "[^"]+", source = "(\w+)"', contract))
     assert {name for name, source in sources.items() if source == "Request"} == {"setSecret", "restore"}
     assert {source for source in sources.values()} == {"Request", "Resource"}
-    assert "'${local.provider_secret_prefix}'" in contract and 'provider_secret_prefix = "provider-"' in contract
+    assert "'${prefix}'" in contract and 'provider_secret_prefix = "provider-"' in contract
+    assert 'customer_connection_secret_prefix = "customer-connection-"' in contract
+    # Only Business Platform may reach customer tokens; the AI runtime reader stays on the provider prefix alone.
+    assert "writer = [local.provider_secret_prefix, local.customer_connection_secret_prefix]" in contract
+    assert "reader = [local.provider_secret_prefix]" in contract
     actions = dict(re.findall(r'(\w+) += \{ action = "Microsoft\.KeyVault/vaults/secrets/([\w/]+)"', contract))
     assert sorted(actions) == sorted(
         ["getSecret", "readMetadata", "setSecret", "update", "delete", "backup", "restore", "recover", "purge"]
@@ -1758,6 +1769,22 @@ def test_no_unconditional_vault_wide_secret_role_is_granted_to_provider_credenti
             if 'member["business-platform"].principal_id' in block or 'member["ai-runtime"].principal_id' in block:
                 if "local.wid_vault_id" in block or "key_vault_id" in block or "azurerm_key_vault." in block:
                     assert "condition_version" in block, path.name
+
+
+def test_wc149_connection_settings_and_warm_ai_runtime_reach_every_environment() -> None:
+    contract = squash(provider_credentials_contract())
+    main = squash(read_contract("modules/workload/main.tf"))
+    variables = squash(read_contract("modules/workload/variables.tf"))
+
+    assert "ProviderConnections__VaultUrl = local.wid_vault_url" in contract
+    assert "ProviderConnections__SecretPrefix" not in contract
+    assert 'ProviderConnections__Meta__GraphVersion = "v21.0"' in contract
+    assert 'ProviderConnections__Meta__RedirectUri = "${local.service_urls.web}/api/provider-connections/meta/callback"' in contract
+    assert '"ai-runtime" = var.application_activation_enabled ? var.air_min_replicas : 0' in main
+    assert re.search(r'variable "air_min_replicas" \{[^}]*default = 1', variables)
+    assert '"ai-runtime" = false' in main
+    for environment in ENVIRONMENTS:
+        assert 'source = "../../../modules/workload"' in read_contract(f"environments/{environment}/workload/main.tf")
 
 
 def test_provider_credential_settings_reach_business_platform_and_ai_runtime_in_every_environment() -> None:

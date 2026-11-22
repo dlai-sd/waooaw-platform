@@ -264,6 +264,118 @@ public sealed class ProviderCredentialTesterTests
         result.Detail.Should().Be("The provider could not be reached.");
     }
 
+    private sealed class CapturingHandler(HttpStatusCode status) : HttpMessageHandler
+    {
+        public string? Method { get; private set; }
+        public string? Url { get; private set; }
+        public string? Body { get; private set; }
+        public string? ContentType { get; private set; }
+        public Dictionary<string, string> Headers { get; } = [];
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken
+        )
+        {
+            Method = request.Method.Method;
+            Url = request.RequestUri!.ToString();
+            Body = request.Content is null
+                ? null
+                : await request.Content.ReadAsStringAsync(cancellationToken);
+            ContentType = request.Content?.Headers.ContentType?.MediaType;
+            foreach (var header in request.Headers)
+                Headers[header.Key.ToLowerInvariant()] = string.Join(",", header.Value);
+            return new HttpResponseMessage(status) { Content = new StringContent("{}") };
+        }
+    }
+
+    private static ProviderCredentialTester Tester(CapturingHandler handler) =>
+        new((_, _) => Task.FromResult(new[] { PublicAddress }), _ => handler);
+
+    private static ProviderTestTarget SarvamTarget() =>
+        new(
+            "sarvam",
+            "https://api.sarvam.ai/v1/chat/completions",
+            ProviderAuthSchemes.SubscriptionKey,
+            null,
+            ProviderTestMethods.PostEmptyJson
+        );
+
+    [Theory]
+    [InlineData(HttpStatusCode.BadRequest, ProviderTestOutcomes.Passed)]
+    [InlineData(HttpStatusCode.UnprocessableEntity, ProviderTestOutcomes.Passed)]
+    [InlineData(HttpStatusCode.Unauthorized, ProviderTestOutcomes.Failed)]
+    [InlineData(HttpStatusCode.Forbidden, ProviderTestOutcomes.Failed)]
+    [InlineData(HttpStatusCode.OK, ProviderTestOutcomes.NotTestable)]
+    [InlineData(HttpStatusCode.InternalServerError, ProviderTestOutcomes.NotTestable)]
+    [InlineData(HttpStatusCode.TooManyRequests, ProviderTestOutcomes.NotTestable)]
+    public async Task AnEmptyJsonPostIsClassifiedByTheProvidersRefusal(
+        HttpStatusCode status,
+        string outcome
+    )
+    {
+        var handler = new CapturingHandler(status);
+
+        var result = await Tester(handler).TestAsync(SarvamTarget(), Secret, default);
+
+        result.Outcome.Should().Be(outcome);
+        result.HttpStatus.Should().Be((int)status);
+        handler.Method.Should().Be("POST");
+        handler.Body.Should().Be("{}");
+        handler.ContentType.Should().Be("application/json");
+        handler.Headers["api-subscription-key"].Should().Be(Secret);
+        handler.Headers.Should().NotContainKey("authorization");
+        JsonSerializer.Serialize(result).Should().NotContain(Secret);
+    }
+
+    private const string MetaValue = """{"appId":"1234567890","appSecret":"fakeappsecretforunittests"}""";
+
+    private static ProviderTestTarget MetaTarget() =>
+        new(
+            "meta",
+            "https://graph.facebook.com/oauth/access_token",
+            ProviderAuthSchemes.MetaApp,
+            null
+        );
+
+    [Theory]
+    [InlineData(HttpStatusCode.OK, ProviderTestOutcomes.Passed)]
+    [InlineData(HttpStatusCode.BadRequest, ProviderTestOutcomes.Failed)]
+    [InlineData(HttpStatusCode.Unauthorized, ProviderTestOutcomes.Failed)]
+    public async Task TheMetaAppCredentialIsCheckedWithAnAppTokenRequest(
+        HttpStatusCode status,
+        string outcome
+    )
+    {
+        var handler = new CapturingHandler(status);
+
+        var result = await Tester(handler).TestAsync(MetaTarget(), MetaValue, default);
+
+        result.Outcome.Should().Be(outcome);
+        handler.Method.Should().Be("GET");
+        handler.Url.Should().StartWith("https://graph.facebook.com/oauth/access_token?");
+        handler.Url.Should().Contain("client_id=1234567890").And.Contain("grant_type=client_credentials");
+        handler.Headers.Should().NotContainKey("authorization");
+        JsonSerializer.Serialize(result).Should().NotContain("fakeappsecretforunittests");
+    }
+
+    [Theory]
+    [InlineData("not-json")]
+    [InlineData("""{"appId":"1234567890"}""")]
+    [InlineData("""{"appId":"12 34","appSecret":"fakeappsecret"}""")]
+    [InlineData("""{"appId":"1234567890","appSecret":"abc&client_id=1"}""")]
+    [InlineData("[]")]
+    public async Task AMalformedMetaCredentialIsRejectedBeforeAnythingIsSent(string value)
+    {
+        var handler = new CapturingHandler(HttpStatusCode.OK);
+
+        var result = await Tester(handler).TestAsync(MetaTarget(), value, default);
+
+        result.Outcome.Should().Be(ProviderTestOutcomes.Failed);
+        handler.Method.Should().BeNull();
+        result.Detail.Should().NotContain("abcdef");
+    }
+
     private sealed class ThrowingHandler : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(

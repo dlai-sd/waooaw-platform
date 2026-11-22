@@ -21,5 +21,5 @@ COPY --chown=waooaw:waooaw src/ai-runtime/ .
 COPY --chown=waooaw:waooaw src/trust-layer/ctg/governed_inference.py ./ctg/governed_inference.py
 USER waooaw
 RUN python -c "import main"
-EXPOSE 5004
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5004"]
+EXPOSE 5004 5444
+CMD ["python", "entrypoint.py"]

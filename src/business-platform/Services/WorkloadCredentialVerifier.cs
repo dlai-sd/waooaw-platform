@@ -36,6 +36,7 @@ internal sealed class WorkloadCredentialSnapshot : IDisposable
     public DateTimeOffset? NotAfter { get; init; }
     public long BundleVersion { get; init; }
     public long TrustVersion { get; init; }
+    public string ManifestJson { get; init; } = string.Empty;
     public IReadOnlySet<string> RevokedSerials { get; init; } = new HashSet<string>();
     public IReadOnlySet<string> RevokedIdentityUris { get; init; } = new HashSet<string>();
 
@@ -77,7 +78,12 @@ internal static class WorkloadCredentialVerifier
     public const string ClientAuthOid = "1.3.6.1.5.5.7.3.2";
     public static readonly TimeSpan MaximumLeafLifetime = TimeSpan.FromHours(24);
     public static readonly string[] RequiredTargets = ["billing-engine", "professional-runtime"];
-    public static readonly string[] OptionalTargets = ["domain-adapter", "domain-adapter-dma"];
+    public static readonly string[] OptionalTargets =
+    [
+        "domain-adapter",
+        "domain-adapter-dma",
+        "ai-runtime",
+    ];
 
     public static WorkloadCredentialVerification Verify(
         string bundleJson,
@@ -288,6 +294,7 @@ internal static class WorkloadCredentialVerifier
                 NotAfter = notAfter,
                 BundleVersion = bundleVersion,
                 TrustVersion = trustVersion,
+                ManifestJson = manifest.GetRawText(),
                 RevokedSerials = revokedSerials,
                 RevokedIdentityUris = revokedUris,
             };

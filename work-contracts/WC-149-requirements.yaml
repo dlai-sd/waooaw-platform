@@ -1,0 +1,88 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-149
+contract_path: work-contracts/WC-149-paid-provider-consumption-and-customer-account-connection.md
+contract_digest: 7feb960ffbfab9daf7263b1c9f62fecdf6ff6576c0c9581c6bff1fe192f403c1
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Python, dotnet, web and Terraform checks run in Docker at the exact head; commands and results in the PR body
+  initial_state: new
+  dependencies: Founder authorization of this implementing session (current conversation); WC-147 and WC-148 merged on main
+  residual_risk: Real provider keys, Key Vault role conditions, managed-identity secret access, private mTLS between Business Platform and the AI runtime, provider egress and a real Meta session are proven only after the first Demo deployment with the Founder's keys and Meta app
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC149-R001
+    source: WC-149 Canonical Requirement Index, R001
+    observable_outcome: The Sarvam test is an empty-body POST with the subscription-key header; 400 or 422 passes, 401 or 403 is rejected, anything else is inconclusive, and no output contains the key.
+    test_path_or_plan: tests/business-platform.Tests ProviderCredentialTesterTests, ProviderCredentialSchemaTests.
+
+  - <<: *defaults
+    requirement_id: WC149-R002
+    source: WC-149 Canonical Requirement Index, R002
+    observable_outcome: Sarvam, OpenAI, Anthropic and Gemini adapters share one interface, return text, token counts and the reported model, and never log or return the key.
+    test_path_or_plan: tests/ai-runtime/test_hosted_providers.py.
+
+  - <<: *defaults
+    requirement_id: WC149-R003
+    source: WC-149 Canonical Requirement Index, R003
+    observable_outcome: The AI runtime resolves the active credential version through an authorized Business Platform route and reads the pinned vault version, so a new or rolled-back version is used without a restart.
+    test_path_or_plan: tests/ai-runtime/test_hosted_providers.py; tests/business-platform.Tests ProviderGenerationProbeTests and ProviderConnectionHttpTests (resolve route).
+
+  - <<: *defaults
+    requirement_id: WC149-R004
+    source: WC-149 Canonical Requirement Index, R004
+    observable_outcome: The ordered fallback chain skips a failing provider and reports the answering provider and a sanitized reason for each skip.
+    test_path_or_plan: tests/ai-runtime/test_hosted_providers.py.
+
+  - <<: *defaults
+    requirement_id: WC149-R005
+    source: WC-149 Canonical Requirement Index, R005
+    observable_outcome: The Founder Test answer reaches a provider through Business Platform and the AI runtime under Founder-only fresh step-up and returns answer, provider, model and tokens without customer data; the Business Platform signer and AI runtime verifier agree byte for byte.
+    test_path_or_plan: tests/business-platform.Tests ProviderGenerationProbeTests, ProviderCredentialAdminControllerTests; tests/ai-runtime/test_hosted_providers.py; web/components/admin/providers/ProviderTestAnswer.test.tsx.
+
+  - <<: *defaults
+    requirement_id: WC149-R006
+    source: WC-149 Canonical Requirement Index, R006
+    observable_outcome: ADR-029 Amendment 2 defines the hosted binding, and the governed binding and provider admit hosted MID and FRONTIER adapters on a host allowlist with conservative token counting and permit authorize and settle.
+    test_path_or_plan: adr/ADR-029-multi-provider-llm-strategy.md Amendment 2; tests/ai-runtime/test_conversation_generation.py hosted cases.
+
+  - <<: *defaults
+    requirement_id: WC149-R007
+    source: WC-149 Canonical Requirement Index, R007
+    observable_outcome: The connection schema is tenant-isolated, OAuth state is single-use, tokens exist only in the vault under customer-connection- names, and no endpoint, log or agent-visible object returns a token.
+    test_path_or_plan: tests/business-platform.Tests ProviderConnectionServiceTests, ProviderConnectionHttpTests; tests/pipeline/test_wc124_db_provisioner.py.
+
+  - <<: *defaults
+    requirement_id: WC149-R008
+    source: WC-149 Canonical Requirement Index, R008
+    observable_outcome: A customer can connect, see status, reconnect and revoke a Meta connection, and revoke deletes the secret version.
+    test_path_or_plan: tests/business-platform.Tests ProviderConnectionServiceTests, ProviderConnectionHttpTests.
+
+  - <<: *defaults
+    requirement_id: WC149-R009
+    source: WC-149 Canonical Requirement Index, R009
+    observable_outcome: The approval-gated broker publishes a Facebook Page post through the Graph API with a token fetched inside Business Platform at call time, returns the post identifier, and marks the connection NEEDS_REPAIR on an auth error.
+    test_path_or_plan: tests/business-platform.Tests ProviderConnectionServiceTests, ProviderConnectionHttpTests with stand-in Graph and vault.
+
+  - <<: *defaults
+    requirement_id: WC149-R010
+    source: WC-149 Canonical Requirement Index, R010
+    observable_outcome: The /connections screen and menu entry follow portal styling and accessibility, and the Founder meta provider row stores the app id and secret with a working Test.
+    test_path_or_plan: web/__tests__/app/application/connections-page.test.tsx; web/app/api/provider-connections tests; web/components/shell/F1Shell.test.tsx; tests/business-platform.Tests ProviderCredentialTesterTests (Meta).
+
+  - <<: *defaults
+    requirement_id: WC149-R011
+    source: WC-149 Canonical Requirement Index, R011
+    observable_outcome: Terraform and the workload registry grant exactly the new routes, secret prefix, listeners and addresses for demo, uat and prod and validate.
+    test_path_or_plan: tests/pipeline/test_goal006_terraform_foundations.py; tests/constitutional/test_adr046_pki_bootstrap.py and test_wid_issuer.py; terraform validate for demo, uat and prod; runtime lifecycle gate.
+
+  - <<: *defaults
+    requirement_id: WC149-R012
+    source: WC-149 Canonical Requirement Index, R012
+    observable_outcome: New tests run in the release-qualification gate, and the contract records what tests prove and what only a real Meta session or Demo deployment can prove.
+    test_path_or_plan: scripts/run_release_qualification.sh; tests/pipeline/test_ci_validation_efficiency.py; review of the contract Implementation Record.

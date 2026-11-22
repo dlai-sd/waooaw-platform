@@ -102,6 +102,18 @@ describe('F1 shell primitives', () => {
     );
   });
 
+  it('shows Connections to every customer, without any admin flag, only in the desktop navigation', () => {
+    render(
+      <ProtectedAppShell messages={messages.en} variant="customer">
+        <p>Customer content</p>
+      </ProtectedAppShell>
+    );
+    expect(screen.getByRole('link', { name: 'Connections' })).toHaveAttribute('href', '/connections');
+    expect(screen.getByRole('navigation', { name: messages.en.customerMobileNavigation })).not.toHaveTextContent(
+      'Connections'
+    );
+  });
+
   it('shows the provider registry only with the Founder flag and only in the desktop navigation', () => {
     const { unmount } = render(
       <ProtectedAppShell messages={messages.en} showPricingAdmin variant="customer">

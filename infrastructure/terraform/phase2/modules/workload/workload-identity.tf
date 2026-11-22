@@ -16,7 +16,7 @@ variable "log_analytics_workspace_id" {
 }
 
 locals {
-  wid_workloads    = ["business-platform", "billing-engine", "professional-runtime"]
+  wid_workloads    = ["business-platform", "billing-engine", "professional-runtime", "ai-runtime"]
   wid_vault_url    = trimsuffix(var.key_vault_secret_uris["web"], "/secrets/web")
   wid_vault_id     = trimsuffix(var.key_vault_secret_resource_ids["web"], "/secrets/web")
   wid_trust_domain = "${var.environment}.waooaw.internal"
@@ -101,12 +101,20 @@ locals {
       # Container Apps service names; the TLS identity is checked by workload identity URI, never by host name.
       BillingEngine__RelationshipWorkspaceBaseUrl       = "https://ca-${var.environment}-billing-engine:${local.wid_private_listeners["billing-engine"]}"
       ProfessionalRuntime__RelationshipWorkspaceBaseUrl = "https://ca-${var.environment}-professional-runtime:${local.wid_private_listeners["professional-runtime"]}"
+      # WC-149: the provider probe needs the AI runtime peer certificate, so it uses the private mutual-TLS listener.
+      ProviderProbe__BaseUrl = "https://ca-${var.environment}-ai-runtime:${local.wid_private_listeners["ai-runtime"]}"
+      # Business Platform serves /internal/v1/* to the AI runtime on its own private mutual-TLS port.
+      WorkloadInbound__Port = tostring(local.wid_private_listeners["business-platform"])
+      } : {}, workload == "ai-runtime" ? {
+      AIR_CONVERSATION_GENERATION_OWNER_URL = "https://ca-${var.environment}-business-platform:${local.wid_private_listeners["business-platform"]}"
     } : {})
   }
-  # Private mutual-TLS listeners; BP reaches them by Container Apps service name, never through public ingress.
+  # Private mutual-TLS listeners; callers reach them by Container Apps service name, never through public ingress.
   wid_private_listeners = {
+    "business-platform"    = 5445
     "billing-engine"       = 5444
     "professional-runtime" = 5443
+    "ai-runtime"           = 5444
   }
 }
 
