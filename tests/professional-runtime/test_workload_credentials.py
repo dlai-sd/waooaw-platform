@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
 import json
 import logging
 import socket
@@ -35,7 +36,7 @@ import runtime_workload_credentials as wc
 from mtls_protocol import MutualTlsH11Protocol
 from professional_runtime_main import app as runtime_app
 from professional_runtime_main import lifespan
-from relationship_workspace import WorkloadAuth, probe_service_link
+from relationship_workspace import probe_service_link
 from runtime_workload_credentials import (
     CredentialError,
     CredentialHolder,
@@ -61,14 +62,15 @@ from workload_identity import (
 )
 
 TARGET = "professional-runtime"
+# Billing and Professional Runtime each define a module named relationship_workspace; loading the class by name
+# keeps static analysis from resolving it against the other service's module.
+WorkloadAuth = importlib.import_module("relationship_workspace").WorkloadAuth
 DIGEST = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 DER = serialization.Encoding.DER
 
 
 def auth_from_holder(holder):
-    # Billing and Professional Runtime each define a module named relationship_workspace; static analysis cannot
-    # tell which one this test imports, so the classmethod is looked up at run time.
-    return getattr(WorkloadAuth, "from_holder")(holder)  # noqa: B009
+    return WorkloadAuth.from_holder(holder)
 
 
 @pytest.fixture

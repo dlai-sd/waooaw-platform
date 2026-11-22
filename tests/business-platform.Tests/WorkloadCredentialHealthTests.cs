@@ -110,7 +110,8 @@ public sealed class WorkloadCredentialHealthTests : IDisposable
     [Fact]
     public async Task KeyVaultApplicationStartsWithoutAVaultAndReportsDetailWithoutGatingReadiness()
     {
-        using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        using var baseFactory = new WebApplicationFactory<Program>();
+        using var factory = baseFactory.WithWebHostBuilder(builder =>
         {
             builder.UseSetting("WAOOAW_WID_SOURCE", "keyvault");
             builder.UseSetting("WAOOAW_WID_VAULT_URL", "https://waooaw-demo.vault.azure.net/");

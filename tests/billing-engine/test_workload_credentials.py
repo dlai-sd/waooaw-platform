@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import importlib
 import json
 import logging
 import socket
@@ -31,7 +32,7 @@ import entrypoint
 import wid_cloud_fixture as fx
 from mtls_protocol import MutualTlsH11Protocol, validated_protocol
 from private_server import WorkloadTlsContext, await_first_snapshot
-from relationship_workspace import WorkloadAuth, configure_relationship_workspace
+from relationship_workspace import configure_relationship_workspace
 from uvicorn.protocols.http.h11_impl import H11Protocol
 from billing_workload_credentials import (
     CredentialHolder,
@@ -58,14 +59,15 @@ from workload_identity import (
 )
 
 EXPECT = Expectation("billing-engine", fx.TRUST_DOMAIN, "demo")
+# Billing and Professional Runtime each define a module named relationship_workspace; loading the class by name
+# keeps static analysis from resolving it against the other service's module.
+WorkloadAuth = importlib.import_module("relationship_workspace").WorkloadAuth
 OPERATION = "getRelationshipCommercialProjection"
 DIGEST = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 
 def auth_from_holder(holder, trust_domain: str):
-    # Billing and Professional Runtime each define a module named relationship_workspace; static analysis cannot
-    # tell which one this test imports, so the classmethod is looked up at run time.
-    return getattr(WorkloadAuth, "from_holder")(holder, trust_domain)  # noqa: B009
+    return WorkloadAuth.from_holder(holder, trust_domain)
 
 
 @pytest.fixture

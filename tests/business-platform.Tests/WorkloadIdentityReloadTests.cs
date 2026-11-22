@@ -385,11 +385,12 @@ internal sealed class TlsOwnerServer : IAsyncDisposable
                         ClientCertificateRequired = true,
                         RemoteCertificateValidationCallback = (_, certificate, _, _) =>
                             certificate is not null
-                            && ValidClient(new X509Certificate2(certificate)),
+                            && ValidClientCertificate(certificate),
                     },
                     _stop.Token
                 );
-                _serials.Enqueue(new X509Certificate2(ssl.RemoteCertificate!).SerialNumber);
+                using (var remote = new X509Certificate2(ssl.RemoteCertificate!))
+                    _serials.Enqueue(remote.SerialNumber);
                 var buffer = new byte[4096];
                 var seen = new StringBuilder();
                 while (!seen.ToString().Contains("\r\n\r\n", StringComparison.Ordinal))
@@ -420,6 +421,12 @@ internal sealed class TlsOwnerServer : IAsyncDisposable
                 return;
             }
         }
+    }
+
+    private bool ValidClientCertificate(X509Certificate certificate)
+    {
+        using var typed = new X509Certificate2(certificate);
+        return ValidClient(typed);
     }
 
     private bool ValidClient(X509Certificate2 certificate)

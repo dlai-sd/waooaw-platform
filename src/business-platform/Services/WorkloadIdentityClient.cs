@@ -245,12 +245,7 @@ public sealed class WorkloadIdentityClient : IDisposable
                 ClientCertificates = snapshot.Context is null ? [snapshot.ClientCertificate] : null,
                 RemoteCertificateValidationCallback = (_, certificate, chain, errors) =>
                     certificate is not null
-                    && ValidateTargetCertificate(
-                        certificate as X509Certificate2 ?? new X509Certificate2(certificate),
-                        chain,
-                        errors,
-                        targetIdentityUri
-                    ),
+                    && ValidateTargetCertificate(certificate, chain, errors, targetIdentityUri),
             },
         };
 
@@ -364,6 +359,19 @@ public sealed class WorkloadIdentityClient : IDisposable
             DSASignatureFormat.Rfc3279DerSequence
         );
         return $"{Base64Url(bytes)}.{Base64Url(signature)}";
+    }
+
+    private bool ValidateTargetCertificate(
+        X509Certificate certificate,
+        X509Chain? suppliedChain,
+        SslPolicyErrors errors,
+        string targetIdentityUri
+    )
+    {
+        if (certificate is X509Certificate2 typed)
+            return ValidateTargetCertificate(typed, suppliedChain, errors, targetIdentityUri);
+        using var converted = new X509Certificate2(certificate);
+        return ValidateTargetCertificate(converted, suppliedChain, errors, targetIdentityUri);
     }
 
     private bool ValidateTargetCertificate(

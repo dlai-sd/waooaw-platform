@@ -678,7 +678,7 @@ def verify_chain(
         if not subject_is_ca and chain[0].extensions.get_extension_for_class(x509.BasicConstraints).value.ca:
             raise IssuanceError("Leaf certificate must not be a certificate authority")
     except x509.ExtensionNotFound:
-        pass
+        pass  # A leaf without BasicConstraints is not a CA, which is what this check requires.
 
 
 def next_version(now: datetime, previous: int) -> int:
