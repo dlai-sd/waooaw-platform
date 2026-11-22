@@ -563,7 +563,7 @@ locals {
         provider_alias     = "facebook"
         provider_namespace = "urn:waooaw:identity:${var.environment}:facebook:customer-login:v1"
       }))
-    } : {}, var.environment == "demo" ? local.demo_identity_runtime : {}, local.whatsapp_provider_runtime, local.visitor_conversation_runtime, local.feature_settings_runtime["business-platform"])
+    } : {}, var.environment == "demo" ? local.demo_identity_runtime : {}, local.whatsapp_provider_runtime, local.visitor_conversation_runtime, local.feature_settings_runtime["business-platform"], local.provider_credentials_runtime["business-platform"])
     "professional-runtime" = merge({
       AIR_TRANSCRIPTION_BASE_URL    = local.service_urls.ai_runtime
       CONSTITUTIONAL_ENGINE_ADDRESS = "ca-${var.environment}-constitutional-engine:80"
@@ -575,11 +575,11 @@ locals {
       TEMPORAL_ADDRESS   = "ca-${var.environment}-temporal:80"
       TEMPORAL_NAMESPACE = "default"
     } : {})
-    "ai-runtime" = {
+    "ai-runtime" = merge({
       BP_BASE_URL                   = local.service_urls.business_platform
       CONSTITUTIONAL_ENGINE_ADDRESS = "ca-${var.environment}-constitutional-engine:80"
       PLATFORM_PHASE                = "IMPLEMENTATION"
-    }
+    }, local.provider_credentials_runtime["ai-runtime"])
     "web" = merge({
       AUTH_ABUSE_LIMITS_JSON                = jsonencode(local.auth_abuse_limits)
       AZURE_KEY_VAULT_URL                   = trimsuffix(var.key_vault_secret_uris["web"], "/secrets/web")
@@ -1306,6 +1306,13 @@ resource "azurerm_container_app" "member" {
         for_each = each.key == "business-platform" && var.whatsapp_provider != null ? [1] : []
         content {
           name  = "WhatsAppProvider__ManagedIdentityClientId"
+          value = azurerm_user_assigned_identity.member[each.key].client_id
+        }
+      }
+      dynamic "env" {
+        for_each = contains(keys(local.provider_credentials_identity_env), each.key) ? [local.provider_credentials_identity_env[each.key]] : []
+        content {
+          name  = env.value
           value = azurerm_user_assigned_identity.member[each.key].client_id
         }
       }

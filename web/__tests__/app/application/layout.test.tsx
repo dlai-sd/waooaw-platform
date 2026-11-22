@@ -34,17 +34,20 @@ jest.mock('@/components/shell/ProtectedAppShell', () => ({
     children,
     identitySession,
     showPricingAdmin,
+    showProviderAdmin,
     workspaceLayout,
   }: {
     children: React.ReactNode;
     identitySession?: unknown;
     showPricingAdmin?: boolean;
+    showProviderAdmin?: boolean;
     workspaceLayout?: WorkspaceLayoutPreferencesV1;
   }) => (
     <div
       data-has-membership={identitySession !== undefined}
       data-layout-version={workspaceLayout?.preferenceVersion}
       data-pricing-admin={String(showPricingAdmin)}
+      data-provider-admin={String(showProviderAdmin)}
       data-testid="application-shell"
     >
       {children}
@@ -87,6 +90,19 @@ it.each([
   render(await ApplicationLayout({ children: <p>Marketplace</p> }));
 
   expect(screen.getByTestId('application-shell')).toHaveAttribute('data-pricing-admin', expected);
+});
+
+it.each([
+  ['founder', 'true'],
+  ['pricing_admin', 'false'],
+  ['employer', 'false'],
+])('offers the provider registry in navigation only to the Founder (role %s -> %s)', async (role, expected) => {
+  jest.mocked(getServerAccessToken).mockResolvedValue(tokenWithRoles(role));
+  jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'registration-required' });
+
+  render(await ApplicationLayout({ children: <p>Marketplace</p> }));
+
+  expect(screen.getByTestId('application-shell')).toHaveAttribute('data-provider-admin', expected);
 });
 
 it('keeps anonymous users outside the application shell', async () => {

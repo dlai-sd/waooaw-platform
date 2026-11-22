@@ -102,6 +102,26 @@ describe('F1 shell primitives', () => {
     );
   });
 
+  it('shows the provider registry only with the Founder flag and only in the desktop navigation', () => {
+    const { unmount } = render(
+      <ProtectedAppShell messages={messages.en} showPricingAdmin variant="customer">
+        <p>Customer content</p>
+      </ProtectedAppShell>
+    );
+    expect(screen.queryByRole('link', { name: 'Providers' })).not.toBeInTheDocument();
+    unmount();
+
+    render(
+      <ProtectedAppShell messages={messages.en} showProviderAdmin variant="customer">
+        <p>Founder content</p>
+      </ProtectedAppShell>
+    );
+    expect(screen.getByRole('link', { name: 'Providers' })).toHaveAttribute('href', '/admin/providers');
+    expect(screen.getByRole('navigation', { name: messages.en.customerMobileNavigation })).not.toHaveTextContent(
+      'Providers'
+    );
+  });
+
   it('composes registered customer navigation with persistent Stop', () => {
     const { container } = render(
       <ProtectedAppShell

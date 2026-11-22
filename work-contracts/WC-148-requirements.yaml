@@ -1,0 +1,64 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-148
+contract_path: work-contracts/WC-148-founder-provider-credential-registry-screen.md
+contract_digest: e824c0f646bf12398d453abe1f9f9bd671d1d6cce6502132e8d1b47e2f3e0acc
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Python, dotnet, web and Terraform checks run in Docker at the exact head; commands and results in the PR body
+  initial_state: new
+  dependencies: Founder authorization of this implementing session (current conversation); WC-147 in the same PR
+  residual_risk: Key Vault secret-name role condition, managed-identity secret write and read, and a real provider accepting a Founder-entered key are proven only after the first Demo deployment
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC148-R001
+    source: WC-148 Canonical Requirement Index, R001
+    observable_outcome: The registry schema holds category, agent type, test settings and credential versions with at most one active version per provider, and seeded rows start with no credential.
+    test_path_or_plan: tests/business-platform.Tests ProviderCredentialSchemaTests against Postgres; tests/pipeline/test_wc124_db_provisioner.py.
+
+  - <<: *defaults
+    requirement_id: WC148-R002
+    source: WC-148 Canonical Requirement Index, R002
+    observable_outcome: Only the Founder with fresh step-up can test or change credentials, and no response, log or error contains a secret value.
+    test_path_or_plan: tests/business-platform.Tests ProviderCredentialAdminControllerTests.
+
+  - <<: *defaults
+    requirement_id: WC148-R003
+    source: WC-148 Canonical Requirement Index, R003
+    observable_outcome: Test returns a sanitized outcome after one SSRF-limited call; Confirm re-tests and writes only on a pass or an explicit acknowledgement.
+    test_path_or_plan: tests/business-platform.Tests ProviderCredentialTesterTests, ProviderCredentialAdminServiceTests.
+
+  - <<: *defaults
+    requirement_id: WC148-R004
+    source: WC-148 Canonical Requirement Index, R004
+    observable_outcome: Confirm writes a vault secret version and records one active version; rollback re-activates a recorded version without the value.
+    test_path_or_plan: tests/business-platform.Tests ProviderCredentialAdminServiceTests, ProviderCredentialSchemaTests.
+
+  - <<: *defaults
+    requirement_id: WC148-R005
+    source: WC-148 Canonical Requirement Index, R005
+    observable_outcome: The AI runtime resolver uses a new or rolled-back version without restart and the Sarvam dispatch function uses it, proven with a stand-in registry and vault; no running service consumes a saved key until the follow-up contract.
+    test_path_or_plan: tests/ai-runtime/test_provider_credential_resolver.py.
+
+  - <<: *defaults
+    requirement_id: WC148-R006
+    source: WC-148 Canonical Requirement Index, R006
+    observable_outcome: The /admin/providers screen offers create, Test, Confirm and save, history and rollback, shows in the menu only for the Founder, and follows portal styling and accessibility.
+    test_path_or_plan: web/components/admin/providers tests; web/app/api/admin/providers route.test.ts; web/components/shell/ProtectedAppShell.test.tsx; web/__tests__/app/application/layout.test.tsx.
+
+  - <<: *defaults
+    requirement_id: WC148-R007
+    source: WC-148 Canonical Requirement Index, R007
+    observable_outcome: Terraform for every environment limits Business Platform writes and AI runtime reads to provider- secrets and validates.
+    test_path_or_plan: tests/pipeline/test_goal006_terraform_foundations.py; terraform fmt and validate for all six roots.
+
+  - <<: *defaults
+    requirement_id: WC148-R008
+    source: WC-148 Canonical Requirement Index, R008
+    observable_outcome: New tests are in the release-qualification gate, and the contract records what is implemented and what is unproven.
+    test_path_or_plan: scripts/run_release_qualification.sh; tests/pipeline/test_ci_validation_efficiency.py; review of the contract Implementation Record.
