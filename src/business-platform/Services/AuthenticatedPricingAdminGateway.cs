@@ -72,16 +72,27 @@ public sealed class AuthenticatedPricingAdminGateway : IPricingAdminGateway, IDi
             new Dictionary<string, string>(),
             correlation
         );
-        var envelope = _identity.Sign(
-            context,
-            _identity.GetAudience("billing-engine"),
-            value.Method,
-            value.RouteTemplate,
-            value.WbeOperation,
-            1,
-            digest,
-            DateTimeOffset.UtcNow
-        );
+        string envelope;
+        try
+        {
+            envelope = _identity.Sign(
+                context,
+                _identity.GetAudience("billing-engine"),
+                value.Method,
+                value.RouteTemplate,
+                value.WbeOperation,
+                1,
+                digest,
+                DateTimeOffset.UtcNow
+            );
+        }
+        catch (WorkloadCredentialsUnavailableException exception)
+        {
+            throw new PricingAdminOwnerUnavailableException(
+                "The pricing owner credentials are unavailable.",
+                exception
+            );
+        }
         var uri = string.IsNullOrEmpty(value.Query) ? value.Path : $"{value.Path}?{value.Query}";
         using var request = new HttpRequestMessage(new HttpMethod(value.Method), uri);
         if (value.Body.Length > 0)

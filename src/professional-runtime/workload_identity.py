@@ -17,10 +17,12 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
+from cryptography.x509.oid import ExtendedKeyUsageOID, ObjectIdentifier
 
 
 MAX_ENVELOPE_LIFETIME_SECONDS = 60
 PEER_CERTIFICATE_STATE_KEY = "adr046.peer_certificate_der"
+DELEGATION_SIGNING_OID = ObjectIdentifier("1.3.6.1.4.1.55555.46.1")
 
 
 class ServiceAuthError(RuntimeError):
@@ -128,6 +130,99 @@ def extract_peer_identity(
     return names[0]
 
 
+def certificate_uris(certificate: x509.Certificate) -> list[str]:
+    try:
+        return certificate.extensions.get_extension_for_class(x509.SubjectAlternativeName).value.get_values_for_type(
+            x509.UniformResourceIdentifier
+        )
+    except x509.ExtensionNotFound:
+        return []
+
+
+def has_extended_key_usage(certificate: x509.Certificate, usage: ObjectIdentifier) -> bool:
+    try:
+        return usage in certificate.extensions.get_extension_for_class(x509.ExtendedKeyUsage).value
+    except x509.ExtensionNotFound:
+        return False
+
+
+def _within(certificate: x509.Certificate, current: datetime) -> bool:
+    return certificate.not_valid_before_utc <= current < certificate.not_valid_after_utc
+
+
+def is_ca_certificate(certificate: x509.Certificate) -> bool:
+    try:
+        return certificate.extensions.get_extension_for_class(x509.BasicConstraints).value.ca
+    except x509.ExtensionNotFound:
+        return False
+
+
+def issued_by(certificate: x509.Certificate, issuer: x509.Certificate) -> bool:
+    try:
+        certificate.verify_directly_issued_by(issuer)
+    except (ValueError, TypeError, InvalidSignature):
+        return False
+    return True
+
+
+@dataclass(frozen=True)
+class TrustAnchors:
+    """Roots and intermediates of the current trust bundle with its revocations."""
+
+    roots: tuple[x509.Certificate, ...]
+    intermediates: tuple[x509.Certificate, ...]
+    revoked_serials: frozenset[int] = frozenset()
+    revoked_identity_uris: frozenset[str] = frozenset()
+
+    def is_revoked(self, certificate: x509.Certificate) -> bool:
+        return certificate.serial_number in self.revoked_serials or any(
+            uri in self.revoked_identity_uris for uri in certificate_uris(certificate)
+        )
+
+    def _intermediate_valid(self, intermediate: x509.Certificate, current: datetime) -> bool:
+        return (
+            is_ca_certificate(intermediate)
+            and _within(intermediate, current)
+            and any(is_ca_certificate(root) and _within(root, current) and issued_by(intermediate, root) for root in self.roots)
+        )
+
+    def chains(self, certificate: x509.Certificate, current: datetime) -> bool:
+        """True when a non-CA certificate is valid now, not revoked and issued by a valid intermediate of these roots."""
+        if is_ca_certificate(certificate) or not _within(certificate, current) or self.is_revoked(certificate):
+            return False
+        return any(
+            issued_by(certificate, intermediate) and self._intermediate_valid(intermediate, current)
+            for intermediate in self.intermediates
+        )
+
+
+@dataclass(frozen=True)
+class DelegationKey:
+    public_key: DelegationPublicKey
+    certificate: x509.Certificate
+    activate_after: int = 0
+
+
+DelegationKeys = Mapping[tuple[str, str], DelegationPublicKey | DelegationKey]
+
+
+def delegation_key_usable(entry: DelegationPublicKey | DelegationKey, anchors: TrustAnchors | None, now: int) -> bool:
+    if not isinstance(entry, DelegationKey):
+        return True
+    current = datetime.fromtimestamp(now, timezone.utc)
+    return (
+        anchors is not None
+        and now >= entry.activate_after
+        and has_extended_key_usage(entry.certificate, DELEGATION_SIGNING_OID)
+        and anchors.chains(entry.certificate, current)
+    )
+
+
+def peer_certificate_trusted(certificate: x509.Certificate, anchors: TrustAnchors, current: datetime) -> bool:
+    """Application-level check that the TLS peer chains to the current roots with client authentication."""
+    return anchors.chains(certificate, current) and has_extended_key_usage(certificate, ExtendedKeyUsageOID.CLIENT_AUTH)
+
+
 class ReplayStore:
     """Bounded in-process replay state; production adapters may supply durable storage."""
 
@@ -148,15 +243,24 @@ class DelegatedContextVerifier:
 
     def __init__(
         self,
-        grants: frozenset[RouteGrant],
-        public_keys: Mapping[tuple[str, str], DelegationPublicKey],
+        grants: frozenset[RouteGrant] | Callable[[], frozenset[RouteGrant]],
+        public_keys: DelegationKeys | Callable[[], DelegationKeys],
         replay_store: ReplayStore,
         now: Callable[[], int] | None = None,
+        anchors: Callable[[], TrustAnchors | None] | None = None,
     ) -> None:
-        self._grants = grants
-        self._public_keys = public_keys
+        self._grants = grants if callable(grants) else (lambda: grants)
+        self._public_keys = public_keys if callable(public_keys) else (lambda: public_keys)
+        self._anchors = anchors or (lambda: None)
         self._replay_store = replay_store
         self._now = now or (lambda: int(datetime.now(timezone.utc).timestamp()))
+
+    def authorize_peer(
+        self, peer_identity_uri: str, target_audience: str, method: str, route: str, operation: str, contract_major: int
+    ) -> None:
+        grant = RouteGrant(peer_identity_uri, target_audience, method.upper(), route, operation, contract_major)
+        if grant not in self._grants():
+            raise ServiceAuthError("SERVICE_AUTHORIZATION_DENIED")
 
     def verify(
         self,
@@ -180,9 +284,11 @@ class DelegatedContextVerifier:
         if payload != _canonical_payload(context):
             raise ServiceAuthError("DELEGATED_CONTEXT_INVALID")
 
-        public_key = self._public_keys.get((context.issuer_uri, context.key_id))
-        if public_key is None:
+        now = self._now()
+        entry = self._public_keys().get((context.issuer_uri, context.key_id))
+        if entry is None or not delegation_key_usable(entry, self._anchors(), now):
             raise ServiceAuthError("SERVICE_AUTHENTICATION_FAILED")
+        public_key = entry.public_key if isinstance(entry, DelegationKey) else entry
         try:
             signature = _decode(signature_part)
             if isinstance(public_key, Ed25519PublicKey):
@@ -192,18 +298,8 @@ class DelegatedContextVerifier:
         except InvalidSignature as exc:
             raise ServiceAuthError("DELEGATED_CONTEXT_INVALID") from exc
 
-        expected_grant = RouteGrant(
-            caller_uri=peer_identity_uri,
-            target_audience=target_audience,
-            method=method.upper(),
-            route=route,
-            operation=operation,
-            contract_major=contract_major,
-        )
-        if expected_grant not in self._grants:
-            raise ServiceAuthError("SERVICE_AUTHORIZATION_DENIED")
+        self.authorize_peer(peer_identity_uri, target_audience, method, route, operation, contract_major)
 
-        now = self._now()
         exact_binding = (
             context.schema_version == "1.0"
             and context.issuer_uri == peer_identity_uri

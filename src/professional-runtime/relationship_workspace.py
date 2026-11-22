@@ -8,7 +8,6 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -17,17 +16,22 @@ from threading import Lock
 from typing import Annotated, Literal
 
 from cryptography import x509
-from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi import APIRouter, FastAPI, Header, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
+from workload_credentials import (
+    CredentialHolder,
+    authenticate_peer,
+    credential_holder_from_environment,
+    load_directory_snapshot,
+    register_holder,
+)
 from workload_identity import (
     DelegatedContext,
     DelegatedContextVerifier,
     PEER_CERTIFICATE_STATE_KEY,
     ReplayStore,
-    RouteGrant,
     ServiceAuthError,
     extract_peer_identity,
 )
@@ -44,6 +48,8 @@ ControlStatus = Literal[
     "BLOCKED",
 ]
 TARGET_NAME = "professional-runtime"
+SERVICE_LINK_ROUTE = "/internal/v1/service-link"
+SERVICE_LINK_OPERATION = "probeServiceLink"
 logger = logging.getLogger(__name__)
 
 
@@ -345,36 +351,39 @@ class RelationshipExecutionStore:
 
 
 class WorkloadAuth:
-    def __init__(self, verifier: DelegatedContextVerifier, trust_domain: str, audience: str) -> None:
+    def __init__(
+        self,
+        verifier: DelegatedContextVerifier,
+        trust_domain: str,
+        audience: str | None,
+        holder: CredentialHolder | None = None,
+    ) -> None:
         self.verifier = verifier
         self.trust_domain = trust_domain
-        self.audience = audience
+        self.holder = holder
+        self._audience = audience
+
+    @property
+    def audience(self) -> str:
+        audience = self._audience or (self.holder.audience() if self.holder is not None else None)
+        if audience is None:
+            raise ServiceAuthError("SERVICE_IDENTITY_UNAVAILABLE")
+        return audience
+
+    def authenticate_peer(self, certificate: x509.Certificate) -> str:
+        if self.holder is not None and self.holder.enforced:
+            return authenticate_peer(self.holder, certificate)
+        return extract_peer_identity(certificate, self.trust_domain)
+
+    @classmethod
+    def from_holder(cls, holder: CredentialHolder) -> WorkloadAuth:
+        verifier = DelegatedContextVerifier(holder.grants, holder.delegation_keys, ReplayStore(), anchors=holder.anchors)
+        audience = None if holder.enforced else holder.audience()
+        return cls(verifier, holder.trust_domain, audience, holder)
 
     @classmethod
     def from_credentials(cls, credentials: Path) -> WorkloadAuth:
-        manifest = json.loads((credentials / "manifest.json").read_text(encoding="utf-8"))
-        target = manifest["workloads"][TARGET_NAME]
-        bp = manifest["workloads"]["business-platform"]
-        bp_certificate = x509.load_pem_x509_certificate(
-            (credentials / "workloads" / "business-platform" / "delegation-cert.pem").read_bytes()
-        )
-        public_key = bp_certificate.public_key()
-        if not isinstance(public_key, ec.EllipticCurvePublicKey):
-            raise ValueError("BP delegation certificate must contain an ECDSA public key")
-        grants = frozenset(
-            RouteGrant(
-                caller_uri=manifest["workloads"][grant["caller"]]["identity_uri"],
-                target_audience=manifest["workloads"][grant["target"]]["audience"],
-                method=grant["method"],
-                route=grant["route"],
-                operation=grant["operation"],
-                contract_major=int(grant["contract_major"]),
-            )
-            for grant in manifest["route_grants"]
-            if grant["target"] == TARGET_NAME
-        )
-        keys = {(bp["identity_uri"], bp["delegation_key_id"]): public_key}
-        return cls(DelegatedContextVerifier(grants, keys, ReplayStore()), manifest["trust_domain"], target["audience"])
+        return cls.from_holder(CredentialHolder.static(load_directory_snapshot(credentials, TARGET_NAME)))
 
 
 def _canonical_digest(value: object | None) -> str:
@@ -417,9 +426,9 @@ async def authorize_service_request(
     if auth is None or certificate_der is None or not authorization.startswith("Bearer "):
         raise ServiceAuthError("SERVICE_AUTHENTICATION_FAILED")
     certificate = x509.load_der_x509_certificate(certificate_der)
-    peer_identity = extract_peer_identity(certificate, auth.trust_domain)
+    peer_identity = auth.authenticate_peer(certificate)
     digest = request_digest if request_digest is not None else _canonical_digest(body)
-    return auth.verifier.verify(
+    context = auth.verifier.verify(
         authorization.removeprefix("Bearer "),
         peer_identity,
         auth.audience,
@@ -438,6 +447,8 @@ async def authorize_service_request(
             and (idempotency_key is None or context.idempotency_key == idempotency_key)
         ),
     )
+    logger.info("service_auth decision=allow target=professional-runtime operation=%s policy_version=1.0", operation)
+    return context
 
 
 async def authorize_paas_session_start(
@@ -474,7 +485,6 @@ async def get_relationship_execution_projection(
     except ServiceAuthError as exc:
         logger.warning("service_auth decision=deny target=professional-runtime operation=projection reason_class=%s", exc.code)
         return _problem(exc.code, 401, request.headers.get("X-Correlation-ID", str(uuid.uuid4())))
-    logger.info("service_auth decision=allow target=professional-runtime operation=projection policy_version=1.0")
     store: RelationshipExecutionStore = request.app.state.relationship_execution_store
     return store.projection(context.tenant_id, relationship_id)
 
@@ -559,9 +569,42 @@ async def get_relationship_execution_control(
     return outcome
 
 
+service_link_router = APIRouter(tags=["Internal"])
+
+
+@service_link_router.get("/internal/v1/service-link", include_in_schema=False)
+async def probe_service_link(request: Request) -> JSONResponse:
+    correlation_id = request.headers.get("X-Correlation-ID", str(uuid.uuid4()))
+    auth: WorkloadAuth | None = getattr(request.app.state, "relationship_workload_auth", None)
+    certificate_der = request.scope.get("state", {}).get(PEER_CERTIFICATE_STATE_KEY)
+    try:
+        if auth is None or certificate_der is None:
+            raise ServiceAuthError("SERVICE_AUTHENTICATION_FAILED")
+        peer_identity = auth.authenticate_peer(x509.load_der_x509_certificate(certificate_der))
+        auth.verifier.authorize_peer(peer_identity, auth.audience, "GET", SERVICE_LINK_ROUTE, SERVICE_LINK_OPERATION, 1)
+    except ServiceAuthError as exc:
+        logger.warning(
+            "service_auth decision=deny target=professional-runtime operation=%s reason_class=%s",
+            SERVICE_LINK_OPERATION,
+            exc.code,
+        )
+        return _problem(exc.code, 503 if exc.code == "SERVICE_IDENTITY_UNAVAILABLE" else 401, correlation_id)
+    logger.info("service_auth decision=allow target=professional-runtime operation=%s policy_version=1.0", SERVICE_LINK_OPERATION)
+    holder = auth.holder
+    snapshot = None if holder is None else holder.current()
+    return JSONResponse(
+        {
+            "status": "ok",
+            "peer_identity_uri": peer_identity,
+            "bundle_version": 0 if snapshot is None else snapshot.bundle_version,
+            "remaining_seconds": 0 if holder is None else holder.remaining_seconds(),
+        }
+    )
+
+
 def configure_relationship_workspace(application: FastAPI) -> None:
     application.state.relationship_execution_store = RelationshipExecutionStore()
-    credentials_path = os.getenv("WAOOAW_WORKLOAD_CREDENTIALS")
-    application.state.relationship_workload_auth = (
-        WorkloadAuth.from_credentials(Path(credentials_path)) if credentials_path else None
-    )
+    holder = credential_holder_from_environment()
+    register_holder(holder)
+    application.state.workload_credentials = holder
+    application.state.relationship_workload_auth = None if holder is None else WorkloadAuth.from_holder(holder)

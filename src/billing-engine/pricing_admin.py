@@ -331,6 +331,7 @@ async def _enter(request: Request, operation: str) -> Caller:
             getattr(error, "code", "INVALID_PEER"),
         )
         raise ProblemError(401, "PRICING_FORBIDDEN", "Unauthorized", "The service assertion was refused.") from None
+    logger.info("service_auth decision=allow target=billing-engine operation=%s policy_version=1.0", operation)
     role = _role_of(context)
     if role is None or role not in spec.roles:
         raise ProblemError(403, "PRICING_FORBIDDEN", "Forbidden", "The delegated role may not perform this operation.")

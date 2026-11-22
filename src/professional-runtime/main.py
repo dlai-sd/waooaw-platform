@@ -40,7 +40,7 @@ from routers.voice_orchestration import (
     UnavailableStopAuthority,
 )
 from routers.voice_orchestration import router as voice_orchestration_router
-from relationship_workspace import configure_relationship_workspace
+from relationship_workspace import configure_relationship_workspace, service_link_router
 from relationship_workspace import router as relationship_workspace_router
 from employment_protocol import configure_employment_protocol
 from employment_air_gateway import EmploymentAirGateway
@@ -166,6 +166,10 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
             keycloak_client,
         )
     temporal_stop = asyncio.Event()
+    credential_holder = getattr(application.state, "workload_credentials", None)
+    credential_task: asyncio.Task[None] | None = None
+    if credential_holder is not None and credential_holder.refreshable:
+        credential_task = asyncio.create_task(credential_holder.run(temporal_stop), name="workload-credential-refresh")
     temporal_recovery_task = asyncio.create_task(
         recover_temporal_worker(application, temporal_stop),
         name="temporal-worker-recovery",
@@ -176,6 +180,8 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
 
     temporal_stop.set()
     await temporal_recovery_task
+    if credential_task is not None:
+        await credential_task
     worker = getattr(application.state, "temporal_worker", None)
     worker_task = getattr(application.state, "temporal_worker_task", None)
     if worker is not None:
@@ -235,6 +241,7 @@ app.include_router(sessions_router)
 app.include_router(emergency_stop_router)
 app.include_router(conversation_execution_router)
 app.include_router(relationship_workspace_router)
+app.include_router(service_link_router)
 app.include_router(voice_orchestration_router)
 configure_relationship_workspace(app)
 configure_employment_protocol(app)
@@ -723,7 +730,7 @@ async def http_error(request: Request, error: StarletteHTTPException) -> JSONRes
     responses={503: {"model": HealthResponse, "description": "Service dependencies are unavailable"}},
     tags=["Health"],
 )
-async def health(request: Request, response: Response) -> HealthResponse:
+async def health(request: Request, response: Response) -> HealthResponse | JSONResponse:
     """Report canonical runtime health without treating degraded dependencies as healthy."""
     temporal = getattr(request.app.state, "temporal_client", None)
     worker_task = getattr(request.app.state, "temporal_worker_task", None)
@@ -751,9 +758,15 @@ async def health(request: Request, response: Response) -> HealthResponse:
         health_status = "healthy"
     if health_status != "healthy":
         response.status_code = 503
-    return HealthResponse(
+    health_response = HealthResponse(
         status=health_status,
         temporalConnected=temporal_connected,
         constitutionalEngineReachable=ce_reachable,
         activePAASSessions=max(0, int(getattr(request.app.state, "active_paas_sessions", 0))),
     )
+    credentials = getattr(request.app.state, "workload_credentials", None)
+    if credentials is None:
+        return health_response
+    detail = health_response.model_dump(mode="json", by_alias=True)
+    detail["workloadCredential"] = credentials.status()
+    return JSONResponse(detail, status_code=response.status_code or 200)

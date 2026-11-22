@@ -21,7 +21,7 @@ public sealed partial class HttpConversationExecutionGateway
     )
     {
         var now = DateTimeOffset.UtcNow;
-        if (workloadIdentity is null)
+        if (workloadIdentity is null || !workloadIdentity.IsAvailable)
             throw new ConversationExecutionUnavailableException();
         if (
             authority.ExpiresAt <= now

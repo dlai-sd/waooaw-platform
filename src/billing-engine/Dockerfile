@@ -31,5 +31,5 @@ RUN DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/waooaw \
 	CONSTITUTIONAL_ENGINE_ADDRESS=localhost:5002 \
 	BILLING_CONTRACT_ID=build-validation \
 	python -c "import main"
-EXPOSE 8140
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8140"]
+EXPOSE 8140 5444
+CMD ["python", "entrypoint.py"]

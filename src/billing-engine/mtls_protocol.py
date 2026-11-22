@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable, MutableMapping
-from typing import Any
+from typing import Any, ClassVar
 
 from uvicorn.protocols.http.h11_impl import H11Protocol
 from workload_identity import PEER_CERTIFICATE_STATE_KEY
@@ -15,20 +15,29 @@ from workload_identity import PEER_CERTIFICATE_STATE_KEY
 AsgiReceive = Callable[[], Awaitable[MutableMapping[str, Any]]]
 AsgiSend = Callable[[MutableMapping[str, Any]], Awaitable[None]]
 AsgiScope = MutableMapping[str, Any]
+PeerValidator = Callable[[bytes], bool]
 
 
 class MutualTlsH11Protocol(H11Protocol):
+    peer_validator: ClassVar[PeerValidator | None] = None
+
     def connection_made(self, transport: asyncio.Transport) -> None:
         ssl_object = transport.get_extra_info("ssl_object")
         peer_certificate = ssl_object.getpeercert(binary_form=True) if ssl_object is not None else None
-        if not peer_certificate:
+        validator = self.peer_validator
+        if not peer_certificate or (validator is not None and not validator(peer_certificate)):
             transport.close()
             return
         application = self.app
 
         async def authenticated_application(scope: AsgiScope, receive: AsgiReceive, send: AsgiSend) -> None:
-            scope.setdefault("state", {})[PEER_CERTIFICATE_STATE_KEY] = peer_certificate
+            if validator is None or validator(peer_certificate):
+                scope.setdefault("state", {})[PEER_CERTIFICATE_STATE_KEY] = peer_certificate
             await application(scope, receive, send)
 
         self.app = authenticated_application
         super().connection_made(transport)
+
+
+def validated_protocol(validator: PeerValidator) -> type[MutualTlsH11Protocol]:
+    return type("ValidatedMutualTlsH11Protocol", (MutualTlsH11Protocol,), {"peer_validator": staticmethod(validator)})

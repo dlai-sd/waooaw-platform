@@ -143,7 +143,11 @@ builder.Services.AddSwaggerGen();
 builder
     .Services.AddHealthChecks()
     .AddCheck<IdentitySchemaHealthCheck>("identity-schema", tags: ["ready"])
-    .AddCheck<ConversationCursorHealthCheck>("conversation-cursor", tags: ["ready"]);
+    .AddCheck<ConversationCursorHealthCheck>("conversation-cursor", tags: ["ready"])
+    .AddCheck<WorkloadCredentialHealthCheck>(
+        "workload-credentials",
+        tags: [WorkloadCredentialHealthCheck.DetailTag]
+    );
 
 // ── JWT Authentication — Keycloak (ADR-003, C-026) ───────────────────────────
 // tenant_id extracted in TenantIsolationMiddleware after token is validated.
@@ -223,33 +227,87 @@ builder.Services.AddTenantIsolation();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IProfessionalCatalog, ProfessionalCatalog>();
 
+var credentialOptions = WorkloadCredentialOptions.From(builder.Configuration);
 var workloadCredentials = builder.Configuration["WAOOAW_WORKLOAD_CREDENTIALS"];
 WorkloadIdentityClient? workloadIdentity = null;
-if (!string.IsNullOrWhiteSpace(workloadCredentials))
+var ownerLinks = new OwnerLinkState();
+builder.Services.AddSingleton(ownerLinks);
+var prWorkspaceBaseUrl = builder.Configuration["ProfessionalRuntime:RelationshipWorkspaceBaseUrl"];
+var wbeWorkspaceBaseUrl = builder.Configuration["BillingEngine:RelationshipWorkspaceBaseUrl"];
+if (credentialOptions.IsKeyVault)
+{
+    // Gateways register now and report unavailable until the first bundle verifies; the vault never gates startup.
+    workloadIdentity = WorkloadIdentityClient.CreateReloadable(
+        new WorkloadCredentialSettings(credentialOptions.Workload, credentialOptions.TrustDomain)
+    );
+    builder.Services.AddSingleton(workloadIdentity);
+    builder.Services.AddSingleton(credentialOptions);
+    builder.Services.AddSingleton<IWorkloadCredentialReader>(
+        new KeyVaultWorkloadCredentialReader(
+            new HttpClient { Timeout = TimeSpan.FromSeconds(10) },
+            builder.Configuration,
+            credentialOptions
+        )
+    );
+    var ownerTargets = new List<OwnerLinkTarget>
+    {
+        new(
+            "billing",
+            "billing-engine",
+            Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var billingLinkUri)
+                ? billingLinkUri
+                : null
+        ),
+        new(
+            "professional-runtime",
+            "professional-runtime",
+            Uri.TryCreate(prWorkspaceBaseUrl, UriKind.Absolute, out var runtimeLinkUri)
+                ? runtimeLinkUri
+                : null
+        ),
+    };
+    foreach (var owner in ownerTargets)
+        ownerLinks.Set(
+            owner.Owner,
+            owner.BaseUrl is null ? OwnerLinkStatus.Unconfigured : OwnerLinkStatus.Unavailable
+        );
+    builder.Services.AddSingleton(new OwnerLinkProber(workloadIdentity, ownerLinks, ownerTargets));
+    builder.Services.AddHostedService<WorkloadCredentialRefresher>();
+}
+else if (!string.IsNullOrWhiteSpace(workloadCredentials))
 {
     workloadIdentity = WorkloadIdentityClient.Load(workloadCredentials);
     builder.Services.AddSingleton(workloadIdentity);
 }
-var prWorkspaceBaseUrl = builder.Configuration["ProfessionalRuntime:RelationshipWorkspaceBaseUrl"];
-var wbeWorkspaceBaseUrl = builder.Configuration["BillingEngine:RelationshipWorkspaceBaseUrl"];
+T Guarded<T>(T real, T unavailable)
+    where T : class =>
+    credentialOptions.IsKeyVault && workloadIdentity is not null
+        ? OwnerGatewayGuard<T>.Create(real, unavailable, workloadIdentity)
+        : real;
 if (
     workloadIdentity is not null
     && Uri.TryCreate(prWorkspaceBaseUrl, UriKind.Absolute, out var prWorkspaceUri)
     && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var wbeWorkspaceUri)
 )
 {
-    builder.Services.AddSingleton<IRelationshipWorkspaceOwnerGateway>(
-        new AuthenticatedRelationshipWorkspaceOwnerGateway(
-            workloadIdentity,
-            prWorkspaceUri,
-            wbeWorkspaceUri
+    builder.Services.AddSingleton(
+        Guarded<IRelationshipWorkspaceOwnerGateway>(
+            new AuthenticatedRelationshipWorkspaceOwnerGateway(
+                workloadIdentity,
+                prWorkspaceUri,
+                wbeWorkspaceUri
+            ),
+            new UnconfiguredRelationshipWorkspaceOwnerGateway()
         )
     );
-    builder.Services.AddSingleton<IRelationshipTrialOwnerGateway>(
-        services => new HttpRelationshipTrialOwnerGateway(
-            services.GetRequiredService<IHttpClientFactory>(),
-            workloadIdentity,
-            prWorkspaceUri
+    builder.Services.AddSingleton(services =>
+        Guarded<IRelationshipTrialOwnerGateway>(
+            new HttpRelationshipTrialOwnerGateway(
+                services.GetRequiredService<IHttpClientFactory>(),
+                workloadIdentity,
+                prWorkspaceUri
+            ),
+            new UnconfiguredRelationshipTrialOwnerGateway()
         )
     );
 }
@@ -356,8 +414,11 @@ if (
     workloadIdentity is not null
     && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var activationWbeUri)
 )
-    builder.Services.AddSingleton<IActivationBillingGateway>(
-        new AuthenticatedActivationBillingGateway(workloadIdentity, activationWbeUri)
+    builder.Services.AddSingleton(
+        Guarded<IActivationBillingGateway>(
+            new AuthenticatedActivationBillingGateway(workloadIdentity, activationWbeUri),
+            new UnconfiguredActivationBillingGateway()
+        )
     );
 else
     builder.Services.AddSingleton<
@@ -370,8 +431,13 @@ if (
 )
 {
     var offeringGateway = new AuthenticatedOfferingUsageGateway(workloadIdentity, offeringWbeUri);
-    builder.Services.AddSingleton<IAuthenticatedOfferingUsageGateway>(offeringGateway);
-    builder.Services.AddSingleton<IPlatformAccountGateway>(offeringGateway);
+    var offeringUnavailable = new UnconfiguredOfferingUsageGateway();
+    builder.Services.AddSingleton(
+        Guarded<IAuthenticatedOfferingUsageGateway>(offeringGateway, offeringUnavailable)
+    );
+    builder.Services.AddSingleton(
+        Guarded<IPlatformAccountGateway>(offeringGateway, offeringUnavailable)
+    );
 }
 else
 {
@@ -385,8 +451,11 @@ if (
     workloadIdentity is not null
     && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var pricingWbeUri)
 )
-    builder.Services.AddSingleton<IPricingAdminGateway>(
-        new AuthenticatedPricingAdminGateway(workloadIdentity, pricingWbeUri)
+    builder.Services.AddSingleton(
+        Guarded<IPricingAdminGateway>(
+            new AuthenticatedPricingAdminGateway(workloadIdentity, pricingWbeUri),
+            new UnconfiguredPricingAdminGateway()
+        )
     );
 else
     builder.Services.AddSingleton<IPricingAdminGateway, UnconfiguredPricingAdminGateway>();
@@ -405,8 +474,11 @@ if (
     workloadIdentity is not null
     && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var offerabilityWbeUri)
 )
-    builder.Services.AddSingleton<IOfferabilityOwnerGateway>(
-        new AuthenticatedOfferabilityOwnerGateway(workloadIdentity, offerabilityWbeUri)
+    builder.Services.AddSingleton(
+        Guarded<IOfferabilityOwnerGateway>(
+            new AuthenticatedOfferabilityOwnerGateway(workloadIdentity, offerabilityWbeUri),
+            new UnconfiguredOfferabilityOwnerGateway()
+        )
     );
 else
     builder.Services.AddSingleton<
@@ -820,8 +892,11 @@ if (
     workloadIdentity is not null
     && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var componentUnitWbeUri)
 )
-    builder.Services.AddSingleton<IComponentUnitGateway>(
-        new AuthenticatedComponentUnitGateway(workloadIdentity, componentUnitWbeUri)
+    builder.Services.AddSingleton(
+        Guarded<IComponentUnitGateway>(
+            new AuthenticatedComponentUnitGateway(workloadIdentity, componentUnitWbeUri),
+            new UnconfiguredComponentUnitGateway()
+        )
     );
 else
     builder.Services.AddSingleton<IComponentUnitGateway, UnconfiguredComponentUnitGateway>();
@@ -830,8 +905,11 @@ if (
     workloadIdentity is not null
     && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var packageCatalogWbeUri)
 )
-    builder.Services.AddSingleton<IPackageCatalogGateway>(
-        new AuthenticatedPackageCatalogGateway(workloadIdentity, packageCatalogWbeUri)
+    builder.Services.AddSingleton(
+        Guarded<IPackageCatalogGateway>(
+            new AuthenticatedPackageCatalogGateway(workloadIdentity, packageCatalogWbeUri),
+            new UnconfiguredPackageCatalogGateway()
+        )
     );
 else
     builder.Services.AddSingleton<IPackageCatalogGateway, UnconfiguredPackageCatalogGateway>();
@@ -844,13 +922,16 @@ if (
     && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var employmentWbeUri)
 )
 {
-    builder.Services.AddScoped<IEmploymentCommandOwnerGateway>(
-        services => new GeneratedEmploymentCommandOwnerGateway(
-            workloadIdentity,
-            workloadIdentity.CreateClient(employmentDomainUri, "domain-adapter"),
-            workloadIdentity.CreateClient(employmentWbeUri, "billing-engine"),
-            services.GetRequiredService<IRelationshipConstitutionalGateway>(),
-            services.GetRequiredService<IConversationalEmploymentPersistence>()
+    builder.Services.AddScoped(services =>
+        Guarded<IEmploymentCommandOwnerGateway>(
+            new GeneratedEmploymentCommandOwnerGateway(
+                workloadIdentity,
+                workloadIdentity.CreateClient(employmentDomainUri, "domain-adapter"),
+                workloadIdentity.CreateClient(employmentWbeUri, "billing-engine"),
+                services.GetRequiredService<IRelationshipConstitutionalGateway>(),
+                services.GetRequiredService<IConversationalEmploymentPersistence>()
+            ),
+            new UnconfiguredEmploymentCommandOwnerGateway()
         )
     );
 }
@@ -870,8 +951,11 @@ if (
     workloadIdentity is not null
     && Uri.TryCreate(employmentDomainBaseUrl, UriKind.Absolute, out var workbenchDomainUri)
 )
-    builder.Services.AddSingleton<IAdmittedExperienceManifestSource>(
-        new DomainAdapterExperienceManifestSource(workloadIdentity, workbenchDomainUri)
+    builder.Services.AddSingleton(
+        Guarded<IAdmittedExperienceManifestSource>(
+            new DomainAdapterExperienceManifestSource(workloadIdentity, workbenchDomainUri),
+            new UnconfiguredAdmittedExperienceManifestSource()
+        )
     );
 else
     builder.Services.AddSingleton<
@@ -882,8 +966,11 @@ if (
     workloadIdentity is not null
     && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var workbenchWbeUri)
 )
-    builder.Services.AddSingleton<IWorkbenchCommercialReader>(
-        new AuthenticatedWorkbenchCommercialReader(workloadIdentity, workbenchWbeUri)
+    builder.Services.AddSingleton(
+        Guarded<IWorkbenchCommercialReader>(
+            new AuthenticatedWorkbenchCommercialReader(workloadIdentity, workbenchWbeUri),
+            new UnconfiguredWorkbenchCommercialReader()
+        )
     );
 else
     builder.Services.AddSingleton<
@@ -1025,6 +1112,16 @@ app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => fa
 app.MapHealthChecks(
         "/health/ready",
         new HealthCheckOptions { Predicate = registration => registration.Tags.Contains("ready") }
+    )
+    .WithMetadata(new HttpMethodMetadata(["GET"]));
+app.MapHealthChecks(
+        "/health/detail",
+        new HealthCheckOptions
+        {
+            Predicate = registration =>
+                registration.Tags.Contains(WorkloadCredentialHealthCheck.DetailTag),
+            ResponseWriter = WorkloadCredentialHealthCheck.WriteDetailAsync,
+        }
     )
     .WithMetadata(new HttpMethodMetadata(["GET"]));
 
