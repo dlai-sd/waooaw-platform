@@ -7,6 +7,12 @@ import { LiveMarginBanner } from './LiveMarginBanner';
 test('a failed load is an error, not silence', () => {
   render(<LiveMarginBanner margin={null} />);
   expect(screen.getByRole('alert')).toHaveTextContent('Live margin could not be loaded.');
+  expect(screen.queryByText(/not connected/)).not.toBeInTheDocument();
+});
+
+test('a 503 says the pricing service is not connected instead of leaving the cause unknown', () => {
+  render(<LiveMarginBanner margin={null} status={503} />);
+  expect(screen.getByRole('alert')).toHaveTextContent('The pricing service is not connected in this environment yet');
 });
 
 test('no breaches reads as healthy in words', () => {

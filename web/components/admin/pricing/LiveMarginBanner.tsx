@@ -8,12 +8,20 @@ import type { LiveMargin } from '@/lib/pricing-admin-types';
 
 const reasonText = { BELOW_FLOOR: 'below the cost floor', BELOW_MINIMUM_MARGIN: 'below the minimum margin' } as const;
 
-export function LiveMarginBanner({ margin }: { margin: LiveMargin | null }) {
+type Props = { margin: LiveMargin | null; status?: number | null };
+
+// 503 is the Business Platform saying the pricing owner is not connected, so retrying will not help.
+const unavailableText = 'The pricing service is not connected in this environment yet, so nothing can be checked.';
+
+export function LiveMarginBanner({ margin, status = null }: Props) {
   if (margin === null) {
     return (
-      <p className="workbench-message workbench-message-error" role="alert">
-        <strong>Error:</strong> Live margin could not be loaded. Treat package margins as unchecked.
-      </p>
+      <div className="workbench-message workbench-message-error pricing-banner" role="alert">
+        <p>
+          <strong>Error:</strong> Live margin could not be loaded. Treat package margins as unchecked.
+        </p>
+        {status === 503 ? <p className="workbench-hint">{unavailableText}</p> : null}
+      </div>
     );
   }
   if (margin.breaches.length === 0) {

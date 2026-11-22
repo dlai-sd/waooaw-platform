@@ -6039,6 +6039,101 @@ dialog.workbench-section {
   color: #067647;
 }
 
+/* Pricing administration: layout, tabs, banner and controls on the portal tokens. */
+.pricing-admin {
+  display: grid;
+  gap: 1rem;
+}
+
+.pricing-admin .portal-heading {
+  max-width: none;
+}
+
+.pricing-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+.pricing-banner {
+  background: var(--surface);
+  border: 1px solid var(--color-error);
+  border-radius: 8px;
+  color: var(--color-error);
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+}
+
+.pricing-banner p {
+  margin: 0;
+}
+
+.pricing-banner .workbench-hint {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.pricing-action-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+}
+
+.pricing-action-grid > .workbench-form {
+  align-content: start;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  max-width: none;
+  padding: 1rem;
+}
+
+.pricing-admin .workbench-form > :is(h2, h3) {
+  margin: 0;
+}
+
+.pricing-admin .workbench-form button {
+  justify-self: start;
+}
+
+.pricing-admin :is(select, textarea, input:not([type="file"], [type="checkbox"], [type="radio"])) {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  font: inherit;
+  min-height: 44px;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  width: 100%;
+}
+
+.pricing-admin textarea {
+  line-height: 1.5;
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.pricing-admin :is(select, textarea, input):focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.pricing-admin input[type="file"]::file-selector-button {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  margin-inline-end: 0.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
 .workbench-stop {
   background: var(--surface);
   border: 2px solid #b42318;

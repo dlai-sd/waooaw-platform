@@ -16,5 +16,8 @@ test('the frame titles the page, marks the current section and renders its conte
   expect(screen.getByRole('link', { name: 'Packages' })).not.toHaveAttribute('aria-current');
   expect(screen.getByRole('navigation', { name: 'Pricing sections' })).toBeInTheDocument();
   expect(screen.getAllByRole('link')).toHaveLength(8);
+  expect(screen.getByRole('link', { name: 'Rates' })).toHaveClass('primary-command');
+  expect(screen.getByRole('link', { name: 'Packages' })).toHaveClass('secondary-link');
+  expect(screen.getByRole('list').className).toBe('pricing-tabs');
   expect(screen.getByText('content')).toBeInTheDocument();
 });

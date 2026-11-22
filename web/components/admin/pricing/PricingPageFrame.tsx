@@ -19,18 +19,18 @@ type Props = { current: string; title: string; intro: string; children: ReactNod
 
 export function PricingPageFrame({ current, title, intro, children }: Props) {
   return (
-    <section aria-labelledby="pricing-title" className="portal-page">
+    <section aria-labelledby="pricing-title" className="portal-page pricing-admin">
       <header className="portal-heading">
         <p className="eyebrow">Pricing administration</p>
         <h1 id="pricing-title">{title}</h1>
         <p>{intro}</p>
         <nav aria-label="Pricing sections">
-          <ul className="workbench-plain-list">
+          <ul className="pricing-tabs">
             {pricingSections.map((section) => (
               <li key={section.href}>
                 <Link
                   aria-current={section.href === current ? 'page' : undefined}
-                  className="secondary-link"
+                  className={section.href === current ? 'primary-command' : 'secondary-link'}
                   href={section.href}
                 >
                   {section.label}

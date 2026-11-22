@@ -26,6 +26,12 @@ export function wireShape<T>(value: unknown): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+// The HTTP status of a failed generated-client call, or null when the failure was not an HTTP answer.
+export function responseStatus(error: unknown): number | null {
+  const status = (error as { response?: { status?: unknown } } | null)?.response?.status;
+  return typeof status === 'number' ? status : null;
+}
+
 // Drafts and published versions come from two lists; null means the owner could not be reached.
 export async function loadVersions(accessToken: string, kind: PricingKind): Promise<PricingVersion[] | null> {
   const { drafts, versions } = pricingApis(accessToken);

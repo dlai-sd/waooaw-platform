@@ -52,75 +52,82 @@ export function ExportImport() {
   return (
     <section aria-label="Export and import" className="workbench-section">
       <h2>Export and import</h2>
-      <div className="workbench-stack">
-        <h3>Export</h3>
-        <p className="workbench-hint">
-          A signed bundle of every effective and authorized version, for recovery after a reset.
-        </p>
-        <button className="secondary-link" disabled={exporting.busy} onClick={() => void exportBundle()} type="button">
-          Export versions
-        </button>
-        <PricingMessage message={exporting.message} />
-        {downloadText ? (
-          <>
-            <a
-              download="pricing-versions.json"
-              href={`data:application/json;charset=utf-8,${encodeURIComponent(downloadText)}`}
-            >
-              Download bundle
-            </a>
-            <label htmlFor="export-bundle">Exported bundle</label>
-            <textarea id="export-bundle" readOnly rows={6} value={downloadText} />
-          </>
-        ) : null}
-      </div>
-      <div className="workbench-form">
-        <h3>Import</h3>
-        <p className="workbench-hint">
-          Every entry is checked by the same rules and created as a draft. Nothing becomes effective until the Founder
-          authorizes it.
-        </p>
-        <label htmlFor="import-file">Bundle file</label>
-        <input
-          accept="application/json,.json"
-          id="import-file"
-          onChange={(event) => void chooseFile(event)}
-          type="file"
-        />
-        <label htmlFor="import-bundle">Bundle contents</label>
-        <textarea
-          id="import-bundle"
-          onChange={(event) => setBundleText(event.target.value)}
-          rows={6}
-          value={bundleText}
-        />
-        <button
-          className="secondary-link"
-          disabled={importing.busy || bundleText.trim() === ''}
-          onClick={() => void importBundle()}
-          type="button"
-        >
-          Import as drafts
-        </button>
-        <PricingMessage message={importing.message} />
-        {outcome && outcome.created.length > 0 ? (
-          <ul aria-label="Created drafts" className="workbench-plain-list">
-            {outcome.created.map((entry) => (
-              <li key={entry.versionId}>
-                {entry.kind} {entry.subjectKey}: {entry.state.toLowerCase()}
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        {outcome && outcome.rejected.length > 0 ? (
-          <ul aria-label="Rejected entries" className="workbench-plain-list">
-            {outcome.rejected.map((entry) => (
-              <li key={`${entry.kind}:${entry.subjectKey}`}>
-                {entry.kind} {entry.subjectKey}: {problemText({ code: entry.code })} {entry.message}
-              </li>
-            ))}
-          </ul>
-        ) : null}
+      <div className="pricing-action-grid">
+        <div className="workbench-form">
+          <h3>Export</h3>
+          <p className="workbench-hint">
+            A signed bundle of every effective and authorized version, for recovery after a reset.
+          </p>
+          <button
+            className="secondary-link"
+            disabled={exporting.busy}
+            onClick={() => void exportBundle()}
+            type="button"
+          >
+            Export versions
+          </button>
+          <PricingMessage message={exporting.message} />
+          {downloadText ? (
+            <>
+              <a
+                download="pricing-versions.json"
+                href={`data:application/json;charset=utf-8,${encodeURIComponent(downloadText)}`}
+              >
+                Download bundle
+              </a>
+              <label htmlFor="export-bundle">Exported bundle</label>
+              <textarea id="export-bundle" readOnly rows={6} value={downloadText} />
+            </>
+          ) : null}
+        </div>
+        <div className="workbench-form">
+          <h3>Import</h3>
+          <p className="workbench-hint">
+            Every entry is checked by the same rules and created as a draft. Nothing becomes effective until the Founder
+            authorizes it.
+          </p>
+          <label htmlFor="import-file">Bundle file</label>
+          <input
+            accept="application/json,.json"
+            id="import-file"
+            onChange={(event) => void chooseFile(event)}
+            type="file"
+          />
+          <label htmlFor="import-bundle">Bundle contents</label>
+          <textarea
+            id="import-bundle"
+            onChange={(event) => setBundleText(event.target.value)}
+            rows={6}
+            value={bundleText}
+          />
+          <button
+            className="secondary-link"
+            disabled={importing.busy || bundleText.trim() === ''}
+            onClick={() => void importBundle()}
+            type="button"
+          >
+            Import as drafts
+          </button>
+          <PricingMessage message={importing.message} />
+          {outcome && outcome.created.length > 0 ? (
+            <ul aria-label="Created drafts" className="workbench-plain-list">
+              {outcome.created.map((entry) => (
+                <li key={entry.versionId}>
+                  {entry.kind} {entry.subjectKey}: {entry.state.toLowerCase()}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {outcome && outcome.rejected.length > 0 ? (
+            <ul aria-label="Rejected entries" className="workbench-plain-list">
+              {outcome.rejected.map((entry) => (
+                <li key={`${entry.kind}:${entry.subjectKey}`}>
+                  {entry.kind} {entry.subjectKey}: {problemText({ code: entry.code })} {entry.message}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
       </div>
     </section>
   );

@@ -1,0 +1,46 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-144
+contract_path: work-contracts/WC-144-founder-pricing-screen-defects.md
+contract_digest: 1131e3c171140a6eaa75b47235ac54d6c5f294bcbca5cbf4fcf30c6272c22f1b
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Web unit tests, Biome and tsc run in Docker at the exact head; commands and results in the PR body
+  initial_state: new
+  dependencies: Founder authorization of this implementing session (current conversation)
+  residual_risk: Live margin and every other pricing call stay unavailable on Demo until the Business Platform to Billing workload credential is provisioned (CB-021); the new styling is verified by unit tests and a headless-browser render, not by a Demo deployment
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC144-R001
+    source: WC-144 Canonical Requirement Index, R001
+    observable_outcome: The pricing page frame renders its section links as a wrapping tab bar using primary-command for the current page and secondary-link for the others, with aria-current preserved.
+    test_path_or_plan: web/components/admin/pricing/PricingPageFrame.test.tsx.
+
+  - <<: *defaults
+    requirement_id: WC144-R002
+    source: WC-144 Canonical Requirement Index, R002
+    observable_outcome: A failed live margin load renders an alert; when the failure status is 503 it also says the pricing service is not connected in this environment.
+    test_path_or_plan: web/components/admin/pricing/LiveMarginBanner.test.tsx.
+
+  - <<: *defaults
+    requirement_id: WC144-R003
+    source: WC-144 Canonical Requirement Index, R003
+    observable_outcome: Each of the three Safety-control forms shows its own hint, and every hint still states that the action takes effect now.
+    test_path_or_plan: web/components/admin/pricing/SafetyControls.test.tsx.
+
+  - <<: *defaults
+    requirement_id: WC144-R004
+    source: WC-144 Canonical Requirement Index, R004
+    observable_outcome: Pricing form controls, sub-card grid, heading rule and error alert are styled only with existing design tokens, scoped to .pricing-admin, and no type size is changed.
+    test_path_or_plan: git diff of web/app/globals.css shows one .pricing-* block using var(--...) tokens and no font-size; headless-browser render in light, dark and mobile widths inspected by the author.
+
+  - <<: *defaults
+    requirement_id: WC144-R005
+    source: WC-144 Canonical Requirement Index, R005
+    observable_outcome: No API contract, generated client or Business Platform code changes; the root cause of the 503 is recorded in the contract.
+    test_path_or_plan: git diff --stat shows only web components, one web helper, globals.css and this contract and ledger.
