@@ -53,6 +53,25 @@ public sealed class HttpConversationExecutionGatewayTests(OwnerGatewayIdentityFi
     }
 
     [Fact]
+    public async Task ReloadableCredentialThatIsNotLoadedIsUnavailableBeforeAnyRuntimeCall()
+    {
+        var (source, permission) = RecoveryContext();
+        using var unloaded = WorkloadIdentityClient.CreateReloadable(
+            new WorkloadCredentialSettings("business-platform", "waooaw.test"));
+        var factory = new Mock<IHttpClientFactory>(MockBehavior.Strict);
+        var gateway = new HttpConversationExecutionGateway(factory.Object, unloaded);
+        var caller = new ConversationExecutionCallerV1(
+            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "OWNER", "ce-decision:test", Guid.NewGuid());
+
+        await Assert.ThrowsAsync<ConversationExecutionUnavailableException>(() =>
+            gateway.ReadTerminalAsync(source, permission, 0, CancellationToken.None));
+        await Assert.ThrowsAsync<ConversationExecutionUnavailableException>(() =>
+            gateway.CancelAsync(
+                Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), caller, Guid.NewGuid(), CancellationToken.None));
+        factory.VerifyNoOtherCalls();
+    }
+
+    [Fact]
     public async Task UnconfiguredRecoveryCannotResolveAClientOrFabricateAuthority()
     {
         var (source, permission) = RecoveryContext();

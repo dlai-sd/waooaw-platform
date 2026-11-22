@@ -21,7 +21,6 @@ from typing import Annotated, Any, Literal, Protocol
 
 import redis.asyncio as aioredis
 from cryptography import x509
-from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -47,12 +46,18 @@ from payment.models import PaidActivationRequest, ZeroPriceActivationRequest
 from payment.paid_activation import PaidActivationService
 from payment.zero_price_activation import ZeroPriceActivationService
 from wallet.service import WalletService
+from billing_workload_credentials import (
+    SOURCE_KEYVAULT,
+    CredentialHolder,
+    credential_source,
+    keyvault_runtime,
+    load_directory_snapshot,
+)
 from workload_identity import (
     DelegatedContext,
     DelegatedContextVerifier,
     PEER_CERTIFICATE_STATE_KEY,
     ReplayStore,
-    RouteGrant,
     ServiceAuthError,
     extract_peer_identity,
 )
@@ -80,34 +85,33 @@ class TrustedContext(Protocol):
 
 
 class WorkloadAuth:
-    def __init__(self, verifier: DelegatedContextVerifier, trust_domain: str, audience: str) -> None:
+    def __init__(
+        self, verifier: DelegatedContextVerifier, trust_domain: str, audience: str | None, holder: CredentialHolder | None = None
+    ) -> None:
         self.verifier = verifier
         self.trust_domain = trust_domain
-        self.audience = audience
+        self._audience = audience
+        self.holder = holder
+
+    @property
+    def audience(self) -> str:
+        if self._audience is not None:
+            return self._audience
+        snapshot = self.holder.current() if self.holder is not None else None
+        if snapshot is None:
+            raise ServiceAuthError("SERVICE_AUTHENTICATION_FAILED")
+        return snapshot.audience
+
+    @classmethod
+    def from_holder(cls, holder: CredentialHolder, trust_domain: str, audience: str | None = None) -> WorkloadAuth:
+        verifier = DelegatedContextVerifier(
+            holder.grants, holder.delegation_keys, ReplayStore(), anchors=holder.anchors)
+        return cls(verifier, trust_domain, audience, holder)
 
     @classmethod
     def from_credentials(cls, credentials: Path) -> WorkloadAuth:
-        manifest = json.loads((credentials / "manifest.json").read_text(encoding="utf-8"))
-        target = manifest["workloads"]["billing-engine"]
-        bp = manifest["workloads"]["business-platform"]
-        certificate = x509.load_pem_x509_certificate(
-            (credentials / "workloads" / "business-platform" / "delegation-cert.pem").read_bytes()
-        )
-        public_key = certificate.public_key()
-        if not isinstance(public_key, ec.EllipticCurvePublicKey):
-            raise ValueError("BP delegation certificate must contain an ECDSA public key")
-        grants = frozenset(
-            RouteGrant(
-                caller_uri=manifest["workloads"][grant["caller"]]["identity_uri"],
-                target_audience=target["audience"],
-                method=grant["method"], route=grant["route"], operation=grant["operation"],
-                contract_major=int(grant["contract_major"]),
-            )
-            for grant in manifest["route_grants"] if grant["target"] == "billing-engine"
-        )
-        return cls(
-            DelegatedContextVerifier(grants, {(bp["identity_uri"], bp["delegation_key_id"]): public_key}, ReplayStore()),
-            manifest["trust_domain"], target["audience"])
+        snapshot = load_directory_snapshot(credentials)
+        return cls.from_holder(CredentialHolder.static(snapshot), snapshot.trust_domain, snapshot.audience)
 
 
 class ProjectionWalletComponent(StrictModel):
@@ -922,5 +926,11 @@ async def _swaps_per_period(session: Any) -> int:
 
 def configure_relationship_workspace(application: FastAPI) -> None:
     application.state.relationship_commercial_store = CommercialStore(lambda: get_session_factory()())
+    application.state.credential_runtime = None
+    if credential_source() == SOURCE_KEYVAULT:
+        runtime = keyvault_runtime()
+        application.state.credential_runtime = runtime
+        application.state.relationship_workload_auth = WorkloadAuth.from_holder(runtime.holder, runtime.trust_domain)
+        return
     credentials = os.getenv("WAOOAW_WORKLOAD_CREDENTIALS")
     application.state.relationship_workload_auth = WorkloadAuth.from_credentials(Path(credentials)) if credentials else None

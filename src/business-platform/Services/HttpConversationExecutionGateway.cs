@@ -539,6 +539,8 @@ public sealed partial class HttpConversationExecutionGateway(
     )
     {
         var identity = workloadIdentity ?? throw new ConversationExecutionUnavailableException();
+        if (!identity.IsAvailable)
+            throw new ConversationExecutionUnavailableException();
         var versions = new Dictionary<string, string>
         {
             ["constitutional_decision"] = caller.ConstitutionalDecisionRef,

@@ -20,5 +20,5 @@ COPY --from=dependencies /install/packages /usr/local
 COPY --chown=waooaw:waooaw src/professional-runtime/ .
 USER waooaw
 RUN python -c "import main"
-EXPOSE 5003
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5003"]
+EXPOSE 5003 5443
+CMD ["python", "entrypoint.py"]

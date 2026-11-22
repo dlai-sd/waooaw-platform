@@ -66,6 +66,8 @@ module "workload" {
   whatsapp_provider                        = var.whatsapp_provider
   whatsapp_monitoring                      = var.whatsapp_monitoring
   whatsapp_monitoring_workspace_id         = try(data.terraform_remote_state.foundation.outputs.log_analytics_workspace_id, "")
+  log_analytics_workspace_id               = try(data.terraform_remote_state.foundation.outputs.log_analytics_workspace_id, "")
+  workload_identity_alert_action_group_id  = try(var.whatsapp_monitoring.action_group_id, null)
   facebook_login_enabled                   = true
   google_login_enabled                     = true
   environment                              = "demo"

@@ -39,6 +39,7 @@ module "workload" {
   container_app_environment_id             = data.terraform_remote_state.foundation.outputs.container_app_environment_id
   container_app_environment_default_domain = data.terraform_remote_state.foundation.outputs.container_app_environment_default_domain
   verification_principal_id                = data.terraform_remote_state.foundation.outputs.verification_principal_id
+  log_analytics_workspace_id               = try(data.terraform_remote_state.foundation.outputs.log_analytics_workspace_id, "")
   dma_admission_content_digest             = var.dma_admission_content_digest
   image_digests                            = var.image_digests
   feature_settings                         = var.feature_settings

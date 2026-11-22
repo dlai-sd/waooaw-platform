@@ -55,6 +55,12 @@ def render(expression: str, environment: str) -> list[str]:
             else f"ca-{environment}-{member}"
             for member in release_members()
         ]
+    if expression == '"${local.wid_job_prefix}${each.key}"':
+        identity = (MODULES / "workload" / "workload-identity.tf").read_text(encoding="utf-8")
+        assert 'wid_job_prefix   = "job-${var.environment}-wid-"' in identity, "wid job prefix changed; update this renderer"
+        jobs = re.search(r"wid_jobs = \{(.*?)\n  \}", identity, re.S)
+        assert jobs, "wid_jobs not found"
+        return [f"job-{environment}-wid-{job}" for job in re.findall(r'"([a-z-]+)"\s*=\s*\{ mode', jobs.group(1))]
     literal = re.fullmatch(r'"([^"]*)"', expression)
     assert literal, f"unsupported Azure name expression: {expression}"
     names = [literal.group(1).replace("${var.environment}", environment).replace("${local.name}", f"waooaw-{environment}")]

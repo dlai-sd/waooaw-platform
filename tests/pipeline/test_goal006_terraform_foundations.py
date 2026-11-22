@@ -156,8 +156,7 @@ def test_all_foundation_roots_publish_the_same_workload_contract() -> None:
                     "database_provisioner_identity_id",
                 }
             )
-        if environment == "demo":
-            environment_outputs.add("log_analytics_workspace_id")
+        environment_outputs.add("log_analytics_workspace_id")
         assert set(re.findall(r'^output "([^"]+)"', foundation, re.MULTILINE)) == environment_outputs
 
 
@@ -1123,7 +1122,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert 'name  = "SQL_MAX_IDLE_CONNS"\n        value = "1"' in temporal
     for evidence in ("wc124-activation-readiness.json", "wc124-connection-budget-post-activation.json"):
         assert workflow.count(evidence) == 2, evidence  # produced once, uploaded once
-    assert workflow.count("if: inputs.apply") == 45  # includes WC-134 dispatch rollout fencing, Demo WhatsApp activation and its Azure login refresh (#600), and the WC-143 chain record fetch, decision and fact capture
+    assert workflow.count("if: inputs.apply") == 46  # includes WC-134 dispatch rollout fencing, Demo WhatsApp activation and its Azure login refresh (#600), the WC-143 chain record fetch, decision and fact capture, and the ADR-046 workload credential issuance gate
     assert workflow.count("always() && inputs.apply") == 6  # includes the three WC-132 recovery/window guards
     assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
     assert '--context "external_environment=$external_environment"' in workflow
@@ -1593,29 +1592,6 @@ def test_web_uses_dedicated_health_probes() -> None:
     assert re.search(r'dynamic "liveness_probe"', contract)
 
 
-def professional_runtime_demo_entrypoint() -> str:
-    contract = read_contract("modules/workload/main.tf")
-    match = re.search(r"professional_runtime_demo_entrypoint = <<-EOT\n(.*?)\n  EOT", contract, re.DOTALL)
-    assert match, "Professional Runtime Demo entrypoint is not defined"
-    return "\n".join(line.removeprefix("    ") for line in match.group(1).splitlines())
-
-
-def test_professional_runtime_receives_only_public_workload_trust_material() -> None:
-    contract = read_contract("modules/workload/main.tf")
-    entrypoint = professional_runtime_demo_entrypoint()
-
-    assert 'workload_trust_secret_names = ["workload-identity-manifest", "workload-identity-bp-delegation-cert"]' in contract
-    assert 'for_each = each.key == "professional-runtime" ? local.workload_trust_secret_uris : {}' in contract
-    assert "key_vault_secret_id = secret.value" in contract
-    assert 'WAOOAW_WORKLOAD_CREDENTIALS = "/tmp/workload-identity"' in contract
-    assert re.search(r'dynamic "volume" \{.*?name\s+= "workload-trust".*?storage_type = "Secret"', contract, re.DOTALL)
-    assert 'path = "/mnt/workload-trust"' in contract
-    names = re.search(r"workload_trust_secret_names = \[(.*?)\]", contract).group(1)
-    assert "key" not in names.replace("-identity-", "")
-    assert "tls-key" not in entrypoint
-    assert "delegation-key" not in entrypoint
-
-
 def test_workload_trust_secrets_are_readable_only_by_professional_runtime_and_before_activation() -> None:
     contract = read_contract("modules/workload/main.tf")
     role = contract.split('resource "azurerm_role_assignment" "workload_trust_secret"', 1)[1].split("\n}\n", 1)[0]
@@ -1629,31 +1605,86 @@ def test_workload_trust_secrets_are_readable_only_by_professional_runtime_and_be
         assert "workload_trust_secret" not in read_contract(f"environments/{environment}/workload/main.tf")
 
 
-def test_professional_runtime_entrypoint_rebuilds_the_tree_its_loader_reads(tmp_path: Path) -> None:
-    source = (REPO_ROOT / "src/professional-runtime/relationship_workspace.py").read_text(encoding="utf-8")
-    assert '(credentials / "manifest.json")' in source
-    assert '"workloads" / "business-platform" / "delegation-cert.pem"' in source
+def wid_contract() -> str:
+    return read_contract("modules/workload/workload-identity.tf")
 
-    mounted = tmp_path / "mnt"
-    mounted.mkdir()
-    (mounted / "workload-identity-manifest").write_text('{"trust_domain": "demo.waooaw.internal"}')
-    (mounted / "workload-identity-bp-delegation-cert").write_text("-----BEGIN CERTIFICATE-----\n")
-    script = (
-        professional_runtime_demo_entrypoint()
-        .replace("/mnt/workload-trust", str(mounted))
-        .replace("/tmp/workload-identity", str(tmp_path / "credentials"))
-        .replace("exec uvicorn", "true uvicorn")
-    )
 
-    subprocess.run(["sh", "-c", script], check=True, capture_output=True, text=True, timeout=30)
+def squash(text: str) -> str:
+    return re.sub(r"\s+", " ", text)
 
-    credentials = tmp_path / "credentials"
-    assert json.loads((credentials / "manifest.json").read_text())["trust_domain"] == "demo.waooaw.internal"
-    assert (credentials / "workloads/business-platform/delegation-cert.pem").read_text().startswith("-----BEGIN")
-    assert sorted(path.name for path in credentials.rglob("*") if path.is_file()) == [
-        "delegation-cert.pem",
-        "manifest.json",
+
+def test_workload_identity_keys_and_slots_are_created_by_foundation_without_key_material() -> None:
+    foundation = squash(read_contract("modules/foundation/main.tf"))
+    workload = wid_contract()
+
+    assert 'workload_identity_key_names = ["wid-root", "wid-intermediate"]' in foundation
+    key = foundation.split('resource "azurerm_key_vault_key" "workload_identity"', 1)[1].split("} resource", 1)[0]
+    assert 'key_type = "EC"' in key and 'curve = "P-256"' in key
+    assert 'key_opts = ["sign", "verify"]' in key
+    secret = foundation.split('resource "azurerm_key_vault_secret" "workload_identity"', 1)[1].split("} resource", 1)[0]
+    assert 'value = "UNISSUED"' in secret
+    assert "ignore_changes = [value," in secret
+    slots = re.search(r"workload_identity_secret_names = \[(.*?)\]", foundation).group(1)
+    assert re.findall(r'"([a-z-]+)"', slots) == [
+        "wid-ca-state",
+        "wid-trust-bundle",
+        "wid-bundle-business-platform",
+        "wid-bundle-billing-engine",
+        "wid-bundle-professional-runtime",
     ]
+    assert "private_key" not in workload.lower() and "random_" not in workload
+    assert 'role_definition_name = "Key Vault Crypto Officer"' in foundation
+
+
+def test_workload_identity_jobs_hold_least_privilege_and_workloads_read_only_their_bundle() -> None:
+    workload = squash(wid_contract())
+    grants = workload.split("wid_job_grants = {", 1)[1].split("wid_job_grant_list", 1)[0]
+    rotator, leaf = grants.split('"leaf-issuer" = concat(')
+
+    for role in ("Key Vault Crypto User", "Key Vault Crypto Officer"):
+        assert role in rotator
+    assert 'wid_secret_scopes["wid-ca-state"], role = "Key Vault Secrets Officer"' in rotator
+    assert 'wid_secret_scopes["wid-trust-bundle"], role = "Key Vault Secrets Officer"' in rotator
+    assert "wid-bundle" not in rotator
+    assert 'wid_key_scopes["wid-intermediate"], role = "Key Vault Crypto User"' in leaf
+    assert "Crypto Officer" not in leaf and "wid-root" not in leaf
+    assert 'wid_secret_scopes["wid-ca-state"], role = "Key Vault Secrets User"' in leaf
+    readers = workload.split("wid_reader_grants =", 1)[1].split("wid_service_environment", 1)[0]
+    assert "wid-bundle-${workload}" in readers and "wid-trust-bundle" in readers
+    reader = workload.split('resource "azurerm_role_assignment" "wid_reader"', 1)[1]
+    assert 'role_definition_name = "Key Vault Secrets User"' in reader
+
+
+def test_workload_identity_jobs_use_the_pinned_image_on_a_schedule_and_ship_the_issuer_sources() -> None:
+    workload = squash(wid_contract())
+
+    assert "azure-cli@sha256:4faeb3c955086c3842d4f8cf0ff1d900ce3a1c68c6e6c6430c5e8a3cb882c5aa" in workload
+    assert '"ca-rotator" = { mode = "ca", cron = "23 2 * * *" }' in workload
+    assert '"leaf-issuer" = { mode = "leaf", cron = "*/30 * * * *" }' in workload
+    for source in ("scripts/wid_issuer.py", "scripts/workload_identity_issuance.py", "infrastructure/workload-identity/registry.yaml"):
+        assert (REPO_ROOT / source).is_file()
+        assert source in workload
+    assert "length(local.wid_issuer_secrets) <= 18" in workload
+    assert "PYTHONPATH=/usr/lib64/az/lib/python3.12/site-packages" in workload
+    assert 'storage_type = "Secret"' in workload
+    for alert in ("wid-issuer-failed", "wid-leaf-issuer-silent", "wid-credential-warning", "wid-credential-critical", "wid-ca-expiry"):
+        assert f'"{alert}" = {{' in workload
+
+def test_services_read_keyvault_credentials_and_expose_private_listeners_in_every_environment() -> None:
+    main = read_contract("modules/workload/main.tf")
+    workload = squash(wid_contract())
+
+    assert 'WAOOAW_WID_SOURCE = "keyvault"' in workload
+    assert 'WAOOAW_WID_ENVIRONMENT = var.environment' in workload
+    assert "contains(local.wid_workloads, each.key)" in main
+    assert '"billing-engine" = 5444' in workload and '"professional-runtime" = 5443' in workload
+    assert "BillingEngine__RelationshipWorkspaceBaseUrl" in workload and "ProfessionalRuntime__RelationshipWorkspaceBaseUrl" in workload
+    action = workload.split('resource "azapi_resource_action" "wid_private_listener"', 1)[1].split("} resource", 1)[0]
+    assert "external = false" in action and 'method = "PATCH"' in action
+    assert "workload-trust" not in main and "professional_runtime_demo_entrypoint" not in main
+    assert "WAOOAW_WORKLOAD_CREDENTIALS" not in main
+    for environment in ENVIRONMENTS:
+        assert "log_analytics_workspace_id" in read_contract(f"environments/{environment}/workload/main.tf")
 
 
 def test_demo_adopts_the_two_hand_created_workload_trust_role_assignments() -> None:

@@ -7,54 +7,40 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-import yaml
 from cryptography import x509
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID, ObjectIdentifier
 
 
-ROOT_LIFETIME_DAYS = 365
-INTERMEDIATE_LIFETIME_DAYS = 90
-DELEGATION_SIGNING_OID = ObjectIdentifier("1.3.6.1.4.1.55555.46.1")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from workload_identity_issuance import (
+    DELEGATION_SIGNING_OID,
+    INTERMEDIATE_LIFETIME_DAYS,
+    ROOT_LIFETIME_DAYS,
+    LocalKeySigner,
+    build_ca_certificate,
+    delegation_entry,
+    fingerprint,
+    issue_workload_credential,
+    load_registry,
+    name,
+    workload_record,
+)
+
+
+__all__ = ["DELEGATION_SIGNING_OID", "bootstrap", "main"]
 
 
 def _generate_ec_key(curve: ec.EllipticCurve) -> ec.EllipticCurvePrivateKey:
     return ec.generate_private_key(curve)
-
-
-def _load_registry(path: Path) -> dict[str, Any]:
-    registry = yaml.safe_load(path.read_text(encoding="utf-8"))
-    if registry.get("schema_version") != "1.0" or registry.get("policy_version") != "1.0":
-        raise ValueError("Unsupported workload registry version")
-    workloads = registry.get("workloads", {})
-    grants = registry.get("route_grants", [])
-    if not workloads or not grants:
-        raise ValueError("Workload registry must declare workloads and route grants")
-    for name, workload in workloads.items():
-        identity_path = workload.get("identity_path", "")
-        audience = workload.get("audience", "")
-        if "*" in identity_path or "*" in audience or identity_path.endswith("domain-adapter"):
-            raise ValueError(f"Workload {name} uses a wildcard or generic adapter identity")
-    for grant in grants:
-        if grant.get("caller") not in workloads or grant.get("target") not in workloads:
-            raise ValueError("Route grant references an unregistered workload")
-        if grant.get("method") not in {"GET", "POST", "PUT", "PATCH", "DELETE"}:
-            raise ValueError("Route grant method is invalid")
-        if not grant.get("operation") or int(grant.get("contract_major", 0)) < 1:
-            raise ValueError("Route grant operation and contract major are required")
-    return registry
-
-
-def _name(common_name: str) -> x509.Name:
-    return x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, common_name)])
 
 
 def _write_private_key(path: Path, key: Any) -> None:
@@ -73,73 +59,8 @@ def _write_certificate(path: Path, certificate: x509.Certificate, chain: tuple[x
     path.chmod(0o644)
 
 
-def _fingerprint(certificate: x509.Certificate) -> str:
-    return certificate.fingerprint(hashes.SHA256()).hex()
-
-
-def _ca_certificate(
-    subject: x509.Name,
-    issuer: x509.Name,
-    public_key: Any,
-    issuer_key: Any,
-    now: datetime,
-    lifetime: timedelta,
-    path_length: int,
-) -> x509.Certificate:
-    return (
-        x509.CertificateBuilder()
-        .subject_name(subject)
-        .issuer_name(issuer)
-        .public_key(public_key)
-        .serial_number(x509.random_serial_number())
-        .not_valid_before(now)
-        .not_valid_after(now + lifetime)
-        .add_extension(x509.BasicConstraints(ca=True, path_length=path_length), critical=True)
-        .add_extension(
-            x509.KeyUsage(True, False, False, False, False, True, True, False, False),
-            critical=True,
-        )
-        .sign(issuer_key, hashes.SHA256())
-    )
-
-
-def _leaf_certificate(
-    identity_uri: str,
-    public_key: Any,
-    intermediate: x509.Certificate,
-    intermediate_key: Any,
-    usages: list[str],
-    now: datetime,
-    lifetime: timedelta,
-) -> x509.Certificate:
-    eku = []
-    if "client_auth" in usages:
-        eku.append(ExtendedKeyUsageOID.CLIENT_AUTH)
-    if "server_auth" in usages:
-        eku.append(ExtendedKeyUsageOID.SERVER_AUTH)
-    if "delegation_signing" in usages:
-        eku.append(DELEGATION_SIGNING_OID)
-    return (
-        x509.CertificateBuilder()
-        .subject_name(_name(identity_uri.rsplit("/", 1)[-1]))
-        .issuer_name(intermediate.subject)
-        .public_key(public_key)
-        .serial_number(x509.random_serial_number())
-        .not_valid_before(now)
-        .not_valid_after(now + lifetime)
-        .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
-        .add_extension(x509.SubjectAlternativeName([x509.UniformResourceIdentifier(identity_uri)]), critical=True)
-        .add_extension(x509.ExtendedKeyUsage(eku), critical=True)
-        .add_extension(
-            x509.KeyUsage(True, False, False, False, False, False, False, False, False),
-            critical=True,
-        )
-        .sign(intermediate_key, hashes.SHA256())
-    )
-
-
 def bootstrap(registry_path: Path, environment: str, output: Path) -> dict[str, Any]:
-    registry = _load_registry(registry_path)
+    registry = load_registry(registry_path)
     environment_config = registry.get("environments", {}).get(environment)
     if environment_config is None or environment not in {"development", "ci"}:
         raise ValueError("Only registered development and CI environments may use the local bootstrap")
@@ -152,14 +73,18 @@ def bootstrap(registry_path: Path, environment: str, output: Path) -> dict[str, 
     leaf_lifetime = timedelta(hours=int(environment_config["leaf_lifetime_hours"]))
 
     root_key = _generate_ec_key(ec.SECP384R1())
-    root_name = _name(f"WAOOAW {environment} ephemeral root")
-    root = _ca_certificate(root_name, root_name, root_key.public_key(), root_key, now, timedelta(days=ROOT_LIFETIME_DAYS), 1)
+    root_signer = LocalKeySigner(root_key, "development-root")
+    root_name = name(f"WAOOAW {environment} ephemeral root")
+    root = build_ca_certificate(
+        root_name, root_name, root_key.public_key(), root_signer, now, timedelta(days=ROOT_LIFETIME_DAYS), 1
+    )
     intermediate_key = _generate_ec_key(ec.SECP384R1())
-    intermediate = _ca_certificate(
-        _name(f"WAOOAW {environment} workload intermediate"),
+    intermediate_signer = LocalKeySigner(intermediate_key, "development-intermediate")
+    intermediate = build_ca_certificate(
+        name(f"WAOOAW {environment} workload intermediate"),
         root.subject,
         intermediate_key.public_key(),
-        root_key,
+        root_signer,
         now,
         timedelta(days=INTERMEDIATE_LIFETIME_DAYS),
         0,
@@ -179,61 +104,37 @@ def bootstrap(registry_path: Path, environment: str, output: Path) -> dict[str, 
         "environment": environment,
         "trust_domain": trust_domain,
         "generated_at": now.isoformat(),
-        "root_fingerprint_sha256": _fingerprint(root),
-        "intermediate_fingerprint_sha256": _fingerprint(intermediate),
+        "root_fingerprint_sha256": fingerprint(root),
+        "intermediate_fingerprint_sha256": fingerprint(intermediate),
         "workloads": {},
         "route_grants": registry["route_grants"],
     }
     public_keys: set[bytes] = set()
-    for workload_name, workload in registry["workloads"].items():
+    for workload_name in registry["workloads"]:
         workload_dir = output / "workloads" / workload_name
         workload_dir.mkdir(parents=True, mode=0o700)
-        identity_uri = f"spiffe://{trust_domain}/workload/{workload['identity_path']}"
         tls_key = _generate_ec_key(ec.SECP256R1())
-        tls_certificate = _leaf_certificate(
-            identity_uri,
-            tls_key.public_key(),
-            intermediate,
-            intermediate_key,
-            workload["tls_usages"],
-            now,
-            leaf_lifetime,
-        )
         public_bytes = tls_key.public_key().public_bytes(
             serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo
         )
         if public_bytes in public_keys:
             raise RuntimeError("Workload keys must be unique")
         public_keys.add(public_bytes)
+        credential = issue_workload_credential(
+            registry, environment, workload_name, tls_key, intermediate, intermediate_signer, now, leaf_lifetime
+        )
         _write_private_key(workload_dir / "tls-key.pem", tls_key)
-        _write_certificate(workload_dir / "tls-cert.pem", tls_certificate, (intermediate,))
-        record = {
-            "identity_uri": identity_uri,
-            "audience": workload.get("audience"),
-            "tls_certificate_sha256": _fingerprint(tls_certificate),
-            "tls_serial": str(tls_certificate.serial_number),
-            "not_before": tls_certificate.not_valid_before_utc.isoformat(),
-            "not_after": tls_certificate.not_valid_after_utc.isoformat(),
-        }
-        if workload.get("delegation_signer"):
-            delegation_key = ec.generate_private_key(ec.SECP256R1())
-            delegation_certificate = _leaf_certificate(
-                identity_uri,
-                delegation_key.public_key(),
-                intermediate,
-                intermediate_key,
-                ["delegation_signing"],
-                now,
-                leaf_lifetime,
-            )
-            _write_private_key(workload_dir / "delegation-key.pem", delegation_key)
-            _write_certificate(workload_dir / "delegation-cert.pem", delegation_certificate)
-            record["delegation_certificate_sha256"] = _fingerprint(delegation_certificate)
-            record["delegation_key_id"] = hashlib.sha256(
-                delegation_key.public_key().public_bytes(
-                    serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo
-                )
-            ).hexdigest()[:32]
+        _write_certificate(workload_dir / "tls-cert.pem", credential.tls_certificate, (intermediate,))
+        delegations = []
+        if credential.delegation_key is not None and credential.delegation_certificate is not None:
+            delegations.append(delegation_entry(credential.delegation_certificate, now))
+            _write_private_key(workload_dir / "delegation-key.pem", credential.delegation_key)
+            _write_certificate(workload_dir / "delegation-cert.pem", credential.delegation_certificate)
+        record = workload_record(registry, credential, workload_name, delegations)
+        if credential.delegation_certificate is not None:
+            record["delegation_certificate_sha256"] = fingerprint(credential.delegation_certificate)
+        else:
+            del record["delegation_key_id"]
         manifest["workloads"][workload_name] = record
 
     manifest_path = output / "manifest.json"

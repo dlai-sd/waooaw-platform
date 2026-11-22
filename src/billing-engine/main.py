@@ -4,9 +4,11 @@
 # Constitutional basis: C-059, C-038, ADR-026
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from typing import Any
 
 import redis.asyncio as aioredis
 from apscheduler.triggers.interval import IntervalTrigger
@@ -35,6 +37,7 @@ from pricing_admin import router as pricing_admin_router
 from employment_eligibility import configure_employment_eligibility
 from employment_eligibility import router as employment_eligibility_router
 from telemetry import configure_telemetry
+from billing_workload_credentials import service_link_router
 
 logger = logging.getLogger(__name__)
 
@@ -97,8 +100,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         kwargs={"open_session": get_session_factory()},
     )
 
+    credential_runtime = getattr(app.state, "credential_runtime", None)
+    credential_refresh = (
+        asyncio.create_task(credential_runtime.refresher.run())
+        if credential_runtime is not None and credential_runtime.refresher is not None
+        else None
+    )
+
     yield
 
+    if credential_refresh is not None:
+        credential_refresh.cancel()
     logger.info("Shutting down billing-engine application")
     scheduler.shutdown()
     logger.info("Reconciliation scheduler shut down")
@@ -187,6 +199,7 @@ def create_app() -> FastAPI:
     # Mount wallet bucket router — reserve endpoint for AIR CCT-PREPAID-01 (WC-043)
     app.include_router(wallet_router)
     app.include_router(relationship_workspace_router)
+    app.include_router(service_link_router)
     # WC-136 C4-03/C4-04: wallet parity read and setup-grant open, over the same private mTLS path
     app.include_router(wallet_private_router)
     configure_relationship_workspace(app)
@@ -196,18 +209,24 @@ def create_app() -> FastAPI:
     app.include_router(employment_eligibility_router)
     configure_employment_eligibility(app)
 
-    @app.get("/health", response_model=dict[str, str])
-    async def health_check() -> dict[str, str]:
+    @app.get("/health", response_model=dict[str, Any])
+    async def health_check() -> dict[str, Any]:
         """
         Health check endpoint.
 
         Returns:
-            dict with status="ok" if service is ready.
+            dict with status="ok" if service is ready; a non-gating credential detail
+            (state, not_after, remaining_seconds, bundle_version, serial digest) when
+            workload credentials are configured.
 
         Constitutional basis:
         - C-059: Publicly observable readiness signal for load balancers.
         """
-        return {"status": "ok", "service": "billing-engine"}
+        health: dict[str, Any] = {"status": "ok", "service": "billing-engine"}
+        holder = getattr(getattr(app.state, "relationship_workload_auth", None), "holder", None)
+        if holder is not None:
+            health["credential"] = holder.status()
+        return health
 
     return app
 

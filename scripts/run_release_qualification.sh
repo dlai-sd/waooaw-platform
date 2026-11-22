@@ -65,6 +65,9 @@ if test "$RELEASE_RUN_TESTS" = true || test "$RELEASE_RUN_AZURE" = true; then
   run_release_lane preflight docker compose run --rm test-runner pytest -q \
     tests/pipeline/test_goal006_live_inventory.py \
     tests/pipeline/test_goal006_terraform_foundations.py \
+    tests/pipeline/test_goal006_azure_resource_names.py \
+    tests/pipeline/test_goal006_wid_gate.py \
+    tests/constitutional/test_wid_issuer.py \
     tests/pipeline/test_verify_web_provider_start.py -rA
 fi
 
