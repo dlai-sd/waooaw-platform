@@ -1,5 +1,5 @@
 schema_version: "1.0"
-policy_version: "1.0"
+policy_version: "1.1"
 
 environments:
   development:
@@ -10,13 +10,13 @@ environments:
     leaf_lifetime_hours: 2
   demo:
     trust_domain: demo.waooaw.internal
-    leaf_lifetime_hours: 2
+    leaf_lifetime_hours: 24
   uat:
     trust_domain: uat.waooaw.internal
-    leaf_lifetime_hours: 2
+    leaf_lifetime_hours: 24
   prod:
     trust_domain: prod.waooaw.internal
-    leaf_lifetime_hours: 1
+    leaf_lifetime_hours: 24
 
 workloads:
   business-platform:
@@ -160,3 +160,5 @@ route_grants:
   - { caller: business-platform, target: domain-adapter, method: POST, route: "/internal/v1/relationships/{relationshipId}/employment/material-change-classification", operation: classifyMaterialChange, contract_major: 1 }
   - { caller: business-platform, target: domain-adapter, method: POST, route: "/internal/v1/relationships/{relationshipId}/employment/dependency-isolation", operation: evaluateDependencyIsolation, contract_major: 1 }
   - { caller: business-platform, target: domain-adapter, method: GET, route: "/internal/v1/relationships/{relationshipId}/employment/performance-assessments/{reviewPeriodRef}", operation: getPerformanceAssessment, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/service-link", operation: probeServiceLink, contract_major: 1 }
+  - { caller: business-platform, target: professional-runtime, method: GET, route: "/internal/v1/service-link", operation: probeServiceLink, contract_major: 1 }

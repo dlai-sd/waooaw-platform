@@ -77,7 +77,8 @@ def test_registry_exactly_matches_private_f4_operations() -> None:
     registry = _load_yaml(REGISTRY_PATH)
     grants_by_target: dict[str, set[tuple[str, str, str, int]]] = {}
     for grant in registry["route_grants"]:
-        assert grant["caller"] == "business-platform"
+        if grant["caller"] != "business-platform" or grant["target"] not in PRIVATE_SPECS:
+            continue
         grants_by_target.setdefault(grant["target"], set()).add(
             (grant["method"], grant["route"], grant["operation"], grant["contract_major"])
         )
@@ -85,7 +86,54 @@ def test_registry_exactly_matches_private_f4_operations() -> None:
     expected = {target: _operations(spec_path) for target, spec_path in PRIVATE_SPECS.items()}
     expected["billing-engine"] |= _operations(WBE_PRICING_SPEC, "/internal/v1/pricing/")
     expected["billing-engine"] |= _operations(WBE_WALLET_SPEC, "/internal/v1/")
+    for target in ("billing-engine", "professional-runtime"):
+        expected[target].add(("GET", "/internal/v1/service-link", "probeServiceLink", 1))
     assert grants_by_target == expected
+
+
+def test_registry_policy_1_1_lifetimes_and_link_probe_grants() -> None:
+    registry = _load_yaml(REGISTRY_PATH)
+    lifetimes = {name: item["leaf_lifetime_hours"] for name, item in registry["environments"].items()}
+
+    assert registry["schema_version"] == "1.0"
+    assert registry["policy_version"] == "1.1"
+    assert lifetimes == {"development": 24, "ci": 2, "demo": 24, "uat": 24, "prod": 24}
+    probes = [grant for grant in registry["route_grants"] if grant["operation"] == "probeServiceLink"]
+    assert {(grant["caller"], grant["target"], grant["method"], grant["route"]) for grant in probes} == {
+        ("business-platform", "billing-engine", "GET", "/internal/v1/service-link"),
+        ("business-platform", "professional-runtime", "GET", "/internal/v1/service-link"),
+    }
+
+
+def test_registry_rejects_unsupported_policy_and_leaf_lifetime_over_24_hours(tmp_path: Path) -> None:
+    registry = _load_yaml(REGISTRY_PATH)
+    registry["policy_version"] = "1.0"
+    (tmp_path / "old").mkdir()
+    with pytest.raises(ValueError, match="Unsupported"):
+        pki_bootstrap.load_registry(_write_registry(tmp_path / "old", registry))
+
+    registry = _load_yaml(REGISTRY_PATH)
+    registry["environments"]["demo"]["leaf_lifetime_hours"] = 25
+    (tmp_path / "long").mkdir()
+    with pytest.raises(ValueError, match="between 1 and 24 hours"):
+        pki_bootstrap.load_registry(_write_registry(tmp_path / "long", registry))
+
+
+def test_bootstrap_manifest_carries_delegation_certificates_for_signers(tmp_path: Path) -> None:
+    _, manifest = _bootstrap(tmp_path, "ci")
+    registry = _load_yaml(REGISTRY_PATH)
+
+    for name, workload in registry["workloads"].items():
+        record = manifest["workloads"][name]
+        if workload.get("delegation_signer"):
+            (entry,) = record["delegation_certificates"]
+            assert entry["key_id"] == record["delegation_key_id"]
+            assert entry["activate_after"] == entry["not_before"]
+            x509.load_pem_x509_certificate(entry["certificate_pem"].encode())
+        else:
+            assert record["delegation_certificates"] == []
+            assert "delegation_key_id" not in record
+
 
 
 @pytest.mark.parametrize(
