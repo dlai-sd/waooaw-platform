@@ -34,6 +34,8 @@ from prepare_pr_body import (  # noqa: E402
     release_qualification_gate_required,
     run_ci_prechecks,
     reusable_precheck_evidence,
+    reusable_precheck_evidence_file,
+    reusable_runtime_evidence,
     runner_digest,
     selected_prechecks,
     update_pull_request,
@@ -489,6 +491,37 @@ def test_precheck_evidence_must_match_base_and_head() -> None:
             assert "selected base and branch HEAD" in str(error)
         else:
             raise AssertionError("stale precheck evidence was accepted")
+
+
+def test_exact_head_evidence_written_by_an_earlier_run_is_reused_and_stale_evidence_is_not(tmp_path: Path) -> None:
+    # Rule V9: the second bind of the same head must not repeat the prechecks or the lifecycle gate.
+    digest = changed_files_digest(["scripts/example.py"])
+    precheck = {
+        "schema": "waooaw.pr-prechecks/v4",
+        "passed": True,
+        "base_sha": "b" * 40,
+        "commit_sha": HEAD,
+        "changed_file_digest": digest,
+        "graph_version": "wc109-prechecks-v14",
+        "configuration_digest": "c" * 64,
+        "runner_digest": "r" * 64,
+    }
+    precheck_file = tmp_path / "body.precheck-evidence.json"
+    precheck_file.write_text(json.dumps(precheck), encoding="utf-8")
+
+    assert reusable_precheck_evidence_file(precheck_file, "b" * 40, HEAD, digest, "c" * 64, "r" * 64) == precheck
+    assert reusable_precheck_evidence_file(precheck_file, "b" * 40, "d" * 40, digest, "c" * 64, "r" * 64) is None
+    assert reusable_precheck_evidence_file(precheck_file, "b" * 40, HEAD, digest, "x" * 64, "r" * 64) is None
+    assert reusable_precheck_evidence_file(tmp_path / "missing.json", "b" * 40, HEAD, digest, "c" * 64, "r" * 64) is None
+
+    runtime_file = tmp_path / "body.runtime-evidence.json"
+    runtime_file.write_text(json.dumps({"passed": True, "commit_sha": HEAD}), encoding="utf-8")
+    assert reusable_runtime_evidence(runtime_file, HEAD) == {"passed": True, "commit_sha": HEAD}
+    runtime_file.write_text(json.dumps({"passed": False, "commit_sha": HEAD}), encoding="utf-8")
+    assert reusable_runtime_evidence(runtime_file, HEAD) is None
+    runtime_file.write_text("not json", encoding="utf-8")
+    assert reusable_runtime_evidence(runtime_file, HEAD) is None
+    assert reusable_runtime_evidence(tmp_path / "missing.json", HEAD) is None
 
 
 def test_every_test_precheck_waits_for_a_static_check() -> None:

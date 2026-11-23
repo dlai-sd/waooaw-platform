@@ -82,9 +82,13 @@ own PR, access or mutate a provider without exact authority, or invoke another i
    create the PR
    from that file without rewriting it. Applicable runtime/deployment changes automatically run the
    real-container lifecycle gate and embed its evidence before C-059 and C-065 validation.
-   When updating an open PR, first run the same command with `--allow-unpushed-head` after the final
+   When updating an open PR, first run the same command with `--allow-unpushed-head --update-pr N` after the final
    local commit and update the PR body before push. Push, then rerun without the flag and update the
    body again; this prevents C-065 from evaluating stale commit-bound evidence during synchronization.
+   This is the only PR-preparation path (speed policy V9): the script reuses its own exact-head precheck and
+   lifecycle evidence automatically, so the second bind costs seconds. Do not pass evidence-file flags by hand,
+   do not run the lifecycle gate yourself, and use `--no-reuse` only to disprove a stale reuse. `.githooks/pre-push`
+   refuses a push whose open PR body is not bound to the pushed head; never bypass it with `--no-verify`.
    When adding or changing a test, gate or pre-check node, follow the
    [CI Validation Speed Policy](../../standards/CI-VALIDATION-SPEED-POLICY.md) rules table.
 8. In Codespaces, use the preconfigured `/.codespaces/bin/gitcredential_github.sh` helper for author

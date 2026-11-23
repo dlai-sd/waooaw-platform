@@ -90,6 +90,7 @@ if test "$RELEASE_RUN_TESTS" = true; then
     tests/validation_control/test_wc120_evidence.py \
     tests/pipeline/test_auth_preview.py \
     tests/pipeline/test_prepare_pr_body.py \
+    tests/pipeline/test_pre_push_binding_hook.py \
     tests/pipeline/test_wc123_impact_manifest.py \
     tests/pipeline/test_wc123_session_readiness.py \
     tests/pipeline/test_wc124_db_provisioner.py \
