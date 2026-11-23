@@ -72,7 +72,7 @@ module "workload" {
   image_registry_server                    = var.image_registry_server
   image_pull_identity_id                   = var.image_pull_identity_id
   ce_min_replicas                          = 0
-  pr_min_replicas                          = 0
+  pr_min_replicas                          = 1
   workload_enabled                         = module.lease.workload_enabled
   web_session_mode                         = "disabled"
 }

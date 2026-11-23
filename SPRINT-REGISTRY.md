@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-11-23 · **Version:** 1.45.0 · **Work Contracts:** 145 Work Contracts recorded · 90 with merged-PR evidence · 55 without
+**Last Updated:** 2026-11-23 · **Version:** 1.45.0 · **Work Contracts:** 146 Work Contracts recorded · 92 with merged-PR evidence · 54 without
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -218,7 +218,8 @@ whole Work Contract is complete).
 <!-- BEGIN GENERATED: work-contract-index -->
 | WC | Title | Status recorded in the Work Contract | Merged PRs referencing it |
 |---|---|---|---|
-| WC-152 | Platform State And Process-Control Currency | IMPLEMENTED - FOUNDER REVIEW PENDING | none recorded |
+| WC-153 | Owner-Link Probe Identity And Warm Private Listeners | IN PROGRESS | none recorded |
+| WC-152 | Platform State And Process-Control Currency | IMPLEMENTED - FOUNDER REVIEW PENDING | #621 |
 | WC-151 | WID Leaf Issuer Root-Key Read Defect | IN PROGRESS | #620 |
 | WC-150 | Private Listener Start-Up Defect And Start-Up Guard | IN PROGRESS | #619 |
 | WC-149 | Paid Provider Consumption And Customer Account Connection | IN PROGRESS | #618 |
@@ -289,7 +290,7 @@ whole Work Contract is complete).
 | WC-084 | Authentication Readiness And Customer Portal Delivery Plan | PLAN AND PROTOTYPE HANDOFF CANDIDATE; RUNNABLE IMPLEMENTATION NOT AUTHORIZED | #407, #406, #405 |
 | WC-083 | Route-Backed Authentication Dialog | IMPLEMENTED - PR validation pending | #416, #404 |
 | WC-082 | QA Maturity Backlog Grooming | DONE - backlog grooming and PR preparation only | none recorded |
-| WC-081 | Foundation Environment Promotion And Freeze | IMPLEMENTATION COMPLETE - FOUNDER REVIEW | none recorded |
+| WC-081 | Foundation Environment Promotion And Freeze | IMPLEMENTATION COMPLETE - FOUNDER REVIEW | #621 |
 <!-- END GENERATED: work-contract-index -->
 
 ---

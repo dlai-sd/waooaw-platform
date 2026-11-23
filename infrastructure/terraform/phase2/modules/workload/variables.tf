@@ -199,6 +199,16 @@ variable "pr_min_replicas" {
   default = 0
 }
 
+variable "billing_min_replicas" {
+  description = "Billing engine minimum replicas. Business Platform reaches the private mutual-TLS port 5444, which does not wake a scaled-to-zero replica, so one replica stays warm."
+  type        = number
+  default     = 1
+  validation {
+    condition     = var.billing_min_replicas >= 0 && var.billing_min_replicas <= 1
+    error_message = "Billing engine minimum replicas must be zero or one."
+  }
+}
+
 variable "bp_min_replicas" {
   type    = number
   default = 0

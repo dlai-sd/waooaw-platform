@@ -22,9 +22,7 @@ internal sealed class WorkloadCredentialRefresher(
         while (!stoppingToken.IsCancellationRequested)
         {
             await RefreshOnceAsync(stoppingToken);
-            var seconds = identity.IsAvailable
-                ? options.RefreshSeconds
-                : WorkloadCredentialOptions.MinimumRefreshSeconds;
+            var seconds = NextDelaySeconds();
             try
             {
                 await Task.Delay(TimeSpan.FromSeconds(seconds), stoppingToken);
@@ -35,6 +33,12 @@ internal sealed class WorkloadCredentialRefresher(
             }
         }
     }
+
+    internal int NextDelaySeconds() =>
+        // A private owner may be cold-starting; re-probe quickly until every link is up.
+        identity.IsAvailable && !prober.AnyUnavailable
+            ? options.RefreshSeconds
+            : WorkloadCredentialOptions.MinimumRefreshSeconds;
 
     public async Task RefreshOnceAsync(CancellationToken cancellationToken)
     {

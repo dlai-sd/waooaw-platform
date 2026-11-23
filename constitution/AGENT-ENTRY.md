@@ -36,9 +36,9 @@ AUTONOMOUS_HALT: false
 
 ```
 Version:    1.45.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Foundation  |  Phase: IMPLEMENTATION
-Last update: 2026-11-23 — WC-151 WID Leaf Issuer Root-Key Read Defect delivered
-Latest completed sprint: WC-151 — WID Leaf Issuer Root-Key Read Defect (PR #620 merged as edd9f9e4dc)
-Latest recorded Work Contract: WC-152 — Platform State And Process-Control Currency (no merged PR recorded)
+Last update: 2026-11-23 — WC-152 Platform State And Process-Control Currency delivered
+Latest completed sprint: WC-152 — Platform State And Process-Control Currency (PR #621 merged as 1b43118ac5)
+Latest recorded Work Contract: WC-153 — Owner-Link Probe Identity And Warm Private Listeners (no merged PR recorded)
 Constitutional Claims: 97 RATIFIED (gaps C-087/C-092/C-093) | ADRs: 53 recorded
 Agents (customer): DMA v3.1 gate-pass (Founder-approved through v3.0); Trading v1.8, Agri v2.8, Tutor v1.1 gate-pass records without current-version Founder approval; none customer-proven
 Agents (internal): Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations · RepoNav (INST-014)
