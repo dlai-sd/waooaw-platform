@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-156
 contract_path: work-contracts/WC-156-validation-runner-image-pull-retry.md
-contract_digest: 9b0edd8a92017e23d10f409d0709568a15bd057382f3bc9ed262ec6565e6af83
+contract_digest: 89d9c23e0b1c169071ec7c13601ffa223a87c7f59d7a25216a65cc3bc0c97ded
 implementation_scope: true
 result: PLANNED
 
@@ -26,3 +26,9 @@ requirements:
     source: WC-156 Canonical Requirement Index, R002
     observable_outcome: The retry loop sits after attestation verification and pulls the same pinned image reference.
     test_path_or_plan: tests/pipeline/test_ci_validation_efficiency.py::test_runner_image_pull_retries_transient_registry_failures_but_stays_digest_pinned; tests/pipeline/test_ci_validation_efficiency.py::test_runner_images_are_verified_before_consumption.
+
+  - <<: *defaults
+    requirement_id: WC156-R003
+    source: WC-156 Canonical Requirement Index, R003
+    observable_outcome: Two RawConstitutionalServer instances started at the same time both bind their own loopback ports; without the fix the second fails with "Failed to bind to address http://0.0.0.0:5001".
+    test_path_or_plan: tests/business-platform.Tests/ConstitutionalGrpcCoverageTests.cs::RawConstitutionalServers_RunConcurrentlyWithoutSharingAProductionEndpoint, run in the Docker .NET runner with and without the fix; result in the PR body.

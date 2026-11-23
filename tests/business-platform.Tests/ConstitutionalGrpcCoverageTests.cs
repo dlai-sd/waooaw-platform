@@ -26,6 +26,19 @@ namespace Waooaw.BusinessPlatform.Tests;
 public sealed class ConstitutionalGrpcCoverageTests
 {
     [Fact]
+    public async Task RawConstitutionalServers_RunConcurrentlyWithoutSharingAProductionEndpoint()
+    {
+        static ValidateActionResponse Allow(ValidateActionRequest _) =>
+            new() { Decision = ValidationDecision.Allow };
+        static RecordEvidenceResponse Record(RecordEvidenceRequest _) => new();
+
+        await using var first = await RawConstitutionalServer.StartAsync(Allow, Record);
+        await using var second = await RawConstitutionalServer.StartAsync(Allow, Record);
+
+        Assert.NotEqual(first.Address, second.Address);
+    }
+
+    [Fact]
     public async Task RelationshipGateway_AllowsAndRecordsCanonicalEvidence()
     {
         var evidenceId = Guid.NewGuid();
@@ -651,6 +664,9 @@ internal sealed class RawConstitutionalServer : IAsyncDisposable
         var port = ((IPEndPoint)listener.LocalEndpoint).Port;
         listener.Stop();
         var builder = WebApplication.CreateSlimBuilder();
+        // The test host runs from the build output, which carries the production appsettings.json;
+        // its Kestrel endpoint (0.0.0.0:5001) would otherwise be bound by every server instance.
+        builder.Configuration.Sources.Clear();
         builder.WebHost.ConfigureKestrel(options =>
             options.Listen(
                 IPAddress.Loopback,
