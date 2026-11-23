@@ -1,4 +1,20 @@
+from pathlib import Path
+
 from validation_control.qualification_change_scope import full_scope, scope_for_changes, shell_output
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_pull_request_and_push_runs_choose_release_lanes_with_the_same_selector() -> None:
+    # A push to main diffs before..sha and feeds the same file list to the same selector; no event-specific branch.
+    plan = (ROOT / ".github/workflows/validation-plan.yaml").read_text(encoding="utf-8")
+
+    assert "PUSH_BASE_SHA: ${{ github.event.before }}" in plan
+    assert 'git diff --name-only --find-renames "$base_sha" "$head_sha" > test-results/wc102/changed-files.txt' in plan
+    lane_step = plan.split('release_scope="$RUNNER_TEMP/release-scope.env"', 1)[1].split("release_lanes=$(jq", 1)[0]
+    assert "qualification_change_scope.py" in lane_step
+    assert "--changed-files test-results/wc102/changed-files.txt" in lane_step
+    assert "EVENT_NAME" not in lane_step
 
 
 def test_business_platform_controller_change_selects_only_dotnet_integration() -> None:
@@ -55,6 +71,32 @@ def test_azure_verifier_image_selects_only_azure_lane() -> None:
 def test_missing_or_ambiguous_scope_broadens_instead_of_skipping() -> None:
     assert scope_for_changes(()) == full_scope()
     assert scope_for_changes(("unexpected-root/runtime.conf",)) == full_scope()
+
+
+def test_every_pr_shaped_state_refresh_and_process_change_runs_no_release_lane() -> None:
+    # Regression: README.md, SPRINT-REGISTRY.md, validation/process-control.yaml and .githooks/* were "unknown"
+    # paths, so almost every PR broadened to all lanes and paid for the 5-minute Azure lane for nothing.
+    scope = scope_for_changes(
+        (
+            "README.md",
+            "SPRINT-REGISTRY.md",
+            "ARCHITECTURE.md",
+            "validation/process-control.yaml",
+            ".githooks/pre-push",
+            "standards/CI-VALIDATION-SPEED-POLICY.md",
+            "work-contracts/WC-154-requirements.yaml",
+        )
+    )
+
+    assert scope.release_lanes == ()
+    assert scope.broadened is False
+    assert "RELEASE_RUN_AZURE=false" in shell_output("release-qualification", scope)
+
+
+def test_the_gate_catalog_still_broadens_every_lane_but_other_validation_files_do_not() -> None:
+    assert scope_for_changes(("validation/engineering-validation.yaml",)) == full_scope()
+    assert scope_for_changes(("validation/runner-supply.json",)) == full_scope()
+    assert scope_for_changes(("validation/process-control.yaml",)).broadened is False
 
 
 def test_documentation_change_skips_expensive_runtime_work() -> None:
