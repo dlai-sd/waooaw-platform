@@ -159,6 +159,7 @@ def test_all_foundation_roots_publish_the_same_workload_contract() -> None:
         environment_outputs.add("log_analytics_workspace_id")
         if environment in {"demo", "uat"}:
             environment_outputs.add("acceptance_client_id")
+            environment_outputs.add("acceptance_key_vault_name")
         assert set(re.findall(r'^output "([^"]+)"', foundation, re.MULTILINE)) == environment_outputs
 
 

@@ -31,13 +31,14 @@ def test_acceptance_identity_is_federated_to_main_only_and_off_by_default() -> N
 
 def test_acceptance_identity_holds_only_read_roles_on_exact_scopes() -> None:
     main = _foundation()
-    acceptance = main[main.index('resource "azurerm_user_assigned_identity" "acceptance"') :]
-    roles = re.findall(r'role_definition_name = "([^"]+)"', acceptance)
+    assignments = main.split('resource "azurerm_role_assignment" ')[1:]
+    own = [block.split("\n}\n", 1)[0] for block in assignments if "azurerm_user_assigned_identity.acceptance[0].principal_id" in block]
+    roles = [re.search(r'role_definition_name = "([^"]+)"', block).group(1) for block in own]  # type: ignore[union-attr]
     assert sorted(roles) == ["Key Vault Secrets User", "Monitoring Reader", "Reader"]
-    reader = acceptance.split('resource "azurerm_role_assignment" "acceptance_secret_reader"', 1)[1].split("\n}\n", 1)[0]
-    assert 'scope                = "${azurerm_key_vault.environment.id}/secrets/${each.value}"' in reader
+    reader = next(block for block in own if "acceptance_secret_reader" in block)
+    assert 'scope                = "${var.acceptance_vault_enabled ? azurerm_key_vault.acceptance[0].id : azurerm_key_vault.environment.id}/secrets/${each.value}"' in reader
     for forbidden in ("Contributor", "Owner", "User Access Administrator", "Officer", "Administrator"):
-        assert forbidden not in acceptance
+        assert not any(forbidden in role for role in roles)
 
 
 def test_environment_roots_list_exactly_the_secrets_the_profile_reads_and_keep_the_identity_off() -> None:
@@ -88,6 +89,32 @@ def test_trace_export_is_wired_only_for_three_services_and_stays_off_by_default(
     for environment in ("demo", "uat", "prod"):
         root = (ROOT / f"infrastructure/terraform/phase2/environments/{environment}/workload/main.tf").read_text(encoding="utf-8")
         assert "otlp_endpoint" not in root
+
+
+def test_the_acceptance_vault_is_separate_off_by_default_and_read_by_the_acceptance_identity_only() -> None:
+    main = _foundation()
+    variables = (FOUNDATION / "variables.tf").read_text(encoding="utf-8")
+    enabled = variables.split('variable "acceptance_vault_enabled"', 1)[1].split("\n}\n", 1)[0]
+    assert "default     = false" in enabled
+    assert "var.acceptance_enabled" in enabled and 'contains(["demo", "uat"], var.environment)' in enabled
+    vault = main.split('resource "azurerm_key_vault" "acceptance"', 1)[1].split("\n}\n", 1)[0]
+    assert 'name                          = "kv-${local.name}-acc"' in vault
+    assert "enable_rbac_authorization     = true" in vault and "purge_protection_enabled      = true" in vault
+    assert "count                         = var.acceptance_vault_enabled ? 1 : 0" in vault
+    reader = main.split('resource "azurerm_role_assignment" "acceptance_secret_reader"', 1)[1].split("\n}\n", 1)[0]
+    assert "azurerm_key_vault.acceptance[0].id" in reader
+    officer = main.split('resource "azurerm_role_assignment" "acceptance_vault_officer"', 1)[1].split("\n}\n", 1)[0]
+    assert 'role_definition_name = "Key Vault Secrets Officer"' in officer and "azurerm_key_vault.acceptance[0].id" in officer
+    for environment in ("demo", "uat"):
+        root = (ROOT / f"infrastructure/terraform/phase2/environments/{environment}/foundation/main.tf").read_text(encoding="utf-8")
+        assert "acceptance_vault_enabled         = false" in root
+        assert "acceptance_vault_secret_officers = []" in root
+
+
+def test_the_profile_reads_the_dedicated_vault_the_module_would_create() -> None:
+    profile = yaml.safe_load(PROFILE.read_text(encoding="utf-8"))
+    assert profile["azure"]["key_vault"] == "kv-waooaw-demo-acc"
+    assert profile["azure"]["key_vault"] != "kv-waooaw-demo"
 
 
 def test_every_profile_secret_is_in_the_runbook_register() -> None:

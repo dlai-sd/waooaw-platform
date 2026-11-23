@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-11-23 · **Version:** 1.45.0 · **Work Contracts:** 155 Work Contracts recorded · 100 with merged-PR evidence · 55 without
+**Last Updated:** 2026-11-23 · **Version:** 1.45.0 · **Work Contracts:** 156 Work Contracts recorded · 101 with merged-PR evidence · 55 without
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -218,7 +218,8 @@ whole Work Contract is complete).
 <!-- BEGIN GENERATED: work-contract-index -->
 | WC | Title | Status recorded in the Work Contract | Merged PRs referencing it |
 |---|---|---|---|
-| WC-163 | Acceptance Coverage, Telemetry Witness And Closed Boundaries | IMPLEMENTATION_AUTHORIZED | none recorded |
+| WC-164 | Dedicated Acceptance Key Vault | IMPLEMENTATION_AUTHORIZED | none recorded |
+| WC-163 | Acceptance Coverage, Telemetry Witness And Closed Boundaries | IMPLEMENTATION_AUTHORIZED | #629 |
 | WC-162 | Customer Journey Acceptance Slice 2: Publish | IMPLEMENTATION_AUTHORIZED | #628 |
 | WC-160 | Customer Journey Acceptance Slice 1 Content | IMPLEMENTATION_AUTHORIZED | #627 |
 | WC-159 | Synthetic Acceptance Tenant Support | IMPLEMENTATION_AUTHORIZED | none recorded |
@@ -273,7 +274,7 @@ whole Work Contract is complete).
 | WC-110 | Product Validation Qualification Repair | IMPLEMENTATION AUTHORIZED - CUSTOMER SCENARIOS PARKED | #481, #482 |
 | WC-109 | Agentic Validation Control Plane Implementation And Pilot | AUTHORIZED - IMPLEMENTATION IN PROGRESS - HOSTED SELF-PILOT PENDING | #481, #482 |
 | WC-108 | Agentic Validation Operating Model | ARCHITECTURE AND GOVERNANCE DOCUMENTATION PASS COMPLETE - IMPLEMENTATION NOT AUTHORIZED | none recorded |
-| WC-107 | Fundamental Customer Journey Integrity | IMPLEMENTATION AUTHORIZED - NOT YET QUALIFIED | #479 |
+| WC-107 | Fundamental Customer Journey Integrity | IMPLEMENTATION AUTHORIZED - NOT YET QUALIFIED | #629, #479 |
 | WC-106 | Unified Docker Build And Test Process | IMPLEMENTATION AUTHORIZED - UNMERGED PR ONLY | #478, #476 |
 | WC-105 | Authentication, Guide, Session, And Landing Defect Repair | IMPLEMENTATION AUTHORIZED - LOCAL SOURCE, TESTS, PREVIEW, AND UNMERGED PR | #475, #474, #473, #472, #471, #470 |
 | WC-104 | End-to-End Docker Runner Supply And Cache Reuse | IMPLEMENTATION AUTHORIZED | #468, #467, #464, #462, #461 |

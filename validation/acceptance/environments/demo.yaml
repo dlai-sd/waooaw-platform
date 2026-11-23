@@ -8,7 +8,7 @@ azure:
   tenant_id: 0471534c-1bbe-40ab-ae65-3f721b62582c
   subscription_id: 2ed11839-6a0f-4eaa-bd94-44ca96ff5d84
   resource_group: waooaw-demo-rg
-  key_vault: kv-waooaw-demo
+  key_vault: kv-waooaw-demo-acc
   # Set by the Founder after WC-159's Terraform is applied (ADR-054 item 9); the workflow refuses to run while null.
   acceptance_client_id: null
   # Customer id (GUID) of the Log Analytics workspace that holds the environment console logs; null until the Founder sets it.
