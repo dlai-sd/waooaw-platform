@@ -1,0 +1,58 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-152
+contract_path: work-contracts/WC-152-platform-state-and-process-control-currency.md
+contract_digest: 580ac8c0696e070c717b46ca8bdf433f06b36ebcd44b99b76d12d8136faf93f7
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Python checks run in the Docker Python runner at the exact head; commands and results in the PR body
+  initial_state: expected-fail
+  dependencies: Founder authorization of this implementing session (current conversation)
+  residual_risk: The delivery ledger is checked against Git only at PR preparation; hosted CI checks tree consistency
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC152-R001
+    source: WC-152 Canonical Requirement Index, R001
+    observable_outcome: Counts, version, as-of date and the latest delivered Work Contract come from derive(); the registry holds judgement fields only.
+    test_path_or_plan: tests/platform/test_platform_state_derivation.py.
+
+  - <<: *defaults
+    requirement_id: WC152-R002
+    source: WC-152 Canonical Requirement Index, R002
+    observable_outcome: The ledger is rebuilt from merge and squash commits with their Work Contract references and a missing merged PR is reported until refresh.
+    test_path_or_plan: tests/platform/test_platform_state_derivation.py.
+
+  - <<: *defaults
+    requirement_id: WC152-R003
+    source: WC-152 Canonical Requirement Index, R003
+    observable_outcome: sync_platform_state.py --check passes on the tree, fails when any rendered surface is stale, and the generated index lists WC-081 onward.
+    test_path_or_plan: tests/platform/test_platform_state_sync.py; tests/platform/test_platform_state_derivation.py.
+
+  - <<: *defaults
+    requirement_id: WC152-R004
+    source: WC-152 Canonical Requirement Index, R004
+    observable_outcome: PROJECT_STATE.md is below 200 lines, the archive index names the revision 383 git object, and every ADR file has an index row.
+    test_path_or_plan: tests/platform/test_platform_state_derivation.py.
+
+  - <<: *defaults
+    requirement_id: WC152-R005
+    source: WC-152 Canonical Requirement Index, R005
+    observable_outcome: The verifier rejects stale digests, a missing source, a tampered version or a pinned set that differs from the control sources, and refresh is idempotent.
+    test_path_or_plan: tests/pipeline/test_process_control_verifier.py; tests/pipeline/test_platform_it_process_intake.py.
+
+  - <<: *defaults
+    requirement_id: WC152-R006
+    source: WC-152 Canonical Requirement Index, R006
+    observable_outcome: platform_state_violations reports each stale surface, manifest fault and ledger gap, and quality:scripts runs the checks and their tests.
+    test_path_or_plan: tests/pipeline/test_prepare_pr_body.py; tests/validation_control/test_catalog_contract.py.
+
+  - <<: *defaults
+    requirement_id: WC152-R007
+    source: WC-152 Canonical Requirement Index, R007
+    observable_outcome: scripts/run_platform_state_refresh.sh refreshes ledger, summaries and manifest in Docker and BOOTSTRAP Step 2 and the office card describe it.
+    test_path_or_plan: tests/pipeline/test_platform_it_process_intake.py; Docker run of scripts/run_platform_state_refresh.sh recorded in the PR body.

@@ -126,11 +126,16 @@ STEP 1 — Read only this Boot Sequence through Step 10b.
     malformed, stale, or inconsistent with a declared source, STOP as BLOCKED.
 
 STEP 2 — Read only README.md "Platform Status".
-  Extract:
+  Extract (all derived by scripts/sync_platform_state.py and verified on every PR):
     - Current Epoch
     - Current Gate
-    - Authorized Office
-    - Engineering Status (AUTHORIZED / PROHIBITED)
+    - Phase and latest delivered Work Contract (Version / Last sprint lines)
+    - Engineering Status: AUTHORIZED when Gate is G5 CLEAR and Phase is IMPLEMENTATION,
+      otherwise PROHIBITED for Architecture and Implementation phases
+    - Authorized Office: the office assigned by the activating instruction (STEP 4);
+      the README does not carry it
+  A status line older than the newest merged pull request means the derivation was not run:
+  report it and continue only with the freshly derived facts from the sources named above.
 
 STEP 3 — Read only these PROJECT_STATE.md headings:
   Institutional Snapshot; Authorization Boundary; Current Blockers;
