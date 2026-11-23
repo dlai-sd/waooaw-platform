@@ -88,7 +88,7 @@ def violations(root: Path, manifest: dict[str, Any]) -> list[str]:
 
 def base_manifest(root: Path, base: str) -> dict[str, Any]:
     result = subprocess.run(  # noqa: S603
-        ["git", "show", f"{base}:{MANIFEST.as_posix()}"],  # noqa: S607
+        ["git", "-c", f"safe.directory={root.resolve()}", "show", f"{base}:{MANIFEST.as_posix()}"],  # noqa: S607
         cwd=root,
         capture_output=True,
         text=True,
