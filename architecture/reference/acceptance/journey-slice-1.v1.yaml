@@ -1,0 +1,176 @@
+schema: waooaw.journey-acceptance/v1
+journey_id: slice-1-discover-to-connect
+version: 1
+status: PROPOSED
+architecture: architecture/reference/acceptance/customer-journey-acceptance-architecture.md
+decisions: [ADR-054, ADR-055]
+agent_under_test: digital-marketing-agent
+customers:
+  A: actor
+  B: isolation_probe
+verdicts: [PASS, FAIL, BLOCKED-BY-FLAG, NOT-COVERED, NOT-WITNESSED, ENV-UNAVAILABLE, FLAKY]
+depth_levels:
+  L1: rendered
+  L2: acted_on
+  L3: state_changed_confirmed_by_W2
+  L4: evidence_recorded_visible_by_W2
+  L5: declared_failure_path_correct
+guards:
+  - secret_or_token_pattern
+  - foreign_tenant_identifier
+  - personal_data_leakage
+  - wcag_2_1_aa
+  - emergency_stop_reachable
+steps:
+  - id: S1
+    title: Discover
+    customer: A
+    stimulus: Open the public site, browse the catalogue and inspect the DMA card.
+    claims:
+      - id: S1-C1
+        statement: Offer, rights, limits and the GST-inclusive monthly price are shown.
+        witnesses_required: [W1, W2]
+    proves:
+      stories: [AE-01-S02]
+      gaps: [PG-02, PG-09]
+      requirements: [WC107-R009]
+  - id: S2
+    title: Sign in
+    customer: A
+    stimulus: Sign in through Keycloak, sign out, then sign in again.
+    claims:
+      - id: S2-C1
+        statement: The same account resumes with no forced registration and no token reachable by page script.
+        witnesses_required: [W1, W2]
+    proves:
+      gaps: [PG-03]
+      requirements: [WC107-R001, WC107-R004, WC107-R005, WC107-R017]
+  - id: S3
+    title: Start trial
+    customer: A
+    stimulus: Accept terms and privacy consent, then start the trial.
+    claims:
+      - id: S3-C1
+        statement: The trial is active, rights are disclosed and no payment code ran.
+        witnesses_required: [W1, W2]
+        depth_target: L4
+    requires_settings: []
+    proves:
+      stories: [AE-01-S05]
+      gaps: [PG-08]
+      requirements: [WC107-R010, WC107-R011, WC107-R015]
+  - id: S3b
+    title: Trial retry refused
+    customer: A
+    failure_path: true
+    stimulus: Start the trial again for the same agent.
+    claims:
+      - id: S3b-C1
+        statement: The second trial is refused with a clear message and no second trial exists.
+        witnesses_required: [W1, W2]
+        depth_target: L5
+    proves:
+      gaps: [PG-08]
+      requirements: [WC107-R011]
+  - id: S4
+    title: Accept contract
+    customer: A
+    stimulus: Review and accept the Employment Contract.
+    claims:
+      - id: S4-C1
+        statement: The contract is accepted at the version shown.
+        witnesses_required: [W1, W2]
+        depth_target: L4
+    proves:
+      stories: [AE-01-S06, AE-01-S07]
+      gaps: [PG-10]
+  - id: S5
+    title: Pay onboarding amount
+    customer: A
+    stimulus: Pay with a Razorpay test card.
+    claims:
+      - id: S5-C1
+        statement: Payment is captured exactly once for the shown GST-inclusive amount and the relationship is Active.
+        witnesses_required: [W1, W2, W3]
+        depth_target: L4
+    provider_mode_required: razorpay_test
+    proves:
+      stories: [AE-01-S08]
+      gaps: [PG-11, PG-12]
+      requirements: [WC107-R013, WC107-R014]
+  - id: S5b
+    title: Replay and decline
+    customer: A
+    failure_path: true
+    stimulus: Replay the signed payment webhook, then attempt a declined test card on a second relationship.
+    claims:
+      - id: S5b-C1
+        statement: No second activation or charge occurs and the declined payment leaves that relationship not Active.
+        witnesses_required: [W1, W2, W3]
+        depth_target: L5
+    provider_mode_required: razorpay_test
+    proves:
+      gaps: [PG-12]
+      requirements: [WC107-R014]
+  - id: S6
+    title: Connect Facebook
+    customer: A
+    stimulus: Start the Facebook connection on /connections and authorize as the Meta test user.
+    claims:
+      - id: S6-C1
+        statement: The connection shows CONNECTED with the granted scopes and no response carries a token.
+        witnesses_required: [W1, W2, W3]
+        depth_target: L4
+    provider_mode_required: meta_development
+    proves:
+      stories: [AE-02-S01]
+      gaps: [PG-16]
+      requirements: [WC149-R007, WC149-R008, WC149-R010]
+  - id: S6b
+    title: Revoke connection
+    customer: A
+    failure_path: true
+    stimulus: Revoke the Facebook connection.
+    claims:
+      - id: S6b-C1
+        statement: The connection shows REVOKED and the platform no longer holds a usable grant.
+        witnesses_required: [W1, W2, W3]
+        depth_target: L5
+    provider_mode_required: meta_development
+    proves:
+      gaps: [PG-16]
+      requirements: [WC149-R008]
+  - id: S7
+    title: Emergency Stop
+    customer: A
+    stimulus: Use Emergency Stop on the active relationship, then release it.
+    claims:
+      - id: S7-C1
+        statement: The stop is reachable, evidenced and reversible.
+        witnesses_required: [W1, W2]
+        depth_target: L4
+    proves:
+      stories: [AE-01-S10]
+      gaps: [PG-04, PG-15]
+  - id: S8
+    title: Tenant isolation
+    customer: A
+    failure_path: true
+    stimulus: Request customer B's relationship and connection by identifier.
+    claims:
+      - id: S8-C1
+        statement: Access is refused and no B identifier appears in any A response.
+        witnesses_required: [W1, W2]
+        depth_target: L5
+    proves:
+      drivers: [AD-004]
+conditional_stories:
+  - story: AE-01-S01
+    requires_settings: [WC120_CONVERSATION_ENABLED]
+  - story: AE-01-S03
+    requires_settings: [WC120_CONVERSATION_ENABLED]
+  - story: AE-01-S04
+    requires_settings: [WC120_CONVERSATION_ENABLED]
+  - story: AE-01-S09
+    requires_settings: [WC120_CONVERSATION_ENABLED]
+witness_exceptions: []
