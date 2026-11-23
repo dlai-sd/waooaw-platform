@@ -36,9 +36,9 @@ AUTONOMOUS_HALT: false
 
 ```
 Version:    1.45.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Foundation  |  Phase: IMPLEMENTATION
-Last update: 2026-11-23 — WC-154 Exact-Head Evidence Reuse And Compulsory PR Preparation Path delivered
-Latest completed sprint: WC-154 — Exact-Head Evidence Reuse And Compulsory PR Preparation Path (PR #623 merged as cf739c71e8)
-Latest recorded Work Contract: WC-156 — Validation Runner Image Pull Retry (no merged PR recorded)
+Last update: 2026-11-23 — WC-156 Validation Runner Image Pull Retry delivered
+Latest completed sprint: WC-156 — Validation Runner Image Pull Retry (PR #625 merged as 5397be9859)
+Latest recorded Work Contract: WC-156 — Validation Runner Image Pull Retry (merged PR #625)
 Constitutional Claims: 97 RATIFIED (gaps C-087/C-092/C-093) | ADRs: 53 recorded
 Agents (customer): DMA v3.1 gate-pass (Founder-approved through v3.0); Trading v1.8, Agri v2.8, Tutor v1.1 gate-pass records without current-version Founder approval; none customer-proven
 Agents (internal): Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations · RepoNav (INST-014)
