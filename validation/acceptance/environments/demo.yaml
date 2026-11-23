@@ -26,6 +26,7 @@ probes:
 probe_timeout_ms: 20000
 journeys:
   - slice-1-discover-to-connect
+  - slice-2-publish
 synthetic:
   customers_per_run: 2
   max_open_relationships: 20
@@ -43,6 +44,8 @@ secrets:
     env: ACCEPTANCE_META_APP_SECRET
   - name: acceptance-meta-test-user-session
     env: ACCEPTANCE_META_TEST_USER_SESSION
+  - name: acceptance-meta-test-page-token
+    env: ACCEPTANCE_META_TEST_PAGE_TOKEN
   - name: acceptance-meta-test-page-id
     env: ACCEPTANCE_META_TEST_PAGE_ID
   - name: acceptance-whatsapp-sandbox-recipient

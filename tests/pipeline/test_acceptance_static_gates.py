@@ -120,7 +120,8 @@ def test_a_step_without_identifiers_or_with_an_unknown_one_is_refused(repo: Path
 def test_plan_and_specs_must_agree_in_both_directions(repo: Path) -> None:
     plan = yaml.safe_load(_plan_path(repo).read_text(encoding="utf-8"))
     known = gates.known_identifiers(repo)
-    declarations = gates.spec_declarations(repo)
+    steps = {step["id"] for step in plan["steps"]}
+    declarations = [d for d in gates.spec_declarations(repo) if d["step"] in steps]
     assert gates.spec_violations(plan, declarations, known) == []
     missing = [d for d in declarations if d["step"] != "S1"]
     assert "F20 plan step S1 has no spec" in gates.spec_violations(plan, missing, known)
@@ -220,3 +221,16 @@ def test_main_runs_check_and_compile(repo: Path, tmp_path: Path, capsys: pytest.
     (repo / gates.WORKFLOW).write_text("on: push\n", encoding="utf-8")
     assert gates.main(["check", "--repository-root", str(repo)]) == 1
     assert "F1" in capsys.readouterr().err
+
+
+def test_a_second_plan_may_not_reuse_a_step_id_and_a_spec_may_not_cite_a_step_in_no_plan(repo: Path) -> None:
+    duplicate = yaml.safe_load((repo / gates.PLANS / "slice-2-publish.v1.yaml").read_text(encoding="utf-8"))
+    duplicate["journey_id"] = "slice-3-copy"
+    duplicate["steps"][0]["id"] = "S1"
+    _write_yaml(repo / gates.PLANS / "slice-3-copy.v1.yaml", duplicate)
+    assert any("S1" in v and "already used" in v for v in gates.check(repo))
+    (repo / gates.PLANS / "slice-3-copy.v1.yaml").unlink()
+    (repo / "tests/journey-acceptance/specs/ghost.spec.ts").write_text(
+        'acceptanceStep("S99", { covers: ["PG-16"] }, async () => ({}));\n', encoding="utf-8"
+    )
+    assert any("S99" in v and "does not exist" in v for v in gates.check(repo))

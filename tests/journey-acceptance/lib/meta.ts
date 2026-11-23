@@ -53,3 +53,39 @@ export async function readGrantedPermissions(
     declined: items.filter((item) => item.status !== "granted").map((item) => item.permission).sort(),
   };
 }
+
+export interface PagePost {
+  id: string;
+  message: string;
+}
+
+/** Reads one post straight from Graph with the test Page's token (W3); a post that does not exist is undefined. */
+export async function readPost(fetchImpl: FetchLike, pageToken: string, postId: string): Promise<PagePost | undefined> {
+  if (!/^[0-9]+(_[0-9]+)?$/u.test(postId)) {
+    throw new MetaModeError("the post identifier is not a Facebook post id");
+  }
+  const response = await fetchImpl(`${GRAPH}/${postId}?fields=id,message&access_token=${encodeURIComponent(pageToken)}`);
+  if (response.status === 404 || response.status === 400) {
+    return undefined;
+  }
+  if (!response.ok) {
+    throw new MetaModeError(`Meta Graph answered HTTP ${response.status} for the post`);
+  }
+  const body = JSON.parse(await response.text()) as { id: string; message?: string };
+  return { id: body.id, message: body.message ?? "" };
+}
+
+/** The identifiers of the newest posts on the test Page, used to prove a refused post created nothing. */
+export async function listPagePostIds(fetchImpl: FetchLike, pageToken: string, pageId: string): Promise<string[]> {
+  const body = await graph<{ data?: { id: string }[] }>(fetchImpl, `/${pageId}/posts?fields=id&limit=25`, pageToken);
+  return (body.data ?? []).map((post) => post.id).sort();
+}
+
+/** Removes the post the run published so the test Page stays clean. Failure is returned, never thrown, so cleanup always finishes. */
+export async function deletePost(fetchImpl: FetchLike, pageToken: string, postId: string): Promise<boolean> {
+  if (!/^[0-9]+(_[0-9]+)?$/u.test(postId)) {
+    return false;
+  }
+  const response = await fetchImpl(`${GRAPH}/${postId}?access_token=${encodeURIComponent(pageToken)}`, { method: "DELETE" });
+  return response.ok;
+}

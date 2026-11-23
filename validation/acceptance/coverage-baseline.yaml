@@ -11,6 +11,7 @@ covered:
   - AE-01-S08
   - AE-01-S10
   - AE-02-S01
+  - AE-02-S05
   - PG-02
   - PG-03
   - PG-04
@@ -29,9 +30,9 @@ covered:
   - WC107-R015
   - WC149-R007
   - WC149-R008
+  - WC149-R009
   - WC149-R010
 deferred:
   - WC107-R012
   - WC107-R016
   - WC107-R019
-  - WC149-R009

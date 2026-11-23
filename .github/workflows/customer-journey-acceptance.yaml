@@ -19,7 +19,7 @@ on:
         required: true
         default: slice-1-discover-to-connect
         type: choice
-        options: [slice-1-discover-to-connect]
+        options: [slice-1-discover-to-connect, slice-2-publish]
 
 concurrency:
   group: customer-journey-acceptance-${{ inputs.environment }}
