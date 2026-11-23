@@ -302,7 +302,16 @@ unknown can only be removed by running code; each has a proof of concept in sect
 | How the harness itself is proven | Negative controls (F6, F7): fault-injected stubs that report success without calling a provider, a stale cache, a seeded token and a cross-tenant identifier must each produce `FAIL`. These run in Docker on every harness change and are added to the release-qualification command list (new tests are not collected automatically). |
 | How it runs | Locally in Docker against the compose stack for self-qualification; in GitHub Actions as the manual workflow against Demo. |
 
-### Proofs of concept (each is a bounded spike, not product code)
+### Industry alignment and rules taken from it
+
+| Practice | Source pattern | Rule here |
+|---|---|---|
+| Plan, then generate, then heal | Playwright Test Agents (planner, generator, healer) | The reviewed plan comes first and specs are generated from it. A healing agent may repair locators and timing only. It must never weaken an assertion or a witness; a spec that fails because behaviour changed is reported as a defect or skipped with a reason, never forced green. |
+| Mock third parties in CI, use sandboxes after deployment | Playwright guidance to mock what you do not control; payment-provider test modes for end-to-end checks | Pull-request tests (unit, component) mock providers. This acceptance suite deliberately uses provider sandboxes because its purpose is to prove the live integration. The two are never mixed in one suite. |
+| Synthetic traffic is identifiable | Production-monitoring guidance: dedicated least-privilege account, recognisable header or correlation identifier, self-cleaning data | Every acceptance request carries a reserved correlation header with the run identifier, so responders and the telemetry reader can find it in logs. |
+| Retries are limited and visible | Playwright: few CI retries, retain traces | One retry in CI, zero locally; any retried step is marked `FLAKY` with its trace kept. |
+
+
 
 | POC | Question answered | Needs |
 |---|---|---|
