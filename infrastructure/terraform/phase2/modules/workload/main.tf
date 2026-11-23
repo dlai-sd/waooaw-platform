@@ -724,7 +724,7 @@ locals {
     "business-platform"                       = var.application_activation_enabled ? var.bp_min_replicas : 0
     "ai-runtime"                              = var.application_activation_enabled ? var.air_min_replicas : 0
     "web"                                     = var.application_activation_enabled ? var.web_min_replicas : 0
-    "billing-engine"                          = 0
+    "billing-engine"                          = var.application_activation_enabled ? var.billing_min_replicas : 0
     "agent-runtime-adapter-digital-marketing" = 0
   }
 }

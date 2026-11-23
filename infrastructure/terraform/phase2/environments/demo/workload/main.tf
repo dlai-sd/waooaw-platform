@@ -93,7 +93,8 @@ module "workload" {
   image_registry_server                    = var.image_registry_server
   image_pull_identity_id                   = var.image_pull_identity_id
   ce_min_replicas                          = 1
-  pr_min_replicas                          = 0
+  # Business Platform reaches PR on its private mutual-TLS port 5443, which does not wake a scaled-to-zero replica.
+  pr_min_replicas                          = 1
   bp_min_replicas                          = 1
   web_min_replicas                         = 1
   whatsapp_guest_limits                    = { messages_per_guest_per_24_hours = 100, new_sessions_per_day = 100 }

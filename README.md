@@ -21,7 +21,7 @@ Infrastructure:       Azure live — waooaw-dev-kv (Key Vault) · OIDC auth · S
 Monitoring:           Sprint Dashboard: github.com/dlai-sd/waooaw-platform/issues/7
 Web:                  Next.js App Router — WC-078 public acquisition + WC-077 identity foundations merged
 CCT inventory:        82 institutionally declared · 82 centrally catalogued · no unified 72/72 run
-Sprint Registry:      SPRINT-REGISTRY.md — 146 Work Contracts recorded · 92 with merged-PR evidence · 54 without
+Sprint Registry:      SPRINT-REGISTRY.md — 147 Work Contracts recorded · 93 with merged-PR evidence · 54 without
 Agent references:     Current state=PROJECT_STATE.md · WC/PR coverage=SPRINT-REGISTRY.md · services=COMPONENT-QUICK-REF.md · decisions=ADR-INDEX.md
 Company:              DLAI Satellite Data (OPC) Pvt Ltd · CIN: U62090PN2024OPC230499 · Pune, India
 Stewards:             Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
@@ -33,7 +33,7 @@ The platform has entered full autonomous implementation. The Autonomous Sprint A
 generates production-grade code, reviews its own PR, merges, and advances to the next sprint — without human intervention.
 
 ```
-Last sprint:     WC-153 — title unrecorded
+Last sprint:     WC-153 — Owner-Link Probe Identity And Warm Private Listeners
 Sprint status:   DONE — 2026-11-23 · PR #622 merged as ad4b601eab
 Next work:       constitution/PROJECT_STATE.md → Next Authorized Action · Production apply/activation prohibited
 Sprint registry: SPRINT-REGISTRY.md

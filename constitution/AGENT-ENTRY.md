@@ -36,8 +36,8 @@ AUTONOMOUS_HALT: false
 
 ```
 Version:    1.45.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Foundation  |  Phase: IMPLEMENTATION
-Last update: 2026-11-23 — WC-153 title unrecorded delivered
-Latest completed sprint: WC-153 — title unrecorded (PR #622 merged as ad4b601eab)
+Last update: 2026-11-23 — WC-153 Owner-Link Probe Identity And Warm Private Listeners delivered
+Latest completed sprint: WC-153 — Owner-Link Probe Identity And Warm Private Listeners (PR #622 merged as ad4b601eab)
 Latest recorded Work Contract: WC-154 — Exact-Head Evidence Reuse And Compulsory PR Preparation Path (no merged PR recorded)
 Constitutional Claims: 97 RATIFIED (gaps C-087/C-092/C-093) | ADRs: 53 recorded
 Agents (customer): DMA v3.1 gate-pass (Founder-approved through v3.0); Trading v1.8, Agri v2.8, Tutor v1.1 gate-pass records without current-version Founder approval; none customer-proven

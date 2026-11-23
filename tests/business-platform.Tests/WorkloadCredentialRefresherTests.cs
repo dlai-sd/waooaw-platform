@@ -56,6 +56,29 @@ public sealed class WorkloadCredentialRefresherTests : IDisposable
     }
 
     [Fact]
+    public async Task AnUnavailableOwnerLinkIsReprobedAtTheMinimumIntervalUntilItRecovers()
+    {
+        using var refresher = Create(out var prober, refreshSeconds: 300);
+        _reader.Set(_pki.Create(new CredentialOptions { Version = 10 }));
+        _owners.Throw = new HttpRequestException("owner is cold-starting");
+
+        await refresher.RefreshOnceAsync(CancellationToken.None);
+
+        _links.Snapshot()["billing"].Should().Be("UNAVAILABLE");
+        refresher
+            .NextDelaySeconds()
+            .Should()
+            .Be(WorkloadCredentialOptions.MinimumRefreshSeconds);
+
+        _owners.Throw = null;
+        await refresher.RefreshOnceAsync(CancellationToken.None);
+
+        _links.Snapshot()["billing"].Should().Be("READY");
+        refresher.NextDelaySeconds().Should().Be(300);
+        prober.Dispose();
+    }
+
+    [Fact]
     public async Task VaultFailureKeepsTheLastCredentialAndNeverDowngradesTheVersion()
     {
         using var refresher = Create(out _);
@@ -170,7 +193,7 @@ public sealed class WorkloadCredentialRefresherTests : IDisposable
         new("professional-runtime", "professional-runtime", null),
     ];
 
-    private WorkloadCredentialRefresher Create(out OwnerLinkProber prober)
+    private WorkloadCredentialRefresher Create(out OwnerLinkProber prober, int refreshSeconds = 30)
     {
         prober = new OwnerLinkProber(
             _identity,
@@ -182,7 +205,7 @@ public sealed class WorkloadCredentialRefresherTests : IDisposable
             _identity,
             _reader,
             prober,
-            new WorkloadCredentialOptions { Source = "keyvault", RefreshSeconds = 30 },
+            new WorkloadCredentialOptions { Source = "keyvault", RefreshSeconds = refreshSeconds },
             _log
         );
     }
@@ -233,7 +256,7 @@ public sealed class WorkloadCredentialRefresherTests : IDisposable
                     throw Throw;
                 return Json(
                     HttpStatusCode.OK,
-                    $$"""{"status":"ok","peer_identity_uri":"{{identity.GetIdentityUri("billing-engine")}}"}"""
+                    $$"""{"status":"ok","peer_identity_uri":"{{identity.GetOwnIdentityUri()}}"}"""
                 );
             });
     }
@@ -397,6 +420,7 @@ public sealed class OwnerLinkTests : IDisposable
     [Theory]
     [InlineData("status-503")]
     [InlineData("wrong-peer")]
+    [InlineData("target-peer")]
     [InlineData("not-ok")]
     [InlineData("no-peer")]
     [InlineData("array")]
@@ -454,7 +478,7 @@ public sealed class OwnerLinkTests : IDisposable
 
     private HttpResponseMessage Respond(string mode)
     {
-        var peer = _identity.GetIdentityUri("billing-engine");
+        var peer = _identity.GetOwnIdentityUri();
         return mode switch
         {
             "ok" => WorkloadCredentialRefresherTests.Json(
@@ -468,6 +492,10 @@ public sealed class OwnerLinkTests : IDisposable
             "wrong-peer" => WorkloadCredentialRefresherTests.Json(
                 HttpStatusCode.OK,
                 """{"status":"ok","peer_identity_uri":"spiffe://waooaw.test/workload/other"}"""
+            ),
+            "target-peer" => WorkloadCredentialRefresherTests.Json(
+                HttpStatusCode.OK,
+                $$"""{"status":"ok","peer_identity_uri":"{{_identity.GetIdentityUri("billing-engine")}}"}"""
             ),
             "not-ok" => WorkloadCredentialRefresherTests.Json(
                 HttpStatusCode.OK,
