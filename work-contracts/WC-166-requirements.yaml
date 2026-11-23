@@ -1,0 +1,28 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-166
+contract_path: work-contracts/WC-166-foundation-plan-identity.md
+contract_digest: 4b063bb340318262b2edc67d18a6c78216f89e3df49648e4e796c2d40db967fd
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Workflow contract test in the Python runner and actionlint in Docker, run at the exact head; commands and results in the PR body
+  initial_state: expected-fail
+  dependencies: PR #631 merged; Founder instruction in the current conversation
+  residual_risk: No workflow run was executed against Azure; the live proof is a plan-only Demo run after merge
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC166-R001
+    source: WC-166 Canonical Requirement Index, R001
+    observable_outcome: The Plan B identity resolution and login steps run under the same condition as the foundation plan step, so a plan-only cache-miss plan runs as the environment deployment identity and receives it as deployment_client_id.
+    test_path_or_plan: tests/pipeline/test_goal006_terraform_foundations.py::test_foundation_plan_identity_steps_follow_the_plan_step_in_every_state (8 states) and ::test_the_reproducing_state_logs_in_as_the_deployment_identity_before_planning; both fail on the previous workflow.
+
+  - <<: *defaults
+    requirement_id: WC166-R002
+    source: WC-166 Canonical Requirement Index, R002
+    observable_outcome: Both steps remain gated on password authentication being enabled and are skipped when the plan step is skipped; the existing identity and ordering assertions still pass.
+    test_path_or_plan: tests/pipeline/test_goal006_terraform_foundations.py::test_foundation_plan_identity_steps_follow_the_plan_step_in_every_state (password-auth-off and cache-hit rows) and ::test_the_foundation_apply_keeps_its_own_gate_and_the_expression_checker_rejects_unknown_conditions; the existing identity test; tests/pipeline/test_wc143_database_chain_record.py step order; actionlint in Docker.

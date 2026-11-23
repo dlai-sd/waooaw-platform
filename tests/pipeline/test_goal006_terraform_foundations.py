@@ -1820,3 +1820,71 @@ def test_terraform_holds_no_provider_secret_values() -> None:
     assert not re.search(r'^\s*value\s*=', contract, re.MULTILINE)
     assert not re.search(r'azurerm_key_vault_secret"\s+"[^"]*provider', module_text)
     assert not re.search(r'name\s*=\s*"provider-', module_text)
+
+
+PLAN_IDENTITY_STEPS = (
+    "Resolve Plan B foundation mutation identity",
+    "Azure login with environment deployment identity for Plan B foundation mutation",
+)
+
+
+def _step_condition(workflow: str, step_name: str) -> str:
+    marker = f"      - name: {step_name}\n"
+    assert workflow.count(marker) == 1, f"step {step_name!r} must exist exactly once"
+    block = workflow.split(marker, 1)[1].split("\n      - name: ", 1)[0]
+    found = re.search(r"        if: (?:>-)?\s*(.*?)\n        (?:id|uses|working-directory|env|run):", block, re.DOTALL)
+    assert found is not None, f"step {step_name!r} has no condition"
+    return " ".join(found.group(1).split())
+
+
+def _evaluate(condition: str, *, apply: bool, cache_hit: bool, password_auth: bool) -> bool:
+    """Evaluate the small GitHub expression subset these steps use; anything else is refused."""
+    operands = {
+        "inputs.apply": apply,
+        "steps.foundation-cache.outputs.cache_hit != 'true'": not cache_hit,
+        "steps.database-transition.outputs.password_auth_enabled == 'true'": password_auth,
+    }
+    python = condition
+    for text, value in operands.items():
+        python = python.replace(text, repr(value))
+    python = python.replace("||", " or ").replace("&&", " and ")
+    assert re.fullmatch(r"[\sTrueFalsandor()]*", python), f"unsupported expression: {condition!r}"
+    return bool(eval(python, {"__builtins__": {}}, {}))  # noqa: S307 - input is restricted to the pattern above
+
+
+@pytest.mark.parametrize("apply", [True, False])
+@pytest.mark.parametrize("cache_hit", [True, False])
+@pytest.mark.parametrize("password_auth", [True, False])
+def test_foundation_plan_identity_steps_follow_the_plan_step_in_every_state(apply: bool, cache_hit: bool, password_auth: bool) -> None:
+    # WC-166 state table (apply x cache x password authentication). Defect: a plan-only run with a foundation-cache
+    # miss refreshed Key Vault keys and secrets as the constrained bootstrap identity, which holds no vault data-plane
+    # role, so the plan failed with ForbiddenByRbac (run 45213486537).
+    workflow = (REPO_ROOT / ".github/workflows/environment-deployment.yaml").read_text(encoding="utf-8")
+    state = {"apply": apply, "cache_hit": cache_hit, "password_auth": password_auth}
+    plan_runs = _evaluate(_step_condition(workflow, "Terraform foundation plan"), **state)
+    assert plan_runs == (apply or not cache_hit)
+    for step in PLAN_IDENTITY_STEPS:
+        runs = _evaluate(_step_condition(workflow, step), **state)
+        # The deployment identity is active exactly when a plan runs under password authentication, so a plan can
+        # never refresh the vault as the bootstrap identity and no login is spent when the plan is skipped.
+        assert runs == (plan_runs and password_auth), f"{step!r} in {state}"
+
+
+def test_the_reproducing_state_logs_in_as_the_deployment_identity_before_planning() -> None:
+    workflow = (REPO_ROOT / ".github/workflows/environment-deployment.yaml").read_text(encoding="utf-8")
+    reproduction = {"apply": False, "cache_hit": False, "password_auth": True}
+    assert _evaluate(_step_condition(workflow, "Terraform foundation plan"), **reproduction)
+    assert all(_evaluate(_step_condition(workflow, step), **reproduction) for step in PLAN_IDENTITY_STEPS)
+    order = [workflow.index(f"      - name: {name}\n") for name in (*PLAN_IDENTITY_STEPS, "Terraform foundation plan", "Terraform foundation apply")]
+    assert order == sorted(order)
+
+
+def test_the_foundation_apply_keeps_its_own_gate_and_the_expression_checker_rejects_unknown_conditions() -> None:
+    workflow = (REPO_ROOT / ".github/workflows/environment-deployment.yaml").read_text(encoding="utf-8")
+    apply_condition = _step_condition(workflow, "Terraform foundation apply")
+    for apply, cache_hit in ((True, False), (True, True), (False, False), (False, True)):
+        assert _evaluate(apply_condition, apply=apply, cache_hit=cache_hit, password_auth=True) == (apply and not cache_hit)
+    with pytest.raises(AssertionError, match="unsupported expression"):
+        _evaluate("inputs.apply && github.actor == 'x'", apply=True, cache_hit=False, password_auth=True)
+    with pytest.raises(AssertionError, match="exactly once"):
+        _step_condition(workflow, "No such step")
