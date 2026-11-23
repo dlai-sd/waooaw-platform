@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from prepare_pr_body import (  # noqa: E402
+    platform_state_violations,
     PRECHECK_DEPENDENCIES,
     PRECHECK_ORDER,
     STATIC_PRECHECKS,
@@ -120,6 +121,7 @@ def test_main_runs_costly_prechecks_only_after_static_validation(
     monkeypatch.setattr("prepare_pr_body.execution_preflight", lambda *args, **kwargs: None)
     monkeypatch.setattr("prepare_pr_body.authoritative_remote_head", lambda remote: HEAD)
     monkeypatch.setattr("prepare_pr_body.validate_changed_ledgers", lambda root, paths: ledger_violations)
+    monkeypatch.setattr("prepare_pr_body.platform_state_violations", lambda root, base: [])
     monkeypatch.setattr("prepare_pr_body.validate_prepared_body", lambda body, base, head: body_violations)
     monkeypatch.setattr("prepare_pr_body.validate_static_repository", lambda root: repository_violations)
     monkeypatch.setattr(
@@ -814,3 +816,20 @@ def test_execution_preflight_checks_each_docker_capability(monkeypatch, tmp_path
             assert expected in str(error)
         else:
             raise AssertionError(f"unavailable Docker {failing_subcommand} was accepted")
+
+
+def test_platform_state_violations_report_each_stale_surface(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr("prepare_pr_body.synchronize", lambda **unused: [Path("README.md")])
+    monkeypatch.setattr("prepare_pr_body.load_manifest", lambda root: {"revision": 1})
+    monkeypatch.setattr("prepare_pr_body.process_control_violations", lambda root, manifest: ["stale digest for a.md"])
+    monkeypatch.setattr("prepare_pr_body.ledger_gaps", lambda root, base: ["#9"])
+
+    found = platform_state_violations(tmp_path, "origin/main")
+
+    assert found[0].startswith("README.md is stale")
+    assert "stale digest for a.md" in found
+    assert any("lacks merged pull requests #9" in item for item in found)
+
+
+def test_platform_state_violations_pass_for_the_repository_tree() -> None:
+    assert platform_state_violations(ROOT, "HEAD", check_ledger=False) == []

@@ -18,6 +18,8 @@ from pathlib import Path
 import yaml
 
 from precheck_orchestrator import EVIDENCE_FILE_NAME, PrecheckNode, run_prechecks
+from derive_platform_state import ledger_gaps
+from sync_platform_state import synchronize
 from validate_author_review import SECTION, validate_author_review
 from validate_c059 import read_commits, validate_commit, validate_pr_body
 from validate_requirement_ledger import validate_changed_ledgers
@@ -25,6 +27,8 @@ from validate_runtime_lifecycle_evidence import runtime_gate_required
 from validation_policy import classify_paths, validate_policy
 from validation_control.local_catalog_gate import gate_execution_identity
 from validation_control.pilot import validate_current_pr_value_record
+from verify_process_control import load_manifest, revision_violations
+from verify_process_control import violations as process_control_violations
 
 AUTHOR_REVIEW = """## Author Review
 
@@ -618,6 +622,21 @@ def update_pull_request(pr_number: int, body: str | Path, branch: str) -> None:
     )
 
 
+def platform_state_violations(repository_root: Path, base: str, *, check_ledger: bool = True) -> list[str]:
+    """Generated state surfaces and the process-control manifest must be current for every PR."""
+    refresh_hint = "run scripts/run_platform_state_refresh.sh and commit the result"
+    found = [f"{path} is stale; {refresh_hint}" for path in synchronize(check=True, root=repository_root)]
+    manifest = load_manifest(repository_root)
+    found.extend(process_control_violations(repository_root, manifest))
+    if not found:
+        found.extend(revision_violations(repository_root, manifest, base))
+    if check_ledger:
+        missing = ledger_gaps(repository_root, base)
+        if missing:
+            found.append(f"delivery ledger lacks merged pull requests {', '.join(missing)}; {refresh_hint}")
+    return found
+
+
 def validate_prepared_body(body: str, base: str, head: str) -> list[str]:
     violations = validate_pr_body(body)
     for subject, commit_body in read_commits(base, head):
@@ -691,6 +710,9 @@ def main() -> int:
         ledger_violations = validate_changed_ledgers(repository_root, changed_files)
         if ledger_violations:
             raise ValueError("requirement ledger: " + "; ".join(ledger_violations))
+        state_violations = platform_state_violations(repository_root, arguments.base)
+        if state_violations:
+            raise ValueError("platform state currency: " + "; ".join(state_violations))
         body = prepare_body(body, head)
         violations = validate_prepared_body(body, arguments.base, head)
         if violations:

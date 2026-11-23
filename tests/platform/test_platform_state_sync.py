@@ -45,7 +45,7 @@ def test_catalogue_count_matches_canonical_registry() -> None:
         text,
         flags=re.MULTILINE,
     )
-    assert len(set(declarations)) == registry["cct_inventory"]["centrally_catalogued"]
+    assert len(set(declarations)) == registry["cct_inventory"]["institutional"]
 
 
 def test_reconciled_ccts_have_executable_evidence() -> None:
