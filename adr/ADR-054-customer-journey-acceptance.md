@@ -62,7 +62,9 @@ parameter, and reports without blocking promotion.
    rule may depend on the workflow until a later ADR amendment is accepted by the Founder.
 9. **Secrets live only in Azure.** The workflow authenticates with an acceptance-only Azure OIDC
    federated identity, distinct from the deployment identities (C-065), with read-only access to Key
-   Vault secrets prefixed `acceptance-`. No GitHub environment secret or variable carries a credential.
+   Vault secrets prefixed `acceptance-` and to the environment's existing Razorpay test secrets by exact
+   name (`razorpay-test-key-id`, `razorpay-test-key-secret`, `razorpay-test-webhook-secret`, already
+   consumed by the Billing Engine). No GitHub environment secret or variable carries a credential.
    Environment addresses are non-secret data in git (settings policy S1, S3).
 10. **Docker-only execution** (C-080, ADR-050): the harness runs in a digest-pinned, attested runner image
     through the validation-gate action.

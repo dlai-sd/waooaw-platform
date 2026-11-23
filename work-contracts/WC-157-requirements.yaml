@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-157
 contract_path: work-contracts/WC-157-customer-journey-acceptance-architecture.md
-contract_digest: 67a79d8e88a6409cfa9432ed86646c118709938c7b0acab86834f2a3f07b7a29
+contract_digest: a4e2e3758457ec754f4c5619ca08a1c0c54b3e08e3497695089194c02c2fb9ee
 contract_status: DRAFT_FOR_FOUNDER_REVIEW_ARCHITECTURE_ONLY
 implementation_scope: false
 result: NOT_APPLICABLE

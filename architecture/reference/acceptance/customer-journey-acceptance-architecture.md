@@ -91,9 +91,9 @@ is already in the repository.
 
 | Concern | Decision |
 |---|---|
-| Azure identity | One federated identity per environment, subject bound to this workflow and branch `main`; read-only on Key Vault secrets whose names begin `acceptance-`; Monitoring Reader on the telemetry workspace only; no Contributor, no role-assignment rights, no deployment authority (C-065). |
+| Azure identity | One federated identity per environment, subject bound to this workflow and branch `main`; read-only on Key Vault secrets whose names begin `acceptance-` plus the three existing Razorpay test secrets by exact name; Monitoring Reader on the telemetry workspace only; no Contributor, no role-assignment rights, no deployment authority (C-065). |
 | Where secrets live | Azure Key Vault. No GitHub environment secret or variable holds a credential. Addresses are non-secret data in git (settings policy S1, S3). |
-| Secret names | `acceptance-razorpay-key-id`, `acceptance-razorpay-key-secret`, `acceptance-razorpay-webhook-secret`, `acceptance-meta-app-id`, `acceptance-meta-app-secret`, `acceptance-meta-test-user-session`, `acceptance-meta-test-page-id`, `acceptance-whatsapp-sandbox-recipient`, `acceptance-whatsapp-webhook-secret`, `acceptance-keycloak-provisioner-client-secret`. Each environment's vault holds its own. |
+| Secret names | New: `acceptance-meta-app-id`, `acceptance-meta-app-secret`, `acceptance-meta-test-user-session`, `acceptance-meta-test-page-id`, `acceptance-whatsapp-sandbox-recipient`, `acceptance-whatsapp-webhook-secret`, `acceptance-keycloak-provisioner-client-secret`. Existing, reused read-only: `razorpay-test-key-id`, `razorpay-test-key-secret`, `razorpay-test-webhook-secret` (Demo already wires these test-named secrets into the Billing Engine, so Demo is test mode by construction; the harness still verifies the `rzp_test_` prefix). Each environment's vault holds its own. |
 | Platform reads | Only through customer-facing APIs with the synthetic customer's session (ADR-003 tenant authority). No service token, no database access, no ADR-046 route grant. |
 | Provider credentials in the product | The harness never reads `customer-connection-` secrets. Custody stays inside Business Platform. Connection proof comes from the provider side (section 6, step S6). |
 | Output | Traces, HAR and videos mask password, token and payment fields; artifacts are scanned before upload. |
@@ -133,7 +133,7 @@ format; they are the strongest emulator-detection steps and depend on removing t
 | W1 Screen | Playwright DOM using role and label locators, plus the network log | Observational only; never sufficient for a state claim |
 | W2 Platform | Customer-facing Business Platform routes under the synthetic customer's session: relationship detail and timeline, contract-journey, checkout intent, evidence list and detail, provider-connections list, notifications, attention, results | Read-only except the stimulus actions a customer can perform; follows ADR-003; routes are taken from `business-platform.openapi.yaml` and verified at build time |
 | W3 Provider | Razorpay test API (order and payment fetch); Meta Graph with the test app and test user; WhatsApp sandbox delivery status and signed-webhook delivery to the environment's own endpoint | Sandbox credentials only; mode verified before use |
-| W4 Telemetry | Azure Monitor query by correlation identifier for the run | Read-only; optional. If absent, service-reach depth is `NOT-WITNESSED`; client-observed endpoint depth from the HAR still applies |
+| W4 Telemetry | Azure Monitor / Log Analytics query by correlation identifier for the run | Read-only; optional. Verified today: Business Platform and the Billing Engine export OTLP traces only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set, and the phase 2 workload Terraform does not set it, so WC107-R018 (one queryable cross-service trace) is **unproven on Demo**. W4 therefore starts as a console-log correlation read and the first run reports the missing traces as a finding. If absent, service-reach depth is `NOT-WITNESSED`; client-observed endpoint depth from the HAR still applies |
 
 A claim lists which witnesses are required. A required witness that cannot be read gives `NOT-WITNESSED`.
 A witness not declared required for that claim is not applicable and does not affect the verdict.
@@ -186,6 +186,7 @@ Thresholds marked * are initial and are calibrated by the first three runs throu
 | F15 | Availability result | A stopped environment returns `ENV-UNAVAILABLE` within 2 minutes* with zero step failures | Harness test |
 | F16 | Least authority | The acceptance identity holds no write or role-assignment rights outside its scope | Infrastructure test and run-time role inspection |
 | F17 | Report-only | No required check, branch rule or deployment dependency references the workflow | Static test |
+| F18 | Provisioner containment | The harness creates and deletes only reserved-prefix synthetic users; after each run the Keycloak admin events show zero user changes by the provisioning client outside that prefix | Harness test and post-run admin-event check |
 
 ## 10. Failure Modes
 
@@ -196,7 +197,7 @@ Thresholds marked * are initial and are calibrated by the first three runs throu
 | Provider sandbox down or rate limited | W3 error | `NOT-WITNESSED` for that claim, never pass |
 | Live credential configured | Mode verification | Run stops; configuration finding |
 | Provider blocks automated Meta login | S6 fails at consent | `NOT-WITNESSED`; follow-up to refresh the stored test-user session |
-| Keycloak cannot restrict provisioning to a group | Provisioning check | Stop; return to ADR-055 |
+| Keycloak provisioning client lacks needed rights or is unavailable | Provisioning check | Run stops with a configuration finding; no step verdicts |
 | Telemetry unreadable | W4 error | Service-reach depth `NOT-WITNESSED`; run continues |
 | Flaky element | Retry recorded | `FLAKY` mark; never silent |
 | Secret pattern in an artifact | Pre-upload scan | Run fails; artifact withheld |
@@ -208,8 +209,8 @@ Thresholds marked * are initial and are calibrated by the first three runs throu
 |---|---|---|
 | GitHub | New workflow; one new validation gate id in `validation/engineering-validation.yaml` | Follow CI Validation Speed Policy; test files added to the gate command list |
 | Azure | Per-environment acceptance federated identity, `acceptance-` secret prefix, Monitoring Reader | Terraform under the workload module requires Pre-PR runtime lifecycle evidence |
-| Keycloak | `synthetic` group and a group-limited provisioning client | Requires fine-grained admin permission support; stop condition |
-| Business Platform | Trusted synthetic-tenant marker; exclusion from aggregates; messaging suppression to non-sandbox recipients; correlation identifier on customer responses if absent | Same code paths otherwise; no authority change |
+| Keycloak | New client `waooaw-acceptance-provisioner` with realm-management `manage-users` (the accepted lifecycle-writer role pattern), reserved synthetic username prefix, `synthetic` group, Demo and UAT only | Realm-wide role; compensating controls in ADR-055 item 2 |
+| Business Platform | Server-side synthetic-subject registry and an internal registration route guarded by an `acceptance-provisioner` realm role and a default-off Demo/UAT setting; exclusion from aggregates; messaging suppression to non-sandbox recipients; correlation identifier on customer responses if absent | Same code paths otherwise; no authority change (ADR-055 items 3 and 4) |
 | Billing Engine | Exclude synthetic tenants from revenue aggregation; verify Razorpay test mode | No ledger change |
 | Web | None required; role and label locators. Add stable labels only where accessibility requires them | Avoids test-only hooks |
 | Existing tests | Unchanged; disabled E2E workflow stays disabled until a separate decision | No overlap |
@@ -223,7 +224,7 @@ is **not authorized**; each needs Founder authorization.
 | Proposed WC | Scope | Depends on |
 |---|---|---|
 | WC-158 Harness core | Journey and environment schemas, runner, guards, report and coverage engine, negative controls, workflow; self-qualified against a local Docker stack | ADR-054 accepted |
-| WC-159 Synthetic tenant support | Marker and its trusted write path, exclusions, messaging suppression, Keycloak group and provisioner, Terraform for the acceptance identity and secret prefix | ADR-055 accepted |
+| WC-159 Synthetic tenant support | Marker registry and its role-guarded internal route, exclusions, messaging suppression, Keycloak provisioning client, Terraform for the acceptance identity, secret access and the provisioning client | ADR-055 accepted |
 | WC-160 Slice 1 content | S1 to S8 with W1-W3 witnesses; Razorpay and Meta readers; live-scope seed | WC-158, WC-159, sandbox values present |
 | WC-161 Sandbox readiness check | Read-only verification that each sandbox secret exists, is non-empty and in test mode, without printing values | Runbook; sandboxes created |
 | WC-162 Slice 2 and later | Publish with Graph confirmation; conversational stories; lifecycle rights | Broker path replacing the emulator; relevant flags on |
@@ -233,14 +234,41 @@ touching Demo, entering secrets, and any change to promotion.
 
 **Deferred:** Production profile; AI exploratory companion; promotion gating; additional agents.
 
-## 13. Assumptions And Owners
+## 13. Verified Facts, Decisions And Proofs Still Owed
 
-| ID | Assumption | Owner | If false |
+Technical points are decided here, not assumed. "Proof owed" items are decided designs whose one remaining
+unknown can only be removed by running code; each has a proof of concept in section 14.
+
+| ID | Topic | Status | Conclusion |
 |---|---|---|---|
-| A1 | Deployed Keycloak supports restricting a client to one user group | Security Architect | Redesign provisioning; ADR-055 amendment |
-| A2 | A trusted marker write path can be added without altering authority | Solution Architect | Return to ADR-055 |
-| A3 | A persisted Meta test-user session survives consent without interactive login | Platform IT Expert | Report `NOT-WITNESSED` for S6 until resolved |
-| A4 | Razorpay can deliver webhooks to the environment, or the harness can deliver signed replays | Platform IT Expert | Signed replay only |
-| A5 | Demo uses Razorpay test mode | Platform IT Expert (verify at build) | Stop; configuration finding |
-| A6 | Correlation identifiers reach the telemetry workspace (WC107-R018) | Platform IT Expert | W4 unavailable; depth degraded, declared |
-| A7 | Conversation settings can be enabled on Demo by the Founder through the settings path | Founder | Conversational stories stay `BLOCKED-BY-FLAG` |
+| T1 | Keycloak provisioning | DECIDED (ADR-055 item 2) | Deployed line is Keycloak 25 (pinned image digest in the workload Terraform). Fine-grained admin permissions v1 is a preview feature and is not adopted. A dedicated client holds realm-wide `manage-users`, matching the accepted lifecycle-writer pattern, bounded by secret scope, harness refusal, admin-event audit and Demo/UAT-only. |
+| T2 | Local-user login through the real form | VERIFIED in repository; proof owed (POC-1) | The `waooaw` realm browser flow includes `auth-username-password-form` at level 1 and an OTP step-up at level 2, and registration is off. Local users created by the provisioner can use the real form; OTP credentials are created with the user for step-up. |
+| T3 | Synthetic marker | DECIDED (ADR-055 item 4) | Server-side registry in Business Platform keyed by Keycloak `sub`, written only by a role-guarded internal route, default-off, Demo and UAT only. Not a token claim; never authority. |
+| T4 | Razorpay mode | VERIFIED | Demo wires `razorpay-test-key-id`, `razorpay-test-key-secret` and `razorpay-test-webhook-secret` from `kv-waooaw-demo` into the Billing Engine. The acceptance identity reads these three by exact name; the harness verifies the `rzp_test_` prefix. The Founder has no new Razorpay secret to enter. |
+| T5 | Razorpay webhook path | DECIDED | The harness signs and delivers webhook replays itself to the environment's callback address; it does not depend on Razorpay reaching Demo. Real Razorpay delivery is a bonus witness, not a requirement. |
+| T6 | Telemetry | VERIFIED gap | OTLP export exists in code but is not configured by the phase 2 workload Terraform, so WC107-R018 is unproven on Demo. W4 starts as console-log correlation; the first run reports the gap. Wiring OTLP is a separate contract the Founder may authorize. |
+| T7 | Meta test-user automation | Proof owed (POC-3) | Meta documents test users for automated testing, so scripted sign-in as a test user is a supported use. The design stores the browser session state in Key Vault and falls back to `NOT-WITNESSED`. Needs the Meta development app (Founder account-owner action). |
+| T8 | Conversation stories | DECIDED | They stay `BLOCKED-BY-FLAG` until the Founder enables `WC120_CONVERSATION_ENABLED` and the conversational employment setting for the environment. |
+| T9 | Brokered first login | DECIDED | Google and Facebook first-login linking is not exercised by local users and is reported `NOT-COVERED`. |
+
+## 14. Test Authoring: Who, When, How
+
+| Question | Decision |
+|---|---|
+| Who writes the tests | The AI assistant, in the Platform IT Expert office, under a Founder-authorized implementation Work Contract (WC-158 onward). The Founder reviews and merges; the assistant does not approve its own work. |
+| When | Only after the Founder accepts ADR-054 and ADR-055 and authorizes the implementing contract in the current session. WC-157 (architecture) authorizes no code. |
+| Language and tools | TypeScript with Playwright for the UI driver and harness, in the existing digest-pinned `Dockerfile.test-runner-ts` image (Playwright 1.62, pnpm). Journeys and environment profiles are YAML validated by JSON Schema. Harness unit tests use the repository's existing Jest setup. Python stays only for existing gate plumbing. |
+| How tests are specified | Journeys are data (`validation/acceptance/journeys/*.yaml`); the runner has no journey logic. Each step names its requirement, story and gap identifiers, so authoring a test means writing a journey step and its witnesses. |
+| How the harness itself is proven | Negative controls (F6, F7): fault-injected stubs that report success without calling a provider, a stale cache, a seeded token and a cross-tenant identifier must each produce `FAIL`. These run in Docker on every harness change and are added to the release-qualification command list (new tests are not collected automatically). |
+| How it runs | Locally in Docker against the compose stack for self-qualification; in GitHub Actions as the manual workflow against Demo. |
+
+### Proofs of concept (each is a bounded spike, not product code)
+
+| POC | Question answered | Needs |
+|---|---|---|
+| POC-1 Keycloak | Can a client with `manage-users` create a synthetic user with password and OTP, log in through the real form with Playwright, resolve a Business Platform membership, and delete the user, with the admin-event audit showing only synthetic users touched? | Local compose stack only. No Founder input. |
+| POC-2 Razorpay | Can Playwright complete the Razorpay test checkout, and can the harness fetch the order and payment and replay a signed webhook with no double activation? | Demo running; read access to the three existing test secrets. |
+| POC-3 Meta | Can a scripted Meta test-user session authorize the connection flow and be read back through the Graph permission check? | Founder creates the Meta development app and test user (runbook section 2). |
+
+Implementation authorization is the gate: a proof of concept is runnable code, so it needs Founder
+authorization in the current session before it starts.

@@ -31,27 +31,25 @@ never receives, prints or stores a value.
 
 | Key Vault secret | Content | Source |
 |---|---|---|
-| `acceptance-razorpay-key-id` | Test key id | Razorpay dashboard, Test Mode, Account & Settings, API Keys |
-| `acceptance-razorpay-key-secret` | Test key secret | Same |
-| `acceptance-razorpay-webhook-secret` | Webhook signing secret for the environment's test webhook | Razorpay dashboard, Test Mode, Webhooks |
 | `acceptance-meta-app-id` | Development-mode app id | Meta for Developers, the acceptance app |
 | `acceptance-meta-app-secret` | App secret | Same |
 | `acceptance-meta-test-user-session` | Saved browser session state for the Meta test user | Produced once by the harness login helper (WC-160) |
 | `acceptance-meta-test-page-id` | Id of the test user's test Page | Meta Graph or Page settings |
 | `acceptance-whatsapp-sandbox-recipient` | Verified test recipient number (E.164) | Founder-controlled test handset |
 | `acceptance-whatsapp-webhook-secret` | App secret used to sign inbound webhook deliveries to this environment | Same Meta app that owns the environment's WhatsApp number (ADR-053) |
-| `acceptance-keycloak-provisioner-client-secret` | Client secret for the group-limited provisioning client | Created with WC-159 |
+| `acceptance-keycloak-provisioner-client-secret` | Client secret for the `waooaw-acceptance-provisioner` client | Generated and stored by the provisioning deployment (WC-159); the Founder enters nothing |
+
+The three existing Razorpay test secrets are reused by exact name and need no entry.
 
 ## Procedure
 
-### 1. Razorpay test mode
+### 1. Razorpay test mode: nothing new to enter
 
-1. Sign in to the Razorpay dashboard and switch to **Test Mode**.
-2. Generate a test API key pair. Record nothing outside the vault.
-3. Create a test webhook pointing at the environment's payment callback address (from the environment
-   profile), choose a signing secret, and subscribe to the payment and order events the product consumes.
-4. Test payments use Razorpay's published test card numbers for success and for decline; the journey names
-   the scenario, not the number.
+Demo already wires `razorpay-test-key-id`, `razorpay-test-key-secret` and `razorpay-test-webhook-secret`
+from its Key Vault into the Billing Engine. The acceptance identity reads those three by exact name, and
+the harness delivers its own signed webhook replays, so the Founder enters no Razorpay value. If a
+dashboard check is wanted, confirm the dashboard is in **Test Mode**. Test payments use Razorpay's published
+test card numbers for success and for decline; the journey names the scenario, not the number.
 
 ### 2. Meta development-mode app
 

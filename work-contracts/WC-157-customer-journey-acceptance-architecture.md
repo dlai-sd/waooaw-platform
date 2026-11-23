@@ -47,7 +47,7 @@
 ## Canonical Requirement Index
 
 None. This contract authorizes no implementation, so its ledger is `NOT_APPLICABLE`. The measurable obligations
-for the future build are the fitness checks F1 to F17 in the architecture, which the implementing contracts
+for the future build are the fitness checks F1 to F18 in the architecture, which the implementing contracts
 convert into requirement IDs.
 
 ## Definition Of Done
