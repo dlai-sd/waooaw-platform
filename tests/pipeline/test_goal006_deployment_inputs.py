@@ -235,6 +235,46 @@ def test_feature_settings_and_founders_pass_through_unchanged_for_any_environmen
         assert inputs["platform_access"] == access
 
 
+@pytest.mark.parametrize("environment", ["demo", "uat"])
+def test_acceptance_synthetic_tenants_setting_is_available_for_demo_and_uat(environment: str) -> None:
+    inputs = create_inputs(
+        environment,
+        manifest(),
+        configured(environment, feature_settings={"acceptance_synthetic_tenants_enabled": True}),
+        True,
+        current_time=datetime(2026, 8, 25, tzinfo=timezone.utc),
+    )
+    assert inputs["feature_settings"] == {"acceptance_synthetic_tenants_enabled": True}
+
+
+@pytest.mark.parametrize("value", [True, False])
+def test_acceptance_synthetic_tenants_setting_is_rejected_for_production_before_terraform(value: bool) -> None:
+    with pytest.raises(ValueError, match="exist only for Demo and UAT"):
+        create_inputs(
+            "prod",
+            manifest(),
+            configured(
+                "prod",
+                feature_settings={"acceptance_synthetic_tenants_enabled": value},
+                ce_min_replicas=1,
+                pr_min_replicas=1,
+            ),
+            True,
+            current_time=datetime(2026, 8, 25, tzinfo=timezone.utc),
+        )
+
+
+def test_acceptance_synthetic_tenants_setting_must_be_a_boolean() -> None:
+    with pytest.raises(ValueError, match="acceptance_synthetic_tenants_enabled must be a boolean"):
+        create_inputs(
+            "demo",
+            manifest(),
+            configured("demo", feature_settings={"acceptance_synthetic_tenants_enabled": "true"}),
+            True,
+            current_time=datetime(2026, 8, 25, tzinfo=timezone.utc),
+        )
+
+
 @pytest.mark.parametrize(
     "fields",
     [

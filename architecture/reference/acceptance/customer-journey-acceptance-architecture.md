@@ -1,6 +1,6 @@
 # Customer Journey Acceptance Architecture
 
-**Status:** PROPOSED - architecture package v1.0 for Founder review (WC-157). No implementation is authorized.
+**Status:** ACCEPTED - architecture package v1.0 accepted by the Founder on 2026-11-23; implementation proceeds under WC-158, WC-159 and WC-160.
 **Owner:** Enterprise Architecture (INST-004)
 **Decisions:** ADR-054 (acceptance architecture), ADR-055 (synthetic tenants and evidence)
 **Capabilities:** 6.3 Record Constitutional Evidence; 6.4 Observe Platform Health and Constitutional Compliance;
@@ -142,7 +142,7 @@ without architectural change.
   PG-26, partly built), the leftover is listed as a cleanup finding and counts toward the synthetic ceiling.
 
 The reviewed test plan for this slice is
-`architecture/reference/acceptance/journey-slice-1.v1.yaml`; the agent's specs implement it step by step.
+`validation/acceptance/plans/slice-1-discover-to-connect.v1.yaml`; the agent's specs implement it step by step.
 
 Slice 2 (publish through the broker with Graph confirmation of the post) and later slices follow the same
 format; they are the strongest emulator-detection steps and depend on removing the Facebook emulator path.

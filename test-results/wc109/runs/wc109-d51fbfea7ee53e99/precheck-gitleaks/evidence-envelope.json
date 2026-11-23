@@ -1,0 +1,35 @@
+{
+  "artifacts": [
+    {
+      "digest": "sha256:de814b4870864175fed612cc0175c3f9151f396d2a922fba990b63b2ab53ff6a",
+      "path": "test-results/wc109/runs/wc109-d51fbfea7ee53e99/precheck-gitleaks/wc109-execution.json"
+    }
+  ],
+  "base_sha": "018d196e184e6a29f5ec4264bfe80d9134ea0cd4",
+  "command_id": "precheck-gitleaks",
+  "component": "cross-cutting",
+  "disposition": "executed",
+  "disposition_proof": {
+    "execution_fresh": true
+  },
+  "duration_ms": 880,
+  "first_cause": "exit-code:1",
+  "gate_id": "precheck:gitleaks",
+  "head_sha": "e53228e6aa04f1f4500a182daa8c93aefbe78411",
+  "identities": {
+    "evidence": "sha256:876b39c720fdf6d445110eee5d3ed8a133a649596a8165ba6ff97a815daac8a1",
+    "runner": "sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854",
+    "subject": "sha256:57516efd9c7a59f0a2f2929bd2229bdd1cf4364b1a79c7e075d09a10bbb08082",
+    "test_execution": "sha256:9a0fb4e0b30a4ae79eaa68cfd5689dd86eee106c866151b7060fc283b1d1507e"
+  },
+  "invocation": {
+    "namespace": "wc109-d51fbfea7ee53e99",
+    "signature": "sha256:4d70fcd10e8a405af0c2731606a74435a4bd48e90626472b3b42e56551cab518",
+    "source": "catalog"
+  },
+  "result": "FAIL",
+  "routing_class": "PRODUCT",
+  "schema": "waooaw.validation-evidence-envelope/v1",
+  "started_at": "2026-11-23T10:42:26.465921+00:00",
+  "trust_source": "local-diagnostic"
+}

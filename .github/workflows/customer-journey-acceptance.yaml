@@ -1,0 +1,210 @@
+# Implements: architecture/reference/acceptance/customer-journey-acceptance-architecture.md §4 Run Lifecycle; adr/ADR-054-customer-journey-acceptance.md items 1, 8, 9, 10
+# Constitutional basis: C-059 (Implementation Traceability), C-065 (Separation of Duties), C-080 (Docker-only execution)
+#
+# Report-only post-deployment acceptance run. Manual trigger only; no GitHub secret or credential variable;
+# nothing in required checks or deployment depends on this workflow (ADR-054 item 8).
+name: Customer Journey Acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to run against (one profile file under validation/acceptance/environments per option)
+        required: true
+        default: demo
+        type: choice
+        options: [demo]
+      journey:
+        description: Versioned journey definition
+        required: true
+        default: slice-1-discover-to-connect
+        type: choice
+        options: [slice-1-discover-to-connect]
+
+concurrency:
+  group: customer-journey-acceptance-${{ inputs.environment }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  runner-supply:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/validation-runner-supply.yaml
+    with:
+      runners: '["python","typescript"]'
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+
+  acceptance:
+    name: Acceptance (${{ inputs.environment }}, ${{ inputs.journey }})
+    needs: runner-supply
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+      packages: read
+      attestations: read
+    env:
+      OUT: ${{ github.workspace }}/test-results/acceptance
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: python
+          token: ${{ github.token }}
+
+      - uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: typescript
+          token: ${{ github.token }}
+
+      - name: Validate static gates and compile the plan and profile
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          JOURNEY: ${{ inputs.journey }}
+        run: |
+          set -euo pipefail
+          echo "PRIVATE=$RUNNER_TEMP/acceptance-private" >> "$GITHUB_ENV"
+          PRIVATE="$RUNNER_TEMP/acceptance-private"
+          mkdir -p "$OUT" "$PRIVATE"
+          chmod 0777 "$OUT"
+          chmod 0700 "$PRIVATE"
+          docker run --rm --user "$(id -u):$(id -g)" -v "$GITHUB_WORKSPACE:/workspace" -w /workspace \
+            "$WAOOAW_RUNNER_PYTHON_IMAGE" python scripts/acceptance_static_gates.py compile \
+            --journey "$JOURNEY" --environment "$ENVIRONMENT" --out /workspace/test-results/acceptance
+          client_id=$(jq -r '.azure.acceptance_client_id // empty' "$OUT/profile.json")
+          if [ -z "$client_id" ]; then
+            echo "::error::The $ENVIRONMENT profile has no acceptance_client_id; the Founder sets it after the acceptance identity is applied (WC-159)."
+            exit 1
+          fi
+          {
+            echo "ACCEPTANCE_CLIENT_ID=$client_id"
+            echo "ACCEPTANCE_TENANT_ID=$(jq -r .azure.tenant_id "$OUT/profile.json")"
+            echo "ACCEPTANCE_SUBSCRIPTION_ID=$(jq -r .azure.subscription_id "$OUT/profile.json")"
+            echo "ACCEPTANCE_RESOURCE_GROUP=$(jq -r .azure.resource_group "$OUT/profile.json")"
+            echo "ACCEPTANCE_KEY_VAULT=$(jq -r .azure.key_vault "$OUT/profile.json")"
+          } >> "$GITHUB_ENV"
+
+      - name: Azure login with the acceptance identity
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3 (Node 24)
+        with:
+          client-id: ${{ env.ACCEPTANCE_CLIENT_ID }}
+          tenant-id: ${{ env.ACCEPTANCE_TENANT_ID }}
+          subscription-id: ${{ env.ACCEPTANCE_SUBSCRIPTION_ID }}
+
+      - name: Bind the candidate and read the effective flags
+        run: |
+          set -euo pipefail
+          test "$(az account show --query id -o tsv)" = "$ACCEPTANCE_SUBSCRIPTION_ID"
+          az containerapp list -g "$ACCEPTANCE_RESOURCE_GROUP" \
+            --query "[].{name:name,image:properties.template.containers[0].image}" -o json > "$RUNNER_TEMP/services.json"
+          az containerapp list -g "$ACCEPTANCE_RESOURCE_GROUP" \
+            --query "[].{key:name,value:properties.template.containers[0].env[?value!=null]}" -o json \
+            | jq 'map({(.key): ((.value // []) | map({(.name): .value}) | add // {})}) | add // {}' > "$OUT/flags.json"
+          jq -n --slurpfile services "$RUNNER_TEMP/services.json" --arg started "$(date -u +%FT%TZ)" \
+            '{services: $services[0], provider_mode_findings: [], synthetic_volume: {customers_created: 0, customers_removed: 0, left_over: []}, started_at: $started}' \
+            > "$OUT/run-meta.json"
+
+      - name: Read the acceptance secrets into a private environment file
+        run: |
+          set -euo pipefail
+          umask 077
+          : > "$PRIVATE/run.env"
+          : > "$RUNNER_TEMP/unreadable-secrets.txt"
+          jq -c '.secrets[]' "$OUT/profile.json" | while read -r entry; do
+            name=$(jq -r .name <<< "$entry")
+            variable=$(jq -r .env <<< "$entry")
+            value=$(az keyvault secret show --vault-name "$ACCEPTANCE_KEY_VAULT" --name "$name" --query value -o tsv 2>/dev/null || true)
+            if [ -n "$value" ]; then
+              echo "::add-mask::$value"
+              printf '%s=%s\n' "$variable" "$value" >> "$PRIVATE/run.env"
+            else
+              echo "$name" >> "$RUNNER_TEMP/unreadable-secrets.txt"
+              echo "Secret $name is absent or unreadable; steps that need it will report NOT-WITNESSED or BLOCKED-BY-FLAG"
+            fi
+          done
+          if [ -s "$RUNNER_TEMP/unreadable-secrets.txt" ]; then
+            # A private Key Vault is unreachable from a GitHub-hosted runner; say so in the report instead of hiding it.
+            jq --rawfile names "$RUNNER_TEMP/unreadable-secrets.txt" \
+              '.provider_mode_findings += [("Key Vault secrets not readable from this runner: " + ($names | rtrimstr("\n") | gsub("\n"; ", ")))]' \
+              "$OUT/run-meta.json" > "$RUNNER_TEMP/run-meta.json"
+            mv "$RUNNER_TEMP/run-meta.json" "$OUT/run-meta.json"
+          fi
+
+      - name: Probe the environment
+        id: probe
+        run: |
+          set +e
+          docker run --rm --user "$(id -u):$(id -g)" -v "$GITHUB_WORKSPACE:/workspace:ro" -v "$OUT:/out" \
+            -w /workspace "$WAOOAW_RUNNER_TYPESCRIPT_IMAGE" \
+            node tests/journey-acceptance/run.ts probe --profile /out/profile.json --out /out
+          code=$?
+          set -e
+          echo "available=$([ "$code" = 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Run the journey
+        if: steps.probe.outputs.available == 'true'
+        continue-on-error: true
+        env:
+          JOURNEY: ${{ inputs.journey }}
+        run: |
+          set -euo pipefail
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -v "$GITHUB_WORKSPACE:/workspace:ro" -v "$OUT:/out" -v "$PRIVATE:/private" \
+            --env-file "$PRIVATE/run.env" \
+            -e ACCEPTANCE_OUT=/out -e ACCEPTANCE_PRIVATE=/private -e ACCEPTANCE_JOURNEY="$JOURNEY" -e HOME=/tmp \
+            -w /workspace "$WAOOAW_RUNNER_TYPESCRIPT_IMAGE" \
+            sh -c 'rm -rf /tmp/ja && cp -a /workspace/tests/journey-acceptance /tmp/ja && ln -s /opt/waooaw-web/node_modules /tmp/ja/node_modules && cd /tmp/ja && playwright test -c playwright.config.ts'
+
+      - name: Remove synthetic users that remain
+        if: always() && steps.probe.outputs.available == 'true'
+        continue-on-error: true
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -v "$GITHUB_WORKSPACE:/workspace:ro" -v "$OUT:/out" -v "$PRIVATE:/private" \
+            --env-file "$PRIVATE/run.env" -e ACCEPTANCE_OUT=/out -e ACCEPTANCE_PRIVATE=/private -e HOME=/tmp \
+            -w /workspace "$WAOOAW_RUNNER_TYPESCRIPT_IMAGE" \
+            node tests/journey-acceptance/run.ts cleanup --profile /out/profile.json --out /out
+
+      - name: Build the report, scan it and withhold it on a leak
+        id: report
+        run: |
+          set +e
+          docker run --rm --user "$(id -u):$(id -g)" -v "$GITHUB_WORKSPACE:/workspace:ro" -v "$OUT:/out" -v "$PRIVATE:/private" \
+            -w /workspace "$WAOOAW_RUNNER_TYPESCRIPT_IMAGE" \
+            node tests/journey-acceptance/run.ts finalize --plan /out/plan.json --profile /out/profile.json \
+            --out /out --private-dir /private --commit "$GITHUB_SHA"
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+          rm -rf "$PRIVATE"
+
+      - name: Publish the summary
+        if: always()
+        run: |
+          if [ -f "$OUT/summary.md" ]; then cat "$OUT/summary.md" >> "$GITHUB_STEP_SUMMARY"; fi
+          if [ -f "$OUT/leak-findings.json" ]; then echo "A secret pattern was found in the artifacts; they were withheld. See leak-findings.json (paths and kinds only)." >> "$GITHUB_STEP_SUMMARY"; fi
+
+      - name: Upload the evidence bundle
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: customer-journey-acceptance-${{ inputs.environment }}-${{ github.run_id }}
+          path: test-results/acceptance
+          if-no-files-found: ignore
+          retention-days: 90
+
+      - name: Apply the verdict (red only for FAIL or ENV-UNAVAILABLE)
+        run: |
+          code='${{ steps.report.outputs.code }}'
+          conclusion=$(cat "$OUT/conclusion.txt" 2>/dev/null || echo failure)
+          if [ "$code" != 0 ] || [ "$conclusion" = failure ]; then
+            echo "::error::Acceptance verdict is red (finalize exit $code, conclusion $conclusion). The result informs; it never blocks promotion."
+            exit 1
+          fi

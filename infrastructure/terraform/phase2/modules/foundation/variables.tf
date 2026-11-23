@@ -117,3 +117,23 @@ variable "log_analytics_workspace_name" {
     error_message = "Log Analytics workspace name must belong to a WAOOAW deployment environment."
   }
 }
+
+variable "acceptance_enabled" {
+  type        = bool
+  description = "Creates the customer journey acceptance identity (ADR-054, WC-159). Demo and UAT only; the Founder enables it."
+  default     = false
+  validation {
+    condition     = !var.acceptance_enabled || contains(["demo", "uat"], var.environment)
+    error_message = "The acceptance identity exists only in demo and uat."
+  }
+}
+
+variable "acceptance_secret_names" {
+  type        = list(string)
+  description = "Exact Key Vault secret names the acceptance identity may read (acceptance- prefix or the three Razorpay test secrets)."
+  default     = []
+  validation {
+    condition     = alltrue([for name in var.acceptance_secret_names : can(regex("^(acceptance-[a-z0-9-]+|razorpay-test-(key-id|key-secret|webhook-secret))$", name))])
+    error_message = "Acceptance secret names must start with acceptance- or be one of the Razorpay test secrets."
+  }
+}

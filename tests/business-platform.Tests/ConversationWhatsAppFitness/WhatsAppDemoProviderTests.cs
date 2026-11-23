@@ -918,6 +918,90 @@ public sealed class WhatsAppDemoProviderTests
         Assert.Equal(1, calls);
     }
 
+    [Fact]
+    public async Task WC159_R005_SyntheticDeliverySuppressedAfterEveryControlNeverReachesTheProviderAndIsRecordedAsNotSent()
+    {
+        var fixture = await SeedAsync();
+        var calls = 0;
+        using var factory = new ClientFactory(
+            (_, _) =>
+            {
+                calls++;
+                throw new InvalidOperationException("A suppressed delivery must not reach provider egress.");
+            }
+        );
+        var gate = new RecordingSyntheticGate(suppress: true);
+        var outcome = await Adapter(fixture, factory, synthetic: gate)
+            .DispatchAsync(fixture.Request, CancellationToken.None);
+        Assert.Equal("NOT_SENT", outcome.State);
+        Assert.Equal(Waooaw.BusinessPlatform.Services.AcceptanceSynthetic.SyntheticDeliveryGate.SuppressedReason, outcome.FailureReason);
+        Assert.Equal(0, calls);
+        Assert.Equal(1, gate.Calls);
+        Assert.StartsWith("+", gate.Recipient);
+    }
+
+    [Fact]
+    public async Task WC159_R006_SyntheticSandboxRecipientStillRunsTheFullDispatchAndReachesTheProvider()
+    {
+        var fixture = await SeedAsync();
+        var calls = 0;
+        using var factory = new ClientFactory(
+            (_, _) =>
+            {
+                calls++;
+                return Task.FromResult(
+                    new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = JsonContent.Create(new { messages = new[] { new { id = "wamid.sandbox-recipient" } } }),
+                    }
+                );
+            }
+        );
+        var gate = new RecordingSyntheticGate(suppress: false);
+        var outcome = await Adapter(fixture, factory, synthetic: gate)
+            .DispatchAsync(fixture.Request, CancellationToken.None);
+        Assert.Equal("PROVIDER_ACCEPTED", outcome.State);
+        Assert.Equal(1, calls);
+        Assert.Equal(1, gate.Calls);
+    }
+
+    [Fact]
+    public async Task WC159_R006_SyntheticLabelNeverBypassesAnEligibilityCheckBecauseTheGateRunsOnlyAfterEveryControl()
+    {
+        var fixture = await SeedAsync();
+        using var factory = new ClientFactory(
+            (_, _) => throw new InvalidOperationException("Ineligible recipient must not reach provider egress.")
+        );
+        var credentials = new Credentials(async () =>
+        {
+            await using var db = fixture.Context.Relationships.CreateDbContext();
+            var contact = await db.WhatsAppJourneyContacts.SingleAsync();
+            contact.OptedOutAt = Now;
+            await db.SaveChangesAsync();
+        });
+        var gate = new RecordingSyntheticGate(suppress: true);
+        var failure = await Assert.ThrowsAsync<WhatsAppCapabilityUnavailableException>(() =>
+            Adapter(fixture, factory, credentials: credentials, synthetic: gate)
+                .DispatchAsync(fixture.Request, CancellationToken.None)
+        );
+        Assert.Equal("RECIPIENT_ELIGIBILITY_REVOKED", failure.ReasonCode);
+        Assert.Equal(0, gate.Calls);
+    }
+
+    private sealed class RecordingSyntheticGate(bool suppress)
+        : Waooaw.BusinessPlatform.Services.AcceptanceSynthetic.ISyntheticDeliveryGate
+    {
+        public int Calls { get; private set; }
+        public string? Recipient { get; private set; }
+
+        public Task<bool> SuppressAsync(WhatsAppProviderDispatchRequest request, string recipient, CancellationToken ct)
+        {
+            Calls++;
+            Recipient = recipient;
+            return Task.FromResult(suppress);
+        }
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -2987,7 +3071,8 @@ public sealed class WhatsAppDemoProviderTests
         ClientFactory factory,
         WhatsAppJourneyOptions? channel = null,
         IWhatsAppProviderCredentials? credentials = null,
-        Microsoft.Extensions.Logging.ILogger<WhatsAppCloudProviderAdapter>? logger = null
+        Microsoft.Extensions.Logging.ILogger<WhatsAppCloudProviderAdapter>? logger = null,
+        Waooaw.BusinessPlatform.Services.AcceptanceSynthetic.ISyntheticDeliveryGate? synthetic = null
     ) =>
         new(
             factory,
@@ -3003,7 +3088,8 @@ public sealed class WhatsAppDemoProviderTests
             ),
             Options.Create(fixture.Context.Options),
             credentials as IWhatsAppWebhookCredentials ?? new Credentials(),
-            logger: logger
+            logger: logger,
+            syntheticDelivery: synthetic
         );
 
     private static WhatsAppKeyVaultCredentials Reader(

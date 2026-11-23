@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
 using Waooaw.BusinessPlatform.Infrastructure;
+using Waooaw.BusinessPlatform.Services.AcceptanceSynthetic;
 using Waooaw.BusinessPlatform.Services.Visitor;
 
 namespace Waooaw.BusinessPlatform.Services;
@@ -1022,6 +1023,8 @@ public sealed class WhatsAppOutboxService(
         record.BlockedReason = observation.State switch
         {
             "REJECTED" => observation.FailureReason ?? "PROVIDER_REJECTED",
+            "NOT_SENT" when observation.FailureReason == SyntheticDeliveryGate.SuppressedReason =>
+                SyntheticDeliveryGate.SuppressedReason,
             "NOT_SENT" => "DISPATCH_AUTHORITY_DENIED",
             _ => null,
         };
@@ -1049,7 +1052,10 @@ public sealed class WhatsAppOutboxService(
                 )
             );
         }
-        else if (record.State == "BLOCKED")
+        else if (
+            record.State == "BLOCKED"
+            && record.BlockedReason != SyntheticDeliveryGate.SuppressedReason
+        )
         {
             db.OperationalSignals.Add(
                 Signal(

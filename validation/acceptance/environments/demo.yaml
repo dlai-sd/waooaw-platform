@@ -1,0 +1,57 @@
+schema: waooaw.acceptance-environment/v1
+environment: demo
+origins:
+  web: https://cp.demo.waooaw.com
+  api: https://api.demo.waooaw.com
+  identity: https://auth.demo.waooaw.com
+azure:
+  tenant_id: 0471534c-1bbe-40ab-ae65-3f721b62582c
+  subscription_id: 2ed11839-6a0f-4eaa-bd94-44ca96ff5d84
+  resource_group: waooaw-demo-rg
+  key_vault: kv-waooaw-demo
+  # Set by the Founder after WC-159's Terraform is applied (ADR-054 item 9); the workflow refuses to run while null.
+  acceptance_client_id: null
+keycloak:
+  realm: waooaw
+  synthetic_group: synthetic
+  username_prefix: acc-
+  email_domain: synthetic.waooaw.test
+probes:
+  - name: web
+    url: https://cp.demo.waooaw.com/
+  - name: identity
+    url: https://auth.demo.waooaw.com/realms/waooaw/.well-known/openid-configuration
+  - name: platform
+    url: https://api.demo.waooaw.com/health/ready
+probe_timeout_ms: 20000
+journeys:
+  - slice-1-discover-to-connect
+synthetic:
+  customers_per_run: 2
+  max_open_relationships: 20
+sandbox:
+  razorpay_key_id_prefix: rzp_test_
+  meta_app_mode: development
+  whatsapp: sandbox
+# Names only. Values are read at run time from the environment's Key Vault by the acceptance identity (ADR-054 item 9).
+secrets:
+  - name: acceptance-keycloak-provisioner-client-secret
+    env: ACCEPTANCE_KEYCLOAK_PROVISIONER_CLIENT_SECRET
+  - name: acceptance-meta-app-id
+    env: ACCEPTANCE_META_APP_ID
+  - name: acceptance-meta-app-secret
+    env: ACCEPTANCE_META_APP_SECRET
+  - name: acceptance-meta-test-user-session
+    env: ACCEPTANCE_META_TEST_USER_SESSION
+  - name: acceptance-meta-test-page-id
+    env: ACCEPTANCE_META_TEST_PAGE_ID
+  - name: acceptance-whatsapp-sandbox-recipient
+    env: ACCEPTANCE_WHATSAPP_SANDBOX_RECIPIENT
+  - name: acceptance-whatsapp-webhook-secret
+    env: ACCEPTANCE_WHATSAPP_WEBHOOK_SECRET
+  - name: razorpay-test-key-id
+    env: ACCEPTANCE_RAZORPAY_KEY_ID
+  - name: razorpay-test-key-secret
+    env: ACCEPTANCE_RAZORPAY_KEY_SECRET
+  - name: razorpay-test-webhook-secret
+    env: ACCEPTANCE_RAZORPAY_WEBHOOK_SECRET

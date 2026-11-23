@@ -1,7 +1,10 @@
 // Implements: WC-107 R017-R018 privacy-safe journey telemetry
 // Constitutional basis: C-059, C-063
 using System.Diagnostics;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.Extensions.Options;
+using Waooaw.BusinessPlatform.Services.AcceptanceSynthetic;
 
 namespace Waooaw.BusinessPlatform.Middleware;
 
@@ -43,6 +46,38 @@ public sealed class JourneyTelemetryMiddleware(RequestDelegate next)
         var status = context.Response.StatusCode;
         activity?.SetTag("waooaw.journey.status_class", StatusClass(status));
         activity?.SetTag("waooaw.journey.outcome", TypedOutcome(operation, status));
+        if (activity is not null && await IsSyntheticActorAsync(context))
+            activity.SetTag(SyntheticTag, true);
+    }
+
+    // Business metrics built from journey telemetry exclude spans tagged synthetic (ADR-055 decision 4).
+    public const string SyntheticTag = "waooaw.synthetic";
+
+    private static async Task<bool> IsSyntheticActorAsync(HttpContext context)
+    {
+        if (
+            context
+                .RequestServices?.GetService<IOptions<AcceptanceSyntheticOptions>>()
+                ?.Value.Enabled != true
+            || context.User.FindFirstValue("iss") is not { } issuer
+            || (
+                context.User.FindFirstValue("sub")
+                ?? context.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            )
+                is not { } subject
+        )
+            return false;
+        try
+        {
+            return await context
+                .RequestServices.GetRequiredService<ISyntheticAcceptanceRegistry>()
+                .IsSyntheticActorAsync(issuer, subject, context.RequestAborted);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // Telemetry labelling never fails a request whose response is already produced.
+            return false;
+        }
     }
 
     internal static string StatusClass(int status) =>

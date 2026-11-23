@@ -1,0 +1,112 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-158
+contract_path: work-contracts/WC-158-acceptance-harness-core.md
+contract_digest: a609fb8b03595dfd7165f12d1e68251fdcbdb1a6ef630736ec6e2319d5356250
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Harness unit tests in the digest-pinned TypeScript runner and static gate tests in the Python runner, run in Docker at the exact head; commands and results in the PR body
+  initial_state: expected-fail
+  dependencies: ADR-054 and ADR-055 accepted; Founder authorization of this implementing session (current conversation)
+  residual_risk: Nothing was run against Demo or any provider; the hosted workflow is unproven until the Founder runs it
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC158-R001
+    source: WC-158 Canonical Requirement Index, R001
+    observable_outcome: A push trigger added to the acceptance workflow, or a missing concurrency group, fails the static gate; the committed workflow has only workflow_dispatch.
+    test_path_or_plan: tests/pipeline/test_acceptance_static_gates.py::test_workflow_is_manual_only_report_only_and_holds_no_credential; tests/pipeline/test_acceptance_static_gates.py::test_a_push_trigger_a_secret_and_an_environment_branch_are_each_refused.
+
+  - <<: *defaults
+    requirement_id: WC158-R002
+    source: WC-158 Canonical Requirement Index, R002
+    observable_outcome: A reference to any secret other than the automatic token, an inherited secret, or a credential-named variable fails the static gate.
+    test_path_or_plan: tests/pipeline/test_acceptance_static_gates.py::test_a_push_trigger_a_secret_and_an_environment_branch_are_each_refused.
+
+  - <<: *defaults
+    requirement_id: WC158-R003
+    source: WC-158 Canonical Requirement Index, R003
+    observable_outcome: An environment option without a profile, a profile without an option, a workflow condition on the environment name, or harness code comparing an environment name each fail the static gate.
+    test_path_or_plan: tests/pipeline/test_acceptance_static_gates.py::test_the_environment_option_list_must_equal_the_profile_files; tests/pipeline/test_acceptance_static_gates.py::test_harness_code_may_not_branch_on_an_environment_name.
+
+  - <<: *defaults
+    requirement_id: WC158-R004
+    source: WC-158 Canonical Requirement Index, R004
+    observable_outcome: A claim with one witness and no reasoned exception is refused in the harness and in the plan gate; an unreadable required witness is NOT-WITNESSED.
+    test_path_or_plan: tests/journey-acceptance/__tests__/claim.test.ts; tests/pipeline/test_acceptance_static_gates.py::test_a_claim_with_one_witness_needs_a_listed_exception.
+
+  - <<: *defaults
+    requirement_id: WC158-R005
+    source: WC-158 Canonical Requirement Index, R005
+    observable_outcome: A step with no identifier, or citing an identifier absent from its register or ledger, fails the plan gate.
+    test_path_or_plan: tests/pipeline/test_acceptance_static_gates.py::test_a_step_without_identifiers_or_with_an_unknown_one_is_refused.
+
+  - <<: *defaults
+    requirement_id: WC158-R006
+    source: WC-158 Canonical Requirement Index, R006
+    observable_outcome: A provider that reports no payment while screen and platform claim success yields FAIL; a stale screen against a fresh platform record yields FAIL.
+    test_path_or_plan: tests/journey-acceptance/__tests__/claim.test.ts negative control tests.
+
+  - <<: *defaults
+    requirement_id: WC158-R007
+    source: WC-158 Canonical Requirement Index, R007
+    observable_outcome: A seeded token, a seeded customer B identifier, personal data, an accessibility violation and a missing Emergency Stop are each detected.
+    test_path_or_plan: tests/journey-acceptance/__tests__/guards.test.ts.
+
+  - <<: *defaults
+    requirement_id: WC158-R008
+    source: WC-158 Canonical Requirement Index, R008
+    observable_outcome: A seeded secret or run-generated literal in an artifact fails the run, empties the artifact directory and leaves only paths and kinds.
+    test_path_or_plan: tests/journey-acceptance/__tests__/guards.test.ts pre-upload scan test; tests/journey-acceptance/__tests__/cli.test.ts secret-in-artifact test.
+
+  - <<: *defaults
+    requirement_id: WC158-R009
+    source: WC-158 Canonical Requirement Index, R009
+    observable_outcome: A customer B identifier in a customer A response is a recorded guard finding that fails the run.
+    test_path_or_plan: tests/journey-acceptance/__tests__/guards.test.ts foreign identifier tests; tests/journey-acceptance/__tests__/report.test.ts guard-finding test.
+
+  - <<: *defaults
+    requirement_id: WC158-R010
+    source: WC-158 Canonical Requirement Index, R010
+    observable_outcome: The report equals the committed sample, validates against its structural validator and its JSON Schema, and lists what was not tested before what passed.
+    test_path_or_plan: tests/journey-acceptance/__tests__/report.test.ts; tests/pipeline/test_acceptance_static_gates.py::test_the_committed_sample_report_validates_against_the_report_schema.
+
+  - <<: *defaults
+    requirement_id: WC158-R011
+    source: WC-158 Canonical Requirement Index, R011
+    observable_outcome: Depth above L2 needs the platform witness, L5 needs a declared failure path, and a step that did not pass stops at L2.
+    test_path_or_plan: tests/journey-acceptance/__tests__/depth.test.ts.
+
+  - <<: *defaults
+    requirement_id: WC158-R012
+    source: WC-158 Canonical Requirement Index, R012
+    observable_outcome: Only FAIL and ENV-UNAVAILABLE give a red conclusion; no workflow, catalog entry or rule references the acceptance workflow.
+    test_path_or_plan: tests/journey-acceptance/__tests__/report.test.ts conclusion test; tests/pipeline/test_acceptance_static_gates.py::test_nothing_else_may_depend_on_the_acceptance_workflow.
+
+  - <<: *defaults
+    requirement_id: WC158-R013
+    source: WC-158 Canonical Requirement Index, R013
+    observable_outcome: A lower floor, a removed covered identifier, an uncovered live-scope identifier or a new deferral fails the ratchet gate.
+    test_path_or_plan: tests/pipeline/test_acceptance_static_gates.py::test_the_coverage_ratchet_refuses_a_lower_floor_a_removed_cover_and_a_new_deferral; tests/pipeline/test_acceptance_static_gates.py::test_a_deferral_not_accepted_in_the_baseline_is_refused.
+
+  - <<: *defaults
+    requirement_id: WC158-R014
+    source: WC-158 Canonical Requirement Index, R014
+    observable_outcome: A plan step without a spec, a spec citing an unknown step, or a spec citing an identifier its step does not prove fails the gate.
+    test_path_or_plan: tests/pipeline/test_acceptance_static_gates.py::test_plan_and_specs_must_agree_in_both_directions.
+
+  - <<: *defaults
+    requirement_id: WC158-R015
+    source: WC-158 Canonical Requirement Index, R015
+    observable_outcome: An unreachable or non-answering environment yields ENV-UNAVAILABLE inside the probe timeout with zero step failures and a red conclusion.
+    test_path_or_plan: tests/journey-acceptance/__tests__/probe.test.ts; tests/journey-acceptance/__tests__/cli.test.ts stopped-environment test.
+
+  - <<: *defaults
+    requirement_id: WC158-R016
+    source: WC-158 Canonical Requirement Index, R016
+    observable_outcome: quality:scripts runs the static gate and its pytest files, and quality:typescript type-checks and covers the harness, on every pull request that changes the inputs.
+    test_path_or_plan: validation/engineering-validation.yaml quality-scripts and scripts_quality inputs; scripts/validation_control/run_typescript_quality_gate.sh; run in Docker, result in the PR body.

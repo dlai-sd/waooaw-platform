@@ -1,0 +1,66 @@
+{
+  "schema": "waooaw.keycloak-realm-fragment/v1",
+  "decision": "ADR-055 decision 2",
+  "environments": ["demo", "uat"],
+  "applyPath": "Merged into the environment's realm definition by the Founder-authorized Keycloak realm change; this file only authors the objects and is not applied by any workflow.",
+  "realm": {
+    "adminEventsEnabled": true,
+    "adminEventsDetailsEnabled": false,
+    "roles": { "realm": [{ "name": "acceptance-provisioner", "description": "Held only by the acceptance provisioning client; never assignable to customers." }] },
+    "groups": [{ "name": "synthetic" }]
+  },
+  "clients": [
+    {
+      "clientId": "waooaw-acceptance-provisioner",
+      "name": "WAOOAW Customer Journey Acceptance Provisioner",
+      "enabled": true,
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "fullScopeAllowed": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${ACCEPTANCE_PROVISIONER_CLIENT_SECRET}",
+      "defaultClientScopes": ["roles"],
+      "optionalClientScopes": [],
+      "attributes": { "access.token.lifespan": "60" },
+      "protocolMappers": [
+        {
+          "name": "realm-management-manage-users",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-role-mapper",
+          "config": { "role": "realm-management.manage-users" }
+        },
+        {
+          "name": "realm-management-view-events",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-role-mapper",
+          "config": { "role": "realm-management.view-events" }
+        },
+        {
+          "name": "realm-acceptance-provisioner",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-role-mapper",
+          "config": { "role": "acceptance-provisioner" }
+        },
+        {
+          "name": "audience-waooaw-platform",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": { "included.client.audience": "waooaw-platform", "access.token.claim": "true", "id.token.claim": "false" }
+        }
+      ]
+    }
+  ],
+  "serviceAccountUsers": [
+    {
+      "username": "service-account-waooaw-acceptance-provisioner",
+      "enabled": true,
+      "serviceAccountClientId": "waooaw-acceptance-provisioner",
+      "clientRoles": { "realm-management": ["manage-users", "view-events"] },
+      "realmRoles": ["acceptance-provisioner"]
+    }
+  ],
+  "rotation": { "class": "90-day versioned overlap", "reference": "keycloak-lifecycle-writer-client-secret (WC-123)" }
+}

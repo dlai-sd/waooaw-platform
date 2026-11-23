@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using OpenTelemetry;
 using Waooaw.BusinessPlatform.Infrastructure;
+using Waooaw.BusinessPlatform.Services.AcceptanceSynthetic;
 
 namespace Waooaw.BusinessPlatform.Services;
 
@@ -29,7 +30,8 @@ public sealed class WhatsAppCloudProviderAdapter(
     IWhatsAppWebhookCredentials? webhookCredentials = null,
     WhatsAppTenantExecutionScope? execution = null,
     WhatsAppRelationshipRouting? relationshipRouting = null,
-    ILogger<WhatsAppCloudProviderAdapter>? logger = null
+    ILogger<WhatsAppCloudProviderAdapter>? logger = null,
+    ISyntheticDeliveryGate? syntheticDelivery = null
 ) : IWhatsAppProviderAdapter
 {
     private static readonly JsonSerializerOptions CanonicalBlockJson = new(
@@ -409,6 +411,27 @@ public sealed class WhatsAppCloudProviderAdapter(
             );
         if (protectedValues.ValidUntil <= clock.GetUtcNow())
             throw new WhatsAppCapabilityUnavailableException("PROVIDER_AUTHORITY_EXPIRED");
+        // After every authority, recipient, stop and eligibility check: the label can only remove a send.
+        if (
+            syntheticDelivery is not null
+            && await syntheticDelivery.SuppressAsync(
+                request,
+                recipientPhoneNumber,
+                cancellationToken
+            )
+        )
+        {
+            var suppressedAt = clock.GetUtcNow();
+            return new WhatsAppDispatchObservation(
+                "NOT_SENT",
+                Hash($"suppressed-provider-reference:{request.OutboxId:D}"),
+                Hash($"suppressed:{request.OutboxId:D}:{request.AttemptNumber}:{suppressedAt:O}"),
+                suppressedAt
+            )
+            {
+                FailureReason = SyntheticDeliveryGate.SuppressedReason,
+            };
+        }
         var reservedAuthority = customerRoute is null
             ? await budget.ReserveAsync(request, outbox.RecipientBindingDigest, cancellationToken)
             : await budget.ReserveRelationshipOutboundAsync(

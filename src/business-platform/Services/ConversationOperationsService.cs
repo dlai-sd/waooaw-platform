@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Waooaw.BusinessPlatform.Infrastructure;
+using Waooaw.BusinessPlatform.Services.AcceptanceSynthetic;
 
 namespace Waooaw.BusinessPlatform.Services;
 
@@ -38,6 +39,8 @@ public sealed class ConversationOperationsService(
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var environment = options.Value.Environment;
+        // A suppressed synthetic delivery is recorded as BLOCKED but is not a dead letter.
+        var suppressed = SyntheticDeliveryGate.SuppressedReason;
         var queue = db
             .ConversationOutbox.AsNoTracking()
             .Where(value => value.Environment == environment);
@@ -48,10 +51,10 @@ public sealed class ConversationOperationsService(
             .Where(value => value.State == "UNRESOLVED")
             .MinAsync(value => (DateTimeOffset?)value.UpdatedAt, cancellationToken);
         var oldestBlockedAt = await queue
-            .Where(value => value.State == "BLOCKED")
+            .Where(value => value.State == "BLOCKED" && value.BlockedReason != suppressed)
             .MinAsync(value => (DateTimeOffset?)value.UpdatedAt, cancellationToken);
         var blockedCount = await queue.CountAsync(
-            value => value.State == "BLOCKED",
+            value => value.State == "BLOCKED" && value.BlockedReason != suppressed,
             cancellationToken
         );
         var unresolvedCount = await queue.CountAsync(

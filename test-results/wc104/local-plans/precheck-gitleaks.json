@@ -1,8 +1,8 @@
 {
   "authoritative": false,
   "catalog_version": "wc121-selective-validation-v1",
-  "execution_namespace": "wc109-74e07e3d3c6d8432",
-  "head_sha": "52a718cfd07a2c018c421fb80f05a121a4509f51",
+  "execution_namespace": "wc109-d51fbfea7ee53e99",
+  "head_sha": "e53228e6aa04f1f4500a182daa8c93aefbe78411",
   "machine_checkable": true,
   "mode": "qualification",
   "nodes": [
@@ -18,7 +18,7 @@
       "command": "sh scripts/validation_control/run_gitleaks_gate.sh",
       "command_id": "precheck-gitleaks",
       "components": [],
-      "compose_project": "wc109-74e07e3d3c6d8432",
+      "compose_project": "wc109-d51fbfea7ee53e99",
       "compose_service": "test-runner-python",
       "cost_class": "STATIC",
       "direct_prerequisites": [],
@@ -32,7 +32,7 @@
             "test-results/**/*.json"
           ]
         },
-        "directory": "test-results/wc109/runs/wc109-74e07e3d3c6d8432/precheck-gitleaks"
+        "directory": "test-results/wc109/runs/wc109-d51fbfea7ee53e99/precheck-gitleaks"
       },
       "gate_id": "precheck:gitleaks",
       "inputs": {
@@ -40,7 +40,7 @@
         "catalog_version": "wc121-selective-validation-v1",
         "command_id": "precheck-gitleaks",
         "environment": [],
-        "head_sha": "52a718cfd07a2c018c421fb80f05a121a4509f51",
+        "head_sha": "e53228e6aa04f1f4500a182daa8c93aefbe78411",
         "required_services": [],
         "runner_id": "python"
       },
@@ -66,7 +66,7 @@
           "environment"
         ]
       },
-      "output_directory": "test-results/wc109/runs/wc109-74e07e3d3c6d8432/precheck-gitleaks",
+      "output_directory": "test-results/wc109/runs/wc109-d51fbfea7ee53e99/precheck-gitleaks",
       "owner": "validation-control",
       "phase": "A_DESIGN",
       "product_image_builds": [],

@@ -1,0 +1,35 @@
+{
+  "artifacts": [
+    {
+      "digest": "sha256:895c4757151fea759b0595b2c24e22fe61ee945e02d40b5e70a525d5262cb8cf",
+      "path": "test-results/wc109/runs/wc109-bd019d9f4181ce61/quality-dotnet-business-platform/wc109-execution.json"
+    }
+  ],
+  "base_sha": "018d196e184e6a29f5ec4264bfe80d9134ea0cd4",
+  "command_id": "quality-dotnet-business-platform",
+  "component": "cross-cutting",
+  "disposition": "executed",
+  "disposition_proof": {
+    "execution_fresh": true
+  },
+  "duration_ms": 54384,
+  "first_cause": "none",
+  "gate_id": "quality:dotnet:business-platform",
+  "head_sha": "e53228e6aa04f1f4500a182daa8c93aefbe78411",
+  "identities": {
+    "evidence": "sha256:c04b6cce91bd05a25c2ca0644bc0985d20c7ef31b6f9039adc7c61cfdc6a0817",
+    "runner": "sha256:56286e3385853d2daef4189f04e957e98506f5d2e05619dc507bcc62ac2dab51",
+    "subject": "sha256:57516efd9c7a59f0a2f2929bd2229bdd1cf4364b1a79c7e075d09a10bbb08082",
+    "test_execution": "sha256:58a790996b2a1935864d1f60a0a2f30d3baa0a536944285c5cbc9eba147e8abc"
+  },
+  "invocation": {
+    "namespace": "wc109-bd019d9f4181ce61",
+    "signature": "sha256:64081781fbf806ddc2ad47f79427c3b37e0b84e6c92ba9cad968d9e5005f613d",
+    "source": "catalog"
+  },
+  "result": "PASS",
+  "routing_class": "NONE",
+  "schema": "waooaw.validation-evidence-envelope/v1",
+  "started_at": "2026-11-23T10:42:26.635580+00:00",
+  "trust_source": "local-diagnostic"
+}

@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "waooaw.acceptance-environment/v1",
+  "title": "Acceptance environment profile (non-secret data only; ADR-054 item 1, settings policy S1 and S3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "environment", "origins", "azure", "keycloak", "probes", "probe_timeout_ms", "secrets", "journeys", "synthetic", "sandbox"],
+  "properties": {
+    "schema": { "const": "waooaw.acceptance-environment/v1" },
+    "environment": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,14}$" },
+    "origins": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["web", "api", "identity"],
+      "properties": {
+        "web": { "type": "string", "pattern": "^https://[a-z0-9.-]+$" },
+        "api": { "type": "string", "pattern": "^https://[a-z0-9.-]+$" },
+        "identity": { "type": "string", "pattern": "^https://[a-z0-9.-]+$" }
+      }
+    },
+    "azure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "subscription_id", "resource_group", "key_vault", "acceptance_client_id"],
+      "properties": {
+        "tenant_id": { "type": "string", "pattern": "^[0-9a-f-]{36}$" },
+        "subscription_id": { "type": "string", "pattern": "^[0-9a-f-]{36}$" },
+        "resource_group": { "type": "string", "minLength": 3 },
+        "key_vault": { "type": "string", "minLength": 3 },
+        "acceptance_client_id": { "type": ["string", "null"], "pattern": "^[0-9a-f-]{36}$" }
+      }
+    },
+    "keycloak": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["realm", "synthetic_group", "username_prefix", "email_domain"],
+      "properties": {
+        "realm": { "type": "string", "minLength": 1 },
+        "synthetic_group": { "const": "synthetic" },
+        "username_prefix": { "type": "string", "pattern": "^[a-z]{2,6}-$" },
+        "email_domain": { "type": "string", "pattern": "^[a-z0-9.-]+\\.test$" }
+      }
+    },
+    "probes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "url"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "url": { "type": "string", "pattern": "^https://" }
+        }
+      }
+    },
+    "probe_timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 120000 },
+    "secrets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "env"],
+        "properties": {
+          "name": { "type": "string", "pattern": "^(acceptance-[a-z0-9-]+|razorpay-test-[a-z-]+)$" },
+          "env": { "type": "string", "pattern": "^ACCEPTANCE_[A-Z0-9_]+$" }
+        }
+      }
+    },
+    "journeys": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "synthetic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["customers_per_run", "max_open_relationships"],
+      "properties": {
+        "customers_per_run": { "const": 2 },
+        "max_open_relationships": { "type": "integer", "minimum": 1, "maximum": 100 }
+      }
+    },
+    "sandbox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["razorpay_key_id_prefix", "meta_app_mode", "whatsapp"],
+      "properties": {
+        "razorpay_key_id_prefix": { "const": "rzp_test_" },
+        "meta_app_mode": { "const": "development" },
+        "whatsapp": { "const": "sandbox" }
+      }
+    }
+  }
+}

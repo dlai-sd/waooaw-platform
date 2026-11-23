@@ -1,7 +1,7 @@
 schema: waooaw.journey-test-plan/v1
 journey_id: slice-1-discover-to-connect
 version: 1
-status: PROPOSED
+status: ACCEPTED
 architecture: architecture/reference/acceptance/customer-journey-acceptance-architecture.md
 decisions: [ADR-054, ADR-055]
 agent_under_test: digital-marketing-agent

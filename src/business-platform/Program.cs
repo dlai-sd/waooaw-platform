@@ -21,6 +21,7 @@ using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Middleware;
 using Waooaw.BusinessPlatform.Services;
+using Waooaw.BusinessPlatform.Services.AcceptanceSynthetic;
 using Waooaw.BusinessPlatform.Services.PlatformAccess;
 using Waooaw.BusinessPlatform.Services.Spend;
 using Waooaw.BusinessPlatform.Services.Workbench;
@@ -83,6 +84,7 @@ if (Uri.TryCreate(otlpEndpoint, UriKind.Absolute, out var otlpUri))
         .WithMetrics(metrics =>
             metrics
                 .AddMeter(Waooaw.BusinessPlatform.Services.Visitor.VisitorTelemetry.MeterName)
+                .AddMeter(SyntheticAcceptanceTelemetry.MeterName)
                 .AddOtlpExporter(options => options.Endpoint = otlpUri)
         );
 }
@@ -793,6 +795,19 @@ builder
 builder.Services.AddSingleton<IPlatformAccessStore, PostgresPlatformAccessStore>();
 builder.Services.AddSingleton<IClaimsTransformation, PlatformRoleClaimsTransformation>();
 builder.Services.AddHostedService<PlatformFounderBootstrapService>();
+
+// ── Synthetic acceptance tenants — WC-159 / ADR-055: default off, Demo and UAT only ──────────────────
+builder.Services.AddSingleton<
+    IValidateOptions<AcceptanceSyntheticOptions>,
+    AcceptanceSyntheticOptionsValidator
+>();
+builder
+    .Services.AddOptions<AcceptanceSyntheticOptions>()
+    .Bind(builder.Configuration.GetSection(AcceptanceSyntheticOptions.SectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton<ISyntheticAcceptanceRegistry, PostgresSyntheticAcceptanceRegistry>();
+builder.Services.AddSingleton<SyntheticTenantInheritance>();
+builder.Services.AddSingleton<ISyntheticDeliveryGate, SyntheticDeliveryGate>();
 builder.Services.AddSingleton<
     IValidateOptions<ConversationBatchingOptions>,
     ConversationBatchingOptionsValidator
@@ -1187,7 +1202,10 @@ app.UseMiddleware<CustomerMembershipMiddleware>();
 app.UseWhen(
     context =>
         !context.Items.ContainsKey(CustomerMembershipMiddleware.JourneyItem)
-        && !context.Items.ContainsKey(CustomerMembershipMiddleware.StaffItem),
+        && !context.Items.ContainsKey(CustomerMembershipMiddleware.StaffItem)
+        // The internal acceptance route carries no tenant; its guard decides authority before anything is read.
+        && context.GetEndpoint()?.Metadata.GetMetadata<AcceptanceProvisionerRouteAttribute>()
+            is null,
     branch => branch.UseTenantIsolation()
 );
 

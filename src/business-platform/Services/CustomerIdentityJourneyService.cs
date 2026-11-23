@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Waooaw.BusinessPlatform.Infrastructure;
+using Waooaw.BusinessPlatform.Services.AcceptanceSynthetic;
 
 namespace Waooaw.BusinessPlatform.Services;
 
@@ -14,7 +15,8 @@ public sealed class CustomerIdentityJourneyService(
     IdentityService identity,
     IDbContextFactory<IdentityDbContext> factory,
     VerifiedIdentityProofAdapter proofAdapter,
-    IdentityProviderProjectionService providers
+    IdentityProviderProjectionService providers,
+    SyntheticTenantInheritance? syntheticTenants = null
 )
 {
     public bool IsAvailable => proofAdapter.IsConfigured;
@@ -189,7 +191,7 @@ public sealed class CustomerIdentityJourneyService(
     }
 
     private CustomerWorkspaceProvisioningService Provisioning(CustomerWorkspaceTrust trust) =>
-        new(factory, trust);
+        new(factory, trust, null, syntheticTenants);
 
     private static string ProviderId(IdentityAuthenticationPath authenticationPath) =>
         authenticationPath switch

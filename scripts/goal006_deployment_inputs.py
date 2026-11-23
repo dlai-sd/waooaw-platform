@@ -54,7 +54,10 @@ FEATURE_SETTING_TYPES: dict[str, Any] = {
     "wallet_authority": ("LEGACY", "SHADOW", "WALLET"),
     "trial_identity_binding_mode": ("OFF", "RECORD", "ENFORCE"),
     "whatsapp_stop_acknowledgement_enabled": bool,
+    "acceptance_synthetic_tenants_enabled": bool,
 }
+# Settings that exist only for Demo and UAT; Production rejects the key before Terraform (ADR-055 decision 4).
+NON_PRODUCTION_FEATURE_SETTINGS = frozenset({"acceptance_synthetic_tenants_enabled"})
 FOUNDER_EMAIL = re.compile(r"[a-z0-9._%+-]+@[a-z0-9.-]+[.][a-z]{2,}")
 FOUNDER_SUBJECT = re.compile(r"[A-Za-z0-9._:@-]{8,128}")
 
@@ -310,6 +313,17 @@ def create_inputs(
         raise ValueError("environment must be demo, uat, or prod")
     if configuration.get("whatsapp_provider") is not None and environment != "demo":
         raise ValueError("WhatsApp provider configuration is Demo-only")
+    configured_settings = configuration.get("feature_settings")
+    if (
+        environment == "prod"
+        and isinstance(configured_settings, Mapping)
+        and NON_PRODUCTION_FEATURE_SETTINGS & set(configured_settings)
+    ):
+        raise ValueError(
+            "feature_settings "
+            + ", ".join(sorted(NON_PRODUCTION_FEATURE_SETTINGS & set(configured_settings)))
+            + " exist only for Demo and UAT"
+        )
     if not ghcr_packages_public_verified:
         raise ValueError("anonymous digest pulls must be verified for all exact-seven GHCR packages")
     secret_uris = configuration.get("key_vault_secret_uris")

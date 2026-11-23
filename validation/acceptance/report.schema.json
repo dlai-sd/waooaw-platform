@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "waooaw.acceptance-report/v1",
+  "title": "Acceptance report (ADR-054 items 5, 8, 11; C-049: not-tested precedes passed)",
+  "type": "object",
+  "required": [
+    "schema",
+    "verdict",
+    "workflow_conclusion",
+    "candidate",
+    "not_tested",
+    "failures",
+    "guard_findings",
+    "provider_mode_findings",
+    "synthetic_volume",
+    "coverage",
+    "steps",
+    "passed"
+  ],
+  "properties": {
+    "schema": { "const": "waooaw.acceptance-report/v1" },
+    "verdict": { "enum": ["PASS", "FAIL", "BLOCKED-BY-FLAG", "NOT-COVERED", "NOT-WITNESSED", "ENV-UNAVAILABLE", "FLAKY"] },
+    "workflow_conclusion": { "enum": ["success", "failure"] },
+    "candidate": {
+      "type": "object",
+      "required": ["environment", "journey_id", "commit", "journey_digest", "profile_digest", "services", "started_at", "finished_at"],
+      "properties": {
+        "environment": { "type": "string" },
+        "journey_id": { "type": "string" },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "journey_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "profile_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "services": {
+          "type": "array",
+          "items": { "type": "object", "required": ["name", "image"], "properties": { "name": { "type": "string" }, "image": { "type": "string" } } }
+        },
+        "started_at": { "type": "string" },
+        "finished_at": { "type": "string" }
+      }
+    },
+    "not_tested": {
+      "type": "object",
+      "required": ["environment_unavailable", "not_covered", "not_covered_steps", "not_witnessed", "blocked_by_flag", "flaky", "declared_limits"],
+      "properties": {
+        "environment_unavailable": { "type": "boolean" },
+        "not_covered": { "type": "array" },
+        "not_covered_steps": { "type": "array" },
+        "not_witnessed": { "type": "array" },
+        "blocked_by_flag": { "type": "array" },
+        "flaky": { "type": "array" },
+        "declared_limits": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "failures": { "type": "array" },
+    "guard_findings": { "type": "array" },
+    "provider_mode_findings": { "type": "array", "items": { "type": "string" } },
+    "synthetic_volume": {
+      "type": "object",
+      "required": ["customers_created", "customers_removed", "left_over"],
+      "properties": {
+        "customers_created": { "type": "integer" },
+        "customers_removed": { "type": "integer" },
+        "left_over": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["depth", "steps"],
+        "properties": {
+          "depth": { "enum": ["L1", "L2", "L3", "L4", "L5", "NOT-COVERED"] },
+          "steps": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["stepId", "verdict", "identifiers", "retries", "reason"],
+        "properties": {
+          "verdict": { "enum": ["PASS", "FAIL", "BLOCKED-BY-FLAG", "NOT-COVERED", "NOT-WITNESSED", "ENV-UNAVAILABLE", "FLAKY"] }
+        }
+      }
+    },
+    "passed": { "type": "array", "items": { "type": "string" } }
+  }
+}

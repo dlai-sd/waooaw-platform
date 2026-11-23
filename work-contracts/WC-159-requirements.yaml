@@ -1,0 +1,88 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-159
+contract_path: work-contracts/WC-159-synthetic-tenant-support.md
+contract_digest: 32942f63f4dec155f23ce2b00052ad7a6407aaf9d1498768cdd09c9e374d9ae3
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: .NET tests in the Business Platform runner, harness tests in the TypeScript runner and contract tests in the Python runner, run in Docker at the exact head; commands and results in the PR body
+  initial_state: expected-fail
+  dependencies: ADR-055 accepted; Founder authorization of this implementing session (current conversation)
+  residual_risk: No Terraform apply, Keycloak change, secret entry or Demo run occurred; real-form login and OTP step-up (POC-1) is unproven
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC159-R001
+    source: WC-159 Canonical Requirement Index, R001
+    observable_outcome: With the setting off every acceptance route answers the same not-found and nothing changes for customers; the setting is refused for production in three places.
+    test_path_or_plan: tests/business-platform.Tests/AcceptanceSynthetic AcceptanceSyntheticRouteTests WC159_R001_*, SyntheticAcceptanceRegistryPostgresTests WC159_R001_*, SyntheticEffectsTests WC159_R001_*; tests/pipeline/test_goal006_deployment_inputs.py.
+
+  - <<: *defaults
+    requirement_id: WC159-R002
+    source: WC-159 Canonical Requirement Index, R002
+    observable_outcome: Only a verified token with the acceptance-provisioner role issued to the provisioning client is accepted; customers, other roles and forged claims are refused.
+    test_path_or_plan: tests/business-platform.Tests/AcceptanceSynthetic AcceptanceSyntheticRouteTests WC159_R002_*; SyntheticAcceptanceRegistryPostgresTests WC159_R002_*.
+
+  - <<: *defaults
+    requirement_id: WC159-R003
+    source: WC-159 Canonical Requirement Index, R003
+    observable_outcome: A tenant created at first login by a registered (iss, sub) is labelled synthetic; a forged claim or body leaves it unlabelled.
+    test_path_or_plan: SyntheticAcceptanceRegistryPostgresTests WC159_R003_*; CustomerIdentityJourneyHttpPostgresTests WC159_R003_Http_*.
+
+  - <<: *defaults
+    requirement_id: WC159-R004
+    source: WC-159 Canonical Requirement Index, R004
+    observable_outcome: Synthetic tenants are excluded from journey metrics and labelled in records; the registry tables grant no delete or update beyond deactivation, so evidence is retained.
+    test_path_or_plan: SyntheticEffectsTests WC159_R004_*; SyntheticAcceptanceRegistryPostgresTests WC159_R004_Migration*.
+
+  - <<: *defaults
+    requirement_id: WC159-R005
+    source: WC-159 Canonical Requirement Index, R005
+    observable_outcome: A message from a synthetic tenant to a non-sandbox recipient is suppressed, recorded and counted without a dead-letter signal.
+    test_path_or_plan: SyntheticEffectsTests WC159_R005_*; SyntheticAcceptanceRegistryPostgresTests WC159_R005_*; WhatsAppDemoProviderTests WC159_R005_*; WhatsAppOutboxWorkerTests WC159_R005_*.
+
+  - <<: *defaults
+    requirement_id: WC159-R006
+    source: WC-159 Canonical Requirement Index, R006
+    observable_outcome: An opt-out or stop still blocks a synthetic tenant; the marker is read only at the three effect sites and never from a claim.
+    test_path_or_plan: WhatsAppDemoProviderTests WC159_R006_*; SyntheticEffectsTests WC159_R006_*.
+
+  - <<: *defaults
+    requirement_id: WC159-R007
+    source: WC-159 Canonical Requirement Index, R007
+    observable_outcome: A created customer has the reserved prefix, a verified synthetic-domain email, the synthetic group, a generated password and an OTP credential, and is removed at the end of the run.
+    test_path_or_plan: tests/journey-acceptance/__tests__/synthetic.test.ts (created customer, cleanup tests).
+
+  - <<: *defaults
+    requirement_id: WC159-R008
+    source: WC-159 Canonical Requirement Index, R008
+    observable_outcome: The provisioner refuses to read, change or delete a user outside the reserved prefix, and the admin-event audit reports any user it does not own.
+    test_path_or_plan: tests/journey-acceptance/__tests__/synthetic.test.ts (refusal and admin-event tests); tests/journey-acceptance/__tests__/cli.test.ts cleanup test.
+
+  - <<: *defaults
+    requirement_id: WC159-R009
+    source: WC-159 Canonical Requirement Index, R009
+    observable_outcome: Generated credentials are registered with the private literal store and a run that prints one fails the artifact scan.
+    test_path_or_plan: tests/journey-acceptance/__tests__/guards.test.ts run-literal tests; tests/journey-acceptance/__tests__/synthetic.test.ts.
+
+  - <<: *defaults
+    requirement_id: WC159-R010
+    source: WC-159 Canonical Requirement Index, R010
+    observable_outcome: Cleanup removes every synthetic user, reports any that remain as a finding, and records the synthetic volume.
+    test_path_or_plan: tests/journey-acceptance/__tests__/cli.test.ts cleanup tests; tests/journey-acceptance/__tests__/synthetic.test.ts.
+
+  - <<: *defaults
+    requirement_id: WC159-R011
+    source: WC-159 Canonical Requirement Index, R011
+    observable_outcome: The authored acceptance identity is off by default, Demo and UAT only, federated to main, read-only on the exact secret list, with no write or role-assignment role.
+    test_path_or_plan: tests/pipeline/test_acceptance_infrastructure.py; tests/pipeline/test_goal006_terraform_foundations.py; terraform validate of the demo foundation root in Docker.
+
+  - <<: *defaults
+    requirement_id: WC159-R012
+    source: WC-159 Canonical Requirement Index, R012
+    observable_outcome: The provisioning client fragment is limited to Demo and UAT, holds only manage-users, view-events and the marker role, and the production realm carries none of it.
+    test_path_or_plan: tests/pipeline/test_acceptance_infrastructure.py::test_provisioning_client_holds_only_user_management_event_reading_and_the_marker_role; ::test_the_realm_role_is_never_a_default_or_customer_requestable_role.
