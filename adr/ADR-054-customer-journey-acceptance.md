@@ -34,9 +34,13 @@ parameter, and reports without blocking promotion.
    (choice of versioned journey definitions; slice 1 first). GitHub requires choice options to be static
    text, so adding an environment is one profile file plus one option line; a static test fails if the
    option list and the profile files differ, and an environment without a profile cannot run.
-2. **Journey as data.** A journey is a versioned YAML document validated against a schema. Each step
-   names the customer stimulus, the claims the product makes after it, the witnesses that must agree,
-   and the requirement and story identifiers it proves. The runner contains no journey logic.
+2. **Tests as code, written by the implementing agent.** Acceptance tests are TypeScript Playwright
+   specs, reviewed and versioned like unit tests. A small reviewed **test plan** (YAML) lists each journey
+   step, its claims, required witnesses and the requirement, story and gap identifiers it proves. Each plan
+   step is implemented by one or more specs; each spec declares which plan step and identifiers it covers.
+   A shared helper library supplies the stimulus, witness and guard functions, and its `claim()` call
+   refuses to compile or run with fewer than two declared witnesses. Static checks fail when a plan step has
+   no spec or a spec cites no plan step.
 3. **Customer stimulus through the real UI.** Playwright drives the deployed web application, signing
    in through the real Keycloak with a run-scoped synthetic customer (ADR-055). No fixture, route
    mock, service token or direct database access is used.
@@ -49,11 +53,13 @@ parameter, and reports without blocking promotion.
    settings (non-secret Container App environment settings, through Reader on the environment resource
    group) and the product's offer and provider-registration state first, so a feature turned off or a
    missing prerequisite is reported as `BLOCKED-BY-FLAG` with its reason, not as pass or failure.
-6. **Coverage is measured against requirements, not lines.** A step cites `WCNNN-RNNN` requirement IDs
-   and `AE-nn-Snn`/`PG-nn` identifiers. The report states, per identifier, the deepest level reached:
-   L1 rendered, L2 acted on, L3 state changed, L4 evidence recorded, L5 failure path handled. Depth of
-   system reach is reported as the services and endpoints the customer traffic touched against the
-   component registry.
+6. **Coverage is mandated and measured against requirements, not lines.** Specs cite `WCNNN-RNNN`
+   requirement IDs and `AE-nn-Snn`/`PG-nn` identifiers. Two measures exist. **Test coverage** (does an
+   acceptance spec exist for each identifier in scope) is computed statically on every pull request and
+   is gated by a ratchet (item 14). **Run depth** (how far each identifier was exercised on a deployed
+   candidate) is computed by each post-deployment run: L1 rendered, L2 acted on, L3 state changed, L4
+   evidence recorded, L5 failure path handled, plus the services and endpoints touched against the
+   component registry. Run depth is reported and never blocks promotion.
 7. **Always-on guards** evaluate every page and response in every journey: secret or token patterns,
    foreign-tenant identifiers, personal-data leakage, WCAG 2.1 AA violations, Emergency Stop reachability
    and Evidence-First ordering where observable.
@@ -71,13 +77,21 @@ parameter, and reports without blocking promotion.
 10. **Docker-only execution** (C-080, ADR-050): the harness runs in a digest-pinned, attested runner image
     through the validation-gate action.
 11. **Binding to the candidate.** The report records the deployed image digests, the repository commit,
-    the environment profile digest and the journey definition digest, so a verdict applies to an exact
+    the environment profile digest and the test plan digest, so a verdict applies to an exact
     deployed candidate.
 12. **Environment availability is a result.** The run begins with a health and readiness probe. A stopped
     or unreachable environment yields `ENV-UNAVAILABLE`; the workflow never starts or stops an
     environment.
 13. **Cost bound.** One slice-1 run must fit the AD-006 non-production budget: no paid provider traffic
     except sandbox-mode providers, and bounded AI generation through the existing governed path.
+14. **Coverage mandate and growth, as with unit tests.** The agent implementing any customer-facing
+    requirement writes or extends its acceptance spec in the same pull request. A ratchet file
+    `validation/acceptance/coverage-baseline.yaml` records the last accepted test coverage of the
+    live-scope requirements, stories and gaps; a pull request that lowers it, or adds a live-scope
+    requirement without a spec, fails a static gate that needs no deployed environment. The floor starts at
+    100% of slice-1 plan steps having specs, and live-scope coverage can only rise. The Founder sets the
+    live-scope list and may raise the floor. This gate concerns whether tests exist; the post-deployment
+    verdict (item 8) remains report-only.
 
 ## Alternatives Considered
 
@@ -90,6 +104,7 @@ parameter, and reports without blocking promotion.
 | Adopt a commercial synthetic-monitoring or test-orchestration product | Needs access to Demo, Keycloak and provider sandboxes from a third-party boundary, adds data egress (C-063) and cost (AD-006). Playwright is already in the repository and is open source. |
 | AI-persona exploratory testing as the verdict | Non-deterministic; allowed only as a later non-deciding companion under AI Resource Governance. |
 | Run on every push or schedule | Founder asked for a manual trigger after deployment completes. |
+| Record-and-replay UI tests (Selenium style, human-recorded) | Brittle selectors, no witnesses, not reviewable as code, cannot be tied to requirement identifiers, and depends on a person to keep adding cases. Agent-written specs with a coverage mandate replace it. |
 
 ## Lifecycle Maturity
 
@@ -112,14 +127,15 @@ endpoint (ADR-053 signature rules apply), not through a real handset.
   session only for platform reads.
 - Output hygiene: artifacts are scanned for secret patterns before upload; traces and videos mask password
   and token inputs; a leak finding fails the run and withholds the artifact.
-- Operability: one workflow, one journey schema, one report schema; flaky steps are recorded, never
+- Operability: one workflow, one test-plan schema, one report schema; flaky steps are recorded, never
   silently retried.
 - Cost: GitHub-hosted minutes plus Azure reads and sandbox-mode provider calls only.
 
 ## Exit And Reversibility
 
-Disabling the workflow removes the capability with no effect on product behaviour. The journey and report
-schemas are product-neutral YAML and JSON. Playwright may be replaced without changing journey definitions.
+Disabling the workflow removes the capability with no effect on product behaviour. The test plan and report
+schemas are product-neutral YAML and JSON. Playwright may be replaced by rewriting the specs; the plan,
+identifiers and coverage ratchet stay.
 Synthetic tenants follow the retention rule in ADR-055.
 
 ## Fitness Obligations

@@ -1,4 +1,4 @@
-schema: waooaw.journey-acceptance/v1
+schema: waooaw.journey-test-plan/v1
 journey_id: slice-1-discover-to-connect
 version: 1
 status: PROPOSED

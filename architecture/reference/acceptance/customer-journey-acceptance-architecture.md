@@ -54,8 +54,10 @@ The workflow never holds deployment authority and never writes product storage d
 |---|---|---|---|
 | Acceptance workflow | Manual trigger, environment and journey inputs, concurrency of one run per environment, artifact upload, verdict-to-conclusion mapping | `.github/workflows/customer-journey-acceptance.yaml` | 6.7 |
 | Environment profile | Non-secret addresses, Key Vault name, sandbox identifiers, allowed journeys, synthetic ceiling | `validation/acceptance/environments/<env>.yaml` | 6.7 |
-| Journey definition | Versioned steps, claims, witnesses, requirement and story identifiers | `validation/acceptance/journeys/<id>.v1.yaml` | 6.4 |
-| Harness runner | Executes a journey; contains no journey logic; produces the report | `tests/journey-acceptance/` | 6.4 |
+| Test plan | Reviewed YAML listing each journey step, its claims, required witnesses and the requirement, story and gap identifiers it proves; the Founder reads this, not the code | `validation/acceptance/plans/<id>.v1.yaml` | 6.4 |
+| Acceptance specs | Agent-written TypeScript Playwright specs, one or more per plan step, each declaring the step and identifiers it covers | `tests/journey-acceptance/specs/` | 6.4 |
+| Helper library and runner | Stimulus, witness and guard functions; `claim()` requires at least two witnesses; produces the report | `tests/journey-acceptance/` | 6.4 |
+| Coverage gate | Static pull-request check of test coverage against the ratchet file; needs no deployed environment | `validation/acceptance/coverage-baseline.yaml` plus a gate in `validation/engineering-validation.yaml` | 6.4 |
 | Identity provisioner | Creates and removes the run's two synthetic Keycloak users in the `synthetic` group | harness module + provisioning identity | 6.1, 6.2 |
 | UI driver | Playwright, real Keycloak sign-in, role and label locators, trace, video and screenshot capture with masking | harness module | 6.6 |
 | Platform reader (W2) | Reads platform records through customer-facing APIs under the synthetic customer's session | harness module | 6.3 |
@@ -139,8 +141,8 @@ without architectural change.
 - **Cleanup:** where the product has no customer path to end an Active relationship (lifecycle rights are
   PG-26, partly built), the leftover is listed as a cleanup finding and counts toward the synthetic ceiling.
 
-The machine-readable form of this slice is
-`architecture/reference/acceptance/journey-slice-1.v1.yaml`.
+The reviewed test plan for this slice is
+`architecture/reference/acceptance/journey-slice-1.v1.yaml`; the agent's specs implement it step by step.
 
 Slice 2 (publish through the broker with Graph confirmation of the post) and later slices follow the same
 format; they are the strongest emulator-detection steps and depend on removing the Facebook emulator path.
@@ -180,6 +182,18 @@ a depth only when its witnesses agree.
 `NOT-COVERED` where none did; a flake list; the flag-blocked list; provider-mode findings; synthetic volume;
 and the candidate binding (commit, image digests, profile digest, journey digest).
 
+**Coverage mandate (same discipline as unit tests, measured on requirements):**
+
+- **Test coverage**, computed statically on every pull request with no environment: for each identifier in
+  scope (`live-scope.yaml` requirements, GOAL-005 stories, PG gaps), does at least one acceptance spec
+  cover it, and for each plan step, does a spec exist. Results are compared with the ratchet file
+  `validation/acceptance/coverage-baseline.yaml`; a pull request may raise the floor, never lower it.
+- **Floor:** before the workflow is first merged, 100% of slice-1 plan steps have specs. After that, any
+  new live-scope requirement needs a spec in the same pull request.
+- **Who sets scope:** the Founder owns the live-scope list and the floor; the agent proposes additions
+  with each Work Contract.
+- **Run depth** (above) is measured per post-deployment run and reported; it does not gate.
+
 **Honesty rule:** the summary lists what was not tested before it lists what passed.
 
 ## 9. Architecture Fitness Contract
@@ -206,6 +220,8 @@ Thresholds marked * are initial and are calibrated by the first three runs throu
 | F16 | Least authority | The acceptance identity holds no write or role-assignment rights outside its scope | Infrastructure test and run-time role inspection |
 | F17 | Report-only | No required check, branch rule or deployment dependency references the workflow | Static test |
 | F18 | Provisioner containment | The harness creates and deletes only reserved-prefix synthetic users; after each run the Keycloak admin events show zero user changes by the provisioning client outside that prefix | Harness test and post-run admin-event check |
+| F19 | Coverage ratchet | Static test coverage of live-scope requirements, stories and gaps never falls below `coverage-baseline.yaml`; a live-scope requirement without a spec fails the pull request | Static gate on every pull request, no environment needed |
+| F20 | Plan and spec agreement | Every plan step has at least one spec and every spec cites a plan step and identifiers that exist | Static gate |
 
 ## 10. Failure Modes
 
@@ -243,7 +259,7 @@ is **not authorized**; each needs Founder authorization.
 
 | Proposed WC | Scope | Depends on |
 |---|---|---|
-| WC-158 Harness core | Journey and environment schemas, runner, guards, report and coverage engine, negative controls, workflow; self-qualified against a local Docker stack | ADR-054 accepted |
+| WC-158 Harness core | Test-plan and environment schemas, helper library and runner, guards, report, run-depth engine, negative controls, the static coverage gate and ratchet file, workflow; self-qualified against a local Docker stack | ADR-054 accepted |
 | WC-159 Synthetic tenant support | Marker registry and its role-guarded internal route, exclusions, messaging suppression, Keycloak provisioning client, Terraform for the acceptance identity, secret access and the provisioning client | ADR-055 accepted |
 | WC-160 Slice 1 content | S1 to S8 with W1-W3 witnesses; Razorpay and Meta readers; live-scope seed | WC-158, WC-159, sandbox values present |
 | WC-161 Sandbox readiness check | Read-only verification that each sandbox secret exists, is non-empty and in test mode, without printing values | Runbook; sandboxes created |
@@ -281,8 +297,8 @@ unknown can only be removed by running code; each has a proof of concept in sect
 |---|---|
 | Who writes the tests | The AI assistant, in the Platform IT Expert office, under a Founder-authorized implementation Work Contract (WC-158 onward). The Founder reviews and merges; the assistant does not approve its own work. |
 | When | Only after the Founder accepts ADR-054 and ADR-055 and authorizes the implementing contract in the current session. WC-157 (architecture) authorizes no code. |
-| Language and tools | TypeScript with Playwright for the UI driver and harness, in the existing digest-pinned `Dockerfile.test-runner-ts` image (Playwright 1.62, pnpm). Journeys and environment profiles are YAML validated by JSON Schema. Harness unit tests use the repository's existing Jest setup. Python stays only for existing gate plumbing. |
-| How tests are specified | Journeys are data (`validation/acceptance/journeys/*.yaml`); the runner has no journey logic. Each step names its requirement, story and gap identifiers, so authoring a test means writing a journey step and its witnesses. |
+| Language and tools | TypeScript with Playwright for the specs, helpers and runner, in the existing digest-pinned `Dockerfile.test-runner-ts` image (Playwright 1.62, pnpm). The test plan and environment profiles are YAML validated by JSON Schema. Helper-library unit tests use the repository's existing Jest setup. Python stays only for existing gate plumbing. |
+| How tests are specified and grow | The agent turns each plan step into specs and writes or extends specs in the same pull request as any customer-facing requirement it implements, exactly as it does for unit tests. Requirement and story identifiers in the specs feed the coverage ratchet (section 8), so tests accumulate and coverage cannot silently fall. Regression is every spec running on every post-deployment run. |
 | How the harness itself is proven | Negative controls (F6, F7): fault-injected stubs that report success without calling a provider, a stale cache, a seeded token and a cross-tenant identifier must each produce `FAIL`. These run in Docker on every harness change and are added to the release-qualification command list (new tests are not collected automatically). |
 | How it runs | Locally in Docker against the compose stack for self-qualification; in GitHub Actions as the manual workflow against Demo. |
 
