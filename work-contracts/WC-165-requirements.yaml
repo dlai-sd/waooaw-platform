@@ -1,0 +1,40 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-165
+contract_path: work-contracts/WC-165-acceptance-secret-seeding.md
+contract_digest: 4fb0121f03c43e5d288de40cba53a3701a89bc001fa4b993fd0334735aaf7269
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Contract and behavior tests in the Python runner (stub docker), shellcheck and terraform fmt and validate in Docker, run at the exact head; commands and results in the PR body
+  initial_state: expected-fail
+  dependencies: PR #630 merged; Founder authorization of this implementing session (current conversation)
+  residual_risk: No Terraform apply and no real seeding were run; the script's behavior against the real Azure CLI is proven only when the Founder runs it after the apply
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC165-R001
+    source: WC-165 Canonical Requirement Index, R001
+    observable_outcome: The Demo root sets acceptance_enabled and acceptance_vault_enabled to true with exactly one officer GUID; the UAT root keeps both off.
+    test_path_or_plan: tests/pipeline/test_acceptance_infrastructure.py::test_environment_roots_list_exactly_the_secrets_the_profile_reads_and_keep_the_identity_off; ::test_the_acceptance_vault_is_separate_off_by_default_and_read_by_the_acceptance_identity_only; terraform validate of the demo foundation root in Docker.
+
+  - <<: *defaults
+    requirement_id: WC165-R002
+    source: WC-165 Canonical Requirement Index, R002
+    observable_outcome: The script's key-to-secret table equals the profile secrets minus the Keycloak one, and a stored value appears only on the stub's stdin, never in its arguments or the script output.
+    test_path_or_plan: tests/pipeline/test_acceptance_infrastructure.py::test_the_seed_script_covers_exactly_the_profile_secrets_except_the_keycloak_one; ::test_the_seed_script_stores_values_through_stdin_only_and_deletes_the_file.
+
+  - <<: *defaults
+    requirement_id: WC165-R003
+    source: WC-165 Canonical Requirement Index, R003
+    observable_outcome: An existing secret is kept, a non-test Razorpay key id, an unknown key and a world-readable file are refused, the file is kept on failure and deleted on success.
+    test_path_or_plan: tests/pipeline/test_acceptance_infrastructure.py::test_the_seed_script_keeps_existing_secrets_unless_told_and_rejects_live_razorpay_keys; ::test_the_seed_script_refuses_unknown_keys_and_a_world_readable_file; shellcheck in Docker.
+
+  - <<: *defaults
+    requirement_id: WC165-R004
+    source: WC-165 Canonical Requirement Index, R004
+    observable_outcome: Runbook step 4 describes login, init, fill and seed, and the wrong example name acceptance-razorpay-key-id no longer appears.
+    test_path_or_plan: tests/pipeline/test_acceptance_infrastructure.py::test_every_profile_secret_is_in_the_runbook_register; runbook review at the exact head.
