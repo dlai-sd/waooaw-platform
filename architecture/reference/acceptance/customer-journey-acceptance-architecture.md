@@ -91,10 +91,10 @@ is already in the repository.
 
 | Concern | Decision |
 |---|---|
-| Azure identity | One federated identity per environment, subject bound to this workflow and branch `main`; read-only on Key Vault secrets whose names begin `acceptance-` plus the three existing Razorpay test secrets by exact name; Monitoring Reader on the telemetry workspace only; no Contributor, no role-assignment rights, no deployment authority (C-065). |
+| Azure identity | One federated identity per environment, subject bound to this workflow and branch `main`; read-only on Key Vault secrets whose names begin `acceptance-` plus the three existing Razorpay test secrets by exact name; **Reader on the environment resource group** (container app revisions, image digests and non-secret environment settings, used for candidate binding and flag detection because the private settings blob is reachable only from the private runner, settings policy S7); Monitoring Reader on the telemetry workspace only; no Contributor, no role-assignment rights, no deployment authority (C-065). |
 | Where secrets live | Azure Key Vault. No GitHub environment secret or variable holds a credential. Addresses are non-secret data in git (settings policy S1, S3). |
 | Secret names | New: `acceptance-meta-app-id`, `acceptance-meta-app-secret`, `acceptance-meta-test-user-session`, `acceptance-meta-test-page-id`, `acceptance-whatsapp-sandbox-recipient`, `acceptance-whatsapp-webhook-secret`, `acceptance-keycloak-provisioner-client-secret`. Existing, reused read-only: `razorpay-test-key-id`, `razorpay-test-key-secret`, `razorpay-test-webhook-secret` (Demo already wires these test-named secrets into the Billing Engine, so Demo is test mode by construction; the harness still verifies the `rzp_test_` prefix). Each environment's vault holds its own. |
-| Platform reads | Only through customer-facing APIs with the synthetic customer's session (ADR-003 tenant authority). No service token, no database access, no ADR-046 route grant. |
+| Platform reads | Only through the web application's same-origin server routes (`web/app/api/...`) using the synthetic customer's own browser session, exactly as the customer's screens read them. The Business Platform bearer token is not obtainable by the harness (direct grants are disabled on the web client) and must not be. No service token, no database access, no ADR-046 route grant. |
 | Provider credentials in the product | The harness never reads `customer-connection-` secrets. Custody stays inside Business Platform. Connection proof comes from the provider side (section 6, step S6). |
 | Output | Traces, HAR and videos mask password, token and payment fields; artifacts are scanned before upload. |
 
@@ -120,7 +120,26 @@ WC107-R019 still needs. Steps, claims and witnesses:
 Conversation-driven stories (AE-01-S01, S03, S04, S09) depend on `WC120_CONVERSATION_ENABLED` and the
 conversational employment protocol, which default off. Slice 1 reports them `BLOCKED-BY-FLAG` until the
 Founder enables those settings for the environment through the settings path; they then run as slice 1c
-without architectural change. The machine-readable form of this slice is
+without architectural change.
+
+**Preconditions and honest limits found by walking the journey as the customer and as the implementer:**
+
+- **S3b:** the screen may not offer a second trial button. The stimulus is the UI action where the offer
+  is shown; otherwise the same command is replayed through the web server route. The claim is identical.
+- **S5:** needs an effective price for the agent in the environment. The run reads it first (S1); with no
+  offerable price the step is `BLOCKED-BY-FLAG` with reason "no offerable price". Declined-card testing
+  needs a second hire of the same agent, which the product allows.
+- **S6:** the product must already hold the Meta app (the Founder enters it on the `meta` provider row of
+  the Founder provider screen, WC-149). Without it the step is `BLOCKED-BY-FLAG` with reason "Meta provider
+  not registered". The acceptance Meta app and the product's Meta app are the same app.
+- **S8:** the harness learns customer B's identifiers from B's own session, then tries them as A.
+- **Registration:** the product requires a verified email, so provisioned users carry a verified synthetic
+  email. Trial anti-abuse by verified identity hash is not exercised because synthetic users have no such
+  claim; it is reported `NOT-COVERED`, as is Google and Facebook first-login linking.
+- **Cleanup:** where the product has no customer path to end an Active relationship (lifecycle rights are
+  PG-26, partly built), the leftover is listed as a cleanup finding and counts toward the synthetic ceiling.
+
+The machine-readable form of this slice is
 `architecture/reference/acceptance/journey-slice-1.v1.yaml`.
 
 Slice 2 (publish through the broker with Graph confirmation of the post) and later slices follow the same
@@ -131,7 +150,7 @@ format; they are the strongest emulator-detection steps and depend on removing t
 | Witness | Source | Authority and limits |
 |---|---|---|
 | W1 Screen | Playwright DOM using role and label locators, plus the network log | Observational only; never sufficient for a state claim |
-| W2 Platform | Customer-facing Business Platform routes under the synthetic customer's session: relationship detail and timeline, contract-journey, checkout intent, evidence list and detail, provider-connections list, notifications, attention, results | Read-only except the stimulus actions a customer can perform; follows ADR-003; routes are taken from `business-platform.openapi.yaml` and verified at build time |
+| W2 Platform | The web application's same-origin server routes under the synthetic customer's browser session: relationship detail and timeline, contract-journey, checkout intent, evidence window and export, provider connections, alerts, results, offerability | Read-only except the stimulus actions a customer can perform; follows ADR-003; the route list is taken from `web/app/api/` and `business-platform.openapi.yaml` and confirmed at build time; a claim whose state has no customer-reachable route is `NOT-WITNESSED` |
 | W3 Provider | Razorpay test API (order and payment fetch); Meta Graph with the test app and test user; WhatsApp sandbox delivery status and signed-webhook delivery to the environment's own endpoint | Sandbox credentials only; mode verified before use |
 | W4 Telemetry | Azure Monitor / Log Analytics query by correlation identifier for the run | Read-only; optional. Verified today: Business Platform and the Billing Engine export OTLP traces only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set, and the phase 2 workload Terraform does not set it, so WC107-R018 (one queryable cross-service trace) is **unproven on Demo**. W4 therefore starts as a console-log correlation read and the first run reports the missing traces as a finding. If absent, service-reach depth is `NOT-WITNESSED`; client-observed endpoint depth from the HAR still applies |
 
@@ -181,7 +200,7 @@ Thresholds marked * are initial and are calibrated by the first three runs throu
 | F10 | Report completeness | Report validates against its schema and contains candidate binding, per-identifier depth and the not-covered list | Report schema validation |
 | F11 | Determinism | Step verdicts identical on three consecutive runs of an unchanged candidate for at least 95%* of steps; every retry recorded | Calibration runs |
 | F12 | Budget | Slice 1 completes within 20 minutes* and 30 runner minutes*; AI generation within the governed ceiling; no non-sandbox provider traffic (AD-006) | Run metrics |
-| F13 | Cleanup | After each run, zero `synthetic` Keycloak users older than 24 hours; zero active synthetic provider connections or subscriptions | Post-run check |
+| F13 | Cleanup | After each run, zero `synthetic` Keycloak users older than 24 hours; every synthetic provider connection revoked; every synthetic subscription or Active relationship that the product offers no customer path to end is listed as a cleanup finding and counted against the synthetic ceiling | Post-run check |
 | F14 | No stray messaging | Zero outbound messages from synthetic tenants to non-sandbox recipients | Outbox check |
 | F15 | Availability result | A stopped environment returns `ENV-UNAVAILABLE` within 2 minutes* with zero step failures | Harness test |
 | F16 | Least authority | The acceptance identity holds no write or role-assignment rights outside its scope | Infrastructure test and run-time role inspection |
@@ -201,7 +220,8 @@ Thresholds marked * are initial and are calibrated by the first three runs throu
 | Telemetry unreadable | W4 error | Service-reach depth `NOT-WITNESSED`; run continues |
 | Flaky element | Retry recorded | `FLAKY` mark; never silent |
 | Secret pattern in an artifact | Pre-upload scan | Run fails; artifact withheld |
-| Cleanup fails | Post-run check | Finding in report; next run refuses until resolved or ceiling reported |
+| Cleanup fails or no product path exists | Post-run check | Finding in report; counted against the ceiling; next run refuses at the ceiling |
+| Prerequisite missing (no offerable price, Meta provider not registered) | Precondition read in S1 and before S6 | `BLOCKED-BY-FLAG` with the reason |
 
 ## 11. Dependency-Impact Map
 
@@ -250,6 +270,10 @@ unknown can only be removed by running code; each has a proof of concept in sect
 | T7 | Meta test-user automation | Proof owed (POC-3) | Meta documents test users for automated testing, so scripted sign-in as a test user is a supported use. The design stores the browser session state in Key Vault and falls back to `NOT-WITNESSED`. Needs the Meta development app (Founder account-owner action). |
 | T8 | Conversation stories | DECIDED | They stay `BLOCKED-BY-FLAG` until the Founder enables `WC120_CONVERSATION_ENABLED` and the conversational employment setting for the environment. |
 | T9 | Brokered first login | DECIDED | Google and Facebook first-login linking is not exercised by local users and is reported `NOT-COVERED`. |
+| T10 | Verified email | VERIFIED | Customer registration requires a verified email on the principal (`CustomerIdentityJourneyService`). The provisioner creates users with `emailVerified=true` on a reserved synthetic email domain. |
+| T11 | Trial identity hash | VERIFIED | Trial passes an optional 64-hex verified-identity claim to the Billing Engine. Synthetic users have none, so that anti-abuse binding is `NOT-COVERED`; the per-customer trial rule is still exercised. |
+| T12 | Reading effective settings | DECIDED | The private settings blob is reachable only from the private runner (S7) and platform-access routes are staff-only, so flags are read from the Container App environment through Reader on the resource group. |
+| T13 | Reading platform records | DECIDED | Through the web application's same-origin server routes with the customer's browser session; the Business Platform bearer token is not obtainable because direct grants are disabled. |
 
 ## 14. Test Authoring: Who, When, How
 

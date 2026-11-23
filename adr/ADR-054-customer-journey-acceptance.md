@@ -46,7 +46,9 @@ parameter, and reports without blocking promotion.
    Disagreement fails the claim. Absence of a witness is reported as `NOT-WITNESSED`, never as pass.
 5. **Closed verdict vocabulary** per step and per stage: `PASS`, `FAIL`, `BLOCKED-BY-FLAG`,
    `NOT-COVERED`, `NOT-WITNESSED`, `ENV-UNAVAILABLE`, `FLAKY`. The run reads the environment's effective
-   settings first so a feature turned off is reported as `BLOCKED-BY-FLAG`, not as pass or failure.
+   settings (non-secret Container App environment settings, through Reader on the environment resource
+   group) and the product's offer and provider-registration state first, so a feature turned off or a
+   missing prerequisite is reported as `BLOCKED-BY-FLAG` with its reason, not as pass or failure.
 6. **Coverage is measured against requirements, not lines.** A step cites `WCNNN-RNNN` requirement IDs
    and `AE-nn-Snn`/`PG-nn` identifiers. The report states, per identifier, the deepest level reached:
    L1 rendered, L2 acted on, L3 state changed, L4 evidence recorded, L5 failure path handled. Depth of

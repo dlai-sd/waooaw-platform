@@ -63,7 +63,7 @@ steps:
     title: Trial retry refused
     customer: A
     failure_path: true
-    stimulus: Start the trial again for the same agent.
+    stimulus: Start the trial again for the same agent (UI action where offered, otherwise replay the same command through the web server route).
     claims:
       - id: S3b-C1
         statement: The second trial is refused with a clear message and no second trial exists.
@@ -94,6 +94,7 @@ steps:
         witnesses_required: [W1, W2, W3]
         depth_target: L4
     provider_mode_required: razorpay_test
+    preconditions: [offerable_price_present]
     proves:
       stories: [AE-01-S08]
       gaps: [PG-11, PG-12]
@@ -122,6 +123,7 @@ steps:
         witnesses_required: [W1, W2, W3]
         depth_target: L4
     provider_mode_required: meta_development
+    preconditions: [meta_provider_registered_in_product]
     proves:
       stories: [AE-02-S01]
       gaps: [PG-16]
@@ -156,7 +158,7 @@ steps:
     title: Tenant isolation
     customer: A
     failure_path: true
-    stimulus: Request customer B's relationship and connection by identifier.
+    stimulus: Request customer B's relationship and connection by identifier, learned from B's own session.
     claims:
       - id: S8-C1
         statement: Access is refused and no B identifier appears in any A response.

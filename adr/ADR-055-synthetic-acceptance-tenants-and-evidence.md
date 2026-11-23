@@ -26,7 +26,8 @@ only from the verified `(iss, sub)` membership (ADR-003), never from a caller-su
 1. **Run-scoped synthetic customers.** Each acceptance run provisions two synthetic customers (A, the
    actor; B, the isolation probe) in the target environment's real Keycloak realm (`waooaw`), as local
    users with a generated password and a generated one-time-password credential so the real login form
-   and the step-up flow both work. Credentials are generated per run, held only in memory, and never
+   and the step-up flow both work, and a verified email on a reserved synthetic email domain (registration
+   requires a verified email). Credentials are generated per run, held only in memory, and never
    printed. Both users are removed from Keycloak when the run ends. Google-brokered first login is not
    exercised and is reported `NOT-COVERED`.
 2. **Provisioning identity (decided).** A dedicated Keycloak client `waooaw-acceptance-provisioner` holds

@@ -60,6 +60,9 @@ test card numbers for success and for decline; the journey names the scenario, n
 3. Under App Roles, create a **Test User**. Using that test user, create a **test Page**.
 4. Record the app id, app secret and test Page id.
 5. The saved test-user session is produced once by the harness helper and stored by the same prompt method.
+6. The product itself must hold the same Meta app: sign in as Founder and enter the app id and secret on the
+   `meta` row of the Founder provider screen (WC-149), then press Test. Without it the connect step reports
+   `BLOCKED-BY-FLAG` ("Meta provider not registered").
 
 ### 3. WhatsApp sandbox
 
