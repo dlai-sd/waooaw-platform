@@ -171,7 +171,7 @@ Thresholds marked * are initial and are calibrated by the first three runs throu
 |---|---|---|---|
 | F1 | Manual trigger only | Workflow `on:` contains only `workflow_dispatch` | Static test |
 | F2 | No credential in GitHub | Workflow references no `secrets.*` other than the automatic token; no credential-named variable | Static test |
-| F3 | Environment by data | No code or workflow branch on an environment name; a new environment needs only a profile file | Static test and schema validation |
+| F3 | Environment by data | No code or workflow logic branches on an environment name; a new environment is one profile file plus one workflow option line, and the option list equals the profile files | Static test and schema validation |
 | F4 | Witness discipline | Every state claim in every journey requires at least two witnesses unless a listed exception with a reason exists | Journey schema validation |
 | F5 | Traceability | Every step cites at least one existing requirement, story or gap identifier | Journey validation against ledgers and registers |
 | F6 | Negative control | A fault-injected stub that reports success without calling the provider yields `FAIL`; a stale-cache stub yields `FAIL` | Harness self-test in Docker |

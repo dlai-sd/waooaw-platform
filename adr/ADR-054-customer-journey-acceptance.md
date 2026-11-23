@@ -30,9 +30,10 @@ parameter, and reports without blocking promotion.
 ## Decision
 
 1. **One manual workflow.** `customer-journey-acceptance.yaml` is `workflow_dispatch` only. It has no
-   push, pull-request or schedule trigger. Inputs: `environment` (choice; `demo` default; an
-   environment appears only when its acceptance profile exists in git) and `journey` (choice of
-   versioned journey definitions; slice 1 first).
+   push, pull-request or schedule trigger. Inputs: `environment` (choice; `demo` default) and `journey`
+   (choice of versioned journey definitions; slice 1 first). GitHub requires choice options to be static
+   text, so adding an environment is one profile file plus one option line; a static test fails if the
+   option list and the profile files differ, and an environment without a profile cannot run.
 2. **Journey as data.** A journey is a versioned YAML document validated against a schema. Each step
    names the customer stimulus, the claims the product makes after it, the witnesses that must agree,
    and the requirement and story identifiers it proves. The runner contains no journey logic.
@@ -55,9 +56,10 @@ parameter, and reports without blocking promotion.
    foreign-tenant identifiers, personal-data leakage, WCAG 2.1 AA violations, Emergency Stop reachability
    and Evidence-First ordering where observable.
 8. **Report-only verdict.** Nothing consumes the verdict to block promotion. The workflow conclusion
-   mirrors the verdict (`FAIL` is red; `PASS`, `BLOCKED-BY-FLAG` and `NOT-COVERED` only are green) so
-   the signal is honest, and no required check, deployment gate or branch rule may depend on it until
-   a later ADR amendment is accepted by the Founder.
+   mirrors the verdict: red when any step is `FAIL` or the environment is `ENV-UNAVAILABLE` (nothing was
+   verified); green otherwise. `NOT-WITNESSED`, `FLAKY`, `BLOCKED-BY-FLAG` and `NOT-COVERED` appear as
+   warnings at the top of the summary and never as passes. No required check, deployment gate or branch
+   rule may depend on the workflow until a later ADR amendment is accepted by the Founder.
 9. **Secrets live only in Azure.** The workflow authenticates with an acceptance-only Azure OIDC
    federated identity, distinct from the deployment identities (C-065), with read-only access to Key
    Vault secrets prefixed `acceptance-`. No GitHub environment secret or variable carries a credential.
