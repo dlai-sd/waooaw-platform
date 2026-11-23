@@ -325,6 +325,17 @@ def load_runtime_evidence(evidence_file: Path, head: str) -> dict[str, object]:
     return validate_runtime_evidence_head(evidence, head)
 
 
+def reusable_runtime_evidence(evidence_file: Path, head: str) -> dict[str, object] | None:
+    """Evidence this tool wrote earlier is reused only while it still binds the selected head (V9)."""
+    if not evidence_file.is_file():
+        return None
+    try:
+        evidence = load_runtime_evidence(evidence_file, head)
+    except (OSError, ValueError, subprocess.CalledProcessError):
+        return None
+    return evidence if evidence.get("passed") is True else None
+
+
 def validate_runtime_evidence_head(evidence: dict[str, object], head: str) -> dict[str, object]:
     evidence_head = str(evidence.get("commit_sha", ""))
     if evidence_head != head:
@@ -495,6 +506,31 @@ def validate_precheck_evidence(
     if evidence.get("runner_digest") != expected_runner_digest:
         raise ValueError("precheck evidence is not bound to the current runner graph")
     return evidence
+
+
+def reusable_precheck_evidence_file(
+    evidence_file: Path,
+    base_sha: str,
+    head: str,
+    changed_file_digest: str,
+    expected_configuration_digest: str,
+    expected_runner_digest: str,
+) -> dict[str, object] | None:
+    """Evidence this tool wrote earlier is reused only for the exact base, head, files, gates and runners (V9)."""
+    if not evidence_file.is_file():
+        return None
+    try:
+        evidence = json.loads(evidence_file.read_text(encoding="utf-8"))
+        return validate_precheck_evidence(
+            evidence,
+            base_sha,
+            head,
+            changed_file_digest,
+            expected_configuration_digest,
+            expected_runner_digest,
+        )
+    except (OSError, ValueError):
+        return None
 
 
 def precheck_nodes(
@@ -672,6 +708,11 @@ def main() -> int:
         type=Path,
         help="reuse successful prechecks bound to the selected base and branch HEAD",
     )
+    parser.add_argument(
+        "--no-reuse",
+        action="store_true",
+        help="ignore evidence from earlier runs and re-execute every gate; use only to disprove a suspected stale reuse",
+    )
     parser.add_argument("--qualification-evidence-file", type=Path)
     parser.add_argument("--hosted-evidence-file", type=Path)
     parser.add_argument(
@@ -720,8 +761,10 @@ def main() -> int:
         repository_violations = validate_static_repository(repository_root)
         if repository_violations:
             raise ValueError("static repository validation: " + "; ".join(repository_violations))
-        if arguments.precheck_evidence_file:
-            precheck_evidence_path = arguments.precheck_evidence_file
+        evidence_default = arguments.body_file.with_suffix(".precheck-evidence.json")
+        explicit_precheck = arguments.precheck_evidence_file
+        reused_precheck: dict[str, object] | None = None
+        if explicit_precheck is not None or (not arguments.no_reuse and evidence_default.is_file()):
             nodes = precheck_nodes(
                 repository_root,
                 Path(git("rev-parse", "--path-format=absolute", "--git-common-dir")),
@@ -729,18 +772,32 @@ def main() -> int:
                 head,
                 changed_files,
             )
-            evidence = json.loads(arguments.precheck_evidence_file.read_text(encoding="utf-8"))
-            validate_precheck_evidence(
-                evidence,
-                base_sha,
-                head,
-                changed_file_digest,
-                configuration_digest(),
-                runner_digest(nodes),
-            )
+            if explicit_precheck is not None:
+                reused_precheck = validate_precheck_evidence(
+                    json.loads(explicit_precheck.read_text(encoding="utf-8")),
+                    base_sha,
+                    head,
+                    changed_file_digest,
+                    configuration_digest(),
+                    runner_digest(nodes),
+                )
+            else:
+                reused_precheck = reusable_precheck_evidence_file(
+                    evidence_default,
+                    base_sha,
+                    head,
+                    changed_file_digest,
+                    configuration_digest(),
+                    runner_digest(nodes),
+                )
+                if reused_precheck is not None:
+                    print(f"Reusing exact-head precheck evidence {evidence_default}")
+        if reused_precheck is not None:
+            evidence = reused_precheck
+            precheck_evidence_path = explicit_precheck or evidence_default
         else:
             evidence = run_ci_prechecks(arguments.base, head, changed_files)
-            precheck_evidence_path = arguments.body_file.with_suffix(".precheck-evidence.json")
+            precheck_evidence_path = evidence_default
             precheck_evidence_path.write_text(
                 json.dumps(evidence, indent=2, sort_keys=True) + "\n",
                 encoding="utf-8",
@@ -780,12 +837,17 @@ def main() -> int:
             },
         )
         if runtime_gate_required(changed_files):
-            evidence = (
-                load_runtime_evidence(arguments.runtime_evidence_file, head)
-                if arguments.runtime_evidence_file
-                else run_runtime_gate(arguments.body_file, head)
-            )
-            body = add_runtime_evidence(body, evidence)
+            runtime_evidence: dict[str, object] | None = None
+            if arguments.runtime_evidence_file:
+                runtime_evidence = load_runtime_evidence(arguments.runtime_evidence_file, head)
+            elif not arguments.no_reuse:
+                runtime_default = arguments.body_file.with_suffix(".runtime-evidence.json")
+                runtime_evidence = reusable_runtime_evidence(runtime_default, head)
+                if runtime_evidence is not None:
+                    print(f"Reusing runtime lifecycle evidence {runtime_default}")
+            if runtime_evidence is None:
+                runtime_evidence = run_runtime_gate(arguments.body_file, head)
+            body = add_runtime_evidence(body, runtime_evidence)
         violations = validate_prepared_body(body, arguments.base, head)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(f"PR body preparation failed: {error}", file=sys.stderr)

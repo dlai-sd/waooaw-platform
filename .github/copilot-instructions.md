@@ -106,6 +106,8 @@ The GitHub Issue body IS additional Work Contract context. After completing BOOT
 6. **Open a PR** using the `.github/pull_request_template.md` format when all Work Contract tasks are DONE.
   After the final push, run `scripts/prepare_pr_body.sh --body-file /tmp/pr-body.md --base origin/main`
   and submit that exact prepared file. Do not open the PR before this C-059/C-065 precheck passes.
+  This is the only PR-preparation path (CI Validation Speed Policy V9): do not pass evidence-file flags by hand,
+  do not run the lifecycle gate yourself, and do not bypass `.githooks/pre-push` with `--no-verify`.
    For agent PRs: complete the **Agent Lifecycle Gate** section in the PR template.
 7. **Do not merge your own PR.** Comment: `@dlai-sd Ready for Founder review and merge. PR is complete.`
 

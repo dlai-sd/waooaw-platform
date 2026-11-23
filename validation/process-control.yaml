@@ -1,23 +1,25 @@
 schema: waooaw.process-control/v2
-revision: 5
-version: r005-909531771c82
+revision: 7
+version: r007-090f9340792d
 authoritative_ref: origin/main
 bootstrap_first: constitution/BOOTSTRAP.md
 source_digests:
-  .github/agent-context/office-platform-it-expert.md: 948cae445dfb3ba15def58260b01704523e714c0d52f3642baac022466f9ad92
-  .github/copilot-instructions.md: d323e85087492c3a54de97f109b68051bda97dff613e5649b558d66ea95a8a76
+  .githooks/pre-push: 67981f07886a6d0084a42d74dc5b1b426ad95467da75a672a774c9fe41a6cc68
+  .github/agent-context/office-platform-it-expert.md: 466c13b4ad93ec95455b27a5c81cef303577018d0324bf218f3a6db75696ed31
+  .github/copilot-instructions.md: 2e6d87942d987f518db47b3b1cc42cea1c05a6ca6af66f2cda7550e4be79304d
   architecture/reference/dockerfiles/Dockerfile.test-runner: 855d9ae729104b7730ad903c30dafcbcdaa143b17d7f98b847f5c7825725e2dd
   constitution/BOOTSTRAP.md: 50bc75dfa3e081f3ee28c36ead980723873aa5947991ee6f309aaf11a9e6b15e
   scripts/derive_platform_state.py: 68702e557c42cca9f9b25e6a771b4236c853f21a9697cd5ab7a5042d7dd34a62
-  scripts/prepare_pr_body.py: 62c09f77f504fb841ee018ac17afdc0c5877d95c4da394b61bf17d95b82c89d2
+  scripts/prepare_pr_body.py: 94bb86b4fb46eb30031683d81d58670d4c3121844b6036fdb2a65885e39502fa
   scripts/run_platform_state_refresh.sh: f984f336179a56a958fea19cd80d9666d00d34a8243571e5ccb0b73e64b6b641
   scripts/sync_platform_state.py: f9120b2edb00f82be87eb40454b1160f1cc6fa8d25c1ca66f4a0e2e8b803351f
   scripts/validate_requirement_ledger.py: ff398b112b0b0c2a5875307b570ca79c342ece09bc903472d956c92cba44d010
   scripts/verify_process_control.py: e34bb4fe85463bba6bd25e5bcb333c5777232befe0c2e115a863bcaef6a881da
   standards/AI-RESOURCE-GOVERNANCE.md: a9068a21b567ffa02cc822e5f18144059a38c6dedf4ee6af5beb4c45637512ef
-  standards/CI-VALIDATION-SPEED-POLICY.md: 2cb5c91906d5fade76985681118311743666c9e76a70f455a5eea1f9932a3884
+  standards/CI-VALIDATION-SPEED-POLICY.md: 1f7f3825c79acc90f0ee04a8380dad27bd9dd6b57edeca18591154790e078293
   tests/pipeline/test_platform_it_process_intake.py: f3409e70c728efd0c740c9410cce74494fa1c9eaa21779e65a156b557b129cb2
   tests/pipeline/test_platform_it_story_commentary.py: dd8e639a4bb743bbeda42fbc7cb935693e641f8e0e9204bf23b51f406c27177a
+  tests/pipeline/test_pre_push_binding_hook.py: 9ab86aac26c5717135d19811fe324af371cd7d79646fb913121021a161338018
   tests/platform/test_platform_state_sync.py: 01e55fc97e53c5fead94ec29c1a5c2a479339fc2af6e2d931a79b2bfafec28b4
   work-contracts/IMPLEMENTATION-WORK-CONTRACT-TEMPLATE.md: 6694c9923a7177a0210a7a6b6b5148ef328f4200ebb52652b615f401afbf192e
 required_controls:
@@ -45,7 +47,10 @@ required_controls:
     sources:
     - .github/agent-context/office-platform-it-expert.md
     - scripts/prepare_pr_body.py
-    outcome: Author review and PR evidence bind to the exact final head.
+    - .githooks/pre-push
+    - tests/pipeline/test_pre_push_binding_hook.py
+    outcome: Author review and PR evidence bind to the exact final head, evidence for that head is reused rather than recomputed,
+      and a push whose open PR is not bound to it is refused.
   resource_governance:
     sources:
     - standards/AI-RESOURCE-GOVERNANCE.md

@@ -1,0 +1,48 @@
+#!/bin/sh
+# Implements: standards/CI-VALIDATION-SPEED-POLICY.md rule V9 (exact-head evidence binding before every push)
+# constitutional_basis: C-059, C-065
+#
+# CI reads the PR body at the moment a push triggers it. If the body's Reviewed Commit is not the head being
+# pushed, C-065 fails and the whole run is wasted. This hook refuses that push for a branch with an open PR.
+# Bypassing it with --no-verify does not bypass C-065; it only moves the failure to CI.
+set -eu
+
+zero=0000000000000000000000000000000000000000
+
+if ! command -v gh >/dev/null 2>&1; then
+    echo "pre-push: gh is not installed; cannot verify that the PR body is bound to this head" >&2
+    exit 0
+fi
+
+status=0
+while read -r _local_ref local_sha remote_ref _remote_sha; do
+    case "$remote_ref" in
+        refs/heads/*) ;;
+        *) continue ;;
+    esac
+    if [ "$local_sha" = "$zero" ]; then
+        continue
+    fi
+    branch=${remote_ref#refs/heads/}
+    if ! listing=$(gh pr list --head "$branch" --state open --json number,body \
+        --template '{{range .}}{{.number}} {{.body}}{{end}}' 2>/dev/null); then
+        echo "pre-push: could not read the open PR for $branch; not blocking, but C-065 will still check it" >&2
+        continue
+    fi
+    if [ -z "$listing" ]; then
+        continue
+    fi
+    number=$(printf '%s\n' "$listing" | head -n 1 | cut -d ' ' -f 1)
+    reviewed=$(printf '%s\n' "$listing" | grep -o 'Reviewed Commit:\*\* [0-9a-f]\{40\}' | head -n 1 | awk '{print $3}' || true)
+    if [ "$reviewed" != "$local_sha" ]; then
+        {
+            echo "pre-push: PR #$number is not bound to $local_sha (its body says Reviewed Commit: ${reviewed:-none})."
+            echo "Bind it first, then push. Never pass evidence flags by hand; the script reuses exact-head evidence itself:"
+            echo "  scripts/prepare_pr_body.sh --body-file \"\$PWD/test-results/pr-body.md\" --base origin/main \\"
+            echo "    --expected-worktree \"\$PWD\" --expected-head \"\$(git rev-parse HEAD)\" --allow-unpushed-head --update-pr $number"
+        } >&2
+        status=1
+    fi
+done
+
+exit "$status"

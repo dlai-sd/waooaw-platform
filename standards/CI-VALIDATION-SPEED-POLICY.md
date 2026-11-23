@@ -16,6 +16,7 @@
 | V6 | Reuse only evidence that is keyed by the exact inputs: gate id, input digest, runner image digest and graph version. Never reuse a result by branch name or by time. Gates marked `reusable: false` (for example dependency scans, whose result changes with the vulnerability database) always re-run. |
 | V7 | The full suite and the coverage gate (90% line, 80% branch) stay authoritative on merge to `main` and on the nightly run. A faster path may select tests on a PR; it may not lower the thresholds. |
 | V8 | A pre-check node starts the moment its own dependencies pass and never waits for unrelated nodes (`run_prechecks` in `scripts/precheck_orchestrator.py`). Declare real dependencies only; an unnecessary dependency serialises the graph. |
+| V9 | PR preparation has one path: `scripts/prepare_pr_body.sh`. It reuses its own exact-head precheck and lifecycle evidence (`<body>.precheck-evidence.json`, `<body>.runtime-evidence.json`) automatically; a second bind of the same head must cost seconds. Never pass `--precheck-evidence-file` or `--runtime-evidence-file` by hand, never run `scripts/run_goal006_runtime_lifecycle_gate.sh` yourself to prepare a PR, and use `--no-reuse` only to disprove a suspected stale reuse. Bind the body to the new head with `--allow-unpushed-head --update-pr N` before every push to a branch with an open PR; `.githooks/pre-push` refuses the push otherwise. Never bypass with `--no-verify`. |
 
 ## 2. Where things live
 
@@ -34,6 +35,7 @@
 | V4, V5 | `PooledPostgresIsolationTests.cs` | A reset that leaks a role, table or database fails the gate |
 | V7 | Coverage thresholds in the Business Platform gate | Coverage below 90% line or 80% branch fails the gate |
 | V6, V8 | Not enforced by a test: review against this policy | |
+| V9 | `tests/pipeline/test_pre_push_binding_hook.py` (hook behaviour and process-control pinning), `test_exact_head_evidence_written_by_an_earlier_run_is_reused_and_stale_evidence_is_not` in `tests/pipeline/test_prepare_pr_body.py` | A push whose open PR body is not bound to the pushed head is refused; evidence for another head, base, file set, gate configuration or runner is never reused; unpinning the hook fails the test |
 
 When you add a pre-check node, add its dependency in the same change; the V1 test fails until you do.
 
