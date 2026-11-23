@@ -157,6 +157,8 @@ def test_all_foundation_roots_publish_the_same_workload_contract() -> None:
                 }
             )
         environment_outputs.add("log_analytics_workspace_id")
+        if environment in {"demo", "uat"}:
+            environment_outputs.add("acceptance_client_id")
         assert set(re.findall(r'^output "([^"]+)"', foundation, re.MULTILINE)) == environment_outputs
 
 
@@ -513,7 +515,8 @@ def test_each_release_member_has_its_own_identity_and_secret_scope() -> None:
 def test_deployment_identity_is_environment_scoped_for_resources_and_rbac() -> None:
     contract = read_contract("modules/foundation/main.tf")
 
-    assert contract.count("scope                = azurerm_resource_group.environment.id") == 3
+    # Three deployment-identity scopes plus the acceptance identity Reader (WC-159, off by default).
+    assert contract.count("scope                = azurerm_resource_group.environment.id") == 4
     assert 'role_definition_name = "Contributor"' in contract
     assert 'role_definition_name = "Role Based Access Control Administrator"' in contract
     assert "azurerm_user_assigned_identity.deployment.principal_id" in contract

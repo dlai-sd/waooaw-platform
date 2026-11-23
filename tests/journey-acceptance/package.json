@@ -1,0 +1,6 @@
+{
+  "name": "waooaw-journey-acceptance",
+  "private": true,
+  "type": "module",
+  "description": "Customer journey acceptance harness (ADR-054, WC-158). Run only through the repository's Docker validation runner."
+}

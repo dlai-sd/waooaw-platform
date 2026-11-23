@@ -58,7 +58,21 @@ module "foundation" {
   postgresql_password_auth_enabled          = var.postgresql_password_auth_enabled
   database_bootstrap_admin_enabled          = var.database_bootstrap_admin_enabled
   database_provisioner_vault_access_enabled = var.database_provisioner_vault_access_enabled
-  log_analytics_workspace_name              = "law-waooaw-demo-validation"
+  # ADR-054 (WC-159): the Founder flips this after reviewing the plan; the acceptance run needs the identity it creates.
+  acceptance_enabled = false
+  acceptance_secret_names = [
+    "acceptance-keycloak-provisioner-client-secret",
+    "acceptance-meta-app-id",
+    "acceptance-meta-app-secret",
+    "acceptance-meta-test-user-session",
+    "acceptance-meta-test-page-id",
+    "acceptance-whatsapp-sandbox-recipient",
+    "acceptance-whatsapp-webhook-secret",
+    "razorpay-test-key-id",
+    "razorpay-test-key-secret",
+    "razorpay-test-webhook-secret",
+  ]
+  log_analytics_workspace_name = "law-waooaw-demo-validation"
 }
 
 output "resource_group_name" {
@@ -172,4 +186,8 @@ output "image_pull_client_id" {
 
 output "image_publish_client_id" {
   value = module.foundation.image_publish_client_id
+}
+
+output "acceptance_client_id" {
+  value = module.foundation.acceptance_client_id
 }

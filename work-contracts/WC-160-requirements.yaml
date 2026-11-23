@@ -1,0 +1,76 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-160
+contract_path: work-contracts/WC-160-acceptance-slice-1-content.md
+contract_digest: d133c8b60c9c68d2f95dc084ff745563e56525480f510c9708d2471a5367820a
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Harness unit tests and a local end-to-end run in the digest-pinned TypeScript runner, and static gate tests in the Python runner, run in Docker at the exact head; commands and results in the PR body
+  initial_state: expected-fail
+  dependencies: WC-158 and WC-159 outputs in this branch; Founder authorization of this implementing session (current conversation)
+  residual_risk: Locators and provider pages are unproven on Demo; the first run is the calibration run
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC160-R001
+    source: WC-160 Canonical Requirement Index, R001
+    observable_outcome: Every slice-1 plan step has a spec citing its step and existing identifiers; the ratchet floor is 1.0.
+    test_path_or_plan: tests/pipeline/test_acceptance_static_gates.py::test_repository_passes_every_static_acceptance_gate; playwright test --list in the TypeScript runner lists 11 specs.
+
+  - <<: *defaults
+    requirement_id: WC160-R002
+    source: WC-160 Canonical Requirement Index, R002
+    observable_outcome: live-scope.yaml lists only existing identifiers and each has a spec or an accepted deferral with a reason.
+    test_path_or_plan: tests/pipeline/test_acceptance_static_gates.py::test_the_coverage_ratchet_refuses_a_lower_floor_a_removed_cover_and_a_new_deferral; static gate over validation/acceptance/live-scope.yaml.
+
+  - <<: *defaults
+    requirement_id: WC160-R003
+    source: WC-160 Canonical Requirement Index, R003
+    observable_outcome: Platform reads go only through same-origin web routes under the customer's session; a field they do not expose makes the witness unreadable.
+    test_path_or_plan: tests/journey-acceptance/__tests__/providers.test.ts platform readers; specs/support/context.ts platform(); static review of the spec reads.
+
+  - <<: *defaults
+    requirement_id: WC160-R004
+    source: WC-160 Canonical Requirement Index, R004
+    observable_outcome: A key id without the test prefix stops the run before any provider call; payments for an order are read from the sandbox API and summed.
+    test_path_or_plan: tests/journey-acceptance/__tests__/providers.test.ts Razorpay tests.
+
+  - <<: *defaults
+    requirement_id: WC160-R005
+    source: WC-160 Canonical Requirement Index, R005
+    observable_outcome: The webhook replay is signed as hex HMAC-SHA256 of the raw body with the webhook secret and posted to the environment's callback address.
+    test_path_or_plan: tests/journey-acceptance/__tests__/providers.test.ts webhook signature test; specs/s5-payment.spec.ts S5b.
+
+  - <<: *defaults
+    requirement_id: WC160-R006
+    source: WC-160 Canonical Requirement Index, R006
+    observable_outcome: A user who is not a registered test user of the development app stops the run; granted permissions are read from Graph.
+    test_path_or_plan: tests/journey-acceptance/__tests__/providers.test.ts Meta tests.
+
+  - <<: *defaults
+    requirement_id: WC160-R007
+    source: WC-160 Canonical Requirement Index, R007
+    observable_outcome: A missing credential, unregistered provider or unreadable secret yields BLOCKED-BY-FLAG with its reason, never a pass or failure.
+    test_path_or_plan: tests/journey-acceptance/__tests__/step.test.ts blocked-step test; local end-to-end run showing S2 BLOCKED-BY-FLAG.
+
+  - <<: *defaults
+    requirement_id: WC160-R008
+    source: WC-160 Canonical Requirement Index, R008
+    observable_outcome: Customer B's identifiers are collected from B's session and any appearance in an A response is a finding.
+    test_path_or_plan: tests/journey-acceptance/__tests__/providers.test.ts identifier collection; tests/journey-acceptance/__tests__/guards.test.ts foreign identifier tests; specs/s7-stop-and-isolation.spec.ts S8.
+
+  - <<: *defaults
+    requirement_id: WC160-R009
+    source: WC-160 Canonical Requirement Index, R009
+    observable_outcome: The real specs run to completion against an unreachable environment and against a non-product stand-in and produce a schema-valid report with honest verdicts.
+    test_path_or_plan: tests/journey-acceptance/__tests__/cli.test.ts; local end-to-end run of the specs in the TypeScript runner against a stand-in server, result in the PR body.
+
+  - <<: *defaults
+    requirement_id: WC160-R010
+    source: WC-160 Canonical Requirement Index, R010
+    observable_outcome: Every report carries the first-login linking and trial identity-hash limits as declared limits.
+    test_path_or_plan: tests/journey-acceptance/run.ts declared limits; local end-to-end report in the PR body.

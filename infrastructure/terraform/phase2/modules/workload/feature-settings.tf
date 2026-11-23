@@ -11,6 +11,8 @@ variable "feature_settings" {
     wallet_authority                      = optional(string, "LEGACY")
     trial_identity_binding_mode           = optional(string, "RECORD")
     whatsapp_stop_acknowledgement_enabled = optional(bool, false)
+    # Demo and UAT only (ADR-055 decision 4); the validation below refuses it for Production.
+    acceptance_synthetic_tenants_enabled = optional(bool, false)
   })
   default = {}
 
@@ -20,6 +22,11 @@ variable "feature_settings" {
       contains(["OFF", "RECORD", "ENFORCE"], var.feature_settings.trial_identity_binding_mode)
     )
     error_message = "wallet_authority must be LEGACY, SHADOW or WALLET and trial_identity_binding_mode must be OFF, RECORD or ENFORCE."
+  }
+
+  validation {
+    condition     = var.environment != "prod" || !var.feature_settings.acceptance_synthetic_tenants_enabled
+    error_message = "acceptance_synthetic_tenants_enabled exists only for Demo and UAT and cannot be enabled in Production."
   }
 }
 
@@ -49,6 +56,7 @@ locals {
       {
         Workbench__Enabled                           = tostring(var.feature_settings.workbench_enabled)
         Protocol__WhatsAppStopAcknowledgementEnabled = tostring(var.feature_settings.whatsapp_stop_acknowledgement_enabled)
+        AcceptanceSyntheticTenants__Enabled          = tostring(var.feature_settings.acceptance_synthetic_tenants_enabled)
       },
       merge([
         for index, founder in var.platform_access.founders : merge(

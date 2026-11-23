@@ -77,6 +77,9 @@ public static class PlatformRoles
 {
     public const string Founder = "founder";
     public const string PricingAdmin = "pricing_admin";
+
+    // A Keycloak realm role held by the acceptance provisioning client only; it is never a stored grant or requestable.
+    public const string AcceptanceProvisioner = "acceptance-provisioner";
     public const string ClaimSourceMarker = "waooaw.platform-access";
 
     // Every role the Business Platform checks, other than the Founder, which only configuration can assign.

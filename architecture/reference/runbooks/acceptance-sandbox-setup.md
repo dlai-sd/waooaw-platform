@@ -90,6 +90,27 @@ When WC-161 exists, its read-only check reports for each secret: present, non-em
 prints a value. Until then, `az keyvault secret list --vault-name <vault> --query "[?starts_with(name,'acceptance-')].name"`
 lists names only.
 
+### 6. Enable the acceptance identity and the provisioning client (after WC-158 to WC-160 merge)
+
+These are Founder-authorized applies; nothing in the repository applies them.
+
+1. Terraform: set `acceptance_enabled = true` in `environments/<env>/foundation/main.tf` (Demo and UAT only; the
+   module refuses other environments) and run the normal foundation plan and apply. It creates the identity
+   `id-waooaw-<env>-acceptance` federated to `refs/heads/main` with read-only access to exactly the secret names
+   listed in that file, Reader on the resource group and Monitoring Reader on the workspace. Copy the
+   `acceptance_client_id` output into `validation/acceptance/environments/<env>.yaml` (`azure.acceptance_client_id`);
+   the workflow refuses to run while it is null.
+2. Keycloak: merge `infrastructure/keycloak/acceptance-provisioner.realm-fragment.json` into the environment's realm
+   definition (client, service account, realm role `acceptance-provisioner`, group `synthetic`, admin events on) and
+   store the client secret as `acceptance-keycloak-provisioner-client-secret`.
+3. Business Platform: set the feature setting `acceptance_synthetic_tenants_enabled` to true for that environment
+   through the settings path. Production refuses it.
+
+**Known gap to decide before the first Demo run:** the environment Key Vault has `public_network_access_enabled = false`,
+so a GitHub-hosted runner cannot read the `acceptance-` secrets. The workflow reports the unreadable secrets as a
+configuration finding and every step that needs one is `BLOCKED-BY-FLAG` or `NOT-WITNESSED`. The Founder must choose how the
+run reaches the vault (a runner inside the private network that also provides Docker, or a dedicated vault).
+
 ## Rotation and removal
 
 Rotate by storing a new version under the same name; the harness reads the latest. To withdraw the

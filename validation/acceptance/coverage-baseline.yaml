@@ -1,0 +1,37 @@
+schema: waooaw.acceptance-coverage-baseline/v1
+# The ratchet (ADR-054 item 14): static acceptance-test coverage of the live scope may rise and never fall.
+# Raising the floor or covered list is an ordinary change; lowering it, or adding a deferral, is refused by
+# scripts/acceptance_static_gates.py against the base branch and needs a Founder-approved ADR amendment.
+plan_step_floor: 1.0
+covered:
+  - AE-01-S02
+  - AE-01-S05
+  - AE-01-S06
+  - AE-01-S07
+  - AE-01-S08
+  - AE-01-S10
+  - AE-02-S01
+  - PG-02
+  - PG-03
+  - PG-04
+  - PG-08
+  - PG-09
+  - PG-10
+  - PG-11
+  - PG-12
+  - PG-15
+  - PG-16
+  - WC107-R009
+  - WC107-R010
+  - WC107-R011
+  - WC107-R013
+  - WC107-R014
+  - WC107-R015
+  - WC149-R007
+  - WC149-R008
+  - WC149-R010
+deferred:
+  - WC107-R012
+  - WC107-R016
+  - WC107-R019
+  - WC149-R009

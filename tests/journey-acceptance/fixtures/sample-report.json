@@ -1,0 +1,104 @@
+{
+  "schema": "waooaw.acceptance-report/v1",
+  "verdict": "NOT-COVERED",
+  "workflow_conclusion": "success",
+  "candidate": {
+    "environment": "demo",
+    "journey_id": "sample",
+    "commit": "cccccccccccccccccccccccccccccccccccccccc",
+    "journey_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "profile_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "services": [
+      {
+        "name": "web",
+        "image": "registry.example/web@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      }
+    ],
+    "started_at": "2026-11-23T10:00:00.000Z",
+    "finished_at": "2026-11-23T10:05:00.000Z"
+  },
+  "not_tested": {
+    "environment_unavailable": false,
+    "not_covered_steps": [
+      {
+        "step": "S2",
+        "reason": "step did not run"
+      }
+    ],
+    "not_covered": [
+      {
+        "id": "PG-11",
+        "reason": "no step reached any depth for this identifier in this run"
+      }
+    ],
+    "not_witnessed": [],
+    "blocked_by_flag": [],
+    "flaky": [],
+    "declared_limits": [
+      "Google first-login linking is not exercised"
+    ]
+  },
+  "failures": [],
+  "guard_findings": [],
+  "provider_mode_findings": [],
+  "synthetic_volume": {
+    "customers_created": 2,
+    "customers_removed": 2,
+    "left_over": []
+  },
+  "coverage": {
+    "PG-02": {
+      "depth": "L4",
+      "steps": [
+        "S1"
+      ]
+    },
+    "PG-11": {
+      "depth": "NOT-COVERED",
+      "steps": []
+    },
+    "WC107-R009": {
+      "depth": "L4",
+      "steps": [
+        "S1"
+      ]
+    }
+  },
+  "steps": [
+    {
+      "stepId": "S1",
+      "title": "S1",
+      "verdict": "PASS",
+      "identifiers": [
+        "PG-02",
+        "WC107-R009"
+      ],
+      "reached": "L4",
+      "failurePath": false,
+      "witnessesRead": [
+        "W1",
+        "W2"
+      ],
+      "claims": [],
+      "retries": 0,
+      "reason": ""
+    },
+    {
+      "stepId": "S2",
+      "title": "Pay",
+      "verdict": "NOT-COVERED",
+      "identifiers": [
+        "PG-11"
+      ],
+      "reached": null,
+      "failurePath": false,
+      "witnessesRead": [],
+      "claims": [],
+      "retries": 0,
+      "reason": "step did not run"
+    }
+  ],
+  "passed": [
+    "S1"
+  ]
+}

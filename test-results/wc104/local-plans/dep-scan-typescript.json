@@ -1,8 +1,8 @@
 {
   "authoritative": false,
   "catalog_version": "wc121-selective-validation-v1",
-  "execution_namespace": "wc109-16f5523e06fd3528",
-  "head_sha": "52a718cfd07a2c018c421fb80f05a121a4509f51",
+  "execution_namespace": "wc109-f2732ce28e1f8962",
+  "head_sha": "e53228e6aa04f1f4500a182daa8c93aefbe78411",
   "machine_checkable": true,
   "mode": "qualification",
   "nodes": [
@@ -20,7 +20,7 @@
       "components": [
         "web"
       ],
-      "compose_project": "wc109-16f5523e06fd3528",
+      "compose_project": "wc109-f2732ce28e1f8962",
       "compose_service": "test-runner-ts",
       "cost_class": "STATIC",
       "direct_prerequisites": [],
@@ -34,7 +34,7 @@
             "test-results/**/*.json"
           ]
         },
-        "directory": "test-results/wc109/runs/wc109-16f5523e06fd3528/dep-scan-typescript"
+        "directory": "test-results/wc109/runs/wc109-f2732ce28e1f8962/dep-scan-typescript"
       },
       "gate_id": "dep-scan:typescript",
       "inputs": {
@@ -42,7 +42,7 @@
         "catalog_version": "wc121-selective-validation-v1",
         "command_id": "dependency-scan-typescript",
         "environment": [],
-        "head_sha": "52a718cfd07a2c018c421fb80f05a121a4509f51",
+        "head_sha": "e53228e6aa04f1f4500a182daa8c93aefbe78411",
         "required_services": [],
         "runner_id": "typescript"
       },
@@ -57,6 +57,7 @@
           "scripts/validation_control/orchestrator.py",
           "scripts/validation_control/qualification.py",
           "scripts/validation_control/wc104_rollback.py",
+          "tests/journey-acceptance/**",
           "validation/**",
           "validation/catalog.schema.json",
           "validation/engineering-validation.yaml",
@@ -77,7 +78,7 @@
           "environment"
         ]
       },
-      "output_directory": "test-results/wc109/runs/wc109-16f5523e06fd3528/dep-scan-typescript",
+      "output_directory": "test-results/wc109/runs/wc109-f2732ce28e1f8962/dep-scan-typescript",
       "owner": "web",
       "phase": "A_DESIGN",
       "product_image_builds": [],

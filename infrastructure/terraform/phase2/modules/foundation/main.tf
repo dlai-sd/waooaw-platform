@@ -789,3 +789,52 @@ output "image_pull_client_id" {
 output "image_publish_client_id" {
   value = azurerm_user_assigned_identity.image_publish.client_id
 }
+
+# ADR-054 / ADR-055 (WC-159): the post-deployment customer journey acceptance run uses its own identity, federated to
+# the main branch only. It holds no Contributor or role-assignment right (C-065): read-only on the exact secrets it needs,
+# Reader on this resource group and Monitoring Reader on the workspace.
+resource "azurerm_user_assigned_identity" "acceptance" {
+  count               = var.acceptance_enabled ? 1 : 0
+  name                = "id-${local.name}-acceptance"
+  location            = azurerm_resource_group.environment.location
+  resource_group_name = azurerm_resource_group.environment.name
+  tags                = local.tags
+}
+
+resource "azurerm_federated_identity_credential" "acceptance" {
+  count               = var.acceptance_enabled ? 1 : 0
+  name                = "github-main-acceptance"
+  resource_group_name = azurerm_resource_group.environment.name
+  parent_id           = azurerm_user_assigned_identity.acceptance[0].id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = "https://token.actions.githubusercontent.com"
+  subject             = "repo:${var.repository_id}:ref:refs/heads/main"
+}
+
+resource "azurerm_role_assignment" "acceptance_secret_reader" {
+  for_each             = var.acceptance_enabled ? toset(var.acceptance_secret_names) : toset([])
+  scope                = "${azurerm_key_vault.environment.id}/secrets/${each.value}"
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.acceptance[0].principal_id
+  principal_type       = "ServicePrincipal"
+}
+
+resource "azurerm_role_assignment" "acceptance_resource_group_reader" {
+  count                = var.acceptance_enabled ? 1 : 0
+  scope                = azurerm_resource_group.environment.id
+  role_definition_name = "Reader"
+  principal_id         = azurerm_user_assigned_identity.acceptance[0].principal_id
+  principal_type       = "ServicePrincipal"
+}
+
+resource "azurerm_role_assignment" "acceptance_monitoring_reader" {
+  count                = var.acceptance_enabled ? 1 : 0
+  scope                = azurerm_log_analytics_workspace.environment.id
+  role_definition_name = "Monitoring Reader"
+  principal_id         = azurerm_user_assigned_identity.acceptance[0].principal_id
+  principal_type       = "ServicePrincipal"
+}
+
+output "acceptance_client_id" {
+  value = var.acceptance_enabled ? azurerm_user_assigned_identity.acceptance[0].client_id : null
+}

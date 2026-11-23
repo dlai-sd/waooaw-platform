@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using Waooaw.BusinessPlatform.Infrastructure;
+using Waooaw.BusinessPlatform.Services.AcceptanceSynthetic;
 
 namespace Waooaw.BusinessPlatform.Services;
 
@@ -148,16 +149,19 @@ public sealed class CustomerWorkspaceProvisioningService
     private readonly IDbContextFactory<IdentityDbContext> _factory;
     private readonly CustomerWorkspaceTrust _trust;
     private readonly TimeProvider _time;
+    private readonly SyntheticTenantInheritance? _syntheticTenants;
 
     public CustomerWorkspaceProvisioningService(
         IDbContextFactory<IdentityDbContext> factory,
         CustomerWorkspaceTrust trust,
-        TimeProvider? timeProvider = null
+        TimeProvider? timeProvider = null,
+        SyntheticTenantInheritance? syntheticTenants = null
     )
     {
         _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         _trust = trust ?? throw new ArgumentNullException(nameof(trust));
         _time = timeProvider ?? TimeProvider.System;
+        _syntheticTenants = syntheticTenants;
         if (
             !ValidKey(trust.ActorIssuer, 256)
             || !ValidKey(trust.ProviderIssuer, 256)
@@ -662,6 +666,9 @@ public sealed class CustomerWorkspaceProvisioningService
             }
         );
         await db.SaveChangesAsync(ct);
+        // Label only: membership above came from the verified (iss, sub) exactly as for any customer.
+        if (_syntheticTenants is not null)
+            await _syntheticTenants.InheritAsync(db, proof.Actor, tenantId, ct);
         registration.AccountId = accountId;
         registration.ActorBindingId = binding.ActorBindingId;
         registration.OriginRegistrationId = registration.RegistrationId;

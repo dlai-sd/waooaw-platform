@@ -1,0 +1,41 @@
+schema: waooaw.acceptance-live-scope/v1
+# The Founder owns this list (ADR-054 item 14). Identifiers are those whose contracts record "provable only on Demo",
+# plus the stories and gaps the slice 1 plan exercises. Each must have a spec or a deferral accepted in coverage-baseline.yaml.
+requirements:
+  - WC107-R009
+  - WC107-R010
+  - WC107-R011
+  - WC107-R012
+  - WC107-R013
+  - WC107-R014
+  - WC107-R015
+  - WC107-R016
+  - WC107-R019
+  - WC149-R007
+  - WC149-R008
+  - WC149-R009
+  - WC149-R010
+stories:
+  - AE-01-S02
+  - AE-01-S05
+  - AE-01-S06
+  - AE-01-S07
+  - AE-01-S08
+  - AE-01-S10
+  - AE-02-S01
+gaps:
+  - PG-02
+  - PG-03
+  - PG-04
+  - PG-08
+  - PG-09
+  - PG-10
+  - PG-11
+  - PG-12
+  - PG-15
+  - PG-16
+deferred:
+  WC107-R012: Coupon validation is not a slice 1 step; the Founder adds it with a later slice
+  WC107-R016: My Agents authorized-result selection is not a slice 1 step; the Founder adds it with a later slice
+  WC107-R019: Needs all five complete Demo journeys; slice 1 is the first of them and cannot complete it alone
+  WC149-R009: Publishing through the broker is slice 2 (WC-162) and depends on removing the Facebook emulator path

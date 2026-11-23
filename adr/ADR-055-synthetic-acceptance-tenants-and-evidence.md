@@ -1,6 +1,6 @@
 # ADR-055 - Synthetic Acceptance Tenants And Evidence
 
-**Status:** PROPOSED - awaiting Founder acceptance
+**Status:** ACCEPTED - Founder acceptance in the 2026-11-23 conversation (ADR-054 and ADR-055 accepted together, including the ADR-055 provisioning-client residual risk for Demo and UAT); implementation authorized by WC-158, WC-159 and WC-160
 **Date:** 2026-11-23
 **Decision owner:** Enterprise Architecture (INST-004)
 **Authorization:** Founder assignment in the current conversation, 2026-11-23 (architecture package only; no implementation)

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "waooaw.journey-test-plan/v1",
+  "title": "Journey test plan (ADR-054 item 2)",
+  "type": "object",
+  "required": ["schema", "journey_id", "version", "status", "customers", "steps"],
+  "properties": {
+    "schema": { "const": "waooaw.journey-test-plan/v1" },
+    "journey_id": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
+    "version": { "type": "integer", "minimum": 1 },
+    "status": { "enum": ["PROPOSED", "ACCEPTED"] },
+    "customers": { "type": "object" },
+    "verdicts": { "type": "array", "items": { "type": "string" } },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "customer", "stimulus", "claims"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^S[0-9]+[a-z]?$" },
+          "title": { "type": "string", "minLength": 1 },
+          "customer": { "enum": ["A", "B"] },
+          "stimulus": { "type": "string", "minLength": 1 },
+          "failure_path": { "type": "boolean" },
+          "claims": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["id", "statement", "witnesses_required"],
+              "properties": {
+                "id": { "type": "string", "pattern": "^S[0-9]+[a-z]?-C[0-9]+$" },
+                "statement": { "type": "string", "minLength": 1 },
+                "witnesses_required": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "enum": ["W1", "W2", "W3", "W4"] }
+                },
+                "depth_target": { "enum": ["L1", "L2", "L3", "L4", "L5"] }
+              }
+            }
+          },
+          "proves": {
+            "type": "object",
+            "properties": {
+              "stories": { "type": "array", "items": { "type": "string", "pattern": "^AE-[0-9]{2}-S[0-9]{2}$" } },
+              "gaps": { "type": "array", "items": { "type": "string", "pattern": "^PG-[0-9]{2}$" } },
+              "requirements": { "type": "array", "items": { "type": "string", "pattern": "^WC[0-9]{3}-R[0-9]{3}$" } },
+              "drivers": { "type": "array", "items": { "type": "string", "pattern": "^AD-[0-9]{3}$" } }
+            }
+          }
+        }
+      }
+    },
+    "witness_exceptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["claim", "reason"],
+        "properties": { "claim": { "type": "string" }, "reason": { "type": "string", "minLength": 10 } }
+      }
+    }
+  }
+}

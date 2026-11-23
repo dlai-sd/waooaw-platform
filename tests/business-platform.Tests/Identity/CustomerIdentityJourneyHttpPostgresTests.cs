@@ -22,6 +22,7 @@ using Npgsql;
 using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
+using Waooaw.BusinessPlatform.Services.AcceptanceSynthetic;
 using Xunit;
 using GoogleWorkspaceProofAdapter = Waooaw.BusinessPlatform.Services.VerifiedIdentityProofAdapter;
 
@@ -121,10 +122,32 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
                 )
             )
         );
+        await OwnerAsync(
+            """
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'bp_owner') THEN
+                    CREATE ROLE bp_owner NOLOGIN;
+                END IF;
+            END $$;
+            GRANT CREATE, USAGE ON SCHEMA business TO bp_owner;
+            """
+        );
+        await OwnerAsync(
+            await File.ReadAllTextAsync(
+                RepositoryPaths.Resolve(
+                    "infrastructure/postgres/init/99zzzzzzzz-wc159-01-synthetic-acceptance-registry.sql"
+                )
+            )
+        );
 
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
         builder.Logging.ClearProviders();
+        builder.Services.AddSingleton(
+            Options.Create(new AcceptanceSyntheticOptions { Enabled = true })
+        );
+        builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddSingleton<SyntheticTenantInheritance>();
         builder.Services.AddControllers().AddApplicationPart(typeof(IdentityController).Assembly);
         builder
             .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -209,6 +232,51 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests(IdentityPostgresSer
         _brokerClient?.Dispose();
         _signer.Dispose();
         await fixture.DropDatabaseAsync(_ownerConnectionString);
+    }
+
+    [Fact]
+    public async Task WC159_R003_Http_OnlyAServerRegisteredSubjectGivesItsTenantTheSyntheticLabel_AndNoClaimCanForgeIt()
+    {
+        var forged = Token(
+            "customer-forged",
+            extra:
+            [
+                new Claim("synthetic", "true"),
+                new Claim("waooaw_synthetic", "true"),
+                new Claim("realm_access", "{\"roles\":[\"acceptance-provisioner\"]}"),
+                new Claim("run_id", "forged-run-0001"),
+            ]
+        );
+        var registered = Token("customer-registered");
+        var real = Token("customer-real");
+        await OwnerAsync(
+            $"""
+            INSERT INTO business.synthetic_subjects
+                (registration_id, issuer, subject, run_id, registered_by, registered_at, expires_at)
+            VALUES (gen_random_uuid(), '{_configuration.ActorIssuer}', 'customer-registered',
+                    'run-registered-01', 'provisioner-test', now(), now() + interval '1 hour');
+            """
+        );
+
+        var registeredCompletion = await CompleteAsync(registered, await RegisterAsync(registered));
+        await CompleteAsync(forged, await RegisterAsync(forged));
+        await CompleteAsync(real, await RegisterAsync(real));
+
+        var registeredAccount = registeredCompletion.GetProperty("accountReference").GetGuid();
+        Assert.Equal(
+            1L,
+            await OwnerScalarAsync(
+                $"""
+                SELECT count(*) FROM business.synthetic_tenants s
+                JOIN identity.accounts a ON a.initial_tenant_id = s.tenant_id
+                WHERE a.account_id = '{registeredAccount}' AND s.run_id = 'run-registered-01'
+                """
+            )
+        );
+        Assert.Equal(1L, await OwnerScalarAsync("SELECT count(*) FROM business.synthetic_tenants"));
+        // Membership is unchanged: the registered subject still resolves only its own workspace.
+        var session = await SendAsync(HttpMethod.Get, "/api/v1/identity/session", registered);
+        Assert.Equal(HttpStatusCode.OK, session.StatusCode);
     }
 
     [Fact]

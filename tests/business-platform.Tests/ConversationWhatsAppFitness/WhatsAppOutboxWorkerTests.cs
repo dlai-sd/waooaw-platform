@@ -113,6 +113,35 @@ public sealed class WhatsAppOutboxWorkerTests
         Assert.Equal("CURRENT_ELIGIBILITY_DENIED", record.BlockedReason);
     }
 
+    [Fact]
+    public async Task WC159_R005_ASuppressedSyntheticDeliveryIsBlockedUnderItsOwnReasonAndIsNotADeadLetter()
+    {
+        var context = await Wc120FitnessContext.CreateAsync();
+        var now = DateTimeOffset.UtcNow;
+        await SeedEligibilityAsync(context, now);
+        var outbox = context.Outbox();
+        await QueueAsync(outbox, context, Guid.NewGuid().ToString("D"), 1, Guid.NewGuid(), now);
+        var provider = new ProviderStub
+        {
+            DispatchState = "NOT_SENT",
+            FailureReason = Waooaw.BusinessPlatform.Services.AcceptanceSynthetic.SyntheticDeliveryGate.SuppressedReason,
+        };
+        var worker = new WhatsAppOutboxWorker(outbox, provider, new MutableTimeProvider(now));
+
+        Assert.True(await worker.ProcessOneAsync("worker", CancellationToken.None));
+
+        await using var db = context.Conversations.CreateDbContext();
+        var record = Assert.Single(db.ConversationOutbox);
+        Assert.Equal("BLOCKED", record.State);
+        Assert.Equal("SYNTHETIC_RECIPIENT_SUPPRESSED", record.BlockedReason);
+        Assert.Contains(db.DeliveryObservations, observation => observation.DeliveryState == "NOT_SENT");
+        Assert.DoesNotContain(db.OperationalSignals, signal => signal.Category == "DEAD_LETTER");
+        var snapshot = await new ConversationOperationsService(context.Conversations, Options.Create(context.Options))
+            .EvaluateAsync(now.AddHours(1), CancellationToken.None);
+        Assert.Equal(0, snapshot.BlockedOutboxCount);
+        Assert.DoesNotContain(snapshot.Alerts, alert => alert.Code.StartsWith("DEAD_LETTER", StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -1260,6 +1289,7 @@ public sealed class WhatsAppOutboxWorkerTests
         public int DispatchCount { get; private set; }
         public int ReconcileCount { get; private set; }
         public string DispatchState { get; init; } = "DELIVERED";
+        public string? FailureReason { get; init; }
         public bool DenyCapability { get; set; }
         public bool LoseDispatchResponse { get; init; }
 
@@ -1280,6 +1310,9 @@ public sealed class WhatsAppOutboxWorkerTests
                     new string((char)('d' + request.Sequence), 64),
                     DateTimeOffset.UtcNow
                 )
+                {
+                    FailureReason = FailureReason,
+                }
             );
         }
 
