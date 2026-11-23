@@ -1,0 +1,24 @@
+schema: waooaw.acceptance-rollup/v1
+# WC107-R019: "Exact candidate images pass all five complete Demo journeys on desktop and mobile."
+# A journey passes on a device only when every step listed here has verdict PASS in a report for that device, and every
+# report was produced for the same deployed candidate (same commit and same service image digests).
+# A journey with no steps cannot be exercised by the harness and keeps the requirement open; it is never skipped.
+requirement: WC107-R019
+devices: [desktop, mobile]
+journeys:
+  - id: login
+    title: Login
+    steps: [S2]
+  - id: registration
+    title: Registration
+    steps: []
+    reason: First-time registration and brokered first login are not exercised by local synthetic users (architecture T9), so this journey cannot be proven by the harness yet.
+  - id: logout-and-returning-login
+    title: Logout and returning login
+    steps: [S2]
+  - id: trial
+    title: Trial
+    steps: [S3, S3b, S11]
+  - id: hire
+    title: Hire
+    steps: [S10, S5, S5b]

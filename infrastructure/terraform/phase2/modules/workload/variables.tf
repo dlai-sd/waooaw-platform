@@ -323,6 +323,18 @@ variable "web_session_mode" {
   }
 }
 
+variable "otlp_endpoint" {
+  type        = string
+  default     = null
+  nullable    = true
+  description = "OTLP collector address for the Business Platform, Billing Engine and web application (ADR-054 W4, WC107-R018). Null keeps trace export off; the collector itself is a separate Founder-authorized change."
+
+  validation {
+    condition     = var.otlp_endpoint == null || can(regex("^https?://[A-Za-z0-9.-]+(:[0-9]+)?(/.*)?$", var.otlp_endpoint))
+    error_message = "The OTLP endpoint must be null or an http or https address."
+  }
+}
+
 variable "web_diagnostic_detail" {
   type        = string
   default     = "standard"

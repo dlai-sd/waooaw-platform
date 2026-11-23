@@ -1303,6 +1303,13 @@ resource "azurerm_container_app" "member" {
         }
       }
       dynamic "env" {
+        for_each = var.otlp_endpoint != null && contains(["business-platform", "billing-engine", "web"], each.key) ? [1] : []
+        content {
+          name  = "OTEL_EXPORTER_OTLP_ENDPOINT"
+          value = var.otlp_endpoint
+        }
+      }
+      dynamic "env" {
         for_each = each.key == "business-platform" && var.whatsapp_provider != null ? [1] : []
         content {
           name  = "WhatsAppProvider__ManagedIdentityClientId"

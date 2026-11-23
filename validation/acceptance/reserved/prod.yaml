@@ -1,0 +1,12 @@
+schema: waooaw.acceptance-reserved-environment/v1
+# Authored so the boundary is explicit, never runnable: ADR-054 limits acceptance to Demo and UAT, and Production activation,
+# customer traffic and Production synthetic tenants are prohibited without separate Founder authority (PROJECT_STATE
+# Authorization Boundary). The workflow has no `prod` option, the static gate refuses a Production profile under
+# environments/, and ADR-055 decision 4 refuses the marker setting in Production.
+environment: prod
+runnable: false
+reason: Production execution of acceptance is out of scope for ADR-054 and needs a Founder-accepted ADR amendment and separate Production authority.
+prerequisites:
+  - Founder-accepted ADR amendment allowing acceptance in Production, including a Production-safe synthetic tenant rule that does not touch real customers
+  - Separate Founder authority for Production activation and customer-traffic exposure
+  - A Production acceptance identity, Key Vault and sandbox providers that never reach live money or real customers

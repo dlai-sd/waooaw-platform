@@ -1,0 +1,14 @@
+schema: waooaw.acceptance-exploratory-policy/v1
+# ADR-054 alternatives: AI exploratory testing is allowed only as a later non-deciding companion under AI Resource
+# Governance. It is authored here as a closed door: disabled, never deciding, and capped at zero model calls.
+enabled: false
+deciding: false
+governance: standards/AI-RESOURCE-GOVERNANCE.md
+limits:
+  max_model_calls_per_run: 0
+  max_cost_units_per_run: 0
+output:
+  field: exploratory_notes
+  effect_on_verdict: none
+  effect_on_workflow_conclusion: none
+activation: Requires a Founder decision and a qualified model route under the governance standard; the report may carry notes, never a verdict.

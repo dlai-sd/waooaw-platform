@@ -27,7 +27,8 @@
         "subscription_id": { "type": "string", "pattern": "^[0-9a-f-]{36}$" },
         "resource_group": { "type": "string", "minLength": 3 },
         "key_vault": { "type": "string", "minLength": 3 },
-        "acceptance_client_id": { "type": ["string", "null"], "pattern": "^[0-9a-f-]{36}$" }
+        "acceptance_client_id": { "type": ["string", "null"], "pattern": "^[0-9a-f-]{36}$" },
+        "telemetry_workspace_id": { "type": ["string", "null"], "pattern": "^[0-9a-f-]{36}$" }
       }
     },
     "keycloak": {

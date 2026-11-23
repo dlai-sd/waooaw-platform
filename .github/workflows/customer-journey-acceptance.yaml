@@ -19,7 +19,13 @@ on:
         required: true
         default: slice-1-discover-to-connect
         type: choice
-        options: [slice-1-discover-to-connect, slice-2-publish]
+        options: [slice-1-discover-to-connect, slice-2-publish, slice-3-hire-and-selection]
+      device:
+        description: Viewport the journey runs on (WC107-R019 needs one run of each)
+        required: true
+        default: desktop
+        type: choice
+        options: [desktop, mobile]
 
 concurrency:
   group: customer-journey-acceptance-${{ inputs.environment }}
@@ -155,12 +161,13 @@ jobs:
         continue-on-error: true
         env:
           JOURNEY: ${{ inputs.journey }}
+          DEVICE: ${{ inputs.device }}
         run: |
           set -euo pipefail
           docker run --rm --user "$(id -u):$(id -g)" \
             -v "$GITHUB_WORKSPACE:/workspace:ro" -v "$OUT:/out" -v "$PRIVATE:/private" \
             --env-file "$PRIVATE/run.env" \
-            -e ACCEPTANCE_OUT=/out -e ACCEPTANCE_PRIVATE=/private -e ACCEPTANCE_JOURNEY="$JOURNEY" -e HOME=/tmp \
+            -e ACCEPTANCE_OUT=/out -e ACCEPTANCE_PRIVATE=/private -e ACCEPTANCE_JOURNEY="$JOURNEY" -e ACCEPTANCE_DEVICE="$DEVICE" -e HOME=/tmp \
             -w /workspace "$WAOOAW_RUNNER_TYPESCRIPT_IMAGE" \
             sh -c 'rm -rf /tmp/ja && cp -a /workspace/tests/journey-acceptance /tmp/ja && ln -s /opt/waooaw-web/node_modules /tmp/ja/node_modules && cd /tmp/ja && playwright test -c playwright.config.ts'
 
@@ -174,14 +181,32 @@ jobs:
             -w /workspace "$WAOOAW_RUNNER_TYPESCRIPT_IMAGE" \
             node tests/journey-acceptance/run.ts cleanup --profile /out/profile.json --out /out
 
+      - name: Read which services logged the run (W4, console-log correlation)
+        if: always() && steps.probe.outputs.available == 'true'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          workspace=$(jq -r '.azure.telemetry_workspace_id // empty' "$OUT/profile.json")
+          if [ -z "$workspace" ] || [ ! -f "$PRIVATE/run-state.json" ]; then
+            echo "No telemetry workspace in the profile or no run state; the report records that nothing was read."
+            exit 0
+          fi
+          run_id=$(jq -r .runId "$PRIVATE/run-state.json" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9')
+          started=$(jq -r .started_at "$OUT/run-meta.json")
+          query=$(printf '// poll %s\nContainerAppConsoleLogs_CL\n| where TimeGenerated >= datetime(%s)\n| where Log_s has "acc-%s"\n| summarize lines = count() by service = ContainerAppName_s\n| order by service asc' "$(date +%s%N)" "$started" "$run_id")
+          az monitor log-analytics query --workspace "$workspace" --analytics-query "$query" -o json \
+            | jq '[.[] | {service: .service, lines: (.lines | tonumber)}]' > "$OUT/telemetry-rows.json"
+
       - name: Build the report, scan it and withhold it on a leak
         id: report
+        env:
+          DEVICE: ${{ inputs.device }}
         run: |
           set +e
           docker run --rm --user "$(id -u):$(id -g)" -v "$GITHUB_WORKSPACE:/workspace:ro" -v "$OUT:/out" -v "$PRIVATE:/private" \
             -w /workspace "$WAOOAW_RUNNER_TYPESCRIPT_IMAGE" \
             node tests/journey-acceptance/run.ts finalize --plan /out/plan.json --profile /out/profile.json \
-            --out /out --private-dir /private --commit "$GITHUB_SHA"
+            --out /out --private-dir /private --commit "$GITHUB_SHA" --device "$DEVICE"
           echo "code=$?" >> "$GITHUB_OUTPUT"
           rm -rf "$PRIVATE"
 
@@ -195,7 +220,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: customer-journey-acceptance-${{ inputs.environment }}-${{ github.run_id }}
+          name: customer-journey-acceptance-${{ inputs.environment }}-${{ inputs.device }}-${{ github.run_id }}
           path: test-results/acceptance
           if-no-files-found: ignore
           retention-days: 90

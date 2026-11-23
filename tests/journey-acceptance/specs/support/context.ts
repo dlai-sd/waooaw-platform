@@ -12,6 +12,7 @@ import type { Plan } from "../../lib/plan.ts";
 import { registerLiteral } from "../../lib/private-store.ts";
 import type { FetchLike } from "../../lib/razorpay.ts";
 import { recordFindings } from "../../lib/step.ts";
+import { correlationId } from "../../lib/telemetry.ts";
 
 export interface Profile {
   environment: string;
@@ -43,6 +44,7 @@ export class Run {
   readonly out: string;
   readonly privateDir: string;
   readonly plan: Plan;
+  readonly agent: { id: string; offer: RegExp };
   readonly profile: Profile;
   readonly recent: string[] = [];
   readonly foreignIds: string[] = [];
@@ -52,7 +54,9 @@ export class Run {
   constructor() {
     this.out = process.env.ACCEPTANCE_OUT ?? "/out";
     this.privateDir = process.env.ACCEPTANCE_PRIVATE ?? "/private";
-    this.plan = loadCompiledPlan(join(this.out, "plan.json")).plan;
+    const compiled = loadCompiledPlan(join(this.out, "plan.json"));
+    this.plan = compiled.plan;
+    this.agent = { id: compiled.agent.id, offer: new RegExp(compiled.agent.offer_pattern, "i") };
     this.profile = JSON.parse(readFileSync(join(this.out, "profile.json"), "utf8")) as Profile;
     mkdirSync(this.privateDir, { recursive: true });
     const stateFile = join(this.privateDir, "run-state.json");
@@ -182,6 +186,12 @@ export class Run {
     });
   }
 
+  /** Every request to the product carries the run's correlation id so the services' logs can be matched to this run (W4). */
+  async correlate(context: BrowserContext): Promise<void> {
+    const id = correlationId(this.state.runId);
+    await context.route(`${this.profile.origins.web}/**`, (route) => route.continue({ headers: { ...route.request().headers(), "x-correlation-id": id } }));
+  }
+
   async context(browser: Browser, label: Label): Promise<BrowserContext> {
     const stateFile = join(this.privateDir, `session-${label}.json`);
     const context = await browser.newContext({
@@ -189,6 +199,7 @@ export class Run {
       storageState: existsSync(stateFile) ? stateFile : undefined,
     });
     this.observe(context, label);
+    await this.correlate(context);
     return context;
   }
 

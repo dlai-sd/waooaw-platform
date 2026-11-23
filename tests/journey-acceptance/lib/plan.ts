@@ -36,6 +36,7 @@ export interface CompiledPlan {
   plan: Plan;
   planDigest: string;
   liveScope: string[];
+  agent: { id: string; display_name: string; offer_pattern: string };
 }
 
 /** The plan is compiled from reviewed YAML to JSON by scripts/acceptance_static_gates.py; the harness reads only the JSON. */

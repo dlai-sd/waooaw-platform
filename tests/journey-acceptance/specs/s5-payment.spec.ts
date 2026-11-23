@@ -8,7 +8,6 @@ import { acceptanceStep, requirePassed } from "./support/acceptance.ts";
 import { environment } from "./support/context.ts";
 import { acceptTerms, bodyText, captureCheckoutIdentifiers, openProfessionalDisclosure, payInSandboxCheckout } from "./support/ui.ts";
 
-const OFFER = /digital marketing/i;
 
 function razorpayCredentials(prefix: string): { keyId: string; keySecret: string } {
   const keyId = environment("ACCEPTANCE_RAZORPAY_KEY_ID");
@@ -85,7 +84,7 @@ acceptanceStep("S5b", { covers: ["PG-12", "WC107-R014"] }, async ({ customer, ru
   });
   const after = capturedTotal(await readOrderPayments(run.fetchImpl, credentials, orderId));
   const evidenceAfter = JSON.stringify((await run.platform(page, `/api/relationships/${relationshipId}/workbench/evidence`)).json ?? null);
-  await openProfessionalDisclosure(page, OFFER);
+  await openProfessionalDisclosure(page, run.agent.offer);
   await page.getByRole("button", { name: /review hire/i }).click();
   await acceptTerms(page);
   const ids = captureCheckoutIdentifiers(page);

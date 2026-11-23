@@ -5,6 +5,7 @@
   "candidate": {
     "environment": "demo",
     "journey_id": "sample",
+    "device": "desktop",
     "commit": "cccccccccccccccccccccccccccccccccccccccc",
     "journey_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "profile_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -100,5 +101,12 @@
   ],
   "passed": [
     "S1"
-  ]
+  ],
+  "telemetry": {
+    "source": "none",
+    "correlation_id": "acc-none",
+    "services": [],
+    "note": "No telemetry was read: the environment profile has no telemetry workspace, so service reach is NOT-WITNESSED and WC107-R018 stays unproven."
+  },
+  "exploratory_notes": []
 }

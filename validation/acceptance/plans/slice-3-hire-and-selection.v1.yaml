@@ -1,0 +1,50 @@
+schema: waooaw.journey-test-plan/v1
+journey_id: slice-3-hire-and-selection
+version: 1
+status: ACCEPTED
+architecture: architecture/reference/acceptance/customer-journey-acceptance-architecture.md
+decisions: [ADR-054, ADR-055]
+agent_under_test: digital-marketing-agent
+customers:
+  A: actor
+  B: second_customer
+verdicts: [PASS, FAIL, BLOCKED-BY-FLAG, NOT-COVERED, NOT-WITNESSED, ENV-UNAVAILABLE, FLAKY]
+depth_levels:
+  L1: rendered
+  L2: acted_on
+  L3: state_changed_confirmed_by_W2
+  L4: evidence_recorded_visible_by_W2
+  L5: declared_failure_path_correct
+guards:
+  - secret_or_token_pattern
+  - personal_data_leakage
+# Slice 3 proves the two remaining WC-107 behaviors that slice 1 does not reach: coupon validation before checkout and the
+# one-use My Agents selection handoff. It sets up its own customers, so it can run on its own or after slice 1.
+steps:
+  - id: S10
+    title: Coupon updates the payable amount
+    customer: A
+    stimulus: On the Hire disclosure, open the coupon field, enter the environment's test coupon and press Apply.
+    claims:
+      - id: S10-C1
+        statement: The payable amount shown on the Hire command changes to the amount the platform validates for that coupon before any Razorpay order exists, and the coupon never appears in the address.
+        witnesses_required: [W1, W2]
+        depth_target: L3
+    preconditions: [offerable_price_present, acceptance_coupon_present]
+    proves:
+      stories: [AE-01-S08]
+      requirements: [WC107-R012]
+  - id: S11
+    title: My Agents selection is one-use
+    customer: B
+    stimulus: Start the free trial as the second customer and land on My Agents; then replay the hand-off cookie.
+    claims:
+      - id: S11-C1
+        statement: My Agents selects the new relationship from a one-use, HttpOnly, SameSite=Strict, path-scoped hand-off cookie that carries no identifier, keeps the address clean, and a replay of the cookie selects nothing.
+        witnesses_required: [W1, W2]
+        depth_target: L5
+    failure_path: true
+    proves:
+      stories: [AE-01-S05]
+      requirements: [WC107-R016]
+witness_exceptions: []

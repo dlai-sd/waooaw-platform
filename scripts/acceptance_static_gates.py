@@ -239,6 +239,106 @@ def harness_violations(root: Path) -> list[str]:
     return found
 
 
+def agent_registry(root: Path) -> dict[str, Any]:
+    return (load_yaml(root / ACCEPTANCE / "agents.yaml") or {}).get("agents", {})
+
+
+def agent_violations(plans: dict[Path, Any], agents: dict[str, Any]) -> list[str]:
+    """A plan may test only an ACTIVE registered agent, and every registry entry needs a reason when it is not active."""
+    found = []
+    for path, plan in plans.items():
+        agent = agents.get(plan.get("agent_under_test"))
+        if agent is None:
+            found.append(f"F5 {path.name} tests agent {plan.get('agent_under_test')}, which is not in agents.yaml")
+        elif agent.get("status") != "ACTIVE":
+            found.append(f"F5 {path.name} tests agent {plan['agent_under_test']}, which is {agent.get('status')}")
+    for name, agent in agents.items():
+        if agent.get("status") != "ACTIVE" and not str(agent.get("reason", "")).strip():
+            found.append(f"F5 agent {name} is not active and gives no reason")
+        if not str(agent.get("offer_pattern", "")).strip():
+            found.append(f"F5 agent {name} has no offer pattern")
+    return found
+
+
+def hardcoded_agent_violations(root: Path, agents: dict[str, Any]) -> list[str]:
+    """Specs and the harness take the offer text from agents.yaml; none may name an agent itself."""
+    found = []
+    for path in sorted((root / HARNESS).rglob("*.ts")):
+        relative = path.relative_to(root).as_posix()
+        if "/__tests__/" in relative:
+            continue
+        code = "\n".join(line for line in path.read_text(encoding="utf-8").splitlines() if not line.lstrip().startswith("//"))
+        for name, agent in agents.items():
+            if re.search(rf"\b{re.escape(str(agent.get('offer_pattern', '')))}\b", code, re.IGNORECASE):
+                found.append(f"F3 {relative} hard-codes the agent {name}; take the offer from agents.yaml")
+    return found
+
+
+def reserved_violations(root: Path) -> list[str]:
+    """Reserved environments (Production) are data only: never runnable, never a profile, never a workflow option."""
+    found = []
+    reserved = root / ACCEPTANCE / "reserved"
+    workflow = (root / WORKFLOW).read_text(encoding="utf-8") if (root / WORKFLOW).exists() else ""
+    for path in sorted(reserved.glob("*.yaml")) if reserved.exists() else []:
+        document = load_yaml(path)
+        name = document.get("environment")
+        if document.get("runnable") is not False:
+            found.append(f"F16 reserved environment {name} must say runnable: false")
+        if not document.get("prerequisites"):
+            found.append(f"F16 reserved environment {name} lists no prerequisites")
+        if name in environment_profiles(root):
+            found.append(f"F16 reserved environment {name} also has a runnable profile")
+        if re.search(rf"options:\s*\[[^\]]*\b{re.escape(str(name))}\b", workflow):
+            found.append(f"F16 the workflow offers the reserved environment {name}")
+    if "prod" not in {load_yaml(path).get("environment") for path in (reserved.glob("*.yaml") if reserved.exists() else [])}:
+        found.append("F16 the Production boundary is not recorded under reserved/")
+    return found
+
+
+def inert_policy_violations(root: Path) -> list[str]:
+    """The exploratory companion and promotion gating are authored but closed until the Founder opens them."""
+    found = []
+    exploratory = load_yaml(root / ACCEPTANCE / "exploratory-policy.yaml") or {}
+    if exploratory.get("enabled") is not False or exploratory.get("deciding") is not False:
+        found.append("F17 the exploratory companion must be disabled and non-deciding")
+    if any(int(value) != 0 for value in (exploratory.get("limits") or {}).values()):
+        found.append("F17 the exploratory companion has a non-zero model budget while disabled")
+    promotion = load_yaml(root / ACCEPTANCE / "promotion-policy.yaml") or {}
+    if promotion.get("enforced") is not False:
+        found.append("F17 the promotion policy is enforced although ADR-056 is not accepted")
+    evaluator = re.compile(r"acceptance_promotion_evaluator|acceptance/promotion-policy")
+    for base in (root / ".github", root / "validation", root / "scripts"):
+        for path in sorted(base.rglob("*")) if base.exists() else []:
+            if not path.is_file() or path.suffix not in {".yaml", ".yml", ".json", ".py", ".sh"}:
+                continue
+            relative = path.relative_to(root).as_posix()
+            if (
+                relative.startswith("validation/acceptance/")
+                or relative.startswith("scripts/acceptance_promotion_evaluator")
+                or relative == "scripts/acceptance_static_gates.py"
+            ):
+                continue
+            if evaluator.search(path.read_text(encoding="utf-8", errors="ignore")):
+                found.append(f"F17 {relative} references the promotion evaluator or policy")
+    return found
+
+
+def rollup_violations(root: Path, plans: dict[Path, Any]) -> list[str]:
+    """The WC107-R019 rollup may name only existing steps and must say why a journey has none."""
+    document = load_yaml(root / ACCEPTANCE / "rollup.v1.yaml") or {}
+    steps = {step["id"] for plan in plans.values() for step in plan.get("steps", [])}
+    found = []
+    if document.get("devices") != ["desktop", "mobile"]:
+        found.append("F10 the rollup must cover desktop and mobile")
+    for journey in document.get("journeys", []):
+        if not journey.get("steps") and not str(journey.get("reason", "")).strip():
+            found.append(f"F10 rollup journey {journey.get('id')} has no steps and no reason")
+        for step in journey.get("steps", []):
+            if step not in steps:
+                found.append(f"F10 rollup journey {journey.get('id')} cites step {step}, which is in no plan")
+    return found
+
+
 def load_context(root: Path) -> dict[str, Any]:
     plans = sorted((root / PLANS).glob("*.v*.yaml"))
     loaded = {path: load_yaml(path) for path in plans}
@@ -304,6 +404,12 @@ def check(root: Path, base_ref: str | None = None) -> list[str]:
         for journey in profile.get("journeys", []):
             if journey not in plan_ids:
                 found.append(f"F5 profile {path.name} lists journey {journey}, which has no plan")
+    agents = agent_registry(root)
+    found.extend(agent_violations(context["plans"], agents))
+    found.extend(hardcoded_agent_violations(root, agents))
+    found.extend(reserved_violations(root))
+    found.extend(inert_policy_violations(root))
+    found.extend(rollup_violations(root, context["plans"]))
     found.extend(workflow_violations(root))
     found.extend(harness_violations(root))
     return found
@@ -322,14 +428,20 @@ def compile_outputs(root: Path, journey: str, environment: str, out: Path) -> No
         raise SystemExit(f"environment {environment} does not allow journey {journey}")
     live_scope = load_yaml(root / ACCEPTANCE / "live-scope.yaml") or {}
     out.mkdir(parents=True, exist_ok=True)
+    plan_document = load_yaml(plan_path)
+    agent_id = plan_document["agent_under_test"]
+    agents = agent_registry(root)
     compiled = {
-        "plan": load_yaml(plan_path),
+        "plan": plan_document,
         "planDigest": digest(plan_path),
+        "agent": {"id": agent_id, **{key: agents[agent_id][key] for key in ("display_name", "offer_pattern")}},
         "liveScope": sorted(
             {identifier for key in ("requirements", "stories", "gaps") for identifier in live_scope.get(key, []) or []}
         ),
     }
     (out / "plan.json").write_text(json.dumps(compiled, indent=2), encoding="utf-8")
+    rollup_map = load_yaml(root / ACCEPTANCE / "rollup.v1.yaml")
+    (out / "rollup-map.json").write_text(json.dumps(rollup_map, indent=2), encoding="utf-8")
     (out / "profile.json").write_text(
         json.dumps({**profile, "profile_digest": digest(profiles[environment])}, indent=2), encoding="utf-8"
     )

@@ -20,7 +20,7 @@ function workspace(probeUrl: string): { out: string; privateDir: string } {
   const privateDir = join(root, "private");
   mkdirSync(out);
   mkdirSync(privateDir);
-  writeFileSync(join(out, "plan.json"), JSON.stringify({ plan: samplePlan, planDigest: "a".repeat(64), liveScope: ["PG-11"] }));
+  writeFileSync(join(out, "plan.json"), JSON.stringify({ plan: samplePlan, planDigest: "a".repeat(64), liveScope: ["PG-11"], agent: { id: "digital-marketing-agent", display_name: "Digital Marketing", offer_pattern: "digital marketing" } }));
   writeFileSync(
     join(out, "profile.json"),
     JSON.stringify({
@@ -95,6 +95,37 @@ test("an invalid report is refused", async () => {
   const result = await run(["finalize", "--plan", join(out, "plan.json"), "--profile", join(out, "profile.json"), "--out", out, "--private-dir", privateDir, "--commit", "not-a-commit"]);
   assert.equal(result.status, 4);
   assert.match(readFileSync(join(out, "report-errors.json"), "utf8"), /40-character commit/);
+});
+
+test("the rollup command combines device reports and writes a result without failing the process", async () => {
+  const { out } = workspace("http://127.0.0.1:1/");
+  const base = { commit: "c".repeat(40), environment: "demo", finished_at: "2026-11-23T10:00:00.000Z", services: [] };
+  const map = { requirement: "WC107-R019", devices: ["desktop", "mobile"], journeys: [{ id: "login", title: "Login", steps: ["S2"] }] };
+  writeFileSync(join(out, "map.json"), JSON.stringify(map));
+  writeFileSync(join(out, "desktop.json"), JSON.stringify({ candidate: { ...base, device: "desktop" }, steps: [{ stepId: "S2", verdict: "PASS" }] }));
+  writeFileSync(join(out, "mobile.json"), JSON.stringify({ candidate: { ...base, device: "mobile" }, steps: [{ stepId: "S2", verdict: "PASS" }] }));
+  const result = await run(["rollup", "--map", join(out, "map.json"), "--out", join(out, "rollup"), "--reports", join(out, "desktop.json"), join(out, "mobile.json")]);
+  assert.equal(result.status, 0);
+  assert.equal(JSON.parse(readFileSync(join(out, "rollup", "rollup.json"), "utf8")).status, "PASS");
+  assert.match(readFileSync(join(out, "rollup", "rollup.md"), "utf8"), /WC107-R019 rollup: PASS/);
+  assert.equal((await run(["rollup", "--map", join(out, "map.json"), "--out", join(out, "none")])).status, 0);
+  assert.equal(JSON.parse(readFileSync(join(out, "none", "rollup.json"), "utf8")).status, "OPEN");
+});
+
+test("finalize records the device and what the services logged for the run", async () => {
+  const { out, privateDir } = workspace("http://127.0.0.1:1/");
+  writeFileSync(join(privateDir, "run-state.json"), JSON.stringify({ runId: "Run-42", startedAt: "2026-11-23T10:00:00.000Z", customers: {}, values: {} }));
+  writeFileSync(join(out, "telemetry-rows.json"), JSON.stringify([{ service: "ca-demo-web", lines: 7 }]));
+  const result = await run(["finalize", "--plan", join(out, "plan.json"), "--profile", join(out, "profile.json"), "--out", out, "--private-dir", privateDir, "--commit", commit, "--device", "mobile"]);
+  assert.equal(result.status, 0);
+  const report = JSON.parse(readFileSync(join(out, "report.json"), "utf8"));
+  assert.equal(report.candidate.device, "mobile");
+  assert.deepEqual(report.telemetry, {
+    source: "console-log",
+    correlation_id: "acc-run42",
+    services: [{ name: "ca-demo-web", lines: 7 }],
+    note: report.telemetry.note,
+  });
 });
 
 test("usage errors exit with 2 and a missing option is reported", async () => {

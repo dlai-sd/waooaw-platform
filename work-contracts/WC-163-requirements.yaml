@@ -1,0 +1,100 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-163
+contract_path: work-contracts/WC-163-acceptance-coverage-telemetry-and-guards.md
+contract_digest: 152106cee664c4cf8a21b7d7fd1e17f5dbd3e50a99a77ea58b7f7be4a9a874b5
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Harness unit tests and a local end-to-end run in the digest-pinned TypeScript runner, and static gate tests in the Python runner, run in Docker at the exact head; commands and results in the PR body
+  initial_state: expected-fail
+  dependencies: PRs #627 and #628 merged; Founder authorization of this implementing session (current conversation)
+  residual_risk: Nothing was run against Demo, Meta or a collector; locators and provider pages are unproven until the first run
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC163-R001
+    source: WC-163 Canonical Requirement Index, R001
+    observable_outcome: S10 compares the Hire command amount before and after Apply, the platform-validated amount and the address, and counts checkout orders before Apply.
+    test_path_or_plan: specs/s10-coupon-and-selection.spec.ts S10; tsc and playwright --list in the TypeScript runner; static gate test_repository_passes_every_static_acceptance_gate (spec cites only identifiers the step proves).
+
+  - <<: *defaults
+    requirement_id: WC163-R002
+    source: WC-163 Canonical Requirement Index, R002
+    observable_outcome: S11 reads the My Agents address, selected card, confirmation and the parsed hand-off cookie attributes, and replays the cookie.
+    test_path_or_plan: tests/journey-acceptance/__tests__/coverage-and-telemetry.test.ts cookie parsing test; specs/s10-coupon-and-selection.spec.ts S11.
+
+  - <<: *defaults
+    requirement_id: WC163-R003
+    source: WC-163 Canonical Requirement Index, R003
+    observable_outcome: startTrial waits for the confirmation response, returns its relationship id and Set-Cookie, and waits for the My Agents landing.
+    test_path_or_plan: tsc strict compile of specs/support/ui.ts and its callers in the TypeScript runner; code review at the exact head (the page flow itself runs only on a deployed environment).
+
+  - <<: *defaults
+    requirement_id: WC163-R004
+    source: WC-163 Canonical Requirement Index, R004
+    observable_outcome: The rollup is OPEN for an empty journey, a missing device, a failing step or a candidate mismatch, and PASS only for complete matching reports.
+    test_path_or_plan: tests/journey-acceptance/__tests__/coverage-and-telemetry.test.ts rollup tests; tests/journey-acceptance/__tests__/cli.test.ts rollup command test.
+
+  - <<: *defaults
+    requirement_id: WC163-R005
+    source: WC-163 Canonical Requirement Index, R005
+    observable_outcome: The static gate refuses a rollup step in no plan, an empty journey without a reason and a rollup that omits a device.
+    test_path_or_plan: tests/pipeline/test_acceptance_boundaries.py::test_the_rollup_names_only_existing_steps_and_explains_empty_journeys.
+
+  - <<: *defaults
+    requirement_id: WC163-R006
+    source: WC-163 Canonical Requirement Index, R006
+    observable_outcome: The report carries the device and validates it, finalize records the device passed to it, and the mobile project uses a 360 wide viewport.
+    test_path_or_plan: tests/journey-acceptance/__tests__/coverage-and-telemetry.test.ts exploratory and device test; tests/journey-acceptance/__tests__/cli.test.ts finalize test; playwright.config.ts.
+
+  - <<: *defaults
+    requirement_id: WC163-R007
+    source: WC-163 Canonical Requirement Index, R007
+    observable_outcome: The correlation id is derived from the run id, added to every product request, and the query builder rejects unsafe inputs and carries a poll nonce.
+    test_path_or_plan: tests/journey-acceptance/__tests__/coverage-and-telemetry.test.ts query test; specs/support/context.ts correlate() compiled by tsc.
+
+  - <<: *defaults
+    requirement_id: WC163-R008
+    source: WC-163 Canonical Requirement Index, R008
+    observable_outcome: The telemetry summary says not read, empty or seen and always says WC107-R018 stays unproven; the report schema validates the section.
+    test_path_or_plan: tests/journey-acceptance/__tests__/coverage-and-telemetry.test.ts telemetry summary test; tests/pipeline/test_acceptance_static_gates.py::test_the_committed_sample_report_validates_against_the_report_schema.
+
+  - <<: *defaults
+    requirement_id: WC163-R009
+    source: WC-163 Canonical Requirement Index, R009
+    observable_outcome: otlp_endpoint defaults to null, is validated, is applied to business-platform, billing-engine and web only and appears in no environment root; the workload root validates.
+    test_path_or_plan: tests/pipeline/test_acceptance_infrastructure.py::test_trace_export_is_wired_only_for_three_services_and_stays_off_by_default; terraform fmt and validate of the demo workload root in Docker.
+
+  - <<: *defaults
+    requirement_id: WC163-R010
+    source: WC-163 Canonical Requirement Index, R010
+    observable_outcome: A plan naming a reserved or unknown agent fails, a non-active agent without a reason fails, and a spec naming an agent fails.
+    test_path_or_plan: tests/pipeline/test_acceptance_boundaries.py::test_a_plan_may_test_only_a_registered_active_agent; ::test_a_spec_may_not_hard_code_an_agent_name; ::test_compiled_plan_carries_the_agent_the_specs_look_for.
+
+  - <<: *defaults
+    requirement_id: WC163-R011
+    source: WC-163 Canonical Requirement Index, R011
+    observable_outcome: A runnable Production flag, missing prerequisites, a missing boundary record, a Production profile or a Production workflow option each fail the gate.
+    test_path_or_plan: tests/pipeline/test_acceptance_boundaries.py::test_production_is_recorded_as_never_runnable.
+
+  - <<: *defaults
+    requirement_id: WC163-R012
+    source: WC-163 Canonical Requirement Index, R012
+    observable_outcome: An enabled or deciding or budgeted companion fails the gate, and report notes leave verdict and conclusion unchanged.
+    test_path_or_plan: tests/pipeline/test_acceptance_boundaries.py::test_the_exploratory_companion_and_promotion_policy_stay_closed; tests/journey-acceptance/__tests__/coverage-and-telemetry.test.ts exploratory test.
+
+  - <<: *defaults
+    requirement_id: WC163-R013
+    source: WC-163 Canonical Requirement Index, R013
+    observable_outcome: An enforced policy or any reference to the evaluator or policy from a workflow, catalog entry or script fails the gate; the evaluator reports every unmet rule and is evidence only.
+    test_path_or_plan: tests/pipeline/test_acceptance_boundaries.py::test_nothing_may_reference_the_promotion_evaluator; ::test_every_policy_rule_gives_its_own_reason; ::test_a_clean_fresh_report_with_a_passing_rollup_is_eligible_but_not_authority; ::test_the_evaluator_command_prints_a_decision_and_exits_by_it.
+
+  - <<: *defaults
+    requirement_id: WC163-R014
+    source: WC-163 Canonical Requirement Index, R014
+    observable_outcome: The baseline lists WC107-R012 and WC107-R016 as covered with no deferral and the ratchet tests still refuse a lower floor and a new deferral.
+    test_path_or_plan: tests/pipeline/test_acceptance_static_gates.py::test_repository_passes_every_static_acceptance_gate; ::test_the_coverage_ratchet_refuses_a_lower_floor_a_removed_cover_and_a_new_deferral.

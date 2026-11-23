@@ -2,7 +2,6 @@
 // Constitutional basis: C-059 (Implementation Traceability)
 import type { Page } from "@playwright/test";
 import type { SyntheticCustomer } from "../../lib/keycloak.ts";
-import { relationshipIdFromUrl } from "../../lib/platform.ts";
 import { totp } from "../../lib/totp.ts";
 
 /** Signs in through the product's own entry and the real Keycloak form, including the OTP step-up when it is asked for. */
@@ -57,18 +56,31 @@ export async function acceptTerms(page: Page): Promise<void> {
   await checkbox.check();
 }
 
-/** The customer path to a free trial: disclosure, review, accept the terms, confirm. Returns the new relationship's id. */
-export async function startTrial(page: Page, offer: RegExp): Promise<string> {
+export interface TrialHandoff {
+  relationshipId: string;
+  /** The raw Set-Cookie header of the confirmation, kept to check the one-use My Agents handoff cookie. */
+  setCookie: string;
+}
+
+/**
+ * The customer path to a free trial: disclosure, review, accept the terms, confirm. The product answers with the new
+ * relationship and sends the customer to My Agents, so the relationship id comes from that answer, not from the address.
+ */
+export async function startTrial(page: Page, offer: RegExp): Promise<TrialHandoff> {
   await openProfessionalDisclosure(page, offer);
   await page.getByRole("button", { name: /review free .*trial/i }).click();
   await acceptTerms(page);
+  const confirmation = page.waitForResponse((response) => response.url().includes("/api/acquisition/continue") && response.request().method() === "POST", {
+    timeout: 90_000,
+  });
   await page.getByRole("button", { name: /confirm free .*trial/i }).click();
-  await page.waitForURL((url) => relationshipIdFromUrl(url.toString()) !== undefined, { timeout: 90_000 });
-  const relationshipId = relationshipIdFromUrl(page.url());
-  if (relationshipId === undefined) {
-    throw new Error("the trial did not lead to a relationship page");
+  const answer = await confirmation;
+  const body = (await answer.json().catch(() => ({}))) as { relationshipId?: string };
+  if (body.relationshipId === undefined) {
+    throw new Error(`the trial confirmation did not return a relationship (HTTP ${answer.status()})`);
   }
-  return relationshipId;
+  await page.waitForURL((url) => url.pathname.startsWith("/professionals/mine"), { timeout: 90_000 });
+  return { relationshipId: body.relationshipId.toLowerCase(), setCookie: (await answer.allHeaders())["set-cookie"] ?? "" };
 }
 
 /** Collects Razorpay order and checkout identifiers from the application's own JSON responses (never from the provider page). */

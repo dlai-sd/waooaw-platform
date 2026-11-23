@@ -65,6 +65,7 @@ export function acceptanceStep(stepId: string, meta: StepMeta, body: (context: S
       },
       async visitor() {
         const browserContext = await browser.newContext({ baseURL: run.profile.origins.web });
+        await run.correlate(browserContext);
         opened.push(browserContext);
         return browserContext.newPage();
       },
