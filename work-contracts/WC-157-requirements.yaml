@@ -1,0 +1,9 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-157
+contract_path: work-contracts/WC-157-customer-journey-acceptance-architecture.md
+contract_digest: 84a9465f82ae90b684c839dd285f51c2092e51db3c01966045397cbaac574eb3
+contract_status: DRAFT_FOR_FOUNDER_REVIEW_ARCHITECTURE_ONLY
+implementation_scope: false
+result: NOT_APPLICABLE
+not_applicable_reason: WC-157 is an architecture-only contract that explicitly authorizes no implementation.
+requirements: []
