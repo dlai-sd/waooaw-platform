@@ -1,0 +1,28 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-166
+contract_path: work-contracts/WC-166-foundation-plan-identity.md
+contract_digest: bf5bf666e015a24191277996714d87b0dfb4a98a946a3810875f3343d4bcdfa4
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Workflow contract test in the Python runner and actionlint in Docker, run at the exact head; commands and results in the PR body
+  initial_state: expected-fail
+  dependencies: PR #631 merged; Founder instruction in the current conversation
+  residual_risk: No workflow run was executed against Azure; the live proof is a plan-only Demo run after merge
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC166-R001
+    source: WC-166 Canonical Requirement Index, R001
+    observable_outcome: The Plan B identity resolution and login steps run under the same condition as the foundation plan step, so a plan-only cache-miss plan runs as the environment deployment identity and receives it as deployment_client_id.
+    test_path_or_plan: tests/pipeline/test_goal006_terraform_foundations.py::test_a_foundation_plan_runs_as_the_environment_deployment_identity_whenever_it_runs (fails on the previous workflow).
+
+  - <<: *defaults
+    requirement_id: WC166-R002
+    source: WC-166 Canonical Requirement Index, R002
+    observable_outcome: Both steps remain gated on password authentication being enabled and are skipped when the plan step is skipped; the existing identity and ordering assertions still pass.
+    test_path_or_plan: tests/pipeline/test_goal006_terraform_foundations.py (identity test and the new test); tests/pipeline/test_wc143_database_chain_record.py step order; actionlint in Docker.

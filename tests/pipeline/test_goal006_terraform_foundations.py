@@ -1820,3 +1820,22 @@ def test_terraform_holds_no_provider_secret_values() -> None:
     assert not re.search(r'^\s*value\s*=', contract, re.MULTILINE)
     assert not re.search(r'azurerm_key_vault_secret"\s+"[^"]*provider', module_text)
     assert not re.search(r'name\s*=\s*"provider-', module_text)
+
+
+def test_a_foundation_plan_runs_as_the_environment_deployment_identity_whenever_it_runs() -> None:
+    # WC-166: a plan-only run with a foundation-cache miss used the constrained bootstrap identity, which holds no
+    # Key Vault data-plane role, so refreshing existing keys and secrets failed with ForbiddenByRbac.
+    workflow = (REPO_ROOT / ".github/workflows/environment-deployment.yaml").read_text(encoding="utf-8")
+
+    def condition(step_name: str) -> str:
+        block = workflow.split(f"      - name: {step_name}\n", 1)[1].split("\n      - name: ", 1)[0]
+        return " ".join(re.search(r"        if: (?:>-)?\s*(.*?)\n        (?:id|uses|working-directory|env|run):", block, re.DOTALL).group(1).split())  # type: ignore[union-attr]
+
+    plan_runs = condition("Terraform foundation plan")
+    assert plan_runs == "inputs.apply || steps.foundation-cache.outputs.cache_hit != 'true'"
+    transition = "steps.database-transition.outputs.password_auth_enabled == 'true'"
+    for step in (
+        "Resolve Plan B foundation mutation identity",
+        "Azure login with environment deployment identity for Plan B foundation mutation",
+    ):
+        assert condition(step) == f"({plan_runs}) && {transition}"

@@ -36,9 +36,9 @@ AUTONOMOUS_HALT: false
 
 ```
 Version:    1.45.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Foundation  |  Phase: IMPLEMENTATION
-Last update: 2026-11-23 — WC-164 Dedicated Acceptance Key Vault delivered
-Latest completed sprint: WC-164 — Dedicated Acceptance Key Vault (PR #630 merged as 36175a89ab)
-Latest recorded Work Contract: WC-165 — Acceptance Secret Seeding And Demo Enablement (no merged PR recorded)
+Last update: 2026-11-23 — WC-165 Acceptance Secret Seeding And Demo Enablement delivered
+Latest completed sprint: WC-165 — Acceptance Secret Seeding And Demo Enablement (PR #631 merged as 745970ebab)
+Latest recorded Work Contract: WC-166 — Foundation Plan Identity On A Cache Miss (no merged PR recorded)
 Constitutional Claims: 97 RATIFIED (gaps C-087/C-092/C-093) | ADRs: 56 recorded
 Agents (customer): DMA v3.1 gate-pass (Founder-approved through v3.0); Trading v1.8, Agri v2.8, Tutor v1.1 gate-pass records without current-version Founder approval; none customer-proven
 Agents (internal): Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations · RepoNav (INST-014)

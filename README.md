@@ -9,19 +9,19 @@
 ## Platform Status
 
 ```
-Version:              v1.45.0 — state as of 2026-11-23: WC-164 delivered (PR #630 merged as 36175a89ab)
+Version:              v1.45.0 — state as of 2026-11-23: WC-165 delivered (PR #631 merged as 745970ebab)
 Epoch:                1 — Foundation
 Constitutional Claims: 97 ratified (gaps at C-087/C-092/C-093) | ADRs: 56
 Customer Agents:      DMA v3.1 gate-pass (Founder-approved through v3.0) · Trading v1.8 / Agri v2.8 / Tutor v1.1 gate-pass records without current-version Founder approval · none customer-proven
 Internal Agents:      5 — Platform IT Expert (16 active + 1 proposed skill, §2.4 Pipeline-First Rule) · Steward Assistant · Self-Improvement Analyst ·
                           Platform Operations · RepoNav (AVD-001 v1.0 RATIFIED — INST-014)
 Gates:                G5 CLEAR
-Phase:                IMPLEMENTATION — latest delivered WC-164
+Phase:                IMPLEMENTATION — latest delivered WC-165
 Infrastructure:       Azure live — waooaw-dev-kv (Key Vault) · OIDC auth · Sprint Dashboard: Issue #7
 Monitoring:           Sprint Dashboard: github.com/dlai-sd/waooaw-platform/issues/7
 Web:                  Next.js App Router — WC-078 public acquisition + WC-077 identity foundations merged
 CCT inventory:        82 institutionally declared · 82 centrally catalogued · no unified 72/72 run
-Sprint Registry:      SPRINT-REGISTRY.md — 157 Work Contracts recorded · 102 with merged-PR evidence · 55 without
+Sprint Registry:      SPRINT-REGISTRY.md — 158 Work Contracts recorded · 103 with merged-PR evidence · 55 without
 Agent references:     Current state=PROJECT_STATE.md · WC/PR coverage=SPRINT-REGISTRY.md · services=COMPONENT-QUICK-REF.md · decisions=ADR-INDEX.md
 Company:              DLAI Satellite Data (OPC) Pvt Ltd · CIN: U62090PN2024OPC230499 · Pune, India
 Stewards:             Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
@@ -33,8 +33,8 @@ The platform has entered full autonomous implementation. The Autonomous Sprint A
 generates production-grade code, reviews its own PR, merges, and advances to the next sprint — without human intervention.
 
 ```
-Last sprint:     WC-164 — Dedicated Acceptance Key Vault
-Sprint status:   DONE — 2026-11-23 · PR #630 merged as 36175a89ab
+Last sprint:     WC-165 — Acceptance Secret Seeding And Demo Enablement
+Sprint status:   DONE — 2026-11-23 · PR #631 merged as 745970ebab
 Next work:       constitution/PROJECT_STATE.md → Next Authorized Action · Production apply/activation prohibited
 Sprint registry: SPRINT-REGISTRY.md
 ```

@@ -1049,7 +1049,7 @@ jobs:
 
       - name: Resolve Plan B foundation mutation identity
         if: >-
-          inputs.apply &&
+          (inputs.apply || steps.foundation-cache.outputs.cache_hit != 'true') &&
           steps.database-transition.outputs.password_auth_enabled == 'true'
         id: plan-b-foundation-identity
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
@@ -1070,7 +1070,7 @@ jobs:
 
       - name: Azure login with environment deployment identity for Plan B foundation mutation
         if: >-
-          inputs.apply &&
+          (inputs.apply || steps.foundation-cache.outputs.cache_hit != 'true') &&
           steps.database-transition.outputs.password_auth_enabled == 'true'
         uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3 (Node 24)
         with:
