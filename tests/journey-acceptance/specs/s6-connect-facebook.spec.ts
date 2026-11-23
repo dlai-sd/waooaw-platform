@@ -71,7 +71,7 @@ acceptanceStep("S6b", { covers: ["PG-16", "WC149-R008"] }, async ({ customer, ru
   const { page } = await customer("A");
   await page.goto("/connections");
   await page.getByRole("button", { name: /^revoke/i }).first().click();
-  await page.getByRole("button", { name: /^revoke|confirm/i }).last().click();
+  await page.getByRole("button", { name: /^(revoke|confirm)/i }).last().click();
   await page.waitForLoadState("networkidle");
   const screen = await bodyText(page);
   const listed = await run.platform(page, "/api/provider-connections");

@@ -1,6 +1,6 @@
 // Implements: architecture/reference/acceptance/customer-journey-acceptance-architecture.md §4 Run Lifecycle step 10
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
-import { readdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, rmSync } from "node:fs";
 import { join, relative } from "node:path";
 import { SECRET_PATTERNS, scanText } from "./guards.ts";
 import type { SecretPattern } from "./guards.ts";
@@ -29,11 +29,12 @@ export function scanArtifacts(
   const patterns = [...SECRET_PATTERNS, ...extraPatterns];
   const secrets = literals.filter((literal) => literal.length >= 8);
   for (const file of walk(directory)) {
-    if (statSync(file).size > MAX_SCANNED_BYTES) {
+    const content = readFileSync(file);
+    if (content.length > MAX_SCANNED_BYTES) {
       findings.push({ path: relative(directory, file), kind: "unscannable-oversized-file" });
       continue;
     }
-    const text = readFileSync(file).toString("latin1");
+    const text = content.toString("latin1");
     const path = relative(directory, file);
     for (const kind of scanText(text, patterns)) {
       findings.push({ path, kind });

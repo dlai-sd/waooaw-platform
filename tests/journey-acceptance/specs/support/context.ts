@@ -159,7 +159,7 @@ export class Run {
         `${JSON.stringify({ customer: label, method: response.request().method(), path: url.pathname, status: response.status() })}\n`,
       );
       const type = response.headers()["content-type"] ?? "";
-      if (!/json|text|html/u.test(type) || url.hostname.endsWith("razorpay.com")) {
+      if (!/json|text|html/u.test(type) || (url.hostname === "razorpay.com" || url.hostname.endsWith(".razorpay.com"))) {
         return;
       }
       try {
