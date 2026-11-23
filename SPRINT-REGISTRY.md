@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-11-23 · **Version:** 1.45.0 · **Work Contracts:** 148 Work Contracts recorded · 94 with merged-PR evidence · 54 without
+**Last Updated:** 2026-11-23 · **Version:** 1.45.0 · **Work Contracts:** 149 Work Contracts recorded · 95 with merged-PR evidence · 54 without
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -218,7 +218,8 @@ whole Work Contract is complete).
 <!-- BEGIN GENERATED: work-contract-index -->
 | WC | Title | Status recorded in the Work Contract | Merged PRs referencing it |
 |---|---|---|---|
-| WC-156 | Validation Runner Image Pull Retry | IN PROGRESS | none recorded |
+| WC-156 | Validation Runner Image Pull Retry | IN PROGRESS | #625 |
+| WC-155 | Release Qualification Lane Scope Defect | IN PROGRESS | none recorded |
 | WC-154 | Exact-Head Evidence Reuse And Compulsory PR Preparation Path | IN PROGRESS | #623 |
 | WC-153 | Owner-Link Probe Identity And Warm Private Listeners | IN PROGRESS | #622 |
 | WC-152 | Platform State And Process-Control Currency | IMPLEMENTED - FOUNDER REVIEW PENDING | #621 |
