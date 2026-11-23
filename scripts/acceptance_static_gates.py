@@ -267,17 +267,32 @@ def base_baseline(root: Path, ref: str | None) -> dict[str, Any] | None:
 def check(root: Path, base_ref: str | None = None) -> list[str]:
     context = load_context(root)
     found: list[str] = []
-    for path, plan in context["plans"].items():
-        label = path.name
-        found.extend(schema_violations(plan, root / ACCEPTANCE / "plan.schema.json", label))
+    plans = list(context["plans"].items())
+    all_steps: dict[str, str] = {}
+    for path, plan in plans:
+        found.extend(schema_violations(plan, root / ACCEPTANCE / "plan.schema.json", path.name))
         found.extend(plan_violations(plan, context["known"]))
-        found.extend(spec_violations(plan, context["declarations"], context["known"]))
+        step_ids = {step["id"] for step in plan.get("steps", [])}
+        for step_id in sorted(step_ids & set(all_steps)):
+            found.append(f"F5 step {step_id} in {path.name} is already used by {all_steps[step_id]}")
+        all_steps.update({step_id: path.name for step_id in step_ids})
+        relevant = [declaration for declaration in context["declarations"] if declaration["step"] in step_ids]
+        found.extend(spec_violations(plan, relevant, context["known"]))
+    for declaration in context["declarations"]:
+        if declaration["step"] not in all_steps:
+            found.append(f"F20 {declaration['file']} cites plan step {declaration['step']}, which does not exist")
+    if plans:
+        merged = {"steps": [step for _, plan in plans for step in plan.get("steps", [])]}
         found.extend(
             coverage_violations(
-                plan, context["declarations"], context["live_scope"], context["baseline"], base_baseline(root, base_ref)
+                merged,
+                context["declarations"],
+                context["live_scope"],
+                context["baseline"],
+                base_baseline(root, base_ref),
             )
         )
-    if not context["plans"]:
+    else:
         found.append("F5 no journey plan exists")
     profiles = environment_profiles(root)
     for name, path in profiles.items():

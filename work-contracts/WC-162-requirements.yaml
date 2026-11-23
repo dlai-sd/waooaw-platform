@@ -1,0 +1,70 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-162
+contract_path: work-contracts/WC-162-acceptance-slice-2-publish.md
+contract_digest: 31ac263af1b542d87c1735ef2dbebb95a80d18a7747ae71dbbace2683399ae78
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Harness unit tests and a local end-to-end run in the digest-pinned TypeScript runner, and static gate tests in the Python runner, run in Docker at the exact head; commands and results in the PR body
+  initial_state: expected-fail
+  dependencies: PR #627 merged; Founder authorization of this implementing session (current conversation)
+  residual_risk: Nothing was run against Demo or Meta; locators and the Graph reads are unproven until the first run
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC162-R001
+    source: WC-162 Canonical Requirement Index, R001
+    observable_outcome: The slice 2 plan passes the plan gates and each of S9 and S9b has a spec citing only identifiers its step proves.
+    test_path_or_plan: tests/pipeline/test_acceptance_static_gates.py::test_repository_passes_every_static_acceptance_gate; playwright test --list in the TypeScript runner lists S9 and S9b.
+
+  - <<: *defaults
+    requirement_id: WC162-R002
+    source: WC-162 Canonical Requirement Index, R002
+    observable_outcome: A reused step id across plans and a spec citing a step in no plan each fail the gate; the ratchet covers all plans.
+    test_path_or_plan: tests/pipeline/test_acceptance_static_gates.py::test_a_second_plan_may_not_reuse_a_step_id_and_a_spec_may_not_cite_a_step_in_no_plan.
+
+  - <<: *defaults
+    requirement_id: WC162-R003
+    source: WC-162 Canonical Requirement Index, R003
+    observable_outcome: The baseline records WC149-R009 and AE-02-S05 as covered with no WC149-R009 deferral, and the ratchet tests still refuse a lower floor, a removed cover and a new deferral.
+    test_path_or_plan: tests/pipeline/test_acceptance_static_gates.py::test_repository_passes_every_static_acceptance_gate; ::test_the_coverage_ratchet_refuses_a_lower_floor_a_removed_cover_and_a_new_deferral.
+
+  - <<: *defaults
+    requirement_id: WC162-R004
+    source: WC-162 Canonical Requirement Index, R004
+    observable_outcome: A post is read by id with the Page token, missing posts read as undefined, malformed ids are refused and the feed lists in stable order.
+    test_path_or_plan: tests/journey-acceptance/__tests__/providers.test.ts Graph post tests.
+
+  - <<: *defaults
+    requirement_id: WC162-R005
+    source: WC-162 Canonical Requirement Index, R005
+    observable_outcome: The published post is deleted by id with DELETE, a failed delete is returned as false and a leftover is recorded by the spec.
+    test_path_or_plan: tests/journey-acceptance/__tests__/providers.test.ts delete test; specs/s9-publish.spec.ts S9 finally block.
+
+  - <<: *defaults
+    requirement_id: WC162-R006
+    source: WC-162 Canonical Requirement Index, R006
+    observable_outcome: S9 compares screen, connection record and Graph for exactly the approved text once, and the connection staying CONNECTED with no token.
+    test_path_or_plan: specs/s9-publish.spec.ts S9; tests/journey-acceptance/__tests__/claim.test.ts witness rules; local end-to-end run reporting S9 honestly.
+
+  - <<: *defaults
+    requirement_id: WC162-R007
+    source: WC-162 Canonical Requirement Index, R007
+    observable_outcome: S9b submits an empty and an over-limit post, requires refusals on screen and route, and compares the Page feed before and after on Graph.
+    test_path_or_plan: specs/s9-publish.spec.ts S9b; tests/journey-acceptance/__tests__/providers.test.ts feed listing test.
+
+  - <<: *defaults
+    requirement_id: WC162-R008
+    source: WC-162 Canonical Requirement Index, R008
+    observable_outcome: With the slice 2 plan compiled, slice 1 specs skip and S9 and S9b report BLOCKED-BY-FLAG with the unreadable-credential reason.
+    test_path_or_plan: local end-to-end run of the slice 2 plan in the TypeScript runner, result in the PR body.
+
+  - <<: *defaults
+    requirement_id: WC162-R009
+    source: WC-162 Canonical Requirement Index, R009
+    observable_outcome: The new secret name is in the profile, equals the demo and uat Terraform lists and is in the runbook register.
+    test_path_or_plan: tests/pipeline/test_acceptance_infrastructure.py::test_environment_roots_list_exactly_the_secrets_the_profile_reads_and_keep_the_identity_off; ::test_every_profile_secret_is_in_the_runbook_register.

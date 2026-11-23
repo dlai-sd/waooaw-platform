@@ -2,7 +2,7 @@
 // Constitutional basis: C-059 (Implementation Traceability)
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { MetaModeError, assertTestUser, readGrantedPermissions } from "../lib/meta.ts";
+import { MetaModeError, assertTestUser, deletePost, listPagePostIds, readGrantedPermissions, readPost } from "../lib/meta.ts";
 import { collectIdentifiers, pick, relationshipIdFromUrl } from "../lib/platform.ts";
 import { ProviderModeError, assertRazorpayTestMode, capturedTotal, readOrderPayments, signWebhook } from "../lib/razorpay.ts";
 import type { FetchLike } from "../lib/razorpay.ts";
@@ -104,4 +104,36 @@ test("identifiers are collected from payloads and urls in a stable form", () => 
   assert.deepEqual(collectIdentifiers(undefined), []);
   assert.equal(relationshipIdFromUrl(`https://x/relationships/${id}/contract`), id.toLowerCase());
   assert.equal(relationshipIdFromUrl("https://x/home"), undefined);
+});
+
+test("a published post is read from Graph by id, and a missing one is undefined", async () => {
+  const urls: string[] = [];
+  const found = await readPost(
+    (url) => {
+      urls.push(url);
+      return answer(200, { id: "1_2", message: "hello" });
+    },
+    "page-token",
+    "1_2",
+  );
+  assert.deepEqual(found, { id: "1_2", message: "hello" });
+  assert.match(urls[0], /\/1_2\?fields=id,message&access_token=page-token/);
+  assert.deepEqual(await readPost(() => answer(200, { id: "1_2" }), "t", "1_2"), { id: "1_2", message: "" });
+  assert.equal(await readPost(() => Promise.resolve({ ok: false, status: 404, text: async () => "" }), "t", "1_2"), undefined);
+  await assert.rejects(readPost(() => Promise.resolve({ ok: false, status: 500, text: async () => "" }), "t", "1_2"), /HTTP 500/);
+  await assert.rejects(readPost(() => answer(200, {}), "t", "../me"), /not a Facebook post id/);
+});
+
+test("the Page feed is listed in a stable order and the run's own post is deleted", async () => {
+  assert.deepEqual(await listPagePostIds(() => answer(200, { data: [{ id: "9_2" }, { id: "9_1" }] }), "t", "9"), ["9_1", "9_2"]);
+  assert.deepEqual(await listPagePostIds(() => answer(200, {}), "t", "9"), []);
+  const methods: (string | undefined)[] = [];
+  const removed = await deletePost((_url, init) => {
+    methods.push(init?.method);
+    return answer(200, { success: true });
+  }, "t", "9_1");
+  assert.equal(removed, true);
+  assert.deepEqual(methods, ["DELETE"]);
+  assert.equal(await deletePost(() => Promise.resolve({ ok: false, status: 400, text: async () => "" }), "t", "9_1"), false);
+  assert.equal(await deletePost(() => answer(200, {}), "t", "not-an-id"), false);
 });

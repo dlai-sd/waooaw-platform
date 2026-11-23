@@ -61,6 +61,7 @@ module "foundation" {
     "acceptance-meta-app-secret",
     "acceptance-meta-test-user-session",
     "acceptance-meta-test-page-id",
+    "acceptance-meta-test-page-token",
     "acceptance-whatsapp-sandbox-recipient",
     "acceptance-whatsapp-webhook-secret",
     "razorpay-test-key-id",

@@ -34,7 +34,9 @@ export function requirePassed(run: Run, stepId: string): void {
 }
 
 export function acceptanceStep(stepId: string, meta: StepMeta, body: (context: StepContext) => Promise<StepResult>): void {
-  test(`${stepId} covers ${meta.covers.join(", ")}`, async ({ browser }) => {
+  // A step that belongs to another journey is skipped, so one spec tree serves every journey plan.
+  const declare = getRun().plan.steps.some((candidate) => candidate.id === stepId) ? test : test.skip;
+  declare(`${stepId} covers ${meta.covers.join(", ")}`, async ({ browser }) => {
     const run = getRun();
     const step = planStep(run.plan, stepId);
     const opened: BrowserContext[] = [];

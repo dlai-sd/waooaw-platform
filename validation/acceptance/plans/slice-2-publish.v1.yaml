@@ -1,0 +1,58 @@
+schema: waooaw.journey-test-plan/v1
+journey_id: slice-2-publish
+version: 1
+status: ACCEPTED
+architecture: architecture/reference/acceptance/customer-journey-acceptance-architecture.md
+decisions: [ADR-054, ADR-055]
+agent_under_test: digital-marketing-agent
+customers:
+  A: actor
+verdicts: [PASS, FAIL, BLOCKED-BY-FLAG, NOT-COVERED, NOT-WITNESSED, ENV-UNAVAILABLE, FLAKY]
+depth_levels:
+  L1: rendered
+  L2: acted_on
+  L3: state_changed_confirmed_by_W2
+  L4: evidence_recorded_visible_by_W2
+  L5: declared_failure_path_correct
+guards:
+  - secret_or_token_pattern
+  - personal_data_leakage
+# Slice 2 sets up its own precondition (a signed-in customer with a connected Meta test Page) because slice 1 ends
+# by revoking that connection; the setup is not a claim and a failed setup is reported on the step that needed it.
+steps:
+  - id: S9
+    title: Publish an approved post
+    customer: A
+    stimulus: On /connections, type a short post, tick the approval box and press Publish post.
+    claims:
+      - id: S9-C1
+        statement: Exactly the approved text is published to the connected Page once, the screen shows the Facebook post id and the platform keeps the connection CONNECTED with no token in any response.
+        witnesses_required: [W1, W2, W3]
+        depth_target: L4
+    provider_mode_required: meta_development
+    preconditions: [meta_provider_registered_in_product, meta_test_page_token_present]
+    proves:
+      stories: [AE-02-S05]
+      gaps: [PG-16]
+      requirements: [WC149-R009]
+  - id: S9b
+    title: Refused post publishes nothing
+    customer: A
+    failure_path: true
+    stimulus: Try to publish an empty post and a post over the 2000 character limit.
+    claims:
+      - id: S9b-C1
+        statement: Both attempts are refused with a clear message and the Page feed gains no post.
+        witnesses_required: [W1, W2, W3]
+        depth_target: L5
+    provider_mode_required: meta_development
+    preconditions: [meta_provider_registered_in_product, meta_test_page_token_present]
+    proves:
+      gaps: [PG-16]
+      requirements: [WC149-R009]
+conditional_stories:
+  - story: AE-02-S02
+    requires_settings: [WC120_CONVERSATION_ENABLED]
+  - story: AE-02-S03
+    requires_settings: [WC120_CONVERSATION_ENABLED]
+witness_exceptions: []

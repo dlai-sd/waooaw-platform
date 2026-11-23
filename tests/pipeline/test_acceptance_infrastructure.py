@@ -74,3 +74,11 @@ def test_provisioning_client_holds_only_user_management_event_reading_and_the_ma
 def test_the_realm_role_is_never_a_default_or_customer_requestable_role() -> None:
     realm = json.loads((ROOT / "infrastructure/keycloak/waooaw-realm.json").read_text(encoding="utf-8"))
     assert "acceptance-provisioner" not in json.dumps(realm)
+
+
+def test_every_profile_secret_is_in_the_runbook_register() -> None:
+    runbook = (ROOT / "architecture/reference/runbooks/acceptance-sandbox-setup.md").read_text(encoding="utf-8")
+    profile = yaml.safe_load(PROFILE.read_text(encoding="utf-8"))
+    for item in profile["secrets"]:
+        if item["name"].startswith("acceptance-"):
+            assert f"`{item['name']}`" in runbook
