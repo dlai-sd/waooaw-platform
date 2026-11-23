@@ -825,8 +825,14 @@ def publish_trust_bundle(
     return bundle
 
 
-def _check_state_keys(vault: VaultClient, state: dict[str, Any]) -> None:
-    for pem_field, kid_field in (("root_pem", "root_key_kid"), ("intermediate_pem", "intermediate_key_kid")):
+_ROOT_STATE_KEY = ("root_pem", "root_key_kid")
+_INTERMEDIATE_STATE_KEY = ("intermediate_pem", "intermediate_key_kid")
+
+
+def _check_state_keys(
+    vault: VaultClient, state: dict[str, Any], fields: tuple[tuple[str, str], ...] = (_ROOT_STATE_KEY, _INTERMEDIATE_STATE_KEY)
+) -> None:
+    for pem_field, kid_field in fields:
         certificate = load_certificate(state[pem_field])
         if vault.get_key_public(state[kid_field]).public_key.public_numbers() != certificate.public_key().public_numbers():
             raise IssuanceError(f"{SECRET_CA_STATE} key version does not match its certificate")
@@ -1014,7 +1020,9 @@ def run_leaf(
     state = read_ca_state(vault)
     if state is None:
         raise IssuanceError(f"{SECRET_CA_STATE} has not been issued; run the ca mode first")
-    _check_state_keys(vault, state)
+    # The leaf issuer holds no grant on the root key: only the CA rotator may read or use it. The root
+    # certificate in the CA state still anchors the chain check below.
+    _check_state_keys(vault, state, (_INTERMEDIATE_STATE_KEY,))
     intermediate = load_certificate(state["intermediate_pem"])
     root = load_certificate(state["root_pem"])
     verify_chain([intermediate], [root], now, subject_is_ca=True)
