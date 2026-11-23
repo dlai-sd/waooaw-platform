@@ -35,7 +35,18 @@ runs:
           validate --runner "$RUNNER_ID" --output "$manifest" | jq -r '.image')
         gh attestation verify "oci://$image" --repo "$GITHUB_REPOSITORY" >/dev/null
         pull_started=$(date +%s%3N)
-        docker pull "$image"
+        # The image is digest-pinned, so a retry cannot change what runs; it only absorbs transient registry resets.
+        for attempt in 1 2 3; do
+          if docker pull "$image"; then
+            break
+          fi
+          if [ "$attempt" = 3 ]; then
+            echo "::error::Runner image pull failed after 3 attempts: $image" >&2
+            exit 1
+          fi
+          echo "Runner image pull failed (attempt $attempt of 3); retrying in $((attempt * 5)) seconds" >&2
+          sleep $((attempt * 5))
+        done
         pull_duration_ms=$(($(date +%s%3N) - pull_started))
         startup_started=$(date +%s%3N)
         docker run --rm --entrypoint=true "$image"
