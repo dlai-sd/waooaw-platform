@@ -58,11 +58,11 @@ module "foundation" {
   postgresql_password_auth_enabled          = var.postgresql_password_auth_enabled
   database_bootstrap_admin_enabled          = var.database_bootstrap_admin_enabled
   database_provisioner_vault_access_enabled = var.database_provisioner_vault_access_enabled
-  # ADR-054 (WC-159): the Founder flips this after reviewing the plan; the acceptance run needs the identity it creates.
-  acceptance_enabled = false
-  # WC-164: a separate, internet-reachable vault for sandbox secrets only; the Founder flips it and lists the principals that write to it.
-  acceptance_vault_enabled         = false
-  acceptance_vault_secret_officers = []
+  # ADR-054 (WC-159): the acceptance run needs the identity this creates. Enabled for Demo by the Founder's instruction (WC-165).
+  acceptance_enabled = true
+  # WC-164: a separate, internet-reachable vault for sandbox secrets only; the Founder (object id below) is its only writer.
+  acceptance_vault_enabled         = true
+  acceptance_vault_secret_officers = ["1d96e171-e1dd-4f24-a35d-abc8ea4235ac"]
   acceptance_secret_names = [
     "acceptance-keycloak-provisioner-client-secret",
     "acceptance-meta-app-id",

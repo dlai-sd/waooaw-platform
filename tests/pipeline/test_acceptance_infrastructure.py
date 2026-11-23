@@ -45,7 +45,7 @@ def test_environment_roots_list_exactly_the_secrets_the_profile_reads_and_keep_t
     wanted = sorted(item["name"] for item in yaml.safe_load(PROFILE.read_text(encoding="utf-8"))["secrets"])
     for environment in ("demo", "uat"):
         root = (ROOT / f"infrastructure/terraform/phase2/environments/{environment}/foundation/main.tf").read_text(encoding="utf-8")
-        assert "acceptance_enabled = false" in root
+        assert f"acceptance_enabled = {'true' if environment == 'demo' else 'false'}" in root
         listed = re.search(r"acceptance_secret_names = \[(.*?)\]", root, re.DOTALL)
         assert listed is not None
         assert sorted(re.findall(r'"([^"]+)"', listed.group(1))) == wanted
@@ -105,10 +105,14 @@ def test_the_acceptance_vault_is_separate_off_by_default_and_read_by_the_accepta
     assert "azurerm_key_vault.acceptance[0].id" in reader
     officer = main.split('resource "azurerm_role_assignment" "acceptance_vault_officer"', 1)[1].split("\n}\n", 1)[0]
     assert 'role_definition_name = "Key Vault Secrets Officer"' in officer and "azurerm_key_vault.acceptance[0].id" in officer
-    for environment in ("demo", "uat"):
-        root = (ROOT / f"infrastructure/terraform/phase2/environments/{environment}/foundation/main.tf").read_text(encoding="utf-8")
-        assert "acceptance_vault_enabled         = false" in root
-        assert "acceptance_vault_secret_officers = []" in root
+    uat = (ROOT / "infrastructure/terraform/phase2/environments/uat/foundation/main.tf").read_text(encoding="utf-8")
+    assert "acceptance_vault_enabled         = false" in uat
+    assert "acceptance_vault_secret_officers = []" in uat
+    demo = (ROOT / "infrastructure/terraform/phase2/environments/demo/foundation/main.tf").read_text(encoding="utf-8")
+    assert "acceptance_vault_enabled         = true" in demo
+    officers = re.search(r"acceptance_vault_secret_officers = \[(.*?)\]", demo, re.DOTALL)
+    assert officers is not None
+    assert re.fullmatch(r'"[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}"', officers.group(1).strip())
 
 
 def test_the_profile_reads_the_dedicated_vault_the_module_would_create() -> None:
@@ -123,3 +127,86 @@ def test_every_profile_secret_is_in_the_runbook_register() -> None:
     for item in profile["secrets"]:
         if item["name"].startswith("acceptance-"):
             assert f"`{item['name']}`" in runbook
+
+
+SEED = ROOT / "scripts/acceptance_seed_secrets.sh"
+STUB_DOCKER = """#!/usr/bin/env bash
+# Records every call; stdin is saved so a test can prove a value never appears in the arguments.
+log="$STUB_DIR/calls.log"
+printf '%s\\n' "$*" >> "$log"
+case "$*" in
+  *"secret show"*) case "$*" in *"$STUB_EXISTING"*) echo id; exit 0 ;; *) exit 1 ;; esac ;;
+  *"secret set"*) cat >> "$STUB_DIR/stdin.log"; echo >> "$STUB_DIR/stdin.log" ;;
+  *"secret list"*) echo acceptance-meta-app-id ;;
+  *) cat > /dev/null ;;
+esac
+"""
+
+
+def _run_seed(tmp_path: Path, content: str, *args: str, existing: str = "none-such") -> tuple[int, str, str, Path]:
+    import os
+    import subprocess
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    docker = bin_dir / "docker"
+    docker.write_text(STUB_DOCKER, encoding="utf-8")
+    docker.chmod(0o755)
+    secrets = tmp_path / "secrets.env"
+    secrets.write_text(content, encoding="utf-8")
+    secrets.chmod(0o600)
+    env = {
+        **os.environ,
+        "PATH": f"{bin_dir}:{os.environ['PATH']}",
+        "STUB_DIR": str(tmp_path),
+        "STUB_EXISTING": existing,
+        "ACCEPTANCE_SECRETS_FILE": str(secrets),
+        "ACCEPTANCE_AZ_CONFIG": str(tmp_path / "azcfg"),
+    }
+    done = subprocess.run(["bash", str(SEED), "seed", *args], env=env, capture_output=True, text=True, check=False)
+    return done.returncode, done.stdout + done.stderr, secrets, tmp_path
+
+
+def test_the_seed_script_covers_exactly_the_profile_secrets_except_the_keycloak_one() -> None:
+    text = SEED.read_text(encoding="utf-8")
+    pairs = re.findall(r"^(ACCEPTANCE_[A-Z_]+)=([a-z0-9-]+)$", text, re.MULTILINE)
+    profile = yaml.safe_load(PROFILE.read_text(encoding="utf-8"))["secrets"]
+    expected = {item["env"]: item["name"] for item in profile if item["name"] != "acceptance-keycloak-provisioner-client-secret"}
+    assert dict(pairs) == expected
+    assert 'VAULT="${ACCEPTANCE_VAULT:-kv-waooaw-demo-acc}"' in text
+
+
+def test_the_seed_script_stores_values_through_stdin_only_and_deletes_the_file(tmp_path: Path) -> None:
+    secret = "".join(["unit", "-test", "-value", "-123"])
+    code, output, secrets, base = _run_seed(tmp_path, f"ACCEPTANCE_META_APP_ID={secret}\nACCEPTANCE_META_APP_SECRET=\n")
+    assert code == 0, output
+    assert secret not in output
+    assert secret not in (base / "calls.log").read_text(encoding="utf-8")
+    assert secret in (base / "stdin.log").read_text(encoding="utf-8")
+    assert "stored acceptance-meta-app-id" in output and "skip   acceptance-meta-app-secret" in output
+    assert not secrets.exists()
+
+
+def test_the_seed_script_keeps_existing_secrets_unless_told_and_rejects_live_razorpay_keys(tmp_path: Path) -> None:
+    code, output, secrets, base = _run_seed(tmp_path, "ACCEPTANCE_META_APP_ID=x\n", existing="acceptance-meta-app-id")
+    assert code == 0, output
+    assert "exists acceptance-meta-app-id" in output and not (base / "stdin.log").exists()
+
+    other = tmp_path / "live"
+    other.mkdir()
+    code, output, secrets, base = _run_seed(other, "ACCEPTANCE_RAZORPAY_KEY_ID=" + "rzp_" + "live_x\n")
+    assert code == 1 and "rzp_test_" in output
+    assert secrets.exists() and not (base / "stdin.log").exists()
+
+
+def test_the_seed_script_refuses_unknown_keys_and_a_world_readable_file(tmp_path: Path) -> None:
+    code, output, secrets, _ = _run_seed(tmp_path, "SOMETHING_ELSE=1\n")
+    assert code == 1 and "Unknown key SOMETHING_ELSE" in output and secrets.exists()
+
+    secrets.chmod(0o644)
+    import os
+    import subprocess
+
+    env = {**os.environ, "ACCEPTANCE_SECRETS_FILE": str(secrets)}
+    done = subprocess.run(["bash", str(SEED), "seed"], env=env, capture_output=True, text=True, check=False)
+    assert done.returncode == 2 and "readable by others" in done.stderr

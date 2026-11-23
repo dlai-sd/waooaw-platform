@@ -24,8 +24,8 @@ never receives, prints or stores a value.
    The readiness check rejects a Razorpay key id that does not begin `rzp_test_`.
 2. **One set per environment.** Demo and UAT each have their own vault entries; never reuse a value.
 3. **Names are fixed** and carry the `acceptance-` prefix so the acceptance identity can read only these.
-4. **Never paste a value into chat, an issue, a pull request, a log or a shell argument.** Use the prompt
-   method below so values stay out of shell history.
+4. **Never paste a value into chat, an issue, a pull request, a log or a shell argument.** Use the seed script
+   (step 4) so values stay out of shell history.
 
 ## Secret register
 
@@ -49,7 +49,7 @@ The three existing Razorpay test secrets are reused by exact name and need no en
 
 Demo already wires `razorpay-test-key-id`, `razorpay-test-key-secret` and `razorpay-test-webhook-secret`
 from its private Key Vault into the Billing Engine. The acceptance identity reads the same three names from the
-acceptance vault, so the Founder copies those three test values into it (step 4 shows how without printing them). The harness
+acceptance vault, so the Founder copies those three test values into it (step 4 stores them without printing them). The harness
 delivers its own signed webhook replays, so no new Razorpay value is created. If a
 dashboard check is wanted, confirm the dashboard is in **Test Mode**. Test payments use Razorpay's published
 test card numbers for success and for decline; the journey names the scenario, not the number.
@@ -62,7 +62,7 @@ test card numbers for success and for decline; the journey names the scenario, n
    set the valid redirect address to the environment's web callback route (from the environment profile).
 3. Under App Roles, create a **Test User**. Using that test user, create a **test Page**.
 4. Record the app id, app secret and test Page id.
-5. The saved test-user session is produced once by the harness helper and stored by the same prompt method.
+5. The saved test-user session is produced once by the harness helper and stored by step 4.
 6. The product itself must hold the same Meta app: sign in as Founder and enter the app id and secret on the
    `meta` row of the Founder provider screen (WC-149), then press Test. Without it the connect step reports
    `BLOCKED-BY-FLAG` ("Meta provider not registered").
@@ -74,18 +74,29 @@ test card numbers for success and for decline; the journey names the scenario, n
 3. Inbound behaviour (including STOP) is exercised by the harness delivering signed webhooks to the
    environment's own endpoint; no handset needs to reply.
 
-### 4. Store a value without exposing it
+### 4. Store every value once, without exposing any (WC-165)
 
-Run once per secret, replacing the vault name and secret name. The prompt hides the input and nothing is
-written to shell history:
+After the foundation apply has created `kv-waooaw-demo-acc` and your object id is in `acceptance_vault_secret_officers`:
 
 ```bash
-read -rs -p "Value for acceptance-razorpay-key-id: " v; echo
-printf '%s' "$v" | az keyvault secret set \
-  --vault-name "<environment key vault from the profile>" \
-  --name acceptance-razorpay-key-id --file /dev/stdin --output none
-unset v
+scripts/acceptance_seed_secrets.sh login   # once: Azure device-code sign-in
+scripts/acceptance_seed_secrets.sh init    # creates /workspaces/.acceptance-secrets.env (mode 600, outside every repository)
 ```
+
+Open that file, paste each value after its `=` (leave a line empty to skip it; `@/path/to/file` reads a value from a file,
+useful for the saved Meta session), save, then run:
+
+```bash
+scripts/acceptance_seed_secrets.sh seed    # stores each value, deletes the file, then lists the names now present
+```
+
+The script runs the Azure CLI in Docker and sends each value through stdin, so no value is printed, logged, put in a
+command line or committed. It keeps an existing secret unless `--overwrite` is given, refuses a Razorpay key id that does
+not begin `rzp_test_`, refuses unknown keys or a file others can read, and keeps the file if anything failed. The
+template has no Keycloak line: that secret is created in step 6. `status` lists the names in the vault.
+
+Razorpay: the three values are the same Demo test values the Billing Engine uses. The private environment vault cannot be
+read from a Codespace, so copy them from wherever you hold them (Razorpay dashboard in Test Mode) into the template.
 
 ### 5. Confirm
 
