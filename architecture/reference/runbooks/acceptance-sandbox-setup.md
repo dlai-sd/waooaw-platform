@@ -7,7 +7,7 @@
 
 This runbook describes how the Founder provides sandbox credentials for customer journey acceptance. It does
 not authorize Azure resource changes, deployment, Production use, or any live-mode provider credential.
-Values are entered by the account owner directly into the environment's Azure Key Vault. The AI assistant
+Values are entered by the account owner directly into the environment's acceptance Azure Key Vault (WC-164). The AI assistant
 never receives, prints or stores a value.
 
 ## Who does what
@@ -16,7 +16,7 @@ never receives, prints or stores a value.
 |---|---|
 | Founder | Signs in to the Razorpay, Meta and WhatsApp dashboards (account-owner-only actions), creates the sandbox objects below, and runs the Key Vault commands with the values. |
 | AI assistant | Provides these steps, builds the readiness check (WC-161) that confirms each secret exists and is in test mode without printing it, and builds the harness. |
-| Platform | Environment Key Vault name comes from the environment profile in git (non-secret). |
+| Platform | The acceptance Key Vault name comes from the environment profile in git (non-secret). |
 
 ## Rules
 
@@ -45,11 +45,12 @@ The three existing Razorpay test secrets are reused by exact name and need no en
 
 ## Procedure
 
-### 1. Razorpay test mode: nothing new to enter
+### 1. Razorpay test mode: copy three existing values
 
 Demo already wires `razorpay-test-key-id`, `razorpay-test-key-secret` and `razorpay-test-webhook-secret`
-from its Key Vault into the Billing Engine. The acceptance identity reads those three by exact name, and
-the harness delivers its own signed webhook replays, so the Founder enters no Razorpay value. If a
+from its private Key Vault into the Billing Engine. The acceptance identity reads the same three names from the
+acceptance vault, so the Founder copies those three test values into it (step 4 shows how without printing them). The harness
+delivers its own signed webhook replays, so no new Razorpay value is created. If a
 dashboard check is wanted, confirm the dashboard is in **Test Mode**. Test payments use Razorpay's published
 test card numbers for success and for decline; the journey names the scenario, not the number.
 
@@ -108,10 +109,12 @@ These are Founder-authorized applies; nothing in the repository applies them.
 3. Business Platform: set the feature setting `acceptance_synthetic_tenants_enabled` to true for that environment
    through the settings path. Production refuses it.
 
-**Known gap to decide before the first Demo run:** the environment Key Vault has `public_network_access_enabled = false`,
-so a GitHub-hosted runner cannot read the `acceptance-` secrets. The workflow reports the unreadable secrets as a
-configuration finding and every step that needs one is `BLOCKED-BY-FLAG` or `NOT-WITNESSED`. The Founder must choose how the
-run reaches the vault (a runner inside the private network that also provides Docker, or a dedicated vault).
+**Access path (decided in WC-164):** the environment Key Vault is private (`public_network_access_enabled = false`), so a
+GitHub-hosted runner cannot read it. The acceptance run reads a separate vault, `kv-waooaw-<env>-acc`, that holds only sandbox
+and test values and is protected by access rights alone: only the acceptance identity (federated to `main`) reads it, and
+only the principals listed in `acceptance_vault_secret_officers` write to it. Set `acceptance_vault_enabled = true` (with
+`acceptance_enabled = true`) in the same foundation apply. The private vault is unchanged. Because the vault is separate, the
+three Razorpay test values are **copied** into it (see step 1 below); the Billing Engine keeps using its own copies.
 
 ## Rotation and removal
 

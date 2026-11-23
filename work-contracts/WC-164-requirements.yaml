@@ -1,0 +1,40 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-164
+contract_path: work-contracts/WC-164-acceptance-dedicated-vault.md
+contract_digest: 4e9e0dcd25ee755a245e282384700e4ef9e176a90be0dfdef3be5f4f5ed9b183
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Contract tests in the Python runner and terraform fmt and validate in Docker, run at the exact head; commands and results in the PR body
+  initial_state: expected-fail
+  dependencies: PR #629 merged; Founder authorization of this implementing session (current conversation)
+  residual_risk: No Terraform plan or apply was run against Azure; the vault's reachability from a GitHub-hosted runner is proven only after the Founder applies it
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC164-R001
+    source: WC-164 Canonical Requirement Index, R001
+    observable_outcome: The vault resource is counted by acceptance_vault_enabled, whose validation needs the acceptance identity and Demo or UAT, and the default is false in the module and both roots.
+    test_path_or_plan: tests/pipeline/test_acceptance_infrastructure.py::test_the_acceptance_vault_is_separate_off_by_default_and_read_by_the_acceptance_identity_only.
+
+  - <<: *defaults
+    requirement_id: WC164-R002
+    source: WC-164 Canonical Requirement Index, R002
+    observable_outcome: The vault is named kv-<env>-acc, uses rights-based authorization and purge protection and is a separate resource from the private environment vault.
+    test_path_or_plan: tests/pipeline/test_acceptance_infrastructure.py::test_the_acceptance_vault_is_separate_off_by_default_and_read_by_the_acceptance_identity_only; terraform validate of the demo foundation root in Docker.
+
+  - <<: *defaults
+    requirement_id: WC164-R003
+    source: WC-164 Canonical Requirement Index, R003
+    observable_outcome: Secret reader roles are scoped to the acceptance vault when enabled and only the listed principals receive Secrets Officer on it; the identity still holds no write or role-assignment role.
+    test_path_or_plan: tests/pipeline/test_acceptance_infrastructure.py::test_the_acceptance_vault_is_separate_off_by_default_and_read_by_the_acceptance_identity_only; ::test_acceptance_identity_holds_only_read_roles_on_exact_scopes.
+
+  - <<: *defaults
+    requirement_id: WC164-R004
+    source: WC-164 Canonical Requirement Index, R004
+    observable_outcome: The demo profile names kv-waooaw-demo-acc, the roots expose the vault name as an output and the runbook records the decision and the Razorpay copy.
+    test_path_or_plan: tests/pipeline/test_acceptance_infrastructure.py::test_the_profile_reads_the_dedicated_vault_the_module_would_create; tests/pipeline/test_goal006_terraform_foundations.py; runbook review at the exact head.

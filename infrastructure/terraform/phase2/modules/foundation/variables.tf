@@ -128,6 +128,26 @@ variable "acceptance_enabled" {
   }
 }
 
+variable "acceptance_vault_enabled" {
+  type        = bool
+  description = "Creates the dedicated acceptance Key Vault (WC-164) that a GitHub-hosted runner can reach. Demo and UAT only; requires acceptance_enabled."
+  default     = false
+  validation {
+    condition     = !var.acceptance_vault_enabled || (var.acceptance_enabled && contains(["demo", "uat"], var.environment))
+    error_message = "The acceptance vault needs acceptance_enabled and exists only in demo and uat."
+  }
+}
+
+variable "acceptance_vault_secret_officers" {
+  type        = list(string)
+  description = "Object ids of the Founder principals allowed to write secrets into the acceptance vault."
+  default     = []
+  validation {
+    condition     = alltrue([for id in var.acceptance_vault_secret_officers : can(regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", id))])
+    error_message = "Secret officers must be Entra object ids (GUIDs)."
+  }
+}
+
 variable "acceptance_secret_names" {
   type        = list(string)
   description = "Exact Key Vault secret names the acceptance identity may read (acceptance- prefix or the three Razorpay test secrets)."

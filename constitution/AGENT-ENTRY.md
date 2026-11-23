@@ -36,9 +36,9 @@ AUTONOMOUS_HALT: false
 
 ```
 Version:    1.45.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Foundation  |  Phase: IMPLEMENTATION
-Last update: 2026-11-23 — WC-162 Customer Journey Acceptance Slice 2: Publish delivered
-Latest completed sprint: WC-162 — Customer Journey Acceptance Slice 2: Publish (PR #628 merged as 76a4e31995)
-Latest recorded Work Contract: WC-163 — Acceptance Coverage, Telemetry Witness And Closed Boundaries (no merged PR recorded)
+Last update: 2026-11-23 — WC-163 Acceptance Coverage, Telemetry Witness And Closed Boundaries delivered
+Latest completed sprint: WC-163 — Acceptance Coverage, Telemetry Witness And Closed Boundaries (PR #629 merged as aded15d3ff)
+Latest recorded Work Contract: WC-164 — Dedicated Acceptance Key Vault (no merged PR recorded)
 Constitutional Claims: 97 RATIFIED (gaps C-087/C-092/C-093) | ADRs: 56 recorded
 Agents (customer): DMA v3.1 gate-pass (Founder-approved through v3.0); Trading v1.8, Agri v2.8, Tutor v1.1 gate-pass records without current-version Founder approval; none customer-proven
 Agents (internal): Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations · RepoNav (INST-014)

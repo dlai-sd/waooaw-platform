@@ -813,10 +813,39 @@ resource "azurerm_federated_identity_credential" "acceptance" {
 
 resource "azurerm_role_assignment" "acceptance_secret_reader" {
   for_each             = var.acceptance_enabled ? toset(var.acceptance_secret_names) : toset([])
-  scope                = "${azurerm_key_vault.environment.id}/secrets/${each.value}"
+  scope                = "${var.acceptance_vault_enabled ? azurerm_key_vault.acceptance[0].id : azurerm_key_vault.environment.id}/secrets/${each.value}"
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_user_assigned_identity.acceptance[0].principal_id
   principal_type       = "ServicePrincipal"
+}
+
+# WC-164: the environment vault is private, so a GitHub-hosted runner cannot read it. The acceptance run reads a separate
+# vault that holds only sandbox and test values. It is reachable from the internet and protected by access rights alone:
+# only the acceptance identity (federated to main) reads it, and the named Founder principals write to it.
+resource "azurerm_key_vault" "acceptance" {
+  count                         = var.acceptance_vault_enabled ? 1 : 0
+  name                          = "kv-${local.name}-acc"
+  location                      = azurerm_resource_group.environment.location
+  resource_group_name           = azurerm_resource_group.environment.name
+  tenant_id                     = azurerm_user_assigned_identity.deployment.tenant_id
+  sku_name                      = "standard"
+  enable_rbac_authorization     = true
+  purge_protection_enabled      = true
+  soft_delete_retention_days    = 90
+  public_network_access_enabled = true
+  tags                          = local.tags
+
+  network_acls {
+    bypass         = "AzureServices"
+    default_action = "Allow"
+  }
+}
+
+resource "azurerm_role_assignment" "acceptance_vault_officer" {
+  for_each             = var.acceptance_vault_enabled ? toset(var.acceptance_vault_secret_officers) : toset([])
+  scope                = azurerm_key_vault.acceptance[0].id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = each.value
 }
 
 resource "azurerm_role_assignment" "acceptance_resource_group_reader" {
@@ -837,4 +866,8 @@ resource "azurerm_role_assignment" "acceptance_monitoring_reader" {
 
 output "acceptance_client_id" {
   value = var.acceptance_enabled ? azurerm_user_assigned_identity.acceptance[0].client_id : null
+}
+
+output "acceptance_key_vault_name" {
+  value = var.acceptance_vault_enabled ? azurerm_key_vault.acceptance[0].name : null
 }

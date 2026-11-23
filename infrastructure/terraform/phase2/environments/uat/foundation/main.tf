@@ -55,6 +55,9 @@ module "foundation" {
   database_provisioner_vault_access_enabled = var.database_provisioner_vault_access_enabled
   # ADR-054 (WC-159): the Founder flips this after reviewing the plan; the acceptance run needs the identity it creates.
   acceptance_enabled = false
+  # WC-164: a separate, internet-reachable vault for sandbox secrets only; the Founder flips it and lists the principals that write to it.
+  acceptance_vault_enabled         = false
+  acceptance_vault_secret_officers = []
   acceptance_secret_names = [
     "acceptance-keycloak-provisioner-client-secret",
     "acceptance-meta-app-id",
@@ -186,4 +189,8 @@ output "image_publish_client_id" {
 
 output "acceptance_client_id" {
   value = module.foundation.acceptance_client_id
+}
+
+output "acceptance_key_vault_name" {
+  value = module.foundation.acceptance_key_vault_name
 }
