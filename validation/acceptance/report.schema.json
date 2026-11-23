@@ -15,7 +15,9 @@
     "synthetic_volume",
     "coverage",
     "steps",
-    "passed"
+    "passed",
+    "telemetry",
+    "exploratory_notes"
   ],
   "properties": {
     "schema": { "const": "waooaw.acceptance-report/v1" },
@@ -23,10 +25,11 @@
     "workflow_conclusion": { "enum": ["success", "failure"] },
     "candidate": {
       "type": "object",
-      "required": ["environment", "journey_id", "commit", "journey_digest", "profile_digest", "services", "started_at", "finished_at"],
+      "required": ["environment", "journey_id", "device", "commit", "journey_digest", "profile_digest", "services", "started_at", "finished_at"],
       "properties": {
         "environment": { "type": "string" },
         "journey_id": { "type": "string" },
+        "device": { "enum": ["desktop", "mobile"] },
         "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
         "journey_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
         "profile_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
@@ -84,6 +87,17 @@
         }
       }
     },
-    "passed": { "type": "array", "items": { "type": "string" } }
+    "passed": { "type": "array", "items": { "type": "string" } },
+    "telemetry": {
+      "type": "object",
+      "required": ["source", "correlation_id", "services", "note"],
+      "properties": {
+        "source": { "enum": ["console-log", "none"] },
+        "correlation_id": { "type": "string" },
+        "services": { "type": "array", "items": { "type": "object", "required": ["name", "lines"] } },
+        "note": { "type": "string" }
+      }
+    },
+    "exploratory_notes": { "type": "array", "items": { "type": "string" } }
   }
 }

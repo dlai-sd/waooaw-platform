@@ -36,6 +36,4 @@ gaps:
   - PG-15
   - PG-16
 deferred:
-  WC107-R012: Coupon validation is not a slice 1 step; the Founder adds it with a later slice
-  WC107-R016: My Agents authorized-result selection is not a slice 1 step; the Founder adds it with a later slice
-  WC107-R019: Needs all five complete Demo journeys; slice 1 is the first of them and cannot complete it alone
+  WC107-R019: Needs all five complete Demo journeys on desktop and mobile; the rollup (rollup.v1.yaml) reports it OPEN while Registration cannot be driven by synthetic users

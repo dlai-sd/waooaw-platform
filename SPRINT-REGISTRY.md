@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-11-23 · **Version:** 1.45.0 · **Work Contracts:** 154 Work Contracts recorded · 99 with merged-PR evidence · 55 without
+**Last Updated:** 2026-11-23 · **Version:** 1.45.0 · **Work Contracts:** 155 Work Contracts recorded · 100 with merged-PR evidence · 55 without
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -218,7 +218,8 @@ whole Work Contract is complete).
 <!-- BEGIN GENERATED: work-contract-index -->
 | WC | Title | Status recorded in the Work Contract | Merged PRs referencing it |
 |---|---|---|---|
-| WC-162 | Customer Journey Acceptance Slice 2: Publish | IMPLEMENTATION_AUTHORIZED | none recorded |
+| WC-163 | Acceptance Coverage, Telemetry Witness And Closed Boundaries | IMPLEMENTATION_AUTHORIZED | none recorded |
+| WC-162 | Customer Journey Acceptance Slice 2: Publish | IMPLEMENTATION_AUTHORIZED | #628 |
 | WC-160 | Customer Journey Acceptance Slice 1 Content | IMPLEMENTATION_AUTHORIZED | #627 |
 | WC-159 | Synthetic Acceptance Tenant Support | IMPLEMENTATION_AUTHORIZED | none recorded |
 | WC-158 | Customer Journey Acceptance Harness Core | IMPLEMENTATION_AUTHORIZED | #627 |

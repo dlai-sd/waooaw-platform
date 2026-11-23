@@ -7,7 +7,6 @@ import { acceptanceStep, requirePassed } from "./support/acceptance.ts";
 import type { Run } from "./support/context.ts";
 import { bodyText, openProfessionalDisclosure, startTrial } from "./support/ui.ts";
 
-const OFFER = /digital marketing/i;
 
 async function relationshipState(run: Run, page: Page, relationshipId: string): Promise<{ state?: string; evidenceCount?: number }> {
   const summary = await run.platform(page, `/api/relationships/${relationshipId}/workbench/`);
@@ -23,7 +22,7 @@ async function relationshipState(run: Run, page: Page, relationshipId: string): 
 acceptanceStep("S3", { covers: ["AE-01-S05", "PG-08", "WC107-R010", "WC107-R011", "WC107-R015"] }, async ({ customer, run }) => {
   requirePassed(run, "S2");
   const { page } = await customer("A");
-  const relationshipId = await startTrial(page, OFFER);
+  const relationshipId = (await startTrial(page, run.agent.offer)).relationshipId;
   run.setValue("relationshipId", relationshipId);
   const screen = await bodyText(page);
   const platform = await relationshipState(run, page, relationshipId);
@@ -45,7 +44,7 @@ acceptanceStep("S3b", { covers: ["PG-08", "WC107-R011"] }, async ({ customer, ru
   requirePassed(run, "S3");
   const relationshipId = run.value("relationshipId");
   const { page } = await customer("A");
-  await openProfessionalDisclosure(page, OFFER);
+  await openProfessionalDisclosure(page, run.agent.offer);
   const trialOffered = await page.getByRole("button", { name: /review free .*trial/i }).isVisible();
   const refusal = /already|one trial|not available|no longer/i.test(await bodyText(page));
   const platform = relationshipId === undefined ? undefined : await relationshipState(run, page, relationshipId);

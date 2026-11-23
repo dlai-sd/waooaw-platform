@@ -6,6 +6,8 @@ import type { Plan } from "./plan.ts";
 import { stepIdentifiers } from "./plan.ts";
 import type { ProbeOutcome } from "./probe.ts";
 import { VERDICTS } from "./types.ts";
+import { correlationId, summarizeTelemetry } from "./telemetry.ts";
+import type { TelemetrySummary } from "./telemetry.ts";
 import type { Finding, StepOutcome, Verdict } from "./types.ts";
 
 export const REPORT_SCHEMA = "waooaw.acceptance-report/v1";
@@ -26,6 +28,10 @@ export interface ReportInput {
   syntheticVolume: { customers_created: number; customers_removed: number; left_over: string[] };
   denominator: string[];
   declaredLimits: string[];
+  device?: string;
+  runId?: string;
+  telemetry?: TelemetrySummary;
+  exploratoryNotes?: string[];
 }
 
 export interface Report {
@@ -35,6 +41,7 @@ export interface Report {
   candidate: {
     environment: string;
     journey_id: string;
+    device: string;
     commit: string;
     journey_digest: string;
     profile_digest: string;
@@ -58,6 +65,9 @@ export interface Report {
   coverage: Record<string, IdentifierDepth>;
   steps: StepOutcome[];
   passed: string[];
+  telemetry: TelemetrySummary;
+  /** Non-deciding notes from the exploratory companion (disabled by policy). They never change the verdict or the conclusion. */
+  exploratory_notes: string[];
 }
 
 const PRECEDENCE: Verdict[] = ["FAIL", "ENV-UNAVAILABLE", "NOT-WITNESSED", "FLAKY", "BLOCKED-BY-FLAG", "NOT-COVERED"];
@@ -111,6 +121,7 @@ export function buildReport(input: ReportInput): Report {
     candidate: {
       environment: input.environment,
       journey_id: input.plan.journey_id,
+      device: input.device ?? "desktop",
       commit: input.commit,
       journey_digest: input.planDigest,
       profile_digest: input.profileDigest,
@@ -144,6 +155,8 @@ export function buildReport(input: ReportInput): Report {
     coverage,
     steps,
     passed: steps.filter((step) => step.verdict === "PASS").map((step) => step.stepId),
+    telemetry: input.telemetry ?? summarizeTelemetry(undefined, correlationId(input.runId ?? "none")),
+    exploratory_notes: input.exploratoryNotes ?? [],
   };
 }
 
@@ -171,6 +184,8 @@ export function validateReport(report: unknown): string[] {
     "coverage",
     "steps",
     "passed",
+    "telemetry",
+    "exploratory_notes",
   ]) {
     if (!(required in value)) {
       errors.push(`missing ${required}`);
@@ -189,12 +204,22 @@ export function validateReport(report: unknown): string[] {
   if (!COMMIT.test(String(candidate.commit ?? ""))) {
     errors.push("candidate.commit must be a 40-character commit");
   }
+  if (!["desktop", "mobile"].includes(String(candidate.device))) {
+    errors.push("candidate.device must be desktop or mobile");
+  }
   for (const field of ["journey_digest", "profile_digest"]) {
     if (!DIGEST.test(String(candidate[field] ?? ""))) {
       errors.push(`candidate.${field} must be a sha256 digest`);
     }
   }
   const tested = (value.not_tested ?? {}) as Record<string, unknown>;
+  const telemetry = (value.telemetry ?? {}) as Record<string, unknown>;
+  if (!["console-log", "none"].includes(String(telemetry.source))) {
+    errors.push("telemetry.source must be console-log or none");
+  }
+  if (!Array.isArray(value.exploratory_notes)) {
+    errors.push("exploratory_notes must be a list");
+  }
   for (const field of ["not_covered", "not_covered_steps", "not_witnessed", "blocked_by_flag", "flaky", "declared_limits"]) {
     if (!Array.isArray(tested[field])) {
       errors.push(`not_tested.${field} must be a list`);
@@ -259,6 +284,8 @@ export function renderSummary(report: Report): string {
     }
     lines.push("");
   }
+  lines.push(`Telemetry (${report.telemetry.source}): ${report.telemetry.note}`);
+  lines.push("");
   lines.push("## Passed");
   lines.push(report.passed.length > 0 ? report.passed.map((id) => `- ${id}`).join("\n") : "- none");
   lines.push("");

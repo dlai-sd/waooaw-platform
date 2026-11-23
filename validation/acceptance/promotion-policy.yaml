@@ -1,0 +1,14 @@
+schema: waooaw.acceptance-promotion-policy/v1
+# ADR-056 (PROPOSED). Defines what acceptance evidence a promotion could require. It is not enforced: nothing in required
+# checks, deployment or branch rules may reference the acceptance workflow or the evaluator until the Founder accepts
+# ADR-056 and a later contract wires it (ADR-054 item 8, fitness F17).
+enforced: false
+adr: ADR-056
+required:
+  report_verdict_in: [PASS]
+  max_not_witnessed_steps: 0
+  max_blocked_by_flag_steps: 0
+  max_flaky_steps: 0
+  rollup_requirement: WC107-R019
+  rollup_status: PASS
+  report_max_age_hours: 24

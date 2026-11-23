@@ -7,7 +7,6 @@ import { recordFindings } from "../lib/step.ts";
 import { acceptanceStep, requirePassed } from "./support/acceptance.ts";
 import { bodyText, startTrial } from "./support/ui.ts";
 
-const OFFER = /digital marketing/i;
 
 acceptanceStep("S7", { covers: ["AE-01-S10", "PG-04", "PG-15"] }, async ({ customer, run }) => {
   requirePassed(run, "S5");
@@ -52,7 +51,7 @@ acceptanceStep("S7", { covers: ["AE-01-S10", "PG-04", "PG-15"] }, async ({ custo
 acceptanceStep("S8", { covers: ["AD-004"] }, async ({ customer, run }) => {
   requirePassed(run, "S2");
   const { page: pageB } = await customer("B");
-  const relationshipB = await startTrial(pageB, OFFER);
+  const relationshipB = (await startTrial(pageB, run.agent.offer)).relationshipId;
   const account = await run.platform(pageB, "/api/identity/account");
   const connections = await run.platform(pageB, "/api/provider-connections");
   const learned = collectIdentifiers([account.json, connections.json, relationshipB]);

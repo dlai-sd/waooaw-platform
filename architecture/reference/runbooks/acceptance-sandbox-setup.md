@@ -36,6 +36,7 @@ never receives, prints or stores a value.
 | `acceptance-meta-test-user-session` | Saved browser session state for the Meta test user | Produced once by the harness login helper (WC-160) |
 | `acceptance-meta-test-page-id` | Id of the test user's test Page | Meta Graph or Page settings |
 | `acceptance-meta-test-page-token` | Access token for that test Page, used only to read and delete the post the slice 2 run publishes | Meta Graph API Explorer or Page settings, as the test user, with `pages_read_engagement` and `pages_manage_posts` |
+| `acceptance-demo-coupon-code` | A test coupon code in the environment that gives a partial discount on the Digital Marketing hire, used only to validate the payable amount (never to pay) | Created by the Founder on the pricing admin screen |
 | `acceptance-whatsapp-sandbox-recipient` | Verified test recipient number (E.164) | Founder-controlled test handset |
 | `acceptance-whatsapp-webhook-secret` | App secret used to sign inbound webhook deliveries to this environment | Same Meta app that owns the environment's WhatsApp number (ADR-053) |
 | `acceptance-keycloak-provisioner-client-secret` | Client secret for the `waooaw-acceptance-provisioner` client | Generated and stored by the provisioning deployment (WC-159); the Founder enters nothing |

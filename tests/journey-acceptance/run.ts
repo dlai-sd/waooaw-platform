@@ -13,6 +13,10 @@ import type { FetchLike } from "./lib/razorpay.ts";
 import { buildReport, renderSummary, validateReport } from "./lib/report.ts";
 import { scanArtifacts, withholdArtifacts } from "./lib/secret-scan.ts";
 import { readFindings, readOutcomes, recordFindings } from "./lib/step.ts";
+import { correlationId, summarizeTelemetry } from "./lib/telemetry.ts";
+import type { TelemetryRow } from "./lib/telemetry.ts";
+import { renderRollup, rollup } from "./lib/rollup.ts";
+import type { RollupMap, RollupReport } from "./lib/rollup.ts";
 
 interface Profile {
   environment: string;
@@ -27,6 +31,11 @@ function option(args: string[], name: string): string {
     throw new Error(`missing --${name}`);
   }
   return args[index + 1];
+}
+
+function optionalOption(args: string[], name: string): string | undefined {
+  const index = args.indexOf(`--${name}`);
+  return index === -1 || index + 1 >= args.length ? undefined : args[index + 1];
 }
 
 function readJson<T>(path: string, fallback?: T): T {
@@ -66,6 +75,9 @@ function finalize(args: string[]): number {
   });
   const probeOutcome = existsSync(join(out, "probe.json")) ? readJson<ProbeOutcome>(join(out, "probe.json")) : undefined;
   const denominator = [...new Set([...plan.steps.flatMap(stepIdentifiers), ...liveScope])];
+  const stateFile = join(privateDir, "run-state.json");
+  const runId = existsSync(stateFile) ? (JSON.parse(readFileSync(stateFile, "utf8")) as { runId: string }).runId : "none";
+  const telemetryRows = existsSync(join(out, "telemetry-rows.json")) ? readJson<TelemetryRow[]>(join(out, "telemetry-rows.json")) : undefined;
   const report = buildReport({
     environment: profile.environment,
     plan,
@@ -81,6 +93,9 @@ function finalize(args: string[]): number {
     providerModeFindings: meta.provider_mode_findings,
     syntheticVolume: meta.synthetic_volume,
     denominator,
+    device: optionalOption(args, "device") ?? "desktop",
+    runId,
+    telemetry: summarizeTelemetry(telemetryRows, correlationId(runId)),
     declaredLimits: [
       "Google and Facebook first-login linking is not exercised by local synthetic users (NOT-COVERED).",
       "The trial verified-identity hash binding is not exercised because synthetic users carry no such claim (NOT-COVERED).",
@@ -154,6 +169,22 @@ async function cleanup(args: string[]): Promise<number> {
   return 0;
 }
 
+/** WC107-R019: combine desktop and mobile reports for one candidate; informational, so the exit code is always 0. */
+function rollupCommand(args: string[]): number {
+  const out = option(args, "out");
+  const reportsAt = args.indexOf("--reports");
+  const reportPaths = reportsAt === -1 ? [] : args.slice(reportsAt + 1).filter((value) => !value.startsWith("--"));
+  const result = rollup(
+    readJson<RollupMap>(option(args, "map")),
+    reportPaths.map((path) => readJson<RollupReport>(path)),
+  );
+  mkdirSync(out, { recursive: true });
+  writeFileSync(join(out, "rollup.json"), JSON.stringify(result, null, 2));
+  writeFileSync(join(out, "rollup.md"), renderRollup(result));
+  console.log(`${result.requirement} rollup: ${result.status}`);
+  return 0;
+}
+
 const [command, ...rest] = process.argv.slice(2);
 if (command === "probe") {
   process.exitCode = await probe(rest);
@@ -161,7 +192,9 @@ if (command === "probe") {
   process.exitCode = finalize(rest);
 } else if (command === "cleanup") {
   process.exitCode = await cleanup(rest);
+} else if (command === "rollup") {
+  process.exitCode = rollupCommand(rest);
 } else {
-  console.error("usage: run.ts probe|finalize|cleanup ...");
+  console.error("usage: run.ts probe|finalize|cleanup|rollup ...");
   process.exitCode = 2;
 }

@@ -76,6 +76,20 @@ def test_the_realm_role_is_never_a_default_or_customer_requestable_role() -> Non
     assert "acceptance-provisioner" not in json.dumps(realm)
 
 
+def test_trace_export_is_wired_only_for_three_services_and_stays_off_by_default() -> None:
+    workload = ROOT / "infrastructure/terraform/phase2/modules/workload"
+    variables = (workload / "variables.tf").read_text(encoding="utf-8")
+    declared = variables.split('variable "otlp_endpoint"', 1)[1].split("\n}\n", 1)[0]
+    assert "default     = null" in declared
+    assert "var.otlp_endpoint == null ||" in declared
+    main = (workload / "main.tf").read_text(encoding="utf-8")
+    block = main.split('name  = "OTEL_EXPORTER_OTLP_ENDPOINT"', 1)[0].rsplit('dynamic "env"', 1)[1]
+    assert 'var.otlp_endpoint != null && contains(["business-platform", "billing-engine", "web"], each.key)' in block
+    for environment in ("demo", "uat", "prod"):
+        root = (ROOT / f"infrastructure/terraform/phase2/environments/{environment}/workload/main.tf").read_text(encoding="utf-8")
+        assert "otlp_endpoint" not in root
+
+
 def test_every_profile_secret_is_in_the_runbook_register() -> None:
     runbook = (ROOT / "architecture/reference/runbooks/acceptance-sandbox-setup.md").read_text(encoding="utf-8")
     profile = yaml.safe_load(PROFILE.read_text(encoding="utf-8"))

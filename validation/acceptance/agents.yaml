@@ -1,0 +1,23 @@
+schema: waooaw.acceptance-agents/v1
+# Which agents a journey plan may test (ADR-054 item 2). A plan names its agent in `agent_under_test`; the harness takes the
+# offer text it looks for from here, so no spec hard-codes an agent name. Only an ACTIVE agent may have a plan.
+agents:
+  digital-marketing-agent:
+    status: ACTIVE
+    display_name: Digital Marketing
+    offer_pattern: digital marketing
+  trading-agent:
+    status: RESERVED
+    display_name: Trading
+    offer_pattern: trading
+    reason: Gate-pass record without current-version Founder approval; the Founder activates it for acceptance after approving the version.
+  agri-agent:
+    status: RESERVED
+    display_name: Agri
+    offer_pattern: agri
+    reason: Gate-pass record without current-version Founder approval; the Founder activates it for acceptance after approving the version.
+  tutor-agent:
+    status: RESERVED
+    display_name: Tutor
+    offer_pattern: tutor
+    reason: Gate-pass record without current-version Founder approval; the Founder activates it for acceptance after approving the version.
