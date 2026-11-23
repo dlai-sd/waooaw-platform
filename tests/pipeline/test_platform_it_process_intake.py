@@ -1,7 +1,8 @@
-import hashlib
 from pathlib import Path
 
 import yaml
+
+import verify_process_control
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -27,25 +28,21 @@ def test_bootstrap_keeps_first_action_and_orders_process_baseline_before_status(
 def test_process_manifest_declares_every_inherited_control() -> None:
     manifest = yaml.safe_load(PROCESS_CONTROL.read_text(encoding="utf-8"))
 
-    assert manifest["schema"] == "waooaw.process-control/v1"
-    assert manifest["version"] == "wc100-r033-v1"
+    assert manifest["schema"] == "waooaw.process-control/v2"
     assert manifest["authoritative_ref"] == "origin/main"
-    assert set(manifest["required_controls"]) == {
+    assert {
         "process_baseline",
         "requirement_intake",
         "story_commentary",
         "docker_execution",
         "exact_head_handoff",
-    }
-    source_digests = manifest["source_digests"]
-    assert set(source_digests) == {
-        ".github/agent-context/office-platform-it-expert.md",
-        "constitution/BOOTSTRAP.md",
-        "work-contracts/IMPLEMENTATION-WORK-CONTRACT-TEMPLATE.md",
-    }
-    for relative_path, expected_digest in source_digests.items():
-        content = (ROOT / relative_path).read_bytes()
-        assert hashlib.sha256(content).hexdigest() == expected_digest
+        "resource_governance",
+        "validation_speed",
+        "state_currency",
+    } <= set(manifest["required_controls"])
+    assert verify_process_control.violations(ROOT, manifest) == []
+    for relative_path in (BOOTSTRAP, OFFICE_CARD, WORK_CONTRACT_TEMPLATE):
+        assert str(relative_path.relative_to(ROOT)) in manifest["source_digests"]
 
 
 def test_platform_it_occupancy_requires_freshness_and_ledger_before_plan() -> None:

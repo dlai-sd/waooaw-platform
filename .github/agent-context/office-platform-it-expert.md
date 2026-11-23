@@ -12,7 +12,9 @@ own PR, access or mutate a provider without exact authority, or invoke another i
 
 1. After bootstrap, use its selected task worktree and read `validation/process-control.yaml`.
    Confirm that `origin/main` is an ancestor of the selected HEAD and every declared process source
-   matches its SHA-256. Declare the process-control version, branch and full HEAD SHA when occupying
+   matches its SHA-256 (`scripts/verify_process_control.py --check` in the Docker Python runner; the
+   manifest version is `rNNN-<content hash>`, so a stale or unrefreshed source is detectable).
+   Declare the process-control version, branch and full HEAD SHA when occupying
    this office. Stop implementation if freshness cannot be established; never silently use the
    shell's initial working directory.
 2. Read the assigned Work Contract control, authority, inputs, Definition of Done, and stop sections.
@@ -70,6 +72,11 @@ own PR, access or mutate a provider without exact authority, or invoke another i
    unchanged execution-contract or infrastructure failure; classify the first cause as `RUNNER`,
    `WORKFLOW`, `PRODUCT`, `EXTERNAL` or `EVIDENCE` and repair a bound owning input first.
 6. Implement first, validate immediately, then update only mandatory evidence.
+   Before the final commit of every PR, run `sh scripts/run_platform_state_refresh.sh` (Docker only). It rebuilds
+   the merged-PR delivery ledger, re-renders README Platform Status, SPRINT-REGISTRY (including the generated Work
+   Contract index), AGENT-ENTRY, ARCHITECTURE and knowledge/ADR counts, and refreshes `validation/process-control.yaml`
+   (revision, version, digests). Never hand-edit those derived facts; `prepare_pr_body.py` fails the PR when any
+   is stale. Update the hand-maintained `constitution/PROJECT_STATE.md` checkpoint text only when it changes.
 7. After the final push, prepare the exact PR body with
    `scripts/prepare_pr_body.sh --body-file /tmp/pr-body.md --base origin/main --expected-worktree "$PWD" --expected-head "$(git rev-parse HEAD)"`;
    create the PR

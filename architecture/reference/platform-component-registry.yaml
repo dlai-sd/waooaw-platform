@@ -4,43 +4,22 @@
 # Read by: Gap Scanner, Blueprint Assurance Run, Steward Interface, CI gate
 # Updated: when a new component is added (EA session, PR required)
 
-registry_version: "2.0"
-platform_baseline: "1.45.0"
-last_updated: "2026-09-11"
+registry_version: "2.1"
 total_components: 5
 
-# Canonical current state. Current-facing summaries are derived by
-# scripts/sync_platform_state.py and checked by tests/platform/test_platform_state_sync.py.
+# Judgement fields only. Everything countable (version, dates, latest delivered Work Contract, Work
+# Contract/ADR/claim/CCT counts) is derived by scripts/derive_platform_state.py from the tree and the
+# merged-PR delivery ledger, rendered by scripts/sync_platform_state.py, and refreshed by
+# scripts/run_platform_state_refresh.sh before every PR (checked by prepare_pr_body.py and CI).
 institutional_state:
-  as_of: "2026-09-11"
-  version: "1.45.0"
-  release_date: "2026-08-31"
   epoch: { number: 1, name: Foundation }
   gate: "G5 CLEAR"
   phase: IMPLEMENTATION
   autonomous_halt: false
-  latest_completed_implementation:
-    work_contract: WC-080
-    title: Agent Runtime Adapter Contract v1
-    evidence: "PR #386 merged as 86c5714"
-  latest_enterprise_architecture:
-    work_contract: WC-079
-    title: Agent Admission Contract
-    status: IMPLEMENTED
-  constitutional_claims: { ratified: 97, gaps: [C-087, C-092, C-093] }
-  architecture_decisions: { recorded: 44 }
 
 cct_inventory:
   institutional: 82
-  centrally_catalogued: 82
   unified_execution_proven: false
-  wbe_tests: { passed: 361, total: 361 }
-
-sprint_inventory:
-  recorded: 83
-  closed: 73
-  active: 10
-  blocked: 1
 
 # `LIVE` means implemented and executable in repository scope. It does not prove
 # environment deployment or customer operation; use each manifest's maturity block.

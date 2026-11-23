@@ -36,13 +36,13 @@ AUTONOMOUS_HALT: false
 
 ```
 Version:    1.45.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Foundation  |  Phase: IMPLEMENTATION
-Last update: 2026-09-11 — WC-079 Agent Admission Contract IMPLEMENTED
-Latest completed sprint: WC-080 — Agent Runtime Adapter Contract v1
-Latest EA work: WC-079 — Agent Admission Contract IMPLEMENTED
-Constitutional Claims: 97 RATIFIED (gaps C-087/C-092/C-093) | ADRs: 44 recorded
+Last update: 2026-11-23 — WC-151 WID Leaf Issuer Root-Key Read Defect delivered
+Latest completed sprint: WC-151 — WID Leaf Issuer Root-Key Read Defect (PR #620 merged as edd9f9e4dc)
+Latest recorded Work Contract: WC-152 — Platform State And Process-Control Currency (no merged PR recorded)
+Constitutional Claims: 97 RATIFIED (gaps C-087/C-092/C-093) | ADRs: 53 recorded
 Agents (customer): DMA v3.1 gate-pass (Founder-approved through v3.0); Trading v1.8, Agri v2.8, Tutor v1.1 gate-pass records without current-version Founder approval; none customer-proven
 Agents (internal): Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations · RepoNav (INST-014)
-CCTs: 82 institutionally declared and 82 centrally catalogued; no unified 72/72 run | WBE: 361/361 passing
+CCTs: 82 institutionally declared and 82 centrally catalogued; no unified 72/72 run
 Web: Next.js App Router — WC-078 public acquisition + WC-077 identity foundations merged
 Three Humans: Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
 Company: DLAI Satellite Data (OPC) Pvt Ltd | CIN: U62090PN2024OPC230499 | GSTIN: 27AAKCD8188R1ZH
