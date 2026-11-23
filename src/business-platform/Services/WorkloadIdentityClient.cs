@@ -204,6 +204,9 @@ public sealed class WorkloadIdentityClient : IDisposable
 
     public string GetIdentityUri(string targetName) => GetTarget(targetName).IdentityUri;
 
+    /// <summary>The workload's own identity URI; null while no live credential is loaded.</summary>
+    public string? GetOwnIdentityUri() => LiveSnapshot()?.IssuerUri;
+
     internal HttpClient CreateClientForIdentity(Uri baseAddress, string targetIdentityUri) =>
         CreateClientCore(baseAddress, () => CreateHandlerForIdentity(targetIdentityUri));
 

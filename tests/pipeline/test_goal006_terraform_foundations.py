@@ -785,7 +785,14 @@ def test_scale_contract_is_bounded_and_defaults_to_zero() -> None:
     assert "var.max_replicas > 0 && var.max_replicas <= 10" in contract
     uat_root = read_contract("environments/uat/workload/main.tf")
     assert re.search(r"ce_min_replicas\s*=\s*0", uat_root)
-    assert re.search(r"pr_min_replicas\s*=\s*0", uat_root)
+    # BP reaches PR and billing on private mutual-TLS ports, which do not wake a scaled-to-zero replica.
+    assert re.search(r"pr_min_replicas\s*=\s*1", uat_root)
+    assert re.search(r"pr_min_replicas\s*=\s*1", demo_root)
+    assert (
+        '"billing-engine"                          = var.application_activation_enabled ? var.billing_min_replicas : 0'
+    ) in workload
+    billing_block = contract.split('variable "billing_min_replicas"', 1)[1].split("variable ", 1)[0]
+    assert "default     = 1" in billing_block
     assert re.search(r"ce_min_replicas\s*=\s*var\.ce_min_replicas", prod_root)
     assert re.search(r"pr_min_replicas\s*=\s*var\.pr_min_replicas", prod_root)
     assert prod_variables.count("requires an accepted positive owner value") == 2

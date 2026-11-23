@@ -1,0 +1,34 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-153
+contract_path: work-contracts/WC-153-owner-link-probe-and-warm-private-listeners.md
+contract_digest: 4d82fb0b4e7af401c431b778e830992fa569975fb8460669c4d564a8e0129a1e
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: .NET and Python checks run in Docker at the exact head; commands and results in the PR body
+  initial_state: expected-fail
+  dependencies: Founder authorization of this implementing session (current conversation)
+  residual_risk: Both links reporting READY on the new revisions is proven only after Demo is redeployed
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC153-R001
+    source: WC-153 Canonical Requirement Index, R001
+    observable_outcome: An owner answering with Business Platform's own identity URI is READY; one echoing the owner's URI is UNAVAILABLE.
+    test_path_or_plan: tests/business-platform.Tests/WorkloadCredentialRefresherTests.cs (OwnerLinkTests, modes ok and target-peer).
+
+  - <<: *defaults
+    requirement_id: WC153-R002
+    source: WC-153 Canonical Requirement Index, R002
+    observable_outcome: The next probe delay is 30 seconds while any link is UNAVAILABLE and the credential refresh interval once every link is up.
+    test_path_or_plan: tests/business-platform.Tests/WorkloadCredentialRefresherTests.cs (AnUnavailableOwnerLinkIsReprobedAtTheMinimumIntervalUntilItRecovers).
+
+  - <<: *defaults
+    requirement_id: WC153-R003
+    source: WC-153 Canonical Requirement Index, R003
+    observable_outcome: billing-engine takes its minimum from billing_min_replicas (default 1) and professional-runtime is set to 1 in the Demo and UAT roots.
+    test_path_or_plan: tests/pipeline/test_goal006_terraform_foundations.py::test_scale_contract_is_bounded_and_defaults_to_zero.
