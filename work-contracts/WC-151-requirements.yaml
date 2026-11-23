@@ -1,0 +1,34 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-151
+contract_path: work-contracts/WC-151-wid-leaf-issuer-root-key-defect.md
+contract_digest: 96a06870f5e90c402a900611400b44c9bb3038dbf66523648f6820cef842c1dc
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Python checks run in Docker at the exact head; commands and results in the PR body
+  initial_state: expected-fail
+  dependencies: Founder authorization of this implementing session (current conversation)
+  residual_risk: Leaf-job secret writes, trust-bundle publication and consumer READY state are proven only after Demo is redeployed
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC151-R001
+    source: WC-151 Canonical Requirement Index, R001
+    observable_outcome: Leaf mode reads and signs with only the wid-intermediate key and never reads wid-root; CA mode still checks both keys.
+    test_path_or_plan: tests/constitutional/test_wid_issuer.py.
+
+  - <<: *defaults
+    requirement_id: WC151-R002
+    source: WC-151 Canonical Requirement Index, R002
+    observable_outcome: The leaf-mode test fails on the old behaviour with HTTP 403 and passes with the fix, using the key grants parsed from workload-identity.tf.
+    test_path_or_plan: tests/constitutional/test_wid_issuer.py; revert check recorded in the PR body.
+
+  - <<: *defaults
+    requirement_id: WC151-R003
+    source: WC-151 Canonical Requirement Index, R003
+    observable_outcome: The office card carries the communication preference and the local pre-test rule, and the process-control digest matches the card.
+    test_path_or_plan: tests/pipeline/test_platform_it_process_intake.py; tests/pipeline/test_validation_policy.py.
