@@ -73,6 +73,60 @@ def _issue_all_with(vault: FakeKeyVault, now: datetime) -> None:
     wid.run_leaf(vault, registry, "demo", WORKLOADS, now)
 
 
+class _KeyGrantVault(FakeKeyVault):
+    """Fake vault that answers 403 for any key the calling identity holds no role on, as Key Vault RBAC does."""
+
+    def __init__(self, readable_keys: set[str]) -> None:
+        super().__init__()
+        self.readable_keys = readable_keys
+
+    def _require(self, name_or_kid: str) -> None:
+        name = name_or_kid.split("/keys/")[-1].split("/")[0] if "/keys/" in name_or_kid else name_or_kid
+        if name not in self.readable_keys:
+            raise wid.IssuanceError(f"Key Vault GET /keys/{name} failed: HTTP 403 Forbidden")
+
+    def get_key_public(self, name_or_kid: str) -> Any:
+        self._require(name_or_kid)
+        return super().get_key_public(name_or_kid)
+
+    def get_signer(self, kid: str) -> Any:
+        self._require(kid)
+        return super().get_signer(kid)
+
+
+def _leaf_issuer_key_scopes() -> set[str]:
+    terraform = (REPO_ROOT / "infrastructure/terraform/phase2/modules/workload/workload-identity.tf").read_text("utf-8")
+    block = terraform.split('"leaf-issuer" = concat(', 1)[1].split("wid_job_grant_list", 1)[0]
+    return set(re.findall(r'wid_key_scopes\["([a-z-]+)"\]', block))
+
+
+def test_leaf_mode_uses_only_the_key_grants_terraform_gives_the_leaf_issuer() -> None:
+    granted = _leaf_issuer_key_scopes()
+    assert granted == {"wid-intermediate"}, "only the CA rotator may hold any grant on wid-root"
+
+    vault = _KeyGrantVault(readable_keys={"wid-root", "wid-intermediate"})
+    vault.provision(WORKLOADS)
+    wid.run_ca(vault, _registry(), "demo", T0)
+    vault.readable_keys = set(granted)
+    vault.sign_calls.clear()
+
+    summary = wid.run_leaf(vault, _registry(), "demo", WORKLOADS, T0)
+
+    assert len(summary["issued"]) == len(WORKLOADS)
+    assert set(vault.sign_calls) == {vault.keys["wid-intermediate"][-1]}
+
+
+def test_leaf_mode_still_rejects_an_intermediate_key_that_does_not_match_its_certificate() -> None:
+    vault = _issue_all()
+    vault.create_key_version("wid-intermediate")
+    state = _json(vault, "wid-ca-state")
+    state["intermediate_key_kid"] = vault.keys["wid-intermediate"][-1]
+    vault.secrets["wid-ca-state"] = json.dumps(state)
+
+    with pytest.raises(wid.IssuanceError, match="does not match its certificate"):
+        wid.run_leaf(vault, _registry(), "demo", WORKLOADS, T0 + timedelta(hours=9))
+
+
 def test_ca_bootstrap_from_unissued_builds_root_intermediate_and_signed_trust_bundle() -> None:
     vault = _vault()
     assert vault.secrets["wid-ca-state"] == "UNISSUED"

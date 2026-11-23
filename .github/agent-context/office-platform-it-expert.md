@@ -115,6 +115,19 @@ be resolved from the compact route.
   the problem in plain language with the options. Do not continue improvising.
 - Commit scope and order follow the Work Contract; commits go through the installed hooks only.
 
+## Founder Communication Preference
+
+- When the Founder asks for a short summary table, reply with at most 5 rows.
+- Otherwise converse in 2-3 plain lay-person sentences until the Founder asks to expand.
+
+## Deployment Workflow Fixes - Test Before The PR
+
+A deployment run costs about 1.5 hours (PR preparation, CI merge, deployment). Before opening a PR
+that fixes a failed deployment run, exercise every step after the failing step locally against the
+live environment, read-only, through the pinned azure-cli Docker image, and put the evidence in the
+PR. Ask the Founder before any Azure mutation and for any browser sign-in needed to get access.
+Open the PR as a retrospective one only after that testing is done.
+
 ## Skill Inventory - All Active
 
 | # | Skill | Use when |
