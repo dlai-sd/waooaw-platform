@@ -23,12 +23,26 @@
 - `TF_VAR_deployment_client_id` also fell back to the control-plane client id, so a plan-only plan differed from the apply plan.
 - The last successful run (45133184632) used `apply: true`, switched identity, and planned successfully.
 
+## State Table (apply x foundation cache x password authentication)
+
+The foundation plan step runs when `inputs.apply || cache_hit != 'true'`. The two identity steps must run exactly when the plan runs and password authentication is enabled.
+
+| apply | cache | password auth | Foundation plan | Identity resolve and login | Plan identity |
+|---|---|---|---|---|---|
+| true | hit | true | runs | runs | deployment |
+| true | miss | true | runs | runs | deployment |
+| false | **miss** | true | runs | **runs (was skipped: the defect)** | deployment (was bootstrap) |
+| false | hit | true | skipped | skipped | none needed |
+| any | any | false | follows its own gate | skipped | unchanged (bootstrap, pre-existing behavior) |
+
+The foundation apply step keeps its own gate, `inputs.apply && cache_hit != 'true'`.
+
 ## Authority And Scope
 
 ### In scope
 
 1. The two Plan B identity steps run whenever the foundation plan runs (`inputs.apply || cache_hit != 'true'`), still only when password authentication is enabled.
-2. One regression test that ties both conditions to the plan step's own condition.
+2. Executable contract tests that evaluate the real step conditions over the full state table and fail on the previous workflow.
 
 ### Out of scope and prohibited
 
@@ -43,7 +57,7 @@
 
 ## Definition Of Done
 
-1. The regression test fails on the previous workflow and passes on the fix; actionlint passes; the existing deployment workflow tests pass.
+1. The state-table tests fail on the previous workflow (in the reproducing state) and pass on the fix; actionlint passes; the existing deployment workflow tests pass.
 2. PR body prepared; author review recorded; Founder reviews and merges.
 3. After merge, a plan-only Demo run is the live proof; it is not claimed here.
 
