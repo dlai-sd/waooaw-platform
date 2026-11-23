@@ -219,6 +219,17 @@ def test_runner_images_are_verified_before_consumption() -> None:
     assert "WAOOAW_TEST_RUNNER_IMAGE_ID" in executor
 
 
+def test_runner_image_pull_retries_transient_registry_failures_but_stays_digest_pinned() -> None:
+    # Run 45122486536: one "connection reset by peer" failed the web gate before any test started.
+    runner_action = RUNNER_ACTION_PATH.read_text(encoding="utf-8")
+    pull_block = runner_action.split("for attempt in 1 2 3; do", 1)[1].split("done", 1)[0]
+
+    assert 'docker pull "$image"' in pull_block
+    assert 'if [ "$attempt" = 3 ]; then' in pull_block
+    assert "exit 1" in pull_block
+    assert runner_action.index('gh attestation verify "oci://$image"') < runner_action.index("for attempt in 1 2 3; do")
+
+
 def test_test_runner_contains_wc100_nested_docker_tools() -> None:
     source = TEST_RUNNER_PATH.read_text(encoding="utf-8")
 

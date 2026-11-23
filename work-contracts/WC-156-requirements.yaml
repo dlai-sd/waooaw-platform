@@ -1,0 +1,34 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-156
+contract_path: work-contracts/WC-156-validation-runner-image-pull-retry.md
+contract_digest: 89d9c23e0b1c169071ec7c13601ffa223a87c7f59d7a25216a65cc3bc0c97ded
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Python checks run in Docker at the exact head; commands and results in the PR body
+  initial_state: expected-fail
+  dependencies: Founder authorization of this implementing session (current conversation)
+  residual_risk: The hosted effect on a real registry reset is observed only when one occurs
+  completion_rule: Executable evidence for the requirement passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC156-R001
+    source: WC-156 Canonical Requirement Index, R001
+    observable_outcome: A pull that fails twice and then succeeds passes the step; a pull that always fails stops after exactly three attempts with an error naming the image.
+    test_path_or_plan: tests/pipeline/test_ci_validation_efficiency.py::test_runner_image_pull_retries_transient_registry_failures_but_stays_digest_pinned; simulation of both cases recorded in the PR body.
+
+  - <<: *defaults
+    requirement_id: WC156-R002
+    source: WC-156 Canonical Requirement Index, R002
+    observable_outcome: The retry loop sits after attestation verification and pulls the same pinned image reference.
+    test_path_or_plan: tests/pipeline/test_ci_validation_efficiency.py::test_runner_image_pull_retries_transient_registry_failures_but_stays_digest_pinned; tests/pipeline/test_ci_validation_efficiency.py::test_runner_images_are_verified_before_consumption.
+
+  - <<: *defaults
+    requirement_id: WC156-R003
+    source: WC-156 Canonical Requirement Index, R003
+    observable_outcome: Two RawConstitutionalServer instances started at the same time both bind their own loopback ports; without the fix the second fails with "Failed to bind to address http://0.0.0.0:5001".
+    test_path_or_plan: tests/business-platform.Tests/ConstitutionalGrpcCoverageTests.cs::RawConstitutionalServers_RunConcurrentlyWithoutSharingAProductionEndpoint, run in the Docker .NET runner with and without the fix; result in the PR body.
