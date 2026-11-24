@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-170
 contract_path: work-contracts/WC-170-real-agent-work-end-to-end.md
-contract_digest: 6284e9ca4fd878beb288c9bfb81a661f0f1c02907db6766d2eda7b26c5b3b288
+contract_digest: 4471c917ed4b3ac0f67c625daee6df12a068c3e1de9d17eeab16cac3c5377693
 implementation_scope: true
 result: PLANNED
 
@@ -10,7 +10,7 @@ requirement_defaults: &defaults
   evidence_class: To be fixed at the phase A exit; rows are candidates until the Founder accepts the groomed stories
   initial_state: blocked
   dependencies: WC-169 read back; the Founder accepts the groomed stories before any implementation
-  residual_risk: PG-17 to PG-23 are ungroomed and DMA domain-authority input is an outside dependency
+  residual_risk: PG-17 to PG-23 are ungroomed; the DMA domain authority is the Founder, so phase A needs his time
   completion_rule: Candidate rows are confirmed or replaced at the phase A exit; each confirmed row needs executable evidence and a Demo read-back
   result: PLANNED
 

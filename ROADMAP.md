@@ -44,7 +44,7 @@ Historic planning (the GOAL files, WC-064 to WC-069 "Iteration 1 to 5" for the F
 | 1 | WC-168 | One roadmap and a working operator console on Demo | **M1** Founder signs in and every operator screen works with DMA data | Contract written, implementation not authorized |
 | 2 | WC-169 | Paid hire and connected accounts | **M2** Synthetic customer completes discover to connected accounts; one valid calibration report | Contract written, starts after WC-168 is read back |
 | 3 | WC-170 | Real agent work end to end (AE-02, PG-17 to PG-23) | **M3** DMA does approved, reconciled work for a synthetic customer | Gated skeleton: grooming first, build only after the Founder accepts the stories |
-| 4 | WC-171 | Alerts, monitoring, oversight (PG-24; 30 proactive alerts a month) | **M4** Founder and administrators see, are alerted to, and resolve problems without database access | Number reserved, contract not written |
+| 4 | WC-171 | Alerts, monitoring, oversight (PG-24; 30 proactive alerts a month; a governed route to read and resolve blocked WhatsApp messages) | **M4** Founder and administrators see, are alerted to, and resolve problems without database access | Number reserved, contract not written |
 | 5 | WC-172 | Safe to charge real customers (PG-26, billing and funding, UAT promotion) | **M5** Founder approval to take real money | Number reserved, contract not written |
 | 6 | WC-173 | Platform proven by a second agent (PG-25, PG-31 to PG-34) | **M6** Second agent plays with no kernel change | Number reserved, contract not written |
 
@@ -124,3 +124,4 @@ Emergencies (security, production incidents, Founder-assigned urgent fixes) are 
 | Date | Change | Approved by |
 |---|---|---|
 | 2026-11-24 | Roadmap created | Founder |
+| 2026-11-24 | Critical review of WC-168 to WC-170 (Founder asked for gaps to be fixed): a governed route for blocked WhatsApp messages placed in Iteration 4 (WC-171); WC-168 gains a Founder-reserved pricing input (R015); WC-169 gains a read-back of the Keycloak provisioning client (R012). Iteration order and numbers unchanged | Founder instruction to fix gaps; confirmation requested |

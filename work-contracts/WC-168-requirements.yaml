@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-168
 contract_path: work-contracts/WC-168-operator-console-works-on-demo.md
-contract_digest: 663e79fd749059cbbc438a34b97fdb929b69b7e12464872b35e39cb86c261c29
+contract_digest: 2c2102d4d0eb4d89db2f3bd31d0d91eadc29a05984acdc85216f5a04077c68aa
 implementation_scope: true
 result: PLANNED
 
@@ -30,8 +30,8 @@ requirements:
   - <<: *defaults
     requirement_id: WC168-R003
     source: WC-168 Canonical Requirement Index, R003
-    observable_outcome: The cause of the Providers permission error is proven by a bounded read-only Founder-approved read on Demo; business_app can select from every business table the application queries after the fix.
-    test_path_or_plan: Governed read record in the contract; a real-database test that applies the whole init chain and asserts business_app privileges; Demo read-back of /admin/providers.
+    observable_outcome: The cause of the Providers permission error is proven by a bounded read-only Founder-approved read on Demo; bp_runtime can select from every business table the application queries after the fix, and the fix reached Demo.
+    test_path_or_plan: Governed read record in the contract; a real-database test reusing scripts/wc124_init_chain_local.sh that asserts has_table_privilege for bp_runtime; Demo read-back of /admin/providers.
 
   - <<: *defaults
     requirement_id: WC168-R004
@@ -48,8 +48,8 @@ requirements:
   - <<: *defaults
     requirement_id: WC168-R006
     source: WC-168 Canonical Requirement Index, R006
-    observable_outcome: DMA Starter, Runner and Winner exist as authorized packages; the Marketplace price equals the authorized price; one price source is named.
-    test_path_or_plan: Pricing admin and Marketplace read-back; a test that the Marketplace and Pricing agree; Founder authorizes the packages on the Pricing screen.
+    observable_outcome: One price source. The customer-facing DMA price comes from the pricing engine's authorized package, never from the static descriptor price; Starter, Runner and Winner exist as packages with the Founder's components and recipes; the Marketplace amount equals the authorized price.
+    test_path_or_plan: A test that the Marketplace amount equals the authorized package price and shows no amount before authorization; Pricing admin and Marketplace read-back; Founder authorizes the packages on the Pricing screen.
 
   - <<: *defaults
     requirement_id: WC168-R007
@@ -78,14 +78,14 @@ requirements:
   - <<: *defaults
     requirement_id: WC168-R011
     source: WC-168 Canonical Requirement Index, R011
-    observable_outcome: Temporal startup qualification waits up to six minutes for the previous copy to drain and still refuses a genuinely busy pool.
-    test_path_or_plan: Workflow contract test and a fault-injection test for both paths.
+    observable_outcome: The deployment waits until the previous Temporal app has no replica before the startup job runs, and the pool check still refuses a genuinely busy pool.
+    test_path_or_plan: Workflow contract test and a fault-injection test for the drained, busy and timeout paths.
 
   - <<: *defaults
     requirement_id: WC168-R012
     source: WC-168 Canonical Requirement Index, R012
-    observable_outcome: The blocked WhatsApp message has a recorded cause and is resolved through a governed route; nothing deleted, no alert muted.
-    test_path_or_plan: Founder-approved read; cause recorded; Log Analytics showing the alert stops repeating.
+    observable_outcome: The blocked WhatsApp message has a recorded cause read through the bounded read-only job; the Founder decides the resolution and it is applied through a Founder-approved bounded action with evidence; nothing deleted, no alert muted.
+    test_path_or_plan: Founder-approved read; cause recorded; Log Analytics showing the alert stops repeating. The permanent governed route is WC-171.
     initial_state: blocked
 
   - <<: *defaults
@@ -100,3 +100,10 @@ requirements:
     source: WC-168 Canonical Requirement Index, R014
     observable_outcome: WC-167 R001, R004, R008 and R011 are recorded done with evidence and R003, R005, R007 and R009 are moved by identifier.
     test_path_or_plan: WC-167 progress table and ledger updated and validated.
+
+  - <<: *defaults
+    requirement_id: WC168-R015
+    source: WC-168 Canonical Requirement Index, R015
+    observable_outcome: The Founder supplies and the contract records the Starter, Runner and Winner prices including GST, authorizes the pending proactive-message thread, and turns on the Demo setting for the publication components.
+    test_path_or_plan: Founder decision record; Thread Catalog and settings read-back.
+    initial_state: Founder-reserved

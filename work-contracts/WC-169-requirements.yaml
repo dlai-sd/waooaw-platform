@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-169
 contract_path: work-contracts/WC-169-paid-hire-and-connected-accounts.md
-contract_digest: 2d1983fb37be5d9ae9384e5ce825cc68e373b18a636979a311e4703293dff323
+contract_digest: 87772652d9657e14dc2618f458261f647923f7e71527d6145bfc05505145933e
 implementation_scope: true
 result: PLANNED
 
@@ -37,8 +37,8 @@ requirements:
   - <<: *defaults
     requirement_id: WC169-R004
     source: WC-169 Canonical Requirement Index, R004
-    observable_outcome: The Meta app is registered on the Meta provider row and the Facebook connection works with the dialog the app supports.
-    test_path_or_plan: Run of S6 and S6b on Demo; provider side Graph permission read.
+    observable_outcome: The Meta app is registered on the Meta provider row and the Facebook connection works with the dialog the app supports; scopes requested equal scopes granted.
+    test_path_or_plan: Run of S6 and S6b on Demo; provider side Graph permission read compared with the requested scopes.
 
   - <<: *defaults
     requirement_id: WC169-R005
@@ -49,14 +49,15 @@ requirements:
   - <<: *defaults
     requirement_id: WC169-R006
     source: WC-169 Canonical Requirement Index, R006
-    observable_outcome: A guest who sent STOP can resume with evidence and no duplicate message.
-    test_path_or_plan: Business Platform tests plus Demo read-back.
+    observable_outcome: A guest who sent STOP can resume on Demo, so STOP then START then YES resumes with evidence and no duplicate message; the Demo visitor mode is read first and set to V2 only on the Founder's decision.
+    test_path_or_plan: Business Platform tests for STOP, START and YES in V2; settings read-back and Demo read-back.
+    initial_state: expected-fail
 
   - <<: *defaults
     requirement_id: WC169-R007
     source: WC-169 Canonical Requirement Index, R007
-    observable_outcome: A test coupon gives a partial discount and the payable amount is validated without paying.
-    test_path_or_plan: Run of the S5 variant and pricing read-back.
+    observable_outcome: A test coupon gives a partial discount and the payable amount is validated without paying; the coupons screen can write.
+    test_path_or_plan: Start-of-iteration read-back of the coupons screen; run of the S5 variant and pricing read-back.
     initial_state: Founder-reserved
 
   - <<: *defaults
@@ -84,3 +85,9 @@ requirements:
     source: WC-169 Canonical Requirement Index, R011
     observable_outcome: Customer-visible polish found by the run is fixed to the WC-167 R006 bar.
     test_path_or_plan: Playwright specs and axe for each touched screen.
+
+  - <<: *defaults
+    requirement_id: WC169-R012
+    source: WC-169 Canonical Requirement Index, R012
+    observable_outcome: The Keycloak provisioning client is read back by first real use, where the harness gets a token, registers a synthetic subject, the platform sees it, and the token carries only the intended roles for 60 seconds.
+    test_path_or_plan: Harness run step with the Keycloak token claims checked and the registration read from the platform.

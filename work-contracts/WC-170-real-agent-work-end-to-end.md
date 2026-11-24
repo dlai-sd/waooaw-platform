@@ -17,7 +17,7 @@
 
 ## Why This Contract Exists
 
-The customer pays for agent work: a campaign brief, a proposal and approval, a status timeline, ad spend that reconciles, and results traced to work (AE-02, PG-17 to PG-23). The gap register lists PG-17 to PG-23 as UNGROOMED, and the GOAL-005 program records that AE-02 depends on DMA domain-authority input. Building before grooming would repeat the "specification closed, proof pending" pattern. This contract is therefore a grooming contract first and an implementation contract only after the Founder accepts the stories.
+The customer pays for agent work: a campaign brief, a proposal and approval, a status timeline, ad spend that reconciles, and results traced to work (AE-02, PG-17 to PG-23). The gap register lists PG-17 to PG-23 as UNGROOMED. The DMA domain authority is the Founder himself (`goals/GOAL-005-f4-dma-domain-authority-input.md`: "Yogesh will do this. Sujay will come in picture once waooaw is operational"), and `goals/GOAL-005-D06-dma-domain-authority-synthesis.md` is an input awaiting incorporation, so phase A needs the Founder's time. Building before grooming would repeat the "specification closed, proof pending" pattern. This contract is therefore a grooming contract first and an implementation contract only after the Founder accepts the stories.
 
 ## Phases
 
@@ -46,9 +46,35 @@ The customer pays for agent work: a campaign brief, a proposal and approval, a s
 
 Customer: connected, agent proposes a campaign brief, customer approves, agent works, customer sees status, ad spend, results, approve or stop.
 - Real agent work needs an AI provider credential on the Providers screen and runtime capacity, and each step needs a decision on who funds it (R009).
-- DMA domain-authority input is an outside dependency and is part of the phase A exit.
+- DMA domain-authority input comes from the Founder, not an outside party, so phase A needs his time (see the review record).
 - Real ad spend stays in sandbox or test mode until Iteration 5.
 - The iteration is large. Two pull requests are possible, only with the Founder's agreement at the A exit.
+
+## Critical Review And Simulation Record (2026-11-24)
+
+Method: the skeleton was checked against the gap register, the GOAL-005 grooming records, the acceptance architecture and the existing DMA code and tests; the customer journey was then walked from "connected" to "results" and each step compared with what exists. Findings that changed this contract are marked FIXED.
+
+### Customer journey run from "connected" to "results"
+
+| Step | What exists today | Gap | Contract response |
+|---|---|---|---|
+| Agent proposes a campaign brief | DMA release-1 skills and a conversation protocol exist behind `WC120_CONVERSATION_ENABLED` (default off) | Flag off; brief is not a governed, locked artifact | R002, R008 |
+| Customer approves | Approval ladder is specified in the agent experience architecture | Approval and scope-boundary confirmation are not shown as distinct | R003 |
+| Agent works | Publish is proven by WC-162 (AE-02-S05); campaign execution beyond publishing is not | Real AI provider credential and capacity needed; sandbox only | R009 |
+| Customer sees status | A shared timeline is specified | Not built | R004 |
+| Ad spend | Spend accounts and a pricing engine exist | Authorization, attribution and reconciliation to the provider are not proven | R006 |
+| Results | KPI framework specified | Outcome-to-evidence trace not built | R005, R007 |
+| Stop mid-work | Stop is proven for the relationship (AE-01-S10) | Not proven while agent work is executing | R010 |
+
+### Gaps found and how they were fixed
+
+| Id | Gap | Evidence | Status |
+|---|---|---|---|
+| G1 | The skeleton called DMA domain input an outside dependency | The DMA domain authority is the Founder; Sujay is deferred until the platform is operational | FIXED: the dependency is the Founder's time in phase A |
+| G2 | Part of the scope already exists | AE-02-S01 (connect) is covered by WC-149 and AE-02-S05 (publish) by WC-162 | FIXED: phase A must inventory existing coverage before writing stories |
+| G3 | The platform-led rule could be broken inside this contract | DMA is the only agent in play | FIXED: stop condition already forbids a DMA-only kernel change; phase A states each story as a platform capability |
+| G4 | Funding of each step is undecided | Funding model accepted 2026-11-20; per-step account not mapped | FIXED: R009 |
+| G5 | The size is unknown until grooming | PG-17 to PG-23 are ungroomed | FIXED: two pull requests only with the Founder's agreement at the A exit; contract stays a gated skeleton |
 
 ## Stop Conditions
 
