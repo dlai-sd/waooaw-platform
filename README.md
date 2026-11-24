@@ -9,7 +9,7 @@
 ## Platform Status
 
 ```
-Version:              v1.45.0 — state as of 2026-11-24: WC-167 delivered (PR #635 merged as 8c9f4ec131)
+Version:              v1.45.0 — state as of 2026-11-24: WC-167 delivered (PR #636 merged as 2d5daca61e)
 Epoch:                1 — Foundation
 Constitutional Claims: 97 ratified (gaps at C-087/C-092/C-093) | ADRs: 56
 Customer Agents:      DMA v3.1 gate-pass (Founder-approved through v3.0) · Trading v1.8 / Agri v2.8 / Tutor v1.1 gate-pass records without current-version Founder approval · none customer-proven
@@ -34,7 +34,7 @@ generates production-grade code, reviews its own PR, merges, and advances to the
 
 ```
 Last sprint:     WC-167 — Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement)
-Sprint status:   DONE — 2026-11-24 · PR #635 merged as 8c9f4ec131
+Sprint status:   DONE — 2026-11-24 · PR #636 merged as 2d5daca61e
 Next work:       constitution/PROJECT_STATE.md → Next Authorized Action · Production apply/activation prohibited
 Sprint registry: SPRINT-REGISTRY.md
 ```

@@ -588,3 +588,13 @@ def test_image_registry_inputs_are_environment_bound_and_keep_canonical_ghcr_dig
     ):
         with pytest.raises(ValueError, match="image"):
             create_inputs("demo", manifest(), configuration(), True, current_time=now, **arguments)
+
+
+@pytest.mark.parametrize(("environment", "expected"), [("demo", True), ("uat", None), ("prod", None)])
+def test_only_demo_enables_synthetic_acceptance_tenants_in_the_committed_settings(
+    environment: str, expected: bool | None
+) -> None:
+    import json
+
+    settings = json.loads((SETTINGS_DIR / f"{environment}.json").read_text(encoding="utf-8"))
+    assert settings.get("feature_settings", {}).get("acceptance_synthetic_tenants_enabled") is expected
