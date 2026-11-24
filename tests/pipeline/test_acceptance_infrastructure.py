@@ -262,3 +262,4 @@ def test_the_provisioning_client_secret_is_read_from_the_acceptance_vault_by_the
         assert "acceptance_provisioner_enabled" not in root
     demo = (ROOT / "infrastructure/terraform/phase2/environments/demo/workload/main.tf").read_text(encoding="utf-8")
     assert "outputs.acceptance_key_vault_id" in demo and "outputs.acceptance_key_vault_uri" in demo
+    assert "  acceptance_provisioner_enabled           = true\n" in demo

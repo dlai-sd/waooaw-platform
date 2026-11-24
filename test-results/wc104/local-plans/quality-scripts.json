@@ -1,8 +1,8 @@
 {
   "authoritative": false,
   "catalog_version": "wc121-selective-validation-v1",
-  "execution_namespace": "wc109-aadb2b40ccb71822",
-  "head_sha": "e53228e6aa04f1f4500a182daa8c93aefbe78411",
+  "execution_namespace": "wc109-5a24f8d4c076d7f2",
+  "head_sha": "a27d2da9017becec8ceba64a9e39711f7a4c454f",
   "machine_checkable": true,
   "mode": "qualification",
   "nodes": [
@@ -16,7 +16,7 @@
       "command": "ruff check scripts/ --config pyproject.toml && ruff format --check scripts/ && python scripts/acceptance_static_gates.py check --base-ref origin/main && pytest tests/pipeline/test_acceptance_static_gates.py tests/pipeline/test_acceptance_infrastructure.py -q && python scripts/ai_resource_governance.py --repository /workspace && pytest tests/scripts/test_ai_resource_governance.py -q && pytest tests/validation_control/test_unified_execution_contract.py tests/validation_control/test_wc104_rollback.py tests/validation_control/test_runner_contracts.py tests/validation_control/test_runner_supply.py tests/validation_control/test_catalog_contract.py tests/validation_control/test_gate_equivalence.py tests/validation_control/test_qualification_change_scope.py -q && pytest tests/validation_control/test_pilot.py tests/validation_control/test_wc109_value_pilot.py -q && pytest tests/pipeline/test_goal006_runner_bootstrap.py tests/pipeline/test_goal006_runner_image_workflow.py tests/pipeline/test_wc132_demo_reset_recovery.py tests/pipeline/test_goal006_deployment_inputs.py tests/pipeline/test_wc091_environment_readiness.py tests/pipeline/test_wc120_whatsapp_activation.py tests/pipeline/test_wc133_whatsapp_operations.py tests/pipeline/test_goal006_demo_revision_cleanup.py tests/pipeline/test_wc134_dispatch_rollout.py tests/pipeline/test_private_listener_startup_guard.py -q && pytest tests/visitor_simulation -q && python scripts/sync_platform_state.py --check && python scripts/verify_process_control.py --check && pytest tests/platform/test_platform_state_sync.py tests/platform/test_platform_state_derivation.py tests/pipeline/test_process_control_verifier.py tests/pipeline/test_platform_it_process_intake.py -q && pytest tests/pipeline/test_prepare_pr_body.py -k platform_state -q && pytest tests/pipeline/test_pre_push_binding_hook.py -q && python scripts/seed-prompts.py --dry-run",
       "command_id": "quality-scripts",
       "components": [],
-      "compose_project": "wc109-aadb2b40ccb71822",
+      "compose_project": "wc109-5a24f8d4c076d7f2",
       "compose_service": "test-runner-python",
       "cost_class": "STATIC",
       "direct_prerequisites": [],
@@ -28,7 +28,7 @@
           "common": "test-results/validation/build.json",
           "native": []
         },
-        "directory": "test-results/wc109/runs/wc109-aadb2b40ccb71822/quality-scripts"
+        "directory": "test-results/wc109/runs/wc109-5a24f8d4c076d7f2/quality-scripts"
       },
       "gate_id": "quality:scripts",
       "inputs": {
@@ -36,7 +36,7 @@
         "catalog_version": "wc121-selective-validation-v1",
         "command_id": "quality-scripts",
         "environment": [],
-        "head_sha": "e53228e6aa04f1f4500a182daa8c93aefbe78411",
+        "head_sha": "a27d2da9017becec8ceba64a9e39711f7a4c454f",
         "required_services": [],
         "runner_id": "python"
       },
@@ -107,7 +107,7 @@
           "environment"
         ]
       },
-      "output_directory": "test-results/wc109/runs/wc109-aadb2b40ccb71822/quality-scripts",
+      "output_directory": "test-results/wc109/runs/wc109-5a24f8d4c076d7f2/quality-scripts",
       "owner": "validation-control",
       "phase": "A_DESIGN",
       "product_image_builds": [],

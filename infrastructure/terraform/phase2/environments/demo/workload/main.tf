@@ -70,6 +70,7 @@ module "workload" {
   workload_identity_alert_action_group_id  = try(var.whatsapp_monitoring.action_group_id, null)
   acceptance_key_vault_id                  = try(data.terraform_remote_state.foundation.outputs.acceptance_key_vault_id, null)
   acceptance_key_vault_uri                 = try(data.terraform_remote_state.foundation.outputs.acceptance_key_vault_uri, null)
+  acceptance_provisioner_enabled           = true
   facebook_login_enabled                   = true
   google_login_enabled                     = true
   environment                              = "demo"
