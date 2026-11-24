@@ -17,7 +17,7 @@ accepted_sources:
   adr/ADR-003-jwt-claims-multi-tenancy.md: f8c46224671a85269c246e742ee110036af36ffe2e02f229590894c796d2e2f2
   adr/ADR-008-keycloak-identity-broker.md: 63605ab58a568c3f3746247f0a8b661487a3dfd468938e18cdeb828959483593
   adr/ADR-017-web-application-framework.md: 96bb405194dca4c4e17f8b9255b507b2ac6ee0e82d935cdae6e369648e1fd4ab
-  architecture/reference/api-specs/business-platform.openapi.yaml: f95df86ca8f40148cffd85afce0cf754c09f48df6a8835f7275946140db90a2b # gitleaks:allow - public API contract SHA-256
+  architecture/reference/api-specs/business-platform.openapi.yaml: bd342555f6a8dea5dff9f221a15f09885e0dba3a988ed055b04e4072c2667d0a # gitleaks:allow - public API contract SHA-256
   architecture/reference/components/authentication-authorization-capacity-profile.v1.yaml: 71e103de28dd94708f07afcd1b8b802f76c3a8566c4f78a8b953f659fcc3163d
   infrastructure/environment-readiness/environment-manifest.schema.json: e608ba71aa90d021b50903e1811c7f87876bc3b235b8bf0a4b0d1b4f2c986fb6
   infrastructure/identity-config/environments/demo.json: 9e2d4dfacf5f1e6c2a542299a942b0f8355afe6ed90d403c546fff4025b95f0d
