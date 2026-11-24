@@ -3326,6 +3326,9 @@ jobs:
           # Acquire and cache the Log Analytics token while the OIDC assertion is fresh.
           az account get-access-token --resource https://api.loganalytics.io \
             --query expiresOn --output tsv >/dev/null
+          # WC-168 R011: the previous Temporal copy scales to zero only after its idle cooldown. Wait for that,
+          # never guess a time, and refuse if it does not happen.
+          bash scripts/wait_for_replicas_drained.sh "ca-${TARGET_ENVIRONMENT}-temporal" "$RESOURCE_GROUP" 480 5
           job_name="job-${TARGET_ENVIRONMENT}-temporal-startup"
           az containerapp job show \
             --name "$job_name" \

@@ -83,6 +83,15 @@ test('a person without a customer account is told what to do first, not that the
   expect(screen.queryByRole('button', { name: /Connect Facebook/ })).not.toBeInTheDocument();
 });
 
+test('a staff sign-in is told staff accounts own no connections, with no trial or marketplace step', async () => {
+  serve({ 'GET ': fakeResponse(403, { code: 'CONNECTION_ACCOUNT_REQUIRED' }) });
+  render(<ConnectionsWorkspace staff />);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(/signed in with a staff account/);
+  expect(screen.getByRole('alert')).not.toHaveTextContent(/Start a trial or hire/);
+  expect(screen.queryByRole('link', { name: 'Browse the marketplace' })).not.toBeInTheDocument();
+});
+
 test('a real permission refusal on a connection keeps the permission wording', async () => {
   serve({ 'GET ': fakeResponse(403, { code: 'CONNECTION_FORBIDDEN' }) });
   render(<ConnectionsWorkspace />);

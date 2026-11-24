@@ -2326,6 +2326,10 @@ select:focus-visible,
 .app-shell-customer :where(.portal-page, .workspace-shell, .content-page, .state-view) {
   padding-block-start: 1em !important;
 }
+/* WC-168 R010: the fixed Emergency Stop button is 56px tall plus 1rem inset, so content ends clear of it and never sits under it. */
+.app-shell-customer :where(.portal-page, .workspace-shell, .content-page, .state-view) {
+  padding-block-end: 6rem;
+}
 .portal-heading {
   max-width: 720px;
   padding-block-end: 1em;

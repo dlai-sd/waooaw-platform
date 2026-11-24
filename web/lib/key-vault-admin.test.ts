@@ -1,9 +1,4 @@
-import {
-  isAuthorizedAzureVaultToken,
-  isKeyVaultPortalAdministrator,
-  isValidSecretName,
-  keyVaultTarget,
-} from './key-vault-admin';
+import { isAuthorizedAzureVaultToken, isValidSecretName, keyVaultTarget } from './key-vault-admin';
 
 function token(claims: Record<string, unknown>): string {
   return `${Buffer.from('{}').toString('base64url')}.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.signature`;
@@ -15,19 +10,9 @@ afterEach(() => {
   process.env = originalEnvironment;
 });
 
-test('authorizes only the verified Founder email', () => {
-  const authorized = token({
-    email: 'yogesh.khandge@dlaisd.com',
-    email_verified: true,
-    realm_access: { roles: ['founder'] },
-  });
-  expect(isKeyVaultPortalAdministrator(authorized)).toBe(true);
-  expect(
-    isKeyVaultPortalAdministrator(token({ email: 'yogesh.khandge@dlaisd.com', email_verified: false, founder: true }))
-  ).toBe(false);
-  expect(isKeyVaultPortalAdministrator(token({ email: 'other@dlaisd.com', email_verified: true, founder: true }))).toBe(
-    false
-  );
+test('the portal no longer decides Key Vault access from a token role or a hard-coded email', async () => {
+  const keyVaultModule = await import('./key-vault-admin');
+  expect('isKeyVaultPortalAdministrator' in keyVaultModule).toBe(false);
 });
 
 test('binds Codespace, demo, and UAT to server-owned vault targets', () => {

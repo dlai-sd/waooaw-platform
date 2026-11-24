@@ -1,6 +1,6 @@
 'use client';
 
-// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C5-05
+// Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C5-05; work-contracts/WC-168-operator-console-works-on-demo.md WC168-R007
 // Constitutional basis: C-023, C-059, C-063, C-088
 
 import { formatInr } from '@/lib/pricing-admin-client';
@@ -22,6 +22,14 @@ export function LiveMarginBanner({ margin, status = null }: Props) {
         </p>
         {status === 503 ? <p className="workbench-hint">{unavailableText}</p> : null}
       </div>
+    );
+  }
+  if (margin.breaches.length === 0 && margin.packagesChecked === 0) {
+    return (
+      <output className="workbench-message">
+        <strong>Nothing to check yet:</strong> No package is authorized, so no margin was checked. Draft and authorize a
+        package to see its margin here.
+      </output>
     );
   }
   if (margin.breaches.length === 0) {

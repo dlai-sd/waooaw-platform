@@ -38,9 +38,14 @@ Do not start the BOOTSTRAP sequence automatically. Run it only when the Founder 
 **Validation speed:** when you add or change tests, validation gates, pre-checks, the PR body preparation or CI, follow
 [CI Validation Speed Policy](../standards/CI-VALIDATION-SPEED-POLICY.md) (read only its rules table); do not invent another approach.
 
+**One roadmap (Founder Resolution FR-006):** [ROADMAP.md](../ROADMAP.md) is the only roadmap and progress record
+(platform-led, DMA-proved). Declare the current iteration with READY. Work that is not assigned by a Work Contract
+and listed there is a deviation: stop and tell the Founder in one sentence before starting. Never edit `ROADMAP.md`
+or the reserved Work Contract numbers WC-168 to WC-173 without the Founder's written approval.
+
 When explicitly authorized, the bootstrap sequence is:
 1. Read `constitution/BOOTSTRAP.md` (this file instructs you)
-2. Read `README.md` → extract Epoch, Gate, Authorized Office, Engineering Status
+2. Read `README.md` → extract Epoch, Gate, Authorized Office, Engineering Status, and the Roadmap block (current iteration)
 3. Read `constitution/PROJECT_STATE.md` → know exactly where work stands
 4. Declare READY or BLOCKED per BOOTSTRAP Step 8
 

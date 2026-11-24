@@ -1,11 +1,7 @@
 import { withServerFailureBoundary, readRequestJson } from '@/lib/server-failure-boundary';
 import { type NextRequest, NextResponse } from 'next/server';
-import {
-  isAuthorizedAzureVaultToken,
-  isKeyVaultPortalAdministrator,
-  isValidSecretName,
-  keyVaultTarget,
-} from '@/lib/key-vault-admin';
+import { isAuthorizedAzureVaultToken, isValidSecretName, keyVaultTarget } from '@/lib/key-vault-admin';
+import { resolvePlatformAccess } from '@/lib/platform-access-server';
 import { accessTokenFromRequest } from '@/lib/server-auth';
 
 const MAX_SECRET_VALUE_LENGTH = 16_384;
@@ -45,7 +41,7 @@ async function POSTHandler(request: NextRequest) {
     return NextResponse.json({ title: 'Request origin is not permitted.' }, { status: 403 });
   }
   const portalAccessToken = await accessTokenFromRequest(request);
-  if (!portalAccessToken || !isKeyVaultPortalAdministrator(portalAccessToken)) {
+  if (!portalAccessToken || !(await resolvePlatformAccess(portalAccessToken)).founder) {
     return NextResponse.json({ title: 'Azure Key Vault administration is not permitted.' }, { status: 403 });
   }
   const target = keyVaultTarget();

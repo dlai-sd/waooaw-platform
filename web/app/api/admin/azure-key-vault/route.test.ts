@@ -2,12 +2,14 @@
 import type { NextRequest } from 'next/server';
 import { POST } from './route';
 import { accessTokenFromRequest } from '@/lib/server-auth';
-import { isAuthorizedAzureVaultToken, isKeyVaultPortalAdministrator, keyVaultTarget } from '@/lib/key-vault-admin';
+import { isAuthorizedAzureVaultToken, keyVaultTarget } from '@/lib/key-vault-admin';
+import { resolvePlatformAccess } from '@/lib/platform-access-server';
+import { noPlatformAccess } from '@/lib/platform-access';
 
 jest.mock('@/lib/server-auth', () => ({ accessTokenFromRequest: jest.fn() }));
+jest.mock('@/lib/platform-access-server', () => ({ resolvePlatformAccess: jest.fn() }));
 jest.mock('@/lib/key-vault-admin', () => ({
   isAuthorizedAzureVaultToken: jest.fn(),
-  isKeyVaultPortalAdministrator: jest.fn(),
   isValidSecretName: (name: string) => /^[0-9A-Za-z-]{1,127}$/.test(name),
   keyVaultTarget: jest.fn(),
 }));
@@ -22,7 +24,7 @@ const target = {
 beforeEach(() => {
   process.env.NEXTAUTH_URL = 'https://portal.example';
   jest.mocked(accessTokenFromRequest).mockResolvedValue('portal-token');
-  jest.mocked(isKeyVaultPortalAdministrator).mockReturnValue(true);
+  jest.mocked(resolvePlatformAccess).mockResolvedValue({ ...noPlatformAccess, founder: true });
   jest.mocked(isAuthorizedAzureVaultToken).mockReturnValue(true);
   jest.mocked(keyVaultTarget).mockReturnValue(target);
   global.fetch = jest.fn().mockResolvedValue(new Response('{}', { status: 200 }));
@@ -52,7 +54,7 @@ test('writes a secret without returning its value', async () => {
 
 test('rejects cross-origin and unauthorized portal requests before Azure', async () => {
   expect((await POST(request({ name: 'valid-name', value: 'value' }, 'https://attacker.example'))).status).toBe(403);
-  jest.mocked(isKeyVaultPortalAdministrator).mockReturnValue(false);
+  jest.mocked(resolvePlatformAccess).mockResolvedValue(noPlatformAccess);
   expect((await POST(request({ name: 'valid-name', value: 'value' }))).status).toBe(403);
   expect(global.fetch).not.toHaveBeenCalled();
 });

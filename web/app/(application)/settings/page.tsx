@@ -8,6 +8,7 @@ import { SettingsEditor } from '@/components/portal/SettingsEditor';
 import { StateView } from '@/components/system/StateView';
 import { getRequestI18n } from '@/lib/i18n-server';
 import { getCustomerSettings, getIdentitySession } from '@/lib/api/identity';
+import { resolvePlatformAccess } from '@/lib/platform-access-server';
 import { getServerAccessToken, getServerSessionToken } from '@/lib/server-auth';
 import { listSessions } from '@/lib/web-session-store';
 
@@ -28,6 +29,17 @@ export default async function SettingsPage() {
   try {
     const identity = await getIdentitySession(accessToken);
     if (identity.kind === 'registration-required') {
+      if ((await resolvePlatformAccess(accessToken)).administrator) {
+        return (
+          <StateView
+            actionHref="/home"
+            actionLabel="Go to home"
+            kind="empty"
+            title="Staff account"
+            description="This sign-in is a staff account, so it has no customer settings. Language and theme remain in the header, and staff tools are in the menu."
+          />
+        );
+      }
       return (
         <StateView
           actionHref="/marketplace"
@@ -118,6 +130,7 @@ export default async function SettingsPage() {
       <StateView
         actionHref="/home"
         actionLabel={messages.returnHome}
+        back
         kind="error"
         title="Settings unavailable"
         description="Current preferences could not be retrieved. Browser defaults are not presented as saved settings."

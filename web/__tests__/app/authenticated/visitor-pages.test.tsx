@@ -4,9 +4,12 @@ import ProfilePage from '@/app/(application)/profile/page';
 import SettingsPage from '@/app/(application)/settings/page';
 import { getIdentitySession } from '@/lib/api/identity';
 import { listCustomerAlerts } from '@/lib/api/notifications';
+import { noPlatformAccess } from '@/lib/platform-access';
+import { resolvePlatformAccess } from '@/lib/platform-access-server';
 import { getServerAccessToken } from '@/lib/server-auth';
 
 jest.mock('@/lib/server-auth', () => ({ getServerAccessToken: jest.fn() }));
+jest.mock('@/lib/platform-access-server', () => ({ resolvePlatformAccess: jest.fn() }));
 jest.mock('@/lib/api/identity', () => ({
   getCustomerProfile: jest.fn(),
   getCustomerSettings: jest.fn(),
@@ -22,6 +25,17 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
   jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'registration-required' });
+  jest.mocked(resolvePlatformAccess).mockResolvedValue({ ...noPlatformAccess });
+});
+
+it('tells a staff sign-in that it has no customer settings, without a marketplace step', async () => {
+  jest.mocked(resolvePlatformAccess).mockResolvedValue({ ...noPlatformAccess, administrator: true });
+
+  render(await SettingsPage());
+
+  expect(screen.getByRole('heading', { name: 'Staff account' })).toBeVisible();
+  expect(screen.getByRole('link', { name: 'Go to home' })).toHaveAttribute('href', '/home');
+  expect(screen.queryByRole('link', { name: 'Browse Marketplace' })).not.toBeInTheDocument();
 });
 
 it.each([

@@ -50,18 +50,24 @@ const problemMessages: Record<string, string> = {
   CONNECTION_UNAVAILABLE: 'Connections are temporarily unavailable. Nothing was changed. Try again shortly.',
 };
 
-export function problemText(problem: ConnectionProblem): string {
+export function problemText(problem: ConnectionProblem, staff = false): string {
+  if (staff && problem.code === 'CONNECTION_ACCOUNT_REQUIRED') return staffAccountText;
   return problemMessages[problem.code ?? ''] ?? problemMessages.CONNECTION_UNAVAILABLE;
 }
+
+// A staff sign-in has no customer account, so telling it to start a trial would send it the wrong way.
+const staffAccountText =
+  'You are signed in with a staff account. Staff accounts do not own connections; customers connect their own accounts from a customer sign-in.';
 
 export type ProblemAction = { href: string; label: string };
 
 // A refusal that the person can fix gets the one next step that fixes it; anything else offers none.
-export function problemAction(problem: ConnectionProblem): ProblemAction | null {
+export function problemAction(problem: ConnectionProblem, staff = false): ProblemAction | null {
   if (problem.code === 'CONNECTION_SIGN_IN_REQUIRED') {
     return { href: `/login?returnTo=${encodeURIComponent('/connections')}`, label: 'Sign in again' };
   }
-  if (problem.code === 'CONNECTION_ACCOUNT_REQUIRED') return { href: '/marketplace', label: 'Browse the marketplace' };
+  if (problem.code === 'CONNECTION_ACCOUNT_REQUIRED' && !staff)
+    return { href: '/marketplace', label: 'Browse the marketplace' };
   return null;
 }
 

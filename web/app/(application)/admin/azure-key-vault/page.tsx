@@ -1,11 +1,13 @@
 import { redirect } from 'next/navigation';
 import { AzureKeyVaultWriter } from '@/components/admin/AzureKeyVaultWriter';
-import { isKeyVaultPortalAdministrator, keyVaultAdminEmail, keyVaultTarget } from '@/lib/key-vault-admin';
+import { keyVaultAdminEmail, keyVaultTarget } from '@/lib/key-vault-admin';
+import { resolvePlatformAccess } from '@/lib/platform-access-server';
 import { getServerAccessToken } from '@/lib/server-auth';
 
 export default async function AzureKeyVaultPage() {
   const accessToken = await getServerAccessToken();
-  if (!accessToken || !isKeyVaultPortalAdministrator(accessToken)) redirect('/home');
+  // The platform Founder grant decides who may open this page; the Azure sign-in still restricts who may write.
+  if (!accessToken || !(await resolvePlatformAccess(accessToken)).founder) redirect('/home');
   const target = keyVaultTarget();
   if (!target) {
     return (

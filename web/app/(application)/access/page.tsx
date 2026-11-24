@@ -16,7 +16,7 @@ export default async function RequestAccessPage() {
   if (!accessToken) redirect('/home');
   const access = await resolvePlatformAccess(accessToken);
   return (
-    <section aria-labelledby="access-title" className="portal-page providers-admin access-page">
+    <section aria-labelledby="access-title" className="portal-page providers-admin staff-access-page">
       <header className="portal-heading">
         <p className="eyebrow">Platform access</p>
         <h1 id="access-title">Staff access</h1>

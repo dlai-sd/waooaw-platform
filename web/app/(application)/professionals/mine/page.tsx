@@ -133,6 +133,7 @@ export default async function MyProfessionalsPage() {
       <StateView
         actionHref="/home"
         actionLabel={messages.returnHome}
+        back
         correlationId={failure.correlationId}
         kind="error"
         reasonCode={failure.reasonCode}

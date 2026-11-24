@@ -173,6 +173,7 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
       <StateView
         actionHref="/home"
         actionLabel={messages.returnHome}
+        back
         correlationId={failure.correlationId}
         kind="error"
         reasonCode={failure.reasonCode}

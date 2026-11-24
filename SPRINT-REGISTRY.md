@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-11-24 · **Version:** 1.45.0 · **Work Contracts:** 159 Work Contracts recorded · 106 with merged-PR evidence · 53 without
+**Last Updated:** 2026-11-24 · **Version:** 1.45.0 · **Work Contracts:** 162 Work Contracts recorded · 106 with merged-PR evidence · 56 without
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -218,6 +218,9 @@ whole Work Contract is complete).
 <!-- BEGIN GENERATED: work-contract-index -->
 | WC | Title | Status recorded in the Work Contract | Merged PRs referencing it |
 |---|---|---|---|
+| WC-170 | Real Agent Work End To End (Roadmap Iteration 3, Milestone M3) - GATED SKELETON | GATED SKELETON | none recorded |
+| WC-169 | Paid Hire And Connected Accounts (Roadmap Iteration 2, Milestone M2) | CONTRACT WRITTEN | none recorded |
+| WC-168 | Operator Console Works On Demo (Roadmap Iteration 1, Milestone M1) | IMPLEMENTATION_AUTHORIZED | none recorded |
 | WC-167 | Acceptance Demo Readiness (Founder Admin, Connections, Pricing And Enablement) | IMPLEMENTATION_AUTHORIZED | #638, #637, #636, #635 |
 | WC-166 | Foundation Plan Identity On A Cache Miss | IMPLEMENTATION_AUTHORIZED | #634 |
 | WC-165 | Acceptance Secret Seeding And Demo Enablement | IMPLEMENTATION_AUTHORIZED | #631 |

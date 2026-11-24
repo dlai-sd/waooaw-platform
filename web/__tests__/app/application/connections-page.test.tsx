@@ -4,9 +4,15 @@
 import ConnectionsPage from '@/app/(application)/connections/page';
 import { render, screen } from '@testing-library/react';
 
+jest.mock('@/lib/server-auth', () => ({ getServerAccessToken: jest.fn().mockResolvedValue('access-token') }));
+jest.mock('@/lib/platform-access-server', () => ({
+  resolvePlatformAccess: jest.fn().mockResolvedValue({ administrator: false, founder: false }),
+}));
 jest.mock('@/components/connections/ConnectionsWorkspace', () => ({
-  ConnectionsWorkspace: ({ initialNotice }: { initialNotice?: { text: string } | null }) => (
-    <p data-testid="workspace">{initialNotice?.text ?? 'no notice'}</p>
+  ConnectionsWorkspace: ({ initialNotice, staff }: { initialNotice?: { text: string } | null; staff?: boolean }) => (
+    <p data-testid="workspace" data-staff={String(Boolean(staff))}>
+      {initialNotice?.text ?? 'no notice'}
+    </p>
   ),
 }));
 

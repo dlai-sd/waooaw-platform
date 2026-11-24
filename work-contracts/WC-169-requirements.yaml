@@ -1,0 +1,106 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-169
+contract_path: work-contracts/WC-169-paid-hire-and-connected-accounts.md
+contract_digest: 7643386ea0b079216e07c7463b0f18ff9c958d41079778f62a4cc380d88c31f1
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Acceptance harness report on Demo, plus tests in the Docker runners where code changes; commands and results in the PR body
+  initial_state: new
+  dependencies: WC-168 merged, deployed and read back; Founder authorizes implementation for this iteration
+  residual_risk: The size of repairs depends on what the first Demo run finds; the Meta app is in development mode so only Testers can connect
+  completion_rule: Report or test evidence plus the Demo read-back passes at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC169-R001
+    source: WC-169 Canonical Requirement Index, R001
+    observable_outcome: The acceptance vault holds 12 of 12 secrets.
+    test_path_or_plan: scripts/acceptance_seed_secrets.sh status lists all names.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC169-R002
+    source: WC-169 Canonical Requirement Index, R002
+    observable_outcome: Slice 1 runs on Demo and the report lists S1 to S8 with witnesses and an owner for every failure.
+    test_path_or_plan: Customer journey acceptance workflow run and report artifact.
+
+  - <<: *defaults
+    requirement_id: WC169-R003
+    source: WC-169 Canonical Requirement Index, R003
+    observable_outcome: Conversation stories stay BLOCKED-BY-FLAG with recorded reasons until the Founder enables the flag.
+    test_path_or_plan: Report entries and Founder decision record.
+
+  - <<: *defaults
+    requirement_id: WC169-R004
+    source: WC-169 Canonical Requirement Index, R004
+    observable_outcome: The Meta app is registered on the Meta provider row and the Facebook connection works with the dialog the app supports; scopes requested equal scopes granted.
+    test_path_or_plan: Run of S6 and S6b on Demo; provider side Graph permission read compared with the requested scopes.
+
+  - <<: *defaults
+    requirement_id: WC169-R005
+    source: WC-169 Canonical Requirement Index, R005
+    observable_outcome: An approved post publishes to the acceptance Page, is read back from Meta and is deleted.
+    test_path_or_plan: Slice 2 run and report.
+
+  - <<: *defaults
+    requirement_id: WC169-R006
+    source: WC-169 Canonical Requirement Index, R006
+    observable_outcome: A guest who sent STOP can resume on Demo, so STOP then START then YES resumes with evidence and no duplicate message; the Demo visitor mode is read first and set to V2 only on the Founder's decision.
+    test_path_or_plan: Business Platform tests for STOP, START and YES in V2; settings read-back and Demo read-back.
+    initial_state: expected-fail
+
+  - <<: *defaults
+    requirement_id: WC169-R007
+    source: WC-169 Canonical Requirement Index, R007
+    observable_outcome: A test coupon gives a partial discount and the payable amount is validated without paying; the coupons screen can write.
+    test_path_or_plan: Start-of-iteration read-back of the coupons screen; run of the S5 variant and pricing read-back.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC169-R008
+    source: WC-169 Canonical Requirement Index, R008
+    observable_outcome: One calibration report is recorded and every NOT-WITNESSED or FAIL item has an owner.
+    test_path_or_plan: Report attached to the Implementation Record.
+
+  - <<: *defaults
+    requirement_id: WC169-R009
+    source: WC-169 Canonical Requirement Index, R009
+    observable_outcome: The legacy azure-key-vault screen is removed after the Founder confirms a provider key was entered and used through Providers.
+    test_path_or_plan: Removal diff, web tests and the Founder confirmation.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC169-R010
+    source: WC-169 Canonical Requirement Index, R010
+    observable_outcome: Meta App Review and WhatsApp template submissions are made and tracked with dates.
+    test_path_or_plan: Submission record in the contract.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC169-R011
+    source: WC-169 Canonical Requirement Index, R011
+    observable_outcome: Customer-visible polish found by the run is fixed to the WC-167 R006 bar.
+    test_path_or_plan: Playwright specs and axe for each touched screen.
+
+  - <<: *defaults
+    requirement_id: WC169-R012
+    source: WC-169 Canonical Requirement Index, R012
+    observable_outcome: The Keycloak provisioning client is read back by first real use, where the harness gets a token, registers a synthetic subject, the platform sees it, and the token carries only the intended roles for 60 seconds.
+    test_path_or_plan: Harness run step with the Keycloak token claims checked and the registration read from the platform.
+
+  - <<: *defaults
+    requirement_id: WC169-R013
+    source: WC-169 Canonical Requirement Index, R013
+    observable_outcome: The Marketplace card, the employment contract terms and the hire amount come from the Founder's authorized package and never from the static descriptor price; with no authorized package no amount is shown and the hire is not offerable.
+    test_path_or_plan: Business Platform tests for the catalog, contract composition and checkout amount; S5 pay step in the acceptance run proving the amount paid equals the authorized price including GST.
+
+  - <<: *defaults
+    requirement_id: WC169-R014
+    source: WC-169 Canonical Requirement Index, R014
+    observable_outcome: The Founder's chosen DEFAULT_OFF DMA components are applied to the DMA experience declaration and its admission as a new agent version, so a package containing them can be authorized and the publish slice can run; nothing is switched on that the Founder did not name.
+    test_path_or_plan: DMA contract and admission tests; Pricing screen shows the component as available; acceptance slice 2 run.
+    initial_state: Founder-reserved

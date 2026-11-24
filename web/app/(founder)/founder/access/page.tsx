@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export default function FounderAccessPage() {
   return (
-    <section aria-labelledby="founder-access-title" className="portal-page providers-admin access-page">
+    <section aria-labelledby="founder-access-title" className="portal-page providers-admin staff-access-page">
       <header className="portal-heading">
         <p className="eyebrow">Founder</p>
         <h1 id="founder-access-title">Staff access</h1>

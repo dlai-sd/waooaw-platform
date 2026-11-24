@@ -1,0 +1,109 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-168
+contract_path: work-contracts/WC-168-operator-console-works-on-demo.md
+contract_digest: 2ec90608abf05281f44f0e3b9079cd9f8c1b296ced5b1168cd8141c0d8d98872
+implementation_scope: true
+result: PLANNED
+
+requirement_defaults: &defaults
+  component_owner: Platform IT Expert (INST-010)
+  evidence_class: Tests in the Python, .NET and TypeScript runners where code changes, plus a read-back from Demo for each Demo outcome; commands and results in the PR body
+  initial_state: expected-fail
+  dependencies: Founder authorizes implementation for this iteration before any code is written; PR #639 merged
+  residual_risk: RC-1 cause is a candidate until the owner and privileges are read on Demo; RC-2 and RC-3 are unproven
+  completion_rule: Executable evidence and the Demo read-back for the requirement pass at the exact head recorded in the PR body
+  result: PLANNED
+
+requirements:
+  - <<: *defaults
+    requirement_id: WC168-R001
+    source: WC-168 Canonical Requirement Index, R001
+    observable_outcome: ROADMAP.md is the only roadmap; README, PROJECT_STATE, AGENT-ENTRY and BOOTSTRAP point to it; a test fails when a pointer, a Work Contract file or the current iteration line is missing or inconsistent.
+    test_path_or_plan: tests/pipeline/test_roadmap_single_source.py in the quality-scripts gate; platform state refresh and check.
+
+  - <<: *defaults
+    requirement_id: WC168-R002
+    source: WC-168 Canonical Requirement Index, R002
+    observable_outcome: The document map in ROADMAP.md names the governing document for each concern and every listed path exists.
+    test_path_or_plan: tests/pipeline/test_roadmap_single_source.py path existence check.
+
+  - <<: *defaults
+    requirement_id: WC168-R003
+    source: WC-168 Canonical Requirement Index, R003
+    observable_outcome: The cause of the Providers permission error is proven by a bounded read-only Founder-approved read on Demo; the application role has exactly the access the Founder provider screen needs and the fix reached Demo.
+    test_path_or_plan: Governed read record in the contract; tests/business-platform.Tests/ProviderRegistry/ProviderRegistryRuntimeAccessPostgresTests.cs in a real database; Demo read-back of /admin/providers.
+
+  - <<: *defaults
+    requirement_id: WC168-R004
+    source: WC-168 Canonical Requirement Index, R004
+    observable_outcome: The sweep is measured by the read-only catalog job, the six tables the Business Platform uses and the application role cannot read are recorded, provider_configs is fixed, and the five conversation tables are carried as a precondition of WC170-R008.
+    test_path_or_plan: scripts/wc168_demo_db_catalog_read.sh output recorded in the Implementation Record; re-runnable at any time.
+
+  - <<: *defaults
+    requirement_id: WC168-R005
+    source: WC-168 Canonical Requirement Index, R005
+    observable_outcome: After deployment /admin/providers on Demo lists providers, the Meta row opens, web logs show no list_failed, and no credential value is shown or logged.
+    test_path_or_plan: Demo read-back with Log Analytics query and Founder screenshot.
+
+  - <<: *defaults
+    requirement_id: WC168-R006
+    source: WC-168 Canonical Requirement Index, R006
+    observable_outcome: The Founder sets package names, features and prices at run time on the Pricing screen, nothing is seeded or hard-coded, and the draft, edit and authorize path works end to end. The finding that the customer price still comes from the agent descriptor is recorded and moved to WC-169 R013.
+    test_path_or_plan: Existing web tests for the package editor and authorize dialog plus a path test through the pricing gateway; Demo read-back after R015's preconditions are cleared.
+
+  - <<: *defaults
+    requirement_id: WC168-R007
+    source: WC-168 Canonical Requirement Index, R007
+    observable_outcome: The Pricing Overview does not say Healthy when zero packages were checked.
+    test_path_or_plan: Web component test for the zero-package state.
+
+  - <<: *defaults
+    requirement_id: WC168-R008
+    source: WC-168 Canonical Requirement Index, R008
+    observable_outcome: The Azure Key Vault page and menu appear for a signed-in Founder through the platform Founder grant and still refuse everyone else.
+    test_path_or_plan: web/lib/key-vault-admin tests and shell tests; Demo read-back.
+
+  - <<: *defaults
+    requirement_id: WC168-R009
+    source: WC-168 Canonical Requirement Index, R009
+    observable_outcome: The Access screen has no layout gap, no request form for a person who already holds a staff role and no stale hint, and passes the WC-167 R006 layers.
+    test_path_or_plan: web/tests/e2e/wc168-access.spec.ts at 360, 768 and 1440 in light and dark with axe; component tests.
+
+  - <<: *defaults
+    requirement_id: WC168-R010
+    source: WC-168 Canonical Requirement Index, R010
+    observable_outcome: Connections and Settings speak to staff without a customer account in staff terms; buttons carry no back arrow; the floating stop box never overlaps content.
+    test_path_or_plan: web/tests/e2e/wc168-shell.spec.ts and component tests with the WC-167 R006 layers.
+
+  - <<: *defaults
+    requirement_id: WC168-R011
+    source: WC-168 Canonical Requirement Index, R011
+    observable_outcome: The deployment waits until the previous Temporal app has no replica before the startup job runs, and the pool check still refuses a genuinely busy pool.
+    test_path_or_plan: Workflow contract test and a fault-injection test for the drained, busy and timeout paths.
+
+  - <<: *defaults
+    requirement_id: WC168-R012
+    source: WC-168 Canonical Requirement Index, R012
+    observable_outcome: The blocked WhatsApp message has a recorded cause read through the bounded read-only job; the Founder decides the resolution and it is applied through a Founder-approved bounded action with evidence; nothing deleted, no alert muted.
+    test_path_or_plan: Founder-approved read; cause recorded; Log Analytics showing the alert stops repeating. The permanent governed route is WC-171.
+    initial_state: blocked
+
+  - <<: *defaults
+    requirement_id: WC168-R013
+    source: WC-168 Canonical Requirement Index, R013
+    observable_outcome: The Founder decision on the production Meta secret is recorded; if reset, Facebook sign-in on Demo is read back.
+    test_path_or_plan: Founder decision record and Demo sign-in read-back.
+    initial_state: Founder-reserved
+
+  - <<: *defaults
+    requirement_id: WC168-R014
+    source: WC-168 Canonical Requirement Index, R014
+    observable_outcome: WC-167 is closed by identifier, with R001 and R008 done on Demo evidence, R004's client read-back moved to WC169-R012, R011's deployed proof moved to the first Founder sign-in after the WC-168 deployment, and the remaining items moved to named requirements.
+    test_path_or_plan: WC-167 progress table and ledger updated and validated.
+
+  - <<: *defaults
+    requirement_id: WC168-R015
+    source: WC-168 Canonical Requirement Index, R015
+    observable_outcome: The Founder makes his pricing decisions on the Pricing screen and none is recorded as a repository constant; the pending proactive-message thread rate is authorized on the Pricing screen; the Founder's decision on which DEFAULT_OFF DMA components to sell is recorded.
+    test_path_or_plan: Pricing Rates read-back; Founder decision record; the application of the component decision is WC169-R014.
+    initial_state: Founder-reserved

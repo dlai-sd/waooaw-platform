@@ -9,6 +9,7 @@ export default async function ForbiddenPage() {
     <main className="system-page">
       <StateView
         actionLabel={messages.returnHome}
+        back
         kind="forbidden"
         title={messages.accessNotPermitted}
         description={messages.accessNotPermittedDescription}

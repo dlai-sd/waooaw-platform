@@ -29,6 +29,18 @@ export function RequestAccessPanel({ access, subject = null }: { access: Platfor
     );
   }
 
+  if (access.founder) {
+    return (
+      <section aria-labelledby="request-access-title" className="workbench-section">
+        <h2 id="request-access-title">Your staff access</h2>
+        <p>
+          Signed in as <strong>{access.email}</strong>. You hold the Founder role, so there is nothing to request.
+          Decide on staff requests below.
+        </p>
+      </section>
+    );
+  }
+
   const tooShort = justification.trim().length < 10;
   const pending = access.requests.some((request) => request.status === 'PENDING');
 
@@ -61,10 +73,10 @@ export function RequestAccessPanel({ access, subject = null }: { access: Platfor
       <p>
         Signed in as <strong>{access.email}</strong>. Access is granted only after the Founder approves your request.
       </p>
-      {subject ? (
+      {subject && !access.administrator ? (
         <p className="workbench-hint">
           Your sign-in ID: <code className="access-subject">{subject}</code>. A role is tied to this ID as well as to
-          your email, so if it does not appear after you sign in a different way, give this ID to the Founder.
+          your email, so if a role you were granted does not appear, give this ID to the Founder.
         </p>
       ) : null}
       {access.administrator ? <p>You already hold a staff role.</p> : null}

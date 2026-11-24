@@ -76,6 +76,7 @@ gh auth status
 - Do not create a Work Contract, review record, checkpoint record, architecture document, or status report unless the Founder explicitly asks for it or the current authorized Work Contract makes that exact artifact mandatory.
 - Documentation is downstream of verified engineering. Keep mandatory evidence in the owning existing artifact and update it once after technical validation; do not create parallel summaries.
 - Do not invoke another role, institution, reviewer agent, or review subagent. The assigned role performs author review and executable validation. Founder review and merge are the default approval gate. Institutional review occurs only when the Founder explicitly requests it.
+- **Roadmap rule (FR-006, 2026-11-24).** The `Roadmap (single source)` block in `README.md` is part of the bootstrap read: declare the current iteration with READY. Open `ROADMAP.md` only when the assignment is planning, is not covered by a Work Contract, or touches iteration order, scope or reserved Work Contract numbers. Work outside `ROADMAP.md` is a deviation: stop and tell the Founder in one sentence before starting. Never edit `ROADMAP.md` without the Founder's written approval.
 - If any later section conflicts with this token-budget rule, this rule controls.
 
 ### Mandatory Author Review Technique

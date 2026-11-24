@@ -9,6 +9,7 @@ export default async function NotFound() {
     <main className="system-page">
       <StateView
         actionLabel={messages.returnHome}
+        back
         kind="not-found"
         title={messages.pageNotFound}
         description={messages.pageNotFoundDescription}

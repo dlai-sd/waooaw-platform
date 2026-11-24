@@ -1,7 +1,5 @@
 import 'server-only';
 
-import { hasFounderClaim } from '@/lib/identity-claims';
-
 const DEFAULT_ADMIN_EMAIL = 'yogesh.khandge@dlaisd.com';
 const DEFAULT_TENANT_ID = '0471534c-1bbe-40ab-ae65-3f721b62582c';
 const DEFAULT_CLIENT_ID = '710af8d6-8e2c-4f9d-9b1c-2230de9de1f8';
@@ -46,13 +44,6 @@ function claimEmail(claims: TokenClaims): string | undefined {
 
 export function keyVaultAdminEmail(): string {
   return (process.env.KEY_VAULT_ADMIN_EMAIL ?? DEFAULT_ADMIN_EMAIL).trim().toLowerCase();
-}
-
-export function isKeyVaultPortalAdministrator(accessToken: string): boolean {
-  const claims = claimsFromToken(accessToken);
-  return Boolean(
-    claims && claimEmail(claims) === keyVaultAdminEmail() && claims.email_verified === true && hasFounderClaim(claims)
-  );
 }
 
 export function keyVaultTarget(): KeyVaultTarget | undefined {

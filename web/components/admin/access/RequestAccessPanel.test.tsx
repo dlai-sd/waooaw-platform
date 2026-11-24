@@ -118,6 +118,31 @@ describe('RequestAccessPanel', () => {
     expect(screen.queryByText(/Your sign-in ID/)).not.toBeInTheDocument();
   });
 
+  it('shows the Founder no request form and no sign-in ID hint, because the role follows the configured email', () => {
+    render(
+      <RequestAccessPanel
+        access={{ ...access, administrator: true, founder: true, email: 'founder@example.org' }}
+        subject="8f1c2a7e-3b9d-4c55-a1f0-9a7d2c4e6b10"
+      />
+    );
+    expect(screen.getByText(/You hold the Founder role, so there is nothing to request/)).toBeVisible();
+    expect(screen.queryByLabelText('Why do you need it?')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Send request' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Your sign-in ID/)).not.toBeInTheDocument();
+  });
+
+  it('keeps the request form for other staff but drops the sign-in ID hint once they hold a role', () => {
+    render(
+      <RequestAccessPanel
+        access={{ ...access, administrator: true, requestableRoles: ['founder'] }}
+        subject="8f1c2a7e-3b9d-4c55-a1f0-9a7d2c4e6b10"
+      />
+    );
+    expect(screen.getByText('You already hold a staff role.')).toBeVisible();
+    expect(screen.getByLabelText('Why do you need it?')).toBeVisible();
+    expect(screen.queryByText(/Your sign-in ID/)).not.toBeInTheDocument();
+  });
+
   it('does not show the sign-in ID when the email is not verified', () => {
     render(
       <RequestAccessPanel access={{ ...access, emailVerified: false }} subject="8f1c2a7e-3b9d-4c55-a1f0-9a7d2c4e6b10" />

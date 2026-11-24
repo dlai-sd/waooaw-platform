@@ -9,6 +9,7 @@ export default async function OfflinePage() {
     <main className="system-page">
       <StateView
         actionLabel={messages.returnHome}
+        back
         kind="error"
         title={messages.offline}
         description={messages.offlineDescription}

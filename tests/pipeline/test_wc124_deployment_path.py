@@ -48,6 +48,8 @@ elif args[:2] == ["resource", "show"]:
     print(json.dumps("8604586b-f914-46ab-8403-398b43186c0a"))
 elif args[:3] == ["containerapp", "job", "start"]:
     print("job-demo-temporal-startup-fixture")
+elif args[:3] == ["containerapp", "replica", "list"]:
+    print(os.environ.get("REPLICAS", "0"))
 elif args[:4] == ["containerapp", "job", "execution", "show"]:
     if "--query" in args:
         print("Succeeded")
@@ -175,6 +177,10 @@ def test_qualification_reaches_actual_migration_acceptance(path_context):
     assert json.loads((directory / "wc124-migration-acceptance.json").read_text())["status"] == "accepted-for-activation"
     calls = [json.loads(line) for line in (directory / "commands.jsonl").read_text().splitlines()]
     assert next(i for i, args in enumerate(calls) if args[:2] == ["resource", "show"]) < next(
+        i for i, args in enumerate(calls) if args[:3] == ["containerapp", "job", "start"]
+    )
+    # WC-168 R011: the previous Temporal copy must be gone before the startup job starts.
+    assert next(i for i, args in enumerate(calls) if args[:3] == ["containerapp", "replica", "list"]) < next(
         i for i, args in enumerate(calls) if args[:3] == ["containerapp", "job", "start"]
     )
     assert not any("workspace" in args and "show" in args for args in calls)
