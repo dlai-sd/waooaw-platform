@@ -25,6 +25,27 @@ export type AffectedPackage = {
   belowFloor: boolean;
 };
 
+export type BuildUpCostLine = {
+  componentId: string;
+  threadId: string;
+  quantity: number;
+  unitsPerUnit: number;
+  unitCostPaise?: number;
+  lineCostPaise?: number;
+  authorized: boolean;
+};
+
+export type BuildUp = {
+  costLines: BuildUpCostLine[];
+  infrastructureSharePaise: number;
+  costFloorPaise: number;
+  unauthorizedThreadIds: string[];
+  uncostedComponentIds: string[];
+  targetMarginPercent?: number;
+  suggestedPriceInclGstPaise?: number;
+  suggestionStatus: 'COMPLETE' | 'INCOMPLETE' | 'UNUSABLE';
+};
+
 export type Simulation = {
   draftId: string;
   kind: string;
@@ -36,6 +57,7 @@ export type Simulation = {
   priceInclGstPaise?: number;
   marginPercent?: number;
   minimumCompliantPricePaise?: number;
+  buildUp?: BuildUp;
   diff?: Diff;
   profiles: ProfileCost[];
   warnings: SimulationWarning[];

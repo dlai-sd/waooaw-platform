@@ -24,6 +24,20 @@ describe('server-owned OIDC transaction', () => {
     });
   });
 
+  it('lets a Founder step-up return to its own console page and nowhere else', () => {
+    for (const path of ['/admin/providers', '/admin/pricing', '/admin/pricing/packages/3f2b-9c', '/access'])
+      expect(normalizeOidcCallback(path, 'LOGIN', origin)).toEqual({ intent: 'LOGIN', callbackPath: path });
+    for (const refused of [
+      '/admin/azure-key-vault',
+      '/admin/providers?next=/home',
+      '/admin/providers#x',
+      'https://attacker.example/admin/providers',
+      '//attacker.example/admin/providers',
+    ])
+      expect(normalizeOidcCallback(refused, 'LOGIN', origin)).toBeNull();
+    expect(normalizeOidcCallback('/admin/providers', 'REGISTER', origin)).toBeNull();
+  });
+
   it('extracts and later requires state, nonce, and PKCE cookies', () => {
     const headers = new Headers();
     headers.append('set-cookie', '__Secure-next-auth.state=state-cookie; Path=/; HttpOnly');

@@ -1,8 +1,8 @@
 // Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C5-05
 // Constitutional basis: C-023, C-059, C-063, C-088
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { fakeResponse, simulationFixture, versionFixture, versionId } from '@/lib/pricing-admin-test-data';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PackageWorkspace } from './PackageWorkspace';
 
 const replace = jest.fn();
@@ -77,4 +77,49 @@ test('an existing package does not navigate when saved and a simulation flags co
   fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
   await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(3));
   expect(replace).not.toHaveBeenCalled();
+});
+
+test('saving a draft clears an older build-up so it never describes numbers the saved draft no longer has', async () => {
+  const draft = versionFixture({ kind: 'PACKAGE', body });
+  const simulation = {
+    ...simulationFixture,
+    buildUp: {
+      costLines: [],
+      infrastructureSharePaise: 0,
+      costFloorPaise: 0,
+      unauthorizedThreadIds: [],
+      uncostedComponentIds: [],
+      suggestionStatus: 'UNUSABLE' as const,
+    },
+  };
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce(fakeResponse(200, simulation))
+    .mockResolvedValueOnce(fakeResponse(200, { ...draft, state: 'SIMULATED' }))
+    .mockResolvedValueOnce(fakeResponse(200, { ...draft, state: 'SIMULATED' }));
+  render(<PackageWorkspace catalogue={catalogue} isFounder version={draft} />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Simulate' }));
+  expect(await screen.findByRole('table', { name: 'Cost lines' })).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+  await waitFor(() => expect(screen.queryByRole('table', { name: 'Cost lines' })).toBeNull());
+  expect(screen.getByText(/Save the draft, then press Simulate/)).toBeInTheDocument();
+});
+
+test('the description and target margin are saved with the package', async () => {
+  const draft = versionFixture({ kind: 'PACKAGE', body });
+  global.fetch = jest.fn().mockResolvedValue(fakeResponse(200, draft));
+  render(<PackageWorkspace catalogue={catalogue} isFounder version={draft} />);
+
+  fireEvent.change(screen.getByLabelText(/Description \(the customer maturity/), {
+    target: { value: 'New to digital marketing.' },
+  });
+  fireEvent.change(screen.getByLabelText('Target margin for this package (%)'), { target: { value: '40' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+  const sent = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body as string);
+  expect(sent.body.description).toBe('New to digital marketing.');
+  expect(sent.body.targetMarginPct).toBe(40);
 });

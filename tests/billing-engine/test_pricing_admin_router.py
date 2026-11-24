@@ -533,3 +533,34 @@ def test_the_public_package_body_carries_the_gst_rate_and_the_component_top_up_f
 
     assert public["gstRatePercent"] == 18
     assert all(component["topupAllowed"] is False for component in public["components"])
+
+
+# WC-169 R017 to R019: the new package fields travel through the public/stored conversion and the build-up is published.
+def test_the_package_description_and_target_margin_survive_both_body_conversions():
+    from pricing.body_adapter import to_internal
+
+    body = {**dma_package_body(), "description": "For a business new to digital marketing.", "targetMarginPct": 40}
+    published = {**body, "taxTreatment": "GST_INCLUSIVE"}
+    stored = to_internal(PricingKind.PACKAGE, published)
+    assert stored["description"] == body["description"] and stored["targetMarginPct"] == 40
+    assert "taxTreatment" not in stored
+    assert to_public(PricingKind.PACKAGE, stored)["description"] == body["description"]
+    # A package stored before this change has neither field and does not gain them.
+    legacy = to_public(PricingKind.PACKAGE, dma_package_body())
+    assert "description" not in legacy and "targetMarginPct" not in legacy
+
+
+def test_the_simulation_publishes_the_build_up_with_unknown_costs_left_out_and_a_status():
+    from markup.package_engine import parse_package_body, project_package
+    from pricing_support import dma_rates
+
+    rates = dma_rates(proactive_authorized=True, proactive_cost=100)
+    del rates["llm_pro"]
+    projection = project_package(parse_package_body({**dma_package_body(), "targetMarginPct": 40}), rates, 55)
+    build_up = pricing_admin._build_up(projection)
+    assert build_up["suggestionStatus"] == "INCOMPLETE" and build_up["targetMarginPercent"] == 40.0
+    assert "llm_pro" in build_up["unauthorizedThreadIds"]
+    unknown = next(line for line in build_up["costLines"] if line["threadId"] == "llm_pro")
+    assert "unitCostPaise" not in unknown and "lineCostPaise" not in unknown and unknown["authorized"] is False
+    assert build_up["infrastructureSharePaise"] == projection.infrastructure_share_paise
+    assert build_up["suggestedPriceInclGstPaise"] % 100 == 0

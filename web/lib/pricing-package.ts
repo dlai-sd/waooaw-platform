@@ -29,6 +29,8 @@ export type PackageState = {
   agentVersion: string;
   packageCode: string;
   displayName: string;
+  description: string;
+  targetMarginPct: string;
   billingPeriodDays: string;
   priceInr: string;
   gstRatePercent: string;
@@ -63,6 +65,8 @@ export function emptyPackage(): PackageState {
     agentVersion: '',
     packageCode: '',
     displayName: '',
+    description: '',
+    targetMarginPct: '',
     billingPeriodDays: '',
     priceInr: '',
     gstRatePercent: '',
@@ -82,6 +86,8 @@ export function packageFromBody(body: Record<string, unknown>): PackageState {
     agentVersion: text(body.agentVersion),
     packageCode: text(body.packageCode),
     displayName: text(body.displayName),
+    description: text(body.description),
+    targetMarginPct: text(body.targetMarginPct),
     billingPeriodDays: text(body.billingPeriodDays),
     priceInr: inrFromPaise(body.priceInclGstPaise),
     gstRatePercent: text(body.gstRatePercent),
@@ -120,6 +126,16 @@ export type BuiltPackage =
   | { ok: true; body: Record<string, unknown>; subjectKey: string }
   | { ok: false; errors: string[] };
 
+export const MAXIMUM_DESCRIPTION = 500;
+
+// Empty means "not set" and the policy minimum margin applies; null means the text is not a valid percent.
+function parseMargin(value: string): number | null | undefined {
+  const trimmed = value.trim();
+  if (trimmed === '') return undefined;
+  if (!/^\d{1,2}(\.\d{1,2})?$/.test(trimmed)) return null;
+  return Number(trimmed);
+}
+
 const whole = (value: string) => (/^\d{1,9}$/.test(value.trim()) ? Number(value) : null);
 
 export function buildPackage(state: PackageState): BuiltPackage {
@@ -143,6 +159,12 @@ export function buildPackage(state: PackageState): BuiltPackage {
   const infrastructure = paiseFromInr(state.infrastructureInr);
   if (infrastructure === null) errors.push('Infrastructure share must be an amount with at most two decimals.');
   if (state.components.length === 0) errors.push('Add at least one component.');
+  const description = state.description.trim();
+  if (description.length > MAXIMUM_DESCRIPTION)
+    errors.push(`Description can be at most ${MAXIMUM_DESCRIPTION} characters.`);
+  const margin = parseMargin(state.targetMarginPct);
+  if (margin === null)
+    errors.push('Target margin must be a percent from 0 up to but not including 100, with at most two decimals.');
 
   const components = state.components.map((component, index) => {
     const label = component.componentId.trim() || `Component ${index + 1}`;
@@ -181,6 +203,8 @@ export function buildPackage(state: PackageState): BuiltPackage {
     agentVersion: state.agentVersion.trim(),
     packageCode: state.packageCode.trim(),
     displayName: state.displayName.trim(),
+    ...(description === '' ? {} : { description }),
+    ...(margin === undefined || margin === null ? {} : { targetMarginPct: margin }),
     billingPeriodDays: period,
     priceInclGstPaise: price,
     gstRatePercent: gst,

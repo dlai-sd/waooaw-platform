@@ -61,6 +61,8 @@ class PackageBody(CamelModel):
     gst_rate_percent: int = Field(default=DEFAULT_GST_RATE_PERCENT, ge=0, le=100)
     infrastructure_share_paise: int = Field(ge=0)
     components: list[PackageComponent] = Field(min_length=1)
+    description: str | None = Field(default=None, max_length=500)
+    target_margin_pct: float | None = Field(default=None, ge=0, lt=100)
 
 
 class ComponentCost(CamelModel):
@@ -68,6 +70,21 @@ class ComponentCost(CamelModel):
     quantity: int
     unit_cost_paise: int
     total_cost_paise: int
+
+
+class CostLine(CamelModel):
+    """One ingredient line of one component; an unknown rate is None, never zero."""
+
+    component_id: str
+    thread_id: str
+    quantity: int
+    units_per_unit: int
+    unit_cost_paise: int | None
+    line_cost_paise: int | None
+    authorized: bool
+
+
+SuggestionStatus = Literal["COMPLETE", "INCOMPLETE", "UNUSABLE"]
 
 
 class PackageProjection(CamelModel):
@@ -85,6 +102,11 @@ class PackageProjection(CamelModel):
     component_costs: list[ComponentCost]
     thread_rations: dict[str, int]
     unauthorized_thread_ids: list[str]
+    cost_lines: list[CostLine] = Field(default_factory=list)
+    uncosted_component_ids: list[str] = Field(default_factory=list)
+    target_margin_pct: float | None = None
+    suggested_price_incl_gst_paise: int | None = None
+    suggestion_status: SuggestionStatus = "UNUSABLE"
 
 
 class PackageEvaluation(CamelModel):

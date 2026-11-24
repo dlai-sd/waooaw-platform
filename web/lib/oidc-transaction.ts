@@ -15,6 +15,8 @@ export function providerClassFromPath(pathname: string): OidcProviderClass | und
   return provider ? providers[provider as keyof typeof providers] : undefined;
 }
 
+const founderConsoleReturn = /^\/(?:admin\/(?:providers|pricing(?:\/[A-Za-z0-9-]+){0,3})|access|founder\/access)$/;
+
 export function normalizeOidcCallback(
   callbackUrl: string,
   requestedIntent: string,
@@ -36,6 +38,9 @@ export function normalizeOidcCallback(
 
   const returnTo = safeReturnTarget(callback.searchParams.get('returnTo') ?? undefined);
   const intent = requestedIntent.toUpperCase();
+  // A Founder step-up returns to the console page it started from; the page list is closed and carries no query.
+  if (intent === 'LOGIN' && founderConsoleReturn.test(callback.pathname) && !callback.search)
+    return { intent: 'LOGIN', callbackPath: callback.pathname };
   if (intent === 'LOGIN' && ['/home', '/verify', '/account-link'].includes(callback.pathname))
     return {
       intent: 'LOGIN',

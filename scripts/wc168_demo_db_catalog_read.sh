@@ -22,7 +22,7 @@ WORKSPACE_ID="${WC168_WORKSPACE_ID:-8604586b-f914-46ab-8403-398b43186c0a}"
 JOB_NAME="${WC168_JOB_NAME:-wc168-db-catalog-read}"
 # The PostgreSQL image already pinned and pulled by the Demo Temporal pool sampler.
 IMAGE="${WC168_IMAGE:-docker.io/library/postgres@sha256:0cefaabd882e42bcb2a2f3dc56d3ce4770560ba62fd7f197f1a2e008fd5731ab}"
-SQL_FILE="$ROOT/infrastructure/postgres/operations/wc168-catalog-read.sql"
+SQL_FILE="${WC168_SQL_FILE:-$ROOT/infrastructure/postgres/operations/wc168-catalog-read.sql}"
 
 az_run() {
   docker run --rm -i -v "$AZ_CONFIG:/cfg" -e AZURE_CONFIG_DIR=/cfg "$AZ_IMAGE" az "$@"
@@ -131,7 +131,7 @@ YAML
     query="ContainerAppConsoleLogs_CL | where ContainerJobName_s == '$JOB_NAME' and ContainerGroupName_s startswith '$execution' | order by TimeGenerated asc | project Log_s // poll $attempt-$(date +%s%N)"
     out="$(az_run monitor log-analytics query --workspace "$WORKSPACE_ID" --analytics-query "$query" -o tsv 2>/dev/null || true)"
     if printf '%s\n' "$out" | grep -q "WC168_CATALOG_READ_END\|ERROR"; then
-      printf '%s\n' "$out" | sed 's/\tPrimaryResult.*$//' | grep -E '^(WC168_|ROLE\||MEMBER\||NOSELECT\||PROVIDER\||OWNERS\||DEFACL\||RLS\||POLICY\||ERROR|psql:)' | sort
+      printf '%s\n' "$out" | sed 's/\tPrimaryResult.*$//' | grep -E '^(WC168_|ROLE\||MEMBER\||NOSELECT\||PROVIDER\||OWNERS\||DEFACL\||RLS\||POLICY\||OUTBOXSTATE\||BLOCKED\||ERROR|psql:)' | sort
       break
     fi
     if [ "$attempt" = 40 ]; then

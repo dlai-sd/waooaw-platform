@@ -27,6 +27,13 @@ import {
     PricingVersionStateV1ToJSON,
     PricingVersionStateV1ToJSONTyped,
 } from './PricingVersionStateV1';
+import type { PricingBuildUpV1 } from './PricingBuildUpV1';
+import {
+    PricingBuildUpV1FromJSON,
+    PricingBuildUpV1FromJSONTyped,
+    PricingBuildUpV1ToJSON,
+    PricingBuildUpV1ToJSONTyped,
+} from './PricingBuildUpV1';
 import type { PricingWarningV1 } from './PricingWarningV1';
 import {
     PricingWarningV1FromJSON,
@@ -137,6 +144,12 @@ export interface PricingSimulationResultV1 {
     minimumCompliantPricePaise?: number;
     /**
      *
+     * @type {PricingBuildUpV1}
+     * @memberof PricingSimulationResultV1
+     */
+    buildUp?: PricingBuildUpV1;
+    /**
+     *
      * @type {PricingVersionDiffV1}
      * @memberof PricingSimulationResultV1
      */
@@ -217,6 +230,7 @@ export function PricingSimulationResultV1FromJSONTyped(json: any, ignoreDiscrimi
         'taxTreatment': json['taxTreatment'] == null ? undefined : json['taxTreatment'],
         'marginPercent': json['marginPercent'] == null ? undefined : json['marginPercent'],
         'minimumCompliantPricePaise': json['minimumCompliantPricePaise'] == null ? undefined : json['minimumCompliantPricePaise'],
+        'buildUp': json['buildUp'] == null ? undefined : PricingBuildUpV1FromJSON(json['buildUp']),
         'diff': json['diff'] == null ? undefined : PricingVersionDiffV1FromJSON(json['diff']),
         'profiles': ((json['profiles'] as Array<any>).map(PricingProfileCostV1FromJSON)),
         'warnings': ((json['warnings'] as Array<any>).map(PricingWarningV1FromJSON)),
@@ -248,6 +262,7 @@ export function PricingSimulationResultV1ToJSONTyped(value?: PricingSimulationRe
         'taxTreatment': value['taxTreatment'],
         'marginPercent': value['marginPercent'],
         'minimumCompliantPricePaise': value['minimumCompliantPricePaise'],
+        'buildUp': PricingBuildUpV1ToJSON(value['buildUp']),
         'diff': PricingVersionDiffV1ToJSON(value['diff']),
         'profiles': ((value['profiles'] as Array<any>).map(PricingProfileCostV1ToJSON)),
         'warnings': ((value['warnings'] as Array<any>).map(PricingWarningV1ToJSON)),

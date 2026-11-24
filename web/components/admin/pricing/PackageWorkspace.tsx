@@ -3,10 +3,10 @@
 // Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C5-05
 // Constitutional basis: C-023, C-059, C-063, C-088
 
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import type { PricingVersion } from '@/lib/pricing-admin-client';
 import type { PackageCatalogue, Simulation } from '@/lib/pricing-admin-types';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { DraftWorkflow } from './DraftWorkflow';
 import { PackageEditor } from './PackageEditor';
 
@@ -20,6 +20,8 @@ export function PackageWorkspace({ version: initial, catalogue, isFounder }: Pro
   const saved = (next: PricingVersion) => {
     const created = version === null;
     setVersion(next);
+    // A simulation describes the draft as it was; after a save it would show numbers the saved draft no longer has.
+    setSimulation(null);
     if (created) router.replace(`/admin/pricing/packages/${next.versionId}`);
   };
 

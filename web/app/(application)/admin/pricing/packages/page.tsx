@@ -1,10 +1,10 @@
 // Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C5-05
 // Constitutional basis: C-023, C-059, C-063, C-088
 
-import Link from 'next/link';
 import { PackageWorkspace } from '@/components/admin/pricing/PackageWorkspace';
 import { PricingPageFrame } from '@/components/admin/pricing/PricingPageFrame';
 import { loadCatalogue, loadVersions, requirePricingPage } from '@/lib/pricing-admin-pages';
+import Link from 'next/link';
 
 export default async function PackagesPage() {
   const { accessToken, isFounder } = await requirePricingPage();
@@ -31,6 +31,7 @@ export default async function PackagesPage() {
               <thead>
                 <tr>
                   <th scope="col">Package</th>
+                  <th scope="col">Description</th>
                   <th scope="col">Version</th>
                   <th scope="col">State</th>
                   <th scope="col">Open</th>
@@ -40,6 +41,7 @@ export default async function PackagesPage() {
                 {packages.map((version) => (
                   <tr key={version.versionId}>
                     <th scope="row">{version.subjectKey}</th>
+                    <td>{typeof version.body.description === 'string' ? version.body.description : ''}</td>
                     <td>{version.versionNo}</td>
                     <td>{version.state}</td>
                     <td>

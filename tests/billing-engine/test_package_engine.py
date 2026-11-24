@@ -310,3 +310,85 @@ async def test_bundle_engine_narrows_the_lookup_by_agent_version_only_when_given
     assert db.execute.await_args.args[1]["agent_version"] == AGENT_VERSION
     assert await engine.cost_floor(AGENT_TYPE, "STARTER") == 19628
     assert db.execute.await_args.args[1]["agent_version"] is None
+
+
+# WC-169 R017 to R019: package description, per-package target margin and the suggested price.
+from markup.package_engine import suggested_price_paise  # noqa: E402
+
+
+def test_the_suggested_price_is_exact_before_it_is_rounded_up_to_a_whole_rupee() -> None:
+    # Cost floor 825 rupees at a 40 percent margin: base 1,375 rupees, GST-inclusive 1,622.50, suggested 1,623.
+    assert suggested_price_paise(82500, 40, 18) == 162300
+    # A helper that rounds before the rupee step would give 100 paise here; the exact value is 100.3 paise.
+    assert suggested_price_paise(85, 0, 18) == 200
+    assert suggested_price_paise(100000, 0, 18) == 118000
+
+
+def test_a_target_margin_of_zero_on_the_package_is_a_real_target_not_a_fallback() -> None:
+    body = dma_package_body()
+    body["targetMarginPct"] = 0
+    projection = project_package(parse_package_body(body), dma_rates(proactive_authorized=True, proactive_cost=100), MARGIN)
+    assert projection.target_margin_pct == 0.0
+    assert projection.suggested_price_incl_gst_paise == suggested_price_paise(projection.cost_floor_paise, 0, 18)
+
+
+def test_without_a_package_margin_the_policy_minimum_margin_is_the_target() -> None:
+    projection = project_package(parse_package_body(dma_package_body()), dma_rates(proactive_authorized=True, proactive_cost=100), MARGIN)
+    assert projection.target_margin_pct == float(MARGIN)
+    assert projection.suggested_price_incl_gst_paise == suggested_price_paise(projection.cost_floor_paise, MARGIN, 18)
+    assert projection.suggestion_status == "COMPLETE"
+
+
+def test_an_unauthorized_thread_makes_the_suggestion_incomplete_and_shows_its_cost_line() -> None:
+    projection = project_package(parse_package_body(dma_package_body()), dma_rates(), MARGIN)
+    assert projection.suggestion_status == "INCOMPLETE"
+    assert PROACTIVE_THREAD in projection.unauthorized_thread_ids
+    line = next(item for item in projection.cost_lines if item.thread_id == PROACTIVE_THREAD)
+    assert line.authorized is False
+
+
+def test_a_thread_with_no_rate_at_all_is_unknown_not_zero() -> None:
+    rates = dma_rates(proactive_authorized=True, proactive_cost=100)
+    del rates["llm_pro"]
+    projection = project_package(parse_package_body(dma_package_body()), rates, MARGIN)
+    line = next(item for item in projection.cost_lines if item.thread_id == "llm_pro")
+    assert line.unit_cost_paise is None and line.line_cost_paise is None
+    assert projection.suggestion_status == "INCOMPLETE"
+
+
+def test_a_component_without_a_recipe_makes_the_suggestion_incomplete() -> None:
+    body = dma_package_body()
+    body["components"][1]["recipe"] = []
+    projection = project_package(parse_package_body(body), dma_rates(proactive_authorized=True, proactive_cost=100), MARGIN)
+    assert projection.uncosted_component_ids == ["CONTENT_POST"]
+    assert projection.suggestion_status == "INCOMPLETE"
+
+
+def test_a_package_with_no_known_cost_has_no_usable_suggestion() -> None:
+    body = dma_package_body()
+    body["infrastructureSharePaise"] = 0
+    for component in body["components"]:
+        component["recipe"] = []
+    projection = project_package(parse_package_body(body), dma_rates(), MARGIN)
+    assert projection.cost_floor_paise == 0
+    assert projection.suggested_price_incl_gst_paise is None
+    assert projection.suggestion_status == "UNUSABLE"
+
+
+def test_with_neither_a_package_margin_nor_a_policy_margin_there_is_no_suggestion() -> None:
+    projection = project_package(parse_package_body(dma_package_body()), dma_rates(proactive_authorized=True, proactive_cost=100), None)
+    assert projection.suggested_price_incl_gst_paise is None
+    assert projection.suggestion_status == "UNUSABLE"
+
+
+def test_the_description_and_target_margin_are_optional_and_bounded() -> None:
+    plain = parse_package_body(dma_package_body())
+    assert plain.description is None and plain.target_margin_pct is None
+    described = dma_package_body()
+    described["description"] = "For a business new to digital marketing with no accounts yet."
+    described["targetMarginPct"] = 40
+    parsed = parse_package_body(described)
+    assert parsed.description.startswith("For a business") and parsed.target_margin_pct == 40
+    for bad in ({"description": "x" * 501}, {"targetMarginPct": 100}, {"targetMarginPct": -1}):
+        with pytest.raises(Exception):  # noqa: B017 - pydantic ValidationError
+            parse_package_body({**dma_package_body(), **bad})

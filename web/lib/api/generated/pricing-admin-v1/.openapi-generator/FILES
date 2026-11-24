@@ -21,10 +21,12 @@ src/models/PricingAffectedPackageV1.ts
 src/models/PricingBreakerStateV1.ts
 src/models/PricingBudgetBodyV1.ts
 src/models/PricingBudgetScopeV1.ts
+src/models/PricingBuildUpV1.ts
 src/models/PricingBundleSignatureV1.ts
 src/models/PricingComponentCadenceV1.ts
 src/models/PricingComponentCostV1.ts
 src/models/PricingComponentKindV1.ts
+src/models/PricingCostLineV1.ts
 src/models/PricingCouponBodyV1.ts
 src/models/PricingEventCountV1.ts
 src/models/PricingExportBundleV1.ts

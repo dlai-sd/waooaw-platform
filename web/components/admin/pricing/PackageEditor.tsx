@@ -3,19 +3,21 @@
 // Implements: work-contracts/WC-136-common-agent-workbench-spend-accounts-and-pricing-engine.md C5-05
 // Constitutional basis: C-023, C-059, C-063, C-088
 
-import { useState, type FormEvent } from 'react';
-import { formatInr, paiseFromInr, versionTag, type PricingVersion } from '@/lib/pricing-admin-client';
+import { type PricingVersion, formatInr, inrFromPaise, paiseFromInr, versionTag } from '@/lib/pricing-admin-client';
 import type { PackageCatalogue, Simulation } from '@/lib/pricing-admin-types';
 import {
+  MAXIMUM_DESCRIPTION,
+  type PackageState,
   allocationTotalPaise,
   buildPackage,
   derivedPrice,
   emptyComponent,
   emptyPackage,
   packageFromBody,
-  type PackageState,
 } from '@/lib/pricing-package';
-import { ComponentRow, type AvailabilityNote } from './ComponentRow';
+import { type FormEvent, useState } from 'react';
+import { type AvailabilityNote, ComponentRow } from './ComponentRow';
+import { PackageBuildUp } from './PackageBuildUp';
 import { PricingMessage, usePricingCommand } from './usePricingCommand';
 
 type Props = {
@@ -116,6 +118,17 @@ export function PackageEditor({ draft, catalogue, simulation, onSaved }: Props) 
       </datalist>
       {text('Package code', 'packageCode')}
       {text('Package name', 'displayName')}
+      <div>
+        <label htmlFor="package-description">Description (the customer maturity this package suits)</label>
+        <textarea
+          id="package-description"
+          maxLength={MAXIMUM_DESCRIPTION}
+          onChange={(event) => set({ description: event.target.value })}
+          rows={3}
+          value={state.description}
+        />
+      </div>
+      {text('Target margin for this package (%)', 'targetMarginPct', { inputMode: 'decimal' })}
       {text('Billing period (days)', 'billingPeriodDays', { inputMode: 'numeric' })}
       {text('Price including GST (INR)', 'priceInr', { inputMode: 'decimal' })}
       {text('GST rate (%)', 'gstRatePercent', { inputMode: 'numeric' })}
@@ -146,6 +159,11 @@ export function PackageEditor({ draft, catalogue, simulation, onSaved }: Props) 
         Add component
       </button>
       <output aria-live="polite">{allocationStatus(price, allocated)}</output>
+      <PackageBuildUp
+        onUseSuggestedPrice={(paise) => set({ priceInr: inrFromPaise(paise) })}
+        simulation={simulation}
+        typedPriceInclGstPaise={price}
+      />
       <button className="primary-command" disabled={busy} type="submit">
         {target ? 'Save draft' : 'Create draft'}
       </button>

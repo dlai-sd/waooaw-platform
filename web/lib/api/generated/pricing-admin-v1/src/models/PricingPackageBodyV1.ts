@@ -88,6 +88,18 @@ export interface PricingPackageBodyV1 {
      * @memberof PricingPackageBodyV1
      */
     components: Array<PricingPackageComponentBodyV1>;
+    /**
+     * The customer maturity this package suits. Optional.
+     * @type {string}
+     * @memberof PricingPackageBodyV1
+     */
+    description?: string;
+    /**
+     * The Founder's target margin on revenue for this package. Optional; the policy minimum margin applies when absent.
+     * @type {number}
+     * @memberof PricingPackageBodyV1
+     */
+    targetMarginPct?: number;
 }
 
 
@@ -137,6 +149,8 @@ export function PricingPackageBodyV1FromJSONTyped(json: any, ignoreDiscriminator
         'taxTreatment': json['taxTreatment'] == null ? undefined : json['taxTreatment'],
         'infrastructureSharePaise': json['infrastructureSharePaise'],
         'components': ((json['components'] as Array<any>).map(PricingPackageComponentBodyV1FromJSON)),
+        'description': json['description'] == null ? undefined : json['description'],
+        'targetMarginPct': json['targetMarginPct'] == null ? undefined : json['targetMarginPct'],
     };
 }
 
@@ -162,5 +176,7 @@ export function PricingPackageBodyV1ToJSONTyped(value?: PricingPackageBodyV1 | n
         'taxTreatment': value['taxTreatment'],
         'infrastructureSharePaise': value['infrastructureSharePaise'],
         'components': ((value['components'] as Array<any>).map(PricingPackageComponentBodyV1ToJSON)),
+        'description': value['description'],
+        'targetMarginPct': value['targetMarginPct'],
     };
 }

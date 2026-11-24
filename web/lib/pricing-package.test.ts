@@ -2,14 +2,14 @@
 // Constitutional basis: C-023, C-059, C-063, C-088
 
 import {
+  PROACTIVE_COMPONENT_ID,
+  type PackageState,
   allocationTotalPaise,
   buildPackage,
   derivedPrice,
   emptyComponent,
   emptyPackage,
   packageFromBody,
-  PROACTIVE_COMPONENT_ID,
-  type PackageState,
 } from './pricing-package';
 
 function validPackage(): PackageState {
@@ -142,4 +142,38 @@ test('allocations are summed in paise and the base price is derived for display'
   expect(derivedPrice('118', '18')).toEqual({ basePaise: 10000, gstPaise: 1800 });
   expect(derivedPrice('', '18')).toBeNull();
   expect(derivedPrice('118', 'x')).toBeNull();
+});
+
+// WC-169 R017 to R019: description and target margin.
+test('a package without a description or target margin builds exactly as before', () => {
+  const built = buildPackage(validPackage());
+  expect(built.ok).toBe(true);
+  if (built.ok) {
+    expect(built.body).not.toHaveProperty('description');
+    expect(built.body).not.toHaveProperty('targetMarginPct');
+  }
+});
+
+test('a description and a target margin of zero are both sent and read back', () => {
+  const built = buildPackage({ ...validPackage(), description: ' New to digital marketing. ', targetMarginPct: '0' });
+  expect(built.ok).toBe(true);
+  if (built.ok) {
+    expect(built.body.description).toBe('New to digital marketing.');
+    expect(built.body.targetMarginPct).toBe(0);
+    const state = packageFromBody(built.body);
+    expect(state.description).toBe('New to digital marketing.');
+    expect(state.targetMarginPct).toBe('0');
+  }
+});
+
+test.each(['100', '-1', 'abc', '5.123', '40%'])('a target margin of %s is refused', (value) => {
+  const built = buildPackage({ ...validPackage(), targetMarginPct: value });
+  expect(built.ok).toBe(false);
+  if (!built.ok) expect(built.errors.join(' ')).toMatch(/Target margin/);
+});
+
+test('a description over 500 characters is refused', () => {
+  const built = buildPackage({ ...validPackage(), description: 'x'.repeat(501) });
+  expect(built.ok).toBe(false);
+  if (!built.ok) expect(built.errors.join(' ')).toMatch(/Description/);
 });

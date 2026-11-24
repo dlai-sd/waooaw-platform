@@ -23,10 +23,12 @@ from markup.package_models import (
     PROACTIVE_MESSAGE_COMPONENT_ID,
     PROACTIVE_MESSAGE_QUANTITY,
     ComponentCost,
+    CostLine,
     PackageBody,
     PackageComponent,
     PackageEvaluation,
     PackageProjection,
+    SuggestionStatus,
     Violation,
 )
 
@@ -182,6 +184,36 @@ def parse_package_body(raw: Mapping[str, object]) -> PackageBody:
     return PackageBody.model_validate(dict(raw))
 
 
+def suggested_price_paise(cost_floor_paise: int, target_margin_pct: Decimal | float | str, gst_rate_percent: int) -> int:
+    """Price including GST that reaches the target margin, computed exactly and then rounded up to a whole rupee."""
+    needed_base = minimum_compliant_base_paise(cost_floor_paise, target_margin_pct)
+    exact_price = Fraction(needed_base * (100 + gst_rate_percent), 100)
+    return math.ceil(exact_price / 100) * 100
+
+
+def _suggestion(
+    body: PackageBody,
+    cost_floor: int,
+    minimum_margin_pct: Decimal | float | str | None,
+    *,
+    incomplete: bool,
+) -> tuple[float | None, int | None, SuggestionStatus]:
+    """Target margin, suggested price and how far the suggestion can be trusted.
+
+    A margin of zero set on the package is a real target and never falls back to the policy margin.
+    """
+    target: Decimal | float | str | None = (
+        body.target_margin_pct if body.target_margin_pct is not None else minimum_margin_pct
+    )
+    if target is None or cost_floor <= 0:
+        return (None if target is None else float(Decimal(str(target))), None, "UNUSABLE")
+    try:
+        price = suggested_price_paise(cost_floor, target, body.gst_rate_percent)
+    except ValueError:
+        return (float(Decimal(str(target))), None, "UNUSABLE")
+    return (float(Decimal(str(target))), price, "INCOMPLETE" if incomplete else "COMPLETE")
+
+
 def project_package(
     body: PackageBody,
     rates: Mapping[str, ThreadRate],
@@ -191,19 +223,40 @@ def project_package(
 
     A recipe thread without an authorized catalogue entry is listed in ``unauthorized_thread_ids``;
     its known cost counts and an unknown or pending entry counts as zero, which is why the floor of a
-    package that still carries pending proactive-message threads excludes those messages.
+    package that still carries pending proactive-message threads excludes those messages. The cost
+    lines show an unknown rate as unknown, and a component with no recipe is listed in
+    ``uncosted_component_ids``; either makes the suggested price INCOMPLETE rather than final.
     """
     component_costs: list[ComponentCost] = []
+    cost_lines: list[CostLine] = []
+    uncosted: list[str] = []
     thread_rations: dict[str, int] = {}
     unauthorized: set[str] = set()
     for component in body.components:
         unit_cost = 0
+        if not component.recipe:
+            uncosted.append(component.component_id)
         for entry in component.recipe:
             rate = rates.get(entry.thread_id)
             if rate is None or not rate.authorized:
                 unauthorized.add(entry.thread_id)
             if rate is not None:
                 unit_cost += entry.units_per_unit * rate.marked_up_cost_paise
+            cost_lines.append(
+                CostLine(
+                    component_id=component.component_id,
+                    thread_id=entry.thread_id,
+                    quantity=component.quantity,
+                    units_per_unit=entry.units_per_unit,
+                    unit_cost_paise=None if rate is None else rate.marked_up_cost_paise,
+                    line_cost_paise=(
+                        None
+                        if rate is None
+                        else component.quantity * entry.units_per_unit * rate.marked_up_cost_paise
+                    ),
+                    authorized=rate is not None and rate.authorized,
+                )
+            )
             thread_rations[entry.thread_id] = (
                 thread_rations.get(entry.thread_id, 0) + component.quantity * entry.units_per_unit
             )
@@ -222,6 +275,9 @@ def project_package(
     if minimum_margin_pct is not None:
         minimum_base = minimum_compliant_base_paise(cost_floor, minimum_margin_pct)
         minimum_price = minimum_compliant_price_paise(cost_floor, minimum_margin_pct, body.gst_rate_percent)
+    target_margin, suggested_price, suggestion_status = _suggestion(
+        body, cost_floor, minimum_margin_pct, incomplete=bool(unauthorized or uncosted)
+    )
     return PackageProjection(
         price_incl_gst_paise=body.price_incl_gst_paise,
         base_price_paise=base,
@@ -235,6 +291,11 @@ def project_package(
         component_costs=component_costs,
         thread_rations=dict(sorted(thread_rations.items())),
         unauthorized_thread_ids=sorted(unauthorized),
+        cost_lines=cost_lines,
+        uncosted_component_ids=uncosted,
+        target_margin_pct=target_margin,
+        suggested_price_incl_gst_paise=suggested_price,
+        suggestion_status=suggestion_status,
     )
 
 
