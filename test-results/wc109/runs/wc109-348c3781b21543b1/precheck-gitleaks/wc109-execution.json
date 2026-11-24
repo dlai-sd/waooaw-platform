@@ -1,0 +1,21 @@
+{
+  "authority": "diagnostic-local-only",
+  "base_sha": "dc6bf8368af6c722db15d58c2841509597af8e8f",
+  "catalog_controlled": true,
+  "compose_project": "wc109-348c3781b21543b1",
+  "execution_namespace": "wc109-348c3781b21543b1",
+  "gate_id": "precheck:gitleaks",
+  "head_sha": "3d320b0ac2506a4895f9a3b8f2fd6f0158e86fe2",
+  "invocation_source": "catalog",
+  "mode": "qualification",
+  "output_directory": "test-results/wc109/runs/wc109-348c3781b21543b1/precheck-gitleaks",
+  "product_image_build_events": 0,
+  "result": "PASS",
+  "return_code": 0,
+  "runner_build_events": 0,
+  "runner_digest": "sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854",
+  "schema": "waooaw.wc109-tier2-execution/v1",
+  "service_identities": {},
+  "stderr_artifact": null,
+  "stdout_artifact": null
+}
